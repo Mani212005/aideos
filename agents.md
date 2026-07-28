@@ -41,5 +41,10 @@ File Description: This file defines the core guidelines, coding principles, and 
    - **Depict Spoken Words**: Every visual cue, animation, and graphic element must directly depict and reflect what is being spoken in the narration at that precise second.
    - **Precise Cue Syncing**: Align visual triggers, highlight effects, and component additions directly with the voiceover audio timestamps.
 
+## Maintaining this file
+- This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.
+- Keep it concise. Prefer pointers to authoritative files over copying details.
+- When updating, check if this section exists and add it if missing.
+
 
 
