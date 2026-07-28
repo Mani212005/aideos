@@ -1,11 +1,19 @@
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import OpenAI from "openai";
 import fs from "fs/promises";
 import path from "path";
 import { execSync } from "child_process";
 import dotenv from "dotenv";
+import { z } from "zod";
+import { DEVICE_BLOCKS, filmBaseSchema, parseFilm } from "../src/dl/schema";
+import type { Film } from "../src/dl/schema";
 
-dotenv.config();
+dotenv.config({ quiet: true });
+
+/** Resolved from the module, not the shell, so the CLI works from any cwd. */
+const ROOT = path.resolve(__dirname, "..");
+const GENERATED_PATH = path.join(ROOT, "src/dl/films/generated.ts");
+const ACTIVE_FILM_PATH = path.join(ROOT, "src/dl/activeFilm.ts");
 
 const program = new Command();
 program
@@ -13,182 +21,174 @@ program
   .description("Generate and render Aideos films from natural language")
   .version("1.0.0");
 
-const openai = new OpenAI();
+/**
+ * The tool schema *is* the film schema. Hand-writing a JSON Schema alongside
+ * `filmSchema` means every constraint the validator enforces — id patterns,
+ * `dur` bounds, unit-space points, the block union — has to be remembered
+ * twice, and the copy silently rots. Deriving it means the model is told about
+ * a new field the moment the schema grows one.
+ *
+ * `io: "input"` so defaulted fields stay optional: the model omitting `zoom`
+ * is correct, not a mistake. The pacing rules in `superRefine` cannot be
+ * expressed in JSON Schema, so they live in the system prompt below and are
+ * enforced for real by `parseFilm` before anything is written to disk.
+ */
+const filmParameters = z.toJSONSchema(filmBaseSchema, {
+  io: "input",
+  target: "draft-7",
+  unrepresentable: "any",
+  reused: "inline",
+}) as Record<string, unknown>;
 
-const blockDescriptions = `
-Valid blocks (c):
-- Kicker: { c: "Kicker", text: string }
-- TextReveal: { c: "TextReveal", text: string, size?: "display"|"headline"|"subhead", accentWord?: string }
-- Body: { c: "Body", text: string }
-- Math: { c: "Math", text: string }
-- StatCounter: { c: "StatCounter", to: number, label: string, format?: "plain"|"compact", suffix?: string }
-- ProgressBar: { c: "ProgressBar", value: number, label?: string, chapters?: number }
-- Plot: { c: "Plot", points: [number, number][], xLabel?: string, yLabel?: string, endLabel?: string }
-- MatrixGrid: { c: "MatrixGrid", values: number[][], rowLabel?: string, colLabel?: string, valueLabel?: string, sweep?: "row"|"cell" }
-- Distribution: { c: "Distribution", prompt?: string, items: { label: string, p: number }[], note?: string }
-- TokenStrip: { c: "TokenStrip", tokens: string[], lit?: number[], caption?: string }
-- AttentionArcs: { c: "AttentionArcs", tokens: string[], focus: number, links: number[], note?: string }
-- VectorSpace: { c: "VectorSpace", points: {x: number, y: number, label?: string}[], arrow?: {from: number, to: number, label: string}, xLabel?: string, yLabel?: string }
-- LayerStack: { c: "LayerStack", count?: number, bottomLabel?: string, topLabel?: string }
-- ScaleBar: { c: "ScaleBar", ticks: string[], value: number, label?: string }
-- AnalogyInset: { c: "AnalogyInset", caption: string, src?: string }
-- Card: { c: "Card", title: string, body?: string, state?: "idle"|"active" }
-- Divider: { c: "Divider" }
-- IconLabel: { c: "IconLabel", text: string }
+const systemPrompt = `You are an expert at generating Aideos Film configurations. Create a visually engaging explainer video.
+
+Structure:
+- Provide realistic 2D coordinates for nodes (e.g. x: 0..2000, y: 0..1000). Lay the graph out left to right so every edge points forward.
+- Every node id named by an edge or by a shot's "look" must exist in canvas.nodes. Node and shot ids are lowercase letters, digits and dashes only.
+- The first shot must use move: "cut" — it has nothing to move from.
+- A shot with move: "cut" opens the next chapter, and the chapter rail reads its label from the chapters array. So the number of shots with move: "cut" must equal chapters.length, and each cut must land where that chapter's section of the argument begins.
+
+Pacing (all enforced; a violation fails validation):
+- Device blocks are: ${DEVICE_BLOCKS.join(", ")}.
+- No shot holding a device may run past 25s, and no device may follow itself — put the canvas or another device between them.
+- A text beat (stage: "frame") at least every 60-90s.
+- A return to the bare canvas (stage: "none") at least every 60-90s.
+- stage: "anchor" and stage: "frame" must carry at least one block; stage: "none" carries none.
+- stage: "anchor" cannot look at "all" — name the single node the panel grows out of.
+- At most 3 accents in one shot. Each device block, each StatCounter, each Card with state "active", each TextReveal with an accentWord and each Math whose text contains *stars* spends one.
+- Each shot's dur is 2..45 seconds, and the film totals at least 10s.`;
+
+const FORMATS = {
+  long: { script: "render", label: "long (1920×1080) → out/long.mp4" },
+  reel: { script: "render:reel", label: "reel (1080×1920) → out/reel.mp4" },
+} as const;
+
+/** Keeps the hand-written explanation that makes this file readable. */
+const activeFilmModule = () =>
+  `import { generatedFilm } from "./films/generated";
+import type { Film } from "./schema";
+
+/**
+ * Which film renders. One line, so swapping the subject of the whole pipeline
+ * is a one-word change rather than a search through the components.
+ */
+export const ACTIVE_FILM: Film = generatedFilm;
 `;
 
-// Basic JSON Schema mapping for the Film Tool
-const filmFunctionSchema = {
-  name: "generate_aideos_film",
-  description: "Generates an Aideos Film JSON structure representing canvas nodes, shots, and blocks.",
-  parameters: {
-    type: "object",
-    properties: {
-      id: { type: "string" },
-      title: { type: "string" },
-      fps: { type: "number", enum: [24, 30, 60] },
-      chapters: { type: "array", items: { type: "string" } },
-      canvas: {
-        type: "object",
-        properties: {
-          nodes: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                id: { type: "string" },
-                label: { type: "string" },
-                sub: { type: "string" },
-                x: { type: "number" },
-                y: { type: "number" },
-                w: { type: "number" },
-                h: { type: "number" }
-              },
-              required: ["id", "label", "x", "y"]
-            }
-          },
-          edges: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                from: { type: "string" },
-                to: { type: "string" },
-                dashed: { type: "boolean" }
-              },
-              required: ["from", "to"]
-            }
-          }
-        },
-        required: ["nodes", "edges"]
-      },
-      shots: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            id: { type: "string" },
-            dur: { type: "number", description: "Duration in seconds" },
-            look: {
-              anyOf: [
-                { type: "string" },
-                { type: "array", items: { type: "string" } }
-              ]
-            },
-            move: { type: "string", enum: ["pan", "zoom-in", "zoom-out", "hold", "cut"] },
-            drift: { type: "boolean" },
-            stage: { type: "string", enum: ["anchor", "frame", "none"] },
-            zoom: { type: "number" },
-            blocks: {
-              type: "array",
-              description: blockDescriptions,
-              items: {
-                type: "object",
-                properties: {
-                  c: { type: "string" }
-                },
-                required: ["c"],
-                additionalProperties: true
-              }
-            }
-          },
-          required: ["id", "dur", "look", "move", "stage", "blocks"]
-        }
-      }
-    },
-    required: ["id", "title", "fps", "chapters", "canvas", "shots"]
-  }
-};
+/**
+ * Written from the *parsed* film, so the defaults the schema applies are on the
+ * page. The raw tool arguments omit them, and a module annotated `Film` that
+ * leaves out `w`, `dashed` or `stage` typechecks only by accident.
+ */
+const generatedModule = (film: Film) =>
+  `import type { Film } from "../schema";
+
+/**
+ * Generated by \`npm run backend generate\`. Regenerating overwrites it.
+ *
+ * Pure data — the only import is a type, so the validator can load this in
+ * plain Node with no React, no fonts and no browser.
+ */
+export const generatedFilm: Film = ${JSON.stringify(film, null, 2)};
+`;
 
 program
   .command("generate")
   .description("Generate an Aideos film from a prompt")
   .argument("<prompt>", "Natural language description of the video")
-  .action(async (prompt) => {
+  .addOption(
+    new Option("--format <format>", "which composition to render")
+      .choices(["long", "reel", "both"])
+      .default("long"),
+  )
+  .action(async (prompt: string, options: { format: "long" | "reel" | "both" }) => {
+    // Constructed here rather than at module scope so `--help` and `--version`
+    // still work without a key, and so a missing one is one line, not a stack.
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error("OPENAI_API_KEY is not set. Put it in .env or the environment.");
+    const openai = new OpenAI({ apiKey });
+
     console.log(`Generating film for prompt: "${prompt}"...`);
 
-    const runner = await openai.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       model: "gpt-4o-2024-08-06",
+      // A film is a large payload; the default ceiling truncates the tool call
+      // into unparseable JSON, which reads as a mystery syntax error.
+      max_completion_tokens: 16384,
       messages: [
-        {
-          role: "system",
-          content: `You are an expert at generating Aideos Film configurations. Create a visually engaging explainer video.
-Make sure all nodes referenced in shots or edges exist in the canvas nodes.
-Ensure shots follow pacing guidelines: 
-- No device holding past 25s.
-- Device blocks: MatrixGrid, Distribution, TokenStrip, AttentionArcs, VectorSpace, LayerStack, ScaleBar, AnalogyInset, Plot.
-- Don't use the same device twice in a row.
-- Have a text beat (stage: "frame") every 60-90s.
-- Return to canvas (stage: "none") every 60-90s.
-- Provide realistic 2D coordinates for nodes (e.g. x: 0..2000, y: 0..1000).`
-        },
-        { role: "user", content: prompt }
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt },
       ],
       tools: [
         {
           type: "function",
-          function: filmFunctionSchema
-        }
+          function: {
+            name: "generate_aideos_film",
+            description:
+              "Generates an Aideos Film JSON structure representing canvas nodes, shots, and blocks.",
+            parameters: filmParameters,
+          },
+        },
       ],
-      tool_choice: { type: "function", function: { name: "generate_aideos_film" } }
+      tool_choice: { type: "function", function: { name: "generate_aideos_film" } },
     });
 
-    const toolCall = runner.choices[0].message.tool_calls?.[0];
-    if (!toolCall || toolCall.type !== "function") {
-      console.error("Failed to generate film JSON.");
-      return;
+    const choice = completion.choices[0];
+    if (!choice) throw new Error("The model returned no choices.");
+    if (choice.finish_reason === "length")
+      throw new Error("The model's tool call was cut off mid-JSON. Ask for a shorter film.");
+
+    const toolCall = choice.message.tool_calls?.[0];
+    if (!toolCall || toolCall.type !== "function")
+      throw new Error("The model returned no film tool call.");
+
+    let raw: unknown;
+    try {
+      raw = JSON.parse(toolCall.function.arguments);
+    } catch (err) {
+      throw new Error(`The model's tool call was not valid JSON: ${(err as Error).message}`);
     }
 
-    const filmJson = JSON.parse(toolCall.function.arguments);
-    const outputPath = path.join(process.cwd(), "src/dl/films/generated.ts");
-    const exportContent = `import type { Film } from "../schema";\n\nexport const generatedFilm: Film = ${JSON.stringify(filmJson, null, 2)};\n`;
+    // Validate before touching the tree. `npm run validate` catches the same
+    // errors, but only after `activeFilm.ts` has been repointed at the broken
+    // film — and then studio, frames and render all fail until it is reverted.
+    const film = parseFilm(raw);
 
-    await fs.writeFile(outputPath, exportContent, "utf-8");
-    console.log(`Saved generated film to ${outputPath}`);
-    
-    // Update activeFilm.ts to point to generatedFilm
-    const activeFilmPath = path.join(process.cwd(), "src/dl/activeFilm.ts");
-    const activeFilmContent = `import { generatedFilm } from "./films/generated";\nimport type { Film } from "./schema";\n\nexport const ACTIVE_FILM: Film = generatedFilm;\n`;
-    await fs.writeFile(activeFilmPath, activeFilmContent, "utf-8");
+    await fs.writeFile(GENERATED_PATH, generatedModule(film), "utf-8");
+    console.log(`Saved generated film to ${GENERATED_PATH}`);
+
+    const previousActive = await fs.readFile(ACTIVE_FILM_PATH, "utf-8").catch(() => null);
+    await fs.writeFile(ACTIVE_FILM_PATH, activeFilmModule(), "utf-8");
     console.log(`Updated activeFilm.ts to use generatedFilm.`);
 
     console.log(`Validating...`);
     try {
-      execSync("npm run validate", { stdio: "inherit" });
+      execSync("npm run validate", { stdio: "inherit", cwd: ROOT });
       console.log(`Validation successful.`);
-    } catch (err) {
-      console.error("Validation failed.");
-      process.exit(1);
+    } catch {
+      if (previousActive !== null) {
+        await fs.writeFile(ACTIVE_FILM_PATH, previousActive, "utf-8");
+        console.error("Restored the previous activeFilm.ts; the generated film is still on disk.");
+      }
+      throw new Error("Validation failed.");
     }
 
-    console.log(`Rendering video...`);
-    try {
-      execSync("npm run render", { stdio: "inherit" });
-      console.log(`Render complete.`);
-    } catch (err) {
-      console.error("Render failed.");
-      process.exit(1);
+    const formats =
+      options.format === "both" ? (["long", "reel"] as const) : ([options.format] as const);
+    for (const key of formats) {
+      console.log(`Rendering ${FORMATS[key].label}...`);
+      try {
+        execSync(`npm run ${FORMATS[key].script}`, { stdio: "inherit", cwd: ROOT });
+      } catch {
+        throw new Error(`Render failed for the ${key} format.`);
+      }
     }
+    console.log(`Render complete.`);
   });
 
-program.parse();
+// parseAsync, so a rejected action surfaces as a one-line CLI error rather than
+// an unhandled rejection with a raw stack trace, and exits non-zero.
+program.parseAsync().catch((err: unknown) => {
+  console.error(err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});
