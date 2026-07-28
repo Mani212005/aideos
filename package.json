@@ -2,6 +2,12 @@
   "name": "aideos",
   "version": "1.0.0",
   "description": "Explainer video as data — one canvas, one camera, two aspect ratios.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mani212005/aideos.git"
+  },
+  "homepage": "https://github.com/Mani212005/aideos#readme",
+  "bugs": "https://github.com/Mani212005/aideos/issues",
   "license": "MIT",
   "private": true,
   "dependencies": {
