@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; background: #0A0A0B; }
+  * { box-sizing: border-box; }
+  a { color: #635BFF; text-decoration: none; }
+  a:hover { color: #8A84FF; }
+  @keyframes dlFadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes dlScaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+  @keyframes dlLoopUp { 0% { opacity: 0; transform: translateY(12px); } 12%, 78% { opacity: 1; transform: translateY(0); } 92%, 100% { opacity: 0; transform: translateY(0); } }
+  @keyframes dlDrift { from { transform: scale(1); } to { transform: scale(1.04); } }
+  @keyframes dlDraw { 0% { transform: scaleX(0); } 22%, 80% { transform: scaleX(1); } 100% { transform: scaleX(1); } }
+  @keyframes dlFill { 0% { width: 0%; } 30%, 82% { width: 68%; } 100% { width: 68%; } }
+  @keyframes dlCaret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+  @keyframes dlDash { 0% { stroke-dashoffset: 120; } 30%, 100% { stroke-dashoffset: 0; } }
+  @keyframes dlTravelV { 0% { transform: translateY(0); opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { transform: translateY(var(--dist, 200px)); opacity: 0; } }
+  @keyframes dlTravelH { 0% { transform: translateX(0); opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { transform: translateX(var(--dist, 400px)); opacity: 0; } }
+  @keyframes dlGlow { 0%, 100% { opacity: 0; } 45%, 65% { opacity: 1; } }
+  @keyframes dlSweep { 0% { transform: translateY(-100%); } 100% { transform: translateY(400%); } }
+  @keyframes dlPulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+</style>
+</helmet>
+
+<div ref="{{ rootRef }}" style="--accent: #635BFF; --r: 12px; background: #0A0A0B; color: #F5F5F5; font-family: Geist, system-ui, sans-serif; font-weight: 400; min-height: 100vh; padding: 72px 40px 120px; display: flex; flex-direction: column; align-items: center; gap: 96px; position: relative; overflow: hidden;">
+
+  <sc-if value="{{ showGrid }}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; pointer-events: none; opacity: 0.5; background-image: linear-gradient(to right, rgba(99,91,255,0.10) 1px, transparent 1px), linear-gradient(to bottom, rgba(99,91,255,0.10) 1px, transparent 1px); background-size: 8px 8px;"></div>
+  </sc-if>
+
+  <header style="width: 100%; max-width: 1120px; display: flex; flex-direction: column; gap: 24px; animation: dlFadeUp 450ms cubic-bezier(0.16,1,0.3,1) both;">
+    <div style="display: flex; align-items: center; gap: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">
+      <span style="width: 8px; height: 8px; border-radius: 2px; background: var(--accent, #635BFF); animation: dlPulse 2400ms cubic-bezier(0.16,1,0.3,1) infinite;"></span>
+      <span>design_language / v1.0</span>
+      <span style="flex: 1; height: 1px; background: rgba(245,245,245,0.10);"></span>
+      <span>remotion · three.js</span>
+    </div>
+    <h1 style="margin: 0; font-size: 72px; line-height: 1.02; font-weight: 500; letter-spacing: -0.03em; text-wrap: pretty; max-width: 900px;">A system for videos about <span style="color: var(--accent, #635BFF);">code</span> — one grid, one curve, one accent.</h1>
+    <p style="margin: 0; max-width: 640px; font-size: 18px; line-height: 1.55; color: #8A8A8E; text-wrap: pretty;">Tokens and seven animated primitives. Reels at 1080×1920 and long-form at 1920×1080 pull from the same scale, the same easing, the same border language. Variety comes from timing, never from new transforms.</p>
+  </header>
+
+  <section style="width: 100%; max-width: 1120px; display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; align-items: baseline; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">
+      <span style="color: var(--accent, #635BFF);">01</span><span>Color</span><span style="flex: 1; height: 1px; background: rgba(245,245,245,0.10);"></span><span>6 values, no more</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); overflow: hidden; background: #0D0D0F;">
+        <div style="height: 120px; background: #0A0A0B; border-bottom: 1px solid rgba(245,245,245,0.10);"></div>
+        <div style="padding: 16px 18px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500;">#0A0A0B</div>
+          <div style="font-size: 13px; color: #8A8A8E;">canvas — never pure black</div>
+        </div>
+      </div>
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); overflow: hidden; background: #0D0D0F;">
+        <div style="height: 120px; background: #F5F5F5; border-bottom: 1px solid rgba(245,245,245,0.10);"></div>
+        <div style="padding: 16px 18px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500;">#F5F5F5</div>
+          <div style="font-size: 13px; color: #8A8A8E;">text primary</div>
+        </div>
+      </div>
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); overflow: hidden; background: #0D0D0F;">
+        <div style="height: 120px; background: #8A8A8E; border-bottom: 1px solid rgba(245,245,245,0.10);"></div>
+        <div style="padding: 16px 18px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500;">#8A8A8E</div>
+          <div style="font-size: 13px; color: #8A8A8E;">text muted, labels</div>
+        </div>
+      </div>
+      <div style="border: 1px solid rgba(99,91,255,0.35); border-radius: var(--r, 12px); overflow: hidden; background: #0D0D0F;">
+        <div style="height: 120px; background: var(--accent, #635BFF); border-bottom: 1px solid rgba(245,245,245,0.10);"></div>
+        <div style="padding: 16px 18px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500; color: var(--accent, #635BFF);">{{ accentHex }}</div>
+          <div style="font-size: 13px; color: #8A8A8E;">accent — the only color</div>
+        </div>
+      </div>
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); overflow: hidden; background: #0D0D0F;">
+        <div style="height: 120px; background: #0A0A0B; border-bottom: 1px solid rgba(245,245,245,0.10); display: flex; align-items: center; justify-content: center; padding: 24px;">
+          <div style="width: 100%; height: 100%; border: 1px solid rgba(245,245,245,0.10); border-radius: 8px;"></div>
+        </div>
+        <div style="padding: 16px 18px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500;">rgba(245,245,245,.10)</div>
+          <div style="font-size: 13px; color: #8A8A8E;">hairline — depth, no shadows</div>
+        </div>
+      </div>
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); overflow: hidden; background: #0D0D0F;">
+        <div style="height: 120px; background: #101013; border-bottom: 1px solid rgba(245,245,245,0.10);"></div>
+        <div style="padding: 16px 18px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500;">#101013</div>
+          <div style="font-size: 13px; color: #8A8A8E;">surface — cards on canvas</div>
+        </div>
+      </div>
+    </div>
+    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #8A8A8E; max-width: 680px;">Accent appears at most three times per frame: one active state, one key number, one highlighted word. If a frame needs a fourth, the frame is doing too much.</p>
+  </section>
+
+  <section style="width: 100%; max-width: 1120px; display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; align-items: baseline; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">
+      <span style="color: var(--accent, #635BFF);">02</span><span>Type</span><span style="flex: 1; height: 1px; background: rgba(245,245,245,0.10);"></span><span>Geist + JetBrains Mono</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px;">
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; padding: 32px; display: flex; flex-direction: column; gap: 26px;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">Voice — Geist</div>
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          <div style="display: flex; align-items: baseline; gap: 20px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8A8A8E; width: 96px; flex: none;">96 / 134</span>
+            <span style="font-size: 46px; line-height: 1; font-weight: 500; letter-spacing: -0.03em;">Display</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 20px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8A8A8E; width: 96px; flex: none;">64 / 90</span>
+            <span style="font-size: 34px; line-height: 1; font-weight: 500; letter-spacing: -0.02em;">Headline</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 20px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8A8A8E; width: 96px; flex: none;">40 / 56</span>
+            <span style="font-size: 24px; line-height: 1.2; font-weight: 400;">Subhead</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 20px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8A8A8E; width: 96px; flex: none;">24 / 34</span>
+            <span style="font-size: 17px; line-height: 1.5; color: #F5F5F5;">Body copy, one line of it</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 20px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8A8A8E; width: 96px; flex: none;">16 / 22</span>
+            <span style="font-size: 14px; line-height: 1.5; color: #8A8A8E;">Caption and footnote</span>
+          </div>
+        </div>
+      </div>
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; padding: 32px; display: flex; flex-direction: column; gap: 26px;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">System — JetBrains Mono</div>
+        <div style="font-family: 'JetBrains Mono', monospace; display: flex; flex-direction: column; gap: 18px;">
+          <div style="font-size: 40px; font-weight: 700; letter-spacing: -0.02em; color: var(--accent, #635BFF);">1,284<span style="font-size: 20px; color: #8A8A8E;">ms</span></div>
+          <div style="font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">step 03 · frame 0142</div>
+          <div style="font-size: 14px; color: #F5F5F5;">useMemo(() =&gt; compile(src), [src])</div>
+          <div style="font-size: 13px; color: #8A8A8E;">00:04:12 — 00:06:38</div>
+        </div>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #8A8A8E;">Every number, label, timestamp and identifier is mono. That single rule is what makes the work read as engineering rather than generic minimalism.</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="width: 100%; max-width: 1120px; display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; align-items: baseline; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">
+      <span style="color: var(--accent, #635BFF);">03</span><span>Motion grammar</span><span style="flex: 1; height: 1px; background: rgba(245,245,245,0.10);"></span><span>ease-out-expo, everywhere</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 16px;">
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; padding: 28px; display: flex; flex-direction: column; gap: 20px;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">cubic-bezier(.16, 1, .3, 1)</div>
+        <svg viewBox="0 0 200 200" style="width: 100%; height: auto; display: block;" data-om-raster="true">
+          <rect x="0.5" y="0.5" width="199" height="199" fill="none" stroke="rgba(245,245,245,0.10)"></rect>
+          <path d="M0 200 L200 200 M0 0 L0 200" stroke="rgba(245,245,245,0.10)"></path>
+          <path d="M0 200 C32 0 60 0 200 0" fill="none" stroke="#635BFF" stroke-width="2"></path>
+          <circle cx="0" cy="200" r="3" fill="#635BFF"></circle>
+          <circle cx="200" cy="0" r="3" fill="#635BFF"></circle>
+        </svg>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #8A8A8E;">Almost all of the distance travels in the first third. Reads as a UI responding, not an object falling. No springs, no bounce.</p>
+      </div>
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; padding: 28px; display: flex; flex-direction: column; gap: 22px;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">Fixed durations</div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: rgba(245,245,245,0.10); border: 1px solid rgba(245,245,245,0.10); border-radius: 8px; overflow: hidden;">
+          <div style="background: #0D0D0F; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 500;">400<span style="font-size: 14px; color: #8A8A8E;">ms</span></span>
+            <span style="font-size: 13px; color: #8A8A8E;">enter (350–450)</span>
+          </div>
+          <div style="background: #0D0D0F; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 500;">220<span style="font-size: 14px; color: #8A8A8E;">ms</span></span>
+            <span style="font-size: 13px; color: #8A8A8E;">exit (200–250)</span>
+          </div>
+          <div style="background: #0D0D0F; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 500;">70<span style="font-size: 14px; color: #8A8A8E;">ms</span></span>
+            <span style="font-size: 13px; color: #8A8A8E;">sibling stagger</span>
+          </div>
+          <div style="background: #0D0D0F; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 500;">104<span style="font-size: 14px; color: #8A8A8E;">%</span></span>
+            <span style="font-size: 13px; color: #8A8A8E;">scene drift, whole comp</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+          <span style="font-size: 14px; color: #8A8A8E;">Enter pattern: opacity 0→1 + translateY 12→0.</span>
+          <button onClick="{{ replay }}" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #F5F5F5; background: transparent; border: 1px solid rgba(245,245,245,0.20); border-radius: 6px; padding: 9px 14px; cursor: pointer; transition: all 350ms cubic-bezier(0.16,1,0.3,1);" style-hover="border-color: #635BFF; color: #635BFF;">replay</button>
+        </div>
+        <div key="{{ replayKey }}" style="display: flex; gap: 10px;">
+          <div style="flex: 1; height: 56px; border: 1px solid rgba(245,245,245,0.10); border-radius: 8px; background: #0D0D0F; animation: dlFadeUp 400ms cubic-bezier(0.16,1,0.3,1) 0ms both;"></div>
+          <div style="flex: 1; height: 56px; border: 1px solid rgba(245,245,245,0.10); border-radius: 8px; background: #0D0D0F; animation: dlFadeUp 400ms cubic-bezier(0.16,1,0.3,1) 70ms both;"></div>
+          <div style="flex: 1; height: 56px; border: 1px solid rgba(245,245,245,0.10); border-radius: 8px; background: #0D0D0F; animation: dlFadeUp 400ms cubic-bezier(0.16,1,0.3,1) 140ms both;"></div>
+          <div style="flex: 1; height: 56px; border: 1px solid rgba(99,91,255,0.35); border-radius: 8px; background: rgba(99,91,255,0.10); animation: dlFadeUp 400ms cubic-bezier(0.16,1,0.3,1) 210ms both;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="width: 100%; max-width: 1120px; display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; align-items: baseline; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">
+      <span style="color: var(--accent, #635BFF);">04</span><span>Primitives</span><span style="flex: 1; height: 1px; background: rgba(245,245,245,0.10);"></span><span>7 components, animation baked in</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="padding: 32px; min-height: 180px; display: flex; align-items: center; background: #0A0A0B; border-bottom: 1px solid rgba(245,245,245,0.10);">
+          <div style="font-size: 32px; line-height: 1.15; font-weight: 500; letter-spacing: -0.02em; display: flex; flex-wrap: wrap; gap: 0 10px;">
+            <span style="animation: dlLoopUp 4200ms cubic-bezier(0.16,1,0.3,1) 0ms infinite;">Every</span>
+            <span style="animation: dlLoopUp 4200ms cubic-bezier(0.16,1,0.3,1) 70ms infinite;">frame</span>
+            <span style="animation: dlLoopUp 4200ms cubic-bezier(0.16,1,0.3,1) 140ms infinite;">is</span>
+            <span style="color: var(--accent, #635BFF); animation: dlLoopUp 4200ms cubic-bezier(0.16,1,0.3,1) 210ms infinite;">deliberate</span>
+          </div>
+        </div>
+        <div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500;">TextReveal</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8A8A8E;">{ text, size, stagger: 70, accentWord? }</div>
+        </div>
+      </div>
+
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="padding: 32px; min-height: 180px; display: flex; flex-direction: column; justify-content: center; gap: 10px; background: #0A0A0B; border-bottom: 1px solid rgba(245,245,245,0.10);">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 56px; font-weight: 700; letter-spacing: -0.03em; color: var(--accent, #635BFF); font-variant-numeric: tabular-nums;">{{ counter }}<span style="font-size: 24px; color: #8A8A8E;">ms</span></div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">render time, 4k frame</div>
+        </div>
+        <div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500;">StatCounter</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8A8A8E;">{ to, unit, label, duration: 900 }</div>
+        </div>
+      </div>
+
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="padding: 28px; min-height: 180px; background: #0A0A0B; border-bottom: 1px solid rgba(245,245,245,0.10); display: flex; flex-direction: column; justify-content: center;">
+          <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: 8px; background: #0D0D0F; padding: 18px 20px; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.8; display: flex; flex-direction: column;">
+            <div style="display: flex; gap: 16px; animation: dlLoopUp 4600ms cubic-bezier(0.16,1,0.3,1) 0ms infinite;"><span style="color: #4A4A50; user-select: none;">1</span><span style="color: #8A8A8E;">const seq = <span style="color: #F5F5F5;">interpolate</span>(f, [0, 24],</span></div>
+            <div style="display: flex; gap: 16px; animation: dlLoopUp 4600ms cubic-bezier(0.16,1,0.3,1) 80ms infinite;"><span style="color: #4A4A50; user-select: none;">2</span><span style="color: #8A8A8E;">&nbsp;&nbsp;[0, 1], { easing: <span style="color: var(--accent, #635BFF);">expoOut</span> })</span></div>
+            <div style="display: flex; gap: 16px; animation: dlLoopUp 4600ms cubic-bezier(0.16,1,0.3,1) 160ms infinite;"><span style="color: #4A4A50; user-select: none;">3</span><span style="color: #8A8A8E;">return &lt;Card opacity={seq} /&gt;<span style="animation: dlCaret 1000ms steps(1) infinite; color: var(--accent, #635BFF);">▍</span></span></div>
+          </div>
+        </div>
+        <div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500;">CodeBlock</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8A8A8E;">{ lines[], highlight?, gutter: true }</div>
+        </div>
+      </div>
+
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="padding: 28px; min-height: 180px; background: #0A0A0B; border-bottom: 1px solid rgba(245,245,245,0.10); display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; align-content: center;">
+          <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: 8px; background: #0D0D0F; padding: 16px; display: flex; flex-direction: column; gap: 8px; animation: dlScaleIn 400ms cubic-bezier(0.16,1,0.3,1) both;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #8A8A8E;">idle</span>
+            <span style="font-size: 15px;">Bordered box</span>
+          </div>
+          <div style="border: 1px solid var(--accent, #635BFF); border-radius: 8px; background: rgba(99,91,255,0.10); padding: 16px; display: flex; flex-direction: column; gap: 8px; animation: dlScaleIn 400ms cubic-bezier(0.16,1,0.3,1) 70ms both;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent, #635BFF);">active</span>
+            <span style="font-size: 15px;">Accent state</span>
+          </div>
+          <div style="grid-column: span 2; height: 1px; background: rgba(245,245,245,0.10); transform-origin: left; animation: dlDraw 4600ms cubic-bezier(0.16,1,0.3,1) infinite;"></div>
+          <div style="grid-column: span 2; display: flex; align-items: center; gap: 12px;">
+            <span style="width: 18px; height: 18px; border: 1px solid rgba(245,245,245,0.20); border-radius: 4px; display: flex; align-items: center; justify-content: center;"><span style="width: 6px; height: 6px; border-radius: 1px; background: var(--accent, #635BFF);"></span></span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #8A8A8E;">IconLabel — glyph + mono caption</span>
+          </div>
+        </div>
+        <div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500;">Card · Divider · IconLabel</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8A8A8E;">{ state: 'idle' | 'active', children }</div>
+        </div>
+      </div>
+
+      <div style="grid-column: span 2; border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="padding: 32px 36px; background: #0A0A0B; border-bottom: 1px solid rgba(245,245,245,0.10); display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">
+            <span>chapter 02 — compositing</span><span style="color: var(--accent, #635BFF);">68%</span>
+          </div>
+          <div style="height: 4px; border-radius: 2px; background: rgba(245,245,245,0.10); overflow: hidden;">
+            <div style="height: 100%; border-radius: 2px; background: var(--accent, #635BFF); animation: dlFill 4600ms cubic-bezier(0.16,1,0.3,1) infinite;"></div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <span style="flex: 1; height: 2px; background: var(--accent, #635BFF);"></span>
+            <span style="flex: 1; height: 2px; background: var(--accent, #635BFF);"></span>
+            <span style="flex: 1; height: 2px; background: rgba(245,245,245,0.10);"></span>
+            <span style="flex: 1; height: 2px; background: rgba(245,245,245,0.10);"></span>
+            <span style="flex: 1; height: 2px; background: rgba(245,245,245,0.10);"></span>
+          </div>
+        </div>
+        <div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500;">ProgressBar</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8A8A8E;">{ value, chapters?, label } — segmented for long-form, continuous for reels</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section style="width: 100%; max-width: 1120px; display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; align-items: baseline; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">
+      <span style="color: var(--accent, #635BFF);">05</span><span>Stations</span><span style="flex: 1; height: 1px; background: rgba(245,245,245,0.10);"></span><span>stops on the canvas, not slides</span>
+    </div>
+    <p style="margin: -8px 0 0; max-width: 720px; font-size: 15px; line-height: 1.6; color: #8A8A8E; text-wrap: pretty;">These are not slides — they are what the camera finds when it stops somewhere on the canvas (§06). Each station keeps the previous one alive on screen: the node you came from stays visible at the edge of frame, the edge you travelled stays drawn. A cut that clears the screen is the one move this system never makes.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="aspect-ratio: 9 / 16; border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #0A0A0B; overflow: hidden; position: relative;">
+          <span style="position: absolute; left: 14px; top: 14px; width: 7px; height: 7px; border-left: 1px solid rgba(245,245,245,0.22); border-top: 1px solid rgba(245,245,245,0.22);"></span>
+          <span style="position: absolute; right: 14px; top: 14px; width: 7px; height: 7px; border-right: 1px solid rgba(245,245,245,0.22); border-top: 1px solid rgba(245,245,245,0.22);"></span>
+          <span style="position: absolute; left: 14px; bottom: 14px; width: 7px; height: 7px; border-left: 1px solid rgba(245,245,245,0.22); border-bottom: 1px solid rgba(245,245,245,0.22);"></span>
+          <span style="position: absolute; right: 14px; bottom: 14px; width: 7px; height: 7px; border-right: 1px solid rgba(245,245,245,0.22); border-bottom: 1px solid rgba(245,245,245,0.22);"></span>
+          <div style="position: absolute; inset: 26px 22px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="display: flex; align-items: center; gap: 7px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent, #635BFF);">
+                <span style="width: 5px; height: 5px; border-radius: 1px; background: currentColor;"></span><span>step 01 / 05</span>
+              </div>
+              <div style="font-size: 30px; line-height: 1.02; font-weight: 500; letter-spacing: -0.03em; display: flex; flex-wrap: wrap; gap: 0 8px;">
+                <span style="animation: dlLoopUp 4600ms cubic-bezier(0.16,1,0.3,1) 0ms infinite;">Your</span>
+                <span style="animation: dlLoopUp 4600ms cubic-bezier(0.16,1,0.3,1) 70ms infinite;">render</span>
+                <span style="animation: dlLoopUp 4600ms cubic-bezier(0.16,1,0.3,1) 140ms infinite;">is</span>
+                <span style="position: relative; animation: dlLoopUp 4600ms cubic-bezier(0.16,1,0.3,1) 210ms infinite;"><span style="color: var(--accent, #635BFF);">slow</span><span style="position: absolute; left: 0; right: 0; bottom: -4px; height: 1px; background: var(--accent, #635BFF); transform-origin: left; animation: dlDraw 4600ms cubic-bezier(0.16,1,0.3,1) 300ms infinite;"></span></span>
+              </div>
+              <div style="font-size: 12px; line-height: 1.5; color: #8A8A8E; max-width: 170px;">and it is almost never the codec</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="height: 1px; background: rgba(245,245,245,0.10);"></div>
+              <div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase; color: #6A6A70;"><span>remotion / perf</span><span>0142</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;"><span style="color: var(--accent, #635BFF);">A</span><span style="color: #F5F5F5;">Hook</span></div>
+          <div style="font-size: 12px; line-height: 1.5; color: #6A6A70;">One claim, one accent word, one underline drawn in. Nothing else on the frame.</div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="aspect-ratio: 9 / 16; border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #0A0A0B; overflow: hidden; position: relative;">
+          <span style="position: absolute; left: 14px; top: 14px; width: 7px; height: 7px; border-left: 1px solid rgba(245,245,245,0.22); border-top: 1px solid rgba(245,245,245,0.22);"></span>
+          <span style="position: absolute; right: 14px; top: 14px; width: 7px; height: 7px; border-right: 1px solid rgba(245,245,245,0.22); border-top: 1px solid rgba(245,245,245,0.22);"></span>
+          <span style="position: absolute; left: 14px; bottom: 14px; width: 7px; height: 7px; border-left: 1px solid rgba(245,245,245,0.22); border-bottom: 1px solid rgba(245,245,245,0.22);"></span>
+          <span style="position: absolute; right: 14px; bottom: 14px; width: 7px; height: 7px; border-right: 1px solid rgba(245,245,245,0.22); border-bottom: 1px solid rgba(245,245,245,0.22);"></span>
+          <div style="position: absolute; inset: 26px 22px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #8A8A8E;">the frame pipeline</div>
+            <svg viewBox="0 0 180 300" style="width: 100%; flex: 1; min-height: 0; display: block; font-family: 'JetBrains Mono', monospace;" data-om-raster="true">
+              <path d="M90 34 V60 M90 94 V120 M90 154 V180 M90 214 V240" stroke="rgba(245,245,245,0.16)" stroke-width="1" stroke-dasharray="120" style="animation: dlDash 4600ms cubic-bezier(0.16,1,0.3,1) infinite;"></path>
+              <path d="M90 74 H150 V120" stroke="rgba(245,245,245,0.10)" stroke-width="1" stroke-dasharray="4 4" fill="none"></path>
+              <rect x="20" y="4" width="140" height="30" rx="6" fill="#0D0D0F" stroke="rgba(245,245,245,0.16)"></rect>
+              <text x="90" y="23" fill="#8A8A8E" font-size="10" text-anchor="middle">&lt;Composition /&gt;</text>
+              <rect x="20" y="60" width="140" height="34" rx="6" fill="#0D0D0F" stroke="rgba(245,245,245,0.16)"></rect>
+              <text x="90" y="81" fill="#F5F5F5" font-size="10" text-anchor="middle">useCurrentFrame()</text>
+              <rect x="20" y="120" width="140" height="34" rx="6" fill="rgba(99,91,255,0.10)" stroke="var(--accent, #635BFF)"></rect>
+              <text x="90" y="141" fill="var(--accent, #635BFF)" font-size="10" text-anchor="middle">interpolate()</text>
+              <rect x="20" y="180" width="140" height="34" rx="6" fill="#0D0D0F" stroke="rgba(245,245,245,0.16)"></rect>
+              <text x="90" y="201" fill="#8A8A8E" font-size="10" text-anchor="middle">style / transform</text>
+              <rect x="20" y="240" width="140" height="34" rx="6" fill="#0D0D0F" stroke="rgba(245,245,245,0.16)"></rect>
+              <text x="90" y="261" fill="#8A8A8E" font-size="10" text-anchor="middle">pixels</text>
+              <text x="156" y="112" fill="#6A6A70" font-size="7" text-anchor="end">cached</text>
+              <circle cx="90" cy="34" r="2.5" fill="var(--accent, #635BFF)" style="--dist: 206px; animation: dlTravelV 2600ms linear infinite;"></circle>
+            </svg>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;"><span style="color: var(--accent, #635BFF);">B</span><span style="color: #F5F5F5;">Flow</span></div>
+          <div style="font-size: 12px; line-height: 1.5; color: #6A6A70;">Nodes are Cards, edges are 1px hairlines, one node is accent. A dot travels the path once per beat.</div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="aspect-ratio: 9 / 16; border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #0A0A0B; overflow: hidden; position: relative;">
+          <span style="position: absolute; left: 14px; top: 14px; width: 7px; height: 7px; border-left: 1px solid rgba(245,245,245,0.22); border-top: 1px solid rgba(245,245,245,0.22);"></span>
+          <span style="position: absolute; right: 14px; top: 14px; width: 7px; height: 7px; border-right: 1px solid rgba(245,245,245,0.22); border-top: 1px solid rgba(245,245,245,0.22);"></span>
+          <span style="position: absolute; left: 14px; bottom: 14px; width: 7px; height: 7px; border-left: 1px solid rgba(245,245,245,0.22); border-bottom: 1px solid rgba(245,245,245,0.22);"></span>
+          <span style="position: absolute; right: 14px; bottom: 14px; width: 7px; height: 7px; border-right: 1px solid rgba(245,245,245,0.22); border-bottom: 1px solid rgba(245,245,245,0.22);"></span>
+          <div style="position: absolute; inset: 26px 22px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #8A8A8E;"><span>renderMedia.ts</span><span style="color: var(--accent, #635BFF);">+2 −1</span></div>
+            <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: 8px; background: #0D0D0F; overflow: hidden; font-family: 'JetBrains Mono', monospace; font-size: 9px; line-height: 2.1;">
+              <div style="display: flex; gap: 8px; padding: 0 10px; color: #6A6A70;"><span style="opacity: 0.5;">14</span><span>await renderMedia({</span></div>
+              <div style="display: flex; gap: 8px; padding: 0 10px; color: #6A6A70; text-decoration: line-through; opacity: 0.55;"><span style="opacity: 0.5;">15</span><span>&nbsp;&nbsp;concurrency: 1,</span></div>
+              <div style="display: flex; gap: 8px; padding: 0 10px; color: #F5F5F5; background: rgba(99,91,255,0.10); box-shadow: inset 2px 0 0 var(--accent, #635BFF); animation: dlLoopUp 4600ms cubic-bezier(0.16,1,0.3,1) 120ms infinite;"><span style="color: var(--accent, #635BFF); opacity: 0.7;">15</span><span>&nbsp;&nbsp;concurrency: os.cpus().length,</span></div>
+              <div style="display: flex; gap: 8px; padding: 0 10px; color: #F5F5F5; background: rgba(99,91,255,0.10); box-shadow: inset 2px 0 0 var(--accent, #635BFF); animation: dlLoopUp 4600ms cubic-bezier(0.16,1,0.3,1) 200ms infinite;"><span style="color: var(--accent, #635BFF); opacity: 0.7;">16</span><span>&nbsp;&nbsp;jpegQuality: 90,</span></div>
+              <div style="display: flex; gap: 8px; padding: 0 10px; color: #6A6A70;"><span style="opacity: 0.5;">17</span><span>})</span></div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: 6px; padding: 9px 10px; display: flex; flex-direction: column; gap: 3px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: #6A6A70;">before</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 17px; color: #8A8A8E;">184<span style="font-size: 9px;">s</span></span>
+              </div>
+              <div style="border: 1px solid var(--accent, #635BFF); border-radius: 6px; padding: 9px 10px; display: flex; flex-direction: column; gap: 3px; background: rgba(99,91,255,0.10);">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent, #635BFF);">after</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 17px; color: #F5F5F5;">{{ counterShort }}<span style="font-size: 9px;">s</span></span>
+              </div>
+            </div>
+            <div style="margin-top: auto; display: flex; flex-direction: column; gap: 7px;">
+              <div style="height: 2px; border-radius: 1px; background: rgba(245,245,245,0.10); overflow: hidden;"><div style="height: 100%; background: var(--accent, #635BFF); animation: dlFill 4600ms cubic-bezier(0.16,1,0.3,1) infinite;"></div></div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase; color: #6A6A70;">03 / 05</div>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;"><span style="color: var(--accent, #635BFF);">C</span><span style="color: #F5F5F5;">Diff + payoff</span></div>
+          <div style="font-size: 12px; line-height: 1.5; color: #6A6A70;">Removed line dims and strikes through, added lines slide in with an accent gutter. The number lands last.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
+      <div style="display: flex; align-items: baseline; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">
+        <span>D — System map · 1920 × 1080</span><span style="flex: 1; height: 1px; background: rgba(245,245,245,0.10);"></span><span>margin 96 · type ×1.4</span>
+      </div>
+      <div style="width: 100%; aspect-ratio: 16 / 9; border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #0A0A0B; overflow: hidden; position: relative;">
+        <div style="position: absolute; inset: 0; animation: dlDrift 16000ms cubic-bezier(0.16,1,0.3,1) infinite alternate;">
+          <div style="position: absolute; inset: 34px 40px; display: grid; grid-template-columns: 300px 1fr; gap: 40px;">
+            <div style="display: flex; flex-direction: column; gap: 18px;">
+              <div style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent, #635BFF);"><span style="width: 5px; height: 5px; border-radius: 1px; background: currentColor;"></span><span>chapter 02 — compositing</span></div>
+              <div style="font-size: 30px; line-height: 1.06; font-weight: 500; letter-spacing: -0.025em;">Where the <span style="color: var(--accent, #635BFF);">frame</span> actually comes from</div>
+              <div style="font-size: 13px; line-height: 1.6; color: #8A8A8E;">Long-form gets the wide diagram; the reel gets one column of it. Same nodes, same hairlines, same accent.</div>
+              <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 9px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #8A8A8E;"><span style="width: 14px; height: 1px; background: rgba(245,245,245,0.30);"></span><span>data path</span></div>
+                <div style="display: flex; align-items: center; gap: 9px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #8A8A8E;"><span style="width: 14px; height: 0; border-top: 1px dashed rgba(245,245,245,0.30);"></span><span>cached / skipped</span></div>
+                <div style="display: flex; align-items: center; gap: 9px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent, #635BFF);"><span style="width: 5px; height: 5px; border-radius: 50%; background: currentColor;"></span><span>current step</span></div>
+              </div>
+            </div>
+            <svg viewBox="0 0 520 260" style="width: 100%; height: 100%; display: block; font-family: 'JetBrains Mono', monospace;" data-om-raster="true">
+              <path d="M116 60 H176" stroke="rgba(245,245,245,0.20)" stroke-dasharray="120" style="animation: dlDash 5200ms cubic-bezier(0.16,1,0.3,1) infinite;"></path>
+              <path d="M256 60 H316" stroke="rgba(245,245,245,0.20)" stroke-dasharray="120" style="animation: dlDash 5200ms cubic-bezier(0.16,1,0.3,1) 120ms infinite;"></path>
+              <path d="M216 82 V150 H316" stroke="rgba(245,245,245,0.12)" stroke-dasharray="4 4" fill="none"></path>
+              <path d="M396 82 V150" stroke="rgba(245,245,245,0.20)" stroke-dasharray="120" style="animation: dlDash 5200ms cubic-bezier(0.16,1,0.3,1) 240ms infinite;"></path>
+              <path d="M396 172 V218" stroke="rgba(245,245,245,0.20)" stroke-dasharray="120" style="animation: dlDash 5200ms cubic-bezier(0.16,1,0.3,1) 360ms infinite;"></path>
+              <rect x="16" y="42" width="100" height="36" rx="6" fill="#0D0D0F" stroke="rgba(245,245,245,0.16)"></rect>
+              <text x="66" y="64" fill="#8A8A8E" font-size="10" text-anchor="middle">schema.json</text>
+              <rect x="176" y="42" width="80" height="36" rx="6" fill="#0D0D0F" stroke="rgba(245,245,245,0.16)"></rect>
+              <text x="216" y="64" fill="#F5F5F5" font-size="10" text-anchor="middle">scenes[]</text>
+              <rect x="316" y="42" width="160" height="36" rx="6" fill="rgba(99,91,255,0.10)" stroke="var(--accent, #635BFF)"></rect>
+              <text x="396" y="64" fill="var(--accent, #635BFF)" font-size="10" text-anchor="middle">primitives · 7</text>
+              <rect x="316" y="132" width="160" height="40" rx="6" fill="#0D0D0F" stroke="rgba(245,245,245,0.16)"></rect>
+              <text x="396" y="150" fill="#8A8A8E" font-size="10" text-anchor="middle">tokens · easing · grid</text>
+              <text x="396" y="164" fill="#6A6A70" font-size="8" text-anchor="middle">one source, both formats</text>
+              <rect x="316" y="200" width="160" height="36" rx="6" fill="#0D0D0F" stroke="rgba(245,245,245,0.16)"></rect>
+              <text x="396" y="222" fill="#8A8A8E" font-size="10" text-anchor="middle">reel 1080 · long 1920</text>
+              <text x="286" y="144" fill="#6A6A70" font-size="8" text-anchor="end">reused</text>
+              <circle cx="116" cy="60" r="3" fill="var(--accent, #635BFF)" style="--dist: 200px; animation: dlTravelH 2800ms linear infinite;"></circle>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <p style="margin: 0; max-width: 720px; font-size: 13px; line-height: 1.6; color: #6A6A70;">The whole composition drifts 100 → 104%; the diagram inside never moves once drawn. Edges draw in with the same expo curve as type, staggered 120ms — that is the only thing tying diagrams and text together, and it is enough.</p>
+    </div>
+  </section>
+
+  <section style="width: 100%; max-width: 1120px; display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; align-items: baseline; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">
+      <span style="color: var(--accent, #635BFF);">06</span><span>Camera &amp; continuity</span><span style="flex: 1; height: 1px; background: rgba(245,245,245,0.10);"></span><span>one canvas · one continuous move</span>
+    </div>
+    <p style="margin: -8px 0 0; max-width: 760px; font-size: 15px; line-height: 1.6; color: #8A8A8E; text-wrap: pretty;">The single decision that stops it reading as a deck: <span style="color: #F5F5F5;">there is one canvas per video, and it never resets.</span> Every idea is a node placed in real space, every relationship is a drawn edge, and a "scene" is just where the camera is looking. A → B is a pan along the edge that connects them; the payoff is pulling back to reveal that A, B and C were one structure the whole time. Drive it below.</p>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+      <div style="flex: 1 1 620px; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+        <div ref="{{ stageRef }}" style="width: 100%; max-width: 780px; aspect-ratio: 780 / 439; border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #0A0A0B; overflow: hidden; position: relative;">
+          <div style="position: absolute; inset: 0; transform-origin: 0 0; transition: transform 900ms cubic-bezier(0.16,1,0.3,1);" ref="{{ camRef }}">
+            <svg viewBox="0 0 1180 490" width="1180" height="490" style="position: absolute; left: 0; top: 0; overflow: visible;">
+              <sc-for list="{{ edges }}" as="e" hint-placeholder-count="10">
+                <path d="{{ e.d }}" fill="none" stroke="{{ e.stroke }}" stroke-width="1" stroke-dasharray="{{ e.dash }}" opacity="{{ e.op }}" style="transition: opacity 600ms cubic-bezier(0.16,1,0.3,1), stroke 600ms cubic-bezier(0.16,1,0.3,1);"></path>
+              </sc-for>
+            </svg>
+            <sc-for list="{{ nodes }}" as="n" hint-placeholder-count="8">
+              <div style="{{ n.box }}">
+                <div style="{{ n.labelStyle }}">{{ n.label }}</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6A6A70;">{{ n.sub }}</div>
+                <sc-if value="{{ n.active }}" hint-placeholder-val="{{ false }}">
+                  <span style="position: absolute; right: 10px; top: 10px; width: 5px; height: 5px; border-radius: 1px; background: var(--accent, #635BFF); animation: dlPulse 1800ms cubic-bezier(0.16,1,0.3,1) infinite;"></span>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position: absolute; left: 16px; top: 14px; display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #6A6A70; pointer-events: none; white-space: nowrap;">
+            <span style="color: var(--accent, #635BFF);">●</span><span>rec · shot {{ shotKey }}</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <sc-for list="{{ shotChips }}" as="c" hint-placeholder-count="5">
+            <button onClick="{{ c.go }}" style="{{ c.style }}">{{ c.k }}</button>
+          </sc-for>
+        </div>
+
+        <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: 8px; background: #101013; padding: 18px 20px; display: flex; flex-direction: column; gap: 7px; min-height: 92px;">
+          <div style="display: flex; align-items: baseline; gap: 10px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent, #635BFF);">{{ shotMove }}</span>
+            <span style="font-size: 17px; font-weight: 500;">{{ shotTitle }}</span>
+          </div>
+          <div style="font-size: 14px; line-height: 1.6; color: #8A8A8E;">{{ shotCaption }}</div>
+        </div>
+      </div>
+
+      <div style="flex: 1 1 280px; min-width: 260px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #8A8A8E;">camera path</div>
+          <div style="width: 100%; border: 1px solid rgba(245,245,245,0.08); border-radius: 6px; background: #0A0A0B; padding: 8px;">
+            <div ref="{{ mapRef }}" style="position: relative; width: 100%; aspect-ratio: 1180 / 490;">
+              <svg viewBox="0 0 1180 490" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%;">
+                <sc-for list="{{ edges }}" as="e" hint-placeholder-count="10">
+                  <path d="{{ e.d }}" fill="none" stroke="rgba(245,245,245,0.14)" stroke-width="3"></path>
+                </sc-for>
+                <path d="{{ camPath }}" fill="none" stroke="var(--accent, #635BFF)" stroke-width="4" stroke-dasharray="10 10" opacity="0.7"></path>
+                <sc-for list="{{ nodes }}" as="n" hint-placeholder-count="8">
+                  <rect x="{{ n.x }}" y="{{ n.y }}" width="{{ n.w }}" height="{{ n.h }}" rx="6" fill="{{ n.mapFill }}" stroke="{{ n.mapStroke }}" stroke-width="3" style="transition: all 600ms cubic-bezier(0.16,1,0.3,1);"></rect>
+                </sc-for>
+              </svg>
+              <div style="position: absolute; border: 1px solid var(--accent, #635BFF); background: rgba(99,91,255,0.10); border-radius: 2px; transition: all 900ms cubic-bezier(0.16,1,0.3,1);" ref="{{ rectRef }}"></div>
+            </div>
+          </div>
+          <div style="font-size: 13px; line-height: 1.6; color: #8A8A8E;">The dashed line is the whole video. If you cannot draw it as one unbroken path, the script has a hole in it.</div>
+        </div>
+
+        <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #8A8A8E;">rules</div>
+          <div style="display: flex; flex-direction: column; gap: 13px; font-size: 13px; line-height: 1.55;">
+            <div style="display: flex; gap: 10px;"><span style="font-family: 'JetBrains Mono', monospace; color: var(--accent, #635BFF); flex: none;">01</span><span style="color: #8A8A8E;"><span style="color: #F5F5F5;">Move, never cut.</span> 900ms pan or zoom on the expo curve. Hard cuts only at chapter boundaries.</span></div>
+            <div style="display: flex; gap: 10px;"><span style="font-family: 'JetBrains Mono', monospace; color: var(--accent, #635BFF); flex: none;">02</span><span style="color: #8A8A8E;"><span style="color: #F5F5F5;">Nothing is destroyed.</span> Visited nodes stay drawn and dim to muted. The canvas accumulates.</span></div>
+            <div style="display: flex; gap: 10px;"><span style="font-family: 'JetBrains Mono', monospace; color: var(--accent, #635BFF); flex: none;">03</span><span style="color: #8A8A8E;"><span style="color: #F5F5F5;">Edge before node.</span> The connector draws first, then its target enters — the viewer sees the relationship before the content.</span></div>
+            <div style="display: flex; gap: 10px;"><span style="font-family: 'JetBrains Mono', monospace; color: var(--accent, #635BFF); flex: none;">04</span><span style="color: #8A8A8E;"><span style="color: #F5F5F5;">Zoom out to pay off.</span> Every chapter ends on the wide shot of what was just built.</span></div>
+            <div style="display: flex; gap: 10px;"><span style="font-family: 'JetBrains Mono', monospace; color: var(--accent, #635BFF); flex: none;">05</span><span style="color: #8A8A8E;"><span style="color: #F5F5F5;">Reels crop, they don't redesign.</span> Vertical is a narrower camera on the same canvas.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="width: 100%; max-width: 1120px; display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; align-items: baseline; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A8E;">
+      <span style="color: var(--accent, #635BFF);">07</span><span>Schema contract</span><span style="flex: 1; height: 1px; background: rgba(245,245,245,0.10);"></span><span>no per-video animation logic</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px;">
+      <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; padding: 28px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.85; color: #8A8A8E; overflow-x: auto;">
+        <div>{</div>
+        <div>&nbsp;&nbsp;<span style="color: #F5F5F5;">"format"</span>: <span style="color: var(--accent, #635BFF);">"reel"</span>,</div>
+        <div>&nbsp;&nbsp;<span style="color: #F5F5F5;">"canvas"</span>: { "nodes": [...], "edges": [["a","b"], ["b","c"]] },</div>
+        <div>&nbsp;&nbsp;<span style="color: #F5F5F5;">"shots"</span>: [{</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #F5F5F5;">"look"</span>: <span style="color: var(--accent, #635BFF);">"b"</span>, <span style="color: #F5F5F5;">"move"</span>: <span style="color: var(--accent, #635BFF);">"pan"</span>, <span style="color: #F5F5F5;">"drift"</span>: true,</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #F5F5F5;">"blocks"</span>: [</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "c": <span style="color: var(--accent, #635BFF);">"TextReveal"</span>, "text": "Why your render is slow", "accentWord": "slow" },</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "c": <span style="color: var(--accent, #635BFF);">"CodeBlock"</span>, "lines": [...], "highlight": 2 },</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "c": <span style="color: var(--accent, #635BFF);">"StatCounter"</span>, "to": 1284, "unit": "ms" }</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;]</div>
+        <div>&nbsp;&nbsp;}, { "look": <span style="color: var(--accent, #635BFF);">"all"</span>, "move": "zoom-out" }]</div>
+        <div>}</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; padding: 22px 24px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-size: 16px; font-weight: 500;">Shots reference nodes, not coordinates</div>
+          <div style="font-size: 14px; line-height: 1.6; color: #8A8A8E;">Layout solves the graph once; a shot just names what to look at. Reorder the script and the camera path re-solves itself.</div>
+        </div>
+        <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; padding: 22px 24px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-size: 16px; font-weight: 500;">Order defines stagger</div>
+          <div style="font-size: 14px; line-height: 1.6; color: #8A8A8E;">Block <em>n</em> enters at n × 70ms. No block declares its own delay.</div>
+        </div>
+        <div style="border: 1px solid rgba(245,245,245,0.10); border-radius: var(--r, 12px); background: #101013; padding: 22px 24px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-size: 16px; font-weight: 500;">Format only scales</div>
+          <div style="font-size: 14px; line-height: 1.6; color: #8A8A8E;">"reel" vs "long" changes type scale ×1.4 and margin, nothing structural.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer style="width: 100%; max-width: 1120px; display: flex; align-items: center; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #4A4A50;">
+    <span style="flex: 1; height: 1px; background: rgba(245,245,245,0.10);"></span><span>end of spec</span>
+  </footer>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#635BFF&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#635BFF&quot;,&quot;#3B82F6&quot;,&quot;#22D3EE&quot;,&quot;#F97316&quot;],&quot;section&quot;:&quot;Tokens&quot;},&quot;showGrid&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Tokens&quot;}}">
+class Component extends DCLogic {
+  state = { replayKey: 0, counter: 0, shot: 0 };
+  _root = React.createRef();
+  _cam = React.createRef();
+  _rect = React.createRef();
+  _stage = React.createRef();
+  _map = React.createRef();
+
+  NODES = [
+    { id: 'schema', label: 'schema.json', sub: 'source of truth', x: 30, y: 96, w: 190, h: 62, shot: 0 },
+    { id: 'scenes', label: 'scenes[]', sub: 'ordered stations', x: 330, y: 96, w: 170, h: 62, shot: 1 },
+    { id: 'prims', label: 'primitives · 7', sub: 'animation baked in', x: 620, y: 26, w: 200, h: 62, shot: 2 },
+    { id: 'tokens', label: 'tokens', sub: 'color · type · 8px', x: 620, y: 226, w: 200, h: 62, shot: 2 },
+    { id: 'reel', label: 'reel 1080', sub: '9:16 crop', x: 930, y: 26, w: 190, h: 62, shot: 3 },
+    { id: 'long', label: 'long 1920', sub: '16:9 master', x: 930, y: 226, w: 190, h: 62, shot: 3 },
+    { id: 'camera', label: 'camera path', sub: 'one unbroken move', x: 330, y: 380, w: 190, h: 62, shot: 4 },
+    { id: 'out', label: 'published', sub: 'both formats, one look', x: 930, y: 400, w: 190, h: 62, shot: 4 }
+  ];
+  EDGES = [
+    ['schema', 'scenes', false], ['scenes', 'prims', false], ['scenes', 'tokens', false],
+    ['prims', 'reel', false], ['prims', 'long', false], ['tokens', 'long', true], ['tokens', 'reel', true],
+    ['scenes', 'camera', false], ['camera', 'out', true], ['long', 'out', false], ['reel', 'out', false]
+  ];
+  SHOTS = [
+    { k: 'A', cx: 125, cy: 127, s: 1.7, move: 'open tight', t: 'One node fills the frame', c: 'Start at a single idea at 170%. No title card, no agenda — the viewer is already inside the structure.' },
+    { k: 'B', cx: 415, cy: 127, s: 1.35, move: 'pan right', t: 'Follow the edge', c: 'The camera travels the connector rather than cutting to the next point. The previous node exits frame left, still drawn.' },
+    { k: 'C', cx: 720, cy: 157, s: 1.1, move: 'pull back', t: 'The fan-out', c: 'Two children resolve at once. Edge draws first, node enters 70ms behind it.' },
+    { k: 'D', cx: 1025, cy: 157, s: 1.15, move: 'pan right', t: 'Both formats', c: 'Same subtree, one step right. The reel is this exact canvas with a narrower camera.' },
+    { k: 'E', cx: 575, cy: 245, s: 0.6, move: 'zoom out', t: 'The payoff', c: 'Reveal that every station was one connected structure. This is the frame people screenshot.' }
+  ];
+  VW = 780; VH = 439;
+
+  componentDidMount() {
+    this.syncAccent();
+    this.syncCamera();
+    this.loop();
+    this._iv = setInterval(() => this.loop(), 4600);
+    this._shotIv = setInterval(() => this.setState(s => ({ shot: (s.shot + 1) % this.SHOTS.length })), 3400);
+    this._onResize = () => this.syncCamera();
+    window.addEventListener('resize', this._onResize);
+    requestAnimationFrame(() => this.syncCamera());
+  }
+  componentWillUnmount() {
+    clearInterval(this._iv);
+    clearInterval(this._shotIv);
+    window.removeEventListener('resize', this._onResize);
+    cancelAnimationFrame(this._raf);
+  }
+  componentDidUpdate() { this.syncAccent(); this.syncCamera(); }
+
+  syncCamera() {
+    const sh = this.SHOTS[this.state.shot % this.SHOTS.length];
+    const stage = this._stage && this._stage.current;
+    const vw = stage && stage.clientWidth ? stage.clientWidth : this.VW;
+    const vh = stage && stage.clientHeight ? stage.clientHeight : this.VH;
+    const s = sh.s * (vw / this.VW);
+    const cam = this._cam && this._cam.current;
+    if (cam) cam.style.transform = 'translate(' + (vw / 2 - sh.cx * s) + 'px, ' + (vh / 2 - sh.cy * s) + 'px) scale(' + s + ')';
+    const map = this._map && this._map.current;
+    const r = this._rect && this._rect.current;
+    if (r && map) {
+      const m = (map.clientWidth || 244) / 1180;
+      r.style.width = (vw / s * m) + 'px';
+      r.style.height = (vh / s * m) + 'px';
+      r.style.left = ((sh.cx - vw / (2 * s)) * m) + 'px';
+      r.style.top = ((sh.cy - vh / (2 * s)) * m) + 'px';
+    }
+  }
+
+  goTo(i) {
+    clearInterval(this._shotIv);
+    window.removeEventListener('resize', this._onResize);
+    this.setState({ shot: i });
+    this._shotIv = setInterval(() => this.setState(s => ({ shot: (s.shot + 1) % this.SHOTS.length })), 3400);
+    this._onResize = () => this.syncCamera();
+    window.addEventListener('resize', this._onResize);
+    requestAnimationFrame(() => this.syncCamera());
+  }
+
+  edgePath(a, b) {
+    const A = this.NODES.find(n => n.id === a), B = this.NODES.find(n => n.id === b);
+    const x1 = A.x + A.w, y1 = A.y + A.h / 2, x2 = B.x, y2 = B.y + B.h / 2;
+    if (x2 < x1) {
+      const my = Math.max(y1, y2) + 60;
+      return 'M' + (A.x + A.w / 2) + ' ' + (A.y + A.h) + ' C' + (A.x + A.w / 2) + ' ' + my + ', ' + (B.x + B.w / 2) + ' ' + my + ', ' + (B.x + B.w / 2) + ' ' + B.y;
+    }
+    const mx = (x1 + x2) / 2;
+    return 'M' + x1 + ' ' + y1 + ' C' + mx + ' ' + y1 + ', ' + mx + ' ' + y2 + ', ' + x2 + ' ' + y2;
+  }
+  syncAccent() {
+    const el = this._root && this._root.current;
+    if (el) el.style.setProperty('--accent', this.props.accentColor ?? '#635BFF');
+  }
+  loop() {
+    const target = 1284, dur = 900, t0 = performance.now();
+    const tick = () => {
+      const p = Math.min(1, (performance.now() - t0) / dur);
+      const eased = 1 - Math.pow(2, -10 * p);
+      this.setState({ counter: Math.round(target * eased) });
+      if (p < 1) this._raf = requestAnimationFrame(tick);
+    };
+    this._raf = requestAnimationFrame(tick);
+  }
+
+  renderVals() {
+    const accent = this.props.accentColor ?? '#635BFF';
+    const cur = this.state.shot % this.SHOTS.length;
+    const sh = this.SHOTS[cur];
+    const A = 'var(--accent, #635BFF)';
+
+    const nodes = this.NODES.map(n => {
+      const state = n.shot === cur ? 'active' : (n.shot < cur ? 'past' : 'future');
+      const border = state === 'active' ? A : (state === 'past' ? 'rgba(245,245,245,0.16)' : 'rgba(245,245,245,0.07)');
+      const bg = state === 'active' ? 'rgba(99,91,255,0.10)' : (state === 'past' ? '#0D0D0F' : '#0B0B0D');
+      return Object.assign({}, n, {
+        active: state === 'active',
+        mapFill: state === 'future' ? '#141418' : (state === 'active' ? A : '#26262C'),
+        mapStroke: state === 'active' ? A : 'rgba(245,245,245,0.10)',
+        box: 'position:absolute; left:' + n.x + 'px; top:' + n.y + 'px; width:' + n.w + 'px; height:' + n.h + 'px;' +
+             'border:1px solid ' + border + '; border-radius:8px; background:' + bg + '; padding:0 16px;' +
+             'display:flex; flex-direction:column; justify-content:center; gap:4px; opacity:' + (state === 'future' ? 0.4 : 1) + ';' +
+             'transition: all 700ms cubic-bezier(0.16,1,0.3,1);',
+        labelStyle: 'font-family:Geist, system-ui, sans-serif; font-size:17px; font-weight:500; letter-spacing:-0.01em; color:' +
+             (state === 'active' ? A : (state === 'past' ? '#F5F5F5' : '#8A8A8E')) + '; transition: color 700ms cubic-bezier(0.16,1,0.3,1);'
+      });
+    });
+
+    const edges = this.EDGES.map(([a, b, dashed]) => {
+      const tgt = this.NODES.find(n => n.id === b);
+      const seen = tgt.shot <= cur;
+      return {
+        d: this.edgePath(a, b),
+        stroke: tgt.shot === cur ? A : 'rgba(245,245,245,0.20)',
+        dash: dashed ? '5 5' : '0',
+        op: seen ? 1 : 0.18
+      };
+    });
+
+    const camPath = 'M' + this.SHOTS.map(s => Math.round(s.cx) + ' ' + Math.round(s.cy)).join(' L');
+
+    const shotChips = this.SHOTS.map((s, i) => ({
+      k: s.k,
+      go: () => this.goTo(i),
+      style: "font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:0.1em; padding:9px 0; flex:1; cursor:pointer;" +
+             'border-radius:6px; transition: all 400ms cubic-bezier(0.16,1,0.3,1);' +
+             (i === cur ? 'border:1px solid ' + A + '; background:rgba(99,91,255,0.12); color:' + A + ';'
+                        : 'border:1px solid rgba(245,245,245,0.12); background:transparent; color:#8A8A8E;')
+    }));
+
+    return {
+      rootRef: this._root,
+      camRef: this._cam,
+      stageRef: this._stage,
+      mapRef: this._map,
+      rectRef: this._rect,
+      nodes: nodes,
+      edges: edges,
+      camPath: camPath,
+      shotChips: shotChips,
+      shotKey: sh.k,
+      shotMove: sh.move,
+      shotTitle: sh.t,
+      shotCaption: sh.c,
+      counterShort: Math.max(1, Math.round(this.state.counter / 22)),
+      accentHex: accent.toUpperCase(),
+      showGrid: this.props.showGrid ?? false,
+      counter: this.state.counter.toLocaleString(),
+      replayKey: 'r' + this.state.replayKey,
+      replay: () => this.setState(s => ({ replayKey: s.replayKey + 1 }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

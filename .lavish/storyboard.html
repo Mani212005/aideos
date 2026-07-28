@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <title>Video Storyboard Review</title>
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.0.0-beta.8/daisyui.css" rel="stylesheet" type="text/css" />
+  <style>
+    @keyframes panIn {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+    }
+    @keyframes panRight {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(-40%); }
+    }
+    @keyframes colorMorph {
+      0%, 100% { background-color: #22c55e; } 
+      50% { background-color: #a855f7; } 
+    }
+    @keyframes floatUp {
+      0%, 100% { transform: translateY(10px); opacity: 0; }
+      20%, 80% { transform: translateY(0); opacity: 1; }
+    }
+    
+    .anim-pan-in { animation: panIn 4s ease-in-out infinite; }
+    .anim-pan-right { animation: panRight 4s ease-in-out infinite; }
+    .anim-color-morph { animation: colorMorph 4s ease-in-out infinite; }
+    .anim-float-up { animation: floatUp 4s ease-in-out infinite; }
+  </style>
+</head>
+<body class="bg-base-300 min-h-screen p-4 lg:p-10 font-sans">
+  
+  <div class="max-w-6xl mx-auto space-y-10">
+    <header class="flex justify-between items-center bg-base-100 p-6 rounded-box shadow-lg border border-base-200">
+      <div>
+        <h1 class="text-3xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Storyboard Viewer</h1>
+        <p class="text-base-content/70 mt-1">Review the scenes, transitions, and audio track. Click any element to leave feedback.</p>
+      </div>
+    </header>
+
+    <main>
+
+      <!-- 1. Configuration (Aspect Ratio) -->
+      <h2 class="text-2xl font-bold mb-6 border-b border-base-200 pb-2">1. Video Configuration</h2>
+      <div class="bg-base-100 rounded-box p-6 shadow-xl border border-base-200 mb-12">
+        <h3 class="font-bold text-lg mb-4">Select Aspect Ratio(s)</h3>
+        <p class="text-sm text-base-content/70 mb-4">Which formats should we generate this video in?</p>
+        
+        <div class="flex flex-wrap gap-4">
+          <label class="cursor-pointer label justify-start gap-4 p-4 border border-base-200 rounded-xl hover:border-primary transition-colors bg-base-200">
+            <input type="checkbox" checked="checked" class="checkbox checkbox-primary" />
+            <div class="flex flex-col items-center gap-2">
+              <div class="w-16 h-9 bg-primary/20 border-2 border-primary rounded-sm"></div>
+              <span class="font-bold text-sm">16:9 (Landscape)</span>
+              <span class="text-xs text-base-content/60">YouTube, Web</span>
+            </div>
+          </label>
+
+          <label class="cursor-pointer label justify-start gap-4 p-4 border border-base-200 rounded-xl hover:border-primary transition-colors">
+            <input type="checkbox" class="checkbox checkbox-primary" />
+            <div class="flex flex-col items-center gap-2">
+              <div class="w-9 h-16 bg-base-100 border-2 border-base-content/20 rounded-sm"></div>
+              <span class="font-bold text-sm text-base-content/70">9:16 (Portrait)</span>
+              <span class="text-xs text-base-content/60">TikTok, Shorts, Reels</span>
+            </div>
+          </label>
+
+          <label class="cursor-pointer label justify-start gap-4 p-4 border border-base-200 rounded-xl hover:border-primary transition-colors">
+            <input type="checkbox" class="checkbox checkbox-primary" />
+            <div class="flex flex-col items-center gap-2">
+              <div class="w-12 h-12 bg-base-100 border-2 border-base-content/20 rounded-sm"></div>
+              <span class="font-bold text-sm text-base-content/70">1:1 (Square)</span>
+              <span class="text-xs text-base-content/60">Instagram, Facebook</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- 2. Scenes Flow -->
+      <h2 class="text-2xl font-bold mb-6 border-b border-base-200 pb-2">2. Scenes Flow</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <!-- Scene 1 -->
+        <div class="card bg-base-100 shadow-xl border border-base-200 hover:border-primary transition-colors cursor-pointer group">
+          <div class="aspect-video bg-gradient-to-br from-green-100 to-purple-100 flex items-center justify-center p-6 text-center relative overflow-hidden rounded-t-2xl">
+            <h3 class="text-2xl font-black text-gray-800 z-10 group-hover:scale-105 transition-transform duration-500">Why Are Most Leaves <span class="text-green-600">Green</span>,<br/>While Some Are <span class="text-purple-600">Purple</span>?</h3>
+            <div class="absolute inset-0 bg-white/40 backdrop-blur-sm z-0"></div>
+          </div>
+          <div class="card-body p-4">
+            <h2 class="card-title text-lg">Scene 1: Intro (0s - 8s)</h2>
+            <p class="text-sm text-base-content/70">The main leaf floats in the center while the hook text appears organically. Smooth camera pan inwards.</p>
+          </div>
+        </div>
+
+        <!-- Scene 2 -->
+        <div class="card bg-base-100 shadow-xl border border-base-200 hover:border-primary transition-colors cursor-pointer group">
+          <div class="aspect-video bg-green-50 flex items-center justify-center p-6 text-center relative overflow-hidden rounded-t-2xl">
+            <h3 class="text-3xl font-black text-green-600 z-10 drop-shadow-md group-hover:scale-110 transition-transform duration-500">Chlorophyll</h3>
+            <svg class="absolute w-64 h-64 text-green-500 opacity-20 -bottom-10 -right-10" viewBox="0 0 100 100" fill="currentColor">
+              <path d="M50 5 C 100 20, 110 70, 50 95 C -10 70, 0 20, 50 5 Z" />
+            </svg>
+          </div>
+          <div class="card-body p-4">
+            <h2 class="card-title text-lg">Scene 2: Why Green? (8s - 18s)</h2>
+            <p class="text-sm text-base-content/70">Camera zooms into the leaf. Chlorophyll particles glow. Explanation of photosynthesis and blue/red light absorption.</p>
+          </div>
+        </div>
+
+        <!-- Scene 3 -->
+        <div class="card bg-base-100 shadow-xl border border-base-200 hover:border-primary transition-colors cursor-pointer group">
+          <div class="aspect-video bg-gradient-to-r from-green-50 to-purple-50 flex items-center justify-center p-6 text-center rounded-t-2xl">
+            <div class="flex items-center gap-4 group-hover:gap-8 transition-all duration-500">
+               <div class="w-16 h-16 bg-green-500 rounded-full blur-sm opacity-50"></div>
+               <span class="text-2xl font-bold">➔</span>
+               <div class="w-16 h-16 bg-purple-500 rounded-full blur-sm opacity-50"></div>
+            </div>
+          </div>
+          <div class="card-body p-4">
+            <h2 class="card-title text-lg">Scene 3: The Shift (18s - 26s)</h2>
+            <p class="text-sm text-base-content/70">Seamless morph! The giant leaf physically changes color from Green to Purple. Anthocyanin pigment is introduced.</p>
+          </div>
+        </div>
+
+        <!-- Scene 4 -->
+        <div class="card bg-base-100 shadow-xl border border-base-200 hover:border-primary transition-colors cursor-pointer group">
+          <div class="aspect-video bg-purple-50 flex items-center justify-center p-6 rounded-t-2xl">
+            <div class="grid grid-cols-2 gap-2 w-full max-w-xs group-hover:scale-105 transition-transform duration-500">
+               <div class="bg-purple-500 text-white font-bold p-2 text-center rounded">Purple</div>
+               <div class="bg-red-500 text-white font-bold p-2 text-center rounded">Red</div>
+               <div class="bg-blue-500 text-white font-bold p-2 text-center rounded">Blue</div>
+               <div class="bg-violet-900 text-white font-bold p-2 text-center rounded">Violet</div>
+            </div>
+          </div>
+          <div class="card-body p-4">
+            <h2 class="card-title text-lg">Scene 4: pH Colors (26s - 36s)</h2>
+            <p class="text-sm text-base-content/70">Floating colorful flavonoid blocks. Explaining how pH changes the color of Anthocyanins.</p>
+          </div>
+        </div>
+
+        <!-- Scene 5 -->
+        <div class="card bg-base-100 shadow-xl border border-base-200 hover:border-primary transition-colors cursor-pointer group">
+          <div class="aspect-video bg-base-200 flex flex-col items-start justify-center p-6 gap-2 rounded-t-2xl">
+            <div class="badge badge-lg bg-white shadow text-gray-800 group-hover:translate-x-2 transition-transform">☀️ UV Protection</div>
+            <div class="badge badge-lg bg-white shadow text-gray-800 group-hover:translate-x-4 transition-transform delay-75">❄️ Cold Tolerance</div>
+            <div class="badge badge-lg bg-white shadow text-gray-800 group-hover:translate-x-6 transition-transform delay-150">🐛 Herbivore Defence</div>
+          </div>
+          <div class="card-body p-4">
+            <h2 class="card-title text-lg">Scene 5: Advantages (36s - 48s)</h2>
+            <p class="text-sm text-base-content/70">The leaf moves to the left. Pop-up glassmorphism cards appear organically on the right listing the 3 evolutionary benefits.</p>
+          </div>
+        </div>
+
+        <!-- Scene 6 -->
+        <div class="card bg-base-100 shadow-xl border border-base-200 hover:border-primary transition-colors cursor-pointer group">
+          <div class="aspect-video bg-gradient-to-t from-green-100 to-purple-100 flex items-center justify-center p-6 gap-4 rounded-t-2xl">
+             <svg class="w-16 h-16 text-green-500 group-hover:-translate-y-2 transition-transform" viewBox="0 0 100 100" fill="currentColor"><path d="M50 5 C 100 20, 110 70, 50 95 C -10 70, 0 20, 50 5 Z" /></svg>
+             <svg class="w-16 h-16 text-purple-500 group-hover:translate-y-2 transition-transform" viewBox="0 0 100 100" fill="currentColor"><path d="M50 5 C 100 20, 110 70, 50 95 C -10 70, 0 20, 50 5 Z" /></svg>
+          </div>
+          <div class="card-body p-4">
+            <h2 class="card-title text-lg">Scene 6: Conclusion (48s - 53s)</h2>
+            <p class="text-sm text-base-content/70">The main leaf duplicates. Green and Purple float side-by-side. Final takeaway text fades in.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 3. Transitions Visualizer -->
+      <h2 class="text-2xl font-bold mt-12 mb-6 border-b border-base-200 pb-2">3. Transitions Visualizer</h2>
+      <p class="text-sm text-base-content/70 mb-4">See how the camera and colors will behave between scenes. (Infinite CSS animation loops)</p>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="card bg-base-100 shadow-md border border-base-200 cursor-pointer">
+          <div class="aspect-video bg-base-200 flex items-center justify-center overflow-hidden rounded-t-2xl">
+             <div class="w-16 h-16 bg-green-500 rounded-full anim-pan-in flex items-center justify-center text-white font-bold text-xs">Leaf</div>
+          </div>
+          <div class="card-body p-4 text-center">
+            <h3 class="font-bold">Smooth Zoom In</h3>
+          </div>
+        </div>
+        <div class="card bg-base-100 shadow-md border border-base-200 cursor-pointer">
+          <div class="aspect-video bg-base-200 flex items-center justify-center overflow-hidden rounded-t-2xl">
+             <div class="w-16 h-16 rounded-full anim-color-morph"></div>
+          </div>
+          <div class="card-body p-4 text-center">
+            <h3 class="font-bold">Continuous Color Morph</h3>
+          </div>
+        </div>
+        <div class="card bg-base-100 shadow-md border border-base-200 cursor-pointer">
+          <div class="aspect-video bg-base-200 flex items-center justify-center overflow-hidden relative rounded-t-2xl">
+             <div class="flex gap-4 anim-pan-right w-[200%] items-center px-4 absolute left-0">
+               <div class="w-16 h-16 bg-purple-500 rounded-lg shrink-0"></div>
+               <div class="w-16 h-16 bg-red-500 rounded-lg shrink-0"></div>
+             </div>
+          </div>
+          <div class="card-body p-4 text-center">
+            <h3 class="font-bold">Camera Pan Right</h3>
+          </div>
+        </div>
+        <div class="card bg-base-100 shadow-md border border-base-200 cursor-pointer">
+          <div class="aspect-video bg-base-200 flex flex-col items-center justify-center gap-2 overflow-hidden rounded-t-2xl">
+             <div class="badge badge-info anim-float-up" style="animation-delay: 0s">Feature 1</div>
+             <div class="badge badge-success anim-float-up" style="animation-delay: 0.5s">Feature 2</div>
+          </div>
+          <div class="card-body p-4 text-center">
+            <h3 class="font-bold">Staggered Pop-ups</h3>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Audio Section -->
+      <h2 class="text-2xl font-bold mt-12 mb-6 border-b border-base-200 pb-2">4. Audio Track</h2>
+      <div class="bg-base-100 rounded-box p-6 shadow-xl border border-base-200 space-y-6 cursor-pointer hover:border-primary transition-colors">
+        <div class="flex items-start gap-4">
+          <div class="text-4xl mt-1">🎵</div>
+          <div class="flex-1">
+            <h3 class="font-bold text-lg mb-2 text-primary">Background Music: Upbeat Corporate (Pending Asset)</h3>
+            <p class="text-sm text-base-content/70 mb-4">Changed from Ambient to Upbeat per feedback. Playing at 20% volume (quieter).</p>
+            
+            <audio controls class="w-full max-w-md bg-base-200 rounded-lg" volume="0.2">
+              <source src="audio.mp3" type="audio/mpeg">
+              Your browser does not support the audio element.
+            </audio>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
