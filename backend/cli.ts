@@ -47,13 +47,15 @@ Structure:
 - Every node id named by an edge or by a shot's "look" must exist in canvas.nodes. Node and shot ids are lowercase letters, digits and dashes only.
 - The first shot must use move: "cut" — it has nothing to move from.
 - A shot with move: "cut" opens the next chapter, and the chapter rail reads its label from the chapters array. So the number of shots with move: "cut" must equal chapters.length, and each cut must land where that chapter's section of the argument begins.
+- Do not provide 'audio', 'voiceover', or 'captions' fields, nor 'src' for AnalogyInset, as these require specific existing files in the public directory.
+- stage: "none" carries no blocks.
 
 Pacing (all enforced; a violation fails validation):
 - Device blocks are: ${DEVICE_BLOCKS.join(", ")}.
 - No shot holding a device may run past 25s, and no device may follow itself — put the canvas or another device between them.
 - A text beat (stage: "frame") at least every 60-90s.
 - A return to the bare canvas (stage: "none") at least every 60-90s.
-- stage: "anchor" and stage: "frame" must carry at least one block; stage: "none" carries none.
+- stage: "anchor" and stage: "frame" must carry at least one block.
 - stage: "anchor" cannot look at "all" — name the single node the panel grows out of.
 - At most 3 accents in one shot. Each device block, each StatCounter, each Card with state "active", each TextReveal with an accentWord and each Math whose text contains *stars* spends one.
 - Each shot's dur is 2..45 seconds, and the film totals at least 10s.`;
