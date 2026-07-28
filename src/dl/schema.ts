@@ -229,26 +229,26 @@ export type CanvasNode = z.infer<typeof nodeSchema>;
 export type CanvasEdge = z.infer<typeof edgeSchema>;
 export type Shot = z.infer<typeof shotSchema>;
 
-export const filmSchema = z
-  .object({
-    id: z.string().regex(/^[a-z0-9-]+$/),
-    title: z.string().min(1),
-    fps: z.union([z.literal(24), z.literal(30), z.literal(60)]),
-    /** Overrides the one colour. Everything else in §01 is fixed. */
-    accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-    chapters: z.array(z.string().min(1).max(30)).min(1).max(12),
-    canvas: z.object({
-      nodes: z.array(nodeSchema).min(2).max(24),
-      edges: z.array(edgeSchema).min(1).max(48),
-    }),
-    shots: z.array(shotSchema).min(1),
-    audio: z.object({ src: z.string().min(1), trimBefore: z.number().min(0).default(0) }).optional(),
-    voiceover: z
-      .object({ src: z.string().min(1), volume: z.number().min(0).max(2).default(1) })
-      .optional(),
-    captions: z.string().min(1).optional(),
-  })
-  .superRefine((film, ctx) => {
+export const filmBaseSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]+$/),
+  title: z.string().min(1),
+  fps: z.union([z.literal(24), z.literal(30), z.literal(60)]),
+  /** Overrides the one colour. Everything else in §01 is fixed. */
+  accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  chapters: z.array(z.string().min(1).max(30)).min(1).max(12),
+  canvas: z.object({
+    nodes: z.array(nodeSchema).min(2).max(24),
+    edges: z.array(edgeSchema).min(1).max(48),
+  }),
+  shots: z.array(shotSchema).min(1),
+  audio: z.object({ src: z.string().min(1), trimBefore: z.number().min(0).default(0) }).optional(),
+  voiceover: z
+    .object({ src: z.string().min(1), volume: z.number().min(0).max(2).default(1) })
+    .optional(),
+  captions: z.string().min(1).optional(),
+});
+
+export const filmSchema = filmBaseSchema.superRefine((film, ctx) => {
     const ids = new Set(film.canvas.nodes.map((n) => n.id));
 
     const dupes = film.canvas.nodes

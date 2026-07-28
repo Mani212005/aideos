@@ -15,6 +15,9 @@
     "@remotion/google-fonts": "4.0.499",
     "@remotion/media": "4.0.499",
     "@remotion/zod-types": "4.0.499",
+    "commander": "^15.0.0",
+    "dotenv": "^17.4.2",
+    "openai": "^7.0.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "remotion": "4.0.499",
@@ -27,9 +30,11 @@
     "esbuild": "0.28.1",
     "eslint": "9.19.0",
     "prettier": "3.8.1",
+    "tsx": "^4.23.1",
     "typescript": "5.9.3"
   },
   "scripts": {
+    "backend": "tsx backend/cli.ts",
     "studio": "remotion studio",
     "editor": "cd editor && npm run dev",
     "validate": "node scripts/validate.mjs",
