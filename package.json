@@ -1,0 +1,47 @@
+{
+  "name": "leaves-video",
+  "version": "1.0.0",
+  "description": "My Remotion video",
+  "repository": {},
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@remotion/captions": "4.0.499",
+    "@remotion/cli": "4.0.499",
+    "@remotion/google-fonts": "4.0.499",
+    "@remotion/media": "4.0.499",
+    "@remotion/tailwind-v4": "4.0.499",
+    "@remotion/three": "^4.0.499",
+    "@remotion/zod-types": "4.0.499",
+    "framer-motion": "^12.42.2",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.499",
+    "tailwindcss": "4.0.0",
+    "three": "^0.185.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@remotion/eslint-config-flat": "4.0.499",
+    "@types/react": "19.2.7",
+    "@types/web": "0.0.166",
+    "eslint": "9.19.0",
+    "prettier": "3.8.1",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "dev": "remotion studio",
+    "build": "remotion bundle",
+    "upgrade": "remotion upgrade",
+    "lint": "eslint src && tsc",
+    "storyboard": "node scripts/storyboard.mjs",
+    "validate": "node scripts/validate.mjs",
+    "edit": "remotion studio",
+    "validate:dl": "node scripts/validate-dl.mjs"
+  },
+  "sideEffects": [
+    "*.css"
+  ]
+}

@@ -1,0 +1,2014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KV Cache Explained — Storyboard</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05070A;
+    --lift: #0C1117;
+    --ink: #F2F6F3;
+    --mid: #A6B1AB;
+    --low: #66716C;
+    --green: #6FD5FF;
+    --purple: #FFB86B;
+    --hair: rgba(242, 246, 243, 0.10);
+    --glass: rgba(255, 255, 255, 0.035);
+  }
+  * { box-sizing: border-box; min-width: 0; }
+  body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .serif { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 120px; }
+
+  header.top {
+    border-bottom: 1px solid var(--hair);
+    padding-bottom: 28px; margin-bottom: 12px;
+  }
+  .eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase;
+    color: var(--green); margin-bottom: 14px;
+  }
+  h1 { font-size: clamp(28px, 4vw, 44px); font-weight: 900; letter-spacing: -.03em; margin: 0 0 10px; line-height: 1.08; }
+  .sub { color: var(--mid); font-size: 16px; margin: 0; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .pill {
+    border: 1px solid var(--hair); background: var(--glass);
+    border-radius: 99px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--mid);
+  }
+  .pill b { color: var(--ink); font-weight: 700; }
+
+  .note {
+    margin: 28px 0 40px; padding: 16px 18px;
+    border-left: 2px solid var(--green); background: var(--glass);
+    border-radius: 0 10px 10px 0; font-size: 14px; color: var(--mid); line-height: 1.6;
+  }
+  .note b { color: var(--ink); }
+
+  h2.section {
+    font-size: 13px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--low); margin: 52px 0 20px; padding-bottom: 10px; border-bottom: 1px solid var(--hair);
+  }
+
+  .config { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+  .fmt {
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+    border: 1px solid var(--hair); background: var(--glass);
+    border-radius: 12px; padding: 12px 16px; font-size: 13px; font-weight: 600;
+  }
+  .fmt:hover { border-color: var(--green); }
+  .fmt-box { display: block; width: 26px; border: 2px solid var(--mid); border-radius: 3px; }
+
+  .scene {
+    border: 1px solid var(--hair); border-radius: 16px;
+    background: linear-gradient(180deg, var(--lift), transparent);
+    padding: 22px; margin-bottom: 20px;
+  }
+  .scene-head { display: grid; grid-template-columns: 40px minmax(0,1fr) auto; gap: 16px; align-items: start; }
+  .scene-index { font-size: 13px; font-weight: 800; letter-spacing: .1em; font-variant-numeric: tabular-nums; padding-top: 4px; }
+  .kicker { font-size: 10px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; margin-bottom: 8px; }
+  .scene-titles h3 { margin: 0; font-size: clamp(18px, 2.2vw, 26px); font-weight: 800; letter-spacing: -.02em; line-height: 1.2; }
+  .scene-titles .body { margin: 10px 0 0; color: var(--mid); font-size: 14px; line-height: 1.55; }
+  .scene-time { text-align: right; font-size: 12px; font-weight: 600; color: var(--mid); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .scene-time span { display: block; color: var(--low); font-weight: 500; }
+
+  .shots { display: flex; flex-wrap: wrap; gap: 14px; margin: 20px 0 4px; }
+  .shot { margin: 0; flex: 0 1 auto; min-width: 0; }
+  .shot img {
+    display: block; aspect-ratio: var(--aspect); object-fit: cover;
+    height: 210px; width: auto; max-width: 100%;
+    border-radius: 10px; border: 1px solid var(--hair); background: #000;
+  }
+  .shot figcaption { font-size: 11px; color: var(--low); margin-top: 7px; letter-spacing: .06em; }
+
+  .facts { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 16px 0 18px; }
+  .facts > div { display: flex; gap: 7px; align-items: baseline; }
+  .facts dt { font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--low); margin: 0; }
+  .facts dd { margin: 0; font-size: 12px; color: var(--mid); font-variant-numeric: tabular-nums; }
+
+  .verdict { border-top: 1px solid var(--hair); padding-top: 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .radios { display: flex; flex-wrap: wrap; gap: 16px; }
+  .radios label { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--mid); cursor: pointer; }
+  .verdict textarea {
+    flex: 1 1 320px; min-width: 0; resize: vertical;
+    background: rgba(0,0,0,.35); color: var(--ink);
+    border: 1px solid var(--hair); border-radius: 9px; padding: 10px 12px;
+    font-family: inherit; font-size: 13px; line-height: 1.5;
+  }
+  .verdict textarea:focus { outline: none; border-color: var(--green); }
+  button {
+    background: var(--green); color: #04140C; border: 0; cursor: pointer;
+    border-radius: 9px; padding: 10px 18px; font-family: inherit; font-size: 13px; font-weight: 700;
+  }
+  button:hover { filter: brightness(1.1); }
+  button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--hair); }
+  .queued { font-size: 12px; font-weight: 700; color: var(--green); }
+
+  .audio-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+  audio { max-width: 420px; width: 100%; }
+  .env { flex: 1 1 260px; min-width: 0; }
+  .env-bar { display: flex; height: 34px; gap: 2px; align-items: flex-end; }
+  .env-bar i { flex: 1; background: var(--green); opacity: .55; border-radius: 2px 2px 0 0; }
+
+  footer.send { margin-top: 44px; padding-top: 24px; border-top: 1px solid var(--hair); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  footer.send p { margin: 0; flex: 1 1 260px; color: var(--mid); font-size: 13px; }
+
+  @media (max-width: 640px) {
+    .scene-head { grid-template-columns: 30px minmax(0,1fr); }
+    .scene-time { grid-column: 2; text-align: left; }
+    .shot img { height: 150px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">Storyboard · level 4 review</div>
+    <h1>KV Cache Explained</h1>
+    <p class="sub">From zero to why two models can't share one</p>
+    <div class="meta">
+      <span class="pill"><b>53</b> scenes</span>
+      <span class="pill"><b>744s</b> runtime</span>
+      <span class="pill"><b>30</b> fps</span>
+      <span class="pill">subject <b>cardShelf</b></span>
+      <span class="pill">theme <b>circuit</b></span>
+    </div>
+  </header>
+
+  <div class="note">
+    Every panel below is a <b>real frame rendered by Remotion</b>, not a mockup — so what you
+    approve is exactly what renders. The previous storyboard was hand-drawn in CSS and had
+    silently drifted to depict a light-theme variant that was never in the video.
+    <br><br>
+    Annotate anything directly, or use the per-scene controls. Timing, copy and camera all come
+    from <b>src/episodes/kvcache.ts</b>; changes there regenerate this page.
+  </div>
+
+  <h2 class="section">1 · Output formats</h2>
+  <form class="config" data-lavish-question="formats"
+    onsubmit="submitFormats(event)">
+    
+      <label class="fmt">
+        <input type="checkbox" name="format" value="16:9 Landscape" checked>
+        <span class="fmt-box" style="aspect-ratio:16 / 9"></span>
+        <span>16:9 Landscape</span>
+      </label>
+      <label class="fmt">
+        <input type="checkbox" name="format" value="9:16 Portrait" >
+        <span class="fmt-box" style="aspect-ratio:9 / 16"></span>
+        <span>9:16 Portrait</span>
+      </label>
+      <label class="fmt">
+        <input type="checkbox" name="format" value="1:1 Square" >
+        <span class="fmt-box" style="aspect-ratio:1 / 1"></span>
+        <span>1:1 Square</span>
+      </label>
+    <button type="submit">Queue formats</button>
+    <span class="queued" hidden>queued ✓</span>
+  </form>
+
+  <h2 class="section">2 · Scenes</h2>
+  
+      <article class="scene" id="scene-cold-open">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">01</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">KV CACHE</div>
+            <h3>Imagine dictating a novel to a scribe, one word at a time.</h3>
+            
+          </div>
+          <div class="scene-time">0s–11s<span>11s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/cold-open-landscape.png" alt="cold-open landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>rescan</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0</dd></div><div><dt>camera</dt><dd>d 11.5 · yaw -0.3 · pitch 0.12</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-cold-open"
+          onsubmit="submitScene(event, 'cold-open')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-scribe-problem">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">02</div>
+          <div class="scene-titles">
+            
+            <h3>Except this scribe re-reads the <em style="color:#FFB86B;font-style:normal">entire manuscript</em> before every single word.</h3>
+            <p class="body">Word one: read one word. Word two: read two. Word ten thousand: re-read all 9,999 before writing one more.</p>
+          </div>
+          <div class="scene-time">11s–23s<span>12s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/scribe-problem-landscape.png" alt="scribe-problem landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0</dd></div><div><dt>camera</dt><dd>d 8.2 · yaw 0.34 · pitch -0.05</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-scribe-problem"
+          onsubmit="submitScene(event, 'scribe-problem')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-cold-open-turn">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">03</div>
+          <div class="scene-titles">
+            
+            <h3>Nobody works this way.<br>And yet, without one trick, <em style="color:#FFB86B;font-style:normal">this is exactly how an LLM would generate text</em>.</h3>
+            
+          </div>
+          <div class="scene-time">23s–34s<span>11s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/cold-open-turn-landscape.png" alt="cold-open-turn landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0</dd></div><div><dt>camera</dt><dd>d 11.8 · yaw 0.05 · pitch 0.26</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-cold-open-turn"
+          onsubmit="submitScene(event, 'cold-open-turn')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-roadmap">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">04</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">WHAT YOU'LL GET</div>
+            <h3>Six things, in order.</h3>
+            
+          </div>
+          <div class="scene-time">34s–50s<span>16s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/roadmap-landscape.png" alt="roadmap landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>bullets</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.05</dd></div><div><dt>camera</dt><dd>d 12.5 · yaw -0.5 · pitch 0.14</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-roadmap"
+          onsubmit="submitScene(event, 'roadmap')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-basics-kicker">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">05</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">PART 1 · THE BASICS</div>
+            <h3>An LLM doesn't understand words. It understands <em style="color:#6FD5FF;font-style:normal">numbers</em>.</h3>
+            
+          </div>
+          <div class="scene-time">50s–60s<span>10s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/basics-kicker-landscape.png" alt="basics-kicker landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>tokenize</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.08</dd></div><div><dt>camera</dt><dd>d 11.2 · yaw 0.4 · pitch 0.08</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-basics-kicker"
+          onsubmit="submitScene(event, 'basics-kicker')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-tokens">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">06</div>
+          <div class="scene-titles">
+            
+            <h3>Every word-piece, every <em style="color:#6FD5FF;font-style:normal">token</em>, becomes a long list of numbers.</h3>
+            <p class="body">And the model's job, at every single step, is the same: given all the tokens so far, predict the next one.</p>
+          </div>
+          <div class="scene-time">60s–72s<span>12s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/tokens-landscape.png" alt="tokens landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.1</dd></div><div><dt>camera</dt><dd>d 8.6 · yaw -0.42 · pitch 0.18</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-tokens"
+          onsubmit="submitScene(event, 'tokens')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-prediction-game">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">07</div>
+          <div class="scene-titles">
+            
+            <h3>You don't need a dictionary to finish this. You need <em style="color:#6FD5FF;font-style:normal">context</em>.</h3>
+            
+          </div>
+          <div class="scene-time">72s–85s<span>13s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/prediction-game-landscape.png" alt="prediction-game landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>predict</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.12</dd></div><div><dt>camera</dt><dd>d 12.6 · yaw 0.12 · pitch 0.3</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-prediction-game"
+          onsubmit="submitScene(event, 'prediction-game')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-attention-named">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">08</div>
+          <div class="scene-titles">
+            
+            <h3>The model asks every previous token: <em style="color:#6FD5FF;font-style:normal">how relevant are you to what comes next?</em></h3>
+            <p class="body">That relevance-scoring mechanism is called attention. It is the heart of the transformer.</p>
+          </div>
+          <div class="scene-time">85s–96s<span>11s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/attention-named-landscape.png" alt="attention-named landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.14</dd></div><div><dt>camera</dt><dd>d 9.1 · yaw -0.2 · pitch -0.04</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-attention-named"
+          onsubmit="submitScene(event, 'attention-named')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-kitchen-kicker">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">09</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">PART 2 · ATTENTION</div>
+            <h3>Picture a professional kitchen during dinner service.</h3>
+            
+          </div>
+          <div class="scene-time">96s–106s<span>10s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/kitchen-kicker-landscape.png" alt="kitchen-kicker landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.16</dd></div><div><dt>camera</dt><dd>d 10.4 · yaw 0.52 · pitch 0.2</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-kitchen-kicker"
+          onsubmit="submitScene(event, 'kitchen-kicker')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-qkv-intro">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">10</div>
+          <div class="scene-titles">
+            
+            <h3>Every dish being cooked needs to know which ingredients on the counter matter to it.</h3>
+            <p class="body">To settle that, each token produces three things.</p>
+          </div>
+          <div class="scene-time">106s–117s<span>11s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/qkv-intro-landscape.png" alt="qkv-intro landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.18</dd></div><div><dt>camera</dt><dd>d 8.9 · yaw -0.3 · pitch 0.1</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-qkv-intro"
+          onsubmit="submitScene(event, 'qkv-intro')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-qkv-chips">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">11</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">QUERY · KEY · VALUE</div>
+            <h3>Three signs, held up at once.</h3>
+            
+          </div>
+          <div class="scene-time">117s–135s<span>18s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/qkv-chips-landscape.png" alt="qkv-chips landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>chips</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.2</dd></div><div><dt>camera</dt><dd>d 12.8 · yaw 0.16 · pitch 0.22</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-qkv-chips"
+          onsubmit="submitScene(event, 'qkv-chips')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-qkv-explained">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">12</div>
+          <div class="scene-titles">
+            
+            <h3>The dish holds up <em style="color:#6FD5FF;font-style:normal">&quot;I need something acidic&quot;</em>. The lemon holds up <em style="color:#6FD5FF;font-style:normal">&quot;I am acidic&quot;</em>.</h3>
+            <p class="body">Compare your Query against everyone's Key, see who matches, then pull in their Value weighted by how good the match was. That is attention, in one sentence.</p>
+          </div>
+          <div class="scene-time">135s–150s<span>15s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/qkv-explained-landscape.png" alt="qkv-explained landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.22</dd></div><div><dt>camera</dt><dd>d 9.3 · yaw -0.46 · pitch 0.06</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-qkv-explained"
+          onsubmit="submitScene(event, 'qkv-explained')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-every-layer">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">13</div>
+          <div class="scene-titles">
+            
+            <h3>Every token does this. At every layer. On every step.</h3>
+            <p class="body">Models have dozens of layers, each refining the representation further. That is a lot of matching.</p>
+          </div>
+          <div class="scene-time">150s–162s<span>12s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/every-layer-landscape.png" alt="every-layer landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0.24</dd></div><div><dt>camera</dt><dd>d 13.4 · yaw 0.3 · pitch -0.1</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-every-layer"
+          onsubmit="submitScene(event, 'every-layer')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-naive-kicker">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">14</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#FFB86B">PART 3 · THE NAIVE WAY</div>
+            <h3>Now here is where it gets <em style="color:#FFB86B;font-style:normal">expensive</em>.</h3>
+            
+          </div>
+          <div class="scene-time">162s–173s<span>11s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/naive-kicker-landscape.png" alt="naive-kicker landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0.2 (wash)</dd></div><div><dt>camera</dt><dd>d 8.4 · yaw -0.36 · pitch 0.02</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-naive-kicker"
+          onsubmit="submitScene(event, 'naive-kicker')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-autoregressive">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">15</div>
+          <div class="scene-titles">
+            
+            <h3>Text comes out one token at a time. <em style="color:#FFB86B;font-style:normal">Autoregressive</em> generation.</h3>
+            <p class="body">Each new token is appended, and the model produces the next by looking at the whole sequence again, including the token it just wrote.</p>
+          </div>
+          <div class="scene-time">173s–186s<span>13s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/autoregressive-landscape.png" alt="autoregressive landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0.18</dd></div><div><dt>camera</dt><dd>d 9.6 · yaw 0.44 · pitch 0.16</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-autoregressive"
+          onsubmit="submitScene(event, 'autoregressive')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-reintroduce">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">16</div>
+          <div class="scene-titles">
+            
+            <h3>Every ingredient re-introduces itself to every dish. From scratch. Every time.</h3>
+            <p class="body">Recalculating every Key and Value from raw ingredients, on every single step of generation.</p>
+          </div>
+          <div class="scene-time">186s–200s<span>14s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/reintroduce-landscape.png" alt="reintroduce landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0.15</dd></div><div><dt>camera</dt><dd>d 8 · yaw -0.2 · pitch -0.12</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-reintroduce"
+          onsubmit="submitScene(event, 'reintroduce')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-naive-cost">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">17</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#FFB86B">THE COST</div>
+            <h3>The work per step keeps growing.</h3>
+            
+          </div>
+          <div class="scene-time">200s–216s<span>16s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/naive-cost-landscape.png" alt="naive-cost landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>formula</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0.12</dd></div><div><dt>camera</dt><dd>d 14.2 · yaw 0.1 · pitch 0.08</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-naive-cost"
+          onsubmit="submitScene(event, 'naive-cost')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-the-waste">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">18</div>
+          <div class="scene-titles">
+            
+            <h3>But the Key and Value for token 47 <em style="color:#6FD5FF;font-style:normal">don't change</em> because token 9,999 showed up.</h3>
+            <p class="body">Token 47 said its piece already. Its sign and its substance are fixed forever, determined by itself and everything before it, never by what comes after.</p>
+          </div>
+          <div class="scene-time">216s–231s<span>15s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/the-waste-landscape.png" alt="the-waste landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.14</dd></div><div><dt>camera</dt><dd>d 8.8 · yaw -0.5 · pitch 0.2</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-the-waste"
+          onsubmit="submitScene(event, 'the-waste')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-fix-kicker">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">19</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">PART 4 · THE FIX</div>
+            <h3>The fix is almost embarrassingly simple once you see it.</h3>
+            
+          </div>
+          <div class="scene-time">231s–242s<span>11s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/fix-kicker-landscape.png" alt="fix-kicker landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.2 (wash)</dd></div><div><dt>camera</dt><dd>d 10.8 · yaw 0.2 · pitch 0.24</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-fix-kicker"
+          onsubmit="submitScene(event, 'fix-kicker')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-write-it-down">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">20</div>
+          <div class="scene-titles">
+            
+            <h3>Write down each ingredient's Key and Value the first time. <em style="color:#6FD5FF;font-style:normal">Never recompute them.</em></h3>
+            
+          </div>
+          <div class="scene-time">242s–254s<span>12s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/write-it-down-landscape.png" alt="write-it-down landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.45 (wash)</dd></div><div><dt>camera</dt><dd>d 8.3 · yaw -0.28 · pitch 0.05</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-write-it-down"
+          onsubmit="submitScene(event, 'write-it-down')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-index-cards">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">21</div>
+          <div class="scene-titles">
+            
+            <h3>A shelf of index cards. One per ingredient.</h3>
+            <p class="body">Each card lists what I am (the Key) and what I bring to the dish (the Value). New dishes just walk the shelf and read.</p>
+          </div>
+          <div class="scene-time">254s–268s<span>14s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/index-cards-landscape.png" alt="index-cards landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.62 (wash)</dd></div><div><dt>camera</dt><dd>d 9.9 · yaw 0.38 · pitch -0.02</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-index-cards"
+          onsubmit="submitScene(event, 'index-cards')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-this-is-it">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">22</div>
+          <div class="scene-titles">
+            
+            <h3>That shelf is the <em style="color:#6FD5FF;font-style:normal">KV cache</em>.</h3>
+            
+          </div>
+          <div class="scene-time">268s–277s<span>9s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/this-is-it-landscape.png" alt="this-is-it landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.78 (wash)</dd></div><div><dt>camera</dt><dd>d 7.6 · yaw 0 · pitch 0</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-this-is-it"
+          onsubmit="submitScene(event, 'this-is-it')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-formally">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">23</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">PRECISELY</div>
+            <h3>A stored tensor, at every layer, for every head.</h3>
+            
+          </div>
+          <div class="scene-time">277s–294s<span>17s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/formally-landscape.png" alt="formally landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>formula</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.85</dd></div><div><dt>camera</dt><dd>d 13.8 · yaw -0.16 · pitch 0.1</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-formally"
+          onsubmit="submitScene(event, 'formally')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-cost-collapse">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">24</div>
+          <div class="scene-titles">
+            
+            <h3>Quadratic work collapses to <em style="color:#6FD5FF;font-style:normal">roughly constant</em> per token.</h3>
+            
+          </div>
+          <div class="scene-time">294s–307s<span>13s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/cost-collapse-landscape.png" alt="cost-collapse landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>rescan</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.9</dd></div><div><dt>camera</dt><dd>d 11.8 · yaw 0.46 · pitch 0.18</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-cost-collapse"
+          onsubmit="submitScene(event, 'cost-collapse')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-ttft">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">25</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#FFB86B">WHY THE FIRST TOKEN IS SLOW</div>
+            <h3>The model builds the <em style="color:#FFB86B;font-style:normal">entire</em> cache for your prompt before it writes anything.</h3>
+            <p class="body">That is time-to-first-token. Every token after streams fast. It is just one more card on an already-built shelf.</p>
+          </div>
+          <div class="scene-time">307s–322s<span>15s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/ttft-landscape.png" alt="ttft landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0.92</dd></div><div><dt>camera</dt><dd>d 10.6 · yaw -0.4 · pitch -0.08</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-ttft"
+          onsubmit="submitScene(event, 'ttft')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-memory-kicker">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">26</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">PART 5 · IN MEMORY</div>
+            <h3>It isn't one shelf. It's one shelf <em style="color:#6FD5FF;font-style:normal">per layer, per head</em>.</h3>
+            
+          </div>
+          <div class="scene-time">322s–333s<span>11s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/memory-kicker-landscape.png" alt="memory-kicker landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.95</dd></div><div><dt>camera</dt><dd>d 14.6 · yaw 0.24 · pitch 0.3</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-memory-kicker"
+          onsubmit="submitScene(event, 'memory-kicker')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-skyscraper">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">27</div>
+          <div class="scene-titles">
+            
+            <h3>A skyscraper of kitchens, stacked floor on floor.</h3>
+            <p class="body">Each floor a layer. Each station on it a head.</p>
+          </div>
+          <div class="scene-time">333s–346s<span>13s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/skyscraper-landscape.png" alt="skyscraper landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>layers</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>1</dd></div><div><dt>camera</dt><dd>d 12.2 · yaw -0.55 · pitch -0.16</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-skyscraper"
+          onsubmit="submitScene(event, 'skyscraper')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-cache-size">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">28</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#FFB86B">ROUGHLY</div>
+            <h3>What that costs you.</h3>
+            
+          </div>
+          <div class="scene-time">346s–363s<span>17s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/cache-size-landscape.png" alt="cache-size landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>formula</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>1</dd></div><div><dt>camera</dt><dd>d 14 · yaw 0.08 · pitch 0.12</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-cache-size"
+          onsubmit="submitScene(event, 'cache-size')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-different-models-differ">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">29</div>
+          <div class="scene-titles">
+            
+            <h3>Two models hold <em style="color:#FFB86B;font-style:normal">wildly different</em> cache sizes for the exact same conversation.</h3>
+            <p class="body">Different numbers of floors, different numbers of stations. Remember that. It matters in ninety seconds.</p>
+          </div>
+          <div class="scene-time">363s–375s<span>12s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/different-models-differ-landscape.png" alt="different-models-differ landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>1</dd></div><div><dt>camera</dt><dd>d 9.4 · yaw -0.3 · pitch 0.06</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-different-models-differ"
+          onsubmit="submitScene(event, 'different-models-differ')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-switch-kicker">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">30</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#FFB86B">PART 6 · SWITCHING MODELS</div>
+            <h3>The cache is <em style="color:#FFB86B;font-style:normal">not</em> the conversation.</h3>
+            
+          </div>
+          <div class="scene-time">375s–387s<span>12s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/switch-kicker-landscape.png" alt="switch-kicker landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>1</dd></div><div><dt>camera</dt><dd>d 8.1 · yaw 0.36 · pitch -0.05</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-switch-kicker"
+          onsubmit="submitScene(event, 'switch-kicker')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-private-notes">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">31</div>
+          <div class="scene-titles">
+            
+            <h3>It is one model's private, internal notes about the conversation, in its own shorthand.</h3>
+            <p class="body">Written by weight matrices learned during that model's own training. Nobody else's.</p>
+          </div>
+          <div class="scene-time">387s–401s<span>14s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/private-notes-landscape.png" alt="private-notes landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>1</dd></div><div><dt>camera</dt><dd>d 10.2 · yaw -0.44 · pitch 0.2</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-private-notes"
+          onsubmit="submitScene(event, 'private-notes')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-two-chefs">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">32</div>
+          <div class="scene-titles">
+            
+            <h3>Two master chefs. Two kitchens. Two <em style="color:#FFB86B;font-style:normal">personally trained</em> senses of taste.</h3>
+            <p class="body">Chef Sonnet tastes a lemon and writes: sharp-6, pairs well with fatty-9. Those numbers are Sonnet's own rating system.</p>
+          </div>
+          <div class="scene-time">401s–414s<span>13s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/two-chefs-landscape.png" alt="two-chefs landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>1</dd></div><div><dt>camera</dt><dd>d 11.6 · yaw 0.5 · pitch 0.1</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-two-chefs"
+          onsubmit="submitScene(event, 'two-chefs')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-opus-reads">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">33</div>
+          <div class="scene-titles">
+            
+            <h3>Now ask Chef Opus to take over mid-dish and read those cards.</h3>
+            <p class="body">Opus has no idea what it means. Four separate reasons why.</p>
+          </div>
+          <div class="scene-time">414s–425s<span>11s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/opus-reads-landscape.png" alt="opus-reads landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>mismatch</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>1</dd></div><div><dt>camera</dt><dd>d 8.7 · yaw -0.18 · pitch -0.14</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-opus-reads"
+          onsubmit="submitScene(event, 'opus-reads')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-four-reasons">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">34</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#FFB86B">WHY IT'S MEANINGLESS</div>
+            <h3>Not inaccurate. <em style="color:#FFB86B;font-style:normal">Meaningless</em>.</h3>
+            
+          </div>
+          <div class="scene-time">425s–447s<span>22s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/four-reasons-landscape.png" alt="four-reasons landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>bullets</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>1</dd></div><div><dt>camera</dt><dd>d 13.2 · yaw 0.28 · pitch 0.16</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-four-reasons"
+          onsubmit="submitScene(event, 'four-reasons')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-not-translation">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">35</div>
+          <div class="scene-titles">
+            
+            <h3>This isn't a translation problem. It's a <em style="color:#FFB86B;font-style:normal">different language</em>, written in numbers.</h3>
+            <p class="body">Numbers that only mean anything inside one specific chef's head.</p>
+          </div>
+          <div class="scene-time">447s–460s<span>13s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/not-translation-landscape.png" alt="not-translation landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>1</dd></div><div><dt>camera</dt><dd>d 9 · yaw -0.5 · pitch 0.04</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-not-translation"
+          onsubmit="submitScene(event, 'not-translation')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-the-only-fix">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">36</div>
+          <div class="scene-titles">
+            
+            <h3>The only fix: hand the new chef the raw transcript and let them build their <em style="color:#6FD5FF;font-style:normal">own</em> shelf.</h3>
+            <p class="body">That is the full re-read you see in Claude Code when you switch models. The old cache is thrown away and a fresh prefill runs your whole history through the new model.</p>
+          </div>
+          <div class="scene-time">460s–475s<span>15s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/the-only-fix-landscape.png" alt="the-only-fix landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.15 (wash)</dd></div><div><dt>camera</dt><dd>d 10.9 · yaw 0.14 · pitch 0.22</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-the-only-fix"
+          onsubmit="submitScene(event, 'the-only-fix')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-why-slow">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">37</div>
+          <div class="scene-titles">
+            
+            <h3>Which is why the first reply after a switch takes noticeably longer.</h3>
+            <p class="body">You are paying the read-the-whole-manuscript cost all over again, for the new chef.</p>
+          </div>
+          <div class="scene-time">475s–486s<span>11s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/why-slow-landscape.png" alt="why-slow landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0.4 (wash)</dd></div><div><dt>camera</dt><dd>d 8.5 · yaw -0.34 · pitch -0.06</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-why-slow"
+          onsubmit="submitScene(event, 'why-slow')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-share-kicker">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">38</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#FFB86B">PART 7 · SHARING</div>
+            <h3>Different question: could two models read the same shelf <em style="color:#FFB86B;font-style:normal">right now</em>?</h3>
+            <p class="body">Short answer: only if they were built to be the same chef in the parts that matter.</p>
+          </div>
+          <div class="scene-time">486s–498s<span>12s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/share-kicker-landscape.png" alt="share-kicker landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0.6</dd></div><div><dt>camera</dt><dd>d 11.4 · yaw 0.42 · pitch 0.18</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-share-kicker"
+          onsubmit="submitScene(event, 'share-kicker')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-two-compatibilities">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">39</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#FFB86B">WHAT IT WOULD TAKE</div>
+            <h3>Two kinds of compatibility. You need <em style="color:#FFB86B;font-style:normal">both</em>.</h3>
+            
+          </div>
+          <div class="scene-time">498s–518s<span>20s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/two-compatibilities-landscape.png" alt="two-compatibilities landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>compare</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0.6</dd></div><div><dt>camera</dt><dd>d 14.4 · yaw -0.12 · pitch 0.1</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-two-compatibilities"
+          onsubmit="submitScene(event, 'two-compatibilities')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-twins">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">40</div>
+          <div class="scene-titles">
+            
+            <h3>Twins raised apart, each inventing their own private shorthand.</h3>
+            <p class="body">Both notations are equally good. Twin A's notes are still gibberish to twin B. Not because either is wrong, but because compatibility was never a design goal.</p>
+          </div>
+          <div class="scene-time">518s–532s<span>14s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/twins-landscape.png" alt="twins landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0.6</dd></div><div><dt>camera</dt><dd>d 9.7 · yaw 0.3 · pitch -0.1</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-twins"
+          onsubmit="submitScene(event, 'twins')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-toolbox-kicker">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">41</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">PART 8 · THE TOOLBOX</div>
+            <h3>From clever trick to an entire subfield of systems engineering.</h3>
+            
+          </div>
+          <div class="scene-time">532s–543s<span>11s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/toolbox-kicker-landscape.png" alt="toolbox-kicker landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.75 (wash)</dd></div><div><dt>camera</dt><dd>d 13 · yaw -0.4 · pitch 0.26</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-toolbox-kicker"
+          onsubmit="submitScene(event, 'toolbox-kicker')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-shrink-per-token">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">42</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">8.1 · SHRINK PER TOKEN</div>
+            <h3>Share the spice rack.</h3>
+            
+          </div>
+          <div class="scene-time">543s–563s<span>20s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/shrink-per-token-landscape.png" alt="shrink-per-token landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>bullets</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.8</dd></div><div><dt>camera</dt><dd>d 12.6 · yaw 0.34 · pitch 0.12</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-shrink-per-token"
+          onsubmit="submitScene(event, 'shrink-per-token')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-shrink-by-forgetting">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">43</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#FFB86B">8.2 · SHRINK BY FORGETTING</div>
+            <h3>Throw cards away, carefully.</h3>
+            
+          </div>
+          <div class="scene-time">563s–584s<span>21s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/shrink-by-forgetting-landscape.png" alt="shrink-by-forgetting landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>bullets</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0.55 (wash)</dd></div><div><dt>camera</dt><dd>d 12.9 · yaw -0.26 · pitch -0.08</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-shrink-by-forgetting"
+          onsubmit="submitScene(event, 'shrink-by-forgetting')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-server-side">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">44</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">8.3 · IN THE SERVER</div>
+            <h3>Stop reserving a banquet hall for a table of one.</h3>
+            
+          </div>
+          <div class="scene-time">584s–602s<span>18s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/server-side-landscape.png" alt="server-side landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>bullets</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.85 (wash)</dd></div><div><dt>camera</dt><dd>d 11.8 · yaw 0.48 · pitch 0.2</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-server-side"
+          onsubmit="submitScene(event, 'server-side')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-prefix-caching">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">45</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">8.4 · REUSE ACROSS REQUESTS</div>
+            <h3><em style="color:#6FD5FF;font-style:normal">Prefix caching</em>. Don't re-cook the starter you already prepped.</h3>
+            <p class="body">Two requests to the same model sharing an identical prefix (a long system prompt, the head of a conversation) can reuse the computed cache instead of rebuilding it.</p>
+          </div>
+          <div class="scene-time">602s–617s<span>15s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/prefix-caching-landscape.png" alt="prefix-caching landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>1 (wash)</dd></div><div><dt>camera</dt><dd>d 9.3 · yaw -0.2 · pitch 0.08</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-prefix-caching"
+          onsubmit="submitScene(event, 'prefix-caching')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-the-fine-print">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">46</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#FFB86B">THE FINE PRINT</div>
+            <h3>Same model. <em style="color:#FFB86B;font-style:normal">Exact</em> token-for-token prefix match.</h3>
+            <p class="body">Change anything upstream, including which model you are on, and the match breaks, the cache is invalidated, and you are back to a full prefill. That is the mechanism behind the behaviour you noticed.</p>
+          </div>
+          <div class="scene-time">617s–634s<span>17s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/the-fine-print-landscape.png" alt="the-fine-print landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0.2 (wash)</dd></div><div><dt>camera</dt><dd>d 10.5 · yaw 0.4 · pitch -0.12</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-the-fine-print"
+          onsubmit="submitScene(event, 'the-fine-print')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-what-would-it-take">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">47</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">PART 9 · WHAT WOULD IT TAKE</div>
+            <h3>Nobody does this in production between two independently trained models.</h3>
+            <p class="body">But research points at four routes.</p>
+          </div>
+          <div class="scene-time">634s–646s<span>12s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/what-would-it-take-landscape.png" alt="what-would-it-take landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.5 (wash)</dd></div><div><dt>camera</dt><dd>d 12.4 · yaw -0.46 · pitch 0.24</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-what-would-it-take"
+          onsubmit="submitScene(event, 'what-would-it-take')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-four-routes">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">48</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">FOUR ROUTES</div>
+            <h3>None of them are free.</h3>
+            
+          </div>
+          <div class="scene-time">646s–670s<span>24s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/four-routes-landscape.png" alt="four-routes landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>bullets</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.5</dd></div><div><dt>camera</dt><dd>d 13.6 · yaw 0.2 · pitch 0.14</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-four-routes"
+          onsubmit="submitScene(event, 'four-routes')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-spec-decoding">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">49</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">WHY SPECULATIVE DECODING WORKS</div>
+            <h3>It shares <em style="color:#6FD5FF;font-style:normal">tokens</em>, not tensors.</h3>
+            <p class="body">A small draft model proposes ahead; the big model verifies in one batched pass. Each keeps its own cache in its own format. Plain token IDs carry no model-specific internal meaning, so they are safe to pass between architectures.</p>
+          </div>
+          <div class="scene-time">670s–686s<span>16s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/spec-decoding-landscape.png" alt="spec-decoding landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>0.7 (wash)</dd></div><div><dt>camera</dt><dd>d 9.8 · yaw -0.36 · pitch 0</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-spec-decoding"
+          onsubmit="submitScene(event, 'spec-decoding')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-the-throughline">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">50</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#FFB86B">THE THROUGHLINE</div>
+            <h3>You can never share the cache for free.</h3>
+            
+          </div>
+          <div class="scene-time">686s–703s<span>17s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/the-throughline-landscape.png" alt="the-throughline landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>formula</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>0.7</dd></div><div><dt>camera</dt><dd>d 14.2 · yaw 0.1 · pitch 0.1</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-the-throughline"
+          onsubmit="submitScene(event, 'the-throughline')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-summary">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">51</div>
+          <div class="scene-titles">
+            <div class="kicker" style="color:#6FD5FF">IN ONE PARAGRAPH</div>
+            <h3>A running notebook of every token's <em style="color:#6FD5FF;font-style:normal">identity card</em> and <em style="color:#6FD5FF;font-style:normal">substance</em>.</h3>
+            <p class="body">Saved so the model never recomputes a token's contribution twice, turning painfully quadratic generation into roughly linear generation.</p>
+          </div>
+          <div class="scene-time">703s–721s<span>18s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/summary-landscape.png" alt="summary landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>1 (wash)</dd></div><div><dt>camera</dt><dd>d 10.2 · yaw -0.24 · pitch 0.18</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-summary"
+          onsubmit="submitScene(event, 'summary')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-summary-two">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#FFB86B">52</div>
+          <div class="scene-titles">
+            
+            <h3>But that notebook is written in <em style="color:#FFB86B;font-style:normal">one model's private shorthand</em>.</h3>
+            <p class="body">Shaped by its exact architecture and trained weights. It cannot be handed to another model without being rebuilt from scratch, or the two being engineered from the ground up to think alike.</p>
+          </div>
+          <div class="scene-time">721s–736s<span>15s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/summary-two-landscape.png" alt="summary-two landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>type only</dd></div><div><dt>accent</dt><dd>secondary</dd></div><div><dt>state</dt><dd>1</dd></div><div><dt>camera</dt><dd>d 8.9 · yaw 0.44 · pitch -0.08</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-summary-two"
+          onsubmit="submitScene(event, 'summary-two')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+      <article class="scene" id="scene-endcard">
+        <header class="scene-head">
+          <div class="scene-index" style="color:#6FD5FF">53</div>
+          <div class="scene-titles">
+            
+            <h3><em style="color:#6FD5FF;font-style:normal">Cache the work.</em><br><em style="color:#FFB86B;font-style:normal">Never</em> the understanding.</h3>
+            
+          </div>
+          <div class="scene-time">736s–744s<span>8s</span></div>
+        </header>
+
+        <div class="shots">
+        <figure class="shot" style="--aspect:16 / 9">
+          <img src="frames/endcard-landscape.png" alt="endcard landscape" loading="lazy">
+          <figcaption>16:9 Landscape</figcaption>
+        </figure></div>
+
+        <dl class="facts">
+          <div><dt>module</dt><dd>endcard</dd></div><div><dt>accent</dt><dd>primary</dd></div><div><dt>state</dt><dd>1</dd></div><div><dt>camera</dt><dd>d 13.4 · yaw 0.04 · pitch 0.3</dd></div>
+        </dl>
+
+        <form class="verdict" data-lavish-question="scene-endcard"
+          onsubmit="submitScene(event, 'endcard')">
+          <div class="radios">
+            <label><input type="radio" name="v" value="approve" checked> Approve</label>
+            <label><input type="radio" name="v" value="revise"> Needs change</label>
+            <label><input type="radio" name="v" value="cut"> Cut this scene</label>
+          </div>
+          <textarea name="note" rows="2" placeholder="What should change? e.g. 'hold this 2s longer', 'leaf is too close', 'rewrite headline'"></textarea>
+          <button type="submit">Queue verdict</button>
+          <span class="queued" hidden>queued ✓</span>
+        </form>
+      </article>
+
+  <h2 class="section">3 · Music bed</h2>
+  <div class="audio-row">
+    <audio controls preload="metadata" src="audio.mp3"></audio>
+    <div class="env">
+      <div class="env-bar"><i style="height:30%"></i><i style="height:40.256410256410255%"></i><i style="height:50.51282051282051%"></i><i style="height:92%"></i><i style="height:92%"></i><i style="height:92%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:88%"></i><i style="height:88%"></i><i style="height:88%"></i><i style="height:20%"></i><i style="height:20%"></i><i style="height:20%"></i></div>
+      <div style="font-size:11px;color:var(--low);margin-top:8px;letter-spacing:.06em">
+        VOLUME ENVELOPE — lifts on the cold open and end card, sits back under the narration
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section">4 · Anything else</h2>
+  <form data-lavish-question="global" onsubmit="submitGlobal(event)">
+    <textarea name="note" rows="3" style="width:100%;background:rgba(0,0,0,.35);color:var(--ink);border:1px solid var(--hair);border-radius:9px;padding:12px;font-family:inherit;font-size:14px;line-height:1.6" placeholder="Pacing, tone, colour, the 3D subject, the music, the script overall…"></textarea>
+    <div style="margin-top:12px"><button type="submit">Queue note</button> <span class="queued" hidden>queued ✓</span></div>
+  </form>
+
+  <footer class="send">
+    <p>Queued items collect in the Conversation panel. Press <b>Send to Agent</b> when you are done — everything arrives at once.</p>
+    <button class="ghost" data-lavish-action onclick="window.lavish.sendQueuedPrompts()">Send everything now</button>
+  </footer>
+
+</div>
+
+<script>
+  // Per the input playbook: radio changes only update local state. Nothing is
+  // queued until the user submits that specific question, so they can change
+  // their mind freely.
+  const flash = (form) => {
+    const badge = form.querySelector('.queued');
+    if (!badge) return;
+    badge.hidden = false;
+    setTimeout(() => { badge.hidden = true; }, 2600);
+  };
+
+  function submitScene(event, id) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const verdict = data.get('v');
+    const note = (data.get('note') || '').toString().trim();
+    if (verdict === 'approve' && !note) {
+      window.lavish.queuePrompt('Scene "' + id + '": approved as rendered.', {
+        tag: 'scene', text: id + ': approved', element: form,
+        queueKey: 'scene-' + id, data: { scene: id, verdict: 'approve' }
+      });
+    } else {
+      const verb = verdict === 'cut' ? 'CUT this scene' : 'needs changes';
+      window.lavish.queuePrompt(
+        'Scene "' + id + '" ' + verb + (note ? ': ' + note : '') +
+        '. Edit the episode file in src/episodes/ and regenerate the storyboard.',
+        { tag: 'scene', text: id + ': ' + verdict, element: form,
+          queueKey: 'scene-' + id, data: { scene: id, verdict: verdict, note: note } }
+      );
+    }
+    flash(form);
+  }
+
+  function submitFormats(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const picked = [...form.querySelectorAll('input[name=format]:checked')].map(el => el.value);
+    window.lavish.queuePrompt(
+      picked.length ? 'Render these formats: ' + picked.join(', ') + '.' : 'No output formats selected — please confirm.',
+      { tag: 'choice', text: 'Formats: ' + (picked.join(', ') || 'none'), element: form,
+        queueKey: 'formats', data: { formats: picked } }
+    );
+    flash(form);
+  }
+
+  function submitGlobal(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const note = (new FormData(form).get('note') || '').toString().trim();
+    if (!note) return;
+    window.lavish.queuePrompt('Overall storyboard note: ' + note, {
+      tag: 'note', text: 'Overall: ' + note.slice(0, 60), element: form, queueKey: 'global'
+    });
+    flash(form);
+  }
+</script>
+</body>
+</html>
