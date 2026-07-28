@@ -1,5 +1,19 @@
-import React from "react";
-import type { Film, CanvasNode, CanvasEdge } from "../../../src/dl/schema";
+import type { Film, Shot, CanvasNode, CanvasEdge } from "../../../src/dl/schema";
+
+// The schema's node id rule, applied as you type: an id that cannot be authored
+// here is an id that cannot dangle in an edge or a shot's `look` either.
+const asNodeId = (raw: string) => raw.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+
+// A shot names nodes, never coordinates — so a rename or a delete has to travel
+// through every `look` that names the node, or the camera silently reframes.
+const lookAfter = (look: Shot["look"], change: (id: string) => string | null, fallback: string): Shot["look"] => {
+  if (look === "all") return look;
+  if (Array.isArray(look)) {
+    const kept = look.map(change).filter((id): id is string => id !== null);
+    return kept.length > 0 ? kept : fallback;
+  }
+  return change(look) ?? fallback;
+};
 
 export function CanvasEditor({ film, onChange }: { film: Film, onChange: (f: Film) => void }) {
   const updateNode = (index: number, partial: Partial<CanvasNode>) => {
@@ -8,14 +22,39 @@ export function CanvasEditor({ film, onChange }: { film: Film, onChange: (f: Fil
     onChange({ ...film, canvas: { ...film.canvas, nodes } });
   };
 
+  const renameNode = (index: number, raw: string) => {
+    const from = film.canvas.nodes[index].id;
+    const to = asNodeId(raw);
+    if (to === from) return;
+    const nodes = [...film.canvas.nodes];
+    nodes[index] = { ...nodes[index], id: to };
+    const edges = film.canvas.edges.map(e => ({
+      ...e,
+      from: e.from === from ? to : e.from,
+      to: e.to === from ? to : e.to,
+    }));
+    const shots = film.shots.map(s => ({
+      ...s,
+      look: lookAfter(s.look, id => (id === from ? to : id), to),
+    }));
+    onChange({ ...film, canvas: { nodes, edges }, shots });
+  };
+
   const addNode = () => {
     const nodes = [...film.canvas.nodes, { id: `node-${Date.now()}`, label: "new node", x: 100, y: 100, w: 190, h: 62 }];
     onChange({ ...film, canvas: { ...film.canvas, nodes } });
   };
 
   const removeNode = (index: number) => {
+    const gone = film.canvas.nodes[index].id;
     const nodes = film.canvas.nodes.filter((_, i) => i !== index);
-    onChange({ ...film, canvas: { ...film.canvas, nodes } });
+    const edges = film.canvas.edges.filter(e => e.from !== gone && e.to !== gone);
+    const fallback = nodes[0]?.id ?? "all";
+    const shots = film.shots.map(s => ({
+      ...s,
+      look: lookAfter(s.look, id => (id === gone ? null : id), fallback),
+    }));
+    onChange({ ...film, canvas: { nodes, edges }, shots });
   };
 
   const updateEdge = (index: number, partial: Partial<CanvasEdge>) => {
@@ -43,7 +82,7 @@ export function CanvasEditor({ film, onChange }: { film: Film, onChange: (f: Fil
       {film.canvas.nodes.map((node, i) => (
         <div key={i} className="border border-[#333] p-2 rounded bg-[#1A1A1B] flex flex-col gap-2">
           <div className="flex justify-between">
-            <input className="bg-transparent font-bold w-24" value={node.id} onChange={e => updateNode(i, { id: e.target.value })} />
+            <input className="bg-transparent font-bold w-24" value={node.id} onChange={e => renameNode(i, e.target.value)} />
             <button onClick={() => removeNode(i)} className="text-red-500">X</button>
           </div>
           <input className="bg-transparent border-b border-[#333]" placeholder="Label" value={node.label} onChange={e => updateNode(i, { label: e.target.value })} />

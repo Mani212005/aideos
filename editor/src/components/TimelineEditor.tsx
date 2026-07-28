@@ -1,4 +1,3 @@
-import React, { useState } from "react";
 import type { Film, Shot, Block } from "../../../src/dl/schema";
 
 export function TimelineEditor({ film, onChange }: { film: Film, onChange: (f: Film) => void }) {
