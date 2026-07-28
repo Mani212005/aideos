@@ -9,6 +9,7 @@ same film.
 
 ```bash
 npm run studio      # Remotion Studio — the editing surface
+npm run editor      # Vite + React visual interactive editor (runs on localhost:3000)
 npm run validate    # ~2s: schema + pacing rules, prints the runsheet
 npm run frames      # 17 real stills from both formats → .frames/
 npm run render      # Long (1920×1080) → out/long.mp4
