@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { accentAt, ink, PALETTE, rule, useDLLayout } from "./tokens";
+import { accentAt, ink, PALETTE, rule, useLayout } from "./tokens";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext } from "./accent";
 import { BlockView } from "./Block";
@@ -37,7 +37,7 @@ const CLOSE_MS = 420;
 const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline }) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
-  const layout = useDLLayout();
+  const layout = useLayout();
   const current = shotAt(timeline, frame);
   const shot = current.shot;
 
@@ -144,7 +144,7 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
 
 /** The 8px grid, as a render-time overlay. Off by default; a proofing aid. */
 const Grid: React.FC = () => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   return (
     <AbsoluteFill
       style={{
@@ -164,7 +164,7 @@ const Grid: React.FC = () => {
 const Rail: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const layout = useDLLayout();
+  const layout = useLayout();
   const current = shotAt(timeline, frame);
   const total = totalFrames(timeline);
   const progress = frame / total;

@@ -3,13 +3,13 @@
 Implements the spec at
 `claude.ai/design/p/1d822f99-b90c-487a-a17f-76320be74e76` → `Video Design Language.dc.html`.
 
-Compositions: **DL-Long** (1920×1080) and **DL-Reel** (1080×1920). They are the
+Compositions: **Long** (1920×1080) and **Reel** (1080×1920). They are the
 same film, not two edits of it.
 
 | Spec section          | Here                                            |
 | --------------------- | ----------------------------------------------- |
 | §01 Color             | `tokens.ts` — `PALETTE` + the derivation helpers |
-| §02 Type              | `tokens.ts` — `SCALE`, `useDLLayout().type()`    |
+| §02 Type              | `tokens.ts` — `SCALE`, `useLayout().type()`    |
 | §03 Motion grammar    | `motion.ts` — `EXPO`, `MS`, `useEntrance`        |
 | §04 Primitives        | `primitives.tsx`                                 |
 | §05 Stations          | `Film.tsx` — `Stage`                             |
@@ -35,12 +35,12 @@ validated.
 ## Working on it
 
 ```bash
-npm run validate:dl     # ~2s: schema + runsheet rules, and prints the runsheet
-node scripts/dl-frames.mjs   # real stills from both formats → .dl-frames/
-npm run edit            # Remotion Studio
+npm run validate        # ~2s: schema + runsheet rules, and prints the runsheet
+npm run frames          # real stills from both formats → .frames/
+npm run studio          # Remotion Studio
 ```
 
-`validate:dl` enforces §08 as rules rather than advice: no device holds past
+`validate` enforces §08 as rules rather than advice: no device holds past
 25s, never the same device twice in a row, a text beat every 60–90s, a return
 to the canvas every 90s, and at most three accents in a frame.
 
@@ -56,9 +56,8 @@ to the canvas every 90s, and at most three accents in a frame.
 
 - **No code primitive.** The spec is explicit: ideas are carried by graphs,
   vectors and distributions, never by a syntax-highlighted editor.
-- **No captions.** Not part of this design language. The older engine's
-  `ui/Captions.tsx` is styled against the botanical palette and would need
-  re-tokenising before it could be used here.
+- **No captions.** Not part of this design language. Burned-in subtitles fight
+  the panel for the same space, and every platform this ships to draws its own.
 - **No shadows, no grain, no vignette.** Depth is a hairline and a lift in
   surface value.
 

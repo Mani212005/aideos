@@ -9,7 +9,7 @@ import {
   rule,
   SERIF,
   SUNKEN,
-  useDLLayout,
+  useLayout,
   type DLLayout,
 } from "./tokens";
 import { EXPO, frames, MS, useEntrance, useProgress } from "./motion";
@@ -92,7 +92,7 @@ const parseHeadline = (text: string, accentWord?: string) => {
 /* -------------------------------------------------------------------------- */
 
 export const Kicker: React.FC<BlockProps & { text: string }> = ({ text, start, index }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const align = useAlign();
   const enter = useEntrance(start, index, layout.px(12));
@@ -132,7 +132,7 @@ export const Kicker: React.FC<BlockProps & { text: string }> = ({ text, start, i
 export const TextReveal: React.FC<
   BlockProps & { text: string; size: "display" | "headline" | "subhead"; accentWord?: string }
 > = ({ text, size, accentWord, start, index }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const align = useAlign();
   const { fps } = useVideoConfig();
@@ -170,7 +170,7 @@ const Word: React.FC<{ word: string; start: number; index: number; accent: strin
   index,
   accent,
 }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const enter = useEntrance(start, index, layout.px(12));
   // The underline draws only after the word it belongs to has arrived.
   const draw = useProgress(start, MS.enter, MS.stagger * index + MS.enter * 0.6);
@@ -205,7 +205,7 @@ const Word: React.FC<{ word: string; start: number; index: number; accent: strin
 };
 
 export const Body: React.FC<BlockProps & { text: string }> = ({ text, start, index }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const align = useAlign();
   const enter = useEntrance(start, index, layout.px(12));
   return (
@@ -229,7 +229,7 @@ export const Body: React.FC<BlockProps & { text: string }> = ({ text, start, ind
 
 /** Maths, in italic serif. `*token*` accents a symbol. */
 export const MathLine: React.FC<BlockProps & { text: string }> = ({ text, start, index }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
 
@@ -279,7 +279,7 @@ const compact = (n: number) => {
 export const StatCounter: React.FC<
   BlockProps & { to: number; label: string; format: "plain" | "compact"; suffix?: string }
 > = ({ to, label, format, suffix, start, index }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const p = useProgress(start, 900, MS.stagger * index);
@@ -312,7 +312,7 @@ export const StatCounter: React.FC<
 /* -------------------------------------------------------------------------- */
 
 export const Divider: React.FC<BlockProps> = ({ start, index }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const draw = useProgress(start, MS.enter, MS.stagger * index);
   return (
     <div
@@ -328,7 +328,7 @@ export const Divider: React.FC<BlockProps> = ({ start, index }) => {
 };
 
 export const IconLabel: React.FC<BlockProps & { text: string }> = ({ text, start, index }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const align = useAlign();
   const enter = useEntrance(start, index, layout.px(12));
@@ -374,7 +374,7 @@ export const IconLabel: React.FC<BlockProps & { text: string }> = ({ text, start
 export const Card: React.FC<
   BlockProps & { title: string; body?: string; state: "idle" | "active" }
 > = ({ title, body, state, start, index }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const active = state === "active";
@@ -405,7 +405,7 @@ export const Card: React.FC<
 export const ProgressBar: React.FC<
   BlockProps & { value: number; label?: string; chapters?: number }
 > = ({ value, label, chapters, start, index }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const p = useProgress(start, 900, MS.stagger * index) * value;
@@ -512,7 +512,7 @@ export const Plot: React.FC<
     endLabel?: string;
   }
 > = ({ points, xLabel, yLabel, endLabel, start, index }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const p = useProgress(start, 2600, MS.stagger * index);

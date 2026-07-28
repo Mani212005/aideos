@@ -127,7 +127,7 @@ export type DLLayout = {
   px: (n: number) => number;
 };
 
-export const useDLLayout = (): DLLayout => {
+export const useLayout = (): DLLayout => {
   const { width, height } = useVideoConfig();
   const format: Format = width < height ? "reel" : "long";
   const k = width / REFERENCE_WIDTH[format];

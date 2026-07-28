@@ -1,18 +1,13 @@
 /**
- * Note: When using the Node.JS APIs, the config file
- * doesn't apply. Instead, pass options directly to the APIs.
+ * Note: when using the Node APIs (see `scripts/frames.mjs`) this file does not
+ * apply — options are passed to those APIs directly.
  *
  * All configuration options: https://remotion.dev/docs/config
  */
 
 import { Config } from "@remotion/cli/config";
-import { enableTailwind } from '@remotion/tailwind-v4';
 
+// The film is DOM and SVG only — no WebGL — so the default renderer is correct
+// and there is no GPU flag to set here.
 Config.setVideoImageFormat("jpeg");
 Config.setOverwriteOutput(true);
-Config.overrideWebpackConfig(enableTailwind);
-
-// The scene is WebGL. Headless Chrome defaults to SwiftShader, which is both slow
-// and subtly different from the GPU path; ANGLE is the supported renderer for
-// three.js content on macOS.
-Config.setChromiumOpenGlRenderer("angle");

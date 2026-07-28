@@ -14,8 +14,8 @@ import { PALETTE } from "./tokens";
  */
 export const FILM = parseFilm(ACTIVE_FILM);
 export const TIMELINE = buildTimeline(FILM);
-export const DL_FPS = FILM.fps;
-export const DL_TOTAL_FRAMES = totalFrames(TIMELINE);
+export const FPS = FILM.fps;
+export const TOTAL_FRAMES = totalFrames(TIMELINE);
 
 /**
  * The Studio hand-off surface.
@@ -25,7 +25,7 @@ export const DL_TOTAL_FRAMES = totalFrames(TIMELINE);
  * the proofing overlays. Anything else is a design decision, and design
  * decisions live in the schema where they can be validated.
  */
-export const dlPropsSchema = z.object({
+export const filmPropsSchema = z.object({
   /** §01's one colour. Changing it re-skins the entire film. */
   accent: zColor(),
   /** Filename in `public/`. Drop a recording there and type its name. */
@@ -39,9 +39,9 @@ export const dlPropsSchema = z.object({
   showGrid: z.boolean(),
 });
 
-export type DLProps = z.infer<typeof dlPropsSchema>;
+export type FilmProps = z.infer<typeof filmPropsSchema>;
 
-export const defaultDLProps: DLProps = {
+export const defaultFilmProps: FilmProps = {
   accent: FILM.accent ?? PALETTE.accent,
   voiceoverSrc: FILM.voiceover?.src ?? "",
   voiceoverVolume: FILM.voiceover?.volume ?? 1,

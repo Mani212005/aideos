@@ -1,9 +1,11 @@
 /**
- * Fast episode validation — no browser, no bundle, no render.
+ * Validate the active design-language film, and print its runsheet.
  *
- * The Zod schema already rejects a malformed episode, but it does so inside the
- * renderer, so a bad string costs a full Chromium boot to discover. This runs the
- * same parse in ~2 seconds. Run it before every storyboard or render.
+ * The schema enforces §08's rhythm rules — no device past 25s, never the same
+ * device twice in a row, a text beat every 60–90s, the canvas returning as an
+ * anchor — so this catches a pacing mistake in two seconds rather than after a
+ * twenty-five minute render. The printed runsheet is the same bar chart the
+ * spec draws, in text.
  */
 import * as esbuild from "esbuild";
 import path from "node:path";
@@ -26,19 +28,43 @@ const load = async (rel, name) => {
   return import(`file://${tmp}?t=${Date.now()}`);
 };
 
-const { ACTIVE_EPISODE } = await load("src/activeEpisode.ts", "validate-episode.mjs");
-const { parseEpisode } = await load("src/schema.ts", "validate-schema.mjs");
+const { ACTIVE_FILM } = await load("src/dl/activeFilm.ts", "dl-film.mjs");
+const { parseFilm, DEVICE_BLOCKS } = await load("src/dl/schema.ts", "dl-schema.mjs");
+const { buildTimeline, totalFrames } = await load("src/dl/camera.ts", "dl-camera.mjs");
 
-const episode = parseEpisode(ACTIVE_EPISODE);
+const film = parseFilm(ACTIVE_FILM);
+const timeline = buildTimeline(film);
+const frames = totalFrames(timeline);
+const seconds = frames / film.fps;
+const stamp = (s) =>
+  `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 
-const seconds = episode.scenes.reduce((sum, s) => sum + s.duration, 0);
-const frames = Math.round(seconds * episode.fps);
-const mins = Math.floor(seconds / 60);
+console.log(`\n✓ ${film.id} — valid`);
+console.log(
+  `  ${film.shots.length} shots · ${film.canvas.nodes.length} nodes · ${film.canvas.edges.length} edges`,
+);
+console.log(`  ${stamp(seconds)} · ${frames} frames @ ${film.fps}fps · ${film.chapters.length} chapters\n`);
 
-console.log(`✓ ${episode.id} — valid`);
-console.log(`  ${episode.scenes.length} scenes · ${mins}m ${Math.round(seconds % 60)}s · ${frames} frames @ ${episode.fps}fps`);
-console.log(`  subject: ${episode.subject} · theme: ${episode.theme}`);
+const KIND = { none: "spine", frame: "beat", anchor: "device" };
+let clock = 0;
+for (const { shot, chapter } of timeline) {
+  const device = shot.blocks.find((b) => DEVICE_BLOCKS.includes(b.c));
+  const kind = device ? "device" : KIND[shot.stage];
+  const bar = { spine: "█", device: "▓", beat: "░" }[kind].repeat(Math.max(1, Math.round(shot.dur / 2)));
+  const look = shot.look === "all" ? "all" : Array.isArray(shot.look) ? shot.look.join("+") : shot.look;
+  console.log(
+    `  ${stamp(clock)}  ch${chapter + 1}  ${shot.move.padEnd(9)} ${String(shot.dur).padStart(2)}s ` +
+      `${bar.padEnd(13)} ${shot.id.padEnd(11)} ${(device?.c ?? kind).padEnd(14)} → ${look}`,
+  );
+  clock += shot.dur;
+}
 
-const modules = {};
-for (const s of episode.scenes) modules[s.visual ?? "type only"] = (modules[s.visual ?? "type only"] ?? 0) + 1;
-console.log(`  modules: ${Object.entries(modules).map(([k, v]) => `${k}×${v}`).join(", ")}`);
+const devices = {};
+for (const { shot } of timeline)
+  for (const b of shot.blocks)
+    if (DEVICE_BLOCKS.includes(b.c)) devices[b.c] = (devices[b.c] ?? 0) + 1;
+
+console.log(
+  `\n  devices used: ${Object.entries(devices).map(([k, v]) => `${k}×${v}`).join(", ")}`,
+);
+console.log(`  █ spine  ▓ device  ░ beat\n`);

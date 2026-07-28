@@ -11,26 +11,26 @@ import { fileURLToPath } from "node:url";
 import { mkdir } from "node:fs/promises";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const OUT = path.join(ROOT, ".dl-frames");
+const OUT = path.join(ROOT, ".frames");
 
 const PICKS = [
-  ["DL-Long", 60, "01-open-beat"],
-  ["DL-Long", 400, "02-tokenstrip"],
-  ["DL-Long", 700, "03-spine"],
-  ["DL-Long", 1150, "04-attention-arcs"],
-  ["DL-Long", 1700, "05-matrix"],
-  ["DL-Long", 2300, "06-kv-copy"],
-  ["DL-Long", 3100, "07-layerstack"],
-  ["DL-Long", 3500, "08-cache-matrix"],
-  ["DL-Long", 4300, "09-distribution"],
-  ["DL-Long", 4900, "10-scalebar"],
-  ["DL-Long", 5400, "11-plot"],
-  ["DL-Long", 6200, "12-payoff-wide"],
-  ["DL-Long", 6440, "13-close"],
-  ["DL-Reel", 400, "R1-tokenstrip"],
-  ["DL-Reel", 1150, "R2-attention"],
-  ["DL-Reel", 4300, "R3-distribution"],
-  ["DL-Reel", 6200, "R4-payoff"],
+  ["Long", 60, "01-open-beat"],
+  ["Long", 400, "02-tokenstrip"],
+  ["Long", 700, "03-spine"],
+  ["Long", 1150, "04-attention-arcs"],
+  ["Long", 1700, "05-matrix"],
+  ["Long", 2300, "06-kv-copy"],
+  ["Long", 3100, "07-layerstack"],
+  ["Long", 3500, "08-cache-matrix"],
+  ["Long", 4300, "09-distribution"],
+  ["Long", 4900, "10-scalebar"],
+  ["Long", 5400, "11-plot"],
+  ["Long", 6200, "12-payoff-wide"],
+  ["Long", 6440, "13-close"],
+  ["Reel", 400, "R1-tokenstrip"],
+  ["Reel", 1150, "R2-attention"],
+  ["Reel", 4300, "R3-distribution"],
+  ["Reel", 6200, "R4-payoff"],
 ];
 
 await mkdir(OUT, { recursive: true });
@@ -38,9 +38,9 @@ await mkdir(OUT, { recursive: true });
 console.log("bundling…");
 const serveUrl = await bundle({ entryPoint: path.join(ROOT, "src/index.ts") });
 
-// remotion.config.ts is CLI-only; the Node APIs need this passed explicitly.
-const chromiumOptions = { gl: "angle" };
-const browser = await openBrowser("chrome", { chromiumOptions });
+// One browser for every still. Opening one per frame is the single biggest
+// cost in this script — the render itself is milliseconds.
+const browser = await openBrowser("chrome");
 
 const comps = new Map();
 for (const [id, frame, name] of PICKS) {
@@ -53,7 +53,6 @@ for (const [id, frame, name] of PICKS) {
     output: path.join(OUT, `${name}.png`),
     frame,
     puppeteerInstance: browser,
-    chromiumOptions,
     scale: 0.5,
   });
   console.log(`  ${name} (${id} @ ${frame})`);

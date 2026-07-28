@@ -2,7 +2,7 @@ import React from "react";
 import { Audio } from "@remotion/media";
 import { staticFile } from "remotion";
 import { FilmView } from "./Film";
-import { DL_TOTAL_FRAMES, FILM, TIMELINE, type DLProps } from "./runtime";
+import { TOTAL_FRAMES, FILM, TIMELINE, type FilmProps } from "./runtime";
 
 /**
  * The film plus its soundtrack.
@@ -17,7 +17,7 @@ import { DL_TOTAL_FRAMES, FILM, TIMELINE, type DLProps } from "./runtime";
 const bed = (frame: number, hasVoice: boolean, master: number) => {
   const level = (hasVoice ? 0.34 : 1) * master * 0.24;
   const headIn = Math.min(1, frame / 24);
-  const tailOut = Math.max(0, Math.min(1, (DL_TOTAL_FRAMES - frame) / 45));
+  const tailOut = Math.max(0, Math.min(1, (TOTAL_FRAMES - frame) / 45));
   return level * headIn * tailOut;
 };
 
@@ -26,9 +26,9 @@ const bed = (frame: number, hasVoice: boolean, master: number) => {
  * puts an audible click on the first and last frames.
  */
 const voice = (frame: number, level: number) =>
-  level * Math.min(1, frame / 6) * Math.min(1, Math.max(0, DL_TOTAL_FRAMES - frame) / 12);
+  level * Math.min(1, frame / 6) * Math.min(1, Math.max(0, TOTAL_FRAMES - frame) / 12);
 
-export const DLVideo: React.FC<DLProps> = ({
+export const Video: React.FC<FilmProps> = ({
   accent,
   voiceoverSrc,
   voiceoverVolume,

@@ -1,6 +1,6 @@
 import React from "react";
 import { Img, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { accentAt, FAINT, MONO, PALETTE, rule, SERIF, SUNKEN, useDLLayout } from "./tokens";
+import { accentAt, FAINT, MONO, PALETTE, rule, SERIF, SUNKEN, useLayout } from "./tokens";
 import { EXPO, frames, MS, useEntrance, useProgress } from "./motion";
 import { useAccent } from "./accent";
 import { AlignContext } from "./align";
@@ -49,7 +49,7 @@ const useSweep = (start: number, durationInFrames: number, delayMs = 0) => {
 export const TokenStrip: React.FC<
   BlockProps & { tokens: string[]; lit: number[]; caption?: string }
 > = ({ tokens, lit, caption, start, index, durationInFrames }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const sweep = useSweep(start, durationInFrames);
@@ -95,7 +95,7 @@ export const TokenStrip: React.FC<
 export const AttentionArcs: React.FC<
   BlockProps & { tokens: string[]; focus: number; links: number[]; note?: string }
 > = ({ tokens, focus, links, note, start, index, durationInFrames }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const sweep = useSweep(start, durationInFrames);
@@ -172,7 +172,7 @@ export const VectorSpace: React.FC<
     yLabel?: string;
   }
 > = ({ points, arrow, xLabel, yLabel, start, index, durationInFrames }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const sweep = useSweep(start, durationInFrames);
@@ -259,7 +259,7 @@ export const MatrixGrid: React.FC<
     sweep: "row" | "cell";
   }
 > = ({ values, rowLabel, colLabel, valueLabel, sweep, start, index, durationInFrames }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const progress = useSweep(start, durationInFrames);
@@ -360,7 +360,7 @@ export const Distribution: React.FC<
     note?: string;
   }
 > = ({ prompt, items, note, start, index, durationInFrames }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const grow = useProgress(start, 900, MS.stagger * index + MS.enter);
@@ -480,7 +480,7 @@ export const Distribution: React.FC<
 export const LayerStack: React.FC<
   BlockProps & { count: number; bottomLabel?: string; topLabel?: string }
 > = ({ count, bottomLabel, topLabel, start, index, durationInFrames }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const travel = useSweep(start, durationInFrames);
@@ -561,7 +561,7 @@ export const LayerStack: React.FC<
 export const ScaleBar: React.FC<
   BlockProps & { ticks: string[]; value: number; label?: string }
 > = ({ ticks, value, label, start, index, durationInFrames }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const grow = useSweep(start, durationInFrames) * value;
@@ -623,7 +623,7 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
   index,
   durationInFrames,
 }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   const enter = useEntrance(start, index, layout.px(12));
   const spin = useSweep(start, durationInFrames);
 
@@ -680,7 +680,7 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
  * around it.
  */
 export const TextBeat: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const layout = useDLLayout();
+  const layout = useLayout();
   // Long-form centres; a reel does not. A 9:16 frame is read like a page, and
   // centred type in a narrow column gives every line a different left edge.
   const align = layout.format === "reel" ? "left" : "center";
