@@ -2,7 +2,7 @@
   "name": "aideos",
   "version": "1.0.0",
   "description": "Explainer video as data — one canvas, one camera, two aspect ratios.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "private": true,
   "dependencies": {
     "@remotion/cli": "4.0.499",
