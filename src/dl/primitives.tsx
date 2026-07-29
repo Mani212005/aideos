@@ -70,7 +70,7 @@ const parseHeadline = (text: string, accentWord?: string) => {
     clean += ch;
   }
   // An unclosed marker means the author meant a literal asterisk. Keep it.
-  if (open !== null) clean = text.replace(/\*/g, (m, i) => (i === open ? "*" : ""));
+  if (open !== null) clean = text.replace(/\*/g, (_m, i) => (i === open ? "*" : ""));
 
   const target = accentWord ? stripPunct(accentWord) : null;
   const out: { word: string; accent: boolean }[] = [];

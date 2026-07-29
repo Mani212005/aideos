@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "autoprefixer": "^10.5.4",
     "lucide-react": "^1.27.0",
