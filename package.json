@@ -11,6 +11,7 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
+    "@deepgram/sdk": "^3.13.0",
     "@remotion/cli": "4.0.499",
     "@remotion/google-fonts": "4.0.499",
     "@remotion/media": "4.0.499",
