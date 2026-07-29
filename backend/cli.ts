@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import { z } from "zod";
 import { DEVICE_BLOCKS, filmBaseSchema, parseFilm } from "../src/dl/schema";
 import type { Film } from "../src/dl/schema";
+import { processAudioForFilm } from "./audio";
 
 dotenv.config({ quiet: true });
 
@@ -49,6 +50,7 @@ Structure:
 - A shot with move: "cut" opens the next chapter, and the chapter rail reads its label from the chapters array. So the number of shots with move: "cut" must equal chapters.length, and each cut must land where that chapter's section of the argument begins.
 - Do not provide 'audio', 'voiceover', or 'captions' fields, nor 'src' for AnalogyInset, as these require specific existing files in the public directory.
 - stage: "none" carries no blocks.
+- For each shot, provide 'scriptText' containing the narration/script the AI voice should speak during that shot. Keep it conversational.
 
 Pacing (all enforced; a violation fails validation):
 - Device blocks are: ${DEVICE_BLOCKS.join(", ")}.
@@ -154,7 +156,19 @@ program
     // Validate before touching the tree. `npm run validate` catches the same
     // errors, but only after `activeFilm.ts` has been repointed at the broken
     // film — and then studio, frames and render all fail until it is reverted.
-    const film = parseFilm(raw);
+    let film = parseFilm(raw);
+
+    const publicDir = path.join(ROOT, "public");
+    if (process.env.DEEPGRAM_API_KEY) {
+      console.log("Deepgram key found, generating TTS and STT...");
+      try {
+        film = await processAudioForFilm(film, publicDir);
+      } catch (err) {
+        console.error("Audio generation failed, continuing without audio:", err);
+      }
+    } else {
+      console.log("No DEEPGRAM_API_KEY found, skipping audio generation.");
+    }
 
     await fs.writeFile(GENERATED_PATH, generatedModule(film), "utf-8");
     console.log(`Saved generated film to ${GENERATED_PATH}`);
