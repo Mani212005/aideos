@@ -36,11 +36,36 @@ export function TimelineEditor({ film, onChange }: { film: Film, onChange: (f: F
     onChange({ ...film, shots });
   };
 
+  const generateVoiceover = async () => {
+    try {
+      const res = await fetch('/api/voiceover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ film })
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to generate voiceover: ${res.statusText}`);
+      }
+      const data = await res.json();
+      if (data.film) {
+        onChange(data.film);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error generating voiceover');
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4 text-sm mt-4 border-t border-[#333] pt-4">
       <div className="flex justify-between items-center">
         <h2 className="font-bold">Timeline (Shots)</h2>
-        <button onClick={addShot} className="text-xs bg-[#222] px-2 py-1 rounded">Add Shot</button>
+        <div className="flex gap-2">
+          <button onClick={generateVoiceover} className="text-xs bg-[#635BFF] hover:bg-[#5249e6] px-2 py-1 rounded text-white font-medium transition-colors">
+            Generate Voiceover
+          </button>
+          <button onClick={addShot} className="text-xs bg-[#222] px-2 py-1 rounded">Add Shot</button>
+        </div>
       </div>
       {film.shots.map((shot, i) => (
         <div key={i} className="border border-[#333] p-2 rounded bg-[#1A1A1B] flex flex-col gap-2">
@@ -73,6 +98,17 @@ export function TimelineEditor({ film, onChange }: { film: Film, onChange: (f: F
               <option value="frame">frame</option>
               <option value="none">none</option>
             </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <span className="text-gray-400">Script (TTS):</span>
+            <textarea
+              className="bg-[#111] w-full px-2 py-1 text-xs text-gray-300 resize-y"
+              rows={2}
+              value={shot.scriptText || ''}
+              onChange={e => updateShot(i, { scriptText: e.target.value })}
+              placeholder="Text for Deepgram to speak..."
+            />
           </div>
           
           <div className="mt-2 text-xs">

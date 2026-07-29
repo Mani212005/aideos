@@ -222,6 +222,7 @@ export const shotSchema = z.object({
   stage: z.enum(["anchor", "frame", "none"]).default("anchor"),
   /** Tighten or loosen the framing. 1 fits the target with standard padding. */
   zoom: z.number().min(0.4).max(2.5).default(1),
+  scriptText: z.string().optional(),
   blocks: z.array(blockSchema).max(6).default([]),
 });
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Audio } from "remotion";
 import { accentAt, ink, PALETTE, rule, useLayout } from "./tokens";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext } from "./accent";
@@ -260,6 +260,19 @@ export const FilmView: React.FC<FilmViewProps> = ({
   return (
     <AccentContext.Provider value={accent}>
       <AbsoluteFill style={{ background: PALETTE.canvas, color: accent }}>
+        {film.voiceover?.src && (
+          <Audio src={film.voiceover.src} volume={() => film.voiceover!.volume}>
+            {film.captions && (
+              <track
+                default
+                kind="captions"
+                src={film.captions}
+                srcLang="en"
+                label="English"
+              />
+            )}
+          </Audio>
+        )}
         <AbsoluteFill style={{ transform: `scale(${drift})` }}>
           <AbsoluteFill style={{ opacity: canvasOpacity }}>
             <CanvasGraph film={film} timeline={timeline} cam={cam} />
