@@ -1,0 +1,16 @@
+WEBVTT
+
+00:00:00.160 --> 00:00:13.859
+Today, we are going to talk about RL adapters. An RL adapter is a small trainable parameter module inserted into a large frozen per train model. Only the adapter parameters receive gradients from the reinforcement learning objective.
+
+00:00:14.494 --> 00:00:20.355
+LoRa decomposes delta w into b times. Aware rain car is typically four to 64.
+
+00:00:20.574 --> 00:00:25.154
+Q LoRa applies LoRa on top of a four bit quantized based model.
+
+00:00:25.454 --> 00:00:33.590
+PPO uses advantage estimation and clips probability ratio GPO removes the critic model and uses group relative normalization to compute advantages.
+
+00:00:34.129 --> 00:00:40.309
+Self learning loop. Compute gradients only for adapter parameters while keeping the base model frozen and untouched.
