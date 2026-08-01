@@ -4,11 +4,11 @@ import { FilmView } from "../../src/dl/Film";
 import { buildTimeline, totalFrames } from "../../src/dl/camera";
 import { kvcacheFilm } from "../../src/dl/films/kvcache";
 import type { Film } from "../../src/dl/schema";
-import { CanvasEditor } from "./components/CanvasEditor";
-import { TimelineEditor } from "./components/TimelineEditor";
+import { MindMap } from "./components/MindMap";
+import { Styleboard } from "./components/Styleboard";
+import { NodeEditor } from "./components/NodeEditor";
+import { ShotEditor } from "./components/ShotEditor";
 
-// Every film module in src/dl/films, keyed by the id the save API writes it
-// back under. Films export one const, so the module's first export is the film.
 const filmModules = import.meta.glob("../../src/dl/films/*.ts", { eager: true }) as Record<
   string,
   Record<string, Film>
@@ -22,23 +22,28 @@ const filmsById = new Map<string, Film>(
   }),
 );
 
-// The two compositions in src/Root.tsx are one film seen through two viewports,
-// and reel framing is what moving a node breaks first — so both preview here.
 const FORMATS = {
   long: { width: 1920, height: 1080 },
   reel: { width: 1080, height: 1920 },
 };
 
 type Format = keyof typeof FORMATS;
+type Mode = "map" | "styleboard" | "video";
+type Selection = { type: "node" | "shot", id: string } | null;
 
 export default function App() {
   const [film, setFilm] = useState<Film>(kvcacheFilm);
   const [format, setFormat] = useState<Format>("long");
+  const [mode, setMode] = useState<Mode>("map");
+  const [selection, setSelection] = useState<Selection>(null);
   const [filmIds, setFilmIds] = useState<string[]>([...filmsById.keys()]);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
 
-  // The server owns src/dl/films; the bundler owns what can actually be opened.
+  // Styleboard / presentation state
+  const [accent, setAccent] = useState(film.accent || "#635BFF");
+  const [storyStyle, setStoryStyle] = useState("default");
+
   useEffect(() => {
     let live = true;
     fetch("/api/films")
@@ -67,10 +72,12 @@ export default function App() {
     setSaving(true);
     setStatus(null);
     try {
+      // Ensure we push accent into film before saving if they changed it
+      const filmToSave = { ...film, accent: accent === "#635BFF" ? undefined : accent };
       const res = await fetch(`/api/films/${film.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ film })
+        body: JSON.stringify({ film: filmToSave })
       });
       const payload = (await res.json().catch(() => null)) as
         | { file?: string; error?: string; issues?: string[] }
@@ -91,24 +98,60 @@ export default function App() {
     }
   };
 
+  const generateVoiceover = async () => {
+    try {
+      const res = await fetch('/api/voiceover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ film })
+      });
+      if (!res.ok) throw new Error(`Failed to generate voiceover: ${res.statusText}`);
+      const data = await res.json();
+      if (data.film) setFilm(data.film);
+    } catch (e) {
+      console.error(e);
+      alert('Error generating voiceover');
+    }
+  };
+
+  const addNode = () => {
+    const nodes = [...film.canvas.nodes, { id: `node-${Date.now()}`, label: "new node", x: 100, y: 100, w: 190, h: 62 }];
+    setFilm({ ...film, canvas: { ...film.canvas, nodes } });
+  };
+
+  const addEdge = () => {
+    const edges = [...film.canvas.edges, { from: film.canvas.nodes[0]?.id || "", to: film.canvas.nodes[0]?.id || "", dashed: false }];
+    setFilm({ ...film, canvas: { ...film.canvas, edges } });
+  };
+
+  const addShot = () => {
+    const shots = [...film.shots, { id: `shot-${Date.now()}`, dur: 10, look: film.canvas.nodes[0]?.id || 'all', move: 'hold', stage: 'anchor', zoom: 1, drift: false, blocks: [] } as any];
+    setFilm({ ...film, shots });
+  };
+
+  // Derive presentation props from storyStyle
+  const showGrid = storyStyle === "technical";
+  const showRail = storyStyle !== "minimal";
+
   return (
-    <div className="flex h-screen bg-[#0A0A0B] text-[#F5F5F5] overflow-hidden">
-      {/* Sidebar */}
-      <div className="w-80 border-r border-[#333] p-4 flex flex-col gap-4 overflow-y-auto shrink-0">
+    <div className="flex h-screen bg-[#0A0A0B] text-[#F5F5F5] overflow-hidden font-sans">
+      
+      {/* LEFT SIDEBAR (Context & Editing) */}
+      <div className="w-80 border-r border-[#333] p-4 flex flex-col gap-4 overflow-y-auto shrink-0 bg-[#0A0A0B]">
         <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold">Aideos Editor</h1>
+          <h1 className="text-xl font-bold tracking-tight">Aideos Editor</h1>
           <button
-            className="bg-[#635BFF] text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+            className="bg-[#635BFF] hover:bg-[#5249e6] text-white px-3 py-1 rounded text-xs font-bold disabled:opacity-50 transition-colors"
             onClick={handleSave}
             disabled={saving}
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? "SAVING..." : "SAVE"}
           </button>
         </div>
 
         {status ? (
           <pre
-            className={`whitespace-pre-wrap text-xs rounded p-2 border ${
+            className={`whitespace-pre-wrap text-[10px] rounded p-2 border ${
               status.ok
                 ? "border-[#333] text-gray-400"
                 : "border-red-900 text-red-400 bg-[#1A0F10]"
@@ -118,75 +161,181 @@ export default function App() {
           </pre>
         ) : null}
 
-        <div className="flex flex-col gap-2">
-          <label className="text-sm text-gray-400">Film</label>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Film</label>
           <select
-            className="bg-[#1A1A1B] border border-[#333] rounded px-2 py-1 text-sm"
+            className="bg-[#1A1A1B] border border-[#333] rounded px-2 py-1.5 text-sm outline-none focus:border-[#635BFF]"
             value={film.id}
             onChange={e => {
               const next = filmsById.get(e.target.value);
               if (!next) return;
               setFilm(next);
+              setAccent(next.accent || "#635BFF");
               setStatus(null);
+              setSelection(null);
             }}
           >
             {filmIds.map(id => <option key={id} value={id}>{id}</option>)}
           </select>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-sm text-gray-400">Title</label>
-          <input
-            className="bg-[#1A1A1B] border border-[#333] rounded px-2 py-1 text-sm focus:outline-none focus:border-[#635BFF]"
-            value={film.title}
-            onChange={e => setFilm({...film, title: e.target.value})}
-          />
-        </div>
+        {/* Dynamic Context Editor */}
+        <div className="flex-1 overflow-y-auto flex flex-col gap-4">
+          {!selection && (
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Title</label>
+                <input
+                  className="bg-[#1A1A1B] border border-[#333] rounded px-2 py-1.5 text-sm outline-none focus:border-[#635BFF]"
+                  value={film.title}
+                  onChange={e => setFilm({...film, title: e.target.value})}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Actions</label>
+                <button onClick={addNode} className="text-left text-sm bg-[#1A1A1B] hover:bg-[#222] border border-[#333] p-2 rounded">Add Node to Map</button>
+                <button onClick={addEdge} className="text-left text-sm bg-[#1A1A1B] hover:bg-[#222] border border-[#333] p-2 rounded">Add Edge to Map</button>
+                <button onClick={addShot} className="text-left text-sm bg-[#1A1A1B] hover:bg-[#222] border border-[#333] p-2 rounded">Add Shot to Sequence</button>
+                <button onClick={generateVoiceover} className="text-left text-sm bg-[#635BFF]/10 text-[#635BFF] hover:bg-[#635BFF]/20 border border-[#635BFF]/30 p-2 rounded">
+                  Generate Voiceover
+                </button>
+              </div>
+            </div>
+          )}
 
-        <CanvasEditor film={film} onChange={setFilm} />
-        <TimelineEditor film={film} onChange={setFilm} />
-      </div>
+          {selection?.type === "node" && (
+            <>
+              <button 
+                onClick={() => setSelection(null)}
+                className="text-xs text-gray-400 hover:text-white flex items-center gap-1"
+              >
+                ← Back to overview
+              </button>
+              <NodeEditor 
+                film={film} 
+                nodeId={selection.id} 
+                onChange={setFilm} 
+                onSelectShot={(id) => setSelection({ type: "shot", id })}
+                onClearSelection={() => setSelection(null)}
+              />
+            </>
+          )}
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col p-4 gap-3 overflow-hidden relative">
-        <div className="flex gap-2 shrink-0">
-          {(Object.keys(FORMATS) as Format[]).map(f => (
-            <button
-              key={f}
-              onClick={() => setFormat(f)}
-              className={`text-xs px-3 py-1 rounded border ${
-                format === f ? "border-[#635BFF] text-white" : "border-[#333] text-gray-400"
-              }`}
-            >
-              {f} · {FORMATS[f].width}×{FORMATS[f].height}
-            </button>
-          ))}
-        </div>
-        <div className="flex-1 flex items-center justify-center min-h-0 bg-black rounded-lg border border-[#333] overflow-hidden">
-          {timeline ? (
-            <Player
-              component={FilmView}
-              inputProps={{
-                film,
-                timeline,
-                accent: film.accent || "#635BFF",
-                showGrid: false,
-                showRail: true,
-              }}
-              durationInFrames={duration}
-              fps={film.fps}
-              compositionWidth={FORMATS[format].width}
-              compositionHeight={FORMATS[format].height}
-              style={{ width: "100%", height: "100%" }}
-              controls
-              autoPlay
-              loop
-            />
-          ) : (
-            <div className="text-red-500">Error building timeline. Check console.</div>
+          {selection?.type === "shot" && (
+            <>
+              <button 
+                onClick={() => setSelection(null)}
+                className="text-xs text-gray-400 hover:text-white flex items-center gap-1"
+              >
+                ← Back to overview
+              </button>
+              <ShotEditor 
+                film={film} 
+                shotIndex={film.shots.findIndex(s => s.id === selection.id)} 
+                onChange={setFilm} 
+              />
+            </>
           )}
         </div>
       </div>
+
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden relative">
+        
+        {/* Top bar with Layer switcher */}
+        <div className="flex justify-between items-center shrink-0">
+          <div className="flex bg-[#1A1A1B] p-1 rounded-lg border border-[#333]">
+            {(["map", "styleboard", "video"] as Mode[]).map(m => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`text-xs px-4 py-1.5 rounded-md capitalize font-bold tracking-wide transition-colors ${
+                  mode === m ? "bg-[#635BFF] text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                {m} Layer
+              </button>
+            ))}
+          </div>
+
+          {mode === "video" && (
+            <div className="flex gap-2">
+              {(Object.keys(FORMATS) as Format[]).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFormat(f)}
+                  className={`text-xs px-3 py-1.5 rounded border capitalize font-bold ${
+                    format === f ? "border-[#635BFF] text-white bg-[#635BFF]/10" : "border-[#333] text-gray-400 hover:border-gray-500"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Viewport */}
+        <div className="flex-1 flex min-h-0 relative rounded-lg overflow-hidden">
+          {mode === "map" && (
+            <MindMap 
+              film={film} 
+              selectedNodeId={selection?.type === "node" ? selection.id : null}
+              onSelectNode={(id) => setSelection(id ? { type: "node", id } : null)}
+            />
+          )}
+
+          {mode === "styleboard" && (
+            <Styleboard
+              film={film}
+              accent={accent}
+              onAccentChange={setAccent}
+              storyStyle={storyStyle}
+              onStoryStyleChange={setStoryStyle}
+              onSelectShot={(id) => {
+                setSelection({ type: "shot", id });
+                // Optional: switch back to map mode to edit the shot
+                // but user can also edit from sidebar in styleboard mode.
+              }}
+            />
+          )}
+
+          {mode === "video" && (
+            <div className="w-full h-full bg-black border border-[#333] rounded-lg overflow-hidden flex flex-col items-center justify-center relative">
+              {timeline ? (
+                <>
+                  <Player
+                    component={FilmView}
+                    inputProps={{
+                      film,
+                      timeline,
+                      accent,
+                      showGrid,
+                      showRail,
+                    }}
+                    durationInFrames={duration}
+                    fps={film.fps}
+                    compositionWidth={FORMATS[format].width}
+                    compositionHeight={FORMATS[format].height}
+                    style={{ width: "100%", height: "100%" }}
+                    controls
+                    autoPlay
+                    loop
+                  />
+                  {selection?.type === "shot" && (
+                    <div className="absolute top-4 left-4 bg-[#111]/80 backdrop-blur border border-[#333] rounded px-3 py-1.5 text-xs text-white">
+                      Reviewing Shot: <span className="font-mono text-[#635BFF]">{selection.id}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-red-500">Error building timeline. Check console.</div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
     </div>
   );
 }
