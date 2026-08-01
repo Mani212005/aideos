@@ -1,9 +1,11 @@
+// File Description: Provides the Aideos editor shell for film, graph, storyboard, and playback editing.
+
 import { useEffect, useState, useMemo } from "react";
 import { Player } from "@remotion/player";
 import { FilmView } from "../../src/dl/Film";
 import { buildTimeline, totalFrames } from "../../src/dl/camera";
 import { kvcacheFilm } from "../../src/dl/films/kvcache";
-import type { Film } from "../../src/dl/schema";
+import type { CanvasEdge, Film } from "../../src/dl/schema";
 import { MindMap } from "./components/MindMap";
 import { Styleboard } from "./components/Styleboard";
 import { NodeEditor } from "./components/NodeEditor";
@@ -119,8 +121,25 @@ export default function App() {
     setFilm({ ...film, canvas: { ...film.canvas, nodes } });
   };
 
+  // Add a connection between the first two available nodes.
   const addEdge = () => {
-    const edges = [...film.canvas.edges, { from: film.canvas.nodes[0]?.id || "", to: film.canvas.nodes[0]?.id || "", dashed: false }];
+    const [from, to] = film.canvas.nodes;
+    if (!from || !to) return;
+    const edges: CanvasEdge[] = [...film.canvas.edges, { from: from.id, to: to.id, dashed: false }];
+    setFilm({ ...film, canvas: { ...film.canvas, edges } });
+  };
+
+  // Update one graph connection while preserving the rest of the film.
+  const updateEdge = (index: number, partial: Partial<CanvasEdge>) => {
+    const edges = [...film.canvas.edges];
+    edges[index] = { ...edges[index], ...partial };
+    setFilm({ ...film, canvas: { ...film.canvas, edges } });
+  };
+
+  // Remove a graph connection without allowing the required edge list to become empty.
+  const removeEdge = (index: number) => {
+    if (film.canvas.edges.length <= 1) return;
+    const edges = film.canvas.edges.filter((_, edgeIndex) => edgeIndex !== index);
     setFilm({ ...film, canvas: { ...film.canvas, edges } });
   };
 
@@ -200,6 +219,41 @@ export default function App() {
                   Generate Voiceover
                 </button>
               </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Connections</label>
+                {film.canvas.edges.map((edge, edgeIndex) => (
+                  <div key={`${edge.from}-${edge.to}-${edgeIndex}`} className="flex items-center gap-1 text-xs">
+                    <select
+                      className="min-w-0 flex-1 bg-[#1A1A1B] border border-[#333] rounded px-1.5 py-1"
+                      value={edge.from}
+                      onChange={e => updateEdge(edgeIndex, { from: e.target.value })}
+                    >
+                      {film.canvas.nodes.map(node => <option key={node.id} value={node.id}>{node.id}</option>)}
+                    </select>
+                    <span className="text-gray-500">-&gt;</span>
+                    <select
+                      className="min-w-0 flex-1 bg-[#1A1A1B] border border-[#333] rounded px-1.5 py-1"
+                      value={edge.to}
+                      onChange={e => updateEdge(edgeIndex, { to: e.target.value })}
+                    >
+                      {film.canvas.nodes.map(node => <option key={node.id} value={node.id}>{node.id}</option>)}
+                    </select>
+                    <label className="flex items-center gap-1 text-gray-400" title="Render this connection as dashed">
+                      <input type="checkbox" checked={edge.dashed} onChange={e => updateEdge(edgeIndex, { dashed: e.target.checked })} />
+                      <span className="sr-only">Dashed</span>
+                    </label>
+                    <button
+                      onClick={() => removeEdge(edgeIndex)}
+                      disabled={film.canvas.edges.length <= 1}
+                      className="px-1 text-red-500 disabled:opacity-30"
+                      aria-label={`Delete connection ${edgeIndex + 1}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -216,6 +270,7 @@ export default function App() {
                 nodeId={selection.id} 
                 onChange={setFilm} 
                 onSelectShot={(id) => setSelection({ type: "shot", id })}
+                onNodeIdChange={(id) => setSelection({ type: "node", id })}
                 onClearSelection={() => setSelection(null)}
               />
             </>
@@ -232,7 +287,10 @@ export default function App() {
               <ShotEditor 
                 film={film} 
                 shotIndex={film.shots.findIndex(s => s.id === selection.id)} 
-                onChange={setFilm} 
+                onChange={setFilm}
+                onSelectShot={(id) => setSelection({ type: "shot", id })}
+                onShotIdChange={(id) => setSelection({ type: "shot", id })}
+                onClearSelection={() => setSelection(null)}
               />
             </>
           )}

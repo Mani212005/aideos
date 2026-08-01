@@ -1,3 +1,5 @@
+// File Description: Edits a selected mind map node and keeps its graph and shot references consistent.
+
 import type { Film, CanvasNode, Shot } from "../../../src/dl/schema";
 
 const asNodeId = (raw: string) => raw.toLowerCase().replace(/[^a-z0-9-]/g, "-");
@@ -16,10 +18,12 @@ interface NodeEditorProps {
   nodeId: string;
   onChange: (f: Film) => void;
   onSelectShot: (id: string) => void;
+  onNodeIdChange: (id: string) => void;
   onClearSelection: () => void;
 }
 
-export function NodeEditor({ film, nodeId, onChange, onSelectShot, onClearSelection }: NodeEditorProps) {
+// Renders controls for the selected node and its related shots.
+export function NodeEditor({ film, nodeId, onChange, onSelectShot, onNodeIdChange, onClearSelection }: NodeEditorProps) {
   const nodeIndex = film.canvas.nodes.findIndex(n => n.id === nodeId);
   const node = film.canvas.nodes[nodeIndex];
   
@@ -31,10 +35,12 @@ export function NodeEditor({ film, nodeId, onChange, onSelectShot, onClearSelect
     onChange({ ...film, canvas: { ...film.canvas, nodes } });
   };
 
+  // Rename the node and update every graph and shot reference.
   const renameNode = (raw: string) => {
     const from = node.id;
     const to = asNodeId(raw);
-    if (to === from) return;
+    const duplicate = film.canvas.nodes.some((candidate, index) => index !== nodeIndex && candidate.id === to);
+    if (!to || duplicate || to === from) return;
     const nodes = [...film.canvas.nodes];
     nodes[nodeIndex] = { ...node, id: to };
     const edges = film.canvas.edges.map(e => ({
@@ -47,12 +53,16 @@ export function NodeEditor({ film, nodeId, onChange, onSelectShot, onClearSelect
       look: lookAfter(s.look, id => (id === from ? to : id), to),
     }));
     onChange({ ...film, canvas: { nodes, edges }, shots });
+    onNodeIdChange(to);
   };
 
   const removeNode = () => {
     const gone = node.id;
     const nodes = film.canvas.nodes.filter((_, i) => i !== nodeIndex);
-    const edges = film.canvas.edges.filter(e => e.from !== gone && e.to !== gone);
+    let edges = film.canvas.edges.filter(e => e.from !== gone && e.to !== gone);
+    if (edges.length === 0 && nodes.length >= 2) {
+      edges = [{ from: nodes[0].id, to: nodes[1].id, dashed: false }];
+    }
     const fallback = nodes[0]?.id ?? "all";
     const shots = film.shots.map(s => ({
       ...s,

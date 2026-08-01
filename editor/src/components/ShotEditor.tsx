@@ -1,12 +1,18 @@
+// File Description: Edits one shot and its blocks while preserving selection after deletion.
+
 import type { Film, Shot, Block } from "../../../src/dl/schema";
 
 interface ShotEditorProps {
   film: Film;
   shotIndex: number;
   onChange: (f: Film) => void;
+  onSelectShot: (id: string) => void;
+  onShotIdChange: (id: string) => void;
+  onClearSelection: () => void;
 }
 
-export function ShotEditor({ film, shotIndex, onChange }: ShotEditorProps) {
+// Renders controls for the selected shot and its storyboard blocks.
+export function ShotEditor({ film, shotIndex, onChange, onSelectShot, onShotIdChange, onClearSelection }: ShotEditorProps) {
   const shot = film.shots[shotIndex];
   if (!shot) return null;
 
@@ -14,11 +20,16 @@ export function ShotEditor({ film, shotIndex, onChange }: ShotEditorProps) {
     const shots = [...film.shots];
     shots[shotIndex] = { ...shot, ...partial };
     onChange({ ...film, shots });
+    if (partial.id && partial.id !== shot.id) onShotIdChange(partial.id);
   };
 
+  // Delete the shot and select the nearest remaining shot, if one exists.
   const removeShot = () => {
     const shots = film.shots.filter((_, i) => i !== shotIndex);
     onChange({ ...film, shots });
+    const nextShot = shots[Math.min(shotIndex, shots.length - 1)];
+    if (nextShot) onSelectShot(nextShot.id);
+    else onClearSelection();
   };
 
   const updateBlock = (blockIndex: number, jsonText: string) => {
