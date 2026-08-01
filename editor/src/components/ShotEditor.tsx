@@ -25,6 +25,7 @@ export function ShotEditor({ film, shotIndex, onChange, onSelectShot, onShotIdCh
 
   // Delete the shot and select the nearest remaining shot, if one exists.
   const removeShot = () => {
+    if (film.shots.length <= 1) return;
     const shots = film.shots.filter((_, i) => i !== shotIndex);
     onChange({ ...film, shots });
     const nextShot = shots[Math.min(shotIndex, shots.length - 1)];
@@ -56,7 +57,13 @@ export function ShotEditor({ film, shotIndex, onChange, onSelectShot, onShotIdCh
     <div className="flex flex-col gap-3 text-sm bg-[#1A1A1B] p-3 rounded border border-[#333]">
       <div className="flex justify-between items-center mb-2">
         <h3 className="font-bold text-[#F5F5F5]">Edit Shot</h3>
-        <button onClick={removeShot} className="text-red-500 text-xs hover:underline">Delete Shot</button>
+        <button 
+          onClick={removeShot} 
+          disabled={film.shots.length <= 1}
+          className="text-red-500 text-xs hover:underline disabled:opacity-30 disabled:hover:no-underline"
+        >
+          Delete Shot
+        </button>
       </div>
 
       <div className="flex flex-col gap-1">

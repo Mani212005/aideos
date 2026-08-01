@@ -41,8 +41,7 @@ export function MindMap({ film, selectedNodeId, onSelectNode }: MindMapProps) {
         className="relative"
         style={{ 
           width: Math.max(bounds.w, 800), 
-          height: Math.max(bounds.h, 600),
-          transform: `translate(${-bounds.minX}px, ${-bounds.minY}px)`
+          height: Math.max(bounds.h, 600)
         }}
       >
         <svg className="absolute inset-0 w-full h-full pointer-events-none">
@@ -51,10 +50,10 @@ export function MindMap({ film, selectedNodeId, onSelectNode }: MindMapProps) {
             const to = nodes.find(n => n.id === edge.to);
             if (!from || !to) return null;
 
-            const fromX = from.x + from.w / 2;
-            const fromY = from.y + from.h / 2;
-            const toX = to.x + to.w / 2;
-            const toY = to.y + to.h / 2;
+            const fromX = from.x + from.w / 2 - bounds.minX;
+            const fromY = from.y + from.h / 2 - bounds.minY;
+            const toX = to.x + to.w / 2 - bounds.minX;
+            const toY = to.y + to.h / 2 - bounds.minY;
 
             return (
               <line
@@ -86,8 +85,8 @@ export function MindMap({ film, selectedNodeId, onSelectNode }: MindMapProps) {
                   : "bg-[#1A1A1B] text-[#F5F5F5] border border-[#333] hover:border-[#635BFF]"
               }`}
               style={{
-                left: node.x,
-                top: node.y,
+                left: node.x - bounds.minX,
+                top: node.y - bounds.minY,
                 width: node.w,
                 height: node.h,
               }}
