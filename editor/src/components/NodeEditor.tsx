@@ -57,6 +57,7 @@ export function NodeEditor({ film, nodeId, onChange, onSelectShot, onNodeIdChang
   };
 
   const removeNode = () => {
+    if (film.canvas.nodes.length <= 2) return;
     const gone = node.id;
     const nodes = film.canvas.nodes.filter((_, i) => i !== nodeIndex);
     let edges = film.canvas.edges.filter(e => e.from !== gone && e.to !== gone);
@@ -83,7 +84,13 @@ export function NodeEditor({ film, nodeId, onChange, onSelectShot, onNodeIdChang
     <div className="flex flex-col gap-3 text-sm bg-[#1A1A1B] p-3 rounded border border-[#333]">
       <div className="flex justify-between items-center mb-2">
         <h3 className="font-bold text-[#F5F5F5]">Edit Node</h3>
-        <button onClick={removeNode} className="text-red-500 text-xs hover:underline">Delete</button>
+        <button 
+          onClick={removeNode} 
+          disabled={film.canvas.nodes.length <= 2}
+          className="text-red-500 text-xs hover:underline disabled:opacity-30 disabled:hover:no-underline"
+        >
+          Delete
+        </button>
       </div>
 
       <div className="flex flex-col gap-1">
