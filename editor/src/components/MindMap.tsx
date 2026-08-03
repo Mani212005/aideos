@@ -1,3 +1,4 @@
+// File Description: Renders the visual mind map of the film's canvas nodes and edges, allowing selection and navigation of the spatial structure.
 import { useMemo } from "react";
 import type { Film } from "../../../src/dl/schema";
 
@@ -7,6 +8,7 @@ interface MindMapProps {
   onSelectNode: (id: string | null) => void;
 }
 
+// Renders the 2D visual node graph and handles node selection.
 export function MindMap({ film, selectedNodeId, onSelectNode }: MindMapProps) {
   const { nodes, edges } = film.canvas;
 

@@ -1,5 +1,6 @@
 // File Description: Edits a selected mind map node and keeps its graph and shot references consistent.
 
+import { useState, useEffect } from "react";
 import type { Film, CanvasNode, Shot } from "../../../src/dl/schema";
 
 const asNodeId = (raw: string) => raw.toLowerCase().replace(/[^a-z0-9-]/g, "-");
@@ -27,6 +28,11 @@ export function NodeEditor({ film, nodeId, onChange, onSelectShot, onNodeIdChang
   const nodeIndex = film.canvas.nodes.findIndex(n => n.id === nodeId);
   const node = film.canvas.nodes[nodeIndex];
   
+  const [localId, setLocalId] = useState(node?.id || "");
+  useEffect(() => {
+    if (node?.id) setLocalId(node.id);
+  }, [node?.id]);
+
   if (!node) return null;
 
   const updateNode = (partial: Partial<CanvasNode>) => {
@@ -36,11 +42,14 @@ export function NodeEditor({ film, nodeId, onChange, onSelectShot, onNodeIdChang
   };
 
   // Rename the node and update every graph and shot reference.
-  const renameNode = (raw: string) => {
+  const commitRename = () => {
     const from = node.id;
-    const to = asNodeId(raw);
+    const to = asNodeId(localId);
     const duplicate = film.canvas.nodes.some((candidate, index) => index !== nodeIndex && candidate.id === to);
-    if (!to || duplicate || to === from) return;
+    if (!to || duplicate || to === from) {
+      setLocalId(from);
+      return;
+    }
     const nodes = [...film.canvas.nodes];
     nodes[nodeIndex] = { ...node, id: to };
     const edges = film.canvas.edges.map(e => ({
@@ -95,7 +104,13 @@ export function NodeEditor({ film, nodeId, onChange, onSelectShot, onNodeIdChang
 
       <div className="flex flex-col gap-1">
         <label className="text-xs text-gray-400">ID</label>
-        <input className="bg-[#111] border border-[#333] rounded px-2 py-1 font-bold" value={node.id} onChange={e => renameNode(e.target.value)} />
+        <input 
+          className="bg-[#111] border border-[#333] rounded px-2 py-1 font-bold" 
+          value={localId} 
+          onChange={e => setLocalId(e.target.value)} 
+          onBlur={commitRename}
+          onKeyDown={e => e.key === 'Enter' && commitRename()}
+        />
       </div>
 
       <div className="flex flex-col gap-1">
