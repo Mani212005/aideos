@@ -39,7 +39,7 @@ export function ShotEditor({ film, shotIndex, onChange, onSelectShot, onShotIdCh
       const blocks = [...shot.blocks];
       blocks[blockIndex] = parsed;
       updateShot({ blocks });
-    } catch (e) {
+    } catch {
       // ignore invalid json while typing
     }
   };

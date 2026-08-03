@@ -8,8 +8,8 @@ same film.
 ## Commands
 
 ```bash
-npm run studio      # Remotion Studio — the editing surface
-npm run editor      # Vite + React visual interactive editor (runs on localhost:3000)
+npm run editor      # Vite + React Aideos editing and preview studio (localhost:5173)
+npm run studio      # Remotion Studio
 npm run validate    # ~2s: schema + pacing rules, prints the runsheet
 npm run frames      # 17 real stills from both formats → .frames/
 npm run render      # Long (1920×1080) → out/long.mp4
@@ -77,8 +77,7 @@ Film modules must stay **pure data with `import type` only** — the validator
 loads them in plain Node with no React, no fonts and no browser, so a single
 runtime import breaks `npm run validate`.
 
-**Audio:** drop a file into `public/` and type its filename in the Studio props
-panel. Media in `public/` is gitignored on purpose — it is large, and licensed
+**Audio:** drop a file into `public/` and type its filename in the film configuration or Remotion Studio props panel. Media in `public/` is gitignored on purpose — it is large, and licensed
 tracks should not be redistributed with the code.
 
 ## Conventions

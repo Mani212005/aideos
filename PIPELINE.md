@@ -51,11 +51,11 @@ The aideos engine enforces strict invariants through comprehensive checks.
    - **Schema & Pacing Checks**: Validates against a shared Zod/JSON-Schema contract. Enforces text beats every 90s, no device holds >25s, and max 3 accents.
    - **Sync-Drift Validation**: Flags any manual `dur` tweaks that drift meaningfully from the WhisperX aligned word-timestamp span.
    - **Dual-Format Safe-Zone Check**: Ensures content stays within the un-cropped safe margins for both 1920×1080 (Long) and 1080×1920 (Reel).
-2. **Remotion Studio Tweaking**:
+2. **Aideos Studio Tweaking**:
    ```bash
-   npm run studio
+   npm run editor
    ```
-   Preview the draft and apply manual polish to the timing (`dur`) and layouts where necessary.
+   Preview the draft and apply manual polish to the timing (`dur`), canvas nodes, and layout where necessary.
 
 ---
 
