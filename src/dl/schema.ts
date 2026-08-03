@@ -207,8 +207,6 @@ export const shotSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   /** Seconds. Starts are derived, so a shot cannot be out of sequence. */
   dur: z.number().min(2).max(45),
-  /** Optional script/narration block that will be read aloud. */
-  scriptText: z.string().optional(),
   /** Node id, several node ids, or the whole canvas. Never coordinates. */
   look: z.union([z.string(), z.array(z.string()).min(1), z.literal("all")]),
   move: z.enum(["pan", "zoom-in", "zoom-out", "hold", "cut"]).default("pan"),
@@ -224,6 +222,7 @@ export const shotSchema = z.object({
   stage: z.enum(["anchor", "frame", "none"]).default("anchor"),
   /** Tighten or loosen the framing. 1 fits the target with standard padding. */
   zoom: z.number().min(0.4).max(2.5).default(1),
+  /** Optional script/narration block that will be read aloud. */
   scriptText: z.string().optional(),
   blocks: z.array(blockSchema).max(6).default([]),
 });

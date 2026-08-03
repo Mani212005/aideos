@@ -31,7 +31,7 @@ viewport to fit into. There is no per-format authoring anywhere in the project.
 ```bash
 npm install
 npm run validate    # check the film and print its runsheet (~2s)
-npm run studio      # open Remotion Studio
+npm run editor      # open the Aideos visual editing studio
 ```
 
 `validate` prints the film as a runsheet before you spend twenty minutes
@@ -77,7 +77,7 @@ one ends. The device library — matrices, distributions, token strips, attentio
 arcs, vector spaces, layer stacks, scale bars, plots — lives in
 `src/dl/devices.tsx`.
 
-Audio goes in `public/` and is named in the Studio props panel. Media files are
+Audio goes in `public/` and is named in the film configuration or Remotion Studio props panel. Media files are
 gitignored: they are large, and licensed tracks should not ship with the code.
 
 ## Documentation
