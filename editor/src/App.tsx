@@ -5,7 +5,7 @@ import { Player } from "@remotion/player";
 import { FilmView } from "../../src/dl/Film";
 import { buildTimeline, totalFrames } from "../../src/dl/camera";
 import { kvcacheFilm } from "../../src/dl/films/kvcache";
-import type { CanvasEdge, Film } from "../../src/dl/schema";
+import type { CanvasEdge, Film, Shot } from "../../src/dl/schema";
 import { MindMap } from "./components/MindMap";
 import { Styleboard } from "./components/Styleboard";
 import { NodeEditor } from "./components/NodeEditor";
@@ -33,6 +33,7 @@ type Format = keyof typeof FORMATS;
 type Mode = "map" | "styleboard" | "video";
 type Selection = { type: "node" | "shot", id: string } | null;
 
+// Renders the main Aideos Editor application shell.
 export default function App() {
   const [film, setFilm] = useState<Film>(kvcacheFilm);
   const [format, setFormat] = useState<Format>("long");
@@ -144,7 +145,7 @@ export default function App() {
   };
 
   const addShot = () => {
-    const shots = [...film.shots, { id: `shot-${Date.now()}`, dur: 10, look: film.canvas.nodes[0]?.id || 'all', move: 'hold', stage: 'anchor', zoom: 1, drift: false, blocks: [] } as any];
+    const shots = [...film.shots, { id: `shot-${Date.now()}`, dur: 10, look: film.canvas.nodes[0]?.id || 'all', move: 'hold', stage: 'anchor', zoom: 1, drift: false, blocks: [] } as Shot];
     setFilm({ ...film, shots });
   };
 

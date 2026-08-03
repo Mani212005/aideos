@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import type { Film, CanvasNode, Shot } from "../../../src/dl/schema";
 
+// Normalizes a raw string into a valid Aideos node ID.
 const asNodeId = (raw: string) => raw.toLowerCase().replace(/[^a-z0-9-]/g, "-");
 
+// Updates a shot's 'look' reference when a node is renamed or deleted.
 const lookAfter = (look: Shot["look"], change: (id: string) => string | null, fallback: string): Shot["look"] => {
   if (look === "all") return look;
   if (Array.isArray(look)) {
