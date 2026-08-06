@@ -18,3 +18,6 @@ public/*.wav
 public/*.m4a
 public/*.mp4
 public/*.mov
+
+# Scripts directory
+scripts/

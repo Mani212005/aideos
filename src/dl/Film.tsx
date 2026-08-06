@@ -1,10 +1,11 @@
 import React from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Audio } from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Audio, staticFile } from "remotion";
 import { accentAt, ink, PALETTE, rule, useLayout } from "./tokens";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext } from "./accent";
 import { BlockView } from "./Block";
 import { CanvasGraph } from "./CanvasGraph";
+import { PaperRip } from "./PaperRip";
 import { TextBeat } from "./devices";
 import {
   camAt,
@@ -257,11 +258,17 @@ export const FilmView: React.FC<FilmViewProps> = ({
   const canvasOpacity =
     current.shot.stage === "frame" ? 1 - 0.94 * panelOpen : 1 - 0.72 * panelOpen;
 
+  // Paper rip transition between mind-map nodes (Enam Al-Amin paper tear style)
+  const transitionFrames = frames(600, fps);
+  const relFrame = frame - current.from;
+  const isTransitioning = relFrame >= 0 && relFrame <= transitionFrames && current.index > 0;
+  const transitionProgress = isTransitioning ? relFrame / transitionFrames : 0;
+
   return (
     <AccentContext.Provider value={accent}>
       <AbsoluteFill style={{ background: PALETTE.canvas, color: accent }}>
         {film.voiceover?.src && (
-          <Audio src={film.voiceover.src} volume={() => film.voiceover!.volume}>
+          <Audio src={staticFile(film.voiceover.src)} volume={() => film.voiceover!.volume}>
             {film.captions && (
               <track
                 default
@@ -280,6 +287,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
           {showGrid ? <Grid /> : null}
           <Stage film={film} timeline={timeline} />
         </AbsoluteFill>
+        <PaperRip active={isTransitioning} progress={transitionProgress} frame={frame} />
         {showRail ? <Rail film={film} timeline={timeline} /> : null}
         {/* A single hairline vignette at the very edge, to stop the canvas
             bleeding into a phone's rounded corners. No shadows anywhere. */}

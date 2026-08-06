@@ -43,12 +43,14 @@ const serveUrl = await bundle({ entryPoint: path.join(ROOT, "src/index.ts") });
 const browser = await openBrowser("chrome");
 
 const comps = new Map();
-for (const [id, frame, name] of PICKS) {
+for (const [id, targetFrame, name] of PICKS) {
   if (!comps.has(id)) {
     comps.set(id, await selectComposition({ serveUrl, id, inputProps: {} }));
   }
+  const comp = comps.get(id);
+  const frame = Math.min(targetFrame, comp.durationInFrames - 1);
   await renderStill({
-    composition: comps.get(id),
+    composition: comp,
     serveUrl,
     output: path.join(OUT, `${name}.png`),
     frame,
