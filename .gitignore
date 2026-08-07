@@ -19,5 +19,7 @@ public/*.m4a
 public/*.mp4
 public/*.mov
 
-# Scripts directory
+# Scripts and Transitions directory
 scripts/
+transitions/
+public/transitions/

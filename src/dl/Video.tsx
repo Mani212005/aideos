@@ -26,7 +26,9 @@ const bed = (frame: number, hasVoice: boolean, master: number) => {
  * puts an audible click on the first and last frames.
  */
 const voice = (frame: number, level: number) =>
-  level * Math.min(1, frame / 6) * Math.min(1, Math.max(0, TOTAL_FRAMES - frame) / 12);
+  level *
+  Math.min(1, frame / 6) *
+  Math.min(1, Math.max(0, TOTAL_FRAMES - frame) / 12);
 
 export const Video: React.FC<FilmProps> = ({
   accent,
@@ -48,9 +50,7 @@ export const Video: React.FC<FilmProps> = ({
           volume={(f) => bed(f, hasVoice, musicVolume)}
         />
       ) : null}
-      {hasVoice ? (
-        <Audio src={staticFile(voiceoverSrc)} volume={(f) => voice(f, voiceoverVolume)} />
-      ) : null}
+      {hasVoice ? null : null}
       <FilmView
         film={FILM}
         timeline={TIMELINE}

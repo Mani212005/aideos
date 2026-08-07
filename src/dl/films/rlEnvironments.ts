@@ -4,7 +4,7 @@ export const rlEnvironmentsFilm: Film = {
   "id": "rl-environments",
   "title": "RL Environments — The AI Playground",
   "fps": 30,
-  "accent": "#10B981",
+  "accent": "#FF9F1C",
   "chapters": [
     "definition",
     "dynamic duo",
@@ -101,23 +101,23 @@ export const rlEnvironmentsFilm: Film = {
   "shots": [
     {
       "id": "hook",
-      "dur": 18.68,
+      "dur": 22.91,
       "look": "matrix",
       "move": "cut",
       "stage": "anchor",
       "zoom": 0.45,
       "drift": true,
-      "scriptText": "Welcome to the Matrix! Imagine a world where a digital brain doesn't just follow instructions, but actually learns by doing. In Reinforcement Learning, we give the machine a playground, a goal, and the freedom to fail until it succeeds. Today, we're diving into the heart of that playground: the RL Environment!",
+      "scriptText": "What if an AI didn't just execute code... but rewrote its own reality by trial and fire? In the high-stakes world of Reinforcement Learning, we don't give the machine the answers; we give it a playground, a goal, and the freedom to fail until it succeeds. Welcome to the RL Environment: the digital arena where artificial minds master physics, rules, and rewards to solve the impossible!",
       "blocks": [
         {
           "c": "Kicker",
-          "text": "⚡ VISUAL HOOK · WELCOME TO THE MATRIX"
+          "text": "⚡ VISUAL HOOK · REWRITE REALITY BY TRIAL & FIRE"
         },
         {
           "c": "TextReveal",
           "size": "display",
-          "text": "WELCOME TO THE MATRIX!",
-          "accentWord": "MATRIX!"
+          "text": "REWRITE REALITY BY TRIAL & FIRE!",
+          "accentWord": "FIRE!"
         },
         {
           "c": "MatrixGrid",
@@ -150,7 +150,7 @@ export const rlEnvironmentsFilm: Film = {
     },
     {
       "id": "duo",
-      "dur": 17.4,
+      "dur": 17.37,
       "look": "env",
       "move": "zoom-in",
       "stage": "anchor",
@@ -191,7 +191,7 @@ export const rlEnvironmentsFilm: Film = {
     },
     {
       "id": "pillars",
-      "dur": 20.4,
+      "dur": 20.38,
       "look": "state-space",
       "move": "pan",
       "stage": "frame",
@@ -219,7 +219,7 @@ export const rlEnvironmentsFilm: Film = {
     },
     {
       "id": "reality",
-      "dur": 14.21,
+      "dur": 14.24,
       "look": "obs",
       "move": "pan",
       "stage": "none",
@@ -257,7 +257,7 @@ export const rlEnvironmentsFilm: Film = {
     },
     {
       "id": "tools",
-      "dur": 15.08,
+      "dur": 15.06,
       "look": "tools",
       "move": "zoom-in",
       "stage": "anchor",
