@@ -10,6 +10,8 @@ import { MindMap } from "./components/MindMap";
 import { Styleboard } from "./components/Styleboard";
 import { NodeEditor } from "./components/NodeEditor";
 import { ShotEditor } from "./components/ShotEditor";
+import { TransitionEditor } from "./components/TransitionEditor";
+import type { TransitionType } from "./transitions";
 
 const filmModules = import.meta.glob("../../src/dl/films/*.ts", { eager: true }) as Record<
   string,
@@ -30,7 +32,7 @@ const FORMATS = {
 };
 
 type Format = keyof typeof FORMATS;
-type Mode = "map" | "styleboard" | "video";
+type Mode = "map" | "styleboard" | "transitions" | "video";
 type Selection = { type: "node" | "shot", id: string } | null;
 
 // Renders the main Aideos Editor application shell.
@@ -42,6 +44,10 @@ export default function App() {
   const [filmIds, setFilmIds] = useState<string[]>([...filmsById.keys()]);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Transition Inspector state
+  const [transitionType, setTransitionType] = useState<TransitionType>("paper-rip");
+  const [transitionDuration, setTransitionDuration] = useState<number>(0.6);
 
   // Styleboard / presentation state
   const [accent, setAccent] = useState(film.accent || "#635BFF");
@@ -304,7 +310,7 @@ export default function App() {
         {/* Top bar with Layer switcher */}
         <div className="flex justify-between items-center shrink-0">
           <div className="flex bg-[#1A1A1B] p-1 rounded-lg border border-[#333]">
-            {(["map", "styleboard", "video"] as Mode[]).map(m => (
+            {(["map", "styleboard", "transitions", "video"] as Mode[]).map(m => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
@@ -353,10 +359,22 @@ export default function App() {
               onStoryStyleChange={setStoryStyle}
               onSelectShot={(id) => {
                 setSelection({ type: "shot", id });
-                // Optional: switch back to map mode to edit the shot
-                // but user can also edit from sidebar in styleboard mode.
               }}
             />
+          )}
+
+          {mode === "transitions" && (
+            <div className="w-full h-full bg-[#09090B] p-6 overflow-y-auto">
+              <TransitionEditor
+                selectedTransition={transitionType}
+                durationSec={transitionDuration}
+                onSelectTransition={setTransitionType}
+                onChangeDuration={setTransitionDuration}
+                onApplyToAll={() => {
+                  setStatus({ ok: true, text: `Applied ${transitionType} (${transitionDuration}s) to all cut boundaries!` });
+                }}
+              />
+            </div>
           )}
 
           {mode === "video" && (

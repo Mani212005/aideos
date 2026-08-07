@@ -1,16 +1,19 @@
 WEBVTT
 
-00:00:00.160 --> 00:00:13.859
-Today, we are going to talk about RL adapters. An RL adapter is a small trainable parameter module inserted into a large frozen per train model. Only the adapter parameters receive gradients from the reinforcement learning objective.
+00:00:00.000 --> 00:00:22.910
+What if an AI didn't just execute code... but rewrote its own reality by trial and fire? In the high-stakes world of Reinforcement Learning, we don't give the machine the answers; we give it a playground, a goal, and the freedom to fail until it succeeds. Welcome to the RL Environment: the digital arena where artificial minds master physics, rules, and rewards to solve the impossible!
 
-00:00:14.494 --> 00:00:20.355
-LoRa decomposes delta w into b times. Aware rain car is typically four to 64.
+00:00:22.910 --> 00:00:40.280
+At its core, RL is a conversation between two main characters: the Agent and the Environment. Think of the Agent as the student and the Environment as the entire universe it lives in. This interaction is a constant loop called a Markov Decision Process: State, Action, and Reward!
 
-00:00:20.574 --> 00:00:25.154
-Q LoRa applies LoRa on top of a four bit quantized based model.
+00:00:40.280 --> 00:01:00.659
+To make this magic happen, every environment needs four specific things. First, the State Space—everything the agent can see. Second, the Action Space—the menu of choices. Third, the Reward Signal—telling the agent it's doing well. And finally, Transition Dynamics—the rules moving to the next state.
 
-00:00:25.454 --> 00:00:33.590
-PPO uses advantage estimation and clips probability ratio GPO removes the critic model and uses group relative normalization to compute advantages.
+00:01:00.659 --> 00:01:14.899
+Not all environments are created equal! Some are Fully Observable, like Chess. Others are Partially Observable, like Poker. We also have Deterministic worlds and Stochastic worlds filled with randomness, plus multi-agent showdowns!
 
-00:00:34.129 --> 00:00:40.309
-Self learning loop. Compute gradients only for adapter parameters while keeping the base model frozen and untouched.
+00:01:14.899 --> 00:01:29.959
+How do researchers build these? Gymnasium is the industry standard for games and physics. MuJoCo provides high-fidelity robotics physics, NVIDIA Isaac Gym enables GPU-parallel training, and Unity creates complex 3D worlds!
+
+00:01:29.959 --> 00:01:44.459
+We face massive hurdles like the Sim2Real Gap, where a simulation genius becomes a real-world klutz. And Reward Hacking, where agents find unexpected loopholes! Solving these makes RL one of technology's most exciting frontiers.

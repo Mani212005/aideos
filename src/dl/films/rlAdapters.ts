@@ -230,9 +230,5 @@ export const rlAdaptersFilm: Film = {
       ]
     }
   ],
-  "voiceover": {
-    "src": "voiceover.wav",
-    "volume": 1
-  },
   "captions": "captions.vtt"
 };
