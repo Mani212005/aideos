@@ -25,15 +25,15 @@ const bed = (frame: number, hasVoice: boolean, master: number) => {
  * Narration level. Ramped at both ends — cutting a voice track in at full level
  * puts an audible click on the first and last frames.
  */
-const voice = (frame: number, level: number) =>
-  level *
-  Math.min(1, frame / 6) *
-  Math.min(1, Math.max(0, TOTAL_FRAMES - frame) / 12);
+// const voice = (frame: number, level: number) =>
+//   level *
+//   Math.min(1, frame / 6) *
+//   Math.min(1, Math.max(0, TOTAL_FRAMES - frame) / 12);
 
 export const Video: React.FC<FilmProps> = ({
   accent,
   voiceoverSrc,
-  voiceoverVolume,
+  /* voiceoverVolume */
   musicSrc,
   musicVolume,
   showRail,

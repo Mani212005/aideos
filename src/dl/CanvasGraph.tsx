@@ -64,6 +64,8 @@ const Node: React.FC<{
   );
   const active = useActiveness(timeline, node.id);
 
+  const activeShadow = `0 0 ${15 * active}px ${accentAt(accent, 0.4)}, inset 0 0 ${10 * active}px ${accentAt(accent, 0.2)}`;
+
   const border = interpolateColors(
     active,
     [0, 1],
@@ -72,7 +74,7 @@ const Node: React.FC<{
   const background = interpolateColors(
     active,
     [0, 1],
-    [interpolateColors(arrived, [0, 1], ["#0B0B0D", "#0D0D0F"]), accentAt(accent, 0.1)],
+    [interpolateColors(arrived, [0, 1], ["rgba(11, 11, 13, 0.6)", "rgba(13, 13, 15, 0.7)"]), accentAt(accent, 0.15)],
   );
   const labelColor = interpolateColors(
     active,
@@ -80,8 +82,19 @@ const Node: React.FC<{
     [interpolateColors(arrived, [0, 1], [PALETTE.muted, PALETTE.ink]), accent],
   );
 
-  // A pulse, not a blink. Anything that goes fully dark reads as an error state.
   const pulse = 0.55 + 0.45 * Math.sin((frame / fps) * 2.6);
+  const radarScale = 1 + ((frame % (fps * 2)) / (fps * 2)) * 0.5;
+  const radarOpacity = (1 - (frame % (fps * 2)) / (fps * 2)) * active;
+
+  let badgeProps = { color: "#6A6A70", bg: "transparent", border: "transparent" };
+  if (node.sub) {
+    const s = node.sub.toUpperCase();
+    if (s.includes("SUPERVISOR")) badgeProps = { color: "#EC4899", bg: "rgba(236, 72, 153, 0.15)", border: "rgba(236, 72, 153, 0.5)" };
+    else if (s.includes("SHARED") || s.includes("STATE")) badgeProps = { color: "#10B981", bg: "rgba(16, 185, 129, 0.15)", border: "rgba(16, 185, 129, 0.5)" };
+    else if (s.includes("REMOTION") || s.includes("CANVAS")) badgeProps = { color: "#3B82F6", bg: "rgba(59, 130, 246, 0.15)", border: "rgba(59, 130, 246, 0.5)" };
+    else if (s.includes("CYCLIC") || s.includes("LOOP")) badgeProps = { color: "#F59E0B", bg: "rgba(245, 158, 11, 0.15)", border: "rgba(245, 158, 11, 0.5)" };
+    else badgeProps = { color: PALETTE.muted, bg: "rgba(245,245,245,0.05)", border: rule(1) };
+  }
 
   return (
     <div
@@ -92,41 +105,83 @@ const Node: React.FC<{
         width: node.w,
         height: node.h,
         border: `1px solid ${border}`,
+        boxShadow: active > 0 ? activeShadow : "none",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
         borderRadius: 8,
         background,
         padding: "0 16px",
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
-        gap: 4,
+        gap: 6,
         opacity: 0.4 + 0.6 * Math.max(0, Math.min(1, arrived)),
         // The node itself does not rise — it is a fixed place on the canvas.
         // Only its state changes. Moving it would break the one thing the
         // canvas is for.
       }}
     >
-      <div
-        style={{
-          fontFamily: SANS,
-          fontSize: 17,
-          fontWeight: 500,
-          letterSpacing: "-0.01em",
-          color: labelColor,
-        }}
-      >
-        {node.label}
-      </div>
-      {node.sub ? (
+      {active > 0.1 ? (
+        <div
+          style={{
+            position: "absolute",
+            inset: -4,
+            borderRadius: 12,
+            border: `1px solid ${accent}`,
+            opacity: radarOpacity * 0.5,
+            transform: `scale(${radarScale})`,
+            pointerEvents: "none",
+          }}
+        />
+      ) : null}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div
+          style={{
+            fontFamily: SANS,
+            fontSize: 17,
+            fontWeight: 500,
+            letterSpacing: "-0.01em",
+            color: labelColor,
+            textShadow: active > 0.5 ? `0 0 8px ${accentAt(accent, 0.5)}` : "none",
+          }}
+        >
+          {node.label}
+        </div>
         <div
           style={{
             fontFamily: MONO,
-            fontSize: 10,
-            letterSpacing: "0.1em",
+            fontSize: 9,
+            letterSpacing: "0.05em",
             textTransform: "uppercase",
-            color: "#6A6A70",
+            padding: "2px 6px",
+            borderRadius: 4,
+            background: active > 0.5 ? accentAt(accent, 0.2) : arrived > 0.9 ? "rgba(16, 185, 129, 0.15)" : "rgba(245,245,245,0.05)",
+            color: active > 0.5 ? accent : arrived > 0.9 ? "#10B981" : "#6A6A70",
+            border: `1px solid ${active > 0.5 ? accent : arrived > 0.9 ? "rgba(16, 185, 129, 0.3)" : "rgba(245,245,245,0.1)"}`,
           }}
         >
-          {node.sub}
+          {active > 0.5 ? "Active" : arrived > 0.9 ? "Completed" : "Queued"}
+        </div>
+      </div>
+      {node.sub ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div
+            style={{
+              fontFamily: MONO,
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: badgeProps.color,
+              background: badgeProps.bg,
+              border: `1px solid ${badgeProps.border}`,
+              padding: "2px 6px",
+              borderRadius: 4,
+              display: "inline-block",
+            }}
+          >
+            {node.sub}
+          </div>
         </div>
       ) : null}
       {active > 0.5 ? (
@@ -140,6 +195,7 @@ const Node: React.FC<{
             borderRadius: 1,
             background: accent,
             opacity: pulse,
+            boxShadow: `0 0 6px ${accent}`,
           }}
         />
       ) : null}
@@ -184,20 +240,33 @@ const Edges: React.FC<{ film: Film; timeline: TimedShot[]; arrivals: Map<string,
         const live = looksAt(current.shot, edge.to);
 
         return (
-          <path
-            key={`${edge.from}-${edge.to}-${i}`}
-            d={edgePath(a, b)}
-            fill="none"
-            stroke={live ? accent : rule(2)}
-            strokeWidth={1}
-            strokeDasharray={edge.dashed ? "5 5" : undefined}
-            // `pathLength` normalises the curve to 1 user unit, so the draw-in
-            // is exact without measuring the path in the DOM — which is not
-            // available during a server-side first paint anyway.
-            pathLength={edge.dashed ? undefined : 1}
-            strokeDashoffset={edge.dashed ? undefined : 1 - Math.max(0, Math.min(1, draw))}
-            opacity={seen ? 1 : 0.18}
-          />
+          <g key={`${edge.from}-${edge.to}-${i}`}>
+            <path
+              d={edgePath(a, b)}
+              fill="none"
+              stroke={live ? accent : rule(2)}
+              strokeWidth={1}
+              strokeDasharray={edge.dashed ? "5 5" : undefined}
+              // `pathLength` normalises the curve to 1 user unit, so the draw-in
+              // is exact without measuring the path in the DOM — which is not
+              // available during a server-side first paint anyway.
+              pathLength={edge.dashed ? undefined : 1}
+              strokeDashoffset={edge.dashed ? undefined : 1 - Math.max(0, Math.min(1, draw))}
+              opacity={seen ? 1 : 0.18}
+            />
+            {live && seen ? (
+              <path
+                d={edgePath(a, b)}
+                fill="none"
+                stroke={accent}
+                strokeWidth={2}
+                pathLength={1}
+                strokeDasharray="0.02 0.23"
+                strokeDashoffset={-((frame * 0.01) % 0.25)}
+                style={{ filter: `drop-shadow(0 0 6px ${accent})` }}
+              />
+            ) : null}
+          </g>
         );
       })}
     </svg>
