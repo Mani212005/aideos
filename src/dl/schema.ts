@@ -158,9 +158,13 @@ export const blockSchema = z.discriminatedUnion("c", [
   }),
   z.object({
     c: z.literal("AnalogyInset"),
-    caption: z.string().min(1).max(48),
+    caption: z.string().min(1).max(80),
     /** Optional still in `public/`. Falls back to a drawn placeholder. */
     src: z.string().optional(),
+    framesDir: z.string().optional(),
+    totalFrames: z.number().optional(),
+    delayFrames: z.number().optional(),
+    fullScreenHero: z.boolean().optional(),
   }),
   z.object({
     c: z.literal("Card"),

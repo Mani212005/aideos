@@ -5,9 +5,13 @@ dist
 
 # Rendered video.
 out
+videos/
 
-# Proof stills from `npm run frames`.
+# Proof stills and large frame sequence directories.
 .frames/
+public/tea1_motion/
+public/graph_motion/
+public/robot_frames/
 
 # Media is kept out of the repository on purpose: it is large, it is not the
 # source of truth for anything, and licensed tracks should not be redistributed

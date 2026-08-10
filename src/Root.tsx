@@ -34,6 +34,16 @@ export const RemotionRoot: React.FC = () => {
         schema={filmPropsSchema}
         defaultProps={defaultFilmProps}
       />
+      <Composition
+        id="Short"
+        component={Video}
+        durationInFrames={2700}
+        fps={FPS}
+        width={1080}
+        height={1920}
+        schema={filmPropsSchema}
+        defaultProps={defaultFilmProps}
+      />
     </>
   );
 };

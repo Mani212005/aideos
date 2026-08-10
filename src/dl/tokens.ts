@@ -41,31 +41,31 @@ export const { fontFamily: SERIF } = loadSerif("italic", {
  * hardcoded hex is how a system stops being one.
  */
 export const PALETTE = {
-  /** Never pure black: #000 clips on OLED and kills the hairlines. */
-  canvas: "#0A0A0B",
-  /** Cards sitting on the canvas. */
-  surface: "#101013",
-  ink: "#F5F5F5",
-  muted: "#8A8A8E",
-  hairline: "rgba(245,245,245,0.10)",
-  /** Overridable per film — the only colour in the system. */
-  accent: "#635BFF",
+  /** Tactile Archival White Paper Canvas */
+  canvas: "#F8F6F0",
+  /** Crisp elevated cards sitting on the paper canvas. */
+  surface: "#FFFFFF",
+  ink: "#111827",
+  muted: "#64748B",
+  hairline: "rgba(17, 24, 39, 0.12)",
+  /** Architectural Terracotta Accent. */
+  accent: "#FF6B00",
 } as const;
 
-/** Ink at an arbitrary alpha. Hairlines, scrims, grid lines. */
-export const ink = (alpha: number) => `rgba(245,245,245,${alpha})`;
+/** Deep slate archival ink at an arbitrary alpha. Hairlines, scrims, grid lines. */
+export const ink = (alpha: number) => `rgba(17, 24, 39, ${alpha})`;
 
 /**
  * Hairline at a multiple of its base strength. `1` is the token; `2` is the
  * emphasis used for chart axes, which need to out-read the grid behind them.
  */
-export const rule = (strength = 1) => ink(0.1 * strength);
+export const rule = (strength = 1) => ink(0.12 * strength);
 
 /** Muted, dimmed. Axis ticks and legend text that must sit under the labels. */
-export const FAINT = "#6A6A70";
+export const FAINT = "#94A3B8";
 
 /** Surface, dimmed. A card inside a card — the only nesting depth allowed. */
-export const SUNKEN = "#0D0D0F";
+export const SUNKEN = "#F1EFEA";
 
 /** Accent at an alpha. Fills behind an active border are always this at ~0.10. */
 export const accentAt = (hex: string, alpha: number) => {

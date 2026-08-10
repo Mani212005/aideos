@@ -8,31 +8,20 @@ import type { Film, Shot } from "./schema";
 
 /**
  * ---------------------------------------------------------------------------
- * DESIGN LANGUAGE — THE CANVAS
+ * DESIGN LANGUAGE — THE INTERACTIVE GLASSMORPHIC CANVAS GRAPH
  * ---------------------------------------------------------------------------
- * The spine. One canvas per film, laid out once, never reset. Nodes are drawn
- * in canvas units and the camera layer above scales the whole thing, so a node
- * never re-flows when the camera moves — it is a place, not a slide.
- *
- * §06 rule 02: nothing is destroyed. Unvisited nodes sit ghosted at 0.4 so the
- * structure pre-exists the argument; visited ones stay drawn and dim to muted.
- * The canvas accumulates, which is what lets the closing wide shot land.
+ * High-clarity, luminous multi-agent graph architecture.
+ * Features:
+ * - Glassmorphic translucent cards with glowing neon active states
+ * - Animated data packet pulses traveling along connection curves
+ * - Type badges, status indicators, and expanding radar beacon pulses
  */
 
 const HOLD_MS = 700;
 
-/**
- * Whether a shot is pointing at a specific node.
- *
- * `look: "all"` deliberately does not count. The payoff shot names the whole
- * canvas, and if that made every node accent at once the frame would spend
- * eight accents against a budget of three — the wide shot is supposed to be
- * calm, not loud.
- */
 const looksAt = (shot: Shot, id: string) =>
   shot.look !== "all" && (Array.isArray(shot.look) ? shot.look.includes(id) : shot.look === id);
 
-/** 0 → 1 as a node takes focus, and back down as it loses it. */
 const useActiveness = (timeline: TimedShot[], id: string) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -47,6 +36,18 @@ const useActiveness = (timeline: TimedShot[], id: string) => {
   return before ? 1 - p : 0;
 };
 
+const getNodeCategoryTag = (id: string, label: string): { tag: string; icon: string } => {
+  const lower = (id + " " + label).toLowerCase();
+  if (lower.includes("super")) return { tag: "SUPERVISOR", icon: "👑" };
+  if (lower.includes("state") || lower.includes("memory")) return { tag: "SHARED STATE", icon: "◈" };
+  if (lower.includes("loop") || lower.includes("cycle")) return { tag: "CYCLIC LOOP", icon: "↻" };
+  if (lower.includes("fan") || lower.includes("parallel")) return { tag: "FAN-OUT / IN", icon: "⑂" };
+  if (lower.includes("trap") || lower.includes("guard")) return { tag: "FAILURE GUARD", icon: "🛡️" };
+  if (lower.includes("chain") || lower.includes("linear")) return { tag: "LINEAR PIPELINE", icon: "→" };
+  if (lower.includes("graph") || lower.includes("map")) return { tag: "MASTER GRAPH", icon: "⬡" };
+  return { tag: "AGENT NODE", icon: "⚡" };
+};
+
 const Node: React.FC<{
   node: Film["canvas"]["nodes"][number];
   timeline: TimedShot[];
@@ -56,32 +57,30 @@ const Node: React.FC<{
   const { fps } = useVideoConfig();
   const accent = useAccent();
 
-  // Edge before node: the connector starts drawing at the arrival frame and the
-  // node itself lands 70ms behind it, so the viewer sees the relationship
-  // before the content it connects.
   const arrived = easeExpo(
     (frame - arrival - frames(MS.stagger, fps)) / frames(MS.enter, fps),
   );
   const active = useActiveness(timeline, node.id);
+  const isLive = active > 0.4;
+
+  const { tag, icon } = getNodeCategoryTag(node.id, node.label);
 
   const border = interpolateColors(
     active,
     [0, 1],
-    [interpolateColors(arrived, [0, 1], [rule(0.7), rule(1.6)]), accent],
-  );
-  const background = interpolateColors(
-    active,
-    [0, 1],
-    [interpolateColors(arrived, [0, 1], ["#0B0B0D", "#0D0D0F"]), accentAt(accent, 0.1)],
-  );
-  const labelColor = interpolateColors(
-    active,
-    [0, 1],
-    [interpolateColors(arrived, [0, 1], [PALETTE.muted, PALETTE.ink]), accent],
+    [interpolateColors(arrived, [0, 1], ["rgba(255, 255, 255, 0.08)", "rgba(255, 255, 255, 0.16)"]), accent],
   );
 
-  // A pulse, not a blink. Anything that goes fully dark reads as an error state.
-  const pulse = 0.55 + 0.45 * Math.sin((frame / fps) * 2.6);
+  const background = isLive
+    ? "linear-gradient(145deg, rgba(42, 20, 10, 0.94) 0%, rgba(24, 10, 5, 0.98) 100%)"
+    : "linear-gradient(145deg, rgba(22, 26, 36, 0.88) 0%, rgba(12, 14, 20, 0.96) 100%)";
+
+  const labelColor = isLive ? "#FFFFFF" : interpolateColors(arrived, [0, 1], [PALETTE.muted, "#E2E8F0"]);
+
+  // Animated pulse waves for active radar beacon
+  const pulseScale = 1 + 0.8 * ((frame % 30) / 30);
+  const pulseOpacity = Math.max(0, 1 - (frame % 30) / 30);
+  const breathingGlow = 0.5 + 0.5 * Math.sin((frame / fps) * 3.0);
 
   return (
     <div
@@ -91,57 +90,101 @@ const Node: React.FC<{
         top: node.y,
         width: node.w,
         height: node.h,
-        border: `1px solid ${border}`,
-        borderRadius: 8,
+        border: `1.5px solid ${border}`,
+        borderRadius: 14,
         background,
-        padding: "0 16px",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        padding: "12px 18px",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "center",
-        gap: 4,
-        opacity: 0.4 + 0.6 * Math.max(0, Math.min(1, arrived)),
-        // The node itself does not rise — it is a fixed place on the canvas.
-        // Only its state changes. Moving it would break the one thing the
-        // canvas is for.
+        justifyContent: "space-between",
+        boxShadow: isLive
+          ? `0 16px 40px rgba(0, 0, 0, 0.6), 0 0 28px ${accentAt(accent, 0.35 * breathingGlow)}, inset 0 1px 1px rgba(255, 255, 255, 0.35)`
+          : "0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.08)",
+        opacity: 0.35 + 0.65 * Math.max(0, Math.min(1, arrived)),
+        transform: isLive ? "scale(1.02)" : "scale(1.0)",
+        transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
       }}
     >
+      {/* Top Tag & Status Beacon */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div
+          style={{
+            fontFamily: MONO,
+            fontSize: 9,
+            letterSpacing: "0.12em",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            color: isLive ? accent : "rgba(255, 255, 255, 0.5)",
+            background: isLive ? accentAt(accent, 0.16) : "rgba(255, 255, 255, 0.06)",
+            padding: "2px 8px",
+            borderRadius: 6,
+            border: `1px solid ${isLive ? accentAt(accent, 0.3) : "rgba(255, 255, 255, 0.08)"}`,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <span>{icon}</span>
+          <span>{tag}</span>
+        </div>
+
+        {/* Live Active Radar Beacon */}
+        <div style={{ position: "relative", width: 10, height: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {isLive ? (
+            <span
+              style={{
+                position: "absolute",
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                border: `1.5px solid ${accent}`,
+                transform: `scale(${pulseScale})`,
+                opacity: pulseOpacity,
+              }}
+            />
+          ) : null}
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: isLive ? accent : "rgba(255, 255, 255, 0.2)",
+              boxShadow: isLive ? `0 0 8px ${accent}` : "none",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Main Node Label */}
       <div
         style={{
           fontFamily: SANS,
-          fontSize: 17,
-          fontWeight: 500,
-          letterSpacing: "-0.01em",
+          fontSize: 18,
+          fontWeight: 600,
+          letterSpacing: "-0.015em",
           color: labelColor,
+          lineHeight: 1.2,
         }}
       >
         {node.label}
       </div>
+
+      {/* Node Subtitle / Metric */}
       {node.sub ? (
         <div
           style={{
             fontFamily: MONO,
-            fontSize: 10,
-            letterSpacing: "0.1em",
+            fontSize: 10.5,
+            letterSpacing: "0.08em",
+            fontWeight: 500,
             textTransform: "uppercase",
-            color: "#6A6A70",
+            color: isLive ? "rgba(255, 255, 255, 0.85)" : "#8E8E98",
           }}
         >
           {node.sub}
         </div>
-      ) : null}
-      {active > 0.5 ? (
-        <span
-          style={{
-            position: "absolute",
-            right: 10,
-            top: 10,
-            width: 5,
-            height: 5,
-            borderRadius: 1,
-            background: accent,
-            opacity: pulse,
-          }}
-        />
       ) : null}
     </div>
   );
@@ -168,11 +211,27 @@ const Edges: React.FC<{ film: Film; timeline: TimedShot[]; arrivals: Map<string,
 
   return (
     <svg
-      viewBox={`0 0 ${box.w + 60} ${box.h + 120}`}
-      width={box.w + 60}
-      height={box.h + 120}
+      viewBox={`0 0 ${box.w + 80} ${box.h + 140}`}
+      width={box.w + 80}
+      height={box.h + 140}
       style={{ position: "absolute", left: 0, top: 0, overflow: "visible" }}
     >
+      <defs>
+        <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="4" result="blur1" />
+          <feGaussianBlur stdDeviation="8" result="blur2" />
+          <feMerge>
+            <feMergeNode in="blur2" />
+            <feMergeNode in="blur1" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <linearGradient id="activeEdgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FF6B00" />
+          <stop offset="100%" stopColor="#FFA000" />
+        </linearGradient>
+      </defs>
+
       {film.canvas.edges.map((edge, i) => {
         const a = byId.get(edge.from);
         const b = byId.get(edge.to);
@@ -182,22 +241,58 @@ const Edges: React.FC<{ film: Film; timeline: TimedShot[]; arrivals: Map<string,
         const draw = easeExpo((frame - arrival) / frames(MS.edge, fps));
         const seen = Number.isFinite(arrival) && frame >= arrival;
         const live = looksAt(current.shot, edge.to);
+        const pathData = edgePath(a, b);
 
         return (
-          <path
-            key={`${edge.from}-${edge.to}-${i}`}
-            d={edgePath(a, b)}
-            fill="none"
-            stroke={live ? accent : rule(2)}
-            strokeWidth={1}
-            strokeDasharray={edge.dashed ? "5 5" : undefined}
-            // `pathLength` normalises the curve to 1 user unit, so the draw-in
-            // is exact without measuring the path in the DOM — which is not
-            // available during a server-side first paint anyway.
-            pathLength={edge.dashed ? undefined : 1}
-            strokeDashoffset={edge.dashed ? undefined : 1 - Math.max(0, Math.min(1, draw))}
-            opacity={seen ? 1 : 0.18}
-          />
+          <g key={`${edge.from}-${edge.to}-${i}`}>
+            {/* Base Dark Guide Track */}
+            <path
+              d={pathData}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.09)"
+              strokeWidth={2}
+              strokeDasharray={edge.dashed ? "6 6" : undefined}
+              opacity={seen ? 1 : 0.15}
+            />
+
+            {/* Glowing Active Track */}
+            {live ? (
+              <path
+                d={pathData}
+                fill="none"
+                stroke={accent}
+                strokeWidth={5}
+                filter="url(#neonGlow)"
+                opacity={0.45}
+                strokeDasharray={edge.dashed ? "6 6" : undefined}
+              />
+            ) : null}
+
+            {/* Crisp Foreground Signal Path */}
+            <path
+              d={pathData}
+              fill="none"
+              stroke={live ? "url(#activeEdgeGrad)" : "rgba(255, 255, 255, 0.22)"}
+              strokeWidth={live ? 2.5 : 1.5}
+              strokeDasharray={edge.dashed ? "6 6" : undefined}
+              pathLength={edge.dashed ? undefined : 1}
+              strokeDashoffset={edge.dashed ? undefined : 1 - Math.max(0, Math.min(1, draw))}
+              opacity={seen ? 1 : 0.18}
+            />
+
+            {/* Traveling Luminescent Data Packets */}
+            {seen ? (
+              <path
+                d={pathData}
+                fill="none"
+                stroke={live ? "#FFFFFF" : accent}
+                strokeWidth={live ? 3 : 2}
+                strokeDasharray="6 28"
+                strokeDashoffset={-frame * 3.5}
+                opacity={live ? 0.95 : 0.4}
+              />
+            ) : null}
+          </g>
         );
       })}
     </svg>

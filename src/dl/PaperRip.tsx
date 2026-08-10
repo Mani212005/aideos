@@ -97,14 +97,14 @@ export const PaperRip: React.FC<PaperRipProps> = ({ active, progress, frame = 0 
           style={{
             position: "relative",
             background: "#111113",
-            color: "#10B981",
+            color: "#FF6B00",
             fontFamily: "Inter, sans-serif",
             fontSize: "22px",
             fontWeight: 900,
             letterSpacing: "5px",
             textTransform: "uppercase",
             padding: "14px 32px",
-            border: "3px dashed #10B981",
+            border: "3px dashed #FF6B00",
             boxShadow: "8px 8px 0px rgba(0,0,0,0.8)",
             transform: `rotate(${3 + jitterAngle}deg)`,
           }}

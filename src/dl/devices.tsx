@@ -616,16 +616,76 @@ export const ScaleBar: React.FC<
 /* AnalogyInset — the only texture in the system                               */
 /* -------------------------------------------------------------------------- */
 
-export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string }> = ({
+export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string; framesDir?: string; totalFrames?: number; delayFrames?: number; fullScreenHero?: boolean }> = ({
   caption,
   src,
+  framesDir,
+  totalFrames = 180,
+  delayFrames = 0,
+  fullScreenHero = false,
   start,
   index,
   durationInFrames,
 }) => {
+  const frame = useCurrentFrame();
   const layout = useLayout();
-  const enter = useEntrance(start, index, layout.px(12));
-  const spin = useSweep(start, durationInFrames);
+  const enter = useEntrance(start + delayFrames, index, layout.px(12));
+
+  let resolvedSrc = src;
+  if (framesDir) {
+    const elapsed = Math.max(1, frame - (start + delayFrames) + 1);
+    const rel = Math.max(1, Math.min(totalFrames, elapsed));
+    const pad = String(rel).padStart(4, "0");
+    resolvedSrc = `${framesDir}/frame_${pad}.png`;
+  }
+
+  const isVisible = frame >= start + delayFrames;
+
+  if (fullScreenHero && isVisible && resolvedSrc) {
+    return (
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 50,
+          background: "radial-gradient(ellipse at center, rgba(16,18,24,0.94) 0%, rgba(5,6,9,0.98) 100%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: layout.grid * 4,
+        }}
+      >
+        <Img
+          src={staticFile(resolvedSrc)}
+          style={{
+            maxWidth: "94%",
+            maxHeight: "84%",
+            objectFit: "contain",
+            borderRadius: layout.radius.inner,
+            boxShadow: "0 30px 80px rgba(0,0,0,0.85), 0 0 50px rgba(255,107,0,0.25)",
+          }}
+        />
+        {caption ? (
+          <div
+            style={{
+              marginTop: layout.grid * 2,
+              fontSize: layout.px(13),
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "rgba(240,237,230,0.75)",
+              fontFamily: "monospace",
+            }}
+          >
+            {caption}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -639,31 +699,29 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
         alignItems: "center",
         justifyContent: "center",
         gap: layout.grid * 2,
-        padding: layout.grid * 3,
+        padding: layout.grid * 2,
         minHeight: layout.px(220),
         overflow: "hidden",
+        opacity: isVisible ? 1 : 0.05,
+        transition: "opacity 0.2s ease",
       }}
     >
-      {src ? (
+      {resolvedSrc ? (
         <Img
-          src={staticFile(src)}
-          style={{ maxWidth: "100%", maxHeight: layout.px(300), objectFit: "contain" }}
+          src={staticFile(resolvedSrc)}
+          style={{ maxWidth: "100%", maxHeight: layout.px(260), objectFit: "contain", borderRadius: layout.radius.chip }}
         />
       ) : (
-        // Held inside the hairline frame rather than bleeding to the edges: a
-        // photograph that fills the frame breaks the diagrammatic register the
-        // rest of the system depends on.
         <span
           style={{
             width: layout.px(90),
             height: layout.px(90),
             border: `1px solid ${rule(2.4)}`,
-            borderRadius: layout.px(6),
-            transform: `rotate(${45 + spin * 90}deg)`,
+            borderRadius: layout.radius.chip,
           }}
         />
       )}
-      <span style={layout.label()}>{caption}</span>
+      <div style={layout.label()}>{caption}</div>
     </div>
   );
 };

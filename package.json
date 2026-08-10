@@ -18,6 +18,7 @@
     "@remotion/zod-types": "4.0.499",
     "commander": "^15.0.0",
     "dotenv": "^17.4.2",
+    "kokoro-js": "^1.2.1",
     "openai": "^7.0.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",

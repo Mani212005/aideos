@@ -118,7 +118,7 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
     case "ScaleBar":
       return <ScaleBar {...timing} ticks={block.ticks} value={block.value} label={block.label} />;
     case "AnalogyInset":
-      return <AnalogyInset {...timing} caption={block.caption} src={block.src} />;
+      return <AnalogyInset {...timing} caption={block.caption} src={block.src} framesDir={block.framesDir} totalFrames={block.totalFrames} delayFrames={block.delayFrames} fullScreenHero={block.fullScreenHero} />;
     case "Card":
       return <Card {...timing} title={block.title} body={block.body} state={block.state} />;
     case "Divider":

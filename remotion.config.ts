@@ -7,7 +7,7 @@
 
 import { Config } from "@remotion/cli/config";
 
-// The film is DOM and SVG only — no WebGL — so the default renderer is correct
-// and there is no GPU flag to set here.
 Config.setVideoImageFormat("jpeg");
 Config.setOverwriteOutput(true);
+Config.setConcurrency(2);
+Config.setTimeoutInMilliseconds(180000);

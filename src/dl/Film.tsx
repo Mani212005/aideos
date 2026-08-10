@@ -97,7 +97,8 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
         border: `1px solid ${rule(shot.stage === "frame" ? 0 : 1)}`,
         borderRadius: layout.radius.card,
         background:
-          shot.stage === "frame" ? "transparent" : `rgba(10, 10, 11, ${0.86 * opacity})`,
+          shot.stage === "frame" ? "transparent" : `rgba(255, 255, 255, ${0.94 * opacity})`,
+        boxShadow: shot.stage === "frame" ? "none" : "0 16px 40px rgba(17, 24, 39, 0.08)",
         opacity,
         overflow: "hidden",
         display: "flex",
@@ -230,6 +231,77 @@ export type FilmViewProps = {
   showRail: boolean;
 };
 
+const Dynamic3DHeroOverlay: React.FC<{ frame: number; timeline: ReturnType<typeof buildTimeline> }> = ({ frame, timeline }) => {
+  for (const t of timeline) {
+    const shot = t.shot;
+    const heroBlock = shot.blocks.find(
+      (b): b is Extract<typeof b, { c: "AnalogyInset" }> => b.c === "AnalogyInset" && !!b.fullScreenHero
+    );
+    if (!heroBlock) continue;
+
+    const delay = heroBlock.delayFrames || 0;
+    const total = heroBlock.totalFrames || 180;
+    const startFrame = t.from + delay;
+    const endFrame = startFrame + total;
+
+    if (frame >= startFrame && frame <= endFrame) {
+      const elapsed = frame - startFrame + 1;
+      const currentFrame = Math.max(1, Math.min(total, elapsed));
+      const pad = String(currentFrame).padStart(4, "0");
+      const dir = heroBlock.framesDir || "tea1_motion";
+      const imgSrc = `${dir}/frame_${pad}.png`;
+
+      const fadeIn = Math.min(1, elapsed / 8);
+      const fadeOut = Math.min(1, (endFrame - frame) / 10);
+      const opacity = Math.min(fadeIn, fadeOut);
+
+      return (
+        <AbsoluteFill
+          style={{
+            zIndex: 100,
+            opacity,
+            background: "radial-gradient(ellipse at 50% 45%, rgba(13, 17, 23, 0.96) 0%, rgba(6, 8, 12, 0.99) 100%)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 40,
+          }}
+        >
+          <img
+            src={staticFile(imgSrc)}
+            alt={heroBlock.caption || "3D Kinematic Sequence"}
+            style={{
+              maxWidth: "88%",
+              maxHeight: "80%",
+              objectFit: "contain",
+              filter: "drop-shadow(0 30px 60px rgba(0,0,0,0.9)) drop-shadow(0 0 50px rgba(0,240,255,0.22))",
+            }}
+          />
+          <div
+            style={{
+              marginTop: 20,
+              fontSize: 13,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: "rgba(240, 237, 230, 0.8)",
+              fontFamily: "monospace",
+              background: "rgba(255, 255, 255, 0.06)",
+              padding: "6px 16px",
+              borderRadius: 6,
+              border: "1px solid rgba(255, 255, 255, 0.12)",
+            }}
+          >
+            {heroBlock.caption || "AIDEOS KINEMATIC SIMULATION · CONTACT DYNAMICS"}
+          </div>
+        </AbsoluteFill>
+      );
+    }
+  }
+
+  return null;
+};
+
 export const FilmView: React.FC<FilmViewProps> = ({
   film,
   timeline,
@@ -266,7 +338,20 @@ export const FilmView: React.FC<FilmViewProps> = ({
 
   return (
     <AccentContext.Provider value={accent}>
-      <AbsoluteFill style={{ background: PALETTE.canvas, color: accent }}>
+      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 20%, #FAF8F5 0%, #F5F1EA 60%, #EFEAE0 100%)", color: accent }}>
+        {/* Organic White Paper Texture & Fibers */}
+        <AbsoluteFill style={{ opacity: 0.28, pointerEvents: "none" }}>
+          <svg width="100%" height="100%">
+            <filter id="paper-grain">
+              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" result="noise" />
+              <feDiffuseLighting in="noise" lightingColor="#FDFCF7" surfaceScale="1.2">
+                <feDistantLight azimuth="60" elevation="50" />
+              </feDiffuseLighting>
+              <feBlend mode="multiply" in="SourceGraphic" result="blend" />
+            </filter>
+            <rect width="100%" height="100%" filter="url(#paper-grain)" opacity="0.8" />
+          </svg>
+        </AbsoluteFill>
         {film.voiceover?.src && (
           <Audio src={staticFile(film.voiceover.src)} volume={() => film.voiceover!.volume}>
             {film.captions && (
@@ -287,10 +372,11 @@ export const FilmView: React.FC<FilmViewProps> = ({
           {showGrid ? <Grid /> : null}
           <Stage film={film} timeline={timeline} />
         </AbsoluteFill>
+        {/* Full-Screen Dynamic 3D Hero Spotlight Overlay */}
+        <Dynamic3DHeroOverlay frame={frame} timeline={timeline} />
         <PaperRip active={isTransitioning} progress={transitionProgress} frame={frame} />
         {showRail ? <Rail film={film} timeline={timeline} /> : null}
-        {/* A single hairline vignette at the very edge, to stop the canvas
-            bleeding into a phone's rounded corners. No shadows anywhere. */}
+        {/* A single hairline vignette at the very edge */}
         <AbsoluteFill
           style={{
             pointerEvents: "none",

@@ -1,0 +1,396 @@
+import type { Film } from "../schema";
+
+export const graphEngineeringFilm: Film = {
+  "id": "graph-engineering-4min",
+  "title": "Why Your AI Agents Keep Failing (And How One Diagram Fixes It)",
+  "fps": 30,
+  "accent": "#FF6B00",
+  "voiceover": {
+    "src": "voiceover_graph.wav",
+    "volume": 1
+  },
+  "captions": "captions_graph.vtt",
+  "chapters": [
+    "the hook",
+    "agents are loops",
+    "the four building blocks",
+    "the army of agents",
+    "what actually breaks",
+    "the core takeaway",
+    "close & cta"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "chain",
+        "label": "Straight Chain",
+        "sub": "Prompt In → Out",
+        "x": 60,
+        "y": 180,
+        "w": 240,
+        "h": 72
+      },
+      {
+        "id": "loop",
+        "label": "Agent Loop",
+        "sub": "Think → Act → State",
+        "x": 380,
+        "y": 180,
+        "w": 260,
+        "h": 72
+      },
+      {
+        "id": "state",
+        "label": "Shared State",
+        "sub": "Structured Memory",
+        "x": 700,
+        "y": 180,
+        "w": 260,
+        "h": 72
+      },
+      {
+        "id": "supervisor",
+        "label": "Supervisor Hub",
+        "sub": "One Brain Many Hands",
+        "x": 1020,
+        "y": 180,
+        "w": 260,
+        "h": 72
+      },
+      {
+        "id": "fanout",
+        "label": "Fan-Out / Fan-In",
+        "sub": "Parallel Map-Reduce",
+        "x": 700,
+        "y": 400,
+        "w": 260,
+        "h": 72
+      },
+      {
+        "id": "traps",
+        "label": "Failure Traps",
+        "sub": "Loops & State Race",
+        "x": 1020,
+        "y": 400,
+        "w": 260,
+        "h": 72
+      },
+      {
+        "id": "graphmap",
+        "label": "Master Graph",
+        "sub": "Coordinate The Army",
+        "x": 380,
+        "y": 400,
+        "w": 260,
+        "h": 72
+      }
+    ],
+    "edges": [
+      { "from": "chain", "to": "loop", "label": "breaks at" },
+      { "from": "loop", "to": "state", "label": "requires" },
+      { "from": "state", "to": "supervisor", "label": "coordinates" },
+      { "from": "supervisor", "to": "fanout", "label": "spawns" },
+      { "from": "fanout", "to": "traps", "label": "risks" },
+      { "from": "traps", "to": "graphmap", "label": "solved by" }
+    ]
+  },
+  "shots": [
+    {
+      "id": "hook-lie",
+      "dur": 10.65,
+      "look": "chain",
+      "move": "cut",
+      "stage": "frame",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "Every AI agent tutorial you have watched is lying to you. They show you one agent, doing one task, in a straight line. Prompt in, answer out. Looks great in a demo.",
+      "blocks": [
+        { "c": "Kicker", "text": "00 · THE DEMO ILLUSION" },
+        { "c": "TextReveal", "size": "headline", "text": "The Straight Line Lie", "accentWord": "Lie" },
+        { "c": "Card", "title": "Linear Pipeline", "body": "Single prompt in, single answer out. Fails immediately in production.", "state": "active" },
+        { "c": "IconLabel", "text": "GRAPH ENGINEERING · AGENT COORDINATION" }
+      ]
+    },
+    {
+      "id": "hook-collapse",
+      "dur": 12.57,
+      "look": "chain",
+      "move": "zoom-in",
+      "stage": "frame",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "Then you try to build something real — five agents, one goal — and it falls apart. Agents talk over each other. State gets lost. One agent loops forever and burns your API budget while you are asleep.",
+      "blocks": [
+        { "c": "Kicker", "text": "00 · PRODUCTION REALITY" },
+        { "c": "TextReveal", "size": "headline", "text": "State Collapse", "accentWord": "Collapse" },
+        {
+          "c": "AnalogyInset",
+          "caption": "TEA-1 Physical Embodiment · Multi-Joint Contact Dynamics",
+          "framesDir": "tea1_motion",
+          "totalFrames": 180,
+          "delayFrames": 30,
+          "fullScreenHero": true
+        },
+        { "c": "IconLabel", "text": "ROOT CAUSE ANALYSIS · SYSTEM COLLAPSE" }
+      ]
+    },
+    {
+      "id": "hook-graph-intro",
+      "dur": 7.22,
+      "look": "all",
+      "move": "pan",
+      "stage": "none",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "There is a reason for that. And there is a fix. It is called graph engineering — and once you see it, you cannot unsee it.",
+      "blocks": []
+    },
+    {
+      "id": "loop-not-chain",
+      "dur": 14.88,
+      "look": "loop",
+      "move": "cut",
+      "stage": "frame",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "Here is the mental shift. A single AI agent is not one call to a model. It is a loop. Think. Act. Look at the result. Think again. You cannot draw a loop with an arrow that only points forward. A straight line cannot come back on itself.",
+      "blocks": [
+        { "c": "Kicker", "text": "01 · MENTAL MODEL" },
+        { "c": "TextReveal", "size": "headline", "text": "Agents Are Loops", "accentWord": "Loops" },
+        {
+          "c": "TokenStrip",
+          "tokens": ["1 · Think", "2 · Act", "3 · Observe", "4 · Loop"],
+          "lit": [0, 1, 2, 3],
+          "caption": "Step 1: Think → Step 2: Act → Step 3: Observe → Step 4: Loop"
+        },
+        { "c": "Card", "title": "The 4-Step Cycle", "body": "A single agent is not a forward line. It is a continuous re-evaluation loop.", "state": "active" }
+      ]
+    },
+    {
+      "id": "graph-foundation",
+      "dur": 10.18,
+      "look": "loop",
+      "move": "zoom-out",
+      "stage": "none",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "So the moment you need looping — or branching, or five agents working at once — a straight chain breaks. You need a graph. Nodes. Edges. And something flowing between them.",
+      "blocks": []
+    },
+    {
+      "id": "block-state",
+      "dur": 14.18,
+      "look": "state",
+      "move": "pan",
+      "stage": "frame",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "Every graph-based agent system runs on four things. One — state. A shared object every agent reads and writes to. Not 'the conversation.' Real structured data: the task, the plan, the results so far, and the errors.",
+      "blocks": [
+        { "c": "Kicker", "text": "02 · BUILDING BLOCK 01" },
+        { "c": "TextReveal", "size": "headline", "text": "Structured State", "accentWord": "State" },
+        {
+          "c": "LayerStack",
+          "count": 16,
+          "bottomLabel": "Unstructured Chat",
+          "topLabel": "Typed Schema Store"
+        },
+        { "c": "Card", "title": "Typed State Object", "body": "Stores task spec, plan checkpoints, error registers, and partial payloads.", "state": "active" }
+      ]
+    },
+    {
+      "id": "block-nodes-edges",
+      "dur": 16.48,
+      "look": "state",
+      "move": "zoom-in",
+      "stage": "frame",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "Two — nodes. Each one does one job: an LLM call, a tool call, or a human checkpoint. Nodes can contain entire agents inside them — nesting like Russian dolls. Three — edges. Conditional edges: a function that looks at the state and asks, 'what happens next?'",
+      "blocks": [
+        { "c": "Kicker", "text": "02 · BUILDING BLOCKS 02 & 03" },
+        { "c": "TextReveal", "size": "headline", "text": "Conditional Routing", "accentWord": "Routing" },
+        {
+          "c": "AttentionArcs",
+          "tokens": ["Evaluate", "Branch A", "Branch B", "Fallback"],
+          "focus": 0,
+          "links": [1, 2, 3],
+          "note": "Dynamic routing functions evaluate current state"
+        },
+        { "c": "IconLabel", "text": "DETERMINISTIC ROUTING · ZERO HALLUCINATION" }
+      ]
+    },
+    {
+      "id": "block-routing-checkpoints",
+      "dur": 14.47,
+      "look": "state",
+      "move": "cut",
+      "stage": "frame",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "This — right here — is the actual engineering. Not the prompts. The routing. And four — checkpoints. Save state after every step. When an agent runs for ten minutes and step forty-one crashes, you do not want to lose steps one through forty.",
+      "blocks": [
+        { "c": "Kicker", "text": "02 · BUILDING BLOCK 04" },
+        { "c": "TextReveal", "size": "headline", "text": "Step Checkpoints", "accentWord": "Checkpoints" },
+        {
+          "c": "ScaleBar",
+          "ticks": ["Step 1", "Step 20", "Step 40", "Recovery"],
+          "value": 0.85,
+          "label": "State Recovery"
+        },
+        { "c": "Card", "title": "Crash Recovery", "body": "Persisting state per step allows instant rewind and resumed execution.", "state": "active" }
+      ]
+    },
+    {
+      "id": "pattern-supervisor",
+      "dur": 15.88,
+      "look": "supervisor",
+      "move": "pan",
+      "stage": "frame",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "Okay. Here is how you actually go from one agent to an army. Pattern one: the Supervisor. Picture a general and five soldiers. The soldiers never talk to each other — they report back to the general, who decides who moves next. One brain, many hands.",
+      "blocks": [
+        { "c": "Kicker", "text": "03 · MULTI-AGENT ARCHITECTURE" },
+        { "c": "TextReveal", "size": "headline", "text": "The Supervisor", "accentWord": "Supervisor" },
+        {
+          "c": "AnalogyInset",
+          "caption": "TEA-1 Physical Embodiment · Multi-Joint Contact Dynamics",
+          "framesDir": "tea1_motion",
+          "totalFrames": 180,
+          "delayFrames": 30,
+          "fullScreenHero": true
+        },
+        { "c": "IconLabel", "text": "SUPERVISOR PATTERN · ONE BRAIN MANY HANDS" }
+      ]
+    },
+    {
+      "id": "pattern-fanout-fanin",
+      "dur": 17.65,
+      "look": "fanout",
+      "move": "zoom-in",
+      "stage": "frame",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "Pattern two: Fan-out, fan-in. This is the real army move. Say you need to research five competitors. You do not send one agent to do it five times in a row — you spawn five agents at once, each takes one competitor, and they all report back to a single reducer that merges the results.",
+      "blocks": [
+        { "c": "Kicker", "text": "03 · PARALLEL SCALE" },
+        { "c": "TextReveal", "size": "headline", "text": "Fan-Out / Fan-In", "accentWord": "Fan-In" },
+        {
+          "c": "Distribution",
+          "prompt": "Execution Latency Comparison",
+          "items": [
+            { "label": "Parallel Fan-Out", "p": 0.85 },
+            { "label": "Sequential Chain", "p": 0.15 }
+          ],
+          "note": "5x throughput speedup via parallel agent dispatch"
+        },
+        { "c": "Card", "title": "Map-Reduce Reducer", "body": "Dispatches N worker agents and aggregates into a single merged record.", "state": "active" }
+      ]
+    },
+    {
+      "id": "trap-state-overwrite",
+      "dur": 14.88,
+      "look": "fanout",
+      "move": "cut",
+      "stage": "none",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "But here is the trap almost everyone falls into: if two agents write to the same piece of state at the same time, and you have not told your system how to merge them — one silently erases the other's work. Nobody warns you about this. I am warning you.",
+      "blocks": []
+    },
+    {
+      "id": "pattern-hierarchical",
+      "dur": 13.82,
+      "look": "supervisor",
+      "move": "pan",
+      "stage": "frame",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "Pattern three: Hierarchical. Once you are past five or six agents, one supervisor gets overwhelmed. So supervisors get their own sub-supervisors. Teams of teams. That is how you actually scale this past a demo.",
+      "blocks": [
+        { "c": "Kicker", "text": "03 · ENTERPRISE SCALE" },
+        { "c": "TextReveal", "size": "headline", "text": "Teams of Teams", "accentWord": "Teams" },
+        {
+          "c": "LayerStack",
+          "count": 24,
+          "bottomLabel": "Worker Agents",
+          "topLabel": "Executive Supervisor"
+        },
+        { "c": "Card", "title": "Sub-Supervisors", "body": "Nested supervisory trees scale cleanly to dozens of autonomous agents.", "state": "active" }
+      ]
+    },
+    {
+      "id": "traps-what-breaks",
+      "dur": 12.50,
+      "look": "traps",
+      "move": "zoom-in",
+      "stage": "frame",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "Three things will bite you the first time you build this for real. Loops that never end — because you asked an AI 'are we done yet?' and it cannot decide. Fix: always cap it with a hard iteration limit.",
+      "blocks": [
+        { "c": "Kicker", "text": "04 · FAILURE MODES" },
+        { "c": "TextReveal", "size": "headline", "text": "Infinite Loops", "accentWord": "Loops" },
+        {
+          "c": "ScaleBar",
+          "ticks": ["Iter 1", "Iter 10", "Iter 25", "Hard Cap"],
+          "value": 0.95,
+          "label": "Iteration Guard"
+        },
+        { "c": "IconLabel", "text": "GUARDRAILS · DETERMINISTIC ITERATION CAPS" }
+      ]
+    },
+    {
+      "id": "cost-debugging",
+      "dur": 14.15,
+      "look": "traps",
+      "move": "cut",
+      "stage": "frame",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "Cost that quietly explodes — because every hop through your graph is a full model call. And debugging — in a graph, you must log every state change at every step, or you will be flying blind. These are not edge cases. These are Tuesday.",
+      "blocks": [
+        { "c": "Kicker", "text": "04 · PRODUCTION OBSERVABILITY" },
+        { "c": "TextReveal", "size": "headline", "text": "Cost & Debugging", "accentWord": "Debugging" },
+        {
+          "c": "Distribution",
+          "prompt": "Observability Overhead vs Token Waste",
+          "items": [
+            { "label": "Full State Logs", "p": 0.92 },
+            { "label": "Blind Rerolls", "p": 0.08 }
+          ],
+          "note": "Granular state tracing prevents compounding error costs"
+        },
+        { "c": "Card", "title": "State Telemetry", "body": "Record inputs, outputs, and diffs on every step for deterministic debugging.", "state": "active" }
+      ]
+    },
+    {
+      "id": "tie-it-together",
+      "dur": 14.38,
+      "look": "graphmap",
+      "move": "pan",
+      "stage": "none",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "So here is the whole idea in one image: Stop thinking about your agents as a line. Start thinking about them as a map — with a shared memory, decision points at every fork, and a plan for what happens when five paths need to become one.",
+      "blocks": []
+    },
+    {
+      "id": "close-cta",
+      "dur": 13.50,
+      "look": "graphmap",
+      "move": "zoom-out",
+      "stage": "frame",
+      "zoom": 0.6,
+      "drift": true,
+      "scriptText": "The agents you have been building? They were never the hard part. The coordination between them — that is the actual skill. That is the part nobody teaches. And now you know it. If this made something click for you — go build your army.",
+      "blocks": [
+        { "c": "Kicker", "text": "06 · CALL TO ACTION" },
+        { "c": "TextReveal", "size": "headline", "text": "Build Your Army", "accentWord": "Army" },
+        { "c": "Card", "title": "Master The Coordination", "body": "The prompt is just the worker. The graph is the organization.", "state": "active" },
+        { "c": "IconLabel", "text": "GRAPH ENGINEERING · SHIPPED & DELIVERED" }
+      ]
+    }
+  ]
+};

@@ -370,7 +370,7 @@ export const IconLabel: React.FC<BlockProps & { text: string }> = ({ text, start
   );
 };
 
-/** Depth comes from a hairline and a lift in surface value. Never a shadow. */
+/** High-clarity glassmorphic card with luminous accents */
 export const Card: React.FC<
   BlockProps & { title: string; body?: string; state: "idle" | "active" }
 > = ({ title, body, state, start, index }) => {
@@ -383,19 +383,45 @@ export const Card: React.FC<
     <div
       style={{
         ...enter,
-        border: `1px solid ${active ? accent : rule()}`,
-        borderRadius: layout.radius.inner,
-        background: active ? accentAt(accent, 0.1) : SUNKEN,
-        padding: layout.grid * 2,
+        border: `1.5px solid ${active ? accent : "rgba(255, 255, 255, 0.12)"}`,
+        borderRadius: layout.radius.inner + 4,
+        background: active
+          ? "linear-gradient(135deg, rgba(16, 36, 52, 0.94) 0%, rgba(8, 20, 30, 0.98) 100%)"
+          : "linear-gradient(135deg, rgba(22, 26, 36, 0.88) 0%, rgba(12, 14, 20, 0.96) 100%)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        padding: `${layout.grid * 2}px ${layout.grid * 2.5}px`,
         display: "flex",
         flexDirection: "column",
-        gap: layout.grid,
+        gap: layout.grid * 1.2,
+        boxShadow: active
+          ? `0 16px 36px rgba(0, 0, 0, 0.5), 0 0 24px ${accentAt(accent, 0.25)}, inset 0 1px 1px rgba(255, 255, 255, 0.3)`
+          : "0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.06)",
       }}
     >
-      <span style={{ ...layout.label(), color: active ? accent : PALETTE.muted }}>{state}</span>
-      <span style={{ ...layout.type("body"), color: PALETTE.ink }}>{title}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span
+          style={{
+            fontFamily: MONO,
+            fontSize: 9,
+            letterSpacing: "0.12em",
+            fontWeight: 700,
+            textTransform: "uppercase",
+            color: active ? accent : "rgba(255, 255, 255, 0.5)",
+            background: active ? accentAt(accent, 0.16) : "rgba(255, 255, 255, 0.06)",
+            padding: "2px 8px",
+            borderRadius: 6,
+            border: `1px solid ${active ? accentAt(accent, 0.3) : "rgba(255, 255, 255, 0.08)"}`,
+          }}
+        >
+          {active ? "⚡ ACTIVE SPEC" : "◈ SYSTEM SPEC"}
+        </span>
+      </div>
+      <span style={{ ...layout.type("body"), color: "#FFFFFF", fontWeight: 600 }}>{title}</span>
       {body ? (
-        <span style={{ ...layout.type("caption"), color: PALETTE.muted }}>{body}</span>
+        <span style={{ ...layout.type("caption"), color: "rgba(255, 255, 255, 0.85)", lineHeight: 1.45 }}>
+          {body}
+        </span>
       ) : null}
     </div>
   );
