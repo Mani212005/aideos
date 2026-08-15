@@ -11,6 +11,7 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
+    "@chenglou/pretext": "^0.0.8",
     "@deepgram/sdk": "^3.13.0",
     "@remotion/cli": "4.0.499",
     "@remotion/google-fonts": "4.0.499",

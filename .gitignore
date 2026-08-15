@@ -22,6 +22,8 @@ public/*.wav
 public/*.m4a
 public/*.mp4
 public/*.mov
+*.wav
+*.mp3
 
 # Scripts and Transitions directory
 scripts/

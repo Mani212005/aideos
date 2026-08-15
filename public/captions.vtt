@@ -1,106 +1,114 @@
 WEBVTT
 
-00:00:00.160 --> 00:00:06.019
-A baby giraffe learns to walk in under an hour. It falls, it hurts, gravity yells at it, and it adapts.
+1
+00:00:00.160 --> 00:00:02.420
+A model never rereads your prompt.
 
-00:00:06.480 --> 00:00:12.580
-Now watch this robot. It has been trying to pick up a coffee mug for six months, and it still cannot do it.
+2
+00:00:03.120 --> 00:00:05.859
+It would have to thousands of times per answer.
 
-00:00:13.074 --> 00:00:15.414
-The difference between those two is not intelligence.
+3
+00:00:06.720 --> 00:00:10.019
+Something has to remember for it and that something has a price.
 
-00:00:15.955 --> 00:00:30.739
-It is the world they are allowed to fail in. Today, I am going to show you the thing every AI that learns by doing, self driving cars, chess engines, robot hands, even the bots that beat humans at DOTA, all secretly depend on. It is not the algorithm.
+4
+00:00:10.960 --> 00:00:12.099
+Step one, tokenization.
 
-00:00:31.039 --> 00:00:32.020
-It is the playground.
+5
+00:00:12.805 --> 00:00:17.145
+Your sentence arrives as IDs. Seven tokens, not five words.
 
-00:00:33.039 --> 00:00:35.539
-In reinforcement learning, you have got two characters.
+6
+00:00:18.005 --> 00:00:21.865
+Now watch how the attention network connects tokens across the canvas.
 
-00:00:35.920 --> 00:00:46.714
-The agent, that is your AI, the one trying to learn something, and the environment, that is everything else. The world it lives in, the rules it cannot break, and the scoreboard it is obsessed with.
+7
+00:00:22.805 --> 00:00:24.105
+Step two, attention.
 
-00:00:47.254 --> 00:01:05.319
-Here is the loop, and it is stupidly simple. The environment shows the agent a state. Basically, here is what is going on right now. The agent picks an action. The environment reacts, hands back a reward, a little pat on the head or a slap on the wrist plus a new state. And then they do it again and again, thousands, millions of times.
+8
+00:00:24.485 --> 00:00:27.065
+Every new token looks back at every old one.
 
-00:01:06.180 --> 00:01:14.204
-That is it. That is the whole marriage. It is less programming a robot and more raising a golden retriever with a reward function instead of treats,
+9
+00:00:27.769 --> 00:00:31.150
+Those glances form an attention grid across the sequence.
 
-00:01:14.665 --> 00:01:18.604
-except the golden retriever runs 10,000 simulations before breakfast.
+10
+00:00:32.009 --> 00:00:35.469
+It calculates weighted sums of queries, keys, and values.
 
-00:01:19.545 --> 00:01:30.810
-Here is what nobody tells you. The agent usually is not the hard part. Off the shelf algorithms, q learning, PPO, whatever is trending on Twitter this week are basically plug and play.
+11
+00:00:36.410 --> 00:00:40.430
+The two things worth keeping, each token hands out a key and a value.
 
-00:01:31.189 --> 00:01:34.409
-The environment is where all the actual design work happens.
+12
+00:00:41.255 --> 00:00:45.595
+The key is how it answers being looked up. The value is what it says when it is.
 
-00:01:35.189 --> 00:01:46.945
-Think about it like this. You would not teach a kid to drive by handing them keys to a real car on a real highway on day one. That is a terrible environment, too dangerous, too slow, too expensive when they inevitably clip a mailbox.
+13
+00:00:46.454 --> 00:00:51.195
+Neither depends on anything that comes after it, which is the whole reason this works.
 
-00:01:47.405 --> 00:01:49.344
-So what do you do? You build a simulator,
+14
+00:00:52.055 --> 00:00:55.195
+Once computed, these vectors flow into the next stage.
 
-00:01:49.780 --> 00:01:56.120
-cones in a parking lot, a video game, something safe, fast, and repeatable where crashing costs nothing but pride.
+15
+00:00:56.150 --> 00:00:59.770
+Step three, profill. The whole prompt goes through once in parallel.
 
-00:01:56.900 --> 00:02:00.359
-That is exactly what OpenAI Gym, now called Gymnasium,
+16
+00:01:00.710 --> 00:01:03.610
+Keep the grid in memory. That is the kv cache.
 
-00:02:00.900 --> 00:02:14.264
-does for AI. It is a giant toy box of prebuilt worlds. Balance a pole on a cart, land a lunar module, walk a stick figure across a room. Same interface every time so any agent can plug into any world without a custom adapter.
+17
+00:01:04.390 --> 00:01:07.290
+Read it again or store it in memory. Pick one.
 
-00:02:14.564 --> 00:02:16.905
-It is the USB C of machine learning,
+18
+00:01:08.085 --> 00:01:12.265
+Step four, decode. Now each generated word costs one new row.
 
-00:02:17.710 --> 00:02:19.729
-and the design choices matter enormously.
+19
+00:01:13.045 --> 00:01:16.505
+Every generation step looks back at the cached keys and values.
 
-00:02:20.189 --> 00:02:38.555
-Make the reward too generous, and your agent finds a loophole. Famously, one bow tracing AI learned to spin in tight circles collecting bonus points forever instead of finishing the race. It technically maximized reward. It just also never learned to race a boat. Comedy gold for us. Nightmare fuel for whoever shipped it.
+20
+00:01:17.445 --> 00:01:21.785
+Step five, what it costs. You bought compute speed with GPU memory.
 
-00:02:39.254 --> 00:02:48.930
-This is not abstract lab stuff. Self driving car companies train for millions of virtual miles in simulated cities before a single real tire touches real asphalt
+21
+00:01:22.620 --> 00:01:25.840
+And it grows linearly forever with each token generated.
 
-00:02:49.310 --> 00:02:54.210
-because crashing in a simulation is free, and crashing on Main Street is a lawsuit.
+22
+00:01:26.860 --> 00:01:28.220
+At 128
 
-00:02:54.830 --> 00:03:00.210
-Data centers use RL environments to learn how to route cooling systems and cut energy use.
+23
+00:01:28.220 --> 00:01:28.960
+k tokens,
 
-00:03:00.995 --> 00:03:05.495
-Warehouse robots learn to grab oddly shaped packages in a simulated warehouse
+24
+00:01:29.340 --> 00:01:32.800
+the cache for a 70 b model runs to tens of gigabytes,
 
-00:03:05.875 --> 00:03:09.495
-thousands of times before they ever touch your actual Amazon order.
+25
+00:01:33.260 --> 00:01:36.080
+bigger than a lot of the weights it is reading from.
 
-00:03:09.875 --> 00:03:12.615
-Even the recommendation feed you doom scroll tonight,
+26
+00:01:36.905 --> 00:01:39.565
+Memory pressure becomes the ultimate bottleneck.
 
-00:03:13.280 --> 00:03:15.060
-increasingly trained in an environment,
+27
+00:01:40.585 --> 00:01:41.485
+Profill once,
 
-00:03:15.439 --> 00:03:19.379
-a simulated version of a user before it ever gets near real you.
+28
+00:01:41.785 --> 00:01:45.485
+cache, then decode forever, keys, values, profill, decode.
 
-00:03:20.000 --> 00:03:29.805
-So next time something says AI learned to do x, the honest translation is a research team spent six months building a world realistic enough to lie to the AI convincingly.
-
-00:03:30.425 --> 00:03:36.205
-The learning is often the easy part. Building a lie good enough to teach the truth, that is the craft.
-
-00:03:36.985 --> 00:03:42.709
-So here is the actual takeaway, and it applies to more than robots. You do not get better by wishing.
-
-00:03:43.009 --> 00:03:47.349
-You get better by getting reps in a space where failing is cheap and feedback is fast.
-
-00:03:47.650 --> 00:03:55.590
-That giraffe was not smarter than the robot. It just had ten thousand years of evolution building the perfect environment for falling down safely.
-
-00:03:56.524 --> 00:04:02.304
-Find your parking lot before you find your highway. And if you are an AI reading this script to train on high,
-
-00:04:02.604 --> 00:04:03.904
-good luck with the mug.

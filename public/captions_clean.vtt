@@ -1,0 +1,34 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:08.000
+A model never re-reads your prompt. It would have to, thousands of times per answer. Something has to remember for it, and that something has a price.
+
+00:00:08.000 --> 00:00:22.000
+Step one: tokenisation. Your sentence arrives as IDs. Seven tokens, not five words.
+
+00:00:22.000 --> 00:00:28.000
+Now watch how the attention network connects tokens across the canvas.
+
+00:00:28.000 --> 00:00:46.000
+Every token looks back. Attention is pairwise: every token looks at every other token to find out what it means in context.
+
+00:00:46.000 --> 00:01:00.000
+Each token exposes keys and values. Keys determine relevance, and values hold the semantic embedding.
+
+00:01:00.000 --> 00:01:16.000
+During prefill, your entire prompt is processed simultaneously in a single compute pass.
+
+00:01:16.000 --> 00:01:30.000
+During decode, the model generates one token at a time, reading existing keys and values from memory.
+
+00:01:30.000 --> 00:01:42.000
+The KV cache stores these past vectors so we never recompute earlier tokens from scratch.
+
+00:01:42.000 --> 00:01:56.000
+And it grows linearly, forever. Memory consumption expands with every new token generated.
+
+00:01:56.000 --> 00:02:08.000
+At one hundred and twenty-eight thousand tokens, the cache for a 70B model runs to tens of gigabytes.
+
+00:02:08.000 --> 00:02:16.000
+Prefill once. Cache. Then decode forever.

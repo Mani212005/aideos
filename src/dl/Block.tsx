@@ -110,7 +110,7 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
       return (
         <LayerStack
           {...timing}
-          count={block.count}
+          count={block.count ?? 32}
           bottomLabel={block.bottomLabel}
           topLabel={block.topLabel}
         />

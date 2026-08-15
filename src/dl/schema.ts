@@ -35,7 +35,8 @@ export const edgeSchema = z.object({
   from: z.string(),
   to: z.string(),
   /** Dashed reads as "reused / cached / skipped" everywhere in the system. */
-  dashed: z.boolean().default(false),
+  dashed: z.boolean().default(false).optional(),
+  label: z.string().optional(),
 });
 
 /**
@@ -145,9 +146,11 @@ export const blockSchema = z.discriminatedUnion("c", [
   }),
   z.object({
     c: z.literal("LayerStack"),
-    count: z.number().int().min(4).max(48).default(32),
+    count: z.number().int().min(4).max(48).default(32).optional(),
     bottomLabel: z.string().max(22).optional(),
     topLabel: z.string().max(22).optional(),
+    prompt: z.string().optional(),
+    layers: z.array(z.union([z.string(), z.object({ label: z.string(), dim: z.string().optional() })])).optional(),
   }),
   z.object({
     c: z.literal("ScaleBar"),

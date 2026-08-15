@@ -1,6 +1,6 @@
 import React from "react";
 import { interpolateColors, useCurrentFrame, useVideoConfig } from "remotion";
-import { accentAt, MONO, PALETTE, rule, SANS } from "./tokens";
+import { accentAt, MONO, PALETTE, SANS } from "./tokens";
 import { easeExpo, frames, MS } from "./motion";
 import { useAccent } from "./accent";
 import { camTransform, edgePath, nodeArrivals, shotAt, type Cam, type TimedShot } from "./camera";

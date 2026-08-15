@@ -8,7 +8,6 @@ import {
   PALETTE,
   rule,
   SERIF,
-  SUNKEN,
   useLayout,
   type DLLayout,
 } from "./tokens";

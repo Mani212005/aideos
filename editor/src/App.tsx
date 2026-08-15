@@ -1,7 +1,5 @@
-// File Description: Provides the Aideos editor shell for film, graph, storyboard, and playback editing.
-
-import { useEffect, useState, useMemo } from "react";
-import { Player } from "@remotion/player";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { Player, type PlayerRef } from "@remotion/player";
 import { FilmView } from "../../src/dl/Film";
 import { buildTimeline, totalFrames } from "../../src/dl/camera";
 import { kvcacheFilm } from "../../src/dl/films/kvcache";
@@ -11,6 +9,9 @@ import { Styleboard } from "./components/Styleboard";
 import { NodeEditor } from "./components/NodeEditor";
 import { ShotEditor } from "./components/ShotEditor";
 import { TransitionEditor } from "./components/TransitionEditor";
+import { KineticCaptionEditor } from "./components/KineticCaptionEditor";
+import { TimelineEditor } from "./components/TimelineEditor";
+import { DEFAULT_GIRAFFE_CAPTION_WORDS } from "../../src/dl/captionsParser";
 import type { TransitionType } from "./transitions";
 
 const filmModules = import.meta.glob("../../src/dl/films/*.ts", { eager: true }) as Record<
@@ -32,7 +33,7 @@ const FORMATS = {
 };
 
 type Format = keyof typeof FORMATS;
-type Mode = "map" | "styleboard" | "transitions" | "video";
+type Mode = "map" | "timeline" | "styleboard" | "transitions" | "captions" | "video";
 type Selection = { type: "node" | "shot", id: string } | null;
 
 // Renders the main Aideos Editor application shell.
@@ -43,7 +44,12 @@ export default function App() {
   const [selection, setSelection] = useState<Selection>(null);
   const [filmIds, setFilmIds] = useState<string[]>([...filmsById.keys()]);
   const [saving, setSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Playback & Playhead state
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const playerRef = useRef<PlayerRef>(null);
 
   // Transition Inspector state
   const [transitionType, setTransitionType] = useState<TransitionType>("paper-rip");
@@ -52,6 +58,87 @@ export default function App() {
   // Styleboard / presentation state
   const [accent, setAccent] = useState(film.accent || "#635BFF");
   const [storyStyle, setStoryStyle] = useState("default");
+
+  // Regenerate video preview key & Pretext captions state
+  const [regenerateKey, setRegenerateKey] = useState<number>(0);
+  const [captionWords, setCaptionWords] = useState<any[]>(DEFAULT_GIRAFFE_CAPTION_WORDS);
+
+  // Adjustable timeline height state (vertical split resizer)
+  const [timelineHeight, setTimelineHeight] = useState<number>(320);
+  const [isResizingTimeline, setIsResizingTimeline] = useState<boolean>(false);
+
+  // Sync Remotion Player playing state with timeline without 30fps parent re-renders
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
+
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    const onEnded = () => setIsPlaying(false);
+
+    player.addEventListener("play", onPlay);
+    player.addEventListener("pause", onPause);
+    player.addEventListener("ended", onEnded);
+
+    return () => {
+      player.removeEventListener("play", onPlay);
+      player.removeEventListener("pause", onPause);
+      player.removeEventListener("ended", onEnded);
+    };
+  }, [mode, regenerateKey]);
+
+  // Global cross-tab audio coordinator and rogue audio element killer
+  useEffect(() => {
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel("aideos_single_tab_audio");
+      bc.onmessage = (e) => {
+        if (e.data === "takeover_playback") {
+          try {
+            playerRef.current?.pause();
+          } catch (_) {}
+        }
+      };
+    } catch (_) {}
+
+    // Kill any orphaned audio elements from previous HMR passes
+    const lingering = document.querySelectorAll("audio");
+    lingering.forEach((a) => {
+      try {
+        a.pause();
+        a.currentTime = 0;
+      } catch (_) {}
+    });
+
+    return () => {
+      try {
+        bc?.close();
+      } catch (_) {}
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isResizingTimeline) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const minH = 140;
+      const maxH = Math.min(window.innerHeight * 0.75, 750);
+      const computedHeight = window.innerHeight - e.clientY;
+      setTimelineHeight(Math.max(minH, Math.min(maxH, computedHeight)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingTimeline(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizingTimeline]);
+
 
   useEffect(() => {
     let live = true;
@@ -123,6 +210,34 @@ export default function App() {
     }
   };
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    setStatus({ ok: true, text: "⏳ Rendering high-definition MP4 via Remotion engine... Please wait." });
+    try {
+      const res = await fetch("/api/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ film, format }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Export failed");
+
+      // Auto-trigger browser file download
+      const link = document.createElement("a");
+      link.href = data.downloadUrl;
+      link.download = data.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setStatus({ ok: true, text: `🎉 Export complete! Downloaded ${data.filename}` });
+    } catch (err: any) {
+      setStatus({ ok: false, text: `Export error: ${err.message || String(err)}` });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const addNode = () => {
     const nodes = [...film.canvas.nodes, { id: `node-${Date.now()}`, label: "new node", x: 100, y: 100, w: 190, h: 62 }];
     setFilm({ ...film, canvas: { ...film.canvas, nodes } });
@@ -151,7 +266,20 @@ export default function App() {
   };
 
   const addShot = () => {
-    const shots = [...film.shots, { id: `shot-${Date.now()}`, dur: 10, look: film.canvas.nodes[0]?.id || 'all', move: 'hold', stage: 'anchor', zoom: 1, drift: false, blocks: [] } as Shot];
+    const defaultNode = film.canvas.nodes[0]?.id || 'all';
+    const shots = [
+      ...film.shots,
+      {
+        id: `shot-${Date.now()}`,
+        dur: 10,
+        look: defaultNode,
+        move: 'hold',
+        stage: 'anchor',
+        zoom: 1,
+        drift: false,
+        blocks: [{ c: "Body", text: "New shot narrative and scene description." }],
+      } as Shot,
+    ];
     setFilm({ ...film, shots });
   };
 
@@ -310,22 +438,56 @@ export default function App() {
         {/* Top bar with Layer switcher */}
         <div className="flex justify-between items-center shrink-0">
           <div className="flex bg-[#1A1A1B] p-1 rounded-lg border border-[#333]">
-            {(["map", "styleboard", "transitions", "video"] as Mode[]).map(m => (
+            {(["map", "timeline", "styleboard", "transitions", "captions", "video"] as Mode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
-                className={`text-xs px-4 py-1.5 rounded-md capitalize font-bold tracking-wide transition-colors ${
-                  mode === m ? "bg-[#635BFF] text-white" : "text-gray-400 hover:text-white"
+                className={`text-xs px-3.5 py-1.5 rounded-md capitalize font-bold tracking-wide transition-colors ${
+                  mode === m ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
                 }`}
               >
-                {m} Layer
+                {m === "timeline" ? "🎞️ Timeline & Trimmer" : m === "captions" ? "💬 Pretext Captions" : `${m} Layer`}
               </button>
             ))}
           </div>
 
           {mode === "video" && (
-            <div className="flex gap-2">
-              {(Object.keys(FORMATS) as Format[]).map(f => (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  try {
+                    playerRef.current?.pause();
+                  } catch (_) {}
+                  setRegenerateKey((k) => k + 1);
+                  setStatus({ ok: true, text: "🔄 Video preview recompiled and regenerated with latest settings!" });
+                }}
+                className="text-xs px-3.5 py-1.5 rounded bg-yellow-500 hover:bg-yellow-400 text-black font-bold flex items-center gap-1.5 shadow-md transition-colors"
+                title="Force re-render Remotion timeline with latest Pretext captions & transitions"
+              >
+                <span>🔄</span> Regenerate
+              </button>
+              <button
+                onClick={handleExport}
+                disabled={isExporting}
+                className={`text-xs px-3.5 py-1.5 rounded font-bold flex items-center gap-1.5 shadow-md transition-colors ${
+                  isExporting
+                    ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+                    : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                }`}
+                title="Render and export full high-definition MP4 video"
+              >
+                {isExporting ? (
+                  <>
+                    <span className="animate-spin">⏳</span> Rendering MP4...
+                  </>
+                ) : (
+                  <>
+                    <span>📥</span> Export MP4
+                  </>
+                )}
+              </button>
+              <div className="h-4 w-[1px] bg-[#333] mx-1" />
+              {(Object.keys(FORMATS) as Format[]).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFormat(f)}
@@ -347,7 +509,36 @@ export default function App() {
               film={film} 
               selectedNodeId={selection?.type === "node" ? selection.id : null}
               onSelectNode={(id) => setSelection(id ? { type: "node", id } : null)}
+              onNodesChange={(updatedNodes) => {
+                setFilm((prev) => ({
+                  ...prev,
+                  canvas: { ...prev.canvas, nodes: updatedNodes },
+                }));
+              }}
             />
+          )}
+
+          {mode === "timeline" && (
+            <div className="w-full h-full p-4 bg-[#09090B] overflow-hidden">
+              <TimelineEditor
+                film={film}
+                onUpdateFilm={setFilm}
+                isPlaying={isPlaying}
+                onTogglePlay={() => {
+                  if (playerRef.current?.isPlaying()) {
+                    playerRef.current.pause();
+                    setIsPlaying(false);
+                  } else {
+                    playerRef.current?.play();
+                    setIsPlaying(true);
+                  }
+                }}
+                onPreviewSeek={(_frame) => {
+                  // Seek preview to exact frame
+                  setSelection({ type: "shot", id: film.shots[0]?.id || "" });
+                }}
+              />
+            </div>
           )}
 
           {mode === "styleboard" && (
@@ -377,37 +568,90 @@ export default function App() {
             </div>
           )}
 
+          {mode === "captions" && (
+            <div className="w-full h-full bg-[#09090B] p-6 overflow-y-auto">
+              <KineticCaptionEditor onCaptionsChange={setCaptionWords} />
+            </div>
+          )}
+
           {mode === "video" && (
-            <div className="w-full h-full bg-black border border-[#333] rounded-lg overflow-hidden flex flex-col items-center justify-center relative">
-              {timeline ? (
-                <>
-                  <Player
-                    component={FilmView}
-                    inputProps={{
-                      film,
-                      timeline,
-                      accent,
-                      showGrid,
-                      showRail,
-                    }}
-                    durationInFrames={duration}
-                    fps={film.fps}
-                    compositionWidth={FORMATS[format].width}
-                    compositionHeight={FORMATS[format].height}
-                    style={{ width: "100%", height: "100%" }}
-                    controls
-                    autoPlay
-                    loop
-                  />
-                  {selection?.type === "shot" && (
-                    <div className="absolute top-4 left-4 bg-[#111]/80 backdrop-blur border border-[#333] rounded px-3 py-1.5 text-xs text-white">
-                      Reviewing Shot: <span className="font-mono text-[#635BFF]">{selection.id}</span>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-red-500">Error building timeline. Check console.</div>
-              )}
+            <div className="w-full h-full bg-[#0A0A0B] border border-[#333] rounded-lg overflow-hidden flex flex-col">
+              {/* TOP SECTION: Remotion Video Player Preview */}
+              <div className="flex-1 bg-black relative flex items-center justify-center min-h-0">
+                {timeline ? (
+                  <>
+                    <Player
+                      ref={playerRef}
+                      key={regenerateKey}
+                      component={FilmView}
+                      inputProps={{
+                        film,
+                        timeline,
+                        accent,
+                        showGrid,
+                        showRail,
+                        captionWords,
+                        transitionType,
+                      }}
+                      durationInFrames={duration}
+                      fps={film.fps}
+                      compositionWidth={FORMATS[format].width}
+                      compositionHeight={FORMATS[format].height}
+                      style={{ width: "100%", height: "100%", maxHeight: "100%" }}
+                      controls
+                      acknowledgeRemotionLicense
+                    />
+                    {selection?.type === "shot" && (
+                      <div className="absolute top-4 left-4 bg-[#111]/80 backdrop-blur border border-[#333] rounded px-3 py-1.5 text-xs text-white z-30">
+                        Reviewing Shot: <span className="font-mono text-[#635BFF]">{selection.id}</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-red-500">Error building timeline. Check console.</div>
+                )}
+              </div>
+
+              {/* VERTICAL SPLIT RESIZER DRAG HANDLE */}
+              <div
+                onMouseDown={() => setIsResizingTimeline(true)}
+                className={`h-2.5 bg-[#18181B] hover:bg-[#635BFF] cursor-row-resize flex items-center justify-center transition-colors border-y border-[#27272A] z-40 select-none group ${
+                  isResizingTimeline ? "bg-[#635BFF] ring-2 ring-[#635BFF]" : ""
+                }`}
+                title="Drag up/down to adjust timeline height"
+              >
+                <div className="w-12 h-1 rounded-full bg-gray-500 group-hover:bg-white transition-colors flex items-center justify-center gap-0.5">
+                  <div className="w-1 h-1 rounded-full bg-black/60" />
+                  <div className="w-1 h-1 rounded-full bg-black/60" />
+                  <div className="w-1 h-1 rounded-full bg-black/60" />
+                </div>
+              </div>
+
+              {/* BOTTOM SECTION: Embedded Multi-Track Timeline & Trimmer with dynamic height */}
+              <div
+                style={{ height: `${timelineHeight}px` }}
+                className="bg-[#0E0E10] shrink-0 overflow-hidden"
+              >
+                <TimelineEditor
+                  film={film}
+                  onUpdateFilm={setFilm}
+                  isEmbedded={true}
+                  isPlaying={isPlaying}
+                  playerRef={playerRef}
+                  onTogglePlay={() => {
+                    if (playerRef.current?.isPlaying()) {
+                      playerRef.current.pause();
+                      setIsPlaying(false);
+                    } else {
+                      playerRef.current?.play();
+                      setIsPlaying(true);
+                    }
+                  }}
+                  onPreviewSeek={(frame) => {
+                    playerRef.current?.seekTo(frame);
+                  }}
+                />
+              </div>
             </div>
           )}
         </div>

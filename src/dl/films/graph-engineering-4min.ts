@@ -1,15 +1,10 @@
 import type { Film } from "../schema";
 
-export const graphEngineeringFilm: Film = {
+export const graphEngineering4minFilm: Film = {
   "id": "graph-engineering-4min",
   "title": "Why Your AI Agents Keep Failing (And How One Diagram Fixes It)",
   "fps": 30,
   "accent": "#FF6B00",
-  "voiceover": {
-    "src": "voiceover_graph.wav",
-    "volume": 1
-  },
-  "captions": "captions_graph.vtt",
   "chapters": [
     "the hook",
     "agents are loops",
@@ -89,44 +84,44 @@ export const graphEngineeringFilm: Film = {
       {
         "from": "chain",
         "to": "loop",
-        "label": "breaks at"
+        "dashed": false
       },
       {
         "from": "loop",
         "to": "state",
-        "label": "requires"
+        "dashed": false
       },
       {
         "from": "state",
         "to": "supervisor",
-        "label": "coordinates"
+        "dashed": false
       },
       {
         "from": "supervisor",
         "to": "fanout",
-        "label": "spawns"
+        "dashed": false
       },
       {
         "from": "fanout",
         "to": "traps",
-        "label": "risks"
+        "dashed": false
       },
       {
         "from": "traps",
         "to": "graphmap",
-        "label": "solved by"
+        "dashed": false
       }
     ]
   },
   "shots": [
     {
       "id": "hook-lie",
-      "dur": 11.3,
+      "dur": 10.65,
       "look": "chain",
       "move": "cut",
+      "drift": true,
       "stage": "frame",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "Every AI agent tutorial you have watched is lying to you. They show you one agent, doing one task, in a straight line. Prompt in, answer out. Looks great in a demo.",
       "blocks": [
         {
@@ -135,8 +130,8 @@ export const graphEngineeringFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "The Straight Line Lie",
+          "size": "headline",
           "accentWord": "Lie"
         },
         {
@@ -153,12 +148,12 @@ export const graphEngineeringFilm: Film = {
     },
     {
       "id": "hook-collapse",
-      "dur": 13.43,
+      "dur": 12.57,
       "look": "chain",
       "move": "zoom-in",
+      "drift": true,
       "stage": "frame",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "Then you try to build something real — five agents, one goal — and it falls apart. Agents talk over each other. State gets lost. One agent loops forever and burns your API budget while you are asleep.",
       "blocks": [
         {
@@ -167,8 +162,8 @@ export const graphEngineeringFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "State Collapse",
+          "size": "headline",
           "accentWord": "Collapse"
         },
         {
@@ -187,23 +182,23 @@ export const graphEngineeringFilm: Film = {
     },
     {
       "id": "hook-graph-intro",
-      "dur": 6.73,
+      "dur": 7.22,
       "look": "all",
       "move": "pan",
+      "drift": true,
       "stage": "none",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "There is a reason for that. And there is a fix. It is called graph engineering — and once you see it, you cannot unsee it.",
       "blocks": []
     },
     {
       "id": "loop-not-chain",
-      "dur": 13.52,
+      "dur": 14.88,
       "look": "loop",
       "move": "cut",
+      "drift": true,
       "stage": "frame",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "Here is the mental shift. A single AI agent is not one call to a model. It is a loop. Think. Act. Look at the result. Think again. You cannot draw a loop with an arrow that only points forward. A straight line cannot come back on itself.",
       "blocks": [
         {
@@ -212,8 +207,8 @@ export const graphEngineeringFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Agents Are Loops",
+          "size": "headline",
           "accentWord": "Loops"
         },
         {
@@ -242,23 +237,23 @@ export const graphEngineeringFilm: Film = {
     },
     {
       "id": "graph-foundation",
-      "dur": 11.96,
+      "dur": 10.18,
       "look": "loop",
       "move": "zoom-out",
+      "drift": true,
       "stage": "none",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "So the moment you need looping — or branching, or five agents working at once — a straight chain breaks. You need a graph. Nodes. Edges. And something flowing between them.",
       "blocks": []
     },
     {
       "id": "block-state",
-      "dur": 15.73,
+      "dur": 14.18,
       "look": "state",
       "move": "pan",
+      "drift": true,
       "stage": "frame",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "Every graph-based agent system runs on four things. One — state. A shared object every agent reads and writes to. Not 'the conversation.' Real structured data: the task, the plan, the results so far, and the errors.",
       "blocks": [
         {
@@ -267,8 +262,8 @@ export const graphEngineeringFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Structured State",
+          "size": "headline",
           "accentWord": "State"
         },
         {
@@ -287,12 +282,12 @@ export const graphEngineeringFilm: Film = {
     },
     {
       "id": "block-nodes-edges",
-      "dur": 17.25,
+      "dur": 16.48,
       "look": "state",
       "move": "zoom-in",
+      "drift": true,
       "stage": "frame",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "Two — nodes. Each one does one job: an LLM call, a tool call, or a human checkpoint. Nodes can contain entire agents inside them — nesting like Russian dolls. Three — edges. Conditional edges: a function that looks at the state and asks, 'what happens next?'",
       "blocks": [
         {
@@ -301,8 +296,8 @@ export const graphEngineeringFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Conditional Routing",
+          "size": "headline",
           "accentWord": "Routing"
         },
         {
@@ -329,12 +324,12 @@ export const graphEngineeringFilm: Film = {
     },
     {
       "id": "block-routing-checkpoints",
-      "dur": 14.38,
+      "dur": 14.47,
       "look": "state",
       "move": "cut",
+      "drift": true,
       "stage": "frame",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "This — right here — is the actual engineering. Not the prompts. The routing. And four — checkpoints. Save state after every step. When an agent runs for ten minutes and step forty-one crashes, you do not want to lose steps one through forty.",
       "blocks": [
         {
@@ -343,8 +338,8 @@ export const graphEngineeringFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Step Checkpoints",
+          "size": "headline",
           "accentWord": "Checkpoints"
         },
         {
@@ -368,12 +363,12 @@ export const graphEngineeringFilm: Film = {
     },
     {
       "id": "pattern-supervisor",
-      "dur": 17.13,
+      "dur": 15.88,
       "look": "supervisor",
       "move": "pan",
+      "drift": true,
       "stage": "frame",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "Okay. Here is how you actually go from one agent to an army. Pattern one: the Supervisor. Picture a general and five soldiers. The soldiers never talk to each other — they report back to the general, who decides who moves next. One brain, many hands.",
       "blocks": [
         {
@@ -382,8 +377,8 @@ export const graphEngineeringFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "The Supervisor",
+          "size": "headline",
           "accentWord": "Supervisor"
         },
         {
@@ -402,12 +397,12 @@ export const graphEngineeringFilm: Film = {
     },
     {
       "id": "pattern-fanout-fanin",
-      "dur": 16.51,
+      "dur": 17.65,
       "look": "fanout",
       "move": "zoom-in",
+      "drift": true,
       "stage": "frame",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "Pattern two: Fan-out, fan-in. This is the real army move. Say you need to research five competitors. You do not send one agent to do it five times in a row — you spawn five agents at once, each takes one competitor, and they all report back to a single reducer that merges the results.",
       "blocks": [
         {
@@ -416,8 +411,8 @@ export const graphEngineeringFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Fan-Out / Fan-In",
+          "size": "headline",
           "accentWord": "Fan-In"
         },
         {
@@ -445,23 +440,23 @@ export const graphEngineeringFilm: Film = {
     },
     {
       "id": "trap-state-overwrite",
-      "dur": 15.88,
+      "dur": 14.88,
       "look": "fanout",
       "move": "cut",
+      "drift": true,
       "stage": "none",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "But here is the trap almost everyone falls into: if two agents write to the same piece of state at the same time, and you have not told your system how to merge them — one silently erases the other's work. Nobody warns you about this. I am warning you.",
       "blocks": []
     },
     {
       "id": "pattern-hierarchical",
-      "dur": 12.07,
+      "dur": 13.82,
       "look": "supervisor",
       "move": "pan",
+      "drift": true,
       "stage": "frame",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "Pattern three: Hierarchical. Once you are past five or six agents, one supervisor gets overwhelmed. So supervisors get their own sub-supervisors. Teams of teams. That is how you actually scale this past a demo.",
       "blocks": [
         {
@@ -470,8 +465,8 @@ export const graphEngineeringFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Teams of Teams",
+          "size": "headline",
           "accentWord": "Teams"
         },
         {
@@ -490,12 +485,12 @@ export const graphEngineeringFilm: Film = {
     },
     {
       "id": "traps-what-breaks",
-      "dur": 12.18,
+      "dur": 12.5,
       "look": "traps",
       "move": "zoom-in",
+      "drift": true,
       "stage": "frame",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "Three things will bite you the first time you build this for real. Loops that never end — because you asked an AI 'are we done yet?' and it cannot decide. Fix: always cap it with a hard iteration limit.",
       "blocks": [
         {
@@ -504,8 +499,8 @@ export const graphEngineeringFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Infinite Loops",
+          "size": "headline",
           "accentWord": "Loops"
         },
         {
@@ -527,12 +522,12 @@ export const graphEngineeringFilm: Film = {
     },
     {
       "id": "cost-debugging",
-      "dur": 13.13,
+      "dur": 14.15,
       "look": "traps",
       "move": "cut",
+      "drift": true,
       "stage": "frame",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "Cost that quietly explodes — because every hop through your graph is a full model call. And debugging — in a graph, you must log every state change at every step, or you will be flying blind. These are not edge cases. These are Tuesday.",
       "blocks": [
         {
@@ -541,8 +536,8 @@ export const graphEngineeringFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Cost & Debugging",
+          "size": "headline",
           "accentWord": "Debugging"
         },
         {
@@ -570,23 +565,23 @@ export const graphEngineeringFilm: Film = {
     },
     {
       "id": "tie-it-together",
-      "dur": 13.78,
+      "dur": 14.38,
       "look": "graphmap",
       "move": "pan",
+      "drift": true,
       "stage": "none",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "So here is the whole idea in one image: Stop thinking about your agents as a line. Start thinking about them as a map — with a shared memory, decision points at every fork, and a plan for what happens when five paths need to become one.",
       "blocks": []
     },
     {
       "id": "close-cta",
-      "dur": 10.1,
+      "dur": 13.5,
       "look": "graphmap",
       "move": "zoom-out",
+      "drift": true,
       "stage": "frame",
       "zoom": 0.6,
-      "drift": true,
       "scriptText": "The agents you have been building? They were never the hard part. The coordination between them — that is the actual skill. That is the part nobody teaches. And now you know it. If this made something click for you — go build your army.",
       "blocks": [
         {
@@ -595,8 +590,8 @@ export const graphEngineeringFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Build Your Army",
+          "size": "headline",
           "accentWord": "Army"
         },
         {
@@ -611,5 +606,10 @@ export const graphEngineeringFilm: Film = {
         }
       ]
     }
-  ]
+  ],
+  "voiceover": {
+    "src": "voiceover_graph.wav",
+    "volume": 1
+  },
+  "captions": "captions_graph.vtt"
 };

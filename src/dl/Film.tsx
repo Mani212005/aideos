@@ -8,6 +8,7 @@ import { CanvasGraph } from "./CanvasGraph";
 import { PaperRip } from "./PaperRip";
 import { TextBeat } from "./devices";
 import {
+  buildTimeline,
   camAt,
   lookBox,
   projectBox,
@@ -15,7 +16,7 @@ import {
   totalFrames,
   type TimedShot,
 } from "./camera";
-import type { Film } from "./schema";
+import type { Film, Block } from "./schema";
 
 /**
  * ---------------------------------------------------------------------------
@@ -223,19 +224,23 @@ const Rail: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline 
   );
 };
 
+import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
+
 export type FilmViewProps = {
   film: Film;
   timeline: TimedShot[];
   accent: string;
   showGrid: boolean;
   showRail: boolean;
+  captionWords?: CaptionWord[];
+  transitionType?: string;
 };
 
 const Dynamic3DHeroOverlay: React.FC<{ frame: number; timeline: ReturnType<typeof buildTimeline> }> = ({ frame, timeline }) => {
   for (const t of timeline) {
     const shot = t.shot;
     const heroBlock = shot.blocks.find(
-      (b): b is Extract<typeof b, { c: "AnalogyInset" }> => b.c === "AnalogyInset" && !!b.fullScreenHero
+      (b: Block): b is Extract<Block, { c: "AnalogyInset" }> => b.c === "AnalogyInset" && !!b.fullScreenHero
     );
     if (!heroBlock) continue;
 
@@ -308,6 +313,8 @@ export const FilmView: React.FC<FilmViewProps> = ({
   accent,
   showGrid,
   showRail,
+  captionWords,
+  transitionType: _transitionType,
 }) => {
   const frame = useCurrentFrame();
   const { width, height, fps } = useVideoConfig();
@@ -352,18 +359,12 @@ export const FilmView: React.FC<FilmViewProps> = ({
             <rect width="100%" height="100%" filter="url(#paper-grain)" opacity="0.8" />
           </svg>
         </AbsoluteFill>
-        {film.voiceover?.src && (
-          <Audio src={staticFile(film.voiceover.src)} volume={() => film.voiceover!.volume}>
-            {film.captions && (
-              <track
-                default
-                kind="captions"
-                src={film.captions}
-                srcLang="en"
-                label="English"
-              />
-            )}
-          </Audio>
+        {film.voiceover?.src && (film.voiceover.volume ?? 1) > 0 && (
+          <Audio
+            key={`aideos-voiceover-${film.id}`}
+            src={`${staticFile(film.voiceover.src)}?v=fresh_146`}
+            volume={film.voiceover?.volume ?? 1}
+          />
         )}
         <AbsoluteFill style={{ transform: `scale(${drift})` }}>
           <AbsoluteFill style={{ opacity: canvasOpacity }}>
@@ -376,6 +377,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
         <Dynamic3DHeroOverlay frame={frame} timeline={timeline} />
         <PaperRip active={isTransitioning} progress={transitionProgress} frame={frame} />
         {showRail ? <Rail film={film} timeline={timeline} /> : null}
+        {captionWords && captionWords.length > 0 && <KineticSubtitles words={captionWords} />}
         {/* A single hairline vignette at the very edge */}
         <AbsoluteFill
           style={{

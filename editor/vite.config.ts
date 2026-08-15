@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
+import { spawn } from 'node:child_process'
 import { filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
 
@@ -42,13 +43,85 @@ const readBody = (req: IncomingMessage) =>
     req.on('error', reject);
   });
 
-// Vite plugin to provide simple read/write API for films
+// Vite plugin to provide simple read/write API for films and video rendering
 function filmApiPlugin(): Plugin {
   return {
     name: 'film-api',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = (req.url ?? '').split('?')[0];
+
+        // Disable browser caching for media assets during development
+        if (url.endsWith('.wav') || url.endsWith('.vtt')) {
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+        }
+
+        // Handle /api/export endpoint for 1-click video rendering
+        if (url === '/api/export' && req.method === 'POST') {
+          void readBody(req)
+            .then(async (body) => {
+              const { film, format } = (body as { film: Film; format?: string }) || {};
+              if (!film) {
+                sendJson(res, 400, { error: 'film is required' });
+                return;
+              }
+              const outDir = path.resolve(__dirname, '../out');
+              if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+
+              const composition = format === 'reel' ? 'Reel' : 'Long';
+              const filename = `aideos_${film.id}_${format || 'long'}_${Date.now()}.mp4`;
+              const outPath = path.join(outDir, filename);
+
+              // Save active film first so remotion bundles it
+              const filmFile = path.join(filmsDir, `${film.id}.ts`);
+              fs.writeFileSync(filmFile, filmModule(film), 'utf8');
+
+              const child = spawn(
+                'npx',
+                ['remotion', 'render', 'src/index.ts', composition, outPath],
+                {
+                  cwd: path.resolve(__dirname, '..'),
+                  stdio: 'pipe',
+                }
+              );
+
+              child.on('close', (code) => {
+                if (code === 0) {
+                  sendJson(res, 200, {
+                    ok: true,
+                    filename,
+                    downloadUrl: `/api/downloads/${filename}`,
+                  });
+                } else {
+                  sendJson(res, 500, {
+                    error: `Remotion render exited with code ${code}`,
+                  });
+                }
+              });
+            })
+            .catch((err) => {
+              sendJson(res, 500, { error: String(err) });
+            });
+          return;
+        }
+
+        // Handle /api/downloads/:filename to stream exported MP4
+        if (url.startsWith('/api/downloads/')) {
+          const fname = path.basename(url.slice('/api/downloads/'.length));
+          const fpath = path.join(__dirname, '../out', fname);
+          if (fs.existsSync(fpath)) {
+            res.setHeader('Content-Type', 'video/mp4');
+            res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
+            fs.createReadStream(fpath).pipe(res);
+            return;
+          } else {
+            sendJson(res, 404, { error: 'File not found' });
+            return;
+          }
+        }
+
         if (url !== '/api/films' && !url.startsWith('/api/films/')) return next();
 
         if (url === '/api/films' && req.method === 'GET') {
@@ -97,9 +170,9 @@ function filmApiPlugin(): Plugin {
   }
 }
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), filmApiPlugin()],
+  publicDir: path.resolve(__dirname, '../public'),
   server: {
     port: 3000,
     fs: {
