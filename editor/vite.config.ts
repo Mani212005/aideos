@@ -381,6 +381,50 @@ function filmApiPlugin(): Plugin {
 
             let generated = false;
 
+            // Helper to split large text blocks into sentence-level chunks <= 220 chars for Kokoro ONNX context limit
+            function chunkTextForTTS(text: string, maxChars = 220): string[] {
+              const rawParagraphs = text.split(/\r?\n+/).map(p => p.trim()).filter(Boolean);
+              const chunks: string[] = [];
+
+              for (const p of rawParagraphs) {
+                if (p.length <= maxChars) {
+                  chunks.push(p);
+                  continue;
+                }
+                const sentences = p.match(/[^.!?;]+[.!?;]*/g) || [p];
+                let currentChunk = "";
+
+                for (const sentence of sentences) {
+                  const s = sentence.trim();
+                  if (!s) continue;
+                  if ((currentChunk + " " + s).trim().length <= maxChars) {
+                    currentChunk = (currentChunk + " " + s).trim();
+                  } else {
+                    if (currentChunk) chunks.push(currentChunk);
+                    if (s.length > maxChars) {
+                      const words = s.split(/\s+/).filter(Boolean);
+                      let wordChunk = "";
+                      for (const w of words) {
+                        if ((wordChunk + " " + w).trim().length <= maxChars) {
+                          wordChunk = (wordChunk + " " + w).trim();
+                        } else {
+                          if (wordChunk) chunks.push(wordChunk);
+                          wordChunk = w;
+                        }
+                      }
+                      if (wordChunk) chunks.push(wordChunk);
+                      currentChunk = "";
+                    } else {
+                      currentChunk = s;
+                    }
+                  }
+                }
+                if (currentChunk) chunks.push(currentChunk);
+              }
+
+              return chunks.filter(Boolean);
+            }
+
             // Helper to encode Float32Array to 16-bit PCM WAV
             function encodeWav(float32Data: Float32Array, rate: number): Buffer {
               const numChannels = 1;
@@ -422,7 +466,7 @@ function filmApiPlugin(): Plugin {
                 const { KokoroTTS } = await import('kokoro-js');
                 const tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'q8' });
 
-                const paragraphs = cleanText.split('\n\n').filter(Boolean);
+                const paragraphs = chunkTextForTTS(cleanText);
                 const allAudio: Float32Array[] = [];
                 let sampleRate = 24000;
 
