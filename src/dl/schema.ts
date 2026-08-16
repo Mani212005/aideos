@@ -210,33 +210,90 @@ const accentCost = (b: Block): number => {
   return isDevice(b) ? 1 : 0;
 };
 
+export const stageSchema = z.enum(["anchor", "frame", "none"]).default("anchor");
+export const lookSchema = z.union([z.string(), z.array(z.string()).min(1), z.literal("all")]);
+export const moveSchema = z.enum(["pan", "zoom-in", "zoom-out", "hold", "cut"]).default("pan");
+
+export const backgroundPresetSchema = z.enum([
+  "paper-white",
+  "parchment",
+  "blueprint",
+  "charcoal",
+  "dot-grid",
+  "smooth-dark",
+]);
+
+export const fontPresetSchema = z.enum([
+  "geist",
+  "mono",
+  "serif",
+  "space-grotesk",
+  "inter",
+]);
+
+export const videoTypeSchema = z.enum([
+  "educational",
+  "fact",
+  "case-study",
+  "tutorial",
+]);
+
+export const storyStyleSchema = z.enum([
+  "spatial-map",
+  "script-metaphor",
+]);
+
+export const cameraAngleSchema = z.enum([
+  "flat",
+  "isometric",
+  "cinematic-tilt",
+  "low-angle",
+  "orbit",
+  "top-down",
+]);
+
+export const themeSchema = z.object({
+  background: backgroundPresetSchema.optional(),
+  fontFamily: fontPresetSchema.optional(),
+  videoType: videoTypeSchema.optional(),
+  storyStyle: storyStyleSchema.optional(),
+  cameraAngle: cameraAngleSchema.optional(),
+  accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+});
+
 export const shotSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
-  /** Seconds. Starts are derived, so a shot cannot be out of sequence. */
-  dur: z.number().min(2).max(45),
-  /** Node id, several node ids, or the whole canvas. Never coordinates. */
-  look: z.union([z.string(), z.array(z.string()).min(1), z.literal("all")]),
-  move: z.enum(["pan", "zoom-in", "zoom-out", "hold", "cut"]).default("pan"),
+  ch: z.string().min(1).max(30).optional(),
+  dur: z.number().min(1).max(90),
+  stage: stageSchema,
+  look: lookSchema,
+  move: moveSchema.default("pan"),
+  /** Camera angle & 3D perspective preset */
+  cameraAngle: cameraAngleSchema.optional(),
   /** Hold the frame alive with a 100 → 104% push. */
   drift: z.boolean().default(false),
-  /**
-   * Where the blocks live.
-   *  - `anchor` grows the panel out of the node being looked at (the zoom-in
-   *    join), so a device is visibly *inside* the structure it came from.
-   *  - `frame` is full-frame, for text beats.
-   *  - `none` leaves the canvas alone. This is the spine.
-   */
-  stage: z.enum(["anchor", "frame", "none"]).default("anchor"),
   /** Tighten or loosen the framing. 1 fits the target with standard padding. */
   zoom: z.number().min(0.4).max(2.5).default(1),
   /** Optional script/narration block that will be read aloud. */
   scriptText: z.string().optional(),
-  blocks: z.array(blockSchema).max(6).default([]),
+  /** Human or LLM visual direction notes for this shot. */
+  visualDirection: z.string().optional(),
+  /** Per-shot transition to use when entering this shot. */
+  transition: z.enum(["paper-rip", "zoom-morph", "matrix-glitch", "whip-pan", "film-burn"]).optional(),
+  /** Optional semantic metaphor cue for script-driven visual depictions. */
+  metaphor: z.enum(["spider-web", "liquid-bucket", "balance-scale", "clock-gears", "rocket-launch", "character-throw", "custom"]).optional(),
+  blocks: z.array(blockSchema).max(12).default([]),
 });
 
 export type CanvasNode = z.infer<typeof nodeSchema>;
 export type CanvasEdge = z.infer<typeof edgeSchema>;
 export type Shot = z.infer<typeof shotSchema>;
+export type BackgroundPreset = z.infer<typeof backgroundPresetSchema>;
+export type FontPreset = z.infer<typeof fontPresetSchema>;
+export type VideoType = z.infer<typeof videoTypeSchema>;
+export type StoryStyle = z.infer<typeof storyStyleSchema>;
+export type CameraAngle = z.infer<typeof cameraAngleSchema>;
+export type ThemeConfig = z.infer<typeof themeSchema>;
 
 export const filmBaseSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
@@ -244,6 +301,8 @@ export const filmBaseSchema = z.object({
   fps: z.union([z.literal(24), z.literal(30), z.literal(60)]),
   /** Overrides the one colour. Everything else in §01 is fixed. */
   accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  /** Comprehensive studio appearance and customization config */
+  theme: themeSchema.optional(),
   chapters: z.array(z.string().min(1).max(30)).min(1).max(12),
   canvas: z.object({
     nodes: z.array(nodeSchema).min(2).max(24),

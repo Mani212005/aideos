@@ -25,7 +25,7 @@ const bed = (frame: number, hasVoice: boolean, master: number) => {
  * Narration level. Ramped at both ends — cutting a voice track in at full level
  * puts an audible click on the first and last frames.
  */
-const _voice = (frame: number, level: number) =>
+export const voiceLevel = (frame: number, level: number) =>
   level *
   Math.min(1, frame / 6) *
   Math.min(1, Math.max(0, TOTAL_FRAMES - frame) / 12);

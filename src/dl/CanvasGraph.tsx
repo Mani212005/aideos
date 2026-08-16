@@ -3,7 +3,7 @@ import { interpolateColors, useCurrentFrame, useVideoConfig } from "remotion";
 import { accentAt, MONO, PALETTE, SANS } from "./tokens";
 import { easeExpo, frames, MS } from "./motion";
 import { useAccent } from "./accent";
-import { camTransform, edgePath, nodeArrivals, shotAt, type Cam, type TimedShot } from "./camera";
+import { camTransform, edgePath, getCameraPerspective, nodeArrivals, shotAt, type Cam, type TimedShot } from "./camera";
 import type { Film, Shot } from "./schema";
 
 /**
@@ -304,27 +304,42 @@ export const CanvasGraph: React.FC<{ film: Film; timeline: TimedShot[]; cam: Cam
   timeline,
   cam,
 }) => {
+  const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
+  const current = shotAt(timeline, frame);
+  const activeAngle = current.shot.cameraAngle || film.theme?.cameraAngle || "flat";
   const arrivals = React.useMemo(() => nodeArrivals(film, timeline), [film, timeline]);
+  const persp = getCameraPerspective(activeAngle, frame);
 
   return (
     <div
       style={{
         position: "absolute",
         inset: 0,
-        transformOrigin: "0 0",
-        transform: camTransform(cam, { width, height }),
+        perspective: persp.perspective,
+        perspectiveOrigin: "50% 50%",
+        transformStyle: "preserve-3d",
       }}
     >
-      <Edges film={film} timeline={timeline} arrivals={arrivals} />
-      {film.canvas.nodes.map((node) => (
-        <Node
-          key={node.id}
-          node={node}
-          timeline={timeline}
-          arrival={arrivals.get(node.id) ?? Infinity}
-        />
-      ))}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          transformOrigin: "0 0",
+          transform: camTransform(cam, { width, height }, activeAngle, frame),
+          transformStyle: "preserve-3d",
+        }}
+      >
+        <Edges film={film} timeline={timeline} arrivals={arrivals} />
+        {film.canvas.nodes.map((node) => (
+          <Node
+            key={node.id}
+            node={node}
+            timeline={timeline}
+            arrival={arrivals.get(node.id) ?? Infinity}
+          />
+        ))}
+      </div>
     </div>
   );
 };

@@ -127,7 +127,7 @@ export const whatIsJepaFilm: Film = {
       "drift": true,
       "zoom": 1,
       "visualDirection": "Black screen. Blinking cursor types quote. Yann LeCun rubber stamp.",
-      "metaphor": "typing-cursor-quote" as any,
+      "metaphor": "character-throw",
       "blocks": [
         {
           "c": "TextReveal",

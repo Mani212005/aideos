@@ -5,17 +5,19 @@ export const kvcacheFilm: Film = {
   "title": "Why your LLM remembers — the KV cache",
   "fps": 30,
   "accent": "#635BFF",
+  "theme": {
+    "background": "dot-grid",
+    "fontFamily": "geist",
+    "storyStyle": "script-metaphor",
+    "cameraAngle": "isometric",
+    "accent": "#F43F5E"
+  },
   "chapters": [
     "tokens",
     "attention",
     "the cache",
     "the bill"
   ],
-  "voiceover": {
-    "src": "voiceover.wav",
-    "volume": 1
-  },
-  "captions": "captions.vtt",
   "canvas": {
     "nodes": [
       {
@@ -134,16 +136,18 @@ export const kvcacheFilm: Film = {
     {
       "id": "open",
       "dur": 8.2,
+      "stage": "frame",
       "look": "tokens",
       "move": "cut",
-      "stage": "frame",
-      "zoom": 0.5,
       "drift": true,
+      "zoom": 0.5,
+      "visualDirection": "Make a computer or character that reads the script once while sleeping, opens its eyes, and throws it out of the window.",
+      "metaphor": "character-throw",
       "blocks": [
         {
           "c": "TextReveal",
-          "size": "display",
           "text": "A model never re-reads your prompt.",
+          "size": "display",
           "accentWord": "prompt"
         },
         {
@@ -155,11 +159,11 @@ export const kvcacheFilm: Film = {
     {
       "id": "strip",
       "dur": 5.4,
+      "stage": "anchor",
       "look": "tokens",
       "move": "zoom-in",
-      "stage": "anchor",
-      "zoom": 0.6,
       "drift": false,
+      "zoom": 0.6,
       "blocks": [
         {
           "c": "Kicker",
@@ -167,8 +171,8 @@ export const kvcacheFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Your sentence arrives as ids.",
+          "size": "headline",
           "accentWord": "ids"
         },
         {
@@ -190,25 +194,25 @@ export const kvcacheFilm: Film = {
     {
       "id": "spine-1",
       "dur": 4,
+      "stage": "none",
       "look": [
         "tokens",
         "attend",
         "kv"
       ],
       "move": "zoom-out",
-      "stage": "none",
-      "zoom": 1,
       "drift": false,
+      "zoom": 1,
       "blocks": []
     },
     {
       "id": "attention",
       "dur": 4.8,
+      "stage": "anchor",
       "look": "attend",
       "move": "cut",
-      "stage": "anchor",
-      "zoom": 0.6,
       "drift": false,
+      "zoom": 0.6,
       "blocks": [
         {
           "c": "Kicker",
@@ -216,8 +220,8 @@ export const kvcacheFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Every new token looks back at every old one.",
+          "size": "headline",
           "accentWord": "back"
         },
         {
@@ -243,16 +247,16 @@ export const kvcacheFilm: Film = {
     {
       "id": "matrix",
       "dur": 4.8,
+      "stage": "anchor",
       "look": "attend",
       "move": "hold",
-      "stage": "anchor",
-      "zoom": 0.6,
       "drift": false,
+      "zoom": 0.6,
       "blocks": [
         {
           "c": "TextReveal",
-          "size": "subhead",
           "text": "Those glances are a grid.",
+          "size": "subhead",
           "accentWord": "grid"
         },
         {
@@ -297,16 +301,16 @@ export const kvcacheFilm: Film = {
     {
       "id": "beat-1",
       "dur": 4,
+      "stage": "frame",
       "look": "attend",
       "move": "hold",
-      "stage": "frame",
-      "zoom": 0.5,
       "drift": true,
+      "zoom": 0.5,
       "blocks": [
         {
           "c": "TextReveal",
-          "size": "display",
           "text": "It is all weighted sums.",
+          "size": "display",
           "accentWord": "weighted"
         }
       ]
@@ -314,11 +318,11 @@ export const kvcacheFilm: Film = {
     {
       "id": "kvsplit",
       "dur": 9.2,
+      "stage": "anchor",
       "look": "kv",
       "move": "pan",
-      "stage": "anchor",
-      "zoom": 0.6,
       "drift": false,
+      "zoom": 0.6,
       "blocks": [
         {
           "c": "Kicker",
@@ -326,8 +330,8 @@ export const kvcacheFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Each token hands out a key and a value.",
+          "size": "headline",
           "accentWord": "key"
         },
         {
@@ -339,6 +343,7 @@ export const kvcacheFilm: Film = {
     {
       "id": "spine-2",
       "dur": 3.6,
+      "stage": "none",
       "look": [
         "attend",
         "kv",
@@ -346,19 +351,18 @@ export const kvcacheFilm: Film = {
         "decode"
       ],
       "move": "zoom-out",
-      "stage": "none",
-      "zoom": 1,
       "drift": false,
+      "zoom": 1,
       "blocks": []
     },
     {
       "id": "prefill",
       "dur": 5.2,
+      "stage": "anchor",
       "look": "prefill",
       "move": "cut",
-      "stage": "anchor",
-      "zoom": 0.6,
       "drift": false,
+      "zoom": 0.6,
       "blocks": [
         {
           "c": "Kicker",
@@ -366,8 +370,8 @@ export const kvcacheFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "The whole prompt goes through once.",
+          "size": "headline",
           "accentWord": "once"
         },
         {
@@ -381,16 +385,16 @@ export const kvcacheFilm: Film = {
     {
       "id": "cache",
       "dur": 4.2,
+      "stage": "anchor",
       "look": "cache",
       "move": "pan",
-      "stage": "anchor",
-      "zoom": 0.6,
       "drift": false,
+      "zoom": 0.6,
       "blocks": [
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Keep the grid. That is the cache.",
+          "size": "headline",
           "accentWord": "cache"
         },
         {
@@ -437,16 +441,16 @@ export const kvcacheFilm: Film = {
     {
       "id": "beat-2",
       "dur": 3.8,
+      "stage": "frame",
       "look": "cache",
       "move": "hold",
-      "stage": "frame",
-      "zoom": 0.5,
       "drift": true,
+      "zoom": 0.5,
       "blocks": [
         {
           "c": "TextReveal",
-          "size": "display",
           "text": "Read it again, or store it. Pick one.",
+          "size": "display",
           "accentWord": "store"
         }
       ]
@@ -454,11 +458,11 @@ export const kvcacheFilm: Film = {
     {
       "id": "decode",
       "dur": 5.4,
+      "stage": "anchor",
       "look": "decode",
       "move": "pan",
-      "stage": "anchor",
-      "zoom": 0.6,
       "drift": false,
+      "zoom": 0.6,
       "blocks": [
         {
           "c": "Kicker",
@@ -466,8 +470,8 @@ export const kvcacheFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "Now each word costs one row.",
+          "size": "headline",
           "accentWord": "one"
         },
         {
@@ -498,25 +502,25 @@ export const kvcacheFilm: Film = {
     {
       "id": "spine-3",
       "dur": 4.2,
+      "stage": "none",
       "look": [
         "prefill",
         "decode",
         "cache"
       ],
       "move": "zoom-out",
-      "stage": "none",
-      "zoom": 1,
       "drift": false,
+      "zoom": 1,
       "blocks": []
     },
     {
       "id": "cost",
       "dur": 5.2,
+      "stage": "anchor",
       "look": "cost",
       "move": "cut",
-      "stage": "anchor",
-      "zoom": 0.6,
       "drift": false,
+      "zoom": 0.6,
       "blocks": [
         {
           "c": "Kicker",
@@ -524,8 +528,8 @@ export const kvcacheFilm: Film = {
         },
         {
           "c": "TextReveal",
-          "size": "headline",
           "text": "You bought speed with memory.",
+          "size": "headline",
           "accentWord": "memory"
         },
         {
@@ -544,16 +548,16 @@ export const kvcacheFilm: Film = {
     {
       "id": "growth",
       "dur": 4.6,
+      "stage": "anchor",
       "look": "cost",
       "move": "hold",
-      "stage": "anchor",
-      "zoom": 0.6,
       "drift": false,
+      "zoom": 0.6,
       "blocks": [
         {
           "c": "TextReveal",
-          "size": "subhead",
           "text": "And it grows linearly, forever.",
+          "size": "subhead",
           "accentWord": "linearly"
         },
         {
@@ -589,11 +593,11 @@ export const kvcacheFilm: Film = {
     {
       "id": "stat",
       "dur": 7.6,
+      "stage": "anchor",
       "look": "cost",
       "move": "hold",
-      "stage": "anchor",
-      "zoom": 0.6,
       "drift": false,
+      "zoom": 0.6,
       "blocks": [
         {
           "c": "StatCounter",
@@ -610,26 +614,26 @@ export const kvcacheFilm: Film = {
     {
       "id": "payoff",
       "dur": 3.8,
+      "stage": "none",
       "look": "all",
       "move": "zoom-out",
-      "stage": "none",
-      "zoom": 1,
       "drift": true,
+      "zoom": 1,
       "blocks": []
     },
     {
       "id": "close",
       "dur": 12.88,
+      "stage": "frame",
       "look": "all",
       "move": "hold",
-      "stage": "frame",
-      "zoom": 1,
       "drift": true,
+      "zoom": 1,
       "blocks": [
         {
           "c": "TextReveal",
-          "size": "display",
           "text": "Prefill once. Cache. Then decode forever.",
+          "size": "display",
           "accentWord": "Cache"
         },
         {
@@ -638,5 +642,10 @@ export const kvcacheFilm: Film = {
         }
       ]
     }
-  ]
+  ],
+  "voiceover": {
+    "src": "voiceover.wav",
+    "volume": 1
+  },
+  "captions": "captions.vtt"
 };

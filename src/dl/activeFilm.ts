@@ -1,5 +1,4 @@
-import { graphEngineeringFilm } from "./films/graphEngineering";
+import { whatIsJepaFilm } from "./films/what-is-jepa";
 import type { Film } from "./schema";
 
-export const ACTIVE_FILM: Film = graphEngineeringFilm;
-
+export const ACTIVE_FILM: Film = whatIsJepaFilm;

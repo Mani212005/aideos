@@ -1,7 +1,10 @@
 import { loadFont as loadGeist } from "@remotion/google-fonts/Geist";
 import { loadFont as loadMono } from "@remotion/google-fonts/JetBrainsMono";
 import { loadFont as loadSerif } from "@remotion/google-fonts/SourceSerif4";
+import { loadFont as loadSpaceGrotesk } from "@remotion/google-fonts/SpaceGrotesk";
+import { loadFont as loadInter } from "@remotion/google-fonts/Inter";
 import { useVideoConfig } from "remotion";
+import type { BackgroundPreset, FontPreset } from "./schema";
 
 /**
  * ---------------------------------------------------------------------------
@@ -35,20 +38,129 @@ export const { fontFamily: SERIF } = loadSerif("italic", {
   subsets: ["latin"],
 });
 
+/** Space Grotesk for modernist / expressive technical typography. */
+export const { fontFamily: SPACE_GROTESK } = loadSpaceGrotesk("normal", {
+  weights: ["400", "600", "700"],
+  subsets: ["latin"],
+});
+
+/** Inter for clean functional typography. */
+export const { fontFamily: INTER } = loadInter("normal", {
+  weights: ["400", "500", "600"],
+  subsets: ["latin"],
+});
+
+/** Resolves font family by preset name. */
+export const resolveFont = (preset?: FontPreset): string => {
+  switch (preset) {
+    case "mono": return MONO;
+    case "serif": return SERIF;
+    case "space-grotesk": return SPACE_GROTESK;
+    case "inter": return INTER;
+    case "geist":
+    default:
+      return SANS;
+  }
+};
+
 /**
- * Six values, no more. Anything else on screen is one of these at an alpha, and
- * the helpers below are the only sanctioned way to get there — a seventh
- * hardcoded hex is how a system stops being one.
+ * Paper Background Library & Color Tokens
  */
+export interface BackgroundTheme {
+  id: BackgroundPreset;
+  name: string;
+  canvas: string;
+  surface: string;
+  ink: string;
+  muted: string;
+  hairline: string;
+  description: string;
+  hasNoiseFilter: boolean;
+  gridType: "subtle-dots" | "blueprint-grid" | "paper-fibers" | "none";
+}
+
+export const BACKGROUND_THEMES: Record<BackgroundPreset, BackgroundTheme> = {
+  "paper-white": {
+    id: "paper-white",
+    name: "Archival White Paper",
+    canvas: "#F8F6F0",
+    surface: "#FFFFFF",
+    ink: "#111827",
+    muted: "#64748B",
+    hairline: "rgba(17, 24, 39, 0.12)",
+    description: "Tactile textured archival paper with organic fibers & natural lighting",
+    hasNoiseFilter: true,
+    gridType: "paper-fibers",
+  },
+  parchment: {
+    id: "parchment",
+    name: "Vintage Parchment",
+    canvas: "#F4EFEA",
+    surface: "#FAF7F2",
+    ink: "#292524",
+    muted: "#78716C",
+    hairline: "rgba(41, 37, 36, 0.12)",
+    description: "Warm academic manila cream paper with subtle aged grain",
+    hasNoiseFilter: true,
+    gridType: "paper-fibers",
+  },
+  blueprint: {
+    id: "blueprint",
+    name: "Technical Blueprint",
+    canvas: "#0B2545",
+    surface: "#13315C",
+    ink: "#EEF4F8",
+    muted: "#8DA9C4",
+    hairline: "rgba(238, 244, 248, 0.16)",
+    description: "Deep cyan engineering grid for architectural & system explainers",
+    hasNoiseFilter: false,
+    gridType: "blueprint-grid",
+  },
+  charcoal: {
+    id: "charcoal",
+    name: "Charcoal Slate Paper",
+    canvas: "#121214",
+    surface: "#1E1E22",
+    ink: "#F4F4F5",
+    muted: "#A1A1AA",
+    hairline: "rgba(244, 244, 245, 0.14)",
+    description: "Dark tactile slate paper with contrasting crisp silver ink",
+    hasNoiseFilter: true,
+    gridType: "paper-fibers",
+  },
+  "dot-grid": {
+    id: "dot-grid",
+    name: "Minimalist Dot Matrix",
+    canvas: "#FAF9F6",
+    surface: "#FFFFFF",
+    ink: "#18181B",
+    muted: "#71717A",
+    hairline: "rgba(24, 24, 27, 0.10)",
+    description: "Bullet journal precision dot matrix on crisp clean background",
+    hasNoiseFilter: false,
+    gridType: "subtle-dots",
+  },
+  "smooth-dark": {
+    id: "smooth-dark",
+    name: "Studio Deep Matte",
+    canvas: "#0A0A0B",
+    surface: "#141416",
+    ink: "#F5F5F5",
+    muted: "#8A8A8E",
+    hairline: "rgba(245, 245, 245, 0.10)",
+    description: "Ultra-clean high contrast modern dark studio canvas",
+    hasNoiseFilter: false,
+    gridType: "none",
+  },
+};
+
+/** Default palette (Archival White Paper) */
 export const PALETTE = {
-  /** Tactile Archival White Paper Canvas */
-  canvas: "#F8F6F0",
-  /** Crisp elevated cards sitting on the paper canvas. */
-  surface: "#FFFFFF",
-  ink: "#111827",
-  muted: "#64748B",
-  hairline: "rgba(17, 24, 39, 0.12)",
-  /** Architectural Terracotta Accent. */
+  canvas: BACKGROUND_THEMES["paper-white"].canvas,
+  surface: BACKGROUND_THEMES["paper-white"].surface,
+  ink: BACKGROUND_THEMES["paper-white"].ink,
+  muted: BACKGROUND_THEMES["paper-white"].muted,
+  hairline: BACKGROUND_THEMES["paper-white"].hairline,
   accent: "#FF6B00",
 } as const;
 
