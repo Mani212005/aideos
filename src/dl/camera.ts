@@ -1,4 +1,4 @@
-import type { CanvasEdge, CanvasNode, Film, Shot } from "./schema";
+import type { CanvasEdge, CanvasNode, Film, Shot, CameraAngle } from "./schema";
 import { easeExpo, MS } from "./motion";
 
 /**
@@ -103,11 +103,17 @@ export type TimedShot = {
  * the whole class of "scene 7 starts 0.5s before scene 6 ends" bugs cannot
  * occur — that failure silently distorted every camera move in the old engine.
  */
-export const buildTimeline = (film: Film): TimedShot[] => {
+export const buildTimeline = (film: Film, targetDurationSec?: number): TimedShot[] => {
   let cursor = 0;
   let chapter = -1;
+
+  const baseTotalDur = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
+  const effectiveTotalSec = targetDurationSec && targetDurationSec > 0 ? targetDurationSec : baseTotalDur;
+  const scaleRatio = baseTotalDur > 0 ? effectiveTotalSec / baseTotalDur : 1;
+
   return film.shots.map((shot, index) => {
-    const durationInFrames = Math.round(shot.dur * film.fps);
+    const shotSec = (shot.dur || 3) * scaleRatio;
+    const durationInFrames = Math.max(15, Math.round(shotSec * film.fps));
     const from = cursor;
     cursor += durationInFrames;
     if (shot.move === "cut") chapter += 1;
@@ -189,11 +195,62 @@ export const nodeArrivals = (film: Film, timeline: TimedShot[]): Map<string, num
 export const edgeArrival = (edge: CanvasEdge, arrivals: Map<string, number>) =>
   arrivals.get(edge.to) ?? Infinity;
 
-/** The transform that puts canvas space on screen. */
-export const camTransform = (cam: Cam, frameSize: { width: number; height: number }) =>
-  `translate(${frameSize.width / 2 - cam.cx * cam.ppu}px, ${
+/** Dynamic 3D Camera Angles & Perspectives */
+export const getCameraPerspective = (
+  angle: CameraAngle = "flat",
+  frame: number = 0,
+): { perspective: string; transform: string } => {
+  switch (angle) {
+    case "isometric":
+      return {
+        perspective: "1600px",
+        transform: "rotateX(26deg) rotateY(-14deg) rotateZ(3deg)",
+      };
+    case "cinematic-tilt":
+      return {
+        perspective: "1200px",
+        transform: "rotateX(14deg) rotateZ(-3.5deg)",
+      };
+    case "low-angle":
+      return {
+        perspective: "1000px",
+        transform: "rotateX(-18deg) translateY(25px)",
+      };
+    case "orbit":
+      const rx = 16 + Math.sin(frame * 0.02) * 6;
+      const ry = Math.cos(frame * 0.02) * 10;
+      return {
+        perspective: "1400px",
+        transform: `rotateX(${rx}deg) rotateY(${ry}deg)`,
+      };
+    case "top-down":
+      return {
+        perspective: "none",
+        transform: "none",
+      };
+    case "flat":
+    default:
+      return {
+        perspective: "none",
+        transform: "none",
+      };
+  }
+};
+
+/** The transform that puts canvas space on screen with optional 3D perspective angle. */
+export const camTransform = (
+  cam: Cam,
+  frameSize: { width: number; height: number },
+  angle: CameraAngle = "flat",
+  frame: number = 0,
+) => {
+  const base = `translate(${frameSize.width / 2 - cam.cx * cam.ppu}px, ${
     frameSize.height / 2 - cam.cy * cam.ppu
   }px) scale(${cam.ppu})`;
+  const persp = getCameraPerspective(angle, frame);
+  if (persp.transform === "none") return base;
+  return `${base} ${persp.transform}`;
+};
 
 /** Where a canvas box lands on screen under a given camera. */
 export const projectBox = (

@@ -42,12 +42,11 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const totalDuration = words.length > 0 ? (words[words.length - 1]?.endFrame || 300) : 300;
-  const cycleFrame = frame % totalDuration;
+  const currentFrame = frame;
 
   // Find active word
   const activeWordIndex = words.findIndex(
-    (w) => cycleFrame >= w.startFrame && cycleFrame <= w.endFrame
+    (w) => currentFrame >= w.startFrame && currentFrame <= w.endFrame
   );
 
   const activeIdx = activeWordIndex >= 0 ? activeWordIndex : 0;
@@ -56,8 +55,8 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   const endWindow = Math.min(words.length, startWindow + windowSize);
   const visibleWords = words.slice(startWindow, endWindow);
 
-  // Group text into a continuous string for Pretext layout calculation
-  const fullText = useMemo(() => visibleWords.map((w) => w.text).join(" "), [visibleWords]);
+  // Group text into a continuous string for Pretext layout calculation with clean spacing
+  const fullText = useMemo(() => visibleWords.map((w) => w.text.trim()).join(" "), [visibleWords]);
   const lineHeight = Math.round(fontSize * 1.3);
 
   // Pretext Preparation & Zero-DOM Layout calculation
@@ -76,7 +75,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   const activeWord = words[activeIdx] || words[0];
   const wordProgress = activeWord
     ? spring({
-        frame: cycleFrame - activeWord.startFrame,
+        frame: currentFrame - activeWord.startFrame,
         fps,
         config: { damping: 12, stiffness: 220 },
       })

@@ -1,12 +1,13 @@
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Audio, staticFile } from "remotion";
-import { accentAt, ink, PALETTE, rule, useLayout } from "./tokens";
+import { accentAt, PALETTE, rule, useLayout, BACKGROUND_THEMES, resolveFont } from "./tokens";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext } from "./accent";
 import { BlockView } from "./Block";
 import { CanvasGraph } from "./CanvasGraph";
 import { PaperRip } from "./PaperRip";
 import { TextBeat } from "./devices";
+import { MetaphorViewer } from "./metaphors/MetaphorViewer";
 import {
   buildTimeline,
   camAt,
@@ -314,7 +315,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
   showGrid,
   showRail,
   captionWords,
-  transitionType: _transitionType,
+  transitionType,
 }) => {
   const frame = useCurrentFrame();
   const { width, height, fps } = useVideoConfig();
@@ -343,22 +344,66 @@ export const FilmView: React.FC<FilmViewProps> = ({
   const isTransitioning = relFrame >= 0 && relFrame <= transitionFrames && current.index > 0;
   const transitionProgress = isTransitioning ? relFrame / transitionFrames : 0;
 
+  const bgPreset = film.theme?.background || "paper-white";
+  const bgTheme = BACKGROUND_THEMES[bgPreset] || BACKGROUND_THEMES["paper-white"];
+  const fontFamily = resolveFont(film.theme?.fontFamily);
+  const activeTransition = current.shot.transition || transitionType || "paper-rip";
+
   return (
     <AccentContext.Provider value={accent}>
-      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 20%, #FAF8F5 0%, #F5F1EA 60%, #EFEAE0 100%)", color: accent }}>
-        {/* Organic White Paper Texture & Fibers */}
-        <AbsoluteFill style={{ opacity: 0.28, pointerEvents: "none" }}>
-          <svg width="100%" height="100%">
-            <filter id="paper-grain">
-              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" result="noise" />
-              <feDiffuseLighting in="noise" lightingColor="#FDFCF7" surfaceScale="1.2">
-                <feDistantLight azimuth="60" elevation="50" />
-              </feDiffuseLighting>
-              <feBlend mode="multiply" in="SourceGraphic" result="blend" />
-            </filter>
-            <rect width="100%" height="100%" filter="url(#paper-grain)" opacity="0.8" />
-          </svg>
-        </AbsoluteFill>
+      <AbsoluteFill
+        style={{
+          backgroundColor: bgTheme.canvas,
+          color: bgTheme.ink,
+          fontFamily,
+        }}
+      >
+        {/* Paper & Texture Library Filter Shaders */}
+        {bgTheme.gridType === "paper-fibers" && (
+          <AbsoluteFill style={{ opacity: 0.28, pointerEvents: "none" }}>
+            <svg width="100%" height="100%">
+              <filter id="paper-grain">
+                <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" result="noise" />
+                <feDiffuseLighting in="noise" lightingColor={bgTheme.canvas} surfaceScale="1.2">
+                  <feDistantLight azimuth="60" elevation="50" />
+                </feDiffuseLighting>
+                <feBlend mode="multiply" in="SourceGraphic" result="blend" />
+              </filter>
+              <rect width="100%" height="100%" filter="url(#paper-grain)" opacity="0.8" />
+            </svg>
+          </AbsoluteFill>
+        )}
+
+        {bgTheme.gridType === "blueprint-grid" && (
+          <AbsoluteFill style={{ opacity: 0.45, pointerEvents: "none" }}>
+            <svg width="100%" height="100%">
+              <defs>
+                <pattern id="bp-small" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="0.5" />
+                </pattern>
+                <pattern id="bp-large" width="100" height="100" patternUnits="userSpaceOnUse">
+                  <rect width="100" height="100" fill="url(#bp-small)" />
+                  <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="1" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#bp-large)" />
+            </svg>
+          </AbsoluteFill>
+        )}
+
+        {bgTheme.gridType === "subtle-dots" && (
+          <AbsoluteFill style={{ opacity: 0.35, pointerEvents: "none" }}>
+            <svg width="100%" height="100%">
+              <defs>
+                <pattern id="dot-pat" width="24" height="24" patternUnits="userSpaceOnUse">
+                  <circle cx="12" cy="12" r="1.2" fill={bgTheme.ink} opacity="0.3" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#dot-pat)" />
+            </svg>
+          </AbsoluteFill>
+        )}
+
         {film.voiceover?.src && (film.voiceover.volume ?? 1) > 0 && (
           <Audio
             key={`aideos-voiceover-${film.id}`}
@@ -366,23 +411,70 @@ export const FilmView: React.FC<FilmViewProps> = ({
             volume={film.voiceover?.volume ?? 1}
           />
         )}
-        <AbsoluteFill style={{ transform: `scale(${drift})` }}>
-          <AbsoluteFill style={{ opacity: canvasOpacity }}>
-            <CanvasGraph film={film} timeline={timeline} cam={cam} />
-          </AbsoluteFill>
-          {showGrid ? <Grid /> : null}
-          <Stage film={film} timeline={timeline} />
-        </AbsoluteFill>
+
+        {/* Script Metaphor Rendering Mode vs Spatial Canvas Graph */}
+        {(() => {
+          let resolvedMetaphor = current.shot.metaphor;
+          if (!resolvedMetaphor && current.shot.visualDirection) {
+            const vd = current.shot.visualDirection.toLowerCase();
+            if (vd.includes("cursor") || vd.includes("quote") || vd.includes("stamp") || vd.includes("lecun") || vd.includes("yann")) {
+              resolvedMetaphor = "typing-cursor-quote" as any;
+            } else if (vd.includes("computer") || vd.includes("character") || vd.includes("sleep") || vd.includes("throw") || vd.includes("window")) {
+              resolvedMetaphor = "character-throw";
+            } else if (vd.includes("spider") || vd.includes("web") || vd.includes("weave")) {
+              resolvedMetaphor = "spider-web";
+            } else if (vd.includes("liquid") || vd.includes("water") || vd.includes("bucket") || vd.includes("reservoir") || vd.includes("buffer")) {
+              resolvedMetaphor = "liquid-bucket";
+            } else if (vd.includes("balance") || vd.includes("scale") || vd.includes("tradeoff") || vd.includes("weight")) {
+              resolvedMetaphor = "balance-scale";
+            } else if (vd.includes("gear") || vd.includes("clock") || vd.includes("time") || vd.includes("engine")) {
+              resolvedMetaphor = "clock-gears";
+            }
+          }
+
+          if (resolvedMetaphor) {
+            return (
+              <AbsoluteFill className="flex flex-col items-center justify-center">
+                {/* Background Dimmed Spatial Graph */}
+                <AbsoluteFill style={{ opacity: 0.03, pointerEvents: "none" }}>
+                  <CanvasGraph film={film} timeline={timeline} cam={cam} />
+                </AbsoluteFill>
+
+                {/* Prominent Large Metaphor Visual Scene Covering 75% of Frame */}
+                <div className="w-[92%] h-[86%] flex items-center justify-center z-10 scale-125">
+                  <MetaphorViewer
+                    type={resolvedMetaphor}
+                    frame={frame - current.from}
+                    accent={accent}
+                  />
+                </div>
+              </AbsoluteFill>
+            );
+          }
+
+          return (
+            <AbsoluteFill style={{ transform: `scale(${drift})` }}>
+              <AbsoluteFill style={{ opacity: canvasOpacity }}>
+                <CanvasGraph film={film} timeline={timeline} cam={cam} />
+              </AbsoluteFill>
+              {showGrid ? <Grid /> : null}
+              <Stage film={film} timeline={timeline} />
+            </AbsoluteFill>
+          );
+        })()}
+
         {/* Full-Screen Dynamic 3D Hero Spotlight Overlay */}
         <Dynamic3DHeroOverlay frame={frame} timeline={timeline} />
-        <PaperRip active={isTransitioning} progress={transitionProgress} frame={frame} />
+        {activeTransition === "paper-rip" && (
+          <PaperRip active={isTransitioning} progress={transitionProgress} frame={frame} />
+        )}
         {showRail ? <Rail film={film} timeline={timeline} /> : null}
         {captionWords && captionWords.length > 0 && <KineticSubtitles words={captionWords} />}
         {/* A single hairline vignette at the very edge */}
         <AbsoluteFill
           style={{
             pointerEvents: "none",
-            boxShadow: `inset 0 0 0 1px ${ink(0.04)}`,
+            boxShadow: `inset 0 0 0 1px ${bgTheme.hairline}`,
           }}
         />
       </AbsoluteFill>

@@ -241,14 +241,24 @@ export default function App() {
     };
   }, []);
 
+  const audioDurationSec = useMemo(() => {
+    if (captionWords && captionWords.length > 0) {
+      const lastWord = captionWords[captionWords.length - 1];
+      if (lastWord && lastWord.endFrame > 0) {
+        return lastWord.endFrame / film.fps;
+      }
+    }
+    return undefined;
+  }, [captionWords, film.fps]);
+
   const timeline = useMemo(() => {
     try {
-      return buildTimeline(film);
+      return buildTimeline(film, audioDurationSec);
     } catch(e) {
       console.error(e);
       return null;
     }
-  }, [film]);
+  }, [film, audioDurationSec]);
 
   const duration = timeline ? totalFrames(timeline) : 300;
 
