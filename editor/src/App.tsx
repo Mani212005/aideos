@@ -11,6 +11,11 @@ import { ShotEditor } from "./components/ShotEditor";
 import { TransitionEditor } from "./components/TransitionEditor";
 import { KineticCaptionEditor } from "./components/KineticCaptionEditor";
 import { TimelineEditor } from "./components/TimelineEditor";
+import { CustomizationEditor } from "./components/CustomizationEditor";
+import { ExportProgressModal } from "./components/ExportProgressModal";
+import { ScriptEditor } from "./components/ScriptEditor";
+import { NewProjectModal } from "./components/NewProjectModal";
+import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
 import { DEFAULT_GIRAFFE_CAPTION_WORDS } from "../../src/dl/captionsParser";
 import type { TransitionType } from "./transitions";
 
@@ -33,18 +38,22 @@ const FORMATS = {
 };
 
 type Format = keyof typeof FORMATS;
-type Mode = "map" | "timeline" | "styleboard" | "transitions" | "captions" | "video";
+type Mode = "script" | "map" | "timeline" | "customization" | "styleboard" | "transitions" | "captions" | "video";
 type Selection = { type: "node" | "shot", id: string } | null;
 
 // Renders the main Aideos Editor application shell.
 export default function App() {
   const [film, setFilm] = useState<Film>(kvcacheFilm);
   const [format, setFormat] = useState<Format>("long");
-  const [mode, setMode] = useState<Mode>("map");
+  const [mode, setMode] = useState<Mode>("script");
   const [selection, setSelection] = useState<Selection>(null);
   const [filmIds, setFilmIds] = useState<string[]>([...filmsById.keys()]);
   const [saving, setSaving] = useState(false);
+  const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportResult, setExportResult] = useState<{ filename: string; downloadUrl: string } | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Playback & Playhead state
@@ -66,6 +75,77 @@ export default function App() {
   // Adjustable timeline height state (vertical split resizer)
   const [timelineHeight, setTimelineHeight] = useState<number>(320);
   const [isResizingTimeline, setIsResizingTimeline] = useState<boolean>(false);
+
+  // Restore active project and fetch latest film list from backend on mount
+  useEffect(() => {
+    fetch("/api/films")
+      .then((res) => res.json())
+      .then(async (ids: string[]) => {
+        if (Array.isArray(ids) && ids.length > 0) {
+          setFilmIds(ids);
+
+          // Find saved active project ID from localStorage or backend
+          let activeId = localStorage.getItem("aideos_active_film_id");
+          if (!activeId || !ids.includes(activeId)) {
+            try {
+              const activeRes = await fetch("/api/active-film");
+              const activeData = await activeRes.json();
+              if (activeData.activeId && ids.includes(activeData.activeId)) {
+                activeId = activeData.activeId;
+              }
+            } catch (_) {}
+          }
+          if (!activeId || !ids.includes(activeId)) {
+            activeId = ids.includes("what-is-jepa") ? "what-is-jepa" : ids[0];
+          }
+
+          // Fetch the full film definition for the active project
+          fetch(`/api/films/${activeId}`)
+            .then((r) => r.json())
+            .then((data) => {
+              if (data.ok && data.film) {
+                setFilm(data.film);
+                setAccent(data.film.accent || "#635BFF");
+                localStorage.setItem("aideos_active_film_id", activeId!);
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Switches the active project dynamically and persists selection
+  const handleSelectFilm = async (selectedId: string) => {
+    localStorage.setItem("aideos_active_film_id", selectedId);
+    try {
+      await fetch("/api/active-film", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: selectedId }),
+      });
+    } catch (_) {}
+
+    try {
+      const res = await fetch(`/api/films/${selectedId}`);
+      const data = await res.json();
+      if (data.ok && data.film) {
+        setFilm(data.film);
+        setAccent(data.film.accent || "#635BFF");
+        setStatus(null);
+        setSelection(null);
+        return;
+      }
+    } catch (_) {}
+
+    const fallback = filmsById.get(selectedId);
+    if (fallback) {
+      setFilm(fallback);
+      setAccent(fallback.accent || "#635BFF");
+      setStatus(null);
+      setSelection(null);
+    }
+  };
 
   // Sync Remotion Player playing state with timeline without 30fps parent re-renders
   useEffect(() => {
@@ -212,6 +292,8 @@ export default function App() {
 
   const handleExport = async () => {
     setIsExporting(true);
+    setExportResult(null);
+    setExportError(null);
     setStatus({ ok: true, text: "⏳ Rendering high-definition MP4 via Remotion engine... Please wait." });
     try {
       const res = await fetch("/api/export", {
@@ -221,6 +303,8 @@ export default function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Export failed");
+
+      setExportResult({ filename: data.filename, downloadUrl: data.downloadUrl });
 
       // Auto-trigger browser file download
       const link = document.createElement("a");
@@ -232,9 +316,8 @@ export default function App() {
 
       setStatus({ ok: true, text: `🎉 Export complete! Downloaded ${data.filename}` });
     } catch (err: any) {
+      setExportError(err.message || String(err));
       setStatus({ ok: false, text: `Export error: ${err.message || String(err)}` });
-    } finally {
-      setIsExporting(false);
     }
   };
 
@@ -315,19 +398,21 @@ export default function App() {
           </pre>
         ) : null}
 
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Film</label>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Active Film</label>
+            <button
+              onClick={() => setIsNewProjectOpen(true)}
+              className="text-[11px] px-2 py-0.5 rounded bg-[#635BFF]/15 hover:bg-[#635BFF]/25 text-[#635BFF] hover:text-white border border-[#635BFF]/30 font-bold transition-all flex items-center gap-1"
+              title="Create a new video project"
+            >
+              <span>➕</span> New Project
+            </button>
+          </div>
           <select
             className="bg-[#1A1A1B] border border-[#333] rounded px-2 py-1.5 text-sm outline-none focus:border-[#635BFF]"
             value={film.id}
-            onChange={e => {
-              const next = filmsById.get(e.target.value);
-              if (!next) return;
-              setFilm(next);
-              setAccent(next.accent || "#635BFF");
-              setStatus(null);
-              setSelection(null);
-            }}
+            onChange={e => handleSelectFilm(e.target.value)}
           >
             {filmIds.map(id => <option key={id} value={id}>{id}</option>)}
           </select>
@@ -437,16 +522,22 @@ export default function App() {
         
         {/* Top bar with Layer switcher */}
         <div className="flex justify-between items-center shrink-0">
-          <div className="flex bg-[#1A1A1B] p-1 rounded-lg border border-[#333]">
-            {(["map", "timeline", "styleboard", "transitions", "captions", "video"] as Mode[]).map((m) => (
+          <div className="flex bg-[#1A1A1B] p-1 rounded-lg border border-[#333] overflow-x-auto max-w-full">
+            {(["script", "map", "timeline", "customization", "styleboard", "transitions", "captions", "video"] as Mode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
-                className={`text-xs px-3.5 py-1.5 rounded-md capitalize font-bold tracking-wide transition-colors ${
+                className={`text-xs px-3 py-1.5 rounded-md font-bold tracking-wide transition-colors whitespace-nowrap ${
                   mode === m ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
                 }`}
               >
-                {m === "timeline" ? "🎞️ Timeline & Trimmer" : m === "captions" ? "💬 Pretext Captions" : `${m} Layer`}
+                {m === "script" ? "📝 Script Studio" :
+                 m === "map" ? "🗺️ Spatial Map" :
+                 m === "timeline" ? "🎞️ Timeline & Trimmer" :
+                 m === "customization" ? "🎨 Studio Theme" :
+                 m === "styleboard" ? "📐 Styleboard" :
+                 m === "transitions" ? "⚡ Transitions" :
+                 m === "captions" ? "💬 Pretext Captions" : "🎬 Video Layer"}
               </button>
             ))}
           </div>
@@ -455,16 +546,24 @@ export default function App() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
+                  setIsRegenerating(true);
+                  setStatus({ ok: true, text: "🔄 Video preview regenerating with latest theme, fonts, and transitions..." });
                   try {
                     playerRef.current?.pause();
                   } catch (_) {}
-                  setRegenerateKey((k) => k + 1);
-                  setStatus({ ok: true, text: "🔄 Video preview recompiled and regenerated with latest settings!" });
+                  setTimeout(() => {
+                    setRegenerateKey((k) => k + 1);
+                    setIsRegenerating(false);
+                    setStatus({ ok: true, text: "✓ Video preview successfully recompiled with latest theme & settings!" });
+                    setTimeout(() => setStatus(null), 4000);
+                  }, 450);
                 }}
-                className="text-xs px-3.5 py-1.5 rounded bg-yellow-500 hover:bg-yellow-400 text-black font-bold flex items-center gap-1.5 shadow-md transition-colors"
+                disabled={isRegenerating}
+                className="text-xs px-3.5 py-1.5 rounded bg-yellow-500 hover:bg-yellow-400 text-black font-bold flex items-center gap-1.5 shadow-md transition-all active:scale-95"
                 title="Force re-render Remotion timeline with latest Pretext captions & transitions"
               >
-                <span>🔄</span> Regenerate
+                <span className={isRegenerating ? "animate-spin" : ""}>🔄</span>
+                <span>{isRegenerating ? "Regenerating..." : "Regenerate"}</span>
               </button>
               <button
                 onClick={handleExport}
@@ -504,6 +603,14 @@ export default function App() {
 
         {/* Viewport */}
         <div className="flex-1 flex min-h-0 relative rounded-lg overflow-hidden">
+          {mode === "script" && (
+            <ScriptEditor
+              film={film}
+              onUpdateFilm={setFilm}
+              onNavigateToVideo={() => setMode("video")}
+            />
+          )}
+
           {mode === "map" && (
             <MindMap 
               film={film} 
@@ -541,6 +648,15 @@ export default function App() {
             </div>
           )}
 
+          {mode === "customization" && (
+            <CustomizationEditor
+              film={film}
+              onUpdateFilm={setFilm}
+              accent={accent}
+              onAccentChange={setAccent}
+            />
+          )}
+
           {mode === "styleboard" && (
             <Styleboard
               film={film}
@@ -551,6 +667,7 @@ export default function App() {
               onSelectShot={(id) => {
                 setSelection({ type: "shot", id });
               }}
+              onUpdateFilm={setFilm}
             />
           )}
 
@@ -657,6 +774,44 @@ export default function App() {
         </div>
       </div>
 
+      {/* Export Progress & Specifications Modal Overlay */}
+      <ExportProgressModal
+        isOpen={isExporting}
+        film={film}
+        format={format}
+        durationInFrames={duration}
+        result={exportResult}
+        error={exportError}
+        onClose={() => {
+          setIsExporting(false);
+          setExportResult(null);
+          setExportError(null);
+        }}
+      />
+
+      {/* New Project Creation Modal */}
+      <NewProjectModal
+        isOpen={isNewProjectOpen}
+        onClose={() => setIsNewProjectOpen(false)}
+        onProjectCreated={(newFilm, _newScript) => {
+          filmsById.set(newFilm.id, newFilm);
+          setFilm(newFilm);
+          setFilmIds((prev) => Array.from(new Set([newFilm.id, ...prev])));
+          setAccent(newFilm.accent || "#635BFF");
+          localStorage.setItem("aideos_active_film_id", newFilm.id);
+          fetch("/api/active-film", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: newFilm.id }),
+          }).catch(() => {});
+          setMode("script");
+          setStatus({ ok: true, text: `🎉 Created and saved project "${newFilm.title}"!` });
+          setTimeout(() => setStatus(null), 4000);
+        }}
+      />
+
+      {/* Global AI Feedback & Chatbot Widget */}
+      <GlobalFeedbackWidget film={film} activeMode={mode} activeSelectionId={selection?.id} />
     </div>
   );
 }
