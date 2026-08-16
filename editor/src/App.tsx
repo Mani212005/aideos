@@ -242,14 +242,35 @@ export default function App() {
   }, []);
 
   const audioDurationSec = useMemo(() => {
-    if (captionWords && captionWords.length > 0) {
+    // 1. Base sum of authored shot durations
+    const baseShotSec = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
+
+    // 2. Caption words timestamp duration (ignore short 30s sample)
+    let captionsSec = 0;
+    if (captionWords && captionWords.length > 85) {
       const lastWord = captionWords[captionWords.length - 1];
       if (lastWord && lastWord.endFrame > 0) {
-        return lastWord.endFrame / film.fps;
+        captionsSec = lastWord.endFrame / film.fps;
       }
     }
-    return undefined;
-  }, [captionWords, film.fps]);
+
+    // 3. Spoken script words duration (~140 wpm for natural speech pacing)
+    let scriptSec = 0;
+    if (film.shots && film.shots.length > 0) {
+      const totalSpokenWords = film.shots
+        .map((s) => (s.scriptText || "").trim())
+        .filter(Boolean)
+        .join(" ")
+        .split(/\s+/)
+        .filter(Boolean).length;
+      if (totalSpokenWords > 0) {
+        scriptSec = Math.round((totalSpokenWords / 140) * 60);
+      }
+    }
+
+    const computedSec = Math.max(baseShotSec, captionsSec, scriptSec);
+    return computedSec > 0 ? computedSec : undefined;
+  }, [captionWords, film]);
 
   const timeline = useMemo(() => {
     try {
