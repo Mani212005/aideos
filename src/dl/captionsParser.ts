@@ -91,6 +91,54 @@ export function vttToCaptionWords(cues: VttCue[], fps = 30): CaptionWord[] {
   return words;
 }
 
+/** Dynamically extracts and computes word-level frame timestamps across all shots in a film */
+export function generateWordsFromFilm(film: any): CaptionWord[] {
+  if (film?.captions && typeof film.captions === "string" && film.captions.includes("-->")) {
+    const cues = parseVtt(film.captions);
+    if (cues.length > 0) {
+      return vttToCaptionWords(cues, film.fps || 30);
+    }
+  }
+
+  const fps = film?.fps || 30;
+  const words: CaptionWord[] = [];
+  let currentStartSec = 0;
+
+  if (film?.shots && Array.isArray(film.shots)) {
+    for (const shot of film.shots) {
+      const shotDurationSec = Math.max(0.5, shot.duration || 3);
+      let shotText = (shot.scriptText || "").trim();
+      if (!shotText && shot.blocks && Array.isArray(shot.blocks)) {
+        shotText = shot.blocks
+          .map((b: any) => (b.text || b.label || b.title || b.body || "").trim())
+          .filter(Boolean)
+          .join(" ");
+      }
+
+      const rawWords = shotText.split(/\s+/).filter(Boolean);
+      if (rawWords.length > 0) {
+        const wordDur = shotDurationSec / rawWords.length;
+        rawWords.forEach((w: string, idx: number) => {
+          const wStart = currentStartSec + idx * wordDur;
+          const wEnd = wStart + wordDur;
+          words.push({
+            text: w,
+            startFrame: Math.round(wStart * fps),
+            endFrame: Math.round(wEnd * fps),
+          });
+        });
+      }
+      currentStartSec += shotDurationSec;
+    }
+  }
+
+  if (words.length > 0) {
+    return words;
+  }
+
+  return DEFAULT_GIRAFFE_CAPTION_WORDS;
+}
+
 /** Default fallback speech words matching clean KV-Cache voiceover.wav */
 export const DEFAULT_GIRAFFE_CAPTION_WORDS: CaptionWord[] = [
   {

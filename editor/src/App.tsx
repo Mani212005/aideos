@@ -16,7 +16,7 @@ import { ExportProgressModal } from "./components/ExportProgressModal";
 import { ScriptEditor } from "./components/ScriptEditor";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
-import { DEFAULT_GIRAFFE_CAPTION_WORDS } from "../../src/dl/captionsParser";
+import { DEFAULT_GIRAFFE_CAPTION_WORDS, generateWordsFromFilm } from "../../src/dl/captionsParser";
 import type { TransitionType } from "./transitions";
 
 const filmModules = import.meta.glob("../../src/dl/films/*.ts", { eager: true }) as Record<
@@ -71,6 +71,14 @@ export default function App() {
   // Regenerate video preview key & Pretext captions state
   const [regenerateKey, setRegenerateKey] = useState<number>(0);
   const [captionWords, setCaptionWords] = useState<any[]>(DEFAULT_GIRAFFE_CAPTION_WORDS);
+
+  // Automatically derive word-level timestamps for the active film's script
+  useEffect(() => {
+    if (film) {
+      const dynamicWords = generateWordsFromFilm(film);
+      setCaptionWords(dynamicWords);
+    }
+  }, [film]);
 
   // Adjustable timeline height state (vertical split resizer)
   const [timelineHeight, setTimelineHeight] = useState<number>(320);
@@ -687,7 +695,14 @@ export default function App() {
 
           {mode === "captions" && (
             <div className="w-full h-full bg-[#09090B] p-6 overflow-y-auto">
-              <KineticCaptionEditor onCaptionsChange={setCaptionWords} />
+              <KineticCaptionEditor
+                film={film}
+                words={captionWords}
+                onCaptionsChange={setCaptionWords}
+                onSeekToFrame={(frame) => {
+                  playerRef.current?.seekTo(frame);
+                }}
+              />
             </div>
           )}
 
