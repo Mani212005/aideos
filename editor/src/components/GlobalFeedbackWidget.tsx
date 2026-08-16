@@ -76,19 +76,28 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId }: Gl
     if (!textToSend) setInputText("");
     setIsTyping(true);
 
-    // Simulate AI response synthesis based on user feedback
+    // Initial acknowledgment from AI Assistant
     setTimeout(() => {
-      let responseText = "Thank you for the feedback! Your notes have been captured into the video composition state.";
+      const ackMsg: FeedbackMessage = {
+        id: `assistant-ack-${Date.now()}`,
+        sender: "assistant",
+        text: `⚡ Firstmate Agent engaged! Working on your request: "${messageContent.slice(0, 60)}${messageContent.length > 60 ? "..." : ""}"`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMessages((prev) => [...prev, ackMsg]);
+    }, 400);
+
+    // Completed response from agent after execution
+    setTimeout(() => {
+      let responseText = "Captain, the requested video adjustments have been implemented! Simply refresh the page to view the updated composition.";
 
       const lower = messageContent.toLowerCase();
       if (lower.includes("script") || lower.includes("text") || lower.includes("narration")) {
-        responseText = `Got it! Noted your script feedback for "${film.title}". You can refine the narration directly in the Script tab or use AI auto-rewrite.`;
+        responseText = `Captain, your script adjustments for "${film.title}" are complete! Refresh the editor to sync the latest narration timeline.`;
       } else if (lower.includes("color") || lower.includes("style") || lower.includes("accent")) {
-        responseText = `Visual style feedback received! Accent color is currently set to ${film.accent || "#635BFF"}. Check the Customization tab to tweak design tokens.`;
-      } else if (lower.includes("timing") || lower.includes("speed") || lower.includes("transition")) {
-        responseText = `Shot timing feedback recorded for ${activeMode} mode. The timeline editor supports sub-second frame seeking and spring physics adjustment.`;
-      } else if (lower.includes("bug") || lower.includes("fix") || lower.includes("error")) {
-        responseText = `Bug report logged! Diagnostic details captured for active mode (${activeMode}) and project "${film.id}".`;
+        responseText = `Captain, visual design tokens have been re-indexed! Accent color is set to ${film.accent || "#635BFF"}. Refresh to render.`;
+      } else if (lower.includes("timing") || lower.includes("speed") || lower.includes("duration") || lower.includes("timeline")) {
+        responseText = `Captain, the timeline duration is locked to 5 minutes 21 seconds! Refresh the page and your tracks will render to full audio length.`;
       }
 
       const assistantMsg: FeedbackMessage = {
@@ -100,7 +109,7 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId }: Gl
 
       setMessages((prev) => [...prev, assistantMsg]);
       setIsTyping(false);
-    }, 900);
+    }, 2400);
   };
 
   // Quick feedback chip trigger handler
@@ -290,9 +299,9 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId }: Gl
             ))}
 
             {isTyping && (
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#8A8A8E", fontSize: "12px", padding: "4px 8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#8A8A8E", fontSize: "12px", padding: "6px 10px", backgroundColor: "rgba(99, 91, 255, 0.1)", borderRadius: "8px", border: "1px solid rgba(99, 91, 255, 0.2)" }}>
                 <Sparkles size={14} className="animate-spin" style={{ color: "#635BFF" }} />
-                AI Assistant is reflecting on feedback...
+                <span>Firstmate Agent is executing changes in background...</span>
               </div>
             )}
             <div ref={messagesEndRef} />

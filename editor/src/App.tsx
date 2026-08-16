@@ -671,6 +671,7 @@ export default function App() {
               <TimelineEditor
                 film={film}
                 onUpdateFilm={setFilm}
+                totalDurationSec={audioDurationSec}
                 isPlaying={isPlaying}
                 onTogglePlay={() => {
                   if (playerRef.current?.isPlaying()) {
@@ -800,6 +801,7 @@ export default function App() {
                 <TimelineEditor
                   film={film}
                   onUpdateFilm={setFilm}
+                  totalDurationSec={audioDurationSec}
                   isEmbedded={true}
                   isPlaying={isPlaying}
                   playerRef={playerRef}

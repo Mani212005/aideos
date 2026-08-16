@@ -14,6 +14,7 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import type { Film, Shot } from "../../../src/dl/schema";
+import type { TransitionType } from "../transitions";
 
 export interface FillerWord {
   id: string;
@@ -33,6 +34,7 @@ interface TimelineEditorProps {
   isPlaying?: boolean;
   onTogglePlay?: () => void;
   playerRef?: React.RefObject<any>;
+  totalDurationSec?: number;
 }
 
 export const TimelineEditor: React.FC<TimelineEditorProps> = ({
@@ -44,6 +46,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   isPlaying = false,
   onTogglePlay,
   playerRef,
+  totalDurationSec: overrideTotalDurationSec,
 }) => {
   const [zoomLevel, setZoomLevel] = useState<number>(30); // pixels per second
   const [playheadSec, setPlayheadSec] = useState<number>(currentFrame / film.fps);
@@ -77,9 +80,19 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     "#635BFF", "#00D2D3", "#FF9F43", "#10AC84", "#54A0FF", "#5F27CD", "#EE5253"
   ];
 
-  const totalDurationSec = useMemo(() => {
-    return film.shots.reduce((sum, s) => sum + s.dur, 0);
+  const baseShotsDurSum = useMemo(() => {
+    return film.shots.reduce((sum, s) => sum + (s.dur || 3), 0);
   }, [film.shots]);
+
+  const totalDurationSec = useMemo(() => {
+    return overrideTotalDurationSec && overrideTotalDurationSec > 0
+      ? overrideTotalDurationSec
+      : baseShotsDurSum;
+  }, [overrideTotalDurationSec, baseShotsDurSum]);
+
+  const scaleRatio = useMemo(() => {
+    return baseShotsDurSum > 0 ? totalDurationSec / baseShotsDurSum : 1;
+  }, [totalDurationSec, baseShotsDurSum]);
 
   // Handle seeking from mouse position
   const seekFromClientX = useCallback(
@@ -450,77 +463,107 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
               <div className="h-20 border-b border-[#27272A] relative flex items-center">
                 {(() => {
                   let accumulatedSec = 0;
+                  const transitionTypes: TransitionType[] = ["paper-rip", "zoom-morph", "matrix-glitch", "whip-pan", "film-burn"];
+                  const transitionIcons: Record<TransitionType, string> = {
+                    "paper-rip": "📄",
+                    "zoom-morph": "🔍",
+                    "matrix-glitch": "⚡",
+                    "whip-pan": "🌀",
+                    "film-burn": "🔥",
+                  };
+
                   return film.shots.map((shot, idx) => {
                     const startSec = accumulatedSec;
-                    const dur = shot.dur;
+                    const dur = Math.max(1, Math.round((shot.dur || 3) * scaleRatio));
                     accumulatedSec += dur;
                     const isSelected = selectedClipId === shot.id;
+                    const currentTrans = shot.transition || "paper-rip";
 
                     return (
-                      <div
-                        key={shot.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedClipId(shot.id);
-                          setPlayheadSec(startSec);
-                          if (onPreviewSeek) onPreviewSeek(Math.round(startSec * film.fps));
-                        }}
-                        className={`absolute top-1.5 bottom-1.5 rounded-lg border flex flex-col justify-between p-1.5 cursor-pointer transition-all shadow-md group ${
-                          isSelected
-                            ? "ring-2 ring-yellow-400 z-10 brightness-110"
-                            : "hover:border-white/60"
-                        }`}
-                        style={{
-                          left: startSec * zoomLevel,
-                          width: Math.max(40, dur * zoomLevel),
-                          backgroundColor: clipColors[idx % clipColors.length] + "44",
-                          borderColor: clipColors[idx % clipColors.length],
-                        }}
-                      >
-                        {/* Clip Header */}
-                        <div className="flex items-center justify-between gap-1 overflow-hidden pointer-events-none">
-                          <span className="font-bold text-[11px] truncate text-white">
-                            {idx + 1}. {shot.id}
-                          </span>
-                          <span className="text-[9px] font-mono bg-black/60 px-1 py-0.5 rounded text-gray-300">
-                            {dur}s
-                          </span>
-                        </div>
+                      <React.Fragment key={shot.id}>
+                        {/* Per-Shot Transition Cut Connector Chip */}
+                        {idx > 0 && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const nextTransIdx = (transitionTypes.indexOf(currentTrans) + 1) % transitionTypes.length;
+                              const nextTrans = transitionTypes[nextTransIdx];
+                              const updatedShots = [...film.shots];
+                              updatedShots[idx] = { ...shot, transition: nextTrans };
+                              onUpdateFilm({ ...film, shots: updatedShots });
+                            }}
+                            className="absolute -top-1 z-30 -ml-2.5 w-5 h-5 rounded-full bg-[#18181B] border border-yellow-500/80 hover:scale-125 hover:border-yellow-300 flex items-center justify-center text-[10px] cursor-pointer shadow-lg transition-transform group"
+                            style={{ left: startSec * zoomLevel }}
+                            title={`Transition: ${currentTrans} (Click to switch)`}
+                          >
+                            <span>{transitionIcons[currentTrans]}</span>
+                          </div>
+                        )}
 
-                        {/* Trimming Handle Overlay Controls */}
-                        <div className="flex justify-between items-center mt-0.5">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleTrimDuration(idx, -1);
-                            }}
-                            className="text-[8px] bg-black/70 hover:bg-black px-1 py-0.5 rounded text-red-400 font-bold"
-                            title="Trim -1s"
-                          >
-                            -1s
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteShot(idx);
-                            }}
-                            className="text-[8px] bg-red-950/80 hover:bg-red-800 text-red-200 px-1 py-0.5 rounded font-bold"
-                            title="Delete Clip"
-                          >
-                            🗑️
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleTrimDuration(idx, 1);
-                            }}
-                            className="text-[8px] bg-black/70 hover:bg-black px-1 py-0.5 rounded text-emerald-400 font-bold"
-                            title="Extend +1s"
-                          >
-                            +1s
-                          </button>
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedClipId(shot.id);
+                            setPlayheadSec(startSec);
+                            if (onPreviewSeek) onPreviewSeek(Math.round(startSec * film.fps));
+                          }}
+                          className={`absolute top-1.5 bottom-1.5 rounded-lg border flex flex-col justify-between p-1.5 cursor-pointer transition-all shadow-md group ${
+                            isSelected
+                              ? "ring-2 ring-yellow-400 z-10 brightness-110"
+                              : "hover:border-white/60"
+                          }`}
+                          style={{
+                            left: startSec * zoomLevel,
+                            width: Math.max(40, dur * zoomLevel),
+                            backgroundColor: clipColors[idx % clipColors.length] + "44",
+                            borderColor: clipColors[idx % clipColors.length],
+                          }}
+                        >
+                          {/* Clip Header */}
+                          <div className="flex items-center justify-between gap-1 overflow-hidden pointer-events-none">
+                            <span className="font-bold text-[11px] truncate text-white">
+                              {idx + 1}. {shot.id}
+                            </span>
+                            <span className="text-[9px] font-mono bg-black/60 px-1 py-0.5 rounded text-gray-300">
+                              {dur}s
+                            </span>
+                          </div>
+
+                          {/* Trimming Handle Overlay Controls */}
+                          <div className="flex justify-between items-center mt-0.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTrimDuration(idx, -1);
+                              }}
+                              className="text-[8px] bg-black/70 hover:bg-black px-1 py-0.5 rounded text-red-400 font-bold"
+                              title="Trim -1s"
+                            >
+                              -1s
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteShot(idx);
+                              }}
+                              className="text-[8px] bg-red-950/80 hover:bg-red-800 text-red-200 px-1 py-0.5 rounded font-bold"
+                              title="Delete Clip"
+                            >
+                              🗑️
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTrimDuration(idx, 1);
+                              }}
+                              className="text-[8px] bg-black/70 hover:bg-black px-1 py-0.5 rounded text-emerald-400 font-bold"
+                              title="Extend +1s"
+                            >
+                              +1s
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      </React.Fragment>
                     );
                   });
                 })()}
