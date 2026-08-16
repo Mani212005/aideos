@@ -414,11 +414,11 @@ export const FilmView: React.FC<FilmViewProps> = ({
 
         {/* Script Metaphor Rendering Mode vs Spatial Canvas Graph */}
         {(() => {
-          let resolvedMetaphor = current.shot.metaphor;
-          if (!resolvedMetaphor && current.shot.visualDirection) {
+          let resolvedMetaphor: string | undefined = undefined;
+          if (current.shot.visualDirection) {
             const vd = current.shot.visualDirection.toLowerCase();
             if (vd.includes("cursor") || vd.includes("quote") || vd.includes("stamp") || vd.includes("lecun") || vd.includes("yann")) {
-              resolvedMetaphor = "typing-cursor-quote" as any;
+              resolvedMetaphor = "typing-cursor-quote";
             } else if (vd.includes("computer") || vd.includes("character") || vd.includes("sleep") || vd.includes("throw") || vd.includes("window")) {
               resolvedMetaphor = "character-throw";
             } else if (vd.includes("spider") || vd.includes("web") || vd.includes("weave")) {
@@ -430,6 +430,9 @@ export const FilmView: React.FC<FilmViewProps> = ({
             } else if (vd.includes("gear") || vd.includes("clock") || vd.includes("time") || vd.includes("engine")) {
               resolvedMetaphor = "clock-gears";
             }
+          }
+          if (!resolvedMetaphor) {
+            resolvedMetaphor = current.shot.metaphor;
           }
 
           if (resolvedMetaphor) {
@@ -443,7 +446,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
                 {/* Prominent Large Metaphor Visual Scene Covering 75% of Frame */}
                 <div className="w-[92%] h-[86%] flex items-center justify-center z-10 scale-125">
                   <MetaphorViewer
-                    type={resolvedMetaphor}
+                    type={resolvedMetaphor as any}
                     frame={frame - current.from}
                     accent={accent}
                   />

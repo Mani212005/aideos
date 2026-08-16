@@ -268,7 +268,9 @@ export default function App() {
       }
     }
 
-    const computedSec = Math.max(baseShotSec, captionsSec, scriptSec);
+    // Lock video timeline to target audio duration (5:21 / 321s minimum for full script voiceover)
+    const targetMinSec = film.id === "what-is-jepa" ? 321 : 250;
+    const computedSec = Math.max(targetMinSec, baseShotSec, captionsSec, scriptSec);
     return computedSec > 0 ? computedSec : undefined;
   }, [captionWords, film]);
 
