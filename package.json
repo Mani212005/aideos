@@ -13,10 +13,13 @@
   "dependencies": {
     "@chenglou/pretext": "^0.0.8",
     "@deepgram/sdk": "^3.13.0",
+    "@react-three/fiber": "^9.7.0",
     "@remotion/cli": "4.0.499",
     "@remotion/google-fonts": "4.0.499",
     "@remotion/media": "4.0.499",
+    "@remotion/three": "^4.0.512",
     "@remotion/zod-types": "4.0.499",
+    "@types/three": "^0.185.4",
     "commander": "^15.0.0",
     "dotenv": "^17.4.2",
     "kokoro-js": "^1.2.1",
@@ -24,6 +27,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "remotion": "4.0.499",
+    "three": "^0.185.1",
+    "three-stdlib": "^2.36.1",
     "zod": "4.4.3"
   },
   "devDependencies": {
