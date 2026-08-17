@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,5 +10,62 @@ html, body, #root {
   margin: 0;
   background-color: #0A0A0B;
   color: #F5F5F5;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Geist', sans-serif;
+  overflow: hidden;
+}
+
+/* Bauhaus Button Styles (0px Radius, Instant Mechanical Hover) */
+.bauhaus-button-primary {
+  background-color: #635BFF;
+  color: #F5F5F5;
+  border-radius: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  transition: all 0s;
+}
+.bauhaus-button-primary:hover {
+  background-color: #F5F5F5;
+  color: #0A0A0B;
+}
+
+.bauhaus-button-secondary {
+  background-color: transparent;
+  border: 1px solid #F5F5F5;
+  color: #F5F5F5;
+  border-radius: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  transition: all 0s;
+}
+.bauhaus-button-secondary:hover {
+  background-color: #F5F5F5;
+  color: #0A0A0B;
+}
+
+.functional-input {
+  background-color: #0A0A0B;
+  border: 1px solid #F5F5F5;
+  color: #F5F5F5;
+  border-radius: 0;
+  font-family: 'JetBrains Mono', monospace;
+}
+.functional-input:focus {
+  border: 2px solid #635BFF;
+  outline: none;
+}
+
+/* Custom Bauhaus Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #0A0A0B;
+}
+::-webkit-scrollbar-thumb {
+  background: #F5F5F5;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #635BFF;
 }

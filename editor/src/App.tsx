@@ -412,74 +412,147 @@ export default function App() {
   const showRail = storyStyle !== "minimal";
 
   return (
-    <div className="flex h-screen bg-[#0A0A0B] text-[#F5F5F5] overflow-hidden font-sans">
-      
-      {/* LEFT SIDEBAR (Context & Editing) */}
-      <div className="w-80 border-r border-[#333] p-4 flex flex-col gap-4 overflow-y-auto shrink-0 bg-[#0A0A0B]">
-        <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold tracking-tight">Aideos Editor</h1>
+    <div className="flex flex-col h-screen bg-[#0A0A0B] text-[#F5F5F5] overflow-hidden font-sans antialiased">
+      {/* STITCH BAUHAUS TOP APP BAR */}
+      <header className="bg-[#0A0A0B] text-[#F5F5F5] border-b border-[#F5F5F5]/30 flex justify-between items-center h-12 px-6 w-full shrink-0 z-50">
+        <div className="font-extrabold text-xl tracking-tighter uppercase font-sans text-[#F5F5F5]">
+          AIDEOS
+        </div>
+        <div className="flex items-center gap-3">
           <button
-            className="bg-[#635BFF] hover:bg-[#5249e6] text-white px-3 py-1 rounded text-xs font-bold disabled:opacity-50 transition-colors"
             onClick={handleSave}
             disabled={saving}
+            className="bauhaus-button-secondary px-4 py-1 text-[11px] font-mono uppercase"
           >
             {saving ? "SAVING..." : "SAVE"}
           </button>
-        </div>
-
-        {status ? (
-          <pre
-            className={`whitespace-pre-wrap text-[10px] rounded p-2 border ${
-              status.ok
-                ? "border-[#333] text-gray-400"
-                : "border-red-900 text-red-400 bg-[#1A0F10]"
-            }`}
+          <button
+            onClick={handleExport}
+            disabled={isExporting}
+            className="bauhaus-button-primary px-4 py-1 text-[11px] font-mono uppercase"
           >
-            {status.text}
-          </pre>
-        ) : null}
+            {isExporting ? "EXPORTING..." : "EXPORT"}
+          </button>
+          <span className="text-emerald-400 text-xs font-mono px-2 py-0.5 border border-emerald-500/40 bg-emerald-950/30">
+            ✓ SYNCED
+          </span>
+        </div>
+      </header>
 
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between">
-            <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Active Film</label>
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* STITCH BAUHAUS LEFT NAV RAIL (w-16) */}
+        <nav className="bg-[#0A0A0B] text-[#F5F5F5] h-full w-16 border-r border-[#F5F5F5]/30 flex flex-col items-center py-4 gap-2 shrink-0 z-40">
+          <div className="mb-4 text-[10px] font-mono text-center">
+            <span className="block text-gray-400 truncate w-12" title={film.id}>P_01</span>
+          </div>
+          <button
+            onClick={() => setMode("script")}
+            className={`w-full flex flex-col items-center py-3 text-xs font-mono transition-none border-l-2 ${
+              mode === "script" ? "bg-[#635BFF]/20 text-[#635BFF] border-[#635BFF]" : "text-gray-400 border-transparent hover:text-white"
+            }`}
+            title="Script Studio"
+          >
+            <span className="text-lg">📝</span>
+            <span className="text-[9px] mt-1 uppercase font-mono">Script</span>
+          </button>
+          <button
+            onClick={() => setMode("map")}
+            className={`w-full flex flex-col items-center py-3 text-xs font-mono transition-none border-l-2 ${
+              mode === "map" ? "bg-[#635BFF]/20 text-[#635BFF] border-[#635BFF]" : "text-gray-400 border-transparent hover:text-white"
+            }`}
+            title="Spatial Map"
+          >
+            <span className="text-lg">🗺️</span>
+            <span className="text-[9px] mt-1 uppercase font-mono">Map</span>
+          </button>
+          <button
+            onClick={() => setMode("video")}
+            className={`w-full flex flex-col items-center py-3 text-xs font-mono transition-none border-l-2 ${
+              mode === "video" ? "bg-[#635BFF]/20 text-[#635BFF] border-[#635BFF]" : "text-gray-400 border-transparent hover:text-white"
+            }`}
+            title="3D Scene Engine"
+          >
+            <span className="text-lg">🎬</span>
+            <span className="text-[9px] mt-1 uppercase font-mono">Scene</span>
+          </button>
+          <button
+            onClick={() => setMode("timeline")}
+            className={`w-full flex flex-col items-center py-3 text-xs font-mono transition-none border-l-2 ${
+              mode === "timeline" ? "bg-[#635BFF]/20 text-[#635BFF] border-[#635BFF]" : "text-gray-400 border-transparent hover:text-white"
+            }`}
+            title="Timeline & Trimmer"
+          >
+            <span className="text-lg">🎞️</span>
+            <span className="text-[9px] mt-1 uppercase font-mono">Time</span>
+          </button>
+          <button
+            onClick={() => setMode("customization")}
+            className={`w-full flex flex-col items-center py-3 text-xs font-mono transition-none border-l-2 ${
+              mode === "customization" ? "bg-[#635BFF]/20 text-[#635BFF] border-[#635BFF]" : "text-gray-400 border-transparent hover:text-white"
+            }`}
+            title="Studio Theme"
+          >
+            <span className="text-lg">🎨</span>
+            <span className="text-[9px] mt-1 uppercase font-mono">Theme</span>
+          </button>
+        </nav>
+
+        {/* LEFT SUB-INSPECTOR PANEL (Context & Active Film Settings) */}
+        <div className="w-80 border-r border-[#F5F5F5]/30 p-4 flex flex-col gap-4 overflow-y-auto shrink-0 bg-[#0A0A0B]">
+          <div className="flex justify-between items-center border-b border-[#F5F5F5]/20 pb-2">
+            <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-400">PROJECT METRICS</h2>
             <button
               onClick={() => setIsNewProjectOpen(true)}
-              className="text-[11px] px-2 py-0.5 rounded bg-[#635BFF]/15 hover:bg-[#635BFF]/25 text-[#635BFF] hover:text-white border border-[#635BFF]/30 font-bold transition-all flex items-center gap-1"
-              title="Create a new video project"
+              className="text-[10px] px-2 py-0.5 bauhaus-button-secondary font-mono"
             >
-              <span>➕</span> New Project
+              + NEW
             </button>
           </div>
-          <select
-            className="bg-[#1A1A1B] border border-[#333] rounded px-2 py-1.5 text-sm outline-none focus:border-[#635BFF]"
-            value={film.id}
-            onChange={e => handleSelectFilm(e.target.value)}
-          >
-            {filmIds.map(id => <option key={id} value={id}>{id}</option>)}
-          </select>
-        </div>
 
-        {/* Dynamic Context Editor */}
-        <div className="flex-1 overflow-y-auto flex flex-col gap-4">
-          {!selection && (
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Title</label>
-                <input
-                  className="bg-[#1A1A1B] border border-[#333] rounded px-2 py-1.5 text-sm outline-none focus:border-[#635BFF]"
-                  value={film.title}
-                  onChange={e => setFilm({...film, title: e.target.value})}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Actions</label>
-                <button onClick={addNode} className="text-left text-sm bg-[#1A1A1B] hover:bg-[#222] border border-[#333] p-2 rounded">Add Node to Map</button>
-                <button onClick={addEdge} className="text-left text-sm bg-[#1A1A1B] hover:bg-[#222] border border-[#333] p-2 rounded">Add Edge to Map</button>
-                <button onClick={addShot} className="text-left text-sm bg-[#1A1A1B] hover:bg-[#222] border border-[#333] p-2 rounded">Add Shot to Sequence</button>
-                <button onClick={generateVoiceover} className="text-left text-sm bg-[#635BFF]/10 text-[#635BFF] hover:bg-[#635BFF]/20 border border-[#635BFF]/30 p-2 rounded">
-                  Generate Voiceover
-                </button>
-              </div>
+          {status ? (
+            <pre
+              className={`whitespace-pre-wrap text-[10px] font-mono p-2 border ${
+                status.ok
+                  ? "border-[#F5F5F5]/40 text-emerald-400 bg-[#0A0A0B]"
+                  : "border-red-600 text-red-400 bg-[#1A0F10]"
+              }`}
+            >
+              {status.text}
+            </pre>
+          ) : null}
+
+          <div className="flex flex-col gap-1.5 font-mono">
+            <label className="text-[11px] text-gray-400 font-bold uppercase">ACTIVE FILM</label>
+            <select
+              className="functional-input px-2 py-1.5 text-xs outline-none"
+              value={film.id}
+              onChange={e => handleSelectFilm(e.target.value)}
+            >
+              {filmIds.map(id => <option key={id} value={id}>{id}</option>)}
+            </select>
+          </div>
+
+          {/* Dynamic Context Editor */}
+          <div className="flex-1 overflow-y-auto flex flex-col gap-4">
+            {!selection && (
+              <div className="flex flex-col gap-4 font-mono text-xs">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] text-gray-400 font-bold uppercase">FILM TITLE</label>
+                  <input
+                    className="functional-input px-2 py-1.5 text-xs"
+                    value={film.title}
+                    onChange={e => setFilm({...film, title: e.target.value})}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[11px] text-gray-400 font-bold uppercase">CANVAS ACTIONS</label>
+                  <button onClick={addNode} className="bauhaus-button-secondary p-2 text-left text-xs">ADD NODE TO MAP</button>
+                  <button onClick={addEdge} className="bauhaus-button-secondary p-2 text-left text-xs">ADD EDGE TO MAP</button>
+                  <button onClick={addShot} className="bauhaus-button-secondary p-2 text-left text-xs">ADD SHOT TO SEQUENCE</button>
+                  <button onClick={generateVoiceover} className="bauhaus-button-primary p-2 text-left text-xs">
+                    GENERATE VOICEOVER
+                  </button>
+                </div>
 
               <div className="flex flex-col gap-2">
                 <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Connections</label>
@@ -823,6 +896,7 @@ export default function App() {
           )}
         </div>
       </div>
+    </div>
 
       {/* Export Progress & Specifications Modal Overlay */}
       <ExportProgressModal
