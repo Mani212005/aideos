@@ -210,7 +210,7 @@ export const whatIsJepaFilm: Film = {
       "drift": true,
       "zoom": 1,
       "visualDirection": "Generative extra finger vs JEPA abstract cloud.",
-      "metaphor": "balance-scale",
+      "metaphor": "glowing-cluster",
       "blocks": [
         {
           "c": "TextReveal",
@@ -232,7 +232,7 @@ export const whatIsJepaFilm: Film = {
       "drift": true,
       "zoom": 1,
       "visualDirection": "Context encoder and target encoder comparing notes in embedding space.",
-      "metaphor": "spider-web",
+      "metaphor": "glowing-cluster",
       "blocks": [
         {
           "c": "TokenStrip",
@@ -271,7 +271,7 @@ export const whatIsJepaFilm: Film = {
       "drift": true,
       "zoom": 1,
       "visualDirection": "Timeline from I-JEPA to V-JEPA to V-JEPA 2 controlling robot arm.",
-      "metaphor": "clock-gears",
+      "metaphor": "glowing-cluster",
       "blocks": [
         {
           "c": "TokenStrip",
@@ -322,7 +322,7 @@ export const whatIsJepaFilm: Film = {
       "drift": true,
       "zoom": 1,
       "visualDirection": "Pull back split screen: Chat window fades, glowing 3D world simulation.",
-      "metaphor": "custom",
+      "metaphor": "glowing-cluster",
       "blocks": [
         {
           "c": "TextReveal",

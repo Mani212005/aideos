@@ -1,8 +1,9 @@
 import React from "react";
 import { MONO } from "../tokens";
+import { GlowingClusterMetaphor } from "./GlowingClusterMetaphor";
 
 export interface MetaphorProps {
-  type: "typing-cursor-quote" | "spider-web" | "liquid-bucket" | "balance-scale" | "clock-gears" | "rocket-launch" | "character-throw" | "custom";
+  type: "typing-cursor-quote" | "spider-web" | "liquid-bucket" | "balance-scale" | "clock-gears" | "rocket-launch" | "character-throw" | "glowing-cluster" | "custom";
   frame: number;
   accent?: string;
   fontFamily?: string;
@@ -464,6 +465,15 @@ export const MetaphorViewer: React.FC<MetaphorProps> = ({ type, frame, accent = 
       return <BalanceScaleAnimation frame={frame} accent={accent} />;
     case "clock-gears":
       return <ClockGearsAnimation frame={frame} accent={accent} />;
+    case "glowing-cluster":
+      return (
+        <GlowingClusterMetaphor
+          width={1920}
+          height={1080}
+          title="JEPA: PREDICTING MEANING, NOT PIXELS"
+          subtitle="Deterministic 3D Abstract Latent Space"
+        />
+      );
     default:
       return <TypingCursorQuoteAnimation frame={frame} accent={accent} />;
   }

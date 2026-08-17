@@ -9,8 +9,8 @@ import { ThreeFoundation } from '../foundation/ThreeFoundation';
 import { CinematicComposer } from '../postprocessing/CinematicComposer';
 
 export interface GlowingClusterMetaphorProps {
-  width: number;
-  height: number;
+  width?: number;
+  height?: number;
   title?: string;
   subtitle?: string;
 }
@@ -82,8 +82,8 @@ export function ClusterMesh() {
 
 // Main component combining ThreeFoundation, ClusterMesh, and CinematicComposer for Remotion.
 export function GlowingClusterMetaphor({
-  width,
-  height,
+  width = 1920,
+  height = 1080,
   title = 'HIGH-FIDELITY SHADER CLUSTER',
   subtitle = 'Deterministic 3D Rendering Engine',
 }: GlowingClusterMetaphorProps) {
