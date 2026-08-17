@@ -40,6 +40,8 @@ export function ClusterMesh() {
 
   const clusterPositions = useMemo(() => generateClusterPositions(36), []);
 
+  const sharedGeometry = useMemo(() => new THREE.IcosahedronGeometry(0.75, 1), []);
+
   const coreMaterial = useMemo(
     () =>
       new THREE.MeshBasicMaterial({
@@ -54,6 +56,7 @@ export function ClusterMesh() {
       new THREE.MeshBasicMaterial({
         color: new THREE.Color('#635BFF'),
         wireframe: true,
+        toneMapped: false,
       }),
     []
   );
@@ -66,9 +69,10 @@ export function ClusterMesh() {
 
         return (
           <group key={idx} position={[x, y, z]} scale={[scale, scale, scale]}>
-            <mesh material={isCore ? coreMaterial : glowWireframeMaterial}>
-              <icosahedronGeometry args={[0.75, 1]} />
-            </mesh>
+            <mesh
+              geometry={sharedGeometry}
+              material={isCore ? coreMaterial : glowWireframeMaterial}
+            />
           </group>
         );
       })}

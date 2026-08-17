@@ -3,8 +3,7 @@ File Description: Implements a deterministic post-processing pipeline for Remoti
 */
 
 import { useEffect, useRef } from 'react';
-import { useThree } from '@react-three/fiber';
-import { useCurrentFrame } from 'remotion';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { EffectComposer, RenderPass, UnrealBloomPass } from 'three-stdlib';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
@@ -30,7 +29,6 @@ export function CinematicComposer({
 }: CinematicComposerProps) {
   const { gl, scene, camera, size } = useThree();
   const composerRef = useRef<EffectComposer | null>(null);
-  const frame = useCurrentFrame();
 
   useEffect(() => {
     // Configure renderer properties for tone mapping and sRGB.
@@ -67,12 +65,12 @@ export function CinematicComposer({
     }
   }, [size]);
 
-  useEffect(() => {
-    // Render composer frame deterministically on Remotion frame tick.
+  // Priority 1 hijacks R3F render loop so EffectComposer renders post-processed output exclusively.
+  useFrame(() => {
     if (composerRef.current) {
       composerRef.current.render();
     }
-  }, [frame]);
+  }, 1);
 
   return null;
 }

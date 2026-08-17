@@ -62,10 +62,13 @@ export function GLTFAssetViewer({
     const loader = new GLTFLoader();
     loader.setDRACOLoader(dracoLoader);
 
+    let loadedScene: THREE.Group | null = null;
+
     loader.load(
       modelPath,
       (gltf) => {
         normalizePBRMaterials(gltf.scene);
+        loadedScene = gltf.scene;
         setModel(gltf.scene);
         continueRender(renderHandle);
       },
@@ -75,6 +78,22 @@ export function GLTFAssetViewer({
         continueRender(renderHandle);
       }
     );
+
+    return () => {
+      if (loadedScene) {
+        loadedScene.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            mesh.geometry?.dispose();
+            if (Array.isArray(mesh.material)) {
+              mesh.material.forEach((mat) => mat.dispose());
+            } else {
+              mesh.material?.dispose();
+            }
+          }
+        });
+      }
+    };
   }, [modelPath, dracoLoader, renderHandle]);
 
   if (!model) return null;

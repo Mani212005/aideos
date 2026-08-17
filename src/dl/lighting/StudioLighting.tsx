@@ -64,6 +64,13 @@ export function StudioLighting({
         if (renderHandle) continueRender(renderHandle);
       }
     );
+
+    return () => {
+      if (scene.environment) {
+        scene.environment.dispose();
+        scene.environment = null;
+      }
+    };
   }, [hdriPath, gl, scene, renderHandle]);
 
   return (
@@ -73,7 +80,12 @@ export function StudioLighting({
         position={[8, 12, 8]}
         intensity={keyIntensity}
         color="#F5F5F5"
-        ref={(light) => light && configureShadowLight(light)}
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-near={0.5}
+        shadow-camera-far={50}
+        shadow-bias={-0.0001}
       />
 
       {/* Fill Light - Soft blue ambient fill light */}

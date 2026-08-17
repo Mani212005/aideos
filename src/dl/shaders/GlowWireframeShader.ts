@@ -49,5 +49,7 @@ export function createGlowWireframeMaterial(
       uAudioAmp: { value: 0.0 },
     },
     wireframe: true,
+    toneMapped: false,
+    transparent: true,
   });
 }
