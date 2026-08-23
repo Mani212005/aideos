@@ -8,6 +8,7 @@ import { z } from "zod";
 import { DEVICE_BLOCKS, filmBaseSchema, parseFilm } from "../src/dl/schema";
 import type { Film } from "../src/dl/schema";
 import { processAudioForFilm } from "./audio";
+import { createEngine } from "./engine";
 
 dotenv.config({ quiet: true });
 
@@ -201,6 +202,45 @@ program
     }
     console.log(`Render complete.`);
   });
+
+program
+  .command("engine-test")
+  .description("Render one clip through a VideoEngine (smoke test for the GPU render loop)")
+  .argument("<prompt>", "Text-to-video prompt for the clip")
+  .option("--engine <name>", "which engine to drive", "null")
+  .option("--seconds <seconds>", "clip duration in seconds", "5")
+  .option("--seed <seed>", "optional integer seed")
+  .option("--out <dir>", "where to write the fetched clip", "out/gpu-test")
+  .action(
+    async (prompt: string, options: { engine: string; seconds: string; seed?: string; out: string }) => {
+      const engine = createEngine(options.engine);
+      const spec = {
+        prompt,
+        seconds: Number(options.seconds),
+        width: 832,
+        height: 480,
+        fps: 16,
+        ...(options.seed !== undefined ? { seed: Number(options.seed) } : {}),
+        modelProfile: "small" as const,
+      };
+      console.log(`[${engine.name}] submitting job: "${prompt}"`);
+      const handle = await engine.submit(spec);
+      console.log(`[${engine.name}] job ${handle.jobId} submitted; polling status...`);
+      // Poll until terminal state. Renders run under tmux remotely, so a dropped
+      // local process never kills the GPU work; re-running resumes at poll stage.
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 15000));
+        const st = await engine.status(handle.jobId);
+        const pct = st.progress !== undefined ? ` (${Math.round(st.progress * 100)}%)` : "";
+        console.log(`[${engine.name}] ${st.state}${pct}`);
+        if (st.state === "failed") throw new Error(st.error || "job failed");
+        if (st.state === "done") break;
+      }
+      const dest = path.join(ROOT, options.out, `${handle.jobId}.mp4`);
+      await engine.fetchOutput(handle.jobId, dest);
+      console.log(`[${engine.name}] clip saved to ${dest}`);
+    },
+  );
 
 // parseAsync, so a rejected action surfaces as a one-line CLI error rather than
 // an unhandled rejection with a raw stack trace, and exits non-zero.
