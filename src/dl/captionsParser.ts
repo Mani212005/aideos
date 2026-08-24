@@ -92,25 +92,25 @@ export function vttToCaptionWords(cues: VttCue[], fps = 30): CaptionWord[] {
 }
 
 /** Dynamically extracts and computes word-level frame timestamps across all shots in a film */
-export function generateWordsFromFilm(film: any): CaptionWord[] {
-  if (film?.captions && typeof film.captions === "string" && film.captions.includes("-->")) {
-    const cues = parseVtt(film.captions);
+export function generateWordsFromFilm(film: Record<string, unknown>): CaptionWord[] {
+  if (film?.captions && typeof film.captions === "string" && (film.captions as string).includes("-->")) {
+    const cues = parseVtt(film.captions as string);
     if (cues.length > 0) {
-      return vttToCaptionWords(cues, film.fps || 30);
+      return vttToCaptionWords(cues, (film.fps as number) || 30);
     }
   }
 
-  const fps = film?.fps || 30;
+  const fps = (film?.fps as number) || 30;
   const words: CaptionWord[] = [];
   let currentStartSec = 0;
 
   if (film?.shots && Array.isArray(film.shots)) {
     for (const shot of film.shots) {
-      const shotDurationSec = Math.max(0.5, shot.duration || 3);
-      let shotText = (shot.scriptText || "").trim();
+      const shotDurationSec = Math.max(0.5, (shot.duration as number) || 3);
+      let shotText = ((shot.scriptText as string) || "").trim();
       if (!shotText && shot.blocks && Array.isArray(shot.blocks)) {
         shotText = shot.blocks
-          .map((b: any) => (b.text || b.label || b.title || b.body || "").trim())
+          .map((b: Record<string, unknown>) => ((b.text || b.label || b.title || b.body || "") as string).trim())
           .filter(Boolean)
           .join(" ");
       }

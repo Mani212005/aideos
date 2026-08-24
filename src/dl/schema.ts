@@ -264,7 +264,7 @@ export const themeSchema = z.object({
 export const shotSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   ch: z.string().min(1).max(30).optional(),
-  dur: z.number().min(1).max(90),
+  dur: z.number().min(0.5).max(90),
   stage: stageSchema,
   look: lookSchema,
   move: moveSchema.default("pan"),

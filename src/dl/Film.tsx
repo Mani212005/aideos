@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Audio, staticFile } from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Audio, Img, staticFile } from "remotion";
 import { accentAt, PALETTE, rule, useLayout, BACKGROUND_THEMES, resolveFont } from "./tokens";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext } from "./accent";
@@ -274,7 +274,7 @@ const Dynamic3DHeroOverlay: React.FC<{ frame: number; timeline: ReturnType<typeo
             padding: 40,
           }}
         >
-          <img
+          <Img
             src={staticFile(imgSrc)}
             alt={heroBlock.caption || "3D Kinematic Sequence"}
             style={{
@@ -408,7 +408,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
           <Audio
             key={`aideos-voiceover-${film.id}`}
             src={`${staticFile(film.voiceover.src)}?v=fresh_146`}
-            volume={film.voiceover?.volume ?? 1}
+            volume={() => film.voiceover?.volume ?? 1}
           />
         )}
 
@@ -446,7 +446,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
                 {/* Prominent Large Metaphor Visual Scene Covering 75% of Frame */}
                 <div className="w-[92%] h-[86%] flex items-center justify-center z-10 scale-125">
                   <MetaphorViewer
-                    type={resolvedMetaphor as any}
+                    type={resolvedMetaphor as "spider-web" | "liquid-bucket" | "balance-scale" | "clock-gears" | "rocket-launch" | "character-throw" | "glowing-cluster" | "custom"}
                     frame={frame - current.from}
                     accent={accent}
                   />
