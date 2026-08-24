@@ -295,6 +295,21 @@ export type StoryStyle = z.infer<typeof storyStyleSchema>;
 export type CameraAngle = z.infer<typeof cameraAngleSchema>;
 export type ThemeConfig = z.infer<typeof themeSchema>;
 
+export const sfxItemSchema = z.object({
+  timeSec: z.number().min(0),
+  src: z.string().min(1),
+  volume: z.number().min(0).max(2).default(1),
+});
+
+export const musicTrackSchema = z.object({
+  src: z.string().min(1),
+  volume: z.number().min(0).max(2).default(1),
+  duckUnderVoiceover: z.boolean().default(true).optional(),
+});
+
+export type SfxItem = z.infer<typeof sfxItemSchema>;
+export type MusicTrack = z.infer<typeof musicTrackSchema>;
+
 export const filmBaseSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   title: z.string().min(1),
@@ -314,6 +329,8 @@ export const filmBaseSchema = z.object({
     .object({ src: z.string().min(1), volume: z.number().min(0).max(2).default(1) })
     .optional(),
   captions: z.string().min(1).optional(),
+  sfx: z.array(sfxItemSchema).optional(),
+  music: musicTrackSchema.optional(),
 });
 
 export const filmSchema = filmBaseSchema.superRefine((film, ctx) => {

@@ -45,8 +45,8 @@ export const defaultFilmProps: FilmProps = {
   accent: FILM.accent ?? PALETTE.accent,
   voiceoverSrc: FILM.voiceover?.src ?? "",
   voiceoverVolume: FILM.voiceover?.volume ?? 1,
-  musicSrc: FILM.audio?.src ?? "",
-  musicVolume: 1,
+  musicSrc: FILM.music?.src ?? FILM.audio?.src ?? "",
+  musicVolume: FILM.music?.volume ?? 1,
   showRail: true,
   showGrid: false,
 };
