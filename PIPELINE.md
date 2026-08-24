@@ -4,6 +4,16 @@ This document defines the strict, step-by-step pipeline for producing explainer 
 
 ---
 
+## Phase 0: Staged Ideation (The Brain)
+*New in the staged ideation layer. `backend generate` is still the fast path; this chain trades a few extra LLM calls for individually validated story work. See the "Staged generation" section of README.md for the command reference.*
+
+1. **`ideate`**: idea -> `production/<slug>/treatment.json`: title, logline, chapters (label, claim, evidence), one shared `styleBlock`, and frozen character sheets.
+2. **`shoot`**: treatment -> `shotlist.json`: nodes and paced shots mapping onto the film schema. Acceptance gate: the exact `parseFilm` pacing rules run before anything is written, so bad pacing dies at token cost, never render cost.
+3. **`prompts`**: shot list -> `prompts.json`: self-contained video-model prompts per `needsFootage` shot. The style block and any matching character sheets are prepended verbatim at compile time, so the shared look cannot drift.
+4. **`assemble`**: compiles `film.json` (re-validated by `parseFilm`) and submits flagged shots as `VideoJobSpec[]` through the swappable engine (`null`, or `ssh-wangp` for Wan2GP on the GPU box). Clips land in `production/<slug>/footage/`; wire them into `AnalogyInset src` fields, then re-run with `--install` to activate the film for Phases 1-4 below.
+
+---
+
 ## Phase 1: Script, Audio & Alignment (The Foundation)
 Everything is driven by the audio track. Timing is derived programmatically from the recorded speech.
 
