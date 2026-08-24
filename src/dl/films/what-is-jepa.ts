@@ -288,6 +288,14 @@ export const whatIsJepaFilm: Film = {
           "label": "Video Training",
           "format": "plain",
           "suffix": "M hrs"
+        },
+        {
+          "c": "AnalogyInset",
+          "caption": "V-JEPA 2 World Model · Robot Arm · GPU-Generated B-Roll",
+          "framesDir": "gpu_robot_arm",
+          "totalFrames": 144,
+          "delayFrames": 30,
+          "fullScreenHero": true
         }
       ]
     },

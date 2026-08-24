@@ -12,6 +12,7 @@ videos/
 public/tea1_motion/
 public/graph_motion/
 public/robot_frames/
+public/gpu_robot_arm/
 
 # Media is kept out of the repository on purpose: it is large, it is not the
 # source of truth for anything, and licensed tracks should not be redistributed
