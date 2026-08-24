@@ -235,68 +235,115 @@ program
     console.log(`Render complete.`);
   });
 
+import { runPreRenderSyncGate } from "./ideation/segmentSync";
+
 program
   .command("produce")
   .description("Produce an audio-first Aideos film from a narration script")
   .requiredOption("--script <script>", "Narration script text")
   .option("--out <dir>", "Output directory for generated files", "public")
+  .option("--music <src>", "Optional background music audio file in public/")
+  .option("--sfx", "Automatically place transition sound effects at segment boundaries")
   .addOption(
     new Option("--format <format>", "which composition to render")
       .choices(["long", "reel", "both", "none"])
       .default("none"),
   )
-  .action(async (options: { script: string; out: string; format: "long" | "reel" | "both" | "none" }) => {
-    if (!options.script || options.script.trim().length === 0) {
-      throw new Error("A shot with no narration is not allowed mid-script in v1");
-    }
-
-    const outDir = path.resolve(ROOT, options.out);
-    console.log(`[Audio-First Pipeline] Synthesizing script into audio timing spine...`);
-
-    const audioResult = await produceAudioPipeline(options.script, outDir);
-    console.log(
-      `[Audio-First Pipeline] Concatenated ${audioResult.segments.length} segment(s) into voiceover.wav (${audioResult.totalAudioDuration.toFixed(2)}s total duration)`,
-    );
-
-    const title = options.script.slice(0, 30).trim() || "Produced Film";
-    const film = buildFilmFromAudioResult(title, audioResult);
-
-    const filmJsonPath = path.join(outDir, "film.json");
-    await fs.writeFile(filmJsonPath, JSON.stringify(film, null, 2), "utf-8");
-    console.log(`Saved film JSON to ${filmJsonPath}`);
-
-    await fs.writeFile(GENERATED_PATH, generatedModule(film), "utf-8");
-    console.log(`Saved generated film to ${GENERATED_PATH}`);
-
-    const previousActive = await fs.readFile(ACTIVE_FILM_PATH, "utf-8").catch(() => null);
-    await fs.writeFile(ACTIVE_FILM_PATH, activeFilmModule(), "utf-8");
-    console.log(`Updated activeFilm.ts to use generatedFilm.`);
-
-    console.log(`Validating...`);
-    try {
-      execSync("npm run validate", { stdio: "inherit", cwd: ROOT });
-      console.log(`Validation successful.`);
-    } catch {
-      if (previousActive !== null) {
-        await fs.writeFile(ACTIVE_FILM_PATH, previousActive, "utf-8");
+  .action(
+    async (options: {
+      script: string;
+      out: string;
+      music?: string;
+      sfx?: boolean;
+      format: "long" | "reel" | "both" | "none";
+    }) => {
+      if (!options.script || options.script.trim().length === 0) {
+        throw new Error("A shot with no narration is not allowed mid-script in v1");
       }
-      throw new Error("Validation failed.");
-    }
 
-    if (options.format !== "none") {
-      const formats =
-        options.format === "both" ? (["long", "reel"] as const) : ([options.format] as const);
-      for (const key of formats) {
-        console.log(`Rendering ${FORMATS[key].label}...`);
-        try {
-          execSync(`npm run ${FORMATS[key].script}`, { stdio: "inherit", cwd: ROOT });
-        } catch {
-          throw new Error(`Render failed for the ${key} format.`);
+      const outDir = path.resolve(ROOT, options.out);
+      console.log(`[Audio-First Pipeline] Synthesizing script into audio timing spine...`);
+
+      const audioResult = await produceAudioPipeline(options.script, outDir);
+      console.log(
+        `[Audio-First Pipeline] Concatenated ${audioResult.segments.length} segment(s) into voiceover.wav (${audioResult.totalAudioDuration.toFixed(2)}s total duration)`,
+      );
+
+      // Build transition SFX track if requested
+      const sfxTrack = options.sfx
+        ? audioResult.segments.slice(1).map((seg, idx) => ({
+            timeSec: Number(seg.startOffset.toFixed(3)),
+            src: "transition.wav",
+            volume: 0.8,
+          }))
+        : undefined;
+
+      const musicTrack = options.music
+        ? { src: options.music, volume: 0.8, duckUnderVoiceover: true }
+        : undefined;
+
+      const title = options.script.slice(0, 30).trim() || "Produced Film";
+      const film = buildFilmFromAudioResult(title, audioResult, {
+        music: musicTrack,
+        sfx: sfxTrack,
+      });
+
+      console.log(`[Phase 3 - Semantic Sync] Running pre-render sync gate...`);
+      const syncResult = await runPreRenderSyncGate(film, audioResult.segments);
+
+      console.log(`[Sync Gate Verdicts]`);
+      syncResult.verdicts.forEach((v, idx) => {
+        console.log(
+          `  Shot ${v.shotId} (Segment ${idx + 1}): [${v.status.toUpperCase()}] narration="${v.segmentText.slice(0, 35)}..." -> visualDirection="${v.visualDirection.slice(0, 45)}..."`,
+        );
+      });
+
+      // Save segment->shot mapping artifact
+      const mappingArtifactPath = path.join(outDir, "segment_shot_mapping.json");
+      await fs.writeFile(
+        mappingArtifactPath,
+        JSON.stringify(syncResult.segmentShotMappings, null, 2),
+        "utf-8",
+      );
+      console.log(`Saved segment->shot mapping artifact to ${mappingArtifactPath}`);
+
+      const filmJsonPath = path.join(outDir, "film.json");
+      await fs.writeFile(filmJsonPath, JSON.stringify(film, null, 2), "utf-8");
+      console.log(`Saved film JSON to ${filmJsonPath}`);
+
+      await fs.writeFile(GENERATED_PATH, generatedModule(film), "utf-8");
+      console.log(`Saved generated film to ${GENERATED_PATH}`);
+
+      const previousActive = await fs.readFile(ACTIVE_FILM_PATH, "utf-8").catch(() => null);
+      await fs.writeFile(ACTIVE_FILM_PATH, activeFilmModule(), "utf-8");
+      console.log(`Updated activeFilm.ts to use generatedFilm.`);
+
+      console.log(`Validating...`);
+      try {
+        execSync("npm run validate", { stdio: "inherit", cwd: ROOT });
+        console.log(`Validation successful.`);
+      } catch {
+        if (previousActive !== null) {
+          await fs.writeFile(ACTIVE_FILM_PATH, previousActive, "utf-8");
         }
+        throw new Error("Validation failed.");
       }
-      console.log(`Render complete.`);
-    }
-  });
+
+      if (options.format !== "none") {
+        const formats =
+          options.format === "both" ? (["long", "reel"] as const) : ([options.format] as const);
+        for (const key of formats) {
+          console.log(`Rendering ${FORMATS[key].label}...`);
+          try {
+            execSync(`npm run ${FORMATS[key].script}`, { stdio: "inherit", cwd: ROOT });
+          } catch {
+            throw new Error(`Render failed for the ${key} format.`);
+          }
+        }
+        console.log(`Render complete.`);
+      }
+    },
+  );
 
 program
   .command("ideate")

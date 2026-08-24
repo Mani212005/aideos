@@ -30,9 +30,10 @@ const load = async (rel, name) => {
 
 const { ACTIVE_FILM } = await load("src/dl/activeFilm.ts", "dl-film.mjs");
 const { parseFilm, DEVICE_BLOCKS } = await load("src/dl/schema.ts", "dl-schema.mjs");
+const { validateFilmAudioAndAssets } = await load("src/dl/validateFilm.ts", "dl-validate.mjs");
 const { buildTimeline, totalFrames } = await load("src/dl/camera.ts", "dl-camera.mjs");
 
-const film = parseFilm(ACTIVE_FILM);
+const film = validateFilmAudioAndAssets(ACTIVE_FILM);
 const timeline = buildTimeline(film);
 const frames = totalFrames(timeline);
 const seconds = frames / film.fps;

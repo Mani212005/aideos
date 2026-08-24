@@ -341,10 +341,16 @@ export async function produceAudioPipeline(
   };
 }
 
+import { buildBriefFromSegmentFallback } from "./ideation/segmentSync";
+
 /** Construct a valid Film schema object from produce result. */
 export function buildFilmFromAudioResult(
   title: string,
   audioResult: ProduceAudioResult,
+  options?: {
+    music?: { src: string; volume?: number; duckUnderVoiceover?: boolean };
+    sfx?: Array<{ timeSec: number; src: string; volume?: number }>;
+  },
 ): Film {
   const slug = title
     .toLowerCase()
@@ -377,12 +383,13 @@ export function buildFilmFromAudioResult(
     edges.push({ from: "node-1", to: "node-2", dashed: false });
   }
 
-  // Create shots
+  // Create shots with segment-scoped visual brief mapping
   const shots = audioResult.segments.map((seg, i) => {
     const chIndex = Math.floor((i * numChapters) / numShots);
     const chName = chapters[chIndex];
     const isChapterStart = i === 0 || Math.floor(((i - 1) * numChapters) / numShots) !== chIndex;
     const targetNodeId = nodes[Math.min(chIndex, nodes.length - 1)].id;
+    const brief = buildBriefFromSegmentFallback(seg.text, `shot-${i + 1}`);
 
     return {
       id: `shot-${i + 1}`,
@@ -392,13 +399,9 @@ export function buildFilmFromAudioResult(
       look: targetNodeId,
       move: isChapterStart ? ("cut" as const) : ("pan" as const),
       scriptText: seg.text,
-      blocks: [
-        {
-          c: "TextReveal" as const,
-          text: seg.text.slice(0, 140),
-          size: "headline" as const,
-        },
-      ],
+      visualDirection: brief.visualDirection,
+      metaphor: brief.metaphor,
+      blocks: brief.blocks,
     };
   });
 
@@ -411,6 +414,8 @@ export function buildFilmFromAudioResult(
     shots,
     voiceover: { src: "voiceover.wav", volume: 1 },
     captions: "captions.vtt",
+    ...(options?.music ? { music: options.music } : {}),
+    ...(options?.sfx ? { sfx: options.sfx } : {}),
   };
 
   return parseFilm(filmRaw);
