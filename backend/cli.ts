@@ -9,6 +9,10 @@ import { DEVICE_BLOCKS, filmBaseSchema, parseFilm } from "../src/dl/schema";
 import type { Film } from "../src/dl/schema";
 import { processAudioForFilm } from "./audio";
 import { createEngine } from "./engine";
+import { parsePrompts, parseTreatment, parseShotlist } from "./ideation/schemas";
+import { runIdeate, runShoot, runPrompts } from "./ideation/stages";
+import { compileFilm, extractJobSpecs } from "./ideation/compile";
+import type { Treatment } from "./ideation/schemas";
 
 dotenv.config({ quiet: true });
 
@@ -67,6 +71,34 @@ const FORMATS = {
   long: { script: "render", label: "long (1920×1080) → out/long.mp4" },
   reel: { script: "render:reel", label: "reel (1080×1920) → out/reel.mp4" },
 } as const;
+
+/** Lowercase-dash slug for file and film ids. */
+function slugify(text: string): string {
+  return (
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48) || "film"
+  );
+}
+
+/** Production dir for a topic; everything a stage emits lives there. */
+function productionDir(topic: string): string {
+  return path.join(ROOT, "production", topic);
+}
+
+/** Read and parse one staged artifact from disk. */
+async function readArtifact<T>(file: string, parse: (raw: unknown) => T, label: string): Promise<T> {
+  const raw = await fs.readFile(file, "utf-8").catch(() => {
+    throw new Error(`${label} not found at ${file}; run the earlier stage first.`);
+  });
+  try {
+    return parse(JSON.parse(raw));
+  } catch (err) {
+    throw new Error(`${label} at ${file} is invalid: ${(err as Error).message}`);
+  }
+}
 
 /** Keeps the hand-written explanation that makes this file readable. */
 const activeFilmModule = () =>
@@ -202,6 +234,145 @@ program
     }
     console.log(`Render complete.`);
   });
+
+program
+  .command("ideate")
+  .description("Stage 1: idea -> treatment.json (story arc, chapters, style block)")
+  .argument("<idea>", "The video idea or script seed")
+  .option("--dir <dir>", "production directory name")
+  .action(async (idea: string, options: { dir?: string }) => {
+    const treatment = await runIdeate(idea);
+    const dir = productionDir(options.dir ?? slugify(treatment.title));
+    await fs.mkdir(dir, { recursive: true });
+    const out = path.join(dir, "treatment.json");
+    await fs.writeFile(out, JSON.stringify(treatment, null, 2));
+    console.log(`Treatment saved to ${out}`);
+    console.log(`Next: npm run backend -- shoot ${path.relative(ROOT, out)}`);
+  });
+
+program
+  .command("shoot")
+  .description(
+    "Stage 2: treatment -> shotlist.json (paced shot list, gated by parseFilm rules before write)",
+  )
+  .argument("<treatment>", "Path to treatment.json")
+  .action(async (treatmentPath: string) => {
+    const resolved = path.resolve(ROOT, treatmentPath);
+    const treatment = await readArtifact(resolved, parseTreatment, "treatment");
+    console.log(`Shooting "${treatment.title}" (${treatment.chapters.length} chapters)...`);
+    const shotlist = await runShoot(treatment);
+    // Emit beside the treatment so the whole stage chain stays one directory.
+    const dir = productionDir(path.basename(path.dirname(resolved)));
+    await fs.mkdir(dir, { recursive: true });
+    const out = path.join(dir, "shotlist.json");
+    await fs.writeFile(out, JSON.stringify(shotlist, null, 2));
+    const flagged = shotlist.shots.filter((s) => s.needsFootage).length;
+    console.log(
+      `Shot list passed the pacing gate: ${shotlist.shots.length} shots, ${flagged} flagged for footage. Saved to ${out}`,
+    );
+    console.log(`Next: npm run backend -- prompts ${path.relative(ROOT, out)}`);
+  });
+
+program
+  .command("prompts")
+  .description("Stage 3: shotlist -> prompts.json (self-contained b-roll prompts per needsFootage shot)")
+  .argument("<shotlist>", "Path to shotlist.json")
+  .action(async (shotlistPath: string) => {
+    const resolved = path.resolve(ROOT, shotlistPath);
+    const shotlist = await readArtifact(resolved, parseShotlist, "shotlist");
+    const dir = path.dirname(resolved);
+    const treatment = await readArtifact(
+      path.join(dir, "treatment.json"),
+      parseTreatment,
+      "treatment",
+    );
+    const flagged = shotlist.shots.filter((s) => s.needsFootage);
+    if (flagged.length === 0) {
+      console.log("No shots flagged needsFootage; nothing to prompt.");
+      return;
+    }
+    const file = await runPrompts(shotlist, treatment);
+    const out = path.join(dir, "prompts.json");
+    await fs.writeFile(out, JSON.stringify(file, null, 2));
+    console.log(`${file.prompts.length} b-roll prompt(s) saved to ${out}`);
+    console.log(`Next: npm run backend -- assemble ${path.relative(ROOT, dir)}`);
+  });
+
+program
+  .command("assemble")
+  .description(
+    "Stage 4 handoff: compile treatment + shotlist + prompts into film.json and render b-roll through a VideoEngine",
+  )
+  .argument("<dir>", "Production directory holding treatment.json / shotlist.json / prompts.json")
+  .option("--engine <name>", "which engine renders the b-roll", "null")
+  .option("--skip-footage", "compile film.json only, do not submit b-roll jobs")
+  .option("--only <shotId>", "render b-roll for one shot id only")
+  .option("--install", "also install the film as activeFilm and run npm run validate")
+  .action(
+    async (
+      dirArg: string,
+      options: { engine: string; skipFootage?: boolean; only?: string; install?: boolean },
+    ) => {
+      const dir = path.resolve(ROOT, dirArg);
+      const treatment: Treatment = await readArtifact(
+        path.join(dir, "treatment.json"),
+        parseTreatment,
+        "treatment",
+      );
+      const shotlist = await readArtifact(
+        path.join(dir, "shotlist.json"),
+        parseShotlist,
+        "shotlist",
+      );
+      const prompts = await readArtifact(
+        path.join(dir, "prompts.json"),
+        parsePrompts,
+        "prompts",
+      ).catch(() => null);
+
+      const film = compileFilm(treatment, shotlist);
+      const filmOut = path.join(dir, "film.json");
+      await fs.writeFile(filmOut, JSON.stringify(film, null, 2));
+      console.log(`Film compiled and re-validated against parseFilm: ${filmOut}`);
+
+      if (options.install) {
+        await fs.writeFile(GENERATED_PATH, generatedModule(film), "utf-8");
+        await fs.writeFile(ACTIVE_FILM_PATH, activeFilmModule(), "utf-8");
+        console.log(`Installed as activeFilm; validating...`);
+        execSync("npm run validate", { stdio: "inherit", cwd: ROOT });
+        console.log(`Validation successful.`);
+      }
+
+      if (options.skipFootage) return;
+
+      const allJobs = extractJobSpecs(treatment, shotlist, prompts);
+      const jobs = options.only ? allJobs.filter((j) => j.shotId === options.only) : allJobs;
+      if (options.only && jobs.length === 0)
+        throw new Error(`no needsFootage shot named "${options.only}"; flagged shots: ${allJobs.map((j) => j.shotId).join(", ") || "none"}`);
+      if (jobs.length === 0) {
+        console.log("No needsFootage shots; no b-roll jobs to submit.");
+        return;
+      }
+      const engine = createEngine(options.engine);
+      const footageDir = path.join(dir, "footage");
+      for (const { shotId, spec } of jobs) {
+        console.log(`[${engine.name}] submitting b-roll for shot "${shotId}": "${spec.prompt.slice(0, 80)}..."`);
+        const handle = await engine.submit(spec);
+        for (;;) {
+          await new Promise((r) => setTimeout(r, 15000));
+          const st = await engine.status(handle.jobId);
+          const pct = st.progress !== undefined ? ` (${Math.round(st.progress * 100)}%)` : "";
+          console.log(`[${engine.name}] ${st.state}${pct}`);
+          if (st.state === "failed") throw new Error(st.error || `b-roll job for "${shotId}" failed`);
+          if (st.state === "done") break;
+        }
+        const dest = path.join(footageDir, `${shotId}.mp4`);
+        await engine.fetchOutput(handle.jobId, dest);
+        console.log(`[${engine.name}] clip for "${shotId}" saved to ${dest}`);
+      }
+      console.log("All b-roll rendered. Wire clips into AnalogyInset src fields by hand, then re-assemble with --install.");
+    },
+  );
 
 program
   .command("engine-test")

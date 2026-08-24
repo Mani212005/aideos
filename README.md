@@ -62,6 +62,34 @@ npm run render:reel   # → out/reel.mp4
 npm run frames        # 17 proof stills from both formats → .frames/
 ```
 
+## Staged generation (the ideation layer)
+
+`generate` remains the fast path: one call from prompt to film. For higher
+quality on real topics, the staged chain splits the same job into small,
+individually validated steps (each stage is its own LLM call with its own zod
+schema, and bad pacing dies at the shot list, never at render cost):
+
+```bash
+npm run backend -- ideate "why local-first software wins"   # -> production/<slug>/treatment.json
+npm run backend -- shoot  production/<slug>/treatment.json # -> shotlist.json, gated by parseFilm pacing rules
+npm run backend -- prompts production/<slug>/shotlist.json # -> prompts.json, one b-roll prompt per needsFootage shot
+npm run backend -- assemble production/<slug> \
+    [--engine ssh-wangp] [--only <shotId>] [--install]      # -> film.json + GPU b-roll via a VideoEngine
+```
+
+- The treatment carries a shared `styleBlock` and character sheets; both are
+  prepended verbatim to every b-roll prompt so generated clips share one look.
+- `assemble` compiles `film.json`, submits each flagged shot as a
+  `VideoJobSpec` through the engine from `backend/engine/` (`null` by default,
+  `ssh-wangp` for the Wan2GP box), and fetches clips into `production/<slug>/footage/`.
+- `--install` points `activeFilm.ts` at the compiled film and runs
+  `npm run validate`; both long and reel formats keep solving from that one
+  film. Image-to-video reference frames are out of scope for now: they need
+  more VRAM than the box's 8 GB budget.
+- The stages default to generate's exact model config (`OPENAI_API_KEY`,
+  gpt-4o). `OPENAI_BASE_URL` and `AIDEOS_LLM_MODEL` override them for any
+  OpenAI-compatible endpoint.
+
 ## Writing a film
 
 Films are pure data in `src/dl/films/`. Point `src/dl/activeFilm.ts` at one.
