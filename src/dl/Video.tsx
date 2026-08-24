@@ -33,7 +33,6 @@ export const voiceLevel = (frame: number, level: number) =>
 export const Video: React.FC<FilmProps> = ({
   accent,
   voiceoverSrc,
-  voiceoverVolume,
   musicSrc,
   musicVolume,
   showRail,

@@ -625,7 +625,6 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
   fullScreenHero = false,
   start,
   index,
-  durationInFrames: _durationInFrames,
 }) => {
   const frame = useCurrentFrame();
   const layout = useLayout();

@@ -9,6 +9,8 @@ videos/
 
 # Proof stills and large frame sequence directories.
 .frames/
+.tmp_audio/
+public/.tmp_audio/
 public/tea1_motion/
 public/graph_motion/
 public/robot_frames/

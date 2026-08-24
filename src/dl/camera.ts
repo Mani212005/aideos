@@ -216,13 +216,14 @@ export const getCameraPerspective = (
         perspective: "1000px",
         transform: "rotateX(-18deg) translateY(25px)",
       };
-    case "orbit":
+    case "orbit": {
       const rx = 16 + Math.sin(frame * 0.02) * 6;
       const ry = Math.cos(frame * 0.02) * 10;
       return {
         perspective: "1400px",
         transform: `rotateX(${rx}deg) rotateY(${ry}deg)`,
       };
+    }
     case "top-down":
       return {
         perspective: "none",

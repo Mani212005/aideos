@@ -80,6 +80,7 @@ export function simulateRemotionCompilation(
 // Derives frame-by-frame element bounding box keyframes from shot specifications for spatial validation.
 export function generateKeyframeSnapshots(
   shotSpec: ShotLayoutSpec,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   viewport: ViewportConfig
 ): FrameSnapshot[] {
   const snapshots: FrameSnapshot[] = [];
