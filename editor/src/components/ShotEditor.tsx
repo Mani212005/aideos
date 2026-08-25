@@ -1,6 +1,8 @@
-// File Description: Edits one shot and its blocks while preserving selection after deletion.
+// File Description: Edits one shot and its blocks with interactive Character Beat inspector and pose presets.
 
+import { useState } from "react";
 import type { Film, Shot, Block } from "../../../src/dl/schema";
+import { POSE_PRESETS, getAllCharacterRigs } from "../../../src/dl/characters";
 
 interface ShotEditorProps {
   film: Film;
@@ -11,9 +13,18 @@ interface ShotEditorProps {
   onClearSelection: () => void;
 }
 
-// Renders controls for the selected shot and its storyboard blocks.
-export function ShotEditor({ film, shotIndex, onChange, onSelectShot, onShotIdChange, onClearSelection }: ShotEditorProps) {
+// Renders controls for the selected shot, render mode macros, and character pose presets.
+export function ShotEditor({
+  film,
+  shotIndex,
+  onChange,
+  onSelectShot,
+  onShotIdChange,
+  onClearSelection,
+}: ShotEditorProps) {
   const shot = film.shots[shotIndex];
+  const [activeKeyframeIdx, setActiveKeyframeIdx] = useState(0);
+
   if (!shot) return null;
 
   const updateShot = (partial: Partial<Shot>) => {
@@ -53,12 +64,109 @@ export function ShotEditor({ film, shotIndex, onChange, onSelectShot, onShotIdCh
     updateShot({ blocks });
   };
 
+  // Identifies the active render mode based on blocks in the shot
+  const hasCharacter = shot.blocks.some((b) => b.c === "CharacterBeat");
+  const hasBRoll = shot.blocks.some((b) => b.c === "AnalogyInset");
+  const currentRenderMode = hasCharacter ? "character" : hasBRoll ? "b-roll" : "standard";
+
+  // Applies render mode macro by swapping conflicting devices
+  const setRenderMode = (mode: "standard" | "character" | "b-roll") => {
+    const filteredBlocks = shot.blocks.filter(
+      (b) => b.c !== "CharacterBeat" && b.c !== "AnalogyInset",
+    );
+
+    if (mode === "character") {
+      updateShot({
+        blocks: [
+          ...filteredBlocks,
+          {
+            c: "CharacterBeat",
+            characterId: "astronaut",
+            poses: [
+              {
+                t: 0,
+                groups: { ...POSE_PRESETS.neutral.groups },
+              },
+            ],
+          } as Block,
+        ],
+      });
+    } else if (mode === "b-roll") {
+      updateShot({
+        blocks: [
+          ...filteredBlocks,
+          {
+            c: "AnalogyInset",
+            caption: shot.scriptText?.slice(0, 40) || "Visual Analogy",
+          } as Block,
+        ],
+      });
+    } else {
+      updateShot({ blocks: filteredBlocks });
+    }
+  };
+
+  // Finds the index of the first CharacterBeat block
+  const charBlockIdx = shot.blocks.findIndex((b) => b.c === "CharacterBeat");
+  const charBlock = charBlockIdx >= 0 ? (shot.blocks[charBlockIdx] as any) : null;
+
+  // Applies a preset pose to the active character block keyframe
+  const applyPresetToKeyframe = (presetKey: string) => {
+    if (charBlockIdx < 0 || !charBlock) return;
+    const preset = POSE_PRESETS[presetKey];
+    if (!preset) return;
+
+    const poses = Array.isArray(charBlock.poses) && charBlock.poses.length > 0
+      ? [...charBlock.poses]
+      : [{ t: 0, groups: {} }];
+
+    const targetIdx = Math.min(activeKeyframeIdx, poses.length - 1);
+    poses[targetIdx] = {
+      t: poses[targetIdx]?.t ?? 0,
+      groups: { ...preset.groups },
+    };
+
+    const newBlocks = [...shot.blocks];
+    newBlocks[charBlockIdx] = { ...charBlock, poses };
+    updateShot({ blocks: newBlocks });
+  };
+
+  // Updates joint rotation for the active keyframe
+  const updateJointRotation = (groupId: string, angle: number) => {
+    if (charBlockIdx < 0 || !charBlock) return;
+    const poses = Array.isArray(charBlock.poses) && charBlock.poses.length > 0
+      ? [...charBlock.poses]
+      : [{ t: 0, groups: {} }];
+
+    const targetIdx = Math.min(activeKeyframeIdx, poses.length - 1);
+    const currPose = poses[targetIdx] || { t: 0, groups: {} };
+    const currGroups = currPose.groups || {};
+    const currGroup = currGroups[groupId] || {};
+
+    poses[targetIdx] = {
+      ...currPose,
+      groups: {
+        ...currGroups,
+        [groupId]: {
+          ...currGroup,
+          rotate: angle,
+        },
+      },
+    };
+
+    const newBlocks = [...shot.blocks];
+    newBlocks[charBlockIdx] = { ...charBlock, poses };
+    updateShot({ blocks: newBlocks });
+  };
+
+  const characterRigs = getAllCharacterRigs();
+
   return (
     <div className="flex flex-col gap-3 text-sm bg-[#1A1A1B] p-3 rounded border border-[#333]">
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex justify-between items-center mb-1">
         <h3 className="font-bold text-[#F5F5F5]">Edit Shot</h3>
-        <button 
-          onClick={removeShot} 
+        <button
+          onClick={removeShot}
           disabled={film.shots.length <= 1}
           className="text-red-500 text-xs hover:underline disabled:opacity-30 disabled:hover:no-underline"
         >
@@ -66,26 +174,195 @@ export function ShotEditor({ film, shotIndex, onChange, onSelectShot, onShotIdCh
         </button>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-xs text-gray-400">ID</label>
-        <input className="bg-[#111] border border-[#333] rounded px-2 py-1" value={shot.id} onChange={e => updateShot({ id: e.target.value })} />
+      {/* Render Mode Preset Selector */}
+      <div className="flex flex-col gap-1 bg-[#111] p-2 rounded border border-[#262626]">
+        <label className="text-[11px] font-semibold text-gray-300">RENDER MODE</label>
+        <div className="grid grid-cols-3 gap-1">
+          <button
+            type="button"
+            onClick={() => setRenderMode("standard")}
+            className={`py-1 text-[11px] font-medium rounded transition-colors ${
+              currentRenderMode === "standard"
+                ? "bg-[#635BFF] text-white"
+                : "bg-[#222] text-gray-400 hover:bg-[#2a2a2a]"
+            }`}
+          >
+            Standard
+          </button>
+          <button
+            type="button"
+            onClick={() => setRenderMode("character")}
+            className={`py-1 text-[11px] font-medium rounded transition-colors ${
+              currentRenderMode === "character"
+                ? "bg-[#635BFF] text-white"
+                : "bg-[#222] text-gray-400 hover:bg-[#2a2a2a]"
+            }`}
+          >
+            SVG Character
+          </button>
+          <button
+            type="button"
+            onClick={() => setRenderMode("b-roll")}
+            className={`py-1 text-[11px] font-medium rounded transition-colors ${
+              currentRenderMode === "b-roll"
+                ? "bg-[#635BFF] text-white"
+                : "bg-[#222] text-gray-400 hover:bg-[#2a2a2a]"
+            }`}
+          >
+            GPU B-Roll
+          </button>
+        </div>
       </div>
 
+      {/* Interactive SVG Character Inspector */}
+      {charBlock && (
+        <div className="flex flex-col gap-2 bg-[#141416] p-2.5 rounded border border-[#635BFF]/40">
+          <div className="flex justify-between items-center">
+            <span className="text-[11px] font-bold text-[#635BFF] uppercase tracking-wider">
+              Vector Character Rig
+            </span>
+            <select
+              className="bg-[#222] text-xs text-white border border-[#444] rounded px-1.5 py-0.5"
+              value={charBlock.characterId || "astronaut"}
+              onChange={(e) => {
+                const newBlocks = [...shot.blocks];
+                newBlocks[charBlockIdx] = { ...charBlock, characterId: e.target.value };
+                updateShot({ blocks: newBlocks });
+              }}
+            >
+              {characterRigs.map((rig) => (
+                <option key={rig.id} value={rig.id}>
+                  {rig.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 8 Pose Preset Buttons */}
+          <div className="flex flex-col gap-1 mt-1">
+            <label className="text-[10px] text-gray-400">1-Click Pose Presets</label>
+            <div className="grid grid-cols-4 gap-1">
+              {Object.keys(POSE_PRESETS).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => applyPresetToKeyframe(key)}
+                  className="bg-[#222] hover:bg-[#333] text-gray-300 text-[10px] py-1 px-1 rounded truncate border border-[#333] hover:border-[#635BFF] transition-colors"
+                  title={POSE_PRESETS[key].description}
+                >
+                  {POSE_PRESETS[key].name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Keyframe Progress Selector */}
+          <div className="flex items-center justify-between gap-2 mt-1">
+            <span className="text-[10px] text-gray-400">Keyframe</span>
+            <div className="flex gap-1">
+              {(charBlock.poses || []).map((p: any, idx: number) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setActiveKeyframeIdx(idx)}
+                  className={`text-[10px] px-1.5 py-0.5 rounded ${
+                    activeKeyframeIdx === idx
+                      ? "bg-[#635BFF] text-white"
+                      : "bg-[#222] text-gray-400"
+                  }`}
+                >
+                  t={p.t ?? 0}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  const poses = [...(charBlock.poses || [])];
+                  const newT = poses.length === 0 ? 0 : Math.min(1, (poses[poses.length - 1].t ?? 0) + 0.5);
+                  poses.push({ t: newT, groups: { ...POSE_PRESETS.neutral.groups } });
+                  const newBlocks = [...shot.blocks];
+                  newBlocks[charBlockIdx] = { ...charBlock, poses };
+                  updateShot({ blocks: newBlocks });
+                  setActiveKeyframeIdx(poses.length - 1);
+                }}
+                className="text-[10px] px-1.5 py-0.5 bg-[#2a2a2a] hover:bg-[#333] text-gray-300 rounded"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          {/* Joint Rotation Fine-Tuning Sliders */}
+          <div className="flex flex-col gap-1.5 mt-1 border-t border-[#222] pt-2">
+            <label className="text-[10px] text-gray-400">Joint Angles</label>
+            {(["torso", "head", "leftArm", "rightArm"] as const).map((joint) => {
+              const activePose = charBlock.poses?.[activeKeyframeIdx] || charBlock.poses?.[0];
+              const angle = activePose?.groups?.[joint]?.rotate ?? 0;
+              return (
+                <div key={joint} className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-gray-400 capitalize w-16 truncate">{joint}</span>
+                  <input
+                    type="range"
+                    min={-180}
+                    max={180}
+                    value={angle}
+                    onChange={(e) => updateJointRotation(joint, Number(e.target.value))}
+                    className="flex-1 h-1 bg-[#222] rounded accent-[#635BFF]"
+                  />
+                  <span className="text-[10px] font-mono text-gray-300 w-8 text-right">
+                    {angle}°
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ID Field */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-gray-400">ID</label>
+        <input
+          className="bg-[#111] border border-[#333] rounded px-2 py-1"
+          value={shot.id}
+          onChange={(e) => updateShot({ id: e.target.value })}
+        />
+      </div>
+
+      {/* Dur & Look */}
       <div className="flex gap-2">
         <div className="flex flex-col gap-1 flex-1">
           <label className="text-xs text-gray-400">Dur (s)</label>
-          <input className="bg-[#111] border border-[#333] rounded px-2 py-1" type="number" value={shot.dur} onChange={e => updateShot({ dur: Number(e.target.value) })} />
+          <input
+            className="bg-[#111] border border-[#333] rounded px-2 py-1"
+            type="number"
+            value={shot.dur}
+            onChange={(e) => updateShot({ dur: Number(e.target.value) })}
+          />
         </div>
         <div className="flex flex-col gap-1 flex-1">
           <label className="text-xs text-gray-400">Look</label>
-          <input className="bg-[#111] border border-[#333] rounded px-2 py-1" value={Array.isArray(shot.look) ? shot.look.join(',') : shot.look} onChange={e => updateShot({ look: e.target.value.includes(',') ? e.target.value.split(',') : e.target.value })} />
+          <input
+            className="bg-[#111] border border-[#333] rounded px-2 py-1"
+            value={Array.isArray(shot.look) ? shot.look.join(",") : shot.look}
+            onChange={(e) =>
+              updateShot({
+                look: e.target.value.includes(",") ? e.target.value.split(",") : e.target.value,
+              })
+            }
+          />
         </div>
       </div>
 
+      {/* Move & Stage */}
       <div className="flex gap-2">
         <div className="flex flex-col gap-1 flex-1">
           <label className="text-xs text-gray-400">Move</label>
-          <select className="bg-[#111] border border-[#333] rounded px-2 py-1" value={shot.move} onChange={e => updateShot({ move: e.target.value as any })}>
+          <select
+            className="bg-[#111] border border-[#333] rounded px-2 py-1"
+            value={shot.move}
+            onChange={(e) => updateShot({ move: e.target.value as any })}
+          >
             <option value="pan">pan</option>
             <option value="zoom-in">zoom-in</option>
             <option value="zoom-out">zoom-out</option>
@@ -95,7 +372,11 @@ export function ShotEditor({ film, shotIndex, onChange, onSelectShot, onShotIdCh
         </div>
         <div className="flex flex-col gap-1 flex-1">
           <label className="text-xs text-gray-400">Stage</label>
-          <select className="bg-[#111] border border-[#333] rounded px-2 py-1" value={shot.stage} onChange={e => updateShot({ stage: e.target.value as any })}>
+          <select
+            className="bg-[#111] border border-[#333] rounded px-2 py-1"
+            value={shot.stage}
+            onChange={(e) => updateShot({ stage: e.target.value as any })}
+          >
             <option value="anchor">anchor</option>
             <option value="frame">frame</option>
             <option value="none">none</option>
@@ -103,35 +384,39 @@ export function ShotEditor({ film, shotIndex, onChange, onSelectShot, onShotIdCh
         </div>
       </div>
 
+      {/* Script (TTS) */}
       <div className="flex flex-col gap-1">
         <label className="text-xs text-gray-400">Script (TTS)</label>
         <textarea
           className="bg-[#111] border border-[#333] rounded px-2 py-1 text-xs resize-y"
           rows={3}
-          value={shot.scriptText || ''}
-          onChange={e => updateShot({ scriptText: e.target.value })}
+          value={shot.scriptText || ""}
+          onChange={(e) => updateShot({ scriptText: e.target.value })}
           placeholder="Text for Voiceover to speak..."
         />
       </div>
 
+      {/* Blocks List */}
       <div className="mt-2">
         <div className="flex justify-between items-center mb-2">
-          <label className="text-xs text-gray-400">Blocks</label>
-          <button onClick={addBlock} className="text-xs text-[#635BFF] hover:underline">+ Add Block</button>
+          <label className="text-xs text-gray-400">Blocks ({shot.blocks.length})</label>
+          <button onClick={addBlock} className="text-xs text-[#635BFF] hover:underline">
+            + Add Block
+          </button>
         </div>
         {shot.blocks.map((block, bi) => (
           <div key={bi} className="relative mb-2">
-            <textarea 
-              className="w-full bg-[#111] border border-[#333] rounded p-2 font-mono text-[10px] resize-y" 
+            <textarea
+              className="w-full bg-[#111] border border-[#333] rounded p-2 font-mono text-[10px] resize-y"
               rows={4}
               defaultValue={JSON.stringify(block, null, 2)}
-              onBlur={e => updateBlock(bi, e.target.value)}
+              onBlur={(e) => updateBlock(bi, e.target.value)}
             />
-            <button 
+            <button
               onClick={() => removeBlock(bi)}
               className="absolute top-1 right-2 text-red-500 text-xs font-bold bg-[#111] px-1"
             >
-              ×
+              x
             </button>
           </div>
         ))}

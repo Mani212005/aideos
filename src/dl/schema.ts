@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * ---------------------------------------------------------------------------
- * DESIGN LANGUAGE — THE SCHEMA CONTRACT
+ * DESIGN LANGUAGE: THE SCHEMA CONTRACT
  * ---------------------------------------------------------------------------
  * Implements §09. Three rules hold this together, and they are the reason there
  * is no per-video animation logic anywhere in `src/dl`:
@@ -39,15 +39,36 @@ export const edgeSchema = z.object({
   label: z.string().optional(),
 });
 
+export const poseTransformSchema = z.object({
+  rotate: z.number().min(-360).max(360).optional(),
+  x: z.number().optional(),
+  y: z.number().optional(),
+  scaleX: z.number().min(0.1).max(5).optional(),
+  scaleY: z.number().min(0.1).max(5).optional(),
+});
+
+export const poseKeyframeSchema = z.object({
+  t: z.number().min(0).max(1),
+  groups: z.record(z.string(), poseTransformSchema),
+});
+
+export type PoseTransform = z.infer<typeof poseTransformSchema>;
+export type PoseKeyframe = z.infer<typeof poseKeyframeSchema>;
+
 /**
  * The block library. A closed union, so a generator cannot name a component
  * that does not exist and silently produce an empty frame.
  *
- * `c` is the component. Everything else is its data — no styling, no timing,
+ * `c` is the component. Everything else is its data: no styling, no timing,
  * no colour. A block that could specify its own colour would be a block that
  * could break §01.
  */
 export const blockSchema = z.discriminatedUnion("c", [
+  z.object({
+    c: z.literal("CharacterBeat"),
+    characterId: z.string().min(1).default("astronaut"),
+    poses: z.array(poseKeyframeSchema).default([]),
+  }),
   z.object({
     c: z.literal("Kicker"),
     text: z.string().min(1).max(48),
@@ -96,7 +117,7 @@ export const blockSchema = z.discriminatedUnion("c", [
     rowLabel: z.string().max(18).optional(),
     colLabel: z.string().max(18).optional(),
     valueLabel: z.string().max(18).optional(),
-    /** Sweep one row at a time — never all cells at once. */
+    /** Sweep one row at a time, never all cells at once. */
     sweep: z.enum(["row", "cell"]).default("row"),
   }),
   z.object({
@@ -195,6 +216,7 @@ export const DEVICE_BLOCKS = [
   "ScaleBar",
   "AnalogyInset",
   "Plot",
+  "CharacterBeat",
 ] as const;
 
 const isDevice = (b: Block) =>
@@ -384,7 +406,7 @@ export const filmSchema = filmBaseSchema.superRefine((film, ctx) => {
       const isSpine = shot.stage === "none";
 
       if (device) {
-        // No device holds the frame past 25 seconds — attention decays after
+        // No device holds the frame past 25 seconds: attention decays after
         // roughly twenty on the same visual device.
         if (shot.dur > 25)
           ctx.addIssue({
@@ -426,7 +448,7 @@ export const filmSchema = filmBaseSchema.superRefine((film, ctx) => {
         ctx.addIssue({
           code: "custom",
           path: [...at, "stage"],
-          message: 'cannot anchor a panel to "all" — name the node it grows out of',
+          message: 'cannot anchor a panel to "all": name the node it grows out of',
         });
 
       sinceBeat = isBeat ? 0 : sinceBeat + shot.dur;
@@ -436,7 +458,7 @@ export const filmSchema = filmBaseSchema.superRefine((film, ctx) => {
         ctx.addIssue({
           code: "custom",
           path: [...at, "dur"],
-          message: `${Math.round(sinceBeat)}s without a text beat; the viewer needs a breather every 60–90s`,
+          message: `${Math.round(sinceBeat)}s without a text beat; the viewer needs a breather every 60-90s`,
         });
       if (sinceCanvas > 90)
         ctx.addIssue({
@@ -452,7 +474,7 @@ export const filmSchema = filmBaseSchema.superRefine((film, ctx) => {
       ctx.addIssue({
         code: "custom",
         path: ["shots", 0, "move"],
-        message: 'the first shot has nothing to move from — use move: "cut"',
+        message: 'the first shot has nothing to move from: use move: "cut"',
       });
 
     if (clock < 10)

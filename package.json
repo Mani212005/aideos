@@ -10,6 +10,9 @@
   "bugs": "https://github.com/Mani212005/aideos/issues",
   "license": "MIT",
   "private": true,
+  "bin": {
+    "aideos": "./bin/aideos"
+  },
   "dependencies": {
     "@chenglou/pretext": "^0.0.8",
     "@deepgram/sdk": "^3.13.0",
@@ -46,7 +49,7 @@
     "studio": "remotion studio",
     "editor": "cd editor && npm run dev",
     "validate": "node scripts/validate.mjs",
-    "test": "node --import tsx --test backend/ideation/ideation.test.ts backend/audio.test.ts backend/sync.test.ts",
+    "test": "node --import tsx --test backend/ideation/ideation.test.ts backend/audio.test.ts backend/sync.test.ts backend/character.test.ts",
     "frames": "node scripts/frames.mjs",
     "render": "remotion render Long out/long.mp4",
     "render:reel": "remotion render Reel out/reel.mp4",

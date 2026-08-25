@@ -76,7 +76,7 @@ export const flashAttentionFilm: Film = {
       "id": "shot-1",
       "dur": 8,
       "look": "intro",
-      "move": "pan",
+      "move": "cut",
       "stage": "anchor",
       "zoom": 1,
       "drift": true,

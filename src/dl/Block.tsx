@@ -23,6 +23,7 @@ import {
   TokenStrip,
   VectorSpace,
 } from "./devices";
+import { CharacterRigView } from "./CharacterRig";
 
 /**
  * The one place that maps schema to component.
@@ -33,6 +34,13 @@ import {
  */
 export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...timing }) => {
   switch (block.c) {
+    case "CharacterBeat":
+      return (
+        <CharacterRigView
+          characterId={block.characterId}
+          poses={block.poses}
+        />
+      );
     case "Kicker":
       return <Kicker {...timing} text={block.text} />;
     case "TextReveal":

@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# File Description: Global CLI launcher for Aideos. Running 'aideos' opens the interactive
+# visual studio editor on localhost:3001 in your browser, and subcommands forward to the backend engine.
+
+set -e
+
+# Detect Aideos project directory: check current directory first, then default repo path
+AIDEOS_DIR=""
+if [ -f "./remotion.config.ts" ] && [ -d "./editor" ]; then
+  AIDEOS_DIR="$(pwd)"
+elif [ -f "../remotion.config.ts" ] && [ -d "../editor" ]; then
+  AIDEOS_DIR="$(cd .. && pwd)"
+elif [ -d "/Users/manijoshi/firstmate/projects/aideos" ]; then
+  AIDEOS_DIR="/Users/manijoshi/firstmate/projects/aideos"
+else
+  echo "Error: Could not locate Aideos project directory." >&2
+  exit 1
+fi
+
+# Subcommand dispatch
+if [ "$#" -gt 0 ]; then
+  CMD="$1"
+  shift
+  case "$CMD" in
+    validate)
+      cd "$AIDEOS_DIR" && npm run validate "$@"
+      ;;
+    render)
+      cd "$AIDEOS_DIR" && npm run render "$@"
+      ;;
+    "render:reel"|reel)
+      cd "$AIDEOS_DIR" && npm run render:reel "$@"
+      ;;
+    studio)
+      cd "$AIDEOS_DIR" && npm run studio "$@"
+      ;;
+    frames)
+      cd "$AIDEOS_DIR" && npm run frames "$@"
+      ;;
+    test)
+      cd "$AIDEOS_DIR" && npm test "$@"
+      ;;
+    lint)
+      cd "$AIDEOS_DIR" && npm run lint "$@"
+      ;;
+    ideate|shoot|prompts|assemble|produce|generate|engine-test)
+      cd "$AIDEOS_DIR" && npm run backend -- "$CMD" "$@"
+      ;;
+    help|--help|-h)
+      echo "Aideos: Explainer Video Engine as Data"
+      echo ""
+      echo "Usage:"
+      echo "  aideos               Launch and open visual editor (localhost:3001)"
+      echo "  aideos validate      Validate active film schema and print runsheet"
+      echo "  aideos render        Render long-form video (out/long.mp4)"
+      echo "  aideos reel          Render vertical reel (out/reel.mp4)"
+      echo "  aideos studio        Open Remotion Studio"
+      echo "  aideos frames        Render proof stills to .frames/"
+      echo "  aideos test          Run full test suite"
+      echo "  aideos produce       Audio-first timing spine generation"
+      echo "  aideos ideate        Staged ideation chain (treatment.json)"
+      echo ""
+      ;;
+    *)
+      # Forward any custom command to backend CLI
+      cd "$AIDEOS_DIR" && npm run backend -- "$CMD" "$@"
+      ;;
+  esac
+  exit 0
+fi
+
+# Default action (no args): Open / Launch Editor on localhost:3001
+PORT=3001
+
+# Check if Vite editor is already listening on port 3001 or 3000
+IS_RUNNING=0
+if lsof -nP -iTCP:3001 -sTCP:LISTEN >/dev/null 2>&1; then
+  PORT=3001
+  IS_RUNNING=1
+elif lsof -nP -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1; then
+  # Check if port 3000 is Aideos or UniHAP
+  if curl -s http://localhost:3000/ | grep -qi "aideos\|editor"; then
+    PORT=3000
+    IS_RUNNING=1
+  fi
+fi
+
+if [ "$IS_RUNNING" -eq 1 ]; then
+  echo "🎬 Aideos Editor is already running on http://localhost:$PORT/"
+  open "http://localhost:$PORT/"
+  exit 0
+fi
+
+echo "🚀 Starting Aideos Studio on http://localhost:3001..."
+cd "$AIDEOS_DIR/editor"
+nohup npm run dev > /tmp/aideos-editor.log 2>&1 &
+SERVER_PID=$!
+
+# Wait for server to become ready (up to 10s)
+for i in {1..20}; do
+  if lsof -nP -iTCP:3001 -sTCP:LISTEN >/dev/null 2>&1; then
+    PORT=3001
+    break
+  elif lsof -nP -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1 && curl -s http://localhost:3000/ | grep -qi "editor"; then
+    PORT=3000
+    break
+  fi
+  sleep 0.5
+done
+
+echo "✓ Aideos Studio ready at http://localhost:$PORT/ (PID: $SERVER_PID)"
+open "http://localhost:$PORT/"

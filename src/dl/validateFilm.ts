@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { parseFilm, type Film } from "./schema";
+import { CHARACTER_RIGS } from "./characters";
 
 export interface ValidationOptions {
   baseDir?: string;
@@ -82,6 +83,46 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
       throw new Error(
         `Duration sum invariant violated: total shot duration (${sumShotDurations.toFixed(3)}s) differs from voiceover duration (${voDur.toFixed(3)}s) by ${diff.toFixed(3)}s beyond tolerance ${toleranceSec}s`,
       );
+    }
+  }
+
+  // 3. Character rig integrity validation
+  for (let sIdx = 0; sIdx < film.shots.length; sIdx++) {
+    const shot = film.shots[sIdx];
+    for (let bIdx = 0; bIdx < shot.blocks.length; bIdx++) {
+      const block = shot.blocks[bIdx];
+      if (block.c === "CharacterBeat") {
+        const rig = CHARACTER_RIGS[block.characterId];
+        if (!rig) {
+          throw new Error(
+            `Shot ${sIdx} ("${shot.id}") block ${bIdx} references unknown characterId "${block.characterId}". Available: ${Object.keys(CHARACTER_RIGS).join(", ")}`,
+          );
+        }
+        const validGroupIds = new Set(rig.groups.map((g) => g.id));
+        let prevT = -1;
+        for (let pIdx = 0; pIdx < block.poses.length; pIdx++) {
+          const pose = block.poses[pIdx];
+          if (pose.t < 0 || pose.t > 1) {
+            throw new Error(
+              `Shot ${sIdx} ("${shot.id}") block ${bIdx} pose ${pIdx} has invalid progress t=${pose.t}; must be between 0 and 1`,
+            );
+          }
+          if (pose.t < prevT) {
+            throw new Error(
+              `Shot ${sIdx} ("${shot.id}") block ${bIdx} pose keyframes must be non-decreasing in t (pose ${pIdx} t=${pose.t} < prev ${prevT})`,
+            );
+          }
+          prevT = pose.t;
+
+          for (const groupId of Object.keys(pose.groups)) {
+            if (!validGroupIds.has(groupId)) {
+              throw new Error(
+                `Shot ${sIdx} ("${shot.id}") block ${bIdx} pose ${pIdx} references unknown group "${groupId}" for character "${block.characterId}". Valid groups: ${Array.from(validGroupIds).join(", ")}`,
+              );
+            }
+          }
+        }
+      }
     }
   }
 

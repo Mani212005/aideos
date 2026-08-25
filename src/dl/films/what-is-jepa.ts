@@ -4,12 +4,12 @@ export const whatIsJepaFilm: Film = {
   "id": "what-is-jepa",
   "title": "What is JEPA",
   "fps": 30,
-  "accent": "#635BFF",
+  "accent": "#F43F5E",
   "theme": {
-    "background": "smooth-dark",
+    "background": "dot-grid",
     "fontFamily": "geist",
     "storyStyle": "script-metaphor",
-    "cameraAngle": "isometric",
+    "cameraAngle": "orbit",
     "accent": "#F43F5E"
   },
   "chapters": [
@@ -24,8 +24,8 @@ export const whatIsJepaFilm: Film = {
         "id": "intro",
         "label": "The Hook",
         "sub": "Betting Against ChatGPT",
-        "x": -220,
-        "y": -100,
+        "x": 30,
+        "y": -220,
         "w": 220,
         "h": 68
       },
@@ -33,8 +33,8 @@ export const whatIsJepaFilm: Film = {
         "id": "lecun",
         "label": "Yann LeCun",
         "sub": "Turing Award & Meta FAIR",
-        "x": 60,
-        "y": -100,
+        "x": 0,
+        "y": -120,
         "w": 220,
         "h": 68
       },
@@ -42,8 +42,8 @@ export const whatIsJepaFilm: Film = {
         "id": "breakup",
         "label": "The Breakup",
         "sub": "AMI Labs $1B+ Seed",
-        "x": 340,
-        "y": -100,
+        "x": -10,
+        "y": -10,
         "w": 220,
         "h": 68
       },
@@ -51,8 +51,8 @@ export const whatIsJepaFilm: Film = {
         "id": "jepa-concept",
         "label": "JEPA Core Idea",
         "sub": "Predict meaning not pixels",
-        "x": -220,
-        "y": 140,
+        "x": 40,
+        "y": 130,
         "w": 220,
         "h": 68
       },
@@ -60,8 +60,8 @@ export const whatIsJepaFilm: Film = {
         "id": "encoders",
         "label": "Joint Encoders",
         "sub": "Context + Target Encoders",
-        "x": 60,
-        "y": 140,
+        "x": 50,
+        "y": 260,
         "w": 220,
         "h": 68
       },
@@ -69,8 +69,8 @@ export const whatIsJepaFilm: Film = {
         "id": "world-models",
         "label": "World Models",
         "sub": "I-JEPA to V-JEPA 2",
-        "x": 340,
-        "y": 140,
+        "x": 50,
+        "y": 420,
         "w": 220,
         "h": 68
       },
@@ -79,7 +79,7 @@ export const whatIsJepaFilm: Film = {
         "label": "The Close",
         "sub": "Predicting the world",
         "x": 60,
-        "y": 360,
+        "y": 600,
         "w": 220,
         "h": 68
       }
