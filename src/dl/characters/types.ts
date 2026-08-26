@@ -65,6 +65,7 @@ export const rigGroupSchema = z.object({
 export interface CharacterRig {
   id: string;
   name: string;
+  description?: string;
   viewBox: string;
   defaultScale?: number;
   groups: RigGroup[];
@@ -73,6 +74,7 @@ export interface CharacterRig {
 export const characterRigSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   name: z.string().min(1),
+  description: z.string().optional(),
   viewBox: z.string().default("0 0 400 600"),
   defaultScale: z.number().min(0.1).max(5).default(1).optional(),
   groups: z.array(rigGroupSchema).min(1),

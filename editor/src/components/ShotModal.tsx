@@ -16,6 +16,17 @@ export interface ShotModalProps {
   onSelectShotIndex?: (index: number) => void;
 }
 
+const RIG_ICONS: Record<string, string> = {
+  astronaut: "👨‍🚀",
+  developer: "🧑‍💻",
+  robot: "🤖",
+  scientist: "🔬",
+  executive: "👔",
+  "data-engineer": "🎧",
+  educator: "📚",
+  mascot: "💠",
+};
+
 const PRESET_GESTURES = [
   { id: "neutral", label: "Rest / Attentive", icon: "🧍", desc: "Natural relaxed posture" },
   { id: "present-right", label: "Point Right", icon: "👉", desc: "Points to charts & cards on the right" },
@@ -382,28 +393,30 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                 {/* 2A. Character Picker */}
                 <div>
                   <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-300 block mb-2">
-                    A. Select Animated Character
+                    A. Select Animated Character (8 Diverse Models)
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                     {allRigs.map((rig) => (
                       <button
                         key={rig.id}
                         onClick={() => setCharacterRig(rig.id)}
-                        className={`p-3 rounded-xl border text-left flex items-center gap-3 transition-all ${
+                        className={`p-2.5 rounded-xl border text-left flex flex-col justify-between h-20 transition-all ${
                           activeCharId === rig.id
-                            ? "bg-[#635BFF]/20 border-[#635BFF] ring-2 ring-[#635BFF]/30 text-white"
-                            : "bg-[#101014] border-[#272732] text-gray-400 hover:border-gray-600"
+                            ? "bg-[#635BFF]/20 border-[#635BFF] ring-2 ring-[#635BFF]/40 text-white shadow-md shadow-[#635BFF]/15"
+                            : "bg-[#101014] border-[#272732] text-gray-400 hover:border-gray-500 hover:text-white"
                         }`}
                       >
-                        <span className="text-2xl">{rig.id === "developer" ? "🧑‍💻" : "👨‍🚀"}</span>
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-xl">{RIG_ICONS[rig.id] || "🧍"}</span>
+                          {activeCharId === rig.id && (
+                            <span className="text-[8px] font-mono text-[#635BFF] font-bold bg-[#635BFF]/20 px-1 py-0.5 rounded">
+                              ACTIVE
+                            </span>
+                          )}
+                        </div>
                         <div>
-                          <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                            <span>{rig.name}</span>
-                            {activeCharId === rig.id && (
-                              <span className="text-[10px] text-[#635BFF] font-mono font-bold">✓ Active</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-gray-400">{rig.description}</div>
+                          <div className="text-xs font-bold text-white truncate">{rig.name}</div>
+                          <div className="text-[9px] text-gray-400 truncate">{rig.description || "Vector rig"}</div>
                         </div>
                       </button>
                     ))}

@@ -82,7 +82,7 @@ test("duration sum invariant holds within ±50ms for live synthesized audio", as
     return;
   }
 
-  const shotSum = result.shotDurations.reduce((a, b) => a + b, 0);
+  const shotSum = result.shotDurations.reduce((a: number, b: number) => a + b, 0);
   const diff = Math.abs(shotSum - result.totalAudioDuration);
 
   // Invariant check: shot durations sum within 50ms of audio duration

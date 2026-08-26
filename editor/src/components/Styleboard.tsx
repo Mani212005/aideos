@@ -20,6 +20,17 @@ interface StyleboardProps {
   onUpdateFilm?: (film: Film) => void;
 }
 
+const RIG_ICONS: Record<string, string> = {
+  astronaut: "👨‍🚀",
+  developer: "🧑‍💻",
+  robot: "🤖",
+  scientist: "🔬",
+  executive: "👔",
+  "data-engineer": "🎧",
+  educator: "📚",
+  mascot: "💠",
+};
+
 const ACCENTS = [
   { name: "Electric Indigo", hex: "#635BFF" },
   { name: "Terracotta Orange", hex: "#FF6B00" },
@@ -112,7 +123,7 @@ function renderBlockPreview(block: Block, accent: string) {
         <div className="bg-[#121218] p-3 rounded-xl border border-[#635BFF]/40 flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[#635BFF]/20 border border-[#635BFF]/50 flex items-center justify-center text-xl">
-              {charBlock.characterId === "developer" ? "🧑‍💻" : "👨‍🚀"}
+              {RIG_ICONS[charBlock.characterId] || "👨‍🚀"}
             </div>
             <div>
               <div className="text-xs font-bold text-white flex items-center gap-1.5">

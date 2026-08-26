@@ -5,8 +5,6 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "fs";
-import path from "path";
 
 /**
  * Calculates Mean Squared Error (MSE) and Peak Signal-to-Noise Ratio (PSNR)
