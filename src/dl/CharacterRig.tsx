@@ -1,13 +1,13 @@
 /**
- * File Description: Remotion renderer for pure TypeScript vector character rigs.
+ * File Description: Remotion and React DOM renderer for pure TypeScript vector character rigs.
  * Computes 2-level skeletal transforms, interpolates pose keyframes via ease-out-expo,
- * and dynamically binds the 6-value design system palette tokens.
+ * and dynamically binds the 6-value design system palette tokens with safe context fallbacks.
  */
 
 import React from "react";
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { EXPO } from "./motion";
-import { PALETTE, useLayout } from "./tokens";
+import { PALETTE } from "./tokens";
 import { useAccent } from "./accent";
 import type { CharacterRig, PoseKeyframe, PoseTransform, SemanticToken } from "./characters/types";
 import { getCharacterRigById } from "./characters";
@@ -17,7 +17,27 @@ export interface CharacterBeatProps {
   poses?: PoseKeyframe[];
   start?: number;
   durationInFrames?: number;
+  progress?: number;
+  accent?: string;
   className?: string;
+}
+
+// Safely reads Remotion current frame with fallback when rendered outside Composition.
+function useSafeCurrentFrame(): number {
+  try {
+    return useCurrentFrame();
+  } catch {
+    return 0;
+  }
+}
+
+// Safely reads Remotion video config with fallback when rendered outside Composition.
+function useSafeVideoConfig(): { durationInFrames: number; fps: number; width: number; height: number } {
+  try {
+    return useVideoConfig();
+  } catch {
+    return { durationInFrames: 300, fps: 30, width: 1920, height: 1080 };
+  }
 }
 
 // Maps semantic design tokens to active theme color values.
@@ -126,28 +146,41 @@ export const CharacterRigView: React.FC<CharacterBeatProps> = ({
   poses = [],
   start,
   durationInFrames,
+  progress,
+  accent,
   className = "",
 }) => {
-  const frame = useCurrentFrame();
-  const videoConfig = useVideoConfig();
-  const layout = useLayout();
-  const accentColor = useAccent();
+  const frame = useSafeCurrentFrame();
+  const videoConfig = useSafeVideoConfig();
+
+  let accentColor = accent || PALETTE.accent;
+  try {
+    const ctxAccent = useAccent();
+    if (ctxAccent) accentColor = ctxAccent;
+  } catch {
+    // fallback to default
+  }
 
   const rig: CharacterRig | null = getCharacterRigById(characterId);
   if (!rig) {
     return (
-      <div style={{ color: PALETTE.muted, fontFamily: layout.type("body").fontFamily }}>
+      <div style={{ color: PALETTE.muted, fontFamily: "sans-serif" }}>
         Character &quot;{characterId}&quot; not found
       </div>
     );
   }
 
   // Calculate local shot timeline progress in [0, 1]
-  const startFrame = start ?? 0;
-  const shotTotalFrames = durationInFrames ?? videoConfig.durationInFrames;
-  const localFrame = Math.max(0, frame - startFrame);
-  const total = Math.max(1, shotTotalFrames - 1);
-  const normalizedProgress = Math.min(1, Math.max(0, localFrame / total));
+  let normalizedProgress = 0;
+  if (typeof progress === "number") {
+    normalizedProgress = Math.min(1, Math.max(0, progress));
+  } else {
+    const startFrame = start ?? 0;
+    const shotTotalFrames = durationInFrames ?? videoConfig.durationInFrames;
+    const localFrame = Math.max(0, frame - startFrame);
+    const total = Math.max(1, shotTotalFrames - 1);
+    normalizedProgress = Math.min(1, Math.max(0, localFrame / total));
+  }
 
   // Compute active transforms for each group
   const transforms: Record<string, PoseTransform> = {};
@@ -205,9 +238,6 @@ export const CharacterRigView: React.FC<CharacterBeatProps> = ({
     );
   };
 
-  const isLong = layout.format === "long";
-  const characterHeight = isLong ? layout.px(420) : layout.px(320);
-
   return (
     <div
       className={className}
@@ -217,15 +247,14 @@ export const CharacterRigView: React.FC<CharacterBeatProps> = ({
         justifyContent: "center",
         width: "100%",
         height: "100%",
-        maxHeight: characterHeight,
-        minHeight: layout.px(160),
+        maxHeight: "100%",
       }}
     >
       <svg
         viewBox={rig.viewBox}
         style={{
           height: "100%",
-          maxHeight: characterHeight,
+          maxHeight: 420,
           width: "auto",
           maxWidth: "100%",
           filter: "drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25))",
