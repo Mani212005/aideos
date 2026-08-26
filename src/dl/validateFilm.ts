@@ -9,6 +9,11 @@ import { execSync } from "child_process";
 import { parseFilm, type Film, type Block, type Shot } from "./schema";
 import { CHARACTER_RIGS } from "./characters";
 import { buildTimeline, camAt, lookBox, projectBox } from "./camera";
+import { verifyTrajectoryContinuity } from "./motion/verifier";
+import { evaluateCatmullRomSpline } from "./motion/spline";
+
+/** Maximum allowed first-derivative velocity discontinuity at interior keyframe knots (normalized deg/s). */
+export const MAX_ALLOWED_VELOCITY_DISCONTINUITY = 0.50;
 
 export interface ValidationOptions {
   baseDir?: string;
@@ -242,6 +247,35 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
               throw new Error(
                 `Shot ${sIdx} ("${shot.id}") block ${bIdx} pose ${pIdx} references unknown group "${groupId}" for character "${block.characterId}". Valid groups: ${Array.from(validGroupIds).join(", ")}`,
               );
+            }
+          }
+        }
+
+        // 5. Motion Continuity Verifier Gate (C1 Continuity across multi-knot sequences)
+        if (block.poses.length >= 3) {
+          const knotsT = block.poses.map((p) => p.t);
+          const interiorKnots = knotsT.slice(1, -1);
+
+          for (const groupId of Array.from(validGroupIds)) {
+            const jointKnots = block.poses
+              .filter((p) => typeof p.groups?.[groupId]?.rotate === "number")
+              .map((p) => ({ t: p.t, val: p.groups[groupId].rotate! }));
+
+            if (jointKnots.length >= 3) {
+              const evalSpline = (tQuery: number) => evaluateCatmullRomSpline(jointKnots, tQuery);
+              const continuityReport = verifyTrajectoryContinuity(
+                evalSpline,
+                interiorKnots,
+                1e-4,
+                MAX_ALLOWED_VELOCITY_DISCONTINUITY
+              );
+
+              if (!continuityReport.isC1Continuous) {
+                const badKnot = continuityReport.knots.find((k) => !k.isC1Continuous) || continuityReport.knots[0];
+                throw new Error(
+                  `MOTION_CONTINUITY_VIOLATION: Shot ${sIdx} ("${shot.id}") CharacterBeat joint "${groupId}" has a C0 velocity discontinuity of ${continuityReport.maxVelocityDiscontinuity.toFixed(3)} at knot t=${badKnot?.t ?? 0.5} (exceeds threshold ${MAX_ALLOWED_VELOCITY_DISCONTINUITY})`,
+                );
+              }
             }
           }
         }
