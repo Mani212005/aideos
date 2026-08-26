@@ -44,9 +44,11 @@ const STORY_STYLES: Array<{ id: StoryStyle; name: string; icon: string; desc: st
   },
 ];
 
-const METAPHOR_OPTIONS: Array<{ id: NonNullable<Shot["metaphor"]> | "none"; label: string; icon: string }> = [
+const METAPHOR_OPTIONS: Array<{ id: NonNullable<Shot["metaphor"]> | "none" | "character-beat" | "b-roll"; label: string; icon: string }> = [
   { id: "none", label: "Default Spatial Node", icon: "🗺️" },
+  { id: "character-beat", label: "SVG Character Rig (Astronaut / Developer)", icon: "🎭" },
   { id: "character-throw", label: "Sleeping Computer Reads & Throws Script", icon: "💻" },
+  { id: "b-roll", label: "GPU B-Roll Scene (AI Generated)", icon: "🎬" },
   { id: "spider-web", label: "Spider Web Weaving", icon: "🕸️" },
   { id: "liquid-bucket", label: "Liquid Buffer Reservoir", icon: "🚰" },
   { id: "balance-scale", label: "Balance Scale Equilibrium", icon: "⚖️" },
@@ -103,10 +105,24 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
     setIsSaving(true);
     setSaveToast(null);
     try {
+      const filmToSave = {
+        ...film,
+        accent: accent === "#635BFF" ? (film.theme?.accent || undefined) : accent,
+        theme: {
+          ...(film.theme || {}),
+          background: currentBg,
+          fontFamily: currentFont,
+          videoType: currentVideoType,
+          storyStyle: currentStoryStyle,
+          cameraAngle: currentCameraAngle,
+          accent: accent === "#635BFF" ? (film.theme?.accent || undefined) : accent,
+        },
+      };
+
       const res = await fetch(`/api/films/${film.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ film }),
+        body: JSON.stringify({ film: filmToSave }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -122,13 +138,52 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
     }
   };
 
-  // Update shot metaphor cue
-  const handleUpdateShotMetaphor = (shotIdx: number, metaphor: NonNullable<Shot["metaphor"]> | "none") => {
+  // Update shot metaphor cue and configure matching blocks
+  const handleUpdateShotMetaphor = (shotIdx: number, metaphor: string) => {
     const updatedShots = [...film.shots];
-    updatedShots[shotIdx] = {
-      ...updatedShots[shotIdx],
-      metaphor: metaphor === "none" ? undefined : metaphor,
-    };
+    const shot = updatedShots[shotIdx];
+    if (!shot) return;
+
+    if (metaphor === "character-beat") {
+      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat" && b.c !== "DeviceCard" && b.c !== "MetaphorViewer");
+      const charBlock = {
+        c: "CharacterBeat",
+        characterId: "astronaut",
+        stage: "frame",
+        keyframes: [
+          { t: 0, pose: "neutral" },
+          { t: 0.5, pose: "present-right" },
+        ],
+      };
+      updatedShots[shotIdx] = {
+        ...shot,
+        metaphor: "character-throw",
+        needsFootage: false,
+        blocks: [charBlock as any, ...filteredBlocks],
+      };
+    } else if (metaphor === "b-roll") {
+      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat");
+      updatedShots[shotIdx] = {
+        ...shot,
+        metaphor: undefined,
+        needsFootage: true,
+        blocks: filteredBlocks,
+      };
+    } else if (metaphor === "none") {
+      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat");
+      updatedShots[shotIdx] = {
+        ...shot,
+        metaphor: undefined,
+        needsFootage: false,
+        blocks: filteredBlocks.length > 0 ? filteredBlocks : [{ c: "Body", text: shot.scriptText || "Scene narrative" }],
+      };
+    } else {
+      updatedShots[shotIdx] = {
+        ...shot,
+        metaphor: metaphor as any,
+      };
+    }
+
     onUpdateFilm({
       ...film,
       shots: updatedShots,

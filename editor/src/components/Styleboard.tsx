@@ -1,9 +1,13 @@
 /**
- * File Description: Styleboard & Visual Keyframe Studio component providing rich scene previews, metaphor badges, 3D camera controls, and animated primitive specimens.
+ * File Description: Styleboard & Visual Keyframe Studio component providing rich scene previews,
+ * SVG character animations, metaphor badges, 3D camera controls, and animated primitive specimens.
  */
 
 import { useState, useMemo } from "react";
-import type { Film, Shot, Block } from "../../../src/dl/schema";
+import type { Film, Shot, Block, BackgroundPreset, CameraAngle } from "../../../src/dl/schema";
+import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
+import { CHARACTER_RIGS } from "../../../src/dl/characters";
+import { POSE_PRESETS } from "../../../src/dl/characters/presets";
 
 interface StyleboardProps {
   film: Film;
@@ -16,25 +20,22 @@ interface StyleboardProps {
 }
 
 const ACCENTS = [
-  { name: "Indigo Tech", hex: "#635BFF" },
+  { name: "Electric Indigo", hex: "#635BFF" },
+  { name: "Terracotta Orange", hex: "#FF6B00" },
   { name: "Rose Neon", hex: "#F43F5E" },
   { name: "Emerald Flow", hex: "#10B981" },
   { name: "Amber Radiant", hex: "#F59E0B" },
-  { name: "Cyan Quantum", hex: "#06B6D4" },
+  { name: "Cyber Cyan", hex: "#00D2D3" },
   { name: "Violet Deep", hex: "#8B5CF6" },
 ];
 
-const BACKGROUNDS = [
-  { id: "dot-grid", name: "Dot Grid Pattern", icon: "⁘" },
-  { id: "blueprint", name: "Subtle Blueprint", icon: "▦" },
-  { id: "minimal", name: "Clean Pure Dark", icon: "◼" },
-];
-
-const CAMERA_ANGLES = [
-  { id: "isometric", name: "Isometric 35° (High Tech)", icon: "📐" },
-  { id: "hero-tilt", name: "Low-Angle Hero 25° (Cinematic)", icon: "🎬" },
-  { id: "top-down", name: "Top-Down 90° (Architecture)", icon: "🗺️" },
-  { id: "orbit", name: "Dynamic Orbit (Continuous)", icon: "🪐" },
+const CAMERA_ANGLES: Array<{ id: CameraAngle; name: string; icon: string }> = [
+  { id: "flat", name: "Flat 2D", icon: "📐" },
+  { id: "isometric", name: "Isometric 3D", icon: "🧊" },
+  { id: "cinematic-tilt", name: "Cinematic Tilt", icon: "🎥" },
+  { id: "low-angle", name: "Hero Low-Angle", icon: "🔺" },
+  { id: "orbit", name: "Dynamic Orbit", icon: "🛰️" },
+  { id: "top-down", name: "Overhead Blueprint", icon: "🗺️" },
 ];
 
 /**
@@ -60,9 +61,20 @@ function getMapBounds(film: Film) {
  * Derives a prominent visual metaphor label and emoji badge from a shot.
  */
 function getMetaphorInfo(shot: Shot) {
+  // Check if shot has a CharacterBeat
+  const charBlock = shot.blocks.find(b => b.c === "CharacterBeat") as any;
+  if (charBlock) {
+    const charName = charBlock.characterId === "developer" ? "Tech Architect" : "Astro Guide";
+    return { label: `SVG Character: ${charName}`, icon: "🎭", color: "#635BFF" };
+  }
+
+  if (shot.needsFootage) {
+    return { label: "GPU B-Roll Video Scene", icon: "🎬", color: "#F59E0B" };
+  }
+
   if (shot.metaphor) {
     if (shot.metaphor.includes("throw") || shot.metaphor.includes("character")) {
-      return { label: "Character Throw Metaphor", icon: "🤖", color: "#F43F5E" };
+      return { label: "Character Action Metaphor", icon: "🤖", color: "#F43F5E" };
     }
     if (shot.metaphor.includes("matrix") || shot.metaphor.includes("grid")) {
       return { label: "Memory Matrix Grid", icon: "🔲", color: "#635BFF" };
@@ -70,7 +82,7 @@ function getMetaphorInfo(shot: Shot) {
     return { label: shot.metaphor, icon: "✨", color: "#10B981" };
   }
 
-  // Infer from blocks
+  // Infer from standard blocks
   const hasTokenStrip = shot.blocks.some(b => b.c === "TokenStrip");
   if (hasTokenStrip) return { label: "Tokenization Sequence", icon: "🔤", color: "#F59E0B" };
 
@@ -80,10 +92,10 @@ function getMetaphorInfo(shot: Shot) {
   const hasStat = shot.blocks.some(b => b.c === "StatCounter");
   if (hasStat) return { label: "High-Impact Metric", icon: "📊", color: "#10B981" };
 
-  const hasArcs = shot.blocks.some(b => b.c === "AttentionArcs");
-  if (hasArcs) return { label: "Attention Network Arcs", icon: "⚡", color: "#8B5CF6" };
+  const hasDevice = shot.blocks.some(b => b.c === "DeviceCard");
+  if (hasDevice) return { label: "Interactive Device UI", icon: "💻", color: "#00D2D3" };
 
-  return { label: "Narrative Anchor", icon: "🎯", color: "#8A8A8E" };
+  return { label: "Narrative & Spatial Node", icon: "🎯", color: "#8A8A8E" };
 }
 
 /**
@@ -91,6 +103,47 @@ function getMetaphorInfo(shot: Shot) {
  */
 function renderBlockPreview(block: Block, accent: string) {
   switch (block.c) {
+    case "CharacterBeat":
+      const charBlock = block as any;
+      const rig = CHARACTER_RIGS[charBlock.characterId as keyof typeof CHARACTER_RIGS] || CHARACTER_RIGS.astronaut;
+      const poseKeyframes = charBlock.keyframes || [{ t: 0, pose: "neutral" }];
+      return (
+        <div className="bg-[#121218] p-3 rounded-xl border border-[#635BFF]/40 flex items-center justify-between shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-[#635BFF]/20 border border-[#635BFF]/50 flex items-center justify-center text-xl">
+              {charBlock.characterId === "developer" ? "🧑‍💻" : "👨‍🚀"}
+            </div>
+            <div>
+              <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                <span>{rig.name}</span>
+                <span className="badge badge-xs badge-primary font-mono">{charBlock.stage || "frame"}</span>
+              </div>
+              <div className="text-[10px] text-gray-400 font-mono mt-0.5">
+                Pose: <span className="text-[#635BFF] font-bold">{poseKeyframes[0]?.pose || "neutral"}</span> ({poseKeyframes.length} keyframes)
+              </div>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded">
+            60 FPS SVG
+          </span>
+        </div>
+      );
+
+    case "DeviceCard":
+      const devBlock = block as any;
+      return (
+        <div className="bg-[#121218] p-2.5 rounded-lg border border-[#262632] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-base">{devBlock.variant === "terminal" ? "📟" : "💻"}</span>
+            <div>
+              <div className="text-xs font-bold text-white">{devBlock.title || "Device Window"}</div>
+              <div className="text-[10px] text-[#8A8A8E] font-mono">{devBlock.url || "localhost"}</div>
+            </div>
+          </div>
+          <span className="text-[10px] text-gray-500 font-mono">{devBlock.variant}</span>
+        </div>
+      );
+
     case "TextReveal":
       return (
         <div className="py-1">
@@ -208,32 +261,123 @@ export function Styleboard({
   onUpdateFilm,
 }: StyleboardProps) {
   const [activeTab, setActiveTab] = useState<"storyboard" | "primitives" | "spatial">("storyboard");
-  const [selectedBg, setSelectedBg] = useState<string>(film.theme?.background || "dot-grid");
-  const [selectedCamera, setSelectedCamera] = useState<string>(film.theme?.cameraAngle || "isometric");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveToast, setSaveToast] = useState<string | null>(null);
+
+  // Derive active theme directly from film.theme (single source of truth)
+  const currentBg: BackgroundPreset = film.theme?.background || "paper-white";
+  const currentCamera: CameraAngle = film.theme?.cameraAngle || "isometric";
   const bounds = useMemo(() => getMapBounds(film), [film]);
 
   /**
    * Updates a theme property on the active film object.
    */
   const handleThemeChange = (key: string, value: string) => {
-    if (key === "background") setSelectedBg(value);
-    if (key === "cameraAngle") setSelectedCamera(value);
-
     if (onUpdateFilm) {
       onUpdateFilm({
         ...film,
         theme: {
-          ...film.theme,
+          ...(film.theme || {}),
           [key]: value,
         },
       });
     }
   };
 
+  /**
+   * Explicitly saves the current storyboard and theme settings to disk.
+   */
+  const handleSaveStoryboard = async () => {
+    setIsSaving(true);
+    setSaveToast(null);
+    try {
+      const filmToSave = {
+        ...film,
+        accent: accent === "#635BFF" ? (film.theme?.accent || undefined) : accent,
+        theme: {
+          ...(film.theme || {}),
+          background: currentBg,
+          cameraAngle: currentCamera,
+          accent: accent === "#635BFF" ? (film.theme?.accent || undefined) : accent,
+        },
+      };
+
+      const res = await fetch(`/api/films/${film.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ film: filmToSave }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${res.status}: Failed to save film`);
+      }
+
+      setSaveToast(`✓ Saved Storyboard & Themes to ${film.id}.ts!`);
+      setTimeout(() => setSaveToast(null), 4000);
+    } catch (err: any) {
+      setSaveToast("⚠️ " + (err.message || "Failed to save"));
+      setTimeout(() => setSaveToast(null), 5000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  /**
+   * Toggles or changes a shot's visual mode (Standard, SVG Character, or B-Roll).
+   */
+  const handleSetShotMode = (shotIdx: number, mode: "standard" | "character" | "b-roll") => {
+    if (!onUpdateFilm) return;
+    const updatedShots = [...film.shots];
+    const shot = updatedShots[shotIdx];
+    if (!shot) return;
+
+    if (mode === "character") {
+      // Remove other device blocks and add CharacterBeat
+      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat" && b.c !== "DeviceCard" && b.c !== "MetaphorViewer");
+      const charBlock: Block = {
+        c: "CharacterBeat",
+        characterId: "astronaut",
+        stage: "frame",
+        keyframes: [
+          { t: 0, pose: "neutral" },
+          { t: 0.5, pose: "present-right" },
+        ],
+      } as any;
+
+      updatedShots[shotIdx] = {
+        ...shot,
+        needsFootage: false,
+        blocks: [charBlock, ...filteredBlocks],
+      };
+    } else if (mode === "b-roll") {
+      // Set needsFootage flag
+      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat");
+      updatedShots[shotIdx] = {
+        ...shot,
+        needsFootage: true,
+        blocks: filteredBlocks,
+      };
+    } else {
+      // Standard narrative text / devices
+      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat");
+      updatedShots[shotIdx] = {
+        ...shot,
+        needsFootage: false,
+        blocks: filteredBlocks.length > 0 ? filteredBlocks : [{ c: "Body", text: shot.scriptText || "Scene narrative" }],
+      };
+    }
+
+    onUpdateFilm({
+      ...film,
+      shots: updatedShots,
+    });
+  };
+
   return (
     <div className="w-full h-full bg-[#0A0A0B] text-[#F5F5F5] flex flex-col overflow-hidden font-sans">
       
-      {/* TOP ART DIRECTION CONTROLS */}
+      {/* TOP ART DIRECTION & PERSISTENCE HEADER */}
       <div className="bg-[#121216] border-b border-[#26262E] p-4 flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-md">
         
         {/* Brand Accent Palette */}
@@ -272,94 +416,92 @@ export function Styleboard({
                 key={cam.id}
                 onClick={() => handleThemeChange("cameraAngle", cam.id)}
                 className={`text-xs px-2.5 py-1 rounded font-medium flex items-center gap-1 transition-all ${
-                  selectedCamera === cam.id
+                  currentCamera === cam.id
                     ? "bg-[#635BFF] text-white font-bold shadow"
                     : "text-gray-400 hover:text-white"
                 }`}
                 title={cam.name}
               >
                 <span>{cam.icon}</span>
-                <span className="capitalize">{cam.id.replace("-", " ")}</span>
+                <span className="capitalize">{cam.name}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Background Texture Selector */}
+        {/* Background Canvas Selector (Connected to BACKGROUND_THEMES) */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] text-[#8A8A8E] font-bold uppercase tracking-wider">
             Background Canvas
           </label>
           <div className="flex items-center gap-1.5 bg-[#1A1A22] p-1 rounded-lg border border-[#333]">
-            {BACKGROUNDS.map((bg) => (
+            {Object.values(BACKGROUND_THEMES).map((bg) => (
               <button
                 key={bg.id}
                 onClick={() => handleThemeChange("background", bg.id)}
                 className={`text-xs px-2.5 py-1 rounded font-medium flex items-center gap-1 transition-all ${
-                  selectedBg === bg.id
-                    ? "bg-[#2A2A35] text-white font-bold border border-[#444]"
+                  currentBg === bg.id
+                    ? "bg-[#635BFF] text-white font-bold shadow"
                     : "text-gray-400 hover:text-white"
                 }`}
+                title={bg.description}
               >
-                <span>{bg.icon}</span>
                 <span>{bg.name.split(" ")[0]}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Storytelling Style Selector */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] text-[#8A8A8E] font-bold uppercase tracking-wider">
-            Storytelling Style
-          </label>
-          <div className="flex items-center gap-1.5 bg-[#1A1A22] p-1 rounded-lg border border-[#333]">
-            {[
-              { id: "default", name: "Standard" },
-              { id: "minimal", name: "Minimal" },
-              { id: "technical", name: "Technical" },
-            ].map((s) => (
-              <button
-                key={s.id}
-                onClick={() => onStoryStyleChange(s.id)}
-                className={`text-xs px-2.5 py-1 rounded font-medium transition-all ${
-                  storyStyle === s.id
-                    ? "bg-[#635BFF] text-white font-bold shadow"
-                    : "text-gray-400 hover:text-white"
-                }`}
-              >
-                {s.name}
-              </button>
-            ))}
+        {/* View Tabs & Save Storyboard Button */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 bg-[#1A1A20] p-1 rounded-lg border border-[#333]">
+            <button
+              onClick={() => setActiveTab("storyboard")}
+              className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all ${
+                activeTab === "storyboard" ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
+              }`}
+            >
+              🎬 Storyboard ({film.shots.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("primitives")}
+              className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all ${
+                activeTab === "primitives" ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
+              }`}
+            >
+              🧩 Primitives
+            </button>
+            <button
+              onClick={() => setActiveTab("spatial")}
+              className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all ${
+                activeTab === "spatial" ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
+              }`}
+            >
+              🗺️ Topology
+            </button>
           </div>
-        </div>
-        <div className="flex items-center gap-1 bg-[#1A1A20] p-1 rounded-lg border border-[#333]">
+
           <button
-            onClick={() => setActiveTab("storyboard")}
-            className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all ${
-              activeTab === "storyboard" ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
+            onClick={handleSaveStoryboard}
+            disabled={isSaving}
+            className={`px-4 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-lg transition-all ${
+              isSaving
+                ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+                : "bg-emerald-500 hover:bg-emerald-400 text-black active:scale-95"
             }`}
           >
-            🎬 Keyframe Gallery ({film.shots.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("primitives")}
-            className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all ${
-              activeTab === "primitives" ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
-            }`}
-          >
-            🧩 Primitives Specimen
-          </button>
-          <button
-            onClick={() => setActiveTab("spatial")}
-            className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all ${
-              activeTab === "spatial" ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
-            }`}
-          >
-            🗺️ Spatial Topology
+            <span>{isSaving ? "⏳" : "💾"}</span>
+            <span>{isSaving ? "Saving..." : "Save Storyboard & Apply"}</span>
           </button>
         </div>
       </div>
+
+      {/* Save Toast Feedback */}
+      {saveToast && (
+        <div className="mx-6 mt-4 p-3 bg-emerald-950/90 border border-emerald-500 rounded-lg text-emerald-200 text-xs font-mono flex items-center gap-2 shadow-xl animate-fade-in">
+          <span>🔔</span> {saveToast}
+        </div>
+      )}
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 overflow-y-auto p-6">
@@ -373,7 +515,7 @@ export function Styleboard({
                   <span>🎬</span> Visual Keyframe Storyboard
                 </h3>
                 <p className="text-xs text-[#8A8A8E] mt-0.5">
-                  Visual representation of each scene, kinetic layout, and metaphor blueprint before rendering.
+                  Click any card to select for timeline editing, or switch visual modes (Standard, SVG Character, GPU B-Roll) directly below.
                 </p>
               </div>
               <div className="text-xs text-[#8A8A8E] font-mono">
@@ -385,11 +527,14 @@ export function Styleboard({
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {film.shots.map((shot, idx) => {
                 const metaphor = getMetaphorInfo(shot);
+                const hasChar = shot.blocks.some(b => b.c === "CharacterBeat");
+                const hasBroll = !!shot.needsFootage;
+                const activeMode = hasChar ? "character" : hasBroll ? "b-roll" : "standard";
+
                 return (
                   <div
                     key={shot.id}
-                    onClick={() => onSelectShot(shot.id)}
-                    className="bg-[#121216] border border-[#26262E] hover:border-[#635BFF] rounded-2xl overflow-hidden shadow-xl flex flex-col cursor-pointer transition-all hover:scale-[1.01] hover:shadow-[#635BFF]/10 group"
+                    className="bg-[#121216] border border-[#26262E] hover:border-[#635BFF] rounded-2xl overflow-hidden shadow-xl flex flex-col transition-all hover:scale-[1.01] hover:shadow-[#635BFF]/10 group"
                   >
                     {/* Keyframe Card Header */}
                     <div className="bg-[#16161D] px-4 py-2.5 border-b border-[#26262E] flex items-center justify-between">
@@ -405,27 +550,70 @@ export function Styleboard({
                           ⏱️ {shot.dur}s
                         </span>
                         <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[#635BFF]/15 text-[#635BFF] border border-[#635BFF]/30 font-bold">
-                          {shot.stage}
+                          {shot.stage || "frame"}
                         </span>
                       </div>
                     </div>
 
                     {/* Metaphor & Creative Direction Banner */}
                     <div
-                      className="px-4 py-2 flex items-center gap-2 text-xs font-medium border-b border-[#222]"
+                      className="px-4 py-2 flex items-center justify-between text-xs font-medium border-b border-[#222]"
                       style={{ backgroundColor: `${metaphor.color}15`, color: metaphor.color }}
                     >
-                      <span>{metaphor.icon}</span>
-                      <span className="font-bold">{metaphor.label}</span>
+                      <div className="flex items-center gap-2">
+                        <span>{metaphor.icon}</span>
+                        <span className="font-bold">{metaphor.label}</span>
+                      </div>
+
+                      {/* 1-Click Render Mode Switcher */}
+                      <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-lg border border-white/10">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSetShotMode(idx, "standard");
+                          }}
+                          className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all ${
+                            activeMode === "standard" ? "bg-white/20 text-white font-bold" : "text-gray-400 hover:text-white"
+                          }`}
+                          title="Standard Device / Text Mode"
+                        >
+                          Standard
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSetShotMode(idx, "character");
+                          }}
+                          className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all ${
+                            activeMode === "character" ? "bg-[#635BFF] text-white font-bold" : "text-gray-400 hover:text-white"
+                          }`}
+                          title="SVG Character Rig Animation"
+                        >
+                          🎭 Character
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSetShotMode(idx, "b-roll");
+                          }}
+                          className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all ${
+                            activeMode === "b-roll" ? "bg-amber-600 text-white font-bold" : "text-gray-400 hover:text-white"
+                          }`}
+                          title="GPU B-Roll Scene"
+                        >
+                          🎬 B-Roll
+                        </button>
+                      </div>
                     </div>
 
                     {/* Simulated Remotion Visual Frame */}
-                    <div className="p-4 bg-[#0A0A0E] flex-1 flex flex-col gap-3 min-h-[160px] relative">
-                      
-                      {/* Background dot pattern preview */}
+                    <div 
+                      onClick={() => onSelectShot(shot.id)}
+                      className="p-4 bg-[#0A0A0E] flex-1 flex flex-col gap-3 min-h-[160px] relative cursor-pointer"
+                    >
+                      {/* Background texture preview */}
                       <div className="absolute inset-0 opacity-15 pointer-events-none" style={{
-                        backgroundImage: selectedBg === "dot-grid" ? "radial-gradient(#888 1px, transparent 1px)" : "none",
-                        backgroundSize: "16px 16px"
+                        backgroundColor: BACKGROUND_THEMES[currentBg]?.canvas || "#0A0A0B",
                       }} />
 
                       {/* Render Shot Blocks */}
@@ -471,15 +659,30 @@ export function Styleboard({
           <div className="flex flex-col gap-6">
             <div>
               <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-                <span>🧩</span> 7 Core Animated Primitives Specimen
+                <span>🧩</span> Core Animated Primitives Specimen
               </h3>
               <p className="text-xs text-[#8A8A8E] mt-0.5">
-                Every video scene is constructed strictly using these 7 mathematically refined, accessible primitives.
+                Every video scene is constructed strictly using these mathematically refined, accessible primitives.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               
+              {/* Primitive 0: CharacterBeat */}
+              <div className="bg-[#121216] border border-[#635BFF]/40 rounded-2xl p-5 flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b border-[#26262E] pb-2">
+                  <span className="text-xs font-mono font-bold text-white">00 · CharacterBeat</span>
+                  <span className="badge badge-xs badge-primary font-mono">SVG 2-Level Rig</span>
+                </div>
+                <div className="p-3 bg-[#0A0A0E] rounded-xl border border-[#222] flex items-center gap-3">
+                  <span className="text-2xl">👨‍🚀</span>
+                  <div>
+                    <div className="text-xs font-bold text-white">Astro Guide / Tech Architect</div>
+                    <div className="text-[10px] text-[#8A8A8E]">8 Presets · Ease-Out-Expo Kinematics</div>
+                  </div>
+                </div>
+              </div>
+
               {/* Primitive 1: TextReveal */}
               <div className="bg-[#121216] border border-[#26262E] rounded-2xl p-5 flex flex-col gap-3">
                 <div className="flex items-center justify-between border-b border-[#26262E] pb-2">

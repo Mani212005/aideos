@@ -289,8 +289,16 @@ export default function App() {
     setSaving(true);
     setStatus(null);
     try {
-      // Ensure we push accent into film before saving if they changed it
-      const filmToSave = { ...film, accent: accent === "#635BFF" ? undefined : accent };
+      // Ensure we push accent and theme into film before saving
+      const resolvedAccent = accent === "#635BFF" ? (film.theme?.accent || undefined) : accent;
+      const filmToSave = {
+        ...film,
+        accent: resolvedAccent,
+        theme: {
+          ...(film.theme || {}),
+          accent: resolvedAccent,
+        },
+      };
       const res = await fetch(`/api/films/${film.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
