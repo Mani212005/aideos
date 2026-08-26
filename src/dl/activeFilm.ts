@@ -1,4 +1,4 @@
-import { whatIsJepaFilm } from "./films/what-is-jepa";
+import { characterShowcaseFilm } from "./films/character-showcase";
 import type { Film } from "./schema";
 
-export const ACTIVE_FILM: Film = whatIsJepaFilm;
+export const ACTIVE_FILM: Film = characterShowcaseFilm;
