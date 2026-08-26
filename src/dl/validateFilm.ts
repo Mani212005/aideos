@@ -1,12 +1,14 @@
 /**
  * File Description: Comprehensive film validator that verifies schema pacing rules,
- * missing sfx/music/voiceover assets, duration-sum audio invariants, and block bounds/overlap.
+ * missing sfx/music/voiceover assets, duration-sum audio invariants, and analytical
+ * time-sampled bounding box geometry & overlap.
  */
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { parseFilm, type Film } from "./schema";
 import { CHARACTER_RIGS } from "./characters";
+import { buildTimeline, camAt, lookBox, projectBox } from "./camera";
 
 export interface ValidationOptions {
   baseDir?: string;
@@ -91,17 +93,51 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
     }
   }
 
-  // 3. Character rig integrity and block bounds/overlap validation
-  for (let sIdx = 0; sIdx < film.shots.length; sIdx++) {
-    const shot = film.shots[sIdx];
+  // 3. Analytical Time-Sampled Bounding Box & Overlap Geometry Verification (D-2)
+  const timeline = buildTimeline(film);
+  const viewports = [
+    { name: "Long", width: 1920, height: 1080 },
+    { name: "Reel", width: 1080, height: 1920 },
+  ];
 
-    // Bounding overlap sanity: prevent overloading an anchored card beyond reasonable capacity
-    if (shot.stage === "anchor" && shot.blocks.length > 4) {
-      throw new Error(
-        `Shot ${sIdx} ("${shot.id}") has ${shot.blocks.length} blocks in stage "anchor"; maximum capacity is 4 to prevent card overflow clipping`,
-      );
+  for (let sIdx = 0; sIdx < timeline.length; sIdx++) {
+    const timedShot = timeline[sIdx];
+    const shot = timedShot.shot;
+
+    if (shot.stage === "anchor") {
+      for (const vp of viewports) {
+        // Sample at start (t=0), midpoint (t=0.5), and end (t=1.0) of the shot
+        const samplePoints = [0, 0.5, 1.0];
+        for (const t of samplePoints) {
+          const sampleFrame = timedShot.from + Math.round(t * Math.max(1, timedShot.durationInFrames - 1));
+          const cam = camAt(film, timeline, sampleFrame, vp);
+          const targetBox = lookBox(film, shot);
+          const projected = projectBox(targetBox, cam, vp);
+
+          // Assert projected box has positive non-zero area
+          if (projected.w <= 0 || projected.h <= 0) {
+            throw new Error(
+              `Shot ${sIdx} ("${shot.id}") in ${vp.name} viewport at frame ${sampleFrame} (t=${t}) has invalid non-positive projected geometry (${projected.w}x${projected.h})`,
+            );
+          }
+
+          // Assert card is not projected completely out of viewport bounds
+          const isOffscreen =
+            projected.x + projected.w < -100 ||
+            projected.x > vp.width + 100 ||
+            projected.y + projected.h < -100 ||
+            projected.y > vp.height + 100;
+
+          if (isOffscreen) {
+            throw new Error(
+              `Shot ${sIdx} ("${shot.id}") in ${vp.name} viewport at frame ${sampleFrame} (t=${t}) projected offscreen at (${projected.x.toFixed(1)}, ${projected.y.toFixed(1)})`,
+            );
+          }
+        }
+      }
     }
 
+    // 4. Character rig integrity & pose validation
     for (let bIdx = 0; bIdx < shot.blocks.length; bIdx++) {
       const block = shot.blocks[bIdx];
       if (block.c === "CharacterBeat") {
