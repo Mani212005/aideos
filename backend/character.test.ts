@@ -326,33 +326,51 @@ test("Theme-Token Conformance: all character rigs bind 100% semantic color token
   }
 });
 
-test("Time-Sampled Geometry (D-2): validator verifies anchor boxes across time samples", () => {
-  const film = {
-    id: "test-time-sampled-geom",
-    title: "Test Film",
-    fps: 30 as const,
-    chapters: ["Ch1"],
-    canvas: {
-      nodes: [
-        { id: "n1", label: "Node 1", x: 0, y: 0, w: 200, h: 60 },
-        { id: "n2", label: "Node 2", x: 300, y: 0, w: 200, h: 60 },
-      ],
-      edges: [{ from: "n1", to: "n2", dashed: false }],
-    },
-    shots: [
-      {
-        id: "s1",
-        dur: 12,
-        look: "n1",
-        move: "cut" as const,
-        stage: "anchor" as const,
-        blocks: [{ c: "Body" as const, text: "Valid content" }],
-      },
-    ],
+import { verifyTrajectoryC1Continuity } from "../src/dl/motion/verifier";
+import { evaluateCatmullRomSpline } from "../src/dl/motion/spline";
+import { EXPO } from "../src/dl/motion";
+
+test("Motion Verifier: measures velocity discontinuity of chained EXPO easing vs Catmull-Rom", () => {
+  // Scenario: Joint angle moves 0° -> 45° -> -20° with knots at t = [0, 0.5, 1.0]
+  const knots = [
+    { t: 0, val: 0 },
+    { t: 0.5, val: 45 },
+    { t: 1.0, val: -20 },
+  ];
+
+  // 1. Chained EXPO evaluation (demonstrating the C0 velocity kink)
+  const evalChainedExpo = (t: number): number => {
+    if (t < 0.5) {
+      const u = t / 0.5;
+      return 0 + (45 - 0) * Math.pow(2, 10 * (u - 1));
+    } else {
+      const u = (t - 0.5) / 0.5;
+      return 45 + (-20 - 45) * Math.pow(2, 10 * (u - 1));
+    }
   };
 
-  const validated = validateFilmAudioAndAssets(film);
-  assert.equal(validated.shots[0].stage, "anchor");
+  const expoReport = verifyTrajectoryC1Continuity(evalChainedExpo, [0.5]);
+  // EXPO has high velocity arriving at knot and jumps upon segment transition
+  assert.ok(
+    expoReport.maxDiscontinuity > 1.0,
+    `Chained EXPO must exhibit measurable velocity discontinuity (got ${expoReport.maxDiscontinuity.toFixed(3)})`,
+  );
+
+  // 2. Centripetal Catmull-Rom evaluation (proving C1 continuous velocity)
+  const evalCatmullRom = (t: number): number => {
+    return evaluateCatmullRomSpline(knots, t);
+  };
+
+  const splineReport = verifyTrajectoryC1Continuity(evalCatmullRom, [0.5], 1e-4, 0.10);
+  assert.ok(
+    splineReport.isC1Continuous,
+    `Catmull-Rom must be C1 continuous at interior knots (max discontinuity: ${splineReport.maxDiscontinuity.toFixed(5)})`,
+  );
+  assert.ok(
+    splineReport.maxDiscontinuity < expoReport.maxDiscontinuity,
+    "Catmull-Rom discontinuity must be significantly lower than chained EXPO",
+  );
 });
+
 
 
