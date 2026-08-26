@@ -258,22 +258,25 @@ export function ShotEditor({
 
           {/* Keyframe Progress Selector */}
           <div className="flex items-center justify-between gap-2 mt-1">
-            <span className="text-[10px] text-gray-400">Keyframe</span>
+            <span className="text-[10px] text-gray-400">Timeline Moment</span>
             <div className="flex gap-1">
-              {(charBlock.poses || []).map((p: any, idx: number) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setActiveKeyframeIdx(idx)}
-                  className={`text-[10px] px-1.5 py-0.5 rounded ${
-                    activeKeyframeIdx === idx
-                      ? "bg-[#635BFF] text-white"
-                      : "bg-[#222] text-gray-400"
-                  }`}
-                >
-                  t={p.t ?? 0}
-                </button>
-              ))}
+              {(charBlock.poses || []).map((p: any, idx: number) => {
+                const timeLabel = p.t === 0 ? "Start (0s)" : p.t >= 0.9 ? "End" : `${(p.t * shot.dur).toFixed(1)}s`;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActiveKeyframeIdx(idx)}
+                    className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                      activeKeyframeIdx === idx
+                        ? "bg-[#635BFF] text-white font-bold"
+                        : "bg-[#222] text-gray-400"
+                    }`}
+                  >
+                    {timeLabel}
+                  </button>
+                );
+              })}
               <button
                 type="button"
                 onClick={() => {
@@ -285,7 +288,8 @@ export function ShotEditor({
                   updateShot({ blocks: newBlocks });
                   setActiveKeyframeIdx(poses.length - 1);
                 }}
-                className="text-[10px] px-1.5 py-0.5 bg-[#2a2a2a] hover:bg-[#333] text-gray-300 rounded"
+                className="text-[10px] px-1.5 py-0.5 bg-[#2a2a2a] hover:bg-[#333] text-gray-300 rounded font-bold"
+                title="Add gesture moment"
               >
                 +
               </button>
@@ -384,15 +388,15 @@ export function ShotEditor({
         </div>
       </div>
 
-      {/* Script (TTS) */}
+      {/* Voiceover Narration */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs text-gray-400">Script (TTS)</label>
+        <label className="text-xs text-gray-400 font-bold">Voiceover Narration (Spoken Text)</label>
         <textarea
-          className="bg-[#111] border border-[#333] rounded px-2 py-1 text-xs resize-y"
+          className="bg-[#111] border border-[#333] rounded px-2 py-1.5 text-xs resize-y leading-relaxed text-gray-200"
           rows={3}
           value={shot.scriptText || ""}
           onChange={(e) => updateShot({ scriptText: e.target.value })}
-          placeholder="Text for Voiceover to speak..."
+          placeholder="Text for voiceover to speak..."
         />
       </div>
 

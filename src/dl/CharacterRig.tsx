@@ -15,6 +15,8 @@ import { getCharacterRigById } from "./characters";
 export interface CharacterBeatProps {
   characterId: string;
   poses?: PoseKeyframe[];
+  start?: number;
+  durationInFrames?: number;
   className?: string;
 }
 
@@ -122,10 +124,12 @@ const evaluateGroupTransform = (
 export const CharacterRigView: React.FC<CharacterBeatProps> = ({
   characterId,
   poses = [],
+  start,
+  durationInFrames,
   className = "",
 }) => {
   const frame = useCurrentFrame();
-  const { durationInFrames } = useVideoConfig();
+  const videoConfig = useVideoConfig();
   const layout = useLayout();
   const accentColor = useAccent();
 
@@ -138,9 +142,12 @@ export const CharacterRigView: React.FC<CharacterBeatProps> = ({
     );
   }
 
-  // Calculate normalized timeline progress in [0, 1]
-  const total = Math.max(1, durationInFrames - 1);
-  const normalizedProgress = Math.min(1, Math.max(0, frame / total));
+  // Calculate local shot timeline progress in [0, 1]
+  const startFrame = start ?? 0;
+  const shotTotalFrames = durationInFrames ?? videoConfig.durationInFrames;
+  const localFrame = Math.max(0, frame - startFrame);
+  const total = Math.max(1, shotTotalFrames - 1);
+  const normalizedProgress = Math.min(1, Math.max(0, localFrame / total));
 
   // Compute active transforms for each group
   const transforms: Record<string, PoseTransform> = {};
@@ -199,7 +206,7 @@ export const CharacterRigView: React.FC<CharacterBeatProps> = ({
   };
 
   const isLong = layout.format === "long";
-  const characterHeight = isLong ? layout.px(460) : layout.px(340);
+  const characterHeight = isLong ? layout.px(420) : layout.px(320);
 
   return (
     <div
@@ -210,15 +217,16 @@ export const CharacterRigView: React.FC<CharacterBeatProps> = ({
         justifyContent: "center",
         width: "100%",
         height: "100%",
-        minHeight: characterHeight,
+        maxHeight: characterHeight,
+        minHeight: layout.px(160),
       }}
     >
       <svg
         viewBox={rig.viewBox}
         style={{
-          height: characterHeight,
+          height: "100%",
+          maxHeight: characterHeight,
           width: "auto",
-          maxHeight: "100%",
           maxWidth: "100%",
           filter: "drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25))",
           overflow: "visible",

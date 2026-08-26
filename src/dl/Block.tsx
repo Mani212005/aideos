@@ -39,6 +39,8 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
         <CharacterRigView
           characterId={block.characterId}
           poses={block.poses}
+          start={timing.start}
+          durationInFrames={timing.durationInFrames}
         />
       );
     case "Kicker":

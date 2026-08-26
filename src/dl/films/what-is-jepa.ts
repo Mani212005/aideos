@@ -6,10 +6,11 @@ export const whatIsJepaFilm: Film = {
   "fps": 30,
   "accent": "#F43F5E",
   "theme": {
-    "background": "dot-grid",
+    "background": "blueprint",
     "fontFamily": "geist",
+    "videoType": "educational",
     "storyStyle": "script-metaphor",
-    "cameraAngle": "orbit",
+    "cameraAngle": "top-down",
     "accent": "#F43F5E"
   },
   "chapters": [
@@ -137,6 +138,34 @@ export const whatIsJepaFilm: Film = {
         {
           "c": "Body",
           "text": "Why Meta chief AI scientist Yann LeCun walked away from LLMs."
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "astronaut",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0,
+                  "x": 0,
+                  "y": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                },
+                "legs": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
         }
       ]
     },

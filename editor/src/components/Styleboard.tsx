@@ -8,6 +8,7 @@ import type { Film, Shot, Block, BackgroundPreset, CameraAngle } from "../../../
 import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
 import { CHARACTER_RIGS } from "../../../src/dl/characters";
 import { POSE_PRESETS } from "../../../src/dl/characters/presets";
+import { ShotModal } from "./ShotModal";
 
 interface StyleboardProps {
   film: Film;
@@ -263,6 +264,7 @@ export function Styleboard({
   const [activeTab, setActiveTab] = useState<"storyboard" | "primitives" | "spatial">("storyboard");
   const [isSaving, setIsSaving] = useState(false);
   const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [editingShotIdx, setEditingShotIdx] = useState<number | null>(null);
 
   // Derive active theme directly from film.theme (single source of truth)
   const currentBg: BackgroundPreset = film.theme?.background || "paper-white";
@@ -537,7 +539,10 @@ export function Styleboard({
                     className="bg-[#121216] border border-[#26262E] hover:border-[#635BFF] rounded-2xl overflow-hidden shadow-xl flex flex-col transition-all hover:scale-[1.01] hover:shadow-[#635BFF]/10 group"
                   >
                     {/* Keyframe Card Header */}
-                    <div className="bg-[#16161D] px-4 py-2.5 border-b border-[#26262E] flex items-center justify-between">
+                    <div 
+                      onClick={() => setEditingShotIdx(idx)}
+                      className="bg-[#16161D] px-4 py-2.5 border-b border-[#26262E] flex items-center justify-between cursor-pointer"
+                    >
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-mono font-bold bg-[#20202A] text-gray-300 px-2 py-0.5 rounded border border-[#333]">
                           Shot {idx + 1}
@@ -549,9 +554,15 @@ export function Styleboard({
                         <span className="text-[11px] font-mono bg-[#1E1E24] text-[#8A8A8E] px-2 py-0.5 rounded border border-[#333]">
                           ⏱️ {shot.dur}s
                         </span>
-                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[#635BFF]/15 text-[#635BFF] border border-[#635BFF]/30 font-bold">
-                          {shot.stage || "frame"}
-                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingShotIdx(idx);
+                          }}
+                          className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#635BFF] hover:bg-[#5248E5] text-white transition-colors"
+                        >
+                          ✏️ Edit Scene
+                        </button>
                       </div>
                     </div>
 
@@ -608,7 +619,7 @@ export function Styleboard({
 
                     {/* Simulated Remotion Visual Frame */}
                     <div 
-                      onClick={() => onSelectShot(shot.id)}
+                      onClick={() => setEditingShotIdx(idx)}
                       className="p-4 bg-[#0A0A0E] flex-1 flex flex-col gap-3 min-h-[160px] relative cursor-pointer"
                     >
                       {/* Background texture preview */}
@@ -881,6 +892,20 @@ export function Styleboard({
         )}
 
       </div>
+
+      {/* Spacious 80% Viewport Scene Inspector Modal */}
+      {editingShotIdx !== null && (
+        <ShotModal
+          isOpen={editingShotIdx !== null}
+          film={film}
+          shotIndex={editingShotIdx}
+          onClose={() => setEditingShotIdx(null)}
+          onUpdateFilm={(updatedFilm) => {
+            if (onUpdateFilm) onUpdateFilm(updatedFilm);
+          }}
+          onSelectShotIndex={(idx) => setEditingShotIdx(idx)}
+        />
+      )}
 
     </div>
   );

@@ -414,45 +414,44 @@ export const FilmView: React.FC<FilmViewProps> = ({
 
         {/* Script Metaphor Rendering Mode vs Spatial Canvas Graph */}
         {(() => {
-          let resolvedMetaphor: string | undefined = undefined;
-          if (current.shot.visualDirection) {
-            const vd = current.shot.visualDirection.toLowerCase();
-            if (vd.includes("cursor") || vd.includes("quote") || vd.includes("stamp") || vd.includes("lecun") || vd.includes("yann")) {
-              resolvedMetaphor = "typing-cursor-quote";
-            } else if (vd.includes("computer") || vd.includes("character") || vd.includes("sleep") || vd.includes("throw") || vd.includes("window")) {
-              resolvedMetaphor = "character-throw";
-            } else if (vd.includes("spider") || vd.includes("web") || vd.includes("weave")) {
-              resolvedMetaphor = "spider-web";
-            } else if (vd.includes("liquid") || vd.includes("water") || vd.includes("bucket") || vd.includes("reservoir") || vd.includes("buffer")) {
-              resolvedMetaphor = "liquid-bucket";
-            } else if (vd.includes("balance") || vd.includes("scale") || vd.includes("tradeoff") || vd.includes("weight")) {
-              resolvedMetaphor = "balance-scale";
-            } else if (vd.includes("gear") || vd.includes("clock") || vd.includes("time") || vd.includes("engine")) {
-              resolvedMetaphor = "clock-gears";
+          const hasCharacterBlock = current.shot.blocks.some(b => b.c === "CharacterBeat");
+          
+          if (!hasCharacterBlock) {
+            let resolvedMetaphor: string | undefined = undefined;
+            if (current.shot.metaphor && current.shot.metaphor !== "character-throw") {
+              resolvedMetaphor = current.shot.metaphor;
+            } else if (current.shot.visualDirection) {
+              const vd = current.shot.visualDirection.toLowerCase();
+              if (vd.includes("spider") || vd.includes("web") || vd.includes("weave")) {
+                resolvedMetaphor = "spider-web";
+              } else if (vd.includes("liquid") || vd.includes("water") || vd.includes("bucket") || vd.includes("reservoir")) {
+                resolvedMetaphor = "liquid-bucket";
+              } else if (vd.includes("balance") || vd.includes("scale") || vd.includes("tradeoff")) {
+                resolvedMetaphor = "balance-scale";
+              } else if (vd.includes("gear") || vd.includes("clock") || vd.includes("engine")) {
+                resolvedMetaphor = "clock-gears";
+              }
             }
-          }
-          if (!resolvedMetaphor) {
-            resolvedMetaphor = current.shot.metaphor;
-          }
 
-          if (resolvedMetaphor) {
-            return (
-              <AbsoluteFill className="flex flex-col items-center justify-center">
-                {/* Background Dimmed Spatial Graph */}
-                <AbsoluteFill style={{ opacity: 0.03, pointerEvents: "none" }}>
-                  <CanvasGraph film={film} timeline={timeline} cam={cam} />
+            if (resolvedMetaphor) {
+              return (
+                <AbsoluteFill className="flex flex-col items-center justify-center">
+                  {/* Background Dimmed Spatial Graph */}
+                  <AbsoluteFill style={{ opacity: 0.03, pointerEvents: "none" }}>
+                    <CanvasGraph film={film} timeline={timeline} cam={cam} />
+                  </AbsoluteFill>
+
+                  {/* Prominent Large Metaphor Visual Scene Covering 75% of Frame */}
+                  <div className="w-[92%] h-[86%] flex items-center justify-center z-10 scale-125">
+                    <MetaphorViewer
+                      type={resolvedMetaphor as "spider-web" | "liquid-bucket" | "balance-scale" | "clock-gears" | "rocket-launch" | "character-throw" | "glowing-cluster" | "custom"}
+                      frame={frame - current.from}
+                      accent={accent}
+                    />
+                  </div>
                 </AbsoluteFill>
-
-                {/* Prominent Large Metaphor Visual Scene Covering 75% of Frame */}
-                <div className="w-[92%] h-[86%] flex items-center justify-center z-10 scale-125">
-                  <MetaphorViewer
-                    type={resolvedMetaphor as "spider-web" | "liquid-bucket" | "balance-scale" | "clock-gears" | "rocket-launch" | "character-throw" | "glowing-cluster" | "custom"}
-                    frame={frame - current.from}
-                    accent={accent}
-                  />
-                </div>
-              </AbsoluteFill>
-            );
+              );
+            }
           }
 
           return (
