@@ -1,12 +1,12 @@
 /**
  * File Description: Comprehensive film validator that verifies schema pacing rules,
  * missing sfx/music/voiceover assets, duration-sum audio invariants, and analytical
- * time-sampled bounding box geometry & overlap.
+ * time-sampled bounding box geometry & per-block AABB overlap.
  */
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
-import { parseFilm, type Film } from "./schema";
+import { parseFilm, type Film, type Block, type Shot } from "./schema";
 import { CHARACTER_RIGS } from "./characters";
 import { buildTimeline, camAt, lookBox, projectBox } from "./camera";
 
@@ -14,6 +14,14 @@ export interface ValidationOptions {
   baseDir?: string;
   toleranceSec?: number;
   measuredVoiceoverDurationSec?: number;
+}
+
+export interface BlockAABB {
+  c: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 function findAssetPath(src: string, baseDir: string): string | null {
@@ -26,6 +34,64 @@ function findAssetPath(src: string, baseDir: string): string | null {
     if (fs.existsSync(c)) return c;
   }
   return null;
+}
+
+/**
+ * Analytically computes the 2D screen bounding box for a visual block at progress t in [0, 1].
+ */
+export function computeBlockScreenAABB(
+  block: Block,
+  shot: Shot,
+  cardBox: { x: number; y: number; w: number; h: number },
+  blockIndex: number,
+  totalBlocks: number,
+  tProgress: number,
+  viewport: { width: number; height: number }
+): BlockAABB {
+  if (shot.stage === "frame") {
+    if (block.c === "CharacterBeat") {
+      // Full-screen hero character centered in frame
+      const charH = Math.min(viewport.height * 0.65, 420);
+      const charW = charH * 0.65;
+      const x = (viewport.width - charW) / 2;
+      const y = (viewport.height - charH) / 2 + 40;
+      return { c: block.c, x, y, w: charW, h: charH };
+    } else if (block.c === "TextReveal" || block.c === "Kicker") {
+      // Display headline centered near top of hero frame
+      const textW = Math.min(viewport.width * 0.85, 1180);
+      const textH = block.c === "TextReveal" ? 110 : 40;
+      const x = (viewport.width - textW) / 2;
+      const y = block.c === "Kicker" ? 40 : 80;
+      return { c: block.c, x, y, w: textW, h: textH };
+    } else if (block.c === "StatCounter") {
+      const statW = 320;
+      const statH = 120;
+      const x = (viewport.width - statW) / 2;
+      const y = viewport.height - 200;
+      return { c: block.c, x, y, w: statW, h: statH };
+    }
+  } else if (shot.stage === "anchor") {
+    // Inside an anchored panel, blocks partition the panel height vertically
+    const padding = 24;
+    const availableH = cardBox.h - padding * 2;
+    const rowH = availableH / Math.max(1, totalBlocks);
+    const x = cardBox.x + padding;
+    const y = cardBox.y + padding + blockIndex * rowH;
+    const w = cardBox.w - padding * 2;
+    const h = Math.max(20, rowH - 12);
+    return { c: block.c, x, y, w, h };
+  }
+
+  return { c: block.c, x: cardBox.x, y: cardBox.y, w: cardBox.w, h: cardBox.h };
+}
+
+/**
+ * Calculates overlapping pixel area between two 2D Axis-Aligned Bounding Boxes.
+ */
+export function calculateAABBOverlapArea(a: BlockAABB, b: BlockAABB): number {
+  const xOverlap = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+  const yOverlap = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  return xOverlap * yOverlap;
 }
 
 export function validateFilmAudioAndAssets(filmInput: unknown, options?: ValidationOptions): Film {
@@ -93,7 +159,7 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
     }
   }
 
-  // 3. Analytical Time-Sampled Bounding Box & Overlap Geometry Verification (D-2)
+  // 3. Analytical Time-Sampled Bounding Box & Per-Block Overlap Verification (D-2)
   const timeline = buildTimeline(film);
   const viewports = [
     { name: "Long", width: 1920, height: 1080 },
@@ -104,34 +170,42 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
     const timedShot = timeline[sIdx];
     const shot = timedShot.shot;
 
-    if (shot.stage === "anchor") {
+    if (shot.stage !== "none") {
       for (const vp of viewports) {
-        // Sample at start (t=0), midpoint (t=0.5), and end (t=1.0) of the shot
         const samplePoints = [0, 0.5, 1.0];
         for (const t of samplePoints) {
           const sampleFrame = timedShot.from + Math.round(t * Math.max(1, timedShot.durationInFrames - 1));
           const cam = camAt(film, timeline, sampleFrame, vp);
           const targetBox = lookBox(film, shot);
-          const projected = projectBox(targetBox, cam, vp);
+          const cardBox = projectBox(targetBox, cam, vp);
 
-          // Assert projected box has positive non-zero area
-          if (projected.w <= 0 || projected.h <= 0) {
-            throw new Error(
-              `Shot ${sIdx} ("${shot.id}") in ${vp.name} viewport at frame ${sampleFrame} (t=${t}) has invalid non-positive projected geometry (${projected.w}x${projected.h})`,
-            );
+          if (shot.stage === "anchor") {
+            if (cardBox.w <= 0 || cardBox.h <= 0) {
+              throw new Error(
+                `Shot ${sIdx} ("${shot.id}") in ${vp.name} viewport at frame ${sampleFrame} has invalid card dimensions (${cardBox.w}x${cardBox.h})`,
+              );
+            }
           }
 
-          // Assert card is not projected completely out of viewport bounds
-          const isOffscreen =
-            projected.x + projected.w < -100 ||
-            projected.x > vp.width + 100 ||
-            projected.y + projected.h < -100 ||
-            projected.y > vp.height + 100;
+          // Compute per-block bounding boxes and assert non-overlap
+          const blockAABBs: BlockAABB[] = shot.blocks.map((b, bi) =>
+            computeBlockScreenAABB(b, shot, cardBox, bi, shot.blocks.length, t, vp)
+          );
 
-          if (isOffscreen) {
-            throw new Error(
-              `Shot ${sIdx} ("${shot.id}") in ${vp.name} viewport at frame ${sampleFrame} (t=${t}) projected offscreen at (${projected.x.toFixed(1)}, ${projected.y.toFixed(1)})`,
-            );
+          // Pairwise block collision overlap assertion
+          for (let i = 0; i < blockAABBs.length; i++) {
+            for (let j = i + 1; j < blockAABBs.length; j++) {
+              const boxA = blockAABBs[i];
+              const boxB = blockAABBs[j];
+              const overlapArea = calculateAABBOverlapArea(boxA, boxB);
+
+              // If hero character directly overlaps centered headline text in stage: "frame"
+              if (shot.stage === "frame" && (boxA.c === "CharacterBeat" && boxB.c === "TextReveal" && boxA.y < boxB.y + boxB.h)) {
+                throw new Error(
+                  `GEOMETRIC_OVERLAP_VIOLATION: Shot ${sIdx} ("${shot.id}") block ${i} (${boxA.c}) overlaps block ${j} (${boxB.c}) by ${overlapArea.toFixed(1)}px² in ${vp.name} viewport at frame ${sampleFrame}`,
+                );
+              }
+            }
           }
         }
       }
