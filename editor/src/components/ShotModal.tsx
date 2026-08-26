@@ -1,9 +1,11 @@
 // File Description: Full-screen intuitive Scene & Character Inspector Modal covering 80% viewport.
-// Translates complex animation keyframes into plain-English timeline moments (Start, Midpoint, End).
+// Translates complex animation keyframes into plain-English timeline moments (Start, Midpoint, End)
+// with live gesture selection highlights and real-time SVG rig preview.
 
 import React, { useState } from "react";
 import type { Film, Shot, Block } from "../../../src/dl/schema";
 import { POSE_PRESETS, getAllCharacterRigs } from "../../../src/dl/characters";
+import { CharacterRigView } from "../../../src/dl/CharacterRig";
 
 export interface ShotModalProps {
   isOpen: boolean;
@@ -47,11 +49,15 @@ export const ShotModal: React.FC<ShotModalProps> = ({
   // Selected character ID & timeline gestures
   const activeCharId = charBlock?.characterId || "astronaut";
   const poses = charBlock?.poses || charBlock?.keyframes || [
-    { t: 0, groups: { torso: { rotate: 0 } } },
-    { t: 0.5, groups: { torso: { rotate: -4 }, head: { rotate: 6 }, leftArm: { rotate: -35 }, rightArm: { rotate: 20 } } },
+    { t: 0, pose: "neutral", groups: { ...POSE_PRESETS.neutral.groups } },
+    { t: 0.5, pose: "present-right", groups: { ...POSE_PRESETS["present-right"].groups } },
   ];
 
   const [activeGestureIdx, setActiveGestureIdx] = useState(0);
+
+  // Determine active gesture ID for the current selected moment
+  const currentMoment = poses[activeGestureIdx] || poses[0] || { t: 0, pose: "neutral" };
+  const currentActiveGestureId = currentMoment.pose || (activeGestureIdx === 0 ? "neutral" : "present-right");
 
   // Helper to update current shot
   const updateCurrentShot = (partial: Partial<Shot>) => {
@@ -71,8 +77,8 @@ export const ShotModal: React.FC<ShotModalProps> = ({
         characterId: "astronaut",
         stage: "frame",
         poses: [
-          { t: 0, groups: { torso: { rotate: 0 } } },
-          { t: 0.5, groups: { torso: { rotate: -4 }, head: { rotate: 6 }, leftArm: { rotate: -35 }, rightArm: { rotate: 20 } } },
+          { t: 0, pose: "neutral", groups: { ...POSE_PRESETS.neutral.groups } },
+          { t: 0.5, pose: "present-right", groups: { ...POSE_PRESETS["present-right"].groups } },
         ],
       } as any;
 
@@ -104,10 +110,11 @@ export const ShotModal: React.FC<ShotModalProps> = ({
     if (!preset || !charBlock) return;
 
     const updatedPoses = [...poses];
-    const currentMoment = updatedPoses[activeGestureIdx] || { t: 0, groups: {} };
+    const momentToUpdate = updatedPoses[activeGestureIdx] || { t: 0, groups: {} };
 
     updatedPoses[activeGestureIdx] = {
-      ...currentMoment,
+      ...momentToUpdate,
+      pose: presetId,
       groups: { ...preset.groups },
     };
 
@@ -137,9 +144,10 @@ export const ShotModal: React.FC<ShotModalProps> = ({
     const nextT = Number(((poses.length * 0.3) % 1).toFixed(2));
     const newMoment = {
       t: nextT,
-      groups: { torso: { rotate: 0 }, leftArm: { rotate: -20 }, rightArm: { rotate: 20 } },
+      pose: "present-right",
+      groups: { ...POSE_PRESETS["present-right"].groups },
     };
-    const updatedPoses = [...poses, newMoment].sort((a, b) => a.t - b.t);
+    const updatedPoses = [...poses, newMoment].sort((a: any, b: any) => a.t - b.t);
     const updatedBlocks = shot.blocks.map((b) =>
       b.c === "CharacterBeat" ? { ...b, poses: updatedPoses } : b
     );
@@ -214,6 +222,25 @@ export const ShotModal: React.FC<ShotModalProps> = ({
           
           {/* LEFT COLUMN: LIVE SCENE PREVIEW & SCRIPT (5 Columns) */}
           <div className="lg:col-span-5 bg-[#0A0A0E] border-r border-[#262632] p-6 flex flex-col gap-5 overflow-y-auto">
+            
+            {/* Live Character Visual Preview Box */}
+            {isCharacterMode && (
+              <div className="bg-[#121218] border border-[#272732] rounded-2xl p-4 flex flex-col items-center justify-center min-h-[190px] relative overflow-hidden shadow-inner">
+                <div className="absolute top-2.5 left-3 text-[10px] font-mono text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Live Pose: {currentActiveGestureId}</span>
+                </div>
+                <div className="w-full h-36 flex items-center justify-center pt-3">
+                  <CharacterRigView
+                    characterId={activeCharId}
+                    poses={poses}
+                    durationInFrames={1}
+                    start={0}
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5 mb-2">
                 <span>🎙️</span> Voiceover Narration (Spoken Text)
@@ -225,6 +252,9 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                 placeholder="Type the exact narration spoken during this scene..."
                 className="w-full bg-[#121218] border border-[#272732] focus:border-[#635BFF] rounded-xl p-3 text-xs text-gray-200 placeholder-gray-600 focus:outline-none transition-colors font-sans leading-relaxed"
               />
+              <p className="text-[10px] text-gray-500 mt-1">
+                The AI voice synthesizer reads this sentence aloud to establish scene duration.
+              </p>
             </div>
 
             {/* Scene Visual Idea / Direction Prompt */}
@@ -276,16 +306,6 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                   <option value="zoom-out">Zoom Out Overview</option>
                   <option value="hold">Static Hold</option>
                 </select>
-              </div>
-            </div>
-
-            {/* Active Content Summary Card */}
-            <div className="mt-auto p-4 rounded-xl bg-black/50 border border-white/5 text-xs text-gray-400 space-y-1">
-              <div className="font-bold text-white flex items-center gap-1.5">
-                <span>🎯</span> Active Target Node: <span className="font-mono text-[#635BFF]">{Array.isArray(shot.look) ? shot.look.join(" → ") : shot.look}</span>
-              </div>
-              <div className="text-[11px] text-gray-500">
-                Camera dynamically solves visual center & bounds from this coordinate node.
               </div>
             </div>
           </div>
@@ -371,13 +391,18 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                         onClick={() => setCharacterRig(rig.id)}
                         className={`p-3 rounded-xl border text-left flex items-center gap-3 transition-all ${
                           activeCharId === rig.id
-                            ? "bg-[#635BFF]/20 border-[#635BFF] text-white"
+                            ? "bg-[#635BFF]/20 border-[#635BFF] ring-2 ring-[#635BFF]/30 text-white"
                             : "bg-[#101014] border-[#272732] text-gray-400 hover:border-gray-600"
                         }`}
                       >
                         <span className="text-2xl">{rig.id === "developer" ? "🧑‍💻" : "👨‍🚀"}</span>
                         <div>
-                          <div className="text-xs font-bold text-white">{rig.name}</div>
+                          <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <span>{rig.name}</span>
+                            {activeCharId === rig.id && (
+                              <span className="text-[10px] text-[#635BFF] font-mono font-bold">✓ Active</span>
+                            )}
+                          </div>
                           <div className="text-[10px] text-gray-400">{rig.description}</div>
                         </div>
                       </button>
@@ -389,11 +414,11 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-300">
-                      B. Timeline Gestures (When the Character Changes Pose)
+                      B. Timeline Moments (Click a moment, then pick its gesture below)
                     </label>
                     <button
                       onClick={addGestureMoment}
-                      className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold"
+                      className="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold transition-colors"
                     >
                       + Add Gesture Moment
                     </button>
@@ -404,26 +429,28 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                     {poses.map((p: any, idx: number) => {
                       const isSelected = activeGestureIdx === idx;
                       const timeSec = (p.t * shot.dur).toFixed(1);
-                      const label = p.t === 0 ? "Start (0.0s)" : p.t >= 0.9 ? "End" : `${timeSec}s`;
+                      const timeLabel = p.t === 0 ? "Start (0.0s)" : p.t >= 0.9 ? "End" : `${timeSec}s`;
+                      const gestureName = PRESET_GESTURES.find((g) => g.id === (p.pose || "neutral"))?.label || "Pose";
+                      const gestureIcon = PRESET_GESTURES.find((g) => g.id === (p.pose || "neutral"))?.icon || "🧍";
 
                       return (
                         <button
                           key={idx}
                           onClick={() => setActiveGestureIdx(idx)}
-                          className={`px-3 py-2 rounded-xl border text-xs font-mono flex items-center gap-2 shrink-0 transition-all ${
+                          className={`px-3.5 py-2.5 rounded-xl border text-xs font-mono flex items-center gap-2 shrink-0 transition-all ${
                             isSelected
-                              ? "bg-[#635BFF] text-white font-bold border-white shadow-md scale-105"
-                              : "bg-[#101014] text-gray-400 border-[#333] hover:text-white"
+                              ? "bg-[#635BFF] text-white font-bold border-white shadow-lg ring-2 ring-white/20 scale-105"
+                              : "bg-[#101014] text-gray-300 border-[#333] hover:border-gray-500 hover:text-white"
                           }`}
                         >
-                          <span>Moment {idx + 1}: {label}</span>
+                          <span>{gestureIcon} Moment {idx + 1} ({timeLabel}): <strong className="underline">{gestureName}</strong></span>
                           {poses.length > 1 && (
                             <span
                               onClick={(e) => {
                                 e.stopPropagation();
                                 removeGestureMoment(idx);
                               }}
-                              className="text-white/60 hover:text-red-400 font-bold ml-1"
+                              className="text-white/60 hover:text-red-400 font-bold ml-1 text-sm"
                               title="Delete this moment"
                             >
                               ×
@@ -435,29 +462,54 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                   </div>
                 </div>
 
-                {/* 2C. 1-Click Gesture Presets */}
+                {/* 2C. 1-Click Gesture Presets (With Active Selection Highlight!) */}
                 <div>
-                  <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-300 block mb-2">
-                    C. Choose Gesture for Moment {activeGestureIdx + 1}
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-300">
+                      C. Choose Gesture for Moment {activeGestureIdx + 1}
+                    </label>
+                    <span className="text-[10px] font-mono text-[#635BFF] bg-[#635BFF]/10 px-2 py-0.5 rounded border border-[#635BFF]/30">
+                      Active: {PRESET_GESTURES.find((g) => g.id === currentActiveGestureId)?.label}
+                    </span>
+                  </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {PRESET_GESTURES.map((g) => (
-                      <button
-                        key={g.id}
-                        onClick={() => applyGesturePreset(g.id)}
-                        className="p-2.5 rounded-xl border border-[#272732] hover:border-[#635BFF] bg-[#101014] hover:bg-[#635BFF]/10 text-left transition-all group flex flex-col justify-between h-20"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-base">{g.icon}</span>
-                          <span className="text-[9px] font-mono text-gray-500 group-hover:text-[#635BFF]">1-CLICK</span>
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-white group-hover:text-[#635BFF]">{g.label}</div>
-                          <div className="text-[9px] text-gray-400 truncate">{g.desc}</div>
-                        </div>
-                      </button>
-                    ))}
+                    {PRESET_GESTURES.map((g) => {
+                      const isGestureSelected = currentActiveGestureId === g.id;
+
+                      return (
+                        <button
+                          key={g.id}
+                          onClick={() => applyGesturePreset(g.id)}
+                          className={`p-3 rounded-xl border text-left transition-all group flex flex-col justify-between h-24 ${
+                            isGestureSelected
+                              ? "bg-[#635BFF]/25 border-[#635BFF] ring-2 ring-[#635BFF]/40 text-white shadow-lg shadow-[#635BFF]/15 scale-[1.02]"
+                              : "bg-[#101014] border-[#272732] hover:border-[#635BFF]/60 hover:bg-[#635BFF]/5 text-gray-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-xl">{g.icon}</span>
+                            {isGestureSelected ? (
+                              <span className="text-[9px] font-mono font-bold bg-[#635BFF] text-white px-1.5 py-0.5 rounded">
+                                ✓ ACTIVE
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-mono text-gray-500 group-hover:text-[#635BFF]">
+                                SELECT
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <div className={`text-xs font-bold ${isGestureSelected ? "text-white" : "text-gray-200 group-hover:text-white"}`}>
+                              {g.label}
+                            </div>
+                            <div className="text-[9px] text-gray-400 truncate mt-0.5">
+                              {g.desc}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -469,9 +521,9 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setStageLayout("frame")}
-                      className={`p-3 rounded-xl border text-left transition-all ${
+                      className={`p-3.5 rounded-xl border text-left transition-all ${
                         shot.stage === "frame"
-                          ? "bg-white/10 border-white text-white font-bold"
+                          ? "bg-white/10 border-white text-white font-bold ring-2 ring-white/20"
                           : "bg-[#101014] border-[#272732] text-gray-400 hover:text-white"
                       }`}
                     >
@@ -485,9 +537,9 @@ export const ShotModal: React.FC<ShotModalProps> = ({
 
                     <button
                       onClick={() => setStageLayout("anchor")}
-                      className={`p-3 rounded-xl border text-left transition-all ${
+                      className={`p-3.5 rounded-xl border text-left transition-all ${
                         shot.stage === "anchor"
-                          ? "bg-white/10 border-white text-white font-bold"
+                          ? "bg-white/10 border-white text-white font-bold ring-2 ring-white/20"
                           : "bg-[#101014] border-[#272732] text-gray-400 hover:text-white"
                       }`}
                     >
