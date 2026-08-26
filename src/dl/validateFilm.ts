@@ -12,8 +12,8 @@ import { buildTimeline, camAt, lookBox, projectBox } from "./camera";
 import { verifyTrajectoryContinuity } from "./motion/verifier";
 import { evaluateCatmullRomSpline } from "./motion/spline";
 
-/** Maximum allowed first-derivative velocity discontinuity at interior keyframe knots (normalized deg/s). */
-export const MAX_ALLOWED_VELOCITY_DISCONTINUITY = 0.50;
+/** Maximum allowed physical velocity discontinuity at interior keyframe knots (degrees per physical second). */
+export const MAX_ALLOWED_VELOCITY_DISCONTINUITY_DEG_PER_SEC = 2.0;
 
 export interface ValidationOptions {
   baseDir?: string;
@@ -263,17 +263,20 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
 
             if (jointKnots.length >= 3) {
               const evalSpline = (tQuery: number) => evaluateCatmullRomSpline(jointKnots, tQuery);
+              // Convert physical velocity tolerance (deg/s) to normalized time units by multiplying by shot duration
+              const normalizedVelocityTolerance = MAX_ALLOWED_VELOCITY_DISCONTINUITY_DEG_PER_SEC * Math.max(0.1, shot.dur);
               const continuityReport = verifyTrajectoryContinuity(
                 evalSpline,
                 interiorKnots,
                 1e-4,
-                MAX_ALLOWED_VELOCITY_DISCONTINUITY
+                normalizedVelocityTolerance
               );
 
               if (!continuityReport.isC1Continuous) {
                 const badKnot = continuityReport.knots.find((k) => !k.isC1Continuous) || continuityReport.knots[0];
+                const physicalJump = continuityReport.maxVelocityDiscontinuity / Math.max(0.1, shot.dur);
                 throw new Error(
-                  `MOTION_CONTINUITY_VIOLATION: Shot ${sIdx} ("${shot.id}") CharacterBeat joint "${groupId}" has a C0 velocity discontinuity of ${continuityReport.maxVelocityDiscontinuity.toFixed(3)} at knot t=${badKnot?.t ?? 0.5} (exceeds threshold ${MAX_ALLOWED_VELOCITY_DISCONTINUITY})`,
+                  `MOTION_CONTINUITY_VIOLATION: Shot ${sIdx} ("${shot.id}") CharacterBeat joint "${groupId}" has a C0 velocity discontinuity of ${physicalJump.toFixed(2)} deg/s at knot t=${badKnot?.t ?? 0.5} (exceeds physical threshold ${MAX_ALLOWED_VELOCITY_DISCONTINUITY_DEG_PER_SEC} deg/s)`,
                 );
               }
             }
