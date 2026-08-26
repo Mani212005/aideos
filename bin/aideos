@@ -22,6 +22,23 @@ if [ "$#" -gt 0 ]; then
   CMD="$1"
   shift
   case "$CMD" in
+    exit|stop|down|kill)
+      # Terminate any active process running on port 3001 or Aideos on port 3000
+      PIDS=$(lsof -tiTCP:3001 -sTCP:LISTEN 2>/dev/null || true)
+      if [ -n "$PIDS" ]; then
+        kill $PIDS 2>/dev/null || true
+      fi
+      PIDS_3000=$(lsof -tiTCP:3000 -sTCP:LISTEN 2>/dev/null || true)
+      if [ -n "$PIDS_3000" ]; then
+        for PID in $PIDS_3000; do
+          if ps -p "$PID" -o command= 2>/dev/null | grep -qi "aideos"; then
+            kill "$PID" 2>/dev/null || true
+          fi
+        done
+      fi
+      echo "The local host is stopped, Hope you make something amazing!"
+      exit 0
+      ;;
     validate)
       cd "$AIDEOS_DIR" && npm run validate "$@"
       ;;
@@ -51,6 +68,7 @@ if [ "$#" -gt 0 ]; then
       echo ""
       echo "Usage:"
       echo "  aideos               Launch and open visual editor (localhost:3001)"
+      echo "  aideos exit          Stop local editor dev server"
       echo "  aideos validate      Validate active film schema and print runsheet"
       echo "  aideos render        Render long-form video (out/long.mp4)"
       echo "  aideos reel          Render vertical reel (out/reel.mp4)"
@@ -78,7 +96,7 @@ if lsof -nP -iTCP:3001 -sTCP:LISTEN >/dev/null 2>&1; then
   PORT=3001
   IS_RUNNING=1
 elif lsof -nP -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1; then
-  # Check if port 3000 is Aideos or UniHAP
+  # Check if port 3000 is Aideos
   if curl -s http://localhost:3000/ | grep -qi "aideos\|editor"; then
     PORT=3000
     IS_RUNNING=1
