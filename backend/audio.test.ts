@@ -71,11 +71,14 @@ test("duration sum invariant holds within ±50ms for live synthesized audio", as
     "Welcome to Aideos audio pipeline. We test segment splitting and caption alignment. Every shot duration sums to the audio file duration.";
 
   const tmpOut = path.join(__dirname, "../out/test_produce");
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("Deepgram synthesis timed out after 10s")), 10000)
+  );
   let result;
   try {
-    result = await produceAudioPipeline(script, tmpOut);
+    result = (await Promise.race([produceAudioPipeline(script, tmpOut), timeoutPromise])) as any;
   } catch (err: any) {
-    t.skip(`Skipping live Deepgram test due to network/API error: ${err.message}`);
+    t.skip(`Skipping live Deepgram test due to network/timeout error: ${err.message}`);
     return;
   }
 
