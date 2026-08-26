@@ -1,6 +1,6 @@
 /**
  * File Description: Comprehensive film validator that verifies schema pacing rules,
- * missing sfx/music/voiceover assets, and duration-sum audio invariants.
+ * missing sfx/music/voiceover assets, duration-sum audio invariants, and block bounds/overlap.
  */
 import fs from "fs";
 import path from "path";
@@ -30,6 +30,11 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
   const film = parseFilm(filmInput);
   const baseDir = options?.baseDir ?? path.resolve(process.cwd(), "public");
   const toleranceSec = options?.toleranceSec ?? 0.1;
+
+  // 0. Schema version validation
+  if (film.schemaVersion && !film.schemaVersion.startsWith("1.")) {
+    throw new Error(`Unsupported film schemaVersion "${film.schemaVersion}". Expected semver major version 1.x.x`);
+  }
 
   // 1. Missing audio asset file checks
   if (film.voiceover?.src) {
@@ -86,9 +91,17 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
     }
   }
 
-  // 3. Character rig integrity validation
+  // 3. Character rig integrity and block bounds/overlap validation
   for (let sIdx = 0; sIdx < film.shots.length; sIdx++) {
     const shot = film.shots[sIdx];
+
+    // Bounding overlap sanity: prevent overloading an anchored card beyond reasonable capacity
+    if (shot.stage === "anchor" && shot.blocks.length > 4) {
+      throw new Error(
+        `Shot ${sIdx} ("${shot.id}") has ${shot.blocks.length} blocks in stage "anchor"; maximum capacity is 4 to prevent card overflow clipping`,
+      );
+    }
+
     for (let bIdx = 0; bIdx < shot.blocks.length; bIdx++) {
       const block = shot.blocks[bIdx];
       if (block.c === "CharacterBeat") {

@@ -333,6 +333,7 @@ export type SfxItem = z.infer<typeof sfxItemSchema>;
 export type MusicTrack = z.infer<typeof musicTrackSchema>;
 
 export const filmBaseSchema = z.object({
+  schemaVersion: z.string().default("1.0.0").optional(),
   id: z.string().regex(/^[a-z0-9-]+$/),
   title: z.string().min(1),
   fps: z.union([z.literal(24), z.literal(30), z.literal(60)]),

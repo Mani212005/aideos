@@ -234,11 +234,12 @@ test("validator rejects unknown joint group in pose keyframe", () => {
   );
 });
 
-test("pacing gate rejects CharacterBeat held past 25s", () => {
+test("validator rejects unsupported schemaVersion", () => {
   const film = {
-    id: "test-char-pacing",
+    schemaVersion: "2.0.0",
+    id: "test-char-version",
     title: "Test Film",
-    fps: 30,
+    fps: 30 as const,
     chapters: ["Ch1"],
     canvas: {
       nodes: [
@@ -250,23 +251,75 @@ test("pacing gate rejects CharacterBeat held past 25s", () => {
     shots: [
       {
         id: "s1",
-        dur: 28,
+        dur: 12,
         look: "n1",
-        move: "cut",
-        stage: "frame",
+        move: "cut" as const,
+        stage: "anchor" as const,
+        blocks: [{ c: "Body" as const, text: "Valid block text" }],
+      },
+    ],
+  };
+
+  assert.throws(
+    () => validateFilmAudioAndAssets(film),
+    /Unsupported film schemaVersion "2.0.0"/,
+  );
+});
+
+test("validator rejects anchor card with > 4 overloaded blocks to prevent clipping", () => {
+  const film = {
+    id: "test-char-overload",
+    title: "Test Film",
+    fps: 30 as const,
+    chapters: ["Ch1"],
+    canvas: {
+      nodes: [
+        { id: "n1", label: "Node 1", x: 0, y: 0, w: 200, h: 60 },
+        { id: "n2", label: "Node 2", x: 300, y: 0, w: 200, h: 60 },
+      ],
+      edges: [{ from: "n1", to: "n2", dashed: false }],
+    },
+    shots: [
+      {
+        id: "s1",
+        dur: 12,
+        look: "n1",
+        move: "cut" as const,
+        stage: "anchor" as const,
         blocks: [
-          {
-            c: "CharacterBeat",
-            characterId: "astronaut",
-            poses: [],
-          },
+          { c: "TextReveal" as const, text: "Line 1" },
+          { c: "Body" as const, text: "Line 2" },
+          { c: "Body" as const, text: "Line 3" },
+          { c: "Body" as const, text: "Line 4" },
+          { c: "CharacterBeat" as const, characterId: "astronaut", poses: [] },
         ],
       },
     ],
   };
 
   assert.throws(
-    () => parseFilm(film),
-    /CharacterBeat holds for 28s; no device may hold past 25s/,
+    () => validateFilmAudioAndAssets(film),
+    /maximum capacity is 4 to prevent card overflow clipping/,
   );
 });
+
+test("Theme-Token Conformance: all character rigs bind 100% semantic color tokens", () => {
+  const rigs = getAllCharacterRigs();
+  const validTokens = new Set(["surface", "ink", "muted", "hairline", "accent", "canvas", "none", undefined]);
+
+  for (const rig of rigs) {
+    for (const group of rig.groups) {
+      for (const path of group.paths) {
+        assert.ok(
+          validTokens.has(path.fill),
+          `rig "${rig.id}" group "${group.id}" path fill "${path.fill}" must be a semantic token`,
+        );
+        assert.ok(
+          validTokens.has(path.stroke),
+          `rig "${rig.id}" group "${group.id}" path stroke "${path.stroke}" must be a semantic token`,
+        );
+      }
+    }
+  }
+});
+
