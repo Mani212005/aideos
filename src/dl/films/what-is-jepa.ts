@@ -141,24 +141,82 @@ export const whatIsJepaFilm: Film = {
         },
         {
           "c": "CharacterBeat",
-          "characterId": "astronaut",
+          "characterId": "developer",
           "poses": [
             {
               "t": 0,
               "groups": {
                 "torso": {
-                  "rotate": 0,
-                  "x": 0,
-                  "y": 0
+                  "rotate": 2
                 },
                 "head": {
-                  "rotate": 0
+                  "rotate": 6
                 },
                 "leftArm": {
-                  "rotate": 0
+                  "rotate": -5
                 },
                 "rightArm": {
+                  "rotate": -125
+                },
+                "legs": {
                   "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.3,
+              "groups": {
+                "torso": {
+                  "rotate": -3
+                },
+                "head": {
+                  "rotate": -5
+                },
+                "leftArm": {
+                  "rotate": 65
+                },
+                "rightArm": {
+                  "rotate": 10
+                },
+                "legs": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.6,
+              "groups": {
+                "torso": {
+                  "rotate": 2
+                },
+                "head": {
+                  "rotate": 6
+                },
+                "leftArm": {
+                  "rotate": -5
+                },
+                "rightArm": {
+                  "rotate": -125
+                },
+                "legs": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.9,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": -4
+                },
+                "leftArm": {
+                  "rotate": 110
+                },
+                "rightArm": {
+                  "rotate": -110
                 },
                 "legs": {
                   "rotate": 0
