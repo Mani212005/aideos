@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" width="400" height="600">
+  <rect width="100%" height="100%" fill="#0A0A0B" />
+  <g id="legs" transform="rotate(0 200 400)">
+    <path d="M160 390 Q200 420 240 390 L230 430 Q200 450 170 430 Z" fill="#0A0A0B" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M175 440 L225 440 L220 455 L180 455 Z" fill="#635BFF" stroke="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="torso" transform="rotate(0 200 310)">
+    <path d="M140 230 Q200 200 260 230 Q280 340 250 380 Q200 410 150 380 Q120 340 140 230 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M185 290 L215 290 L200 320 Z" fill="#635BFF" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="head" transform="rotate(0 200 155)">
+    <path d="M135 120 Q200 85 265 120 Q280 200 250 220 Q200 235 150 220 Q120 200 135 120 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M155 140 Q200 135 245 140 L240 185 Q200 190 160 185 Z" fill="#0A0A0B" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M175 160 A 8 8 0 1 0 191 160 A 8 8 0 1 0 175 160 Z" fill="#635BFF" stroke="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M209 160 A 8 8 0 1 0 225 160 A 8 8 0 1 0 209 160 Z" fill="#635BFF" stroke="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="leftArm" transform="rotate(0 130 230)">
+    <path d="M130 225 L90 300 L115 310 L145 235 Z" fill="#101013" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M70 340 A 18 18 0 1 0 106 340 A 18 18 0 1 0 70 340 Z" fill="#635BFF" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="rightArm" transform="rotate(0 270 230)">
+    <path d="M270 225 L310 300 L285 310 L255 235 Z" fill="#101013" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M294 340 A 18 18 0 1 0 330 340 A 18 18 0 1 0 294 340 Z" fill="#635BFF" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+</svg>

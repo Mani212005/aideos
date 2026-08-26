@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" width="400" height="600">
+  <rect width="100%" height="100%" fill="#0A0A0B" />
+  <g id="legs" transform="rotate(0 200 390)">
+    <path d="M170 380 L160 440 L240 440 L230 380 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M150 440 L250 440 L245 455 L155 455 Z" fill="#635BFF" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M175 455 Q200 510 200 530 Q200 510 225 455 Z" fill="#635BFF" stroke="rgba(245,245,245,0.1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="torso" transform="rotate(0 200 320)">
+    <path d="M130 220 Q200 205 270 220 L280 370 Q200 395 120 370 Z" fill="#101013" stroke="#F5F5F5" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M175 275 Q200 260 225 275 Q225 315 200 325 Q175 315 175 275 Z" fill="#635BFF" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M150 345 L250 345" fill="none" stroke="rgba(245,245,245,0.1)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M165 355 L235 355" fill="none" stroke="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="head" transform="rotate(0 200 170)">
+    <path d="M198 100 L198 70 L202 70 L202 100 Z" fill="#F5F5F5" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M190 60 A 10 10 0 1 0 210 60 A 10 10 0 1 0 190 60 Z" fill="#635BFF" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M130 110 Q200 95 270 110 Q285 195 270 205 Q200 215 130 205 Q115 195 130 110 Z" fill="#101013" stroke="#F5F5F5" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M145 125 Q200 120 255 125 L250 190 Q200 195 150 190 Z" fill="#0A0A0B" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M168 150 A 9 9 0 1 0 186 150 A 9 9 0 1 0 168 150 Z" fill="#635BFF" stroke="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M214 150 A 9 9 0 1 0 232 150 A 9 9 0 1 0 214 150 Z" fill="#635BFF" stroke="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M185 174 Q200 182 215 174" fill="none" stroke="#635BFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="leftArm" transform="rotate(0 125 235)">
+    <path d="M110 235 A 15 15 0 1 0 140 235 A 15 15 0 1 0 110 235 Z" fill="#F5F5F5" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M120 240 L90 320 L115 330 L135 245 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M90 320 L60 380 L85 390 L110 325 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M55 385 Q45 405 60 415 L70 405 Q65 395 75 390 Z" fill="#635BFF" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="rightArm" transform="rotate(0 275 235)">
+    <path d="M260 235 A 15 15 0 1 0 290 235 A 15 15 0 1 0 260 235 Z" fill="#F5F5F5" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M280 240 L310 320 L285 330 L265 245 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M310 320 L340 380 L315 390 L290 325 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M345 385 Q355 405 340 415 L330 405 Q335 395 325 390 Z" fill="#635BFF" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+</svg>

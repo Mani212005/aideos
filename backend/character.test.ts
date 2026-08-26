@@ -336,11 +336,24 @@ test("Motion Verifier Positive Control: asserts exact Δv = 2.000000 on known pi
     return t < 0.5 ? t : 0.5 - (t - 0.5);
   };
 
-  const report = verifyTrajectoryContinuity(evalPiecewiseLinearKink, [0.5], 1e-4);
-  assert.equal(report.isC1Continuous, false, "Piecewise linear kink must be flagged as non-C1");
+  // When durationSec = 1.0s, physical jump = 2.000 deg/s
+  const report1s = verifyTrajectoryContinuity(evalPiecewiseLinearKink, [0.5], 1.0, 1e-4, 0.05);
+  assert.equal(report1s.isC1Continuous, false, "Piecewise linear kink must be flagged as non-C1");
   assert.ok(
-    Math.abs(report.maxVelocityDiscontinuity - 2.0) < 1e-5,
-    `Positive control must measure exact analytical jump of 2.000 (measured: ${report.maxVelocityDiscontinuity.toFixed(7)})`,
+    Math.abs(report1s.maxPhysicalVelocityDiscontinuity - 2.0) < 1e-5,
+    `Positive control at 1s must measure exact analytical jump of 2.000 deg/s (measured: ${report1s.maxPhysicalVelocityDiscontinuity.toFixed(7)})`,
+  );
+
+  // When durationSec = 4.0s, physical jump = 2.0 / 4.0 = 0.500 deg/s (verifying exact physical scaling)
+  const report4s = verifyTrajectoryContinuity(evalPiecewiseLinearKink, [0.5], 4.0, 1e-4);
+  assert.ok(
+    Math.abs(report4s.maxPhysicalVelocityDiscontinuity - 0.5) < 1e-5,
+    `Positive control at 4s must measure exact physical jump of 0.500 deg/s (measured: ${report4s.maxPhysicalVelocityDiscontinuity.toFixed(7)})`,
+  );
+  assert.equal(
+    report1s.maxRawNormalizedDiscontinuity,
+    report4s.maxRawNormalizedDiscontinuity,
+    "Raw normalized discontinuity must be invariant to durationSec",
   );
 });
 
@@ -350,11 +363,11 @@ test("Motion Verifier Negative Control: asserts Δv <= 1e-5 on known smooth cubi
     return t * t * t - 2 * t * t + t;
   };
 
-  const report = verifyTrajectoryContinuity(evalSmoothCubic, [0.25, 0.5, 0.75], 1e-4);
+  const report = verifyTrajectoryContinuity(evalSmoothCubic, [0.25, 0.5, 0.75], 2.0, 1e-4);
   assert.equal(report.isC1Continuous, true, "Smooth cubic polynomial must be verified as C1 continuous");
   assert.ok(
-    report.maxVelocityDiscontinuity < 1e-4,
-    `Negative control must measure near-zero velocity jump on smooth curve (measured: ${report.maxVelocityDiscontinuity.toFixed(7)})`,
+    report.maxPhysicalVelocityDiscontinuity < 1e-4,
+    `Negative control must measure near-zero velocity jump on smooth curve (measured: ${report.maxPhysicalVelocityDiscontinuity.toFixed(7)})`,
   );
 });
 
@@ -365,10 +378,10 @@ test("Motion Verifier Convergence: step-size halving converges to true analytica
 
   const epsilons = [1e-3, 1e-4, 1e-5];
   for (const eps of epsilons) {
-    const report = verifyTrajectoryContinuity(evalPiecewiseLinearKink, [0.5], eps);
+    const report = verifyTrajectoryContinuity(evalPiecewiseLinearKink, [0.5], 1.0, eps);
     assert.ok(
-      Math.abs(report.maxVelocityDiscontinuity - 2.0) < 1e-5,
-      `Measured jump must stay stable at 2.000 across epsilon=${eps} (got: ${report.maxVelocityDiscontinuity})`,
+      Math.abs(report.maxPhysicalVelocityDiscontinuity - 2.0) < 1e-5,
+      `Measured jump must stay stable at 2.000 across epsilon=${eps} (got: ${report.maxPhysicalVelocityDiscontinuity})`,
     );
   }
 });
@@ -382,9 +395,9 @@ test("Catmull-Rom C1 Continuity: proves C1 velocity continuity across multi-knot
 
   const evalCatmullRom = (t: number): number => evaluateCatmullRomSpline(knots, t);
 
-  const splineReport = verifyTrajectoryContinuity(evalCatmullRom, [0.5], 1e-4, 0.05);
+  const splineReport = verifyTrajectoryContinuity(evalCatmullRom, [0.5], 2.0, 1e-4, 2.0);
   assert.ok(
     splineReport.isC1Continuous,
-    `Catmull-Rom must be C1 continuous at interior knots (max discontinuity: ${splineReport.maxVelocityDiscontinuity.toFixed(7)})`,
+    `Catmull-Rom must be C1 continuous at interior knots (max discontinuity: ${splineReport.maxPhysicalVelocityDiscontinuity.toFixed(7)} deg/s)`,
   );
 });

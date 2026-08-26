@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" width="400" height="600">
+  <rect width="100%" height="100%" fill="#0A0A0B" />
+  <g id="legs" transform="rotate(0 200 400)">
+    <path d="M160 390 L150 500 L125 525 L165 525 L180 490 L185 390 Z" fill="#0A0A0B" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M240 390 L250 500 L275 525 L235 525 L220 490 L215 390 Z" fill="#0A0A0B" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M120 525 L170 525 L170 535 L120 535 Z" fill="#F5F5F5" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M230 525 L280 525 L280 535 L230 535 Z" fill="#F5F5F5" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="torso" transform="rotate(0 200 320)">
+    <path d="M160 210 L240 210 L240 370 L160 370 Z" fill="#101013" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M190 215 L210 215 L205 285 L195 285 Z" fill="#635BFF" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M130 210 L185 220 L175 420 L120 390 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M270 210 L215 220 L225 420 L280 390 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M180 215 L180 280 L195 280 L195 215 Z" fill="none" stroke="#635BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M175 280 L200 280 L200 305 L175 305 Z" fill="#101013" stroke="#635BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="head" transform="rotate(0 200 160)">
+    <path d="M145 140 Q200 85 255 140 Q260 170 250 190 Q200 210 150 190 Q140 170 145 140 Z" fill="#0A0A0B" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M155 130 Q200 120 245 130 L240 185 Q200 205 160 185 Z" fill="#101013" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M165 145 A 14 14 0 1 0 193 145 A 14 14 0 1 0 165 145 Z" fill="none" stroke="#635BFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M207 145 A 14 14 0 1 0 235 145 A 14 14 0 1 0 207 145 Z" fill="none" stroke="#635BFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M193 145 L207 145" fill="none" stroke="#635BFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M175 145 A 3 3 0 1 0 181 145 A 3 3 0 1 0 175 145 Z" fill="#F5F5F5" stroke="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M217 145 A 3 3 0 1 0 223 145 A 3 3 0 1 0 217 145 Z" fill="#F5F5F5" stroke="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M188 175 Q200 182 212 175" fill="none" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="leftArm" transform="rotate(0 130 220)">
+    <path d="M130 215 L85 300 L115 310 L150 230 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M85 300 L65 375 L90 380 L110 305 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M60 375 Q50 395 70 400 Q80 390 85 375 Z" fill="#8A8A8E" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="rightArm" transform="rotate(0 270 220)">
+    <path d="M270 215 L315 300 L285 310 L250 230 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M315 300 L335 375 L310 380 L290 305 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M340 375 Q350 395 330 400 Q320 390 315 375 Z" fill="#8A8A8E" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+</svg>

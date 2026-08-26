@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" width="400" height="600">
+  <rect width="100%" height="100%" fill="#0A0A0B" />
+  <g id="legs" transform="rotate(0 200 390)">
+    <path d="M160 380 L150 490 L130 520 L170 520 L180 480 L185 380 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M240 380 L250 490 L270 520 L230 520 L220 480 L215 380 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M125 520 L175 520 L175 532 L125 532 Z" fill="#F5F5F5" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M225 520 L275 520 L275 532 L225 532 Z" fill="#F5F5F5" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M145 430 Q165 425 180 430 L178 450 Q165 455 147 450 Z" fill="#8A8A8E" stroke="rgba(245,245,245,0.1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M220 430 Q235 425 255 430 L253 450 Q235 455 222 450 Z" fill="#8A8A8E" stroke="rgba(245,245,245,0.1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="torso" transform="rotate(0 200 280)">
+    <path d="M130 200 L270 200 L275 370 L125 370 Z" fill="#8A8A8E" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M145 195 Q200 185 255 195 L260 385 Q200 395 140 385 Z" fill="#101013" stroke="#F5F5F5" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M170 240 L230 240 L230 295 L170 295 Z" fill="#F5F5F5" stroke="rgba(245,245,245,0.1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M180 255 A8 8 0 1 1 180 271 A8 8 0 1 1 180 255 Z" fill="#635BFF" stroke="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M205 255 A8 8 0 1 1 205 271 A8 8 0 1 1 205 255 Z" fill="#8A8A8E" stroke="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M142 355 L258 355 L257 375 L143 375 Z" fill="#F5F5F5" stroke="rgba(245,245,245,0.1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M185 352 L215 352 L215 378 L185 378 Z" fill="#635BFF" stroke="#F5F5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="head" transform="rotate(0 200 190)">
+    <path d="M135 145 C135 75, 265 75, 265 145 C265 190, 245 205, 200 205 C155 205, 135 190, 135 145 Z" fill="#101013" stroke="#F5F5F5" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M150 190 Q200 180 250 190 L245 208 Q200 216 155 208 Z" fill="#F5F5F5" stroke="rgba(245,245,245,0.1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M152 140 C152 95, 248 95, 248 140 C248 175, 235 182, 200 182 C165 182, 152 175, 152 140 Z" fill="#635BFF" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M165 115 Q190 105 215 110 Q190 118 165 115 Z" fill="#101013" stroke="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="leftArm" transform="rotate(0 145 220)">
+    <path d="M145 205 L105 295 L135 305 L165 220 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M105 295 L80 375 L115 385 L135 305 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M75 365 L120 375 L116 395 L72 385 Z" fill="#F5F5F5" stroke="rgba(245,245,245,0.1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M76 390 C65 405, 80 430, 95 425 C110 420, 115 400, 112 390 Z" fill="#8A8A8E" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="rightArm" transform="rotate(0 255 220)">
+    <path d="M255 205 L295 295 L265 305 L235 220 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M295 295 L320 375 L285 385 L265 305 Z" fill="#101013" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M280 375 L325 365 L328 385 L284 395 Z" fill="#F5F5F5" stroke="rgba(245,245,245,0.1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M288 390 C285 400, 290 420, 305 425 C320 430, 335 405, 324 390 Z" fill="#8A8A8E" stroke="#F5F5F5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+</svg>

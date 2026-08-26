@@ -263,20 +263,18 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
 
             if (jointKnots.length >= 3) {
               const evalSpline = (tQuery: number) => evaluateCatmullRomSpline(jointKnots, tQuery);
-              // Convert physical velocity tolerance (deg/s) to normalized time units by multiplying by shot duration
-              const normalizedVelocityTolerance = MAX_ALLOWED_VELOCITY_DISCONTINUITY_DEG_PER_SEC * Math.max(0.1, shot.dur);
               const continuityReport = verifyTrajectoryContinuity(
                 evalSpline,
                 interiorKnots,
+                shot.dur,
                 1e-4,
-                normalizedVelocityTolerance
+                MAX_ALLOWED_VELOCITY_DISCONTINUITY_DEG_PER_SEC
               );
 
               if (!continuityReport.isC1Continuous) {
                 const badKnot = continuityReport.knots.find((k) => !k.isC1Continuous) || continuityReport.knots[0];
-                const physicalJump = continuityReport.maxVelocityDiscontinuity / Math.max(0.1, shot.dur);
                 throw new Error(
-                  `MOTION_CONTINUITY_VIOLATION: Shot ${sIdx} ("${shot.id}") CharacterBeat joint "${groupId}" has a C0 velocity discontinuity of ${physicalJump.toFixed(2)} deg/s at knot t=${badKnot?.t ?? 0.5} (exceeds physical threshold ${MAX_ALLOWED_VELOCITY_DISCONTINUITY_DEG_PER_SEC} deg/s)`,
+                  `MOTION_CONTINUITY_VIOLATION: Shot ${sIdx} ("${shot.id}") CharacterBeat joint "${groupId}" has a C0 velocity discontinuity of ${badKnot.physicalVelocityDiscontinuity.toFixed(3)} deg/s (raw normalized Δv=${badKnot.rawNormalizedDiscontinuity.toFixed(3)} / shot.dur=${shot.dur.toFixed(1)}s) at knot t=${badKnot.t} (exceeds threshold ${MAX_ALLOWED_VELOCITY_DISCONTINUITY_DEG_PER_SEC} deg/s)`,
                 );
               }
             }
