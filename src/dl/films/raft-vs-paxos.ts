@@ -160,9 +160,16 @@ export const raftVsPaxosFilm: Film = {
       visualDirection: "Token strip showing strong leader log replication across quorum",
       blocks: [
         {
+          c: "TextReveal",
+          text: "Leader Log Quorum Replication",
+          size: "headline",
+          accentWord: "Replication",
+        },
+        {
           c: "TokenStrip",
           tokens: ["Leader", "AppendEntries", "Follower 1", "Follower 2", "Commit"],
-          highlightIndex: 4,
+          lit: [0, 4],
+          caption: "AppendEntries Majority Consensus",
         },
       ],
     },

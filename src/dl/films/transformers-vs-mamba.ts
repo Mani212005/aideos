@@ -166,9 +166,16 @@ export const transformersVsMambaFilm: Film = {
       visualDirection: "Token strip compressing continuous sequence into fixed hidden dimension",
       blocks: [
         {
+          c: "TextReveal",
+          text: "Fixed-Size Recurrent State Space",
+          size: "headline",
+          accentWord: "Recurrent",
+        },
+        {
           c: "TokenStrip",
           tokens: ["x0", "x1", "x2", "x3", "x4", "h_t"],
-          highlightIndex: 5,
+          lit: [5],
+          caption: "Continuous Compression into State h_t",
         },
       ],
     },
