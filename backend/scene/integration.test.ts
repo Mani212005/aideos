@@ -1,8 +1,8 @@
 /**
  * File Description: Comprehensive Integration Test Suite for the Complete Aideos Scene System (§13).
- * Executes the full 10-step lifecycle: NL authoring -> compilation -> frame rendering ->
+ * Executes the full 10-step lifecycle: NL authoring -> compilation -> PNG frame rendering ->
  * natural language critique 1 (retime_action) -> deep-diff locality check -> recompilation ->
- * natural language critique 2 (set_layer) -> render order verification -> C-13 DOM ref stability.
+ * revised PNG frame rendering -> natural language critique 2 (set_layer) -> render order verification -> C-13 DOM ref stability.
  */
 
 import { test } from "node:test";
@@ -14,6 +14,7 @@ import { validateScene } from "../../src/dl/scene/validateScene";
 import { compileScene, type CompiledScene } from "../../src/dl/scene/compile";
 import { authorScene, reviseScene } from "./author";
 import { type PatchOp } from "../../src/dl/scene/patch";
+import { renderFrameStill } from "./renderStill";
 
 const TEST_SVG = path.resolve("test_fixtures/svg/test_prop.svg");
 const OUT_FRAMES_DIR = path.resolve("out/integration");
@@ -40,7 +41,7 @@ function getSceneDifferences(original: Scene, modified: Scene): string[] {
   return diffs;
 }
 
-test("§13 Complete System Integration Test: 10-Step Full Authoring & Revision Lifecycle", async () => {
+test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Rendering & Revision Lifecycle", async () => {
   fs.mkdirSync(OUT_FRAMES_DIR, { recursive: true });
 
   console.log("\n=======================================================");
@@ -141,18 +142,21 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring & Revision L
   assert.ok(diffMs <= 50, `Duration must match audio within ±50ms (got diff: ${diffMs}ms)`);
   console.log(`✓ Step 2 complete: Compiled 120 frames in ${compiled1.meta.compileTimeMs}ms. Max velocity jump: ${compiled1.meta.maxVelocityDiscontinuity.toFixed(4)} deg/s.`);
 
-  // STEP 3: Render initial frames to disk (simulated SVG frame capture)
-  console.log("\n[Step 3] Rendering initial sample frames to disk...");
+  // STEP 3: Render real 1920x1080 PNG frames to disk for human visual inspection
+  console.log("\n[Step 3] Rendering initial 1920x1080 PNG sample frames to disk...");
   const sampleFrames = [0, 45, 80];
   const renderedInitialPaths: string[] = [];
   for (const f of sampleFrames) {
     const frameData = compiled1.frames[f];
-    const frameOutPath = path.join(OUT_FRAMES_DIR, `frame_${f}.json`);
-    fs.writeFileSync(frameOutPath, JSON.stringify(frameData, null, 2));
-    renderedInitialPaths.push(frameOutPath);
-    console.log(`  -> Rendered frame ${f} to ${frameOutPath}`);
+    const frameOutPng = path.join(OUT_FRAMES_DIR, `frame_${f}.png`);
+    renderFrameStill(frameData, frameOutPng);
+    assert.ok(fs.existsSync(frameOutPng), `PNG file must exist: ${frameOutPng}`);
+    const size = fs.statSync(frameOutPng).size;
+    assert.ok(size > 1000, `Rendered PNG must have non-zero size (got ${size} bytes)`);
+    renderedInitialPaths.push(frameOutPng);
+    console.log(`  -> Rendered PNG frame ${f} to ${frameOutPng} (${(size / 1024).toFixed(1)} KB)`);
   }
-  console.log("✓ Step 3 complete: Initial sample frames written to disk.");
+  console.log("✓ Step 3 complete: Initial high-res PNG frames written to disk.");
 
   // STEP 4 & 5: Submit critique 1 ("the third actor should jump one second later") -> expects retime_action
   console.log("\n[Step 4 & 5] Submitting Critique 1: 'the third actor should jump one second later'...");
@@ -192,17 +196,20 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring & Revision L
   assert.equal(compiled2.meta.continuityVerified, true);
   console.log("✓ Step 7 complete: Recompilation clean, continuity verified.");
 
-  // STEP 8: Render revised frames to disk
-  console.log("\n[Step 8] Rendering revised sample frames to disk...");
+  // STEP 8: Render revised 1920x1080 PNG frames to disk
+  console.log("\n[Step 8] Rendering revised 1920x1080 PNG sample frames to disk...");
   const renderedRevisedPaths: string[] = [];
   for (const f of sampleFrames) {
     const frameData = compiled2.frames[f];
-    const frameOutPath = path.join(OUT_FRAMES_DIR, `revised_frame_${f}.json`);
-    fs.writeFileSync(frameOutPath, JSON.stringify(frameData, null, 2));
-    renderedRevisedPaths.push(frameOutPath);
-    console.log(`  -> Rendered revised frame ${f} to ${frameOutPath}`);
+    const frameOutPng = path.join(OUT_FRAMES_DIR, `revised_frame_${f}.png`);
+    renderFrameStill(frameData, frameOutPng);
+    assert.ok(fs.existsSync(frameOutPng), `PNG file must exist: ${frameOutPng}`);
+    const size = fs.statSync(frameOutPng).size;
+    assert.ok(size > 1000, `Rendered revised PNG must have non-zero size (got ${size} bytes)`);
+    renderedRevisedPaths.push(frameOutPng);
+    console.log(`  -> Rendered revised PNG frame ${f} to ${frameOutPng} (${(size / 1024).toFixed(1)} KB)`);
   }
-  console.log("✓ Step 8 complete: Revised sample frames written to disk.");
+  console.log("✓ Step 8 complete: Revised high-res PNG frames written to disk.");
 
   // STEP 9 & 10: Submit critique 2 ("the actor on the left should be in front of the one on the right") -> expects set_layer
   console.log("\n[Step 9 & 10] Submitting Critique 2: 'the actor on the left should be in front of the one on the right'...");
@@ -237,8 +244,8 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring & Revision L
   }
   console.log("✓ Step 9 & 10 complete: 'set_layer' applied, render order verified across all 120 frames.");
 
-  // C-13 DISCHARGE: DOM Node Key Stability & Element Identity Check
-  console.log("\n[C-13 Discharge] Verifying React DOM element key stability across frames...");
+  // C-13 DISCHARGE: DOM Element Key Invariance & Identity Check across Depth Crossing
+  console.log("\n[C-13 Discharge] Verifying React DOM element key stability across depth crossing...");
   const actorIds = ["actor-1-astro", "actor-2-dev", "actor-3-bot", "prop-fan", "bg-stage"];
   for (let f = 0; f < 120; f++) {
     const frame = compiled3.frames[f];
@@ -248,9 +255,9 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring & Revision L
       assert.ok(presentIds.includes(id), `Frame ${f} missing entityId "${id}" for keying`);
     }
   }
-  console.log("✓ C-13 Discharged: 100% stable entity keying verified across depth reordering.");
+  console.log("✓ C-13 Discharged: Stable entity keying verified across 120 depth-reordered frames.");
 
   console.log("\n=======================================================");
-  console.log("=== §13 ALL 10 STEPS PASSED SUCCESSFULLY ===");
+  console.log("=== §13 ALL 10 STEPS PASSED WITH RENDERED PNGS ===");
   console.log("=======================================================\n");
 });
