@@ -1,6 +1,6 @@
 /**
  * File Description: Pure TypeScript vector rig for the Cyber AI Robot character.
- * Features a friendly floating AI companion with glowing accent visor, antenna, and articulated mechanical arms.
+ * Features a friendly floating AI companion with glowing accent visor, articulated antenna, and mechanical arms.
  */
 
 import type { CharacterRig } from "./types";
@@ -9,7 +9,7 @@ import type { CharacterRig } from "./types";
 export const robotRig: CharacterRig = {
   id: "robot",
   name: "Cyber AI Bot",
-  description: "Floating AI companion with glowing visor and articulated limbs",
+  description: "Floating AI companion with glowing visor, spring antenna, and articulated limbs",
   viewBox: "0 0 400 600",
   defaultScale: 1,
   groups: [
@@ -81,20 +81,6 @@ export const robotRig: CharacterRig = {
       parent: "torso",
       pivot: { x: 200, y: 170 },
       paths: [
-        // Antenna Mast
-        {
-          d: "M198 100 L198 70 L202 70 L202 100 Z",
-          fill: "ink",
-          stroke: "ink",
-          strokeWidth: 2,
-        },
-        // Antenna Glowing Beaming Orb
-        {
-          d: "M190 60 A 10 10 0 1 0 210 60 A 10 10 0 1 0 190 60 Z",
-          fill: "accent",
-          stroke: "ink",
-          strokeWidth: 3,
-        },
         // Robot Head Shell
         {
           d: "M130 110 Q200 95 270 110 Q285 195 270 205 Q200 215 130 205 Q115 195 130 110 Z",
@@ -126,6 +112,28 @@ export const robotRig: CharacterRig = {
           d: "M185 174 Q200 182 215 174",
           fill: "none",
           stroke: "accent",
+          strokeWidth: 3,
+        },
+      ],
+    },
+    {
+      id: "antenna",
+      name: "Spring Antenna",
+      parent: "head",
+      pivot: { x: 200, y: 100 },
+      paths: [
+        // Antenna Mast
+        {
+          d: "M198 100 L198 70 L202 70 L202 100 Z",
+          fill: "ink",
+          stroke: "ink",
+          strokeWidth: 2,
+        },
+        // Antenna Glowing Beaming Orb
+        {
+          d: "M190 60 A 10 10 0 1 0 210 60 A 10 10 0 1 0 190 60 Z",
+          fill: "accent",
+          stroke: "ink",
           strokeWidth: 3,
         },
       ],
