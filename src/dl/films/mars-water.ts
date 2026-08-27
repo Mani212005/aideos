@@ -85,8 +85,8 @@ export const marsWaterFilm: Film = {
       dur: 5.97,
       look: "ancient-mars",
       move: "cut",
-      stage: "anchor",
-      visualDirection: "Astro Guide explains the loss of ancient Martian surface water",
+      stage: "frame",
+      visualDirection: "Astro Guide explains ancient Martian warm world vs modern dry surface",
       blocks: [
         {
           c: "TextReveal",
@@ -115,9 +115,16 @@ export const marsWaterFilm: Film = {
       visualDirection: "ScaleBar comparing atmospheric pressure between Earth and Mars",
       blocks: [
         {
+          c: "TextReveal",
+          text: "1% Atmospheric Density on Surface",
+          size: "headline",
+          accentWord: "Density",
+        },
+        {
           c: "ScaleBar",
           ticks: ["0.1%", "1%", "10%", "100%"],
           value: 0.35,
+          label: "Mars vs Earth",
         },
       ],
     },
@@ -125,10 +132,16 @@ export const marsWaterFilm: Film = {
       id: "shot-3",
       dur: 8.12,
       look: "triple-point",
-      move: "cut",
+      move: "pan",
       stage: "anchor",
       visualDirection: "LayerStack depicting thermodynamic pressure regimes below water triple point",
       blocks: [
+        {
+          c: "TextReveal",
+          text: "Pressure Below Water Triple Point",
+          size: "headline",
+          accentWord: "Triple",
+        },
         {
           c: "LayerStack",
           count: 8,
@@ -146,9 +159,16 @@ export const marsWaterFilm: Film = {
       visualDirection: "Token strip showing phase transition directly from solid ice to vapor",
       blocks: [
         {
+          c: "TextReveal",
+          text: "Instant Sublimation into Vapor",
+          size: "headline",
+          accentWord: "Sublimation",
+        },
+        {
           c: "TokenStrip",
-          tokens: ["Ice", "Vapor", "Vapor", "Vapor"],
-          highlightIndex: 1,
+          tokens: ["Solid Ice", "Triple Point", "Water Vapor"],
+          lit: [0, 2],
+          caption: "Direct Solid-to-Gas Transition",
         },
       ],
     },
@@ -157,7 +177,7 @@ export const marsWaterFilm: Film = {
       dur: 5.25,
       look: "reservoirs",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Astro Guide celebrates subsurface ice sheet discoveries",
       blocks: [
         {
