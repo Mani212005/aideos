@@ -89,6 +89,11 @@ export default function App() {
     setUndoStack((prev) => [film, ...prev.slice(0, 19)]);
     setFilm(updated);
     setRegenerateKey((k) => k + 1);
+    fetch(`/api/films/${updated.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ film: updated }),
+    }).catch(() => {});
   };
 
   const handleUndo = () => {
@@ -97,6 +102,11 @@ export default function App() {
     setUndoStack(rest);
     setFilm(previous);
     setRegenerateKey((k) => k + 1);
+    fetch(`/api/films/${previous.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ film: previous }),
+    }).catch(() => {});
   };
 
   // Automatically derive word-level timestamps for the active film's script
