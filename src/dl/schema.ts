@@ -92,8 +92,8 @@ export const metaphorContentSchema = z.discriminatedUnion("kind", [
   }),
   z.object({
     kind: z.literal("typing-cursor-quote"),
-    quoteText: z.string().default("LLMs are a dead end that will never reach real intelligence."),
-    stampText: z.string().default("Yann LeCun Stamp: APPROVED"),
+    quoteText: z.string().default("Architecture Quote / Key Statement"),
+    stampText: z.string().default("VERIFIED / APPROVED"),
   }),
   z.object({
     kind: z.literal("glowing-cluster"),

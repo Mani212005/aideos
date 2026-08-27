@@ -259,6 +259,53 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
           }
         }
       }
+
+      // 6. Visual Metaphor data-driven content & kind integrity (Rules M1, M2, M3)
+      if (block.c === "MetaphorViewer") {
+        if (!block.content) {
+          throw new Error(
+            `METAPHOR_MISSING_CONTENT: Shot ${sIdx} ("${shot.id}") MetaphorViewer block ${bIdx} must carry a valid content payload (Rule M1)`,
+          );
+        }
+
+        const validKinds = [
+          "spider-web",
+          "liquid-bucket",
+          "balance-scale",
+          "clock-gears",
+          "character-throw",
+          "typing-cursor-quote",
+          "glowing-cluster",
+          "custom",
+        ];
+        if (!validKinds.includes(block.content.kind)) {
+          throw new Error(
+            `METAPHOR_INVALID_KIND: Shot ${sIdx} ("${shot.id}") MetaphorViewer content has invalid kind "${block.content.kind}" (Rule M1)`,
+          );
+        }
+
+        // Rule M2: Required label fields must be non-empty strings
+        if (block.content.kind === "balance-scale") {
+          if (!block.content.leftLabel?.trim() || !block.content.rightLabel?.trim()) {
+            throw new Error(
+              `METAPHOR_EMPTY_LABEL: Shot ${sIdx} ("${shot.id}") balance-scale must provide non-empty leftLabel and rightLabel (Rule M2)`,
+            );
+          }
+        } else if (block.content.kind === "liquid-bucket") {
+          if (!block.content.levelLabel?.trim()) {
+            throw new Error(
+              `METAPHOR_EMPTY_LABEL: Shot ${sIdx} ("${shot.id}") liquid-bucket must provide non-empty levelLabel (Rule M2)`,
+            );
+          }
+        }
+
+        // Rule M3: Kind in content must match shot's metaphor field when present
+        if (shot.metaphor && shot.metaphor !== block.content.kind) {
+          throw new Error(
+            `METAPHOR_KIND_MISMATCH: Shot ${sIdx} ("${shot.id}") metaphor field is "${shot.metaphor}" but MetaphorViewer block content.kind is "${block.content.kind}" (Rule M3)`,
+          );
+        }
+      }
     }
   }
 

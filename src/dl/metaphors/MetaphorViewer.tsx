@@ -611,8 +611,8 @@ export const TypingCursorQuoteAnimation: React.FC<{
 }> = ({
   frame,
   accent,
-  quoteText = "LLMs are a dead end that will never reach real intelligence.",
-  stampText = "Yann LeCun Stamp: APPROVED",
+  quoteText = "Key Architectural Thesis & Statement",
+  stampText = "VERIFIED",
 }) => {
   const typedCount = Math.min(quoteText.length, Math.floor(frame * 0.8));
   const currentText = quoteText.slice(0, typedCount);

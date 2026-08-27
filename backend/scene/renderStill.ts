@@ -32,16 +32,21 @@ export function renderFrameStill(frame: CompiledFrame, outputPath: string): stri
   // 2. Rasterize SVG to bit-perfect 1920x1080 PNG via Google Chrome Headless
   const chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
   if (fs.existsSync(chromePath)) {
+    const tmpProfile = path.join("/tmp", `chrome_aideos_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
     try {
       execSync(
-        `"${chromePath}" --headless --disable-gpu --screenshot="${absOutputPath}" --window-size=1920,1080 "${tmpSvgPath}" 2>/dev/null`,
-        { stdio: "ignore" },
+        `"${chromePath}" --headless=new --disable-gpu --no-first-run --no-default-browser-check --user-data-dir="${tmpProfile}" --screenshot="${absOutputPath}" --window-size=1920,1080 "${tmpSvgPath}" 2>/dev/null`,
+        { stdio: "ignore", timeout: 6000 },
       );
-      if (fs.existsSync(absOutputPath)) {
-        return absOutputPath;
-      }
     } catch {
-      // Fallback
+      // Chrome failed or timed out, continue to fallback
+    } finally {
+      if (fs.existsSync(tmpProfile)) {
+        fs.rmSync(tmpProfile, { recursive: true, force: true });
+      }
+    }
+    if (fs.existsSync(absOutputPath)) {
+      return absOutputPath;
     }
   }
 

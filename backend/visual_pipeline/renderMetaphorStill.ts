@@ -125,17 +125,33 @@ export function renderMetaphorStill(
 
   const chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
   if (fs.existsSync(chromePath)) {
+    const tmpProfile = path.join("/tmp", `chrome_metaphor_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
     try {
       execSync(
-        `"${chromePath}" --headless --disable-gpu --screenshot="${absOutputPath}" --window-size=${viewport.width},${viewport.height} "${tmpHtmlPath}" 2>/dev/null`,
-        { stdio: "ignore" }
+        `"${chromePath}" --headless=new --disable-gpu --no-first-run --no-default-browser-check --user-data-dir="${tmpProfile}" --screenshot="${absOutputPath}" --window-size=${viewport.width},${viewport.height} "${tmpHtmlPath}" 2>/dev/null`,
+        { stdio: "ignore", timeout: 6000 }
       );
-      if (fs.existsSync(absOutputPath)) {
-        return absOutputPath;
-      }
     } catch {
-      // Fallback
+      // Chrome failed or timed out
+    } finally {
+      if (fs.existsSync(tmpProfile)) {
+        fs.rmSync(tmpProfile, { recursive: true, force: true });
+      }
     }
+    if (fs.existsSync(absOutputPath)) {
+      return absOutputPath;
+    }
+  }
+
+  // Fallback: QuickLook
+  try {
+    execSync(`qlmanage -t -s 1920 -o "${absOutputDir}" "${tmpHtmlPath}" 2>/dev/null`, { stdio: "ignore", timeout: 4000 });
+    const qlPng = path.join(absOutputDir, `${baseName}.html.png`);
+    if (fs.existsSync(qlPng)) {
+      fs.renameSync(qlPng, absOutputPath);
+    }
+  } catch {
+    // Ignore fallback errors
   }
 
   return absOutputPath;
