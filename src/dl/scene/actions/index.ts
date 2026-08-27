@@ -1,9 +1,17 @@
 /**
  * File Description: Action registry and action definition interface for the Aideos Motion Vocabulary.
- * Exposes action lookup and affected joint mappings for validation and compilation.
+ * Exposes action definitions, lookup helpers, and affected joint mappings for validation and compilation.
  */
 
 import type { ScheduledAction } from "../types";
+import { idleAction } from "./idle";
+import { walkAction } from "./walk";
+import { waveAction } from "./wave";
+import { pointAction } from "./point";
+import { jumpAction } from "./jump";
+import { crouchAction } from "./crouch";
+import { turnAction } from "./turn";
+import { reachAction } from "./reach";
 
 export interface ActionParams {
   durationFrames: number; // integer > 0
@@ -18,41 +26,70 @@ export interface ActionDefinition {
   generate(params: ActionParams): Record<string, Array<{ t: number; value: number }>>;
 }
 
+export { idleAction } from "./idle";
+export { walkAction } from "./walk";
+export { waveAction } from "./wave";
+export { pointAction } from "./point";
+export { jumpAction } from "./jump";
+export { crouchAction } from "./crouch";
+export { turnAction } from "./turn";
+export { reachAction } from "./reach";
+
+/** Complete registry map of the 8 standard motion actions. */
+export const ACTION_REGISTRY: Record<string, ActionDefinition> = {
+  idle: idleAction,
+  walk: walkAction,
+  wave: waveAction,
+  point: pointAction,
+  jump: jumpAction,
+  crouch: crouchAction,
+  turn: turnAction,
+  reach: reachAction,
+};
+
 /** Static metadata describing the 8 standard actions and their affected joints. */
-export const ACTION_METADATA: Record<string, { description: string; affectedJoints: (side?: "left" | "right") => string[] }> = {
+export const ACTION_METADATA: Record<
+  string,
+  { description: string; affectedJoints: (side?: "left" | "right") => string[] }
+> = {
   idle: {
-    description: "Rest posture with minimal breathing sway",
+    description: idleAction.description,
     affectedJoints: () => ["torso", "head"],
   },
   walk: {
-    description: "Cyclic leg and arm swing; loops if duration exceeds one cycle",
+    description: walkAction.description,
     affectedJoints: () => ["legs", "leftArm", "rightArm", "torso"],
   },
   wave: {
-    description: "Raise one arm and oscillate",
+    description: waveAction.description,
     affectedJoints: (side = "right") => [side === "left" ? "leftArm" : "rightArm"],
   },
   point: {
-    description: "Extend one arm toward a direction",
+    description: pointAction.description,
     affectedJoints: (side = "right") => [side === "left" ? "leftArm" : "rightArm", "torso", "head"],
   },
   jump: {
-    description: "Crouch, extend, land",
+    description: jumpAction.description,
     affectedJoints: () => ["legs", "torso", "leftArm", "rightArm"],
   },
   crouch: {
-    description: "Lower torso, bend legs, hold",
+    description: crouchAction.description,
     affectedJoints: () => ["legs", "torso"],
   },
   turn: {
-    description: "Rotate torso and head to face the other direction",
+    description: turnAction.description,
     affectedJoints: () => ["torso", "head"],
   },
   reach: {
-    description: "Extend one arm upward and forward",
+    description: reachAction.description,
     affectedJoints: (side = "right") => [side === "left" ? "leftArm" : "rightArm", "torso"],
   },
 };
+
+/** Returns the ActionDefinition for a given action ID or null if not found. */
+export function getActionDefinition(actionId: string): ActionDefinition | null {
+  return ACTION_REGISTRY[actionId] ?? null;
+}
 
 /** Returns the list of affected joint IDs for an action invocation. */
 export function getAffectedJointsForAction(action: ScheduledAction): string[] {

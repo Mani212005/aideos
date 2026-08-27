@@ -378,3 +378,29 @@ test("S-8: Scale warning W1 produces warning and ZERO errors for outlier scale",
   assert.equal(res.warnings[0].warningId, "W1_SCALE_DEVIATION");
   assert.equal(res.warnings[0].entityId, "actor-giant");
 });
+
+test("W1 Confirmation: Single-actor scene produces exactly ZERO warnings (median equals own scale)", () => {
+  const scene = makeValidScene();
+  scene.actors = [
+    {
+      instanceId: "actor-solo",
+      rigId: "astronaut",
+      position: { x: 960, y: 540 },
+      scale: 2.5, // Extreme close-up solo shot
+      facing: "right",
+    },
+  ];
+  const res = validateScene(scene);
+  assert.equal(res.isValid, true);
+  assert.equal(res.errors.length, 0);
+  assert.equal(res.warnings.length, 0, "Solo actor should produce 0 warnings regardless of absolute scale");
+});
+
+test("Rule 5 Confirmation: Absent layer is valid and permits D5 derived layer resolution", () => {
+  const scene = makeValidScene();
+  delete scene.actors[0].layer;
+  delete scene.props[0].layer;
+  const res = validateScene(scene);
+  assert.equal(res.isValid, true);
+  assert.equal(res.errors.length, 0);
+});
