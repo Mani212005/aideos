@@ -1,6 +1,6 @@
 /**
  * File Description: Comprehensive Integration Test Suite for the Complete Aideos Scene System (§13).
- * Executes the full 10-step lifecycle: NL authoring -> compilation -> PNG frame rendering ->
+ * Executes the full 10-step lifecycle: NL authoring -> compilation -> pristine 1920x1080 PNG frame rendering ->
  * natural language critique 1 (retime_action) -> deep-diff locality check -> recompilation ->
  * revised PNG frame rendering -> natural language critique 2 (set_layer) -> render order verification -> C-13 DOM ref stability.
  */
@@ -16,7 +16,7 @@ import { authorScene, reviseScene } from "./author";
 import { type PatchOp } from "../../src/dl/scene/patch";
 import { renderFrameStill } from "./renderStill";
 
-const TEST_SVG = path.resolve("test_fixtures/svg/test_prop.svg");
+const STAGE_SVG = path.resolve("test_fixtures/svg/stage_and_prop.svg");
 const OUT_FRAMES_DIR = path.resolve("out/integration");
 
 // Deep diff helper
@@ -50,7 +50,7 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Renderi
 
   // STEP 1: Author scene from natural-language prompt
   console.log("\n[Step 1] Authoring scene from natural-language prompt...");
-  const userPrompt = "A stage with Astro Guide on the left walking, Tech Architect in center waving, and Cyber AI Bot on the right jumping";
+  const userPrompt = "A stage with Astro Guide on the left walking, Tech Architect in center waving then pointing, and Cyber AI Bot on the right jumping";
   const audioContext = {
     audioSource: "audio/integration_voiceover.wav",
     audioDurationMs: 4000, // 4.0s
@@ -68,7 +68,7 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Renderi
       sceneSize: { w: 1920, h: 1080 },
       background: {
         assetId: "bg-stage",
-        svgSource: TEST_SVG,
+        svgSource: STAGE_SVG,
         layer: 0,
         position: { x: 0, y: 0 },
         scale: 1.0,
@@ -78,16 +78,16 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Renderi
       props: [
         {
           assetId: "prop-fan",
-          svgSource: TEST_SVG,
-          position: { x: 960, y: 200 },
+          svgSource: STAGE_SVG,
+          position: { x: 960, y: 180 },
           scale: 1.0,
           rotation: 0,
           opacity: 1.0,
           subGroups: [
             {
               elementId: "wheel-front",
-              pivot: { x: 100, y: 100 },
-              degreesPerSecond: 360, // D1 rotating sub-group
+              pivot: { x: 0, y: 0 },
+              degreesPerSecond: 360, // D1 rotating fan subgroup
             },
           ],
         },
@@ -96,11 +96,12 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Renderi
         {
           instanceId: "actor-1-astro",
           rigId: "astronaut",
-          position: { x: 400, y: 600 },
+          position: { x: 420, y: 600 },
           scale: 1.0,
           facing: "right",
           actions: [
             { actionId: "walk", startFrame: 0, durationFrames: 60, intensity: 1.0 },
+            { actionId: "idle", startFrame: 60, durationFrames: 60, intensity: 1.0 },
           ],
         },
         {
@@ -111,16 +112,18 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Renderi
           facing: "right",
           actions: [
             { actionId: "wave", startFrame: 15, durationFrames: 45, intensity: 1.0, side: "right" },
+            { actionId: "point", startFrame: 60, durationFrames: 60, intensity: 1.0, side: "right" },
           ],
         },
         {
           instanceId: "actor-3-bot",
           rigId: "robot",
-          position: { x: 1500, y: 600 },
+          position: { x: 1480, y: 600 },
           scale: 0.8,
           facing: "left",
           actions: [
             { actionId: "jump", startFrame: 20, durationFrames: 40, intensity: 1.0 },
+            { actionId: "idle", startFrame: 60, durationFrames: 60, intensity: 1.0 },
           ],
         },
       ],
@@ -131,7 +134,7 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Renderi
   const initialScene = await authorScene(userPrompt, audioContext, mockAuthorLlm);
   const val1 = validateScene(initialScene);
   assert.equal(val1.isValid, true, "Authored scene must pass validation with 0 errors");
-  console.log("✓ Step 1 complete: Scene authored and validated (3 actors, 1 prop with D1 subgroup, 120 frames).");
+  console.log("✓ Step 1 complete: Scene authored and validated (3 actors on-canvas, 1 prop with D1 rotating fan, 120 frames).");
 
   // STEP 2: Compile & assert continuity and audio invariant
   console.log("\n[Step 2] Compiling initial scene...");
@@ -156,7 +159,7 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Renderi
     renderedInitialPaths.push(frameOutPng);
     console.log(`  -> Rendered PNG frame ${f} to ${frameOutPng} (${(size / 1024).toFixed(1)} KB)`);
   }
-  console.log("✓ Step 3 complete: Initial high-res PNG frames written to disk.");
+  console.log("✓ Step 3 complete: Initial 1920x1080 PNG frames written to disk.");
 
   // STEP 4 & 5: Submit critique 1 ("the third actor should jump one second later") -> expects retime_action
   console.log("\n[Step 4 & 5] Submitting Critique 1: 'the third actor should jump one second later'...");
@@ -209,7 +212,7 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Renderi
     renderedRevisedPaths.push(frameOutPng);
     console.log(`  -> Rendered revised PNG frame ${f} to ${frameOutPng} (${(size / 1024).toFixed(1)} KB)`);
   }
-  console.log("✓ Step 8 complete: Revised high-res PNG frames written to disk.");
+  console.log("✓ Step 8 complete: Revised 1920x1080 PNG frames written to disk.");
 
   // STEP 9 & 10: Submit critique 2 ("the actor on the left should be in front of the one on the right") -> expects set_layer
   console.log("\n[Step 9 & 10] Submitting Critique 2: 'the actor on the left should be in front of the one on the right'...");
@@ -258,6 +261,6 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Renderi
   console.log("✓ C-13 Discharged: Stable entity keying verified across 120 depth-reordered frames.");
 
   console.log("\n=======================================================");
-  console.log("=== §13 ALL 10 STEPS PASSED WITH RENDERED PNGS ===");
+  console.log("=== §13 ALL 10 STEPS PASSED WITH 1920x1080 PNGS ===");
   console.log("=======================================================\n");
 });

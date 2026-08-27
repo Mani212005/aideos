@@ -274,6 +274,22 @@ export function validateScene(scene: Scene): ValidationResult {
         });
       }
 
+      // Rule 19: Actor position falls within sceneSize bounds
+      if (scene.sceneSize && actor.position) {
+        if (
+          actor.position.x < 0 ||
+          actor.position.x > scene.sceneSize.w ||
+          actor.position.y < 0 ||
+          actor.position.y > scene.sceneSize.h
+        ) {
+          errors.push({
+            rule: 19,
+            entityId: actor.instanceId,
+            message: `Actor "${actor.instanceId}" position (${actor.position.x}, ${actor.position.y}) is out of canvas bounds [0..${scene.sceneSize.w}, 0..${scene.sceneSize.h}]`,
+          });
+        }
+      }
+
       // Rule 7: Every key in jointTracks resolves to CharacterGroup.id
       if (actor.jointTracks && rig) {
         const validGroupIds = new Set(rig.groups.map((g) => g.id));

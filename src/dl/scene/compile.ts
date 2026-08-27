@@ -24,6 +24,8 @@ export interface CompiledEntityTransform {
 export interface CompiledEntity {
   entityId: string;
   kind: "actor" | "prop" | "background";
+  rigId?: string;
+  svgSource?: string;
   resolvedLayer: number;
   layerSource: "explicit" | "derived";
   transform: CompiledEntityTransform;
@@ -454,6 +456,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
       entitiesAtFrame.push({
         entityId: scene.background.assetId,
         kind: "background",
+        svgSource: scene.background.svgSource,
         resolvedLayer,
         layerSource: hasExplicit ? "explicit" : "derived",
         transform: {
@@ -481,6 +484,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
         entitiesAtFrame.push({
           entityId: prop.assetId,
           kind: "prop",
+          svgSource: prop.svgSource,
           resolvedLayer,
           layerSource: hasExplicit ? "explicit" : "derived",
           transform: {
@@ -549,6 +553,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
       entitiesAtFrame.push({
         entityId: actor.instanceId,
         kind: "actor",
+        rigId: actor.rigId,
         resolvedLayer,
         layerSource: hasExplicit ? "explicit" : "derived",
         transform: {

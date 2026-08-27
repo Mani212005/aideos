@@ -1,6 +1,7 @@
 /**
  * File Description: Pure TypeScript vector rig for the Astro Guide character.
- * Features an illustrated space explorer suit with helmet visor accent and modular 2-level skeletal joints.
+ * Features an illustrated space explorer suit with helmet visor accent, seamless limb silhouettes,
+ * and calibrated skeletal joint pivots.
  */
 
 import type { CharacterRig } from "./types";
@@ -45,15 +46,16 @@ export const astronautRig: CharacterRig = {
           stroke: "ink",
           strokeWidth: 2,
         },
-        // Knee patches
+        // Left Knee patch
         {
-          d: "M145 430 Q165 425 180 430 L178 450 Q165 455 147 450 Z",
+          d: "M148 435 Q165 430 180 435 L178 452 Q165 456 150 452 Z",
           fill: "muted",
           stroke: "hairline",
           strokeWidth: 2,
         },
+        // Right Knee patch
         {
-          d: "M220 430 Q235 425 255 430 L253 450 Q235 455 222 450 Z",
+          d: "M220 435 Q235 430 252 435 L250 452 Q235 456 222 452 Z",
           fill: "muted",
           stroke: "hairline",
           strokeWidth: 2,
@@ -152,16 +154,9 @@ export const astronautRig: CharacterRig = {
       parent: "torso",
       pivot: { x: 145, y: 220 },
       paths: [
-        // Upper Arm
+        // Seamless Upper Arm & Forearm Limb Path
         {
-          d: "M145 205 L105 295 L135 305 L165 220 Z",
-          fill: "surface",
-          stroke: "ink",
-          strokeWidth: 4,
-        },
-        // Forearm & Glove
-        {
-          d: "M105 295 L80 375 L115 385 L135 305 Z",
+          d: "M145 205 L105 295 L80 375 L115 385 L135 305 L165 220 Z",
           fill: "surface",
           stroke: "ink",
           strokeWidth: 4,
@@ -188,16 +183,9 @@ export const astronautRig: CharacterRig = {
       parent: "torso",
       pivot: { x: 255, y: 220 },
       paths: [
-        // Upper Arm
+        // Seamless Upper Arm & Forearm Limb Path
         {
-          d: "M255 205 L295 295 L265 305 L235 220 Z",
-          fill: "surface",
-          stroke: "ink",
-          strokeWidth: 4,
-        },
-        // Forearm & Glove
-        {
-          d: "M295 295 L320 375 L285 385 L265 305 Z",
+          d: "M255 205 L295 295 L320 375 L285 385 L265 305 L235 220 Z",
           fill: "surface",
           stroke: "ink",
           strokeWidth: 4,

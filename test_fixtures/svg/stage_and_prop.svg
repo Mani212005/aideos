@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <!-- Warm Stage Canvas Background -->
+  <rect width="100%" height="100%" fill="#0A0A0B" />
+  
+  <!-- Subtle Grid & Stage Floor Lines -->
+  <line x1="100" y1="850" x2="1820" y2="850" stroke="rgba(245,245,245,0.15)" stroke-width="3" stroke-linecap="round" />
+  <line x1="200" y1="880" x2="1720" y2="880" stroke="rgba(245,245,245,0.08)" stroke-width="2" stroke-linecap="round" />
+  <ellipse cx="960" cy="850" rx="800" ry="120" fill="none" stroke="rgba(99,91,255,0.12)" stroke-width="2" />
+
+  <!-- Overhead Spotlight Cone -->
+  <polygon points="960,0 300,850 1620,850" fill="rgba(255,255,255,0.02)" />
+
+  <!-- Center Stage Turbine / Rotating Prop Hub -->
+  <g id="prop-hub" transform="translate(960, 180)">
+    <rect x="-4" y="-180" width="8" height="180" fill="#8A8A8E" />
+    <circle cx="0" cy="0" r="35" fill="#101013" stroke="#F5F5F5" stroke-width="4" />
+    <circle cx="0" cy="0" r="14" fill="#635BFF" />
+    
+    <!-- Rotating 3-Blade Subgroup (id="wheel-front") -->
+    <g id="wheel-front">
+      <!-- Blade 1 -->
+      <path d="M0 -15 L15 -70 Q0 -90 -15 -70 Z" fill="#635BFF" stroke="#F5F5F5" stroke-width="2" />
+      <!-- Blade 2 (120 deg) -->
+      <path d="M0 -15 L15 -70 Q0 -90 -15 -70 Z" transform="rotate(120)" fill="#635BFF" stroke="#F5F5F5" stroke-width="2" />
+      <!-- Blade 3 (240 deg) -->
+      <path d="M0 -15 L15 -70 Q0 -90 -15 -70 Z" transform="rotate(240)" fill="#635BFF" stroke="#F5F5F5" stroke-width="2" />
+    </g>
+  </g>
+</svg>
