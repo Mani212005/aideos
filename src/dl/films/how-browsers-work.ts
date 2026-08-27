@@ -85,7 +85,7 @@ export const howBrowsersWorkFilm: Film = {
       dur: 6.44,
       look: "browser-entry",
       move: "cut",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Academic Tutor introduces the intricate journey of typing a URL",
       blocks: [
         {
@@ -114,9 +114,16 @@ export const howBrowsersWorkFilm: Film = {
       visualDirection: "Token strip showing local cache to recursive DNS resolution",
       blocks: [
         {
+          c: "TextReveal",
+          text: "Recursive DNS Resolution Hierarchy",
+          size: "headline",
+          accentWord: "Resolution",
+        },
+        {
           c: "TokenStrip",
-          tokens: ["Browser", "OS Cache", "Resolver", "Root DNS", "IP Found"],
-          highlightIndex: 4,
+          tokens: ["OS Cache", "Resolver", "Root DNS", "IP Found"],
+          lit: [0, 3],
+          caption: "Querying Recursive DNS Nameservers",
         },
       ],
     },
@@ -124,14 +131,21 @@ export const howBrowsersWorkFilm: Film = {
       id: "shot-3",
       dur: 6.1,
       look: "tls-handshake",
-      move: "cut",
+      move: "pan",
       stage: "anchor",
       visualDirection: "ScaleBar demonstrating 50ms TLS connection negotiation",
       blocks: [
         {
+          c: "TextReveal",
+          text: "50ms TCP and TLS Handshake",
+          size: "headline",
+          accentWord: "Handshake",
+        },
+        {
           c: "ScaleBar",
           ticks: ["10ms", "30ms", "50ms", "100ms"],
           value: 0.45,
+          label: "Connection Latency",
         },
       ],
     },
@@ -144,10 +158,16 @@ export const howBrowsersWorkFilm: Film = {
       visualDirection: "LayerStack showing edge proxy load balancing request to cluster",
       blocks: [
         {
+          c: "TextReveal",
+          text: "Edge Reverse Proxy Load Balancing",
+          size: "headline",
+          accentWord: "Balancing",
+        },
+        {
           c: "LayerStack",
           count: 8,
           bottomLabel: "Edge Reverse Proxy",
-          topLabel: "Backend Server Pods",
+          topLabel: "Backend Clusters",
         },
       ],
     },
@@ -156,7 +176,7 @@ export const howBrowsersWorkFilm: Film = {
       dur: 8.2,
       look: "dom-render",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Academic Tutor celebrates 60 FPS HTML DOM parsing and paint",
       blocks: [
         {
