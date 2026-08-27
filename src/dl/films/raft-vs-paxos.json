@@ -1,63 +1,63 @@
 {
-  "id": "mars-water",
-  "title": "Why Liquid Water Can't Exist on Mars",
+  "id": "raft-vs-paxos",
+  "title": "Distributed Consensus: Raft vs. Paxos",
   "fps": 30,
-  "accent": "#FF6B00",
+  "accent": "#635BFF",
   "theme": {
     "background": "smooth-dark",
     "fontFamily": "geist",
     "storyStyle": "script-metaphor",
     "cameraAngle": "isometric",
-    "accent": "#FF6B00"
+    "accent": "#635BFF"
   },
   "audio": {
     "src": "voiceover.wav",
     "ducking": true
   },
   "chapters": [
-    "Ancient Oceans",
-    "Thin Atmosphere",
-    "The Triple Point Trap",
-    "Sublimation",
-    "Underground Reservoirs"
+    "Consensus in Networks",
+    "Paxos Complexity",
+    "Raft Decomposed Subproblems",
+    "Leader Log Quorum",
+    "Cloud Infrastructure Payoff"
   ],
   "canvas": {
     "nodes": [
       {
-        "id": "ancient-mars",
-        "label": "Ancient Wet Mars",
+        "id": "consensus-problem",
+        "label": "State Consistency",
         "x": -400,
         "y": -150,
         "w": 260,
         "h": 90
       },
       {
-        "id": "thin-air",
-        "label": "1% Atmosphere",
+        "id": "paxos-matrix",
+        "label": "Dual-Phase Paxos",
         "x": 400,
         "y": -150,
         "w": 260,
         "h": 90
       },
       {
-        "id": "triple-point",
-        "label": "Thermodynamic Triple Point",
+        "id": "raft-engine",
+        "label": "Raft State Decomposition",
         "x": 400,
         "y": 200,
         "w": 280,
         "h": 90
       },
       {
-        "id": "sublimation",
-        "label": "Instant Sublimation",
+        "id": "quorum-log",
+        "label": "Leader Quorum Replication",
         "x": -400,
         "y": 200,
         "w": 260,
         "h": 90
       },
       {
-        "id": "reservoirs",
-        "label": "Subsurface Ice Sheets",
+        "id": "k8s-payoff",
+        "label": "etcd & Kubernetes Backbone",
         "x": 0,
         "y": 380,
         "w": 280,
@@ -66,23 +66,23 @@
     ],
     "edges": [
       {
-        "from": "ancient-mars",
-        "to": "thin-air",
+        "from": "consensus-problem",
+        "to": "paxos-matrix",
         "dashed": false
       },
       {
-        "from": "thin-air",
-        "to": "triple-point",
+        "from": "paxos-matrix",
+        "to": "raft-engine",
         "dashed": false
       },
       {
-        "from": "triple-point",
-        "to": "sublimation",
+        "from": "raft-engine",
+        "to": "quorum-log",
         "dashed": false
       },
       {
-        "from": "sublimation",
-        "to": "reservoirs",
+        "from": "quorum-log",
+        "to": "k8s-payoff",
         "dashed": true
       }
     ]
@@ -90,21 +90,21 @@
   "shots": [
     {
       "id": "shot-1",
-      "dur": 5.97,
-      "look": "ancient-mars",
+      "dur": 5.58,
+      "look": "consensus-problem",
       "move": "cut",
-      "stage": "frame",
-      "visualDirection": "Astro Guide explains ancient Martian warm world vs modern dry surface",
+      "stage": "anchor",
+      "visualDirection": "Tech Founder explains distributed consistency across unreliable nodes",
       "blocks": [
         {
           "c": "TextReveal",
-          "text": "Why Mars Has No Liquid Water",
+          "text": "Consensus in Distributed Systems",
           "size": "headline",
-          "accentWord": "Water"
+          "accentWord": "Consensus"
         },
         {
           "c": "CharacterBeat",
-          "characterId": "astronaut",
+          "characterId": "executive",
           "poses": [
             {
               "t": 0,
@@ -124,27 +124,13 @@
               "t": 0.4,
               "groups": {
                 "torso": {
-                  "rotate": -3
+                  "rotate": 3
                 },
                 "rightArm": {
-                  "rotate": -70
+                  "rotate": -65
                 },
                 "leftArm": {
-                  "rotate": 0
-                }
-              }
-            },
-            {
-              "t": 0.8,
-              "groups": {
-                "torso": {
-                  "rotate": 2
-                },
-                "rightArm": {
-                  "rotate": -25
-                },
-                "leftArm": {
-                  "rotate": 10
+                  "rotate": -10
                 }
               }
             },
@@ -168,99 +154,147 @@
     },
     {
       "id": "shot-2",
-      "dur": 5.16,
-      "look": "thin-air",
+      "dur": 8.04,
+      "look": "paxos-matrix",
       "move": "pan",
       "stage": "anchor",
-      "visualDirection": "ScaleBar comparing atmospheric pressure between Earth and Mars",
+      "visualDirection": "Matrix showing multi-phase Paxos messaging complexity",
       "blocks": [
         {
-          "c": "TextReveal",
-          "text": "1% Atmospheric Density on Surface",
-          "size": "headline",
-          "accentWord": "Density"
-        },
-        {
-          "c": "ScaleBar",
-          "ticks": [
-            "0.1%",
-            "1%",
-            "10%",
-            "100%"
+          "c": "MatrixGrid",
+          "values": [
+            [
+              0.2,
+              0.4,
+              0.6,
+              0.8
+            ],
+            [
+              0.5,
+              0.9,
+              0.3,
+              0.7
+            ],
+            [
+              0.8,
+              0.2,
+              0.9,
+              0.4
+            ],
+            [
+              0.3,
+              0.7,
+              0.5,
+              0.9
+            ]
           ],
-          "value": 0.35,
-          "label": "Mars vs Earth"
+          "rowLabel": "Proposers",
+          "colLabel": "Acceptors"
         }
       ]
     },
     {
       "id": "shot-3",
-      "dur": 8.12,
-      "look": "triple-point",
-      "move": "pan",
+      "dur": 6.86,
+      "look": "raft-engine",
+      "move": "cut",
       "stage": "anchor",
-      "visualDirection": "LayerStack depicting thermodynamic pressure regimes below water triple point",
+      "visualDirection": "Tech Architect explains Raft 3 decomposed subproblems",
       "blocks": [
         {
           "c": "TextReveal",
-          "text": "Pressure Below Water Triple Point",
+          "text": "Raft: Understandable Consensus",
           "size": "headline",
-          "accentWord": "Triple"
+          "accentWord": "Understandable"
         },
         {
-          "c": "LayerStack",
-          "count": 8,
-          "bottomLabel": "Mars Pressure (610 Pa)",
-          "topLabel": "Earth Triple Point"
+          "c": "CharacterBeat",
+          "characterId": "developer",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": -20
+                },
+                "head": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.4,
+              "groups": {
+                "torso": {
+                  "rotate": -4
+                },
+                "rightArm": {
+                  "rotate": -75
+                },
+                "head": {
+                  "rotate": 6
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
         }
       ]
     },
     {
       "id": "shot-4",
-      "dur": 4.22,
-      "look": "sublimation",
+      "dur": 5.69,
+      "look": "quorum-log",
       "move": "pan",
       "stage": "anchor",
-      "visualDirection": "Token strip showing phase transition directly from solid ice to vapor",
+      "visualDirection": "Token strip showing strong leader log replication across quorum",
       "blocks": [
-        {
-          "c": "TextReveal",
-          "text": "Instant Sublimation into Vapor",
-          "size": "headline",
-          "accentWord": "Sublimation"
-        },
         {
           "c": "TokenStrip",
           "tokens": [
-            "Solid Ice",
-            "Triple Point",
-            "Water Vapor"
+            "Leader",
+            "AppendEntries",
+            "Follower 1",
+            "Follower 2",
+            "Commit"
           ],
-          "lit": [
-            0,
-            2
-          ],
-          "caption": "Direct Solid-to-Gas Transition"
+          "highlightIndex": 4
         }
       ]
     },
     {
       "id": "shot-5",
-      "dur": 5.25,
-      "look": "reservoirs",
+      "dur": 7.42,
+      "look": "k8s-payoff",
       "move": "pan",
-      "stage": "frame",
-      "visualDirection": "Astro Guide celebrates subsurface ice sheet discoveries",
+      "stage": "anchor",
+      "visualDirection": "Tech Founder celebrates Raft powering etcd and Kubernetes infrastructure",
       "blocks": [
         {
           "c": "TextReveal",
-          "text": "Subsurface Ice Sheets Discovered",
+          "text": "Powers etcd & Kubernetes Globally",
           "size": "headline",
-          "accentWord": "Ice"
+          "accentWord": "Kubernetes"
         },
         {
           "c": "CharacterBeat",
-          "characterId": "astronaut",
+          "characterId": "executive",
           "poses": [
             {
               "t": 0,
