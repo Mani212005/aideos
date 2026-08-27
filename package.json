@@ -49,7 +49,7 @@
     "studio": "remotion studio",
     "editor": "cd editor && npm run dev",
     "validate": "node scripts/validate.mjs",
-    "test": "node --import tsx --test backend/ideation/ideation.test.ts backend/audio.test.ts backend/sync.test.ts backend/character.test.ts backend/perceptual.test.ts backend/scene/scene.test.ts backend/scene/actions.test.ts backend/scene/compile.test.ts backend/scene/patch.test.ts",
+    "test": "node --import tsx --test backend/ideation/ideation.test.ts backend/audio.test.ts backend/sync.test.ts backend/character.test.ts backend/perceptual.test.ts backend/scene/scene.test.ts backend/scene/actions.test.ts backend/scene/compile.test.ts backend/scene/patch.test.ts backend/scene/author.test.ts",
     "frames": "node scripts/frames.mjs",
     "render": "remotion render Long out/long.mp4",
     "render:reel": "remotion render Reel out/reel.mp4",

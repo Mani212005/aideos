@@ -223,24 +223,31 @@ test("P-5: Patch producing continuity violation is rejected with verifier error"
   assert.deepEqual(res.scene.actors[0].jointTracks!.torso.keyframes, [], "Keyframes must be rolled back");
 });
 
-// P-6: Each of the 12 ops has at least one test proving it performs its stated change
-test("P-6: Verification of all 12 patch operations", () => {
+// P-6: Verification of all 12 discrete patch operations
+test("P-6.1: op 'adjust_joint' modifies keyframe by exact delta", () => {
   const scene = makeValidScene();
+  const res = applyPatch(scene, [{ op: "adjust_joint", instanceId: "actor-1", joint: "head", frame: 45, deltaDegrees: 5 }]);
+  assert.equal(res.applied.length, 1);
+  assert.equal(res.scene.actors[0].jointTracks!.head.keyframes[1].value, 20); // 15 + 5 = 20
+});
 
-  // 1. adjust_joint
-  const r1 = applyPatch(scene, [{ op: "adjust_joint", instanceId: "actor-1", joint: "head", frame: 45, deltaDegrees: 5 }]);
-  assert.equal(r1.scene.actors[0].jointTracks!.head.keyframes[1].value, 20);
+test("P-6.2: op 'set_joint' sets keyframe to absolute value", () => {
+  const scene = makeValidScene();
+  const res = applyPatch(scene, [{ op: "set_joint", instanceId: "actor-1", joint: "head", frame: 45, valueDegrees: 35 }]);
+  assert.equal(res.applied.length, 1);
+  assert.equal(res.scene.actors[0].jointTracks!.head.keyframes[1].value, 35);
+});
 
-  // 2. set_joint
-  const r2 = applyPatch(scene, [{ op: "set_joint", instanceId: "actor-1", joint: "head", frame: 45, valueDegrees: 35 }]);
-  assert.equal(r2.scene.actors[0].jointTracks!.head.keyframes[1].value, 35);
+test("P-6.3: op 'retime_action' shifts action startFrame", () => {
+  const scene = makeValidScene();
+  const res = applyPatch(scene, [{ op: "retime_action", instanceId: "actor-1", actionIndex: 0, shiftFrames: 10 }]);
+  assert.equal(res.applied.length, 1);
+  assert.equal(res.scene.actors[0].actions![0].startFrame, 10);
+});
 
-  // 3. retime_action
-  const r3 = applyPatch(scene, [{ op: "retime_action", instanceId: "actor-1", actionIndex: 0, shiftFrames: 10 }]);
-  assert.equal(r3.scene.actors[0].actions![0].startFrame, 10);
-
-  // 4. set_action
-  const r4 = applyPatch(scene, [
+test("P-6.4: op 'set_action' replaces action parameters and actionId", () => {
+  const scene = makeValidScene();
+  const res = applyPatch(scene, [
     {
       op: "set_action",
       instanceId: "actor-1",
@@ -249,34 +256,57 @@ test("P-6: Verification of all 12 patch operations", () => {
       params: { durationFrames: 30, intensity: 0.9, side: "left" },
     },
   ]);
-  assert.equal(r4.scene.actors[0].actions![0].actionId, "wave");
-  assert.equal(r4.scene.actors[0].actions![0].durationFrames, 30);
+  assert.equal(res.applied.length, 1);
+  assert.equal(res.scene.actors[0].actions![0].actionId, "wave");
+  assert.equal(res.scene.actors[0].actions![0].durationFrames, 30);
+  assert.equal(res.scene.actors[0].actions![0].side, "left");
+});
 
-  // 5. move_entity
-  const r5 = applyPatch(scene, [{ op: "move_entity", entityId: "actor-1", to: { x: 777, y: 888 } }]);
-  assert.deepEqual(r5.scene.actors[0].position, { x: 777, y: 888 });
+test("P-6.5: op 'move_entity' updates position coordinates", () => {
+  const scene = makeValidScene();
+  const res = applyPatch(scene, [{ op: "move_entity", entityId: "actor-1", to: { x: 777, y: 888 } }]);
+  assert.equal(res.applied.length, 1);
+  assert.deepEqual(res.scene.actors[0].position, { x: 777, y: 888 });
+});
 
-  // 6. set_layer (D5 explicit override)
-  const r6 = applyPatch(scene, [{ op: "set_layer", entityId: "actor-1", layer: 99 }]);
-  assert.equal(r6.scene.actors[0].layer, 99);
+test("P-6.6: op 'set_layer' sets explicit layer override (D5)", () => {
+  const scene = makeValidScene();
+  const res = applyPatch(scene, [{ op: "set_layer", entityId: "actor-1", layer: 99 }]);
+  assert.equal(res.applied.length, 1);
+  assert.equal(res.scene.actors[0].layer, 99);
+});
 
-  // 7. clear_layer (D5 revert to derived)
-  const r7 = applyPatch(r6.scene, [{ op: "clear_layer", entityId: "actor-1" }]);
-  assert.equal(r7.scene.actors[0].layer, undefined);
+test("P-6.7: op 'clear_layer' removes explicit layer to revert to derived y-depth (D5)", () => {
+  const scene = makeValidScene();
+  scene.actors[0].layer = 99;
+  const res = applyPatch(scene, [{ op: "clear_layer", entityId: "actor-1" }]);
+  assert.equal(res.applied.length, 1);
+  assert.equal(res.scene.actors[0].layer, undefined);
+});
 
-  // 8. set_scale
-  const r8 = applyPatch(scene, [{ op: "set_scale", entityId: "actor-1", scale: 1.2 }]);
-  assert.equal(r8.scene.actors[0].scale, 1.2);
+test("P-6.8: op 'set_scale' updates entity uniform scale", () => {
+  const scene = makeValidScene();
+  const res = applyPatch(scene, [{ op: "set_scale", entityId: "actor-1", scale: 1.2 }]);
+  assert.equal(res.applied.length, 1);
+  assert.equal(res.scene.actors[0].scale, 1.2);
+});
 
-  // 9. set_facing
-  const r9 = applyPatch(scene, [{ op: "set_facing", instanceId: "actor-1", facing: "left" }]);
-  assert.equal(r9.scene.actors[0].facing, "left");
+test("P-6.9: op 'set_facing' flips actor horizontal facing direction", () => {
+  const scene = makeValidScene();
+  const res = applyPatch(scene, [{ op: "set_facing", instanceId: "actor-1", facing: "left" }]);
+  assert.equal(res.applied.length, 1);
+  assert.equal(res.scene.actors[0].facing, "left");
+});
 
-  // 10. set_sub_rotation (D1)
-  const r10 = applyPatch(scene, [{ op: "set_sub_rotation", entityId: "prop-bicycle", degreesPerSecond: 720 }]);
-  assert.equal(r10.scene.props[0].subGroups![0].degreesPerSecond, 720);
+test("P-6.10: op 'set_sub_rotation' updates rotating subgroup angular velocity (D1)", () => {
+  const scene = makeValidScene();
+  const res = applyPatch(scene, [{ op: "set_sub_rotation", entityId: "prop-bicycle", elementId: "wheel-front", degreesPerSecond: 720 }]);
+  assert.equal(res.applied.length, 1);
+  assert.equal(res.scene.props[0].subGroups![0].degreesPerSecond, 720);
+});
 
-  // 11. add_actor
+test("P-6.11: op 'add_actor' appends a new actor instance", () => {
+  const scene = makeValidScene();
   const newActor: ActorInstance = {
     instanceId: "actor-3",
     rigId: "robot",
@@ -284,14 +314,111 @@ test("P-6: Verification of all 12 patch operations", () => {
     scale: 0.8,
     facing: "right",
   };
-  const r11 = applyPatch(scene, [{ op: "add_actor", actor: newActor }]);
-  assert.equal(r11.scene.actors.length, 3);
-  assert.equal(r11.scene.actors[2].instanceId, "actor-3");
+  const res = applyPatch(scene, [{ op: "add_actor", actor: newActor }]);
+  assert.equal(res.applied.length, 1);
+  assert.equal(res.scene.actors.length, 3);
+  assert.equal(res.scene.actors[2].instanceId, "actor-3");
+});
 
-  // 12. remove_actor
-  const r12 = applyPatch(scene, [{ op: "remove_actor", instanceId: "actor-2" }]);
-  assert.equal(r12.scene.actors.length, 1);
-  assert.equal(r12.scene.actors[0].instanceId, "actor-1");
+test("P-6.12: op 'remove_actor' deletes specified actor instance", () => {
+  const scene = makeValidScene();
+  const res = applyPatch(scene, [{ op: "remove_actor", instanceId: "actor-2" }]);
+  assert.equal(res.applied.length, 1);
+  assert.equal(res.scene.actors.length, 1);
+  assert.equal(res.scene.actors[0].instanceId, "actor-1");
+});
+
+test("P-6 Negative Case: set_action causing simultaneous Rule 18 collision rolls back atomically", () => {
+  const scene = makeValidScene();
+  // Actor has Action 0: walk (startFrame: 0, affects legs, torso, leftArm, rightArm)
+  // and Action 1: idle (startFrame: 0, affects torso, head)
+  // Initially only Action 0 is present. Add Action 1 at startFrame 0:
+  scene.actors[0].actions = [
+    {
+      actionId: "walk",
+      startFrame: 0,
+      durationFrames: 45,
+      intensity: 1.0,
+    },
+    {
+      actionId: "turn", // affects torso, head
+      startFrame: 50,
+      durationFrames: 30,
+      intensity: 1.0,
+    },
+  ];
+
+  // Try to set action 1 startFrame to 0 via set_action replacement that collides on torso with action 0
+  const ops: PatchOp[] = [
+    {
+      op: "set_action",
+      instanceId: "actor-1",
+      actionIndex: 1,
+      actionId: "jump", // jump affects legs, torso, arms (collides with walk at frame 0)
+      params: { durationFrames: 30, intensity: 1.0 },
+    },
+    {
+      op: "retime_action",
+      instanceId: "actor-1",
+      actionIndex: 1,
+      shiftFrames: -50, // moves startFrame from 50 to 0 (colliding with walk on legs and torso)
+    },
+  ];
+
+  const res = applyPatch(scene, ops);
+  assert.equal(res.applied.length, 0, "Colliding patch must not apply");
+  assert.ok(res.rejected.some((r) => r.reason.includes("SIMULTANEOUS_ACTION_COLLISION") || r.reason.includes("Rule 18")));
+  assert.equal(res.scene.actors[0].actions![1].actionId, "turn", "Scene must be rolled back");
+  assert.equal(res.scene.actors[0].actions![1].startFrame, 50);
+});
+
+test("P-6 Negative Case: add_actor pushing scene past 15-actor ceiling (Rule 2) is rejected", () => {
+  const scene = makeValidScene();
+  // Fill to 15 actors
+  scene.actors = Array.from({ length: 15 }, (_, i) => ({
+    instanceId: `actor-${i + 1}`,
+    rigId: "developer",
+    position: { x: 100 + i * 50, y: 500 },
+    scale: 1.0,
+    facing: "right",
+  }));
+
+  const res = applyPatch(scene, [
+    {
+      op: "add_actor",
+      actor: {
+        instanceId: "actor-16",
+        rigId: "developer",
+        position: { x: 800, y: 500 },
+        scale: 1.0,
+        facing: "right",
+      },
+    },
+  ]);
+
+  assert.equal(res.applied.length, 0);
+  assert.ok(res.rejected.some((r) => r.reason.includes("maximum ceiling of 15 articulated actors")));
+  assert.equal(res.scene.actors.length, 15);
+});
+
+test("P-6 Negative Case: add_actor with duplicate instanceId (Rule 3) is rejected", () => {
+  const scene = makeValidScene();
+  const res = applyPatch(scene, [
+    {
+      op: "add_actor",
+      actor: {
+        instanceId: "actor-1", // duplicate
+        rigId: "developer",
+        position: { x: 800, y: 500 },
+        scale: 1.0,
+        facing: "right",
+      },
+    },
+  ]);
+
+  assert.equal(res.applied.length, 0);
+  assert.ok(res.rejected.some((r) => r.reason.includes("duplicate instanceId")));
+  assert.equal(res.scene.actors.length, 2);
 });
 
 // P-7: Round-trip: add_actor then remove_actor returns scene deep-equal to original

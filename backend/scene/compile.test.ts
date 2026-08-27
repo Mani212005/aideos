@@ -146,12 +146,24 @@ test("C-4: A deliberate velocity discontinuity fails compilation; error names ac
   );
 });
 
-// C-5: Overlapping actions on one joint: later-starting action wins in overlap and emits compiler warning
-test("C-5: Overlapping actions on one joint: later-starting action wins in overlap and emits compiler warning", () => {
-  const scene = makeValidScene();
-  // Action 1: Walk (frames 0 to 60, affects legs, torso, leftArm, rightArm)
-  // Action 2: Wave (frames 30 to 60, affects rightArm only)
-  scene.actors[0].actions = [
+// C-5: End-to-End Compiler Joint-Mask Blending: walk + wave overlapping produces rightArm from wave,
+// while legs, torso, and leftArm remain 100% byte-identical to a walk-only compilation
+test("C-5: End-to-End Compiler Joint-Mask Blending: walk + wave overlapping produces rightArm from wave, and legs/torso/leftArm byte-identical to walk-only", () => {
+  // Scene A: Walk-only
+  const sceneWalkOnly = makeValidScene();
+  sceneWalkOnly.actors[0].actions = [
+    {
+      actionId: "walk",
+      startFrame: 0,
+      durationFrames: 60,
+      intensity: 1.0,
+    },
+  ];
+  const compiledWalkOnly = compileScene(sceneWalkOnly);
+
+  // Scene B: Walk + Wave overlapping on rightArm from frame 30 to 60
+  const sceneBlended = makeValidScene();
+  sceneBlended.actors[0].actions = [
     {
       actionId: "walk",
       startFrame: 0,
@@ -160,30 +172,51 @@ test("C-5: Overlapping actions on one joint: later-starting action wins in overl
     },
     {
       actionId: "wave",
-      startFrame: 30, // Overlaps rightArm from frame 30 to 60
+      startFrame: 30, // Overlaps rightArm between [30, 60]
       durationFrames: 30,
       intensity: 1.0,
       side: "right",
     },
   ];
+  const compiledBlended = compileScene(sceneBlended);
 
-  const compiled = compileScene(scene);
-  assert.ok(compiled.meta.warnings.length > 0, "Must emit compiler warning for overlapping actions");
-  assert.ok(compiled.meta.warnings.some((w) => w.includes("OVERLAPPING_ACTION_OVERRIDE") && w.includes("rightArm")));
+  // 1. Assert compiler emitted overlap warning for rightArm
+  assert.ok(compiledBlended.meta.warnings.some((w) => w.includes("OVERLAPPING_ACTION_OVERRIDE") && w.includes("rightArm")));
 
-  // At frame 45 (inside wave interval [30, 60]):
-  // rightArm should reflect wave amplitude (~ -110 deg) rather than walk swing (~ 0-20 deg)
-  const frame45 = compiled.frames[45].entities.find((e) => e.entityId === "actor-astro-1")!;
-  assert.ok(
-    frame45.joints!.rightArm < -50,
-    `rightArm at frame 45 must be driven by wave (got: ${frame45.joints!.rightArm})`,
-  );
+  // 2. Assert that legs, torso, and leftArm are BIT-EXACT byte-identical across all 90 frames
+  for (let f = 0; f < 90; f++) {
+    const walkActor = compiledWalkOnly.frames[f].entities.find((e) => e.entityId === "actor-astro-1")!;
+    const blendActor = compiledBlended.frames[f].entities.find((e) => e.entityId === "actor-astro-1")!;
 
-  // Remaining joints (legs, torso, leftArm) must continue running walk cycle
-  assert.ok(
-    Math.abs(frame45.joints!.legs) > 0,
-    `legs must continue running walk cycle at frame 45 (got: ${frame45.joints!.legs})`,
-  );
+    assert.equal(
+      blendActor.joints!.legs,
+      walkActor.joints!.legs,
+      `Frame ${f}: legs must be byte-identical between walk-only and blended (got: ${blendActor.joints!.legs} vs ${walkActor.joints!.legs})`,
+    );
+    assert.equal(
+      blendActor.joints!.torso,
+      walkActor.joints!.torso,
+      `Frame ${f}: torso must be byte-identical between walk-only and blended (got: ${blendActor.joints!.torso} vs ${walkActor.joints!.torso})`,
+    );
+    assert.equal(
+      blendActor.joints!.leftArm,
+      walkActor.joints!.leftArm,
+      `Frame ${f}: leftArm must be byte-identical between walk-only and blended (got: ${blendActor.joints!.leftArm} vs ${walkActor.joints!.leftArm})`,
+    );
+
+    // 3. For rightArm: during [30, 60], rightArm must be driven by wave (oscillates around -110 deg)
+    if (f >= 35 && f <= 55) {
+      assert.ok(
+        blendActor.joints!.rightArm < -50,
+        `Frame ${f}: rightArm must reflect wave animation (< -50 deg), got: ${blendActor.joints!.rightArm}`,
+      );
+      assert.notEqual(
+        blendActor.joints!.rightArm,
+        walkActor.joints!.rightArm,
+        `Frame ${f}: rightArm must differ from walk-only cycle`,
+      );
+    }
+  }
 });
 
 // C-6: Parent composition is correct: rotating torso 30° moves child leftArm to hand-computed expected value
