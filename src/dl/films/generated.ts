@@ -7,8 +7,9 @@ import type { Film } from "../schema";
  * plain Node with no React, no fonts and no browser.
  */
 export const generatedFilm: Film = {
-  "id": "welcome-to-aideos-we-build-ex",
-  "title": "Welcome to Aideos. We build ex",
+  "schemaVersion": "1.0.0",
+  "id": "typing-google-com-into-your-br",
+  "title": "Typing google.com into your br",
   "fps": 30,
   "chapters": [
     "chapter-1",
@@ -45,90 +46,102 @@ export const generatedFilm: Film = {
     {
       "id": "shot-1",
       "ch": "chapter-1",
-      "dur": 1.297,
+      "dur": 6.443,
       "stage": "frame",
       "look": "node-1",
       "move": "cut",
       "drift": false,
       "zoom": 1,
-      "scriptText": "Welcome to Aideos.",
+      "scriptText": "Typing google.com into your browser unleashes an intricate choreography across every layer of the internet.",
+      "visualDirection": "Visual representation of narration segment: \"Typing google.com into your browser unleashes an intricate choreography across every layer of the internet.\"",
       "blocks": [
         {
           "c": "TextReveal",
-          "text": "Welcome to Aideos.",
-          "size": "headline"
+          "text": "Typing google.com into your browser unleashes an intricate choreography across every layer of the internet.",
+          "size": "headline",
+          "accentWord": "Typing"
         }
       ]
     },
     {
       "id": "shot-2",
       "ch": "chapter-1",
-      "dur": 2.551,
+      "dur": 6.495,
       "stage": "frame",
       "look": "node-1",
       "move": "pan",
       "drift": false,
       "zoom": 1,
-      "scriptText": "We build explainer videos as data.",
+      "scriptText": "First, your operating system checks local caches before querying recursive DNS resolvers to find the IP address.",
+      "visualDirection": "Visual representation of narration segment: \"First, your operating system checks local caches before querying recursive DNS resolvers to find the IP address.\"",
       "blocks": [
         {
           "c": "TextReveal",
-          "text": "We build explainer videos as data.",
-          "size": "headline"
+          "text": "First, your operating system checks local caches before querying recursive DNS resolvers to find the IP address.",
+          "size": "headline",
+          "accentWord": "First"
         }
       ]
     },
     {
       "id": "shot-3",
       "ch": "chapter-1",
-      "dur": 2.577,
+      "dur": 6.104,
       "stage": "frame",
       "look": "node-1",
       "move": "pan",
       "drift": false,
       "zoom": 1,
-      "scriptText": "Every node is a concept on canvas.",
+      "scriptText": "Next, your browser establishes a TCP handshake and negotiates TLS encryption in less than fifty milliseconds.",
+      "visualDirection": "Visual representation of narration segment: \"Next, your browser establishes a TCP handshake and negotiates TLS encryption in less than fifty milliseconds.\"",
       "blocks": [
         {
           "c": "TextReveal",
-          "text": "Every node is a concept on canvas.",
-          "size": "headline"
+          "text": "Next, your browser establishes a TCP handshake and negotiates TLS encryption in less than fifty milliseconds.",
+          "size": "headline",
+          "accentWord": "Next"
         }
       ]
     },
     {
       "id": "shot-4",
       "ch": "chapter-2",
-      "dur": 3.465,
+      "dur": 6.287,
       "stage": "frame",
       "look": "node-2",
       "move": "cut",
       "drift": false,
       "zoom": 1,
-      "scriptText": "The camera navigates the graph smoothly as narration plays.",
+      "scriptText": "An HTTP request reaches Google's edge reverse proxy, which load balances traffic to backend clusters.",
+      "visualDirection": "Visual representation of narration segment: \"An HTTP request reaches Google's edge reverse proxy, which load balances traffic to backend clusters.\"",
+      "metaphor": "balance-scale",
       "blocks": [
         {
           "c": "TextReveal",
-          "text": "The camera navigates the graph smoothly as narration plays.",
-          "size": "headline"
+          "text": "An HTTP request reaches Google's edge reverse proxy, which load balances traffic to backend clusters.",
+          "size": "headline",
+          "accentWord": "request"
         }
       ]
     },
     {
       "id": "shot-5",
       "ch": "chapter-2",
-      "dur": 3.187,
+      "dur": 8.203,
       "stage": "frame",
       "look": "node-2",
       "move": "pan",
       "drift": false,
       "zoom": 1,
-      "scriptText": "Audio waveforms act as the master timing clock.",
+      "scriptText": "The server returns HTML, which the browser engine parses into the DOM tree, computing styles and rendering pixels at sixty frames per second.",
+      "visualDirection": "Visual representation of narration segment: \"The server returns HTML, which the browser engine parses into the DOM tree, computing styles and rendering pixels at sixty frames per second.\"",
+      "metaphor": "clock-gears",
       "blocks": [
         {
           "c": "TextReveal",
-          "text": "Audio waveforms act as the master timing clock.",
-          "size": "headline"
+          "text": "The server returns HTML, which the browser engine parses into the DOM tree, computing styles and rendering pixels at sixty frames per second",
+          "size": "headline",
+          "accentWord": "server"
         }
       ]
     }

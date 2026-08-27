@@ -1,0 +1,182 @@
+/**
+ * File Description: Production Film Definition for "Why Liquid Water Can't Exist on Mars".
+ * Audio-first locked timing spine (28.72s), cast (astronaut + mascot),
+ * and compliant device block transitions. (Axiom 1: pure data).
+ */
+
+import type { Film } from "../schema";
+
+export const marsWaterFilm: Film = {
+  id: "mars-water",
+  title: "Why Liquid Water Can't Exist on Mars",
+  fps: 30,
+  accent: "#FF6B00",
+  theme: {
+    background: "smooth-dark",
+    fontFamily: "geist",
+    storyStyle: "script-metaphor",
+    cameraAngle: "isometric",
+    accent: "#FF6B00",
+  },
+  audio: {
+    src: "voiceover.wav",
+    ducking: true,
+  },
+  chapters: [
+    "Ancient Oceans",
+    "Thin Atmosphere",
+    "The Triple Point Trap",
+    "Sublimation",
+    "Underground Reservoirs",
+  ],
+  canvas: {
+    nodes: [
+      {
+        id: "ancient-mars",
+        label: "Ancient Wet Mars",
+        x: -400,
+        y: -150,
+        w: 260,
+        h: 90,
+      },
+      {
+        id: "thin-air",
+        label: "1% Atmosphere",
+        x: 400,
+        y: -150,
+        w: 260,
+        h: 90,
+      },
+      {
+        id: "triple-point",
+        label: "Thermodynamic Triple Point",
+        x: 400,
+        y: 200,
+        w: 280,
+        h: 90,
+      },
+      {
+        id: "sublimation",
+        label: "Instant Sublimation",
+        x: -400,
+        y: 200,
+        w: 260,
+        h: 90,
+      },
+      {
+        id: "reservoirs",
+        label: "Subsurface Ice Sheets",
+        x: 0,
+        y: 380,
+        w: 280,
+        h: 90,
+      },
+    ],
+    edges: [
+      { from: "ancient-mars", to: "thin-air", dashed: false },
+      { from: "thin-air", to: "triple-point", dashed: false },
+      { from: "triple-point", to: "sublimation", dashed: false },
+      { from: "sublimation", to: "reservoirs", dashed: true },
+    ],
+  },
+  shots: [
+    {
+      id: "shot-1",
+      dur: 5.97,
+      look: "ancient-mars",
+      move: "cut",
+      stage: "anchor",
+      visualDirection: "Astro Guide explains the loss of ancient Martian surface water",
+      blocks: [
+        {
+          c: "TextReveal",
+          text: "Why Mars Has No Liquid Water",
+          size: "headline",
+          accentWord: "Water",
+        },
+        {
+          c: "CharacterBeat",
+          characterId: "astronaut",
+          poses: [
+            { t: 0.0, groups: { torso: { rotate: 0 }, rightArm: { rotate: -20 }, leftArm: { rotate: 20 } } },
+            { t: 0.4, groups: { torso: { rotate: -3 }, rightArm: { rotate: -70 }, leftArm: { rotate: 0 } } },
+            { t: 0.8, groups: { torso: { rotate: 2 }, rightArm: { rotate: -25 }, leftArm: { rotate: 10 } } },
+            { t: 1.0, groups: { torso: { rotate: 0 }, rightArm: { rotate: 0 }, leftArm: { rotate: 0 } } },
+          ],
+        },
+      ],
+    },
+    {
+      id: "shot-2",
+      dur: 5.16,
+      look: "thin-air",
+      move: "pan",
+      stage: "anchor",
+      visualDirection: "ScaleBar comparing atmospheric pressure between Earth and Mars",
+      blocks: [
+        {
+          c: "ScaleBar",
+          ticks: ["0.1%", "1%", "10%", "100%"],
+          value: 0.35,
+        },
+      ],
+    },
+    {
+      id: "shot-3",
+      dur: 8.12,
+      look: "triple-point",
+      move: "cut",
+      stage: "anchor",
+      visualDirection: "LayerStack depicting thermodynamic pressure regimes below water triple point",
+      blocks: [
+        {
+          c: "LayerStack",
+          count: 8,
+          bottomLabel: "Mars Pressure (610 Pa)",
+          topLabel: "Earth Triple Point",
+        },
+      ],
+    },
+    {
+      id: "shot-4",
+      dur: 4.22,
+      look: "sublimation",
+      move: "pan",
+      stage: "anchor",
+      visualDirection: "Token strip showing phase transition directly from solid ice to vapor",
+      blocks: [
+        {
+          c: "TokenStrip",
+          tokens: ["Ice", "Vapor", "Vapor", "Vapor"],
+          highlightIndex: 1,
+        },
+      ],
+    },
+    {
+      id: "shot-5",
+      dur: 5.25,
+      look: "reservoirs",
+      move: "pan",
+      stage: "anchor",
+      visualDirection: "Astro Guide celebrates subsurface ice sheet discoveries",
+      blocks: [
+        {
+          c: "TextReveal",
+          text: "Subsurface Ice Sheets Discovered",
+          size: "headline",
+          accentWord: "Ice",
+        },
+        {
+          c: "CharacterBeat",
+          characterId: "astronaut",
+          poses: [
+            { t: 0.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
+            { t: 0.25, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
+            { t: 0.85, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
+            { t: 1.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
+          ],
+        },
+      ],
+    },
+  ],
+};

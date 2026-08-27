@@ -1,0 +1,181 @@
+/**
+ * File Description: Production Film Definition for "What Actually Happens When You Type google.com".
+ * Audio-first locked timing spine (33.53s), cast (educator + mascot),
+ * and compliant device block transitions. (Axiom 1: pure data).
+ */
+
+import type { Film } from "../schema";
+
+export const howBrowsersWorkFilm: Film = {
+  id: "how-browsers-work",
+  title: "What Happens When You Type google.com",
+  fps: 30,
+  accent: "#635BFF",
+  theme: {
+    background: "smooth-dark",
+    fontFamily: "geist",
+    storyStyle: "script-metaphor",
+    cameraAngle: "isometric",
+    accent: "#635BFF",
+  },
+  audio: {
+    src: "voiceover.wav",
+    ducking: true,
+  },
+  chapters: [
+    "The Keystroke Journey",
+    "DNS Resolution",
+    "TCP and TLS Handshake",
+    "Edge Proxy Load Balancing",
+    "DOM Render Pipeline Payoff",
+  ],
+  canvas: {
+    nodes: [
+      {
+        id: "browser-entry",
+        label: "Browser Keystroke",
+        x: -400,
+        y: -150,
+        w: 260,
+        h: 90,
+      },
+      {
+        id: "dns-query",
+        label: "Recursive DNS Lookup",
+        x: 400,
+        y: -150,
+        w: 260,
+        h: 90,
+      },
+      {
+        id: "tls-handshake",
+        label: "TCP & TLS 1.3 Handshake",
+        x: 400,
+        y: 200,
+        w: 280,
+        h: 90,
+      },
+      {
+        id: "edge-proxy",
+        label: "Google Edge Cluster",
+        x: -400,
+        y: 200,
+        w: 260,
+        h: 90,
+      },
+      {
+        id: "dom-render",
+        label: "60 FPS DOM Rendering",
+        x: 0,
+        y: 380,
+        w: 280,
+        h: 90,
+      },
+    ],
+    edges: [
+      { from: "browser-entry", to: "dns-query", dashed: false },
+      { from: "dns-query", to: "tls-handshake", dashed: false },
+      { from: "tls-handshake", to: "edge-proxy", dashed: false },
+      { from: "edge-proxy", to: "dom-render", dashed: true },
+    ],
+  },
+  shots: [
+    {
+      id: "shot-1",
+      dur: 6.44,
+      look: "browser-entry",
+      move: "cut",
+      stage: "anchor",
+      visualDirection: "Academic Tutor introduces the intricate journey of typing a URL",
+      blocks: [
+        {
+          c: "TextReveal",
+          text: "Inside the Browser Engine",
+          size: "headline",
+          accentWord: "Browser",
+        },
+        {
+          c: "CharacterBeat",
+          characterId: "educator",
+          poses: [
+            { t: 0.0, groups: { torso: { rotate: 0 }, rightArm: { rotate: -20 }, leftArm: { rotate: 20 } } },
+            { t: 0.4, groups: { torso: { rotate: 3 }, rightArm: { rotate: -65 }, leftArm: { rotate: -10 } } },
+            { t: 1.0, groups: { torso: { rotate: 0 }, rightArm: { rotate: 0 }, leftArm: { rotate: 0 } } },
+          ],
+        },
+      ],
+    },
+    {
+      id: "shot-2",
+      dur: 6.5,
+      look: "dns-query",
+      move: "pan",
+      stage: "anchor",
+      visualDirection: "Token strip showing local cache to recursive DNS resolution",
+      blocks: [
+        {
+          c: "TokenStrip",
+          tokens: ["Browser", "OS Cache", "Resolver", "Root DNS", "IP Found"],
+          highlightIndex: 4,
+        },
+      ],
+    },
+    {
+      id: "shot-3",
+      dur: 6.1,
+      look: "tls-handshake",
+      move: "cut",
+      stage: "anchor",
+      visualDirection: "ScaleBar demonstrating 50ms TLS connection negotiation",
+      blocks: [
+        {
+          c: "ScaleBar",
+          ticks: ["10ms", "30ms", "50ms", "100ms"],
+          value: 0.45,
+        },
+      ],
+    },
+    {
+      id: "shot-4",
+      dur: 6.29,
+      look: "edge-proxy",
+      move: "pan",
+      stage: "anchor",
+      visualDirection: "LayerStack showing edge proxy load balancing request to cluster",
+      blocks: [
+        {
+          c: "LayerStack",
+          count: 8,
+          bottomLabel: "Edge Reverse Proxy",
+          topLabel: "Backend Server Pods",
+        },
+      ],
+    },
+    {
+      id: "shot-5",
+      dur: 8.2,
+      look: "dom-render",
+      move: "pan",
+      stage: "anchor",
+      visualDirection: "Academic Tutor celebrates 60 FPS HTML DOM parsing and paint",
+      blocks: [
+        {
+          c: "TextReveal",
+          text: "Parsed, Styled, and Rendered at 60 FPS",
+          size: "headline",
+          accentWord: "Rendered",
+        },
+        {
+          c: "CharacterBeat",
+          characterId: "educator",
+          poses: [
+            { t: 0.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
+            { t: 0.25, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
+            { t: 0.85, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
+            { t: 1.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
+          ],
+        },
+      ],
+    },
+  ],
+};

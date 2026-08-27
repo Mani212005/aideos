@@ -1,19 +1,19 @@
 WEBVTT
 
-00:00:00.240 --> 00:00:05.860
-Modern g plus compute at petaflop speeds, but standard attention leaves them starving for memory bandwidth.
+00:00:00.080 --> 00:00:01.360
+Typing google.com
 
-00:00:06.340 --> 00:00:10.120
-High bandwidth's memory is simply too slow compared to tensor course.
+00:00:01.360 --> 00:00:06.100
+into your browser unleashes an intricate choreography across every layer of the Internet.
 
-00:00:10.619 --> 00:00:15.679
-Lash attention three unlocks hopper architecture using asynchronous tensor memory accelerators.
+00:00:06.523 --> 00:00:12.543
+First, your operating system checks local caches before querying recursive DNS resolvers to find the IP address.
 
-00:00:16.379 --> 00:00:19.679
-Memory loads overlap completely with FB matrix multiplication
+00:00:13.019 --> 00:00:18.479
+Next, your browser establishes a c handshake and negotiates TLS encryption in less than fifty milliseconds.
 
-00:00:20.654 --> 00:00:28.194
-By interleaving softmax exponentiation in a synchronous matrix engines in, a ping pong buffer register pressure drops to zero.
+00:00:19.202 --> 00:00:24.822
+HET request reaches Google's edge reverse proxy, which load balances traffic to back end clusters.
 
-00:00:28.454 --> 00:00:34.474
-The result is up to 2.4 times faster attention reaching 900 teraflops on a single.
+00:00:25.409 --> 00:00:33.349
+The server returns HTML, which the browser engine parses into the DOM tree, computing styles and rendering pixels at 60 frames per second.
