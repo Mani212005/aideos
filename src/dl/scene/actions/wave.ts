@@ -12,7 +12,7 @@ export const waveAction: ActionDefinition = {
   generate(params: ActionParams) {
     const intensity = Math.max(0, Math.min(1, params.intensity ?? 1.0));
     const side = params.side === "left" ? "leftArm" : "rightArm";
-    const sign = side === "left" ? 1 : -1;
+    const sign = params.side === "left" ? 1 : -1;
     const raise = sign * 110.0 * intensity;
     const osc = 15.0 * intensity;
 

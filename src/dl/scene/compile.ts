@@ -5,7 +5,7 @@
  * hierarchical kinematic transform composition (C-6), environment sub-rotation (D1), and per-frame derived layering (D5).
  */
 
-import type { Scene, ActorInstance, EnvironmentAsset, SchemaVersion, Keyframe } from "./types";
+import type { Scene, EnvironmentAsset, SchemaVersion } from "./types";
 import { validateScene } from "./validateScene";
 import { getActionDefinition, getAffectedJointsForAction } from "./actions";
 import { getCharacterRigById } from "../characters";

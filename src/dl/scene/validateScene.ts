@@ -5,7 +5,7 @@
 
 import fs from "fs";
 import path from "path";
-import type { Scene, EnvironmentAsset, ActorInstance, RotatingSubGroup, Track } from "./types";
+import type { Scene, EnvironmentAsset, ActorInstance, Track } from "./types";
 import { getCharacterRigById } from "../characters";
 import { getModelSheet } from "./modelSheet";
 import { ACTION_METADATA, getAffectedJointsForAction } from "./actions";

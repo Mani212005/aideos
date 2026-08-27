@@ -196,7 +196,7 @@ export const blockSchema = z.discriminatedUnion("c", [
     /** Indices already computed. The rest light up one by one. */
     lit: z.array(z.number().int().min(0)).default([]),
     caption: z.string().max(60).optional(),
-  }),
+  }).strict(),
   z.object({
     c: z.literal("AttentionArcs"),
     tokens: z.array(z.string().min(1).max(14)).min(3).max(9),

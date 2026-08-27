@@ -12,7 +12,7 @@ export const reachAction: ActionDefinition = {
   generate(params: ActionParams) {
     const intensity = Math.max(0, Math.min(1, params.intensity ?? 1.0));
     const side = params.side === "left" ? "leftArm" : "rightArm";
-    const sign = side === "left" ? 1 : -1;
+    const sign = params.side === "left" ? 1 : -1;
     const armReach = sign * 90.0 * intensity;
     const torsoStretch = 8.0 * intensity;
 

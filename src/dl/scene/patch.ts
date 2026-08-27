@@ -4,7 +4,8 @@
  * and immutable state guarantees. (Axiom 1: pure data).
  */
 
-import type { Scene, ActorInstance, ActionParams, Vec2, Track, Keyframe } from "./types";
+import type { Scene, ActorInstance, Vec2 } from "./types";
+import type { ActionParams } from "./actions";
 import { validateScene } from "./validateScene";
 import { compileScene } from "./compile";
 

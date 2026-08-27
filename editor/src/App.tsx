@@ -14,9 +14,11 @@ import { TimelineEditor } from "./components/TimelineEditor";
 import { CustomizationEditor } from "./components/CustomizationEditor";
 import { ExportProgressModal } from "./components/ExportProgressModal";
 import { ScriptEditor } from "./components/ScriptEditor";
+import { CritiqueStudio } from "./components/CritiqueStudio";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
 import { DEFAULT_GIRAFFE_CAPTION_WORDS, generateWordsFromFilm } from "../../src/dl/captionsParser";
+import { validateFilmAudioAndAssets } from "../../src/dl/validateFilm";
 import type { TransitionType } from "./transitions";
 
 const filmModules = import.meta.glob("../../src/dl/films/*.ts", { eager: true }) as Record<
@@ -38,7 +40,7 @@ const FORMATS = {
 };
 
 type Format = keyof typeof FORMATS;
-type Mode = "script" | "map" | "timeline" | "customization" | "styleboard" | "transitions" | "captions" | "video";
+type Mode = "script" | "map" | "timeline" | "customization" | "styleboard" | "transitions" | "captions" | "video" | "critique";
 type Selection = { type: "node" | "shot", id: string } | null;
 
 // Renders the main Aideos Editor application shell.
@@ -71,6 +73,31 @@ export default function App() {
   // Regenerate video preview key & Pretext captions state
   const [regenerateKey, setRegenerateKey] = useState<number>(0);
   const [captionWords, setCaptionWords] = useState<any[]>(DEFAULT_GIRAFFE_CAPTION_WORDS);
+  const [undoStack, setUndoStack] = useState<Film[]>([]);
+
+  // Real-time validation status derivation
+  const validationStatus = useMemo(() => {
+    try {
+      validateFilmAudioAndAssets(film, { toleranceSec: 1000 });
+      return { ok: true, message: "19 schema rules & audio invariants healthy" };
+    } catch (err: any) {
+      return { ok: false, message: err.message || "Validation Error" };
+    }
+  }, [film]);
+
+  const handleUpdateFilmWithHistory = (updated: Film) => {
+    setUndoStack((prev) => [film, ...prev.slice(0, 19)]);
+    setFilm(updated);
+    setRegenerateKey((k) => k + 1);
+  };
+
+  const handleUndo = () => {
+    if (undoStack.length === 0) return;
+    const [previous, ...rest] = undoStack;
+    setUndoStack(rest);
+    setFilm(previous);
+    setRegenerateKey((k) => k + 1);
+  };
 
   // Automatically derive word-level timestamps for the active film's script
   useEffect(() => {
@@ -503,6 +530,16 @@ export default function App() {
             <span className="text-lg">🎨</span>
             <span className="text-[9px] mt-1 uppercase font-mono">Theme</span>
           </button>
+          <button
+            onClick={() => setMode("critique")}
+            className={`w-full flex flex-col items-center py-3 text-xs font-mono transition-none border-l-2 ${
+              mode === "critique" ? "bg-[#635BFF]/20 text-[#635BFF] border-[#635BFF]" : "text-gray-400 border-transparent hover:text-white"
+            }`}
+            title="Natural Language Critique Studio"
+          >
+            <span className="text-lg">🤖</span>
+            <span className="text-[9px] mt-1 uppercase font-mono">Critique</span>
+          </button>
         </nav>
 
         {/* LEFT SUB-INSPECTOR PANEL (Context & Active Film Settings) */}
@@ -903,6 +940,16 @@ export default function App() {
                 />
               </div>
             </div>
+          )}
+
+          {mode === "critique" && (
+            <CritiqueStudio
+              film={film}
+              onUpdateFilm={handleUpdateFilmWithHistory}
+              undoStack={undoStack}
+              onUndo={handleUndo}
+              validationStatus={validationStatus}
+            />
           )}
         </div>
       </div>

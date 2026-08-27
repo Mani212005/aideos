@@ -52,7 +52,7 @@ function findAssetPath(src: string, baseDir: string): string | null {
 export function computeBlockScreenAABB(
   block: Block,
   shot: Shot,
-  cardBox: { x: number; y: number; w: number; h: number },
+  _cardBox: { x: number; y: number; w: number; h: number },
   blockIndex: number,
   totalBlocks: number,
   tProgress: number,
