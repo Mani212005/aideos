@@ -1,7 +1,7 @@
 /**
  * File Description: Comprehensive test suite for Phase 5 LLM Scene Authoring & Revision (L-1 through L-6).
- * Verifies end-to-end authoring, 3-attempt validation retry loop, critique revision via PatchOp[],
- * programmatic prompt registry synchronization (L-5), and D4 audio budget propagation (L-6).
+ * Verifies end-to-end authoring, 3-attempt validation retry loop, un-pretranslated natural-language
+ * critique revision via PatchOp[], programmatic prompt registry synchronization (L-5), and D4 audio budget propagation (L-6).
  */
 
 import { test } from "node:test";
@@ -48,13 +48,13 @@ function makeValidScene(): Scene {
           {
             actionId: "walk",
             startFrame: 0,
-            durationFrames: 45,
+            durationFrames: 30,
             intensity: 1.0,
           },
           {
             actionId: "wave",
-            startFrame: 45,
-            durationFrames: 45,
+            startFrame: 30,
+            durationFrames: 30,
             intensity: 1.0,
             side: "right",
           },
@@ -142,23 +142,50 @@ test("L-3: After 3 failed attempts, authorScene throws and includes accumulated 
   assert.equal(callCount, 3, "Must have retried up to MAX_AUTHOR_ATTEMPTS = 3");
 });
 
-// L-4: The revision path returns PatchOp[], and resulting scene differs only in targeted fields
-test("L-4: Revision path emits PatchOp[] and modifies only targeted fields via deep-diff", async () => {
+// L-4: Three un-pretranslated natural language critiques
+test("L-4.1: Natural Language Critique: 'the actor should wave a bit later' -> emits retime_action", async () => {
   const currentScene = makeValidScene();
-  const mockLlm = async () => {
-    // Return patch ops shifting actor-1 position and retiming wave action
+  const mockLlm = async (prompt: string) => {
+    assert.ok(prompt.includes("the actor should wave a bit later"));
     return JSON.stringify([
-      { op: "move_entity", entityId: "actor-1", to: { x: 800, y: 700 } },
+      { op: "retime_action", instanceId: "actor-1", actionIndex: 1, shiftFrames: 15 },
     ]);
   };
 
-  const res = await reviseScene(currentScene, "Move the actor lower and to the left", mockLlm);
+  const res = await reviseScene(currentScene, "the actor should wave a bit later", mockLlm);
   assert.equal(res.appliedOps.length, 1);
-  assert.deepEqual(res.scene.actors[0].position, { x: 800, y: 700 });
+  assert.equal(res.appliedOps[0].op, "retime_action");
+  assert.equal(res.scene.actors[0].actions![1].startFrame, 45); // 30 + 15 = 45
+});
 
-  // Assert everything else remains unchanged
-  assert.equal(res.scene.actors[0].rigId, currentScene.actors[0].rigId);
-  assert.deepEqual(res.scene.actors[0].actions, currentScene.actors[0].actions);
+test("L-4.2: Natural Language Critique: 'he is too big' -> emits set_scale reduction", async () => {
+  const currentScene = makeValidScene();
+  const mockLlm = async (prompt: string) => {
+    assert.ok(prompt.includes("he is too big"));
+    return JSON.stringify([
+      { op: "set_scale", entityId: "actor-1", scale: 0.8 },
+    ]);
+  };
+
+  const res = await reviseScene(currentScene, "he is too big", mockLlm);
+  assert.equal(res.appliedOps.length, 1);
+  assert.equal(res.appliedOps[0].op, "set_scale");
+  assert.equal(res.scene.actors[0].scale, 0.8);
+});
+
+test("L-4.3: Natural Language Critique: 'he should be facing the other way' -> emits set_facing", async () => {
+  const currentScene = makeValidScene();
+  const mockLlm = async (prompt: string) => {
+    assert.ok(prompt.includes("he should be facing the other way"));
+    return JSON.stringify([
+      { op: "set_facing", instanceId: "actor-1", facing: "left" },
+    ]);
+  };
+
+  const res = await reviseScene(currentScene, "he should be facing the other way", mockLlm);
+  assert.equal(res.appliedOps.length, 1);
+  assert.equal(res.appliedOps[0].op, "set_facing");
+  assert.equal(res.scene.actors[0].facing, "left");
 });
 
 // L-5: Programmatic prompt verification: asserts all rigs, model sheets, and actions are in prompt
