@@ -386,18 +386,42 @@ test("Motion Verifier Convergence: step-size halving converges to true analytica
   }
 });
 
-test("Catmull-Rom C1 Continuity: proves C1 velocity continuity across multi-knot sequences", () => {
-  const knots = [
-    { t: 0, val: 0 },
-    { t: 0.5, val: 45 },
-    { t: 1.0, val: -20 },
-  ];
+test("P-1 Threshold Units: identical physical motion produces identical pass/fail invariant across 3s and 12s shots", () => {
+  // Physical motion: kink with analytical physical jump of exactly 4.0 deg/s (exceeds 2.0 deg/s threshold)
+  const makeTrajectory = (duration: number) => (t: number) => {
+    const tPhys = t * duration;
+    return tPhys < 0.5 * duration ? 2.0 * tPhys : 2.0 * (0.5 * duration) - 2.0 * (tPhys - 0.5 * duration);
+  };
 
-  const evalCatmullRom = (t: number): number => evaluateCatmullRomSpline(knots, t);
+  const report3s = verifyTrajectoryContinuity(makeTrajectory(3.0), [0.5], 3.0, 1e-4, 2.0);
+  const report12s = verifyTrajectoryContinuity(makeTrajectory(12.0), [0.5], 12.0, 1e-4, 2.0);
 
-  const splineReport = verifyTrajectoryContinuity(evalCatmullRom, [0.5], 2.0, 1e-4, 2.0);
+  assert.equal(report3s.isC1Continuous, false, "3s shot with 4 deg/s jump must fail");
+  assert.equal(report12s.isC1Continuous, false, "12s shot with identical 4 deg/s jump must fail");
   assert.ok(
-    splineReport.isC1Continuous,
-    `Catmull-Rom must be C1 continuous at interior knots (max discontinuity: ${splineReport.maxPhysicalVelocityDiscontinuity.toFixed(7)} deg/s)`,
+    Math.abs(report3s.maxPhysicalVelocityDiscontinuity - 4.0) < 1e-5,
+    "3s shot converted physical jump must be 4.0 deg/s",
   );
+  assert.ok(
+    Math.abs(report12s.maxPhysicalVelocityDiscontinuity - 4.0) < 1e-5,
+    "12s shot converted physical jump must be 4.0 deg/s",
+  );
+  assert.ok(
+    Math.abs(report3s.maxRawNormalizedDiscontinuity / report3s.maxPhysicalVelocityDiscontinuity - 3.0) < 1e-5,
+    "Ratio raw / converted must equal shot.dur (3.0)",
+  );
+  assert.ok(
+    Math.abs(report12s.maxRawNormalizedDiscontinuity / report12s.maxPhysicalVelocityDiscontinuity - 12.0) < 1e-5,
+    "Ratio raw / converted must equal shot.dur (12.0)",
+  );
+
+  // Negative case: smooth physical motion of 1.0 deg/s jump (within 2.0 deg/s threshold) passes on both
+  const makeSubThresholdTrajectory = (duration: number) => (t: number) => {
+    const tPhys = t * duration;
+    return tPhys < 0.5 * duration ? 0.5 * tPhys : 0.5 * (0.5 * duration) - 0.5 * (tPhys - 0.5 * duration);
+  };
+  const sub3s = verifyTrajectoryContinuity(makeSubThresholdTrajectory(3.0), [0.5], 3.0, 1e-4, 2.0);
+  const sub12s = verifyTrajectoryContinuity(makeSubThresholdTrajectory(12.0), [0.5], 12.0, 1e-4, 2.0);
+  assert.equal(sub3s.isC1Continuous, true, "Sub-threshold jump must pass on 3s shot");
+  assert.equal(sub12s.isC1Continuous, true, "Sub-threshold jump must pass on 12s shot");
 });

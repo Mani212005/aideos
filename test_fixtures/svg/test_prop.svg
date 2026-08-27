@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <rect width="100%" height="100%" fill="#0A0A0B" />
+  <g id="wheel-front">
+    <circle cx="100" cy="100" r="40" fill="#635BFF" />
+  </g>
+  <g id="wheel-rear">
+    <circle cx="300" cy="100" r="40" fill="#635BFF" />
+  </g>
+</svg>
