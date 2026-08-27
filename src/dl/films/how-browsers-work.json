@@ -158,7 +158,7 @@
       "dur": 6.5,
       "look": "dns-query",
       "move": "pan",
-      "stage": "anchor",
+      "stage": "frame",
       "visualDirection": "Token strip showing local cache to recursive DNS resolution",
       "blocks": [
         {
@@ -188,7 +188,7 @@
       "dur": 6.1,
       "look": "tls-handshake",
       "move": "pan",
-      "stage": "anchor",
+      "stage": "frame",
       "visualDirection": "ScaleBar demonstrating 50ms TLS connection negotiation",
       "blocks": [
         {
@@ -215,7 +215,7 @@
       "dur": 6.29,
       "look": "edge-proxy",
       "move": "pan",
-      "stage": "anchor",
+      "stage": "frame",
       "visualDirection": "LayerStack showing edge proxy load balancing request to cluster",
       "blocks": [
         {

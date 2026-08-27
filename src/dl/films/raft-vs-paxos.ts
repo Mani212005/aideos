@@ -101,7 +101,7 @@ By making state transitions strictly understandable, Raft powers modern distribu
       dur: 5.58,
       look: "consensus-problem",
       move: "cut",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Tech Founder explains distributed consistency across unreliable nodes",
       blocks: [
         {
@@ -126,9 +126,15 @@ By making state transitions strictly understandable, Raft powers modern distribu
       dur: 8.04,
       look: "paxos-matrix",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Matrix showing multi-phase Paxos messaging complexity",
       blocks: [
+        {
+          c: "TextReveal",
+          text: "Paxos Message Passing Complexity",
+          size: "headline",
+          accentWord: "Complexity",
+        },
         {
           c: "MatrixGrid",
           values: [
@@ -146,8 +152,8 @@ By making state transitions strictly understandable, Raft powers modern distribu
       id: "shot-3",
       dur: 6.86,
       look: "raft-engine",
-      move: "cut",
-      stage: "anchor",
+      move: "pan",
+      stage: "frame",
       visualDirection: "Tech Architect explains Raft 3 decomposed subproblems",
       blocks: [
         {
@@ -172,7 +178,7 @@ By making state transitions strictly understandable, Raft powers modern distribu
       dur: 5.69,
       look: "quorum-log",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Token strip showing strong leader log replication across quorum",
       blocks: [
         {
@@ -194,12 +200,12 @@ By making state transitions strictly understandable, Raft powers modern distribu
       dur: 7.42,
       look: "k8s-payoff",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Tech Founder celebrates Raft powering etcd and Kubernetes infrastructure",
       blocks: [
         {
           c: "TextReveal",
-          text: "Powers etcd & Kubernetes Globally",
+          text: "Powers etcd and Kubernetes Globally",
           size: "headline",
           accentWord: "Kubernetes",
         },

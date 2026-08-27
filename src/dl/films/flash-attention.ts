@@ -114,7 +114,7 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       dur: 6.06,
       look: "memory-wall",
       move: "cut",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Tech Architect explains GPU memory starvation at the memory wall",
       blocks: [
         {
@@ -139,9 +139,15 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       dur: 4.12,
       look: "hbm-bottleneck",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Matrix comparison showing HBM memory bandwidth vs Tensor Core compute",
       blocks: [
+        {
+          c: "TextReveal",
+          text: "High-Bandwidth Memory Bottleneck",
+          size: "headline",
+          accentWord: "Bottleneck",
+        },
         {
           c: "MatrixGrid",
           values: [
@@ -159,8 +165,8 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       id: "shot-3",
       dur: 5.92,
       look: "hopper-tma",
-      move: "cut",
-      stage: "anchor",
+      move: "pan",
+      stage: "frame",
       visualDirection: "AI Researcher explains Hopper asynchronous Tensor Memory Accelerators",
       blocks: [
         {
@@ -185,9 +191,15 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       dur: 4.28,
       look: "async-pipeline",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Hardware pipeline diagram showing memory loads overlapping FP8 matrix multiplies",
       blocks: [
+        {
+          c: "TextReveal",
+          text: "Overlapping FP8 Tensor Math",
+          size: "headline",
+          accentWord: "Overlapping",
+        },
         {
           c: "LayerStack",
           count: 8,
@@ -200,14 +212,21 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       id: "shot-5",
       dur: 7.88,
       look: "ping-pong",
-      move: "cut",
-      stage: "anchor",
+      move: "pan",
+      stage: "frame",
       visualDirection: "Ping-pong block scheduling in device frame buffer",
       blocks: [
+        {
+          c: "TextReveal",
+          text: "Zero Register Pressure via Ping-Pong",
+          size: "headline",
+          accentWord: "Ping-Pong",
+        },
         {
           c: "ScaleBar",
           ticks: ["100T", "300T", "600T", "900T"],
           value: 0.95,
+          label: "Attention Throughput",
         },
       ],
     },
@@ -216,7 +235,7 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       dur: 6.78,
       look: "payoff",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Tech Architect celebrates 2.4x speedup reaching 900 TFLOPs on H100",
       blocks: [
         {

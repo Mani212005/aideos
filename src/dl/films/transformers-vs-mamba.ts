@@ -114,7 +114,7 @@ The result is 5x higher inference throughput and infinite context scaling withou
       dur: 8.99,
       look: "quadratic-wall",
       move: "cut",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Systems Architect explains quadratic attention bottleneck",
       blocks: [
         {
@@ -140,9 +140,15 @@ The result is 5x higher inference throughput and infinite context scaling withou
       dur: 6.86,
       look: "kv-cache",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Layer stack showing expanding KV-Cache memory consumption",
       blocks: [
+        {
+          c: "TextReveal",
+          text: "Linear KV-Cache Memory Expansion",
+          size: "headline",
+          accentWord: "Expansion",
+        },
         {
           c: "LayerStack",
           count: 12,
@@ -155,8 +161,8 @@ The result is 5x higher inference throughput and infinite context scaling withou
       id: "shot-3",
       dur: 5.06,
       look: "mamba-ssm",
-      move: "cut",
-      stage: "anchor",
+      move: "pan",
+      stage: "frame",
       visualDirection: "Cyber AI Bot introduces selective state spaces with time-varying discretization",
       blocks: [
         {
@@ -181,7 +187,7 @@ The result is 5x higher inference throughput and infinite context scaling withou
       dur: 7.98,
       look: "constant-hidden",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Token strip compressing continuous sequence into fixed hidden dimension",
       blocks: [
         {
@@ -202,14 +208,21 @@ The result is 5x higher inference throughput and infinite context scaling withou
       id: "shot-5",
       dur: 6.0,
       look: "hardware-scan",
-      move: "cut",
-      stage: "anchor",
+      move: "pan",
+      stage: "frame",
       visualDirection: "Linear scaling comparison in SRAM hardware associative scans",
       blocks: [
+        {
+          c: "TextReveal",
+          text: "Linear Hardware Associative Scans",
+          size: "headline",
+          accentWord: "Associative",
+        },
         {
           c: "ScaleBar",
           ticks: ["1k", "10k", "100k", "1M"],
           value: 0.9,
+          label: "Context Scaling",
         },
       ],
     },
@@ -218,12 +231,12 @@ The result is 5x higher inference throughput and infinite context scaling withou
       dur: 6.55,
       look: "payoff",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Systems Architect celebrates 5x throughput with infinite context",
       blocks: [
         {
           c: "TextReveal",
-          text: "5x Faster Inference & Infinite Context",
+          text: "5x Faster Inference and Infinite Context",
           size: "headline",
           accentWord: "5x",
         },
