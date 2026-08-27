@@ -307,6 +307,51 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
         }
       }
     }
+
+    // 7. Visual Direction Reasoned Rationale (Rule M4)
+    if (shot.visualDirection) {
+      if (shot.visualDirection.startsWith('Visual representation of narration segment: "')) {
+        throw new Error(
+          `TEMPLATE_VISUAL_DIRECTION: Shot ${sIdx} ("${shot.id}") visualDirection is a generic template string (Rule M4)`,
+        );
+      }
+    }
+  }
+
+  // 8. Film-wide metaphor distribution rules (Rules M5 & M6)
+  const metaphorSequence: Array<{ shotIndex: number; kind: string }> = [];
+  const metaphorCounts: Record<string, number> = {};
+
+  film.shots.forEach((shot, sIdx) => {
+    const metaphorBlock = shot.blocks.find((b) => b.c === "MetaphorViewer") as any;
+    const kind = metaphorBlock?.content?.kind || shot.metaphor;
+    if (kind) {
+      metaphorSequence.push({ shotIndex: sIdx, kind });
+      metaphorCounts[kind] = (metaphorCounts[kind] ?? 0) + 1;
+    }
+  });
+
+  // Rule M5: The same metaphor kind may not appear in > 40% of film's shots (when film has >= 3 shots)
+  if (film.shots.length >= 3) {
+    const maxAllowed = Math.floor(film.shots.length * 0.40);
+    for (const [kind, count] of Object.entries(metaphorCounts)) {
+      if (count > maxAllowed) {
+        throw new Error(
+          `METAPHOR_OVERUSE_VIOLATION: Metaphor "${kind}" appears in ${count}/${film.shots.length} shots (exceeds 40% threshold of max ${maxAllowed} shots) (Rule M5)`,
+        );
+      }
+    }
+  }
+
+  // Rule M6: No two consecutive shots use the same metaphor kind
+  for (let i = 0; i < metaphorSequence.length - 1; i++) {
+    const curr = metaphorSequence[i];
+    const next = metaphorSequence[i + 1];
+    if (next.shotIndex === curr.shotIndex + 1 && curr.kind === next.kind) {
+      throw new Error(
+        `CONSECUTIVE_METAPHOR_VIOLATION: Shot ${curr.shotIndex + 1} and shot ${next.shotIndex + 1} both use identical metaphor "${curr.kind}" (Rule M6)`,
+      );
+    }
   }
 
   return film;
