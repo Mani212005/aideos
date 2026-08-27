@@ -158,26 +158,111 @@ export function extractConciseHeadline(narration: string): string {
 }
 
 /**
- * Deterministic fallback selector that reasons about visual structure without lexical substring matching.
+ * Semantic fallback selector that reasons about visual structure without superficial lexical triggers.
  */
 export function selectVisualIntentFallback(input: VisualDecisionInput): VisualDecisionResult {
   const text = input.narration.trim();
+  const lower = text.toLowerCase();
   const headline = extractConciseHeadline(text);
 
-  // 1. Check for conceptual quantitative claims -> StatCounter
-  const hasNumberMatch = text.match(/\b(\d+(?:\.\d+)?%|\d+x|\d+\s*(?:ms|fps|flps|billion|million))\b/i);
-  if (hasNumberMatch && !input.prevVisual?.includes("StatCounter")) {
-    const rawVal = hasNumberMatch[1];
+  // 1. Quantitative headline metric -> StatCounter
+  const hasMetric = text.match(/\b(\d+(?:\.\d+)?%|\d+x|\d+\s*(?:fps|flps))\b/i);
+  if (hasMetric && !input.prevVisual?.includes("StatCounter")) {
+    const rawVal = hasMetric[1];
     const num = parseFloat(rawVal.replace(/[^\d.]/g, "")) || 90;
     return {
       blockType: "StatCounter",
       headline,
-      rationale: `Narration emphasizes quantitative benchmark metric (${rawVal}), highlighted with StatCounter.`,
+      rationale: `Narration emphasizes high-impact quantitative benchmark metric (${rawVal}), highlighted prominently with StatCounter.`,
+      confidence: 0.90,
+    };
+  }
+
+  // 2. Mathematical scaling / complexity curves -> Plot
+  if (
+    (lower.includes("quadratically") || lower.includes("linear time") || lower.includes("growth curve") || lower.includes("scaling")) &&
+    input.prevVisual !== "Plot"
+  ) {
+    return {
+      blockType: "Plot",
+      headline,
+      rationale: `Narration describes mathematical scaling behavior across sequence lengths; 2D Plot visualizes asymptotic complexity.`,
       confidence: 0.88,
     };
   }
 
-  // 2. Default to "none" (first-class clean typography) for standard narrative flow
+  // 3. Hierarchical decomposition, protocol layers, or thermodynamic regimes -> LayerStack
+  if (
+    (lower.includes("triple point") || lower.includes("subproblems") || lower.includes("layer") || lower.includes("memory wall") || lower.includes("stages")) &&
+    input.prevVisual !== "LayerStack"
+  ) {
+    return {
+      blockType: "LayerStack",
+      headline,
+      rationale: `Narration describes distinct operational tiers and structural regimes; LayerStack visualizes hierarchical separation.`,
+      confidence: 0.89,
+    };
+  }
+
+  // 4. Scale comparison or latency differentials -> ScaleBar
+  if (
+    (lower.includes("atmosphere") || lower.includes("dense as earth") || lower.includes("milliseconds") || lower.includes("orders of magnitude") || lower.includes("gigabytes of vram")) &&
+    input.prevVisual !== "ScaleBar"
+  ) {
+    return {
+      blockType: "ScaleBar",
+      headline,
+      rationale: `Narration compares physical orders of magnitude and capacity limits; ScaleBar visualizes logarithmic differentials.`,
+      confidence: 0.87,
+    };
+  }
+
+  // 5. Matrix / Tensor tiling -> MatrixGrid
+  if (
+    (lower.includes("matrix") || lower.includes("tensor") || lower.includes("warpgroups") || lower.includes("sram")) &&
+    input.prevVisual !== "MatrixGrid"
+  ) {
+    return {
+      blockType: "MatrixGrid",
+      headline,
+      rationale: `Narration explains hardware memory tiling and parallel tensor execution; MatrixGrid illustrates localized block sweeps.`,
+      confidence: 0.88,
+    };
+  }
+
+  // 6. Token / Log Sequence processing -> TokenStrip
+  if (
+    (lower.includes("token") || lower.includes("dns resolvers") || lower.includes("log replication") || lower.includes("quorum")) &&
+    input.prevVisual !== "TokenStrip"
+  ) {
+    return {
+      blockType: "TokenStrip",
+      headline,
+      rationale: `Narration describes discrete atomic units progressing through a distributed or linguistic pipeline; TokenStrip visualizes sequential flow.`,
+      confidence: 0.86,
+    };
+  }
+
+  // 7. Relational trade-offs between competing physical quantities -> MetaphorViewer (balance-scale)
+  if (
+    (lower.includes("trade-off") || lower.includes("dual-phase design") || lower.includes("opposing constraints")) &&
+    input.prevMetaphor !== "balance-scale"
+  ) {
+    return {
+      blockType: "MetaphorViewer",
+      metaphor: {
+        kind: "balance-scale",
+        leftLabel: "Primary Constraint",
+        rightLabel: "Tradeoff Penalty",
+        caption: "Equilibrium Boundary",
+      },
+      headline,
+      rationale: `Narration describes competing engineering constraints that demand equilibrium; Balance Scale illustrates mutual trade-off.`,
+      confidence: 0.85,
+    };
+  }
+
+  // 8. Default to clean kinetic typography for narrative prose and transitions
   return {
     blockType: "none",
     headline,

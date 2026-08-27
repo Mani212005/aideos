@@ -342,6 +342,7 @@ export async function produceAudioPipeline(
 }
 
 import { buildBriefFromSegmentFallback } from "./ideation/segmentSync";
+import { generateRelationshipAwareCanvas, type ConceptEntity } from "./ideation/graphLayout";
 
 /** Construct a valid Film schema object from produce result. */
 export function buildFilmFromAudioResult(
@@ -359,36 +360,31 @@ export function buildFilmFromAudioResult(
     .slice(0, 48) || "produced-film";
 
   const numShots = audioResult.segments.length;
-  // Create 1-4 chapters depending on number of shots
-  const numChapters = Math.max(1, Math.min(4, Math.ceil(numShots / 3)));
-  const chapters = Array.from({ length: numChapters }, (_, i) => `chapter-${i + 1}`);
+  // Create 2-6 concept entities reflecting screenplay structure
+  const conceptEntities: ConceptEntity[] = audioResult.segments.slice(0, Math.min(8, Math.max(3, numShots))).map((seg, i) => {
+    const words = seg.text.replace(/[^\w\s-]/g, "").split(/\s+/).filter(Boolean);
+    const label = words.slice(0, 3).join(" ") || `Concept ${i + 1}`;
+    const sub = words.slice(3, 7).join(" ");
+    const isContrast = seg.text.toLowerCase().includes("contrast") || seg.text.toLowerCase().includes("versus") || seg.text.toLowerCase().includes("however");
+    return {
+      id: `concept-${i + 1}`,
+      label: label.charAt(0).toUpperCase() + label.slice(1),
+      sub: sub ? sub.charAt(0).toUpperCase() + sub.slice(1) : undefined,
+      chapterIndex: Math.floor((i * 3) / numShots),
+      relationship: isContrast ? ("contrast" as const) : ("sequential" as const),
+      relatedTo: i > 0 ? `concept-${i}` : undefined,
+    };
+  });
 
-  // Create canvas nodes & edges
-  const nodes = chapters.map((ch, i) => ({
-    id: `node-${i + 1}`,
-    label: ch,
-    x: 100 + i * 400,
-    y: 200,
-    w: 190,
-    h: 62,
-  }));
-
-  const edges = [];
-  for (let i = 0; i < nodes.length - 1; i++) {
-    edges.push({ from: nodes[i].id, to: nodes[i + 1].id, dashed: false });
-  }
-  if (edges.length === 0 && nodes.length === 1) {
-    // Add dummy node for schema min(2)
-    nodes.push({ id: "node-2", label: "conclusion", x: 500, y: 200, w: 190, h: 62 });
-    edges.push({ from: "node-1", to: "node-2", dashed: false });
-  }
+  const { nodes, edges } = generateRelationshipAwareCanvas(conceptEntities);
+  const chapters = Array.from(new Set(conceptEntities.map((c) => `chapter-${(c.chapterIndex ?? 0) + 1}`)));
 
   // Create shots with segment-scoped visual brief mapping
   const shots = audioResult.segments.map((seg, i) => {
-    const chIndex = Math.floor((i * numChapters) / numShots);
-    const chName = chapters[chIndex];
-    const isChapterStart = i === 0 || Math.floor(((i - 1) * numChapters) / numShots) !== chIndex;
-    const targetNodeId = nodes[Math.min(chIndex, nodes.length - 1)].id;
+    const chIndex = Math.floor((i * chapters.length) / numShots);
+    const chName = chapters[chIndex] || "chapter-1";
+    const isChapterStart = i === 0 || Math.floor(((i - 1) * chapters.length) / numShots) !== chIndex;
+    const targetNodeId = nodes[Math.min(i, nodes.length - 1)].id;
     const brief = buildBriefFromSegmentFallback(seg.text, `shot-${i + 1}`);
 
     return {

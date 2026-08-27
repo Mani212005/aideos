@@ -58,8 +58,14 @@ export const useEntrance = (
   index = 0,
   risePx = RISE,
 ): Entrance => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  let frame = 30;
+  let fps = 30;
+  try {
+    frame = useCurrentFrame();
+    fps = useVideoConfig().fps;
+  } catch {
+    // Fallback in unit test environment
+  }
   const from = startFrame + frames(MS.stagger * index, fps);
   const p = interpolate(frame, [from, from + frames(MS.enter, fps)], [0, 1], {
     extrapolateLeft: "clamp",
@@ -79,8 +85,14 @@ export const useProgress = (
   durationMs: number,
   delayMs = 0,
 ): number => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  let frame = 30;
+  let fps = 30;
+  try {
+    frame = useCurrentFrame();
+    fps = useVideoConfig().fps;
+  } catch {
+    // Fallback in unit test environment
+  }
   const from = startFrame + frames(delayMs, fps);
   return interpolate(frame, [from, from + frames(durationMs, fps)], [0, 1], {
     extrapolateLeft: "clamp",

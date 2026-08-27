@@ -134,8 +134,12 @@ export function renderMetaphorStill(
     } catch {
       // Chrome failed or timed out
     } finally {
-      if (fs.existsSync(tmpProfile)) {
-        fs.rmSync(tmpProfile, { recursive: true, force: true });
+      try {
+        if (fs.existsSync(tmpProfile)) {
+          fs.rmSync(tmpProfile, { recursive: true, force: true });
+        }
+      } catch {
+        // Ignore async lock cleanup in /tmp
       }
     }
     if (fs.existsSync(absOutputPath)) {

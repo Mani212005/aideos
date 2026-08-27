@@ -41,8 +41,12 @@ export function renderFrameStill(frame: CompiledFrame, outputPath: string): stri
     } catch {
       // Chrome failed or timed out, continue to fallback
     } finally {
-      if (fs.existsSync(tmpProfile)) {
-        fs.rmSync(tmpProfile, { recursive: true, force: true });
+      try {
+        if (fs.existsSync(tmpProfile)) {
+          fs.rmSync(tmpProfile, { recursive: true, force: true });
+        }
+      } catch {
+        // Ignore async lock cleanup in /tmp
       }
     }
     if (fs.existsSync(absOutputPath)) {

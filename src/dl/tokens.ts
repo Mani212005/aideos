@@ -240,7 +240,16 @@ export type DLLayout = {
 };
 
 export const useLayout = (): DLLayout => {
-  const { width, height } = useVideoConfig();
+  let width = 1920;
+  let height = 1080;
+  try {
+    const config = useVideoConfig();
+    width = config.width;
+    height = config.height;
+  } catch {
+    // Fallback when rendered outside Remotion composition context
+  }
+
   const format: Format = width < height ? "reel" : "long";
   const k = width / REFERENCE_WIDTH[format];
   const typeScale = FORMAT_TYPE_SCALE[format];

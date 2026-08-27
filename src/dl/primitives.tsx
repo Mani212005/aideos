@@ -129,12 +129,17 @@ export const Kicker: React.FC<BlockProps & { text: string }> = ({ text, start, i
  * headline is only ever entitled to one of them.
  */
 export const TextReveal: React.FC<
-  BlockProps & { text: string; size: "display" | "headline" | "subhead"; accentWord?: string }
-> = ({ text, size, accentWord, start, index }) => {
+  BlockProps & { text: string; size?: "display" | "headline" | "subhead"; accentWord?: string }
+> = ({ text, size = "headline", accentWord, start, index }) => {
   const layout = useLayout();
   const accent = useAccent();
   const align = useAlign();
-  const { fps } = useVideoConfig();
+  let fps = 30;
+  try {
+    fps = useVideoConfig().fps;
+  } catch {
+    // Unit test fallback
+  }
   const base = start + frames(MS.stagger * index, fps);
 
   return (

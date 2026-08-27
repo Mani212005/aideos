@@ -11,6 +11,7 @@ import React from "react";
 import ReactDOMServer from "react-dom/server";
 import { computeBlockRect, isDeviceBlock } from "../../src/dl/layout";
 import { MetaphorViewer, SpiderWebAnimation, LiquidContainerAnimation, BalanceScaleAnimation, ClockGearsAnimation, CharacterThrowScriptAnimation } from "../../src/dl/metaphors/MetaphorViewer";
+import { BlockView } from "../../src/dl/Block";
 import { renderMetaphorStill } from "./renderMetaphorStill";
 import { DEVICE_BLOCKS, type Film, type Shot, type Block, type MetaphorContent } from "../../src/dl/schema";
 
@@ -229,6 +230,44 @@ test("V-5 / Visual Review: Render high-res PNG stills for all metaphor types in 
     assert.ok(fs.existsSync(longPath), `Long still for ${type} must exist on disk at ${longPath}`);
     assert.ok(fs.existsSync(reelPath), `Reel still for ${type} must exist on disk at ${reelPath}`);
   }
+});
+
+test("V-6 / Content Preservation: A shot with both MetaphorViewer and TextReveal renders BOTH elements without dropping either", () => {
+  const multiBlockShot: Shot = {
+    id: "shot-multi",
+    dur: 6,
+    stage: "frame",
+    look: "node-1",
+    move: "cut",
+    blocks: [
+      { c: "TextReveal", text: "Atmospheric Pressure and Sublimation", size: "headline" },
+      {
+        c: "MetaphorViewer",
+        content: {
+          kind: "balance-scale",
+          leftLabel: "Atmospheric Pressure",
+          rightLabel: "Vapor Pressure",
+          caption: "Triple Point Equilibrium",
+        },
+      },
+    ],
+  };
+
+  const markupText = ReactDOMServer.renderToStaticMarkup(
+    React.createElement(BlockView, { block: multiBlockShot.blocks[0], start: 0, index: 0, durationInFrames: 180 })
+  );
+  const markupMetaphor = ReactDOMServer.renderToStaticMarkup(
+    React.createElement(BlockView, { block: multiBlockShot.blocks[1], start: 0, index: 1, durationInFrames: 180 })
+  );
+
+  assert.ok(
+    markupText.includes("Atmospheric") && markupText.includes("Sublimation"),
+    "Rendered text markup must contain headline words"
+  );
+  assert.ok(
+    markupMetaphor.includes("<svg") && markupMetaphor.includes("Triple Point Equilibrium"),
+    "Rendered metaphor markup must contain SVG and caption"
+  );
 });
 
 test("Phase B Negative Case 1: Missing viewBox in SVG fails V-4 assertion", () => {

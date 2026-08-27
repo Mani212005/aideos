@@ -49,7 +49,7 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
       return <Kicker {...timing} text={block.text} />;
     case "TextReveal":
       return (
-        <TextReveal {...timing} text={block.text} size={block.size} accentWord={block.accentWord} />
+        <TextReveal {...timing} text={block.text} size={block.size ?? "headline"} accentWord={block.accentWord} />
       );
     case "Body":
       return <Body {...timing} text={block.text} />;
