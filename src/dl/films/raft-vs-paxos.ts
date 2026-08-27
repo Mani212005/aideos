@@ -22,6 +22,22 @@ export const raftVsPaxosFilm: Film = {
     src: "voiceover.wav",
     ducking: true,
   },
+  captions: `WEBVTT
+
+00:00:00.160 --> 00:00:05.140
+Distributed systems rely on consensus to keep data consistent across unreliable networks.
+
+00:00:05.661 --> 00:00:13.418
+Paxos was the original foundation, but its complex dual phase design made real implementations notoriously difficult to reason about.
+
+00:00:13.698 --> 00:00:20.038
+Raft decomposes consensus into three clear subproblems: leader election, log replication, and safety.
+
+00:00:20.559 --> 00:00:25.779
+A single strong leader coordinates all writes and enforces log continuity across follower quorums.
+
+00:00:26.245 --> 00:00:33.145
+By making state transitions strictly understandable, Raft powers modern distributed infrastructure from etcd to Kubernetes.`,
   chapters: [
     "Consensus in Networks",
     "Paxos Complexity",

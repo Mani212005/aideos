@@ -14,6 +14,7 @@
     "src": "voiceover.wav",
     "ducking": true
   },
+  "captions": "WEBVTT\n\n00:00:00.160 --> 00:00:05.620\nMars was once a warm wet world with deep oceans, but today pure liquid water cannot exist on its surface.\n\n00:00:06.053 --> 00:00:10.936\nThe primary culprit is the Martian atmosphere, which is less than 1% as dense as Earth's.\n\n00:00:11.296 --> 00:00:14.116\nBecause atmospheric pressure sits below the thermodynamic\n\n00:00:14.576 --> 00:00:18.916\ntriple point of water, ice sublimates directly into vapor when heated.\n\n00:00:19.411 --> 00:00:23.274\nAny temporary liquid immediately boils away into the thin freezing air.\n\n00:00:23.634 --> 00:00:28.694\nUnderground ice sheets and salty brines remain the only reservoirs of Martian water today.",
   "chapters": [
     "Ancient Oceans",
     "Thin Atmosphere",

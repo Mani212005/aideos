@@ -22,6 +22,25 @@ export const flashAttentionFilm: Film = {
     src: "voiceover.wav",
     ducking: true,
   },
+  captions: `WEBVTT
+
+00:00:00.240 --> 00:00:05.860
+Modern GPUs compute at petaflop speeds, but standard attention leaves them starving for memory bandwidth.
+
+00:00:06.340 --> 00:00:10.120
+High bandwidth memory is simply too slow compared to tensor cores.
+
+00:00:10.619 --> 00:00:15.679
+FlashAttention-3 unlocks Hopper architecture using asynchronous tensor memory accelerators.
+
+00:00:16.379 --> 00:00:19.679
+Memory loads overlap completely with FP8 matrix multiplication.
+
+00:00:20.654 --> 00:00:28.194
+By interleaving softmax exponentiation in asynchronous matrix engines, register pressure drops to zero.
+
+00:00:28.454 --> 00:00:34.474
+The result is up to 2.4 times faster attention reaching 900 teraflops on a single H100.`,
   chapters: [
     "The Memory Wall",
     "HBM Bottleneck",

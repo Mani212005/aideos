@@ -14,6 +14,7 @@
     "src": "voiceover.wav",
     "ducking": true
   },
+  "captions": "WEBVTT\n\n00:00:00.240 --> 00:00:05.860\nModern GPUs compute at petaflop speeds, but standard attention leaves them starving for memory bandwidth.\n\n00:00:06.340 --> 00:00:10.120\nHigh bandwidth memory is simply too slow compared to tensor cores.\n\n00:00:10.619 --> 00:00:15.679\nFlashAttention-3 unlocks Hopper architecture using asynchronous tensor memory accelerators.\n\n00:00:16.379 --> 00:00:19.679\nMemory loads overlap completely with FP8 matrix multiplication.\n\n00:00:20.654 --> 00:00:28.194\nBy interleaving softmax exponentiation in asynchronous matrix engines, register pressure drops to zero.\n\n00:00:28.454 --> 00:00:34.474\nThe result is up to 2.4 times faster attention reaching 900 teraflops on a single H100.",
   "chapters": [
     "The Memory Wall",
     "HBM Bottleneck",

@@ -22,6 +22,22 @@ export const howBrowsersWorkFilm: Film = {
     src: "voiceover.wav",
     ducking: true,
   },
+  captions: `WEBVTT
+
+00:00:00.080 --> 00:00:06.100
+Typing google.com into your browser unleashes an intricate choreography across every layer of the Internet.
+
+00:00:06.523 --> 00:00:12.543
+First, your operating system checks local caches before querying recursive DNS resolvers to find the IP address.
+
+00:00:13.019 --> 00:00:18.479
+Next, your browser establishes a TCP handshake and negotiates TLS encryption in less than 50 milliseconds.
+
+00:00:19.202 --> 00:00:24.822
+The HTTP request reaches Google's edge reverse proxy, which load balances traffic to backend clusters.
+
+00:00:25.409 --> 00:00:33.349
+The server returns HTML, which the browser engine parses into the DOM tree, computing styles and rendering pixels at 60 frames per second.`,
   chapters: [
     "The Keystroke Journey",
     "DNS Resolution",

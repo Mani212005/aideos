@@ -14,6 +14,7 @@
     "src": "voiceover.wav",
     "ducking": true
   },
+  "captions": "WEBVTT\n\n00:00:00.080 --> 00:00:06.100\nTyping google.com into your browser unleashes an intricate choreography across every layer of the Internet.\n\n00:00:06.523 --> 00:00:12.543\nFirst, your operating system checks local caches before querying recursive DNS resolvers to find the IP address.\n\n00:00:13.019 --> 00:00:18.479\nNext, your browser establishes a TCP handshake and negotiates TLS encryption in less than 50 milliseconds.\n\n00:00:19.202 --> 00:00:24.822\nThe HTTP request reaches Google's edge reverse proxy, which load balances traffic to backend clusters.\n\n00:00:25.409 --> 00:00:33.349\nThe server returns HTML, which the browser engine parses into the DOM tree, computing styles and rendering pixels at 60 frames per second.",
   "chapters": [
     "The Keystroke Journey",
     "DNS Resolution",

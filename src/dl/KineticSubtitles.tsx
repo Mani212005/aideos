@@ -2,15 +2,13 @@
  * ==============================================================================
  * AIDEOS 2.0: PRETEXT KINETIC SUBTITLES & TEXT ENGINE
  * ==============================================================================
- * Powered by @chenglou/pretext for microsecond zero-DOM multiline text layout.
- * Calculates exact line breaks, word coordinates, and dynamic badge sizes
- * mathematically inside Remotion's 60 FPS render cycle without layout reflows.
+ * Calculates word-level karaoke highlights and smooth phrase-chunked subtitles
+ * inside Remotion's 60 FPS render cycle with zero layout jitter.
  * ==============================================================================
  */
 
 import React, { useMemo } from "react";
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
-import { prepareWithSegments, layoutWithLines, type LayoutLine } from "@chenglou/pretext";
 
 export interface CaptionWord {
   text: string;
@@ -31,62 +29,90 @@ export interface KineticSubtitleProps {
 
 export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   words,
-  maxWidth = 880,
-  fontSize = 54,
+  maxWidth = 1000,
+  fontSize = 32,
   fontFamily = "system-ui, -apple-system, sans-serif",
   primaryColor = "#FFFFFF",
-  highlightColor = "#FFD700",
-  backgroundColor = "rgba(15, 23, 42, 0.85)",
+  highlightColor = "#FF6B00",
+  backgroundColor = "rgba(10, 15, 29, 0.88)",
   position = "bottom",
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const currentFrame = frame;
+  // If no words, don't render
+  if (!words || words.length === 0) return null;
 
-  // Find active word
-  const activeWordIndex = words.findIndex(
-    (w) => currentFrame >= w.startFrame && currentFrame <= w.endFrame
+  // Group words into natural phrase chunks (punctuated phrases or 5-8 words max)
+  const phrases = useMemo(() => {
+    const list: Array<{
+      startIndex: number;
+      endIndex: number;
+      startFrame: number;
+      endFrame: number;
+      words: CaptionWord[];
+    }> = [];
+    let currentChunk: CaptionWord[] = [];
+    let chunkStartIndex = 0;
+
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i];
+      currentChunk.push(w);
+      const isPunctuation = /[.,!?;:]$/.test(w.text);
+      const isLong = currentChunk.length >= 7;
+      const isLast = i === words.length - 1;
+      const nextWordGap = !isLast && words[i + 1].startFrame - w.endFrame > fps * 0.4;
+
+      if (isPunctuation || isLong || isLast || nextWordGap) {
+        list.push({
+          startIndex: chunkStartIndex,
+          endIndex: i,
+          startFrame: currentChunk[0].startFrame,
+          endFrame: currentChunk[currentChunk.length - 1].endFrame + Math.round(fps * 0.25),
+          words: currentChunk,
+        });
+        currentChunk = [];
+        chunkStartIndex = i + 1;
+      }
+    }
+    return list;
+  }, [words, fps]);
+
+  // Find active phrase
+  const activePhrase = phrases.find(
+    (p) => frame >= p.startFrame && frame <= p.endFrame
   );
 
-  const activeIdx = activeWordIndex >= 0 ? activeWordIndex : 0;
-  const windowSize = 7;
-  const startWindow = Math.max(0, activeIdx - 2);
-  const endWindow = Math.min(words.length, startWindow + windowSize);
-  const visibleWords = words.slice(startWindow, endWindow);
+  if (!activePhrase) return null;
 
-  // Group text into a continuous string for Pretext layout calculation with clean spacing
-  const fullText = useMemo(() => visibleWords.map((w) => w.text.trim()).join(" "), [visibleWords]);
-  const lineHeight = Math.round(fontSize * 1.3);
+  // Find active word index within the global words array
+  let activeWordIndex = words.findIndex(
+    (w) => frame >= w.startFrame && frame <= w.endFrame
+  );
 
-  // Pretext Preparation & Zero-DOM Layout calculation
-  useMemo(() => {
-    try {
-      const fontSpec = `bold ${fontSize}px ${fontFamily}`;
-      const prep = prepareWithSegments(fullText, fontSpec);
-      const res = layoutWithLines(prep, maxWidth, lineHeight);
-      return { lines: res.lines.map((l: LayoutLine) => l.text), height: res.height };
-    } catch {
-      return { lines: [fullText], height: lineHeight };
+  // If between words within the active phrase, hold the preceding word
+  if (activeWordIndex === -1) {
+    for (let i = activePhrase.endIndex; i >= activePhrase.startIndex; i--) {
+      if (frame >= words[i].startFrame) {
+        activeWordIndex = i;
+        break;
+      }
     }
-  }, [fullText, fontSize, fontFamily, maxWidth, lineHeight]);
+  }
 
-  // Active word animation spring
-  const activeWord = words[activeIdx] || words[0];
-  const wordProgress = activeWord
-    ? spring({
-        frame: currentFrame - activeWord.startFrame,
-        fps,
-        config: { damping: 12, stiffness: 220 },
-      })
-    : 1;
-
-  const scale = interpolate(wordProgress, [0, 1], [1.15, 1.0], {
+  // Fade in / out smoothly at phrase boundaries
+  const phraseIn = interpolate(frame, [activePhrase.startFrame, activePhrase.startFrame + 4], [0, 1], {
+    extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
+  const phraseOut = interpolate(frame, [activePhrase.endFrame - 4, activePhrase.endFrame], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const opacity = phraseIn * phraseOut;
 
   const positionStyles: React.CSSProperties = {
-    top: position === "top" ? "12%" : position === "center" ? "45%" : "80%",
+    top: position === "top" ? "10%" : position === "center" ? "45%" : "82%",
   };
 
   return (
@@ -102,49 +128,62 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
         justifyContent: "center",
         pointerEvents: "none",
         zIndex: 50,
+        opacity,
         ...positionStyles,
       }}
     >
       <div
         style={{
           background: backgroundColor,
-          padding: "14px 24px",
-          borderRadius: "18px",
-          backdropFilter: "blur(12px)",
-          boxShadow: "0 20px 40px rgba(0, 0, 0, 0.55)",
-          border: "1px solid rgba(255, 255, 255, 0.15)",
+          padding: "12px 28px",
+          borderRadius: "16px",
+          backdropFilter: "blur(16px)",
+          boxShadow: "0 12px 32px rgba(0, 0, 0, 0.45)",
+          border: "1px solid rgba(255, 255, 255, 0.12)",
           textAlign: "center",
-          maxWidth: "100%",
+          maxWidth: "92%",
         }}
       >
         <div
           style={{
             fontSize: `${fontSize}px`,
             fontFamily,
-            fontWeight: 800,
-            lineHeight: 1.25,
+            fontWeight: 700,
+            lineHeight: 1.35,
             display: "flex",
             flexWrap: "wrap",
             justifyContent: "center",
-            gap: "10px",
+            gap: "8px 12px",
           }}
         >
-          {visibleWords.map((w) => {
-            const globalIdx = words.indexOf(w);
+          {activePhrase.words.map((w, localIdx) => {
+            const globalIdx = activePhrase.startIndex + localIdx;
             const isActive = globalIdx === activeWordIndex;
-            const isPast = globalIdx < activeWordIndex;
+            const isPast = activeWordIndex >= 0 && globalIdx < activeWordIndex;
+
+            const scale = isActive
+              ? spring({
+                  frame: Math.max(0, frame - w.startFrame),
+                  fps,
+                  config: { damping: 14, stiffness: 260 },
+                })
+              : 1;
+
+            const dynamicScale = isActive ? interpolate(scale, [0, 1], [1.12, 1.0]) : 1.0;
 
             return (
               <span
-                key={`${w.text}-${globalIdx}`}
+                key={`${globalIdx}-${w.text}`}
                 style={{
-                  color: isActive ? highlightColor : isPast ? primaryColor : "rgba(255, 255, 255, 0.4)",
-                  transform: isActive ? `scale(${scale})` : "scale(1)",
+                  color: isActive ? highlightColor : isPast ? primaryColor : "rgba(255, 255, 255, 0.38)",
+                  transform: `scale(${dynamicScale})`,
                   display: "inline-block",
-                  transition: "color 0.1s ease",
+                  transition: "color 0.08s ease, transform 0.08s ease",
                   textShadow: isActive
-                    ? `0 0 24px ${highlightColor}AA, 0 4px 12px rgba(0,0,0,0.9)`
-                    : "0 2px 4px rgba(0,0,0,0.6)",
+                    ? `0 0 20px ${highlightColor}88, 0 2px 6px rgba(0,0,0,0.8)`
+                    : isPast
+                    ? "0 2px 4px rgba(0,0,0,0.5)"
+                    : "none",
                 }}
               >
                 {w.text}
