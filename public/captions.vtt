@@ -1,10 +1,19 @@
 WEBVTT
 
-00:00:00.080 --> 00:00:02.100
-Welcome to Adio's audio pipeline.
+00:00:00.240 --> 00:00:05.860
+Modern g plus compute at petaflop speeds, but standard attention leaves them starving for memory bandwidth.
 
-00:00:02.577 --> 00:00:05.077
-We test segment splitting and caption alignment.
+00:00:06.340 --> 00:00:10.120
+High bandwidth's memory is simply too slow compared to tensor course.
 
-00:00:05.652 --> 00:00:08.632
-Every shot duration sums to the audio file duration
+00:00:10.619 --> 00:00:15.679
+Lash attention three unlocks hopper architecture using asynchronous tensor memory accelerators.
+
+00:00:16.379 --> 00:00:19.679
+Memory loads overlap completely with FB matrix multiplication
+
+00:00:20.654 --> 00:00:28.194
+By interleaving softmax exponentiation in a synchronous matrix engines in, a ping pong buffer register pressure drops to zero.
+
+00:00:28.454 --> 00:00:34.474
+The result is up to 2.4 times faster attention reaching 900 teraflops on a single.

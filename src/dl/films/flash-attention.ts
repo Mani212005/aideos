@@ -1,140 +1,222 @@
+/**
+ * File Description: Production Film Definition for "Understanding FlashAttention-3".
+ * Audio-first locked timing spine (35.04s), dual character cast (developer + scientist),
+ * and compliant device block transitions. (Axiom 1: pure data).
+ */
+
 import type { Film } from "../schema";
 
 export const flashAttentionFilm: Film = {
-  "id": "flash-attention",
-  "title": "Understanding FlashAttention",
-  "fps": 30,
-  "accent": "#635BFF",
-  "theme": {
-    "background": "dot-grid",
-    "fontFamily": "geist",
-    "storyStyle": "script-metaphor",
-    "cameraAngle": "isometric",
-    "accent": "#635BFF"
+  id: "flash-attention",
+  title: "FlashAttention-3: Squeezing 90% GPU FLOPs",
+  fps: 30,
+  accent: "#635BFF",
+  theme: {
+    background: "dot-grid",
+    fontFamily: "geist",
+    storyStyle: "script-metaphor",
+    cameraAngle: "isometric",
+    accent: "#635BFF",
   },
-  "chapters": [
-    "Introduction",
-    "Core Mechanism",
-    "Architecture",
-    "Payoff"
+  audio: {
+    src: "voiceover.wav",
+    ducking: true,
+  },
+  chapters: [
+    "The Memory Wall",
+    "HBM Bottleneck",
+    "Hopper TMA Asynchrony",
+    "FP8 Overlap",
+    "Ping-Pong Scheduling",
+    "The 900 TFLOPs Payoff",
   ],
-  "canvas": {
-    "nodes": [
+  canvas: {
+    nodes: [
       {
-        "id": "intro",
-        "label": "Understanding FlashAttention",
-        "x": -200,
-        "y": -100,
-        "w": 230,
-        "h": 70
+        id: "memory-wall",
+        label: "The Memory Wall",
+        x: -400,
+        y: -200,
+        w: 260,
+        h: 90,
       },
       {
-        "id": "mechanism",
-        "label": "Core Concept",
-        "x": 160,
-        "y": -100,
-        "w": 230,
-        "h": 70
+        id: "hbm-bottleneck",
+        label: "HBM vs Tensor Core",
+        x: 400,
+        y: -200,
+        w: 260,
+        h: 90,
       },
       {
-        "id": "system",
-        "label": "System Flow",
-        "x": 160,
-        "y": 150,
-        "w": 230,
-        "h": 70
+        id: "hopper-tma",
+        label: "Hopper TMA Engine",
+        x: 400,
+        y: 200,
+        w: 260,
+        h: 90,
       },
       {
-        "id": "result",
-        "label": "Key Payoff",
-        "x": -200,
-        "y": 150,
-        "w": 230,
-        "h": 70
-      }
+        id: "async-pipeline",
+        label: "FP8 Tensor Overlap",
+        x: -400,
+        y: 200,
+        w: 260,
+        h: 90,
+      },
+      {
+        id: "ping-pong",
+        label: "Ping-Pong Scheduling",
+        x: 0,
+        y: 0,
+        w: 280,
+        h: 90,
+      },
+      {
+        id: "payoff",
+        label: "900 TFLOPs H100 Payoff",
+        x: 0,
+        y: 400,
+        w: 280,
+        h: 90,
+      },
     ],
-    "edges": [
-      {
-        "from": "intro",
-        "to": "mechanism",
-        "dashed": false
-      },
-      {
-        "from": "mechanism",
-        "to": "system",
-        "dashed": false
-      },
-      {
-        "from": "system",
-        "to": "result",
-        "dashed": true
-      }
-    ]
+    edges: [
+      { from: "memory-wall", to: "hbm-bottleneck", dashed: false },
+      { from: "hbm-bottleneck", to: "hopper-tma", dashed: false },
+      { from: "hopper-tma", to: "async-pipeline", dashed: false },
+      { from: "async-pipeline", to: "ping-pong", dashed: false },
+      { from: "ping-pong", to: "payoff", dashed: true },
+    ],
   },
-  "shots": [
+  shots: [
     {
-      "id": "shot-1",
-      "dur": 8,
-      "look": "intro",
-      "move": "cut",
-      "stage": "anchor",
-      "zoom": 1,
-      "drift": true,
-      "blocks": [
+      id: "shot-1",
+      dur: 6.06,
+      look: "memory-wall",
+      move: "cut",
+      stage: "anchor",
+      visualDirection: "Tech Architect explains GPU memory starvation at the memory wall",
+      blocks: [
         {
-          "c": "TextReveal",
-          "text": "Understanding FlashAttention",
-          "size": "headline"
-        }
-      ]
+          c: "TextReveal",
+          text: "The GPU Memory Wall Problem",
+          size: "headline",
+          accentWord: "Memory",
+        },
+        {
+          c: "CharacterBeat",
+          characterId: "developer",
+          poses: [
+            { t: 0.0, groups: { torso: { rotate: 0 }, rightArm: { rotate: -20 }, leftArm: { rotate: 20 } } },
+            { t: 0.5, groups: { torso: { rotate: 4 }, rightArm: { rotate: -60 }, leftArm: { rotate: 0 } } },
+            { t: 1.0, groups: { torso: { rotate: 0 }, rightArm: { rotate: 0 }, leftArm: { rotate: 0 } } },
+          ],
+        },
+      ],
     },
     {
-      "id": "shot-2",
-      "dur": 10,
-      "look": "mechanism",
-      "move": "pan",
-      "stage": "frame",
-      "zoom": 1.1,
-      "drift": true,
-      "blocks": [
+      id: "shot-2",
+      dur: 4.12,
+      look: "hbm-bottleneck",
+      move: "pan",
+      stage: "anchor",
+      visualDirection: "Matrix comparison showing HBM memory bandwidth vs Tensor Core compute",
+      blocks: [
         {
-          "c": "Body",
-          "text": "Visualizing the fundamental idea and mechanics."
-        }
-      ]
+          c: "MatrixGrid",
+          values: [
+            [0.1, 0.3, 0.8, 0.2],
+            [0.4, 0.9, 0.1, 0.6],
+            [0.7, 0.2, 0.5, 0.9],
+            [0.2, 0.8, 0.4, 0.3],
+          ],
+          rowLabel: "Query Blocks",
+          colLabel: "Key Blocks",
+        },
+      ],
     },
     {
-      "id": "shot-3",
-      "dur": 12,
-      "look": "system",
-      "move": "pan",
-      "stage": "frame",
-      "zoom": 1.15,
-      "drift": true,
-      "blocks": [
+      id: "shot-3",
+      dur: 5.92,
+      look: "hopper-tma",
+      move: "cut",
+      stage: "anchor",
+      visualDirection: "AI Researcher explains Hopper asynchronous Tensor Memory Accelerators",
+      blocks: [
         {
-          "c": "StatCounter",
-          "to": 10,
-          "label": "Performance Gain",
-          "format": "plain",
-          "suffix": "x"
-        }
-      ]
+          c: "TextReveal",
+          text: "Hardware Asynchrony via TMA",
+          size: "headline",
+          accentWord: "Asynchrony",
+        },
+        {
+          c: "CharacterBeat",
+          characterId: "scientist",
+          poses: [
+            { t: 0.0, groups: { torso: { rotate: 0 }, rightArm: { rotate: -40 }, head: { rotate: 5 } } },
+            { t: 0.4, groups: { torso: { rotate: -3 }, rightArm: { rotate: -110 }, head: { rotate: -5 } } },
+            { t: 1.0, groups: { torso: { rotate: 0 }, rightArm: { rotate: 0 }, head: { rotate: 0 } } },
+          ],
+        },
+      ],
     },
     {
-      "id": "shot-4",
-      "dur": 8,
-      "look": "result",
-      "move": "zoom-out",
-      "stage": "anchor",
-      "zoom": 0.9,
-      "drift": false,
-      "blocks": [
+      id: "shot-4",
+      dur: 4.28,
+      look: "async-pipeline",
+      move: "pan",
+      stage: "anchor",
+      visualDirection: "Hardware pipeline diagram showing memory loads overlapping FP8 matrix multiplies",
+      blocks: [
         {
-          "c": "Body",
-          "text": "Summary and key takeaways."
-        }
-      ]
-    }
-  ]
+          c: "LayerStack",
+          count: 8,
+          bottomLabel: "HBM Async Load",
+          topLabel: "FP8 Tensor Core",
+        },
+      ],
+    },
+    {
+      id: "shot-5",
+      dur: 7.88,
+      look: "ping-pong",
+      move: "cut",
+      stage: "anchor",
+      visualDirection: "Ping-pong block scheduling in device frame buffer",
+      blocks: [
+        {
+          c: "ScaleBar",
+          ticks: ["100T", "300T", "600T", "900T"],
+          value: 0.95,
+        },
+      ],
+    },
+    {
+      id: "shot-6",
+      dur: 6.78,
+      look: "payoff",
+      move: "pan",
+      stage: "anchor",
+      visualDirection: "Tech Architect celebrates 2.4x speedup reaching 900 TFLOPs on H100",
+      blocks: [
+        {
+          c: "TextReveal",
+          text: "900 TFLOPs Reached on H100",
+          size: "headline",
+          accentWord: "900",
+        },
+        {
+          c: "CharacterBeat",
+          characterId: "developer",
+          poses: [
+            { t: 0.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
+            { t: 0.25, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
+            { t: 0.85, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
+            { t: 1.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
+          ],
+        },
+      ],
+    },
+  ],
 };
