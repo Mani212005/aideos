@@ -7,7 +7,7 @@ import { BlockView } from "./Block";
 import { CanvasGraph } from "./CanvasGraph";
 import { PaperRip } from "./PaperRip";
 import { TextBeat } from "./devices";
-import { MetaphorViewer } from "./metaphors/MetaphorViewer";
+import { computeBlockRect } from "./layout";
 import {
   buildTimeline,
   camAt,
@@ -88,6 +88,8 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
   );
   const contentStart = current.from + Math.round(openFrames * 0.55);
 
+  const hasMultiple = shot.blocks.length > 1;
+
   return (
     <div
       style={{
@@ -112,35 +114,24 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
           padding: shot.stage === "frame" ? 0 : layout.grid * 5,
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
+          justifyContent: shot.stage === "frame" && !hasMultiple ? "center" : "space-between",
+          alignItems: "center",
           gap: layout.grid * 2.5,
           opacity: contentIn,
           minWidth: 0,
+          width: "100%",
+          height: "100%",
         }}
       >
-        {shot.stage === "frame" ? (
-          <TextBeat>
-            {shot.blocks.map((block, i) => (
-              <BlockView
-                key={`${current.index}-${i}`}
-                block={block}
-                start={contentStart}
-                index={i}
-                durationInFrames={current.durationInFrames}
-              />
-            ))}
-          </TextBeat>
-        ) : (
-          shot.blocks.map((block, i) => (
-            <BlockView
-              key={`${current.index}-${i}`}
-              block={block}
-              start={contentStart}
-              index={i}
-              durationInFrames={current.durationInFrames}
-            />
-          ))
-        )}
+        {shot.blocks.map((block, i) => (
+          <BlockView
+            key={`${current.index}-${i}`}
+            block={block}
+            start={contentStart}
+            index={i}
+            durationInFrames={current.durationInFrames}
+          />
+        ))}
       </div>
     </div>
   );
@@ -412,58 +403,14 @@ export const FilmView: React.FC<FilmViewProps> = ({
           />
         )}
 
-        {/* Script Metaphor Rendering Mode vs Spatial Canvas Graph */}
-        {(() => {
-          const hasCharacterBlock = current.shot.blocks.some(b => b.c === "CharacterBeat");
-          
-          if (!hasCharacterBlock) {
-            let resolvedMetaphor: string | undefined = undefined;
-            if (current.shot.metaphor && current.shot.metaphor !== "character-throw") {
-              resolvedMetaphor = current.shot.metaphor;
-            } else if (current.shot.visualDirection) {
-              const vd = current.shot.visualDirection.toLowerCase();
-              if (vd.includes("spider") || vd.includes("web") || vd.includes("weave")) {
-                resolvedMetaphor = "spider-web";
-              } else if (vd.includes("liquid") || vd.includes("water") || vd.includes("bucket") || vd.includes("reservoir")) {
-                resolvedMetaphor = "liquid-bucket";
-              } else if (vd.includes("balance") || vd.includes("scale") || vd.includes("tradeoff")) {
-                resolvedMetaphor = "balance-scale";
-              } else if (vd.includes("gear") || vd.includes("clock") || vd.includes("engine")) {
-                resolvedMetaphor = "clock-gears";
-              }
-            }
-
-            if (resolvedMetaphor) {
-              return (
-                <AbsoluteFill className="flex flex-col items-center justify-center">
-                  {/* Background Dimmed Spatial Graph */}
-                  <AbsoluteFill style={{ opacity: 0.03, pointerEvents: "none" }}>
-                    <CanvasGraph film={film} timeline={timeline} cam={cam} />
-                  </AbsoluteFill>
-
-                  {/* Prominent Large Metaphor Visual Scene Covering 75% of Frame */}
-                  <div className="w-[92%] h-[86%] flex items-center justify-center z-10 scale-125">
-                    <MetaphorViewer
-                      type={resolvedMetaphor as "spider-web" | "liquid-bucket" | "balance-scale" | "clock-gears" | "rocket-launch" | "character-throw" | "glowing-cluster" | "custom"}
-                      frame={frame - current.from}
-                      accent={accent}
-                    />
-                  </div>
-                </AbsoluteFill>
-              );
-            }
-          }
-
-          return (
-            <AbsoluteFill style={{ transform: `scale(${drift})` }}>
-              <AbsoluteFill style={{ opacity: canvasOpacity }}>
-                <CanvasGraph film={film} timeline={timeline} cam={cam} />
-              </AbsoluteFill>
-              {showGrid ? <Grid /> : null}
-              <Stage film={film} timeline={timeline} />
-            </AbsoluteFill>
-          );
-        })()}
+        {/* Unified Spatial Canvas Graph & Stage */}
+        <AbsoluteFill style={{ transform: `scale(${drift})` }}>
+          <AbsoluteFill style={{ opacity: canvasOpacity }}>
+            <CanvasGraph film={film} timeline={timeline} cam={cam} />
+          </AbsoluteFill>
+          {showGrid ? <Grid /> : null}
+          <Stage film={film} timeline={timeline} />
+        </AbsoluteFill>
 
         {/* Full-Screen Dynamic 3D Hero Spotlight Overlay */}
         <Dynamic3DHeroOverlay frame={frame} timeline={timeline} />

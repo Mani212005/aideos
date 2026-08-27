@@ -9,6 +9,7 @@ import { execSync } from "child_process";
 import { parseFilm, type Film, type Block, type Shot } from "./schema";
 import { CHARACTER_RIGS } from "./characters";
 import { buildTimeline, camAt, lookBox, projectBox } from "./camera";
+import { computeBlockRect } from "./layout";
 import { verifyTrajectoryContinuity } from "./motion/verifier";
 import { evaluateCatmullRomSpline } from "./motion/spline";
 
@@ -57,41 +58,14 @@ export function computeBlockScreenAABB(
   tProgress: number,
   viewport: { width: number; height: number }
 ): BlockAABB {
-  if (shot.stage === "frame") {
-    if (block.c === "CharacterBeat") {
-      // Full-screen hero character centered in frame
-      const charH = Math.min(viewport.height * 0.65, 420);
-      const charW = charH * 0.65;
-      const x = (viewport.width - charW) / 2;
-      const y = (viewport.height - charH) / 2 + 40;
-      return { c: block.c, x, y, w: charW, h: charH };
-    } else if (block.c === "TextReveal" || block.c === "Kicker") {
-      // Display headline centered near top of hero frame
-      const textW = Math.min(viewport.width * 0.85, 1180);
-      const textH = block.c === "TextReveal" ? 110 : 40;
-      const x = (viewport.width - textW) / 2;
-      const y = block.c === "Kicker" ? 40 : 80;
-      return { c: block.c, x, y, w: textW, h: textH };
-    } else if (block.c === "StatCounter") {
-      const statW = 320;
-      const statH = 120;
-      const x = (viewport.width - statW) / 2;
-      const y = viewport.height - 200;
-      return { c: block.c, x, y, w: statW, h: statH };
-    }
-  } else if (shot.stage === "anchor") {
-    // Inside an anchored panel, blocks partition the panel height vertically
-    const padding = 24;
-    const availableH = cardBox.h - padding * 2;
-    const rowH = availableH / Math.max(1, totalBlocks);
-    const x = cardBox.x + padding;
-    const y = cardBox.y + padding + blockIndex * rowH;
-    const w = cardBox.w - padding * 2;
-    const h = Math.max(20, rowH - 12);
-    return { c: block.c, x, y, w, h };
-  }
-
-  return { c: block.c, x: cardBox.x, y: cardBox.y, w: cardBox.w, h: cardBox.h };
+  const rect = computeBlockRect(
+    { canvas: { nodes: [], edges: [] }, shots: [shot], fps: 30, id: "val", title: "val" } as any,
+    shot,
+    block,
+    viewport,
+    { blockIndex, totalBlocks, progress: tProgress }
+  );
+  return { c: block.c, x: rect.x, y: rect.y, w: rect.w, h: rect.h };
 }
 
 /**

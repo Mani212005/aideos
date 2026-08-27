@@ -63,7 +63,67 @@ export type PoseKeyframe = z.infer<typeof poseKeyframeSchema>;
  * no colour. A block that could specify its own colour would be a block that
  * could break §01.
  */
+export const metaphorContentSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("balance-scale"),
+    leftLabel: z.string().min(1).default("Left Parameter"),
+    rightLabel: z.string().min(1).default("Right Parameter"),
+    caption: z.string().min(1).default("Equilibrium Balance"),
+    tilt: z.number().optional(),
+  }),
+  z.object({
+    kind: z.literal("liquid-bucket"),
+    levelLabel: z.string().min(1).default("Level"),
+    caption: z.string().min(1).default("Dynamic Capacity"),
+    fillRatio: z.number().min(0).max(1).default(0.75),
+  }),
+  z.object({
+    kind: z.literal("clock-gears"),
+    gearLabels: z.array(z.string()).default([]),
+    caption: z.string().min(1).default("Cadence & Synchronization"),
+  }),
+  z.object({
+    kind: z.literal("spider-web"),
+    caption: z.string().min(1).default("Procedural Radial Network"),
+  }),
+  z.object({
+    kind: z.literal("character-throw"),
+    caption: z.string().min(1).default("Script Read & Cache"),
+  }),
+  z.object({
+    kind: z.literal("typing-cursor-quote"),
+    quoteText: z.string().default("LLMs are a dead end that will never reach real intelligence."),
+    stampText: z.string().default("Yann LeCun Stamp: APPROVED"),
+  }),
+  z.object({
+    kind: z.literal("glowing-cluster"),
+    title: z.string().default("Abstract Latent Representation"),
+    subtitle: z.string().default("Deterministic Multi-Dimensional Embedding"),
+  }),
+  z.object({
+    kind: z.literal("custom"),
+    caption: z.string().default("Custom Visual"),
+  }),
+]);
+
+export type MetaphorContent = z.infer<typeof metaphorContentSchema>;
+
 export const blockSchema = z.discriminatedUnion("c", [
+  z.object({
+    c: z.literal("MetaphorViewer"),
+    metaphorType: z.enum([
+      "typing-cursor-quote",
+      "spider-web",
+      "liquid-bucket",
+      "balance-scale",
+      "clock-gears",
+      "rocket-launch",
+      "character-throw",
+      "glowing-cluster",
+      "custom",
+    ]).optional(),
+    content: metaphorContentSchema.optional(),
+  }),
   z.object({
     c: z.literal("CharacterBeat"),
     characterId: z.string().min(1).default("astronaut"),
@@ -217,6 +277,7 @@ export const DEVICE_BLOCKS = [
   "AnalogyInset",
   "Plot",
   "CharacterBeat",
+  "MetaphorViewer",
 ] as const;
 
 const isDevice = (b: Block) =>

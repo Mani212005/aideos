@@ -24,6 +24,8 @@ import {
   VectorSpace,
 } from "./devices";
 import { CharacterRigView } from "./CharacterRig";
+import { MetaphorViewer } from "./metaphors/MetaphorViewer";
+import { useAccent } from "./accent";
 
 /**
  * The one place that maps schema to component.
@@ -135,5 +137,19 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
       return <Divider {...timing} />;
     case "IconLabel":
       return <IconLabel {...timing} text={block.text} />;
+    case "MetaphorViewer": {
+      const accent = useAccent();
+      const metaphorType = block.content?.kind ?? block.metaphorType ?? "balance-scale";
+      return (
+        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <MetaphorViewer
+            type={metaphorType}
+            content={block.content}
+            frame={timing.start}
+            accent={accent}
+          />
+        </div>
+      );
+    }
   }
 };

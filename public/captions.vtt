@@ -1,19 +1,10 @@
 WEBVTT
 
-00:00:00.080 --> 00:00:01.360
-Typing google.com
+00:00:00.080 --> 00:00:02.100
+Welcome to ADO's audio pipeline.
 
-00:00:01.360 --> 00:00:06.100
-into your browser unleashes an intricate choreography across every layer of the Internet.
+00:00:02.577 --> 00:00:05.077
+We test segment splitting and caption alignment.
 
-00:00:06.523 --> 00:00:12.543
-First, your operating system checks local caches before querying recursive DNS resolvers to find the IP address.
-
-00:00:13.019 --> 00:00:18.479
-Next, your browser establishes a c handshake and negotiates TLS encryption in less than fifty milliseconds.
-
-00:00:19.202 --> 00:00:24.822
-HET request reaches Google's edge reverse proxy, which load balances traffic to back end clusters.
-
-00:00:25.409 --> 00:00:33.349
-The server returns HTML, which the browser engine parses into the DOM tree, computing styles and rendering pixels at 60 frames per second.
+00:00:05.652 --> 00:00:08.632
+Every shot duration sums to the audio file duration.

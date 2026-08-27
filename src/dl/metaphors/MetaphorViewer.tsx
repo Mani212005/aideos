@@ -1,23 +1,57 @@
+/**
+ * File Description: Unified vector visual metaphor library for Aideos.
+ * Implements pure data-driven SVG concept visualizers with explicit centered viewBoxes
+ * and preserveAspectRatio="xMidYMid meet" for frame-accurate Remotion positioning.
+ */
 import React from "react";
-import { MONO } from "../tokens";
+import { MONO, PALETTE } from "../tokens";
 import { GlowingClusterMetaphor } from "./GlowingClusterMetaphor";
+import type { MetaphorContent } from "../schema";
 
 export interface MetaphorProps {
-  type: "typing-cursor-quote" | "spider-web" | "liquid-bucket" | "balance-scale" | "clock-gears" | "rocket-launch" | "character-throw" | "glowing-cluster" | "custom";
+  type:
+    | "typing-cursor-quote"
+    | "spider-web"
+    | "liquid-bucket"
+    | "balance-scale"
+    | "clock-gears"
+    | "rocket-launch"
+    | "character-throw"
+    | "glowing-cluster"
+    | "custom";
+  content?: MetaphorContent;
   frame: number;
   accent?: string;
   fontFamily?: string;
 }
 
 // 1. Procedural Spider Web Weaving Animation
-export const SpiderWebAnimation: React.FC<{ frame: number; accent: string }> = ({ frame, accent }) => {
+export const SpiderWebAnimation: React.FC<{
+  frame: number;
+  accent: string;
+  caption?: string;
+}> = ({ frame, accent, caption = "Procedural Radial Network" }) => {
   const radials = 8;
   const spirals = 6;
   const progress = Math.min(1, frame / 90);
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center">
-      <svg width="600" height="600" viewBox="-300 -300 600 600" className="overflow-visible">
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <svg
+        viewBox="-300 -300 600 600"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ width: "100%", height: "85%", flex: 1, minHeight: 0 }}
+      >
         {/* Radial Spokes */}
         {Array.from({ length: radials }).map((_, i) => {
           const angle = (i * 2 * Math.PI) / radials;
@@ -41,15 +75,17 @@ export const SpiderWebAnimation: React.FC<{ frame: number; accent: string }> = (
         {/* Concentric Spiral Connections */}
         {Array.from({ length: spirals }).map((_, s) => {
           const radius = 40 + s * 35;
-          const sProgress = Math.max(0, Math.min(1, (progress - (s * 0.12)) / 0.3));
+          const sProgress = Math.max(0, Math.min(1, (progress - s * 0.12) / 0.3));
           if (sProgress <= 0) return null;
 
-          const points = Array.from({ length: radials + 1 }).map((_, r) => {
-            const angle = (r * 2 * Math.PI) / radials;
-            const x = Math.cos(angle) * radius;
-            const y = Math.sin(angle) * radius;
-            return `${x},${y}`;
-          }).join(" ");
+          const points = Array.from({ length: radials + 1 })
+            .map((_, r) => {
+              const angle = (r * 2 * Math.PI) / radials;
+              const x = Math.cos(angle) * radius;
+              const y = Math.sin(angle) * radius;
+              return `${x},${y}`;
+            })
+            .join(" ");
 
           return (
             <polyline
@@ -65,8 +101,12 @@ export const SpiderWebAnimation: React.FC<{ frame: number; accent: string }> = (
         })}
 
         {/* The Animated Spider Centroid */}
-        <g transform={`translate(${Math.cos(frame * 0.08) * 120 * (1 - progress)}, ${Math.sin(frame * 0.08) * 120 * (1 - progress)})`}>
-          <circle r={10} fill={accent} className="drop-shadow-lg" />
+        <g
+          transform={`translate(${Math.cos(frame * 0.08) * 120 * (1 - progress)}, ${
+            Math.sin(frame * 0.08) * 120 * (1 - progress)
+          })`}
+        >
+          <circle r={10} fill={accent} />
           <circle r={16} fill="none" stroke={accent} strokeWidth={2} opacity={0.4} />
           {/* Spider Legs */}
           {[-1, 1].map((side) =>
@@ -91,60 +131,185 @@ export const SpiderWebAnimation: React.FC<{ frame: number; accent: string }> = (
         </g>
       </svg>
 
-      <div className="absolute bottom-10 px-4 py-2 rounded-full bg-black/60 backdrop-blur border border-white/20 text-white font-mono text-xs">
-        🕸️ Procedural Weaving · Radial Connections Active
+      <div
+        style={{
+          marginTop: 12,
+          padding: "6px 16px",
+          borderRadius: 20,
+          background: "rgba(0, 0, 0, 0.65)",
+          border: "1px solid rgba(255, 255, 255, 0.15)",
+          color: "#FFFFFF",
+          fontFamily: MONO,
+          fontSize: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <span>🕸️</span>
+        <span>{caption}</span>
       </div>
     </div>
   );
 };
 
-// 2. Liquid Container / Reservoir Simulation
-export const LiquidContainerAnimation: React.FC<{ frame: number; accent: string }> = ({ frame, accent }) => {
-  const fillHeight = Math.min(260, (frame / 120) * 260);
-  const waveOffset = Math.sin(frame * 0.15) * 8;
+// 2. Liquid Container / Reservoir Simulation (Pure Centered SVG)
+export const LiquidContainerAnimation: React.FC<{
+  frame: number;
+  accent: string;
+  levelLabel?: string;
+  caption?: string;
+  fillRatio?: number;
+}> = ({
+  frame,
+  accent,
+  levelLabel = "Dynamic Buffer Capacity",
+  caption = "Fluid Level Reservoir",
+  fillRatio = 0.75,
+}) => {
+  const animatedRatio = Math.min(fillRatio, (frame / 100) * fillRatio);
+  const fillH = animatedRatio * 220;
+  const wave = Math.sin(frame * 0.15) * 6;
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center">
-      <div className="relative w-72 h-80 border-4 border-white/40 rounded-b-3xl overflow-hidden bg-black/40 shadow-2xl flex flex-col justify-end p-2">
-        {/* Liquid Fill */}
-        <div
-          className="w-full rounded-b-2xl transition-all relative overflow-hidden"
-          style={{
-            height: `${fillHeight}px`,
-            background: `linear-gradient(180deg, ${accent} 0%, rgba(20,20,30,0.95) 100%)`,
-          }}
-        >
-          {/* Animated Wave Top */}
-          <div
-            className="absolute top-0 left-0 right-0 h-4 bg-white/30"
-            style={{ transform: `translateY(${waveOffset}px)` }}
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <svg
+        viewBox="0 0 500 380"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ width: "100%", height: "85%", flex: 1, minHeight: 0 }}
+      >
+        <defs>
+          <linearGradient id="liquid-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={accent} stopOpacity={0.9} />
+            <stop offset="100%" stopColor="#0E0E14" stopOpacity={0.95} />
+          </linearGradient>
+          <clipPath id="reservoir-clip">
+            <rect x="130" y="60" width="240" height="240" rx="24" />
+          </clipPath>
+        </defs>
+
+        {/* Outer Reservoir Glass Tank */}
+        <rect
+          x="130"
+          y="60"
+          width="240"
+          height="240"
+          rx="24"
+          fill="rgba(10, 10, 14, 0.7)"
+          stroke="rgba(255, 255, 255, 0.4)"
+          strokeWidth="4"
+        />
+
+        {/* Liquid Fill Group (Clipped to Tank) */}
+        <g clipPath="url(#reservoir-clip)">
+          <rect
+            x="130"
+            y={300 - fillH}
+            width="240"
+            height={fillH}
+            fill="url(#liquid-grad)"
           />
-        </div>
+          {/* Animated Wave Surface */}
+          <path
+            d={`M 130 ${300 - fillH + wave} Q 190 ${300 - fillH - wave} 250 ${300 - fillH + wave} T 370 ${300 - fillH + wave} L 370 ${300 - fillH + 20} L 130 ${300 - fillH + 20} Z`}
+            fill="rgba(255, 255, 255, 0.35)"
+          />
+        </g>
 
-        {/* Measurement Grid Lines */}
-        <div className="absolute inset-y-4 right-4 flex flex-col justify-between text-[10px] font-mono text-gray-400 select-none pointer-events-none">
-          <span>100% (128k)</span>
-          <span>75% (96k)</span>
-          <span>50% (64k)</span>
-          <span>25% (32k)</span>
-          <span>0%</span>
-        </div>
-      </div>
+        {/* Measurement Ticks & Percentage Legend */}
+        {[100, 75, 50, 25, 0].map((pct, idx) => {
+          const yPos = 60 + idx * 60;
+          return (
+            <g key={pct} opacity={0.6}>
+              <line x1="375" y1={yPos} x2="385" y2={yPos} stroke="#A1A1AA" strokeWidth="2" />
+              <text x="392" y={yPos + 4} fill="#A1A1AA" fontSize="10" fontFamily={MONO}>
+                {pct}%
+              </text>
+            </g>
+          );
+        })}
 
-      <div className="mt-4 px-4 py-1.5 rounded bg-black/60 border border-white/10 text-xs font-mono text-gray-200">
-        🚰 Dynamic Buffer Allocation: <span style={{ color: accent }}>{Math.round((fillHeight / 260) * 100)}%</span>
+        {/* Level Label in SVG */}
+        <text
+          x="250"
+          y="340"
+          fill="#E4E4E7"
+          fontSize="12"
+          fontFamily={MONO}
+          textAnchor="middle"
+          fontWeight="bold"
+        >
+          {levelLabel}: {Math.round(animatedRatio * 100)}%
+        </text>
+      </svg>
+
+      <div
+        style={{
+          marginTop: 8,
+          padding: "6px 16px",
+          borderRadius: 20,
+          background: "rgba(0, 0, 0, 0.65)",
+          border: "1px solid rgba(255, 255, 255, 0.15)",
+          color: "#FFFFFF",
+          fontFamily: MONO,
+          fontSize: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <span>🚰</span>
+        <span>{caption}</span>
       </div>
     </div>
   );
 };
 
-// 3. Balance Scale Metaphor
-export const BalanceScaleAnimation: React.FC<{ frame: number; accent: string }> = ({ frame, accent }) => {
-  const tiltAngle = Math.sin(frame * 0.05) * 14;
+// 3. Balance Scale Metaphor (Data-Driven Labels & Pure Centered SVG)
+export const BalanceScaleAnimation: React.FC<{
+  frame: number;
+  accent: string;
+  leftLabel?: string;
+  rightLabel?: string;
+  caption?: string;
+  tilt?: number;
+}> = ({
+  frame,
+  accent,
+  leftLabel = "Primary Constraint",
+  rightLabel = "Secondary Tradeoff",
+  caption = "Trade-Off Equilibrium",
+  tilt,
+}) => {
+  const dynamicTilt = tilt !== undefined ? tilt : Math.sin(frame * 0.05) * 14;
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center">
-      <svg width="500" height="360" viewBox="-250 -180 500 360" className="overflow-visible">
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <svg
+        viewBox="-250 -180 500 360"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ width: "100%", height: "85%", flex: 1, minHeight: 0 }}
+      >
         {/* Central Stand */}
         <line x1={0} y1={-120} x2={0} y2={120} stroke="#FFFFFF" strokeWidth={6} strokeLinecap="round" />
         <path d="M-60 120 L60 120 L40 140 L-40 140 Z" fill="#333338" />
@@ -153,32 +318,76 @@ export const BalanceScaleAnimation: React.FC<{ frame: number; accent: string }> 
         <circle cx={0} cy={-120} r={8} fill={accent} />
 
         {/* Rotating Lever Beam */}
-        <g transform={`rotate(${tiltAngle} 0 -120)`}>
+        <g transform={`rotate(${dynamicTilt} 0 -120)`}>
           <line x1={-180} y1={-120} x2={180} y2={-120} stroke="#FFFFFF" strokeWidth={5} />
-          
-          {/* Left Pan: Compute */}
-          <line x1={-180} y1={-120} x2={-180} y2={-40} stroke="rgba(255,255,255,0.4)" strokeWidth={2} />
-          <path d="M-220 -40 Q-180 -10 -140 -40 Z" fill="#222" stroke="#666" strokeWidth={2} />
-          <text x={-180} y={-55} fill="#FFF" fontSize="11" fontFamily={MONO} textAnchor="middle">Compute Cost</text>
 
-          {/* Right Pan: Memory */}
+          {/* Left Pan */}
+          <line x1={-180} y1={-120} x2={-180} y2={-40} stroke="rgba(255,255,255,0.4)" strokeWidth={2} />
+          <path d="M-220 -40 Q-180 -10 -140 -40 Z" fill="#222226" stroke="#888" strokeWidth={2} />
+          <text x={-180} y={-55} fill="#FFFFFF" fontSize="12" fontFamily={MONO} textAnchor="middle">
+            {leftLabel}
+          </text>
+
+          {/* Right Pan */}
           <line x1={180} y1={-120} x2={180} y2={-40} stroke="rgba(255,255,255,0.4)" strokeWidth={2} />
-          <path d="M140 -40 Q180 -10 220 -40 Z" fill="#222" stroke={accent} strokeWidth={2} />
-          <text x={180} y={-55} fill={accent} fontSize="11" fontFamily={MONO} textAnchor="middle">VRAM Bandwidth</text>
+          <path d="M140 -40 Q180 -10 220 -40 Z" fill="#222226" stroke={accent} strokeWidth={2} />
+          <text x={180} y={-55} fill={accent} fontSize="12" fontFamily={MONO} textAnchor="middle">
+            {rightLabel}
+          </text>
         </g>
       </svg>
-      <div className="px-4 py-1.5 rounded-full bg-black/60 border border-white/20 text-xs font-mono text-white">
-        ⚖️ Precision Trade-Off Equilibrium
+
+      <div
+        style={{
+          marginTop: 8,
+          padding: "6px 16px",
+          borderRadius: 20,
+          background: "rgba(0, 0, 0, 0.65)",
+          border: "1px solid rgba(255, 255, 255, 0.15)",
+          color: "#FFFFFF",
+          fontFamily: MONO,
+          fontSize: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <span>⚖️</span>
+        <span>{caption}</span>
       </div>
     </div>
   );
 };
 
 // 4. Clock Gears Metaphor
-export const ClockGearsAnimation: React.FC<{ frame: number; accent: string }> = ({ frame, accent }) => {
+export const ClockGearsAnimation: React.FC<{
+  frame: number;
+  accent: string;
+  gearLabels?: string[];
+  caption?: string;
+}> = ({
+  frame,
+  accent,
+  gearLabels = ["Cadence", "Synchronization"],
+  caption = "Escapement Cadence & Execution Speed",
+}) => {
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center">
-      <svg width="440" height="440" viewBox="-220 -220 440 440">
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <svg
+        viewBox="-220 -220 440 440"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ width: "100%", height: "85%", flex: 1, minHeight: 0 }}
+      >
         {/* Large Main Gear */}
         <g transform={`rotate(${frame * 1.2} 0 0)`}>
           <circle r={110} fill="none" stroke="#FFFFFF" strokeWidth={6} strokeDasharray="18,10" />
@@ -195,35 +404,59 @@ export const ClockGearsAnimation: React.FC<{ frame: number; accent: string }> = 
               strokeWidth={3}
             />
           ))}
+          {gearLabels[0] && (
+            <text x={0} y={4} fill="#FFFFFF" fontSize="10" fontFamily={MONO} textAnchor="middle">
+              {gearLabels[0]}
+            </text>
+          )}
         </g>
 
         {/* Small Interlocking Pinion Gear */}
         <g transform={`translate(130, -75) rotate(${-frame * 2.4} 0 0)`}>
           <circle r={55} fill="none" stroke={accent} strokeWidth={5} strokeDasharray="12,8" />
-          <circle r={42} fill="#111" stroke={accent} strokeWidth={1.5} />
-          <circle r={10} fill="#FFF" />
+          <circle r={42} fill="#111114" stroke={accent} strokeWidth={1.5} />
+          <circle r={10} fill="#FFFFFF" />
+          {gearLabels[1] && (
+            <text x={0} y={3} fill={accent} fontSize="8" fontFamily={MONO} textAnchor="middle">
+              {gearLabels[1]}
+            </text>
+          )}
         </g>
       </svg>
-      <div className="mt-2 px-4 py-1.5 rounded bg-black/60 border border-white/10 text-xs font-mono text-gray-300">
-        ⏱️ Escapement Cadence · Single-Pass Prefill
+
+      <div
+        style={{
+          marginTop: 8,
+          padding: "6px 16px",
+          borderRadius: 20,
+          background: "rgba(0, 0, 0, 0.65)",
+          border: "1px solid rgba(255, 255, 255, 0.15)",
+          color: "#FFFFFF",
+          fontFamily: MONO,
+          fontSize: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <span>⏱️</span>
+        <span>{caption}</span>
       </div>
     </div>
   );
 };
 
-// 5. Procedural Character Sleeping, Reading Script Once & Throwing Out Window Animation
-export const CharacterThrowScriptAnimation: React.FC<{ frame: number; accent: string }> = ({ frame, accent }) => {
-  // Phase 1: Sleeping (0 - 40 frames)
-  // Phase 2: Wake up & Scan Script (40 - 85 frames)
-  // Phase 3: Throw Script Out Window (85 - 140 frames)
-  // Phase 4: Prompt Cached & Discarded (140+ frames)
-
+// 5. Character Throw Script Animation
+export const CharacterThrowScriptAnimation: React.FC<{
+  frame: number;
+  accent: string;
+  caption?: string;
+}> = ({ frame, accent, caption = "Prompt Cached & Locked in KV State" }) => {
   const isSleeping = frame < 40;
   const isReading = frame >= 40 && frame < 85;
   const isThrowing = frame >= 85 && frame < 140;
   const isDiscarded = frame >= 140;
 
-  // Paper Position Coordinates
   let paperX = 0;
   let paperY = -120;
   let paperRot = 0;
@@ -247,55 +480,50 @@ export const CharacterThrowScriptAnimation: React.FC<{ frame: number; accent: st
     paperOpacity = 0;
   }
 
-  // Scan Laser
   const scanY = isReading ? -70 + ((frame - 40) % 25) * 4 : -70;
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center">
-      <svg width="100%" height="100%" viewBox="-250 -130 500 270" className="w-[92%] h-[82%] overflow-visible drop-shadow-2xl">
-        {/* ROOM & WINDOW */}
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <svg
+        viewBox="-250 -130 500 270"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ width: "100%", height: "85%", flex: 1, minHeight: 0 }}
+      >
         {/* Window on the Right Wall */}
         <g transform="translate(150, -110)">
-          {/* Wall Window Frame */}
           <rect x="-10" y="-10" width="140" height="180" rx="8" fill="#18181B" stroke="#3F3F46" strokeWidth={3} />
-          {/* Night Sky / Outside View */}
           <rect x="0" y="0" width="120" height="160" rx="4" fill="#09090B" />
-          {/* Outside Moon & Stars */}
           <circle cx="90" cy="35" r="14" fill="#FDE047" opacity={0.9} />
           <circle cx="95" cy="32" r="12" fill="#09090B" />
-          {/* Window Panes Grid */}
           <line x1="60" y1="0" x2="60" y2="160" stroke="#27272A" strokeWidth={2} />
           <line x1="0" y1="80" x2="120" y2="80" stroke="#27272A" strokeWidth={2} />
-          {/* Window Sill */}
           <rect x="-20" y="160" width="160" height="12" rx="3" fill="#27272A" />
-          {/* Open Window Shutter Action */}
-          <g transform={`translate(${isThrowing || isDiscarded ? 120 : 60}, 0)`}>
-            <rect x="0" y="0" width="55" height="155" fill="none" stroke={accent} strokeWidth={2} opacity={0.6} />
-          </g>
         </g>
 
-        {/* DESK SURFACE */}
+        {/* Desk Surface */}
         <line x1="-300" y1="110" x2="300" y2="110" stroke="#3F3F46" strokeWidth={5} strokeLinecap="round" />
         <rect x="-240" y="112" width="480" height="16" fill="#18181B" rx="4" />
 
-        {/* RETRO COMPUTER / ROBOT CHARACTER */}
+        {/* Robot / Computer Monitor */}
         <g transform="translate(-60, 20)">
-          {/* Monitor Body */}
           <rect x="-80" y="-80" width="160" height="130" rx="16" fill="#27272A" stroke="#52525B" strokeWidth={4} />
-          {/* CRT Screen Bezel */}
           <rect x="-65" y="-68" width="130" height="100" rx="10" fill="#09090B" stroke="#3F3F46" strokeWidth={2} />
 
-          {/* COMPUTER EYES & EMOTIONS */}
           {isSleeping && (
             <g>
-              {/* Sleeping Closed Eyes (-.-) */}
               <path d="M -40 -20 Q -25 -10 -10 -20" fill="none" stroke="#71717A" strokeWidth={4} strokeLinecap="round" />
               <path d="M 10 -20 Q 25 -10 40 -20" fill="none" stroke="#71717A" strokeWidth={4} strokeLinecap="round" />
-              {/* Floating Zzz */}
               <text x="35" y={-85 - Math.sin(frame * 0.15) * 15} fill="#A1A1AA" fontSize="18" fontFamily={MONO} fontWeight="bold">
-                Z
-              </text>
-              <text x="55" y={-110 - Math.sin(frame * 0.15 + 1) * 15} fill={accent} fontSize="24" fontFamily={MONO} fontWeight="bold">
                 Z
               </text>
             </g>
@@ -303,19 +531,16 @@ export const CharacterThrowScriptAnimation: React.FC<{ frame: number; accent: st
 
           {isReading && (
             <g>
-              {/* Wide Awake Glowing Eyes (O_O) */}
               <circle cx="-25" cy="-20" r="14" fill={accent} />
               <circle cx="25" cy="-20" r="14" fill={accent} />
               <circle cx="-25" cy="-20" r="6" fill="#FFF" />
               <circle cx="25" cy="-20" r="6" fill="#FFF" />
-              {/* Scanning Screen Glare */}
               <line x1="-55" y1="-50" x2="55" y2="-50" stroke={accent} strokeWidth={2} opacity={0.8} />
             </g>
           )}
 
           {isThrowing && (
             <g>
-              {/* Determined Throwing Expression (>_<) */}
               <path d="M -38 -26 L -16 -16 L -38 -6" fill="none" stroke={accent} strokeWidth={4} strokeLinecap="round" />
               <path d="M 38 -26 L 16 -16 L 38 -6" fill="none" stroke={accent} strokeWidth={4} strokeLinecap="round" />
               <path d="M -15 10 Q 0 20 15 10" fill="none" stroke="#FFF" strokeWidth={3} strokeLinecap="round" />
@@ -324,7 +549,6 @@ export const CharacterThrowScriptAnimation: React.FC<{ frame: number; accent: st
 
           {isDiscarded && (
             <g>
-              {/* Smug / Satisfied Wink Screen (^_~) */}
               <path d="M -38 -15 Q -25 -30 -12 -15" fill="none" stroke={accent} strokeWidth={4} strokeLinecap="round" />
               <circle cx="25" cy="-20" r="10" fill={accent} />
               <circle cx="25" cy="-20" r="4" fill="#FFF" />
@@ -332,51 +556,20 @@ export const CharacterThrowScriptAnimation: React.FC<{ frame: number; accent: st
             </g>
           )}
 
-          {/* Stand & Base */}
+          {/* Base */}
           <rect x="-25" y="50" width="50" height="24" fill="#18181B" stroke="#3F3F46" strokeWidth={2} />
           <rect x="-50" y="74" width="100" height="12" rx="4" fill="#27272A" stroke="#52525B" strokeWidth={2} />
-
-          {/* Computer Robotic Arm */}
-          {isThrowing ? (
-            <g transform={`rotate(${Math.sin((frame - 85) * 0.15) * 45} 50 10)`}>
-              <line x1="50" y1="10" x2="110" y2="-30" stroke={accent} strokeWidth={8} strokeLinecap="round" />
-              <circle cx="110" cy="-30" r="8" fill="#FFF" />
-            </g>
-          ) : (
-            <g>
-              <line x1="50" y1="20" x2="75" y2="45" stroke="#52525B" strokeWidth={6} strokeLinecap="round" />
-              <circle cx="75" cy="45" r="6" fill={accent} />
-            </g>
-          )}
         </g>
 
-        {/* SCRIPT / PROMPT PAPER DOCUMENT */}
+        {/* Paper Document */}
         {paperOpacity > 0 && (
-          <g
-            transform={`translate(${paperX}, ${paperY}) rotate(${paperRot})`}
-            opacity={paperOpacity}
-          >
-            {/* Paper Sheet */}
-            <rect x="-45" y="-60" width="90" height="120" rx="4" fill="#F4F0EA" stroke="#D4D4D8" strokeWidth={2} filter="drop-shadow(0 8px 16px rgba(0,0,0,0.5))" />
-            {/* Folded Top Corner */}
+          <g transform={`translate(${paperX}, ${paperY}) rotate(${paperRot})`} opacity={paperOpacity}>
+            <rect x="-45" y="-60" width="90" height="120" rx="4" fill="#F4F0EA" stroke="#D4D4D8" strokeWidth={2} />
             <polygon points="25,-60 45,-40 25,-40" fill="#E4E4E7" />
-            {/* Script Heading */}
             <rect x="-35" y="-48" width="50" height="6" rx="2" fill={accent} />
-            {/* Script Text Lines */}
             <line x1="-35" y1="-32" x2="30" y2="-32" stroke="#71717A" strokeWidth={3} strokeLinecap="round" />
             <line x1="-35" y1="-20" x2="25" y2="-20" stroke="#71717A" strokeWidth={3} strokeLinecap="round" />
             <line x1="-35" y1="-8" x2="32" y2="-8" stroke="#71717A" strokeWidth={3} strokeLinecap="round" />
-            <line x1="-35" y1="4" x2="15" y2="4" stroke="#71717A" strokeWidth={3} strokeLinecap="round" />
-            <line x1="-35" y1="16" x2="28" y2="16" stroke="#71717A" strokeWidth={3} strokeLinecap="round" />
-            <line x1="-35" y1="28" x2="20" y2="28" stroke="#71717A" strokeWidth={3} strokeLinecap="round" />
-
-            {/* Label Badge */}
-            <rect x="-35" y="38" width="70" height="14" rx="3" fill="#09090B" />
-            <text x="-30" y="49" fill="#FFF" fontSize="8" fontFamily={MONO} fontWeight="bold">
-              PROMPT SCRIPT
-            </text>
-
-            {/* Reading Scan Laser Line */}
             {isReading && (
               <g>
                 <line x1="-45" y1={scanY} x2="45" y2={scanY} stroke="#EF4444" strokeWidth={3} />
@@ -385,96 +578,325 @@ export const CharacterThrowScriptAnimation: React.FC<{ frame: number; accent: st
             )}
           </g>
         )}
-
-        {/* Speed lines when thrown out window */}
-        {isThrowing && (
-          <g opacity={0.8}>
-            <line x1="80" y1="-20" x2="160" y2="-60" stroke="#FFF" strokeWidth={2} strokeDasharray="8,6" />
-            <line x1="90" y1="0" x2="180" y2="-40" stroke={accent} strokeWidth={3} strokeDasharray="12,8" />
-            <line x1="120" y1="20" x2="210" y2="-20" stroke="#FFF" strokeWidth={2} strokeDasharray="6,6" />
-          </g>
-        )}
       </svg>
 
-      {/* Dynamic Status Capsule */}
-      <div className="mt-4 px-4 py-2 rounded-full bg-black/80 border border-white/15 text-xs font-mono text-gray-200 flex items-center gap-2 shadow-2xl">
-        {isSleeping && <span className="text-yellow-400">💤 1. Computer sleeping in room...</span>}
-        {isReading && <span className="text-blue-400">👀 2. Prompt placed in front → Scanned & read ONCE</span>}
-        {isThrowing && <span className="text-red-400 font-bold">🪟 3. Tossing script out the window!</span>}
-        {isDiscarded && <span className="text-emerald-400 font-bold">✓ 4. Never re-read · Locked in KV Cache</span>}
+      <div
+        style={{
+          marginTop: 8,
+          padding: "6px 16px",
+          borderRadius: 20,
+          background: "rgba(0, 0, 0, 0.65)",
+          border: "1px solid rgba(255, 255, 255, 0.15)",
+          color: "#FFFFFF",
+          fontFamily: MONO,
+          fontSize: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <span>💻</span>
+        <span>{caption}</span>
       </div>
     </div>
   );
 };
 
-// Procedural Typing Cursor & Rubber Stamp Quote Animation for GenClaw
-export const TypingCursorQuoteAnimation: React.FC<{ frame: number; accent: string }> = ({ frame, accent }) => {
-  const quoteText = "LLMs are a dead end that will never reach real intelligence.";
+// 6. Typing Cursor Quote Animation
+export const TypingCursorQuoteAnimation: React.FC<{
+  frame: number;
+  accent: string;
+  quoteText?: string;
+  stampText?: string;
+}> = ({
+  frame,
+  accent,
+  quoteText = "LLMs are a dead end that will never reach real intelligence.",
+  stampText = "Yann LeCun Stamp: APPROVED",
+}) => {
   const typedCount = Math.min(quoteText.length, Math.floor(frame * 0.8));
   const currentText = quoteText.slice(0, typedCount);
   const showCursor = Math.floor(frame / 12) % 2 === 0;
   const showStamp = frame > 40;
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center bg-[#0A0A0B] p-8 rounded-2xl border border-white/10 font-mono overflow-hidden">
-      <div className="w-full max-w-2xl bg-[#101013] rounded-xl p-6 border border-white/15 shadow-2xl relative">
-        <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500/80" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-            <div className="w-3 h-3 rounded-full bg-green-500/80" />
-            <span className="text-xs text-gray-400 ml-2 font-mono">yann_lecun_quote.txt</span>
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 680,
+          background: "#101014",
+          borderRadius: 16,
+          padding: 24,
+          border: "1px solid rgba(255, 255, 255, 0.15)",
+          boxShadow: "0 16px 40px rgba(0, 0, 0, 0.6)",
+          position: "relative",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+            paddingBottom: 10,
+            marginBottom: 16,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#EF4444" }} />
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#F59E0B" }} />
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#10B981" }} />
+            <span style={{ fontSize: 11, color: "#9CA3AF", fontFamily: MONO, marginLeft: 6 }}>
+              statement_quote.txt
+            </span>
           </div>
-          <span className="text-[10px] px-2 py-0.5 rounded bg-[#635BFF]/20 text-[#635BFF] border border-[#635BFF]/40 font-bold">
-            PROMPT / STATEMENT
+          <span
+            style={{
+              fontSize: 10,
+              padding: "2px 8px",
+              borderRadius: 4,
+              background: "rgba(99, 91, 255, 0.2)",
+              color: accent,
+              border: `1px solid ${accent}`,
+              fontFamily: MONO,
+              fontWeight: "bold",
+            }}
+          >
+            STATEMENT
           </span>
         </div>
 
-        <div className="text-lg md:text-xl text-white font-bold leading-relaxed min-h-[80px]">
+        <div
+          style={{
+            fontSize: 20,
+            color: "#FFFFFF",
+            fontWeight: "bold",
+            lineHeight: 1.5,
+            minHeight: 64,
+            fontFamily: MONO,
+          }}
+        >
           "{currentText}"
-          {showCursor && <span className="inline-block w-2.5 h-5 ml-1 animate-pulse" style={{ backgroundColor: accent }} />}
+          {showCursor && (
+            <span
+              style={{
+                display: "inline-block",
+                width: 10,
+                height: 20,
+                marginLeft: 4,
+                backgroundColor: accent,
+                verticalAlign: "middle",
+              }}
+            />
+          )}
         </div>
+
+        {showStamp && (
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%) rotate(-10deg)",
+              background: "rgba(69, 10, 10, 0.95)",
+              border: "3px solid #EF4444",
+              color: "#F87171",
+              fontWeight: 900,
+              fontSize: 18,
+              padding: "10px 20px",
+              borderRadius: 8,
+              textTransform: "uppercase",
+              letterSpacing: 2,
+              fontFamily: MONO,
+              boxShadow: "0 8px 30px rgba(239, 68, 68, 0.4)",
+            }}
+          >
+            {stampText}
+          </div>
+        )}
       </div>
+    </div>
+  );
+};
 
-      {showStamp && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] bg-red-950/90 border-4 border-red-500 text-red-400 font-extrabold text-2xl md:text-3xl px-6 py-3 rounded-lg uppercase tracking-widest shadow-2xl animate-in zoom-in-75 duration-200">
-          Yann LeCun Stamp: APPROVED
-        </div>
-      )}
+// 7. Glowing Cluster Metaphor (Pure SVG Constellation)
+export const GlowingClusterAnimation: React.FC<{
+  frame: number;
+  accent: string;
+  title?: string;
+  subtitle?: string;
+}> = ({
+  frame,
+  accent,
+  title = "Abstract Latent Representation",
+  subtitle = "Deterministic Multi-Dimensional Embedding",
+}) => {
+  const nodeCount = 18;
+  const nodes = Array.from({ length: nodeCount }).map((_, i) => {
+    const angle = (i * 2 * Math.PI) / nodeCount + frame * 0.01;
+    const r = 110 + (i % 3) * 35 + Math.sin(frame * 0.05 + i) * 12;
+    const x = Math.cos(angle) * r;
+    const y = Math.sin(angle) * r * 0.7;
+    return { x, y, size: 4 + (i % 4) * 2 };
+  });
 
-      <div className="mt-6 px-4 py-1.5 rounded-full bg-black/80 border border-white/15 text-xs text-gray-300 flex items-center gap-2">
-        <span className="text-emerald-400 font-bold">⚡ GenClaw Code Engine:</span>
-        <span>Visual direction matched: Cursor Quote & Rubber Stamp</span>
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <svg
+        viewBox="-300 -200 600 400"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ width: "100%", height: "85%", flex: 1, minHeight: 0 }}
+      >
+        {/* Connecting Mesh Lines */}
+        {nodes.map((n1, i) =>
+          nodes.slice(i + 1, i + 4).map((n2, j) => (
+            <line
+              key={`edge-${i}-${j}`}
+              x1={n1.x}
+              y1={n1.y}
+              x2={n2.x}
+              y2={n2.y}
+              stroke={accent}
+              strokeWidth={1.2}
+              strokeOpacity={0.35}
+            />
+          ))
+        )}
+
+        {/* Glowing Nodes */}
+        {nodes.map((n, i) => (
+          <g key={`node-${i}`} transform={`translate(${n.x}, ${n.y})`}>
+            <circle r={n.size * 2} fill={accent} opacity={0.25} />
+            <circle r={n.size} fill="#FFFFFF" />
+          </g>
+        ))}
+      </svg>
+
+      <div
+        style={{
+          marginTop: 8,
+          padding: "6px 16px",
+          borderRadius: 20,
+          background: "rgba(0, 0, 0, 0.65)",
+          border: "1px solid rgba(255, 255, 255, 0.15)",
+          color: "#FFFFFF",
+          fontFamily: MONO,
+          fontSize: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <span>🪐</span>
+        <span>{title} · {subtitle}</span>
       </div>
     </div>
   );
 };
 
 // Main Metaphor Viewer Component
-export const MetaphorViewer: React.FC<MetaphorProps> = ({ type, frame, accent = "#635BFF" }) => {
-  switch (type) {
-    case "typing-cursor-quote":
-      return <TypingCursorQuoteAnimation frame={frame} accent={accent} />;
-    case "character-throw":
-      return <CharacterThrowScriptAnimation frame={frame} accent={accent} />;
+export const MetaphorViewer: React.FC<MetaphorProps> = ({
+  type,
+  content,
+  frame,
+  accent = "#635BFF",
+}) => {
+  const resolvedKind = content?.kind ?? (type as MetaphorContent["kind"]);
+
+  switch (resolvedKind) {
     case "spider-web":
-      return <SpiderWebAnimation frame={frame} accent={accent} />;
+      return (
+        <SpiderWebAnimation
+          frame={frame}
+          accent={accent}
+          caption={content && "caption" in content ? content.caption : undefined}
+        />
+      );
     case "liquid-bucket":
-      return <LiquidContainerAnimation frame={frame} accent={accent} />;
+      return (
+        <LiquidContainerAnimation
+          frame={frame}
+          accent={accent}
+          levelLabel={content && "levelLabel" in content ? content.levelLabel : undefined}
+          caption={content && "caption" in content ? content.caption : undefined}
+          fillRatio={content && "fillRatio" in content ? content.fillRatio : undefined}
+        />
+      );
     case "balance-scale":
-      return <BalanceScaleAnimation frame={frame} accent={accent} />;
+      return (
+        <BalanceScaleAnimation
+          frame={frame}
+          accent={accent}
+          leftLabel={content && "leftLabel" in content ? content.leftLabel : undefined}
+          rightLabel={content && "rightLabel" in content ? content.rightLabel : undefined}
+          caption={content && "caption" in content ? content.caption : undefined}
+          tilt={content && "tilt" in content ? content.tilt : undefined}
+        />
+      );
     case "clock-gears":
-      return <ClockGearsAnimation frame={frame} accent={accent} />;
+      return (
+        <ClockGearsAnimation
+          frame={frame}
+          accent={accent}
+          gearLabels={content && "gearLabels" in content ? content.gearLabels : undefined}
+          caption={content && "caption" in content ? content.caption : undefined}
+        />
+      );
+    case "character-throw":
+      return (
+        <CharacterThrowScriptAnimation
+          frame={frame}
+          accent={accent}
+          caption={content && "caption" in content ? content.caption : undefined}
+        />
+      );
+    case "typing-cursor-quote":
+      return (
+        <TypingCursorQuoteAnimation
+          frame={frame}
+          accent={accent}
+          quoteText={content && "quoteText" in content ? content.quoteText : undefined}
+          stampText={content && "stampText" in content ? content.stampText : undefined}
+        />
+      );
     case "glowing-cluster":
       return (
-        <GlowingClusterMetaphor
-          width={1920}
-          height={1080}
-          title="JEPA: PREDICTING MEANING, NOT PIXELS"
-          subtitle="Deterministic 3D Abstract Latent Space"
+        <GlowingClusterAnimation
+          frame={frame}
+          accent={accent}
+          title={content && "title" in content ? content.title : "Abstract Latent Representation"}
+          subtitle={content && "subtitle" in content ? content.subtitle : "Multi-Dimensional Space"}
         />
       );
     default:
-      return <TypingCursorQuoteAnimation frame={frame} accent={accent} />;
+      return (
+        <BalanceScaleAnimation
+          frame={frame}
+          accent={accent}
+          caption="Equilibrium Balance"
+        />
+      );
   }
 };
