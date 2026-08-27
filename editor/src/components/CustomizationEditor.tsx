@@ -145,7 +145,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
     if (!shot) return;
 
     if (metaphor === "character-beat") {
-      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat" && b.c !== "DeviceCard" && b.c !== "MetaphorViewer");
+      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat" && b.c !== "MetaphorViewer");
       const charBlock = {
         c: "CharacterBeat",
         characterId: "astronaut",

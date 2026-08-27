@@ -511,9 +511,11 @@ export default function App() {
             <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-400">PROJECT METRICS</h2>
             <button
               onClick={() => setIsNewProjectOpen(true)}
-              className="text-[10px] px-2 py-0.5 bauhaus-button-secondary font-mono"
+              className="text-[10px] px-2.5 py-1 bg-[#635BFF] hover:bg-[#5249e6] text-white font-bold rounded-lg flex items-center gap-1 shadow-md shadow-[#635BFF]/30 font-sans transition-all"
+              title="Paste a raw script or outline and compile a complete animated explainer film"
             >
-              + NEW
+              <span>✨</span>
+              <span>+ Script Intake</span>
             </button>
           </div>
 

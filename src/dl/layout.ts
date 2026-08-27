@@ -4,7 +4,7 @@
  */
 import type { Film, Shot, Block } from "./schema";
 import { DEVICE_BLOCKS } from "./schema";
-import { lookBox, projectBox, camAt, type Cam } from "./camera";
+import { lookBox, projectBox, type Cam } from "./camera";
 
 export interface Rect {
   x: number;

@@ -7,16 +7,15 @@ import { useState, useMemo } from "react";
 import type { Film, Shot, Block, BackgroundPreset, CameraAngle } from "../../../src/dl/schema";
 import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
 import { CHARACTER_RIGS } from "../../../src/dl/characters";
-import { POSE_PRESETS } from "../../../src/dl/characters/presets";
 import { ShotModal } from "./ShotModal";
 
 interface StyleboardProps {
   film: Film;
   accent: string;
   onAccentChange: (a: string) => void;
-  storyStyle: string;
-  onStoryStyleChange: (s: string) => void;
-  onSelectShot: (id: string) => void;
+  storyStyle?: string;
+  onStoryStyleChange?: (s: string) => void;
+  onSelectShot?: (id: string) => void;
   onUpdateFilm?: (film: Film) => void;
 }
 
@@ -104,9 +103,6 @@ function getMetaphorInfo(shot: Shot) {
   const hasStat = shot.blocks.some(b => b.c === "StatCounter");
   if (hasStat) return { label: "High-Impact Metric", icon: "📊", color: "#10B981" };
 
-  const hasDevice = shot.blocks.some(b => b.c === "DeviceCard");
-  if (hasDevice) return { label: "Interactive Device UI", icon: "💻", color: "#00D2D3" };
-
   return { label: "Narrative & Spatial Node", icon: "🎯", color: "#8A8A8E" };
 }
 
@@ -138,21 +134,6 @@ function renderBlockPreview(block: Block, accent: string) {
           <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded">
             60 FPS SVG
           </span>
-        </div>
-      );
-
-    case "DeviceCard":
-      const devBlock = block as any;
-      return (
-        <div className="bg-[#121218] p-2.5 rounded-lg border border-[#262632] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-base">{devBlock.variant === "terminal" ? "📟" : "💻"}</span>
-            <div>
-              <div className="text-xs font-bold text-white">{devBlock.title || "Device Window"}</div>
-              <div className="text-[10px] text-[#8A8A8E] font-mono">{devBlock.url || "localhost"}</div>
-            </div>
-          </div>
-          <span className="text-[10px] text-gray-500 font-mono">{devBlock.variant}</span>
         </div>
       );
 
@@ -267,9 +248,6 @@ export function Styleboard({
   film,
   accent,
   onAccentChange,
-  storyStyle,
-  onStoryStyleChange,
-  onSelectShot,
   onUpdateFilm,
 }: StyleboardProps) {
   const [activeTab, setActiveTab] = useState<"storyboard" | "primitives" | "spatial">("storyboard");
@@ -347,7 +325,7 @@ export function Styleboard({
 
     if (mode === "character") {
       // Remove other device blocks and add CharacterBeat
-      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat" && b.c !== "DeviceCard" && b.c !== "MetaphorViewer");
+      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat" && b.c !== "MetaphorViewer");
       const charBlock: Block = {
         c: "CharacterBeat",
         characterId: "astronaut",

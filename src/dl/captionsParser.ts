@@ -139,5 +139,11 @@ export function generateWordsFromFilm(film: Record<string, unknown>): CaptionWor
     return words;
   }
 
-  return [];
+  return DEFAULT_GIRAFFE_CAPTION_WORDS;
 }
+
+export const DEFAULT_GIRAFFE_CAPTION_WORDS: CaptionWord[] = [
+  { text: "Welcome", startFrame: 0, endFrame: 15 },
+  { text: "to", startFrame: 16, endFrame: 30 },
+  { text: "Aideos", startFrame: 31, endFrame: 60 },
+];

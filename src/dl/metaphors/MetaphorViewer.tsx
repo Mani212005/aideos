@@ -4,8 +4,7 @@
  * and preserveAspectRatio="xMidYMid meet" for frame-accurate Remotion positioning.
  */
 import React from "react";
-import { MONO, PALETTE } from "../tokens";
-import { GlowingClusterMetaphor } from "./GlowingClusterMetaphor";
+import { MONO } from "../tokens";
 import type { MetaphorContent } from "../schema";
 
 export interface MetaphorProps {

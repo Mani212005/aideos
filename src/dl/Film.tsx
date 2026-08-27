@@ -6,8 +6,6 @@ import { AccentContext } from "./accent";
 import { BlockView } from "./Block";
 import { CanvasGraph } from "./CanvasGraph";
 import { PaperRip } from "./PaperRip";
-import { TextBeat } from "./devices";
-import { computeBlockRect } from "./layout";
 import {
   buildTimeline,
   camAt,

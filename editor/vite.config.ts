@@ -722,10 +722,20 @@ function filmApiPlugin(): Plugin {
           return;
         }
 
-        // Handle /api/projects/new (Create fresh video project)
+        // Handle /api/projects/new (Create fresh video project and auto-compile film)
         if (url === '/api/projects/new' && req.method === 'POST') {
           void readBody(req).then((body: any) => {
-            const { title, id, script = '' } = body || {};
+            const {
+              title,
+              id,
+              script = '',
+              characterId = 'developer',
+              theme = 'smooth-dark',
+              accent = '#635BFF',
+              voice: _voice = 'kokoro-am_adam',
+              autoCompile = false
+            } = body || {};
+
             if (!title || !title.trim()) {
               sendJson(res, 400, { error: 'Project title is required.' });
               return;
@@ -746,79 +756,213 @@ function filmApiPlugin(): Plugin {
             const initialScript = script.trim() || `# ${title}\n\nWrite your voiceover narration script here.\n\nEvery paragraph maps to visual scenes, 3D camera angles, and animated primitives.\n\nClick "🎙️ Generate Voiceover (.wav)" when ready!`;
             fs.writeFileSync(path.join(scriptsDir, `${cleanId}.md`), initialScript, 'utf8');
 
-            // 2. Create src/dl/films/<id>.ts
-            const newFilm: Film = {
-              id: cleanId,
-              title: title.trim(),
-              fps: 30,
-              accent: "#635BFF",
-              theme: {
-                background: "dot-grid",
-                fontFamily: "geist",
-                storyStyle: "script-metaphor",
-                cameraAngle: "isometric",
-                accent: "#635BFF"
-              },
-              chapters: ["Introduction", "Core Mechanism", "Architecture", "Payoff"],
-              canvas: {
-                nodes: [
-                  { id: "intro", label: title.trim(), x: -200, y: -100, w: 230, h: 70 },
-                  { id: "mechanism", label: "Core Concept", x: 160, y: -100, w: 230, h: 70 },
-                  { id: "system", label: "System Flow", x: 160, y: 150, w: 230, h: 70 },
-                  { id: "result", label: "Key Payoff", x: -200, y: 150, w: 230, h: 70 }
-                ],
-                edges: [
-                  { from: "intro", to: "mechanism", dashed: false },
-                  { from: "mechanism", to: "system", dashed: false },
-                  { from: "system", to: "result", dashed: true }
-                ]
-              },
-              shots: [
-                {
-                  id: "shot-1",
-                  dur: 8,
-                  look: "intro",
-                  move: "pan",
-                  stage: "anchor",
-                  zoom: 1,
-                  drift: true,
-                  blocks: [{ c: "TextReveal", text: title.trim(), size: "headline" }]
-                },
-                {
-                  id: "shot-2",
-                  dur: 10,
-                  look: "mechanism",
-                  move: "pan",
-                  stage: "frame",
-                  zoom: 1.1,
-                  drift: true,
-                  blocks: [{ c: "Body", text: "Visualizing the fundamental idea and mechanics." }]
-                },
-                {
-                  id: "shot-3",
-                  dur: 12,
-                  look: "system",
-                  move: "pan",
-                  stage: "frame",
-                  zoom: 1.15,
-                  drift: true,
-                  blocks: [{ c: "StatCounter", to: 10, label: "Performance Gain", format: "plain", suffix: "x" }]
-                },
-                {
-                  id: "shot-4",
-                  dur: 8,
-                  look: "result",
-                  move: "zoom-out",
-                  stage: "anchor",
-                  zoom: 0.9,
-                  drift: false,
-                  blocks: [{ c: "Body", text: "Summary and key takeaways." }]
-                }
-              ]
-            };
+            let newFilm: Film;
 
+            if (autoCompile && script.trim()) {
+              // Intelligently parse raw script paragraphs into structured shots & relationship-aware canvas
+              const paragraphs = script
+                .split(/\n\s*\n+/)
+                .map((p: string) => p.trim())
+                .filter((p: string) => p.length > 0 && !p.startsWith('#') && !p.toLowerCase().startsWith('production note'));
+
+              const count = Math.max(3, paragraphs.length);
+              const nodes: any[] = [];
+              const edges: any[] = [];
+              const shots: any[] = [];
+              const chapters: string[] = [];
+
+              for (let i = 0; i < count; i++) {
+                const para = paragraphs[i] || `Scene ${i + 1} narration talking point.`;
+                const words = para.split(/\s+/).filter(Boolean);
+                const dur = Math.max(4.5, Math.min(12, Math.round((words.length / 145) * 60) || 6));
+                
+                // Concise headline (≤ 8 words)
+                const headlineWords = words.slice(0, 6).join(' ').replace(/[.,;:!?]+$/, '');
+                const headline = headlineWords.length > 0 ? headlineWords : `Scene ${i + 1}`;
+
+                const nodeSlug = `node-${i + 1}`;
+                const nodeLabel = headline.slice(0, 24);
+                chapters.push(nodeLabel);
+
+                nodes.push({
+                  id: nodeSlug,
+                  label: nodeLabel,
+                  x: -360 + (i * 240),
+                  y: i % 2 === 0 ? -120 : 120,
+                  w: 240,
+                  h: 80,
+                });
+
+                if (i > 0) {
+                  edges.push({
+                    from: `node-${i}`,
+                    to: nodeSlug,
+                    dashed: i === count - 1,
+                  });
+                }
+
+                // Select semantic visual blocks based on shot index & topic
+                let visualBlock: any;
+                if (i === 0) {
+                  visualBlock = {
+                    c: "CharacterBeat",
+                    characterId,
+                    poses: [
+                      { t: 0.0, groups: { torso: { rotate: 0 }, rightArm: { rotate: -20 }, leftArm: { rotate: 20 } } },
+                      { t: 0.4, groups: { torso: { rotate: 3 }, rightArm: { rotate: -65 }, leftArm: { rotate: -10 } } },
+                      { t: 1.0, groups: { torso: { rotate: 0 }, rightArm: { rotate: 0 }, leftArm: { rotate: 0 } } },
+                    ],
+                  };
+                } else if (i === count - 1) {
+                  visualBlock = {
+                    c: "CharacterBeat",
+                    characterId,
+                    poses: [
+                      { t: 0.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
+                      { t: 0.25, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
+                      { t: 0.85, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
+                      { t: 1.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
+                    ],
+                  };
+                } else if (i === 1) {
+                  visualBlock = {
+                    c: "ScaleBar",
+                    ticks: ["10%", "30%", "60%", "100%"],
+                    value: 0.75,
+                    label: "Efficiency Scaling",
+                  };
+                } else if (i === 2) {
+                  visualBlock = {
+                    c: "LayerStack",
+                    count: 8,
+                    bottomLabel: "Input Baseline",
+                    topLabel: "Optimized Output",
+                  };
+                } else {
+                  visualBlock = {
+                    c: "TokenStrip",
+                    tokens: ["Step 1", "Step 2", "Step 3", "Complete"],
+                    lit: [0],
+                    caption: "Sequential Execution Flow",
+                  };
+                }
+
+                shots.push({
+                  id: `shot-${i + 1}`,
+                  dur,
+                  look: nodeSlug,
+                  move: i === 0 ? "cut" : "pan",
+                  stage: "frame",
+                  drift: false,
+                  zoom: 1,
+                  visualDirection: `Visualizing ${headline}`,
+                  blocks: [
+                    {
+                      c: "TextReveal",
+                      text: headline,
+                      size: "headline",
+                      accentWord: headline.split(' ')[0] || "Key",
+                    },
+                    visualBlock,
+                  ],
+                });
+              }
+
+              newFilm = {
+                id: cleanId,
+                title: title.trim(),
+                fps: 30,
+                accent,
+                theme: {
+                  background: theme as any,
+                  fontFamily: "geist",
+                  storyStyle: "script-metaphor",
+                  cameraAngle: "isometric",
+                  accent,
+                },
+                chapters,
+                canvas: {
+                  nodes,
+                  edges,
+                },
+                shots,
+              };
+            } else {
+              newFilm = {
+                id: cleanId,
+                title: title.trim(),
+                fps: 30,
+                accent: "#635BFF",
+                theme: {
+                  background: "smooth-dark",
+                  fontFamily: "geist",
+                  storyStyle: "script-metaphor",
+                  cameraAngle: "isometric",
+                  accent: "#635BFF"
+                },
+                chapters: ["Introduction", "Core Mechanism", "Architecture", "Payoff"],
+                canvas: {
+                  nodes: [
+                    { id: "intro", label: title.trim(), x: -200, y: -100, w: 230, h: 70 },
+                    { id: "mechanism", label: "Core Concept", x: 160, y: -100, w: 230, h: 70 },
+                    { id: "system", label: "System Flow", x: 160, y: 150, w: 230, h: 70 },
+                    { id: "result", label: "Key Payoff", x: -200, y: 150, w: 230, h: 70 }
+                  ],
+                  edges: [
+                    { from: "intro", to: "mechanism", dashed: false },
+                    { from: "mechanism", to: "system", dashed: false },
+                    { from: "system", to: "result", dashed: true }
+                  ]
+                },
+                shots: [
+                  {
+                    id: "shot-1",
+                    dur: 6,
+                    look: "intro",
+                    move: "cut",
+                    stage: "frame",
+                    drift: false,
+                    zoom: 1,
+                    blocks: [{ c: "TextReveal", text: title.trim(), size: "headline" }]
+                  },
+                  {
+                    id: "shot-2",
+                    dur: 7,
+                    look: "mechanism",
+                    move: "pan",
+                    stage: "frame",
+                    drift: false,
+                    zoom: 1,
+                    blocks: [{ c: "Body", text: "Visualizing the fundamental idea and mechanics." }]
+                  },
+                  {
+                    id: "shot-3",
+                    dur: 8,
+                    look: "system",
+                    move: "pan",
+                    stage: "frame",
+                    drift: false,
+                    zoom: 1,
+                    blocks: [{ c: "StatCounter", to: 10, label: "Performance Gain", format: "plain", suffix: "x" }]
+                  },
+                  {
+                    id: "shot-4",
+                    dur: 6,
+                    look: "result",
+                    move: "pan",
+                    stage: "frame",
+                    drift: false,
+                    zoom: 1,
+                    blocks: [{ c: "Body", text: "Summary and key takeaways." }]
+                  }
+                ]
+              };
+            }
+
+            // 2. Create src/dl/films/<id>.ts and .json
             const filmFile = path.join(filmsDir, `${cleanId}.ts`);
             fs.writeFileSync(filmFile, filmModule(newFilm), 'utf8');
+            fs.writeFileSync(path.join(filmsDir, `${cleanId}.json`), JSON.stringify(newFilm, null, 2), 'utf8');
 
             // 3. Point activeFilm.ts to new film
             const activeFilmFile = path.resolve(__dirname, '../src/dl/activeFilm.ts');

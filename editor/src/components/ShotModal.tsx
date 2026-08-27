@@ -81,7 +81,7 @@ export const ShotModal: React.FC<ShotModalProps> = ({
   const setVisualMode = (mode: "standard" | "character" | "b-roll") => {
     if (mode === "character") {
       const filteredBlocks = shot.blocks.filter(
-        (b) => b.c !== "CharacterBeat" && b.c !== "DeviceCard" && b.c !== "MetaphorViewer"
+        (b) => b.c !== "CharacterBeat" && b.c !== "MetaphorViewer"
       );
       const newCharBlock: Block = {
         c: "CharacterBeat",
