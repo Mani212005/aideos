@@ -166,9 +166,9 @@ export const marsWaterFilm: Film = {
         },
         {
           c: "TokenStrip",
-          tokens: ["Solid Ice", "Triple Point", "Water Vapor"],
-          lit: [0, 2],
-          caption: "Direct Solid-to-Gas Transition",
+          tokens: ["Solid Ice", "610 Pa Limit", "Zero Liquid", "Vapor Gas"],
+          lit: [0],
+          caption: "Direct Solid-to-Gas Phase Transition",
         },
       ],
     },

@@ -4,6 +4,7 @@ import { Sequence, useCurrentFrame, staticFile } from "remotion";
 import { FilmView } from "./Film";
 import { TOTAL_FRAMES, FILM, TIMELINE, FPS, type FilmProps } from "./runtime";
 import { calculateDuckingVolume, type SpeechInterval } from "./audio/ducking";
+import { generateWordsFromFilm } from "./captionsParser";
 
 /**
  * The film plus its soundtrack.
@@ -89,6 +90,7 @@ export const Video: React.FC<FilmProps> = ({
         accent={accent}
         showGrid={showGrid}
         showRail={showRail}
+        captionWords={generateWordsFromFilm(FILM as unknown as Record<string, unknown>)}
       />
     </>
   );

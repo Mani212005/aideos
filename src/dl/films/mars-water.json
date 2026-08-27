@@ -233,14 +233,14 @@
           "c": "TokenStrip",
           "tokens": [
             "Solid Ice",
-            "Triple Point",
-            "Water Vapor"
+            "610 Pa Limit",
+            "Zero Liquid",
+            "Vapor Gas"
           ],
           "lit": [
-            0,
-            2
+            0
           ],
-          "caption": "Direct Solid-to-Gas Transition"
+          "caption": "Direct Solid-to-Gas Phase Transition"
         }
       ]
     },
