@@ -111,7 +111,7 @@ export const marsWaterFilm: Film = {
       dur: 5.16,
       look: "thin-air",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "ScaleBar comparing atmospheric pressure between Earth and Mars",
       blocks: [
         {
@@ -133,7 +133,7 @@ export const marsWaterFilm: Film = {
       dur: 8.12,
       look: "triple-point",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "LayerStack depicting thermodynamic pressure regimes below water triple point",
       blocks: [
         {
@@ -155,7 +155,7 @@ export const marsWaterFilm: Film = {
       dur: 4.22,
       look: "sublimation",
       move: "pan",
-      stage: "anchor",
+      stage: "frame",
       visualDirection: "Token strip showing phase transition directly from solid ice to vapor",
       blocks: [
         {

@@ -44,6 +44,9 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
   const current = shotAt(timeline, frame);
   const shot = current.shot;
 
+  const bgPreset = film.theme?.background || "paper-white";
+  const bgTheme = BACKGROUND_THEMES[bgPreset] || BACKGROUND_THEMES["paper-white"];
+
   if (shot.stage === "none") return null;
 
   const openFrames = frames(MS.move, fps);
@@ -101,8 +104,8 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
         border: `1px solid ${rule(shot.stage === "frame" ? 0 : 1)}`,
         borderRadius: layout.radius.card,
         background:
-          shot.stage === "frame" ? "transparent" : `rgba(255, 255, 255, ${0.94 * opacity})`,
-        boxShadow: shot.stage === "frame" ? "none" : "0 16px 40px rgba(17, 24, 39, 0.08)",
+          shot.stage === "frame" ? "transparent" : bgTheme.surface,
+        boxShadow: shot.stage === "frame" ? "none" : "0 16px 40px rgba(0, 0, 0, 0.35)",
         opacity,
         overflow: "hidden",
         display: "flex",
