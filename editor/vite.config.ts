@@ -1108,7 +1108,8 @@ export default defineConfig({
   plugins: [react(), filmApiPlugin()],
   publicDir: path.resolve(__dirname, '../public'),
   server: {
-    port: 3000,
+    port: 3001,
+    strictPort: true,
     fs: {
       allow: ['..']
     }
