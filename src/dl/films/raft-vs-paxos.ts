@@ -214,8 +214,8 @@ By making state transitions strictly understandable, Raft powers modern distribu
           characterId: "executive",
           poses: [
             { t: 0.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
-            { t: 0.25, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
-            { t: 0.85, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
+            { t: 0.30, groups: { torso: { rotate: 1 }, head: { rotate: 0 }, leftArm: { rotate: 50 }, rightArm: { rotate: -50 } } },
+            { t: 0.85, groups: { torso: { rotate: 1 }, head: { rotate: 0 }, leftArm: { rotate: 50 }, rightArm: { rotate: -50 } } },
             { t: 1.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
           ],
         },

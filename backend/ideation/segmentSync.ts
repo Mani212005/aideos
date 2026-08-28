@@ -2,7 +2,6 @@
  * File Description: Implements Phase 3 segment-scoped visual brief generation
  * and the pre-render semantic sync gate using reasoned visual selection.
  */
-import OpenAI from "openai";
 import type { Block, Film, Shot, MetaphorContent } from "../../src/dl/schema";
 import type { SegmentAudioInfo } from "../audio";
 import {

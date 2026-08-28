@@ -1,5 +1,4 @@
 import { Command, Option } from "commander";
-import OpenAI from "openai";
 import fs from "fs/promises";
 import path from "path";
 import { execSync } from "child_process";
@@ -13,6 +12,7 @@ import { parsePrompts, parseTreatment, parseShotlist } from "./ideation/schemas"
 import { runIdeate, runShoot, runPrompts } from "./ideation/stages";
 import { compileFilm, extractJobSpecs } from "./ideation/compile";
 import type { Treatment } from "./ideation/schemas";
+import { generateStructuredJson, isGoogleAiConfigured } from "./modelClient";
 
 dotenv.config({ quiet: true });
 
@@ -139,52 +139,19 @@ program
       .default("long"),
   )
   .action(async (prompt: string, options: { format: "long" | "reel" | "both" }) => {
-    // Constructed here rather than at module scope so `--help` and `--version`
-    // still work without a key, and so a missing one is one line, not a stack.
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("OPENAI_API_KEY is not set. Put it in .env or the environment.");
-    const openai = new OpenAI({ apiKey });
-
-    console.log(`Generating film for prompt: "${prompt}"...`);
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-2024-08-06",
-      // A film is a large payload; the default ceiling truncates the tool call
-      // into unparseable JSON, which reads as a mystery syntax error.
-      max_completion_tokens: 16384,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
-      ],
-      tools: [
-        {
-          type: "function",
-          function: {
-            name: "generate_aideos_film",
-            description:
-              "Generates an Aideos Film JSON structure representing canvas nodes, shots, and blocks.",
-            parameters: filmParameters,
-          },
-        },
-      ],
-      tool_choice: { type: "function", function: { name: "generate_aideos_film" } },
-    });
-
-    const choice = completion.choices[0];
-    if (!choice) throw new Error("The model returned no choices.");
-    if (choice.finish_reason === "length")
-      throw new Error("The model's tool call was cut off mid-JSON. Ask for a shorter film.");
-
-    const toolCall = choice.message.tool_calls?.[0];
-    if (!toolCall || toolCall.type !== "function")
-      throw new Error("The model returned no film tool call.");
-
-    let raw: unknown;
-    try {
-      raw = JSON.parse(toolCall.function.arguments);
-    } catch (err) {
-      throw new Error(`The model's tool call was not valid JSON: ${(err as Error).message}`);
+    if (!isGoogleAiConfigured()) {
+      throw new Error("GEMINI_API_KEY or GOOGLE_API_KEY is not set. Put it in .env or the environment.");
     }
+
+    console.log(`Generating film for prompt: "${prompt}" via Gemini...`);
+
+    const raw = await generateStructuredJson<unknown>(
+      `${prompt}\n\nPlease generate a complete Aideos Film JSON conforming to the schema.`,
+      {
+        systemInstruction: systemPrompt,
+        temperature: 0.2,
+      }
+    );
 
     // Validate before touching the tree. `npm run validate` catches the same
     // errors, but only after `activeFilm.ts` has been repointed at the broken

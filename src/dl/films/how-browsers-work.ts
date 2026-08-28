@@ -206,8 +206,8 @@ The server returns HTML, which the browser engine parses into the DOM tree, comp
           characterId: "educator",
           poses: [
             { t: 0.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
-            { t: 0.25, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
-            { t: 0.85, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
+            { t: 0.45, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 70 }, rightArm: { rotate: -70 } } },
+            { t: 0.85, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 70 }, rightArm: { rotate: -70 } } },
             { t: 1.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
           ],
         },

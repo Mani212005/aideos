@@ -370,19 +370,19 @@
               }
             },
             {
-              "t": 0.25,
+              "t": 0.28,
               "groups": {
                 "torso": {
-                  "rotate": 0
+                  "rotate": 2
                 },
                 "head": {
-                  "rotate": -4
+                  "rotate": 3
                 },
                 "leftArm": {
-                  "rotate": 110
+                  "rotate": 10
                 },
                 "rightArm": {
-                  "rotate": -110
+                  "rotate": -90
                 }
               }
             },
@@ -390,16 +390,16 @@
               "t": 0.85,
               "groups": {
                 "torso": {
-                  "rotate": 0
+                  "rotate": 2
                 },
                 "head": {
-                  "rotate": -4
+                  "rotate": 3
                 },
                 "leftArm": {
-                  "rotate": 110
+                  "rotate": 10
                 },
                 "rightArm": {
-                  "rotate": -110
+                  "rotate": -90
                 }
               }
             },

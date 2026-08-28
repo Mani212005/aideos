@@ -249,8 +249,8 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
           characterId: "developer",
           poses: [
             { t: 0.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
-            { t: 0.25, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
-            { t: 0.85, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
+            { t: 0.20, groups: { torso: { rotate: 3 }, head: { rotate: 4 }, leftArm: { rotate: 20 }, rightArm: { rotate: -125 } } },
+            { t: 0.85, groups: { torso: { rotate: 3 }, head: { rotate: 4 }, leftArm: { rotate: 20 }, rightArm: { rotate: -125 } } },
             { t: 1.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
           ],
         },

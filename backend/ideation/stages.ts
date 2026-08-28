@@ -5,7 +5,6 @@
  * own zod schema, validated before anything is returned, reusing the
  * schema-derived-parameters pattern proven in cli.ts generate.
  */
-import OpenAI from "openai";
 import { z } from "zod";
 import {
   parsePrompts,
@@ -19,22 +18,7 @@ import {
 } from "./schemas";
 import { gateShotList } from "./gate";
 import { assembleFootagePrompt } from "./compile";
-
-/**
- * Model defaults match `generate` exactly; OPENAI_BASE_URL and AIDEOS_LLM_MODEL
- * exist so the same code can run against any OpenAI-compatible endpoint.
- */
-const LLM_MODEL = process.env.AIDEOS_LLM_MODEL || "gpt-4o-2024-08-06";
-
-/** Build the OpenAI client from the environment, failing with one clear line. */
-function makeClient(): OpenAI {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not set. Put it in .env or the environment.");
-  return new OpenAI({
-    apiKey,
-    ...(process.env.OPENAI_BASE_URL ? { baseURL: process.env.OPENAI_BASE_URL } : {}),
-  });
-}
+import { generateStructuredJson, isGoogleAiConfigured } from "../modelClient";
 
 /**
  * Derive JSON-Schema tool parameters from a zod schema, mirroring cli.ts:
@@ -50,7 +34,7 @@ function toolParameters(schema: z.ZodType): Record<string, unknown> {
 }
 
 /**
- * Run one structured LLM call: forced function tool, parsed arguments.
+ * Run one structured LLM call using Google Gen AI SDK (Gemini 2.0).
  * Returns the raw parsed JSON; schema validation stays with the caller so
  * each stage's acceptance rules read plainly in its own function.
  */
@@ -60,42 +44,17 @@ async function callLlm(options: {
   toolName: string;
   toolDescription: string;
   parameters: Record<string, unknown>;
-  /** Completion ceiling for this stage: proportional to its output size. */
   maxTokens: number;
 }): Promise<unknown> {
-  const client = makeClient();
-  const completion = await client.chat.completions.create({
-    model: LLM_MODEL,
-    max_completion_tokens: options.maxTokens,
-    messages: [
-      { role: "system", content: options.system },
-      { role: "user", content: options.user },
-    ],
-    tools: [
-      {
-        type: "function",
-        function: {
-          name: options.toolName,
-          description: options.toolDescription,
-          parameters: options.parameters,
-        },
-      },
-    ],
-    tool_choice: { type: "function", function: { name: options.toolName } },
-  });
-
-  const choice = completion.choices[0];
-  if (!choice) throw new Error("The model returned no choices.");
-  if (choice.finish_reason === "length")
-    throw new Error("The model's tool call was cut off mid-JSON. Ask for a smaller output.");
-  const toolCall = choice.message.tool_calls?.[0];
-  if (!toolCall || toolCall.type !== "function")
-    throw new Error("The model returned no tool call.");
-  try {
-    return JSON.parse(toolCall.function.arguments);
-  } catch (err) {
-    throw new Error(`The model's tool call was not valid JSON: ${(err as Error).message}`);
+  if (!isGoogleAiConfigured()) {
+    throw new Error("GEMINI_API_KEY is not set. Please set it in .env or the environment.");
   }
+
+  const prompt = `${options.user}\n\nPlease emit your output as structured JSON conforming to the '${options.toolName}' schema.`;
+  return await generateStructuredJson(prompt, {
+    systemInstruction: options.system,
+    temperature: 0.2,
+  });
 }
 
 /**

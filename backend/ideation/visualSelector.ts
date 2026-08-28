@@ -4,8 +4,8 @@
  * confidence-gated fallback, and data-driven metaphor authoring.
  */
 
-import OpenAI from "openai";
 import { DEVICE_BLOCKS, type Block, type MetaphorContent } from "../../src/dl/schema";
+import { generateStructuredJson, isGoogleAiConfigured } from "../modelClient";
 
 export interface VisualBlockSpec {
   blockType: string;
@@ -276,15 +276,12 @@ export function selectVisualIntentFallback(input: VisualDecisionInput): VisualDe
  */
 export async function selectShotVisualIntent(
   input: VisualDecisionInput,
-  openaiClient?: OpenAI
 ): Promise<VisualDecisionResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey && !openaiClient) {
+  if (!isGoogleAiConfigured()) {
     return selectVisualIntentFallback(input);
   }
 
   try {
-    const client = openaiClient ?? new OpenAI({ apiKey });
     const prompt = `You are the lead visual art director for Aideos technical explainer films.
 Analyze the following shot narration and surrounding context to select the single best visual block or metaphor.
 
@@ -317,14 +314,11 @@ Respond in JSON format:
   "confidence": number // 0.0 to 1.0
 }`;
 
-    const response = await client.chat.completions.create({
-      model: process.env.AIDEOS_LLM_MODEL || "gpt-4o-2024-08-06",
-      response_format: { type: "json_object" },
-      messages: [{ role: "user", content: prompt }],
+    const parsed = await generateStructuredJson<any>(prompt, {
+      systemInstruction: "You are an expert technical explainer film visual director. Output JSON only.",
       temperature: 0.2,
     });
 
-    const parsed = JSON.parse(response.choices[0].message.content || "{}");
     if (parsed.confidence !== undefined && parsed.confidence < 0.65) {
       return {
         blockType: "none",

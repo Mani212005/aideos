@@ -210,8 +210,8 @@ Underground ice sheets and salty brines remain the only reservoirs of Martian wa
           characterId: "astronaut",
           poses: [
             { t: 0.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
-            { t: 0.25, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
-            { t: 0.85, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
+            { t: 0.35, groups: { torso: { rotate: -1 }, head: { rotate: 2 }, leftArm: { rotate: 15 }, rightArm: { rotate: -105 } } },
+            { t: 0.85, groups: { torso: { rotate: -1 }, head: { rotate: 2 }, leftArm: { rotate: 15 }, rightArm: { rotate: -105 } } },
             { t: 1.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
           ],
         },

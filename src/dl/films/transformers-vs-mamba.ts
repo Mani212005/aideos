@@ -245,8 +245,8 @@ The result is 5x higher inference throughput and infinite context scaling withou
           characterId: "data-engineer",
           poses: [
             { t: 0.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
-            { t: 0.25, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
-            { t: 0.85, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
+            { t: 0.28, groups: { torso: { rotate: 2 }, head: { rotate: 3 }, leftArm: { rotate: 10 }, rightArm: { rotate: -90 } } },
+            { t: 0.85, groups: { torso: { rotate: 2 }, head: { rotate: 3 }, leftArm: { rotate: 10 }, rightArm: { rotate: -90 } } },
             { t: 1.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
           ],
         },

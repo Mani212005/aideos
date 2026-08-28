@@ -103,6 +103,102 @@ export const POSE_PRESETS: Record<string, PosePreset> = {
       legs: { rotate: 0 },
     },
   },
+  "payoff-astronaut": {
+    id: "payoff-astronaut",
+    name: "Astronaut Salute",
+    description: "Deliberate respectful salute for space and physics achievements",
+    groups: {
+      torso: { rotate: -1 },
+      head: { rotate: 2 },
+      leftArm: { rotate: 15 },
+      rightArm: { rotate: -105 },
+      legs: { rotate: 0 },
+    },
+  },
+  "payoff-developer": {
+    id: "payoff-developer",
+    name: "Developer Fist Pump",
+    description: "Tight energetic single-arm fist pump celebrating high TFLOPs and throughput",
+    groups: {
+      torso: { rotate: 3 },
+      head: { rotate: 4 },
+      leftArm: { rotate: 20 },
+      rightArm: { rotate: -125 },
+      legs: { rotate: 0 },
+    },
+  },
+  "payoff-scientist": {
+    id: "payoff-scientist",
+    name: "Scientist Discovery",
+    description: "Detailed hologram inspection posture with analytical head tilt",
+    groups: {
+      torso: { rotate: -2 },
+      head: { rotate: -8 },
+      leftArm: { rotate: 40 },
+      rightArm: { rotate: -80 },
+      legs: { rotate: 0 },
+    },
+  },
+  "payoff-robot": {
+    id: "payoff-robot",
+    name: "Robot Thruster Pulse",
+    description: "Symmetrical mechanical pose with active antenna orientation",
+    groups: {
+      torso: { rotate: 0 },
+      head: { rotate: 0 },
+      leftArm: { rotate: 95 },
+      rightArm: { rotate: -95 },
+      legs: { rotate: 0 },
+    },
+  },
+  "payoff-executive": {
+    id: "payoff-executive",
+    name: "Executive Podium Stance",
+    description: "Authoritative low and wide presenter stance for strategic milestones",
+    groups: {
+      torso: { rotate: 1 },
+      head: { rotate: 0 },
+      leftArm: { rotate: 50 },
+      rightArm: { rotate: -50 },
+      legs: { rotate: 0 },
+    },
+  },
+  "payoff-data-engineer": {
+    id: "payoff-data-engineer",
+    name: "Data Architect Victory",
+    description: "Single confident point celebrating pipeline scaling",
+    groups: {
+      torso: { rotate: 2 },
+      head: { rotate: 3 },
+      leftArm: { rotate: 10 },
+      rightArm: { rotate: -90 },
+      legs: { rotate: 0 },
+    },
+  },
+  "payoff-educator": {
+    id: "payoff-educator",
+    name: "Educator Conclusion",
+    description: "Warm open-armed teaching conclusion welcoming the viewer",
+    groups: {
+      torso: { rotate: 0 },
+      head: { rotate: 0 },
+      leftArm: { rotate: 70 },
+      rightArm: { rotate: -70 },
+      legs: { rotate: 0 },
+    },
+  },
+  "payoff-mascot": {
+    id: "payoff-mascot",
+    name: "Mascot Celebration",
+    description: "High enthusiasm bounce for team culture and brand launches",
+    groups: {
+      torso: { rotate: 0 },
+      head: { rotate: -4 },
+      leftArm: { rotate: 110 },
+      rightArm: { rotate: -110 },
+      legs: { rotate: 0 },
+    },
+  },
 };
 
 /** Returns an array of all available pose preset templates. */

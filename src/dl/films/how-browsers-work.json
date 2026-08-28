@@ -268,19 +268,19 @@
               }
             },
             {
-              "t": 0.25,
+              "t": 0.45,
               "groups": {
                 "torso": {
                   "rotate": 0
                 },
                 "head": {
-                  "rotate": -4
+                  "rotate": 0
                 },
                 "leftArm": {
-                  "rotate": 110
+                  "rotate": 70
                 },
                 "rightArm": {
-                  "rotate": -110
+                  "rotate": -70
                 }
               }
             },
@@ -291,13 +291,13 @@
                   "rotate": 0
                 },
                 "head": {
-                  "rotate": -4
+                  "rotate": 0
                 },
                 "leftArm": {
-                  "rotate": 110
+                  "rotate": 70
                 },
                 "rightArm": {
-                  "rotate": -110
+                  "rotate": -70
                 }
               }
             },
