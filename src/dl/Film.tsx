@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Audio, Img, staticFile } from "remotion";
-import { accentAt, PALETTE, rule, useLayout, BACKGROUND_THEMES, resolveFont } from "./tokens";
+import { accentAt, PALETTE, rule, useLayout, BACKGROUND_THEMES, resolveFont, ThemeContext } from "./tokens";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext } from "./accent";
 import { BlockView } from "./Block";
@@ -343,14 +343,15 @@ export const FilmView: React.FC<FilmViewProps> = ({
   const activeTransition = current.shot.transition || transitionType || "paper-rip";
 
   return (
-    <AccentContext.Provider value={accent}>
-      <AbsoluteFill
-        style={{
-          backgroundColor: bgTheme.canvas,
-          color: bgTheme.ink,
-          fontFamily,
-        }}
-      >
+    <ThemeContext.Provider value={bgTheme}>
+      <AccentContext.Provider value={accent}>
+        <AbsoluteFill
+          style={{
+            backgroundColor: bgTheme.canvas,
+            color: bgTheme.ink,
+            fontFamily,
+          }}
+        >
         {/* Paper & Texture Library Filter Shaders */}
         {bgTheme.gridType === "paper-fibers" && (
           <AbsoluteFill style={{ opacity: 0.28, pointerEvents: "none" }}>
@@ -430,5 +431,6 @@ export const FilmView: React.FC<FilmViewProps> = ({
         />
       </AbsoluteFill>
     </AccentContext.Provider>
-  );
+  </ThemeContext.Provider>
+);
 };

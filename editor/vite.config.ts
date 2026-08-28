@@ -627,54 +627,14 @@ function filmApiPlugin(): Plugin {
             return;
           }
 
-          // Transcribe using Deepgram Nova-2 for exact acoustic word timestamps
+          // Align words from script
           void (async () => {
-            let deepgramKey = process.env.DEEPGRAM_API_KEY || '';
-            if (!deepgramKey) {
-              const envPath = path.resolve(__dirname, '../.env');
-              if (fs.existsSync(envPath)) {
-                const envContent = fs.readFileSync(envPath, 'utf8');
-                const match = envContent.match(/DEEPGRAM_API_KEY\s*=\s*([a-zA-Z0-9_-]+)/);
-                if (match) deepgramKey = match[1];
-              }
-            }
-
-            if (deepgramKey) {
-              try {
-                const { createClient } = await import('@deepgram/sdk');
-                const deepgram = createClient(deepgramKey);
-                const audioBuffer = fs.readFileSync(audioPath);
-                const sttRes = await deepgram.listen.prerecorded.transcribeFile(audioBuffer, {
-                  model: 'nova-2',
-                  smart_format: true,
-                  punctuate: true,
-                  words: true,
-                });
-                const rawWords = sttRes.result?.results?.channels?.[0]?.alternatives?.[0]?.words || [];
-                const words = rawWords.map((w: any, idx: number) => ({
-                  id: `w-${idx}`,
-                  word: w.word,
-                  punctuated: w.punctuated_word || w.word,
-                  start: Number(w.start.toFixed(2)),
-                  end: Number(w.end.toFixed(2)),
-                  confidence: w.confidence,
-                }));
-
-                fs.writeFileSync(cachePath, JSON.stringify({ words }, null, 2), 'utf8');
-                sendJson(res, 200, { ok: true, words, source: 'deepgram-nova2' });
-                return;
-              } catch (e) {
-                console.warn('[STT] Deepgram word alignment error, falling back to script alignment:', e);
-              }
-            }
-
-            // Fallback: Proportional word alignment from script
             const scriptPath = path.join(scriptsDir, `${id}.md`);
             let rawScript = '';
             if (fs.existsSync(scriptPath)) rawScript = fs.readFileSync(scriptPath, 'utf8');
             const spokenText = extractSpokenVoiceover(rawScript);
             const wordsList = spokenText.split(/\s+/).filter(Boolean);
-            const totalDurationSec = 250; // estimate
+            const totalDurationSec = 30; // standard shot duration estimate
             const secPerWord = totalDurationSec / (wordsList.length || 1);
 
             const fallbackWords = wordsList.map((w, idx) => ({
@@ -686,7 +646,8 @@ function filmApiPlugin(): Plugin {
               confidence: 0.9,
             }));
 
-            sendJson(res, 200, { ok: true, words: fallbackWords, source: 'proportional' });
+            fs.writeFileSync(cachePath, JSON.stringify({ words: fallbackWords }, null, 2), 'utf8');
+            sendJson(res, 200, { ok: true, words: fallbackWords, source: 'script-alignment' });
           })();
           return;
         }
