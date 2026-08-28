@@ -13,6 +13,7 @@ import {
   lookBox,
   projectBox,
   shotAt,
+  activeShotAt,
   totalFrames,
   type TimedShot,
 } from "./camera";
@@ -40,7 +41,9 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const layout = useLayout();
-  const current = shotAt(timeline, frame);
+  const active = activeShotAt(timeline, frame);
+  if (!active || active.shot.stage === "none") return null;
+  const current = active;
   const shot = current.shot;
 
   const bgPreset = film.theme?.background || "paper-white";

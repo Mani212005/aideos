@@ -2,13 +2,12 @@
  * File Description: Aideos Direct Manipulation Multi-Track Timeline & Trimmer.
  * Implements Phase T-B (Move along track, left/right trim, multi-select with offset preservation,
  * collision resolution, snap guide lines, sub-second precision) and Phase T-C (Universal undo/redo, shortcuts).
- * Supports two operational modes: Narration-Locked (default ripple editing) and Free-Edit.
+ * Features real-time Narration Sync Drift Badge with 1-click Re-alignment and interactive Voiceover/Subtitle/Metaphor tracks.
  */
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import type { Film } from "../../../src/dl/schema";
 import {
-  type TimelineMode,
   type SnapTarget,
   TimelineUndoStack,
   computeShotStartTimes,
@@ -49,7 +48,6 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   const [playheadSec, setPlayheadSec] = useState<number>(currentFrame / (film.fps || 30));
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
   const [selectedShotIds, setSelectedShotIds] = useState<string[]>([film.shots[0]?.id ?? ""]);
-  const [mode, setMode] = useState<TimelineMode>("narration-locked");
   const [activeTab, setActiveTab] = useState<"tracks" | "transcript">("tracks");
 
   // Drag-to-move state
@@ -60,11 +58,20 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     currentDeltaSec: number;
   } | null>(null);
 
-  // Drag-to-trim state
+  // Drag-to-trim state (for Shots)
   const [trimming, setTrimming] = useState<{
     shotIndex: number;
     edge: "left" | "right";
     startX: number;
+    initialDur: number;
+    currentDelta: number;
+  } | null>(null);
+
+  // Drag-to-trim state (for Voiceover)
+  const [voTrimming, setVoTrimming] = useState<{
+    edge: "left" | "right";
+    startX: number;
+    initialInSec: number;
     initialDur: number;
     currentDelta: number;
   } | null>(null);
@@ -141,6 +148,21 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     return Math.max(baseShotsDurSum, maxEnd);
   }, [overrideTotalDurationSec, baseShotsDurSum, film.shots, shotStartTimes]);
 
+  // Voiceover Timing & Drift Calculation
+  const voiceoverTargetSec = overrideTotalDurationSec && overrideTotalDurationSec > 0 ? overrideTotalDurationSec : baseShotsDurSum;
+  const driftSec = totalDurationSec - voiceoverTargetSec;
+  const isSynchronized = Math.abs(driftSec) <= 0.05;
+
+  const handleRealignNarration = () => {
+    const ratio = voiceoverTargetSec > 0 ? voiceoverTargetSec / totalDurationSec : 1;
+    const realignedShots = film.shots.map((shot) => ({
+      ...shot,
+      startSec: undefined, // restore tight sequential alignment
+      dur: Number((shot.dur * ratio).toFixed(3)),
+    }));
+    triggerUpdateWithUndo({ ...film, shots: realignedShots }, "Re-align timeline to voiceover");
+  };
+
   // Real Subtitle Caption Words derived from film data / VTT
   const captionWords = useMemo(() => {
     return generateWordsFromFilm(film as unknown as Record<string, unknown>);
@@ -158,7 +180,6 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       targets.push({ timeSec: start, type: "boundary", label: `${film.shots[i].id} start` });
       targets.push({ timeSec: start + film.shots[i].dur, type: "boundary", label: `${film.shots[i].id} cut` });
     }
-    // Add 1s grid marks
     for (let s = 1; s < totalDurationSec; s += 1) {
       targets.push({ timeSec: s, type: "grid" });
     }
@@ -234,13 +255,11 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
             .filter((idx) => idx !== -1);
 
           if (selectedIndices.length > 1 && selectedIndices.includes(movingClip.shotIndex)) {
-            // Multi-move preserving relative offsets (TB-6)
-            const updatedFilm = moveMultipleShots(film, selectedIndices, movingClip.currentDeltaSec, mode);
+            const updatedFilm = moveMultipleShots(film, selectedIndices, movingClip.currentDeltaSec);
             triggerUpdateWithUndo(updatedFilm, `Move ${selectedIndices.length} shots`);
           } else {
-            // Single shot move (TB-1)
             const newStart = Math.max(0, movingClip.initialStartSec + movingClip.currentDeltaSec);
-            const updatedFilm = moveShot(film, movingClip.shotIndex, newStart, mode);
+            const updatedFilm = moveShot(film, movingClip.shotIndex, newStart);
             triggerUpdateWithUndo(updatedFilm, `Move ${film.shots[movingClip.shotIndex]?.id}`);
           }
         } catch (err) {
@@ -258,7 +277,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [movingClip, zoomLevel, film, mode, snapTargets, selectedShotIds, triggerUpdateWithUndo]);
+  }, [movingClip, zoomLevel, film, snapTargets, selectedShotIds, triggerUpdateWithUndo]);
 
   // Global Trimming Drag Handler (TB-2)
   useEffect(() => {
@@ -294,7 +313,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
             trimming.shotIndex,
             trimming.edge,
             trimming.currentDelta,
-            mode
+            "free-edit"
           );
           triggerUpdateWithUndo(
             updatedFilm,
@@ -315,7 +334,45 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [trimming, zoomLevel, film, mode, snapTargets, shotStartTimes, triggerUpdateWithUndo]);
+  }, [trimming, zoomLevel, film, snapTargets, shotStartTimes, triggerUpdateWithUndo]);
+
+  // Voiceover Trimming Handler
+  useEffect(() => {
+    if (!voTrimming) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaPx = e.clientX - voTrimming.startX;
+      const deltaSec = deltaPx / zoomLevel;
+      setVoTrimming((prev) => (prev ? { ...prev, currentDelta: deltaSec } : null));
+    };
+
+    const handleMouseUp = () => {
+      if (voTrimming && Math.abs(voTrimming.currentDelta) > 0.01) {
+        const currentIn = voTrimming.initialInSec;
+        const newIn = Math.max(0, currentIn + (voTrimming.edge === "left" ? voTrimming.currentDelta : 0));
+        triggerUpdateWithUndo(
+          {
+            ...film,
+            voiceover: {
+              src: film.voiceover?.src || "voiceover.wav",
+              volume: film.voiceover?.volume ?? 1,
+              ...(newIn > 0 ? { inSec: Number(newIn.toFixed(2)) } : {}),
+            } as any,
+          },
+          `Trim voiceover audio`
+        );
+      }
+      setVoTrimming(null);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [voTrimming, zoomLevel, film, triggerUpdateWithUndo]);
 
   // Keyboard Navigation & Shortcuts (Phase T-C)
   useEffect(() => {
@@ -414,7 +471,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           if (idx !== -1) {
             e.preventDefault();
             try {
-              const deletedFilm = deleteShot(film, idx, mode);
+              const deletedFilm = deleteShot(film, idx, "free-edit");
               triggerUpdateWithUndo(deletedFilm, `Delete ${primarySelected}`);
               setSelectedShotIds([deletedFilm.shots[Math.max(0, idx - 1)]?.id ?? ""]);
             } catch (err) {
@@ -457,7 +514,6 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     shotStartTimes,
     selectedShotIds,
     film,
-    mode,
     onTogglePlay,
     onPreviewSeek,
     handleUndo,
@@ -475,7 +531,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         isEmbedded ? "border-t-0 rounded-t-none" : ""
       }`}
     >
-      {/* TOP HEADER: Toolbar, Mode Selector, Undo/Redo & Precision Controls */}
+      {/* TOP HEADER: Toolbar, Sync Status Badge, Undo/Redo & Precision Controls */}
       <div className="p-2 bg-[#18181B] border-b border-[#27272A] flex flex-wrap items-center justify-between gap-2.5 shrink-0">
         <div className="flex items-center gap-2">
           {/* Tabs */}
@@ -528,21 +584,21 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
             {String(Math.floor(totalDurationSec % 60)).padStart(2, "0")}s
           </div>
 
-          {/* Mode Selector Toggle */}
+          {/* Real-Time Narration Sync Status Badge with 1-Click Re-align Action */}
           <button
-            onClick={() => setMode(mode === "narration-locked" ? "free-edit" : "narration-locked")}
-            className={`text-[10px] font-mono px-2.5 py-1 rounded border font-bold transition-all shadow ${
-              mode === "narration-locked"
-                ? "bg-blue-950/90 border-blue-500 text-blue-300 hover:bg-blue-900"
+            onClick={handleRealignNarration}
+            className={`text-[10px] font-mono px-2.5 py-1 rounded border font-bold transition-all shadow flex items-center gap-1.5 cursor-pointer ${
+              isSynchronized
+                ? "bg-emerald-950/90 border-emerald-500 text-emerald-300 hover:bg-emerald-900"
                 : "bg-amber-950/90 border-amber-500 text-amber-300 hover:bg-amber-900"
             }`}
             title={
-              mode === "narration-locked"
-                ? "Narration-Locked: Ripple edits preserve ±50ms audio master clock"
-                : "Free-Edit: Move and trim clips freely with explicit start times"
+              isSynchronized
+                ? "Timeline in sync with voiceover (±0.0s)"
+                : `Drifted by ${driftSec > 0 ? "+" : ""}${driftSec.toFixed(2)}s from voiceover. Click for 1-Click Re-alignment.`
             }
           >
-            {mode === "narration-locked" ? "🔒 Narration-Locked" : "🔓 Free-Edit Mode"}
+            <span>{isSynchronized ? "🟢 In Sync" : `⚠️ Drifted ${driftSec > 0 ? "+" : ""}${driftSec.toFixed(1)}s (⚡ Re-align)`}</span>
           </button>
         </div>
 
@@ -591,7 +647,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 const idx = film.shots.findIndex((s) => s.id === primarySelected);
                 if (idx !== -1) {
                   try {
-                    const deletedFilm = deleteShot(film, idx, mode);
+                    const deletedFilm = deleteShot(film, idx, "free-edit");
                     triggerUpdateWithUndo(deletedFilm, `Delete ${primarySelected}`);
                     setSelectedShotIds([deletedFilm.shots[Math.max(0, idx - 1)]?.id ?? ""]);
                   } catch (err) {
@@ -726,17 +782,50 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 <div className="w-[2px] flex-1 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.9)]" />
               </div>
 
-              {/* TRACK 1: SPEECH & AUDIO TIMELINE */}
+              {/* TRACK 1: SPEECH & AUDIO TIMELINE (TRIMMABLE VOICEOVER CLIP) */}
               <div
                 className="h-14 border-b border-[#27272A] relative flex items-center px-1"
                 style={{ width: `${Math.max(totalDurationSec + 5, 60) * zoomLevel}px` }}
               >
                 <div
-                  className="absolute top-2 bottom-2 rounded bg-yellow-950/40 border border-yellow-500/40 px-2 flex items-center justify-between text-[10px] text-yellow-300 font-mono"
-                  style={{ left: 0, width: totalDurationSec * zoomLevel }}
+                  className="absolute top-2 bottom-2 rounded bg-yellow-950/40 border border-yellow-500/50 px-2 flex items-center justify-between text-[10px] text-yellow-300 font-mono group"
+                  style={{
+                    left: 0,
+                    width: Math.max(30, (voiceoverTargetSec + (voTrimming?.currentDelta ?? 0)) * zoomLevel),
+                  }}
                 >
-                  <span className="truncate">🗣️ {film.voiceover?.src || "Voiceover Audio Spine"}</span>
-                  <span className="text-[9px] opacity-75">{totalDurationSec.toFixed(2)}s</span>
+                  <div
+                    data-handle="vo-left"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setVoTrimming({
+                        edge: "left",
+                        startX: e.clientX,
+                        initialInSec: 0,
+                        initialDur: voiceoverTargetSec,
+                        currentDelta: 0,
+                      });
+                    }}
+                    className="absolute top-0 bottom-0 left-0 w-2 bg-yellow-400/30 hover:bg-yellow-400 cursor-col-resize rounded-l opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Trim Voiceover In-Point"
+                  />
+                  <span className="truncate pointer-events-none">🗣️ {film.voiceover?.src || "Voiceover Audio Spine"}</span>
+                  <span className="text-[9px] opacity-75 pointer-events-none">{voiceoverTargetSec.toFixed(2)}s</span>
+                  <div
+                    data-handle="vo-right"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setVoTrimming({
+                        edge: "right",
+                        startX: e.clientX,
+                        initialInSec: 0,
+                        initialDur: voiceoverTargetSec,
+                        currentDelta: 0,
+                      });
+                    }}
+                    className="absolute top-0 bottom-0 right-0 w-2 bg-yellow-400/30 hover:bg-yellow-400 cursor-col-resize rounded-r opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Trim Voiceover Duration"
+                  />
                 </div>
               </div>
 
@@ -772,14 +861,6 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                         dur = Math.max(0.5, shot.dur - trimming.currentDelta);
                         startSec += trimming.currentDelta;
                       }
-                    } else if (
-                      trimming &&
-                      mode === "narration-locked" &&
-                      trimming.shotIndex === idx - 1 &&
-                      trimming.edge === "right"
-                    ) {
-                      dur = Math.max(0.5, shot.dur - trimming.currentDelta);
-                      startSec += trimming.currentDelta;
                     }
 
                     const isSelected = selectedShotIds.includes(shot.id);
@@ -815,7 +896,6 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                             if ((e.target as HTMLElement)?.dataset?.handle) return;
                             e.stopPropagation();
                             if (e.shiftKey) {
-                              // Multi-select toggle (TB-6)
                               setSelectedShotIds((prev) =>
                                 prev.includes(shot.id)
                                   ? prev.filter((id) => id !== shot.id)
@@ -827,7 +907,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                             setPlayheadSec(startSec);
                             if (onPreviewSeek) onPreviewSeek(Math.round(startSec * fps));
 
-                            // Initiate drag-to-move (TB-1)
+                            // Initiate drag-to-move
                             setMovingClip({
                               shotIndex: idx,
                               startX: e.clientX,
@@ -847,7 +927,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                             borderColor: clipColors[idx % clipColors.length],
                           }}
                         >
-                          {/* Left Trim Handle (TB-2) */}
+                          {/* Left Trim Handle */}
                           <div
                             data-handle="left"
                             onMouseDown={(e) => {
@@ -881,7 +961,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                             {shot.scriptText || shot.visualDirection || shot.look}
                           </div>
 
-                          {/* Right Trim Handle (TB-2) */}
+                          {/* Right Trim Handle */}
                           <div
                             data-handle="right"
                             onMouseDown={(e) => {

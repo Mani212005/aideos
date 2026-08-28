@@ -112,16 +112,24 @@ export const buildTimeline = (film: Film, targetDurationSec?: number): TimedShot
   const scaleRatio = baseTotalDur > 0 ? effectiveTotalSec / baseTotalDur : 1;
 
   return film.shots.map((shot, index) => {
-    const shotSec = (shot.dur || 3) * scaleRatio;
-    const durationInFrames = Math.max(15, Math.round(shotSec * film.fps));
-    const from = cursor;
-    cursor += durationInFrames;
+    let from = cursor;
+    let durationInFrames = Math.max(15, Math.round((shot.dur || 3) * scaleRatio * film.fps));
+
+    if (shot.startSec !== undefined) {
+      from = Math.round(shot.startSec * film.fps);
+      durationInFrames = Math.max(15, Math.round(shot.dur * film.fps));
+      cursor = Math.max(cursor, from + durationInFrames);
+    } else {
+      cursor += durationInFrames;
+    }
+
+    const to = from + durationInFrames;
     if (shot.move === "cut") chapter += 1;
     return {
       shot,
       index,
       from,
-      to: cursor,
+      to,
       durationInFrames,
       chapter: Math.max(0, chapter),
     };
@@ -129,7 +137,14 @@ export const buildTimeline = (film: Film, targetDurationSec?: number): TimedShot
 };
 
 export const totalFrames = (timeline: TimedShot[]) =>
-  timeline.length === 0 ? 1 : timeline[timeline.length - 1].to;
+  timeline.length === 0 ? 1 : timeline.reduce((max, t) => Math.max(max, t.to), 1);
+
+export const activeShotAt = (timeline: TimedShot[], frame: number): TimedShot | null => {
+  for (const t of timeline) {
+    if (frame >= t.from && frame < t.to) return t;
+  }
+  return null;
+};
 
 export const shotAt = (timeline: TimedShot[], frame: number): TimedShot => {
   for (const t of timeline) if (frame < t.to) return t;

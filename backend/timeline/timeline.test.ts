@@ -19,6 +19,7 @@ import {
   type SnapTarget,
 } from "./timeline";
 import { parseFilm as validateFilm } from "../../src/dl/schema";
+import { buildTimeline, activeShotAt } from "../../src/dl/camera";
 import type { Film } from "../../src/dl/schema";
 
 function createMockFilm(): Film {
@@ -174,6 +175,24 @@ test("TB-9: Every drag operation produces a valid film — validateFilm passes a
 
   const trackMoved = moveShotToTrack(split, 0, 1);
   assert.doesNotThrow(() => validateFilm(trackMoved));
+});
+
+// TB-Render: UI-to-render round trip
+test("TB-Render: UI-to-render round trip: moving shot 1 to startSec=4.0s renders a gap (null activeShotAt) at 1.0s and becomes active at 4.0s", () => {
+  const film = createMockFilm();
+  // Move shot 1 to start explicitly at 4.0s (leaving a 0s..4s gap)
+  const moved = moveShot(film, 0, 4.0, "free-edit");
+  const timeline = buildTimeline(moved);
+
+  // At frame 30 (1.0s) - inside the 0..4s gap: no shot is active (Stage renders null)
+  const activeInGap = activeShotAt(timeline, 30);
+  assert.equal(activeInGap, null);
+
+  // At frame 120 (4.0s): shot-1 is active
+  const activeAtStart = activeShotAt(timeline, 120);
+  assert.ok(activeAtStart);
+  assert.equal(activeAtStart.shot.id, "shot-1");
+  assert.equal(activeAtStart.from, 120);
 });
 
 // ==============================================================================
