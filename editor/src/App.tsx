@@ -279,46 +279,19 @@ export default function App() {
   }, []);
 
   const audioDurationSec = useMemo(() => {
-    // 1. Base sum of authored shot durations
+    if (!film || !film.shots || film.shots.length === 0) return undefined;
     const baseShotSec = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
-
-    // 2. Caption words timestamp duration (ignore short 30s sample)
-    let captionsSec = 0;
-    if (captionWords && captionWords.length > 85) {
-      const lastWord = captionWords[captionWords.length - 1];
-      if (lastWord && lastWord.endFrame > 0) {
-        captionsSec = lastWord.endFrame / film.fps;
-      }
-    }
-
-    // 3. Spoken script words duration (~140 wpm for natural speech pacing)
-    let scriptSec = 0;
-    if (film.shots && film.shots.length > 0) {
-      const totalSpokenWords = film.shots
-        .map((s) => (s.scriptText || "").trim())
-        .filter(Boolean)
-        .join(" ")
-        .split(/\s+/)
-        .filter(Boolean).length;
-      if (totalSpokenWords > 0) {
-        scriptSec = Math.round((totalSpokenWords / 140) * 60);
-      }
-    }
-
-    // Lock video timeline to target audio duration (5:21 / 321s minimum for full script voiceover)
-    const targetMinSec = film.id === "what-is-jepa" ? 321 : 250;
-    const computedSec = Math.max(targetMinSec, baseShotSec, captionsSec, scriptSec);
-    return computedSec > 0 ? computedSec : undefined;
-  }, [captionWords, film]);
+    return baseShotSec > 0 ? baseShotSec : undefined;
+  }, [film]);
 
   const timeline = useMemo(() => {
     try {
-      return buildTimeline(film, audioDurationSec);
+      return buildTimeline(film);
     } catch(e) {
       console.error(e);
       return null;
     }
-  }, [film, audioDurationSec]);
+  }, [film]);
 
   const duration = timeline ? totalFrames(timeline) : 300;
 

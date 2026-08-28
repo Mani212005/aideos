@@ -34,14 +34,23 @@ export interface BlockAABB {
   h: number;
 }
 
+function isNodeRuntime(): boolean {
+  return typeof process !== "undefined" && Boolean(process?.versions?.node) && typeof window === "undefined";
+}
+
 function findAssetPath(src: string, baseDir: string): string | null {
-  const candidates = [
-    path.resolve(baseDir, src),
-    path.resolve(baseDir, "..", src),
-    path.resolve(baseDir, "..", "src", src),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
+  if (!isNodeRuntime()) return src;
+  try {
+    const candidates = [
+      path.resolve(baseDir, src),
+      path.resolve(baseDir, "..", src),
+      path.resolve(baseDir, "..", "src", src),
+    ];
+    for (const c of candidates) {
+      if (fs.existsSync(c)) return c;
+    }
+  } catch {
+    // Ignore in browser
   }
   return null;
 }
@@ -79,7 +88,8 @@ export function calculateAABBOverlapArea(a: BlockAABB, b: BlockAABB): number {
 
 export function validateFilmAudioAndAssets(filmInput: unknown, options?: ValidationOptions): Film {
   const film = parseFilm(filmInput);
-  const baseDir = options?.baseDir ?? path.resolve(process.cwd(), "public");
+  const isNode = isNodeRuntime();
+  const baseDir = options?.baseDir ?? (isNode ? path.resolve(process.cwd(), "public") : "/public");
   const toleranceSec = options?.toleranceSec ?? 0.1;
 
   // 0. Schema version validation
@@ -87,33 +97,35 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
     throw new Error(`Unsupported film schemaVersion "${film.schemaVersion}". Expected semver major version 1.x.x`);
   }
 
-  // 1. Missing audio asset file checks
-  if (film.voiceover?.src) {
-    const voPath = findAssetPath(film.voiceover.src, baseDir);
-    if (!voPath) {
-      throw new Error(`Voiceover asset file missing: "${film.voiceover.src}"`);
+  // 1. Missing audio asset file checks (Node only)
+  if (isNode) {
+    if (film.voiceover?.src) {
+      const voPath = findAssetPath(film.voiceover.src, baseDir);
+      if (!voPath) {
+        throw new Error(`Voiceover asset file missing: "${film.voiceover.src}"`);
+      }
     }
-  }
 
-  if (film.music?.src) {
-    const musicPath = findAssetPath(film.music.src, baseDir);
-    if (!musicPath) {
-      throw new Error(`Music asset file missing: "${film.music.src}"`);
+    if (film.music?.src) {
+      const musicPath = findAssetPath(film.music.src, baseDir);
+      if (!musicPath) {
+        throw new Error(`Music asset file missing: "${film.music.src}"`);
+      }
     }
-  }
 
-  if (film.sfx && film.sfx.length > 0) {
-    for (const item of film.sfx) {
-      const sfxPath = findAssetPath(item.src, baseDir);
-      if (!sfxPath) {
-        throw new Error(`SFX asset file missing: "${item.src}"`);
+    if (film.sfx && film.sfx.length > 0) {
+      for (const item of film.sfx) {
+        const sfxPath = findAssetPath(item.src, baseDir);
+        if (!sfxPath) {
+          throw new Error(`SFX asset file missing: "${item.src}"`);
+        }
       }
     }
   }
 
   // 2. Duration sum invariant check against voiceover duration
   let voDur = options?.measuredVoiceoverDurationSec;
-  if (voDur === undefined && film.voiceover?.src) {
+  if (isNode && voDur === undefined && film.voiceover?.src) {
     const voPath = findAssetPath(film.voiceover.src, baseDir);
     if (voPath) {
       try {

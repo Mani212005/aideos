@@ -67,11 +67,14 @@ export const useEntrance = (
     // Fallback in unit test environment
   }
   const from = startFrame + frames(MS.stagger * index, fps);
-  const p = interpolate(frame, [from, from + frames(MS.enter, fps)], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-    easing: EXPO,
-  });
+  const isPoster = frame === 0 && startFrame === 0;
+  const p = isPoster
+    ? 1
+    : interpolate(frame, [from, from + frames(MS.enter, fps)], [0, 1], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+        easing: EXPO,
+      });
   return { opacity: p, transform: `translateY(${(1 - p) * risePx}px)` };
 };
 

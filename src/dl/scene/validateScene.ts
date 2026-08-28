@@ -159,15 +159,16 @@ export function validateScene(scene: Scene): ValidationResult {
       });
     }
 
-    // Rule 11: svgSource file exists on disk
+    // Rule 11: svgSource file exists on disk (Node runtime check)
     let svgContent = "";
+    const isNode = typeof process !== "undefined" && Boolean(process?.versions?.node) && typeof window === "undefined";
     if (!asset.svgSource) {
       errors.push({
         rule: 11,
         entityId: asset.assetId,
         message: `Asset "${asset.assetId}" missing required svgSource`,
       });
-    } else {
+    } else if (isNode) {
       const resolvedPath = path.isAbsolute(asset.svgSource)
         ? asset.svgSource
         : path.resolve(process.cwd(), asset.svgSource);

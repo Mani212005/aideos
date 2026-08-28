@@ -50,8 +50,9 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
   const openFrames = frames(MS.move, fps);
   const closeFrames = frames(CLOSE_MS, fps);
 
-  const open = easeExpo((frame - current.from) / openFrames);
-  const close = easeExpo((frame - (current.to - closeFrames)) / closeFrames);
+  const isCut = shot.move === "cut" || current.index === 0 || shot.stage === "frame";
+  const open = isCut ? 1 : easeExpo((frame - current.from) / openFrames);
+  const close = isCut ? 0 : easeExpo((frame - (current.to - closeFrames)) / closeFrames);
 
   const target = {
     x: layout.margin.left,
@@ -61,8 +62,9 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
   };
 
   let rect = target;
-  const opacity =
-    Math.max(0, Math.min(1, open * 1.4)) * (1 - Math.max(0, Math.min(1, close)));
+  const opacity = isCut
+    ? 1
+    : Math.max(0, Math.min(1, open * 1.4)) * (1 - Math.max(0, Math.min(1, close)));
 
   if (shot.stage === "anchor") {
     // The node this panel grew out of, in screen pixels under the shot's camera.
@@ -78,16 +80,15 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
     };
   }
 
-  // Content fades in behind the frame rather than with it — a panel that
-  // arrives already full of text reads as a cut, which is the one move this
-  // system never makes.
-  const contentIn = interpolate(
-    frame,
-    [current.from + openFrames * 0.55, current.from + openFrames],
-    [0, 1],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-  );
-  const contentStart = current.from + Math.round(openFrames * 0.55);
+  const contentIn = isCut
+    ? 1
+    : interpolate(
+        frame,
+        [current.from + openFrames * 0.55, current.from + openFrames],
+        [0, 1],
+        { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+      );
+  const contentStart = isCut ? current.from : current.from + Math.round(openFrames * 0.55);
 
   const hasMultiple = shot.blocks.length > 1;
 
