@@ -156,27 +156,27 @@ export const BACKGROUND_THEMES: Record<BackgroundPreset, BackgroundTheme> = {
 };
 
 /** Theme Context and Hook for full reactive theme token styling */
-export const ThemeContext = createContext<BackgroundTheme>(BACKGROUND_THEMES["smooth-dark"]);
+export const ThemeContext = createContext<BackgroundTheme>(BACKGROUND_THEMES["paper-white"]);
 export const useTheme = (): BackgroundTheme => useContext(ThemeContext);
 
-/** Default palette */
+/** Default palette (Archival White Paper) */
 export const PALETTE = {
-  canvas: BACKGROUND_THEMES["smooth-dark"].canvas,
-  surface: BACKGROUND_THEMES["smooth-dark"].surface,
-  ink: BACKGROUND_THEMES["smooth-dark"].ink,
-  muted: BACKGROUND_THEMES["smooth-dark"].muted,
-  hairline: BACKGROUND_THEMES["smooth-dark"].hairline,
+  canvas: BACKGROUND_THEMES["paper-white"].canvas,
+  surface: BACKGROUND_THEMES["paper-white"].surface,
+  ink: BACKGROUND_THEMES["paper-white"].ink,
+  muted: BACKGROUND_THEMES["paper-white"].muted,
+  hairline: BACKGROUND_THEMES["paper-white"].hairline,
   accent: "#FF6B00",
 } as const;
 
-/** Deep slate / crisp ink at an arbitrary alpha. Hairlines, scrims, grid lines. */
-export const ink = (alpha: number) => `rgba(245, 245, 245, ${alpha})`;
+/** Deep slate archival ink at an arbitrary alpha. Hairlines, scrims, grid lines. */
+export const ink = (alpha: number) => `rgba(17, 24, 39, ${alpha})`;
 
 /**
  * Hairline at a multiple of its base strength. `1` is the token; `2` is the
  * emphasis used for chart axes, which need to out-read the grid behind them.
  */
-export const rule = (strength = 1) => `rgba(255, 255, 255, ${0.12 * strength})`;
+export const rule = (strength = 1) => ink(0.12 * strength);
 
 /** Muted, dimmed. Axis ticks and legend text that must sit under the labels. */
 export const FAINT = "#94A3B8";

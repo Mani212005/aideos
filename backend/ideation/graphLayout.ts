@@ -26,7 +26,7 @@ export interface GeneratedGraph {
  */
 export function generateRelationshipAwareCanvas(
   concepts: ConceptEntity[],
-  options: { canvasWidth?: number; canvasHeight?: number } = {}
+  _options: { canvasWidth?: number; canvasHeight?: number } = {}
 ): GeneratedGraph {
   const count = concepts.length;
   if (count === 0) {

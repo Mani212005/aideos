@@ -4,7 +4,7 @@
  * confidence-gated fallback, and data-driven metaphor authoring.
  */
 
-import { DEVICE_BLOCKS, type Block, type MetaphorContent } from "../../src/dl/schema";
+import type { MetaphorContent } from "../../src/dl/schema";
 import { generateStructuredJson, isGoogleAiConfigured } from "../modelClient";
 
 export interface VisualBlockSpec {
@@ -169,7 +169,6 @@ export function selectVisualIntentFallback(input: VisualDecisionInput): VisualDe
   const hasMetric = text.match(/\b(\d+(?:\.\d+)?%|\d+x|\d+\s*(?:fps|flps))\b/i);
   if (hasMetric && !input.prevVisual?.includes("StatCounter")) {
     const rawVal = hasMetric[1];
-    const num = parseFloat(rawVal.replace(/[^\d.]/g, "")) || 90;
     return {
       blockType: "StatCounter",
       headline,

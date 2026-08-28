@@ -2,7 +2,7 @@
  * File Description: Implements Phase 3 segment-scoped visual brief generation
  * and the pre-render semantic sync gate using reasoned visual selection.
  */
-import type { Block, Film, Shot, MetaphorContent } from "../../src/dl/schema";
+import type { Block, MetaphorContent } from "../../src/dl/schema";
 import type { SegmentAudioInfo } from "../audio";
 import {
   selectShotVisualIntent,
@@ -70,6 +70,7 @@ export function buildBriefFromSegmentFallback(
     blocks.push({
       c: "StatCounter",
       to: num,
+      format: "plain",
       label: headline.slice(0, 24),
       suffix: rawVal.includes("%") ? "%" : undefined,
     });

@@ -1,29 +1,23 @@
 /**
- * ==============================================================================
- * AIDEOS 2.0: MULTI-TRACK TIMELINE & FILLER-WORD CLIP TRIMMER
- * ==============================================================================
- * OpenShot & Loom-style non-linear video editing studio:
- * - Multi-track timeline (Speech, Video Clips, B-Roll, Pretext Captions)
- * - Auto-advancing red playhead synchronized live with Remotion playback
- * - Fluid scrub and click-to-seek playhead
- * - Text-based transcript video trimmer (Descript/Loom style)
- * - 1-Click auto-removal of filler words ("ums", "ahs", "likes") and long silences
- * - Interactive clip splitting, manual in/out handle trimming, and ripple deletes
- * ==============================================================================
+ * File Description: Aideos Direct Manipulation Timeline & Trimmer Component.
+ * Implements Phase T-B (Direct manipulation, ripple trimming, snap anchors, sub-second precision)
+ * and Phase T-C (Universal undo/redo, keyboard shortcuts).
+ * Operates in two modes: Narration-Locked (default ripple editing) and Free-Edit.
  */
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import type { Film, Shot } from "../../../src/dl/schema";
+import type { Film } from "../../../src/dl/schema";
+import {
+  type TimelineMode,
+  type SnapTarget,
+  TimelineUndoStack,
+  computeShotStartTimes,
+  calculateSnap,
+  trimShotEdge,
+  splitShotAtTime,
+  deleteShot,
+} from "../../../backend/timeline/timeline";
 import type { TransitionType } from "../transitions";
-
-export interface FillerWord {
-  id: string;
-  word: string;
-  startSec: number;
-  endSec: number;
-  type: "filler" | "silence";
-  deleted: boolean;
-}
 
 interface TimelineEditorProps {
   film: Film;
@@ -48,14 +42,58 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   playerRef,
   totalDurationSec: overrideTotalDurationSec,
 }) => {
-  const [zoomLevel, setZoomLevel] = useState<number>(30); // pixels per second
-  const [playheadSec, setPlayheadSec] = useState<number>(currentFrame / film.fps);
+  const [zoomLevel, setZoomLevel] = useState<number>(35); // pixels per second
+  const [playheadSec, setPlayheadSec] = useState<number>(currentFrame / (film.fps || 30));
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
-  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  const [selectedShotId, setSelectedShotId] = useState<string | null>(film.shots[0]?.id ?? null);
+  const [mode, setMode] = useState<TimelineMode>("narration-locked");
   const [activeTab, setActiveTab] = useState<"tracks" | "transcript">("tracks");
-  const timelineRef = useRef<HTMLDivElement>(null);
 
-  // Smooth local RAF playhead sync without causing parent App re-renders
+  // Drag-to-trim state
+  const [trimming, setTrimming] = useState<{
+    shotIndex: number;
+    edge: "left" | "right";
+    startX: number;
+    initialDur: number;
+    currentDelta: number;
+  } | null>(null);
+
+  // Snap guide state
+  const [activeSnapTime, setActiveSnapTime] = useState<number | null>(null);
+
+  // Undo / Redo Stack (Phase T-C)
+  const undoStackRef = useRef<TimelineUndoStack>(new TimelineUndoStack(60));
+  const [, setUndoTick] = useState(0);
+
+  const triggerUpdateWithUndo = useCallback(
+    (newFilm: Film, label: string) => {
+      undoStackRef.current.push(film, label);
+      setUndoTick((t) => t + 1);
+      onUpdateFilm(newFilm);
+    },
+    [film, onUpdateFilm]
+  );
+
+  const handleUndo = useCallback(() => {
+    const res = undoStackRef.current.undo(film);
+    if (res) {
+      setUndoTick((t) => t + 1);
+      onUpdateFilm(res.film);
+    }
+  }, [film, onUpdateFilm]);
+
+  const handleRedo = useCallback(() => {
+    const res = undoStackRef.current.redo(film);
+    if (res) {
+      setUndoTick((t) => t + 1);
+      onUpdateFilm(res.film);
+    }
+  }, [film, onUpdateFilm]);
+
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const fps = film.fps || 30;
+
+  // Sync playhead smoothly with Remotion player
   useEffect(() => {
     if (!isPlaying || isDraggingPlayhead || !playerRef) return;
     let animId: number;
@@ -64,21 +102,18 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       const p = playerRef.current;
       if (p && typeof p.getCurrentFrame === "function") {
         const frame = p.getCurrentFrame();
-        setPlayheadSec(frame / film.fps);
+        setPlayheadSec(frame / fps);
       }
       animId = requestAnimationFrame(tick);
     };
 
     animId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animId);
-  }, [isPlaying, isDraggingPlayhead, playerRef, film.fps]);
+  }, [isPlaying, isDraggingPlayhead, playerRef, fps]);
 
-  // Clean studio audio has 0 artificial filler words
-  const [fillers, setFillers] = useState<FillerWord[]>([]);
-
-  const clipColors = [
-    "#635BFF", "#00D2D3", "#FF9F43", "#10AC84", "#54A0FF", "#5F27CD", "#EE5253"
-  ];
+  const shotStartTimes = useMemo(() => {
+    return computeShotStartTimes(film.shots);
+  }, [film.shots]);
 
   const baseShotsDurSum = useMemo(() => {
     return film.shots.reduce((sum, s) => sum + (s.dur || 3), 0);
@@ -90,26 +125,42 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       : baseShotsDurSum;
   }, [overrideTotalDurationSec, baseShotsDurSum]);
 
-  const scaleRatio = useMemo(() => {
-    return baseShotsDurSum > 0 ? totalDurationSec / baseShotsDurSum : 1;
-  }, [totalDurationSec, baseShotsDurSum]);
+  // Snap targets collection
+  const snapTargets = useMemo<SnapTarget[]>(() => {
+    const targets: SnapTarget[] = [
+      { timeSec: 0, type: "grid", label: "0s" },
+      { timeSec: totalDurationSec, type: "grid", label: `${totalDurationSec.toFixed(1)}s` },
+      { timeSec: playheadSec, type: "playhead", label: "playhead" },
+    ];
+    let acc = 0;
+    for (let i = 0; i < film.shots.length; i++) {
+      acc += film.shots[i].dur;
+      targets.push({ timeSec: acc, type: "boundary", label: `${film.shots[i].id} cut` });
+    }
+    // Add 1s grid marks
+    for (let s = 1; s < totalDurationSec; s += 1) {
+      targets.push({ timeSec: s, type: "grid" });
+    }
+    return targets;
+  }, [film.shots, totalDurationSec, playheadSec]);
 
-  // Handle seeking from mouse position
+  // Seek helper
   const seekFromClientX = useCallback(
     (clientX: number) => {
       if (!timelineRef.current) return;
       const rect = timelineRef.current.getBoundingClientRect();
       const clickX = clientX - rect.left + timelineRef.current.scrollLeft;
-      const newSec = Math.max(0, Math.min(totalDurationSec, clickX / zoomLevel));
-      setPlayheadSec(newSec);
+      const rawSec = Math.max(0, Math.min(totalDurationSec, clickX / zoomLevel));
+      const frameAlignedSec = Math.round(rawSec * fps) / fps;
+      setPlayheadSec(frameAlignedSec);
       if (onPreviewSeek) {
-        onPreviewSeek(Math.round(newSec * film.fps));
+        onPreviewSeek(Math.round(frameAlignedSec * fps));
       }
     },
-    [totalDurationSec, zoomLevel, film.fps, onPreviewSeek]
+    [totalDurationSec, zoomLevel, fps, onPreviewSeek]
   );
 
-  // Global mouse handlers for fluid playhead dragging
+  // Playhead scrubbing global mouse handlers
   useEffect(() => {
     if (!isDraggingPlayhead) return;
 
@@ -130,89 +181,215 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     };
   }, [isDraggingPlayhead, seekFromClientX]);
 
-  // Handle 1-click Cut All Fillers
-  const handleCutAllFillers = () => {
-    setFillers((prev) => prev.map((f) => ({ ...f, deleted: true })));
-    const updatedShots = film.shots.map((shot) => ({
-      ...shot,
-      dur: Math.max(2, Math.round(shot.dur * 0.92)),
-    }));
-    onUpdateFilm({ ...film, shots: updatedShots });
-  };
+  // Global trimming drag handler
+  useEffect(() => {
+    if (!trimming) return;
 
-  // Handle 1-click Cut Silences
-  const handleCutAllSilences = () => {
-    setFillers((prev) =>
-      prev.map((f) => (f.type === "silence" ? { ...f, deleted: true } : f))
-    );
-    const updatedShots = film.shots.map((shot) => ({
-      ...shot,
-      dur: Math.max(2, Math.round(shot.dur * 0.95)),
-    }));
-    onUpdateFilm({ ...film, shots: updatedShots });
-  };
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaPx = e.clientX - trimming.startX;
+      let deltaSec = deltaPx / zoomLevel;
 
-  // Toggle single filler deletion
-  const toggleFiller = (id: string) => {
-    setFillers((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, deleted: !f.deleted } : f))
-    );
-  };
-
-  // Split selected shot at playhead
-  const handleSplitShot = () => {
-    let accumulated = 0;
-    let targetIndex = -1;
-    let splitPoint = 0;
-
-    for (let i = 0; i < film.shots.length; i++) {
-      const dur = film.shots[i].dur;
-      if (playheadSec >= accumulated && playheadSec < accumulated + dur) {
-        targetIndex = i;
-        splitPoint = playheadSec - accumulated;
-        break;
+      // Handle snapping unless Alt is held
+      if (!e.altKey) {
+        const shot = film.shots[trimming.shotIndex];
+        const startSec = shotStartTimes[trimming.shotIndex];
+        const targetCutTime = trimming.edge === "right" ? startSec + shot.dur + deltaSec : startSec + deltaSec;
+        const { snappedTimeSec, activeSnap } = calculateSnap(targetCutTime, snapTargets, zoomLevel, 8);
+        if (activeSnap) {
+          deltaSec = trimming.edge === "right" ? snappedTimeSec - (startSec + shot.dur) : snappedTimeSec - startSec;
+          setActiveSnapTime(snappedTimeSec);
+        } else {
+          setActiveSnapTime(null);
+        }
+      } else {
+        setActiveSnapTime(null);
       }
-      accumulated += dur;
-    }
 
-    if (targetIndex === -1 || splitPoint < 1 || splitPoint > film.shots[targetIndex].dur - 1) {
-      return;
-    }
-
-    const targetShot = film.shots[targetIndex];
-    const leftShot: Shot = {
-      ...targetShot,
-      id: `${targetShot.id}-part1`,
-      dur: Math.round(splitPoint),
-    };
-    const rightShot: Shot = {
-      ...targetShot,
-      id: `${targetShot.id}-part2`,
-      dur: Math.max(1, Math.round(targetShot.dur - splitPoint)),
+      setTrimming((prev) => (prev ? { ...prev, currentDelta: deltaSec } : null));
     };
 
-    const newShots = [...film.shots];
-    newShots.splice(targetIndex, 1, leftShot, rightShot);
-    onUpdateFilm({ ...film, shots: newShots });
-  };
-
-  // Delete selected clip
-  const handleDeleteShot = (shotIndex: number) => {
-    if (film.shots.length <= 1) return;
-    const newShots = film.shots.filter((_, idx) => idx !== shotIndex);
-    onUpdateFilm({ ...film, shots: newShots });
-  };
-
-  // Adjust shot duration
-  const handleTrimDuration = (shotIndex: number, deltaSec: number) => {
-    const newShots = [...film.shots];
-    const currentDur = newShots[shotIndex].dur;
-    newShots[shotIndex] = {
-      ...newShots[shotIndex],
-      dur: Math.max(1, currentDur + deltaSec),
+    const handleMouseUp = () => {
+      if (trimming && Math.abs(trimming.currentDelta) > 0.01) {
+        try {
+          const updatedFilm = trimShotEdge(
+            film,
+            trimming.shotIndex,
+            trimming.edge,
+            trimming.currentDelta,
+            mode
+          );
+          triggerUpdateWithUndo(
+            updatedFilm,
+            `Trim ${film.shots[trimming.shotIndex]?.id} ${trimming.edge} edge`
+          );
+        } catch (err) {
+          console.warn("[Timeline Trim Rejected]", (err as Error).message);
+        }
+      }
+      setTrimming(null);
+      setActiveSnapTime(null);
     };
-    onUpdateFilm({ ...film, shots: newShots });
-  };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [trimming, zoomLevel, film, mode, snapTargets, shotStartTimes, triggerUpdateWithUndo]);
+
+  // Keyboard navigation & shortcuts (Phase T-C)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore when typing inside input or textarea
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+
+      // Undo: Cmd+Z (or Ctrl+Z)
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Redo: Cmd+Shift+Z or Ctrl+Y
+      if (
+        ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "z") ||
+        ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "y")
+      ) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      // Space: Play / Pause
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (onTogglePlay) onTogglePlay();
+        return;
+      }
+
+      // Left / Right: 1 frame step
+      if (e.key === "ArrowLeft" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        const delta = e.shiftKey ? 1.0 : 1 / fps;
+        const newSec = Math.max(0, playheadSec - delta);
+        setPlayheadSec(newSec);
+        if (onPreviewSeek) onPreviewSeek(Math.round(newSec * fps));
+        return;
+      }
+      if (e.key === "ArrowRight" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        const delta = e.shiftKey ? 1.0 : 1 / fps;
+        const newSec = Math.min(totalDurationSec, playheadSec + delta);
+        setPlayheadSec(newSec);
+        if (onPreviewSeek) onPreviewSeek(Math.round(newSec * fps));
+        return;
+      }
+
+      // Cmd + Left / Right: Jump to previous / next shot cut boundary
+      if ((e.metaKey || e.ctrlKey) && e.key === "ArrowLeft") {
+        e.preventDefault();
+        for (let i = shotStartTimes.length - 1; i >= 0; i--) {
+          if (shotStartTimes[i] < playheadSec - 0.05) {
+            setPlayheadSec(shotStartTimes[i]);
+            if (onPreviewSeek) onPreviewSeek(Math.round(shotStartTimes[i] * fps));
+            break;
+          }
+        }
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "ArrowRight") {
+        e.preventDefault();
+        for (let i = 0; i < shotStartTimes.length; i++) {
+          if (shotStartTimes[i] > playheadSec + 0.05) {
+            setPlayheadSec(shotStartTimes[i]);
+            if (onPreviewSeek) onPreviewSeek(Math.round(shotStartTimes[i] * fps));
+            break;
+          }
+        }
+        return;
+      }
+
+      // S: Split selected clip at playhead
+      if (e.key.toLowerCase() === "s" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        try {
+          const splitFilm = splitShotAtTime(film, playheadSec);
+          triggerUpdateWithUndo(splitFilm, `Split shot at ${playheadSec.toFixed(2)}s`);
+        } catch (err) {
+          console.warn("[Split Rejected]", (err as Error).message);
+        }
+        return;
+      }
+
+      // Backspace / Delete: Delete selected shot
+      if (e.key === "Backspace" || e.key === "Delete") {
+        if (selectedShotId && film.shots.length > 1) {
+          const idx = film.shots.findIndex((s) => s.id === selectedShotId);
+          if (idx !== -1) {
+            e.preventDefault();
+            try {
+              const deletedFilm = deleteShot(film, idx, mode);
+              triggerUpdateWithUndo(deletedFilm, `Delete ${selectedShotId}`);
+              setSelectedShotId(deletedFilm.shots[Math.max(0, idx - 1)]?.id ?? null);
+            } catch (err) {
+              console.warn("[Delete Rejected]", (err as Error).message);
+            }
+          }
+        }
+        return;
+      }
+
+      // Zoom keys: + and -
+      if (e.key === "=" || e.key === "+") {
+        e.preventDefault();
+        setZoomLevel((z) => Math.min(120, z + 5));
+        return;
+      }
+      if (e.key === "-") {
+        e.preventDefault();
+        setZoomLevel((z) => Math.max(15, z - 5));
+        return;
+      }
+
+      // Shift + Z: Zoom to fit whole film
+      if (e.shiftKey && e.key.toLowerCase() === "z" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        if (timelineRef.current && totalDurationSec > 0) {
+          const availableWidth = timelineRef.current.clientWidth - 40;
+          setZoomLevel(Math.max(15, Math.min(120, Math.floor(availableWidth / totalDurationSec))));
+        }
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    fps,
+    playheadSec,
+    totalDurationSec,
+    shotStartTimes,
+    selectedShotId,
+    film,
+    mode,
+    onTogglePlay,
+    onPreviewSeek,
+    handleUndo,
+    handleRedo,
+    triggerUpdateWithUndo,
+  ]);
+
+  const clipColors = [
+    "#635BFF", "#00D2D3", "#FF9F43", "#10AC84", "#54A0FF", "#5F27CD", "#EE5253"
+  ];
 
   return (
     <div
@@ -220,9 +397,10 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         isEmbedded ? "border-t-0 rounded-t-none" : ""
       }`}
     >
-      {/* TOP HEADER: Toolbar & 1-Click AI Actions */}
-      <div className="p-2.5 bg-[#18181B] border-b border-[#27272A] flex flex-wrap items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-2.5">
+      {/* TOP HEADER: Toolbar, Mode Selector, Undo/Redo & Precision Controls */}
+      <div className="p-2 bg-[#18181B] border-b border-[#27272A] flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+        <div className="flex items-center gap-2">
+          {/* Tabs */}
           <div className="flex bg-[#27272A] p-0.5 rounded-lg border border-[#3F3F46]">
             <button
               onClick={() => setActiveTab("tracks")}
@@ -232,7 +410,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              🎞️ Tracks & Waveforms
+              🎞️ Tracks
             </button>
             <button
               onClick={() => setActiveTab("transcript")}
@@ -242,72 +420,124 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              📝 Text Trimmer
+              📝 Script & Words
             </button>
           </div>
 
           <div className="h-4 w-[1px] bg-[#3F3F46]" />
 
-          {/* Timeline Direct Play/Pause Button */}
+          {/* Direct Play/Pause Button */}
           {onTogglePlay && (
             <button
               onClick={onTogglePlay}
               className={`px-3 py-1 text-xs font-bold rounded flex items-center gap-1.5 shadow transition-all ${
                 isPlaying
-                  ? "bg-amber-500 hover:bg-amber-400 text-black animate-pulse"
+                  ? "bg-amber-500 hover:bg-amber-400 text-black"
                   : "bg-emerald-600 hover:bg-emerald-500 text-white"
               }`}
-              title={isPlaying ? "Pause Timeline Playback" : "Play Timeline & Video"}
+              title={isPlaying ? "Pause Timeline (Space)" : "Play Timeline (Space)"}
             >
-              <span>{isPlaying ? "⏸️ Pause" : "▶️ Play"}</span>
+              <span>{isPlaying ? "⏸️" : "▶️"}</span>
             </button>
           )}
 
-          {/* Time & Playhead Badge */}
+          {/* Timecode Display (mm:ss.ff) */}
           <div className="font-mono text-[11px] bg-black/60 px-2.5 py-1 rounded border border-[#3F3F46] text-yellow-400 font-bold">
-            ⏱️ {Math.floor(playheadSec / 60)}:
+            {Math.floor(playheadSec / 60)}:
             {String(Math.floor(playheadSec % 60)).padStart(2, "0")}.
-            {String(Math.floor((playheadSec % 1) * 100)).padStart(2, "0")} /{" "}
+            {String(Math.round((playheadSec % 1) * fps)).padStart(2, "0")}f /{" "}
             {Math.floor(totalDurationSec / 60)}:
             {String(Math.floor(totalDurationSec % 60)).padStart(2, "0")}s
           </div>
+
+          {/* Mode Selector Badge */}
+          <button
+            onClick={() => setMode(mode === "narration-locked" ? "free-edit" : "narration-locked")}
+            className={`text-[10px] font-mono px-2 py-0.5 rounded border transition-colors ${
+              mode === "narration-locked"
+                ? "bg-blue-950/80 border-blue-500 text-blue-300"
+                : "bg-amber-950/80 border-amber-500 text-amber-300"
+            }`}
+            title={
+              mode === "narration-locked"
+                ? "Narration-Locked (Ripple editing preserves ±50ms audio master clock)"
+                : "Free-Edit (Independent clip duration and start times)"
+            }
+          >
+            {mode === "narration-locked" ? "🔒 Narration-Locked" : "🔓 Free-Edit Mode"}
+          </button>
         </div>
 
-        {/* Action Buttons: Split, Cut Fillers, Zoom */}
-        <div className="flex items-center gap-2">
+        {/* Undo / Redo & Split & Zoom */}
+        <div className="flex items-center gap-1.5">
+          {/* Undo / Redo Buttons */}
           <button
-            onClick={handleCutAllFillers}
-            className="text-[11px] px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1 shadow transition-colors"
-            title="Automatically cut all 'um', 'uh', 'like' filler words"
+            onClick={handleUndo}
+            disabled={!undoStackRef.current.canUndo()}
+            className="p-1 rounded bg-[#27272A] hover:bg-[#3F3F46] disabled:opacity-30 text-xs text-gray-200 border border-[#3F3F46]"
+            title="Undo (Cmd+Z)"
           >
-            <span>✂️</span> Cut Fillers ({fillers.filter((f) => f.type === "filler" && !f.deleted).length})
+            ↩️
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={!undoStackRef.current.canRedo()}
+            className="p-1 rounded bg-[#27272A] hover:bg-[#3F3F46] disabled:opacity-30 text-xs text-gray-200 border border-[#3F3F46]"
+            title="Redo (Cmd+Shift+Z)"
+          >
+            ↪️
           </button>
 
-          <button
-            onClick={handleCutAllSilences}
-            className="text-[11px] px-2.5 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white font-bold flex items-center gap-1 shadow transition-colors"
-            title="Automatically cut dead pauses > 0.8s"
-          >
-            <span>🔇</span> Trim Pauses
-          </button>
+          <div className="h-4 w-[1px] bg-[#3F3F46] mx-1" />
 
+          {/* Split Button */}
           <button
-            onClick={handleSplitShot}
+            onClick={() => {
+              try {
+                const splitFilm = splitShotAtTime(film, playheadSec);
+                triggerUpdateWithUndo(splitFilm, `Split shot at ${playheadSec.toFixed(2)}s`);
+              } catch (err) {
+                console.warn("[Split Rejected]", (err as Error).message);
+              }
+            }}
             className="text-[11px] px-2.5 py-1 rounded-md bg-[#27272A] hover:bg-[#3F3F46] text-white font-bold border border-[#3F3F46] flex items-center gap-1"
-            title="Split selected shot at playhead position"
+            title="Split selected shot at playhead (S key)"
           >
             <span>✂️ Split</span>
+          </button>
+
+          {/* Delete Button */}
+          <button
+            onClick={() => {
+              if (selectedShotId && film.shots.length > 1) {
+                const idx = film.shots.findIndex((s) => s.id === selectedShotId);
+                if (idx !== -1) {
+                  try {
+                    const deletedFilm = deleteShot(film, idx, mode);
+                    triggerUpdateWithUndo(deletedFilm, `Delete ${selectedShotId}`);
+                    setSelectedShotId(deletedFilm.shots[Math.max(0, idx - 1)]?.id ?? null);
+                  } catch (err) {
+                    console.warn("[Delete Rejected]", (err as Error).message);
+                  }
+                }
+              }
+            }}
+            disabled={!selectedShotId || film.shots.length <= 1}
+            className="text-[11px] px-2 py-1 rounded-md bg-red-950/60 hover:bg-red-900 border border-red-800 disabled:opacity-30 text-red-200"
+            title="Delete Selected Clip (Backspace)"
+          >
+            🗑️
           </button>
 
           <div className="h-4 w-[1px] bg-[#3F3F46] mx-1" />
 
           {/* Zoom Slider */}
-          <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-            <span>🔍 Zoom</span>
+          <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono">
+            <span>Zoom</span>
             <input
               type="range"
               min="15"
-              max="80"
+              max="100"
               value={zoomLevel}
               onChange={(e) => setZoomLevel(Number(e.target.value))}
               className="w-16 accent-[#635BFF] cursor-pointer"
@@ -316,63 +546,58 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         </div>
       </div>
 
-      {/* CONTENT AREA: Tracks or Text Transcript */}
+      {/* CONTENT AREA */}
       {activeTab === "tracks" ? (
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="flex flex-1 overflow-y-auto overflow-x-hidden">
             {/* Left Track Labels Column */}
-            <div className="w-40 bg-[#121214] border-r border-[#27272A] flex flex-col shrink-0 text-[11px] font-mono font-medium select-none">
+            <div className="w-36 bg-[#121214] border-r border-[#27272A] flex flex-col shrink-0 text-[11px] font-mono select-none">
               <div className="h-7 border-b border-[#27272A] flex items-center px-2.5 text-gray-400 font-bold bg-[#18181B] sticky top-0 z-30">
                 TRACKS
               </div>
-              <div className="h-16 border-b border-[#27272A] p-2 flex flex-col justify-between bg-[#141416]">
+              <div className="h-14 border-b border-[#27272A] p-2 flex flex-col justify-between bg-[#141416]">
                 <div className="flex items-center justify-between text-yellow-400 font-bold">
                   <span>🗣️ Voiceover</span>
                   <button
                     onClick={() => {
                       const currentVol = film.voiceover?.volume ?? 1;
                       const newVol = currentVol > 0 ? 0 : 1;
-                      onUpdateFilm({
-                        ...film,
-                        voiceover: {
-                          src: film.voiceover?.src || "voiceover.wav",
-                          volume: newVol,
+                      triggerUpdateWithUndo(
+                        {
+                          ...film,
+                          voiceover: {
+                            src: film.voiceover?.src || "voiceover.wav",
+                            volume: newVol,
+                          },
                         },
-                      });
+                        "Toggle voiceover mute"
+                      );
                     }}
-                    className="text-[10px] px-1.5 py-0.5 rounded bg-black/70 hover:bg-black text-yellow-300 font-mono"
-                    title={(film.voiceover?.volume ?? 1) > 0 ? "Mute Track" : "Unmute Track"}
+                    className="text-[9px] px-1.5 py-0.5 rounded bg-black/70 hover:bg-black text-yellow-300 font-mono"
                   >
-                    {(film.voiceover?.volume ?? 1) > 0 ? "🔊 On" : "🔇 Muted"}
+                    {(film.voiceover?.volume ?? 1) > 0 ? "🔊 On" : "🔇 Mute"}
                   </button>
                 </div>
-                <div className="flex items-center justify-between text-[9px] text-gray-500">
-                  <span>voiceover.wav</span>
-                  <span className="text-yellow-400/80 font-mono">
-                    {Math.round((film.voiceover?.volume ?? 1) * 100)}%
-                  </span>
-                </div>
+                <div className="text-[9px] text-gray-500 truncate">{film.voiceover?.src || "voiceover.wav"}</div>
               </div>
               <div className="h-20 border-b border-[#27272A] p-2 flex flex-col justify-between bg-[#141416]">
                 <div className="flex items-center justify-between text-blue-400 font-bold">
                   <span>🎬 Shots</span>
                   <span className="text-[9px] text-gray-400">{film.shots.length}</span>
                 </div>
-                <div className="text-[9px] text-gray-500">Trimmable clips</div>
+                <div className="text-[9px] text-gray-500">Direct trimmable</div>
               </div>
               <div className="h-14 border-b border-[#27272A] p-2 flex flex-col justify-between bg-[#141416]">
                 <div className="flex items-center justify-between text-purple-400 font-bold">
-                  <span>🖼️ B-Roll</span>
-                  <span className="text-[9px] text-purple-300">Kinematic</span>
+                  <span>🖼️ Visual Metaphor</span>
                 </div>
-                <div className="text-[9px] text-gray-500">Overlay motion</div>
+                <div className="text-[9px] text-gray-500">Vector devices</div>
               </div>
               <div className="h-14 border-b border-[#27272A] p-2 flex flex-col justify-between bg-[#141416]">
                 <div className="flex items-center justify-between text-emerald-400 font-bold">
-                  <span>💬 Pretext</span>
-                  <span className="text-[9px] text-emerald-300">60 FPS</span>
+                  <span>💬 Subtitles</span>
                 </div>
-                <div className="text-[9px] text-gray-500">Zero-DOM Kinetic</div>
+                <div className="text-[9px] text-gray-500">Phrase-locked</div>
               </div>
             </div>
 
@@ -380,6 +605,8 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
             <div
               ref={timelineRef}
               onMouseDown={(e) => {
+                // Seek when clicking empty timeline or ruler
+                if ((e.target as HTMLElement)?.dataset?.handle) return;
                 setIsDraggingPlayhead(true);
                 seekFromClientX(e.clientX);
               }}
@@ -402,7 +629,15 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 ))}
               </div>
 
-              {/* FLUID SCRUBBABLE PLAYHEAD */}
+              {/* SNAP GUIDE LINE */}
+              {activeSnapTime !== null && (
+                <div
+                  className="absolute top-0 bottom-0 z-30 w-[1px] bg-cyan-400 shadow-[0_0_8px_cyan] pointer-events-none"
+                  style={{ left: activeSnapTime * zoomLevel }}
+                />
+              )}
+
+              {/* PLAYHEAD */}
               <div
                 className="absolute top-0 bottom-0 z-40 flex flex-col items-center pointer-events-none transition-transform duration-75"
                 style={{
@@ -414,55 +649,26 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 <div className="w-[2px] flex-1 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.9)]" />
               </div>
 
-              {/* TRACK 1: SPEECH & FILLER WORDS */}
+              {/* TRACK 1: SPEECH & AUDIO TIMELINE */}
               <div
-                className="h-16 border-b border-[#27272A] relative flex items-center px-1"
-                style={{ width: `${Math.max(totalDurationSec + 5, 120) * zoomLevel}px` }}
+                className="h-14 border-b border-[#27272A] relative flex items-center px-1"
+                style={{ width: `${Math.max(totalDurationSec + 5, 60) * zoomLevel}px` }}
               >
-                {/* Continuous High-Density Audio Waveform */}
-                <div className="absolute inset-0 h-10 top-3 bg-yellow-500/10 rounded border border-yellow-500/20 flex items-center justify-between px-1 opacity-75 pointer-events-none overflow-hidden">
-                  {Array.from({ length: Math.max(150, Math.floor((Math.max(totalDurationSec, 120) * zoomLevel) / 6)) }).map((_, idx) => {
-                    const waveHeight = 20 + Math.sin(idx * 0.28) * 35 + ((idx % 7) * 7);
-                    return (
-                      <div
-                        key={idx}
-                        className="w-1 bg-yellow-400/60 rounded-full shrink-0 mx-[1px]"
-                        style={{ height: `${Math.min(95, Math.max(15, waveHeight))}%` }}
-                      />
-                    );
-                  })}
+                <div
+                  className="absolute top-2 bottom-2 rounded bg-yellow-950/40 border border-yellow-500/40 px-2 flex items-center justify-between text-[10px] text-yellow-300 font-mono"
+                  style={{ left: 0, width: totalDurationSec * zoomLevel }}
+                >
+                  <span className="truncate">🗣️ {film.voiceover?.src || "Voiceover Audio Spine"}</span>
+                  <span className="text-[9px] opacity-75">{totalDurationSec.toFixed(2)}s</span>
                 </div>
-
-                {/* Detected Filler Words Overlay */}
-                {fillers.map((filler) => (
-                  <div
-                    key={filler.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFiller(filler.id);
-                    }}
-                    className={`absolute top-2.5 bottom-2.5 rounded-md px-1.5 flex flex-col items-center justify-center text-[9px] font-bold cursor-pointer transition-all border ${
-                      filler.deleted
-                        ? "bg-red-950/80 border-red-500 text-red-300 line-through opacity-50"
-                        : filler.type === "silence"
-                        ? "bg-amber-950/70 border-amber-500 text-amber-300"
-                        : "bg-yellow-950/80 border-yellow-400 text-yellow-200 shadow-md animate-pulse"
-                    }`}
-                    style={{
-                      left: filler.startSec * zoomLevel,
-                      width: Math.max(28, (filler.endSec - filler.startSec) * zoomLevel),
-                    }}
-                    title={filler.deleted ? "Click to restore" : "Click to cut"}
-                  >
-                    <span>{filler.word}</span>
-                  </div>
-                ))}
               </div>
 
-              {/* TRACK 2: VIDEO CLIPS (SHOTS) */}
-              <div className="h-20 border-b border-[#27272A] relative flex items-center">
+              {/* TRACK 2: VIDEO SHOTS (DIRECT MANIPULATION) */}
+              <div
+                className="h-20 border-b border-[#27272A] relative flex items-center"
+                style={{ width: `${Math.max(totalDurationSec + 5, 60) * zoomLevel}px` }}
+              >
                 {(() => {
-                  let accumulatedSec = 0;
                   const transitionTypes: TransitionType[] = ["paper-rip", "zoom-morph", "matrix-glitch", "whip-pan", "film-burn"];
                   const transitionIcons: Record<TransitionType, string> = {
                     "paper-rip": "📄",
@@ -473,15 +679,33 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                   };
 
                   return film.shots.map((shot, idx) => {
-                    const startSec = accumulatedSec;
-                    const dur = Math.max(1, Math.round((shot.dur || 3) * scaleRatio));
-                    accumulatedSec += dur;
-                    const isSelected = selectedClipId === shot.id;
+                    let startSec = shotStartTimes[idx];
+                    let dur = shot.dur;
+
+                    // Apply live visual delta while dragging handles
+                    if (trimming && trimming.shotIndex === idx) {
+                      if (trimming.edge === "right") {
+                        dur = Math.max(1 / fps, shot.dur + trimming.currentDelta);
+                      } else {
+                        dur = Math.max(1 / fps, shot.dur - trimming.currentDelta);
+                        startSec += trimming.currentDelta;
+                      }
+                    } else if (
+                      trimming &&
+                      mode === "narration-locked" &&
+                      trimming.shotIndex === idx - 1 &&
+                      trimming.edge === "right"
+                    ) {
+                      dur = Math.max(1 / fps, shot.dur - trimming.currentDelta);
+                      startSec += trimming.currentDelta;
+                    }
+
+                    const isSelected = selectedShotId === shot.id;
                     const currentTrans = shot.transition || "paper-rip";
 
                     return (
                       <React.Fragment key={shot.id}>
-                        {/* Per-Shot Transition Cut Connector Chip */}
+                        {/* Transition Cut Badge */}
                         {idx > 0 && (
                           <div
                             onClick={(e) => {
@@ -490,22 +714,26 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                               const nextTrans = transitionTypes[nextTransIdx];
                               const updatedShots = [...film.shots];
                               updatedShots[idx] = { ...shot, transition: nextTrans };
-                              onUpdateFilm({ ...film, shots: updatedShots });
+                              triggerUpdateWithUndo(
+                                { ...film, shots: updatedShots },
+                                `Set ${shot.id} transition to ${nextTrans}`
+                              );
                             }}
-                            className="absolute -top-1 z-30 -ml-2.5 w-5 h-5 rounded-full bg-[#18181B] border border-yellow-500/80 hover:scale-125 hover:border-yellow-300 flex items-center justify-center text-[10px] cursor-pointer shadow-lg transition-transform group"
+                            className="absolute -top-1 z-30 -ml-2.5 w-5 h-5 rounded-full bg-[#18181B] border border-yellow-500/80 hover:scale-125 hover:border-yellow-300 flex items-center justify-center text-[10px] cursor-pointer shadow-lg transition-transform"
                             style={{ left: startSec * zoomLevel }}
-                            title={`Transition: ${currentTrans} (Click to switch)`}
+                            title={`Transition: ${currentTrans} (Click to cycle)`}
                           >
                             <span>{transitionIcons[currentTrans]}</span>
                           </div>
                         )}
 
+                        {/* Shot Clip Box */}
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedClipId(shot.id);
+                            setSelectedShotId(shot.id);
                             setPlayheadSec(startSec);
-                            if (onPreviewSeek) onPreviewSeek(Math.round(startSec * film.fps));
+                            if (onPreviewSeek) onPreviewSeek(Math.round(startSec * fps));
                           }}
                           className={`absolute top-1.5 bottom-1.5 rounded-lg border flex flex-col justify-between p-1.5 cursor-pointer transition-all shadow-md group ${
                             isSelected
@@ -514,53 +742,62 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                           }`}
                           style={{
                             left: startSec * zoomLevel,
-                            width: Math.max(40, dur * zoomLevel),
-                            backgroundColor: clipColors[idx % clipColors.length] + "44",
+                            width: Math.max(20, dur * zoomLevel),
+                            backgroundColor: clipColors[idx % clipColors.length] + "33",
                             borderColor: clipColors[idx % clipColors.length],
                           }}
                         >
-                          {/* Clip Header */}
+                          {/* Left Trim Handle */}
+                          <div
+                            data-handle="left"
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              setTrimming({
+                                shotIndex: idx,
+                                edge: "left",
+                                startX: e.clientX,
+                                initialDur: shot.dur,
+                                currentDelta: 0,
+                              });
+                            }}
+                            className="absolute top-0 bottom-0 left-0 w-2.5 bg-white/20 hover:bg-yellow-400 cursor-col-resize rounded-l flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Drag to trim start (Alt to bypass snap)"
+                          >
+                            <div className="w-[1px] h-3 bg-black/60" />
+                          </div>
+
+                          {/* Clip Content Header */}
                           <div className="flex items-center justify-between gap-1 overflow-hidden pointer-events-none">
                             <span className="font-bold text-[11px] truncate text-white">
                               {idx + 1}. {shot.id}
                             </span>
                             <span className="text-[9px] font-mono bg-black/60 px-1 py-0.5 rounded text-gray-300">
-                              {dur}s
+                              {dur.toFixed(2)}s
                             </span>
                           </div>
 
-                          {/* Trimming Handle Overlay Controls */}
-                          <div className="flex justify-between items-center mt-0.5">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleTrimDuration(idx, -1);
-                              }}
-                              className="text-[8px] bg-black/70 hover:bg-black px-1 py-0.5 rounded text-red-400 font-bold"
-                              title="Trim -1s"
-                            >
-                              -1s
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteShot(idx);
-                              }}
-                              className="text-[8px] bg-red-950/80 hover:bg-red-800 text-red-200 px-1 py-0.5 rounded font-bold"
-                              title="Delete Clip"
-                            >
-                              🗑️
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleTrimDuration(idx, 1);
-                              }}
-                              className="text-[8px] bg-black/70 hover:bg-black px-1 py-0.5 rounded text-emerald-400 font-bold"
-                              title="Extend +1s"
-                            >
-                              +1s
-                            </button>
+                          {/* Script Snippet */}
+                          <div className="text-[9px] text-gray-400 truncate pointer-events-none">
+                            {shot.scriptText || shot.visualDirection || shot.look}
+                          </div>
+
+                          {/* Right Trim Handle */}
+                          <div
+                            data-handle="right"
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              setTrimming({
+                                shotIndex: idx,
+                                edge: "right",
+                                startX: e.clientX,
+                                initialDur: shot.dur,
+                                currentDelta: 0,
+                              });
+                            }}
+                            className="absolute top-0 bottom-0 right-0 w-2.5 bg-white/20 hover:bg-yellow-400 cursor-col-resize rounded-r flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Drag to trim duration (Alt to bypass snap)"
+                          >
+                            <div className="w-[1px] h-3 bg-black/60" />
                           </div>
                         </div>
                       </React.Fragment>
@@ -569,125 +806,102 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 })()}
               </div>
 
-              {/* TRACK 3: B-ROLL / GRAPH OVERLAYS */}
-              <div className="h-14 border-b border-[#27272A] relative flex items-center px-2">
-                <div
-                  className="absolute top-1.5 bottom-1.5 rounded-lg bg-purple-900/40 border border-purple-500/60 p-1.5 flex items-center gap-2 text-[10px] text-purple-200"
-                  style={{ left: 10 * zoomLevel, width: 25 * zoomLevel }}
-                >
-                  <span>📊 KV Cache Memory Growth Chart Overlay</span>
-                </div>
+              {/* TRACK 3: VISUAL METAPHOR DEVICES */}
+              <div
+                className="h-14 border-b border-[#27272A] relative flex items-center px-1"
+                style={{ width: `${Math.max(totalDurationSec + 5, 60) * zoomLevel}px` }}
+              >
+                {film.shots.map((shot, idx) => {
+                  if (!shot.metaphor && (!shot.blocks || shot.blocks.length === 0)) return null;
+                  const startSec = shotStartTimes[idx];
+                  const dur = shot.dur;
+                  const label = shot.metaphor || shot.blocks?.[0]?.c || "Visual Device";
+
+                  return (
+                    <div
+                      key={shot.id}
+                      className="absolute top-2 bottom-2 rounded bg-purple-950/50 border border-purple-500/50 px-2 flex items-center gap-1.5 text-[10px] text-purple-200 truncate"
+                      style={{ left: startSec * zoomLevel, width: Math.max(20, dur * zoomLevel) }}
+                    >
+                      <span>📊</span>
+                      <span className="truncate">{label}</span>
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* TRACK 4: PRETEXT KINETIC SUBTITLES */}
-              <div className="h-14 border-b border-[#27272A] relative flex items-center px-2">
-                <div
-                  className="absolute top-1.5 bottom-1.5 rounded-lg bg-emerald-900/40 border border-emerald-500/60 p-1.5 flex items-center justify-between text-[10px] text-emerald-200 font-mono"
-                  style={{ left: 0, width: totalDurationSec * zoomLevel }}
-                >
-                  <span>💬 Pretext Zero-DOM Microsecond Subtitle Stream</span>
-                  <span className="text-[9px] bg-emerald-950 px-1.5 py-0.5 rounded text-emerald-300">
-                    60 FPS
-                  </span>
-                </div>
+              {/* TRACK 4: SUBTITLES */}
+              <div
+                className="h-14 border-b border-[#27272A] relative flex items-center px-1"
+                style={{ width: `${Math.max(totalDurationSec + 5, 60) * zoomLevel}px` }}
+              >
+                {film.shots.map((shot, idx) => {
+                  if (!shot.scriptText) return null;
+                  const startSec = shotStartTimes[idx];
+                  const dur = shot.dur;
+
+                  return (
+                    <div
+                      key={shot.id}
+                      className="absolute top-2 bottom-2 rounded bg-emerald-950/40 border border-emerald-500/50 px-2 flex items-center justify-between text-[10px] text-emerald-200 font-mono"
+                      style={{ left: startSec * zoomLevel, width: Math.max(20, dur * zoomLevel) }}
+                    >
+                      <span className="truncate">💬 {shot.scriptText}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
         </div>
       ) : (
-        /* TEXT-BASED TRANSCRIPT VIDEO TRIMMER (Descript / Loom Style) */
-        <div className="flex-1 p-5 overflow-y-auto bg-[#09090B] flex flex-col gap-3">
+        /* SCRIPT & WORD TRIMMER */
+        <div className="flex-1 p-4 overflow-y-auto bg-[#09090B] flex flex-col gap-3">
           <div className="bg-[#18181B] p-3 rounded-lg border border-[#27272A] flex items-center justify-between">
             <div>
               <h3 className="font-bold text-xs text-yellow-400">
-                🎙️ Descript / Loom Style Text-Based Video Editor
+                🎙️ Script & Shot Breakdown
               </h3>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                Click any word or highlighted filler word to strike it out and automatically cut that exact video clip from the timeline!
+                Click any shot card or spoken line to jump the playhead directly to that moment.
               </p>
             </div>
-            <button
-              onClick={handleCutAllFillers}
-              className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow"
-            >
-              ⚡ 1-Click Clean All Fillers
-            </button>
+            <div className="text-xs text-gray-400 font-mono">
+              Total Shots: {film.shots.length}
+            </div>
           </div>
 
-          <div className="bg-[#121214] p-4 rounded-xl border border-[#27272A] leading-relaxed text-xs flex flex-wrap gap-1.5">
-            {[
-              { text: "A", start: 0.1 },
-              { text: "baby", start: 0.4 },
-              { text: "giraffe", start: 0.9 },
-              { text: "learns", start: 1.5 },
-              { text: "to", start: 2.0 },
-              { text: "walk", start: 2.4 },
-              { text: "in", start: 2.9 },
-              { text: "under", start: 3.3 },
-              { text: "an", start: 4.1 },
-              { text: "hour.", start: 4.5 },
-              { text: "Um,", start: 5.1, isFiller: true, id: "f1" },
-              { text: "it", start: 5.8 },
-              { text: "falls,", start: 6.2 },
-              { text: "it", start: 7.0 },
-              { text: "hurts,", start: 7.4 },
-              { text: "[Long Pause 1.4s]", start: 7.8, isSilence: true, id: "f2" },
-              { text: "gravity", start: 9.3 },
-              { text: "yells", start: 9.8 },
-              { text: "at", start: 10.3 },
-              { text: "it,", start: 10.6 },
-              { text: "and", start: 11.1 },
-              { text: "it", start: 11.5 },
-              { text: "adapts.", start: 12.0 },
-              { text: "Like,", start: 14.3, isFiller: true, id: "f3" },
-              { text: "now", start: 14.8 },
-              { text: "watch", start: 15.3 },
-              { text: "this", start: 15.8 },
-              { text: "robot.", start: 16.3 },
-              { text: "It", start: 17.1 },
-              { text: "has", start: 17.4 },
-              { text: "been", start: 17.8 },
-              { text: "trying", start: 18.3 },
-              { text: "to", start: 19.2 },
-              { text: "pick", start: 19.6 },
-              { text: "up", start: 20.3 },
-              { text: "a", start: 20.8 },
-              { text: "coffee", start: 21.2 },
-              { text: "mug", start: 22.1 },
-              { text: "for", start: 22.8 },
-              { text: "six", start: 23.4 },
-              { text: "months!", start: 24.1 },
-            ].map((wordObj, i) => {
-              const filler = fillers.find((f) => f.id === wordObj.id);
-              const isDeleted = filler?.deleted;
-
-              if (wordObj.isFiller || wordObj.isSilence) {
-                return (
-                  <button
-                    key={i}
-                    onClick={() => wordObj.id && toggleFiller(wordObj.id)}
-                    className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all border ${
-                      isDeleted
-                        ? "bg-red-950/60 border-red-500 text-red-400 line-through opacity-40"
-                        : "bg-yellow-500/20 border-yellow-500 text-yellow-300 hover:bg-yellow-500/30"
-                    }`}
-                  >
-                    {wordObj.text} {isDeleted ? "(CUT)" : "✂️"}
-                  </button>
-                );
-              }
+          <div className="flex flex-col gap-2">
+            {film.shots.map((shot, idx) => {
+              const startSec = shotStartTimes[idx];
+              const isSelected = selectedShotId === shot.id;
 
               return (
-                <span
-                  key={i}
-                  className="hover:bg-white/10 px-1 py-0.5 rounded cursor-pointer transition-colors"
+                <div
+                  key={shot.id}
                   onClick={() => {
-                    setPlayheadSec(wordObj.start);
-                    if (onPreviewSeek) onPreviewSeek(Math.round(wordObj.start * film.fps));
+                    setSelectedShotId(shot.id);
+                    setPlayheadSec(startSec);
+                    if (onPreviewSeek) onPreviewSeek(Math.round(startSec * fps));
                   }}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                    isSelected
+                      ? "bg-[#1E1E24] border-yellow-400 ring-1 ring-yellow-400"
+                      : "bg-[#141416] border-[#27272A] hover:border-gray-500"
+                  }`}
                 >
-                  {wordObj.text}
-                </span>
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-300">
+                    <span className="text-blue-400">
+                      Shot {idx + 1}: {shot.id}
+                    </span>
+                    <span className="font-mono text-gray-400">
+                      {startSec.toFixed(2)}s - {(startSec + shot.dur).toFixed(2)}s ({shot.dur.toFixed(2)}s)
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-gray-200 leading-relaxed font-sans">
+                    {shot.scriptText || "(No narration text provided for this shot)"}
+                  </p>
+                </div>
               );
             })}
           </div>

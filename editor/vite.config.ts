@@ -7,6 +7,7 @@ import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
+import { produceAudioPipeline } from '../backend/audio.ts'
 
 const filmsDir = path.resolve(__dirname, '../src/dl/films');
 
@@ -353,6 +354,47 @@ function filmApiPlugin(): Plugin {
               durationSec: Math.round((spokenText.split(/\s+/).filter(Boolean).length / 150) * 60),
             });
           }).catch(err => sendJson(res, 500, { error: String(err) }));
+          return;
+        }
+
+        // Handle /api/voiceover (Google Cloud TTS / Neural Voiceover Synthesis & Shot Duration Alignment)
+        if (url === '/api/voiceover' && req.method === 'POST') {
+          void readBody(req).then(async (body: any) => {
+            const { film, scriptText } = body || {};
+            if (!film) {
+              sendJson(res, 400, { error: 'film is required' });
+              return;
+            }
+            const fullScript = scriptText || film.shots?.map((s: any) => s.scriptText || s.id).filter(Boolean).join(". ") || film.title;
+            const outDir = path.resolve(__dirname, `../out/films/${film.id}`);
+            const audioResult = await produceAudioPipeline(fullScript, outDir);
+
+            // Update shot durations to match audio segments accurately
+            const updatedShots = film.shots.map((shot: any, idx: number) => {
+              const dur = audioResult.shotDurations[idx] || shot.dur || 3;
+              return {
+                ...shot,
+                dur: Number(dur.toFixed(3)),
+              };
+            });
+
+            const updatedFilm = {
+              ...film,
+              shots: updatedShots,
+              voiceover: { src: `voiceover.wav`, volume: 1 },
+            };
+
+            // Copy synthesized voiceover to public folder so remotion can stream it
+            const publicDir = path.resolve(__dirname, '../public');
+            if (fs.existsSync(audioResult.voiceoverPath)) {
+              fs.copyFileSync(audioResult.voiceoverPath, path.join(publicDir, 'voiceover.wav'));
+            }
+
+            sendJson(res, 200, { ok: true, film: updatedFilm, audioResult });
+          }).catch(err => {
+            console.error('[API voiceover error]:', err);
+            sendJson(res, 500, { error: String(err) });
+          });
           return;
         }
 
