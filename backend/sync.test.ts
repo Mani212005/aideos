@@ -8,7 +8,7 @@ import {
 } from "./ideation/segmentSync";
 import { buildFilmFromAudioResult } from "./audio";
 import { calculateDuckingVolume } from "../src/dl/audio/ducking";
-import { validateFilmAudioAndAssets } from "../src/dl/validateFilm";
+import { validateFilmWithNodeAssets as validateFilmAudioAndAssets } from "../src/dl/validateFilmNode";
 import type { Film } from "../src/dl/schema";
 
 test("segment->shot brief mapping derives shot visuals strictly from segment text", async () => {

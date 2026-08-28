@@ -2,10 +2,8 @@
  * File Description: Comprehensive film validator that verifies schema pacing rules,
  * missing sfx/music/voiceover assets, duration-sum audio invariants, and analytical
  * time-sampled bounding box geometry & per-block AABB overlap.
+ * 100% pure TypeScript data validator with zero Node runtime imports.
  */
-import fs from "fs";
-import path from "path";
-import { execSync } from "child_process";
 import { parseFilm, type Film, type Block, type Shot } from "./schema";
 import { CHARACTER_RIGS } from "./characters";
 import { buildTimeline, camAt, lookBox, projectBox } from "./camera";
@@ -21,7 +19,6 @@ import { evaluateCatmullRomSpline } from "./motion/spline";
 export const MAX_ALLOWED_VELOCITY_DISCONTINUITY_DEG_PER_SEC = 5.0;
 
 export interface ValidationOptions {
-  baseDir?: string;
   toleranceSec?: number;
   measuredVoiceoverDurationSec?: number;
 }
@@ -32,27 +29,6 @@ export interface BlockAABB {
   y: number;
   w: number;
   h: number;
-}
-
-function isNodeRuntime(): boolean {
-  return typeof process !== "undefined" && Boolean(process?.versions?.node) && typeof window === "undefined";
-}
-
-function findAssetPath(src: string, baseDir: string): string | null {
-  if (!isNodeRuntime()) return src;
-  try {
-    const candidates = [
-      path.resolve(baseDir, src),
-      path.resolve(baseDir, "..", src),
-      path.resolve(baseDir, "..", "src", src),
-    ];
-    for (const c of candidates) {
-      if (fs.existsSync(c)) return c;
-    }
-  } catch {
-    // Ignore in browser
-  }
-  return null;
 }
 
 /**
@@ -88,8 +64,6 @@ export function calculateAABBOverlapArea(a: BlockAABB, b: BlockAABB): number {
 
 export function validateFilmAudioAndAssets(filmInput: unknown, options?: ValidationOptions): Film {
   const film = parseFilm(filmInput);
-  const isNode = isNodeRuntime();
-  const baseDir = options?.baseDir ?? (isNode ? path.resolve(process.cwd(), "public") : "/public");
   const toleranceSec = options?.toleranceSec ?? 0.1;
 
   // 0. Schema version validation
@@ -97,53 +71,8 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
     throw new Error(`Unsupported film schemaVersion "${film.schemaVersion}". Expected semver major version 1.x.x`);
   }
 
-  // 1. Missing audio asset file checks (Node only)
-  if (isNode) {
-    if (film.voiceover?.src) {
-      const voPath = findAssetPath(film.voiceover.src, baseDir);
-      if (!voPath) {
-        throw new Error(`Voiceover asset file missing: "${film.voiceover.src}"`);
-      }
-    }
-
-    if (film.music?.src) {
-      const musicPath = findAssetPath(film.music.src, baseDir);
-      if (!musicPath) {
-        throw new Error(`Music asset file missing: "${film.music.src}"`);
-      }
-    }
-
-    if (film.sfx && film.sfx.length > 0) {
-      for (const item of film.sfx) {
-        const sfxPath = findAssetPath(item.src, baseDir);
-        if (!sfxPath) {
-          throw new Error(`SFX asset file missing: "${item.src}"`);
-        }
-      }
-    }
-  }
-
-  // 2. Duration sum invariant check against voiceover duration
-  let voDur = options?.measuredVoiceoverDurationSec;
-  if (isNode && voDur === undefined && film.voiceover?.src) {
-    const voPath = findAssetPath(film.voiceover.src, baseDir);
-    if (voPath) {
-      try {
-        const output = execSync(
-          `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${voPath}"`,
-        )
-          .toString()
-          .trim();
-        const parsed = parseFloat(output);
-        if (!isNaN(parsed) && parsed > 0) {
-          voDur = parsed;
-        }
-      } catch {
-        // Ignore ffprobe execution error if unavailable
-      }
-    }
-  }
-
+  // 1. Duration sum invariant check against voiceover duration (when provided)
+  const voDur = options?.measuredVoiceoverDurationSec;
   if (voDur !== undefined && voDur > 0) {
     const sumShotDurations = film.shots.reduce((acc, shot) => acc + shot.dur, 0);
     const diff = Math.abs(sumShotDurations - voDur);

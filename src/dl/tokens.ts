@@ -159,10 +159,10 @@ export const BACKGROUND_THEMES: Record<BackgroundPreset, BackgroundTheme> = {
 export const ThemeContext = createContext<BackgroundTheme>(BACKGROUND_THEMES["smooth-dark"]);
 export const useTheme = (): BackgroundTheme => useContext(ThemeContext);
 
-/** Default palette (Studio Deep Matte - High Contrast) */
+/** Default palette */
 export const PALETTE = {
   canvas: BACKGROUND_THEMES["smooth-dark"].canvas,
-  surface: "#FFFFFF",
+  surface: BACKGROUND_THEMES["smooth-dark"].surface,
   ink: BACKGROUND_THEMES["smooth-dark"].ink,
   muted: BACKGROUND_THEMES["smooth-dark"].muted,
   hairline: BACKGROUND_THEMES["smooth-dark"].hairline,

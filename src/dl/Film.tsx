@@ -1,11 +1,12 @@
 import React from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Audio, Img, staticFile } from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile } from "remotion";
 import { accentAt, PALETTE, rule, useLayout, BACKGROUND_THEMES, resolveFont, ThemeContext } from "./tokens";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext } from "./accent";
 import { BlockView } from "./Block";
 import { CanvasGraph } from "./CanvasGraph";
 import { PaperRip } from "./PaperRip";
+import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
 import {
   buildTimeline,
   camAt,
@@ -218,8 +219,6 @@ const Rail: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline 
   );
 };
 
-import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
-
 export type FilmViewProps = {
   film: Film;
   timeline: TimedShot[];
@@ -396,14 +395,6 @@ export const FilmView: React.FC<FilmViewProps> = ({
               <rect width="100%" height="100%" fill="url(#dot-pat)" />
             </svg>
           </AbsoluteFill>
-        )}
-
-        {film.voiceover?.src && (film.voiceover.volume ?? 1) > 0 && (
-          <Audio
-            key={`aideos-voiceover-${film.id}`}
-            src={`${staticFile(film.voiceover.src)}?v=fresh_146`}
-            volume={() => film.voiceover?.volume ?? 1}
-          />
         )}
 
         {/* Unified Spatial Canvas Graph & Stage */}

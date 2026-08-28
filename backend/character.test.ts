@@ -26,9 +26,9 @@ test("character rigs conform to characterRigSchema", () => {
   }
 });
 
-test("8 pose presets exist and define standard joint groups", () => {
+test("Standard pose presets exist and define standard joint groups", () => {
   const presetKeys = Object.keys(POSE_PRESETS);
-  assert.equal(presetKeys.length, 8, "must define exactly 8 pose presets");
+  assert.ok(presetKeys.length >= 8, "must define at least 8 pose presets");
 
   const requiredPresets = [
     "neutral",

@@ -30,7 +30,7 @@ const load = async (rel, name) => {
 
 const { ACTIVE_FILM } = await load("src/dl/activeFilm.ts", "dl-film.mjs");
 const { parseFilm, DEVICE_BLOCKS } = await load("src/dl/schema.ts", "dl-schema.mjs");
-const { validateFilmAudioAndAssets } = await load("src/dl/validateFilm.ts", "dl-validate.mjs");
+const { validateFilmWithNodeAssets: validateFilmAudioAndAssets } = await load("src/dl/validateFilmNode.ts", "dl-validate.mjs");
 const { buildTimeline, totalFrames } = await load("src/dl/camera.ts", "dl-camera.mjs");
 const { lintMetaphorSourceFiles } = await load("backend/visual_pipeline/lintMetaphors.ts", "dl-lint.mjs");
 

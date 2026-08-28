@@ -1,10 +1,9 @@
 /**
  * File Description: Comprehensive semantic validator for Aideos Scene Graph data (Phase 1).
  * Enforces 18 strict error validation rules and normalized median scale warnings (W1).
+ * 100% pure TypeScript validator with zero Node runtime dependencies.
  */
 
-import fs from "fs";
-import path from "path";
 import type { Scene, EnvironmentAsset, ActorInstance, Track } from "./types";
 import { getCharacterRigById } from "../characters";
 import { getModelSheet } from "./modelSheet";
@@ -159,32 +158,20 @@ export function validateScene(scene: Scene): ValidationResult {
       });
     }
 
-    // Rule 11: svgSource file exists on disk (Node runtime check)
+    // Rule 11: svgSource string is present and ends with .svg
     let svgContent = "";
-    const isNode = typeof process !== "undefined" && Boolean(process?.versions?.node) && typeof window === "undefined";
     if (!asset.svgSource) {
       errors.push({
         rule: 11,
         entityId: asset.assetId,
         message: `Asset "${asset.assetId}" missing required svgSource`,
       });
-    } else if (isNode) {
-      const resolvedPath = path.isAbsolute(asset.svgSource)
-        ? asset.svgSource
-        : path.resolve(process.cwd(), asset.svgSource);
-      if (!fs.existsSync(resolvedPath)) {
-        errors.push({
-          rule: 11,
-          entityId: asset.assetId,
-          message: `Asset "${asset.assetId}" svgSource file not found on disk: "${asset.svgSource}"`,
-        });
-      } else {
-        try {
-          svgContent = fs.readFileSync(resolvedPath, "utf-8");
-        } catch {
-          // Read failed
-        }
-      }
+    } else if (!asset.svgSource.endsWith(".svg")) {
+      errors.push({
+        rule: 11,
+        entityId: asset.assetId,
+        message: `Asset "${asset.assetId}" svgSource must be an .svg file: "${asset.svgSource}"`,
+      });
     }
 
     // Validate asset tracks

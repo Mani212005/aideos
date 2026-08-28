@@ -1,10 +1,10 @@
 WEBVTT
 
-00:00:00.160 --> 00:00:02.100
-Welcome to Adio's audio pipeline.
+00:00:00.000 --> 00:00:02.231
+Welcome to Aideos audio pipeline.
 
-00:00:02.577 --> 00:00:05.077
+00:00:02.431 --> 00:00:04.941
 We test segment splitting and caption alignment.
 
-00:00:05.652 --> 00:00:08.632
+00:00:05.141 --> 00:00:08.249
 Every shot duration sums to the audio file duration.

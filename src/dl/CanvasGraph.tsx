@@ -325,7 +325,7 @@ export const CanvasGraph: React.FC<{ film: Film; timeline: TimedShot[]; cam: Cam
         style={{
           position: "absolute",
           inset: 0,
-          transformOrigin: "0 0",
+          transformOrigin: "center center",
           transform: camTransform(cam, { width, height }, activeAngle, frame),
           transformStyle: "preserve-3d",
         }}
