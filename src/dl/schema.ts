@@ -347,7 +347,13 @@ export const themeSchema = z.object({
 export const shotSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   ch: z.string().min(1).max(30).optional(),
+  /** Explicit start time in seconds on the timeline. If omitted, sequential sum is derived. */
+  startSec: z.number().min(0).optional(),
   dur: z.number().min(0.5).max(90),
+  /** Source trim in-point in seconds for footage / audio */
+  inSec: z.number().min(0).optional(),
+  /** Track index (0 = main shots track, 1 = b-roll/overlay track, etc.) */
+  track: z.number().int().min(0).max(10).optional(),
   stage: stageSchema,
   look: lookSchema,
   move: moveSchema.default("pan"),

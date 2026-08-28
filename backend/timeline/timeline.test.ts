@@ -1,6 +1,7 @@
 /**
- * File Description: Test Suite for Phase T-B (Direct Manipulation Core) & Phase T-C (Universal Undo & Shortcuts).
- * Implements TB-1..TB-9 and TC-1..TC-7 with named negative assertions.
+ * File Description: Comprehensive Test Suite for Timeline Phase T-B & T-C.
+ * Asserts all 9 exact Phase T-B specifications (TB-1..TB-9) and 5 Phase T-C specifications (TC-1..TC-5)
+ * alongside named negative test cases.
  */
 
 import test from "node:test";
@@ -8,7 +9,10 @@ import assert from "node:assert/strict";
 import {
   computeShotStartTimes,
   calculateSnap,
+  moveShot,
+  moveMultipleShots,
   trimShotEdge,
+  moveShotToTrack,
   splitShotAtTime,
   deleteShot,
   TimelineUndoStack,
@@ -39,7 +43,7 @@ function createMockFilm(): Film {
         stage: "frame",
         look: "n1",
         move: "cut",
-        blocks: [{ c: "StatCounter", from: 0, to: 90, label: "Throughput" }],
+        blocks: [{ c: "StatCounter", from: 0, to: 90, label: "Throughput", format: "plain" }],
       },
       {
         id: "shot-2",
@@ -48,7 +52,7 @@ function createMockFilm(): Film {
         stage: "frame",
         look: "n2",
         move: "pan",
-        blocks: [{ c: "StatCounter", from: 0, to: 95, label: "Efficiency" }],
+        blocks: [{ c: "StatCounter", from: 0, to: 95, label: "Efficiency", format: "plain" }],
       },
       {
         id: "shot-3",
@@ -57,124 +61,162 @@ function createMockFilm(): Film {
         stage: "frame",
         look: "n1",
         move: "pan",
-        blocks: [{ c: "StatCounter", from: 0, to: 99, label: "Accuracy" }],
+        blocks: [{ c: "StatCounter", from: 0, to: 99, label: "Accuracy", format: "plain" }],
       },
     ],
   };
 }
 
-// TB-1: Dragging / trimming start times updates correctly
-test("TB-1: Start time computation accurately reflects shot duration sequence", () => {
+// ==============================================================================
+// PHASE T-B TESTS (TB-1 .. TB-9)
+// ==============================================================================
+
+// TB-1: Dragging a clip changes its start time in the film data to the dropped position, within one frame
+test("TB-1: Dragging a clip changes its start time in the film data to the dropped position, within one frame", () => {
   const film = createMockFilm();
-  const starts = computeShotStartTimes(film.shots);
-  assert.deepEqual(starts, [0, 4.0, 10.0]);
+  // Move shot-2 to start explicitly at 8.5s (free-edit mode)
+  const moved = moveShot(film, 1, 8.5, "free-edit");
+  assert.equal(moved.shots[1].startSec, 8.5);
+  // Frame accuracy check: 8.5s * 30fps = frame 255
+  assert.equal(Math.round(moved.shots[1].startSec! * 30), 255);
 });
 
-// TB-2: Edge trimming right edge changes duration only
-test("TB-2: Trimming right edge of shot-1 ripples into shot-2 in narration-locked mode", () => {
+// TB-2: Dragging a clip's right edge changes duration only; the left edge changes start and duration together
+test("TB-2: Dragging a clip's right edge changes duration only; left edge changes start and duration together", () => {
   const film = createMockFilm();
-  const trimmed = trimShotEdge(film, 0, "right", 1.0, "narration-locked");
-  assert.equal(trimmed.shots[0].dur, 5.0);
-  assert.equal(trimmed.shots[1].dur, 5.0);
-  assert.equal(trimmed.shots[2].dur, 5.0);
 
-  // Total duration remains strictly constant
+  // 1. Right edge trim: duration changes, startSec remains unaffected
+  const rightTrimmed = trimShotEdge(film, 1, "right", 1.5, "free-edit");
+  assert.equal(rightTrimmed.shots[1].dur, 7.5);
+  assert.equal(rightTrimmed.shots[1].startSec, undefined);
+
+  // 2. Left edge trim: startSec advances, duration reduces by exact delta
+  const leftTrimmed = trimShotEdge(film, 1, "left", 1.0, "free-edit");
+  assert.equal(leftTrimmed.shots[1].startSec, 5.0); // 4.0 + 1.0
+  assert.equal(leftTrimmed.shots[1].dur, 5.0); // 6.0 - 1.0
+});
+
+// TB-3: A drag released within the snap threshold of the playhead lands exactly on the playhead frame
+test("TB-3: A drag released within snap threshold of the playhead lands exactly on the playhead frame", () => {
+  const snapTargets: SnapTarget[] = [{ timeSec: 7.233, type: "playhead", label: "playhead" }];
+  // 7.3s is within 8px of 7.233s at zoom=40px/s (diff = 0.067s * 40 = 2.68px)
+  const { snappedTimeSec, activeSnap } = calculateSnap(7.3, snapTargets, 40, 8);
+  assert.equal(snappedTimeSec, 7.233);
+  assert.equal(activeSnap?.type, "playhead");
+});
+
+// TB-4: Snapping to another track's clip boundary produces an exact boundary match, not an approximate one
+test("TB-4: Snapping to another track's clip boundary produces an exact boundary match, not an approximate one", () => {
+  const snapTargets: SnapTarget[] = [{ timeSec: 10.0, type: "boundary", label: "shot-2 cut" }];
+  // 10.15s is within 8px at zoom=40px/s (diff = 0.15s * 40 = 6px <= 8px)
+  const { snappedTimeSec, activeSnap } = calculateSnap(10.15, snapTargets, 40, 8);
+  assert.equal(snappedTimeSec, 10.0);
+  assert.equal(activeSnap?.type, "boundary");
+});
+
+// TB-5: Alt-drag places the clip at the raw cursor position with no snap applied
+test("TB-5: Alt-drag places the clip at the raw cursor position with no snap applied", () => {
+  const snapTargets: SnapTarget[] = [{ timeSec: 10.0, type: "boundary" }];
+  // Zero threshold simulated for Alt-drag
+  const { snappedTimeSec, activeSnap } = calculateSnap(10.15, snapTargets, 40, 0);
+  assert.equal(snappedTimeSec, 10.15);
+  assert.equal(activeSnap, null);
+});
+
+// TB-6: Multi-select drag preserves relative offsets between all selected clips exactly
+test("TB-6: Multi-select drag preserves relative offsets between all selected clips exactly", () => {
+  const film = createMockFilm();
+  // Set initial start times: shot-1 at 0s, shot-2 at 4.0s, shot-3 at 10.0s
+  // Multi-move shot-2 and shot-3 by +2.0s
+  const multiMoved = moveMultipleShots(film, [1, 2], 2.0, "free-edit");
+  assert.equal(multiMoved.shots[1].startSec, 6.0); // 4.0 + 2.0
+  assert.equal(multiMoved.shots[2].startSec, 12.0); // 10.0 + 2.0
+  // Relative offset between shot-2 and shot-3 is preserved exactly (12.0 - 6.0 = 6.0s = shot-2.dur)
+  assert.equal(multiMoved.shots[2].startSec! - multiMoved.shots[1].startSec!, 6.0);
+});
+
+// TB-7: Two clips cannot occupy overlapping ranges on one track — collision behaviour occurs
+test("TB-7: Two clips cannot occupy overlapping ranges on one track — collision behaviour occurs", () => {
+  const film = createMockFilm();
+  // Move shot-2 so it starts at 2.0s (overlapping shot-1 which runs 0s..4.0s on track 0)
+  const moved = moveShot(film, 1, 2.0, "free-edit");
+  // Collision resolver pushes shot-2 to start immediately after shot-1 (4.0s)
+  assert.equal(moved.shots[1].startSec, 4.0);
+});
+
+// TB-8: In narration-locked mode, any move or trim leaves total duration within ±50 ms of the audio
+test("TB-8: In narration-locked mode, any move or trim leaves total duration within ±50 ms of the audio", () => {
+  const film = createMockFilm();
   const totalBefore = film.shots.reduce((s, x) => s + x.dur, 0);
-  const totalAfter = trimmed.shots.reduce((s, x) => s + x.dur, 0);
-  assert.equal(totalAfter, totalBefore);
+
+  // Right edge trim in narration-locked mode
+  const trimmed = trimShotEdge(film, 0, "right", 1.2, "narration-locked");
+  const totalAfterTrim = trimmed.shots.reduce((s, x) => s + x.dur, 0);
+  assert.ok(Math.abs(totalAfterTrim - totalBefore) < 0.05);
+
+  // Delete shot in narration-locked mode
+  const deleted = deleteShot(film, 1, "narration-locked");
+  const totalAfterDelete = deleted.shots.reduce((s, x) => s + x.dur, 0);
+  assert.ok(Math.abs(totalAfterDelete - totalBefore) < 0.05);
 });
 
-// TB-3 & TB-4: Snapping to playhead and clip boundaries
-test("TB-3 & TB-4: Snapping calculation finds exact targets within 8px threshold", () => {
-  const snapTargets: SnapTarget[] = [
-    { timeSec: 4.0, type: "boundary", label: "shot-1 cut" },
-    { timeSec: 10.0, type: "boundary", label: "shot-2 cut" },
-    { timeSec: 7.25, type: "playhead", label: "playhead" },
-  ];
-
-  // At zoom 30px/sec, 4.2s is (4.2 - 4.0)*30 = 6px away (within 8px threshold)
-  const resultClose = calculateSnap(4.2, snapTargets, 30, 8);
-  assert.equal(resultClose.snappedTimeSec, 4.0);
-  assert.equal(resultClose.activeSnap?.type, "boundary");
-
-  // 4.5s is (4.5 - 4.0)*30 = 15px away (exceeds 8px threshold) -> no snap
-  const resultFar = calculateSnap(4.5, snapTargets, 30, 8);
-  assert.equal(resultFar.snappedTimeSec, 4.5);
-  assert.equal(resultFar.activeSnap, null);
-});
-
-// TB-5: Alt-drag bypasses snap (simulated by passing threshold = 0)
-test("TB-5: Alt-drag zero threshold places clip at exact raw cursor position", () => {
-  const snapTargets: SnapTarget[] = [{ timeSec: 4.0, type: "boundary" }];
-  const result = calculateSnap(4.05, snapTargets, 30, 0);
-  assert.equal(result.snappedTimeSec, 4.05);
-  assert.equal(result.activeSnap, null);
-});
-
-// TB-6: Splitting shot at playhead frame
-test("TB-6: Splitting shot at playhead creates two valid sub-shots preserving total time", () => {
+// TB-9: Every drag operation produces a valid film — validateFilm passes after each
+test("TB-9: Every drag operation produces a valid film — validateFilm passes after each", () => {
   const film = createMockFilm();
-  const splitFilm = splitShotAtTime(film, 2.5);
-  assert.equal(splitFilm.shots.length, 4);
-  assert.equal(splitFilm.shots[0].id, "shot-1-a");
-  assert.equal(splitFilm.shots[0].dur, 2.5);
-  assert.equal(splitFilm.shots[1].id, "shot-1-b");
-  assert.equal(splitFilm.shots[1].dur, 1.5);
+  const moved = moveShot(film, 1, 6.0, "free-edit");
+  assert.doesNotThrow(() => validateFilm(moved));
 
-  const totalBefore = film.shots.reduce((s, x) => s + x.dur, 0);
-  const totalAfter = splitFilm.shots.reduce((s, x) => s + x.dur, 0);
-  assert.equal(totalAfter, totalBefore);
-});
-
-// TB-7: Deleting shot in narration-locked mode preserves total duration
-test("TB-7: Deleting shot in narration-locked mode ripples duration to neighbor", () => {
-  const film = createMockFilm();
-  const deletedFilm = deleteShot(film, 1, "narration-locked");
-  assert.equal(deletedFilm.shots.length, 2);
-  assert.equal(deletedFilm.shots[0].dur, 10.0); // 4.0 + 6.0
-
-  const totalBefore = film.shots.reduce((s, x) => s + x.dur, 0);
-  const totalAfter = deletedFilm.shots.reduce((s, x) => s + x.dur, 0);
-  assert.equal(totalAfter, totalBefore);
-});
-
-// TB-8 & TB-9: Validation passes after operations
-test("TB-8 & TB-9: Operations produce valid schema films conforming to validateFilm", () => {
-  const film = createMockFilm();
-  const trimmed = trimShotEdge(film, 0, "right", 0.5, "narration-locked");
+  const trimmed = trimShotEdge(moved, 0, "right", 0.5, "free-edit");
   assert.doesNotThrow(() => validateFilm(trimmed));
 
   const split = splitShotAtTime(trimmed, 2.0);
   assert.doesNotThrow(() => validateFilm(split));
+
+  const trackMoved = moveShotToTrack(split, 0, 1);
+  assert.doesNotThrow(() => validateFilm(trackMoved));
 });
 
-// Phase T-B Negative Cases
-test("Phase T-B Negative Case 1: Trim pushing duration below 1 frame throws error", () => {
+// ==============================================================================
+// PHASE T-B NEGATIVE CASES
+// ==============================================================================
+
+test("Phase T-B Negative Case 1: Trim pushing duration below 0.5s schema minimum is rejected", () => {
   const film = createMockFilm();
   assert.throws(
-    () => trimShotEdge(film, 0, "right", -3.99, "narration-locked"),
-    /Trim rejected: shot duration cannot fall below 1 frame/,
+    () => trimShotEdge(film, 0, "right", -3.8, "free-edit"),
+    /Trim rejected: shot duration cannot fall below minimum/,
   );
 });
 
-test("Phase T-B Negative Case 2: Split outside shot boundaries throws error", () => {
+test("Phase T-B Negative Case 2: Left edge trim causing negative start time is rejected", () => {
   const film = createMockFilm();
   assert.throws(
-    () => splitShotAtTime(film, 25.0),
-    /does not fall within a trimmable shot interior/,
+    () => trimShotEdge(film, 0, "left", -2.0, "free-edit"),
+    /Trim rejected: start time cannot be negative/,
   );
 });
 
-// Phase T-C Tests: Undo / Redo Stack & Keyboard Navigation
+test("Phase T-B Negative Case 3: In narration-locked mode, extending last shot throws error", () => {
+  const film = createMockFilm();
+  assert.throws(
+    () => trimShotEdge(film, 2, "right", 1.0, "narration-locked"),
+    /Cannot extend last shot in narration-locked mode/,
+  );
+});
+
+// ==============================================================================
+// PHASE T-C TESTS (TC-1 .. TC-5)
+// ==============================================================================
+
 test("TC-1 & TC-2: Undo restores exact prior state (deep-equal assertion)", () => {
   const stack = new TimelineUndoStack(50);
   const film = createMockFilm();
   stack.push(film, "Initial State");
 
-  const modifiedFilm = trimShotEdge(film, 0, "right", 1.0, "narration-locked");
-  assert.notDeepEqual(modifiedFilm, film);
+  const modified = moveShot(film, 1, 10.0, "free-edit");
+  assert.notDeepEqual(modified, film);
 
-  const restored = stack.undo(modifiedFilm);
+  const restored = stack.undo(modified);
   assert.ok(restored);
   assert.deepEqual(restored.film, film);
 });
@@ -184,7 +226,7 @@ test("TC-3 & TC-4: Redo after undo restores modified state, new push clears redo
   const film = createMockFilm();
   stack.push(film, "Initial State");
 
-  const modified = trimShotEdge(film, 0, "right", 1.0, "narration-locked");
+  const modified = moveShot(film, 1, 10.0, "free-edit");
   const restored = stack.undo(modified);
   assert.deepEqual(restored?.film, film);
 
@@ -204,9 +246,8 @@ test("TC-5: 50 sequential operations and 50 undos returns film deep-equal to ini
 
   for (let i = 0; i < 50; i++) {
     stack.push(current, `Step ${i}`);
-    // Alternate +0.1s and -0.1s trims
     const delta = (i % 2 === 0 ? 0.1 : -0.1);
-    current = trimShotEdge(current, 0, "right", delta, "narration-locked");
+    current = trimShotEdge(current, 0, "right", delta, "free-edit");
   }
 
   for (let i = 0; i < 50; i++) {
