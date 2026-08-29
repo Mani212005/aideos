@@ -398,6 +398,77 @@ function filmApiPlugin(): Plugin {
           return;
         }
 
+        // Handle /api/media/list (List all uploaded / available media assets)
+        if (url === '/api/media/list' && req.method === 'GET') {
+          const mediaDir = path.resolve(__dirname, '../public/media');
+          if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
+          const files = fs.readdirSync(mediaDir);
+          const assets = files.map((f) => {
+            const ext = path.extname(f).toLowerCase();
+            const type = ['.mp4', '.mov', '.webm'].includes(ext) ? 'video' : ['.mp3', '.wav', '.aac'].includes(ext) ? 'audio' : 'image';
+            const stats = fs.statSync(path.join(mediaDir, f));
+            return {
+              id: f,
+              filename: f,
+              src: `media/${f}`,
+              type,
+              sizeBytes: stats.size,
+            };
+          });
+          sendJson(res, 200, { ok: true, assets });
+          return;
+        }
+
+        // Handle /api/media/upload (Upload external video/audio/image footage)
+        if (url === '/api/media/upload' && req.method === 'POST') {
+          void readBody(req).then(async (body: any) => {
+            const { filename, base64Data } = body || {};
+            if (!filename || !base64Data) {
+              sendJson(res, 400, { error: 'filename and base64Data are required' });
+              return;
+            }
+            const mediaDir = path.resolve(__dirname, '../public/media');
+            if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
+
+            const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const filePath = path.join(mediaDir, safeName);
+            const buffer = Buffer.from(base64Data, 'base64');
+            fs.writeFileSync(filePath, buffer);
+
+            let duration = 5.0;
+            const ext = path.extname(safeName).toLowerCase();
+            const isVideo = ['.mp4', '.mov', '.webm'].includes(ext);
+            const isAudio = ['.mp3', '.wav', '.aac'].includes(ext);
+
+            if (isVideo || isAudio) {
+              try {
+                const out = spawnSync('ffprobe', [
+                  '-v', 'error',
+                  '-show_entries', 'format=duration',
+                  '-of', 'default=noprint_wrappers=1:nokey=1',
+                  filePath
+                ]).stdout.toString().trim();
+                const d = parseFloat(out);
+                if (!isNaN(d) && d > 0) duration = d;
+              } catch {
+                // Ignore probe error
+              }
+            }
+
+            sendJson(res, 200, {
+              ok: true,
+              asset: {
+                id: safeName,
+                filename: safeName,
+                src: `media/${safeName}`,
+                type: isVideo ? 'video' : isAudio ? 'audio' : 'image',
+                duration,
+              },
+            });
+          }).catch((err) => sendJson(res, 500, { error: String(err) }));
+          return;
+        }
+
         // Handle /api/generate-voiceover (AI Voice Synthesis with Kokoro / Deepgram / macOS TTS)
         if (url === '/api/generate-voiceover' && req.method === 'POST') {
           void readBody(req).then(async (body: any) => {

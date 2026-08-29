@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import type { Film } from "../../../src/dl/schema";
+import type { Film, Shot } from "../../../src/dl/schema";
 import {
   TimelineTransactionManager,
   computeShotStartTimes,
@@ -30,6 +30,7 @@ import {
   type DragContext,
 } from "./timeline/state";
 import { generateWordsFromFilm } from "../../../src/dl/captionsParser";
+import { AssetBin, type MediaAsset } from "./AssetBin";
 import type { TransitionType } from "../transitions";
 
 interface TimelineEditorProps {
@@ -58,7 +59,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   const [zoomLevel, setZoomLevel] = useState<number>(35); // pixels per second
   const [playheadSec, setPlayheadSec] = useState<number>(currentFrame / (film.fps || 30));
   const [selectedShotIds, setSelectedShotIds] = useState<string[]>([film.shots[0]?.id ?? ""]);
-  const [activeTab, setActiveTab] = useState<"tracks" | "transcript">("tracks");
+  const [activeTab, setActiveTab] = useState<"tracks" | "media" | "transcript">("tracks");
 
   // Pattern 4: State Machine Instance
   const stateMachine = useMemo(() => new TimelineDragStateMachine(), []);
@@ -482,6 +483,16 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
               }`}
             >
               🎞️ Tracks
+            </button>
+            <button
+              onClick={() => setActiveTab("media")}
+              className={`text-[11px] px-2.5 py-1 rounded-md font-bold transition-colors ${
+                activeTab === "media"
+                  ? "bg-[#635BFF] text-white shadow"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              📁 Media Library
             </button>
             <button
               onClick={() => setActiveTab("transcript")}
@@ -977,6 +988,35 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
             </div>
           </div>
         </div>
+      ) : activeTab === "media" ? (
+        <AssetBin
+          onInsertAssetAsShot={(asset: MediaAsset) => {
+            const rawDur = asset.duration && asset.duration > 0 ? Number(asset.duration.toFixed(2)) : 5.0;
+            const newShot: Shot = {
+              id: `shot-${film.shots.length + 1}-${asset.filename.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8)}`,
+              stage: "frame",
+              look: film.shots[film.shots.length - 1]?.look || "n1",
+              move: "cut",
+              drift: false,
+              zoom: 1,
+              position: totalDurationSec,
+              startSec: totalDurationSec,
+              start: 0,
+              end: rawDur,
+              dur: rawDur,
+              blocks: [
+                {
+                  c: "TextReveal",
+                  text: asset.filename,
+                  size: "headline",
+                },
+              ],
+            };
+            const updatedFilm = { ...film, shots: [...film.shots, newShot] };
+            triggerUpdateWithTx(updatedFilm, [], `Add asset ${asset.filename}`);
+            setActiveTab("tracks");
+          }}
+        />
       ) : (
         /* SCRIPT & SHOT BREAKDOWN */
         <div className="flex-1 p-4 overflow-y-auto bg-[#09090B] flex flex-col gap-3">

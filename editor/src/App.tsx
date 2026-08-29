@@ -15,6 +15,7 @@ import { CustomizationEditor } from "./components/CustomizationEditor";
 import { ExportProgressModal } from "./components/ExportProgressModal";
 import { ScriptEditor } from "./components/ScriptEditor";
 import { CritiqueStudio } from "./components/CritiqueStudio";
+import { ClipInspector } from "./components/ClipInspector";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
 import { DEFAULT_GIRAFFE_CAPTION_WORDS, generateWordsFromFilm } from "../../src/dl/captionsParser";
@@ -648,6 +649,16 @@ export default function App() {
               >
                 ← Back to overview
               </button>
+              <ClipInspector
+                film={film}
+                selectedShotId={selection.id}
+                onUpdateShot={(idx, updated, _label) => {
+                  const newShots = [...film.shots];
+                  newShots[idx] = { ...newShots[idx], ...updated };
+                  setFilm({ ...film, shots: newShots });
+                }}
+                onClose={() => setSelection(null)}
+              />
               <ShotEditor 
                 film={film} 
                 shotIndex={film.shots.findIndex(s => s.id === selection.id)} 
