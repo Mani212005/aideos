@@ -23,10 +23,10 @@ export interface SnapResult {
 }
 
 /**
- * Collect all candidate snap targets across the film, excluding ignored clip IDs.
+ * Collect all candidate snap targets across the film or layered film, excluding ignored clip IDs.
  */
 export function collectSnapTargets(
-  film: Film,
+  film: Film | { shots?: any[]; clips?: any[] },
   playheadSec: number,
   totalDurationSec: number,
   ignoreIds: string[] = []
@@ -38,19 +38,34 @@ export function collectSnapTargets(
   ];
 
   let accumulated = 0;
-  for (const shot of film.shots) {
-    const rawDur = (shot.end !== undefined && shot.start !== undefined && shot.end > shot.start)
-      ? shot.end - shot.start
-      : shot.dur || 3;
-    const startSec = shot.position ?? shot.startSec ?? accumulated;
-    const endSec = startSec + rawDur;
 
-    if (!ignoreIds.includes(shot.id)) {
-      targets.push({ timeSec: startSec, type: "boundary", sourceId: shot.id, label: `${shot.id} start` });
-      targets.push({ timeSec: endSec, type: "boundary", sourceId: shot.id, label: `${shot.id} cut` });
+  if (Array.isArray((film as any).clips)) {
+    for (const clip of (film as any).clips) {
+      const dur = (clip.end !== undefined && clip.start !== undefined) ? clip.end - clip.start : 3;
+      const startSec = clip.position ?? 0;
+      const endSec = startSec + dur;
+
+      if (!ignoreIds.includes(clip.id)) {
+        targets.push({ timeSec: startSec, type: "boundary", sourceId: clip.id, label: `${clip.id} start` });
+        targets.push({ timeSec: endSec, type: "boundary", sourceId: clip.id, label: `${clip.id} cut` });
+      }
+      accumulated = Math.max(accumulated, endSec);
     }
+  } else if (Array.isArray(film.shots)) {
+    for (const shot of film.shots) {
+      const rawDur = (shot.end !== undefined && shot.start !== undefined && shot.end > shot.start)
+        ? shot.end - shot.start
+        : shot.dur || 3;
+      const startSec = shot.position ?? shot.startSec ?? accumulated;
+      const endSec = startSec + rawDur;
 
-    accumulated = Math.max(accumulated, endSec);
+      if (!ignoreIds.includes(shot.id)) {
+        targets.push({ timeSec: startSec, type: "boundary", sourceId: shot.id, label: `${shot.id} start` });
+        targets.push({ timeSec: endSec, type: "boundary", sourceId: shot.id, label: `${shot.id} cut` });
+      }
+
+      accumulated = Math.max(accumulated, endSec);
+    }
   }
 
   // 1-second interval grid marks
