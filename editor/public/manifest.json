@@ -1,0 +1,22 @@
+{
+  "name": "Aideos Video Studio",
+  "short_name": "Aideos",
+  "description": "AI Autonomous Video Director & Kinematic Explainer Studio",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0B",
+  "theme_color": "#FF6B00",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/vite.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
