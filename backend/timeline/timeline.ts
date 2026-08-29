@@ -1,94 +1,72 @@
 /**
  * File Description: Pure Functional Timeline Operations Engine for Aideos.
- * Implements Phase T-B (Direct manipulation, move along track, left/right trim,
- * multi-select with offset preservation, collision handling, snap calculation)
- * and Phase T-C (Universal undo/redo stack & shortcuts).
- * Operates in two modes: Narration-Locked (default ripple editing) and Free-Edit.
+ * Implements the 5 Foundational Geometry Patterns:
+ * 1. Stored position, start, end, layer data model (duration derived).
+ * 2. Transaction-grouped UpdateAction architecture.
+ * 3. Sticky snapping with self-ignore.
+ * 4. Explicit drag state transitions.
+ * 5. Pending overrides live preview layer.
  */
 
 import type { Film, Shot } from "../../src/dl/schema";
+import {
+  type UpdateAction,
+  type TimelineTransaction,
+  TimelineTransactionManager,
+  generateUUID,
+} from "./updates";
+import {
+  type SnapTarget,
+  type SnapResult,
+  collectSnapTargets,
+  calculateStickySnap,
+} from "./snap";
 
-export type TimelineMode = "narration-locked" | "free-edit";
+export {
+  TimelineTransactionManager,
+  type UpdateAction,
+  type TimelineTransaction,
+  type SnapTarget,
+  type SnapResult,
+  collectSnapTargets,
+  calculateStickySnap,
+};
 
-export interface SnapTarget {
-  timeSec: number;
-  type: "playhead" | "boundary" | "grid" | "marker";
-  label?: string;
+export interface PendingClipOverride {
+  position?: number;
+  start?: number;
+  end?: number;
+  layer?: number;
 }
 
-export interface UndoEntry {
-  film: Film;
-  label: string;
-  timestamp: number;
-}
+export type PendingOverridesMap = Record<string, PendingClipOverride>;
 
-export class TimelineUndoStack {
-  private past: UndoEntry[] = [];
-  private future: UndoEntry[] = [];
-  private readonly maxDepth: number;
-
-  constructor(maxDepth = 60) {
-    this.maxDepth = maxDepth;
+/**
+ * Get effective shot duration from end - start, falling back to dur.
+ */
+export function getShotDuration(shot: Shot): number {
+  if (shot.end !== undefined && shot.start !== undefined && shot.end > shot.start) {
+    return Number((shot.end - shot.start).toFixed(3));
   }
-
-  push(film: Film, label: string): void {
-    const clone = JSON.parse(JSON.stringify(film)) as Film;
-    this.past.push({ film: clone, label, timestamp: Date.now() });
-    if (this.past.length > this.maxDepth) {
-      this.past.shift();
-    }
-    this.future = []; // Clear redo stack on new action
-  }
-
-  undo(currentFilm: Film): { film: Film; label: string } | null {
-    if (this.past.length === 0) return null;
-    const previous = this.past.pop()!;
-    const currentClone = JSON.parse(JSON.stringify(currentFilm)) as Film;
-    this.future.push({ film: currentClone, label: previous.label, timestamp: Date.now() });
-    return { film: JSON.parse(JSON.stringify(previous.film)), label: previous.label };
-  }
-
-  redo(currentFilm: Film): { film: Film; label: string } | null {
-    if (this.future.length === 0) return null;
-    const next = this.future.pop()!;
-    const currentClone = JSON.parse(JSON.stringify(currentFilm)) as Film;
-    this.past.push({ film: currentClone, label: next.label, timestamp: Date.now() });
-    return { film: JSON.parse(JSON.stringify(next.film)), label: next.label };
-  }
-
-  canUndo(): boolean {
-    return this.past.length > 0;
-  }
-
-  canRedo(): boolean {
-    return this.future.length > 0;
-  }
-
-  get depth(): number {
-    return this.past.length;
-  }
-
-  clear(): void {
-    this.past = [];
-    this.future = [];
-  }
+  return shot.dur || 3;
 }
 
 /**
- * Compute start times for all shots in sequence.
- * Uses explicit `shot.startSec` if defined, otherwise accumulates preceding durations.
+ * Get effective shot position (start time on timeline in seconds).
  */
 export function computeShotStartTimes(shots: Shot[]): number[] {
   const startTimes: number[] = [];
   let accumulated = 0;
 
   for (const shot of shots) {
-    if (shot.startSec !== undefined) {
-      startTimes.push(shot.startSec);
-      accumulated = Math.max(accumulated, shot.startSec + shot.dur);
+    const rawDur = getShotDuration(shot);
+    const pos = shot.position ?? shot.startSec;
+    if (pos !== undefined) {
+      startTimes.push(pos);
+      accumulated = Math.max(accumulated, pos + rawDur);
     } else {
       startTimes.push(accumulated);
-      accumulated += shot.dur;
+      accumulated += rawDur;
     }
   }
 
@@ -96,86 +74,60 @@ export function computeShotStartTimes(shots: Shot[]): number[] {
 }
 
 /**
- * Find closest snap point within pixel threshold.
- */
-export function calculateSnap(
-  targetTimeSec: number,
-  snapTargets: SnapTarget[],
-  zoomLevel: number,
-  thresholdPx = 8
-): { snappedTimeSec: number; activeSnap: SnapTarget | null } {
-  let closestDistPx = Infinity;
-  let activeSnap: SnapTarget | null = null;
-  let snappedTimeSec = targetTimeSec;
-
-  for (const target of snapTargets) {
-    const distPx = Math.abs(target.timeSec - targetTimeSec) * zoomLevel;
-    if (distPx <= thresholdPx && distPx < closestDistPx) {
-      closestDistPx = distPx;
-      activeSnap = target;
-      snappedTimeSec = target.timeSec;
-    }
-  }
-
-  return { snappedTimeSec, activeSnap };
-}
-
-/**
- * TB-1: Move a clip along its track to a new start time.
- * In Free-Edit mode: sets explicit `shot.startSec` with collision handling.
- * In Narration-Locked mode: reorders shots sequentially based on new drop position.
+ * Move a single clip to a new timeline position.
  */
 export function moveShot(
   film: Film,
   shotIndex: number,
-  newStartSec: number,
-  mode: TimelineMode = "free-edit"
-): Film {
+  newPositionSec: number
+): { film: Film; actions: UpdateAction[]; transactionId: string } {
   if (shotIndex < 0 || shotIndex >= film.shots.length) {
     throw new Error(`Invalid shotIndex ${shotIndex}`);
   }
 
   const fps = film.fps || 30;
-  const clampedStart = Math.max(0, Math.round(newStartSec * fps) / fps);
+  const clampedPos = Math.max(0, Math.round(newPositionSec * fps) / fps);
   const newShots = JSON.parse(JSON.stringify(film.shots)) as Shot[];
   const targetShot = newShots[shotIndex];
+  const oldPos = targetShot.position ?? targetShot.startSec;
 
-  if (mode === "free-edit") {
-    targetShot.startSec = Number(clampedStart.toFixed(3));
-    // Enforce non-overlapping track collision rule (TB-7)
-    const resolvedShots = resolveTrackCollisions(newShots, shotIndex);
-    return { ...film, shots: resolvedShots };
-  } else {
-    // Narration-Locked mode: reorder sequence based on timestamp
-    const movingShot = newShots.splice(shotIndex, 1)[0];
-    delete movingShot.startSec; // keep sequential
+  targetShot.position = Number(clampedPos.toFixed(3));
+  targetShot.startSec = targetShot.position; // sync alias
 
-    let insertIndex = newShots.length;
-    let accumulated = 0;
-    for (let i = 0; i < newShots.length; i++) {
-      const mid = accumulated + newShots[i].dur / 2;
-      if (clampedStart < mid) {
-        insertIndex = i;
-        break;
-      }
-      accumulated += newShots[i].dur;
-    }
+  const txId = generateUUID();
+  const actions: UpdateAction[] = [
+    {
+      type: "update",
+      path: ["shots", shotIndex, "position"],
+      oldValue: oldPos,
+      newValue: targetShot.position,
+      transactionId: txId,
+      label: `Move ${targetShot.id} to ${targetShot.position.toFixed(2)}s`,
+      timestamp: Date.now(),
+    },
+  ];
 
-    newShots.splice(insertIndex, 0, movingShot);
-    return { ...film, shots: newShots };
-  }
+  // Resolve collisions on same layer
+  const resolvedShots = resolveTrackCollisions(newShots, shotIndex);
+
+  return {
+    film: { ...film, shots: resolvedShots },
+    actions,
+    transactionId: txId,
+  };
 }
 
 /**
- * TB-6: Move multiple selected shots while preserving relative offsets.
+ * Move multiple selected shots while preserving relative time offsets.
  */
 export function moveMultipleShots(
   film: Film,
   shotIndices: number[],
-  deltaSec: number,
-  _mode: TimelineMode = "free-edit"
-): Film {
-  if (shotIndices.length === 0) return film;
+  deltaSec: number
+): { film: Film; actions: UpdateAction[]; transactionId: string } {
+  if (shotIndices.length === 0) {
+    return { film, actions: [], transactionId: generateUUID() };
+  }
 
   const fps = film.fps || 30;
   const frameDelta = Math.round(deltaSec * fps) / fps;
@@ -184,50 +136,69 @@ export function moveMultipleShots(
   const effectiveDelta = Math.max(-minCurrentStart, frameDelta);
 
   const newShots = JSON.parse(JSON.stringify(film.shots)) as Shot[];
+  const txId = generateUUID();
+  const actions: UpdateAction[] = [];
 
   for (const idx of shotIndices) {
     const origStart = currentStarts[idx];
     const newStart = Math.max(0, Number((origStart + effectiveDelta).toFixed(3)));
+    const oldVal = newShots[idx].position ?? newShots[idx].startSec;
+
+    newShots[idx].position = newStart;
     newShots[idx].startSec = newStart;
+
+    actions.push({
+      type: "update",
+      path: ["shots", idx, "position"],
+      oldValue: oldVal,
+      newValue: newStart,
+      transactionId: txId,
+      label: `Move ${newShots[idx].id} to ${newStart.toFixed(2)}s`,
+      timestamp: Date.now(),
+    });
   }
 
   return {
-    ...film,
-    shots: newShots,
+    film: { ...film, shots: newShots },
+    actions,
+    transactionId: txId,
   };
 }
 
 /**
- * TB-7: Collision / overlap handler.
- * Prevents two clips on the same track from overlapping. Pushes downstream clips if colliding.
+ * Prevent two clips on the same track/layer from overlapping.
  */
 export function resolveTrackCollisions(shots: Shot[], movedIndex: number): Shot[] {
   const resolved = JSON.parse(JSON.stringify(shots)) as Shot[];
   const initialStarts = computeShotStartTimes(shots);
   const target = resolved[movedIndex];
-  const targetTrack = target.track || 0;
-  let targetStart = target.startSec ?? initialStarts[movedIndex];
-  let targetEnd = targetStart + target.dur;
+  const targetLayer = target.layer ?? target.track ?? 0;
+  const targetDur = getShotDuration(target);
+  let targetStart = target.position ?? target.startSec ?? initialStarts[movedIndex];
+  let targetEnd = targetStart + targetDur;
 
   for (let i = 0; i < resolved.length; i++) {
     if (i === movedIndex) continue;
     const s = resolved[i];
-    const sTrack = s.track || 0;
-    if (sTrack !== targetTrack) continue;
+    const sLayer = s.layer ?? s.track ?? 0;
+    if (sLayer !== targetLayer) continue;
 
-    const sStart = s.startSec ?? initialStarts[i];
-    const sEnd = sStart + s.dur;
+    const sDur = getShotDuration(s);
+    const sStart = s.position ?? s.startSec ?? initialStarts[i];
+    const sEnd = sStart + sDur;
 
     // Check collision
     if (targetStart < sEnd && targetEnd > sStart) {
       if (targetStart >= sStart) {
-        // Target is overlapping right side of s -> push target after s
+        // Target overlaps right side of s -> push target after s
         targetStart = Number(sEnd.toFixed(3));
+        target.position = targetStart;
         target.startSec = targetStart;
-        targetEnd = targetStart + target.dur;
+        targetEnd = targetStart + targetDur;
       } else {
-        // Target is overlapping left side of s -> push s after target
-        s.startSec = Number(targetEnd.toFixed(3));
+        // Target overlaps left side of s -> push s after target
+        s.position = Number(targetEnd.toFixed(3));
+        s.startSec = s.position;
       }
     }
   }
@@ -236,114 +207,98 @@ export function resolveTrackCollisions(shots: Shot[], movedIndex: number): Shot[
 }
 
 /**
- * TB-2: Drag-to-trim shot edge.
- * - Right edge: modifies duration only.
- * - Left edge: modifies start time AND duration together.
- * - In narration-locked mode: ripples duration to adjacent shot.
+ * Pattern 1 Trimming:
+ * - Dragging right edge changes `end` (and updates derived duration).
+ * - Dragging left edge changes `start` AND `position` together.
  */
 export function trimShotEdge(
   film: Film,
   shotIndex: number,
   edge: "left" | "right",
-  deltaSec: number,
-  mode: TimelineMode = "narration-locked"
-): Film {
+  deltaSec: number
+): { film: Film; actions: UpdateAction[]; transactionId: string } {
   if (shotIndex < 0 || shotIndex >= film.shots.length) {
     throw new Error(`Invalid shotIndex ${shotIndex}`);
   }
 
   const newShots = JSON.parse(JSON.stringify(film.shots)) as Shot[];
+  const shot = newShots[shotIndex];
   const fps = film.fps || 30;
   const frameDelta = Math.round(deltaSec * fps) / fps;
-  const MIN_DUR = 0.5; // Schema minimum duration
+  const MIN_DUR = 0.5; // 0.5s schema minimum duration
 
-  if (mode === "narration-locked") {
-    if (edge === "right") {
-      if (shotIndex >= newShots.length - 1) {
-        throw new Error("Cannot extend last shot in narration-locked mode without changing audio length");
-      }
-      const currentDurA = newShots[shotIndex].dur;
-      const currentDurB = newShots[shotIndex + 1].dur;
+  const currentStarts = computeShotStartTimes(film.shots);
+  const currentPos = shot.position ?? shot.startSec ?? currentStarts[shotIndex];
+  const currentIn = shot.start ?? shot.inSec ?? 0;
+  const currentDur = getShotDuration(shot);
+  const currentOut = shot.end ?? (currentIn + currentDur);
 
-      const proposedDurA = currentDurA + frameDelta;
-      const proposedDurB = currentDurB - frameDelta;
+  const txId = generateUUID();
+  const actions: UpdateAction[] = [];
 
-      if (proposedDurA < MIN_DUR || proposedDurB < MIN_DUR) {
-        throw new Error(`Trim rejected: shot duration cannot fall below minimum (${MIN_DUR.toFixed(3)}s)`);
-      }
-
-      newShots[shotIndex].dur = Number(proposedDurA.toFixed(3));
-      newShots[shotIndex + 1].dur = Number(proposedDurB.toFixed(3));
-    } else {
-      // Left edge trim in locked mode ripples into previous shot
-      if (shotIndex === 0) {
-        throw new Error("Cannot trim left edge of first shot in narration-locked mode");
-      }
-      const currentDurPrev = newShots[shotIndex - 1].dur;
-      const currentDurCurr = newShots[shotIndex].dur;
-
-      const proposedDurPrev = currentDurPrev + frameDelta;
-      const proposedDurCurr = currentDurCurr - frameDelta;
-
-      if (proposedDurPrev < MIN_DUR || proposedDurCurr < MIN_DUR) {
-        throw new Error(`Trim rejected: shot duration cannot fall below minimum (${MIN_DUR.toFixed(3)}s)`);
-      }
-
-      newShots[shotIndex - 1].dur = Number(proposedDurPrev.toFixed(3));
-      newShots[shotIndex].dur = Number(proposedDurCurr.toFixed(3));
+  if (edge === "right") {
+    const proposedOut = currentOut + frameDelta;
+    const proposedDur = proposedOut - currentIn;
+    if (proposedDur < MIN_DUR) {
+      throw new Error(`Trim rejected: shot duration cannot fall below minimum (${MIN_DUR.toFixed(3)}s)`);
     }
+    shot.start = currentIn;
+    shot.end = Number(proposedOut.toFixed(3));
+    shot.dur = Number(proposedDur.toFixed(3));
+
+    actions.push({
+      type: "update",
+      path: ["shots", shotIndex, "end"],
+      oldValue: currentOut,
+      newValue: shot.end,
+      transactionId: txId,
+      label: `Trim ${shot.id} right edge to ${shot.end.toFixed(2)}s`,
+      timestamp: Date.now(),
+    });
   } else {
-    // Free-edit mode: Left edge changes start time + duration; Right edge changes duration only
-    const shot = newShots[shotIndex];
-    const currentStarts = computeShotStartTimes(film.shots);
-    const currentStart = shot.startSec !== undefined ? shot.startSec : currentStarts[shotIndex];
+    // Left edge trim: advances in-point (start) and advances timeline position together
+    const proposedIn = currentIn + frameDelta;
+    const proposedPos = currentPos + frameDelta;
+    const proposedDur = currentOut - proposedIn;
 
-    if (edge === "right") {
-      const proposedDur = shot.dur + frameDelta;
-      if (proposedDur < MIN_DUR) {
-        throw new Error(`Trim rejected: shot duration cannot fall below minimum (${MIN_DUR.toFixed(3)}s)`);
-      }
-      shot.dur = Number(proposedDur.toFixed(3));
-    } else {
-      const proposedStart = currentStart + frameDelta;
-      const proposedDur = shot.dur - frameDelta;
-      if (proposedStart < 0) {
-        throw new Error("Trim rejected: start time cannot be negative");
-      }
-      if (proposedDur < MIN_DUR) {
-        throw new Error(`Trim rejected: shot duration cannot fall below minimum (${MIN_DUR.toFixed(3)}s)`);
-      }
-      shot.startSec = Number(proposedStart.toFixed(3));
-      shot.dur = Number(proposedDur.toFixed(3));
+    if (proposedPos < 0) {
+      throw new Error("Trim rejected: start time cannot be negative");
     }
+    if (proposedDur < MIN_DUR) {
+      throw new Error(`Trim rejected: shot duration cannot fall below minimum (${MIN_DUR.toFixed(3)}s)`);
+    }
+
+    shot.start = Number(proposedIn.toFixed(3));
+    shot.end = currentOut;
+    shot.position = Number(proposedPos.toFixed(3));
+    shot.startSec = shot.position;
+    shot.dur = Number(proposedDur.toFixed(3));
+
+    actions.push({
+      type: "update",
+      path: ["shots", shotIndex, "position"],
+      oldValue: currentPos,
+      newValue: shot.position,
+      transactionId: txId,
+      label: `Trim ${shot.id} left edge to start at ${shot.position.toFixed(2)}s`,
+      timestamp: Date.now(),
+    });
   }
 
   return {
-    ...film,
-    shots: newShots,
+    film: { ...film, shots: newShots },
+    actions,
+    transactionId: txId,
   };
-}
-
-/**
- * Move shot to a different track (e.g. 0 = Main Shots, 1 = B-Roll/Overlay).
- */
-export function moveShotToTrack(
-  film: Film,
-  shotIndex: number,
-  targetTrack: number
-): Film {
-  if (shotIndex < 0 || shotIndex >= film.shots.length) {
-    throw new Error(`Invalid shotIndex ${shotIndex}`);
-  }
-  const newShots = JSON.parse(JSON.stringify(film.shots)) as Shot[];
-  newShots[shotIndex].track = targetTrack;
-  return { ...film, shots: newShots };
 }
 
 /**
  * Split a shot at an exact playhead timestamp.
  */
-export function splitShotAtTime(film: Film, playheadSec: number): Film {
+export function splitShotAtTime(
+  film: Film,
+  playheadSec: number
+): { film: Film; actions: UpdateAction[]; transactionId: string } {
   const startTimes = computeShotStartTimes(film.shots);
   const fps = film.fps || 30;
   let targetIndex = -1;
@@ -351,7 +306,8 @@ export function splitShotAtTime(film: Film, playheadSec: number): Film {
 
   for (let i = 0; i < film.shots.length; i++) {
     const start = startTimes[i];
-    const end = start + film.shots[i].dur;
+    const dur = getShotDuration(film.shots[i]);
+    const end = start + dur;
     if (playheadSec > start && playheadSec < end) {
       targetIndex = i;
       splitOffsetSec = playheadSec - start;
@@ -364,43 +320,85 @@ export function splitShotAtTime(film: Film, playheadSec: number): Film {
   }
 
   const targetShot = film.shots[targetIndex];
+  const origDur = getShotDuration(targetShot);
   const durLeft = Number((Math.round(splitOffsetSec * fps) / fps).toFixed(3));
-  const durRight = Number((targetShot.dur - durLeft).toFixed(3));
+  const durRight = Number((origDur - durLeft).toFixed(3));
 
   if (durLeft < 0.5 || durRight < 0.5) {
-    throw new Error("Split rejected: split produces segment shorter than schema minimum 0.5s");
+    throw new Error("Split rejected: segment shorter than schema minimum 0.5s");
   }
+
+  const origIn = targetShot.start ?? 0;
+  const origPos = targetShot.position ?? targetShot.startSec ?? startTimes[targetIndex];
 
   const leftShot: Shot = {
     ...JSON.parse(JSON.stringify(targetShot)),
     id: `${targetShot.id}-a`,
+    position: origPos,
+    startSec: origPos,
+    start: origIn,
+    end: Number((origIn + durLeft).toFixed(3)),
     dur: durLeft,
   };
 
   const rightShot: Shot = {
     ...JSON.parse(JSON.stringify(targetShot)),
     id: `${targetShot.id}-b`,
+    position: Number((origPos + durLeft).toFixed(3)),
+    startSec: Number((origPos + durLeft).toFixed(3)),
+    start: Number((origIn + durLeft).toFixed(3)),
+    end: Number((origIn + origDur).toFixed(3)),
     dur: durRight,
-    ...(targetShot.startSec !== undefined ? { startSec: targetShot.startSec + durLeft } : {}),
   };
 
   const newShots = JSON.parse(JSON.stringify(film.shots)) as Shot[];
   newShots.splice(targetIndex, 1, leftShot, rightShot);
 
+  const txId = generateUUID();
+  const actions: UpdateAction[] = [
+    {
+      type: "delete",
+      path: ["shots", targetIndex],
+      oldValue: targetShot,
+      newValue: null,
+      transactionId: txId,
+      label: `Split ${targetShot.id}`,
+      timestamp: Date.now(),
+    },
+    {
+      type: "insert",
+      path: ["shots", targetIndex],
+      oldValue: null,
+      newValue: leftShot,
+      transactionId: txId,
+      label: `Insert ${leftShot.id}`,
+      timestamp: Date.now(),
+    },
+    {
+      type: "insert",
+      path: ["shots", targetIndex + 1],
+      oldValue: null,
+      newValue: rightShot,
+      transactionId: txId,
+      label: `Insert ${rightShot.id}`,
+      timestamp: Date.now(),
+    },
+  ];
+
   return {
-    ...film,
-    shots: newShots,
+    film: { ...film, shots: newShots },
+    actions,
+    transactionId: txId,
   };
 }
 
 /**
- * Delete a shot and optionally ripple or preserve total duration.
+ * Delete a shot.
  */
 export function deleteShot(
   film: Film,
-  shotIndex: number,
-  mode: TimelineMode = "narration-locked"
-): Film {
+  shotIndex: number
+): { film: Film; actions: UpdateAction[]; transactionId: string } {
   if (film.shots.length <= 1) {
     throw new Error("Cannot delete the only remaining shot in film");
   }
@@ -408,16 +406,25 @@ export function deleteShot(
     throw new Error(`Invalid shotIndex ${shotIndex}`);
   }
 
-  const deletedDur = film.shots[shotIndex].dur;
+  const deletedShot = film.shots[shotIndex];
   const newShots = (JSON.parse(JSON.stringify(film.shots)) as Shot[]).filter((_, idx) => idx !== shotIndex);
+  const txId = generateUUID();
 
-  if (mode === "narration-locked") {
-    const targetNeighbor = shotIndex > 0 ? shotIndex - 1 : 0;
-    newShots[targetNeighbor].dur = Number((newShots[targetNeighbor].dur + deletedDur).toFixed(3));
-  }
+  const actions: UpdateAction[] = [
+    {
+      type: "delete",
+      path: ["shots", shotIndex],
+      oldValue: deletedShot,
+      newValue: null,
+      transactionId: txId,
+      label: `Delete ${deletedShot.id}`,
+      timestamp: Date.now(),
+    },
+  ];
 
   return {
-    ...film,
-    shots: newShots,
+    film: { ...film, shots: newShots },
+    actions,
+    transactionId: txId,
   };
 }

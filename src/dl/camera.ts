@@ -107,17 +107,26 @@ export const buildTimeline = (film: Film, targetDurationSec?: number): TimedShot
   let cursor = 0;
   let chapter = -1;
 
-  const baseTotalDur = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
+  const getShotDur = (s: Shot): number => {
+    if (s.end !== undefined && s.start !== undefined && s.end > s.start) {
+      return s.end - s.start;
+    }
+    return s.dur || 3;
+  };
+
+  const baseTotalDur = film.shots.reduce((acc, s) => acc + getShotDur(s), 0);
   const effectiveTotalSec = targetDurationSec && targetDurationSec > 0 ? targetDurationSec : baseTotalDur;
   const scaleRatio = baseTotalDur > 0 ? effectiveTotalSec / baseTotalDur : 1;
 
   return film.shots.map((shot, index) => {
+    const rawDur = getShotDur(shot);
     let from = cursor;
-    let durationInFrames = Math.max(15, Math.round((shot.dur || 3) * scaleRatio * film.fps));
+    let durationInFrames = Math.max(15, Math.round(rawDur * scaleRatio * film.fps));
 
-    if (shot.startSec !== undefined) {
-      from = Math.round(shot.startSec * film.fps);
-      durationInFrames = Math.max(15, Math.round(shot.dur * film.fps));
+    const explicitPos = shot.position ?? shot.startSec;
+    if (explicitPos !== undefined) {
+      from = Math.round(explicitPos * film.fps);
+      durationInFrames = Math.max(15, Math.round(rawDur * film.fps));
       cursor = Math.max(cursor, from + durationInFrames);
     } else {
       cursor += durationInFrames;
