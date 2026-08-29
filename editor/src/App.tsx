@@ -16,6 +16,7 @@ import { ExportProgressModal } from "./components/ExportProgressModal";
 import { ScriptEditor } from "./components/ScriptEditor";
 import { CritiqueStudio } from "./components/CritiqueStudio";
 import { ClipInspector } from "./components/ClipInspector";
+import { AgentActivityInspector } from "./components/AgentActivityInspector";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
 import { DEFAULT_GIRAFFE_CAPTION_WORDS, generateWordsFromFilm } from "../../src/dl/captionsParser";
@@ -438,6 +439,7 @@ export default function App() {
           AIDEOS
         </div>
         <div className="flex items-center gap-3">
+          <AgentActivityInspector />
           <button
             onClick={handleSave}
             disabled={saving}

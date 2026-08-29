@@ -123,13 +123,25 @@ export function renderMetaphorStill(
 
   fs.writeFileSync(tmpHtmlPath, fullHtml);
 
+  // 2. Rasterize via native qlmanage or Chrome Headless
+  try {
+    execSync(`qlmanage -t -s 1920 -o "${absOutputDir}" "${tmpHtmlPath}" 2>/dev/null`, { stdio: "ignore", timeout: 3000 });
+    const qlPng = path.join(absOutputDir, `${baseName}.html.png`);
+    if (fs.existsSync(qlPng)) {
+      fs.renameSync(qlPng, absOutputPath);
+      return absOutputPath;
+    }
+  } catch {
+    // Continue to Chrome fallback
+  }
+
   const chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
   if (fs.existsSync(chromePath)) {
     const tmpProfile = path.join("/tmp", `chrome_metaphor_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
     try {
       execSync(
-        `"${chromePath}" --headless=new --disable-gpu --no-first-run --no-default-browser-check --user-data-dir="${tmpProfile}" --screenshot="${absOutputPath}" --window-size=${viewport.width},${viewport.height} "${tmpHtmlPath}" 2>/dev/null`,
-        { stdio: "ignore", timeout: 6000 }
+        `"${chromePath}" --headless=new --disable-gpu --disable-background-networking --disable-default-apps --disable-extensions --no-first-run --no-default-browser-check --user-data-dir="${tmpProfile}" --screenshot="${absOutputPath}" --window-size=${viewport.width},${viewport.height} "${tmpHtmlPath}" 2>/dev/null`,
+        { stdio: "ignore", timeout: 4000 }
       );
     } catch {
       // Chrome failed or timed out
@@ -139,23 +151,12 @@ export function renderMetaphorStill(
           fs.rmSync(tmpProfile, { recursive: true, force: true });
         }
       } catch {
-        // Ignore async lock cleanup in /tmp
+        // Ignore lock cleanup in /tmp
       }
     }
     if (fs.existsSync(absOutputPath)) {
       return absOutputPath;
     }
-  }
-
-  // Fallback: QuickLook
-  try {
-    execSync(`qlmanage -t -s 1920 -o "${absOutputDir}" "${tmpHtmlPath}" 2>/dev/null`, { stdio: "ignore", timeout: 4000 });
-    const qlPng = path.join(absOutputDir, `${baseName}.html.png`);
-    if (fs.existsSync(qlPng)) {
-      fs.renameSync(qlPng, absOutputPath);
-    }
-  } catch {
-    // Ignore fallback errors
   }
 
   return absOutputPath;

@@ -29,40 +29,37 @@ export function renderFrameStill(frame: CompiledFrame, outputPath: string): stri
   const svgString = ReactDOMServer.renderToStaticMarkup(element);
   fs.writeFileSync(tmpSvgPath, svgString);
 
-  // 2. Rasterize SVG to bit-perfect 1920x1080 PNG via Google Chrome Headless
+  // 2. Rasterize SVG to bit-perfect 1920x1080 PNG via macOS native qlmanage or Chrome Headless
+  try {
+    execSync(`qlmanage -t -s 1920 -o "${absOutputDir}" "${tmpSvgPath}" 2>/dev/null`, { stdio: "ignore", timeout: 3000 });
+    const qlPng = path.join(absOutputDir, `${baseName}.svg.png`);
+    if (fs.existsSync(qlPng)) {
+      fs.renameSync(qlPng, absOutputPath);
+      return absOutputPath;
+    }
+  } catch {
+    // Continue to Chrome headless fallback
+  }
+
   const chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
   if (fs.existsSync(chromePath)) {
     const tmpProfile = path.join("/tmp", `chrome_aideos_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
     try {
       execSync(
-        `"${chromePath}" --headless=new --disable-gpu --no-first-run --no-default-browser-check --user-data-dir="${tmpProfile}" --screenshot="${absOutputPath}" --window-size=1920,1080 "${tmpSvgPath}" 2>/dev/null`,
-        { stdio: "ignore", timeout: 6000 },
+        `"${chromePath}" --headless=new --disable-gpu --disable-background-networking --disable-default-apps --disable-extensions --no-first-run --no-default-browser-check --user-data-dir="${tmpProfile}" --screenshot="${absOutputPath}" --window-size=1920,1080 "${tmpSvgPath}" 2>/dev/null`,
+        { stdio: "ignore", timeout: 4000 },
       );
     } catch {
-      // Chrome failed or timed out, continue to fallback
+      // Chrome failed or timed out
     } finally {
       try {
         if (fs.existsSync(tmpProfile)) {
           fs.rmSync(tmpProfile, { recursive: true, force: true });
         }
       } catch {
-        // Ignore async lock cleanup in /tmp
+        // Ignore lock cleanup in /tmp
       }
     }
-    if (fs.existsSync(absOutputPath)) {
-      return absOutputPath;
-    }
-  }
-
-  // Fallback: QuickLook
-  try {
-    execSync(`qlmanage -t -s 1920 -o "${absOutputDir}" "${tmpSvgPath}" 2>/dev/null`, { stdio: "ignore" });
-    const qlPng = path.join(absOutputDir, `${baseName}.svg.png`);
-    if (fs.existsSync(qlPng)) {
-      fs.renameSync(qlPng, absOutputPath);
-    }
-  } catch {
-    // Ignore fallback errors
   }
 
   return absOutputPath;
