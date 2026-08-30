@@ -329,7 +329,6 @@ export const whatIsJepaFilm: Film = {
       "drift": true,
       "zoom": 1,
       "visualDirection": "Context encoder and target encoder comparing notes in embedding space.",
-      "metaphor": "glowing-cluster",
       "speed": 1,
       "blocks": [
         {
@@ -370,7 +369,6 @@ export const whatIsJepaFilm: Film = {
       "drift": true,
       "zoom": 1,
       "visualDirection": "Timeline from I-JEPA to V-JEPA to V-JEPA 2 controlling robot arm.",
-      "metaphor": "glowing-cluster",
       "speed": 1,
       "blocks": [
         {
@@ -431,7 +429,6 @@ export const whatIsJepaFilm: Film = {
       "drift": true,
       "zoom": 1,
       "visualDirection": "Pull back split screen: Chat window fades, glowing 3D world simulation.",
-      "metaphor": "glowing-cluster",
       "speed": 1,
       "blocks": [
         {
