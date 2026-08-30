@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile } from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
 import { accentAt, PALETTE, rule, useLayout, BACKGROUND_THEMES, resolveFont, ThemeContext } from "./tokens";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext } from "./accent";
@@ -416,6 +416,49 @@ export const FilmView: React.FC<FilmViewProps> = ({
         )}
         {showRail ? <Rail film={film} timeline={timeline} /> : null}
         {captionWords && captionWords.length > 0 && <KineticSubtitles words={captionWords} />}
+
+        {/* Master Audio Track & Multi-Clip Voiceover Spine */}
+        {film.audioClips && film.audioClips.length > 0 ? (
+          film.audioClips.map((ac) => {
+            const startFrame = Math.round(ac.position * fps);
+            const startFrom = Math.round((ac.start ?? 0) * fps);
+            const endAt = Math.round(ac.end * fps);
+            const durFrames = Math.max(1, endAt - startFrom);
+            return (
+              <Sequence key={ac.id} from={startFrame} durationInFrames={durFrames}>
+                <Audio
+                  src={staticFile(ac.src)}
+                  startFrom={startFrom}
+                  endAt={endAt}
+                  volume={() => ac.volume ?? 1}
+                />
+              </Sequence>
+            );
+          })
+        ) : (
+          film.voiceover?.src && (
+            <Audio
+              src={staticFile(film.voiceover.src)}
+              volume={() => film.voiceover?.volume ?? 1}
+            />
+          )
+        )}
+
+        {/* Background Music */}
+        {film.music?.src && (
+          <Audio
+            src={staticFile(film.music.src)}
+            volume={() => (film.music?.volume ?? 1) * 0.25}
+          />
+        )}
+
+        {/* SFX Timeline Placements */}
+        {film.sfx?.map((sfx, idx) => (
+          <Sequence key={idx} from={Math.round(sfx.timeSec * fps)}>
+            <Audio src={staticFile(sfx.src)} volume={() => sfx.volume ?? 1} />
+          </Sequence>
+        ))}
+
         {/* A single hairline vignette at the very edge */}
         <AbsoluteFill
           style={{
