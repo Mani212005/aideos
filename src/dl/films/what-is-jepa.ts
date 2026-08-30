@@ -122,7 +122,7 @@ export const whatIsJepaFilm: Film = {
   "shots": [
     {
       "id": "the-hook",
-      "dur": 14.712109,
+      "dur": 15.211338000000001,
       "stage": "anchor",
       "look": "intro",
       "move": "cut",
@@ -227,7 +227,7 @@ export const whatIsJepaFilm: Film = {
           ]
         }
       ],
-      "scriptText": "Meet Yann LeCun, the pioneer Meta hired to lead its artificial intelligence lab. While the tech industry went all in on chatbots, he has been arguing the one thing almost nobody wanted to hear: LLMs are a dead end that will never achieve real understanding."
+      "scriptText": "Meet Yann LeCun, the pioneer Meta hired to lead its artificial intelligence lab. While the tech industry went all in on chatbots, he has been arguing the one thing almost nobody wanted to hear: LLMs are a dead end that will never achieve real physical understanding."
     },
     {
       "id": "who-is-lecun",
@@ -288,7 +288,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "canvas-anchor-1",
-      "dur": 7.741905,
+      "dur": 8.241134,
       "stage": "none",
       "look": [
         "breakup",
@@ -299,7 +299,7 @@ export const whatIsJepaFilm: Film = {
       "zoom": 0.85,
       "speed": 1,
       "blocks": [],
-      "scriptText": "To understand why he walked away from chatbots, we have to look at the fundamental difference between predicting tokens and building world models."
+      "scriptText": "To understand why he walked away from chatbots, we have to look at the fundamental difference between predicting tokens and building internal world models."
     },
     {
       "id": "jepa-concept-part1",
@@ -456,6 +456,7 @@ export const whatIsJepaFilm: Film = {
   "voiceover": {
     "src": "voiceover_what-is-jepa.wav",
     "volume": 1,
-    "speed": 1
+    "speed": 1,
+    "version": "1788118015571"
   }
 };

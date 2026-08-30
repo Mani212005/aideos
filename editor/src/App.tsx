@@ -3,6 +3,7 @@ import { Player, type PlayerRef } from "@remotion/player";
 import { FilmView } from "../../src/dl/Film";
 import { buildTimeline, totalFrames } from "../../src/dl/camera";
 import { kvcacheFilm } from "../../src/dl/films/kvcache";
+import { whatIsJepaFilm } from "../../src/dl/films/what-is-jepa";
 import type { CanvasEdge, Film, Shot } from "../../src/dl/schema";
 import { MindMap } from "./components/MindMap";
 import { Styleboard } from "./components/Styleboard";
@@ -46,7 +47,7 @@ type Selection = { type: "node" | "shot", id: string } | null;
 
 // Renders the main Aideos Editor application shell.
 export default function App() {
-  const [film, setFilm] = useState<Film>(kvcacheFilm);
+  const [film, setFilm] = useState<Film>(whatIsJepaFilm || kvcacheFilm);
   const [format, setFormat] = useState<Format>("long");
   const [mode, setMode] = useState<Mode>("script");
   const [selection, setSelection] = useState<Selection>(null);
