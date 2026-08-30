@@ -1,31 +1,10 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:14.911
-Meet Yann LeCun, the pioneer Meta hired to lead its artificial intelligence lab. While the tech industry went all in on chatbots, he has been arguing the one thing almost nobody wanted to hear: LLMs are a dead end that will never achieve real physical understanding.
+00:00:00.000 --> 00:00:02.231
+Welcome to Aideos audio pipeline.
 
-00:00:15.211 --> 00:00:29.442
-A French American computer scientist and NYU professor, LeCun won the 2018 Turing Award for inventing convolutional networks. For over a decade, he directed FAIR as Meta Chief AI Scientist reporting straight to Mark Zuckerberg.
+00:00:02.431 --> 00:00:04.976
+We test segment splitting and caption alignment.
 
-00:00:29.742 --> 00:00:42.951
-In late 2025, LeCun stepped down from Meta to cofound AMI Labs, raising over one billion dollars in seed funding from Nvidia, Jeff Bezos, and Eric Schmidt to build machines with genuine physical intelligence.
-
-00:00:43.251 --> 00:00:51.192
-To understand why he walked away from chatbots, we have to look at the fundamental difference between predicting tokens and building internal world models.
-
-00:00:51.492 --> 00:01:05.569
-JEPA stands for Joint Embedding Predictive Architecture. Generative models waste compute redrawing every missing pixel. JEPA does something smarter: it predicts abstract, high-level representations, throwing away the noise and keeping the core meaning.
-
-00:01:05.869 --> 00:01:18.648
-Inside JEPA, two neural networks, a context encoder and a target encoder, compare notes in embedding space. The architecture learns how the physical world behaves entirely by observing video without human labels.
-
-00:01:18.948 --> 00:01:25.672
-From simple image understanding, the research team rapidly scaled the architecture into interactive spatial world models.
-
-00:01:25.972 --> 00:01:38.996
-The architecture evolved from Image JEPA to Video JEPA 2, trained on over one million hours of video. It can control robotic arms to manipulate unfamiliar objects in new environments with minimal real-world demonstration data.
-
-00:01:39.296 --> 00:01:49.680
-Meta has open-sourced V-JEPA 2 on Hugging Face and GitHub. With just a few lines of Python using the transformers library, developers can load the model and test world prediction.
-
-00:01:49.980 --> 00:02:01.058
-While others race to scale autocomplete, Yann LeCun has placed his career on machines that simulate reality. If you enjoyed this breakdown, subscribe for more deep architectural explainers.
+00:00:05.176 --> 00:00:08.238
+Every shot duration sums to the audio file duration.

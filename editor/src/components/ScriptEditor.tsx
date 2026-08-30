@@ -444,8 +444,9 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
         text: `🎉 Voiceover synthesized from screenplay (${data.spokenWordCount} spoken words, ${data.estimatedDurationSec}s)! Switched to Interactive Words below to review and tweak.`,
       });
 
-      const updatedFilm: Film = {
+      const updatedFilm: Film = data.film || {
         ...film,
+        shots: data.shots || film.shots,
         voiceover: {
           src: data.filename,
           volume: 1.0,

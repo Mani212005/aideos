@@ -691,6 +691,63 @@ function filmApiPlugin(): Plugin {
                 fs.copyFileSync(publicPath, path.join(publicDir, 'voiceover.wav'));
               } catch (_) {}
 
+              // Measure exact audio duration via ffprobe
+              let measuredDuration = 5.0;
+              try {
+                const out = spawnSync('ffprobe', [
+                  '-v', 'error',
+                  '-show_entries', 'format=duration',
+                  '-of', 'default=noprint_wrappers=1:nokey=1',
+                  publicPath
+                ]).stdout.toString().trim();
+                const d = parseFloat(out);
+                if (!isNaN(d) && d > 0) measuredDuration = Number(d.toFixed(3));
+              } catch (_) {}
+
+              // Automatically scale film shot durations to match the newly synthesized audio (Axiom 2 / D4 Master Clock Invariant)
+              const filmFile = path.join(filmsDir, `${projectId}.ts`);
+              let updatedFilm: Film | undefined = undefined;
+              let updatedShots: any[] | undefined = undefined;
+
+              if (fs.existsSync(filmFile)) {
+                try {
+                  const mod = fs.readFileSync(filmFile, 'utf8');
+                  const jsonMatch = mod.match(/export const \w+:\s*Film\s*=\s*([\s\S]+?);(?:\s*\n|$)/);
+                  if (jsonMatch) {
+                    const parsedFilm = JSON.parse(jsonMatch[1]);
+                    const currentTotal = parsedFilm.shots.reduce((sum: number, s: any) => sum + (s.dur || 0), 0);
+                    const scale = currentTotal > 0 ? measuredDuration / currentTotal : 1.0;
+
+                    const computedShots = parsedFilm.shots.map((s: any) => ({
+                      ...s,
+                      dur: Number(((s.dur || 1) * scale).toFixed(2)),
+                    }));
+
+                    const sumNew = computedShots.reduce((sum: number, s: any) => sum + s.dur, 0);
+                    const diff = measuredDuration - sumNew;
+                    if (Math.abs(diff) > 0.001 && computedShots.length > 0) {
+                      computedShots[computedShots.length - 1].dur = Number((computedShots[computedShots.length - 1].dur + diff).toFixed(2));
+                    }
+
+                    updatedShots = computedShots;
+                    updatedFilm = {
+                      ...parsedFilm,
+                      shots: computedShots,
+                      voiceover: {
+                        src: outFilename,
+                        volume: 1,
+                        speed: 1,
+                        version: Date.now().toString(),
+                      },
+                      audioClips: undefined,
+                    } as Film;
+                    fs.writeFileSync(filmFile, filmModule(updatedFilm), 'utf8');
+                  }
+                } catch (syncErr) {
+                  console.warn('[TTS] Automatic shot duration scaling error:', syncErr);
+                }
+              }
+
               // Invalidate stale word transcript cache on new audio generation
               const staleCachePath = path.join(scriptsDir, `voiceover_${projectId}_words.json`);
               if (fs.existsSync(staleCachePath)) {
@@ -703,7 +760,10 @@ function filmApiPlugin(): Plugin {
                 audioSrc: `/${outFilename}?t=${Date.now()}`,
                 scriptFile: `scripts/${projectId}.md`,
                 spokenWordCount: cleanText.split(/\s+/).filter(Boolean).length,
-                estimatedDurationSec: Math.round((cleanText.split(/\s+/).filter(Boolean).length / 150) * 60),
+                estimatedDurationSec: Math.round(measuredDuration),
+                actualDurationSec: measuredDuration,
+                shots: updatedShots,
+                film: updatedFilm,
               });
             } else {
               sendJson(res, 500, { error: 'Failed to synthesize voiceover audio.' });
