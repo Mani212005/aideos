@@ -7,14 +7,13 @@ import type { CanvasEdge, Film, Shot } from "../../src/dl/schema";
 import { MindMap } from "./components/MindMap";
 import { Styleboard } from "./components/Styleboard";
 import { NodeEditor } from "./components/NodeEditor";
-import { ShotEditor } from "./components/ShotEditor";
 import { KineticCaptionEditor } from "./components/KineticCaptionEditor";
 import { TimelineEditor } from "./components/TimelineEditor";
 import { CustomizationEditor } from "./components/CustomizationEditor";
 import { ExportProgressModal } from "./components/ExportProgressModal";
 import { ScriptEditor } from "./components/ScriptEditor";
 import { CritiqueStudio } from "./components/CritiqueStudio";
-import { ClipInspector } from "./components/ClipInspector";
+import { ShotInspector } from "./components/ShotInspector";
 import { AgentActivityInspector } from "./components/AgentActivityInspector";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
@@ -678,32 +677,31 @@ export default function App() {
           )}
 
           {selection?.type === "shot" && (
-            <>
+            <div className="flex flex-col gap-3">
               <button 
                 onClick={() => setSelection(null)}
-                className="text-xs text-gray-400 hover:text-white flex items-center gap-1"
+                className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 transition-colors self-start pb-1 font-mono"
               >
-                ← Back to overview
+                <span>←</span>
+                <span>Back to Overview</span>
               </button>
-              <ClipInspector
+              <ShotInspector
                 film={film}
                 selectedShotId={selection.id}
                 onUpdateShot={(idx, updated, _label) => {
                   const newShots = [...film.shots];
                   newShots[idx] = { ...newShots[idx], ...updated };
-                  setFilm({ ...film, shots: newShots });
+                  handleUpdateFilmWithHistory({ ...film, shots: newShots });
+                }}
+                onDeleteShot={(idx) => {
+                  if (film.shots.length <= 1) return;
+                  const newShots = film.shots.filter((_, i) => i !== idx);
+                  handleUpdateFilmWithHistory({ ...film, shots: newShots });
+                  setSelection(null);
                 }}
                 onClose={() => setSelection(null)}
               />
-              <ShotEditor 
-                film={film} 
-                shotIndex={film.shots.findIndex(s => s.id === selection.id)} 
-                onChange={setFilm}
-                onSelectShot={(id) => setSelection({ type: "shot", id })}
-                onShotIdChange={(id) => setSelection({ type: "shot", id })}
-                onClearSelection={() => setSelection(null)}
-              />
-            </>
+            </div>
           )}
         </div>
       </div>
