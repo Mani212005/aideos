@@ -17,9 +17,10 @@ export interface MediaAsset {
 
 interface AssetBinProps {
   onInsertAssetAsShot: (asset: MediaAsset) => void;
+  compact?: boolean;
 }
 
-export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot }) => {
+export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact = false }) => {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -77,6 +78,84 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot }) => {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
+
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-2 bg-[#141416] p-2.5 rounded-xl border border-[#27272A] font-mono text-xs">
+        {/* Compact Header */}
+        <div className="flex items-center justify-between pb-1.5 border-b border-[#27272A]">
+          <div className="flex items-center gap-1.5">
+            <span className="text-yellow-400 font-bold text-[11px] uppercase tracking-wider">📁 MEDIA ASSETS</span>
+            <span className="text-[9px] bg-black/60 px-1 py-0.5 rounded text-gray-400 font-bold">
+              {assets.length}
+            </span>
+          </div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept="video/mp4,video/quicktime,video/webm,image/png,image/jpeg,image/svg+xml,audio/wav,audio/mpeg"
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="text-[10px] px-2 py-0.5 rounded bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold shadow flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+            title="Upload MP4, MOV, PNG, JPG, or WAV asset"
+          >
+            <span>{isUploading ? "⏳" : "➕ Upload"}</span>
+          </button>
+        </div>
+
+        {uploadError && (
+          <div className="p-1.5 rounded bg-red-950/80 border border-red-500 text-red-300 text-[10px]">
+            ⚠️ {uploadError}
+          </div>
+        )}
+
+        {/* Compact Asset List */}
+        <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-0.5">
+          {assets.length === 0 ? (
+            <div className="py-3 text-center text-gray-500 text-[10px]">
+              No media uploaded yet. Click ➕ Upload to add video/audio.
+            </div>
+          ) : (
+            assets.map((asset) => (
+              <div
+                key={asset.id}
+                className="bg-[#1C1C1F] hover:bg-[#27272A] border border-[#27272A] hover:border-yellow-400/80 rounded-lg p-1.5 flex items-center justify-between gap-1.5 transition-all text-[11px]"
+              >
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <span className="text-xs shrink-0">
+                    {asset.type === "video" ? "🎬" : asset.type === "audio" ? "🎵" : "🖼️"}
+                  </span>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-gray-200 truncate font-sans font-medium" title={asset.filename}>
+                      {asset.filename}
+                    </span>
+                    {asset.duration !== undefined && asset.duration > 0 && (
+                      <span className="text-[9px] text-gray-400 font-mono">
+                        {asset.duration.toFixed(1)}s
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onInsertAssetAsShot(asset)}
+                  className="px-2 py-1 bg-[#635BFF] hover:bg-yellow-400 hover:text-black text-white text-[10px] font-bold rounded shadow shrink-0 transition-colors cursor-pointer"
+                  title="Insert asset as shot into the film timeline"
+                >
+                  + Insert
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-[#0E0E10] text-[#E1E1E6] p-4 gap-3 overflow-y-auto">

@@ -41,7 +41,7 @@ const FORMATS = {
 };
 
 type Format = keyof typeof FORMATS;
-type Mode = "script" | "map" | "timeline" | "customization" | "styleboard" | "captions" | "video" | "critique" | "media";
+type Mode = "script" | "map" | "timeline" | "customization" | "styleboard" | "captions" | "video" | "critique";
 type Selection = { type: "node" | "shot", id: string } | null;
 
 // Renders the main Aideos Editor application shell.
@@ -502,16 +502,6 @@ export default function App() {
             <span className="text-[9px] mt-1 uppercase font-mono">Time</span>
           </button>
           <button
-            onClick={() => setMode("media")}
-            className={`w-full flex flex-col items-center py-3 text-xs font-mono transition-none border-l-2 ${
-              mode === "media" ? "bg-[#635BFF]/20 text-[#635BFF] border-[#635BFF]" : "text-gray-400 border-transparent hover:text-white"
-            }`}
-            title="Media Library & Asset Bin"
-          >
-            <span className="text-lg">📁</span>
-            <span className="text-[9px] mt-1 uppercase font-mono">Media</span>
-          </button>
-          <button
             onClick={() => setMode("customization")}
             className={`w-full flex flex-col items-center py-3 text-xs font-mono transition-none border-l-2 ${
               mode === "customization" ? "bg-[#635BFF]/20 text-[#635BFF] border-[#635BFF]" : "text-gray-400 border-transparent hover:text-white"
@@ -632,6 +622,37 @@ export default function App() {
                     <button onClick={generateVoiceover} className="bauhaus-button-primary p-2 text-left text-xs mt-1">
                       GENERATE VOICEOVER
                     </button>
+
+                    {/* Integrated Media Library Drawer in Sidebar */}
+                    <AssetBin
+                      compact
+                      onInsertAssetAsShot={(asset: MediaAsset) => {
+                        const rawDur = asset.duration && asset.duration > 0 ? Number(asset.duration.toFixed(2)) : 5.0;
+                        const newShot: Shot = {
+                          id: `shot-${film.shots.length + 1}-${asset.filename.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8)}`,
+                          stage: "frame",
+                          look: film.shots[film.shots.length - 1]?.look || "n1",
+                          move: "cut",
+                          drift: false,
+                          zoom: 1,
+                          position: audioDurationSec,
+                          startSec: audioDurationSec,
+                          start: 0,
+                          end: rawDur,
+                          dur: rawDur,
+                          blocks: [
+                            {
+                              c: "TextReveal",
+                              text: asset.filename,
+                              size: "headline",
+                            },
+                          ],
+                        };
+                        const updatedFilm = { ...film, shots: [...film.shots, newShot] };
+                        handleUpdateFilmWithHistory(updatedFilm);
+                        setStatus({ ok: true, text: `✓ Added "${asset.filename}" to timeline as Shot ${updatedFilm.shots.length}` });
+                      }}
+                    />
                   </div>
                 )}
               </div>
@@ -829,39 +850,6 @@ export default function App() {
               accent={accent}
               onAccentChange={setAccent}
             />
-          )}
-
-          {mode === "media" && (
-            <div className="w-full h-full bg-[#09090B] p-6 overflow-y-auto">
-              <AssetBin
-                onInsertAssetAsShot={(asset: MediaAsset) => {
-                  const rawDur = asset.duration && asset.duration > 0 ? Number(asset.duration.toFixed(2)) : 5.0;
-                  const newShot: Shot = {
-                    id: `shot-${film.shots.length + 1}-${asset.filename.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8)}`,
-                    stage: "frame",
-                    look: film.shots[film.shots.length - 1]?.look || "n1",
-                    move: "cut",
-                    drift: false,
-                    zoom: 1,
-                    position: audioDurationSec,
-                    startSec: audioDurationSec,
-                    start: 0,
-                    end: rawDur,
-                    dur: rawDur,
-                    blocks: [
-                      {
-                        c: "TextReveal",
-                        text: asset.filename,
-                        size: "headline",
-                      },
-                    ],
-                  };
-                  const updatedFilm = { ...film, shots: [...film.shots, newShot] };
-                  handleUpdateFilmWithHistory(updatedFilm);
-                  setStatus({ ok: true, text: `✓ Added "${asset.filename}" to timeline as Shot ${updatedFilm.shots.length}` });
-                }}
-              />
-            </div>
           )}
 
           {mode === "styleboard" && (
