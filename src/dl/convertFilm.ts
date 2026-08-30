@@ -176,7 +176,7 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm): Film {
   return {
     id: layeredFilm.id,
     title: layeredFilm.title,
-    fps: layeredFilm.fps,
+    fps: layeredFilm.fps as 24 | 30 | 60,
     accent: layeredFilm.accent,
     theme: layeredFilm.theme,
     canvas: layeredFilm.canvas,

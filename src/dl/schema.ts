@@ -406,8 +406,19 @@ export const musicTrackSchema = z.object({
   duckUnderVoiceover: z.boolean().default(true).optional(),
 });
 
+export const audioClipSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]+$/),
+  src: z.string().min(1),
+  position: z.number().min(0).default(0),
+  start: z.number().min(0).default(0),
+  end: z.number().min(0),
+  volume: z.number().min(0).max(2).default(1),
+  channel: z.enum(["voiceover", "music", "sfx", "external"]).default("voiceover"),
+});
+
 export type SfxItem = z.infer<typeof sfxItemSchema>;
 export type MusicTrack = z.infer<typeof musicTrackSchema>;
+export type AudioClip = z.infer<typeof audioClipSchema>;
 
 export const filmBaseSchema = z.object({
   schemaVersion: z.string().default("1.0.0").optional(),
@@ -428,6 +439,7 @@ export const filmBaseSchema = z.object({
   voiceover: z
     .object({ src: z.string().min(1), volume: z.number().min(0).max(2).default(1) })
     .optional(),
+  audioClips: z.array(audioClipSchema).optional(),
   captions: z.string().min(1).optional(),
   sfx: z.array(sfxItemSchema).optional(),
   music: musicTrackSchema.optional(),

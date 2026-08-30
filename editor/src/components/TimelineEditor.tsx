@@ -1,15 +1,16 @@
 /**
  * File Description: Aideos Direct Manipulation Multi-Track Timeline & Trimmer.
- * Fully Implements the 5 Geometry Patterns:
- * 1. Clip Data Model: position (timeline start), start (in-point), end (out-point), layer (track).
- * 2. Transaction-Grouped UpdateAction Engine: Atomic multi-clip undo/redo.
- * 3. Sticky Snapping: 12px sticky snap with self-ignore and snap guide lines.
- * 4. Explicit Drag State Machine: Clean disjoint drag/resize lifecycles.
- * 5. Pending Overrides Layer: 60 FPS live preview without committing until mouse release.
+ * Fully Implements the 5 Geometry Patterns across Video, Audio, Subtitles, and Visual Devices:
+ * 1. Stored position, start, end, layer data model.
+ * 2. Transaction-Grouped UpdateAction Engine (atomic multi-clip undo/redo).
+ * 3. 12px Sticky Snapping with Self-Ignore.
+ * 4. Explicit Drag State Machine for both Shots and Audio Clips.
+ * 5. Pending Overrides 60 FPS live preview.
+ * 6. Fully interactive Voiceover & Audio Clip splitting, trimming, and gap closing (Phase L-4).
  */
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import type { Film, Shot } from "../../../src/dl/schema";
+import type { Film, Shot, AudioClip } from "../../../src/dl/schema";
 import {
   TimelineTransactionManager,
   computeShotStartTimes,
@@ -58,6 +59,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   const [zoomLevel, setZoomLevel] = useState<number>(35); // pixels per second
   const [playheadSec, setPlayheadSec] = useState<number>(currentFrame / (film.fps || 30));
   const [selectedShotIds, setSelectedShotIds] = useState<string[]>([film.shots[0]?.id ?? ""]);
+  const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"tracks" | "media" | "transcript">("tracks");
 
   // Pattern 4: State Machine Instance
@@ -135,24 +137,49 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     return film.shots.reduce((sum, s) => sum + getShotDuration(s), 0);
   }, [film.shots]);
 
+  // Interactive Audio Clips List
+  const audioClips: AudioClip[] = useMemo(() => {
+    if (film.audioClips && film.audioClips.length > 0) {
+      return film.audioClips;
+    }
+    const defaultDur = overrideTotalDurationSec && overrideTotalDurationSec > 0 ? overrideTotalDurationSec : baseShotsDurSum;
+    return [
+      {
+        id: "clip-vo-main",
+        src: film.voiceover?.src || "voiceover.wav",
+        position: 0,
+        start: 0,
+        end: defaultDur,
+        volume: film.voiceover?.volume ?? 1,
+        channel: "voiceover",
+      },
+    ];
+  }, [film.audioClips, film.voiceover, overrideTotalDurationSec, baseShotsDurSum]);
+
   const totalDurationSec = useMemo(() => {
     if (overrideTotalDurationSec && overrideTotalDurationSec > 0) {
       return overrideTotalDurationSec;
     }
-    const maxEnd = film.shots.reduce((max, s, i) => {
+    const maxShotEnd = film.shots.reduce((max, s, i) => {
       const start = s.position ?? s.startSec ?? shotStartTimes[i] ?? 0;
       return Math.max(max, start + getShotDuration(s));
     }, 0);
-    return Math.max(baseShotsDurSum, maxEnd);
-  }, [overrideTotalDurationSec, baseShotsDurSum, film.shots, shotStartTimes]);
+    const maxAudioEnd = audioClips.reduce((max, a) => {
+      return Math.max(max, a.position + (a.end - a.start));
+    }, 0);
+    return Math.max(baseShotsDurSum, maxShotEnd, maxAudioEnd);
+  }, [overrideTotalDurationSec, baseShotsDurSum, film.shots, shotStartTimes, audioClips]);
 
-  // Voiceover drift monitoring
-  const voiceoverTargetSec = overrideTotalDurationSec && overrideTotalDurationSec > 0 ? overrideTotalDurationSec : baseShotsDurSum;
-  const driftSec = totalDurationSec - voiceoverTargetSec;
+  // Voiceover drift calculation
+  const totalAudioDuration = useMemo(() => {
+    return audioClips.reduce((sum, a) => sum + (a.end - a.start), 0);
+  }, [audioClips]);
+
+  const driftSec = totalDurationSec - totalAudioDuration;
   const isSynchronized = Math.abs(driftSec) <= 0.05;
 
   const handleRealignNarration = () => {
-    const ratio = voiceoverTargetSec > 0 ? voiceoverTargetSec / totalDurationSec : 1;
+    const ratio = totalAudioDuration > 0 ? totalAudioDuration / totalDurationSec : 1;
     const realignedShots = film.shots.map((shot) => ({
       ...shot,
       position: undefined,
@@ -171,14 +198,17 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     return generateWordsFromFilm(film as unknown as Record<string, unknown>);
   }, [film]);
 
-  // Candidate snap targets excluding dragged clip (Pattern 3: self-ignore)
+  // Candidate snap targets
   const snapTargets = useMemo(() => {
     const ignoreIds: string[] = [];
-    if (dragContext.shotIndex !== undefined && film.shots[dragContext.shotIndex]) {
+    if (dragContext.targetKind === "shot" && dragContext.shotIndex !== undefined && film.shots[dragContext.shotIndex]) {
       ignoreIds.push(film.shots[dragContext.shotIndex].id);
     }
+    if (dragContext.targetKind === "audio" && dragContext.audioIndex !== undefined && audioClips[dragContext.audioIndex]) {
+      ignoreIds.push(audioClips[dragContext.audioIndex].id);
+    }
     return collectSnapTargets(film, playheadSec, totalDurationSec, ignoreIds);
-  }, [film, playheadSec, totalDurationSec, dragContext.shotIndex]);
+  }, [film, audioClips, playheadSec, totalDurationSec, dragContext]);
 
   // Seek helper
   const seekFromClientX = useCallback(
@@ -196,7 +226,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     [totalDurationSec, zoomLevel, fps, onPreviewSeek]
   );
 
-  // Global mouse handlers driven by the State Machine
+  // Global mouse handlers driven by State Machine
   useEffect(() => {
     if (stateMachine.isIdle()) return;
 
@@ -209,11 +239,11 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         return;
       }
 
+      // Dragging a Shot clip
       if (ctx.mode === "drag-clip" && ctx.shotIndex !== undefined) {
         const shot = film.shots[ctx.shotIndex];
         let targetPos = (ctx.initialPositionSec ?? 0) + ctx.currentDeltaSec;
 
-        // Pattern 3: Sticky snapping with self-ignore
         if (!e.altKey) {
           const snapRes = calculateStickySnap(targetPos, snapTargets, zoomLevel, activeSnapTarget, 12);
           if (snapRes.hasSnapped) {
@@ -222,16 +252,34 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           } else {
             setActiveSnapTarget(null);
           }
-        } else {
-          setActiveSnapTarget(null);
         }
 
-        // Pattern 5: Set pending overrides for 60 FPS live preview
         setPendingOverrides({
           [shot.id]: { position: Math.max(0, targetPos) },
         });
       }
 
+      // Dragging an Audio clip
+      if (ctx.mode === "drag-audio" && ctx.audioIndex !== undefined) {
+        const aClip = audioClips[ctx.audioIndex];
+        let targetPos = (ctx.initialPositionSec ?? 0) + ctx.currentDeltaSec;
+
+        if (!e.altKey) {
+          const snapRes = calculateStickySnap(targetPos, snapTargets, zoomLevel, activeSnapTarget, 12);
+          if (snapRes.hasSnapped) {
+            targetPos = snapRes.snappedTimeSec;
+            setActiveSnapTarget(snapRes.activeSnap);
+          } else {
+            setActiveSnapTarget(null);
+          }
+        }
+
+        setPendingOverrides({
+          [aClip.id]: { position: Math.max(0, targetPos) },
+        });
+      }
+
+      // Resizing a Shot clip
       if ((ctx.mode === "resize-left" || ctx.mode === "resize-right") && ctx.shotIndex !== undefined) {
         const shot = film.shots[ctx.shotIndex];
         const origStart = ctx.initialPositionSec ?? (shotStartTimes[ctx.shotIndex] ?? 0);
@@ -247,8 +295,6 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           } else {
             setActiveSnapTarget(null);
           }
-        } else {
-          setActiveSnapTarget(null);
         }
 
         if (ctx.mode === "resize-right") {
@@ -264,13 +310,34 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           });
         }
       }
+
+      // Resizing an Audio clip
+      if ((ctx.mode === "resize-audio-left" || ctx.mode === "resize-audio-right") && ctx.audioIndex !== undefined) {
+        const aClip = audioClips[ctx.audioIndex];
+        const origPos = aClip.position;
+        const origDur = aClip.end - aClip.start;
+        let deltaSec = ctx.currentDeltaSec;
+
+        if (ctx.mode === "resize-audio-right") {
+          setPendingOverrides({
+            [aClip.id]: { dur: Math.max(0.2, origDur + deltaSec) },
+          });
+        } else {
+          setPendingOverrides({
+            [aClip.id]: {
+              position: Math.max(0, origPos + deltaSec),
+              dur: Math.max(0.2, origDur - deltaSec),
+            },
+          });
+        }
+      }
     };
 
     const handleMouseUp = () => {
       const prevCtx = stateMachine.reset();
       setActiveSnapTarget(null);
 
-      // Commit changes on release (Pattern 5)
+      // Commit Shot Drag
       if (prevCtx.mode === "drag-clip" && prevCtx.shotIndex !== undefined) {
         const shot = film.shots[prevCtx.shotIndex];
         const override = pendingOverrides[shot.id];
@@ -293,6 +360,22 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         }
       }
 
+      // Commit Audio Drag
+      if (prevCtx.mode === "drag-audio" && prevCtx.audioIndex !== undefined) {
+        const aClip = audioClips[prevCtx.audioIndex];
+        const override = pendingOverrides[aClip.id];
+        if (override?.position !== undefined) {
+          const updatedAudioClips = audioClips.map((ac, idx) => {
+            if (idx === prevCtx.audioIndex) {
+              return { ...ac, position: override.position! };
+            }
+            return ac;
+          });
+          triggerUpdateWithTx({ ...film, audioClips: updatedAudioClips }, [], `Move audio ${aClip.id}`);
+        }
+      }
+
+      // Commit Shot Resize
       if ((prevCtx.mode === "resize-left" || prevCtx.mode === "resize-right") && prevCtx.shotIndex !== undefined) {
         const shot = film.shots[prevCtx.shotIndex];
         const override = pendingOverrides[shot.id];
@@ -314,6 +397,28 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         }
       }
 
+      // Commit Audio Resize
+      if ((prevCtx.mode === "resize-audio-left" || prevCtx.mode === "resize-audio-right") && prevCtx.audioIndex !== undefined) {
+        const aClip = audioClips[prevCtx.audioIndex];
+        const override = pendingOverrides[aClip.id];
+        if (override) {
+          const updatedAudioClips = audioClips.map((ac, idx) => {
+            if (idx === prevCtx.audioIndex) {
+              if (prevCtx.mode === "resize-audio-right") {
+                const newDur = override.dur ?? (ac.end - ac.start);
+                return { ...ac, end: ac.start + newDur };
+              } else {
+                const newPos = override.position ?? ac.position;
+                const delta = newPos - ac.position;
+                return { ...ac, position: newPos, start: ac.start + delta };
+              }
+            }
+            return ac;
+          });
+          triggerUpdateWithTx({ ...film, audioClips: updatedAudioClips }, [], `Trim audio ${aClip.id}`);
+        }
+      }
+
       setPendingOverrides({});
     };
 
@@ -328,6 +433,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     stateMachine,
     zoomLevel,
     film,
+    audioClips,
     snapTargets,
     activeSnapTarget,
     pendingOverrides,
@@ -336,7 +442,59 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     triggerUpdateWithTx,
   ]);
 
-  // Keyboard navigation & shortcuts (Phase T-C)
+  // Audio Split & Delete Helpers
+  const handleSplitAudio = useCallback(() => {
+    if (!selectedAudioId) return;
+    const aIdx = audioClips.findIndex((a) => a.id === selectedAudioId);
+    if (aIdx === -1) return;
+
+    const targetAudio = audioClips[aIdx];
+    const dur = targetAudio.end - targetAudio.start;
+    const endPos = targetAudio.position + dur;
+
+    if (playheadSec <= targetAudio.position || playheadSec >= endPos) return;
+
+    const splitOffset = playheadSec - targetAudio.position;
+    const leftDur = Number(splitOffset.toFixed(3));
+
+    const leftClip: AudioClip = {
+      ...targetAudio,
+      id: `${targetAudio.id}-part1`,
+      position: targetAudio.position,
+      start: targetAudio.start,
+      end: targetAudio.start + leftDur,
+    };
+
+    const rightClip: AudioClip = {
+      ...targetAudio,
+      id: `${targetAudio.id}-part2`,
+      position: playheadSec,
+      start: targetAudio.start + leftDur,
+      end: targetAudio.end,
+    };
+
+    const updatedAudioClips = [...audioClips];
+    updatedAudioClips.splice(aIdx, 1, leftClip, rightClip);
+
+    triggerUpdateWithTx(
+      { ...film, audioClips: updatedAudioClips },
+      [],
+      `Split audio ${targetAudio.id}`
+    );
+  }, [selectedAudioId, audioClips, playheadSec, film, triggerUpdateWithTx]);
+
+  const handleDeleteAudio = useCallback(() => {
+    if (!selectedAudioId || audioClips.length <= 1) return;
+    const updatedAudioClips = audioClips.filter((a) => a.id !== selectedAudioId);
+    triggerUpdateWithTx(
+      { ...film, audioClips: updatedAudioClips },
+      [],
+      `Delete audio ${selectedAudioId}`
+    );
+    setSelectedAudioId(null);
+  }, [selectedAudioId, audioClips, film, triggerUpdateWithTx]);
+
+  // Keyboard Shortcuts (Phase T-C)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -354,7 +512,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         return;
       }
 
-      // Redo: Cmd+Shift+Z or Ctrl+Y
+      // Redo: Cmd+Shift+Z
       if (
         ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "z") ||
         ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "y")
@@ -371,38 +529,30 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         return;
       }
 
-      // Left / Right: 1 frame step
-      if (e.key === "ArrowLeft" && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        const delta = e.shiftKey ? 1.0 : 1 / fps;
-        const newSec = Math.max(0, playheadSec - delta);
-        setPlayheadSec(newSec);
-        if (onPreviewSeek) onPreviewSeek(Math.round(newSec * fps));
-        return;
-      }
-      if (e.key === "ArrowRight" && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        const delta = e.shiftKey ? 1.0 : 1 / fps;
-        const newSec = Math.min(totalDurationSec, playheadSec + delta);
-        setPlayheadSec(newSec);
-        if (onPreviewSeek) onPreviewSeek(Math.round(newSec * fps));
-        return;
-      }
-
-      // S: Split selected clip at playhead
+      // S: Split selected clip (Audio or Shot)
       if (e.key.toLowerCase() === "s" && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
-        try {
-          const { film: splitFilm, actions } = splitShotAtTime(film, playheadSec);
-          triggerUpdateWithTx(splitFilm, actions, `Split shot at ${playheadSec.toFixed(2)}s`);
-        } catch (err) {
-          console.warn("[Split Rejected]", (err as Error).message);
+        if (selectedAudioId) {
+          handleSplitAudio();
+        } else {
+          try {
+            const { film: splitFilm, actions } = splitShotAtTime(film, playheadSec);
+            triggerUpdateWithTx(splitFilm, actions, `Split shot at ${playheadSec.toFixed(2)}s`);
+          } catch (err) {
+            console.warn("[Split Rejected]", err);
+          }
         }
         return;
       }
 
-      // Backspace / Delete: Delete selected shot
+      // Backspace / Delete: Delete selected clip (Audio or Shot)
       if (e.key === "Backspace" || e.key === "Delete") {
+        if (selectedAudioId) {
+          e.preventDefault();
+          handleDeleteAudio();
+          return;
+        }
+
         const primarySelected = selectedShotIds[0];
         if (primarySelected && film.shots.length > 1) {
           const idx = film.shots.findIndex((s) => s.id === primarySelected);
@@ -413,33 +563,10 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
               triggerUpdateWithTx(deletedFilm, actions, `Delete ${primarySelected}`);
               setSelectedShotIds([deletedFilm.shots[Math.max(0, idx - 1)]?.id ?? ""]);
             } catch (err) {
-              console.warn("[Delete Rejected]", (err as Error).message);
+              console.warn("[Delete Rejected]", err);
             }
           }
         }
-        return;
-      }
-
-      // Zoom keys: + and -
-      if (e.key === "=" || e.key === "+") {
-        e.preventDefault();
-        setZoomLevel((z) => Math.min(120, z + 5));
-        return;
-      }
-      if (e.key === "-") {
-        e.preventDefault();
-        setZoomLevel((z) => Math.max(15, z - 5));
-        return;
-      }
-
-      // Shift + Z: Zoom to fit whole film
-      if (e.shiftKey && e.key.toLowerCase() === "z" && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        if (timelineRef.current && totalDurationSec > 0) {
-          const availableWidth = timelineRef.current.clientWidth - 40;
-          setZoomLevel(Math.max(15, Math.min(120, Math.floor(availableWidth / totalDurationSec))));
-        }
-        return;
       }
     };
 
@@ -448,13 +575,14 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   }, [
     fps,
     playheadSec,
-    totalDurationSec,
     selectedShotIds,
+    selectedAudioId,
     film,
     onTogglePlay,
-    onPreviewSeek,
     handleUndo,
     handleRedo,
+    handleSplitAudio,
+    handleDeleteAudio,
     triggerUpdateWithTx,
   ]);
 
@@ -573,15 +701,19 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           {/* Split Button */}
           <button
             onClick={() => {
-              try {
-                const { film: splitFilm, actions } = splitShotAtTime(film, playheadSec);
-                triggerUpdateWithTx(splitFilm, actions, `Split shot at ${playheadSec.toFixed(2)}s`);
-              } catch (err) {
-                console.warn("[Split Rejected]", (err as Error).message);
+              if (selectedAudioId) {
+                handleSplitAudio();
+              } else {
+                try {
+                  const { film: splitFilm, actions } = splitShotAtTime(film, playheadSec);
+                  triggerUpdateWithTx(splitFilm, actions, `Split shot at ${playheadSec.toFixed(2)}s`);
+                } catch (err) {
+                  console.warn("[Split Rejected]", err);
+                }
               }
             }}
             className="text-[11px] px-2.5 py-1 rounded-md bg-[#27272A] hover:bg-[#3F3F46] text-white font-bold border border-[#3F3F46] flex items-center gap-1"
-            title="Split selected shot at playhead (S key)"
+            title="Split selected shot or audio clip at playhead (S key)"
           >
             <span>✂️ Split</span>
           </button>
@@ -589,6 +721,10 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           {/* Delete Button */}
           <button
             onClick={() => {
+              if (selectedAudioId) {
+                handleDeleteAudio();
+                return;
+              }
               const primarySelected = selectedShotIds[0];
               if (primarySelected && film.shots.length > 1) {
                 const idx = film.shots.findIndex((s) => s.id === primarySelected);
@@ -598,12 +734,12 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                     triggerUpdateWithTx(deletedFilm, actions, `Delete ${primarySelected}`);
                     setSelectedShotIds([deletedFilm.shots[Math.max(0, idx - 1)]?.id ?? ""]);
                   } catch (err) {
-                    console.warn("[Delete Rejected]", (err as Error).message);
+                    console.warn("[Delete Rejected]", err);
                   }
                 }
               }
             }}
-            disabled={selectedShotIds.length === 0 || film.shots.length <= 1}
+            disabled={(!selectedAudioId && selectedShotIds.length === 0) || (!selectedAudioId && film.shots.length <= 1)}
             className="text-[11px] px-2 py-1 rounded-md bg-red-950/60 hover:bg-red-900 border border-red-800 disabled:opacity-30 text-red-200"
             title="Delete Selected Clip (Backspace)"
           >
@@ -660,7 +796,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                     {(film.voiceover?.volume ?? 1) > 0 ? "🔊 On" : "🔇 Mute"}
                   </button>
                 </div>
-                <div className="text-[9px] text-gray-500 truncate">{film.voiceover?.src || "voiceover.wav"}</div>
+                <div className="text-[9px] text-gray-500 truncate">Trimmable audio</div>
               </div>
               <div className="h-20 border-b border-[#27272A] p-2 flex flex-col justify-between bg-[#141416]">
                 <div className="flex items-center justify-between text-blue-400 font-bold">
@@ -710,7 +846,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 ))}
               </div>
 
-              {/* SNAP GUIDE LINE (Pattern 3) */}
+              {/* SNAP GUIDE LINE */}
               {activeSnapTarget !== null && (
                 <div
                   className="absolute top-0 bottom-0 z-30 w-[1px] bg-cyan-400 shadow-[0_0_8px_cyan] pointer-events-none"
@@ -730,21 +866,84 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 <div className="w-[2px] flex-1 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.9)]" />
               </div>
 
-              {/* TRACK 1: SPEECH & AUDIO TIMELINE */}
+              {/* TRACK 1: SPEECH & AUDIO TIMELINE (100% INTERACTIVELY TRIMMABLE) */}
               <div
                 className="h-14 border-b border-[#27272A] relative flex items-center px-1"
                 style={{ width: `${Math.max(totalDurationSec + 5, 60) * zoomLevel}px` }}
               >
-                <div
-                  className="absolute top-2 bottom-2 rounded bg-yellow-950/40 border border-yellow-500/50 px-2 flex items-center justify-between text-[10px] text-yellow-300 font-mono group"
-                  style={{
-                    left: 0,
-                    width: Math.max(30, voiceoverTargetSec * zoomLevel),
-                  }}
-                >
-                  <span className="truncate pointer-events-none">🗣️ {film.voiceover?.src || "Voiceover Audio Spine"}</span>
-                  <span className="text-[9px] opacity-75 pointer-events-none">{voiceoverTargetSec.toFixed(2)}s</span>
-                </div>
+                {audioClips.map((aClip, aIdx) => {
+                  const override = pendingOverrides[aClip.id];
+                  const aPos = override?.position !== undefined ? override.position : aClip.position;
+                  const aDur = override?.dur !== undefined ? override.dur : aClip.end - aClip.start;
+                  const isSelected = selectedAudioId === aClip.id;
+
+                  return (
+                    <div
+                      key={aClip.id}
+                      onMouseDown={(e) => {
+                        if ((e.target as HTMLElement)?.dataset?.handle) return;
+                        e.stopPropagation();
+                        setSelectedAudioId(aClip.id);
+                        setSelectedShotIds([]);
+                        stateMachine.startDragAudio(aIdx, e.clientX, aPos);
+                      }}
+                      className={`absolute top-2 bottom-2 rounded px-2 flex items-center justify-between text-[10px] text-yellow-300 font-mono cursor-grab active:cursor-grabbing transition-all shadow-md group ${
+                        isSelected
+                          ? "bg-yellow-950/80 border-2 border-yellow-400 z-10 brightness-110"
+                          : "bg-yellow-950/40 border border-yellow-500/50 hover:border-yellow-300"
+                      }`}
+                      style={{
+                        left: aPos * zoomLevel,
+                        width: Math.max(30, aDur * zoomLevel),
+                      }}
+                    >
+                      {/* Left VO Trim Handle */}
+                      <div
+                        data-handle="vo-left"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          stateMachine.startResizeAudio(
+                            aIdx,
+                            "left",
+                            e.clientX,
+                            aClip.start,
+                            aClip.end,
+                            aDur,
+                            aPos
+                          );
+                        }}
+                        className="absolute top-0 bottom-0 left-0 w-2.5 bg-yellow-400/20 hover:bg-yellow-400 cursor-col-resize rounded-l opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                        title="Trim audio start"
+                      >
+                        <div className="w-[1px] h-3 bg-black/60" />
+                      </div>
+
+                      <span className="truncate pointer-events-none">🗣️ {aClip.src}</span>
+                      <span className="text-[9px] opacity-75 pointer-events-none font-mono">{aDur.toFixed(2)}s</span>
+
+                      {/* Right VO Trim Handle */}
+                      <div
+                        data-handle="vo-right"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          stateMachine.startResizeAudio(
+                            aIdx,
+                            "right",
+                            e.clientX,
+                            aClip.start,
+                            aClip.end,
+                            aDur,
+                            aPos
+                          );
+                        }}
+                        className="absolute top-0 bottom-0 right-0 w-2.5 bg-yellow-400/20 hover:bg-yellow-400 cursor-col-resize rounded-r opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                        title="Trim audio end"
+                      >
+                        <div className="w-[1px] h-3 bg-black/60" />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* TRACK 2: VIDEO SHOTS (DIRECT MANIPULATION & PENDING PREVIEWS) */}
@@ -757,7 +956,6 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                     const rawStart = shot.position ?? shot.startSec ?? shotStartTimes[idx] ?? 0;
                     const rawDur = getShotDuration(shot);
 
-                    // Pattern 5: Read from pendingOverrides for 60 FPS live preview during drag
                     const override = pendingOverrides[shot.id];
                     const startSec = override?.position !== undefined ? override.position : rawStart;
                     const dur = override?.dur !== undefined ? override.dur : rawDur;
@@ -771,6 +969,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                           onMouseDown={(e) => {
                             if ((e.target as HTMLElement)?.dataset?.handle) return;
                             e.stopPropagation();
+                            setSelectedAudioId(null);
                             if (e.shiftKey) {
                               setSelectedShotIds((prev) =>
                                 prev.includes(shot.id)
@@ -783,7 +982,6 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                             setPlayheadSec(startSec);
                             if (onPreviewSeek) onPreviewSeek(Math.round(startSec * fps));
 
-                            // Pattern 4: Start drag in State Machine
                             stateMachine.startDragClip(idx, e.clientX, startSec, selectedShotIds);
                           }}
                           className={`absolute top-1.5 bottom-1.5 rounded-lg border flex flex-col justify-between p-1.5 cursor-grab active:cursor-grabbing transition-all shadow-md group select-none ${
@@ -798,7 +996,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                             borderColor: clipColors[idx % clipColors.length],
                           }}
                         >
-                          {/* Left Trim Handle (Pattern 1) */}
+                          {/* Left Trim Handle */}
                           <div
                             data-handle="left"
                             onMouseDown={(e) => {
@@ -834,7 +1032,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                             {shot.scriptText || shot.visualDirection || shot.look}
                           </div>
 
-                          {/* Right Trim Handle (Pattern 1) */}
+                          {/* Right Trim Handle */}
                           <div
                             data-handle="right"
                             onMouseDown={(e) => {

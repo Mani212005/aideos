@@ -11,7 +11,6 @@
 import type { LayeredFilm, Clip } from "../../src/dl/layeredSchema";
 import {
   type UpdateAction,
-  TimelineTransactionManager,
   generateUUID,
 } from "./updates";
 import fs from "fs";
@@ -58,7 +57,6 @@ export function splitAudioClip(
 
   const splitOffset = playheadSec - clip.position;
   const leftDur = Number(splitOffset.toFixed(3));
-  const rightDur = Number((clipDur - splitOffset).toFixed(3));
 
   const leftClip: Clip = {
     ...JSON.parse(JSON.stringify(clip)),

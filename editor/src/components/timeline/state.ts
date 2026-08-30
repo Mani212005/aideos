@@ -8,15 +8,20 @@
 export type TimelineDragMode =
   | "idle"
   | "drag-clip"
+  | "drag-audio"
   | "resize-left"
   | "resize-right"
+  | "resize-audio-left"
+  | "resize-audio-right"
   | "playhead-scrub"
   | "box-select"
   | "vo-trim";
 
 export interface DragContext {
   mode: TimelineDragMode;
+  targetKind?: "shot" | "audio";
   shotIndex?: number;
+  audioIndex?: number;
   startX: number;
   startY?: number;
   initialPositionSec?: number;
@@ -27,6 +32,7 @@ export interface DragContext {
   currentDeltaSec: number;
   edge?: "left" | "right";
   selectedShotIds?: string[];
+  selectedAudioIds?: string[];
 }
 
 export class TimelineDragStateMachine {
@@ -111,13 +117,42 @@ export class TimelineDragStateMachine {
     this.notify();
   }
 
-  startVoTrim(edge: "left" | "right", clientX: number, initialInSec: number, initialDur: number): void {
+  startDragAudio(
+    audioIndex: number,
+    clientX: number,
+    initialPositionSec: number
+  ): void {
     this.currentContext = {
-      mode: "vo-trim",
+      mode: "drag-audio",
+      targetKind: "audio",
+      audioIndex,
+      startX: clientX,
+      initialPositionSec,
+      currentDeltaPx: 0,
+      currentDeltaSec: 0,
+    };
+    this.notify();
+  }
+
+  startResizeAudio(
+    audioIndex: number,
+    edge: "left" | "right",
+    clientX: number,
+    initialInSec: number,
+    initialOutSec: number,
+    initialDur: number,
+    initialPositionSec: number
+  ): void {
+    this.currentContext = {
+      mode: edge === "left" ? "resize-audio-left" : "resize-audio-right",
+      targetKind: "audio",
+      audioIndex,
       edge,
       startX: clientX,
       initialInSec,
+      initialOutSec,
       initialDur,
+      initialPositionSec,
       currentDeltaPx: 0,
       currentDeltaSec: 0,
     };
