@@ -18,29 +18,33 @@ interface GlobalFeedbackWidgetProps {
   film: Film;
   activeMode: string;
   activeSelectionId?: string;
+  onUpdateFilm?: (updated: Film) => void;
 }
 
 // Renders the global floating feedback chatbot widget present across all editor views.
-export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId }: GlobalFeedbackWidgetProps) {
+export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUpdateFilm }: GlobalFeedbackWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState("");
+  const storageKey = `aideos_feedback_history_${film.id}`;
+
+  const createDefaultWelcome = (f: Film): FeedbackMessage => ({
+    id: `welcome-${f.id}`,
+    sender: "assistant",
+    text: `Ahoy! I am your Aideos AI Video Assistant. Submit your feedback on "${f.title}" or ask for script, audio, timing, and animation adjustments!`,
+    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  });
+
   const [messages, setMessages] = useState<FeedbackMessage[]>(() => {
-    const saved = localStorage.getItem("aideos_feedback_history");
+    const saved = localStorage.getItem(`aideos_feedback_history_${film.id}`);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch (e) {
         // Fall back to default initial welcome message
       }
     }
-    return [
-      {
-        id: "welcome-1",
-        sender: "assistant",
-        text: `Ahoy! I am your Aideos AI Video Assistant. Submit your feedback on "${film.title}" or ask for script and animation adjustments!`,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      },
-    ];
+    return [createDefaultWelcome(film)];
   });
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -50,14 +54,29 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId }: Gl
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Re-sync chat messages whenever active film id changes
+  useEffect(() => {
+    const saved = localStorage.getItem(`aideos_feedback_history_${film.id}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+          return;
+        }
+      } catch (e) {}
+    }
+    setMessages([createDefaultWelcome(film)]);
+  }, [film.id]);
+
   // Persists message history to local storage whenever messages update
   useEffect(() => {
-    localStorage.setItem("aideos_feedback_history", JSON.stringify(messages));
+    localStorage.setItem(storageKey, JSON.stringify(messages));
     scrollToBottom();
-  }, [messages]);
+  }, [messages, storageKey]);
 
-  // Handles sending user feedback and simulating automated AI assistant response
-  const handleSendMessage = (textToSend?: string) => {
+  // Handles sending user feedback and executing AI critique engine updates
+  const handleSendMessage = async (textToSend?: string) => {
     const messageContent = (textToSend || inputText).trim();
     if (!messageContent) return;
 
@@ -76,40 +95,35 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId }: Gl
     if (!textToSend) setInputText("");
     setIsTyping(true);
 
-    // Initial acknowledgment from AI Assistant
-    setTimeout(() => {
-      const ackMsg: FeedbackMessage = {
-        id: `assistant-ack-${Date.now()}`,
-        sender: "assistant",
-        text: `⚡ Firstmate Agent engaged! Working on your request: "${messageContent.slice(0, 60)}${messageContent.length > 60 ? "..." : ""}"`,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-      setMessages((prev) => [...prev, ackMsg]);
-    }, 400);
-
-    // Completed response from agent after execution
-    setTimeout(() => {
-      let responseText = "Captain, the requested video adjustments have been implemented! Simply refresh the page to view the updated composition.";
-
-      const lower = messageContent.toLowerCase();
-      if (lower.includes("script") || lower.includes("text") || lower.includes("narration")) {
-        responseText = `Captain, your script adjustments for "${film.title}" are complete! Refresh the editor to sync the latest narration timeline.`;
-      } else if (lower.includes("color") || lower.includes("style") || lower.includes("accent")) {
-        responseText = `Captain, visual design tokens have been re-indexed! Accent color is set to ${film.accent || "#635BFF"}. Refresh to render.`;
-      } else if (lower.includes("timing") || lower.includes("speed") || lower.includes("duration") || lower.includes("timeline")) {
-        responseText = `Captain, the timeline duration is locked to 5 minutes 21 seconds! Refresh the page and your tracks will render to full audio length.`;
+    try {
+      const res = await fetch("/api/critique", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ critique: messageContent, film }),
+      });
+      const data = await res.json();
+      if (data.ok && data.updatedFilm && onUpdateFilm) {
+        onUpdateFilm(data.updatedFilm);
       }
 
       const assistantMsg: FeedbackMessage = {
         id: `assistant-${Date.now()}`,
         sender: "assistant",
-        text: responseText,
+        text: data.explanation || (data.ok ? "Captain, adjustments have been applied to the composition!" : (data.error || "Unable to apply adjustment.")),
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
-
       setMessages((prev) => [...prev, assistantMsg]);
+    } catch (err: any) {
+      const assistantMsg: FeedbackMessage = {
+        id: `assistant-${Date.now()}`,
+        sender: "assistant",
+        text: `Error applying critique: ${err.message || String(err)}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+    } finally {
       setIsTyping(false);
-    }, 2400);
+    }
   };
 
   // Quick feedback chip trigger handler
@@ -126,7 +140,7 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId }: Gl
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
     setMessages([defaultMsg]);
-    localStorage.removeItem("aideos_feedback_history");
+    localStorage.removeItem(storageKey);
   };
 
   return (

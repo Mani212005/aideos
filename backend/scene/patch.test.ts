@@ -7,7 +7,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import path from "path";
-import type { Scene } from "../../src/dl/scene/types";
+import type { Scene, ActorInstance } from "../../src/dl/scene/types";
 import { applyPatch, type PatchOp } from "../../src/dl/scene/patch";
 import { compileScene } from "../../src/dl/scene/compile";
 

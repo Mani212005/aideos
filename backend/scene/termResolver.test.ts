@@ -54,6 +54,8 @@ test("B-3: Terms absent from captions fall back to deterministic even distributi
     stage: "frame",
     look: "node-1",
     move: "pan",
+    drift: false,
+    zoom: 1,
     blocks: [block],
   };
 
@@ -83,6 +85,8 @@ test("B-4: Multi-layer LayerStack timing aligns bottom and top labels with audio
     stage: "frame",
     look: "node-2",
     move: "pan",
+    drift: false,
+    zoom: 1,
     blocks: [block],
   };
 
@@ -96,6 +100,7 @@ test("B-5: Negative Case: forced extreme bounds clamp strictly within shot frame
   const block: Block = {
     c: "TokenStrip",
     tokens: ["Step A", "Step B", "Step C"],
+    lit: [0],
   };
   const shot: Shot = {
     id: "shot-token",
@@ -103,6 +108,8 @@ test("B-5: Negative Case: forced extreme bounds clamp strictly within shot frame
     stage: "frame",
     look: "node-3",
     move: "cut",
+    drift: false,
+    zoom: 1,
     blocks: [block],
   };
 

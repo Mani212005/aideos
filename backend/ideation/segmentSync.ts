@@ -181,9 +181,16 @@ export async function runSegmentSyncGate(
     });
   }
 
-  return {
-    verdicts,
-    segmentShotMappings: mappings,
-    allPassedOrFixed: true,
-  };
-}
+    return {
+      verdicts,
+      segmentShotMappings: mappings,
+      allPassedOrFixed: true,
+    };
+  }
+
+  export async function runPreRenderSyncGate(
+    _film: any,
+    segments: SegmentAudioInfo[],
+  ): Promise<SyncGateResult> {
+    return runSegmentSyncGate(segments);
+  }

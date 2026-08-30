@@ -5,7 +5,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extractConciseHeadline, selectShotVisualIntent } from "../ideation/visualSelector";
+import { extractConciseHeadline } from "../ideation/visualSelector";
 import { buildBriefFromSegmentFallback } from "../ideation/segmentSync";
 
 test("E-a: Derived headlines never slice text mid-word and contain complete words", () => {
@@ -56,9 +56,6 @@ test("E-b: Extracted headlines never exceed 8 words and are distinct from long n
 });
 
 test("Phase E Negative Case 1: Truncating a text field mid-word fails complete-word assertion", () => {
-  const originalWord = "difficult";
-  const brokenWord = "difficul"; // chopped by 1 char
-
   const fullSentence = "made real implementations notoriously difficult to reason about.";
   const brokenHeadline = "made real implementations notoriously difficul";
 

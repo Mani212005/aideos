@@ -18,9 +18,9 @@ export const flashAttentionFilm: Film = {
     cameraAngle: "isometric",
     accent: "#635BFF",
   },
-  audio: {
+  voiceover: {
     src: "voiceover.wav",
-    ducking: true,
+    volume: 1,
   },
   captions: `WEBVTT
 
@@ -28,32 +28,32 @@ export const flashAttentionFilm: Film = {
 Modern GPUs compute at petaflop speeds, but standard attention leaves them starving for memory bandwidth.
 
 00:00:06.340 --> 00:00:10.120
-High bandwidth memory is simply too slow compared to tensor cores.
+High-bandwidth memory cannot keep pace with tensor cores, spending 80% of cycle time moving weights instead of computing.
 
-00:00:10.619 --> 00:00:15.679
-FlashAttention-3 unlocks Hopper architecture using asynchronous tensor memory accelerators.
+00:00:10.820 --> 00:00:16.240
+FlashAttention-3 leverages Nvidia Hopper asynchronous Tensor Memory Accelerators to bypass traditional software staging.
 
-00:00:16.379 --> 00:00:19.679
-Memory loads overlap completely with FP8 matrix multiplication.
+00:00:16.820 --> 00:00:20.760
+By overlapping asynchronous memory loads directly with low-precision FP8 tensor operations, it hides memory latency completely.
 
-00:00:20.654 --> 00:00:28.194
-By interleaving softmax exponentiation in asynchronous matrix engines, register pressure drops to zero.
+00:00:21.280 --> 00:00:28.720
+A specialized ping-pong warp-specialized scheduler keeps tensor cores saturated while eliminating register file spilling.
 
-00:00:28.454 --> 00:00:34.474
-The result is up to 2.4 times faster attention reaching 900 teraflops on a single H100.`,
+00:00:29.340 --> 00:00:35.680
+The result is a staggering 900 TFLOPs on H100 GPUs, unlocking massive multi-million token context windows.`,
   chapters: [
-    "The Memory Wall",
-    "HBM Bottleneck",
-    "Hopper TMA Asynchrony",
-    "FP8 Overlap",
-    "Ping-Pong Scheduling",
-    "The 900 TFLOPs Payoff",
+    "GPU Starvation",
+    "HBM Bandwidth Wall",
+    "Hardware TMA Async",
+    "FP8 Overlapping Math",
+    "Ping-Pong Scheduler",
+    "900 TFLOPs Payoff",
   ],
   canvas: {
     nodes: [
       {
         id: "memory-wall",
-        label: "The Memory Wall",
+        label: "GPU Memory Starvation",
         x: -400,
         y: -200,
         w: 260,
@@ -61,7 +61,7 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       },
       {
         id: "hbm-bottleneck",
-        label: "HBM vs Tensor Core",
+        label: "HBM Bandwidth Bottleneck",
         x: 400,
         y: -200,
         w: 260,
@@ -69,7 +69,7 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       },
       {
         id: "hopper-tma",
-        label: "Hopper TMA Engine",
+        label: "Hopper Hardware TMA",
         x: 400,
         y: 200,
         w: 260,
@@ -77,7 +77,7 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       },
       {
         id: "async-pipeline",
-        label: "FP8 Tensor Overlap",
+        label: "Async FP8 Tensor Pipeline",
         x: -400,
         y: 200,
         w: 260,
@@ -85,7 +85,7 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       },
       {
         id: "ping-pong",
-        label: "Ping-Pong Scheduling",
+        label: "Ping-Pong Warp Scheduler",
         x: 0,
         y: 0,
         w: 280,
@@ -93,7 +93,7 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       },
       {
         id: "payoff",
-        label: "900 TFLOPs H100 Payoff",
+        label: "900 TFLOPs on H100",
         x: 0,
         y: 400,
         w: 280,
@@ -115,6 +115,8 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       look: "memory-wall",
       move: "cut",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Tech Architect explains GPU memory starvation at the memory wall",
       blocks: [
         {
@@ -140,6 +142,8 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       look: "hbm-bottleneck",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Matrix comparison showing HBM memory bandwidth vs Tensor Core compute",
       blocks: [
         {
@@ -156,6 +160,7 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
             [0.7, 0.2, 0.5, 0.9],
             [0.2, 0.8, 0.4, 0.3],
           ],
+          sweep: "row",
           rowLabel: "Query Blocks",
           colLabel: "Key Blocks",
         },
@@ -167,6 +172,8 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       look: "hopper-tma",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "AI Researcher explains Hopper asynchronous Tensor Memory Accelerators",
       blocks: [
         {
@@ -192,6 +199,8 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       look: "async-pipeline",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Hardware pipeline diagram showing memory loads overlapping FP8 matrix multiplies",
       blocks: [
         {
@@ -214,6 +223,8 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       look: "ping-pong",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Ping-pong block scheduling in device frame buffer",
       blocks: [
         {
@@ -236,6 +247,8 @@ The result is up to 2.4 times faster attention reaching 900 teraflops on a singl
       look: "payoff",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Tech Architect celebrates 2.4x speedup reaching 900 TFLOPs on H100",
       blocks: [
         {

@@ -8,6 +8,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
 import { produceAudioPipeline } from '../backend/audio.ts'
+import { executeCritique } from '../backend/critique/engine.ts'
 
 const filmsDir = path.resolve(__dirname, '../src/dl/films');
 
@@ -52,11 +53,12 @@ function filmApiPlugin(): Plugin {
       server.middlewares.use((req, res, next) => {
         const url = (req.url ?? '').split('?')[0];
 
-        // Disable browser caching for media assets during development
-        if (url.endsWith('.wav') || url.endsWith('.vtt')) {
-          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-          res.setHeader('Pragma', 'no-cache');
-          res.setHeader('Expires', '0');
+        // Enable byte-range streaming and caching for audio media to prevent playback stutter
+        if (url.endsWith('.wav')) {
+          res.setHeader('Accept-Ranges', 'bytes');
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+        } else if (url.endsWith('.vtt')) {
+          res.setHeader('Cache-Control', 'no-cache');
         }
 
         // Handle /api/export endpoint for 1-click video rendering
@@ -858,6 +860,52 @@ function filmApiPlugin(): Plugin {
             const currentScript = fs.existsSync(scriptPath) ? fs.readFileSync(scriptPath, 'utf8') : '';
             sendJson(res, 200, { ok: true, script: currentScript });
           }).catch(err => sendJson(res, 500, { error: String(err) }));
+          return;
+        }
+
+        // Handle /api/critique (Natural-Language Critique & Film Patching Engine)
+        if (url === '/api/critique' && req.method === 'POST') {
+          void readBody(req).then((body: any) => {
+            const { critique, film, scene } = body || {};
+            if (!critique || !film) {
+              sendJson(res, 400, { error: 'critique and film are required' });
+              return;
+            }
+
+            const result = executeCritique({ critique, film, scene });
+
+            // Persist conversation history to disk for full assistant & developer context
+            try {
+              const dataDir = path.resolve(__dirname, '../data');
+              if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+              const logFile = path.join(dataDir, 'chatbot_conversations.json');
+              let history: any[] = [];
+              if (fs.existsSync(logFile)) {
+                try {
+                  history = JSON.parse(fs.readFileSync(logFile, 'utf8'));
+                } catch (_) {}
+              }
+              history.push({
+                timestamp: new Date().toISOString(),
+                filmId: film.id,
+                filmTitle: film.title,
+                userMessage: critique,
+                assistantResponse: result.explanation,
+                target: result.target,
+                appliedOps: result.patchOps,
+                ok: result.ok,
+              });
+              fs.writeFileSync(logFile, JSON.stringify(history.slice(-100), null, 2), 'utf8');
+            } catch (_) {}
+
+            if (result.ok && result.updatedFilm && result.patchOps && result.patchOps.length > 0) {
+              const filmFile = path.join(filmsDir, `${result.updatedFilm.id}.ts`);
+              if (fs.existsSync(filmFile)) {
+                fs.writeFileSync(filmFile, filmModule(result.updatedFilm), 'utf8');
+              }
+            }
+            sendJson(res, 200, result);
+          }).catch((err) => sendJson(res, 500, { error: String(err) }));
           return;
         }
 

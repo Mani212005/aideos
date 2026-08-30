@@ -9,10 +9,8 @@
 import type { LayeredFilm, Layer, Clip } from "../../src/dl/layeredSchema";
 import {
   type UpdateAction,
-  TimelineTransactionManager,
   generateUUID,
 } from "./updates";
-import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
 
 /**
  * Add a new user-created layer to the film (U-2).

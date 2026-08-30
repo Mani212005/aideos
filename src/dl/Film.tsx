@@ -230,6 +230,7 @@ export type FilmViewProps = {
   showRail: boolean;
   captionWords?: CaptionWord[];
   transitionType?: string;
+  includeAudio?: boolean;
 };
 
 const Dynamic3DHeroOverlay: React.FC<{ frame: number; timeline: ReturnType<typeof buildTimeline> }> = ({ frame, timeline }) => {
@@ -311,6 +312,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
   showRail,
   captionWords,
   transitionType,
+  includeAudio = true,
 }) => {
   const frame = useCurrentFrame();
   const { width, height, fps } = useVideoConfig();
@@ -418,51 +420,55 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {captionWords && captionWords.length > 0 && <KineticSubtitles words={captionWords} />}
 
         {/* Master Audio Track & Multi-Clip Voiceover Spine */}
-        {film.audioClips && film.audioClips.length > 0 ? (
-          film.audioClips.map((ac) => {
-            const speed = ac.speed ?? 1.0;
-            const startFrame = Math.round(ac.position * fps);
-            const startFrom = Math.round((ac.start ?? 0) * fps);
-            const endAt = Math.round(ac.end * fps);
-            const rawDurFrames = Math.max(1, endAt - startFrom);
-            const effectiveDurFrames = Math.max(1, Math.round(rawDurFrames / speed));
-            return (
-              <Sequence key={ac.id} from={startFrame} durationInFrames={effectiveDurFrames}>
+        {includeAudio && (
+          <>
+            {film.audioClips && film.audioClips.length > 0 ? (
+              film.audioClips.map((ac) => {
+                const speed = ac.speed ?? 1.0;
+                const startFrame = Math.round(ac.position * fps);
+                const startFrom = Math.round((ac.start ?? 0) * fps);
+                const endAt = Math.round(ac.end * fps);
+                const rawDurFrames = Math.max(1, endAt - startFrom);
+                const effectiveDurFrames = Math.max(1, Math.round(rawDurFrames / speed));
+                return (
+                  <Sequence key={ac.id} from={startFrame} durationInFrames={effectiveDurFrames}>
+                    <Audio
+                      src={staticFile(ac.src)}
+                      startFrom={startFrom}
+                      endAt={endAt}
+                      playbackRate={speed}
+                      volume={ac.volume ?? 1}
+                    />
+                  </Sequence>
+                );
+              })
+            ) : (
+              film.voiceover?.src && (
                 <Audio
-                  src={staticFile(ac.src)}
-                  startFrom={startFrom}
-                  endAt={endAt}
-                  playbackRate={speed}
-                  volume={() => ac.volume ?? 1}
+                  key={`vo-${film.voiceover.src}`}
+                  src={staticFile(film.voiceover.src)}
+                  playbackRate={film.voiceover?.speed ?? 1.0}
+                  volume={film.voiceover?.volume ?? 1}
                 />
+              )
+            )}
+
+            {/* Background Music */}
+            {film.music?.src && (
+              <Audio
+                src={staticFile(film.music.src)}
+                volume={(film.music?.volume ?? 1) * 0.25}
+              />
+            )}
+
+            {/* SFX Timeline Placements */}
+            {film.sfx?.map((sfx, idx) => (
+              <Sequence key={idx} from={Math.round(sfx.timeSec * fps)}>
+                <Audio src={staticFile(sfx.src)} volume={sfx.volume ?? 1} />
               </Sequence>
-            );
-          })
-        ) : (
-          film.voiceover?.src && (
-            <Audio
-              key={`vo-${film.voiceover.src}-${(film.voiceover as any)?.version || ''}-${(film.voiceover as any)?.updatedAt || ''}`}
-              src={staticFile(film.voiceover.src)}
-              playbackRate={film.voiceover?.speed ?? 1.0}
-              volume={() => film.voiceover?.volume ?? 1}
-            />
-          )
+            ))}
+          </>
         )}
-
-        {/* Background Music */}
-        {film.music?.src && (
-          <Audio
-            src={staticFile(film.music.src)}
-            volume={() => (film.music?.volume ?? 1) * 0.25}
-          />
-        )}
-
-        {/* SFX Timeline Placements */}
-        {film.sfx?.map((sfx, idx) => (
-          <Sequence key={idx} from={Math.round(sfx.timeSec * fps)}>
-            <Audio src={staticFile(sfx.src)} volume={() => sfx.volume ?? 1} />
-          </Sequence>
-        ))}
 
         {/* A single hairline vignette at the very edge */}
         <AbsoluteFill

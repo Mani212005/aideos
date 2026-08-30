@@ -18,9 +18,9 @@ export const transformersVsMambaFilm: Film = {
     cameraAngle: "isometric",
     accent: "#FF6B00",
   },
-  audio: {
+  voiceover: {
     src: "voiceover.wav",
-    ducking: true,
+    volume: 1,
   },
   captions: `WEBVTT
 
@@ -115,6 +115,8 @@ The result is 5x higher inference throughput and infinite context scaling withou
       look: "quadratic-wall",
       move: "cut",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Systems Architect explains quadratic attention bottleneck",
       blocks: [
         {
@@ -141,6 +143,8 @@ The result is 5x higher inference throughput and infinite context scaling withou
       look: "kv-cache",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Layer stack showing expanding KV-Cache memory consumption",
       blocks: [
         {
@@ -163,6 +167,8 @@ The result is 5x higher inference throughput and infinite context scaling withou
       look: "mamba-ssm",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Cyber AI Bot introduces selective state spaces with time-varying discretization",
       blocks: [
         {
@@ -188,6 +194,8 @@ The result is 5x higher inference throughput and infinite context scaling withou
       look: "constant-hidden",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Token strip compressing continuous sequence into fixed hidden dimension",
       blocks: [
         {
@@ -210,6 +218,8 @@ The result is 5x higher inference throughput and infinite context scaling withou
       look: "hardware-scan",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Linear scaling comparison in SRAM hardware associative scans",
       blocks: [
         {
@@ -232,6 +242,8 @@ The result is 5x higher inference throughput and infinite context scaling withou
       look: "payoff",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Systems Architect celebrates 5x throughput with infinite context",
       blocks: [
         {

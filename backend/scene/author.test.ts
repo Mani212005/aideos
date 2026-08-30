@@ -10,7 +10,7 @@ import path from "path";
 import type { Scene } from "../../src/dl/scene/types";
 import { validateScene } from "../../src/dl/scene/validateScene";
 import { compileScene } from "../../src/dl/scene/compile";
-import { buildSceneAuthoringPrompt, buildSceneRevisionPrompt } from "./prompt";
+import { buildSceneAuthoringPrompt } from "./prompt";
 import { authorScene, reviseScene } from "./author";
 import { getAllCharacterRigs } from "../../src/dl/characters";
 import { MODEL_SHEETS } from "../../src/dl/scene/modelSheet";

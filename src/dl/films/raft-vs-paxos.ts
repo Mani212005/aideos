@@ -18,9 +18,9 @@ export const raftVsPaxosFilm: Film = {
     cameraAngle: "isometric",
     accent: "#635BFF",
   },
-  audio: {
+  voiceover: {
     src: "voiceover.wav",
-    ducking: true,
+    volume: 1,
   },
   captions: `WEBVTT
 
@@ -102,6 +102,8 @@ By making state transitions strictly understandable, Raft powers modern distribu
       look: "consensus-problem",
       move: "cut",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Tech Founder explains distributed consistency across unreliable nodes",
       blocks: [
         {
@@ -127,6 +129,8 @@ By making state transitions strictly understandable, Raft powers modern distribu
       look: "paxos-matrix",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Matrix showing multi-phase Paxos messaging complexity",
       blocks: [
         {
@@ -143,6 +147,7 @@ By making state transitions strictly understandable, Raft powers modern distribu
             [0.8, 0.2, 0.9, 0.4],
             [0.3, 0.7, 0.5, 0.9],
           ],
+          sweep: "row",
           rowLabel: "Proposers",
           colLabel: "Acceptors",
         },
@@ -154,6 +159,8 @@ By making state transitions strictly understandable, Raft powers modern distribu
       look: "raft-engine",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Tech Architect explains Raft 3 decomposed subproblems",
       blocks: [
         {
@@ -179,6 +186,8 @@ By making state transitions strictly understandable, Raft powers modern distribu
       look: "quorum-log",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Token strip showing strong leader log replication across quorum",
       blocks: [
         {
@@ -201,6 +210,8 @@ By making state transitions strictly understandable, Raft powers modern distribu
       look: "k8s-payoff",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Tech Founder celebrates Raft powering etcd and Kubernetes infrastructure",
       blocks: [
         {

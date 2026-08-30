@@ -7,13 +7,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  computeShotStartTimes,
   getShotDuration,
   moveShot,
   moveMultipleShots,
   trimShotEdge,
   splitShotAtTime,
-  deleteShot,
 } from "./timeline";
 import {
   TimelineTransactionManager,
@@ -34,14 +32,13 @@ function createMockFilm(): Film {
     id: "test-geometry-film",
     title: "Test Geometry Film",
     fps: 30,
-    stage: "frame",
     chapters: ["ch1"],
     canvas: {
       nodes: [
-        { id: "n1", label: "Node 1", x: 0, y: 0 },
-        { id: "n2", label: "Node 2", x: 200, y: 0 },
+        { id: "n1", label: "Node 1", x: 0, y: 0, w: 200, h: 60 },
+        { id: "n2", label: "Node 2", x: 200, y: 0, w: 200, h: 60 },
       ],
-      edges: [{ from: "n1", to: "n2" }],
+      edges: [{ from: "n1", to: "n2", dashed: false }],
     },
     shots: [
       {
@@ -54,7 +51,9 @@ function createMockFilm(): Film {
         stage: "frame",
         look: "n1",
         move: "cut",
-        blocks: [{ c: "StatCounter", from: 0, to: 90, label: "Throughput", format: "plain" }],
+        drift: false,
+        zoom: 1,
+        blocks: [{ c: "StatCounter", to: 90, label: "Throughput", format: "plain" }],
       },
       {
         id: "shot-2",
@@ -66,7 +65,9 @@ function createMockFilm(): Film {
         stage: "frame",
         look: "n2",
         move: "pan",
-        blocks: [{ c: "StatCounter", from: 0, to: 95, label: "Efficiency", format: "plain" }],
+        drift: false,
+        zoom: 1,
+        blocks: [{ c: "StatCounter", to: 95, label: "Efficiency", format: "plain" }],
       },
       {
         id: "shot-3",
@@ -78,7 +79,9 @@ function createMockFilm(): Film {
         stage: "frame",
         look: "n1",
         move: "pan",
-        blocks: [{ c: "StatCounter", from: 0, to: 99, label: "Accuracy", format: "plain" }],
+        drift: false,
+        zoom: 1,
+        blocks: [{ c: "StatCounter", to: 99, label: "Accuracy", format: "plain" }],
       },
     ],
   };

@@ -73,7 +73,7 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
       return (
         <Plot
           {...timing}
-          points={block.points}
+          points={block.points as [number, number][]}
           xLabel={block.xLabel}
           yLabel={block.yLabel}
           endLabel={block.endLabel}

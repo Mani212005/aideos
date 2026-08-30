@@ -70,8 +70,7 @@ export async function researchTopic(topic: string): Promise<ResearchBundle> {
 
   const client = new Parallel({ apiKey });
   const searchResults = await client.search({
-    query: `${topic} technical mechanism architecture data facts`,
-    maxResults: 5,
+    search_queries: [`${topic} technical mechanism architecture data facts`],
   });
 
   const claims: ResearchClaim[] = [];
@@ -80,8 +79,9 @@ export async function researchTopic(topic: string): Promise<ResearchBundle> {
   if (searchResults?.results && Array.isArray(searchResults.results)) {
     for (const r of searchResults.results) {
       if (r.url) sourceUrls.push(r.url);
+      const excerpt = (r as any).excerpts?.[0] || (r as any).snippet || r.title || `Factual claim regarding ${topic}`;
       claims.push({
-        claim: r.snippet || r.title || `Factual claim regarding ${topic}`,
+        claim: excerpt,
         sourceUrl: r.url || "https://parallel.ai",
         sourceTitle: r.title || topic,
       });

@@ -33,6 +33,8 @@ const baseFilm: Film = {
       stage: "frame",
       look: "node-1",
       move: "cut",
+      drift: false,
+      zoom: 1,
       blocks: [
         {
           c: "MetaphorViewer",
@@ -51,6 +53,8 @@ const baseFilm: Film = {
       stage: "frame",
       look: "node-2",
       move: "pan",
+      drift: false,
+      zoom: 1,
       blocks: [
         {
           c: "TextReveal",
@@ -186,9 +190,9 @@ test("M-5: Cross-film check compiles repo films and verifies zero GPU terms appe
   const raftModule = await import("../../src/dl/films/raft-vs-paxos");
 
   const nonGpuFilms = [
-    { name: "mars-water", film: marsModule.marsWaterFilm || marsModule.ACTIVE_FILM },
-    { name: "how-browsers-work", film: browsersModule.howBrowsersWorkFilm || browsersModule.ACTIVE_FILM },
-    { name: "raft-vs-paxos", film: raftModule.raftVsPaxosFilm || raftModule.ACTIVE_FILM },
+    { name: "mars-water", film: (marsModule as any).marsWaterFilm || (marsModule as any).ACTIVE_FILM },
+    { name: "how-browsers-work", film: (browsersModule as any).howBrowsersWorkFilm || (browsersModule as any).ACTIVE_FILM },
+    { name: "raft-vs-paxos", film: (raftModule as any).raftVsPaxosFilm || (raftModule as any).ACTIVE_FILM },
   ];
 
   for (const { name, film } of nonGpuFilms) {

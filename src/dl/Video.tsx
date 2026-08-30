@@ -78,7 +78,7 @@ export const Video: React.FC<FilmProps> = ({
             const startFrame = Math.round(sfx.timeSec * FPS);
             return (
               <Sequence key={`sfx-${idx}-${sfx.src}`} from={startFrame}>
-                <Audio src={staticFile(sfx.src)} volume={() => sfx.volume ?? 1} />
+                <Audio src={staticFile(sfx.src)} volume={sfx.volume ?? 1} />
               </Sequence>
             );
           })
@@ -91,6 +91,7 @@ export const Video: React.FC<FilmProps> = ({
         showGrid={showGrid}
         showRail={showRail}
         captionWords={generateWordsFromFilm(FILM as unknown as Record<string, unknown>)}
+        includeAudio={false}
       />
     </>
   );

@@ -6,8 +6,6 @@
  * - Universal undo/redo pops and reverses transactions atomically.
  */
 
-import type { Film } from "../../src/dl/schema";
-
 export type ActionType = "insert" | "update" | "delete";
 
 export interface UpdateAction {
@@ -20,12 +18,12 @@ export interface UpdateAction {
   timestamp: number;
 }
 
-export interface TimelineTransaction {
+export interface TimelineTransaction<T = any> {
   id: string;
   label: string;
   timestamp: number;
-  filmSnapshotBefore: Film;
-  filmSnapshotAfter: Film;
+  filmSnapshotBefore: T;
+  filmSnapshotAfter: T;
   actions: UpdateAction[];
 }
 
@@ -33,9 +31,9 @@ export function generateUUID(): string {
   return "tx-" + Math.random().toString(36).substring(2, 9) + "-" + Date.now().toString(36);
 }
 
-export class TimelineTransactionManager {
-  private undoStack: TimelineTransaction[] = [];
-  private redoStack: TimelineTransaction[] = [];
+export class TimelineTransactionManager<T = any> {
+  private undoStack: TimelineTransaction<T>[] = [];
+  private redoStack: TimelineTransaction<T>[] = [];
   private readonly maxDepth: number;
 
   constructor(maxDepth = 60) {
@@ -46,12 +44,12 @@ export class TimelineTransactionManager {
    * Commit a new atomic transaction consisting of one or more UpdateActions.
    */
   commit(
-    filmBefore: Film,
-    filmAfter: Film,
+    filmBefore: T,
+    filmAfter: T,
     actions: Array<Omit<UpdateAction, "transactionId" | "timestamp">>,
     label: string,
     txId = generateUUID()
-  ): TimelineTransaction {
+  ): TimelineTransaction<T> {
     const timestamp = Date.now();
     const fullActions: UpdateAction[] = actions.map((a) => ({
       ...a,
@@ -59,7 +57,7 @@ export class TimelineTransactionManager {
       timestamp,
     }));
 
-    const transaction: TimelineTransaction = {
+    const transaction: TimelineTransaction<T> = {
       id: txId,
       label,
       timestamp,
@@ -80,7 +78,7 @@ export class TimelineTransactionManager {
   /**
    * Undo the latest transaction in the history stack.
    */
-  undo(currentFilm: Film): { film: Film; transaction: TimelineTransaction } | null {
+  undo(currentFilm: T): { film: T; transaction: TimelineTransaction<T> } | null {
     if (this.undoStack.length === 0) return null;
     const tx = this.undoStack.pop()!;
     this.redoStack.push({
@@ -96,7 +94,7 @@ export class TimelineTransactionManager {
   /**
    * Redo the most recently undone transaction.
    */
-  redo(currentFilm: Film): { film: Film; transaction: TimelineTransaction } | null {
+  redo(currentFilm: T): { film: T; transaction: TimelineTransaction<T> } | null {
     if (this.redoStack.length === 0) return null;
     const tx = this.redoStack.pop()!;
     this.undoStack.push({

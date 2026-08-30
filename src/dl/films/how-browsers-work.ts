@@ -18,9 +18,9 @@ export const howBrowsersWorkFilm: Film = {
     cameraAngle: "isometric",
     accent: "#635BFF",
   },
-  audio: {
+  voiceover: {
     src: "voiceover.wav",
-    ducking: true,
+    volume: 1,
   },
   captions: `WEBVTT
 
@@ -102,6 +102,8 @@ The server returns HTML, which the browser engine parses into the DOM tree, comp
       look: "browser-entry",
       move: "cut",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Academic Tutor introduces the intricate journey of typing a URL",
       blocks: [
         {
@@ -127,6 +129,8 @@ The server returns HTML, which the browser engine parses into the DOM tree, comp
       look: "dns-query",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Token strip showing local cache to recursive DNS resolution",
       blocks: [
         {
@@ -149,6 +153,8 @@ The server returns HTML, which the browser engine parses into the DOM tree, comp
       look: "tls-handshake",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "ScaleBar demonstrating 50ms TLS connection negotiation",
       blocks: [
         {
@@ -171,6 +177,8 @@ The server returns HTML, which the browser engine parses into the DOM tree, comp
       look: "edge-proxy",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "LayerStack showing edge proxy load balancing request to cluster",
       blocks: [
         {
@@ -193,6 +201,8 @@ The server returns HTML, which the browser engine parses into the DOM tree, comp
       look: "dom-render",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Academic Tutor celebrates 60 FPS HTML DOM parsing and paint",
       blocks: [
         {

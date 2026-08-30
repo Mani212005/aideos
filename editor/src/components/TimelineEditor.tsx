@@ -104,6 +104,8 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   }, [film, onUpdateFilm]);
 
   const timelineRef = useRef<HTMLDivElement>(null);
+  const playheadRef = useRef<HTMLDivElement>(null);
+  const timeDisplayRef = useRef<HTMLSpanElement>(null);
   const fps = film.fps || 30;
 
   // Listen to State Machine changes
@@ -113,7 +115,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     });
   }, [stateMachine]);
 
-  // Sync playhead smoothly with Remotion player
+  // Sync playhead smoothly with Remotion player at 60fps with zero React component re-renders
   useEffect(() => {
     if (!isPlaying || dragContext.mode === "playhead-scrub" || !playerRef) return;
     let animId: number;
@@ -122,14 +124,43 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       const p = playerRef.current;
       if (p && typeof p.getCurrentFrame === "function") {
         const frame = p.getCurrentFrame();
-        setPlayheadSec(frame / fps);
+        const sec = frame / fps;
+        if (playheadRef.current) {
+          playheadRef.current.style.left = `${sec * zoomLevel}px`;
+        }
+        if (timeDisplayRef.current) {
+          const m = Math.floor(sec / 60);
+          const s = String(Math.floor(sec % 60)).padStart(2, "0");
+          const f = String(Math.round((sec % 1) * fps)).padStart(2, "0");
+          timeDisplayRef.current.textContent = `${m}:${s}.${f}f`;
+        }
       }
       animId = requestAnimationFrame(tick);
     };
 
     animId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animId);
-  }, [isPlaying, dragContext.mode, playerRef, fps]);
+    return () => {
+      cancelAnimationFrame(animId);
+      const p = playerRef.current;
+      if (p && typeof p.getCurrentFrame === "function") {
+        setPlayheadSec(p.getCurrentFrame() / fps);
+      }
+    };
+  }, [isPlaying, dragContext.mode, playerRef, fps, zoomLevel]);
+
+  // Keep DOM refs in sync on state updates when paused or scrubbing
+  useEffect(() => {
+    if (isPlaying) return;
+    if (playheadRef.current) {
+      playheadRef.current.style.left = `${playheadSec * zoomLevel}px`;
+    }
+    if (timeDisplayRef.current) {
+      const m = Math.floor(playheadSec / 60);
+      const s = String(Math.floor(playheadSec % 60)).padStart(2, "0");
+      const f = String(Math.round((playheadSec % 1) * fps)).padStart(2, "0");
+      timeDisplayRef.current.textContent = `${m}:${s}.${f}f`;
+    }
+  }, [playheadSec, zoomLevel, fps, isPlaying]);
 
   const shotStartTimes = useMemo(() => {
     return computeShotStartTimes(film.shots);
@@ -747,9 +778,12 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
 
           {/* Timecode Display (mm:ss.ff) */}
           <div className="font-mono text-[11px] bg-black/60 px-2.5 py-1 rounded border border-[#3F3F46] text-yellow-400 font-bold">
-            {Math.floor(playheadSec / 60)}:
-            {String(Math.floor(playheadSec % 60)).padStart(2, "0")}.
-            {String(Math.round((playheadSec % 1) * fps)).padStart(2, "0")}f /{" "}
+            <span ref={timeDisplayRef}>
+              {Math.floor(playheadSec / 60)}:
+              {String(Math.floor(playheadSec % 60)).padStart(2, "0")}.
+              {String(Math.round((playheadSec % 1) * fps)).padStart(2, "0")}f
+            </span>{" "}
+            /{" "}
             {Math.floor(totalDurationSec / 60)}:
             {String(Math.floor(totalDurationSec % 60)).padStart(2, "0")}s
           </div>
@@ -992,6 +1026,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
 
               {/* PLAYHEAD */}
               <div
+                ref={playheadRef}
                 className="absolute top-0 bottom-0 z-40 flex flex-col items-center pointer-events-none transition-transform duration-75"
                 style={{
                   left: playheadSec * zoomLevel,

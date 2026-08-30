@@ -149,7 +149,7 @@ test("L5-3 Merge: Merging two adjacent cues creates a continuous single cue", ()
 
 // L5-4: In-place text editing persists with atomic undo
 test("L5-4: In-place text editing persists with atomic undo", () => {
-  const txManager = new TimelineTransactionManager(50);
+  const txManager = new TimelineTransactionManager<LayeredFilm>(50);
   const film = createMockSubtitleFilm();
 
   const { film: editedFilm, actions, transactionId } = editSubtitleText(

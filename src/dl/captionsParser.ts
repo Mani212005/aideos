@@ -147,3 +147,26 @@ export const DEFAULT_GIRAFFE_CAPTION_WORDS: CaptionWord[] = [
   { text: "to", startFrame: 16, endFrame: 30 },
   { text: "Aideos", startFrame: 31, endFrame: 60 },
 ];
+
+function formatVttTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 1000);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+}
+
+/** Converts structured CaptionWord array into standard WebVTT cue string */
+export function captionWordsToVtt(words: CaptionWord[], fps = 30): string {
+  if (!words || words.length === 0) return "";
+  let vtt = "WEBVTT\n\n";
+  const chunkSize = 5;
+  for (let i = 0; i < words.length; i += chunkSize) {
+    const chunk = words.slice(i, i + chunkSize);
+    const startSec = (chunk[0].startFrame ?? 0) / fps;
+    const endSec = (chunk[chunk.length - 1].endFrame ?? (chunk[0].startFrame + 30)) / fps;
+    const text = chunk.map((w) => w.text).join(" ");
+    vtt += `${formatVttTime(startSec)} --> ${formatVttTime(endSec)}\n${text}\n\n`;
+  }
+  return vtt.trim();
+}

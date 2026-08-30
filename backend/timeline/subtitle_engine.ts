@@ -10,7 +10,6 @@
 import type { LayeredFilm, Clip } from "../../src/dl/layeredSchema";
 import {
   type UpdateAction,
-  TimelineTransactionManager,
   generateUUID,
 } from "./updates";
 
@@ -191,7 +190,6 @@ export function mergeSubtitleClips(
 
   const c1 = film.clips[idx1];
   const c2 = film.clips[idx2];
-  const c1Dur = c1.end - c1.start;
   const c2Dur = c2.end - c2.start;
   const mergedEnd = (c2.position + c2Dur) - c1.position;
 

@@ -6,7 +6,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ACTION_REGISTRY, getActionDefinition } from "../../src/dl/scene/actions";
+import { getActionDefinition } from "../../src/dl/scene/actions";
 import { getAllCharacterRigs } from "../../src/dl/characters";
 
 const ALL_ACTION_IDS = ["idle", "walk", "wave", "point", "jump", "crouch", "turn", "reach"];
@@ -19,7 +19,7 @@ test("A-1: Every action returns keyframes only for joints in its affectedJoints"
 
     for (const side of ["left" as const, "right" as const]) {
       const result = action.generate({ durationFrames: 60, intensity: 1.0, side });
-      const affected = action.affectedJoints;
+      const affected: readonly string[] = action.affectedJoints;
 
       for (const jointKey of Object.keys(result)) {
         assert.ok(

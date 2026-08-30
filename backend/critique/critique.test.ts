@@ -7,7 +7,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { Film } from "../../src/dl/schema";
-import type { Scene } from "../../src/dl/scene/types";
 import { executeCritique, applyFilmPatch } from "./engine";
 
 function makeSampleFilm(): Film {
@@ -38,6 +37,8 @@ function makeSampleFilm(): Film {
         look: "node-1",
         move: "cut",
         stage: "frame",
+        drift: false,
+        zoom: 1,
         blocks: [
           { c: "TextReveal", text: "Original Headline 1", size: "headline", accentWord: "Original" },
         ],
@@ -48,6 +49,8 @@ function makeSampleFilm(): Film {
         look: "node-2",
         move: "pan",
         stage: "frame",
+        drift: false,
+        zoom: 1,
         blocks: [
           { c: "TextReveal", text: "Original Headline 2", size: "headline" },
           { c: "ScaleBar", ticks: ["10%", "50%", "100%"], value: 0.25, label: "Metric" },

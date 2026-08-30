@@ -10,10 +10,10 @@ import path from "path";
 import React from "react";
 import ReactDOMServer from "react-dom/server";
 import { computeBlockRect, isDeviceBlock } from "../../src/dl/layout";
-import { MetaphorViewer, SpiderWebAnimation, LiquidContainerAnimation, BalanceScaleAnimation, ClockGearsAnimation, CharacterThrowScriptAnimation } from "../../src/dl/metaphors/MetaphorViewer";
+import { SpiderWebAnimation, LiquidContainerAnimation, BalanceScaleAnimation, ClockGearsAnimation, CharacterThrowScriptAnimation } from "../../src/dl/metaphors/MetaphorViewer";
 import { BlockView } from "../../src/dl/Block";
 import { renderMetaphorStill } from "./renderMetaphorStill";
-import { DEVICE_BLOCKS, type Film, type Shot, type Block, type MetaphorContent } from "../../src/dl/schema";
+import { type Film, type Shot, type Block, type MetaphorContent } from "../../src/dl/schema";
 
 const LONG_VIEWPORT = { width: 1920, height: 1080 };
 const REEL_VIEWPORT = { width: 1080, height: 1920 };
@@ -47,6 +47,8 @@ const sampleFilm: Film = {
       stage: "frame",
       look: "node-1",
       move: "cut",
+      drift: false,
+      zoom: 1,
       blocks: [
         { c: "TextReveal", text: "Why Mars Has No Liquid Water", size: "headline" },
         { c: "MetaphorViewer", metaphorType: "balance-scale" },
@@ -58,6 +60,8 @@ const sampleFilm: Film = {
       stage: "anchor",
       look: "node-2",
       move: "pan",
+      drift: false,
+      zoom: 1,
       blocks: [
         { c: "TextReveal", text: "Atmospheric Pressure Regimes", size: "headline" },
         { c: "ScaleBar", ticks: ["0.1%", "1%", "10%", "100%"], value: 0.35 },
@@ -94,8 +98,8 @@ test("V-2: Every device block's rect centre lies within the middle 60% of viewpo
     { c: "ScaleBar", ticks: ["1", "10", "100"], value: 0.5 },
     { c: "LayerStack", count: 8 },
     { c: "Plot", points: [[0, 0], [1, 1]] },
-    { c: "MatrixGrid", values: [[0.1, 0.2], [0.3, 0.4]] },
-    { c: "TokenStrip", tokens: ["a", "b", "c"] },
+    { c: "MatrixGrid", values: [[0.1, 0.2], [0.3, 0.4]], sweep: "row" },
+    { c: "TokenStrip", tokens: ["a", "b", "c"], lit: [0] },
   ];
 
   const testShot: Shot = {
@@ -104,11 +108,13 @@ test("V-2: Every device block's rect centre lies within the middle 60% of viewpo
     stage: "frame",
     look: "node-1",
     move: "cut",
+    drift: false,
+    zoom: 1,
     blocks: [],
   };
 
   for (const block of allDeviceBlockTypes) {
-    testShot.blocks = [{ c: "TextReveal", text: "Device Header" }, block];
+    testShot.blocks = [{ c: "TextReveal", text: "Device Header", size: "headline" }, block];
 
     // Check Long Viewport (1920x1080)
     const longRect = computeBlockRect(sampleFilm, testShot, block, LONG_VIEWPORT, { blockIndex: 1 });
@@ -155,10 +161,10 @@ test("V-3: No block's rect extends outside viewport bounds across formats and st
   const stages: Array<"frame" | "anchor"> = ["frame", "anchor"];
 
   const sampleBlocks: Block[] = [
-    { c: "TextReveal", text: "Testing Bounding Box Confinement Across Formats" },
+    { c: "TextReveal", text: "Testing Bounding Box Confinement Across Formats", size: "headline" },
     { c: "MetaphorViewer", metaphorType: "liquid-bucket" },
     { c: "CharacterBeat", characterId: "developer", poses: [] },
-    { c: "StatCounter", to: 100, label: "Efficiency Gain", suffix: "%" },
+    { c: "StatCounter", to: 100, label: "Efficiency Gain", suffix: "%", format: "plain" },
     { c: "ScaleBar", ticks: ["10k", "100k", "1M"], value: 0.8 },
   ];
 
@@ -170,6 +176,8 @@ test("V-3: No block's rect extends outside viewport bounds across formats and st
         stage,
         look: "node-1",
         move: "cut",
+        drift: false,
+        zoom: 1,
         blocks: sampleBlocks,
       };
 
@@ -239,6 +247,8 @@ test("V-6 / Content Preservation: A shot with both MetaphorViewer and TextReveal
     stage: "frame",
     look: "node-1",
     move: "cut",
+    drift: false,
+    zoom: 1,
     blocks: [
       { c: "TextReveal", text: "Atmospheric Pressure and Sublimation", size: "headline" },
       {
