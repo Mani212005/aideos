@@ -571,52 +571,60 @@ export default function App() {
                     onChange={e => setFilm({...film, title: e.target.value})}
                   />
                 </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-[11px] text-gray-400 font-bold uppercase">CANVAS ACTIONS</label>
-                  <button onClick={addNode} className="bauhaus-button-secondary p-2 text-left text-xs">ADD NODE TO MAP</button>
-                  <button onClick={addEdge} className="bauhaus-button-secondary p-2 text-left text-xs">ADD EDGE TO MAP</button>
-                  <button onClick={addShot} className="bauhaus-button-secondary p-2 text-left text-xs">ADD SHOT TO SEQUENCE</button>
-                  <button onClick={generateVoiceover} className="bauhaus-button-primary p-2 text-left text-xs">
-                    GENERATE VOICEOVER
-                  </button>
-                </div>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Connections</label>
-                {film.canvas.edges.map((edge, edgeIndex) => (
-                  <div key={`${edge.from}-${edge.to}-${edgeIndex}`} className="flex items-center gap-1 text-xs">
-                    <select
-                      className="min-w-0 flex-1 bg-[#1A1A1B] border border-[#333] rounded px-1.5 py-1"
-                      value={edge.from}
-                      onChange={e => updateEdge(edgeIndex, { from: e.target.value })}
-                    >
-                      {film.canvas.nodes.map(node => <option key={node.id} value={node.id}>{node.id}</option>)}
-                    </select>
-                    <span className="text-gray-500">-&gt;</span>
-                    <select
-                      className="min-w-0 flex-1 bg-[#1A1A1B] border border-[#333] rounded px-1.5 py-1"
-                      value={edge.to}
-                      onChange={e => updateEdge(edgeIndex, { to: e.target.value })}
-                    >
-                      {film.canvas.nodes.map(node => <option key={node.id} value={node.id}>{node.id}</option>)}
-                    </select>
-                    <label className="flex items-center gap-1 text-gray-400" title="Render this connection as dashed">
-                      <input type="checkbox" checked={edge.dashed} onChange={e => updateEdge(edgeIndex, { dashed: e.target.checked })} />
-                      <span className="sr-only">Dashed</span>
-                    </label>
-                    <button
-                      onClick={() => removeEdge(edgeIndex)}
-                      disabled={film.canvas.edges.length <= 1}
-                      className="px-1 text-red-500 disabled:opacity-30"
-                      aria-label={`Delete connection ${edgeIndex + 1}`}
-                    >
-                      ×
+                {mode === "map" ? (
+                  /* Map-Specific Actions when on the Spatial Map tab */
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[11px] text-gray-400 font-bold uppercase">CANVAS ACTIONS</label>
+                    <button onClick={addNode} className="bauhaus-button-secondary p-2 text-left text-xs">+ ADD NODE TO MAP</button>
+                    <button onClick={addEdge} className="bauhaus-button-secondary p-2 text-left text-xs">+ ADD EDGE TO MAP</button>
+                    <button onClick={addShot} className="bauhaus-button-secondary p-2 text-left text-xs">+ ADD SHOT TO SEQUENCE</button>
+                  </div>
+                ) : (
+                  /* Clean Film Stats & Shot List for Video, Timeline, Script, Styleboard tabs */
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1 bg-[#18181B] p-2.5 rounded border border-[#27272A] text-[11px]">
+                      <div className="flex justify-between text-gray-400">
+                        <span>Duration</span>
+                        <span className="text-yellow-400 font-bold">{(duration / (film.fps || 30)).toFixed(1)}s ({duration}f)</span>
+                      </div>
+                      <div className="flex justify-between text-gray-400">
+                        <span>FPS</span>
+                        <span className="text-white">{film.fps}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-400">
+                        <span>Shots</span>
+                        <span className="text-blue-400 font-bold">{film.shots.length}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-400">
+                        <span>Nodes</span>
+                        <span className="text-emerald-400">{film.canvas.nodes.length}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">SHOT LIST</label>
+                      <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                        {film.shots.map((s, idx) => (
+                          <button
+                            key={s.id}
+                            onClick={() => setSelection({ type: "shot", id: s.id })}
+                            className="p-1.5 px-2 bg-[#18181B] hover:bg-[#27272A] border border-[#27272A] rounded text-left flex items-center justify-between text-[11px] text-gray-300 transition-colors"
+                          >
+                            <span className="truncate">Shot {idx + 1}: {s.id}</span>
+                            <span className="text-[10px] text-gray-500 font-mono">{s.dur}s</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button onClick={generateVoiceover} className="bauhaus-button-primary p-2 text-left text-xs mt-1">
+                      GENERATE VOICEOVER
                     </button>
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          )}
+            )}
 
           {selection?.type === "node" && (
             <>
@@ -772,6 +780,10 @@ export default function App() {
                   canvas: { ...prev.canvas, nodes: updatedNodes },
                 }));
               }}
+              onAddNode={addNode}
+              onAddEdge={addEdge}
+              onUpdateEdge={updateEdge}
+              onRemoveEdge={removeEdge}
             />
           )}
 

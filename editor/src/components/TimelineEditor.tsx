@@ -178,6 +178,37 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   const driftSec = totalDurationSec - totalAudioDuration;
   const isSynchronized = Math.abs(driftSec) <= 0.05;
 
+  const selectedAudioClip = selectedAudioId ? audioClips.find((a) => a.id === selectedAudioId) : null;
+  const currentSpeed = selectedAudioClip?.speed ?? film.voiceover?.speed ?? 1.0;
+
+  const handleUpdateAudioSpeed = (newSpeed: number) => {
+    if (selectedAudioId) {
+      const idx = audioClips.findIndex((a) => a.id === selectedAudioId);
+      if (idx !== -1) {
+        const updatedClips = [...audioClips];
+        updatedClips[idx] = { ...updatedClips[idx], speed: newSpeed };
+        triggerUpdateWithTx(
+          { ...film, audioClips: updatedClips },
+          [],
+          `Set ${selectedAudioId} speed to ${newSpeed}x`
+        );
+      }
+    } else {
+      triggerUpdateWithTx(
+        {
+          ...film,
+          voiceover: {
+            src: film.voiceover?.src || "voiceover.wav",
+            volume: film.voiceover?.volume ?? 1,
+            speed: newSpeed,
+          },
+        },
+        [],
+        `Set master voiceover speed to ${newSpeed}x`
+      );
+    }
+  };
+
   const handleRealignNarration = () => {
     const ratio = totalAudioDuration > 0 ? totalAudioDuration / totalDurationSec : 1;
     const realignedShots = film.shots.map((shot) => ({
@@ -675,6 +706,38 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           >
             <span>{isSynchronized ? "🟢 In Sync" : `⚠️ Drifted ${driftSec > 0 ? "+" : ""}${driftSec.toFixed(1)}s (⚡ Re-align)`}</span>
           </button>
+
+          {/* Voiceover & Speaker Speed Control Bar */}
+          <div className="flex items-center gap-1.5 bg-[#18181B] px-2 py-1 rounded border border-[#3F3F46] text-[10px] font-mono">
+            <span className="text-yellow-400 font-bold">🎙️ Speed</span>
+            <input
+              type="range"
+              min="0.5"
+              max="2.0"
+              step="0.05"
+              value={currentSpeed}
+              onChange={(e) => handleUpdateAudioSpeed(parseFloat(e.target.value) || 1.0)}
+              className="w-14 accent-yellow-400 cursor-pointer"
+              title={`Speech Speed: ${currentSpeed.toFixed(2)}x`}
+            />
+            <span className="text-yellow-300 font-bold w-9 text-right">{currentSpeed.toFixed(2)}x</span>
+            <div className="flex items-center gap-0.5 ml-0.5">
+              {[0.8, 1.0, 1.2, 1.5, 2.0].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => handleUpdateAudioSpeed(preset)}
+                  className={`px-1 py-0.5 rounded text-[9px] transition-colors ${
+                    Math.abs(currentSpeed - preset) < 0.01
+                      ? "bg-yellow-400 text-black font-bold"
+                      : "bg-[#27272A] text-gray-400 hover:text-white"
+                  }`}
+                >
+                  {preset}x
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Action Buttons: Undo / Redo / Split / Delete / Zoom */}
@@ -918,8 +981,15 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                         <div className="w-[1px] h-3 bg-black/60" />
                       </div>
 
-                      <span className="truncate pointer-events-none">🗣️ {aClip.src}</span>
-                      <span className="text-[9px] opacity-75 pointer-events-none font-mono">{aDur.toFixed(2)}s</span>
+                      <div className="flex items-center gap-1 truncate pointer-events-none">
+                        <span className="truncate">🗣️ {aClip.src}</span>
+                        {(aClip.speed ?? 1.0) !== 1.0 && (
+                          <span className="bg-yellow-400 text-black px-1 rounded text-[8px] font-bold shrink-0">
+                            {(aClip.speed ?? 1.0).toFixed(2)}x
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[9px] opacity-75 pointer-events-none font-mono shrink-0">{aDur.toFixed(2)}s</span>
 
                       {/* Right VO Trim Handle */}
                       <div

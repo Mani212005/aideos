@@ -420,16 +420,19 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {/* Master Audio Track & Multi-Clip Voiceover Spine */}
         {film.audioClips && film.audioClips.length > 0 ? (
           film.audioClips.map((ac) => {
+            const speed = ac.speed ?? 1.0;
             const startFrame = Math.round(ac.position * fps);
             const startFrom = Math.round((ac.start ?? 0) * fps);
             const endAt = Math.round(ac.end * fps);
-            const durFrames = Math.max(1, endAt - startFrom);
+            const rawDurFrames = Math.max(1, endAt - startFrom);
+            const effectiveDurFrames = Math.max(1, Math.round(rawDurFrames / speed));
             return (
-              <Sequence key={ac.id} from={startFrame} durationInFrames={durFrames}>
+              <Sequence key={ac.id} from={startFrame} durationInFrames={effectiveDurFrames}>
                 <Audio
                   src={staticFile(ac.src)}
                   startFrom={startFrom}
                   endAt={endAt}
+                  playbackRate={speed}
                   volume={() => ac.volume ?? 1}
                 />
               </Sequence>
@@ -439,6 +442,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
           film.voiceover?.src && (
             <Audio
               src={staticFile(film.voiceover.src)}
+              playbackRate={film.voiceover?.speed ?? 1.0}
               volume={() => film.voiceover?.volume ?? 1}
             />
           )

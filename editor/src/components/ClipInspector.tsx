@@ -228,11 +228,54 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
         </div>
       </div>
 
-      {/* Screenplay Narration */}
-      <div className="flex flex-col gap-1.5 bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
-        <label className="text-[10px] font-mono text-yellow-400 font-bold uppercase tracking-wider">
-          🎙️ Shot Narration
-        </label>
+      {/* Screenplay Narration & Speaker Speed */}
+      <div className="flex flex-col gap-2.5 bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
+        <div className="flex items-center justify-between">
+          <label className="text-[10px] font-mono text-yellow-400 font-bold uppercase tracking-wider">
+            🎙️ Narration & Speaker Speed
+          </label>
+          <span className="text-[10px] font-mono bg-yellow-950/80 text-yellow-400 px-1.5 py-0.5 rounded border border-yellow-500/40 font-bold">
+            {(shot.speed ?? 1.0).toFixed(2)}x
+          </span>
+        </div>
+
+        {/* Speaker Speed Control Slider */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between text-[11px] text-gray-300">
+            <span>Playback Speed</span>
+            <span className="font-mono text-yellow-300 font-bold">{(shot.speed ?? 1.0).toFixed(2)}x</span>
+          </div>
+          <input
+            type="range"
+            min="0.5"
+            max="2.0"
+            step="0.05"
+            value={shot.speed ?? 1.0}
+            onChange={(e) => {
+              const spd = parseFloat(e.target.value) || 1.0;
+              onUpdateShot(shotIndex, { speed: spd }, `Set speaker speed to ${spd}x`);
+            }}
+            className="w-full accent-yellow-400 cursor-pointer"
+          />
+          {/* Quick Speed Preset Buttons */}
+          <div className="flex items-center justify-between gap-1 mt-0.5">
+            {[0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => onUpdateShot(shotIndex, { speed: preset }, `Set speaker speed to ${preset}x`)}
+                className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors ${
+                  Math.abs((shot.speed ?? 1.0) - preset) < 0.01
+                    ? "bg-yellow-400 text-black font-bold"
+                    : "bg-[#27272A] text-gray-400 hover:text-white"
+                }`}
+              >
+                {preset}x
+              </button>
+            ))}
+          </div>
+        </div>
+
         <textarea
           rows={3}
           value={shot.scriptText || ""}
@@ -240,7 +283,7 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
             onUpdateShot(shotIndex, { scriptText: e.target.value }, `Edit ${shot.id} script text`);
           }}
           placeholder="Spoken narration for this shot..."
-          className="w-full bg-black/60 border border-[#333] rounded p-2 text-xs text-gray-200 outline-none resize-none focus:border-yellow-400 font-sans leading-relaxed"
+          className="w-full bg-black/60 border border-[#333] rounded p-2 text-xs text-gray-200 outline-none resize-none focus:border-yellow-400 font-sans leading-relaxed mt-1"
         />
       </div>
     </div>

@@ -1,17 +1,31 @@
 // File Description: Renders an interactive, Excalidraw-style movable node graph on the canvas with drag-and-drop.
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import type { Film, CanvasNode } from "../../../src/dl/schema";
+import type { Film, CanvasNode, CanvasEdge } from "../../../src/dl/schema";
 
 interface MindMapProps {
   film: Film;
   selectedNodeId: string | null;
   onSelectNode: (id: string | null) => void;
   onNodesChange?: (nodes: CanvasNode[]) => void;
+  onAddNode?: () => void;
+  onAddEdge?: () => void;
+  onUpdateEdge?: (index: number, partial: Partial<CanvasEdge>) => void;
+  onRemoveEdge?: (index: number) => void;
 }
 
-export function MindMap({ film, selectedNodeId, onSelectNode, onNodesChange }: MindMapProps) {
+export function MindMap({
+  film,
+  selectedNodeId,
+  onSelectNode,
+  onNodesChange,
+  onAddNode,
+  onAddEdge,
+  onUpdateEdge,
+  onRemoveEdge,
+}: MindMapProps) {
   const { nodes, edges } = film.canvas;
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [showConnections, setShowConnections] = useState<boolean>(true);
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -84,10 +98,150 @@ export function MindMap({ film, selectedNodeId, onSelectNode, onNodesChange }: M
         backgroundSize: "24px 24px"
       }}
     >
-      <div className="absolute top-3 left-3 z-10 bg-[#1A1A1B]/90 backdrop-blur px-3 py-1.5 rounded-md border border-[#333] text-xs text-gray-400 font-mono flex items-center gap-2 pointer-events-none">
-        <span className="text-yellow-400 font-bold">✥ Excalidraw Movable Canvas</span>
-        <span>· Drag any node to reposition camera & layout</span>
+      {/* Top Controls Bar */}
+      <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
+        <div className="bg-[#1A1A1B]/90 backdrop-blur px-3 py-1.5 rounded-md border border-[#333] text-xs text-gray-400 font-mono flex items-center gap-2 pointer-events-none">
+          <span className="text-yellow-400 font-bold">✥ Movable Spatial Graph</span>
+          <span>· {nodes.length} Nodes · {edges.length} Edges</span>
+        </div>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowConnections((prev) => !prev);
+          }}
+          className={`px-3 py-1.5 rounded-md text-xs font-mono border transition-all flex items-center gap-1.5 shadow cursor-pointer ${
+            showConnections
+              ? "bg-[#635BFF] text-white border-[#635BFF] font-bold"
+              : "bg-[#1A1A1B]/90 text-gray-300 border-[#333] hover:text-white"
+          }`}
+          title="Toggle Graph Connections Inspector"
+        >
+          <span>🕸️ Connections ({edges.length})</span>
+        </button>
+
+        {onAddNode && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddNode();
+            }}
+            className="px-2.5 py-1.5 rounded-md text-xs font-mono bg-[#27272A] hover:bg-[#3F3F46] text-gray-200 border border-[#3F3F46] flex items-center gap-1 cursor-pointer"
+          >
+            <span>+ Add Node</span>
+          </button>
+        )}
+
+        {onAddEdge && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddEdge();
+            }}
+            className="px-2.5 py-1.5 rounded-md text-xs font-mono bg-[#27272A] hover:bg-[#3F3F46] text-gray-200 border border-[#3F3F46] flex items-center gap-1 cursor-pointer"
+          >
+            <span>+ Add Connection</span>
+          </button>
+        )}
       </div>
+
+      {/* Floating Connections & Topology Inspector */}
+      {showConnections && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute top-14 right-3 z-30 w-80 bg-[#121214]/95 backdrop-blur border border-[#333] rounded-xl p-3 shadow-2xl flex flex-col gap-2.5 max-h-[calc(100%-5rem)] overflow-y-auto font-mono text-xs"
+        >
+          <div className="flex items-center justify-between pb-1.5 border-b border-[#27272A]">
+            <div className="flex items-center gap-1.5">
+              <span className="text-yellow-400 font-bold">🕸️ GRAPH CONNECTIONS</span>
+              <span className="text-[10px] bg-black/60 px-1.5 py-0.5 rounded text-gray-400">
+                {edges.length} active
+              </span>
+            </div>
+            <button
+              onClick={() => setShowConnections(false)}
+              className="text-gray-400 hover:text-white text-xs px-1 cursor-pointer"
+              title="Hide Connections Inspector"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            {edges.map((edge, edgeIndex) => (
+              <div
+                key={`${edge.from}-${edge.to}-${edgeIndex}`}
+                className="flex items-center gap-1.5 bg-[#18181B] p-1.5 rounded-lg border border-[#27272A] text-xs"
+              >
+                <select
+                  className="min-w-0 flex-1 bg-black/60 border border-[#333] rounded px-1.5 py-1 text-[11px] text-white"
+                  value={edge.from}
+                  onChange={(e) => onUpdateEdge?.(edgeIndex, { from: e.target.value })}
+                >
+                  {nodes.map((node) => (
+                    <option key={node.id} value={node.id}>
+                      {node.label || node.id}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-gray-500 font-bold shrink-0">→</span>
+                <select
+                  className="min-w-0 flex-1 bg-black/60 border border-[#333] rounded px-1.5 py-1 text-[11px] text-white"
+                  value={edge.to}
+                  onChange={(e) => onUpdateEdge?.(edgeIndex, { to: e.target.value })}
+                >
+                  {nodes.map((node) => (
+                    <option key={node.id} value={node.id}>
+                      {node.label || node.id}
+                    </option>
+                  ))}
+                </select>
+                <label
+                  className="flex items-center gap-1 text-[10px] text-gray-400 cursor-pointer shrink-0"
+                  title="Dashed edge"
+                >
+                  <input
+                    type="checkbox"
+                    checked={edge.dashed ?? false}
+                    onChange={(e) => onUpdateEdge?.(edgeIndex, { dashed: e.target.checked })}
+                    className="accent-[#635BFF]"
+                  />
+                  <span className="text-[9px]">Dashed</span>
+                </label>
+                {onRemoveEdge && (
+                  <button
+                    onClick={() => onRemoveEdge(edgeIndex)}
+                    disabled={edges.length <= 1}
+                    className="px-1 text-red-400 hover:text-red-300 disabled:opacity-20 font-bold text-sm shrink-0 cursor-pointer"
+                    title="Delete connection"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 pt-1 border-t border-[#27272A]">
+            {onAddEdge && (
+              <button
+                onClick={onAddEdge}
+                className="flex-1 py-1 px-2 rounded bg-[#27272A] hover:bg-[#3F3F46] text-gray-200 text-center text-[11px] cursor-pointer"
+              >
+                + Add Connection
+              </button>
+            )}
+            {onAddNode && (
+              <button
+                onClick={onAddNode}
+                className="flex-1 py-1 px-2 rounded bg-[#27272A] hover:bg-[#3F3F46] text-gray-200 text-center text-[11px] cursor-pointer"
+              >
+                + Add Node
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div 
         className="relative"

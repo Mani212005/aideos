@@ -381,6 +381,8 @@ export const shotSchema = z.object({
   metaphor: z.enum(["spider-web", "liquid-bucket", "balance-scale", "clock-gears", "rocket-launch", "character-throw", "glowing-cluster", "custom"]).optional(),
   /** Flag for visual pipeline B-roll generation */
   needsFootage: z.boolean().optional(),
+  /** Narration / speech playback speed multiplier (e.g. 1.0x, 1.25x, 1.5x) */
+  speed: z.number().min(0.25).max(4).default(1).optional(),
   blocks: z.array(blockSchema).max(12).default([]),
 });
 
@@ -413,6 +415,7 @@ export const audioClipSchema = z.object({
   start: z.number().min(0).default(0),
   end: z.number().min(0),
   volume: z.number().min(0).max(2).default(1),
+  speed: z.number().min(0.25).max(4).default(1).optional(),
   channel: z.enum(["voiceover", "music", "sfx", "external"]).default("voiceover"),
 });
 
@@ -437,7 +440,11 @@ export const filmBaseSchema = z.object({
   shots: z.array(shotSchema).min(1),
   audio: z.object({ src: z.string().min(1), trimBefore: z.number().min(0).default(0) }).optional(),
   voiceover: z
-    .object({ src: z.string().min(1), volume: z.number().min(0).max(2).default(1) })
+    .object({
+      src: z.string().min(1),
+      volume: z.number().min(0).max(2).default(1),
+      speed: z.number().min(0.25).max(4).default(1).optional(),
+    })
     .optional(),
   audioClips: z.array(audioClipSchema).optional(),
   captions: z.string().min(1).optional(),
