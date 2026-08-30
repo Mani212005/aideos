@@ -31,7 +31,6 @@ import {
 } from "./timeline/state";
 import { generateWordsFromFilm } from "../../../src/dl/captionsParser";
 import { AssetBin, type MediaAsset } from "./AssetBin";
-import type { TransitionType } from "../transitions";
 
 interface TimelineEditorProps {
   film: Film;
@@ -754,15 +753,6 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 style={{ width: `${Math.max(totalDurationSec + 5, 60) * zoomLevel}px` }}
               >
                 {(() => {
-                  const transitionTypes: TransitionType[] = ["paper-rip", "zoom-morph", "matrix-glitch", "whip-pan", "film-burn"];
-                  const transitionIcons: Record<TransitionType, string> = {
-                    "paper-rip": "📄",
-                    "zoom-morph": "🔍",
-                    "matrix-glitch": "⚡",
-                    "whip-pan": "🌀",
-                    "film-burn": "🔥",
-                  };
-
                   return film.shots.map((shot, idx) => {
                     const rawStart = shot.position ?? shot.startSec ?? shotStartTimes[idx] ?? 0;
                     const rawDur = getShotDuration(shot);
@@ -773,33 +763,9 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                     const dur = override?.dur !== undefined ? override.dur : rawDur;
 
                     const isSelected = selectedShotIds.includes(shot.id);
-                    const currentTrans = shot.transition || "paper-rip";
 
                     return (
                       <React.Fragment key={shot.id}>
-                        {/* Transition Cut Badge */}
-                        {idx > 0 && (
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const nextTransIdx = (transitionTypes.indexOf(currentTrans) + 1) % transitionTypes.length;
-                              const nextTrans = transitionTypes[nextTransIdx];
-                              const updatedShots = [...film.shots];
-                              updatedShots[idx] = { ...shot, transition: nextTrans };
-                              triggerUpdateWithTx(
-                                { ...film, shots: updatedShots },
-                                [],
-                                `Set ${shot.id} transition to ${nextTrans}`
-                              );
-                            }}
-                            className="absolute -top-1 z-30 -ml-2.5 w-5 h-5 rounded-full bg-[#18181B] border border-yellow-500/80 hover:scale-125 hover:border-yellow-300 flex items-center justify-center text-[10px] cursor-pointer shadow-lg transition-transform"
-                            style={{ left: startSec * zoomLevel }}
-                            title={`Transition: ${currentTrans} (Click to cycle)`}
-                          >
-                            <span>{transitionIcons[currentTrans]}</span>
-                          </div>
-                        )}
-
                         {/* Shot Clip Body */}
                         <div
                           onMouseDown={(e) => {

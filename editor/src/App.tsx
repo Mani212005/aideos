@@ -8,7 +8,6 @@ import { MindMap } from "./components/MindMap";
 import { Styleboard } from "./components/Styleboard";
 import { NodeEditor } from "./components/NodeEditor";
 import { ShotEditor } from "./components/ShotEditor";
-import { TransitionEditor } from "./components/TransitionEditor";
 import { KineticCaptionEditor } from "./components/KineticCaptionEditor";
 import { TimelineEditor } from "./components/TimelineEditor";
 import { CustomizationEditor } from "./components/CustomizationEditor";
@@ -21,7 +20,6 @@ import { NewProjectModal } from "./components/NewProjectModal";
 import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
 import { DEFAULT_GIRAFFE_CAPTION_WORDS, generateWordsFromFilm } from "../../src/dl/captionsParser";
 import { validateFilmAudioAndAssets } from "../../src/dl/validateFilm";
-import type { TransitionType } from "./transitions";
 
 const filmModules = import.meta.glob("../../src/dl/films/*.ts", { eager: true }) as Record<
   string,
@@ -42,7 +40,7 @@ const FORMATS = {
 };
 
 type Format = keyof typeof FORMATS;
-type Mode = "script" | "map" | "timeline" | "customization" | "styleboard" | "transitions" | "captions" | "video" | "critique";
+type Mode = "script" | "map" | "timeline" | "customization" | "styleboard" | "captions" | "video" | "critique";
 type Selection = { type: "node" | "shot", id: string } | null;
 
 // Renders the main Aideos Editor application shell.
@@ -63,10 +61,6 @@ export default function App() {
   // Playback & Playhead state
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const playerRef = useRef<PlayerRef>(null);
-
-  // Transition Inspector state
-  const [transitionType, setTransitionType] = useState<TransitionType>("paper-rip");
-  const [transitionDuration, setTransitionDuration] = useState<number>(0.6);
 
   // Styleboard / presentation state
   const [accent, setAccent] = useState(film.accent || "#635BFF");
@@ -680,7 +674,7 @@ export default function App() {
         {/* Top bar with Layer switcher */}
         <div className="flex justify-between items-center shrink-0">
           <div className="flex bg-[#1A1A1B] p-1 rounded-lg border border-[#333] overflow-x-auto max-w-full">
-            {(["script", "map", "timeline", "customization", "styleboard", "transitions", "captions", "video"] as Mode[]).map((m) => (
+            {(["script", "map", "timeline", "customization", "styleboard", "captions", "video"] as Mode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
@@ -693,7 +687,6 @@ export default function App() {
                  m === "timeline" ? "🎞️ Timeline & Trimmer" :
                  m === "customization" ? "🎨 Studio Theme" :
                  m === "styleboard" ? "📐 Styleboard" :
-                 m === "transitions" ? "⚡ Transitions" :
                  m === "captions" ? "💬 Pretext Captions" : "🎬 Video Layer"}
               </button>
             ))}
@@ -704,7 +697,7 @@ export default function App() {
               <button
                 onClick={() => {
                   setIsRegenerating(true);
-                  setStatus({ ok: true, text: "🔄 Video preview regenerating with latest theme, fonts, and transitions..." });
+                  setStatus({ ok: true, text: "🔄 Video preview regenerating with latest theme and fonts..." });
                   try {
                     playerRef.current?.pause();
                   } catch (_) {}
@@ -829,20 +822,6 @@ export default function App() {
             />
           )}
 
-          {mode === "transitions" && (
-            <div className="w-full h-full bg-[#09090B] p-6 overflow-y-auto">
-              <TransitionEditor
-                selectedTransition={transitionType}
-                durationSec={transitionDuration}
-                onSelectTransition={setTransitionType}
-                onChangeDuration={setTransitionDuration}
-                onApplyToAll={() => {
-                  setStatus({ ok: true, text: `Applied ${transitionType} (${transitionDuration}s) to all cut boundaries!` });
-                }}
-              />
-            </div>
-          )}
-
           {mode === "captions" && (
             <div className="w-full h-full bg-[#09090B] p-6 overflow-y-auto">
               <KineticCaptionEditor
@@ -873,7 +852,6 @@ export default function App() {
                         showGrid,
                         showRail,
                         captionWords,
-                        transitionType,
                       }}
                       durationInFrames={duration}
                       fps={film.fps}
