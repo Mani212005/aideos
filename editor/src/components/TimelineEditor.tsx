@@ -1128,44 +1128,21 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                   const override = pendingOverrides[shot.id];
                   const startSec = override?.position !== undefined ? override.position : rawStart;
                   const dur = override?.dur !== undefined ? override.dur : getShotDuration(shot);
-                  const label = shot.metaphor || shot.blocks?.[0]?.c || "Typography";
+                  const label = shot.metaphor || shot.blocks?.find((b) => b.c === "MetaphorViewer")?.metaphorType || "Clean Scene";
 
                   return (
                     <div
                       key={shot.id}
-                      onClick={() => {
-                        const metaphors: Array<NonNullable<typeof shot.metaphor>> = [
-                          "spider-web", "liquid-bucket", "balance-scale", "clock-gears", "rocket-launch", "glowing-cluster"
-                        ];
-                        const currentMetaphor = shot.metaphor || "balance-scale";
-                        const nextIdx = (metaphors.indexOf(currentMetaphor) + 1) % metaphors.length;
-                        const nextMetaphor = metaphors[nextIdx];
-                        const updatedShots = [...film.shots];
-                        updatedShots[idx] = {
-                          ...shot,
-                          metaphor: nextMetaphor,
-                          blocks: [
-                            {
-                              c: "MetaphorViewer",
-                              metaphorType: nextMetaphor,
-                              content: {
-                                kind: nextMetaphor,
-                                leftLabel: "Baseline",
-                                rightLabel: "Optimized",
-                                state: "balanced",
-                              } as any,
-                            },
-                          ],
-                        };
-                        triggerUpdateWithTx(
-                          { ...film, shots: updatedShots },
-                          [],
-                          `Switch ${shot.id} metaphor to ${nextMetaphor}`
-                        );
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedAudioId(null);
+                        setSelectedShotIds([shot.id]);
+                        setPlayheadSec(startSec);
+                        if (onPreviewSeek) onPreviewSeek(Math.round(startSec * fps));
                       }}
                       className="absolute top-2 bottom-2 rounded bg-purple-950/50 border border-purple-500/50 hover:border-purple-400 px-2 flex items-center gap-1.5 text-[10px] text-purple-200 truncate cursor-pointer transition-all shadow"
                       style={{ left: startSec * zoomLevel, width: Math.max(20, dur * zoomLevel) }}
-                      title={`Visual Device: ${label} (Click to cycle metaphor)`}
+                      title={`Visual Device: ${label} (Click to inspect / change in Clip Inspector)`}
                     >
                       <span>📊</span>
                       <span className="truncate">{label}</span>

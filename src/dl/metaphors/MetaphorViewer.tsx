@@ -24,15 +24,23 @@ export interface MetaphorProps {
   fontFamily?: string;
 }
 
-// 1. Procedural Spider Web Weaving Animation
+// 1. Procedural Neural Latent Network & Embedding Space Animation
 export const SpiderWebAnimation: React.FC<{
   frame: number;
   accent: string;
   caption?: string;
-}> = ({ frame, accent, caption = "Procedural Radial Network" }) => {
-  const radials = 8;
-  const spirals = 6;
-  const progress = Math.min(1, frame / 90);
+}> = ({ frame, accent, caption = "Multi-Dimensional Latent Embedding Space" }) => {
+  const nodeCount = 12;
+  const progress = Math.min(1, frame / 60);
+
+  // Deterministic latent nodes in 2D projection space
+  const nodes = Array.from({ length: nodeCount }).map((_, i) => {
+    const angle = (i * 2 * Math.PI) / nodeCount + (frame * 0.008 * (i % 2 === 0 ? 1 : -1));
+    const dist = (80 + (i % 4) * 45) * Math.min(1, progress * 1.3);
+    const x = Math.cos(angle) * dist;
+    const y = Math.sin(angle) * dist * 0.75;
+    return { x, y, size: 5 + (i % 3) * 2 };
+  });
 
   return (
     <div
@@ -47,87 +55,51 @@ export const SpiderWebAnimation: React.FC<{
       }}
     >
       <svg
-        viewBox="-300 -300 600 600"
+        viewBox="-300 -200 600 400"
         preserveAspectRatio="xMidYMid meet"
         style={{ width: "100%", height: "85%", flex: 1, minHeight: 0 }}
       >
-        {/* Radial Spokes */}
-        {Array.from({ length: radials }).map((_, i) => {
-          const angle = (i * 2 * Math.PI) / radials;
-          const r = 240 * Math.min(1, progress * 1.5);
-          const x2 = Math.cos(angle) * r;
-          const y2 = Math.sin(angle) * r;
-          return (
+        {/* Latent Coordinate Axes Grid */}
+        <line x1={-240} y1={0} x2={240} y2={0} stroke="rgba(255,255,255,0.12)" strokeWidth={1} strokeDasharray="4,4" />
+        <line x1={0} y1={-160} x2={0} y2={160} stroke="rgba(255,255,255,0.12)" strokeWidth={1} strokeDasharray="4,4" />
+
+        {/* Interconnected Latent Embedding Projections */}
+        {nodes.map((n1, i) =>
+          nodes.slice(i + 1, i + 4).map((n2, j) => (
             <line
-              key={`spoke-${i}`}
-              x1={0}
-              y1={0}
-              x2={x2}
-              y2={y2}
+              key={`edge-${i}-${j}`}
+              x1={n1.x}
+              y1={n1.y}
+              x2={n2.x}
+              y2={n2.y}
               stroke={accent}
-              strokeWidth={2}
-              strokeOpacity={0.6}
+              strokeWidth={1.5}
+              strokeOpacity={0.4}
             />
-          );
-        })}
+          ))
+        )}
 
-        {/* Concentric Spiral Connections */}
-        {Array.from({ length: spirals }).map((_, s) => {
-          const radius = 40 + s * 35;
-          const sProgress = Math.max(0, Math.min(1, (progress - s * 0.12) / 0.3));
-          if (sProgress <= 0) return null;
+        {/* Central Latent Manifold Core */}
+        <circle cx={0} cy={0} r={28} fill={accent} opacity={0.15} />
+        <circle cx={0} cy={0} r={14} fill={accent} opacity={0.35} />
+        <circle cx={0} cy={0} r={6} fill="#FFFFFF" />
 
-          const points = Array.from({ length: radials + 1 })
-            .map((_, r) => {
-              const angle = (r * 2 * Math.PI) / radials;
-              const x = Math.cos(angle) * radius;
-              const y = Math.sin(angle) * radius;
-              return `${x},${y}`;
-            })
-            .join(" ");
-
-          return (
-            <polyline
-              key={`spiral-${s}`}
-              points={points}
-              fill="none"
-              stroke="#FFFFFF"
-              strokeWidth={1.8}
-              strokeOpacity={0.75 * sProgress}
-              strokeDasharray="4,3"
-            />
-          );
-        })}
-
-        {/* The Animated Spider Centroid */}
-        <g
-          transform={`translate(${Math.cos(frame * 0.08) * 120 * (1 - progress)}, ${
-            Math.sin(frame * 0.08) * 120 * (1 - progress)
-          })`}
-        >
-          <circle r={10} fill={accent} />
-          <circle r={16} fill="none" stroke={accent} strokeWidth={2} opacity={0.4} />
-          {/* Spider Legs */}
-          {[-1, 1].map((side) =>
-            [0, 1, 2, 3].map((leg) => {
-              const angle = side * (0.4 + leg * 0.3) + Math.sin(frame * 0.3 + leg) * 0.2;
-              const lx = Math.cos(angle) * (20 + leg * 3);
-              const ly = Math.sin(angle) * (20 + leg * 3);
-              return (
-                <line
-                  key={`leg-${side}-${leg}`}
-                  x1={0}
-                  y1={0}
-                  x2={lx}
-                  y2={ly}
-                  stroke="#FFFFFF"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                />
-              );
-            })
-          )}
-        </g>
+        {/* Latent Embedding Nodes */}
+        {nodes.map((n, i) => (
+          <g key={`node-${i}`} transform={`translate(${n.x}, ${n.y})`}>
+            <circle r={n.size * 2} fill={accent} opacity={0.25} />
+            <circle r={n.size} fill="#FFFFFF" />
+            <text
+              x={n.size + 4}
+              y={3}
+              fill="rgba(255,255,255,0.7)"
+              fontSize={8}
+              fontFamily={MONO}
+            >
+              z_{i + 1}
+            </text>
+          </g>
+        ))}
       </svg>
 
       <div
@@ -145,7 +117,7 @@ export const SpiderWebAnimation: React.FC<{
           gap: 6,
         }}
       >
-        <span>🕸️</span>
+        <span>🪐</span>
         <span>{caption}</span>
       </div>
     </div>

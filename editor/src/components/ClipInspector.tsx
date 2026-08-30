@@ -228,6 +228,70 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
         </div>
       </div>
 
+      {/* Visual Device / Metaphor Selector */}
+      <div className="flex flex-col gap-2.5 bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider">
+            🖼️ Visual Device / Metaphor
+          </span>
+          {shot.metaphor ? (
+            <span className="text-[9px] bg-purple-950/80 border border-purple-500/50 text-purple-300 px-1.5 py-0.5 rounded font-mono">
+              Active
+            </span>
+          ) : (
+            <span className="text-[9px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded font-mono">
+              None (Character Scene)
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] text-gray-300">Metaphor Overlay</label>
+          <select
+            value={shot.metaphor || "none"}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "none") {
+                // Remove metaphor and filter out MetaphorViewer blocks to restore pure character/text scene
+                const cleanBlocks = shot.blocks.filter((b) => b.c !== "MetaphorViewer");
+                onUpdateShot(
+                  shotIndex,
+                  { metaphor: undefined, blocks: cleanBlocks },
+                  `Remove visual device from ${shot.id}`
+                );
+              } else {
+                // Add or update MetaphorViewer block while PRESERVING character and text blocks
+                const otherBlocks = shot.blocks.filter((b) => b.c !== "MetaphorViewer");
+                const newMetaphorBlock = {
+                  c: "MetaphorViewer",
+                  metaphorType: val,
+                  content: {
+                    kind: val,
+                    title: shot.blocks.find((b) => b.c === "TextReveal")?.text || "Latent Architecture",
+                    subtitle: "Predictive Representation",
+                    caption: shot.scriptText || "System Architecture",
+                  },
+                };
+                onUpdateShot(
+                  shotIndex,
+                  { metaphor: val as any, blocks: [...otherBlocks, newMetaphorBlock as any] },
+                  `Set visual device to ${val} for ${shot.id}`
+                );
+              }
+            }}
+            className="bg-black/60 border border-[#333] rounded px-2 py-1.5 text-xs text-white font-mono outline-none focus:border-purple-400"
+          >
+            <option value="none">🚫 None (Pure Character & Typography)</option>
+            <option value="glowing-cluster">🪐 Latent Neural Space & Embeddings</option>
+            <option value="balance-scale">⚖️ Equilibrium Balance Scale</option>
+            <option value="clock-gears">⚙️ Latency & Throughput Gears</option>
+            <option value="liquid-bucket">🧪 Dynamic Buffer Reservoir</option>
+            <option value="typing-cursor-quote">💬 Terminal Code / Quote Statement</option>
+            <option value="rocket-launch">🚀 Scalability & Deployment Rocket</option>
+          </select>
+        </div>
+      </div>
+
       {/* Screenplay Narration & Speaker Speed */}
       <div className="flex flex-col gap-2.5 bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
         <div className="flex items-center justify-between">
