@@ -787,6 +787,122 @@ export const GlowingClusterAnimation: React.FC<{
   );
 };
 
+// 7. Rocket Launch & Scale Deployment Animation
+export const RocketLaunchAnimation: React.FC<{
+  frame: number;
+  accent: string;
+  caption?: string;
+}> = ({ frame, accent, caption = "Scale & Deployment Trajectory" }) => {
+  const launchProgress = Math.min(1, frame / 75);
+  // Ascending curve with easeIn
+  const rocketY = 50 - Math.pow(launchProgress, 2.2) * 220;
+  const flameScale = 0.8 + Math.sin(frame * 0.8) * 0.25;
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <svg
+        viewBox="-200 -180 400 360"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ width: "100%", height: "85%", flex: 1, minHeight: 0 }}
+      >
+        {/* Launchpad Base & Scaffold */}
+        <g transform="translate(0, 100)" opacity={Math.max(0, 1 - launchProgress * 1.5)}>
+          <rect x="-80" y="30" width="160" height="14" rx="3" fill="#27272A" stroke="#52525B" strokeWidth={1.5} />
+          <line x1="-60" y1="30" x2="-60" y2="-40" stroke="#3F3F46" strokeWidth={3} />
+          <line x1="-60" y1="-20" x2="-25" y2="-20" stroke="#3F3F46" strokeWidth={2} />
+          <line x1="-60" y1="10" x2="-25" y2="10" stroke="#3F3F46" strokeWidth={2} />
+        </g>
+
+        {/* Dynamic Exhaust Cloud Particles */}
+        {launchProgress > 0.05 && (
+          <g transform={`translate(0, ${Math.min(100, rocketY + 70)})`}>
+            {Array.from({ length: 8 }).map((_, i) => {
+              const pScale = (0.6 + (i % 3) * 0.3) * Math.min(1, launchProgress * 2);
+              const pX = (i - 3.5) * 16 + Math.sin(frame * 0.4 + i) * 6;
+              const pY = 20 + (i % 3) * 12;
+              return (
+                <circle
+                  key={i}
+                  cx={pX}
+                  cy={pY}
+                  r={12 * pScale}
+                  fill="rgba(240, 240, 245, 0.25)"
+                  stroke="rgba(255, 255, 255, 0.4)"
+                  strokeWidth={1}
+                />
+              );
+            })}
+          </g>
+        )}
+
+        {/* The Rocket Vehicle */}
+        <g transform={`translate(0, ${rocketY})`}>
+          {/* Dynamic Thrust Flame */}
+          {launchProgress < 0.98 && (
+            <g transform={`translate(0, 48) scale(${flameScale})`}>
+              <polygon points="0,55 -14,0 14,0" fill="#EF4444" opacity={0.9} />
+              <polygon points="0,38 -8,0 8,0" fill="#F59E0B" />
+              <polygon points="0,22 -4,0 4,0" fill="#FEF08A" />
+            </g>
+          )}
+
+          {/* Rocket Fuselage */}
+          <path
+            d="M 0,-65 C 22,-20 22,25 20,45 L -20,45 C -22,25 -22,-20 0,-65 Z"
+            fill="#FAFAFA"
+            stroke="#18181B"
+            strokeWidth={2.5}
+          />
+          {/* Nose Cone Accent */}
+          <path
+            d="M 0,-65 C 10,-45 14,-35 15,-28 L -15,-28 C -14,-35 -10,-45 0,-65 Z"
+            fill={accent}
+          />
+          {/* Porthole Window */}
+          <circle cx="0" cy="-5" r="9" fill="#18181B" stroke="#71717A" strokeWidth={1.5} />
+          <circle cx="0" cy="-5" r="6" fill={accent} opacity={0.7} />
+          <circle cx="-2" cy="-7" r="2" fill="#FFFFFF" />
+
+          {/* Side Fins */}
+          <polygon points="-20,20 -38,48 -20,44" fill={accent} stroke="#18181B" strokeWidth={1.5} />
+          <polygon points="20,20 38,48 20,44" fill={accent} stroke="#18181B" strokeWidth={1.5} />
+          {/* Engine Nozzle */}
+          <polygon points="-12,45 12,45 8,52 -8,52" fill="#3F3F46" stroke="#18181B" strokeWidth={1.5} />
+        </g>
+      </svg>
+
+      <div
+        style={{
+          marginTop: 8,
+          padding: "6px 16px",
+          borderRadius: 20,
+          background: "rgba(0, 0, 0, 0.65)",
+          border: "1px solid rgba(255, 255, 255, 0.15)",
+          color: "#FFFFFF",
+          fontFamily: MONO,
+          fontSize: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <span>🚀</span>
+        <span>{caption}</span>
+      </div>
+    </div>
+  );
+};
+
 // Main Metaphor Viewer Component
 export const MetaphorViewer: React.FC<MetaphorProps> = ({
   type,
@@ -859,6 +975,14 @@ export const MetaphorViewer: React.FC<MetaphorProps> = ({
           accent={accent}
           title={content && "title" in content ? content.title : "Abstract Latent Representation"}
           subtitle={content && "subtitle" in content ? content.subtitle : "Multi-Dimensional Space"}
+        />
+      );
+    case "rocket-launch":
+      return (
+        <RocketLaunchAnimation
+          frame={frame}
+          accent={accent}
+          caption={content && "caption" in content ? content.caption : undefined}
         />
       );
     default:

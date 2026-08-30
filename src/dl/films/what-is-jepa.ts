@@ -1,6 +1,7 @@
 import type { Film } from "../schema";
 
 export const whatIsJepaFilm: Film = {
+  "schemaVersion": "1.0.0",
   "id": "what-is-jepa",
   "title": "What is JEPA",
   "fps": 30,
@@ -128,6 +129,7 @@ export const whatIsJepaFilm: Film = {
       "drift": true,
       "zoom": 1,
       "visualDirection": "Black screen. Blinking cursor types quote. Yann LeCun rubber stamp.",
+      "speed": 1,
       "blocks": [
         {
           "c": "TextReveal",
@@ -235,7 +237,7 @@ export const whatIsJepaFilm: Film = {
       "drift": true,
       "zoom": 1,
       "visualDirection": "Split screen: LLM text wall vs toddler physics understanding.",
-      "metaphor": "custom",
+      "speed": 1,
       "blocks": [
         {
           "c": "StatCounter",
@@ -259,6 +261,7 @@ export const whatIsJepaFilm: Film = {
       "zoom": 1,
       "visualDirection": "Meta logo cracking. AMI Labs launch with $1B+ seed.",
       "metaphor": "rocket-launch",
+      "speed": 1,
       "blocks": [
         {
           "c": "TextReveal",
@@ -285,6 +288,7 @@ export const whatIsJepaFilm: Film = {
       "move": "zoom-out",
       "drift": true,
       "zoom": 0.85,
+      "speed": 1,
       "blocks": []
     },
     {
@@ -297,6 +301,7 @@ export const whatIsJepaFilm: Film = {
       "zoom": 1,
       "visualDirection": "Generative extra finger vs JEPA abstract cloud.",
       "metaphor": "glowing-cluster",
+      "speed": 1,
       "blocks": [
         {
           "c": "TextReveal",
@@ -319,6 +324,7 @@ export const whatIsJepaFilm: Film = {
       "zoom": 1,
       "visualDirection": "Context encoder and target encoder comparing notes in embedding space.",
       "metaphor": "glowing-cluster",
+      "speed": 1,
       "blocks": [
         {
           "c": "TokenStrip",
@@ -346,6 +352,7 @@ export const whatIsJepaFilm: Film = {
       "move": "zoom-out",
       "drift": true,
       "zoom": 0.85,
+      "speed": 1,
       "blocks": []
     },
     {
@@ -358,6 +365,7 @@ export const whatIsJepaFilm: Film = {
       "zoom": 1,
       "visualDirection": "Timeline from I-JEPA to V-JEPA to V-JEPA 2 controlling robot arm.",
       "metaphor": "glowing-cluster",
+      "speed": 1,
       "blocks": [
         {
           "c": "TokenStrip",
@@ -395,6 +403,7 @@ export const whatIsJepaFilm: Film = {
       "zoom": 1,
       "visualDirection": "Hugging Face & GitHub transformers open source.",
       "metaphor": "custom",
+      "speed": 1,
       "blocks": [
         {
           "c": "TextReveal",
@@ -417,6 +426,7 @@ export const whatIsJepaFilm: Film = {
       "zoom": 1,
       "visualDirection": "Pull back split screen: Chat window fades, glowing 3D world simulation.",
       "metaphor": "glowing-cluster",
+      "speed": 1,
       "blocks": [
         {
           "c": "TextReveal",
@@ -432,6 +442,7 @@ export const whatIsJepaFilm: Film = {
   ],
   "voiceover": {
     "src": "voiceover_what-is-jepa.wav",
-    "volume": 1
+    "volume": 1,
+    "speed": 1
   }
 };

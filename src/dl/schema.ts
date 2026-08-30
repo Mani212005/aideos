@@ -101,6 +101,10 @@ export const metaphorContentSchema = z.discriminatedUnion("kind", [
     subtitle: z.string().default("Deterministic Multi-Dimensional Embedding"),
   }),
   z.object({
+    kind: z.literal("rocket-launch"),
+    caption: z.string().default("Scale & Deployment Trajectory"),
+  }),
+  z.object({
     kind: z.literal("custom"),
     caption: z.string().default("Custom Visual"),
   }),

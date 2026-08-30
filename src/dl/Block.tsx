@@ -141,7 +141,7 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
       const accent = useAccent();
       const metaphorType = block.content?.kind ?? block.metaphorType ?? "balance-scale";
       return (
-        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: "100%", height: "100%", maxHeight: "100%", flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <MetaphorViewer
             type={metaphorType}
             content={block.content}
