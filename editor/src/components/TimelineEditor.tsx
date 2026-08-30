@@ -37,6 +37,7 @@ interface TimelineEditorProps {
   onUpdateFilm: (updatedFilm: Film) => void;
   currentFrame?: number;
   onPreviewSeek?: (frame: number) => void;
+  onSelectShot?: (shotId: string | null) => void;
   isEmbedded?: boolean;
   isPlaying?: boolean;
   onTogglePlay?: () => void;
@@ -49,6 +50,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   onUpdateFilm,
   currentFrame = 0,
   onPreviewSeek,
+  onSelectShot,
   isEmbedded = false,
   isPlaying = false,
   onTogglePlay,
@@ -1038,8 +1040,10 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                             } else {
                               setSelectedShotIds([shot.id]);
                             }
+                            onSelectShot?.(shot.id);
                             setPlayheadSec(startSec);
                             if (onPreviewSeek) onPreviewSeek(Math.round(startSec * fps));
+                            if (playerRef?.current) playerRef.current.seekTo(Math.round(startSec * fps));
 
                             stateMachine.startDragClip(idx, e.clientX, startSec, selectedShotIds);
                           }}
@@ -1137,12 +1141,62 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                         e.stopPropagation();
                         setSelectedAudioId(null);
                         setSelectedShotIds([shot.id]);
+                        onSelectShot?.(shot.id);
                         setPlayheadSec(startSec);
                         if (onPreviewSeek) onPreviewSeek(Math.round(startSec * fps));
+                        if (playerRef?.current) playerRef.current.seekTo(Math.round(startSec * fps));
+
+                        // Cycle through meaningful metaphors non-destructively
+                        const metaphorOptions: Array<NonNullable<typeof shot.metaphor> | "none"> = [
+                          "none",
+                          "glowing-cluster",
+                          "balance-scale",
+                          "clock-gears",
+                          "liquid-bucket",
+                          "typing-cursor-quote",
+                          "rocket-launch",
+                        ];
+                        const currentVal = shot.metaphor || "none";
+                        const nextIdx = (metaphorOptions.indexOf(currentVal) + 1) % metaphorOptions.length;
+                        const nextVal = metaphorOptions[nextIdx];
+
+                        const cleanBlocks = shot.blocks.filter((b) => b.c !== "MetaphorViewer");
+                        const updatedShots = [...film.shots];
+
+                        if (nextVal === "none") {
+                          updatedShots[idx] = {
+                            ...shot,
+                            metaphor: undefined,
+                            blocks: cleanBlocks,
+                          };
+                        } else {
+                          const textReveal = shot.blocks.find((b) => b.c === "TextReveal");
+                          const newMetaphorBlock = {
+                            c: "MetaphorViewer",
+                            metaphorType: nextVal,
+                            content: {
+                              kind: nextVal,
+                              title: textReveal?.text || "Latent Architecture",
+                              subtitle: "Multi-Dimensional Space",
+                              caption: shot.scriptText || "System Architecture",
+                            },
+                          };
+                          updatedShots[idx] = {
+                            ...shot,
+                            metaphor: nextVal as any,
+                            blocks: [...cleanBlocks, newMetaphorBlock as any],
+                          };
+                        }
+
+                        triggerUpdateWithTx(
+                          { ...film, shots: updatedShots },
+                          [],
+                          `Switch ${shot.id} visual device to ${nextVal}`
+                        );
                       }}
-                      className="absolute top-2 bottom-2 rounded bg-purple-950/50 border border-purple-500/50 hover:border-purple-400 px-2 flex items-center gap-1.5 text-[10px] text-purple-200 truncate cursor-pointer transition-all shadow"
+                      className="absolute top-2 bottom-2 rounded bg-purple-950/50 border border-purple-500/50 hover:border-purple-400 px-2 flex items-center gap-1.5 text-[10px] text-purple-200 truncate cursor-pointer transition-all shadow hover:scale-[1.01]"
                       style={{ left: startSec * zoomLevel, width: Math.max(20, dur * zoomLevel) }}
-                      title={`Visual Device: ${label} (Click to inspect / change in Clip Inspector)`}
+                      title={`Visual Device: ${label} (Click to cycle / inspect)`}
                     >
                       <span>📊</span>
                       <span className="truncate">{label}</span>

@@ -378,7 +378,7 @@ export const shotSchema = z.object({
   /** Per-shot transition to use when entering this shot. */
   transition: z.enum(["paper-rip", "zoom-morph", "matrix-glitch", "whip-pan", "film-burn"]).optional(),
   /** Optional semantic metaphor cue for script-driven visual depictions. */
-  metaphor: z.enum(["spider-web", "liquid-bucket", "balance-scale", "clock-gears", "rocket-launch", "character-throw", "glowing-cluster", "custom"]).optional(),
+  metaphor: z.enum(["spider-web", "liquid-bucket", "balance-scale", "clock-gears", "rocket-launch", "character-throw", "glowing-cluster", "typing-cursor-quote", "custom"]).optional(),
   /** Flag for visual pipeline B-roll generation */
   needsFootage: z.boolean().optional(),
   /** Narration / speech playback speed multiplier (e.g. 1.0x, 1.25x, 1.5x) */

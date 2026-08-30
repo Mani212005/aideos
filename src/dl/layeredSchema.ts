@@ -52,6 +52,7 @@ export const animationPayloadSchema = z.object({
     "rocket-launch",
     "character-throw",
     "glowing-cluster",
+    "typing-cursor-quote",
     "custom",
   ]).optional(),
   blocks: z.array(blockSchema).max(12).default([]),

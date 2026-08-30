@@ -826,6 +826,7 @@ export default function App() {
                 onUpdateFilm={setFilm}
                 totalDurationSec={audioDurationSec}
                 isPlaying={isPlaying}
+                onSelectShot={(shotId) => setSelection(shotId ? { type: "shot", id: shotId } : null)}
                 onTogglePlay={() => {
                   if (playerRef.current?.isPlaying()) {
                     playerRef.current.pause();
@@ -835,9 +836,8 @@ export default function App() {
                     setIsPlaying(true);
                   }
                 }}
-                onPreviewSeek={(_frame) => {
-                  // Seek preview to exact frame
-                  setSelection({ type: "shot", id: film.shots[0]?.id || "" });
+                onPreviewSeek={(frame) => {
+                  playerRef.current?.seekTo(frame);
                 }}
               />
             </div>
@@ -943,6 +943,7 @@ export default function App() {
                   isEmbedded={true}
                   isPlaying={isPlaying}
                   playerRef={playerRef}
+                  onSelectShot={(shotId) => setSelection(shotId ? { type: "shot", id: shotId } : null)}
                   onTogglePlay={() => {
                     if (playerRef.current?.isPlaying()) {
                       playerRef.current.pause();

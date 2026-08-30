@@ -67,21 +67,23 @@ export function ShotEditor({
   // Identifies the active render mode based on blocks in the shot
   const hasCharacter = shot.blocks.some((b) => b.c === "CharacterBeat");
   const hasBRoll = shot.blocks.some((b) => b.c === "AnalogyInset");
-  const currentRenderMode = hasCharacter ? "character" : hasBRoll ? "b-roll" : "standard";
+  const hasMetaphor = shot.blocks.some((b) => b.c === "MetaphorViewer") || Boolean(shot.metaphor);
+  const currentRenderMode = hasCharacter ? "character" : hasBRoll ? "b-roll" : hasMetaphor ? "metaphor" : "standard";
 
   // Applies render mode macro by swapping conflicting devices
-  const setRenderMode = (mode: "standard" | "character" | "b-roll") => {
+  const setRenderMode = (mode: "standard" | "character" | "b-roll" | "metaphor") => {
     const filteredBlocks = shot.blocks.filter(
-      (b) => b.c !== "CharacterBeat" && b.c !== "AnalogyInset",
+      (b) => b.c !== "CharacterBeat" && b.c !== "AnalogyInset" && b.c !== "MetaphorViewer",
     );
 
     if (mode === "character") {
       updateShot({
+        metaphor: undefined,
         blocks: [
           ...filteredBlocks,
           {
             c: "CharacterBeat",
-            characterId: "astronaut",
+            characterId: "developer",
             poses: [
               {
                 t: 0,
@@ -91,8 +93,26 @@ export function ShotEditor({
           } as Block,
         ],
       });
+    } else if (mode === "metaphor") {
+      updateShot({
+        metaphor: "glowing-cluster",
+        blocks: [
+          ...filteredBlocks,
+          {
+            c: "MetaphorViewer",
+            metaphorType: "glowing-cluster",
+            content: {
+              kind: "glowing-cluster",
+              title: shot.blocks.find((b) => b.c === "TextReveal")?.text || "Latent Architecture",
+              subtitle: "Multi-Dimensional Space",
+              caption: shot.scriptText || "System Architecture",
+            },
+          } as Block,
+        ],
+      });
     } else if (mode === "b-roll") {
       updateShot({
+        metaphor: undefined,
         blocks: [
           ...filteredBlocks,
           {
@@ -102,7 +122,7 @@ export function ShotEditor({
         ],
       });
     } else {
-      updateShot({ blocks: filteredBlocks });
+      updateShot({ metaphor: undefined, blocks: filteredBlocks });
     }
   };
 
@@ -177,7 +197,7 @@ export function ShotEditor({
       {/* Render Mode Preset Selector */}
       <div className="flex flex-col gap-1 bg-[#111] p-2 rounded border border-[#262626]">
         <label className="text-[11px] font-semibold text-gray-300">RENDER MODE</label>
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-4 gap-1">
           <button
             type="button"
             onClick={() => setRenderMode("standard")}
@@ -198,7 +218,18 @@ export function ShotEditor({
                 : "bg-[#222] text-gray-400 hover:bg-[#2a2a2a]"
             }`}
           >
-            SVG Character
+            SVG Rig
+          </button>
+          <button
+            type="button"
+            onClick={() => setRenderMode("metaphor")}
+            className={`py-1 text-[11px] font-medium rounded transition-colors ${
+              currentRenderMode === "metaphor"
+                ? "bg-[#635BFF] text-white"
+                : "bg-[#222] text-gray-400 hover:bg-[#2a2a2a]"
+            }`}
+          >
+            Metaphor
           </button>
           <button
             type="button"
@@ -209,7 +240,7 @@ export function ShotEditor({
                 : "bg-[#222] text-gray-400 hover:bg-[#2a2a2a]"
             }`}
           >
-            GPU B-Roll
+            B-Roll
           </button>
         </div>
       </div>
