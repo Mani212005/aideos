@@ -25,6 +25,280 @@ import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
 
 export { TimelineTransactionManager, type UpdateAction, type TimelineTransaction, type SnapTarget, type SnapResult };
 
+export interface MediaAssetInput {
+  filename: string;
+  src: string;
+  type: "video" | "audio" | "image";
+  duration: number;
+  width?: number;
+  height?: number;
+}
+
+/**
+ * Import an external media asset into a LayeredFilm (U-6 & U-10).
+ * If the asset is video, it splits into TWO linked clips: [videoClip + audioClip].
+ */
+export function importMediaAssetToLayeredFilm(
+  film: LayeredFilm,
+  asset: MediaAssetInput,
+  positionSec = 0
+): {
+  film: LayeredFilm;
+  actions: UpdateAction[];
+  transactionId: string;
+  videoClipId?: string;
+  audioClipId?: string;
+} {
+  const newLayers = JSON.parse(JSON.stringify(film.layers)) as Layer[];
+  const newClips = JSON.parse(JSON.stringify(film.clips)) as Clip[];
+  const txId = generateUUID();
+  const actions: UpdateAction[] = [];
+
+  const slug = asset.filename.toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 16);
+  const dur = Math.max(0.5, Number(asset.duration.toFixed(3)));
+  const pos = Math.max(0, Number(positionSec.toFixed(3)));
+
+  if (asset.type === "video") {
+    // 1. Ensure video layer exists
+    let videoLayer = newLayers.find((l) => l.id === "layer-video" || l.label.toLowerCase().includes("video"));
+    if (!videoLayer) {
+      videoLayer = {
+        id: "layer-video",
+        number: 15,
+        label: "Video Footage",
+        locked: false,
+        hidden: false,
+        muted: false,
+        height: 72,
+      };
+      newLayers.push(videoLayer);
+      actions.push({
+        type: "insert",
+        path: ["layers", newLayers.length - 1],
+        oldValue: null,
+        newValue: videoLayer,
+        transactionId: txId,
+        label: "Create video layer",
+        timestamp: Date.now(),
+      });
+    }
+
+    // 2. Ensure audio layer exists
+    let audioLayer = newLayers.find((l) => l.id === "layer-audio-footage" || l.id === "layer-audio-spine");
+    if (!audioLayer) {
+      audioLayer = {
+        id: "layer-audio-footage",
+        number: 5,
+        label: "Footage Audio",
+        locked: false,
+        hidden: false,
+        muted: false,
+        height: 48,
+      };
+      newLayers.push(audioLayer);
+      actions.push({
+        type: "insert",
+        path: ["layers", newLayers.length - 1],
+        oldValue: null,
+        newValue: audioLayer,
+        transactionId: txId,
+        label: "Create footage audio layer",
+        timestamp: Date.now(),
+      });
+    }
+
+    const videoClipId = `clip-video-${slug}-${generateUUID().slice(0, 4)}`;
+    const audioClipId = `clip-audio-${slug}-${generateUUID().slice(0, 4)}`;
+
+    const videoClip: Clip = {
+      id: videoClipId,
+      layerId: videoLayer.id,
+      position: pos,
+      start: 0,
+      end: dur,
+      kind: "video",
+      payload: {
+        src: asset.src,
+        width: asset.width,
+        height: asset.height,
+      },
+      linkedClipId: audioClipId, // Symmetric link (U-6)
+      opacity: 1,
+      volume: 1,
+    };
+
+    const audioClip: Clip = {
+      id: audioClipId,
+      layerId: audioLayer.id,
+      position: pos,
+      start: 0,
+      end: dur,
+      kind: "audio",
+      payload: {
+        src: asset.src,
+        channel: "external",
+      },
+      linkedClipId: videoClipId, // Symmetric link (U-6)
+      opacity: 1,
+      volume: 1,
+    };
+
+    newClips.push(videoClip, audioClip);
+
+    actions.push(
+      {
+        type: "insert",
+        path: ["clips", newClips.length - 2],
+        oldValue: null,
+        newValue: videoClip,
+        transactionId: txId,
+        label: `Import video clip ${videoClip.id}`,
+        timestamp: Date.now(),
+      },
+      {
+        type: "insert",
+        path: ["clips", newClips.length - 1],
+        oldValue: null,
+        newValue: audioClip,
+        transactionId: txId,
+        label: `Import audio clip ${audioClip.id}`,
+        timestamp: Date.now(),
+      }
+    );
+
+    return {
+      film: { ...film, layers: newLayers, clips: newClips },
+      actions,
+      transactionId: txId,
+      videoClipId,
+      audioClipId,
+    };
+  } else if (asset.type === "audio") {
+    let audioLayer = newLayers.find((l) => l.number === 0 || l.id.includes("audio")) || newLayers[0];
+    const audioClipId = `clip-audio-${slug}-${generateUUID().slice(0, 4)}`;
+    const audioClip: Clip = {
+      id: audioClipId,
+      layerId: audioLayer.id,
+      position: pos,
+      start: 0,
+      end: dur,
+      kind: "audio",
+      payload: {
+        src: asset.src,
+        channel: "external",
+      },
+      opacity: 1,
+      volume: 1,
+    };
+
+    newClips.push(audioClip);
+    actions.push({
+      type: "insert",
+      path: ["clips", newClips.length - 1],
+      oldValue: null,
+      newValue: audioClip,
+      transactionId: txId,
+      label: `Import audio clip ${audioClip.id}`,
+      timestamp: Date.now(),
+    });
+
+    return {
+      film: { ...film, layers: newLayers, clips: newClips },
+      actions,
+      transactionId: txId,
+      audioClipId,
+    };
+  } else {
+    // Image Asset
+    let imageLayer = newLayers.find((l) => l.number > 0) || newLayers[0];
+    const imageClipId = `clip-image-${slug}-${generateUUID().slice(0, 4)}`;
+    const imageClip: Clip = {
+      id: imageClipId,
+      layerId: imageLayer.id,
+      position: pos,
+      start: 0,
+      end: dur,
+      kind: "image",
+      payload: {
+        src: asset.src,
+        scale: 1,
+      },
+      opacity: 1,
+      volume: 1,
+    };
+
+    newClips.push(imageClip);
+    actions.push({
+      type: "insert",
+      path: ["clips", newClips.length - 1],
+      oldValue: null,
+      newValue: imageClip,
+      transactionId: txId,
+      label: `Import image clip ${imageClip.id}`,
+      timestamp: Date.now(),
+    });
+
+    return {
+      film: { ...film, layers: newLayers, clips: newClips },
+      actions,
+      transactionId: txId,
+      videoClipId: imageClipId,
+    };
+  }
+}
+
+/**
+ * Unlink a linked video/audio pair so they can be moved or edited independently (U-6).
+ */
+export function unlinkClips(
+  film: LayeredFilm,
+  clipId: string
+): { film: LayeredFilm; actions: UpdateAction[]; transactionId: string } {
+  const clipIndex = film.clips.findIndex((c) => c.id === clipId);
+  if (clipIndex === -1) {
+    throw new Error(`Clip "${clipId}" not found`);
+  }
+
+  const newClips = JSON.parse(JSON.stringify(film.clips)) as Clip[];
+  const clip = newClips[clipIndex];
+  const partnerId = clip.linkedClipId;
+  const txId = generateUUID();
+  const actions: UpdateAction[] = [];
+
+  clip.linkedClipId = null;
+  actions.push({
+    type: "update",
+    path: ["clips", clipIndex, "linkedClipId"],
+    oldValue: partnerId,
+    newValue: null,
+    transactionId: txId,
+    label: `Unlink ${clip.id}`,
+    timestamp: Date.now(),
+  });
+
+  if (partnerId) {
+    const partnerIdx = newClips.findIndex((c) => c.id === partnerId);
+    if (partnerIdx !== -1) {
+      newClips[partnerIdx].linkedClipId = null;
+      actions.push({
+        type: "update",
+        path: ["clips", partnerIdx, "linkedClipId"],
+        oldValue: clip.id,
+        newValue: null,
+        transactionId: txId,
+        label: `Unlink partner ${partnerId}`,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  return {
+    film: { ...film, clips: newClips },
+    actions,
+    transactionId: txId,
+  };
+}
+
 /**
  * Move a clip to a new position and optionally to a new layer.
  */

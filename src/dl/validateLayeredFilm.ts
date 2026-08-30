@@ -10,15 +10,23 @@
  * Rule 7: opacity in [0,1], volume in [0,1].
  */
 
+import fs from "fs";
+import path from "path";
 import { layeredFilmSchema, type LayeredFilm, type Clip } from "./layeredSchema";
 
-export function validateLayeredFilm(input: unknown): LayeredFilm {
+export interface LayeredValidationOptions {
+  checkAssetsOnDisk?: boolean;
+  baseDir?: string;
+}
+
+export function validateLayeredFilm(input: unknown, options?: LayeredValidationOptions): LayeredFilm {
   const parseRes = layeredFilmSchema.safeParse(input);
   if (!parseRes.success) {
     throw new Error(`Invalid layered film schema:\n${parseRes.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n")}`);
   }
 
   const film = parseRes.data;
+  const baseDir = options?.baseDir ?? path.resolve(process.cwd(), "public");
 
   // Rule 2: Every layer.number is a unique integer
   const layerNumbers = new Set<number>();
@@ -56,6 +64,26 @@ export function validateLayeredFilm(input: unknown): LayeredFilm {
     }
     if (clip.volume !== undefined && (clip.volume < 0 || clip.volume > 1)) {
       throw new Error(`Rule 7 violation: clip "${clip.id}" has volume ${clip.volume} outside [0, 1]`);
+    }
+
+    // Rule 6: Source file verification for video/audio/image clips
+    if (clip.kind === "video" || clip.kind === "audio" || clip.kind === "image") {
+      const src = (clip.payload as any)?.src;
+      if (!src || typeof src !== "string" || src.trim().length === 0) {
+        throw new Error(`Rule 6 violation: clip "${clip.id}" has empty source path`);
+      }
+
+      if (options?.checkAssetsOnDisk) {
+        const candidates = [
+          path.resolve(baseDir, src),
+          path.resolve(baseDir, "..", src),
+          path.resolve(process.cwd(), "public", src),
+        ];
+        const exists = candidates.some((c) => fs.existsSync(c));
+        if (!exists) {
+          throw new Error(`Rule 6 violation: Source asset file missing: "${src}" for clip "${clip.id}"`);
+        }
+      }
     }
   }
 
