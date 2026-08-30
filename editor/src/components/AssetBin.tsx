@@ -1,7 +1,7 @@
 /**
  * File Description: Media Library & Asset Bin Component for Aideos Studio (Phase T-E).
  * Allows users to upload and manage MP4/MOV videos, WAV/MP3 audio, and PNG/SVG images,
- * and drag or click to insert them as clips on the timeline.
+ * and drag-and-drop or click to insert them as clips on the timeline and trimmer.
  */
 
 import React, { useState, useEffect, useRef } from "react";
@@ -79,13 +79,19 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
     }
   };
 
+  const handleDragStart = (e: React.DragEvent, asset: MediaAsset) => {
+    e.dataTransfer.setData("application/json", JSON.stringify(asset));
+    e.dataTransfer.setData("text/plain", asset.src);
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
   if (compact) {
     return (
-      <div className="flex flex-col gap-2 bg-[#141416] p-2.5 rounded-xl border border-[#27272A] font-mono text-xs">
+      <div className="flex flex-col gap-2 bg-[#141416] p-2.5 rounded-xl border border-[#27272A] font-mono text-xs shadow-inner">
         {/* Compact Header */}
         <div className="flex items-center justify-between pb-1.5 border-b border-[#27272A]">
           <div className="flex items-center gap-1.5">
-            <span className="text-yellow-400 font-bold text-[11px] uppercase tracking-wider">📁 MEDIA ASSETS</span>
+            <span className="text-yellow-400 font-bold text-[11px] uppercase tracking-wider">📁 MEDIA LIBRARY</span>
             <span className="text-[9px] bg-black/60 px-1 py-0.5 rounded text-gray-400 font-bold">
               {assets.length}
             </span>
@@ -100,11 +106,15 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="text-[10px] px-2 py-0.5 rounded bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold shadow flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+            className="text-[10px] px-2 py-0.5 rounded bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold shadow flex items-center gap-1 disabled:opacity-50 cursor-pointer transition-colors"
             title="Upload MP4, MOV, PNG, JPG, or WAV asset"
           >
             <span>{isUploading ? "⏳" : "➕ Upload"}</span>
           </button>
+        </div>
+
+        <div className="text-[9px] text-gray-400 font-sans italic px-0.5">
+          💡 Drag & drop any item into Timeline below or click + Insert
         </div>
 
         {uploadError && (
@@ -116,36 +126,43 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
         {/* Compact Asset List */}
         <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-0.5">
           {assets.length === 0 ? (
-            <div className="py-3 text-center text-gray-500 text-[10px]">
+            <div className="py-4 text-center text-gray-500 text-[10px]">
               No media uploaded yet. Click ➕ Upload to add video/audio.
             </div>
           ) : (
             assets.map((asset) => (
               <div
                 key={asset.id}
-                className="bg-[#1C1C1F] hover:bg-[#27272A] border border-[#27272A] hover:border-yellow-400/80 rounded-lg p-1.5 flex items-center justify-between gap-1.5 transition-all text-[11px]"
+                draggable={true}
+                onDragStart={(e) => handleDragStart(e, asset)}
+                className="bg-[#1C1C1F] hover:bg-[#27272A] border border-[#27272A] hover:border-yellow-400/80 rounded-lg p-1.5 flex items-center justify-between gap-1.5 transition-all text-[11px] cursor-grab active:cursor-grabbing group select-none shadow-sm"
+                title="Drag into Timeline to place clip"
               >
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                  <span className="text-xs shrink-0">
+                  <div className="w-6 h-6 rounded bg-black/60 flex items-center justify-center text-xs shrink-0 border border-[#333]">
                     {asset.type === "video" ? "🎬" : asset.type === "audio" ? "🎵" : "🖼️"}
-                  </span>
+                  </div>
                   <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-gray-200 truncate font-sans font-medium" title={asset.filename}>
+                    <span className="text-gray-200 truncate font-sans font-medium group-hover:text-yellow-300 transition-colors" title={asset.filename}>
                       {asset.filename}
                     </span>
-                    {asset.duration !== undefined && asset.duration > 0 && (
-                      <span className="text-[9px] text-gray-400 font-mono">
-                        {asset.duration.toFixed(1)}s
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1 text-[9px] text-gray-400 font-mono">
+                      <span className="capitalize">{asset.type}</span>
+                      {asset.duration !== undefined && asset.duration > 0 && (
+                        <span>· {asset.duration.toFixed(1)}s</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => onInsertAssetAsShot(asset)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onInsertAssetAsShot(asset);
+                  }}
                   className="px-2 py-1 bg-[#635BFF] hover:bg-yellow-400 hover:text-black text-white text-[10px] font-bold rounded shadow shrink-0 transition-colors cursor-pointer"
-                  title="Insert asset as shot into the film timeline"
+                  title="Insert asset onto timeline"
                 >
                   + Insert
                 </button>
@@ -164,7 +181,7 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
         <div>
           <h3 className="font-bold text-xs text-yellow-400">📁 Media Library & Asset Bin</h3>
           <p className="text-[11px] text-gray-400 mt-0.5">
-            Upload MP4, MOV, PNG, JPG, or WAV assets and click to insert them as clips on the timeline.
+            Upload MP4, MOV, PNG, JPG, or WAV assets. Drag & drop directly into the timeline or click to insert.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -178,7 +195,7 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="text-xs px-3 py-1.5 rounded-lg bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold shadow flex items-center gap-1 disabled:opacity-50"
+            className="text-xs px-3 py-1.5 rounded-lg bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold shadow flex items-center gap-1 disabled:opacity-50 cursor-pointer"
           >
             <span>{isUploading ? "⏳ Uploading..." : "➕ Upload Media"}</span>
           </button>
@@ -201,12 +218,16 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
           assets.map((asset) => (
             <div
               key={asset.id}
+              draggable={true}
+              onDragStart={(e) => handleDragStart(e, asset)}
               onClick={() => onInsertAssetAsShot(asset)}
-              className="bg-[#141416] border border-[#27272A] hover:border-yellow-400 rounded-xl p-2.5 flex flex-col justify-between gap-2 cursor-pointer transition-all hover:scale-[1.02] group shadow"
+              className="bg-[#141416] border border-[#27272A] hover:border-yellow-400 rounded-xl p-3 flex flex-col justify-between gap-2.5 cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02] group shadow select-none"
+              title="Drag onto timeline to place"
             >
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-yellow-300 font-bold">
-                  {asset.type === "video" ? "🎬 Video" : asset.type === "audio" ? "🎵 Audio" : "🖼️ Image"}
+                <span className="text-yellow-300 font-bold flex items-center gap-1">
+                  <span>{asset.type === "video" ? "🎬" : asset.type === "audio" ? "🎵" : "🖼️"}</span>
+                  <span className="capitalize">{asset.type}</span>
                 </span>
                 {asset.duration && (
                   <span className="text-[10px] text-gray-400 bg-black/60 px-1.5 py-0.5 rounded">
@@ -220,7 +241,7 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
               </div>
 
               <button
-                className="w-full text-[10px] py-1 rounded bg-[#27272A] group-hover:bg-yellow-400 group-hover:text-black font-bold transition-colors"
+                className="w-full text-[10px] py-1 rounded bg-[#27272A] group-hover:bg-yellow-400 group-hover:text-black font-bold transition-colors cursor-pointer"
               >
                 + Add to Timeline
               </button>
@@ -231,3 +252,4 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
     </div>
   );
 };
+

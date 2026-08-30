@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import type { Film, AudioClip } from "../../../src/dl/schema";
+import type { Film, AudioClip, Shot } from "../../../src/dl/schema";
 import {
   TimelineTransactionManager,
   computeShotStartTimes,
@@ -62,6 +62,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   const [selectedShotIds, setSelectedShotIds] = useState<string[]>([film.shots[0]?.id ?? ""]);
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"tracks" | "transcript">("tracks");
+  const [isDragOverTimeline, setIsDragOverTimeline] = useState(false);
 
   // Pattern 4: State Machine Instance
   const stateMachine = useMemo(() => new TimelineDragStateMachine(), []);
@@ -526,6 +527,78 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     setSelectedAudioId(null);
   }, [selectedAudioId, audioClips, film, triggerUpdateWithTx]);
 
+  const handleTimelineDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOverTimeline(false);
+
+    try {
+      const data = e.dataTransfer.getData("application/json");
+      if (!data) return;
+      const asset = JSON.parse(data);
+
+      const rect = timelineRef.current?.getBoundingClientRect();
+      const scrollLeft = timelineRef.current?.scrollLeft || 0;
+      const x = e.clientX - (rect?.left || 0) + scrollLeft;
+      const dropTimeSec = Math.max(0, parseFloat((x / zoomLevel).toFixed(2)));
+
+      if (asset.type === "audio") {
+        const dur = asset.duration || 5.0;
+        const newClip: AudioClip = {
+          id: `clip-audio-${Date.now()}`,
+          src: asset.src,
+          position: dropTimeSec,
+          start: 0,
+          end: dur,
+          volume: 1,
+          channel: "voiceover",
+        };
+        const updatedClips = [...audioClips, newClip];
+        triggerUpdateWithTx({ ...film, audioClips: updatedClips }, [], `Add audio ${asset.filename}`);
+      } else if (asset.type === "video") {
+        const dur = asset.duration || 5.0;
+        const newShotId = `shot-${asset.id.toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 16)}-${Date.now().toString().slice(-4)}`;
+        const newShot: Shot = {
+          id: newShotId,
+          dur,
+          stage: "frame",
+          look: film.shots[0]?.look || "intro",
+          move: "cut",
+          drift: true,
+          zoom: 1,
+          visualDirection: `B-roll video: ${asset.filename}`,
+          blocks: [
+            { c: "TextReveal", text: asset.filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " "), size: "headline" },
+            { c: "Body", text: `Imported video clip (${dur.toFixed(1)}s)` },
+          ],
+        };
+        const updatedShots = [...film.shots, newShot];
+        triggerUpdateWithTx({ ...film, shots: updatedShots }, [], `Insert video clip ${asset.filename}`);
+      } else if (asset.type === "image") {
+        let targetIdx = film.shots.length - 1;
+        let cumulative = 0;
+        for (let i = 0; i < film.shots.length; i++) {
+          const sDur = getShotDuration(film.shots[i]);
+          if (dropTimeSec >= cumulative && dropTimeSec < cumulative + sDur) {
+            targetIdx = i;
+            break;
+          }
+          cumulative += sDur;
+        }
+        const targetShot = film.shots[targetIdx];
+        if (targetShot) {
+          const updatedBlocks = [
+            ...targetShot.blocks,
+            { c: "Card", text: `Image: ${asset.filename}` } as any,
+          ];
+          const updatedShots = film.shots.map((s, idx) => idx === targetIdx ? { ...s, blocks: updatedBlocks } : s);
+          triggerUpdateWithTx({ ...film, shots: updatedShots }, [], `Attach image ${asset.filename} to ${targetShot.id}`);
+        }
+      }
+    } catch (err) {
+      console.warn("Drop handling failed:", err);
+    }
+  };
+
   // Keyboard Shortcuts (Phase T-C)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -876,12 +949,21 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
             {/* Right Scrollable Timeline Canvas */}
             <div
               ref={timelineRef}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "copy";
+                if (!isDragOverTimeline) setIsDragOverTimeline(true);
+              }}
+              onDragLeave={() => setIsDragOverTimeline(false)}
+              onDrop={handleTimelineDrop}
               onMouseDown={(e) => {
                 if ((e.target as HTMLElement)?.dataset?.handle) return;
                 stateMachine.startPlayheadScrub(e.clientX);
                 seekFromClientX(e.clientX);
               }}
-              className="flex-1 overflow-x-auto overflow-y-auto relative bg-[#09090B] cursor-crosshair select-none"
+              className={`flex-1 overflow-x-auto overflow-y-auto relative bg-[#09090B] cursor-crosshair select-none transition-colors ${
+                isDragOverTimeline ? "ring-2 ring-yellow-400 bg-yellow-950/20" : ""
+              }`}
               style={{
                 backgroundImage: `linear-gradient(to right, #1F1F23 1px, transparent 1px)`,
                 backgroundSize: `${zoomLevel}px 100%`,

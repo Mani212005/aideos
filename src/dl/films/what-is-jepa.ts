@@ -122,7 +122,7 @@ export const whatIsJepaFilm: Film = {
   "shots": [
     {
       "id": "the-hook",
-      "dur": 12,
+      "dur": 4.8,
       "stage": "anchor",
       "look": "intro",
       "move": "cut",
@@ -232,7 +232,7 @@ export const whatIsJepaFilm: Film = {
       "id": "who-is-lecun",
       "position": 12,
       "startSec": 12,
-      "dur": 24,
+      "dur": 5.03,
       "stage": "frame",
       "look": "lecun",
       "move": "pan",
@@ -259,7 +259,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "the-breakup",
-      "dur": 25,
+      "dur": 3.97,
       "stage": "frame",
       "look": "breakup",
       "move": "pan",
@@ -285,7 +285,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "canvas-anchor-1",
-      "dur": 6,
+      "dur": 3.97,
       "stage": "none",
       "look": [
         "breakup",
@@ -299,7 +299,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "jepa-concept-part1",
-      "dur": 25,
+      "dur": 5,
       "stage": "frame",
       "look": "jepa-concept",
       "move": "pan",
@@ -322,7 +322,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "joint-encoders",
-      "dur": 25,
+      "dur": 5.04,
       "stage": "anchor",
       "look": "encoders",
       "move": "pan",
@@ -348,7 +348,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "canvas-anchor-2",
-      "dur": 6,
+      "dur": 4.06,
       "stage": "none",
       "look": [
         "encoders",
@@ -362,7 +362,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "world-models-evolution",
-      "dur": 25,
+      "dur": 3.65,
       "stage": "frame",
       "look": "world-models",
       "move": "pan",
@@ -399,7 +399,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "how-to-try",
-      "dur": 20,
+      "dur": 4.16,
       "stage": "anchor",
       "look": "world-models",
       "move": "pan",
@@ -422,7 +422,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "the-close",
-      "dur": 15,
+      "dur": 2.77,
       "stage": "anchor",
       "look": "conclusion",
       "move": "pan",

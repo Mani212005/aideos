@@ -41,7 +41,7 @@ const FORMATS = {
 };
 
 type Format = keyof typeof FORMATS;
-type Mode = "script" | "map" | "timeline" | "customization" | "styleboard" | "captions" | "video" | "critique";
+type Mode = "script" | "map" | "customization" | "styleboard" | "captions" | "video" | "critique";
 type Selection = { type: "node" | "shot", id: string } | null;
 
 // Renders the main Aideos Editor application shell.
@@ -540,20 +540,10 @@ export default function App() {
             className={`w-full flex flex-col items-center py-3 text-xs font-mono transition-none border-l-2 ${
               mode === "video" ? "bg-[#635BFF]/20 text-[#635BFF] border-[#635BFF]" : "text-gray-400 border-transparent hover:text-white"
             }`}
-            title="3D Scene Engine"
+            title="Video Layer (Player & Timeline)"
           >
             <span className="text-lg">🎬</span>
-            <span className="text-[9px] mt-1 uppercase font-mono">Scene</span>
-          </button>
-          <button
-            onClick={() => setMode("timeline")}
-            className={`w-full flex flex-col items-center py-3 text-xs font-mono transition-none border-l-2 ${
-              mode === "timeline" ? "bg-[#635BFF]/20 text-[#635BFF] border-[#635BFF]" : "text-gray-400 border-transparent hover:text-white"
-            }`}
-            title="Timeline & Trimmer"
-          >
-            <span className="text-lg">🎞️</span>
-            <span className="text-[9px] mt-1 uppercase font-mono">Time</span>
+            <span className="text-[9px] mt-1 uppercase font-mono">Video</span>
           </button>
           <button
             onClick={() => setMode("customization")}
@@ -767,7 +757,7 @@ export default function App() {
         {/* Top bar with Layer switcher */}
         <div className="flex justify-between items-center shrink-0">
           <div className="flex bg-[#1A1A1B] p-1 rounded-lg border border-[#333] overflow-x-auto max-w-full">
-            {(["script", "map", "timeline", "customization", "styleboard", "captions", "video"] as Mode[]).map((m) => (
+            {(["script", "map", "customization", "styleboard", "captions", "video"] as Mode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
@@ -777,7 +767,6 @@ export default function App() {
               >
                 {m === "script" ? "📝 Script Studio" :
                  m === "map" ? "🗺️ Spatial Map" :
-                 m === "timeline" ? "🎞️ Timeline & Trimmer" :
                  m === "customization" ? "🎨 Studio Theme" :
                  m === "styleboard" ? "📐 Styleboard" :
                  m === "captions" ? "💬 Pretext Captions" : "🎬 Video Layer"}
@@ -870,30 +859,6 @@ export default function App() {
               onUpdateEdge={updateEdge}
               onRemoveEdge={removeEdge}
             />
-          )}
-
-          {mode === "timeline" && (
-            <div className="w-full h-full p-4 bg-[#09090B] overflow-hidden">
-              <TimelineEditor
-                film={film}
-                onUpdateFilm={setFilm}
-                totalDurationSec={audioDurationSec}
-                isPlaying={isPlaying}
-                onSelectShot={(shotId) => setSelection(shotId ? { type: "shot", id: shotId } : null)}
-                onTogglePlay={() => {
-                  if (playerRef.current?.isPlaying()) {
-                    playerRef.current.pause();
-                    setIsPlaying(false);
-                  } else {
-                    playerRef.current?.play();
-                    setIsPlaying(true);
-                  }
-                }}
-                onPreviewSeek={(frame) => {
-                  playerRef.current?.seekTo(frame);
-                }}
-              />
-            </div>
           )}
 
           {mode === "customization" && (
