@@ -36,10 +36,18 @@ export interface ProduceAudioResult {
 
 /**
  * Split a narration script into distinct segments (one per shot/beat).
- * Sentences or explicit blank lines / newlines define segments.
+ * Accepts either an explicit string[] (one per shot) or a string script.
  * Rejects empty scripts or scripts containing mid-script empty/textless segments.
  */
-export function splitScriptIntoSegments(script: string): string[] {
+export function splitScriptIntoSegments(script: string | string[]): string[] {
+  if (Array.isArray(script)) {
+    const list = script.map((s) => s.trim()).filter(Boolean);
+    if (list.length === 0) {
+      throw new Error("A shot with no narration is not allowed mid-script in v1");
+    }
+    return list;
+  }
+
   if (!script || typeof script !== "string") {
     throw new Error("A shot with no narration is not allowed mid-script in v1");
   }
@@ -154,7 +162,7 @@ export async function concatAudioSegments(
  * and VTT caption generation using Google Cloud Text-to-Speech / Neural Audio.
  */
 export async function produceAudioPipeline(
-  script: string,
+  script: string | string[],
   outDir: string,
   options?: { gapMs?: number },
 ): Promise<ProduceAudioResult> {
