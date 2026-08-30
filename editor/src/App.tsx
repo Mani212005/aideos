@@ -64,6 +64,44 @@ export default function App() {
   const [currentFrame, setCurrentFrame] = useState<number>(0);
   const playerRef = useRef<PlayerRef>(null);
 
+  // Drag vs Click distinction for video player to prevent accidental playback during text selection
+  const playerMouseDownPos = useRef<{ x: number; y: number } | null>(null);
+  const isPlayerDragging = useRef<boolean>(false);
+
+  const handlePlayerMouseDown = (e: React.MouseEvent) => {
+    playerMouseDownPos.current = { x: e.clientX, y: e.clientY };
+    isPlayerDragging.current = false;
+  };
+
+  const handlePlayerMouseMove = (e: React.MouseEvent) => {
+    if (playerMouseDownPos.current) {
+      const dist = Math.hypot(
+        e.clientX - playerMouseDownPos.current.x,
+        e.clientY - playerMouseDownPos.current.y
+      );
+      if (dist > 6) {
+        isPlayerDragging.current = true;
+      }
+    }
+  };
+
+  const handlePlayerMouseUp = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement)?.closest?.("button, input, textarea, form, a")) {
+      return;
+    }
+    if (isPlayerDragging.current) {
+      // It was a drag / text selection gesture! Do NOT toggle playback!
+      return;
+    }
+    if (playerRef.current?.isPlaying()) {
+      playerRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      playerRef.current?.play();
+      setIsPlaying(true);
+    }
+  };
+
   // Sync Remotion Player frame updates to currentFrame
   useEffect(() => {
     const player = playerRef.current;
@@ -897,7 +935,12 @@ export default function App() {
           {mode === "video" && (
             <div className="w-full h-full bg-[#0A0A0B] border border-[#333] rounded-lg overflow-hidden flex flex-col">
               {/* TOP SECTION: Remotion Video Player Preview */}
-              <div className="flex-1 bg-black relative flex items-center justify-center min-h-0">
+              <div
+                onMouseDown={handlePlayerMouseDown}
+                onMouseMove={handlePlayerMouseMove}
+                onMouseUp={handlePlayerMouseUp}
+                className="flex-1 bg-black relative flex items-center justify-center min-h-0"
+              >
                 {timeline ? (
                   <>
                     <Player
@@ -918,6 +961,7 @@ export default function App() {
                       compositionHeight={FORMATS[format].height}
                       style={{ width: "100%", height: "100%", maxHeight: "100%" }}
                       controls
+                      clickToPlay={false}
                       acknowledgeRemotionLicense
                     />
 

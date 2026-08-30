@@ -16,7 +16,8 @@ export type FilmPatchOp =
   | { op: "set_headline"; shotId: string; headline: string; accentWord?: string }
   | { op: "set_theme"; theme: Partial<ThemeConfig> }
   | { op: "set_accent"; accent: string }
-  | { op: "set_transition"; shotId: string; transition: string };
+  | { op: "set_transition"; shotId: string; transition: string }
+  | { op: "replace_text"; oldText: string; newText: string; shotId?: string };
 
 export interface CritiqueRequest {
   critique: string;
@@ -79,7 +80,29 @@ export function analyzeCritiqueIntent(critique: string): {
     const filmOps: FilmPatchOp[] = [];
     let explanation = "Updated film visual parameters.";
 
-    if (isDiagram && (lower.includes("scale") || lower.includes("density"))) {
+    if (isHeadline) {
+      const quoteMatch = critique.match(/["“']([^"”']+)["”']/);
+      const shotMatch = lower.match(/shot\s*[-_]?\s*(\d+|[a-z0-9-]+)/i);
+      let targetShotId = "shot-1";
+      if (shotMatch) {
+        const sNum = parseInt(shotMatch[1], 10);
+        if (!isNaN(sNum) && sNum >= 1) {
+          targetShotId = `shot-${sNum}`;
+        } else {
+          targetShotId = shotMatch[1];
+        }
+      }
+      const newHeadline = quoteMatch
+        ? quoteMatch[1]
+        : critique.replace(/^.*?(?:headline|title|heading)\s+(?:in\s+shot\s*[-_]?\s*\d+\s+)?(?:to|as|is|with)?\s*["'“]?/i, "").replace(/["'”]$/, "").trim() || "Refined Concept Overview";
+
+      filmOps.push({
+        op: "set_headline",
+        shotId: targetShotId,
+        headline: newHeadline,
+      });
+      explanation = `Updated headline in ${targetShotId} to "${newHeadline}".`;
+    } else if (isDiagram && (lower.includes("scale") || lower.includes("density"))) {
       const matchVal = lower.match(/(\d+(\.\d+)?)/);
       const targetVal = matchVal ? parseFloat(matchVal[1]) : 0.75;
       const normalizedVal = targetVal > 1 ? targetVal / 100 : targetVal;
@@ -103,16 +126,6 @@ export function analyzeCritiqueIntent(critique: string): {
         theme: { background: "smooth-dark" as any, accent: "#FF6B00" },
       });
       explanation = "Switched visual theme to Smooth Dark with orange accent.";
-    } else if (isHeadline) {
-      const quoteMatch = critique.match(/["“']([^"”']+)["”']/);
-      const newHeadline = quoteMatch ? quoteMatch[1] : "Refined Concept Overview";
-
-      filmOps.push({
-        op: "set_headline",
-        shotId: "shot-1",
-        headline: newHeadline,
-      });
-      explanation = `Updated headline in shot-1 to "${newHeadline}".`;
     } else if (lower.includes("shorten") || lower.includes("faster")) {
       filmOps.push({
         op: "update_shot_dur",
@@ -123,6 +136,24 @@ export function analyzeCritiqueIntent(critique: string): {
     }
 
     return { target: "film", inferredOps: filmOps, explanation };
+  }
+
+  // 2.5 Check for text replacement, typo correction, or label updates (e.g. "change X to Y", "replace X with Y", "fix X to Y")
+  const changeMatch = critique.match(/(?:change|replace|fix|correct|rename|update|set)\s+(?:the\s+)?(?:text\s+)?(?:from\s+)?["'“]?([^"”'\n]+?)["'”]?\s+(?:to|with|into|as)\s+["'“]?([^"”'\n]+?)["'”]?$/i);
+  if (changeMatch) {
+    const oldText = changeMatch[1].trim();
+    const newText = changeMatch[2].trim();
+    return {
+      target: "film",
+      inferredOps: [
+        {
+          op: "replace_text",
+          oldText,
+          newText,
+        },
+      ],
+      explanation: `Replaced "${oldText}" with "${newText}".`,
+    };
   }
 
   // 3. Classify if critique targets Scene actors/actions
@@ -254,6 +285,44 @@ export function applyFilmPatch(film: Film, ops: FilmPatchOp[]): { film: Film; er
       case "set_transition": {
         const shot = working.shots.find((s) => s.id === op.shotId);
         if (shot) (shot as any).transition = op.transition;
+        break;
+      }
+      case "replace_text": {
+        const { oldText, newText, shotId } = op;
+        const oldLower = oldText.toLowerCase();
+        for (let sIdx = 0; sIdx < working.shots.length; sIdx++) {
+          const s = working.shots[sIdx];
+          if (shotId && s.id !== shotId) continue;
+          let shotModified = false;
+          const newBlocks = s.blocks.map((b: any) => {
+            if (b.c === "TextReveal" || b.c === "Body" || b.c === "Kicker") {
+              if (b.text && b.text.toLowerCase().includes(oldLower)) {
+                shotModified = true;
+                const escaped = oldText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                return { ...b, text: b.text.replace(new RegExp(escaped, "gi"), newText) };
+              }
+            } else if (b.c === "StatCounter") {
+              let updatedB = { ...b };
+              if (b.label && b.label.toLowerCase().includes(oldLower)) {
+                shotModified = true;
+                const escaped = oldText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                updatedB.label = b.label.replace(new RegExp(escaped, "gi"), newText);
+              }
+              const oldNum = parseFloat(oldText.replace(/[^0-9.]/g, ""));
+              const newNum = parseFloat(newText.replace(/[^0-9.]/g, ""));
+              if (!isNaN(newNum) && (!isNaN(oldNum) && b.to === oldNum)) {
+                shotModified = true;
+                updatedB.to = newNum;
+                updatedB.format = "plain";
+              }
+              if (shotModified) return updatedB;
+            }
+            return b;
+          });
+          if (shotModified) {
+            working.shots[sIdx] = { ...s, blocks: newBlocks };
+          }
+        }
         break;
       }
     }

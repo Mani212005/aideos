@@ -138,7 +138,7 @@ export const whatIsJepaFilm: Film = {
         },
         {
           "c": "Body",
-          "text": "Why Meta chief AI scientist Yann LeCun walked away from LLMs."
+          "text": "Why Meta chief AI scientist Yann LeCun  \n walked away from LLMs."
         },
         {
           "c": "CharacterBeat",

@@ -95,6 +95,42 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
         const lowerPrompt = prompt.toLowerCase();
         const block = activeShot.blocks[selectedTarget.blockIndex] as any;
 
+        // Check for "change X to Y" or "replace X with Y"
+        const changeFromToMatch = prompt.match(/(?:change|replace|fix|correct|rename|update|set)\s+(?:the\s+)?(?:text\s+)?(?:from\s+)?["'“]?([^"”'\n]+?)["'”]?\s+(?:to|with|into|as)\s+["'“]?([^"”'\n]+?)["'”]?$/i);
+
+        if (changeFromToMatch && block) {
+          const oldT = changeFromToMatch[1].trim();
+          const newT = changeFromToMatch[2].trim();
+          const updatedShots = [...film.shots];
+          let updatedBlock = { ...block };
+
+          if (block.c === "TextReveal" || block.c === "Body" || block.c === "Kicker") {
+            const escaped = oldT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            updatedBlock.text = block.text ? block.text.replace(new RegExp(escaped, "gi"), newT) : newT;
+          } else if (block.c === "StatCounter") {
+            const escaped = oldT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            if (block.label && block.label.toLowerCase().includes(oldT.toLowerCase())) {
+              updatedBlock.label = block.label.replace(new RegExp(escaped, "gi"), newT);
+            }
+            const oldNum = parseFloat(oldT.replace(/[^0-9.]/g, ""));
+            const newNum = parseFloat(newT.replace(/[^0-9.]/g, ""));
+            if (!isNaN(newNum) && (!isNaN(oldNum) || block.to === oldNum)) {
+              updatedBlock.to = newNum;
+              updatedBlock.format = "plain";
+            }
+          }
+
+          const newBlocks = [...activeShot.blocks];
+          newBlocks[selectedTarget.blockIndex] = updatedBlock;
+          updatedShots[activeShotIndex] = { ...activeShot, blocks: newBlocks };
+
+          onUpdateFilm({ ...film, shots: updatedShots });
+          setStatusMessage({ text: `✓ Replaced "${oldT}" with "${newT}"` });
+          setPromptInput("");
+          setIsProcessing(false);
+          return;
+        }
+
         // "Change text to X" or "Set headline to X" or "2018 without comma"
         const changeToMatch = prompt.match(/(?:change|set|replace|make|rename|update)\s+(?:the\s+)?(?:text|headline|label|title|to|value)?\s*(?:to|as|into|with|is)?\s*["']?([^"']+)["']?/i);
         const withoutCommaMatch = lowerPrompt.includes("without") && lowerPrompt.includes("comma");
