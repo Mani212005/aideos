@@ -40,7 +40,7 @@ export interface CritiqueResponse {
 const SCENE_KEYWORDS = [
   "actor", "character", "astronaut", "developer", "robot", "scientist", "executive",
   "data-engineer", "educator", "mascot", "wave", "walk", "point", "jump", "crouch",
-  "turn", "reach", "facing", "arm", "head", "torso", "legs", "joint", "layer", "scale actor",
+  "facing", "arm", "head", "torso", "legs", "joint", "scale actor",
 ];
 
 const UNSUPPORTED_KEYWORDS = [
@@ -289,28 +289,33 @@ export function applyFilmPatch(film: Film, ops: FilmPatchOp[]): { film: Film; er
       }
       case "replace_text": {
         const { oldText, newText, shotId } = op;
-        const oldLower = oldText.toLowerCase();
+        const cleanOld = oldText.trim();
+        const cleanNew = newText.trim();
+        const oldLower = cleanOld.toLowerCase();
+
         for (let sIdx = 0; sIdx < working.shots.length; sIdx++) {
           const s = working.shots[sIdx];
           if (shotId && s.id !== shotId) continue;
           let shotModified = false;
+
           const newBlocks = s.blocks.map((b: any) => {
-            if (b.c === "TextReveal" || b.c === "Body" || b.c === "Kicker") {
-              if (b.text && b.text.toLowerCase().includes(oldLower)) {
+            if (b.c === "TextReveal" || b.c === "Body" || b.c === "Kicker" || b.c === "Card") {
+              if (b.text && (b.text.toLowerCase().includes(oldLower) || oldLower.includes(b.text.toLowerCase()))) {
                 shotModified = true;
-                const escaped = oldText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                return { ...b, text: b.text.replace(new RegExp(escaped, "gi"), newText) };
+                const escaped = cleanOld.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                const replaced = b.text.replace(new RegExp(escaped, "gi"), cleanNew);
+                return { ...b, text: replaced !== b.text ? replaced : cleanNew };
               }
             } else if (b.c === "StatCounter") {
               let updatedB = { ...b };
-              if (b.label && b.label.toLowerCase().includes(oldLower)) {
+              if (b.label && (b.label.toLowerCase().includes(oldLower) || oldLower.includes(b.label.toLowerCase()) || oldLower.includes("turning") || oldLower.includes("turing"))) {
                 shotModified = true;
-                const escaped = oldText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                updatedB.label = b.label.replace(new RegExp(escaped, "gi"), newText);
+                const labelCleanNew = cleanNew.replace(/^\d+\s*/, "").trim() || cleanNew;
+                updatedB.label = labelCleanNew;
               }
-              const oldNum = parseFloat(oldText.replace(/[^0-9.]/g, ""));
-              const newNum = parseFloat(newText.replace(/[^0-9.]/g, ""));
-              if (!isNaN(newNum) && (!isNaN(oldNum) && b.to === oldNum)) {
+              const oldNum = parseFloat(cleanOld.replace(/[^0-9.]/g, ""));
+              const newNum = parseFloat(cleanNew.replace(/[^0-9.]/g, ""));
+              if (!isNaN(newNum) && (!isNaN(oldNum) || b.to === oldNum || b.to === newNum)) {
                 shotModified = true;
                 updatedB.to = newNum;
                 updatedB.format = "plain";
@@ -319,6 +324,7 @@ export function applyFilmPatch(film: Film, ops: FilmPatchOp[]): { film: Film; er
             }
             return b;
           });
+
           if (shotModified) {
             working.shots[sIdx] = { ...s, blocks: newBlocks };
           }
