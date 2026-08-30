@@ -288,6 +288,12 @@ export const StatCounter: React.FC<
   const enter = useEntrance(start, index, layout.px(12));
   const p = useProgress(start, 900, MS.stagger * index);
   const value = Math.round(to * p);
+  const formattedValue =
+    format === "compact"
+      ? compact(value)
+      : (to >= 1900 && to <= 2100) || format === "plain"
+      ? String(value)
+      : value.toLocaleString("en-US");
 
   return (
     <div style={{ ...enter, display: "flex", flexDirection: "column", gap: layout.grid }}>
@@ -301,7 +307,7 @@ export const StatCounter: React.FC<
           fontVariantNumeric: "tabular-nums",
         }}
       >
-        {format === "compact" ? compact(value) : value.toLocaleString("en-US")}
+        {formattedValue}
         {suffix ? (
           <span style={{ fontSize: "0.42em", color: PALETTE.muted }}> {suffix}</span>
         ) : null}

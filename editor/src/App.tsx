@@ -14,6 +14,7 @@ import { ExportProgressModal } from "./components/ExportProgressModal";
 import { ScriptEditor } from "./components/ScriptEditor";
 import { CritiqueStudio } from "./components/CritiqueStudio";
 import { ShotInspector } from "./components/ShotInspector";
+import { OnCanvasAiEditor } from "./components/OnCanvasAiEditor";
 import { AgentActivityInspector } from "./components/AgentActivityInspector";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
@@ -60,7 +61,23 @@ export default function App() {
 
   // Playback & Playhead state
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [currentFrame, setCurrentFrame] = useState<number>(0);
   const playerRef = useRef<PlayerRef>(null);
+
+  // Sync Remotion Player frame updates to currentFrame
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
+    const onFrameUpdate = (e: any) => {
+      if (typeof e?.detail?.frame === "number") {
+        setCurrentFrame(e.detail.frame);
+      }
+    };
+    player.addEventListener("frameupdate", onFrameUpdate);
+    return () => {
+      player.removeEventListener("frameupdate", onFrameUpdate);
+    };
+  }, [playerRef.current]);
 
   // Styleboard / presentation state
   const [accent, setAccent] = useState(film.accent || "#635BFF");
@@ -903,8 +920,18 @@ export default function App() {
                       controls
                       acknowledgeRemotionLicense
                     />
+
+                    {/* Google Stitch-Style On-Canvas AI & Element Inspector */}
+                    <OnCanvasAiEditor
+                      film={film}
+                      timeline={timeline}
+                      currentFrame={currentFrame}
+                      onUpdateFilm={handleUpdateFilmWithHistory}
+                      accent={accent}
+                    />
+
                     {selection?.type === "shot" && (
-                      <div className="absolute top-4 left-4 bg-[#111]/80 backdrop-blur border border-[#333] rounded px-3 py-1.5 text-xs text-white z-30">
+                      <div className="absolute top-4 left-4 bg-[#111]/80 backdrop-blur border border-[#333] rounded px-3 py-1.5 text-xs text-white z-20 pointer-events-none">
                         Reviewing Shot: <span className="font-mono text-[#635BFF]">{selection.id}</span>
                       </div>
                     )}
@@ -952,6 +979,7 @@ export default function App() {
                     }
                   }}
                   onPreviewSeek={(frame) => {
+                    setCurrentFrame(frame);
                     playerRef.current?.seekTo(frame);
                   }}
                 />

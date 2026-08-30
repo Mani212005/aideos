@@ -230,6 +230,8 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "who-is-lecun",
+      "position": 12,
+      "startSec": 12,
       "dur": 24,
       "stage": "frame",
       "look": "lecun",
@@ -248,6 +250,10 @@ export const whatIsJepaFilm: Film = {
         {
           "c": "Body",
           "text": "Predicting the next word will never add up to real understanding."
+        },
+        {
+          "c": "AnalogyInset",
+          "caption": "Visual B-Roll"
         }
       ]
     },
