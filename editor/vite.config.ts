@@ -686,6 +686,11 @@ function filmApiPlugin(): Plugin {
               const scriptDocPath = path.join(scriptsDir, `${projectId}.md`);
               fs.writeFileSync(scriptDocPath, script, 'utf8');
 
+              // Also copy to default voiceover.wav for universal fallback
+              try {
+                fs.copyFileSync(publicPath, path.join(publicDir, 'voiceover.wav'));
+              } catch (_) {}
+
               // Invalidate stale word transcript cache on new audio generation
               const staleCachePath = path.join(scriptsDir, `voiceover_${projectId}_words.json`);
               if (fs.existsSync(staleCachePath)) {

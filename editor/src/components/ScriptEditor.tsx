@@ -449,7 +449,10 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
         voiceover: {
           src: data.filename,
           volume: 1.0,
+          version: Date.now().toString(),
+          speed: film.voiceover?.speed ?? 1.0,
         },
+        audioClips: undefined, // Clear stale clip overrides so fresh voiceover spine takes effect across the player
       };
       onUpdateFilm(updatedFilm);
 

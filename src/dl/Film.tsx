@@ -441,6 +441,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
         ) : (
           film.voiceover?.src && (
             <Audio
+              key={`vo-${film.voiceover.src}-${(film.voiceover as any)?.version || ''}-${(film.voiceover as any)?.updatedAt || ''}`}
               src={staticFile(film.voiceover.src)}
               playbackRate={film.voiceover?.speed ?? 1.0}
               volume={() => film.voiceover?.volume ?? 1}
