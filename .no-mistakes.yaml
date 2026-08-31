@@ -1,0 +1,4 @@
+# Per-repo no-mistakes configuration for Aideos
+commands:
+  test: 'npm test && npm run validate'
+  lint: 'npx tsc --noEmit && npx tsc --noEmit -p editor/tsconfig.app.json'
