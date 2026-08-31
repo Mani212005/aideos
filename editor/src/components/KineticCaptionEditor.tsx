@@ -50,23 +50,17 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
 
   // Sync local state when incoming film or words change
   useEffect(() => {
-    if (initialWords && initialWords.length > 0) {
-      setLocalWords(initialWords);
-    }
+    setLocalWords(initialWords || []);
   }, [initialWords]);
 
   useEffect(() => {
-    if (film?.theme?.captions) {
-      const c = film.theme.captions;
-      if (c.fontSize) setFontSize(c.fontSize);
-      if (c.maxWidth) setMaxWidth(c.maxWidth);
-      if (c.highlightColor) setHighlightColor(c.highlightColor);
-      if (c.primaryColor) setPrimaryColor(c.primaryColor);
-      if (c.backgroundColor) setBackgroundColor(c.backgroundColor);
-      if (c.position) setPosition(c.position);
-    } else if (film?.accent) {
-      setHighlightColor(film.accent);
-    }
+    const c = film?.theme?.captions;
+    setFontSize(c?.fontSize ?? 36);
+    setMaxWidth(c?.maxWidth ?? 720);
+    setHighlightColor(c?.highlightColor || film?.accent || "#FF6B00");
+    setPrimaryColor(c?.primaryColor || "#FFFFFF");
+    setBackgroundColor(c?.backgroundColor || "rgba(10, 15, 29, 0.88)");
+    setPosition(c?.position || "bottom");
   }, [film?.id, film?.theme?.captions, film?.accent]);
 
   // Propagates style mutations directly to film.theme.captions
