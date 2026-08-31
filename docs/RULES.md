@@ -1,3 +1,5 @@
+<!-- File Description: Project guidelines, editing rules, visual hook standards, and video production workflow gates for Aideos. -->
+
 # Aideos Project Guidelines & Editing Rules
 
 Every AI agent working on the `aideos` project MUST read and adhere strictly to the following core rules:

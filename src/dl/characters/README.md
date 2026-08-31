@@ -1,3 +1,5 @@
+<!-- File Description: Vector character rig specification, joint hierarchy, theme token bindings, and registration guide. -->
+
 # Vector Character Rig System & Authoring Specification
 
 ## Overview

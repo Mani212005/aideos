@@ -1,3 +1,5 @@
+<!-- File Description: 3-minute Devpost walkthrough demo script and timeline breakdown for Aideos video presentations. -->
+
 # Aideos: 3-Minute Devpost Walkthrough Demo Script
 
 **Contest Category:** Autonomous Agents & Google GenAI / Parallel Track
