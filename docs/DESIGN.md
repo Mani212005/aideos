@@ -74,8 +74,8 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 - **Features**: Features a vertical split resizer drag handle allowing creators to adjust timeline height dynamically.
 
 ### 5. Pretext Kinetic Captions Layer (`KineticCaptionEditor.tsx`)
-- **Purpose**: Word-level kinetic subtitle editor powered by `@chenglou/pretext`.
-- **Logic**: Syncs individual word timestamps directly with voiceover audio for active keyword highlighting.
+- **Purpose**: Word-level kinetic subtitle editor powered by `@chenglou/pretext` with synchronized typography and color styling controls.
+- **Logic**: Syncs individual word timestamps directly with voiceover audio for active keyword highlighting, providing interactive controls for font size, wrap width, karaoke highlight color, text color, container background, and viewport positioning bound directly to `film.theme.captions`.
 
 ### 6. Studio Theme Customizer (`CustomizationEditor.tsx` & `Styleboard.tsx`)
 - **Purpose**: Allows real-time customization of accent colors (`#635BFF`), background canvas presets (`smooth-dark`, `paper-white`, `blueprint`, `charcoal`), and typography styles (`geist`, `mono`, `space-grotesk`).
