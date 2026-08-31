@@ -1,3 +1,7 @@
+/**
+ * File Description: Command-line interface for compiling, ideating, synthesizing audio, and rendering Aideos films.
+ */
+
 import { Command, Option } from "commander";
 import fs from "fs/promises";
 import path from "path";

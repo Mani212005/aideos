@@ -1,7 +1,9 @@
 /**
  * File Description: Comprehensive test suite for Phase B Critique Engine & Validation Surfacing.
- * Tests B-1 through B-6: patch extraction, persistence, rollback on validation failure,
- * deep-equal undo, deep-diff locality, and explicit out-of-vocabulary critique rejection.
+ * Tests B-1 through B-10: patch extraction, persistence, rollback on validation failure,
+ * deep-equal undo, deep-diff locality, explicit out-of-vocabulary critique rejection,
+ * StatCounter precision, scene context fallback, dynamic diagram block targeting,
+ * and conversational inquiries.
  */
 
 import { test } from "node:test";
@@ -9,6 +11,7 @@ import assert from "node:assert/strict";
 import type { Film } from "../../src/dl/schema";
 import { executeCritique, applyFilmPatch } from "./engine";
 
+// Constructs a canonical sample Film object for deterministic critique testing.
 function makeSampleFilm(): Film {
   return {
     id: "sample-film",
@@ -155,4 +158,103 @@ test("B-6: Out-of-vocabulary critique is rejected honestly with clear reason, no
   assert.equal(res.failingRule, "Vocabulary Boundary");
   assert.ok(res.error?.includes("outside the supported"));
   assert.equal(res.patchOps.length, 0);
+});
+
+test("B-7: StatCounter replacement precision only alters matching value and leaves other StatCounters unchanged", () => {
+  const film = makeSampleFilm();
+  film.shots[0].blocks.push({
+    c: "StatCounter",
+    from: 0,
+    to: 100,
+    format: "plain",
+    label: "Metric A",
+  } as any);
+  film.shots[1].blocks.push({
+    c: "StatCounter",
+    from: 0,
+    to: 200,
+    format: "plain",
+    label: "Metric B",
+  } as any);
+
+  const res = applyFilmPatch(film, [
+    {
+      op: "replace_text",
+      oldText: "100",
+      newText: "150",
+    },
+  ]);
+
+  assert.equal(res.error, undefined);
+  const shot1Counter = res.film.shots[0].blocks.find((b: any) => b.c === "StatCounter") as any;
+  const shot2Counter = res.film.shots[1].blocks.find((b: any) => b.c === "StatCounter") as any;
+
+  assert.equal(shot1Counter.to, 150, "Matching StatCounter should be updated to 150");
+  assert.equal(shot2Counter.to, 200, "Unrelated StatCounter with value 200 must remain unchanged");
+});
+
+test("B-8: Scene-level critique without scene context returns graceful rejection with Scene Context Missing", () => {
+  const film = makeSampleFilm();
+  const res = executeCritique({
+    critique: "The robot should wave his right arm higher",
+    film,
+  });
+
+  assert.equal(res.ok, false);
+  assert.equal(res.target, "scene");
+  assert.equal(res.failingRule, "Scene Context Missing");
+  assert.ok(res.error?.includes("Scene context not provided"));
+});
+
+test("B-9: Dynamic diagram targeting locates ScaleBar on custom shot IDs and block indices", () => {
+  const film = makeSampleFilm();
+  // Ensure shot-2 does not use ScaleBar so custom-diagram-shot does not violate consecutive device rule
+  film.shots[1].blocks = [
+    { c: "TextReveal", text: "Original Headline 2", size: "headline" },
+  ];
+  film.shots.push({
+    id: "custom-diagram-shot",
+    dur: 5,
+    look: "node-2",
+    move: "pan",
+    stage: "frame",
+    drift: false,
+    zoom: 1,
+    blocks: [
+      { c: "TextReveal", text: "Complex Analysis", size: "headline" },
+      { c: "Body", text: "Details of metrics" },
+      { c: "ScaleBar", ticks: ["0%", "50%", "100%"], value: 0.1, label: "Throughput" },
+    ],
+  });
+
+  const res = executeCritique({
+    critique: "In custom-diagram-shot update scale bar density to 0.95",
+    film,
+  });
+
+  assert.equal(res.ok, true);
+  const targetShot = res.updatedFilm?.shots.find((s) => s.id === "custom-diagram-shot");
+  assert.ok(targetShot);
+  const scaleBar = targetShot.blocks[2] as any;
+  assert.equal(scaleBar.c, "ScaleBar");
+  assert.equal(scaleBar.value, 0.95);
+});
+
+test("B-10: Inquiries regarding audio stammering and suggestions return informative assistance", () => {
+  const film = makeSampleFilm();
+
+  const stammerRes = executeCritique({
+    critique: "Why is audio playback stammering or choppy during preview?",
+    film,
+  });
+  assert.equal(stammerRes.ok, true);
+  assert.equal(stammerRes.target, "film");
+  assert.ok(stammerRes.explanation.includes("stammer"));
+
+  const polishRes = executeCritique({
+    critique: "Suggest script narration polish for this video",
+    film,
+  });
+  assert.equal(polishRes.ok, true);
+  assert.ok(polishRes.explanation.includes("narration polish"));
 });

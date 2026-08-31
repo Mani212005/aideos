@@ -27,6 +27,7 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUp
   const [inputText, setInputText] = useState("");
   const storageKey = `aideos_feedback_history_${film.id}`;
 
+  // Creates the default initial greeting message for a film project.
   const createDefaultWelcome = (f: Film): FeedbackMessage => ({
     id: `welcome-${f.id}`,
     sender: "assistant",
@@ -40,7 +41,7 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUp
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) {
+      } catch (_) {
         // Fall back to default initial welcome message
       }
     }
@@ -64,10 +65,10 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUp
           setMessages(parsed);
           return;
         }
-      } catch (e) {}
+      } catch (_) {}
     }
     setMessages([createDefaultWelcome(film)]);
-  }, [film.id]);
+  }, [film]);
 
   // Persists message history to local storage whenever messages update
   useEffect(() => {

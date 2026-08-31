@@ -48,9 +48,42 @@ const UNSUPPORTED_KEYWORDS = [
   "deepfake", "watermark remover", "crypto wallet",
 ];
 
-/**
- * Parses and maps natural language critique into typed Patch operations.
- */
+// Resolves target shot and optional block index from critique text and film structure.
+function findTargetShot(critiqueLower: string, film?: Film, blockPredicate?: (b: any) => boolean): { shotId: string; blockIndex?: number } | null {
+  if (!film || !film.shots || film.shots.length === 0) return null;
+
+  // 1. Check if any shot ID is explicitly contained in the critique string
+  const explicitShot = film.shots.find((s) => critiqueLower.includes(s.id.toLowerCase()));
+  if (explicitShot) {
+    const bIdx = blockPredicate ? explicitShot.blocks.findIndex(blockPredicate) : undefined;
+    return { shotId: explicitShot.id, blockIndex: bIdx !== -1 ? bIdx : undefined };
+  }
+
+  // 2. Check for numeric shot reference like "shot 2", "shot-2", "shot #2", "shot 02"
+  const numMatch = critiqueLower.match(/shot\s*(?:#|no\.?|-|_)?\s*(\d+)\b/i);
+  if (numMatch) {
+    const num = parseInt(numMatch[1], 10);
+    if (!isNaN(num) && num >= 1 && num <= film.shots.length) {
+      const shot = film.shots[num - 1];
+      const bIdx = blockPredicate ? shot.blocks.findIndex(blockPredicate) : undefined;
+      return { shotId: shot.id, blockIndex: bIdx !== -1 ? bIdx : undefined };
+    }
+  }
+
+  // 3. If blockPredicate provided, find the first shot containing that block
+  if (blockPredicate) {
+    for (const s of film.shots) {
+      const bIdx = s.blocks.findIndex(blockPredicate);
+      if (bIdx !== -1) {
+        return { shotId: s.id, blockIndex: bIdx };
+      }
+    }
+  }
+
+  return null;
+}
+
+// Parses and maps natural language critique into typed Patch operations.
 export function analyzeCritiqueIntent(critique: string, film?: Film): {
   target: "scene" | "film" | "unsupported";
   inferredOps: Array<PatchOp | FilmPatchOp>;
@@ -163,16 +196,9 @@ export function analyzeCritiqueIntent(critique: string, film?: Film): {
 
     if (isHeadline) {
       const quoteMatch = critique.match(/["“']([^"”']+)["”']/);
-      const shotMatch = lower.match(/shot\s*[-_]?\s*(\d+|[a-z0-9-]+)/i);
-      let targetShotId = "shot-1";
-      if (shotMatch) {
-        const sNum = parseInt(shotMatch[1], 10);
-        if (!isNaN(sNum) && sNum >= 1) {
-          targetShotId = `shot-${sNum}`;
-        } else {
-          targetShotId = shotMatch[1];
-        }
-      }
+      const target = findTargetShot(lower, film, (b) => b.c === "TextReveal");
+      const targetShotId = target?.shotId || film?.shots?.[0]?.id || "shot-1";
+
       const newHeadline = quoteMatch
         ? quoteMatch[1]
         : critique.replace(/^.*?(?:headline|title|heading)\s+(?:in\s+shot\s*[-_]?\s*\d+\s+)?(?:to|as|is|with)?\s*["'“]?/i, "").replace(/["'”]$/, "").trim() || "Refined Concept Overview";
@@ -184,31 +210,9 @@ export function analyzeCritiqueIntent(critique: string, film?: Film): {
       });
       explanation = `Updated headline in ${targetShotId} to "${newHeadline}".`;
     } else if (isDiagram && (lower.includes("scale") || lower.includes("density"))) {
-      const shotMatch = lower.match(/shot\s*[-_]?\s*(\d+|[a-z0-9-]+)/i);
-      let targetShotId = "shot-2";
-      let targetBlockIndex = 1;
-
-      if (shotMatch) {
-        const sNum = parseInt(shotMatch[1], 10);
-        if (!isNaN(sNum) && sNum >= 1) {
-          targetShotId = `shot-${sNum}`;
-        } else {
-          targetShotId = shotMatch[1];
-        }
-      }
-
-      if (film && film.shots && film.shots.length > 0) {
-        const matchingShot = film.shots.find((s, idx) =>
-          shotMatch ? s.id === targetShotId || `shot-${idx + 1}` === targetShotId : s.blocks.some((b: any) => b.c === "ScaleBar" || b.c === "StatCounter")
-        );
-        if (matchingShot) {
-          targetShotId = matchingShot.id;
-          const bIdx = matchingShot.blocks.findIndex((b: any) => b.c === "ScaleBar" || b.c === "StatCounter");
-          if (bIdx !== -1) {
-            targetBlockIndex = bIdx;
-          }
-        }
-      }
+      const target = findTargetShot(lower, film, (b) => b.c === "ScaleBar" || b.c === "StatCounter");
+      const targetShotId = target?.shotId || film?.shots?.[1]?.id || "shot-2";
+      const targetBlockIndex = target?.blockIndex !== undefined ? target.blockIndex : 1;
 
       const matchVal = lower.match(/(\d+(\.\d+)?)/);
       const targetVal = matchVal ? parseFloat(matchVal[1]) : 0.75;
@@ -234,16 +238,9 @@ export function analyzeCritiqueIntent(critique: string, film?: Film): {
       });
       explanation = "Switched visual theme to Smooth Dark with orange accent.";
     } else if (isDuration) {
-      const shotMatch = lower.match(/shot\s*[-_]?\s*(\d+|[a-z0-9-]+)/i);
-      let targetShotId = film?.shots?.[1]?.id || "shot-2";
-      if (shotMatch) {
-        const sNum = parseInt(shotMatch[1], 10);
-        if (!isNaN(sNum) && sNum >= 1) {
-          targetShotId = film?.shots?.[sNum - 1]?.id || `shot-${sNum}`;
-        } else {
-          targetShotId = shotMatch[1];
-        }
-      }
+      const target = findTargetShot(lower, film);
+      const targetShotId = target?.shotId || film?.shots?.[1]?.id || "shot-2";
+
       const deltaMatch = lower.match(/(\d+(?:\.\d+)?)\s*(?:seconds?|s|sec)/i);
       const amount = deltaMatch ? parseFloat(deltaMatch[1]) : 1.0;
       const isNegative = lower.includes("shorten") || lower.includes("faster");
@@ -351,9 +348,7 @@ export function analyzeCritiqueIntent(critique: string, film?: Film): {
   };
 }
 
-/**
- * Applies a Film-level patch transactionally with strict schema validation.
- */
+// Applies a Film-level patch transactionally with strict schema validation.
 export function applyFilmPatch(film: Film, ops: FilmPatchOp[]): { film: Film; error?: string; failingRule?: string } {
   if (!ops || ops.length === 0) {
     return { film };
@@ -470,6 +465,7 @@ export function applyFilmPatch(film: Film, ops: FilmPatchOp[]): { film: Film; er
   }
 }
 
+// Maps raw validation error messages into human-readable rule names.
 function extractRuleNameFromError(msg: string): string {
   if (msg.includes("Rule M1") || msg.includes("METAPHOR_MISSING_CONTENT")) return "Rule M1 (Metaphor Payload Integrity)";
   if (msg.includes("Rule M2") || msg.includes("METAPHOR_EMPTY_LABEL")) return "Rule M2 (Non-Empty Metaphor Labels)";
@@ -481,9 +477,7 @@ function extractRuleNameFromError(msg: string): string {
   return "Schema Invariant";
 }
 
-/**
- * End-to-end critique processing with validation and rollback.
- */
+// Processes natural-language critique requests end-to-end with validation and rollback.
 export function executeCritique(req: CritiqueRequest): CritiqueResponse {
   const analysis = analyzeCritiqueIntent(req.critique, req.film);
 

@@ -1,3 +1,7 @@
+/**
+ * File Description: Core Remotion film renderer assembling canvas graph, spatial camera movements, staged devices, subtitles, and audio tracks.
+ */
+
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
 import { accentAt, PALETTE, rule, useLayout, BACKGROUND_THEMES, resolveFont, ThemeContext } from "./tokens";
@@ -21,13 +25,13 @@ import type { Film, Block } from "./schema";
 
 /**
  * ---------------------------------------------------------------------------
- * DESIGN LANGUAGE — THE FILM
+ * DESIGN LANGUAGE: THE FILM
  * ---------------------------------------------------------------------------
- * Assembles §05–§08: the camera moves across one canvas, and where it stops it
+ * Assembles 05-08: the camera moves across one canvas, and where it stops it
  * either sits on the structure (the spine) or grows a device out of the node it
  * is looking at.
  *
- * The join is the whole trick. A device does not cut in — the node's border
+ * The join is the whole trick. A device does not cut in: the node's border
  * grows into the device frame, and on the way out it shrinks back into exactly
  * the same node. That reversibility is what tells the viewer where they are:
  * a device is never somewhere else, it is *inside* something they have already
@@ -159,7 +163,7 @@ const Grid: React.FC = () => {
 };
 
 /**
- * Chapter rail. This is the answer to §08's one test — scrub with the sound off
+ * Chapter rail. This is the answer to section 08's one test: scrub with the sound off
  * and every frame has to tell you where you are in the argument.
  */
 const Rail: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline }) => {
@@ -187,7 +191,7 @@ const Rail: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline 
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", ...layout.label() }}>
-        <span>{`chapter ${String(chapterIndex + 1).padStart(2, "0")} — ${film.chapters[chapterIndex]}`}</span>
+        <span>{`chapter ${String(chapterIndex + 1).padStart(2, "0")}: ${film.chapters[chapterIndex]}`}</span>
         <span>{stamp}</span>
       </div>
       {/* Segmented for long-form, continuous for reels: a reel is too short for
@@ -437,7 +441,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
                       startFrom={startFrom}
                       endAt={endAt}
                       playbackRate={speed}
-                      volume={ac.volume ?? 1}
+                      volume={() => ac.volume ?? 1}
                     />
                   </Sequence>
                 );
@@ -448,7 +452,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
                   key={`vo-${film.voiceover.src}`}
                   src={staticFile(film.voiceover.src)}
                   playbackRate={film.voiceover?.speed ?? 1.0}
-                  volume={film.voiceover?.volume ?? 1}
+                  volume={() => film.voiceover?.volume ?? 1}
                 />
               )
             )}
@@ -457,14 +461,14 @@ export const FilmView: React.FC<FilmViewProps> = ({
             {film.music?.src && (
               <Audio
                 src={staticFile(film.music.src)}
-                volume={(film.music?.volume ?? 1) * 0.25}
+                volume={() => (film.music?.volume ?? 1) * 0.25}
               />
             )}
 
             {/* SFX Timeline Placements */}
             {film.sfx?.map((sfx, idx) => (
               <Sequence key={idx} from={Math.round(sfx.timeSec * fps)}>
-                <Audio src={staticFile(sfx.src)} volume={sfx.volume ?? 1} />
+                <Audio src={staticFile(sfx.src)} volume={() => sfx.volume ?? 1} />
               </Sequence>
             ))}
           </>

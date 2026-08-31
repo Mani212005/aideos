@@ -1,3 +1,7 @@
+/**
+ * File Description: Vite configuration and custom development API plugins for Aideos Studio editor server.
+ */
+
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'

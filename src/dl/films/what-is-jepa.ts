@@ -1,3 +1,7 @@
+/**
+ * File Description: Production Film Definition for "What is JEPA" explaining Joint Embedding Predictive Architecture.
+ */
+
 import type { Film } from "../schema";
 
 export const whatIsJepaFilm: Film = {

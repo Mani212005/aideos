@@ -181,16 +181,17 @@ export async function runSegmentSyncGate(
     });
   }
 
-    return {
-      verdicts,
-      segmentShotMappings: mappings,
-      allPassedOrFixed: true,
-    };
-  }
+  return {
+    verdicts,
+    segmentShotMappings: mappings,
+    allPassedOrFixed: true,
+  };
+}
 
-  export async function runPreRenderSyncGate(
-    _film: any,
-    segments: SegmentAudioInfo[],
-  ): Promise<SyncGateResult> {
-    return runSegmentSyncGate(segments);
-  }
+// Validates audio segment-to-shot synchronization before rendering the film.
+export async function runPreRenderSyncGate(
+  _film: any,
+  segments: SegmentAudioInfo[],
+): Promise<SyncGateResult> {
+  return runSegmentSyncGate(segments);
+}

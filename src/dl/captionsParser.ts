@@ -1,15 +1,10 @@
 /**
- * ==============================================================================
- * AIDEOS 2.0: CAPTION & SCRIPT VTT PARSER
- * ==============================================================================
- * Synchronizes speech audio (.wav) and script (.vtt) with Remotion frame rates.
- * Generates word-level timestamps and kinetic display phrases.
- * ==============================================================================
+ * File Description: Synchronizes speech audio (.wav) and script (.vtt) with Remotion frame rates, generating word-level timestamps and kinetic display phrases.
  */
 
 import type { CaptionWord } from "./KineticSubtitles";
 
-/** Parse timestamp "00:01:23.456" or "01:23.456" into seconds */
+// Parses timestamp format "00:01:23.456" or "01:23.456" into total fractional seconds.
 function timeToSeconds(timeStr: string): number {
   const parts = timeStr.trim().split(":");
   if (parts.length === 3) {
@@ -28,7 +23,7 @@ export interface VttCue {
   text: string;
 }
 
-/** Parse raw WebVTT content into structured cues */
+// Parses raw WebVTT content into structured cues with start and end times.
 export function parseVtt(vttContent: string): VttCue[] {
   const cues: VttCue[] = [];
   const lines = vttContent.split(/\r?\n/);
@@ -66,7 +61,7 @@ export function parseVtt(vttContent: string): VttCue[] {
   return cues;
 }
 
-/** Convert VTT cues into word-by-word timestamped array aligned with Remotion FPS */
+// Converts VTT cues into word-by-word timestamped array aligned with video frame rate.
 export function vttToCaptionWords(cues: VttCue[], fps = 30): CaptionWord[] {
   const words: CaptionWord[] = [];
 
@@ -91,7 +86,7 @@ export function vttToCaptionWords(cues: VttCue[], fps = 30): CaptionWord[] {
   return words;
 }
 
-/** Dynamically extracts and computes word-level frame timestamps across all shots in a film */
+// Dynamically extracts and computes word-level frame timestamps across all shots in a film.
 export function generateWordsFromFilm(film: Record<string, unknown>): CaptionWord[] {
   const fps = (film?.fps as number) || 30;
 
@@ -112,8 +107,8 @@ export function generateWordsFromFilm(film: Record<string, unknown>): CaptionWor
       const shotDurationSec = (shot.dur as number) || (shot.duration as number) || 3;
       let shotText = ((shot.scriptText as string) || "").trim();
       if (!shotText && shot.blocks && Array.isArray(shot.blocks)) {
-        const textBlock = shot.blocks.find((b: any) => b.c === "TextReveal");
-        if (textBlock && textBlock.text) {
+        const textBlock = shot.blocks.find((b: Record<string, unknown>) => b.c === "TextReveal");
+        if (textBlock && typeof textBlock.text === "string") {
           shotText = textBlock.text;
         }
       }
@@ -148,15 +143,16 @@ export const DEFAULT_GIRAFFE_CAPTION_WORDS: CaptionWord[] = [
   { text: "Aideos", startFrame: 31, endFrame: 60 },
 ];
 
+// Formats numeric seconds into standard HH:MM:SS.mmm WebVTT timecode string.
 function formatVttTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
   const ms = Math.floor((seconds % 1) * 1000);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(ms).padStart(3, "0")}`;
 }
 
-/** Converts structured CaptionWord array into standard WebVTT cue string */
+// Converts structured CaptionWord array into standard WebVTT cue string.
 export function captionWordsToVtt(words: CaptionWord[], fps = 30): string {
   if (!words || words.length === 0) return "";
   let vtt = "WEBVTT\n\n";

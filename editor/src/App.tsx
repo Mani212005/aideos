@@ -1,3 +1,7 @@
+/**
+ * File Description: Main entry point for Aideos Studio editor UI, orchestrating views, real-time playback, audio state, and project history.
+ */
+
 import { useEffect, useState, useMemo, useRef } from "react";
 import { Player, type PlayerRef } from "@remotion/player";
 import { FilmView } from "../../src/dl/Film";

@@ -2,7 +2,7 @@
 File Description: System architecture and design specification for the Aideos Web Editor application.
 -->
 
-# Aideos Web Editor — System Architecture & Design Specification 🎬⚡
+# Aideos Web Editor: System Architecture & Design Specification 🎬⚡
 
 > **Explainer Video Engine as Data**  
 > *A Decoupled Spatial Mind Map, Multi-Track Timeline & Deterministic 3D Rendering Editor*
@@ -82,6 +82,9 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 
 ### 7. Export Engine Modal (`ExportProgressModal.tsx`)
 - **Purpose**: Communicates with the local Node.js backend (`/api/export`) to invoke Remotion CLI headless rendering and auto-trigger browser MP4 downloads.
+
+### 8. Global AI Critique & Feedback Assistant (`GlobalFeedbackWidget.tsx`)
+- **Purpose**: Floating chatbot assistant accessible across all editor screens for applying natural-language critiques, script polishing, shot retiming, and visual theme adjustments via `/api/critique`.
 
 ---
 

@@ -46,6 +46,8 @@ export const ShotModal: React.FC<ShotModalProps> = ({
   onUpdateFilm,
   onSelectShotIndex,
 }) => {
+  const [activeGestureIdx, setActiveGestureIdx] = useState(0);
+
   if (!isOpen || shotIndex < 0 || shotIndex >= film.shots.length) return null;
 
   const shot = film.shots[shotIndex];
@@ -63,8 +65,6 @@ export const ShotModal: React.FC<ShotModalProps> = ({
     { t: 0, pose: "neutral", groups: { ...POSE_PRESETS.neutral.groups } },
     { t: 0.5, pose: "present-right", groups: { ...POSE_PRESETS["present-right"].groups } },
   ];
-
-  const [activeGestureIdx, setActiveGestureIdx] = useState(0);
 
   // Determine active gesture ID for the current selected moment
   const currentMoment = poses[activeGestureIdx] || poses[0] || { t: 0, pose: "neutral" };
