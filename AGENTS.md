@@ -9,7 +9,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 1. **File Header Description**: Every file created or updated must have a header description at the very top explaining what the file does and its purpose.
 2. **Function Documentation**: Every function written must have a clear, one-line comment preceding it that explains what the function is for.
 3. **No Long Dashes**: Never use long dashes (such as em dashes — or en dashes –) anywhere: in code, UI text, video text, comments, documentation, or agent messages. Always use standard hyphens (-), colons (:), or parentheses ().
-4. **Video Design System Standard**: All videos created must strictly follow the specification defined in [Video Design Language.dc.html](file:///Users/manijoshi/test/Design%20tokens%20and%20animated%20primitives/Video%20Design%20Language.dc.html). This includes:
+4. **Video Design System Standard**: All videos created must strictly follow the specification defined in [src/dl/README.md](src/dl/README.md). This includes:
    - **Color Palette**: 6-value palette (#0A0A0B canvas, #F5F5F5 text primary, #8A8A8E text muted, #635BFF accent max 3x/frame, rgba(245,245,245,.10) hairline depth, #101013 surface).
    - **Typography**: Geist for voice/narrative, JetBrains Mono for all system/code/numbers.
    - **Motion Easing**: Ease-out-expo cubic-bezier(0.16, 1, 0.3, 1) for all transitions.
