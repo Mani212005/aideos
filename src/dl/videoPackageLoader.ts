@@ -5,6 +5,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Film } from "./schema";
 
 export interface VideoPackage {
@@ -16,11 +17,41 @@ export interface VideoPackage {
 }
 
 /**
+ * Resolves the absolute path to the project root directory.
+ */
+export function getProjectRoot(): string {
+  if (process.env.AIDEOS_PROJECT_ROOT) {
+    return path.resolve(process.env.AIDEOS_PROJECT_ROOT);
+  }
+  let cur = process.cwd();
+  for (let i = 0; i < 6; i++) {
+    if (fs.existsSync(path.join(cur, "src", "dl")) && fs.existsSync(path.join(cur, "package.json"))) {
+      return cur;
+    }
+    const parent = path.dirname(cur);
+    if (parent === cur) break;
+    cur = parent;
+  }
+  try {
+    if (typeof import.meta !== "undefined" && import.meta.url) {
+      const selfDir = path.dirname(fileURLToPath(import.meta.url));
+      const candidate = path.resolve(selfDir, "../..");
+      if (fs.existsSync(path.join(candidate, "src", "dl"))) {
+        return candidate;
+      }
+    }
+  } catch (_) {}
+  return process.cwd();
+}
+
+/**
  * Resolves the absolute path to the videos directory.
  */
 export function getVideosDir(): string {
-  // In Node runtime, resolve relative to project root
-  return path.resolve(process.cwd(), "videos");
+  if (process.env.AIDEOS_VIDEOS_DIR) {
+    return path.resolve(process.env.AIDEOS_VIDEOS_DIR);
+  }
+  return path.resolve(getProjectRoot(), "videos");
 }
 
 /**
@@ -38,7 +69,6 @@ export function listVideoPackages(): string[] {
 
 /**
  * Loads a complete Film manifest from a video package directory.
- * @param slug The video package folder name.
  */
 export function loadVideoPackage(slug: string): VideoPackage | null {
   const pkgDir = path.join(getVideosDir(), slug);

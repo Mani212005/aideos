@@ -1,0 +1,327 @@
+{
+  "filmId": "transformers-vs-mamba",
+  "title": "Transformers vs. Mamba: Linear State Spaces",
+  "shots": [
+    {
+      "id": "shot-1",
+      "duration": 8.99,
+      "stage": "frame",
+      "look": "quadratic-wall",
+      "move": "cut",
+      "visualDirection": "Systems Architect explains quadratic attention bottleneck",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The Quadratic Attention Problem",
+          "size": "headline",
+          "accentWord": "Quadratic"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "data-engineer",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": -20
+                },
+                "leftArm": {
+                  "rotate": 20
+                }
+              }
+            },
+            {
+              "t": 0.4,
+              "groups": {
+                "torso": {
+                  "rotate": 5
+                },
+                "rightArm": {
+                  "rotate": -70
+                },
+                "leftArm": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.8,
+              "groups": {
+                "torso": {
+                  "rotate": -3
+                },
+                "rightArm": {
+                  "rotate": -30
+                },
+                "leftArm": {
+                  "rotate": 10
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shot-2",
+      "duration": 6.86,
+      "stage": "frame",
+      "look": "kv-cache",
+      "move": "pan",
+      "visualDirection": "Layer stack showing expanding KV-Cache memory consumption",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Linear KV-Cache Memory Expansion",
+          "size": "headline",
+          "accentWord": "Expansion"
+        },
+        {
+          "c": "LayerStack",
+          "count": 12,
+          "bottomLabel": "Tokens (1k -> 1M)",
+          "topLabel": "KV-Cache (GBs)"
+        }
+      ]
+    },
+    {
+      "id": "shot-3",
+      "duration": 5.06,
+      "stage": "frame",
+      "look": "mamba-ssm",
+      "move": "pan",
+      "visualDirection": "Cyber AI Bot introduces selective state spaces with time-varying discretization",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Selective State Spaces",
+          "size": "headline",
+          "accentWord": "Selective"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "robot",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": -30
+                },
+                "leftArm": {
+                  "rotate": 30
+                },
+                "legs": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.5,
+              "groups": {
+                "torso": {
+                  "rotate": -5
+                },
+                "rightArm": {
+                  "rotate": -70
+                },
+                "leftArm": {
+                  "rotate": -70
+                },
+                "legs": {
+                  "rotate": 12
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "legs": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shot-4",
+      "duration": 7.98,
+      "stage": "frame",
+      "look": "constant-hidden",
+      "move": "pan",
+      "visualDirection": "Token strip compressing continuous sequence into fixed hidden dimension",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Fixed-Size Recurrent State Space",
+          "size": "headline",
+          "accentWord": "Recurrent"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "x0",
+            "x1",
+            "x2",
+            "x3",
+            "x4",
+            "h_t"
+          ],
+          "lit": [
+            5
+          ],
+          "caption": "Continuous Compression into State h_t"
+        }
+      ]
+    },
+    {
+      "id": "shot-5",
+      "duration": 6,
+      "stage": "frame",
+      "look": "hardware-scan",
+      "move": "pan",
+      "visualDirection": "Linear scaling comparison in SRAM hardware associative scans",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Linear Hardware Associative Scans",
+          "size": "headline",
+          "accentWord": "Associative"
+        },
+        {
+          "c": "ScaleBar",
+          "ticks": [
+            "1k",
+            "10k",
+            "100k",
+            "1M"
+          ],
+          "value": 0.9,
+          "label": "Context Scaling"
+        }
+      ]
+    },
+    {
+      "id": "shot-6",
+      "duration": 6.55,
+      "stage": "frame",
+      "look": "payoff",
+      "move": "pan",
+      "visualDirection": "Systems Architect celebrates 5x throughput with infinite context",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "5x Faster Inference and Infinite Context",
+          "size": "headline",
+          "accentWord": "5x"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "data-engineer",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.28,
+              "groups": {
+                "torso": {
+                  "rotate": 2
+                },
+                "head": {
+                  "rotate": 3
+                },
+                "leftArm": {
+                  "rotate": 10
+                },
+                "rightArm": {
+                  "rotate": -90
+                }
+              }
+            },
+            {
+              "t": 0.85,
+              "groups": {
+                "torso": {
+                  "rotate": 2
+                },
+                "head": {
+                  "rotate": 3
+                },
+                "leftArm": {
+                  "rotate": 10
+                },
+                "rightArm": {
+                  "rotate": -90
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

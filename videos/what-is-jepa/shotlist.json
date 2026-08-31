@@ -1,0 +1,306 @@
+{
+  "filmId": "what-is-jepa",
+  "title": "What is JEPA",
+  "shots": [
+    {
+      "id": "the-hook",
+      "duration": 17.5192,
+      "stage": "anchor",
+      "look": "intro",
+      "move": "cut",
+      "scriptText": "Meet Yann LeCun, the pioneer Meta hired to lead its artificial intelligence lab. While the tech industry went all in on chatbots, he has been arguing the one thing almost nobody wanted to hear: LLMs are a dead end that will never achieve real physical understanding.",
+      "visualDirection": "Black screen. Blinking cursor types quote. Yann LeCun rubber stamp.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "JEPA: Betting Against ChatGPT",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "Why Meta chief AI scientist Yann LeCun  \n walked away from LLMs."
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "developer",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 2
+                },
+                "head": {
+                  "rotate": 6
+                },
+                "leftArm": {
+                  "rotate": -5
+                },
+                "rightArm": {
+                  "rotate": -125
+                },
+                "legs": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.3,
+              "groups": {
+                "torso": {
+                  "rotate": -3
+                },
+                "head": {
+                  "rotate": -5
+                },
+                "leftArm": {
+                  "rotate": 65
+                },
+                "rightArm": {
+                  "rotate": 10
+                },
+                "legs": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.6,
+              "groups": {
+                "torso": {
+                  "rotate": 2
+                },
+                "head": {
+                  "rotate": 6
+                },
+                "leftArm": {
+                  "rotate": -5
+                },
+                "rightArm": {
+                  "rotate": -125
+                },
+                "legs": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.9,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": -4
+                },
+                "leftArm": {
+                  "rotate": 110
+                },
+                "rightArm": {
+                  "rotate": -110
+                },
+                "legs": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "who-is-lecun",
+      "duration": 16.7351,
+      "stage": "frame",
+      "look": "lecun",
+      "move": "pan",
+      "scriptText": "A French American computer scientist and NYU professor, LeCun won the 2018 Turing Award for inventing convolutional networks. For over a decade, he directed FAIR as Meta Chief AI Scientist reporting straight to Mark Zuckerberg.",
+      "visualDirection": "Split screen: LLM text wall vs toddler physics understanding.",
+      "blocks": [
+        {
+          "c": "StatCounter",
+          "to": 2018,
+          "label": "Turing Award",
+          "format": "plain"
+        },
+        {
+          "c": "Body",
+          "text": "Predicting the next word will never add up to real understanding."
+        },
+        {
+          "c": "AnalogyInset",
+          "caption": "Visual B-Roll"
+        }
+      ]
+    },
+    {
+      "id": "the-breakup",
+      "duration": 15.5588,
+      "stage": "frame",
+      "look": "breakup",
+      "move": "pan",
+      "scriptText": "In late 2025, LeCun stepped down from Meta to cofound AMI Labs, raising over one billion dollars in seed funding from Nvidia, Jeff Bezos, and Eric Schmidt to build machines with genuine physical intelligence.",
+      "visualDirection": "Meta logo cracking. AMI Labs launch with $1B+ seed.",
+      "metaphor": "rocket-launch",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "LeCun Departs Meta · Launches AMI Labs",
+          "size": "headline"
+        },
+        {
+          "c": "StatCounter",
+          "to": 1,
+          "label": "Seed Funding",
+          "format": "plain",
+          "suffix": "B+"
+        }
+      ]
+    },
+    {
+      "id": "canvas-anchor-1",
+      "duration": 9.4915,
+      "stage": "none",
+      "look": [
+        "breakup",
+        "jepa-concept"
+      ],
+      "move": "zoom-out",
+      "scriptText": "To understand why he walked away from chatbots, we have to look at the fundamental difference between predicting tokens and building internal world models.",
+      "blocks": []
+    },
+    {
+      "id": "jepa-concept-part1",
+      "duration": 16.5579,
+      "stage": "frame",
+      "look": "jepa-concept",
+      "move": "pan",
+      "scriptText": "JEPA stands for Joint Embedding Predictive Architecture. Generative models waste compute redrawing every missing pixel. JEPA does something smarter: it predicts abstract, high-level representations, throwing away the noise and keeping the core meaning.",
+      "visualDirection": "Generative extra finger vs JEPA abstract cloud.",
+      "metaphor": "glowing-cluster",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Predict meaning, not pixels.",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "Predicts abstract representations instead of reconstructing every tiny detail."
+        }
+      ]
+    },
+    {
+      "id": "joint-encoders",
+      "duration": 15.0636,
+      "stage": "anchor",
+      "look": "encoders",
+      "move": "pan",
+      "scriptText": "Inside JEPA, two neural networks, a context encoder and a target encoder, compare notes in embedding space. The architecture learns how the physical world behaves entirely by observing video without human labels.",
+      "visualDirection": "Context encoder and target encoder comparing notes in embedding space.",
+      "blocks": [
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Context Enc",
+            "Embedding",
+            "Target Enc"
+          ],
+          "lit": []
+        },
+        {
+          "c": "Body",
+          "text": "Learning what goes together in the real world entirely by watching."
+        }
+      ]
+    },
+    {
+      "id": "canvas-anchor-2",
+      "duration": 8.0893,
+      "stage": "none",
+      "look": [
+        "encoders",
+        "world-models"
+      ],
+      "move": "zoom-out",
+      "scriptText": "From simple image understanding, the research team rapidly scaled the architecture into interactive spatial world models.",
+      "blocks": []
+    },
+    {
+      "id": "world-models-evolution",
+      "duration": 15.3459,
+      "stage": "frame",
+      "look": "world-models",
+      "move": "pan",
+      "scriptText": "The architecture evolved from Image JEPA to Video JEPA 2, trained on over one million hours of video. It can control robotic arms to manipulate unfamiliar objects in new environments with minimal real-world demonstration data.",
+      "visualDirection": "Timeline from I-JEPA to V-JEPA to V-JEPA 2 controlling robot arm.",
+      "blocks": [
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "I-JEPA",
+            "V-JEPA",
+            "V-JEPA 2"
+          ],
+          "lit": []
+        },
+        {
+          "c": "StatCounter",
+          "to": 1,
+          "label": "Video Training",
+          "format": "plain",
+          "suffix": "M hrs"
+        },
+        {
+          "c": "AnalogyInset",
+          "caption": "V-JEPA 2 World Model · Robot Arm · GPU-Generated B-Roll",
+          "framesDir": "gpu_robot_arm",
+          "totalFrames": 144,
+          "delayFrames": 30,
+          "fullScreenHero": true
+        }
+      ]
+    },
+    {
+      "id": "how-to-try",
+      "duration": 12.3045,
+      "stage": "anchor",
+      "look": "world-models",
+      "move": "pan",
+      "scriptText": "Meta has open-sourced V-JEPA 2 on Hugging Face and GitHub. With just a few lines of Python using the transformers library, developers can load the model and test world prediction.",
+      "visualDirection": "Hugging Face & GitHub transformers open source.",
+      "metaphor": "custom",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "facebookresearch/vjepa2",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "Open source on Hugging Face & GitHub facebookresearch/vjepa2"
+        }
+      ]
+    },
+    {
+      "id": "the-close",
+      "duration": 12.7592,
+      "stage": "anchor",
+      "look": "conclusion",
+      "move": "pan",
+      "scriptText": "While others race to scale autocomplete, Yann LeCun has placed his career on machines that simulate reality. If you enjoyed this breakdown, subscribe for more deep architectural explainers.",
+      "visualDirection": "Pull back split screen: Chat window fades, glowing 3D world simulation.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "JEPA: Predicting the world, not words.",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "Yann LeCun bet his entire career on real world intelligence."
+        }
+      ]
+    }
+  ]
+}

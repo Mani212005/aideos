@@ -1,0 +1,19 @@
+{
+  "id": "how-browsers-work",
+  "title": "What Happens When You Type google.com",
+  "chapters": [
+    "The Keystroke Journey",
+    "DNS Resolution",
+    "TCP and TLS Handshake",
+    "Edge Proxy Load Balancing",
+    "DOM Render Pipeline Payoff"
+  ],
+  "theme": {
+    "background": "smooth-dark",
+    "fontFamily": "geist",
+    "storyStyle": "script-metaphor",
+    "cameraAngle": "isometric",
+    "accent": "#635BFF"
+  },
+  "accent": "#635BFF"
+}

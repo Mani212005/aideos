@@ -1,0 +1,18 @@
+{
+  "id": "kvcache",
+  "title": "Why your LLM remembers - the KV cache",
+  "chapters": [
+    "tokens",
+    "attention",
+    "the cache",
+    "the bill"
+  ],
+  "theme": {
+    "background": "dot-grid",
+    "fontFamily": "geist",
+    "storyStyle": "script-metaphor",
+    "cameraAngle": "isometric",
+    "accent": "#F43F5E"
+  },
+  "accent": "#635BFF"
+}

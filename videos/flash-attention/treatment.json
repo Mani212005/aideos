@@ -1,0 +1,20 @@
+{
+  "id": "flash-attention",
+  "title": "FlashAttention-3: Squeezing 90% GPU FLOPs",
+  "chapters": [
+    "GPU Starvation",
+    "HBM Bandwidth Wall",
+    "Hardware TMA Async",
+    "FP8 Overlapping Math",
+    "Ping-Pong Scheduler",
+    "900 TFLOPs Payoff"
+  ],
+  "theme": {
+    "background": "dot-grid",
+    "fontFamily": "geist",
+    "storyStyle": "script-metaphor",
+    "cameraAngle": "isometric",
+    "accent": "#635BFF"
+  },
+  "accent": "#635BFF"
+}

@@ -5,6 +5,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { getVideosDir } from "../../src/dl/videoPackageLoader";
 
 export interface SvgGenerationOptions {
   slug: string;
@@ -63,17 +64,17 @@ export function validateGeneratedSvg(code: string): SvgValidationResult {
   }
 
   // 2. Check for viewBox (Rule V-4)
-  if (!code.includes("viewBox=")) {
+  if (!/viewBox\s*=\s*/.test(code)) {
     errors.push("Invariant V-4 Violation: <svg> must declare explicit viewBox attribute.");
   }
 
   // 3. Check for preserveAspectRatio (Rule V-4)
-  if (!code.includes('preserveAspectRatio="xMidYMid meet"') && !code.includes("preserveAspectRatio='xMidYMid meet'")) {
+  if (!/preserveAspectRatio\s*=\s*(?:["']xMidYMid meet["']|\{\s*["'`]xMidYMid meet["'`]\s*\})/.test(code)) {
     errors.push("Invariant V-4 Violation: <svg> must declare preserveAspectRatio=\"xMidYMid meet\".");
   }
 
   // 4. Check for React export
-  if (!code.includes("export const ") && !code.includes("export default ")) {
+  if (!/export\s+(?:const|function|default|let|var|\{)/.test(code)) {
     errors.push("Component must be exported from module.");
   }
 
@@ -99,7 +100,7 @@ export function cleanCodeFence(raw: string): string {
 }
 
 /**
- * Synthesizes and writes a bespoke SVG component into a video package's visuals/ directory.
+ * Synthesizes and writes a bespoke SVG component into a video package's visuals directory.
  */
 export async function synthesizeBespokeSvg(
   options: SvgGenerationOptions,
@@ -115,7 +116,7 @@ export async function synthesizeBespokeSvg(
     return { success: false, errors: validation.errors };
   }
 
-  const baseDir = targetDir || path.resolve(process.cwd(), "videos", options.slug, "visuals");
+  const baseDir = targetDir || path.resolve(getVideosDir(), options.slug, "visuals");
   if (!fs.existsSync(baseDir)) {
     fs.mkdirSync(baseDir, { recursive: true });
   }

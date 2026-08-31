@@ -1,0 +1,19 @@
+{
+  "id": "character-showcase",
+  "title": "SVG Character System Showcase",
+  "chapters": [
+    "Welcome",
+    "Explaining Concept",
+    "Architecture Review",
+    "Canvas Overview",
+    "Final Payoff"
+  ],
+  "theme": {
+    "background": "smooth-dark",
+    "fontFamily": "geist",
+    "storyStyle": "script-metaphor",
+    "cameraAngle": "isometric",
+    "accent": "#635BFF"
+  },
+  "accent": "#635BFF"
+}

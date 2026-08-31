@@ -1,0 +1,342 @@
+{
+  "id": "why-local-first-software-is-quietly-winning",
+  "title": "Why Local-First Software Is Quietly Winning",
+  "fps": 30,
+  "chapters": [
+    "instant trust",
+    "offline advantage",
+    "data ownership",
+    "sync smarter",
+    "quiet winner"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "a",
+        "label": "Instant Trust",
+        "sub": "Zero latency launch",
+        "x": 150,
+        "y": 420,
+        "w": 190,
+        "h": 62
+      },
+      {
+        "id": "b",
+        "label": "Offline Advantage",
+        "x": 575,
+        "y": 500,
+        "w": 190,
+        "h": 62
+      },
+      {
+        "id": "c",
+        "label": "Data Ownership",
+        "x": 1000,
+        "y": 580,
+        "w": 190,
+        "h": 62
+      },
+      {
+        "id": "d",
+        "label": "Sync Smarter",
+        "x": 1425,
+        "y": 420,
+        "w": 190,
+        "h": 62
+      },
+      {
+        "id": "e",
+        "label": "Quiet Winner",
+        "x": 1850,
+        "y": 500,
+        "w": 190,
+        "h": 62
+      }
+    ],
+    "edges": [
+      {
+        "from": "a",
+        "to": "b",
+        "dashed": false
+      },
+      {
+        "from": "b",
+        "to": "c",
+        "dashed": false
+      },
+      {
+        "from": "c",
+        "to": "d",
+        "dashed": false
+      },
+      {
+        "from": "d",
+        "to": "e",
+        "dashed": false
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "s1",
+      "ch": "instant trust",
+      "dur": 6,
+      "stage": "anchor",
+      "look": "a",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Local-first apps launch instantly, no network wait.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "Instant launch"
+        },
+        {
+          "c": "TextReveal",
+          "text": "Zero-latency startup builds trust.",
+          "size": "headline"
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "dur": 6,
+      "stage": "none",
+      "look": "all",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Compare a cloud-only note app that spins with a local-first app that opens in a fraction of a second.",
+      "blocks": [
+        {
+          "c": "MatrixGrid",
+          "values": [
+            [
+              0.9,
+              0.1
+            ],
+            [
+              0.2,
+              0.8
+            ]
+          ],
+          "sweep": "row"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "ch": "offline advantage",
+      "dur": 6,
+      "stage": "anchor",
+      "look": "b",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Working offline isn't a compromise - it boosts productivity.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "Offline power"
+        },
+        {
+          "c": "Distribution",
+          "items": [
+            {
+              "label": "Local-first",
+              "p": 0.68
+            },
+            {
+              "label": "Cloud-only",
+              "p": 0.32
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "dur": 6,
+      "stage": "none",
+      "look": "all",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "A field technician completes 32 % more tasks per hour using a local-first app when the signal drops.",
+      "visualDirection": "Rugged tablet in a basement; technician taps a local-first inventory app while signal bars are empty.",
+      "blocks": [
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "📦",
+            "🔧",
+            "🗂️"
+          ],
+          "lit": []
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "ch": "data ownership",
+      "dur": 6,
+      "stage": "anchor",
+      "look": "c",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Keeping data on the device gives true ownership and reduces privacy risk.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "Own your data"
+        },
+        {
+          "c": "Plot",
+          "points": [
+            [
+              0,
+              0.2
+            ],
+            [
+              0.5,
+              0.8
+            ],
+            [
+              1,
+              0.4
+            ]
+          ],
+          "xLabel": "Architecture",
+          "yLabel": "Risk"
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "dur": 6,
+      "stage": "none",
+      "look": "all",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Animated flow: user → device DB → optional encrypted sync, contrasted with risky cloud leg.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "Local control"
+        }
+      ]
+    },
+    {
+      "id": "s7",
+      "ch": "sync smarter",
+      "dur": 6,
+      "stage": "anchor",
+      "look": "d",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Modern sync algorithms let edits merge reliably without conflicts.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "Smart sync"
+        },
+        {
+          "c": "AttentionArcs",
+          "tokens": [
+            "🖊️",
+            "🔀",
+            "✅"
+          ],
+          "focus": 1,
+          "links": [
+            0,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "s8",
+      "dur": 6,
+      "stage": "frame",
+      "look": "all",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Collaborators edit offline, then reconnect - the CRDT merges changes without overwrites.",
+      "visualDirection": "Screen capture of two users editing a markdown file offline; after reconnect the document merges instantly.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Conflict-free merging happens automatically.",
+          "size": "headline"
+        }
+      ]
+    },
+    {
+      "id": "s9",
+      "ch": "quiet winner",
+      "dur": 6,
+      "stage": "anchor",
+      "look": "e",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Local-first apps are soaring in downloads and venture funding.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "Rising tide"
+        },
+        {
+          "c": "ScaleBar",
+          "ticks": [
+            "0%",
+            "50%",
+            "100%"
+          ],
+          "value": 0.75
+        }
+      ]
+    },
+    {
+      "id": "s10",
+      "dur": 6,
+      "stage": "none",
+      "look": "all",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Bar graph shows a five-fold rise in top-10 local-first app downloads from 2021 to 2024.",
+      "blocks": [
+        {
+          "c": "Plot",
+          "points": [
+            [
+              0,
+              0.2
+            ],
+            [
+              0.33,
+              0.6
+            ],
+            [
+              0.66,
+              0.8
+            ],
+            [
+              1,
+              1
+            ]
+          ],
+          "xLabel": "Year",
+          "yLabel": "Downloads (×)"
+        }
+      ]
+    }
+  ]
+}

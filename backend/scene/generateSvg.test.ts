@@ -1,3 +1,7 @@
+/**
+ * File Description: Unit tests for Generative SVG Synthesis Engine and Invariant Validation.
+ */
+
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -9,6 +13,7 @@ import {
   cleanCodeFence,
   synthesizeBespokeSvg,
 } from "./generateSvg";
+import { getVideosDir, getProjectRoot, listVideoPackages } from "../../src/dl/videoPackageLoader";
 
 test("SVG Generator: buildSvgPrompt injects invariant rules and component name", () => {
   const prompt = buildSvgPrompt({
@@ -44,6 +49,38 @@ export const ToddlerPhysicsComparison: React.FC<{ frame: number }> = ({ frame })
   const result = validateGeneratedSvg(validComponent);
   assert.strictEqual(result.valid, true);
   assert.strictEqual(result.errors.length, 0);
+});
+
+test("SVG Generator: validateGeneratedSvg accepts export function and JSX preserveAspectRatio syntax", () => {
+  const functionExport = `
+import React from "react";
+
+export function CustomChart({ frame }: { frame: number }) {
+  return (
+    <svg viewBox="0 0 600 400" preserveAspectRatio={"xMidYMid meet"}>
+      <circle cx="300" cy="200" r="50" />
+    </svg>
+  );
+}
+`;
+  const res1 = validateGeneratedSvg(functionExport);
+  assert.strictEqual(res1.valid, true);
+  assert.strictEqual(res1.errors.length, 0);
+
+  const defaultFunctionExport = `
+import React from "react";
+
+export default function AnimatedDiagram() {
+  return (
+    <svg viewBox="-300 -200 600 400" preserveAspectRatio={'xMidYMid meet'}>
+      <rect x="-100" y="-100" width="200" height="200" />
+    </svg>
+  );
+}
+`;
+  const res2 = validateGeneratedSvg(defaultFunctionExport);
+  assert.strictEqual(res2.valid, true);
+  assert.strictEqual(res2.errors.length, 0);
 });
 
 test("SVG Generator: validateGeneratedSvg rejects SVG violating Invariant V-4", () => {
@@ -111,4 +148,16 @@ export const TestGeneratedSvg: React.FC = () => {
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
+});
+
+test("Video Package Loader: resolves project root and videos directory regardless of working directory", () => {
+  const rootDir = getProjectRoot();
+  assert.ok(fs.existsSync(rootDir));
+  assert.ok(fs.existsSync(path.join(rootDir, "src", "dl")));
+
+  const videosDir = getVideosDir();
+  assert.ok(videosDir.endsWith(path.sep + "videos"));
+
+  const packages = listVideoPackages();
+  assert.ok(Array.isArray(packages));
 });

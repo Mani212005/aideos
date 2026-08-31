@@ -7,7 +7,6 @@ dist
 
 # Rendered video.
 out
-videos/
 
 # Proof stills and large frame sequence directories.
 .frames/

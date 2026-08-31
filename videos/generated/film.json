@@ -1,0 +1,146 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "typing-google-com-into-your-br",
+  "title": "Typing google.com into your br",
+  "fps": 30,
+  "chapters": [
+    "chapter-1",
+    "chapter-2"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "label": "chapter-1",
+        "x": 100,
+        "y": 200,
+        "w": 190,
+        "h": 62
+      },
+      {
+        "id": "node-2",
+        "label": "chapter-2",
+        "x": 500,
+        "y": 200,
+        "w": 190,
+        "h": 62
+      }
+    ],
+    "edges": [
+      {
+        "from": "node-1",
+        "to": "node-2",
+        "dashed": false
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "shot-1",
+      "ch": "chapter-1",
+      "dur": 6.443,
+      "stage": "frame",
+      "look": "node-1",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Typing google.com into your browser unleashes an intricate choreography across every layer of the internet.",
+      "visualDirection": "Visual representation of narration segment: \"Typing google.com into your browser unleashes an intricate choreography across every layer of the internet.\"",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Typing google.com into your browser unleashes an intricate choreography across every layer of the internet.",
+          "size": "headline",
+          "accentWord": "Typing"
+        }
+      ]
+    },
+    {
+      "id": "shot-2",
+      "ch": "chapter-1",
+      "dur": 6.495,
+      "stage": "frame",
+      "look": "node-1",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "First, your operating system checks local caches before querying recursive DNS resolvers to find the IP address.",
+      "visualDirection": "Visual representation of narration segment: \"First, your operating system checks local caches before querying recursive DNS resolvers to find the IP address.\"",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "First, your operating system checks local caches before querying recursive DNS resolvers to find the IP address.",
+          "size": "headline",
+          "accentWord": "First"
+        }
+      ]
+    },
+    {
+      "id": "shot-3",
+      "ch": "chapter-1",
+      "dur": 6.104,
+      "stage": "frame",
+      "look": "node-1",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Next, your browser establishes a TCP handshake and negotiates TLS encryption in less than fifty milliseconds.",
+      "visualDirection": "Visual representation of narration segment: \"Next, your browser establishes a TCP handshake and negotiates TLS encryption in less than fifty milliseconds.\"",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Next, your browser establishes a TCP handshake and negotiates TLS encryption in less than fifty milliseconds.",
+          "size": "headline",
+          "accentWord": "Next"
+        }
+      ]
+    },
+    {
+      "id": "shot-4",
+      "ch": "chapter-2",
+      "dur": 6.287,
+      "stage": "frame",
+      "look": "node-2",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "An HTTP request reaches Google's edge reverse proxy, which load balances traffic to backend clusters.",
+      "visualDirection": "Visual representation of narration segment: \"An HTTP request reaches Google's edge reverse proxy, which load balances traffic to backend clusters.\"",
+      "metaphor": "balance-scale",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "An HTTP request reaches Google's edge reverse proxy, which load balances traffic to backend clusters.",
+          "size": "headline",
+          "accentWord": "request"
+        }
+      ]
+    },
+    {
+      "id": "shot-5",
+      "ch": "chapter-2",
+      "dur": 8.203,
+      "stage": "frame",
+      "look": "node-2",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "The server returns HTML, which the browser engine parses into the DOM tree, computing styles and rendering pixels at sixty frames per second.",
+      "visualDirection": "Visual representation of narration segment: \"The server returns HTML, which the browser engine parses into the DOM tree, computing styles and rendering pixels at sixty frames per second.\"",
+      "metaphor": "clock-gears",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The server returns HTML, which the browser engine parses into the DOM tree, computing styles and rendering pixels at sixty frames per second",
+          "size": "headline",
+          "accentWord": "server"
+        }
+      ]
+    }
+  ],
+  "voiceover": {
+    "src": "voiceover.wav",
+    "volume": 1
+  },
+  "captions": "captions.vtt"
+}

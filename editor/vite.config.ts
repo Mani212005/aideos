@@ -25,7 +25,7 @@ const FILM_ID = /^[a-z0-9-]+$/;
 const exportName = (id: string) =>
   `${id.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase())}Film`;
 
-// Films are pure data with a type-only import — see src/dl/films/kvcache.ts.
+// Films are pure data with a type-only import - see src/dl/films/kvcache.ts.
 const filmModule = (film: Film) =>
   `import type { Film } from "../schema";\n\nexport const ${exportName(film.id)}: Film = ${JSON.stringify(film, null, 2)};\n`;
 
@@ -234,8 +234,8 @@ function filmApiPlugin(): Plugin {
               .join("\n\n")
               .replace(/["“”]/g, "")
               .replace(/\*+/g, "")
-              .replace(/—/g, " - ")
-              .replace(/–/g, " - ")
+              .replace(/\u2014/g, " - ")
+              .replace(/\u2013/g, " - ")
               .trim();
           }
 
@@ -246,8 +246,8 @@ function filmApiPlugin(): Plugin {
             .replace(/\*([^*]+)\*/g, "$1")
             .replace(/`([^`]+)`/g, "$1")
             .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-            .replace(/—/g, " - ")
-            .replace(/–/g, " - ")
+            .replace(/\u2014/g, " - ")
+            .replace(/\u2013/g, " - ")
             .trim();
         }
 
@@ -273,7 +273,7 @@ function filmApiPlugin(): Plugin {
               const header = lines[0];
               if (header.toLowerCase().includes("production notes") || header.startsWith("#")) continue;
 
-              const timeMatch = header.match(/\[(\d+):(\d+)\s*[-–—]\s*(\d+):(\d+)\]\s*(.*)/i);
+              const timeMatch = header.match(/\[(\d+):(\d+)\s*([-\u2013\u2014])\s*(\d+):(\d+)\]\s*(.*)/i);
               let startSec = currentTime;
               let endSec = currentTime + 12;
               let title = header;

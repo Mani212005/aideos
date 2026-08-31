@@ -1,0 +1,19 @@
+{
+  "id": "what-is-jepa",
+  "title": "What is JEPA",
+  "chapters": [
+    "Introduction",
+    "Core Mechanism",
+    "Architecture",
+    "Payoff"
+  ],
+  "theme": {
+    "background": "blueprint",
+    "fontFamily": "geist",
+    "videoType": "educational",
+    "storyStyle": "script-metaphor",
+    "cameraAngle": "top-down",
+    "accent": "#F43F5E"
+  },
+  "accent": "#F43F5E"
+}

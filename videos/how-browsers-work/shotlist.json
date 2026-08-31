@@ -1,0 +1,239 @@
+{
+  "filmId": "how-browsers-work",
+  "title": "What Happens When You Type google.com",
+  "shots": [
+    {
+      "id": "shot-1",
+      "duration": 6.44,
+      "stage": "frame",
+      "look": "browser-entry",
+      "move": "cut",
+      "visualDirection": "Academic Tutor introduces the intricate journey of typing a URL",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Inside the Browser Engine",
+          "size": "headline",
+          "accentWord": "Browser"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "educator",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": -20
+                },
+                "leftArm": {
+                  "rotate": 20
+                }
+              }
+            },
+            {
+              "t": 0.4,
+              "groups": {
+                "torso": {
+                  "rotate": 3
+                },
+                "rightArm": {
+                  "rotate": -65
+                },
+                "leftArm": {
+                  "rotate": -10
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shot-2",
+      "duration": 6.5,
+      "stage": "frame",
+      "look": "dns-query",
+      "move": "pan",
+      "visualDirection": "Token strip showing local cache to recursive DNS resolution",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Recursive DNS Resolution Hierarchy",
+          "size": "headline",
+          "accentWord": "Resolution"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "OS Cache",
+            "Resolver",
+            "Root DNS",
+            "IP Found"
+          ],
+          "lit": [
+            0,
+            3
+          ],
+          "caption": "Querying Recursive DNS Nameservers"
+        }
+      ]
+    },
+    {
+      "id": "shot-3",
+      "duration": 6.1,
+      "stage": "frame",
+      "look": "tls-handshake",
+      "move": "pan",
+      "visualDirection": "ScaleBar demonstrating 50ms TLS connection negotiation",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "50ms TCP and TLS Handshake",
+          "size": "headline",
+          "accentWord": "Handshake"
+        },
+        {
+          "c": "ScaleBar",
+          "ticks": [
+            "10ms",
+            "30ms",
+            "50ms",
+            "100ms"
+          ],
+          "value": 0.45,
+          "label": "Connection Latency"
+        }
+      ]
+    },
+    {
+      "id": "shot-4",
+      "duration": 6.29,
+      "stage": "frame",
+      "look": "edge-proxy",
+      "move": "pan",
+      "visualDirection": "LayerStack showing edge proxy load balancing request to cluster",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Edge Reverse Proxy Load Balancing",
+          "size": "headline",
+          "accentWord": "Balancing"
+        },
+        {
+          "c": "LayerStack",
+          "count": 8,
+          "bottomLabel": "Edge Reverse Proxy",
+          "topLabel": "Backend Clusters"
+        }
+      ]
+    },
+    {
+      "id": "shot-5",
+      "duration": 8.2,
+      "stage": "frame",
+      "look": "dom-render",
+      "move": "pan",
+      "visualDirection": "Academic Tutor celebrates 60 FPS HTML DOM parsing and paint",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Parsed, Styled, and Rendered at 60 FPS",
+          "size": "headline",
+          "accentWord": "Rendered"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "educator",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.45,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 70
+                },
+                "rightArm": {
+                  "rotate": -70
+                }
+              }
+            },
+            {
+              "t": 0.85,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 70
+                },
+                "rightArm": {
+                  "rotate": -70
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,181 @@
+{
+  "filmId": "character-showcase",
+  "title": "SVG Character System Showcase",
+  "shots": [
+    {
+      "id": "shot-intro",
+      "duration": 8,
+      "stage": "anchor",
+      "look": "intro-node",
+      "move": "cut",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Meet the Vector Character System",
+          "size": "headline",
+          "accentWord": "Character"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "astronaut",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 2
+                },
+                "head": {
+                  "rotate": 6
+                },
+                "leftArm": {
+                  "rotate": -5
+                },
+                "rightArm": {
+                  "rotate": -125
+                }
+              }
+            },
+            {
+              "t": 0.6,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shot-concept",
+      "duration": 10,
+      "stage": "frame",
+      "look": "concept-node",
+      "move": "pan",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Zero Network Latency & 60 FPS Posing",
+          "size": "headline"
+        },
+        {
+          "c": "StatCounter",
+          "to": 60,
+          "label": "Frames Per Second",
+          "format": "plain",
+          "suffix": " FPS"
+        }
+      ]
+    },
+    {
+      "id": "shot-arch",
+      "duration": 12,
+      "stage": "anchor",
+      "look": "arch-node",
+      "move": "pan",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Hierarchical Skeletal Transforms",
+          "size": "headline"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "developer",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": -4
+                },
+                "head": {
+                  "rotate": -12
+                },
+                "leftArm": {
+                  "rotate": 15
+                },
+                "rightArm": {
+                  "rotate": -105
+                }
+              }
+            },
+            {
+              "t": 0.5,
+              "groups": {
+                "torso": {
+                  "rotate": 3
+                },
+                "head": {
+                  "rotate": 5
+                },
+                "leftArm": {
+                  "rotate": -10
+                },
+                "rightArm": {
+                  "rotate": -65
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shot-spine",
+      "duration": 6,
+      "stage": "none",
+      "look": "all",
+      "move": "zoom-out",
+      "blocks": []
+    },
+    {
+      "id": "shot-payoff",
+      "duration": 8,
+      "stage": "frame",
+      "look": "payoff-node",
+      "move": "pan",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Seamless 6-Color Palette Harmony",
+          "size": "headline"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "astronaut",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": -4
+                },
+                "leftArm": {
+                  "rotate": 110
+                },
+                "rightArm": {
+                  "rotate": -110
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

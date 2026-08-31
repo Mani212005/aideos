@@ -1,3 +1,8 @@
+/**
+ * File Description: Migration script to compile films into per-video package directories.
+ * Converts films in src/dl/films/ into standalone video packages under videos/<slug>/.
+ */
+
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +17,36 @@ if (!fs.existsSync(VIDEOS_DIR)) {
   fs.mkdirSync(VIDEOS_DIR, { recursive: true });
 }
 
+/**
+ * Normalizes text to eliminate long dashes per repository standards.
+ */
+function sanitizeDashes(text: string): string {
+  return text.replace(/\u2014/g, " - ").replace(/\u2013/g, " - ").replace(/\s+-\s+/g, " - ");
+}
+
+/**
+ * Recursively removes long dashes from object string fields.
+ */
+function sanitizeObject(obj: any): any {
+  if (typeof obj === "string") {
+    return sanitizeDashes(obj);
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeObject);
+  }
+  if (obj && typeof obj === "object") {
+    const res: any = {};
+    for (const key of Object.keys(obj)) {
+      res[key] = sanitizeObject(obj[key]);
+    }
+    return res;
+  }
+  return obj;
+}
+
+/**
+ * Migrates all film definitions into structured video packages.
+ */
 async function migrate() {
   const filmFiles = fs.readdirSync(FILMS_DIR).filter((f) => f.endsWith(".ts") && f !== "index.ts");
   console.log(`Found ${filmFiles.length} films to package into videos/...`);
@@ -22,13 +57,14 @@ async function migrate() {
 
     try {
       const imported = await import(modulePath);
-      const film = Object.values(imported).find((v: any) => v && typeof v === "object" && (v.schemaVersion || v.shots || v.canvas)) as any;
+      const rawFilm = Object.values(imported).find((v: any) => v && typeof v === "object" && (v.schemaVersion || v.shots || v.canvas)) as any;
 
-      if (!film) {
+      if (!rawFilm) {
         console.warn(`Skipping ${file}: no Film export found.`);
         continue;
       }
 
+      const film = sanitizeObject(rawFilm);
       const pkgDir = path.join(VIDEOS_DIR, slug);
       const visualsDir = path.join(pkgDir, "visuals");
       fs.mkdirSync(visualsDir, { recursive: true });
@@ -37,7 +73,7 @@ async function migrate() {
       fs.writeFileSync(path.join(pkgDir, "film.json"), JSON.stringify(film, null, 2), "utf8");
 
       // 2. Write shotlist.json
-      const shotlist = {
+      const shotlist = sanitizeObject({
         filmId: film.id || slug,
         title: film.title,
         shots: (film.shots || []).map((s: any) => ({
@@ -52,28 +88,28 @@ async function migrate() {
           metaphor: s.metaphor,
           blocks: s.blocks,
         })),
-      };
+      });
       fs.writeFileSync(path.join(pkgDir, "shotlist.json"), JSON.stringify(shotlist, null, 2), "utf8");
 
       // 3. Write treatment.json
-      const treatment = {
+      const treatment = sanitizeObject({
         id: film.id || slug,
         title: film.title,
         chapters: film.chapters || [],
         theme: film.theme || {},
         accent: film.accent || "#635BFF",
-      };
+      });
       fs.writeFileSync(path.join(pkgDir, "treatment.json"), JSON.stringify(treatment, null, 2), "utf8");
 
       // 4. Write visuals/index.ts
+      const cleanTitle = sanitizeDashes(film.title || slug);
       const visualsIndexContent = `/**
- * Bespoke SVG components and custom graphics for "${film.title}".
+ * File Description: Bespoke visual graphics and SVG components for ${cleanTitle}.
  */
+
 export const visuals = {};
 `;
-      if (!fs.existsSync(path.join(visualsDir, "index.ts"))) {
-        fs.writeFileSync(path.join(visualsDir, "index.ts"), visualsIndexContent, "utf8");
-      }
+      fs.writeFileSync(path.join(visualsDir, "index.ts"), visualsIndexContent, "utf8");
 
       console.log(`✓ Packaged videos/${slug}/ (film.json, shotlist.json, treatment.json, visuals/)`);
     } catch (err) {
