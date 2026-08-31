@@ -43,16 +43,16 @@ Aideos does not generate videos through brittle one-shot prompt templates. Inste
 Below is a live trace from the Aideos compilation and self-correction engine verifying a film manifest:
 
 ```json
-[TRACE: 2026-08-31T09:44:12.102Z] agent.invoke("ideate_film", { topic: "KV Cache in LLMs" })
-[TRACE: 2026-08-31T09:44:12.450Z] tool.call("parallel_search", { query: "KV cache memory bandwidth LLM inference 2025" })
-[TRACE: 2026-08-31T09:44:13.120Z] tool.result("parallel_search", { claims: 3, citations: ["https://arxiv.org/abs/2405.04517"] })
-[TRACE: 2026-08-31T09:44:14.010Z] tool.call("gemini_compile_manifest", { research_claims: 3, archetypes: ["Developer", "Robot"] })
+[TRACE: 2026-08-31T09:44:12.102Z] agent.invoke("ideate_film", { topic: "Why Yann LeCun Left Meta for World Models (JEPA)" })
+[TRACE: 2026-08-31T09:44:12.450Z] tool.call("parallel_search", { query: "Yann LeCun JEPA world models AMI Labs 2025" })
+[TRACE: 2026-08-31T09:44:13.120Z] tool.result("parallel_search", { claims: 3, citations: ["https://arxiv.org/abs/2301.08243", "https://openreview.net/forum?id=BZ5a1r-5IH"] })
+[TRACE: 2026-08-31T09:44:14.010Z] tool.call("gemini_compile_manifest", { research_claims: 3, archetypes: ["Scientist", "Developer"] })
 [TRACE: 2026-08-31T09:44:15.220Z] invariant_gate.run("verify_all_invariants", { shots: 10, characters: 2 })
 [ALERT: 2026-08-31T09:44:15.340Z] INVARIANT_VIOLATION: Rule M6 (Consecutive identical metaphor "TokenStrip" on shots 2 & 3)
 [ALERT: 2026-08-31T09:44:15.342Z] INVARIANT_VIOLATION: Rule S-6 (Audio drift +5.5s on shot "who-is-lecun" exceeds 50ms budget)
 [TRACE: 2026-08-31T09:44:15.345Z] agent.self_correct({
   patch_action: "replace_metaphor",
-  shot_id: "shot-3",
+  shot_id: "the-breakup",
   new_metaphor: "AnalogyInset",
   retime_action: "resync_audio_spine",
   calibrated_duration: 139.425
