@@ -1,3 +1,5 @@
+<!-- File Description: End-to-end video pipeline specification detailing staged ideation, audio alignment, canvas authoring, and rendering. -->
+
 # End-to-End Video Pipeline (Upgraded)
 
 This document defines the strict, step-by-step pipeline for producing explainer videos using the **Audio-First workflow** and the **aideos Remotion engine**, enhanced with automated alignment and structured canvas authoring.
@@ -7,10 +9,10 @@ This document defines the strict, step-by-step pipeline for producing explainer 
 ## Phase 0: Staged Ideation (The Brain)
 *New in the staged ideation layer. `backend generate` is still the fast path; this chain trades a few extra LLM calls for individually validated story work. See the "Staged generation" section of README.md for the command reference.*
 
-1. **`ideate`**: idea -> `production/<slug>/treatment.json`: title, logline, chapters (label, claim, evidence), one shared `styleBlock`, and frozen character sheets.
-2. **`shoot`**: treatment -> `shotlist.json`: nodes and paced shots mapping onto the film schema. Acceptance gate: the exact `parseFilm` pacing rules run before anything is written, so bad pacing dies at token cost, never render cost.
-3. **`prompts`**: shot list -> `prompts.json`: self-contained video-model prompts per `needsFootage` shot. The style block and any matching character sheets are prepended verbatim at compile time, so the shared look cannot drift.
-4. **`assemble`**: compiles `film.json` (re-validated by `parseFilm`) and submits flagged shots as `VideoJobSpec[]` through the swappable engine (`null`, or `ssh-wangp` for Wan2GP on the GPU box). Clips land in `production/<slug>/footage/`; wire them into `AnalogyInset src` fields, then re-run with `--install` to activate the film for Phases 1-4 below.
+1. **`ideate`**: idea -> `videos/<slug>/treatment.json`: title, logline, chapters (label, claim, evidence), one shared `styleBlock`, and frozen character sheets.
+2. **`shoot`**: treatment -> `videos/<slug>/shotlist.json`: nodes and paced shots mapping onto the film schema. Acceptance gate: the exact `parseFilm` pacing rules run before anything is written, so bad pacing dies at token cost, never render cost.
+3. **`prompts`**: shot list -> `videos/<slug>/prompts.json`: self-contained video-model prompts per `needsFootage` shot. The style block and any matching character sheets are prepended verbatim at compile time, so the shared look cannot drift.
+4. **`assemble`**: compiles `videos/<slug>/film.json` (re-validated by `parseFilm`) and submits flagged shots as `VideoJobSpec[]` through the swappable engine (`null`, or `ssh-wangp` for Wan2GP on the GPU box). Clips land in `videos/<slug>/footage/`; wire them into `AnalogyInset src` fields, then re-run with `--install` to activate the film for Phases 1-4 below.
 
 ---
 
@@ -32,11 +34,11 @@ Everything is driven by the audio track. Timing is derived programmatically from
 1. **Structured Canvas (JSON)**: We use a structured, shape-based canvas (like tldraw). Shapes are saved as JSON (position, size, type, text), not pixels.
 2. **Pre-populate Layouts**: The agent programmatically pre-populates the canvas with rough shapes (text beats, placeholders) derived directly from the script/shot list by writing JSON. No vision models or GUI drawing tools required unless decoding a custom freehand doodle.
 3. **Structured Metadata**: Directives are attached to shape metadata (e.g., `openAt: 5`, `motion: "spin"`, `holdUntil: 12`) instead of relying on parsed freehand text.
-4. **Extraction to Pure TS**:
-   - Run the extraction script: **Canvas Shape JSON → Film-Data TS**.
-   - This script generates the final `src/dl/films/<topic>.ts` file containing the canvas graph, shot list, and blocks.
-   - **Crucial Invariant**: The resulting film file must remain **pure data** (`import type` only, no React or runtime imports) so it remains LLM-editable and diffable.
-5. **Activate the Film**: Point `src/dl/activeFilm.ts` to the newly generated data file.
+4. **Extraction to Pure TS / Video Package**:
+   - Run the extraction script: **Canvas Shape JSON -> Film-Data TS / JSON**.
+   - This script generates `src/dl/films/<topic>.ts` or `videos/<slug>/film.json` containing the canvas graph, shot list, and blocks.
+   - **Crucial Invariant**: The resulting film file must remain **pure data** (`import type` only in TS or pure JSON) so it remains LLM-editable and diffable.
+5. **Activate the Film**: Point `src/dl/activeFilm.ts` to the newly generated data file, or load dynamically via `src/dl/videoPackageLoader.ts`.
 
 ---
 
