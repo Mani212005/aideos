@@ -420,8 +420,18 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {activeTransition === "paper-rip" && (
           <PaperRip active={isTransitioning} progress={transitionProgress} frame={frame} />
         )}
-        {showRail ? <Rail film={film} timeline={timeline} /> : null}
-        {captionWords && captionWords.length > 0 && <KineticSubtitles words={captionWords} />}
+        {captionWords && captionWords.length > 0 && (
+          <KineticSubtitles
+            words={captionWords}
+            fontSize={film.theme?.captions?.fontSize}
+            fontFamily={film.theme?.captions?.fontFamily}
+            primaryColor={film.theme?.captions?.primaryColor}
+            highlightColor={film.theme?.captions?.highlightColor || film.accent || accent || "#FF6B00"}
+            backgroundColor={film.theme?.captions?.backgroundColor}
+            position={film.theme?.captions?.position}
+            maxWidth={film.theme?.captions?.maxWidth}
+          />
+        )}
 
         {/* Master Audio Track & Multi-Clip Voiceover Spine */}
         {includeAudio && (

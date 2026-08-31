@@ -1,11 +1,11 @@
 /*
-File Description: This component implements the Kinetic Caption & Pretext Inspector tab in Aideos, rendering an interactive word column for the entire film script with real-time frame timestamp editing and Pretext zero-DOM layout measurement.
+File Description: This component implements the Captions Studio tab in Aideos, rendering an interactive word column for the entire film script with real-time frame timestamp editing, Pretext zero-DOM layout measurement, and customizable typography/color controls synchronized with the video layer.
 */
 
 import React, { useState, useMemo, useEffect } from "react";
 import { prepareWithSegments, layoutWithLines, type LayoutLine } from "@chenglou/pretext";
-import { Search, Play, Edit2, Sparkles, Clock, FileText } from "lucide-react";
-import type { Film } from "../../../src/dl/schema";
+import { Search, Play, Edit2, Sparkles, Clock, FileText, AlignCenter, AlignJustify } from "lucide-react";
+import type { Film, CaptionStyle } from "../../../src/dl/schema";
 
 export interface CaptionWordItem {
   text: string;
@@ -13,10 +13,11 @@ export interface CaptionWordItem {
   endFrame: number;
 }
 
-interface KineticCaptionEditorProps {
+export interface KineticCaptionEditorProps {
   film?: Film;
   words?: CaptionWordItem[];
   onCaptionsChange?: (words: CaptionWordItem[]) => void;
+  onCaptionStyleChange?: (style: CaptionStyle) => void;
   onSeekToFrame?: (frame: number) => void;
 }
 
@@ -25,21 +26,71 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
   film,
   words: initialWords = [],
   onCaptionsChange,
+  onCaptionStyleChange,
   onSeekToFrame,
 }) => {
   const [localWords, setLocalWords] = useState<CaptionWordItem[]>(initialWords);
   const [searchQuery, setSearchQuery] = useState("");
-  const [fontSize, setFontSize] = useState(48);
-  const [maxWidth, setMaxWidth] = useState(640);
-  const [highlightColor, setHighlightColor] = useState("#635BFF");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
-  // Sync local words whenever incoming words prop changes
+  // Caption Styling State bound to film.theme.captions
+  const activeStyle = film?.theme?.captions;
+  const [fontSize, setFontSize] = useState<number>(activeStyle?.fontSize || 36);
+  const [maxWidth, setMaxWidth] = useState<number>(activeStyle?.maxWidth || 720);
+  const [highlightColor, setHighlightColor] = useState<string>(
+    activeStyle?.highlightColor || film?.accent || "#FF6B00"
+  );
+  const [primaryColor, setPrimaryColor] = useState<string>(activeStyle?.primaryColor || "#FFFFFF");
+  const [backgroundColor, setBackgroundColor] = useState<string>(
+    activeStyle?.backgroundColor || "rgba(10, 15, 29, 0.88)"
+  );
+  const [position, setPosition] = useState<"top" | "center" | "bottom">(
+    activeStyle?.position || "bottom"
+  );
+
+  // Sync local state when incoming film or words change
   useEffect(() => {
     if (initialWords && initialWords.length > 0) {
       setLocalWords(initialWords);
     }
   }, [initialWords]);
+
+  useEffect(() => {
+    if (film?.theme?.captions) {
+      const c = film.theme.captions;
+      if (c.fontSize) setFontSize(c.fontSize);
+      if (c.maxWidth) setMaxWidth(c.maxWidth);
+      if (c.highlightColor) setHighlightColor(c.highlightColor);
+      if (c.primaryColor) setPrimaryColor(c.primaryColor);
+      if (c.backgroundColor) setBackgroundColor(c.backgroundColor);
+      if (c.position) setPosition(c.position);
+    } else if (film?.accent) {
+      setHighlightColor(film.accent);
+    }
+  }, [film?.id, film?.theme?.captions, film?.accent]);
+
+  // Propagates style mutations directly to film.theme.captions
+  const emitStyleUpdate = (patch: Partial<CaptionStyle>) => {
+    const updated: CaptionStyle = {
+      fontSize,
+      maxWidth,
+      highlightColor,
+      primaryColor,
+      backgroundColor,
+      position,
+      ...patch,
+    };
+    if (patch.fontSize !== undefined) setFontSize(patch.fontSize);
+    if (patch.maxWidth !== undefined) setMaxWidth(patch.maxWidth);
+    if (patch.highlightColor !== undefined) setHighlightColor(patch.highlightColor);
+    if (patch.primaryColor !== undefined) setPrimaryColor(patch.primaryColor);
+    if (patch.backgroundColor !== undefined) setBackgroundColor(patch.backgroundColor);
+    if (patch.position !== undefined) setPosition(patch.position);
+
+    if (onCaptionStyleChange) {
+      onCaptionStyleChange(updated);
+    }
+  };
 
   // Derives full script text from all word items in sequence
   const fullText = useMemo(() => {
@@ -95,61 +146,66 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-4 text-sm bg-[#101013] p-5 rounded-xl border border-rgba(245,245,245,0.10) text-[#F5F5F5] font-sans">
+    <div className="flex flex-col gap-4 text-sm bg-[#101013] p-5 rounded-xl border border-zinc-800 text-[#F5F5F5] font-sans">
       {/* Header Info Bar */}
-      <div className="flex items-center justify-between border-b border-rgba(245,245,245,0.10) pb-4">
+      <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
         <div>
           <h3 className="font-bold text-lg text-[#F5F5F5] flex items-center gap-2">
-            <span>💬</span> Pretext Kinetic Subtitle Studio
+            <span>💬</span> Captions Studio
           </h3>
-          <p className="text-xs text-[#8A8A8E]">
-            Interactive word column for {film?.title || "Active Video"} ({localWords.length} words total)
+          <p className="text-xs text-zinc-400">
+            Customize typography, kinetic highlight colors, and layout framing for {film?.title || "Active Video"} ({localWords.length} words total)
           </p>
         </div>
-        <span className="text-xs px-3 py-1.5 bg-[#635BFF]/20 text-[#635BFF] font-mono rounded-full border border-[#635BFF]/40 flex items-center gap-1.5">
-          <Sparkles size={12} />
-          Pretext Engine Active
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs px-3 py-1.5 bg-indigo-500/20 text-indigo-400 font-mono rounded-full border border-indigo-500/40 flex items-center gap-1.5">
+            <Sparkles size={12} />
+            Pretext Live Layout
+          </span>
+          <span className="text-xs px-3 py-1.5 bg-emerald-500/20 text-emerald-400 font-mono rounded-full border border-emerald-500/40 flex items-center gap-1.5">
+            Synced with Video Layer
+          </span>
+        </div>
       </div>
 
       {/* Grid Layout: Left Interactive Word Column (Full Script) | Right Pretext Controls & Preview */}
       <div className="grid grid-cols-12 gap-5">
         {/* Left Column: Interactive Word List Column */}
-        <div className="col-span-5 flex flex-col gap-3 bg-[#0A0A0B] p-4 rounded-xl border border-rgba(245,245,245,0.10)">
+        <div className="col-span-5 flex flex-col gap-3 bg-[#0A0A0B] p-4 rounded-xl border border-zinc-800">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-semibold text-[#F5F5F5] uppercase tracking-wider flex items-center gap-1.5">
-              <FileText size={14} className="text-[#635BFF]" />
+              <FileText size={14} className="text-indigo-400" />
               Interactive Word Column
             </h4>
-            <span className="text-xs text-[#8A8A8E] font-mono">
+            <span className="text-xs text-zinc-400 font-mono">
               {filteredWords.length} / {localWords.length} words
             </span>
           </div>
 
           {/* Search Filter Bar */}
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-2.5 text-[#8A8A8E]" />
+            <Search size={14} className="absolute left-3 top-2.5 text-zinc-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search words in script..."
-              className="w-full bg-[#101013] border border-rgba(245,245,245,0.15) rounded-lg pl-9 pr-3 py-1.5 text-xs text-[#F5F5F5] focus:outline-none focus:border-[#635BFF]"
+              className="w-full bg-[#101013] border border-zinc-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-[#F5F5F5] focus:outline-none focus:border-indigo-500"
             />
           </div>
 
           {/* Interactive Scrollable Word List */}
-          <div className="max-h-[380px] overflow-y-auto pr-1 flex flex-col gap-1.5">
+          <div className="max-h-[420px] overflow-y-auto pr-1 flex flex-col gap-1.5">
             {filteredWords.map((wordItem, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-2 rounded-lg bg-[#101013] border border-rgba(245,245,245,0.06) hover:border-[#635BFF]/50 transition-colors group"
+                className="flex items-center justify-between p-2 rounded-lg bg-[#101013] border border-zinc-800/80 hover:border-indigo-500/50 transition-colors group"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <button
                     onClick={() => onSeekToFrame && onSeekToFrame(wordItem.startFrame)}
                     title={`Seek video to frame ${wordItem.startFrame}`}
-                    className="p-1 rounded bg-[#635BFF]/15 text-[#635BFF] hover:bg-[#635BFF] hover:text-white transition-colors"
+                    className="p-1 rounded bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-colors"
                   >
                     <Play size={10} />
                   </button>
@@ -161,12 +217,12 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
                       onChange={(e) => handleWordUpdate(idx, { ...wordItem, text: e.target.value })}
                       onBlur={() => setEditingIndex(null)}
                       autoFocus
-                      className="bg-[#0A0A0B] border border-[#635BFF] text-xs px-1.5 py-0.5 rounded text-[#F5F5F5] focus:outline-none"
+                      className="bg-[#0A0A0B] border border-indigo-500 text-xs px-1.5 py-0.5 rounded text-[#F5F5F5] focus:outline-none"
                     />
                   ) : (
                     <span
                       onClick={() => setEditingIndex(idx)}
-                      className="text-xs font-medium text-[#F5F5F5] truncate cursor-pointer hover:text-[#635BFF]"
+                      className="text-xs font-medium text-[#F5F5F5] truncate cursor-pointer hover:text-indigo-400"
                       title="Click to edit word"
                     >
                       {wordItem.text}
@@ -174,14 +230,14 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 font-mono text-[11px] text-[#8A8A8E]">
+                <div className="flex items-center gap-2 font-mono text-[11px] text-zinc-400">
                   <span className="flex items-center gap-1">
                     <Clock size={10} />
                     f{wordItem.startFrame}-{wordItem.endFrame}
                   </span>
                   <button
                     onClick={() => setEditingIndex(idx)}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 text-[#8A8A8E] hover:text-[#F5F5F5]"
+                    className="opacity-0 group-hover:opacity-100 p-0.5 text-zinc-400 hover:text-[#F5F5F5]"
                   >
                     <Edit2 size={10} />
                   </button>
@@ -197,7 +253,7 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-[#F5F5F5]">Full Script Text:</label>
             <textarea
-              className="w-full bg-[#0A0A0B] border border-rgba(245,245,245,0.15) rounded-lg p-3 text-[#F5F5F5] text-xs focus:outline-none focus:border-[#635BFF] font-sans"
+              className="w-full bg-[#0A0A0B] border border-zinc-700 rounded-lg p-3 text-[#F5F5F5] text-xs focus:outline-none focus:border-indigo-500 font-sans"
               rows={3}
               value={fullText}
               onChange={handleFullTextChange}
@@ -205,67 +261,113 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
             />
           </div>
 
+          {/* Typography & Appearance Controls */}
+          <div className="p-4 rounded-xl bg-[#0A0A0B] border border-zinc-800 space-y-3">
+            <div className="text-xs font-bold text-white uppercase tracking-wider">
+              Caption Styling & Typography Controls
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Font Size */}
+              <div className="flex flex-col gap-1">
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>Font Size</span>
+                  <span className="font-mono text-white font-semibold">{fontSize}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={20}
+                  max={64}
+                  value={fontSize}
+                  onChange={(e) => emitStyleUpdate({ fontSize: Number(e.target.value) })}
+                  className="accent-indigo-500"
+                />
+              </div>
+
+              {/* Wrap Max Width */}
+              <div className="flex flex-col gap-1">
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>Wrap Width</span>
+                  <span className="font-mono text-white font-semibold">{maxWidth}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={320}
+                  max={1200}
+                  value={maxWidth}
+                  onChange={(e) => emitStyleUpdate({ maxWidth: Number(e.target.value) })}
+                  className="accent-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* Colors & Position Row */}
+            <div className="grid grid-cols-3 gap-3 pt-2 border-t border-zinc-800/80">
+              {/* Highlight Accent Color */}
+              <div className="flex items-center justify-between p-2 rounded-lg bg-[#101013] border border-zinc-800">
+                <span className="text-xs text-zinc-400">Karaoke Highlight:</span>
+                <input
+                  type="color"
+                  value={highlightColor}
+                  onChange={(e) => emitStyleUpdate({ highlightColor: e.target.value })}
+                  className="w-6 h-6 rounded border-none cursor-pointer bg-transparent"
+                />
+              </div>
+
+              {/* Primary Text Color */}
+              <div className="flex items-center justify-between p-2 rounded-lg bg-[#101013] border border-zinc-800">
+                <span className="text-xs text-zinc-400">Text Color:</span>
+                <input
+                  type="color"
+                  value={primaryColor}
+                  onChange={(e) => emitStyleUpdate({ primaryColor: e.target.value })}
+                  className="w-6 h-6 rounded border-none cursor-pointer bg-transparent"
+                />
+              </div>
+
+              {/* Viewport Position */}
+              <div className="flex items-center justify-between p-2 rounded-lg bg-[#101013] border border-zinc-800">
+                <span className="text-xs text-zinc-400">Position:</span>
+                <select
+                  value={position}
+                  onChange={(e) => emitStyleUpdate({ position: e.target.value as "top" | "center" | "bottom" })}
+                  className="bg-[#0A0A0B] text-xs text-white border border-zinc-700 rounded px-1.5 py-0.5 focus:outline-none"
+                >
+                  <option value="bottom">Bottom</option>
+                  <option value="center">Center</option>
+                  <option value="top">Top</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
           {/* Pretext Zero-DOM Telemetry */}
-          <div className="grid grid-cols-3 gap-2 bg-[#0A0A0B] p-3 rounded-lg border border-rgba(245,245,245,0.10) font-mono text-xs">
+          <div className="grid grid-cols-3 gap-2 bg-[#0A0A0B] p-3 rounded-lg border border-zinc-800 font-mono text-xs">
             <div>
-              <span className="text-[#8A8A8E] block text-[10px]">Lines (Pretext)</span>
+              <span className="text-zinc-400 block text-[10px]">Lines (Pretext)</span>
               <span className="text-[#F5F5F5] font-bold text-sm">{pretextStats.lineCount} lines</span>
             </div>
             <div>
-              <span className="text-[#8A8A8E] block text-[10px]">Box Height</span>
+              <span className="text-zinc-400 block text-[10px]">Box Height</span>
               <span className="text-[#F5F5F5] font-bold text-sm">{pretextStats.totalHeight} px</span>
             </div>
             <div>
-              <span className="text-[#8A8A8E] block text-[10px]">Wrap Max-Width</span>
-              <span className="text-[#635BFF] font-bold text-sm">{maxWidth} px</span>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-[#8A8A8E]">Font Size: {fontSize}px</label>
-              <input
-                type="range"
-                min={24}
-                max={72}
-                value={fontSize}
-                onChange={(e) => setFontSize(Number(e.target.value))}
-                className="accent-[#635BFF]"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-[#8A8A8E]">Wrap Width: {maxWidth}px</label>
-              <input
-                type="range"
-                min={320}
-                max={1000}
-                value={maxWidth}
-                onChange={(e) => setMaxWidth(Number(e.target.value))}
-                className="accent-[#635BFF]"
-              />
-            </div>
-          </div>
-
-          {/* Highlight Accent */}
-          <div className="flex items-center justify-between gap-4 pt-1">
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-[#8A8A8E]">Accent Highlight:</label>
-              <input
-                type="color"
-                value={highlightColor}
-                onChange={(e) => setHighlightColor(e.target.value)}
-                className="w-7 h-7 rounded border-none cursor-pointer bg-transparent"
-              />
+              <span className="text-zinc-400 block text-[10px]">Wrap Max-Width</span>
+              <span className="text-indigo-400 font-bold text-sm">{maxWidth} px</span>
             </div>
           </div>
 
           {/* Real-time Pretext Lines Preview */}
-          <div className="flex flex-col gap-1.5 pt-2 border-t border-rgba(245,245,245,0.10)">
-            <span className="text-xs text-[#8A8A8E] font-semibold">Pretext Line-Wrapped Kinetic Preview:</span>
+          <div className="flex flex-col gap-1.5 pt-2 border-t border-zinc-800">
+            <span className="text-xs text-zinc-400 font-semibold">Pretext Line-Wrapped Kinetic Preview:</span>
             <div
-              className="bg-[#0A0A0B] p-4 rounded-lg border border-rgba(245,245,245,0.10) flex flex-col items-center justify-center text-center gap-1 min-h-[100px]"
-              style={{ maxWidth: `${maxWidth}px`, width: "100%", margin: "0 auto" }}
+              className="p-4 rounded-xl border border-zinc-800 flex flex-col items-center justify-center text-center gap-1 min-h-[100px] transition-all"
+              style={{
+                maxWidth: `${maxWidth}px`,
+                width: "100%",
+                margin: "0 auto",
+                backgroundColor: backgroundColor,
+              }}
             >
               {pretextStats.lines.map((line: string, lIdx: number) => (
                 <div
@@ -273,7 +375,7 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
                   style={{
                     fontSize: `${fontSize * 0.75}px`,
                     fontWeight: 700,
-                    color: "#F5F5F5",
+                    color: primaryColor,
                     lineHeight: 1.25,
                   }}
                 >
@@ -283,7 +385,7 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
                       <span
                         key={wIdx}
                         style={{
-                          color: isHighlight ? highlightColor : "#F5F5F5",
+                          color: isHighlight ? highlightColor : primaryColor,
                           margin: "0 4px",
                         }}
                       >
