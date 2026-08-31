@@ -1,3 +1,5 @@
+<!-- File Description: Master documentation and technical overview for the Aideos autonomous video director repository. -->
+
 # Aideos
 
 > **Autonomous Explainer Video Director as Pure Data.**

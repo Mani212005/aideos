@@ -1,4 +1,6 @@
-# Aideos — Contest Rules & Platform Verification Matrix
+<!-- File Description: Contest Rules and Platform Verification Matrix documenting SDK compliance, agent architecture, grounding, and deployment. -->
+
+# Aideos: Contest Rules & Platform Verification Matrix
 
 This document provides formal verification and evidence for all platform and hackathon requirements governing the Aideos project.
 
@@ -10,7 +12,7 @@ This document provides formal verification and evidence for all platform and hac
 The hackathon requires genuine usage of Google's Generative AI technologies (Gemini models) and compliance with official SDK specifications.
 
 ### Implementation & Evidence
-* **Official SDK**: Aideos utilizes the official `@google/genai` package (`npm:@google/genai@^0.1.1`), the official next-generation Google GenAI SDK for Node.js and TypeScript.
+* **Official SDK**: Aideos utilizes the official `@google/genai` package (`npm:@google/genai@^2.19.0`), the official next-generation Google GenAI SDK for Node.js and TypeScript.
 * **Model ID**: Configured in `backend/modelClient.ts` as `gemini-2.0-flash` (with environment variable override support via `AIDEOS_GEMINI_MODEL`).
 * **Zero Barred SDKs**: Runtime dependencies in `package.json` are verified clean with zero unauthorized third-party vendor SDKs (`openai`, `@deepgram/sdk`, `@anthropic-ai/*`).
 * **Test Verification**: Verified by `backend/ideation/ideation.test.ts` and `backend/compliance.test.ts`.
@@ -36,7 +38,7 @@ The project must exhibit genuine autonomous agent capabilities, structured reaso
 Projects competing in the Parallel Partner Track must demonstrate genuine web search grounding using the `parallel-web` SDK.
 
 ### Implementation & Evidence
-* **SDK Integration**: `backend/parallelClient.ts` integrates `parallel-web` (`npm:parallel-web@^0.1.0`).
+* **SDK Integration**: `backend/parallelClient.ts` integrates `parallel-web` (`npm:parallel-web@^1.3.2`).
 * **Live Research Retrieval**: Queries live web corpora for technical claims, figures, and verified URLs prior to screenplay ideation.
 * **Factual Citations**: Real URLs (e.g. `https://arxiv.org/abs/2405.04517`) are grounded directly into the film's canvas nodes and metadata.
 * **Test Verification**: Tested in `backend/ideation/ideation.test.ts`.

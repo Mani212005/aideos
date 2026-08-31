@@ -1,4 +1,6 @@
-# Devpost Submission Text — Aideos
+<!-- File Description: Devpost submission document outlining project inspiration, features, architecture, and roadmap. -->
+
+# Devpost Submission Text: Aideos
 
 ### 🏷️ Project Title
 **Aideos: Autonomous Explainer Video Director as Pure Data**

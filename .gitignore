@@ -1,3 +1,5 @@
+# File Description: Git ignore configuration for temporary assets, build outputs, and node_modules.
+
 node_modules
 dist
 .DS_Store
@@ -19,7 +21,7 @@ public/gpu_robot_arm/
 # Media is kept out of the repository on purpose: it is large, it is not the
 # source of truth for anything, and licensed tracks should not be redistributed
 # with the code. Drop your own files into public/ and name them in the Studio
-# props panel — see CLAUDE.md.
+# props panel: see CLAUDE.md.
 public/*.mp3
 public/*.wav
 public/*.m4a
@@ -28,8 +30,7 @@ public/*.mov
 *.wav
 *.mp3
 
-# Scripts and Transitions directory
-scripts/
+# Transitions directory
 transitions/
 public/transitions/
 
