@@ -184,17 +184,43 @@ export function analyzeCritiqueIntent(critique: string, film?: Film): {
       });
       explanation = `Updated headline in ${targetShotId} to "${newHeadline}".`;
     } else if (isDiagram && (lower.includes("scale") || lower.includes("density"))) {
+      const shotMatch = lower.match(/shot\s*[-_]?\s*(\d+|[a-z0-9-]+)/i);
+      let targetShotId = "shot-2";
+      let targetBlockIndex = 1;
+
+      if (shotMatch) {
+        const sNum = parseInt(shotMatch[1], 10);
+        if (!isNaN(sNum) && sNum >= 1) {
+          targetShotId = `shot-${sNum}`;
+        } else {
+          targetShotId = shotMatch[1];
+        }
+      }
+
+      if (film && film.shots && film.shots.length > 0) {
+        const matchingShot = film.shots.find((s, idx) =>
+          shotMatch ? s.id === targetShotId || `shot-${idx + 1}` === targetShotId : s.blocks.some((b: any) => b.c === "ScaleBar" || b.c === "StatCounter")
+        );
+        if (matchingShot) {
+          targetShotId = matchingShot.id;
+          const bIdx = matchingShot.blocks.findIndex((b: any) => b.c === "ScaleBar" || b.c === "StatCounter");
+          if (bIdx !== -1) {
+            targetBlockIndex = bIdx;
+          }
+        }
+      }
+
       const matchVal = lower.match(/(\d+(\.\d+)?)/);
       const targetVal = matchVal ? parseFloat(matchVal[1]) : 0.75;
       const normalizedVal = targetVal > 1 ? targetVal / 100 : targetVal;
 
       filmOps.push({
         op: "update_block_prop",
-        shotId: "shot-2",
-        blockIndex: 1,
+        shotId: targetShotId,
+        blockIndex: targetBlockIndex,
         updates: { value: normalizedVal },
       });
-      explanation = `Updated ScaleBar value in shot-2 to ${normalizedVal}.`;
+      explanation = `Updated ScaleBar value in ${targetShotId} to ${normalizedVal}.`;
     } else if (lower.includes("blueprint")) {
       filmOps.push({
         op: "set_theme",
@@ -209,11 +235,11 @@ export function analyzeCritiqueIntent(critique: string, film?: Film): {
       explanation = "Switched visual theme to Smooth Dark with orange accent.";
     } else if (isDuration) {
       const shotMatch = lower.match(/shot\s*[-_]?\s*(\d+|[a-z0-9-]+)/i);
-      let targetShotId = "shot-2";
+      let targetShotId = film?.shots?.[1]?.id || "shot-2";
       if (shotMatch) {
         const sNum = parseInt(shotMatch[1], 10);
         if (!isNaN(sNum) && sNum >= 1) {
-          targetShotId = `shot-${sNum}`;
+          targetShotId = film?.shots?.[sNum - 1]?.id || `shot-${sNum}`;
         } else {
           targetShotId = shotMatch[1];
         }
@@ -406,19 +432,23 @@ export function applyFilmPatch(film: Film, ops: FilmPatchOp[]): { film: Film; er
               }
             } else if (b.c === "StatCounter") {
               let updatedB = { ...b };
+              let fieldModified = false;
               if (b.label && (b.label.toLowerCase().includes(oldLower) || oldLower.includes(b.label.toLowerCase()) || oldLower.includes("turning") || oldLower.includes("turing"))) {
-                shotModified = true;
+                fieldModified = true;
                 const labelCleanNew = cleanNew.replace(/^\d+\s*/, "").trim() || cleanNew;
                 updatedB.label = labelCleanNew;
               }
               const oldNum = parseFloat(cleanOld.replace(/[^0-9.]/g, ""));
               const newNum = parseFloat(cleanNew.replace(/[^0-9.]/g, ""));
-              if (!isNaN(newNum) && (!isNaN(oldNum) || b.to === oldNum || b.to === newNum)) {
-                shotModified = true;
+              if (!isNaN(newNum) && ((!isNaN(oldNum) && b.to === oldNum) || (isNaN(oldNum) && fieldModified))) {
+                fieldModified = true;
                 updatedB.to = newNum;
                 updatedB.format = "plain";
               }
-              if (shotModified) return updatedB;
+              if (fieldModified) {
+                shotModified = true;
+                return updatedB;
+              }
             }
             return b;
           });
@@ -468,28 +498,39 @@ export function executeCritique(req: CritiqueRequest): CritiqueResponse {
     };
   }
 
-  if (analysis.target === "scene" && req.scene) {
-    const sceneOps = analysis.inferredOps as PatchOp[];
-    const result: PatchResult = applyPatch(req.scene, sceneOps);
+  if (analysis.target === "scene") {
+    if (req.scene) {
+      const sceneOps = analysis.inferredOps as PatchOp[];
+      const result: PatchResult = applyPatch(req.scene, sceneOps);
 
-    if (result.rejected.length > 0) {
+      if (result.rejected.length > 0) {
+        return {
+          ok: false,
+          target: "scene",
+          explanation: analysis.explanation,
+          patchOps: sceneOps,
+          error: result.rejected[0].reason,
+          failingRule: "Scene Validation / Bounds Gate",
+        };
+      }
+
+      return {
+        ok: true,
+        target: "scene",
+        explanation: analysis.explanation,
+        patchOps: sceneOps,
+        updatedScene: result.scene,
+      };
+    } else {
       return {
         ok: false,
         target: "scene",
         explanation: analysis.explanation,
-        patchOps: sceneOps,
-        error: result.rejected[0].reason,
-        failingRule: "Scene Validation / Bounds Gate",
+        patchOps: [],
+        error: "Scene context not provided in critique request",
+        failingRule: "Scene Context Missing",
       };
     }
-
-    return {
-      ok: true,
-      target: "scene",
-      explanation: analysis.explanation,
-      patchOps: sceneOps,
-      updatedScene: result.scene,
-    };
   }
 
   // Apply Film-level patch
