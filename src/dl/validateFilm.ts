@@ -44,7 +44,7 @@ export function computeBlockScreenAABB(
   viewport: { width: number; height: number }
 ): BlockAABB {
   const rect = computeBlockRect(
-    { canvas: { nodes: [], edges: [] }, shots: [shot], fps: 30, id: "val", title: "val" } as any,
+    { canvas: { nodes: [], edges: [] }, chapters: [], shots: [shot], fps: 30, id: "val", title: "val" } as Film,
     shot,
     block,
     viewport,
@@ -264,7 +264,7 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
   const metaphorCounts: Record<string, number> = {};
 
   film.shots.forEach((shot, sIdx) => {
-    const metaphorBlock = shot.blocks.find((b) => b.c === "MetaphorViewer") as any;
+    const metaphorBlock = shot.blocks.find((b) => b.c === "MetaphorViewer") as { content?: { kind?: string } } | undefined;
     const kind = metaphorBlock?.content?.kind || shot.metaphor;
     if (kind) {
       metaphorSequence.push({ shotIndex: sIdx, kind });

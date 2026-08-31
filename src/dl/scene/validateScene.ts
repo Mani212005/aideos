@@ -159,7 +159,6 @@ export function validateScene(scene: Scene): ValidationResult {
     }
 
     // Rule 11: svgSource string is present and ends with .svg
-    let svgContent = "";
     if (!asset.svgSource) {
       errors.push({
         rule: 11,
@@ -212,19 +211,6 @@ export function validateScene(scene: Scene): ValidationResult {
           });
         } else {
           subGroupElementIds.add(sg.elementId);
-          if (svgContent) {
-            const hasId =
-              svgContent.includes(`id="${sg.elementId}"`) ||
-              svgContent.includes(`id='${sg.elementId}'`) ||
-              svgContent.includes(`id=${sg.elementId}`);
-            if (!hasId) {
-              errors.push({
-                rule: 16,
-                entityId: asset.assetId,
-                message: `RotatingSubGroup elementId "${sg.elementId}" not found in SVG document "${asset.svgSource}"`,
-              });
-            }
-          }
         }
       }
     }

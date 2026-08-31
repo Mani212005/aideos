@@ -5,14 +5,13 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { Film } from "./schema";
 
 export interface VideoPackage {
   slug: string;
   film: Film;
-  shotlist?: any;
-  treatment?: any;
+  shotlist?: unknown;
+  treatment?: unknown;
   hasVisuals: boolean;
 }
 
@@ -32,15 +31,12 @@ export function getProjectRoot(): string {
     if (parent === cur) break;
     cur = parent;
   }
-  try {
-    if (typeof import.meta !== "undefined" && import.meta.url) {
-      const selfDir = path.dirname(fileURLToPath(import.meta.url));
-      const candidate = path.resolve(selfDir, "../..");
-      if (fs.existsSync(path.join(candidate, "src", "dl"))) {
-        return candidate;
-      }
+  if (typeof __dirname !== "undefined") {
+    const candidate = path.resolve(__dirname, "../..");
+    if (fs.existsSync(path.join(candidate, "src", "dl"))) {
+      return candidate;
     }
-  } catch (_) {}
+  }
   return process.cwd();
 }
 
@@ -82,20 +78,24 @@ export function loadVideoPackage(slug: string): VideoPackage | null {
     const raw = fs.readFileSync(filmJsonPath, "utf8");
     const film = JSON.parse(raw) as Film;
 
-    let shotlist: any = null;
+    let shotlist: unknown = null;
     const shotlistPath = path.join(pkgDir, "shotlist.json");
     if (fs.existsSync(shotlistPath)) {
       try {
         shotlist = JSON.parse(fs.readFileSync(shotlistPath, "utf8"));
-      } catch (_) {}
+      } catch {
+        // Ignore invalid JSON
+      }
     }
 
-    let treatment: any = null;
+    let treatment: unknown = null;
     const treatmentPath = path.join(pkgDir, "treatment.json");
     if (fs.existsSync(treatmentPath)) {
       try {
         treatment = JSON.parse(fs.readFileSync(treatmentPath, "utf8"));
-      } catch (_) {}
+      } catch {
+        // Ignore invalid JSON
+      }
     }
 
     const visualsDir = path.join(pkgDir, "visuals");

@@ -68,7 +68,7 @@ export function validateLayeredFilm(input: unknown, options?: LayeredValidationO
 
     // Rule 6: Source file verification for video/audio/image clips
     if (clip.kind === "video" || clip.kind === "audio" || clip.kind === "image") {
-      const src = (clip.payload as any)?.src;
+      const src = (clip.payload as { src?: string })?.src;
       if (!src || typeof src !== "string" || src.trim().length === 0) {
         throw new Error(`Rule 6 violation: clip "${clip.id}" has empty source path`);
       }

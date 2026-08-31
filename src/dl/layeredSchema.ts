@@ -157,3 +157,9 @@ export const layeredFilmSchema = z.object({
 });
 
 export type LayeredFilm = z.infer<typeof layeredFilmSchema>;
+export type AnimationPayload = z.infer<typeof animationPayloadSchema>;
+export type AudioPayload = z.infer<typeof audioPayloadSchema>;
+export type VideoPayload = z.infer<typeof videoPayloadSchema>;
+export type TextPayload = z.infer<typeof textPayloadSchema>;
+export type SubtitlePayload = z.infer<typeof subtitlePayloadSchema>;
+export type ImagePayload = z.infer<typeof imagePayloadSchema>;

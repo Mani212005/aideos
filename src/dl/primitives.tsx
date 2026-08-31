@@ -136,6 +136,7 @@ export const TextReveal: React.FC<
   const align = useAlign();
   let fps = 30;
   try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     fps = useVideoConfig().fps;
   } catch {
     // Unit test fallback

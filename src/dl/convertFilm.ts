@@ -4,7 +4,7 @@
  */
 
 import type { Film, Shot } from "./schema";
-import type { LayeredFilm, Layer, Clip } from "./layeredSchema";
+import type { LayeredFilm, Layer, Clip, AnimationPayload, AudioPayload } from "./layeredSchema";
 import { computeShotStartTimes } from "../../backend/timeline/timeline";
 import { generateWordsFromFilm } from "./captionsParser";
 
@@ -147,7 +147,7 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm): Film {
     .sort((a, b) => a.position - b.position);
 
   const shots: Shot[] = animClips.map((c) => {
-    const p = c.payload as any;
+    const p = c.payload as AnimationPayload;
     const dur = Number((c.end - c.start).toFixed(3));
 
     return {
@@ -171,7 +171,7 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm): Film {
     };
   });
 
-  const voClip = layeredFilm.clips.find((c) => c.kind === "audio" && (c.payload as any)?.channel === "voiceover");
+  const voClip = layeredFilm.clips.find((c) => c.kind === "audio" && (c.payload as AudioPayload)?.channel === "voiceover");
 
   return {
     id: layeredFilm.id,
@@ -182,6 +182,6 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm): Film {
     canvas: layeredFilm.canvas,
     chapters: layeredFilm.chapters,
     shots,
-    ...(voClip ? { voiceover: { src: (voClip.payload as any).src, volume: voClip.volume ?? 1 } } : {}),
+    ...(voClip ? { voiceover: { src: (voClip.payload as AudioPayload).src, volume: voClip.volume ?? 1 } } : {}),
   };
 }

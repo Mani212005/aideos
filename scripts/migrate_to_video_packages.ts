@@ -5,11 +5,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = typeof __dirname !== "undefined" ? path.resolve(__dirname, "..") : process.cwd();
 const FILMS_DIR = path.join(ROOT, "src/dl/films");
 const VIDEOS_DIR = path.join(ROOT, "videos");
 
