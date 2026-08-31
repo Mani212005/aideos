@@ -1,0 +1,303 @@
+{
+  "filmId": "raft-vs-paxos",
+  "title": "Distributed Consensus: Raft vs. Paxos",
+  "shots": [
+    {
+      "id": "shot-1",
+      "duration": 5.58,
+      "stage": "frame",
+      "look": "consensus-problem",
+      "move": "cut",
+      "visualDirection": "Tech Founder explains distributed consistency across unreliable nodes",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Consensus in Distributed Systems",
+          "size": "headline",
+          "accentWord": "Consensus"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "executive",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": -20
+                },
+                "leftArm": {
+                  "rotate": 20
+                }
+              }
+            },
+            {
+              "t": 0.4,
+              "groups": {
+                "torso": {
+                  "rotate": 3
+                },
+                "rightArm": {
+                  "rotate": -65
+                },
+                "leftArm": {
+                  "rotate": -10
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shot-2",
+      "duration": 8.04,
+      "stage": "frame",
+      "look": "paxos-matrix",
+      "move": "pan",
+      "visualDirection": "Matrix showing multi-phase Paxos messaging complexity",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Paxos Message Passing Complexity",
+          "size": "headline",
+          "accentWord": "Complexity"
+        },
+        {
+          "c": "MatrixGrid",
+          "values": [
+            [
+              0.2,
+              0.4,
+              0.6,
+              0.8
+            ],
+            [
+              0.5,
+              0.9,
+              0.3,
+              0.7
+            ],
+            [
+              0.8,
+              0.2,
+              0.9,
+              0.4
+            ],
+            [
+              0.3,
+              0.7,
+              0.5,
+              0.9
+            ]
+          ],
+          "sweep": "row",
+          "rowLabel": "Proposers",
+          "colLabel": "Acceptors"
+        }
+      ]
+    },
+    {
+      "id": "shot-3",
+      "duration": 6.86,
+      "stage": "frame",
+      "look": "raft-engine",
+      "move": "pan",
+      "visualDirection": "Tech Architect explains Raft 3 decomposed subproblems",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Raft: Understandable Consensus",
+          "size": "headline",
+          "accentWord": "Understandable"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "developer",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": -20
+                },
+                "head": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.4,
+              "groups": {
+                "torso": {
+                  "rotate": -4
+                },
+                "rightArm": {
+                  "rotate": -75
+                },
+                "head": {
+                  "rotate": 6
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shot-4",
+      "duration": 5.69,
+      "stage": "frame",
+      "look": "quorum-log",
+      "move": "pan",
+      "visualDirection": "Token strip showing strong leader log replication across quorum",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Leader Log Quorum Replication",
+          "size": "headline",
+          "accentWord": "Replication"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Leader",
+            "AppendEntries",
+            "Follower 1",
+            "Follower 2",
+            "Commit"
+          ],
+          "lit": [
+            0,
+            4
+          ],
+          "caption": "AppendEntries Majority Consensus"
+        }
+      ]
+    },
+    {
+      "id": "shot-5",
+      "duration": 7.42,
+      "stage": "frame",
+      "look": "k8s-payoff",
+      "move": "pan",
+      "visualDirection": "Tech Founder celebrates Raft powering etcd and Kubernetes infrastructure",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Powers etcd and Kubernetes Globally",
+          "size": "headline",
+          "accentWord": "Kubernetes"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "executive",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.3,
+              "groups": {
+                "torso": {
+                  "rotate": 1
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 50
+                },
+                "rightArm": {
+                  "rotate": -50
+                }
+              }
+            },
+            {
+              "t": 0.85,
+              "groups": {
+                "torso": {
+                  "rotate": 1
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 50
+                },
+                "rightArm": {
+                  "rotate": -50
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

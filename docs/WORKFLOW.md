@@ -1,3 +1,5 @@
+<!-- File Description: End-to-end architecture and video production workflow specification for Aideos. -->
+
 # Aideos: Complete Architecture & Video Production Workflow
 
 This document details the complete end-to-end workflow of the Aideos Explainer Video Engine, explaining the 4 core design language axioms, the 5-stage automated audio-first produce pipeline, the interactive web studio, and video rendering.
@@ -8,7 +10,7 @@ This document details the complete end-to-end workflow of the Aideos Explainer V
 
 Aideos is engineered around 4 strict architectural invariants:
 
-1. **Films are Pure Data (`src/dl/films/*.ts`)**:
+1. **Films are Pure Data (`src/dl/films/*.ts`, `videos/<slug>/film.json`)**:
    - No React runtime logic, side-effects, or random math inside film definitions. Every film is a pure, serializable JSON data structure conforming strictly to `filmSchema` (`src/dl/schema.ts`).
 2. **Master Clock Audio Spine**:
    - Video duration is never guessed. The synthesized voiceover audio is the immutable master clock of the film. Total shot durations must sum to the voiceover length within a strict tolerance of $\pm 50\text{ms}$.
@@ -74,7 +76,7 @@ Aideos is engineered around 4 strict architectural invariants:
    - Chapter 3: Architecture & Topology (Deep mechanism breakdown)
    - Chapter 4: Benchmark & Payoff (Quantifiable metric proof or comparison)
    - Chapter 5: Conclusion & Future Outlook
-3. **Output**: `treatment.json` containing chapter claims, narration lines, and visual direction notes.
+3. **Output**: `videos/<slug>/treatment.json` containing chapter claims, narration lines, and visual direction notes.
 
 ### Stage 2: Audio Synthesis & Alignment (`backend/audio.ts`)
 1. **Sentence Segmentation**: Normalizes script punctuation and splits text into discrete audio segments.
@@ -89,7 +91,10 @@ Aideos is engineered around 4 strict architectural invariants:
    - Explaining memory allocation or arrays -> `MatrixGrid`
    - Highlighting big performance numbers -> `StatCounter`
    - Conceptual trade-offs -> `ComparisonView`
-2. **Pacing Invariant Verification (`src/dl/validateFilm.ts`)**:
+2. **Bespoke Generative SVG Synthesis (`backend/scene/generateSvg.ts`)**:
+   - For custom visual directions, synthesizes theme-harmonized React SVG components into `videos/<slug>/visuals/`.
+   - Validates geometric invariants (Rule V-4 explicit `viewBox` and `preserveAspectRatio="xMidYMid meet"`, center 60% viewport rule).
+3. **Pacing Invariant Verification (`src/dl/validateFilm.ts`)**:
    - First shot must cut (`move: "cut"`).
    - No device hold exceeds 25 seconds.
    - No consecutive repeats of the same device block without a canvas/text reset.
@@ -99,6 +104,7 @@ Aideos is engineered around 4 strict architectural invariants:
 1. **2D Node Layout**: Positions concept nodes on the continuous spatial graph with bounding boxes $(x, y, w, h)$.
 2. **Character Rigging**: Pure TypeScript vector rigs (`astronaut.ts`, `developer.ts`) provide 2-level hierarchical kinematic transforms.
 3. **Keyframe Interpolation**: Evaluates pose keyframes via `ease-out-expo` (`motion.ts`) across normalized progress $t \in [0, 1]$.
+4. **Package Assembly**: Assembles self-contained video package under `videos/<slug>/` (`film.json`, `shotlist.json`, `treatment.json`, `visuals/`) loaded by `src/dl/videoPackageLoader.ts`.
 
 ### Stage 5: Remotion Video Rendering (`src/dl/Film.tsx`)
 1. **Compositions**:

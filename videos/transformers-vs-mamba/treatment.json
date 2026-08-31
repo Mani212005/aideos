@@ -1,0 +1,20 @@
+{
+  "id": "transformers-vs-mamba",
+  "title": "Transformers vs. Mamba: Linear State Spaces",
+  "chapters": [
+    "Quadratic Bottleneck",
+    "KV-Cache Memory Bloat",
+    "Selective State Spaces",
+    "Constant-Size Compression",
+    "Hardware-Aware Scans",
+    "5x Throughput Payoff"
+  ],
+  "theme": {
+    "background": "smooth-dark",
+    "fontFamily": "geist",
+    "storyStyle": "script-metaphor",
+    "cameraAngle": "isometric",
+    "accent": "#FF6B00"
+  },
+  "accent": "#FF6B00"
+}

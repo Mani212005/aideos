@@ -1,3 +1,5 @@
+<!-- File Description: Complete technical context, API dictionary, schema, and function reference for Aideos. -->
+
 # Aideos: Context, Schema, Classes, Functions & Terminology Reference
 
 This document serves as the complete technical context and API dictionary for the Aideos explainer video engine, detailing all schemas, types, classes, functions, design tokens, and components across `src/dl/`, `backend/`, and `editor/`.
@@ -7,7 +9,7 @@ This document serves as the complete technical context and API dictionary for th
 ## 1. Core Film Schema & Data Types (`src/dl/schema.ts`)
 
 ### `Film`
-The root data contract defining a complete video composition.
+The root data contract defining a complete video composition (stored in `src/dl/films/<id>.ts` or `videos/<slug>/film.json`).
 * `id: string` (Lowercase kebab-case identifier, e.g. "character-showcase", "what-is-jepa")
 * `title: string` (Human-readable video title)
 * `fps: number` (Target playback framerate, standard is 30)
@@ -165,6 +167,18 @@ Pre-built tactile paper backgrounds:
 ### `backend/sync.ts`
 * `runSemanticVisualSync(film, captions)`: Evaluates spoken words against visual device blocks.
 * `matchShotVisual(segmentText, chapter)`: Determines whether a shot uses `CharacterBeat`, `DeviceCard`, `StatCounter`, or `TextReveal`.
+
+### `src/dl/videoPackageLoader.ts`
+* `getProjectRoot()`: Resolves the absolute path to the project root directory walking up the filesystem.
+* `getVideosDir()`: Resolves the absolute path to the `videos/` package directory (honors `AIDEOS_VIDEOS_DIR`).
+* `listVideoPackages()`: Returns a sorted array of all valid video package directory slugs in `videos/`.
+* `loadVideoPackage(slug)`: Loads and parses a standalone video package (`film.json`, `shotlist.json`, `treatment.json`, and visuals availability).
+
+### `backend/scene/generateSvg.ts`
+* `buildSvgPrompt(options)`: Constructs the system prompt for synthesizing bespoke React SVG visual components with invariant rules.
+* `validateGeneratedSvg(code)`: Validates generated React SVG code against geometric (viewBox, aspect ratio) and export invariants.
+* `cleanCodeFence(raw)`: Strips markdown code fences (` ```tsx `, ` ```typescript `, etc.) from generated LLM code.
+* `synthesizeBespokeSvg(options, llmCaller, targetDir)`: Synthesizes, validates, and saves a bespoke SVG component to `videos/<slug>/visuals/`.
 
 ### `src/dl/validateFilm.ts`
 * `validateFilm(film)`: Runs Zod schema parsing and structural integrity assertions.

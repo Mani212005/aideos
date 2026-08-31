@@ -1,0 +1,321 @@
+{
+  "filmId": "flash-attention",
+  "title": "FlashAttention-3: Squeezing 90% GPU FLOPs",
+  "shots": [
+    {
+      "id": "shot-1",
+      "duration": 6.06,
+      "stage": "frame",
+      "look": "memory-wall",
+      "move": "cut",
+      "visualDirection": "Tech Architect explains GPU memory starvation at the memory wall",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The GPU Memory Wall Problem",
+          "size": "headline",
+          "accentWord": "Memory"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "developer",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": -20
+                },
+                "leftArm": {
+                  "rotate": 20
+                }
+              }
+            },
+            {
+              "t": 0.5,
+              "groups": {
+                "torso": {
+                  "rotate": 4
+                },
+                "rightArm": {
+                  "rotate": -60
+                },
+                "leftArm": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shot-2",
+      "duration": 4.12,
+      "stage": "frame",
+      "look": "hbm-bottleneck",
+      "move": "pan",
+      "visualDirection": "Matrix comparison showing HBM memory bandwidth vs Tensor Core compute",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "High-Bandwidth Memory Bottleneck",
+          "size": "headline",
+          "accentWord": "Bottleneck"
+        },
+        {
+          "c": "MatrixGrid",
+          "values": [
+            [
+              0.1,
+              0.3,
+              0.8,
+              0.2
+            ],
+            [
+              0.4,
+              0.9,
+              0.1,
+              0.6
+            ],
+            [
+              0.7,
+              0.2,
+              0.5,
+              0.9
+            ],
+            [
+              0.2,
+              0.8,
+              0.4,
+              0.3
+            ]
+          ],
+          "sweep": "row",
+          "rowLabel": "Query Blocks",
+          "colLabel": "Key Blocks"
+        }
+      ]
+    },
+    {
+      "id": "shot-3",
+      "duration": 5.92,
+      "stage": "frame",
+      "look": "hopper-tma",
+      "move": "pan",
+      "visualDirection": "AI Researcher explains Hopper asynchronous Tensor Memory Accelerators",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Hardware Asynchrony via TMA",
+          "size": "headline",
+          "accentWord": "Asynchrony"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "scientist",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": -40
+                },
+                "head": {
+                  "rotate": 5
+                }
+              }
+            },
+            {
+              "t": 0.4,
+              "groups": {
+                "torso": {
+                  "rotate": -3
+                },
+                "rightArm": {
+                  "rotate": -110
+                },
+                "head": {
+                  "rotate": -5
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shot-4",
+      "duration": 4.28,
+      "stage": "frame",
+      "look": "async-pipeline",
+      "move": "pan",
+      "visualDirection": "Hardware pipeline diagram showing memory loads overlapping FP8 matrix multiplies",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Overlapping FP8 Tensor Math",
+          "size": "headline",
+          "accentWord": "Overlapping"
+        },
+        {
+          "c": "LayerStack",
+          "count": 8,
+          "bottomLabel": "HBM Async Load",
+          "topLabel": "FP8 Tensor Core"
+        }
+      ]
+    },
+    {
+      "id": "shot-5",
+      "duration": 7.88,
+      "stage": "frame",
+      "look": "ping-pong",
+      "move": "pan",
+      "visualDirection": "Ping-pong block scheduling in device frame buffer",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Zero Register Pressure via Ping-Pong",
+          "size": "headline",
+          "accentWord": "Ping-Pong"
+        },
+        {
+          "c": "ScaleBar",
+          "ticks": [
+            "100T",
+            "300T",
+            "600T",
+            "900T"
+          ],
+          "value": 0.95,
+          "label": "Attention Throughput"
+        }
+      ]
+    },
+    {
+      "id": "shot-6",
+      "duration": 6.78,
+      "stage": "frame",
+      "look": "payoff",
+      "move": "pan",
+      "visualDirection": "Tech Architect celebrates 2.4x speedup reaching 900 TFLOPs on H100",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "900 TFLOPs Reached on H100",
+          "size": "headline",
+          "accentWord": "900"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "developer",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.2,
+              "groups": {
+                "torso": {
+                  "rotate": 3
+                },
+                "head": {
+                  "rotate": 4
+                },
+                "leftArm": {
+                  "rotate": 20
+                },
+                "rightArm": {
+                  "rotate": -125
+                }
+              }
+            },
+            {
+              "t": 0.85,
+              "groups": {
+                "torso": {
+                  "rotate": 3
+                },
+                "head": {
+                  "rotate": 4
+                },
+                "leftArm": {
+                  "rotate": 20
+                },
+                "rightArm": {
+                  "rotate": -125
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

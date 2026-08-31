@@ -1,0 +1,14 @@
+{
+  "id": "rl-environments-3min",
+  "title": "RL Environments - The AI Playground",
+  "chapters": [
+    "the opening hook",
+    "what an rl environment is",
+    "the environment is genius",
+    "gymnasium standard",
+    "where this shows up",
+    "the core takeaway"
+  ],
+  "theme": {},
+  "accent": "#D95D39"
+}

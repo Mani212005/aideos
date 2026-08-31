@@ -1,0 +1,12 @@
+{
+  "id": "rl-adapters",
+  "title": "RL Adapters - Fine-Tuning with Reinforcement Learning",
+  "chapters": [
+    "definition",
+    "architectures",
+    "ppo vs grpo",
+    "self learning"
+  ],
+  "theme": {},
+  "accent": "#635BFF"
+}

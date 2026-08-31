@@ -1,0 +1,19 @@
+{
+  "id": "mars-water",
+  "title": "Why Liquid Water Can't Exist on Mars",
+  "chapters": [
+    "Ancient Oceans",
+    "Thin Atmosphere",
+    "The Triple Point Trap",
+    "Sublimation",
+    "Underground Reservoirs"
+  ],
+  "theme": {
+    "background": "smooth-dark",
+    "fontFamily": "geist",
+    "storyStyle": "script-metaphor",
+    "cameraAngle": "isometric",
+    "accent": "#FF6B00"
+  },
+  "accent": "#FF6B00"
+}

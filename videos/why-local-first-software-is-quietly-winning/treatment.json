@@ -1,0 +1,38 @@
+{
+  "title": "Why Local-First Software Is Quietly Winning",
+  "logline": "A look at how apps that store data on your device first - then sync later - deliver speed, privacy, and offline reliability, and why they're becoming the dominant model without the hype.",
+  "styleBlock": "All B-roll is shot with a 35mm-style prime lens at f/2.0, creating a shallow depth of field that isolates the subject while preserving contextual detail. The colour palette leans toward soft teal and muted graphite with occasional warm amber highlights to signal moments of insight. Lighting is natural-window or soft-box diffusion, giving a clean, slightly desaturated look; a subtle filmic grain is added in post for texture. Motion graphics use a thin, rounded sans-serif that matches the modern-minimal aesthetic.",
+  "characters": [
+    {
+      "name": "Pixel the Penguin",
+      "description": "Pixel is a stylised, flat-design penguin mascot about the height of a coffee mug. He wears a tiny teal scarf, has oversized round eyes, and a subtle glossy sheen on his beak that catches the light. Pixel appears in lower-third graphics, as an on-screen pointer, and occasionally pops into animated explainer sequences to illustrate concepts."
+    }
+  ],
+  "chapters": [
+    {
+      "label": "instant trust",
+      "claim": "Viewers will understand that local-first apps open instantly and feel inherently trustworthy because data never has to travel to a remote server to start working.",
+      "evidence": "We open with a split-screen demo: on the left, a cloud-only note-taking app lags while a network request spins; on the right, a local-first note app launches in 0.1 seconds, even with Wi-Fi off. Narration points out the latency numbers, while Pixel the Penguin hops onto the right side, tapping the screen to highlight the offline state."
+    },
+    {
+      "label": "offline advantage",
+      "claim": "Viewers will believe that working offline isn't a compromise - it actually boosts productivity in real-world scenarios.",
+      "evidence": "Footage of a field technician using a local-first inventory app on a rugged tablet in a basement with no signal. On-screen graphics show a timer: tasks completed per hour rise 32 % compared to the same technician using a cloud-only app after a signal drop. A quick interview snippet (text-only caption) from the technician confirms the impact, while Pixel slides a checklist icon onto the screen."
+    },
+    {
+      "label": "data ownership",
+      "claim": "Viewers will grasp that keeping data on the device gives users true ownership and reduces privacy risk.",
+      "evidence": "Animated flowchart contrasts two architectures: a classic SaaS stack (user -> internet -> cloud DB) with a red 'risk' flag on the cloud leg, versus a local-first stack (user -> device DB -> optional encrypted sync) with a green 'control' flag. A brief legal-tech quote appears as on-screen text: 'Data stored locally is subject to the user's jurisdiction, not the provider's.' Pixel points at the green flag and winks."
+    },
+    {
+      "label": "sync smarter",
+      "claim": "Viewers will realize that modern sync algorithms (CRDTs, Operational Transform) make later synchronization reliable and conflict-free, removing the need for constant server mediation.",
+      "evidence": "A screen-capture of a collaborative markdown editor built on CRDTs: two users edit the same document offline, then reconnect; the document merges instantly without overwrite warnings. A simplified diagram shows three nodes each holding a copy, exchanging patches, and converging to the same state. Pixel draws a small bridge between the nodes, symbolising the 'sync later' step."
+    },
+    {
+      "label": "quiet winner",
+      "claim": "Viewers will accept that local-first software is gaining market traction and will likely become the default paradigm for many categories.",
+      "evidence": "Bar graph of app downloads (2021-2024) shows a 5x rise in top-10 local-first apps. A bullet list of recent venture rounds: 'Signal (2023) - $500 M', 'Obsidian Sync (2024) - $120 M'. Logos of major products that have pivoted to local-first (e.g., Notion's offline mode, Microsoft Teams' local cache). Pixel stands beside a rising arrow, giving a final nod."
+    }
+  ]
+}

@@ -65,7 +65,7 @@ Below is a live trace from the Aideos compilation and self-correction engine ver
 
 ## 🏛️ The 4 Core Architectural Axioms
 
-1. **Axiom 1 (Films and Scenes are Pure Data):** Zero runtime logic or browser solvers inside film manifests (`src/dl/films/*.ts`). Solvers execute at compile/ideation time and emit pure serializable JSON documents.
+1. **Axiom 1 (Films and Scenes are Pure Data):** Zero runtime logic or browser solvers inside film manifests (`src/dl/films/*.ts` or `videos/<slug>/film.json`). Solvers execute at compile/ideation time and emit pure serializable JSON documents.
 2. **Axiom 2 (Audio-First Timing Spine):** The narration voiceover drives the master clock. Total shot durations lock to the audio length within $\pm 50\text{ms}$.
 3. **Axiom 3 (Derived Spatial Framing):** The camera solves framing and zoom levels from graph node coordinates, never hard-coded pixel coordinates.
 4. **Axiom 4 (Strict Theme-Token Palette):** Every vector path, block, and character rig binds strictly to semantic theme tokens (`canvas`, `surface`, `ink`, `muted`, `hairline`, `accent`).
@@ -101,6 +101,17 @@ The Aideos Timeline & Trimmer implements industry-standard non-linear editing ge
 
 ---
 
+## 📦 Per-Video Package Architecture & Generative SVG Engine
+
+1. **Self-Contained Video Packages (`videos/<slug>/`):**
+   * Each explainer video is packaged in a self-contained directory containing `film.json`, `shotlist.json`, `treatment.json`, and a `visuals/` directory.
+   * Discovered and loaded dynamically at runtime via the unified loader `src/dl/videoPackageLoader.ts`.
+2. **Generative SVG Synthesis (`backend/scene/generateSvg.ts`):**
+   * Synthesizes bespoke, theme-harmonized React SVG components tailored to shot visual directions.
+   * Enforces geometric invariant rules including Rule V-4 (`viewBox` and `preserveAspectRatio="xMidYMid meet"`), middle-60% viewport centering, semantic color token hooks (`useAccent`), and procedural frame animation props.
+
+---
+
 ## 🤖 Google GenAI & Parallel Search Grounding
 
 * **Parallel Search Integration (`parallel-web`):** Queries live web corpora and retrieves factual citations before screenplay generation, preventing LLM hallucination on post-2024 technical topics.
@@ -127,7 +138,7 @@ Eight distinct anatomical vector characters built with 100% theme-token color co
 
 Aideos explicitly separates **verifiable geometric truth** from **subjective visual taste**:
 
-1. **What the Automated Verification Suite Proves (190 Tests Pass 100%):**
+1. **What the Automated Verification Suite Proves (197 Tests Pass 100%):**
    * Zero spatial clipping across 16:9 and 9:16 aspect ratios.
    * Viewport bounds centering within the middle 60% of visible screen real estate.
    * Frame-accurate audio-to-video synchronization ($\pm 50\text{ms}$).
@@ -145,7 +156,7 @@ Aideos explicitly separates **verifiable geometric truth** from **subjective vis
 # 1. Install dependencies
 npm install
 
-# 2. Run all 190 automated test suites
+# 2. Run all 197 automated test suites
 npm test
 
 # 3. Run design-language and runsheet validation

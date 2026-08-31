@@ -163,7 +163,7 @@
       "move": "pan",
       "drift": false,
       "zoom": 1,
-      "scriptText": "A field technician completes 32 % more tasks per hour using a local-first app when the signal drops.",
+      "scriptText": "A field technician completes 32 % more tasks per hour using a local-first app when the signal drops.",
       "visualDirection": "Rugged tablet in a basement; technician taps a local-first inventory app while signal bars are empty.",
       "blocks": [
         {

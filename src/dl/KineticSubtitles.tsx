@@ -40,11 +40,9 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // If no words, don't render
-  if (!words || words.length === 0) return null;
-
   // Group words into natural phrase chunks (punctuated phrases or 5-8 words max)
   const phrases = useMemo(() => {
+    if (!words || words.length === 0) return [];
     const list: Array<{
       startIndex: number;
       endIndex: number;
@@ -77,6 +75,9 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
     }
     return list;
   }, [words, fps]);
+
+  // If no words, don't render
+  if (!words || words.length === 0) return null;
 
   // Find active phrase
   const activePhrase = phrases.find(

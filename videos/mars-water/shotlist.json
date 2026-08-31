@@ -1,0 +1,252 @@
+{
+  "filmId": "mars-water",
+  "title": "Why Liquid Water Can't Exist on Mars",
+  "shots": [
+    {
+      "id": "shot-1",
+      "duration": 5.97,
+      "stage": "frame",
+      "look": "ancient-mars",
+      "move": "cut",
+      "visualDirection": "Astro Guide explains ancient Martian warm world vs modern dry surface",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Why Mars Has No Liquid Water",
+          "size": "headline",
+          "accentWord": "Water"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "astronaut",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": -20
+                },
+                "leftArm": {
+                  "rotate": 20
+                }
+              }
+            },
+            {
+              "t": 0.4,
+              "groups": {
+                "torso": {
+                  "rotate": -3
+                },
+                "rightArm": {
+                  "rotate": -70
+                },
+                "leftArm": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.8,
+              "groups": {
+                "torso": {
+                  "rotate": 2
+                },
+                "rightArm": {
+                  "rotate": -25
+                },
+                "leftArm": {
+                  "rotate": 10
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shot-2",
+      "duration": 5.16,
+      "stage": "frame",
+      "look": "thin-air",
+      "move": "pan",
+      "visualDirection": "ScaleBar comparing atmospheric pressure between Earth and Mars",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "1% Atmospheric Density on Surface",
+          "size": "headline",
+          "accentWord": "Density"
+        },
+        {
+          "c": "ScaleBar",
+          "ticks": [
+            "0.1%",
+            "1%",
+            "10%",
+            "100%"
+          ],
+          "value": 0.35,
+          "label": "Mars vs Earth"
+        }
+      ]
+    },
+    {
+      "id": "shot-3",
+      "duration": 8.12,
+      "stage": "frame",
+      "look": "triple-point",
+      "move": "pan",
+      "visualDirection": "LayerStack depicting thermodynamic pressure regimes below water triple point",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Pressure Below Water Triple Point",
+          "size": "headline",
+          "accentWord": "Triple"
+        },
+        {
+          "c": "LayerStack",
+          "count": 8,
+          "bottomLabel": "Mars Pressure (610 Pa)",
+          "topLabel": "Earth Triple Point"
+        }
+      ]
+    },
+    {
+      "id": "shot-4",
+      "duration": 4.22,
+      "stage": "frame",
+      "look": "sublimation",
+      "move": "pan",
+      "visualDirection": "Token strip showing phase transition directly from solid ice to vapor",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Instant Sublimation into Vapor",
+          "size": "headline",
+          "accentWord": "Sublimation"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Solid Ice",
+            "610 Pa Limit",
+            "Zero Liquid",
+            "Vapor Gas"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Direct Solid-to-Gas Phase Transition"
+        }
+      ]
+    },
+    {
+      "id": "shot-5",
+      "duration": 5.25,
+      "stage": "frame",
+      "look": "reservoirs",
+      "move": "pan",
+      "visualDirection": "Astro Guide celebrates subsurface ice sheet discoveries",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Subsurface Ice Sheets Discovered",
+          "size": "headline",
+          "accentWord": "Ice"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "astronaut",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.35,
+              "groups": {
+                "torso": {
+                  "rotate": -1
+                },
+                "head": {
+                  "rotate": 2
+                },
+                "leftArm": {
+                  "rotate": 15
+                },
+                "rightArm": {
+                  "rotate": -105
+                }
+              }
+            },
+            {
+              "t": 0.85,
+              "groups": {
+                "torso": {
+                  "rotate": -1
+                },
+                "head": {
+                  "rotate": 2
+                },
+                "leftArm": {
+                  "rotate": 15
+                },
+                "rightArm": {
+                  "rotate": -105
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

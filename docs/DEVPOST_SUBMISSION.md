@@ -39,7 +39,7 @@ Aideos is an autonomous motion-graphic explainer video director and interactive 
 * **Rendering & Motion Graphics**: Remotion, React 19, SVG kinematic rigging, and Hermite Centripetal C1 spline interpolation.
 * **Timeline Engine**: OpenShot-inspired non-linear editing geometry (`position`, derived `duration`, `layer` indices, transaction-grouped update actions).
 * **Audio & Captions**: WebAudio streaming with byte-range headers, WebVTT phrase-locked kinetic captions, and automatic voiceover ducking envelopes.
-* **Testing & Quality Assurance**: 190 automated test suites verifying all 19 kinematic, spatial, and timing invariants.
+* **Testing & Quality Assurance**: 197 automated test suites verifying all 19 kinematic, spatial, and timing invariants.
 
 ---
 
@@ -51,7 +51,7 @@ Aideos is an autonomous motion-graphic explainer video director and interactive 
 ---
 
 #### 🏅 Accomplishments We're Proud Of
-* **190 Passing Automated Tests**: 100% pass rate across timeline geometry, critique engine, caption parser, and visual rendering.
+* **197 Passing Automated Tests**: 100% pass rate across timeline geometry, critique engine, caption parser, and visual rendering.
 * **Two Formats from One Pure Data Manifest**: 16:9 Long and 9:16 Vertical Reel derived deterministically from the same JSON document without duplicate editing.
 * **Zero Ghost Frames**: Non-linear layer model that eliminates black flashes and timeline gaps through explicit active-shot resolution.
 

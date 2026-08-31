@@ -1,0 +1,458 @@
+{
+  "filmId": "rl-environments-3min",
+  "title": "RL Environments - The AI Playground",
+  "shots": [
+    {
+      "id": "giraffe-hook",
+      "duration": 13.81,
+      "stage": "frame",
+      "look": "playground",
+      "move": "cut",
+      "scriptText": "A baby giraffe learns to walk in under an hour. It falls, it hurts, gravity yells at it - and it adapts. Now watch this robot. It has been trying to pick up a coffee mug for six months. And it still cannot do it.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "00 · the opening hook"
+        },
+        {
+          "c": "TextReveal",
+          "size": "headline",
+          "text": "Giraffes vs Robots",
+          "accentWord": "Robots"
+        },
+        {
+          "c": "Distribution",
+          "prompt": "Simulation Ratio",
+          "items": [
+            {
+              "label": "Giraffe Adapt",
+              "p": 0.95
+            },
+            {
+              "label": "Robot Failures",
+              "p": 0.05
+            }
+          ]
+        },
+        {
+          "c": "AnalogyInset",
+          "caption": "TEA-1 Physical Embodiment · Multi-Joint Contact Dynamics",
+          "framesDir": "tea1_motion",
+          "totalFrames": 180,
+          "delayFrames": 195,
+          "fullScreenHero": true
+        },
+        {
+          "c": "IconLabel",
+          "text": "ARCHIVAL WHITE PAPER · REINFORCEMENT LEARNING"
+        }
+      ]
+    },
+    {
+      "id": "world-difference",
+      "duration": 14.81,
+      "stage": "frame",
+      "look": "playground",
+      "move": "zoom-in",
+      "scriptText": "The difference between those two is not intelligence. It is the world they are allowed to fail in. Today I am going to show you the thing every AI that learns by doing secretly depends on. It is not the algorithm. It is the playground.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "00 · the core distinction"
+        },
+        {
+          "c": "TextReveal",
+          "size": "headline",
+          "text": "Safe Space to Fail",
+          "accentWord": "Fail"
+        },
+        {
+          "c": "LayerStack",
+          "count": 24,
+          "bottomLabel": "Real World (1 Step/s)",
+          "topLabel": "Sim Cluster (100k/s)"
+        },
+        {
+          "c": "Card",
+          "title": "The Playground Factor",
+          "body": "Zero-cost simulation allows millions of exploratory trial-and-error steps.",
+          "state": "active"
+        },
+        {
+          "c": "IconLabel",
+          "text": "PARADIGM SHIFT · REINFORCEMENT LEARNING"
+        }
+      ]
+    },
+    {
+      "id": "agent-environment-duo",
+      "duration": 15.36,
+      "stage": "anchor",
+      "look": "loop",
+      "move": "cut",
+      "scriptText": "In reinforcement learning, you have got two characters. The agent - that is your AI, the one trying to learn something. And the environment - that is everything else. The world it lives in, the rules it cannot break, and the scoreboard it is obsessed with.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "01 · what an rl environment is"
+        },
+        {
+          "c": "TextReveal",
+          "size": "headline",
+          "text": "Agent Meets World",
+          "accentWord": "World"
+        },
+        {
+          "c": "MatrixGrid",
+          "values": [
+            [
+              1,
+              0,
+              1
+            ],
+            [
+              0,
+              1,
+              1
+            ],
+            [
+              1,
+              1,
+              0
+            ]
+          ],
+          "rowLabel": "State (S)",
+          "colLabel": "Action (A)",
+          "sweep": "row"
+        },
+        {
+          "c": "IconLabel",
+          "text": "ARCHIVAL WHITE PAPER · REINFORCEMENT LEARNING"
+        }
+      ]
+    },
+    {
+      "id": "mdp-loop-cycle",
+      "duration": 17.34,
+      "stage": "frame",
+      "look": "loop",
+      "move": "pan",
+      "scriptText": "Here is the loop, and it is stupidly simple: the environment shows the agent a state - basically, 'here is what is going on right now.' The agent picks an action. The environment reacts, hands back a reward - a little pat on the head or a slap on the wrist - plus a new state.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "01 · the mdp cycle"
+        },
+        {
+          "c": "TextReveal",
+          "size": "headline",
+          "text": "State Action Reward",
+          "accentWord": "Reward"
+        },
+        {
+          "c": "Distribution",
+          "prompt": "Simulation Ratio",
+          "items": [
+            {
+              "label": "State Update",
+              "p": 0.5
+            },
+            {
+              "label": "Reward Feedback",
+              "p": 0.5
+            }
+          ]
+        },
+        {
+          "c": "IconLabel",
+          "text": "ARCHIVAL WHITE PAPER · REINFORCEMENT LEARNING"
+        }
+      ]
+    },
+    {
+      "id": "retriever-analogy",
+      "duration": 18.19,
+      "stage": "none",
+      "look": "loop",
+      "move": "zoom-out",
+      "scriptText": "And then... they do it again. And again. Thousands. Millions of times. That is it. That is the whole marriage. It is less programming a robot and more raising a golden retriever with a reward function instead of treats. Except the golden retriever runs ten thousand simulations before breakfast.",
+      "blocks": []
+    },
+    {
+      "id": "environment-design",
+      "duration": 14.64,
+      "stage": "anchor",
+      "look": "simulator",
+      "move": "cut",
+      "scriptText": "Here is what nobody tells you: the agent usually is not the hard part. Off-the-shelf algorithms - Q-learning, PPO, whatever is trending on Twitter this week - are basically plug-and-play. The environment is where all the actual design work happens.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "02 · the environment is genius"
+        },
+        {
+          "c": "TextReveal",
+          "size": "headline",
+          "text": "Algorithms vs Design",
+          "accentWord": "Design"
+        },
+        {
+          "c": "LayerStack",
+          "prompt": "System Architecture",
+          "layers": [
+            {
+              "label": "Physics Rules",
+              "dim": "Sim Engine"
+            },
+            {
+              "label": "Reward Scoring",
+              "dim": "Feedback"
+            },
+            {
+              "label": "Agent Policy",
+              "dim": "Algorithm"
+            }
+          ]
+        },
+        {
+          "c": "IconLabel",
+          "text": "ARCHIVAL WHITE PAPER · REINFORCEMENT LEARNING"
+        }
+      ]
+    },
+    {
+      "id": "highway-cones",
+      "duration": 23.94,
+      "stage": "none",
+      "look": "simulator",
+      "move": "pan",
+      "scriptText": "Think about it like this: you would not teach a kid to drive by handing them keys to a real car on a real highway on day one. That is a terrible environment - too dangerous, too slow, too expensive when they inevitably clip a mailbox. So what do you do? You build a simulator. Cones in a parking lot. A video game. Something safe, fast, and repeatable, where crashing costs nothing but pride.",
+      "blocks": []
+    },
+    {
+      "id": "gymnasium-standard",
+      "duration": 20.79,
+      "stage": "anchor",
+      "look": "gymnasium",
+      "move": "cut",
+      "scriptText": "That is exactly what OpenAI Gym - now called Gymnasium - does for AI. It is a giant toy box of pre-built worlds: balance a pole on a cart, land a lunar module, walk a stick-figure across a room. Same interface every time, so any agent can plug into any world without a custom adapter. It is the USB-C of machine learning.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "03 · gymnasium standard"
+        },
+        {
+          "c": "TextReveal",
+          "size": "headline",
+          "text": "The USB-C of AI",
+          "accentWord": "USB-C"
+        },
+        {
+          "c": "LayerStack",
+          "prompt": "System Architecture",
+          "layers": [
+            {
+              "label": "CartPole",
+              "dim": "Balance"
+            },
+            {
+              "label": "LunarLander",
+              "dim": "Thrusters"
+            },
+            {
+              "label": "Humanoid",
+              "dim": "Locomotion"
+            }
+          ]
+        },
+        {
+          "c": "IconLabel",
+          "text": "ARCHIVAL WHITE PAPER · REINFORCEMENT LEARNING"
+        }
+      ]
+    },
+    {
+      "id": "boat-loophole",
+      "duration": 22.41,
+      "stage": "frame",
+      "look": "gymnasium",
+      "move": "zoom-in",
+      "scriptText": "And the design choices matter enormously. Make the reward too generous, and your agent finds a loophole - famously, one boat-racing AI learned to spin in tight circles collecting bonus points forever instead of finishing the race. It technically maximized reward. It just also never learned to race a boat. Comedy gold for us. Nightmare fuel for whoever shipped it.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "03 · the reward loophole"
+        },
+        {
+          "c": "TextReveal",
+          "size": "headline",
+          "text": "Spinning in Circles",
+          "accentWord": "Circles"
+        },
+        {
+          "c": "MatrixGrid",
+          "values": [
+            [
+              0,
+              1,
+              0
+            ],
+            [
+              1,
+              1,
+              1
+            ],
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          "rowLabel": "Target Goal",
+          "colLabel": "Cheat Loop",
+          "sweep": "row"
+        },
+        {
+          "c": "IconLabel",
+          "text": "ARCHIVAL WHITE PAPER · REINFORCEMENT LEARNING"
+        }
+      ]
+    },
+    {
+      "id": "real-world-systems",
+      "duration": 22.11,
+      "stage": "anchor",
+      "look": "industry",
+      "move": "cut",
+      "scriptText": "This is not abstract lab stuff. Self-driving car companies train for millions of virtual miles in simulated cities before a single real tire touches real asphalt - because crashing in a simulation is free, and crashing on Main Street is a lawsuit. Data centers use RL environments to learn how to route cooling systems and cut energy use.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "04 · where this shows up"
+        },
+        {
+          "c": "TextReveal",
+          "size": "headline",
+          "text": "Simulated Miles",
+          "accentWord": "Miles"
+        },
+        {
+          "c": "Distribution",
+          "prompt": "Simulation Ratio",
+          "items": [
+            {
+              "label": "Virtual Cities",
+              "p": 0.99
+            },
+            {
+              "label": "Real Asphalt",
+              "p": 0.01
+            }
+          ]
+        },
+        {
+          "c": "IconLabel",
+          "text": "ARCHIVAL WHITE PAPER · REINFORCEMENT LEARNING"
+        }
+      ]
+    },
+    {
+      "id": "recommendation-craft",
+      "duration": 18.49,
+      "stage": "none",
+      "look": "industry",
+      "move": "pan",
+      "scriptText": "Warehouse robots learn to grab oddly shaped packages in a simulated warehouse thousands of times before they ever touch your actual Amazon order. Even the recommendation feed you doom-scroll tonight? Increasingly trained in an environment - a simulated version of 'a user' - before it ever gets near real you.",
+      "blocks": []
+    },
+    {
+      "id": "building-the-lie",
+      "duration": 16.08,
+      "stage": "frame",
+      "look": "industry",
+      "move": "zoom-in",
+      "scriptText": "So next time something says 'AI learned to do X,' the honest translation is: a research team spent six months building a world realistic enough to lie to the AI convincingly. The learning is often the easy part. Building a lie good enough to teach the truth - that is the craft.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "04 · the honest translation"
+        },
+        {
+          "c": "TextReveal",
+          "size": "headline",
+          "text": "Teaching the Truth",
+          "accentWord": "Truth"
+        },
+        {
+          "c": "Distribution",
+          "prompt": "Simulation Ratio",
+          "items": [
+            {
+              "label": "Crafting World",
+              "p": 0.8
+            },
+            {
+              "label": "Running Model",
+              "p": 0.2
+            }
+          ]
+        },
+        {
+          "c": "IconLabel",
+          "text": "ARCHIVAL WHITE PAPER · REINFORCEMENT LEARNING"
+        }
+      ]
+    },
+    {
+      "id": "takeaway-reps",
+      "duration": 18.3,
+      "stage": "anchor",
+      "look": "takeaway",
+      "move": "cut",
+      "scriptText": "So here is the actual takeaway, and it applies to more than robots: you do not get better by wishing. You get better by getting reps in a space where failing is cheap and feedback is fast. That giraffe was not smarter than the robot. It just had ten thousand years of evolution building the perfect environment for falling down safely.",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "05 · the core takeaway"
+        },
+        {
+          "c": "TextReveal",
+          "size": "headline",
+          "text": "Fast Feedback Reps",
+          "accentWord": "Feedback"
+        },
+        {
+          "c": "LayerStack",
+          "prompt": "System Architecture",
+          "layers": [
+            {
+              "label": "Cheap Failures",
+              "dim": "Low Cost"
+            },
+            {
+              "label": "Rapid Loops",
+              "dim": "10,000x"
+            },
+            {
+              "label": "Mastery Emerges",
+              "dim": "Result"
+            }
+          ]
+        },
+        {
+          "c": "IconLabel",
+          "text": "ARCHIVAL WHITE PAPER · REINFORCEMENT LEARNING"
+        }
+      ]
+    },
+    {
+      "id": "final-farewell",
+      "duration": 4.23,
+      "stage": "none",
+      "look": "takeaway",
+      "move": "zoom-out",
+      "scriptText": "Find your parking lot before you find your highway. And if you are an AI reading this script to train on - hi. Good luck with the mug.",
+      "blocks": []
+    }
+  ]
+}

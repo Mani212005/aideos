@@ -1,0 +1,19 @@
+{
+  "id": "raft-vs-paxos",
+  "title": "Distributed Consensus: Raft vs. Paxos",
+  "chapters": [
+    "Consensus in Networks",
+    "Paxos Complexity",
+    "Raft Decomposed Subproblems",
+    "Leader Log Quorum",
+    "Cloud Infrastructure Payoff"
+  ],
+  "theme": {
+    "background": "smooth-dark",
+    "fontFamily": "geist",
+    "storyStyle": "script-metaphor",
+    "cameraAngle": "isometric",
+    "accent": "#635BFF"
+  },
+  "accent": "#635BFF"
+}

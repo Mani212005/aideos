@@ -61,7 +61,9 @@ export const useEntrance = (
   let frame = 30;
   let fps = 30;
   try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     frame = useCurrentFrame();
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     fps = useVideoConfig().fps;
   } catch {
     // Fallback in unit test environment
@@ -91,7 +93,9 @@ export const useProgress = (
   let frame = 30;
   let fps = 30;
   try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     frame = useCurrentFrame();
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     fps = useVideoConfig().fps;
   } catch {
     // Fallback in unit test environment

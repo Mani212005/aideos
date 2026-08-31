@@ -1,0 +1,479 @@
+{
+  "filmId": "kvcache",
+  "title": "Why your LLM remembers - the KV cache",
+  "shots": [
+    {
+      "id": "open",
+      "duration": 8.2,
+      "stage": "frame",
+      "look": "tokens",
+      "move": "cut",
+      "visualDirection": "Make a computer or character that reads the script once while sleeping, opens its eyes, and throws it out of the window.",
+      "metaphor": "character-throw",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "A model never re-reads your prompt.",
+          "size": "display",
+          "accentWord": "prompt"
+        },
+        {
+          "c": "Body",
+          "text": "It would have to, thousands of times per answer. Something has to remember for it - and that something has a price."
+        }
+      ]
+    },
+    {
+      "id": "strip",
+      "duration": 5.4,
+      "stage": "anchor",
+      "look": "tokens",
+      "move": "zoom-in",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "step 01 · tokenisation"
+        },
+        {
+          "c": "TextReveal",
+          "text": "Your sentence arrives as ids.",
+          "size": "headline",
+          "accentWord": "ids"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Write",
+            "a",
+            "hai",
+            "ku",
+            "about",
+            "cach",
+            "ing"
+          ],
+          "lit": [],
+          "caption": "7 tokens · not 5 words"
+        }
+      ]
+    },
+    {
+      "id": "spine-1",
+      "duration": 4,
+      "stage": "none",
+      "look": [
+        "tokens",
+        "attend",
+        "kv"
+      ],
+      "move": "zoom-out",
+      "blocks": []
+    },
+    {
+      "id": "attention",
+      "duration": 4.8,
+      "stage": "anchor",
+      "look": "attend",
+      "move": "cut",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "step 02 · attention"
+        },
+        {
+          "c": "TextReveal",
+          "text": "Every new token looks back at every old one.",
+          "size": "headline",
+          "accentWord": "back"
+        },
+        {
+          "c": "AttentionArcs",
+          "tokens": [
+            "Write",
+            "a",
+            "hai",
+            "ku",
+            "about",
+            "cach"
+          ],
+          "focus": 5,
+          "links": [
+            4,
+            2,
+            0
+          ],
+          "note": "strongest link drawn in accent"
+        }
+      ]
+    },
+    {
+      "id": "matrix",
+      "duration": 4.8,
+      "stage": "anchor",
+      "look": "attend",
+      "move": "hold",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Those glances are a grid.",
+          "size": "subhead",
+          "accentWord": "grid"
+        },
+        {
+          "c": "Math",
+          "text": "softmax(*q* · *k*ᵀ / √d) · v"
+        },
+        {
+          "c": "MatrixGrid",
+          "values": [
+            [
+              0.62,
+              0.11,
+              0.09,
+              0.18
+            ],
+            [
+              0.08,
+              0.71,
+              0.13,
+              0.08
+            ],
+            [
+              0.21,
+              0.14,
+              0.47,
+              0.18
+            ],
+            [
+              0.12,
+              0.09,
+              0.16,
+              0.63
+            ]
+          ],
+          "rowLabel": "row = query",
+          "colLabel": "col = key",
+          "valueLabel": "value = weight",
+          "sweep": "row"
+        }
+      ]
+    },
+    {
+      "id": "beat-1",
+      "duration": 4,
+      "stage": "frame",
+      "look": "attend",
+      "move": "hold",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It is all weighted sums.",
+          "size": "display",
+          "accentWord": "weighted"
+        }
+      ]
+    },
+    {
+      "id": "kvsplit",
+      "duration": 9.2,
+      "stage": "anchor",
+      "look": "kv",
+      "move": "pan",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "the two things worth keeping"
+        },
+        {
+          "c": "TextReveal",
+          "text": "Each token hands out a key and a value.",
+          "size": "headline",
+          "accentWord": "key"
+        },
+        {
+          "c": "Body",
+          "text": "The key is how it answers being looked up. The value is what it says when it is. Neither depends on anything that comes after it - which is the whole reason this works."
+        }
+      ]
+    },
+    {
+      "id": "spine-2",
+      "duration": 3.6,
+      "stage": "none",
+      "look": [
+        "attend",
+        "kv",
+        "prefill",
+        "decode"
+      ],
+      "move": "zoom-out",
+      "blocks": []
+    },
+    {
+      "id": "prefill",
+      "duration": 5.2,
+      "stage": "anchor",
+      "look": "prefill",
+      "move": "cut",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "step 03 · prefill"
+        },
+        {
+          "c": "TextReveal",
+          "text": "The whole prompt goes through once.",
+          "size": "headline",
+          "accentWord": "once"
+        },
+        {
+          "c": "LayerStack",
+          "count": 32,
+          "bottomLabel": "layer 01",
+          "topLabel": "layer 32"
+        }
+      ]
+    },
+    {
+      "id": "cache",
+      "duration": 4.2,
+      "stage": "anchor",
+      "look": "cache",
+      "move": "pan",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Keep the grid. That is the cache.",
+          "size": "headline",
+          "accentWord": "cache"
+        },
+        {
+          "c": "MatrixGrid",
+          "values": [
+            [
+              0.62,
+              0.11,
+              0.09,
+              0.18
+            ],
+            [
+              0.08,
+              0.71,
+              0.13,
+              0.08
+            ],
+            [
+              0.21,
+              0.14,
+              0.47,
+              0.18
+            ],
+            [
+              0.12,
+              0.09,
+              0.16,
+              0.63
+            ],
+            [
+              0.09,
+              0.12,
+              0.11,
+              0.68
+            ]
+          ],
+          "rowLabel": "rows already kept",
+          "colLabel": "one new row",
+          "valueLabel": "nothing recomputed",
+          "sweep": "row"
+        }
+      ]
+    },
+    {
+      "id": "beat-2",
+      "duration": 3.8,
+      "stage": "frame",
+      "look": "cache",
+      "move": "hold",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Read it again, or store it. Pick one.",
+          "size": "display",
+          "accentWord": "store"
+        }
+      ]
+    },
+    {
+      "id": "decode",
+      "duration": 5.4,
+      "stage": "anchor",
+      "look": "decode",
+      "move": "pan",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "step 04 · decode"
+        },
+        {
+          "c": "TextReveal",
+          "text": "Now each word costs one row.",
+          "size": "headline",
+          "accentWord": "one"
+        },
+        {
+          "c": "Distribution",
+          "prompt": "Write a haiku about cach___",
+          "items": [
+            {
+              "label": "ing",
+              "p": 0.78
+            },
+            {
+              "label": "es",
+              "p": 0.11
+            },
+            {
+              "label": "e",
+              "p": 0.06
+            },
+            {
+              "label": "ed",
+              "p": 0.03
+            }
+          ],
+          "note": "p(next token) · softmax over vocab"
+        }
+      ]
+    },
+    {
+      "id": "spine-3",
+      "duration": 4.2,
+      "stage": "none",
+      "look": [
+        "prefill",
+        "decode",
+        "cache"
+      ],
+      "move": "zoom-out",
+      "blocks": []
+    },
+    {
+      "id": "cost",
+      "duration": 5.2,
+      "stage": "anchor",
+      "look": "cost",
+      "move": "cut",
+      "blocks": [
+        {
+          "c": "Kicker",
+          "text": "step 05 · what it costs"
+        },
+        {
+          "c": "TextReveal",
+          "text": "You bought speed with memory.",
+          "size": "headline",
+          "accentWord": "memory"
+        },
+        {
+          "c": "ScaleBar",
+          "ticks": [
+            "1k",
+            "8k",
+            "32k",
+            "128k"
+          ],
+          "value": 0.78,
+          "label": "context"
+        }
+      ]
+    },
+    {
+      "id": "growth",
+      "duration": 4.6,
+      "stage": "anchor",
+      "look": "cost",
+      "move": "hold",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And it grows linearly, forever.",
+          "size": "subhead",
+          "accentWord": "linearly"
+        },
+        {
+          "c": "Plot",
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              0.25,
+              0.25
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.75,
+              0.75
+            ],
+            [
+              1,
+              1
+            ]
+          ],
+          "xLabel": "tokens",
+          "yLabel": "GB",
+          "endLabel": "128k"
+        }
+      ]
+    },
+    {
+      "id": "stat",
+      "duration": 7.6,
+      "stage": "anchor",
+      "look": "cost",
+      "move": "hold",
+      "blocks": [
+        {
+          "c": "StatCounter",
+          "to": 128000,
+          "label": "tokens held in the cache",
+          "format": "plain"
+        },
+        {
+          "c": "Body",
+          "text": "At that length the cache for a 70B model runs to tens of gigabytes - bigger than a lot of the weights it is reading from."
+        }
+      ]
+    },
+    {
+      "id": "payoff",
+      "duration": 3.8,
+      "stage": "none",
+      "look": "all",
+      "move": "zoom-out",
+      "blocks": []
+    },
+    {
+      "id": "close",
+      "duration": 12.88,
+      "stage": "frame",
+      "look": "all",
+      "move": "hold",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Prefill once. Cache. Then decode forever.",
+          "size": "display",
+          "accentWord": "Cache"
+        },
+        {
+          "c": "IconLabel",
+          "text": "keys · values · prefill · decode"
+        }
+      ]
+    }
+  ]
+}
