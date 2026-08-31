@@ -4,9 +4,7 @@
  * validates 100% theme-token color compliance, and generates typed CharacterRig and ModelSheet modules.
  */
 
-import fs from "fs";
-import path from "path";
-import type { CharacterRig, CharacterGroup, CharacterPath, SemanticToken } from "../../src/dl/characters/types";
+import type { CharacterRig, RigGroup, PathElement, SemanticToken } from "../../src/dl/characters/types";
 import type { ModelSheet } from "../../src/dl/scene/types";
 
 export interface RiggingOptions {
@@ -104,7 +102,7 @@ export function parseSvgToCharacterRig(svgContent: string, options: RiggingOptio
   const viewBox = viewBoxMatch ? viewBoxMatch[1] : "0 0 400 600";
 
   // 2. Find groups matching convention: <g id="torso" ...> ... </g>
-  const foundGroups: Map<string, { rawGroupSvg: string; paths: CharacterPath[]; bbox: { minX: number; maxX: number; minY: number; maxY: number } }> = new Map();
+  const foundGroups: Map<string, { rawGroupSvg: string; paths: PathElement[]; bbox: { minX: number; maxX: number; minY: number; maxY: number } }> = new Map();
 
   const groupRegex = /<g\s+[^>]*id=["']([^"']+)["'][^>]*>([\s\S]*?)<\/g>/gi;
   let match: RegExpExecArray | null;
@@ -115,7 +113,7 @@ export function parseSvgToCharacterRig(svgContent: string, options: RiggingOptio
 
     if ((REQUIRED_JOINT_GROUPS as readonly string[]).includes(groupId)) {
       // Extract paths within group
-      const paths: CharacterPath[] = [];
+      const paths: PathElement[] = [];
       const pathRegex = /<path\s+([^>]+)\/?>/gi;
       let pathMatch: RegExpExecArray | null;
       let pathIdx = 0;
@@ -179,13 +177,13 @@ export function parseSvgToCharacterRig(svgContent: string, options: RiggingOptio
   }
 
   // 4. Construct CharacterGroups with 2-level kinematic tree
-  const groups: CharacterGroup[] = [];
+  const groups: RigGroup[] = [];
 
   for (const reqId of REQUIRED_JOINT_GROUPS) {
     const data = foundGroups.get(reqId)!;
     const pivot = computeAnatomicalPivot(reqId, data.bbox);
 
-    const groupObj: CharacterGroup = {
+    const groupObj: RigGroup = {
       id: reqId,
       name: reqId.charAt(0).toUpperCase() + reqId.slice(1),
       pivot,
@@ -209,7 +207,7 @@ export function parseSvgToCharacterRig(svgContent: string, options: RiggingOptio
   };
 
   // Compute canonical height from overall bounding box
-  const allY = groups.flatMap((g) => g.paths.flatMap((p) => p.d.match(/[-+]?[0-9]*\.?[0-9]+/g)?.map(Number) || []));
+  const allY = groups.flatMap((g) => g.paths.flatMap((p: PathElement) => p.d.match(/[-+]?[0-9]*\.?[0-9]+/g)?.map(Number) || []));
   const minY = allY.length > 0 ? Math.min(...allY.filter((_, i) => i % 2 === 1)) : 0;
   const maxY = allY.length > 0 ? Math.max(...allY.filter((_, i) => i % 2 === 1)) : 600;
   const canonicalHeight = Math.max(100, Math.round(maxY - minY));

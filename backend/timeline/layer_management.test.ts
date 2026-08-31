@@ -13,15 +13,10 @@ import assert from "node:assert/strict";
 import {
   addLayer,
   deleteLayer,
-  renameLayer,
   reorderLayer,
   setLayerProperty,
   getRenderableClipsAtFrame,
 } from "./layer_manager";
-import {
-  moveLayerClip,
-  trimLayerClipEdge,
-} from "./layer_engine";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
 import type { LayeredFilm } from "../../src/dl/layeredSchema";
 
@@ -79,7 +74,7 @@ function createMockMultiLayerFilm(): LayeredFilm {
           move: "cut",
           drift: false,
           zoom: 1,
-          blocks: [{ c: "StatCounter", from: 0, to: 90, label: "Throughput", format: "plain" }],
+          blocks: [{ c: "StatCounter", to: 90, label: "Throughput", format: "plain" }],
         },
         volume: 1,
         opacity: 1,

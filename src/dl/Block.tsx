@@ -1,3 +1,7 @@
+/**
+ * File Description: Maps schema block definitions to corresponding visual primitive and metaphor components.
+ */
+
 import React from "react";
 import type { Block } from "./schema";
 import {
@@ -27,14 +31,9 @@ import { CharacterRigView } from "./CharacterRig";
 import { MetaphorViewer } from "./metaphors/MetaphorViewer";
 import { useAccent } from "./accent";
 
-/**
- * The one place that maps schema to component.
- *
- * The union is exhaustive and TypeScript enforces it, so adding a block to
- * `blockSchema` without building it is a compile error rather than a silently
- * empty frame at minute nine of a render.
- */
+// Renders the specific UI primitive, interactive device, or visual metaphor for a given film block.
 export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...timing }) => {
+  const accent = useAccent();
   switch (block.c) {
     case "CharacterBeat":
       return (
@@ -73,7 +72,7 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
       return (
         <Plot
           {...timing}
-          points={block.points}
+          points={block.points as [number, number][]}
           xLabel={block.xLabel}
           yLabel={block.yLabel}
           endLabel={block.endLabel}
@@ -138,7 +137,6 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
     case "IconLabel":
       return <IconLabel {...timing} text={block.text} />;
     case "MetaphorViewer": {
-      const accent = useAccent();
       const metaphorType = block.content?.kind ?? block.metaphorType ?? "balance-scale";
       return (
         <div style={{ width: "100%", height: "100%", maxHeight: "100%", flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>

@@ -9,7 +9,7 @@
  * strictly to primary authored skeletal tracks.
  */
 
-import type { CompiledFrame, CompiledScene } from "./compile";
+import type { CompiledScene } from "./compile";
 
 export interface SpringParams {
   stiffness: number; // k (default: 180.0)
@@ -101,8 +101,6 @@ export function applySecondaryMotion(
   const cloned: CompiledScene = JSON.parse(JSON.stringify(compiled));
   const totalFrames = cloned.frames.length;
   const fps = cloned.fps || 30;
-
-  const secondaryJointIds = new Set(secondaryConfigs.map((c) => c.jointId));
 
   // Collect actors present in compiled scene
   const actorIds = new Set<string>();

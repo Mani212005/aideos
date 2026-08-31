@@ -121,6 +121,7 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with the global 
 * **📐 Styleboard**: Keyframe gallery with 1-click visual mode switcher and an **80% screen Scene Inspector Modal** to customize character gestures (`Wave`, `Point`, `Think`, `Celebrate`).
 * **⚡ Transitions**: Configure paper-rip, cut, pan, and zoom camera transition curves.
 * **💬 Pretext Captions**: Word-level subtitle editor.
+* **🤖 AI Feedback Assistant**: Global floating chatbot to adjust script pacing, shot timings, themes, and visual parameters in natural language.
 * **🎬 Video Layer**: Real-time 60 FPS Remotion preview player with instant MP4 export.
 
 ---

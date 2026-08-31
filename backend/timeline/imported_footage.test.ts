@@ -19,7 +19,6 @@ import {
 } from "./layer_engine";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
 import type { LayeredFilm } from "../../src/dl/layeredSchema";
-import path from "path";
 
 function createBaseLayeredFilm(): LayeredFilm {
   return {
@@ -51,7 +50,7 @@ function createBaseLayeredFilm(): LayeredFilm {
           move: "cut",
           drift: false,
           zoom: 1,
-          blocks: [{ c: "StatCounter", from: 0, to: 90, label: "Speed", format: "plain" }],
+          blocks: [{ c: "StatCounter", to: 90, label: "Speed", format: "plain" }],
         },
         volume: 1,
         opacity: 1,

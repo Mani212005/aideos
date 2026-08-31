@@ -568,8 +568,6 @@ test("Phase 3 Negative Case: Unanchored spline drifts across distant unkeyed gap
     { t: 0.1, val: 50 },
     { t: 0.9, val: -50 },
   ];
-  // Middle of gap t=0.5
-  const midVal = (50 + -50) / 2; // In linear interpolation mid is 0, but slope is steep (-125 deg/sec)
   const leftVal = evaluateCatmullRomSpline(unanchoredKnots, 0.4);
   assert.ok(
     Math.abs(leftVal) > 5.0,

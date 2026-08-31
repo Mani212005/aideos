@@ -209,6 +209,10 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
 
     return () => {
       isMounted = false;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
     };
   }, [film.id]);
 
@@ -970,7 +974,13 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                   </a>
                   {onNavigateToVideo && (
                     <button
-                      onClick={onNavigateToVideo}
+                      onClick={() => {
+                        if (audioRef.current) {
+                          audioRef.current.pause();
+                          setIsPlaying(false);
+                        }
+                        onNavigateToVideo();
+                      }}
                       className="text-xs px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1"
                     >
                       <span>🎬</span> View in Video Player

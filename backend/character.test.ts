@@ -13,7 +13,6 @@ import {
 import { parseFilm } from "../src/dl/schema";
 import { validateFilmAudioAndAssets } from "../src/dl/validateFilm";
 import { verifyTrajectoryContinuity } from "../src/dl/motion/verifier";
-import { evaluateCatmullRomSpline } from "../src/dl/motion/spline";
 
 test("character rigs conform to characterRigSchema", () => {
   const rigs = getAllCharacterRigs();

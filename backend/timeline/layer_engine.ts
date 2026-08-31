@@ -16,12 +16,9 @@ import {
   generateUUID,
 } from "./updates";
 import {
-  collectSnapTargets,
-  calculateStickySnap,
   type SnapTarget,
   type SnapResult,
 } from "./snap";
-import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
 
 export { TimelineTransactionManager, type UpdateAction, type TimelineTransaction, type SnapTarget, type SnapResult };
 

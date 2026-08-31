@@ -1,3 +1,7 @@
+/**
+ * File Description: Main entry point for Aideos Studio editor UI, orchestrating views, real-time playback, audio state, and project history.
+ */
+
 import { useEffect, useState, useMemo, useRef } from "react";
 import { Player, type PlayerRef } from "@remotion/player";
 import { FilmView } from "../../src/dl/Film";
@@ -20,7 +24,7 @@ import { AgentActivityInspector } from "./components/AgentActivityInspector";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
 import { AssetBin, type MediaAsset } from "./components/AssetBin";
-import { DEFAULT_GIRAFFE_CAPTION_WORDS, generateWordsFromFilm } from "../../src/dl/captionsParser";
+import { DEFAULT_GIRAFFE_CAPTION_WORDS, generateWordsFromFilm, captionWordsToVtt } from "../../src/dl/captionsParser";
 import { validateFilmAudioAndAssets } from "../../src/dl/validateFilm";
 
 const filmModules = import.meta.glob("../../src/dl/films/*.ts", { eager: true }) as Record<
@@ -161,13 +165,13 @@ export default function App() {
     }).catch(() => {});
   };
 
-  // Automatically derive word-level timestamps for the active film's script
+  // Automatically derive word-level timestamps for the active film's script when film id changes
   useEffect(() => {
     if (film) {
       const dynamicWords = generateWordsFromFilm(film);
       setCaptionWords(dynamicWords);
     }
-  }, [film]);
+  }, [film?.id]);
 
   // Adjustable timeline height state (vertical split resizer)
   const [timelineHeight, setTimelineHeight] = useState<number>(320);
@@ -278,7 +282,7 @@ export default function App() {
       };
     } catch (_) {}
 
-    // Kill any orphaned audio elements from previous HMR passes
+    // Kill any orphaned or background audio elements from other screens
     const lingering = document.querySelectorAll("audio");
     lingering.forEach((a) => {
       try {
@@ -292,7 +296,7 @@ export default function App() {
         bc?.close();
       } catch (_) {}
     };
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     if (!isResizingTimeline) return;
@@ -434,7 +438,7 @@ export default function App() {
 
   const addNode = () => {
     const nodes = [...film.canvas.nodes, { id: `node-${Date.now()}`, label: "new node", x: 100, y: 100, w: 190, h: 62 }];
-    setFilm({ ...film, canvas: { ...film.canvas, nodes } });
+    handleUpdateFilmWithHistory({ ...film, canvas: { ...film.canvas, nodes } });
   };
 
   // Add a connection between the first two available nodes.
@@ -442,21 +446,21 @@ export default function App() {
     const [from, to] = film.canvas.nodes;
     if (!from || !to) return;
     const edges: CanvasEdge[] = [...film.canvas.edges, { from: from.id, to: to.id, dashed: false }];
-    setFilm({ ...film, canvas: { ...film.canvas, edges } });
+    handleUpdateFilmWithHistory({ ...film, canvas: { ...film.canvas, edges } });
   };
 
   // Update one graph connection while preserving the rest of the film.
   const updateEdge = (index: number, partial: Partial<CanvasEdge>) => {
     const edges = [...film.canvas.edges];
     edges[index] = { ...edges[index], ...partial };
-    setFilm({ ...film, canvas: { ...film.canvas, edges } });
+    handleUpdateFilmWithHistory({ ...film, canvas: { ...film.canvas, edges } });
   };
 
   // Remove a graph connection without allowing the required edge list to become empty.
   const removeEdge = (index: number) => {
     if (film.canvas.edges.length <= 1) return;
     const edges = film.canvas.edges.filter((_, edgeIndex) => edgeIndex !== index);
-    setFilm({ ...film, canvas: { ...film.canvas, edges } });
+    handleUpdateFilmWithHistory({ ...film, canvas: { ...film.canvas, edges } });
   };
 
   const addShot = () => {
@@ -474,7 +478,7 @@ export default function App() {
         blocks: [{ c: "Body", text: "New shot narrative and scene description." }],
       } as Shot,
     ];
-    setFilm({ ...film, shots });
+    handleUpdateFilmWithHistory({ ...film, shots });
   };
 
   // Derive presentation props from storyStyle
@@ -714,7 +718,7 @@ export default function App() {
               <NodeEditor 
                 film={film} 
                 nodeId={selection.id} 
-                onChange={setFilm} 
+                onChange={handleUpdateFilmWithHistory} 
                 onSelectShot={(id) => setSelection({ type: "shot", id })}
                 onNodeIdChange={(id) => setSelection({ type: "node", id })}
                 onClearSelection={() => setSelection(null)}
@@ -839,7 +843,7 @@ export default function App() {
           {mode === "script" && (
             <ScriptEditor
               film={film}
-              onUpdateFilm={setFilm}
+              onUpdateFilm={handleUpdateFilmWithHistory}
               onNavigateToVideo={() => setMode("video")}
             />
           )}
@@ -850,10 +854,10 @@ export default function App() {
               selectedNodeId={selection?.type === "node" ? selection.id : null}
               onSelectNode={(id) => setSelection(id ? { type: "node", id } : null)}
               onNodesChange={(updatedNodes) => {
-                setFilm((prev) => ({
-                  ...prev,
-                  canvas: { ...prev.canvas, nodes: updatedNodes },
-                }));
+                handleUpdateFilmWithHistory({
+                  ...film,
+                  canvas: { ...film.canvas, nodes: updatedNodes },
+                });
               }}
               onAddNode={addNode}
               onAddEdge={addEdge}
@@ -865,7 +869,7 @@ export default function App() {
           {mode === "customization" && (
             <CustomizationEditor
               film={film}
-              onUpdateFilm={setFilm}
+              onUpdateFilm={handleUpdateFilmWithHistory}
               accent={accent}
               onAccentChange={setAccent}
             />
@@ -881,7 +885,7 @@ export default function App() {
               onSelectShot={(id) => {
                 setSelection({ type: "shot", id });
               }}
-              onUpdateFilm={setFilm}
+              onUpdateFilm={handleUpdateFilmWithHistory}
             />
           )}
 
@@ -890,7 +894,11 @@ export default function App() {
               <KineticCaptionEditor
                 film={film}
                 words={captionWords}
-                onCaptionsChange={setCaptionWords}
+                onCaptionsChange={(newCaptions) => {
+                  setCaptionWords(newCaptions);
+                  const vttString = captionWordsToVtt(newCaptions, film.fps || 30);
+                  handleUpdateFilmWithHistory({ ...film, captions: vttString });
+                }}
                 onSeekToFrame={(frame) => {
                   playerRef.current?.seekTo(frame);
                 }}
@@ -973,7 +981,7 @@ export default function App() {
               >
                 <TimelineEditor
                   film={film}
-                  onUpdateFilm={setFilm}
+                  onUpdateFilm={handleUpdateFilmWithHistory}
                   totalDurationSec={audioDurationSec}
                   isEmbedded={true}
                   isPlaying={isPlaying}
@@ -1047,7 +1055,12 @@ export default function App() {
       />
 
       {/* Global AI Feedback & Chatbot Widget */}
-      <GlobalFeedbackWidget film={film} activeMode={mode} activeSelectionId={selection?.id} />
+      <GlobalFeedbackWidget
+        film={film}
+        activeMode={mode}
+        activeSelectionId={selection?.id}
+        onUpdateFilm={handleUpdateFilmWithHistory}
+      />
     </div>
   );
 }

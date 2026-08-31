@@ -67,7 +67,7 @@ function createMockAudioFilm(): LayeredFilm {
           move: "cut",
           drift: false,
           zoom: 1,
-          blocks: [{ c: "StatCounter", from: 0, to: 90, label: "Speed", format: "plain" }],
+          blocks: [{ c: "StatCounter", to: 90, label: "Speed", format: "plain" }],
         },
         volume: 1,
         opacity: 1,
@@ -86,7 +86,7 @@ function createMockAudioFilm(): LayeredFilm {
           move: "pan",
           drift: false,
           zoom: 1,
-          blocks: [{ c: "StatCounter", from: 0, to: 99, label: "Efficiency", format: "plain" }],
+          blocks: [{ c: "StatCounter", to: 99, label: "Efficiency", format: "plain" }],
         },
         volume: 1,
         opacity: 1,
@@ -219,7 +219,7 @@ test("L4-6: Waveform extraction produces normalized amplitude peaks", () => {
 
 // L4-7: Undo reverses close-gap and restores all dependent tracks
 test("L4-7: Undo reverses close-gap transaction and restores all dependent tracks", () => {
-  const txManager = new TimelineTransactionManager(50);
+  const txManager = new TimelineTransactionManager<LayeredFilm>(50);
   const film = createMockAudioFilm();
 
   const { film: split1 } = splitAudioClip(film, "clip-vo-main", 4.0);

@@ -18,9 +18,9 @@ export const marsWaterFilm: Film = {
     cameraAngle: "isometric",
     accent: "#FF6B00",
   },
-  audio: {
+  voiceover: {
     src: "voiceover.wav",
-    ducking: true,
+    volume: 1,
   },
   captions: `WEBVTT
 
@@ -105,6 +105,8 @@ Underground ice sheets and salty brines remain the only reservoirs of Martian wa
       look: "ancient-mars",
       move: "cut",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Astro Guide explains ancient Martian warm world vs modern dry surface",
       blocks: [
         {
@@ -131,6 +133,8 @@ Underground ice sheets and salty brines remain the only reservoirs of Martian wa
       look: "thin-air",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "ScaleBar comparing atmospheric pressure between Earth and Mars",
       blocks: [
         {
@@ -153,6 +157,8 @@ Underground ice sheets and salty brines remain the only reservoirs of Martian wa
       look: "triple-point",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "LayerStack depicting thermodynamic pressure regimes below water triple point",
       blocks: [
         {
@@ -175,6 +181,8 @@ Underground ice sheets and salty brines remain the only reservoirs of Martian wa
       look: "sublimation",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Token strip showing phase transition directly from solid ice to vapor",
       blocks: [
         {
@@ -197,6 +205,8 @@ Underground ice sheets and salty brines remain the only reservoirs of Martian wa
       look: "reservoirs",
       move: "pan",
       stage: "frame",
+      drift: false,
+      zoom: 1,
       visualDirection: "Astro Guide celebrates subsurface ice sheet discoveries",
       blocks: [
         {

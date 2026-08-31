@@ -1,10 +1,13 @@
+/**
+ * File Description: Command-line interface for compiling, ideating, synthesizing audio, and rendering Aideos films.
+ */
+
 import { Command, Option } from "commander";
 import fs from "fs/promises";
 import path from "path";
 import { execSync } from "child_process";
 import dotenv from "dotenv";
-import { z } from "zod";
-import { DEVICE_BLOCKS, filmBaseSchema, parseFilm } from "../src/dl/schema";
+import { DEVICE_BLOCKS, parseFilm } from "../src/dl/schema";
 import type { Film } from "../src/dl/schema";
 import { processAudioForFilm, produceAudioPipeline, buildFilmFromAudioResult } from "./audio";
 import { createEngine } from "./engine";
@@ -27,24 +30,7 @@ program
   .description("Generate and render Aideos films from natural language")
   .version("1.0.0");
 
-/**
- * The tool schema *is* the film schema. Hand-writing a JSON Schema alongside
- * `filmSchema` means every constraint the validator enforces — id patterns,
- * `dur` bounds, unit-space points, the block union — has to be remembered
- * twice, and the copy silently rots. Deriving it means the model is told about
- * a new field the moment the schema grows one.
- *
- * `io: "input"` so defaulted fields stay optional: the model omitting `zoom`
- * is correct, not a mistake. The pacing rules in `superRefine` cannot be
- * expressed in JSON Schema, so they live in the system prompt below and are
- * enforced for real by `parseFilm` before anything is written to disk.
- */
-const filmParameters = z.toJSONSchema(filmBaseSchema, {
-  io: "input",
-  target: "draft-7",
-  unrepresentable: "any",
-  reused: "inline",
-}) as Record<string, unknown>;
+
 
 const systemPrompt = `You are an expert at generating Aideos Film configurations. Create a visually engaging explainer video.
 
@@ -259,7 +245,7 @@ program
       const syncResult = await runPreRenderSyncGate(film, audioResult.segments);
 
       console.log(`[Sync Gate Verdicts]`);
-      syncResult.verdicts.forEach((v, idx) => {
+      syncResult.verdicts.forEach((v: any, idx: number) => {
         console.log(
           `  Shot ${v.shotId} (Segment ${idx + 1}): [${v.status.toUpperCase()}] narration="${v.segmentText.slice(0, 35)}..." -> visualDirection="${v.visualDirection.slice(0, 45)}..."`,
         );

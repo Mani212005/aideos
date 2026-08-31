@@ -1,3 +1,7 @@
+/**
+ * File Description: Top-level Remotion video composition mixing canvas visuals, voiceover narration, sidechain-ducked music, and sound effects.
+ */
+
 import React from "react";
 import { Audio } from "@remotion/media";
 import { Sequence, useCurrentFrame, staticFile } from "remotion";
@@ -13,7 +17,7 @@ import { generateWordsFromFilm } from "./captionsParser";
  */
 
 /**
- * Narration level. Ramped at both ends — cutting a voice track in at full level
+ * Narration level. Ramped at both ends: cutting a voice track in at full level
  * puts an audible click on the first and last frames.
  */
 export const voiceLevel = (frame: number, level: number) =>
@@ -21,6 +25,7 @@ export const voiceLevel = (frame: number, level: number) =>
   Math.min(1, frame / 6) *
   Math.min(1, Math.max(0, TOTAL_FRAMES - frame) / 12);
 
+// Renders the combined video composition with layered audio tracks, sound effects, and subtitles.
 export const Video: React.FC<FilmProps> = ({
   accent,
   voiceoverSrc,
@@ -91,6 +96,7 @@ export const Video: React.FC<FilmProps> = ({
         showGrid={showGrid}
         showRail={showRail}
         captionWords={generateWordsFromFilm(FILM as unknown as Record<string, unknown>)}
+        includeAudio={false}
       />
     </>
   );

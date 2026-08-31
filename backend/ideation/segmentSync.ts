@@ -187,3 +187,11 @@ export async function runSegmentSyncGate(
     allPassedOrFixed: true,
   };
 }
+
+// Validates audio segment-to-shot synchronization before rendering the film.
+export async function runPreRenderSyncGate(
+  _film: any,
+  segments: SegmentAudioInfo[],
+): Promise<SyncGateResult> {
+  return runSegmentSyncGate(segments);
+}

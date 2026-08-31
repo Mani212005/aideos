@@ -1,3 +1,7 @@
+/**
+ * File Description: Production Film Definition for "What is JEPA" explaining Joint Embedding Predictive Architecture.
+ */
+
 import type { Film } from "../schema";
 
 export const whatIsJepaFilm: Film = {
@@ -122,7 +126,7 @@ export const whatIsJepaFilm: Film = {
   "shots": [
     {
       "id": "the-hook",
-      "dur": 15.211338000000001,
+      "dur": 17.5192,
       "stage": "anchor",
       "look": "intro",
       "move": "cut",
@@ -231,9 +235,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "who-is-lecun",
-      "position": 12,
-      "startSec": 12,
-      "dur": 14.530522000000001,
+      "dur": 16.7351,
       "stage": "frame",
       "look": "lecun",
       "move": "pan",
@@ -261,7 +263,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "the-breakup",
-      "dur": 13.509161,
+      "dur": 15.5588,
       "stage": "frame",
       "look": "breakup",
       "move": "pan",
@@ -288,7 +290,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "canvas-anchor-1",
-      "dur": 8.241134,
+      "dur": 9.4915,
       "stage": "none",
       "look": [
         "breakup",
@@ -303,7 +305,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "jepa-concept-part1",
-      "dur": 14.376689,
+      "dur": 16.5579,
       "stage": "frame",
       "look": "jepa-concept",
       "move": "pan",
@@ -327,7 +329,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "joint-encoders",
-      "dur": 13.079184000000001,
+      "dur": 15.0636,
       "stage": "anchor",
       "look": "encoders",
       "move": "pan",
@@ -354,7 +356,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "canvas-anchor-2",
-      "dur": 7.0236279999999995,
+      "dur": 8.0893,
       "stage": "none",
       "look": [
         "encoders",
@@ -369,7 +371,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "world-models-evolution",
-      "dur": 13.324308,
+      "dur": 15.3459,
       "stage": "frame",
       "look": "world-models",
       "move": "pan",
@@ -407,7 +409,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "how-to-try",
-      "dur": 10.683583,
+      "dur": 12.3045,
       "stage": "anchor",
       "look": "world-models",
       "move": "pan",
@@ -431,7 +433,7 @@ export const whatIsJepaFilm: Film = {
     },
     {
       "id": "the-close",
-      "dur": 11.078322,
+      "dur": 12.7592,
       "stage": "anchor",
       "look": "conclusion",
       "move": "pan",

@@ -36,3 +36,6 @@ public/transitions/
 # GPU-rendered b-roll clips from staged assemble runs: large binaries, kept out
 # of the repository like all media (see the note above).
 production/*/footage/
+
+# Runtime and local conversation state
+data/
