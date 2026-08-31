@@ -15,6 +15,7 @@ import { produceAudioPipeline } from '../backend/audio.ts'
 import { executeCritique } from '../backend/critique/engine.ts'
 
 const filmsDir = path.resolve(__dirname, '../src/dl/films');
+const videosDir = path.resolve(__dirname, '../videos');
 
 // The schema's own id rule. It also happens to make traversal unrepresentable:
 // a film can only ever be written as `<id>.ts` inside src/dl/films.
@@ -1212,8 +1213,18 @@ function filmApiPlugin(): Plugin {
         if (url !== '/api/films' && !url.startsWith('/api/films/')) return next();
 
         if (url === '/api/films' && req.method === 'GET') {
-          const files = fs.readdirSync(filmsDir).filter(f => f.endsWith('.ts') && f !== 'index.ts');
-          sendJson(res, 200, files.map(f => f.replace(/\.ts$/, '')).sort());
+          const set = new Set<string>();
+          if (fs.existsSync(filmsDir)) {
+            fs.readdirSync(filmsDir)
+              .filter(f => f.endsWith('.ts') && f !== 'index.ts')
+              .forEach(f => set.add(f.replace(/\.ts$/, '')));
+          }
+          if (fs.existsSync(videosDir)) {
+            fs.readdirSync(videosDir)
+              .filter(f => !f.startsWith('.') && fs.existsSync(path.join(videosDir, f, 'film.json')))
+              .forEach(f => set.add(f));
+          }
+          sendJson(res, 200, Array.from(set).sort());
           return;
         }
 
@@ -1229,6 +1240,17 @@ function filmApiPlugin(): Plugin {
 
         // Support GET /api/films/:id to fetch any film definition dynamically
         if (req.method === 'GET') {
+          const videoPkgFilmPath = path.join(videosDir, id, 'film.json');
+          if (fs.existsSync(videoPkgFilmPath)) {
+            try {
+              const film = JSON.parse(fs.readFileSync(videoPkgFilmPath, 'utf8'));
+              sendJson(res, 200, { ok: true, film });
+              return;
+            } catch (err) {
+              console.warn(`Failed to parse ${videoPkgFilmPath}, falling back to .ts:`, err);
+            }
+          }
+
           const filmPath = path.join(filmsDir, `${id}.ts`);
           if (!fs.existsSync(filmPath)) {
             sendJson(res, 404, { error: `Film "${id}" not found` });
@@ -1277,6 +1299,11 @@ function filmApiPlugin(): Plugin {
             }
             const file = path.join(filmsDir, `${id}.ts`);
             fs.writeFileSync(file, filmModule(parsed.data), 'utf8');
+
+            // Sync to video package
+            const pkgDir = path.join(videosDir, id);
+            if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
+            fs.writeFileSync(path.join(pkgDir, 'film.json'), JSON.stringify(parsed.data, null, 2), 'utf8');
 
             const activeFilmFile = path.resolve(__dirname, '../src/dl/activeFilm.ts');
             fs.writeFileSync(
