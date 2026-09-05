@@ -40,6 +40,19 @@ test("chunkTextForTTS: splits text exceeding maxChars at sentence boundaries", (
   assert.equal(chunks[1], sentence2);
 });
 
+// Unit test verifying that an unpunctuated sentence or starting block exceeding maxChars is chunked into word-level pieces
+test("chunkTextForTTS: splits unpunctuated text exceeding maxChars into sub-chunks", () => {
+  const longSentence = "word ".repeat(250).trim(); // ~1250 chars without sentence punctuation
+  assert.ok(longSentence.length > 800);
+
+  const chunks = chunkTextForTTS(longSentence, 800);
+  assert.ok(chunks.length >= 2, "Expected at least 2 chunks");
+  for (const chunk of chunks) {
+    assert.ok(chunk.length <= 800, `Chunk length ${chunk.length} should not exceed 800`);
+  }
+  assert.equal(chunks.join(" "), longSentence);
+});
+
 // Unit test verifying that trimSilence strips leading and trailing zero-amplitude and low-noise samples
 test("trimSilence: trims leading and trailing silence below amplitude threshold", () => {
   const leadingSilence = new Float32Array(7535); // ~314ms at 24kHz
@@ -160,4 +173,32 @@ test("syncWordsIntoScreenplay: partitions edited words back into original per-sc
     updatedScreenplay.includes("**VO:** World models predict meaning directly."),
     "Scene 3 VO should be updated with Scene 3 words only",
   );
+});
+
+// Unit test verifying that syncWordsIntoScreenplay handles Voiceover and Narrator tags
+test("syncWordsIntoScreenplay: matches Voiceover and Narrator tag variants", () => {
+  const screenplay = [
+    "# Film Title",
+    "",
+    "## Scene 1",
+    "**Voiceover:** First scene voiceover text.",
+    "",
+    "## Scene 2",
+    "**Narrator:** Second scene narrator text.",
+  ].join("\n");
+
+  const words = [
+    { punctuated: "Updated", sceneIndex: 0 },
+    { punctuated: "first", sceneIndex: 0 },
+    { punctuated: "scene.", sceneIndex: 0 },
+    { punctuated: "Updated", sceneIndex: 1 },
+    { punctuated: "second", sceneIndex: 1 },
+    { punctuated: "scene.", sceneIndex: 1 },
+  ];
+
+  const updated = syncWordsIntoScreenplay(screenplay, words);
+  assert.ok(updated.includes("**Voiceover:** Updated first scene."));
+  assert.ok(updated.includes("**Narrator:** Updated second scene."));
+  assert.ok(updated.includes("## Scene 1"));
+  assert.ok(updated.includes("## Scene 2"));
 });

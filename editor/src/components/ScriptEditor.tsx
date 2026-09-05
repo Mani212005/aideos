@@ -162,7 +162,7 @@ export function syncWordsIntoScreenplay(script: string, transcriptWords: Transcr
   }
 
   const activeWords = transcriptWords.filter((w) => !w.deleted);
-  const hasVOTags = /^\*{0,2}VO\s*(\([^)]*\))?\s*:/im.test(script);
+  const hasVOTags = /^\*{0,2}(?:VO|Voiceover|Narrator)\s*(\([^)]*\))?\s*:\*{0,2}/im.test(script);
 
   if (hasVOTags) {
     const lines = script.split("\n");
@@ -314,7 +314,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
   const spokenText = extractSpokenPreview(script);
   const spokenWords = spokenText.split(/\s+/).filter(Boolean);
   const totalWords = script.split(/\s+/).filter(Boolean);
-  const hasVOTags = /^\*{0,2}VO\s*(\([^)]*\))?\s*:/im.test(script);
+  const hasVOTags = /^\*{0,2}(?:VO|Voiceover|Narrator)\s*(\([^)]*\))?\s*:\*{0,2}/im.test(script);
 
   // Sync active highlighted word with playback playhead time
   useEffect(() => {

@@ -81,32 +81,34 @@ export function chunkTextForTTS(text: string, maxChars = 800): string[] {
     for (const sentence of sentences) {
       const s = sentence.trim();
       if (!s) continue;
-      if (!currentChunk) {
-        currentChunk = s;
-      } else if ((currentChunk + " " + s).length <= maxChars) {
-        currentChunk = currentChunk + " " + s;
-      } else {
-        chunks.push(currentChunk);
-        if (s.length > maxChars) {
-          // Fallback for unusually long sentence exceeding maxChars
-          const words = s.split(/\s+/).filter(Boolean);
-          let wordChunk = "";
-          for (const w of words) {
-            if (!wordChunk) {
-              wordChunk = w;
-            } else if ((wordChunk + " " + w).length <= maxChars) {
-              wordChunk = wordChunk + " " + w;
-            } else {
-              chunks.push(wordChunk);
-              wordChunk = w;
-            }
-          }
-          if (wordChunk) {
-            currentChunk = wordChunk;
+
+      if (s.length > maxChars) {
+        if (currentChunk) {
+          chunks.push(currentChunk);
+          currentChunk = "";
+        }
+        const words = s.split(/\s+/).filter(Boolean);
+        let wordChunk = "";
+        for (const w of words) {
+          if (!wordChunk) {
+            wordChunk = w;
+          } else if ((wordChunk + " " + w).length <= maxChars) {
+            wordChunk = wordChunk + " " + w;
           } else {
-            currentChunk = "";
+            chunks.push(wordChunk);
+            wordChunk = w;
           }
+        }
+        if (wordChunk) {
+          currentChunk = wordChunk;
+        }
+      } else {
+        if (!currentChunk) {
+          currentChunk = s;
+        } else if ((currentChunk + " " + s).length <= maxChars) {
+          currentChunk = currentChunk + " " + s;
         } else {
+          chunks.push(currentChunk);
           currentChunk = s;
         }
       }
@@ -128,7 +130,7 @@ export function syncWordsIntoScreenplay(script: string, transcriptWords: Screenp
   }
 
   const activeWords = transcriptWords.filter((w) => !w.deleted);
-  const hasVOTags = /^\*{0,2}VO\s*(\([^)]*\))?\s*:/im.test(script);
+  const hasVOTags = /^\*{0,2}(?:VO|Voiceover|Narrator)\s*(\([^)]*\))?\s*:\*{0,2}/im.test(script);
 
   if (hasVOTags) {
     const lines = script.split("\n");
