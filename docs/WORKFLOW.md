@@ -33,8 +33,8 @@ Aideos is engineered around 4 strict architectural invariants:
                                        ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  STAGE 2: AUDIO-FIRST TIMING SPINE ENGINE                                    │
-│  • Sentence segmentation & Deepgram Aura / Edge-TTS audio synthesis          │
-│  • FFmpeg concatenation with 200ms rhythm gap buffer -> voiceover.wav         │
+│  • Shot-scoped segmentation & Neural / Kokoro audio synthesis                │
+│  • Raw silence trimming & 200ms inter-shot rhythm pause -> voiceover.wav     │
 │  • Word-level forced timestamp alignment -> captions.vtt                     │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │ Master Audio Duration & Captions
@@ -79,9 +79,9 @@ Aideos is engineered around 4 strict architectural invariants:
 3. **Output**: `videos/<slug>/treatment.json` containing chapter claims, narration lines, and visual direction notes.
 
 ### Stage 2: Audio Synthesis & Alignment (`backend/audio.ts`)
-1. **Sentence Segmentation**: Normalizes script punctuation and splits text into discrete audio segments.
-2. **TTS Synthesis**: Synthesizes high-fidelity audio per segment via Deepgram Aura (`aura-helios-en` / `aura-asteria-en`) or Edge-TTS.
-3. **Audio Concat**: Inserts 200ms natural breathing gaps between sentences and merges into `voiceover.wav`.
+1. **Shot-Scoped Segmentation**: Splits script text by paragraphs or explicit shot arrays into discrete shot-scoped narration segments without slicing internal sentence punctuation.
+2. **TTS Synthesis & Chunking**: Synthesizes speech per shot segment via Google Cloud Neural Audio or Kokoro ONNX using an 800-character chunking threshold with sentence-boundary splitting.
+3. **Silence Trimming & Concat**: Trims leading and trailing raw silence samples from audio buffers and inserts a single controlled 200ms pause between distinct shot boundaries before merging into `voiceover.wav`.
 4. **Alignment**: Derives exact word-level millisecond start/end timestamps, written to `captions.vtt`.
 
 ### Stage 3: Semantic Visual Sync Gate (`backend/sync.ts`)
