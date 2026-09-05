@@ -159,10 +159,15 @@ Pre-built tactile paper backgrounds:
 ## 6. Backend Produce & Validation Engine (`backend/`, `src/dl/validateFilm.ts`)
 
 ### `backend/audio.ts`
-* `synthesizeSegment(text, outPath, options)`: Calls Deepgram Aura or Edge-TTS to produce audio for a single sentence.
-* `concatAudioWithGaps(segments, gapSec, outPath)`: Merges audio clips with 200ms fixed pause buffers via FFmpeg concat filters.
-* `alignWordTimestamps(audioPath, scriptText)`: Extracts word-level start/end timestamps for captions.
-* `buildFilmFromAudioResult(treatment, audioResult)`: Compiles verified audio durations into a structured `Film` object.
+* `trimSilence(samples, threshold)`: Trims leading and trailing silence samples (below amplitude threshold) from raw Float32Array audio.
+* `chunkTextForTTS(text, maxChars)`: Splits text blocks exceeding maxChars (~800 chars) at sentence boundaries for Kokoro ONNX.
+* `syncWordsIntoScreenplay(script, transcriptWords)`: Synchronizes modified interactive words back into per-scene VO blocks without destroying screenplay structure.
+* `splitScriptIntoSegments(script)`: Splits a narration script into distinct shot-scoped segments (one per shot/beat) without slicing internal sentences.
+* `measureAudioDuration(filePath)`: Measures exact audio file duration using ffprobe.
+* `concatAudioSegments(audioFiles, silenceWavPath, outWavPath)`: Merges audio clips with fixed pause buffers via FFmpeg concat filters.
+* `produceAudioPipeline(script, outDir, options)`: Generates audio-first synthesis, timeline offset calculations, and VTT caption files.
+* `buildFilmFromAudioResult(title, audioResult, options)`: Compiles verified audio durations into a structured `Film` object.
+* `processAudioForFilm(film, outDir)`: Generates audio for a film using the neural audio pipeline.
 
 ### `backend/sync.ts`
 * `runSemanticVisualSync(film, captions)`: Evaluates spoken words against visual device blocks.

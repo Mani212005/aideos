@@ -11,7 +11,7 @@ import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
-import { produceAudioPipeline } from '../backend/audio.ts'
+import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence } from '../backend/audio.ts'
 import { executeCritique } from '../backend/critique/engine.ts'
 
 const filmsDir = path.resolve(__dirname, '../src/dl/films');
@@ -166,8 +166,8 @@ function filmApiPlugin(): Plugin {
           }
         }
 
-        // Extracts strictly the spoken dialogue/narration lines from a director screenplay
-        function extractSpokenVoiceover(raw: string): string {
+        // Extracts strictly the spoken dialogue/narration lines as separate per-scene/per-shot blocks from a director screenplay
+        function extractSpokenVoiceoverBlocks(raw: string): string[] {
           const lines = raw.split("\n");
           const spokenParagraphs: string[] = [];
           let isCapturingVO = false;
@@ -231,16 +231,19 @@ function filmApiPlugin(): Plugin {
           // If VO tags were identified, return strictly spoken dialogue
           if (spokenParagraphs.length > 0) {
             return spokenParagraphs
-              .join("\n\n")
-              .replace(/["“”]/g, "")
-              .replace(/\*+/g, "")
-              .replace(/\u2014/g, " - ")
-              .replace(/\u2013/g, " - ")
-              .trim();
+              .map((p) =>
+                p
+                  .replace(/["“”]/g, "")
+                  .replace(/\*+/g, "")
+                  .replace(/\u2014/g, " - ")
+                  .replace(/\u2013/g, " - ")
+                  .trim()
+              )
+              .filter(Boolean);
           }
 
-          // Fallback: clean markdown syntax for raw prose
-          return raw
+          // Fallback: clean markdown syntax for raw prose and split by paragraphs
+          const cleaned = raw
             .replace(/^#+\s+/gm, "")
             .replace(/\*\*([^*]+)\*\*/g, "$1")
             .replace(/\*([^*]+)\*/g, "$1")
@@ -249,6 +252,13 @@ function filmApiPlugin(): Plugin {
             .replace(/\u2014/g, " - ")
             .replace(/\u2013/g, " - ")
             .trim();
+
+          return cleaned.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+        }
+
+        // Extracts strictly the spoken dialogue/narration lines from a director screenplay
+        function extractSpokenVoiceover(raw: string): string {
+          return extractSpokenVoiceoverBlocks(raw).join("\n\n");
         }
 
         // Handle /api/parse-script-scenes (Intelligently construct shots, visual directions & nodes from screenplay)
@@ -372,11 +382,12 @@ function filmApiPlugin(): Plugin {
               sendJson(res, 400, { error: 'film is required' });
               return;
             }
-            const fullScript = scriptText || film.shots?.map((s: any) => s.scriptText || s.id).filter(Boolean).join(". ") || film.title;
+            const shotTexts: string[] = film.shots?.map((s: any) => (s.scriptText || s.id || '').trim()).filter(Boolean) || [];
+            const scriptInput = scriptText ? splitScriptIntoSegments(scriptText) : shotTexts.length > 0 ? shotTexts : [film.title];
             const outDir = path.resolve(__dirname, `../out/films/${film.id}`);
-            const audioResult = await produceAudioPipeline(fullScript, outDir);
+            const audioResult = await produceAudioPipeline(scriptInput, outDir);
 
-            // Update shot durations to match audio segments accurately
+            // Update shot durations to match audio segments accurately (1:1 shot-level mapping)
             const updatedShots = film.shots.map((shot: any, idx: number) => {
               const dur = audioResult.shotDurations[idx] || shot.dur || 3;
               return {
@@ -501,50 +512,6 @@ function filmApiPlugin(): Plugin {
 
             let generated = false;
 
-            // Helper to split large text blocks into sentence-level chunks <= 220 chars for Kokoro ONNX context limit
-            function chunkTextForTTS(text: string, maxChars = 220): string[] {
-              const rawParagraphs = text.split(/\r?\n+/).map(p => p.trim()).filter(Boolean);
-              const chunks: string[] = [];
-
-              for (const p of rawParagraphs) {
-                if (p.length <= maxChars) {
-                  chunks.push(p);
-                  continue;
-                }
-                const sentences = p.match(/[^.!?;]+[.!?;]*/g) || [p];
-                let currentChunk = "";
-
-                for (const sentence of sentences) {
-                  const s = sentence.trim();
-                  if (!s) continue;
-                  if ((currentChunk + " " + s).trim().length <= maxChars) {
-                    currentChunk = (currentChunk + " " + s).trim();
-                  } else {
-                    if (currentChunk) chunks.push(currentChunk);
-                    if (s.length > maxChars) {
-                      const words = s.split(/\s+/).filter(Boolean);
-                      let wordChunk = "";
-                      for (const w of words) {
-                        if ((wordChunk + " " + w).trim().length <= maxChars) {
-                          wordChunk = (wordChunk + " " + w).trim();
-                        } else {
-                          if (wordChunk) chunks.push(wordChunk);
-                          wordChunk = w;
-                        }
-                      }
-                      if (wordChunk) chunks.push(wordChunk);
-                      currentChunk = "";
-                    } else {
-                      currentChunk = s;
-                    }
-                  }
-                }
-                if (currentChunk) chunks.push(currentChunk);
-              }
-
-              return chunks.filter(Boolean);
-            }
-
             // Helper to encode Float32Array to 16-bit PCM WAV
             function encodeWav(float32Data: Float32Array, rate: number): Buffer {
               const numChannels = 1;
@@ -586,7 +553,7 @@ function filmApiPlugin(): Plugin {
                 const { KokoroTTS } = await import('kokoro-js');
                 const tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'q8' });
 
-                const paragraphs = chunkTextForTTS(cleanText);
+                const paragraphs = chunkTextForTTS(cleanText, 800);
                 const allAudio: Float32Array[] = [];
                 let sampleRate = 24000;
 
@@ -596,10 +563,15 @@ function filmApiPlugin(): Plugin {
                   console.log(`[TTS] Kokoro [${i + 1}/${paragraphs.length}] (${p.length} chars): ${p.slice(0, 35)}...`);
                   const audio = await tts.generate(p, { voice: kokoroVoice });
                   sampleRate = audio.sampling_rate;
-                  allAudio.push(audio.audio);
-                  // 250ms natural pause between paragraphs
-                  const pauseSamples = Math.floor(sampleRate * 0.25);
-                  allAudio.push(new Float32Array(pauseSamples));
+                  const trimmed = trimSilence(audio.audio, 0.005);
+                  if (trimmed.length > 0) {
+                    allAudio.push(trimmed);
+                  }
+                  // Controlled 200ms pause between distinct scene/shot boundaries
+                  if (i < paragraphs.length - 1) {
+                    const pauseSamples = Math.floor(sampleRate * 0.20);
+                    allAudio.push(new Float32Array(pauseSamples));
+                  }
                 }
 
                 const totalLength = allAudio.reduce((acc, a) => acc + a.length, 0);
@@ -812,24 +784,34 @@ function filmApiPlugin(): Plugin {
             return;
           }
 
-          // Align words from script
+          // Align words from script with sceneIndex
           void (async () => {
             const scriptPath = path.join(scriptsDir, `${id}.md`);
             let rawScript = '';
             if (fs.existsSync(scriptPath)) rawScript = fs.readFileSync(scriptPath, 'utf8');
-            const spokenText = extractSpokenVoiceover(rawScript);
-            const wordsList = spokenText.split(/\s+/).filter(Boolean);
+            const spokenBlocks = extractSpokenVoiceoverBlocks(rawScript);
+            const totalWordsCount = spokenBlocks.reduce((acc, b) => acc + b.split(/\s+/).filter(Boolean).length, 0);
             const totalDurationSec = 30; // standard shot duration estimate
-            const secPerWord = totalDurationSec / (wordsList.length || 1);
+            const secPerWord = totalDurationSec / (totalWordsCount || 1);
 
-            const fallbackWords = wordsList.map((w, idx) => ({
-              id: `w-${idx}`,
-              word: w.replace(/[^\w]/g, '').toLowerCase(),
-              punctuated: w,
-              start: Number((idx * secPerWord).toFixed(2)),
-              end: Number(((idx + 1) * secPerWord).toFixed(2)),
-              confidence: 0.9,
-            }));
+            const fallbackWords: any[] = [];
+            let globalWordIdx = 0;
+
+            for (let sceneIdx = 0; sceneIdx < spokenBlocks.length; sceneIdx++) {
+              const wordsList = spokenBlocks[sceneIdx].split(/\s+/).filter(Boolean);
+              for (const w of wordsList) {
+                fallbackWords.push({
+                  id: `w-${globalWordIdx}`,
+                  word: w.replace(/[^\w]/g, '').toLowerCase(),
+                  punctuated: w,
+                  start: Number((globalWordIdx * secPerWord).toFixed(2)),
+                  end: Number(((globalWordIdx + 1) * secPerWord).toFixed(2)),
+                  confidence: 0.9,
+                  sceneIndex: sceneIdx,
+                });
+                globalWordIdx++;
+              }
+            }
 
             fs.writeFileSync(cachePath, JSON.stringify({ words: fallbackWords }, null, 2), 'utf8');
             sendJson(res, 200, { ok: true, words: fallbackWords, source: 'script-alignment' });

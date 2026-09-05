@@ -1,3 +1,7 @@
+/**
+ * File Description: Unit tests for audio segmentation, caption offsets, timeline gap math, and film construction.
+ */
+
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs/promises";
@@ -12,13 +16,21 @@ import {
   buildFilmFromAudioResult,
 } from "./audio";
 
-test("segment splitting handles multi-sentence and newline-separated scripts", () => {
-  const script = "Welcome to Aideos. We build explainer videos as data.\nEvery node is a concept.";
+test("segment splitting handles shot-scoped multi-sentence and newline-separated scripts", () => {
+  const script = "Welcome to Aideos. We build explainer videos as data.\n\nEvery node is a concept.";
   const segments = splitScriptIntoSegments(script);
-  assert.equal(segments.length, 3);
-  assert.equal(segments[0], "Welcome to Aideos.");
-  assert.equal(segments[1], "We build explainer videos as data.");
-  assert.equal(segments[2], "Every node is a concept.");
+  assert.equal(segments.length, 2);
+  assert.equal(segments[0], "Welcome to Aideos. We build explainer videos as data.");
+  assert.equal(segments[1], "Every node is a concept.");
+
+  const shotArray = [
+    "Meet Yann LeCun, pioneer. While tech went in on chatbots, he argued LLMs are dead end.",
+    "A French American computer scientist, LeCun won Turing Award.",
+  ];
+  const arraySegments = splitScriptIntoSegments(shotArray);
+  assert.equal(arraySegments.length, 2);
+  assert.equal(arraySegments[0], shotArray[0]);
+  assert.equal(arraySegments[1], shotArray[1]);
 });
 
 test("no-narration-segment rejection throws error for empty or textless script sections", () => {
@@ -68,7 +80,7 @@ test("duration sum invariant holds within ±50ms for live synthesized audio", as
   }
 
   const script =
-    "Welcome to Aideos audio pipeline. We test segment splitting and caption alignment. Every shot duration sums to the audio file duration.";
+    "Welcome to Aideos audio pipeline.\n\nWe test segment splitting and caption alignment.\n\nEvery shot duration sums to the audio file duration.";
 
   const tmpOut = path.join(__dirname, "../out/test_produce");
   const timeoutPromise = new Promise((_, reject) =>

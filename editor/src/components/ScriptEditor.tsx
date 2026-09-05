@@ -21,6 +21,7 @@ export interface TranscriptWord {
   deleted?: boolean;
   modified?: boolean;
   inserted?: boolean;
+  sceneIndex?: number;
 }
 
 const VOICES = [
@@ -60,9 +61,9 @@ function estimateDuration(wordCount: number): string {
 }
 
 /**
- * Extracts strictly the spoken dialogue from a director screenplay text.
+ * Extracts strictly the spoken dialogue from a director screenplay text as separate per-scene/shot paragraphs.
  */
-function extractSpokenPreview(raw: string): string {
+export function extractSpokenBlocks(raw: string): string[] {
   const lines = raw.split("\n");
   const spokenParagraphs: string[] = [];
   let isCapturingVO = false;
@@ -121,23 +122,116 @@ function extractSpokenPreview(raw: string): string {
 
   if (spokenParagraphs.length > 0) {
     return spokenParagraphs
-      .join("\n\n")
-      .replace(/["“”]/g, "")
-      .replace(/\*+/g, "")
-      .replace(/—/g, " - ")
-      .replace(/–/g, " - ")
-      .trim();
+      .map((p) =>
+        p
+          .replace(/["“”]/g, "")
+          .replace(/\*+/g, "")
+          .replace(/\u2014/g, " - ")
+          .replace(/\u2013/g, " - ")
+          .trim()
+      )
+      .filter(Boolean);
   }
 
-  return raw
+  const fallback = raw
     .replace(/^#+\s+/gm, "")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/—/g, " - ")
-    .replace(/–/g, " - ")
+    .replace(/\u2014/g, " - ")
+    .replace(/\u2013/g, " - ")
     .trim();
+
+  return fallback.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+}
+
+/**
+ * Extracts strictly the spoken dialogue from a director screenplay text as single joined string.
+ */
+function extractSpokenPreview(raw: string): string {
+  return extractSpokenBlocks(raw).join("\n\n");
+}
+
+/**
+ * Synchronizes modified interactive words back into per-scene VO blocks without destroying screenplay structure.
+ */
+export function syncWordsIntoScreenplay(script: string, transcriptWords: TranscriptWord[]): string {
+  if (!transcriptWords || transcriptWords.length === 0) {
+    return script;
+  }
+
+  const activeWords = transcriptWords.filter((w) => !w.deleted);
+  const hasVOTags = /^\*{0,2}(?:VO|Voiceover|Narrator)\s*(\([^)]*\))?\s*:\*{0,2}/im.test(script);
+
+  if (hasVOTags) {
+    const lines = script.split("\n");
+    const newLines: string[] = [];
+    let voBlockIndex = -1;
+    let isCapturingVO = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Check for VO tag start line
+      if (/^\*{0,2}(VO|Voiceover|Narrator)\s*(\([^)]*\))?\s*:\*{0,2}/i.test(line)) {
+        voBlockIndex++;
+        isCapturingVO = true;
+
+        // Preserve tag prefix e.g. **VO (energetic):** or **VO:**
+        const tagMatch = line.match(/^(\*{0,2}(?:VO|Voiceover|Narrator)(?:\s*\([^)]*\))?\s*:\*{0,2})/i);
+        const tagPrefix = tagMatch ? tagMatch[1] : "**VO:**";
+
+        // Get words partitioned for this specific scene / VO block
+        const sceneWords = activeWords
+          .filter((w) => (w.sceneIndex ?? 0) === voBlockIndex)
+          .map((w) => w.punctuated)
+          .join(" ");
+
+        newLines.push(`${tagPrefix} ${sceneWords}`.trimEnd());
+        continue;
+      }
+
+      // Boundary checks: VISUAL, ON-SCREEN TEXT, scene headers ##, dividers ---
+      if (
+        /^\*{0,2}(VISUAL|ON-SCREEN TEXT|SCREEN|GRAPHICS|AUDIO|SFX)\s*:\*{0,2}/i.test(line) ||
+        /^#{1,4}\s+/.test(line) ||
+        line === "---" ||
+        line === "***"
+      ) {
+        isCapturingVO = false;
+        newLines.push(line);
+        continue;
+      }
+
+      // If inside an old multiline VO block, skip continuation lines since we replaced the block
+      if (isCapturingVO) {
+        if (line.trim().length === 0) {
+          isCapturingVO = false;
+          newLines.push(line);
+        }
+        continue;
+      }
+
+      newLines.push(line);
+    }
+    return newLines.join("\n");
+  } else {
+    // Plain script without VO tags: partition across existing paragraphs
+    const paragraphs = script.split(/\n\s*\n+/);
+    if (paragraphs.length > 1) {
+      const updatedParagraphs = paragraphs.map((p, idx) => {
+        const pWords = activeWords
+          .filter((w) => (w.sceneIndex ?? 0) === idx)
+          .map((w) => w.punctuated)
+          .join(" ");
+        return pWords || p;
+      });
+      return updatedParagraphs.join("\n\n");
+    } else {
+      return activeWords.map((w) => w.punctuated).join(" ");
+    }
+  }
 }
 
 /**
@@ -220,7 +314,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
   const spokenText = extractSpokenPreview(script);
   const spokenWords = spokenText.split(/\s+/).filter(Boolean);
   const totalWords = script.split(/\s+/).filter(Boolean);
-  const hasVOTags = /^\*{0,2}VO\s*(\([^)]*\))?\s*:/im.test(script);
+  const hasVOTags = /^\*{0,2}(?:VO|Voiceover|Narrator)\s*(\([^)]*\))?\s*:\*{0,2}/im.test(script);
 
   // Sync active highlighted word with playback playhead time
   useEffect(() => {
@@ -230,17 +324,31 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       setActiveWordId(current.id);
     }
   }, [currentTime, transcriptWords, activeWordId]);
-  const generateFullScriptWords = (wordsArr: string[]): TranscriptWord[] => {
-    const estTotalSec = Math.max(15, Math.round((wordsArr.length / 150) * 60));
-    const secPerWord = estTotalSec / (wordsArr.length || 1);
-    return wordsArr.map((w, idx) => ({
-      id: `w-${idx}`,
-      word: w.replace(/[^\w]/g, "").toLowerCase(),
-      punctuated: w,
-      start: Number((idx * secPerWord).toFixed(2)),
-      end: Number(((idx + 1) * secPerWord).toFixed(2)),
-      confidence: 0.95,
-    }));
+  // Generates interactive word objects from screenplay preserving per-scene indices
+  const generateFullScriptWords = (rawScript: string): TranscriptWord[] => {
+    const blocks = extractSpokenBlocks(rawScript);
+    const allWords: TranscriptWord[] = [];
+    let globalIdx = 0;
+    const totalWords = blocks.reduce((acc, b) => acc + b.split(/\s+/).filter(Boolean).length, 0);
+    const estTotalSec = Math.max(15, Math.round((totalWords / 150) * 60));
+    const secPerWord = estTotalSec / (totalWords || 1);
+
+    for (let sceneIdx = 0; sceneIdx < blocks.length; sceneIdx++) {
+      const wordsArr = blocks[sceneIdx].split(/\s+/).filter(Boolean);
+      for (const w of wordsArr) {
+        allWords.push({
+          id: `w-${globalIdx}`,
+          word: w.replace(/[^\w]/g, "").toLowerCase(),
+          punctuated: w,
+          start: Number((globalIdx * secPerWord).toFixed(2)),
+          end: Number(((globalIdx + 1) * secPerWord).toFixed(2)),
+          confidence: 0.95,
+          sceneIndex: sceneIdx,
+        });
+        globalIdx++;
+      }
+    }
+    return allWords;
   };
 
   /**
@@ -259,13 +367,13 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
         }
       } else {
         // Fallback: Generate full alignment for all spoken words so interactive words never truncate
-        if (spokenWords.length > 0) {
-          setTranscriptWords(generateFullScriptWords(spokenWords));
+        if (script) {
+          setTranscriptWords(generateFullScriptWords(script));
         }
       }
     } catch (_) {
-      if (spokenWords.length > 0) {
-        setTranscriptWords(generateFullScriptWords(spokenWords));
+      if (script) {
+        setTranscriptWords(generateFullScriptWords(script));
       }
     }
     setLoadingWords(false);
@@ -277,43 +385,8 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
   const handleSyncSpokenTextFromWords = async () => {
     if (transcriptWords.length === 0) return;
 
-    const activeWords = transcriptWords
-      .filter((w) => !w.deleted)
-      .map((w) => w.punctuated);
-    const newSpokenText = activeWords.join(" ");
-
-    let updatedScript = script;
-    if (hasVOTags) {
-      const lines = script.split("\n");
-      const newLines: string[] = [];
-      let voReplaced = false;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (
-          /^\*{0,2}VO\s*(\([^)]*\))?\s*:\*{0,2}/i.test(line) ||
-          /^\*{0,2}Voiceover\s*(\([^)]*\))?\s*:\*{0,2}/i.test(line) ||
-          /^\*{0,2}Narrator\s*(\([^)]*\))?\s*:\*{0,2}/i.test(line)
-        ) {
-          if (!voReplaced) {
-            newLines.push(`**VO:** ${newSpokenText}`);
-            voReplaced = true;
-          }
-        } else if (
-          voReplaced &&
-          !/^\*{0,2}(VISUAL|ON-SCREEN TEXT|SCREEN|GRAPHICS|AUDIO|SFX)\s*:\*{0,2}/i.test(line) &&
-          !/^#{1,4}\s+/.test(line) &&
-          line !== "---"
-        ) {
-          continue;
-        } else {
-          newLines.push(line);
-        }
-      }
-      updatedScript = newLines.join("\n");
-    } else {
-      updatedScript = newSpokenText;
-    }
+    const activeWords = transcriptWords.filter((w) => !w.deleted);
+    const updatedScript = syncWordsIntoScreenplay(script, transcriptWords);
 
     setScript(updatedScript);
 
@@ -557,7 +630,9 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
     const targetText = selectedWord.punctuated;
     const insertedPhrase = insertText.trim();
 
-    // 1. Splice new word chips into transcriptWords marked with `inserted: true`
+    const parentSceneIndex = selectedWord.sceneIndex ?? 0;
+
+    // 1. Splice new word chips into transcriptWords marked with `inserted: true` and matching sceneIndex
     const targetIdx = transcriptWords.findIndex((w) => w.id === selectedWord.id);
     const newWordsArr: TranscriptWord[] = insertedPhrase
       .split(/\s+/)
@@ -569,6 +644,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
         start: selectedWord.end + i * 0.35,
         end: selectedWord.end + (i + 1) * 0.35,
         inserted: true,
+        sceneIndex: parentSceneIndex,
       }));
 
     let updatedWords: TranscriptWord[] = [];

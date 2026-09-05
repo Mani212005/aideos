@@ -1,3 +1,7 @@
+/**
+ * File Description: Audio synthesis, segmentation, silence trimming, timeline offset calculation, and captions generation pipeline.
+ */
+
 import { TextToSpeechClient } from "@google-cloud/text-to-speech";
 import * as fs from "fs/promises";
 import * as path from "path";
@@ -34,6 +38,170 @@ export interface ProduceAudioResult {
   captionsVttContent: string;
 }
 
+export interface ScreenplayWord {
+  punctuated: string;
+  deleted?: boolean;
+  sceneIndex?: number;
+}
+
+/**
+ * Trims leading and trailing silence samples (below amplitude threshold) from raw Float32Array audio.
+ */
+export function trimSilence(samples: Float32Array, threshold = 0.005): Float32Array {
+  let start = 0;
+  while (start < samples.length && Math.abs(samples[start]) <= threshold) {
+    start++;
+  }
+  if (start >= samples.length) {
+    return new Float32Array(0);
+  }
+  let end = samples.length - 1;
+  while (end > start && Math.abs(samples[end]) <= threshold) {
+    end--;
+  }
+  return samples.subarray(start, end + 1);
+}
+
+/**
+ * Splits text blocks exceeding maxChars (~800 chars / ~500 tokens) at sentence boundaries for Kokoro ONNX.
+ */
+export function chunkTextForTTS(text: string, maxChars = 800): string[] {
+  const rawParagraphs = text.split(/\r?\n+/).map((p) => p.trim()).filter(Boolean);
+  const chunks: string[] = [];
+
+  for (const p of rawParagraphs) {
+    if (p.length <= maxChars) {
+      chunks.push(p);
+      continue;
+    }
+    // Match complete sentences preserving punctuation and sentence prosody
+    const sentences = p.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [p];
+    let currentChunk = "";
+
+    for (const sentence of sentences) {
+      const s = sentence.trim();
+      if (!s) continue;
+
+      if (s.length > maxChars) {
+        if (currentChunk) {
+          chunks.push(currentChunk);
+          currentChunk = "";
+        }
+        const words = s.split(/\s+/).filter(Boolean);
+        let wordChunk = "";
+        for (const w of words) {
+          if (!wordChunk) {
+            wordChunk = w;
+          } else if ((wordChunk + " " + w).length <= maxChars) {
+            wordChunk = wordChunk + " " + w;
+          } else {
+            chunks.push(wordChunk);
+            wordChunk = w;
+          }
+        }
+        if (wordChunk) {
+          currentChunk = wordChunk;
+        }
+      } else {
+        if (!currentChunk) {
+          currentChunk = s;
+        } else if ((currentChunk + " " + s).length <= maxChars) {
+          currentChunk = currentChunk + " " + s;
+        } else {
+          chunks.push(currentChunk);
+          currentChunk = s;
+        }
+      }
+    }
+    if (currentChunk) {
+      chunks.push(currentChunk);
+    }
+  }
+
+  return chunks.filter(Boolean);
+}
+
+/**
+ * Synchronizes modified interactive words back into per-scene VO blocks without destroying screenplay structure.
+ */
+export function syncWordsIntoScreenplay(script: string, transcriptWords: ScreenplayWord[]): string {
+  if (!transcriptWords || transcriptWords.length === 0) {
+    return script;
+  }
+
+  const activeWords = transcriptWords.filter((w) => !w.deleted);
+  const hasVOTags = /^\*{0,2}(?:VO|Voiceover|Narrator)\s*(\([^)]*\))?\s*:\*{0,2}/im.test(script);
+
+  if (hasVOTags) {
+    const lines = script.split("\n");
+    const newLines: string[] = [];
+    let voBlockIndex = -1;
+    let isCapturingVO = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Check for VO tag start line
+      if (/^\*{0,2}(VO|Voiceover|Narrator)\s*(\([^)]*\))?\s*:\*{0,2}/i.test(line)) {
+        voBlockIndex++;
+        isCapturingVO = true;
+
+        // Preserve tag prefix e.g. **VO (energetic):** or **VO:**
+        const tagMatch = line.match(/^(\*{0,2}(?:VO|Voiceover|Narrator)(?:\s*\([^)]*\))?\s*:\*{0,2})/i);
+        const tagPrefix = tagMatch ? tagMatch[1] : "**VO:**";
+
+        // Get words partitioned for this specific scene / VO block
+        const sceneWords = activeWords
+          .filter((w) => (w.sceneIndex ?? 0) === voBlockIndex)
+          .map((w) => w.punctuated)
+          .join(" ");
+
+        newLines.push(`${tagPrefix} ${sceneWords}`.trimEnd());
+        continue;
+      }
+
+      // Boundary checks: VISUAL, ON-SCREEN TEXT, scene headers ##, dividers ---
+      if (
+        /^\*{0,2}(VISUAL|ON-SCREEN TEXT|SCREEN|GRAPHICS|AUDIO|SFX)\s*:\*{0,2}/i.test(line) ||
+        /^#{1,4}\s+/.test(line) ||
+        line === "---" ||
+        line === "***"
+      ) {
+        isCapturingVO = false;
+        newLines.push(line);
+        continue;
+      }
+
+      // If inside an old multiline VO block, skip continuation lines since we replaced the block
+      if (isCapturingVO) {
+        if (line.trim().length === 0) {
+          isCapturingVO = false;
+          newLines.push(line);
+        }
+        continue;
+      }
+
+      newLines.push(line);
+    }
+    return newLines.join("\n");
+  } else {
+    // Plain script without VO tags: partition across existing paragraphs
+    const paragraphs = script.split(/\n\s*\n+/);
+    if (paragraphs.length > 1) {
+      const updatedParagraphs = paragraphs.map((p, idx) => {
+        const pWords = activeWords
+          .filter((w) => (w.sceneIndex ?? 0) === idx)
+          .map((w) => w.punctuated)
+          .join(" ");
+        return pWords || p;
+      });
+      return updatedParagraphs.join("\n\n");
+    } else {
+      return activeWords.map((w) => w.punctuated).join(" ");
+    }
+  }
+}
+
 /**
  * Split a narration script into distinct segments (one per shot/beat).
  * Accepts either an explicit string[] (one per shot) or a string script.
@@ -56,7 +224,7 @@ export function splitScriptIntoSegments(script: string | string[]): string[] {
     throw new Error("A shot with no narration is not allowed mid-script in v1");
   }
 
-  // Check if text has explicit blank line separators or line breaks
+  // Split text by blank lines / paragraphs (one segment per shot/beat)
   const paragraphs = trimmed.split(/\n\s*\n+/);
   const rawSegments: string[] = [];
 
@@ -66,20 +234,7 @@ export function splitScriptIntoSegments(script: string | string[]): string[] {
       // Empty paragraph mid-script
       throw new Error("A shot with no narration is not allowed mid-script in v1");
     }
-    const lines = p.split(/\n+/);
-    for (const line of lines) {
-      const l = line.trim();
-      if (!l) {
-        throw new Error("A shot with no narration is not allowed mid-script in v1");
-      }
-      // Split line into sentences on punctuation (. ! ?) followed by whitespace or end
-      const sentences = l
-        .split(/(?<=[.!?])\s+/)
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-
-      rawSegments.push(...sentences);
-    }
+    rawSegments.push(p);
   }
 
   if (rawSegments.length === 0) {
@@ -434,13 +589,12 @@ export function buildFilmFromAudioResult(
 
 /** Generate audio for film using the Google Cloud / Neural Audio Pipeline. */
 export async function processAudioForFilm(film: Film, outDir: string): Promise<Film> {
-  const shotsText = film.shots.map((s) => (s.scriptText || "").trim());
-  const fullScript = shotsText.filter((t) => t.length > 0).join(" ");
+  const validShots = film.shots.map((s) => (s.scriptText || "").trim()).filter((t) => t.length > 0);
 
-  if (fullScript.length === 0) {
+  if (validShots.length === 0) {
     return film;
   }
 
-  const audioResult = await produceAudioPipeline(fullScript, outDir);
+  const audioResult = await produceAudioPipeline(validShots, outDir);
   return buildFilmFromAudioResult(film.title, audioResult);
 }
