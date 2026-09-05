@@ -158,25 +158,35 @@ export function reorderLayer(
   const oldNum = newLayers[layerIdx].number;
 
   // Swap numbers with colliding layer if one exists
-  const collider = newLayers.find((l) => l.number === newNumber && l.id !== layerId);
-  if (collider) {
+  const colliderIdx = newLayers.findIndex((l) => l.number === newNumber && l.id !== layerId);
+  const actions: UpdateAction[] = [];
+  const txId = generateUUID();
+
+  if (colliderIdx !== -1) {
+    const collider = newLayers[colliderIdx];
     collider.number = oldNum;
+    actions.push({
+      type: "update",
+      path: ["layers", colliderIdx, "number"],
+      oldValue: newNumber,
+      newValue: oldNum,
+      transactionId: txId,
+      label: `Reorder layer "${collider.label}" to z-index ${oldNum}`,
+      timestamp: Date.now(),
+    });
   }
 
   newLayers[layerIdx].number = newNumber;
-  const txId = generateUUID();
 
-  const actions: UpdateAction[] = [
-    {
-      type: "update",
-      path: ["layers", layerIdx, "number"],
-      oldValue: oldNum,
-      newValue: newNumber,
-      transactionId: txId,
-      label: `Reorder layer "${newLayers[layerIdx].label}" to z-index ${newNumber}`,
-      timestamp: Date.now(),
-    },
-  ];
+  actions.push({
+    type: "update",
+    path: ["layers", layerIdx, "number"],
+    oldValue: oldNum,
+    newValue: newNumber,
+    transactionId: txId,
+    label: `Reorder layer "${newLayers[layerIdx].label}" to z-index ${newNumber}`,
+    timestamp: Date.now(),
+  });
 
   return {
     film: { ...film, layers: newLayers },

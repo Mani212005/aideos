@@ -774,7 +774,7 @@ export default function App() {
                  m === "map" ? "🗺️ Spatial Map" :
                  m === "customization" ? "🎨 Studio Theme" :
                  m === "styleboard" ? "📐 Styleboard" :
-                 m === "captions" ? "💬 Captions" : "🎬 Video Layer"}
+                 m === "captions" ? "💬 Pretext Captions" : "🎬 Video Layer"}
               </button>
             ))}
           </div>
@@ -898,16 +898,6 @@ export default function App() {
                   setCaptionWords(newCaptions);
                   const vttString = captionWordsToVtt(newCaptions, film.fps || 30);
                   handleUpdateFilmWithHistory({ ...film, captions: vttString });
-                }}
-                onCaptionStyleChange={(newStyle) => {
-                  const updatedFilm = {
-                    ...film,
-                    theme: {
-                      ...film.theme,
-                      captions: newStyle,
-                    },
-                  };
-                  handleUpdateFilmWithHistory(updatedFilm);
                 }}
                 onSeekToFrame={(frame) => {
                   playerRef.current?.seekTo(frame);

@@ -21,6 +21,7 @@ import {
   splitShotAtTime,
   deleteShot,
   type SnapTarget,
+  type UpdateAction,
 } from "../../../backend/timeline/timeline";
 import {
   collectSnapTargets,
@@ -31,6 +32,12 @@ import {
   type DragContext,
 } from "./timeline/state";
 import { generateWordsFromFilm } from "../../../src/dl/captionsParser";
+
+// Computes timeline duration of an audio clip accounting for playback speed.
+function getAudioEffectiveDuration(ac: AudioClip): number {
+  const speed = ac.speed ?? 1.0;
+  return (ac.end - ac.start) / speed;
+}
 
 interface TimelineEditorProps {
   film: Film;
@@ -79,7 +86,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   const [, setUndoTick] = useState(0);
 
   const triggerUpdateWithTx = useCallback(
-    (newFilm: Film, actions: any[], label: string) => {
+    (newFilm: Film, actions: UpdateAction[], label: string) => {
       txManagerRef.current.commit(film, newFilm, actions, label);
       setUndoTick((t) => t + 1);
       onUpdateFilm(newFilm);
@@ -162,28 +169,35 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     }
   }, [playheadSec, zoomLevel, fps, isPlaying]);
 
-  const shotStartTimes = useMemo(() => {
-    return computeShotStartTimes(film.shots);
-  }, [film.shots]);
+  useEffect(() => {
+    if (!isPlaying && dragContext.mode === "idle") {
+      setPlayheadSec(currentFrame / fps);
+    }
+  }, [currentFrame, fps, isPlaying, dragContext.mode]);
+
+  // Derived Shot & Audio Geometries
+  const shotStartTimes = useMemo(() => computeShotStartTimes(film.shots), [film.shots]);
 
   const baseShotsDurSum = useMemo(() => {
-    return film.shots.reduce((sum, s) => sum + getShotDuration(s), 0);
+    return film.shots.reduce((acc, s) => acc + getShotDuration(s), 0);
   }, [film.shots]);
 
-  // Interactive Audio Clips List
   const audioClips: AudioClip[] = useMemo(() => {
     if (film.audioClips && film.audioClips.length > 0) {
       return film.audioClips;
     }
-    const defaultDur = overrideTotalDurationSec && overrideTotalDurationSec > 0 ? overrideTotalDurationSec : baseShotsDurSum;
+    const totalVoDur = overrideTotalDurationSec && overrideTotalDurationSec > 0
+      ? overrideTotalDurationSec
+      : baseShotsDurSum;
     return [
       {
-        id: "clip-vo-main",
+        id: "clip-voiceover-master",
         src: film.voiceover?.src || "voiceover.wav",
         position: 0,
         start: 0,
-        end: defaultDur,
+        end: totalVoDur,
         volume: film.voiceover?.volume ?? 1,
+        speed: film.voiceover?.speed ?? 1.0,
         channel: "voiceover",
       },
     ];
@@ -198,14 +212,14 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       return Math.max(max, start + getShotDuration(s));
     }, 0);
     const maxAudioEnd = audioClips.reduce((max, a) => {
-      return Math.max(max, a.position + (a.end - a.start));
+      return Math.max(max, a.position + getAudioEffectiveDuration(a));
     }, 0);
     return Math.max(baseShotsDurSum, maxShotEnd, maxAudioEnd);
   }, [overrideTotalDurationSec, baseShotsDurSum, film.shots, shotStartTimes, audioClips]);
 
   // Voiceover drift calculation
   const totalAudioDuration = useMemo(() => {
-    return audioClips.reduce((sum, a) => sum + (a.end - a.start), 0);
+    return audioClips.reduce((sum, a) => sum + getAudioEffectiveDuration(a), 0);
   }, [audioClips]);
 
   const driftSec = totalDurationSec - totalAudioDuration;
@@ -215,18 +229,43 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   const currentSpeed = selectedAudioClip?.speed ?? film.voiceover?.speed ?? 1.0;
 
   const handleUpdateAudioSpeed = (newSpeed: number) => {
+    const txId = crypto.randomUUID();
     if (selectedAudioId) {
       const idx = audioClips.findIndex((a) => a.id === selectedAudioId);
       if (idx !== -1) {
+        const oldSpeed = audioClips[idx].speed ?? 1.0;
         const updatedClips = [...audioClips];
         updatedClips[idx] = { ...updatedClips[idx], speed: newSpeed };
+        const actions: UpdateAction[] = [
+          {
+            type: "update",
+            path: ["audioClips", idx, "speed"],
+            oldValue: oldSpeed,
+            newValue: newSpeed,
+            transactionId: txId,
+            label: `Set ${selectedAudioId} speed to ${newSpeed}x`,
+            timestamp: Date.now(),
+          },
+        ];
         triggerUpdateWithTx(
           { ...film, audioClips: updatedClips },
-          [],
+          actions,
           `Set ${selectedAudioId} speed to ${newSpeed}x`
         );
       }
     } else {
+      const oldSpeed = film.voiceover?.speed ?? 1.0;
+      const actions: UpdateAction[] = [
+        {
+          type: "update",
+          path: ["voiceover", "speed"],
+          oldValue: oldSpeed,
+          newValue: newSpeed,
+          transactionId: txId,
+          label: `Set master voiceover speed to ${newSpeed}x`,
+          timestamp: Date.now(),
+        },
+      ];
       triggerUpdateWithTx(
         {
           ...film,
@@ -236,7 +275,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
             speed: newSpeed,
           },
         },
-        [],
+        actions,
         `Set master voiceover speed to ${newSpeed}x`
       );
     }
@@ -378,8 +417,9 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       // Resizing an Audio clip
       if ((ctx.mode === "resize-audio-left" || ctx.mode === "resize-audio-right") && ctx.audioIndex !== undefined) {
         const aClip = audioClips[ctx.audioIndex];
+        const speed = aClip.speed ?? 1.0;
         const origPos = aClip.position;
-        const origDur = aClip.end - aClip.start;
+        const origDur = (aClip.end - aClip.start) / speed;
         let deltaSec = ctx.currentDeltaSec;
 
         if (ctx.mode === "resize-audio-right") {
@@ -429,13 +469,25 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         const aClip = audioClips[prevCtx.audioIndex];
         const override = pendingOverrides[aClip.id];
         if (override?.position !== undefined) {
+          const txId = crypto.randomUUID();
           const updatedAudioClips = audioClips.map((ac, idx) => {
             if (idx === prevCtx.audioIndex) {
               return { ...ac, position: override.position! };
             }
             return ac;
           });
-          triggerUpdateWithTx({ ...film, audioClips: updatedAudioClips }, [], `Move audio ${aClip.id}`);
+          const actions: UpdateAction[] = [
+            {
+              type: "update",
+              path: ["audioClips", prevCtx.audioIndex, "position"],
+              oldValue: aClip.position,
+              newValue: override.position!,
+              transactionId: txId,
+              label: `Move audio ${aClip.id} to ${override.position!.toFixed(2)}s`,
+              timestamp: Date.now(),
+            },
+          ];
+          triggerUpdateWithTx({ ...film, audioClips: updatedAudioClips }, actions, `Move audio ${aClip.id}`);
         }
       }
 
@@ -466,20 +518,59 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         const aClip = audioClips[prevCtx.audioIndex];
         const override = pendingOverrides[aClip.id];
         if (override) {
+          const txId = crypto.randomUUID();
+          const speed = aClip.speed ?? 1.0;
+          const actions: UpdateAction[] = [];
           const updatedAudioClips = audioClips.map((ac, idx) => {
             if (idx === prevCtx.audioIndex) {
               if (prevCtx.mode === "resize-audio-right") {
-                const newDur = override.dur ?? (ac.end - ac.start);
-                return { ...ac, end: ac.start + newDur };
+                const newDur = override.dur ?? ((ac.end - ac.start) / speed);
+                const newEnd = Number((ac.start + newDur * speed).toFixed(3));
+                actions.push({
+                  type: "update",
+                  path: ["audioClips", prevCtx.audioIndex, "end"],
+                  oldValue: ac.end,
+                  newValue: newEnd,
+                  transactionId: txId,
+                  label: `Trim audio ${ac.id} end to ${newEnd.toFixed(2)}s`,
+                  timestamp: Date.now(),
+                });
+                return { ...ac, end: newEnd };
               } else {
                 const newPos = override.position ?? ac.position;
-                const delta = newPos - ac.position;
-                return { ...ac, position: newPos, start: ac.start + delta };
+                const deltaTimeline = newPos - ac.position;
+                const deltaSource = deltaTimeline * speed;
+                const clampedDeltaSource = Math.max(-ac.start, deltaSource);
+                const clampedDeltaTimeline = clampedDeltaSource / speed;
+                const finalPos = Number((ac.position + clampedDeltaTimeline).toFixed(3));
+                const finalStart = Number((ac.start + clampedDeltaSource).toFixed(3));
+
+                actions.push(
+                  {
+                    type: "update",
+                    path: ["audioClips", prevCtx.audioIndex, "position"],
+                    oldValue: ac.position,
+                    newValue: finalPos,
+                    transactionId: txId,
+                    label: `Trim audio ${ac.id} position to ${finalPos.toFixed(2)}s`,
+                    timestamp: Date.now(),
+                  },
+                  {
+                    type: "update",
+                    path: ["audioClips", prevCtx.audioIndex, "start"],
+                    oldValue: ac.start,
+                    newValue: finalStart,
+                    transactionId: txId,
+                    label: `Trim audio ${ac.id} start to ${finalStart.toFixed(2)}s`,
+                    timestamp: Date.now(),
+                  }
+                );
+                return { ...ac, position: finalPos, start: finalStart };
               }
             }
             return ac;
           });
-          triggerUpdateWithTx({ ...film, audioClips: updatedAudioClips }, [], `Trim audio ${aClip.id}`);
+          triggerUpdateWithTx({ ...film, audioClips: updatedAudioClips }, actions, `Trim audio ${aClip.id}`);
         }
       }
 
@@ -513,46 +604,93 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     if (aIdx === -1) return;
 
     const targetAudio = audioClips[aIdx];
-    const dur = targetAudio.end - targetAudio.start;
+    const speed = targetAudio.speed ?? 1.0;
+    const dur = (targetAudio.end - targetAudio.start) / speed;
     const endPos = targetAudio.position + dur;
 
     if (playheadSec <= targetAudio.position || playheadSec >= endPos) return;
 
-    const splitOffset = playheadSec - targetAudio.position;
-    const leftDur = Number(splitOffset.toFixed(3));
+    const splitOffsetTimeline = playheadSec - targetAudio.position;
+    const splitOffsetSource = splitOffsetTimeline * speed;
 
     const leftClip: AudioClip = {
       ...targetAudio,
       id: `${targetAudio.id}-part1`,
       position: targetAudio.position,
       start: targetAudio.start,
-      end: targetAudio.start + leftDur,
+      end: Number((targetAudio.start + splitOffsetSource).toFixed(3)),
     };
 
     const rightClip: AudioClip = {
       ...targetAudio,
       id: `${targetAudio.id}-part2`,
       position: playheadSec,
-      start: targetAudio.start + leftDur,
+      start: Number((targetAudio.start + splitOffsetSource).toFixed(3)),
       end: targetAudio.end,
     };
 
     const updatedAudioClips = [...audioClips];
     updatedAudioClips.splice(aIdx, 1, leftClip, rightClip);
 
+    const txId = crypto.randomUUID();
+    const actions: UpdateAction[] = [
+      {
+        type: "delete",
+        path: ["audioClips", aIdx],
+        oldValue: targetAudio,
+        newValue: null,
+        transactionId: txId,
+        label: `Split audio ${targetAudio.id}`,
+        timestamp: Date.now(),
+      },
+      {
+        type: "insert",
+        path: ["audioClips", aIdx],
+        oldValue: null,
+        newValue: leftClip,
+        transactionId: txId,
+        label: `Insert ${leftClip.id}`,
+        timestamp: Date.now(),
+      },
+      {
+        type: "insert",
+        path: ["audioClips", aIdx + 1],
+        oldValue: null,
+        newValue: rightClip,
+        transactionId: txId,
+        label: `Insert ${rightClip.id}`,
+        timestamp: Date.now(),
+      },
+    ];
+
     triggerUpdateWithTx(
       { ...film, audioClips: updatedAudioClips },
-      [],
+      actions,
       `Split audio ${targetAudio.id}`
     );
   }, [selectedAudioId, audioClips, playheadSec, film, triggerUpdateWithTx]);
 
   const handleDeleteAudio = useCallback(() => {
     if (!selectedAudioId || audioClips.length <= 1) return;
+    const delIdx = audioClips.findIndex((a) => a.id === selectedAudioId);
+    if (delIdx === -1) return;
+    const deletedClip = audioClips[delIdx];
     const updatedAudioClips = audioClips.filter((a) => a.id !== selectedAudioId);
+    const txId = crypto.randomUUID();
+    const actions: UpdateAction[] = [
+      {
+        type: "delete",
+        path: ["audioClips", delIdx],
+        oldValue: deletedClip,
+        newValue: null,
+        transactionId: txId,
+        label: `Delete audio ${selectedAudioId}`,
+        timestamp: Date.now(),
+      },
+    ];
     triggerUpdateWithTx(
       { ...film, audioClips: updatedAudioClips },
-      [],
+      actions,
       `Delete audio ${selectedAudioId}`
     );
     setSelectedAudioId(null);
@@ -940,6 +1078,18 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                     onClick={() => {
                       const currentVol = film.voiceover?.volume ?? 1;
                       const newVol = currentVol > 0 ? 0 : 1;
+                      const txId = crypto.randomUUID();
+                      const actions: UpdateAction[] = [
+                        {
+                          type: "update",
+                          path: ["voiceover", "volume"],
+                          oldValue: currentVol,
+                          newValue: newVol,
+                          transactionId: txId,
+                          label: newVol === 0 ? "Mute voiceover" : "Unmute voiceover",
+                          timestamp: Date.now(),
+                        },
+                      ];
                       triggerUpdateWithTx(
                         {
                           ...film,
@@ -948,7 +1098,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                             volume: newVol,
                           },
                         },
-                        [],
+                        actions,
                         "Toggle voiceover mute"
                       );
                     }}
@@ -1045,7 +1195,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 {audioClips.map((aClip, aIdx) => {
                   const override = pendingOverrides[aClip.id];
                   const aPos = override?.position !== undefined ? override.position : aClip.position;
-                  const aDur = override?.dur !== undefined ? override.dur : aClip.end - aClip.start;
+                  const aDur = override?.dur !== undefined ? override.dur : getAudioEffectiveDuration(aClip);
                   const isSelected = selectedAudioId === aClip.id;
 
                   return (
@@ -1305,9 +1455,22 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                           };
                         }
 
+                        const txId = crypto.randomUUID();
+                        const actions: UpdateAction[] = [
+                          {
+                            type: "update",
+                            path: ["shots", idx, "metaphor"],
+                            oldValue: shot.metaphor,
+                            newValue: nextVal,
+                            transactionId: txId,
+                            label: `Switch ${shot.id} visual device to ${nextVal}`,
+                            timestamp: Date.now(),
+                          },
+                        ];
+
                         triggerUpdateWithTx(
                           { ...film, shots: updatedShots },
-                          [],
+                          actions,
                           `Switch ${shot.id} visual device to ${nextVal}`
                         );
                       }}

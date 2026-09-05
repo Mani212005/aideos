@@ -50,26 +50,6 @@ A directed relationship connection between two canvas nodes.
 * `to: string` (Target node ID)
 * `dashed?: boolean` (True if rendered as dashed connection line)
 
-### `ThemeConfig`
-Global styling, background, typography, camera, and caption configurations (`src/dl/schema.ts`).
-* `background?: BackgroundPreset` ("paper-white" | "parchment" | "blueprint" | "charcoal" | "dot-grid" | "smooth-dark")
-* `fontFamily?: FontPreset` ("geist" | "mono" | "serif" | "space-grotesk")
-* `videoType?: VideoType` ("educational" | "technical" | "narrative" | "product-demo" | "speedrun")
-* `storyStyle?: StoryStyle` ("spatial-map" | "grid-matrix" | "isometric-3d" | "character-journey" | "timeline-flow" | "script-metaphor")
-* `cameraAngle?: CameraAngle` ("flat" | "isometric" | "cinematic-tilt" | "low-angle" | "orbit" | "top-down")
-* `accent?: string` (Primary brand hex color override)
-* `captions?: CaptionStyle` (Per-video typography, colors, position, and layout framing for kinetic subtitles)
-
-### `CaptionStyle`
-Per-video styling configuration for kinetic captions and subtitles (`captionStyleSchema` in `src/dl/schema.ts`).
-* `fontSize?: number` (Subtitle font size in pixels, 12 to 120)
-* `fontFamily?: string` (Typography font family string)
-* `primaryColor?: string` (Primary text color hex or rgb)
-* `highlightColor?: string` (Active karaoke keyword highlight color hex or rgb)
-* `backgroundColor?: string` (Subtitle container background color string)
-* `position?: "top" | "center" | "bottom"` (Vertical viewport alignment position)
-* `maxWidth?: number` (Subtitle wrapping max-width in pixels, 200 to 1920)
-
 ---
 
 ## 2. Visual Block Taxonomy (`src/dl/Block.tsx`, `src/dl/schema.ts`)
@@ -215,4 +195,4 @@ Pre-built tactile paper backgrounds:
 * **`TimelineEditor.tsx`**: Multi-track visual timeline with audio waveforms and playhead scrubbing.
 * **`CustomizationEditor.tsx`**: Studio theme customizer for paper textures, typography, and script-to-metaphor director.
 * **`ScriptEditor.tsx`**: Structured chapter and script text writer with instant voiceover generation.
-* **`KineticCaptionEditor.tsx`**: Word-level subtitle and typography studio with live frame seeking, Pretext zero-DOM layout measurement, and per-video caption styling (font size, wrap width, karaoke highlight color, text color, background, and viewport position).
+* **`KineticCaptionEditor.tsx`**: Word-level subtitle editor with live frame seeking.

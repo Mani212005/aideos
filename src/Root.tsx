@@ -1,17 +1,13 @@
+/**
+ * File Description: Root Remotion entry point registering compositions for Long (16:9), Reel (9:16), Short (9:16), and standalone 3D shader clusters.
+ */
+
 import { Composition } from "remotion";
 import { Video } from "./dl/Video";
 import { defaultFilmProps, filmPropsSchema, FPS, TOTAL_FRAMES } from "./dl/runtime";
 import { GlowingClusterMetaphor } from "./dl/metaphors/GlowingClusterMetaphor";
 
-/**
- * Two deliverables, one film.
- *
- * `Reel` is not a second edit of `Long`. Both solve their framing from the same
- * canvas and the same shot list — the camera simply has a narrower viewport to
- * fit into, so every shot re-frames itself. There is no per-format authoring
- * anywhere in the project, which is why a third aspect ratio would be another
- * entry here rather than another script.
- */
+// Renders the root Remotion compositions for the film deliverables and 3D metaphors.
 export const RemotionRoot: React.FC = () => {
   return (
     <>
@@ -38,7 +34,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="Short"
         component={Video}
-        durationInFrames={2700}
+        durationInFrames={TOTAL_FRAMES}
         fps={FPS}
         width={1080}
         height={1920}

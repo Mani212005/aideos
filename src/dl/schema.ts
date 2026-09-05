@@ -1,7 +1,3 @@
-/**
- * File Description: Defines the core Zod schema contracts, film data structures, block types, and theme definitions for Aideos.
- */
-
 import { z } from "zod";
 
 /**
@@ -343,18 +339,6 @@ export const cameraAngleSchema = z.enum([
   "top-down",
 ]);
 
-export const captionStyleSchema = z.object({
-  fontSize: z.number().min(12).max(120).optional(),
-  fontFamily: z.string().optional(),
-  primaryColor: z.string().optional(),
-  highlightColor: z.string().optional(),
-  backgroundColor: z.string().optional(),
-  position: z.enum(["top", "center", "bottom"]).optional(),
-  maxWidth: z.number().min(200).max(1920).optional(),
-});
-
-export type CaptionStyle = z.infer<typeof captionStyleSchema>;
-
 export const themeSchema = z.object({
   background: backgroundPresetSchema.optional(),
   fontFamily: fontPresetSchema.optional(),
@@ -362,7 +346,6 @@ export const themeSchema = z.object({
   storyStyle: storyStyleSchema.optional(),
   cameraAngle: cameraAngleSchema.optional(),
   accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-  captions: captionStyleSchema.optional(),
 });
 
 export const shotSchema = z.object({

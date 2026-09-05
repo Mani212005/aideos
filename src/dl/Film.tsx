@@ -323,11 +323,15 @@ export const FilmView: React.FC<FilmViewProps> = ({
   const current = shotAt(timeline, frame);
   const cam = camAt(film, timeline, frame, { width, height });
 
-  // The whole composition drifts 100 → 104% across a held shot; the diagram
+  // The whole composition drifts 100 -> 104% across a held shot; the diagram
   // inside never moves once drawn. It is the difference between a still frame
   // and a held one.
+  const driftProgress = Math.max(
+    0,
+    Math.min(1, (frame - current.from) / Math.max(1, current.durationInFrames)),
+  );
   const drift = current.shot.drift
-    ? 1 + (DRIFT - 1) * ((frame - current.from) / Math.max(1, current.durationInFrames))
+    ? 1 + (DRIFT - 1) * driftProgress
     : 1;
 
   // The canvas dims under a panel rather than disappearing. Rule 02 again:
@@ -420,18 +424,8 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {activeTransition === "paper-rip" && (
           <PaperRip active={isTransitioning} progress={transitionProgress} frame={frame} />
         )}
-        {captionWords && captionWords.length > 0 && (
-          <KineticSubtitles
-            words={captionWords}
-            fontSize={film.theme?.captions?.fontSize}
-            fontFamily={film.theme?.captions?.fontFamily}
-            primaryColor={film.theme?.captions?.primaryColor}
-            highlightColor={film.theme?.captions?.highlightColor || film.accent || accent || "#FF6B00"}
-            backgroundColor={film.theme?.captions?.backgroundColor}
-            position={film.theme?.captions?.position}
-            maxWidth={film.theme?.captions?.maxWidth}
-          />
-        )}
+        {showRail ? <Rail film={film} timeline={timeline} /> : null}
+        {captionWords && captionWords.length > 0 && <KineticSubtitles words={captionWords} />}
 
         {/* Master Audio Track & Multi-Clip Voiceover Spine */}
         {includeAudio && (
@@ -483,6 +477,9 @@ export const FilmView: React.FC<FilmViewProps> = ({
             ))}
           </>
         )}
+
+        {/* Chapter Rail */}
+        {showRail ? <Rail film={film} timeline={timeline} /> : null}
 
         {/* A single hairline vignette at the very edge */}
         <AbsoluteFill

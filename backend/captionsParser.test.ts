@@ -5,7 +5,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseVtt, vttToCaptionWords, generateWordsFromFilm, captionWordsToVtt } from "../src/dl/captionsParser";
-import { captionStyleSchema, themeSchema } from "../src/dl/schema";
 
 // Tests parsing raw WebVTT strings into structured VttCue objects.
 test("Captions: parseVtt correctly parses multiline WebVTT cue timestamps and text", () => {
@@ -86,27 +85,3 @@ test("Captions: captionWordsToVtt chunks words into standard WebVTT cues", () =>
   assert.ok(vtt.includes("-->"));
   assert.ok(vtt.includes("Word1 Word2 Word3"));
 });
-
-test("Captions: captionStyleSchema validates custom typography and styling parameters", () => {
-  const validStyle = {
-    fontSize: 44,
-    fontFamily: "geist",
-    primaryColor: "#FFFFFF",
-    highlightColor: "#F43F5E",
-    backgroundColor: "rgba(10, 15, 29, 0.9)",
-    position: "bottom",
-    maxWidth: 800,
-  };
-
-  const parsed = captionStyleSchema.safeParse(validStyle);
-  assert.equal(parsed.success, true);
-
-  const themeWithCaptions = {
-    background: "blueprint",
-    accent: "#F43F5E",
-    captions: validStyle,
-  };
-  const themeParsed = themeSchema.safeParse(themeWithCaptions);
-  assert.equal(themeParsed.success, true);
-});
-

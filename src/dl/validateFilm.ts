@@ -72,8 +72,10 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
   }
 
   // 1. Duration sum invariant check against voiceover duration (when provided)
-  const voDur = options?.measuredVoiceoverDurationSec;
-  if (voDur !== undefined && voDur > 0) {
+  const rawVoDur = options?.measuredVoiceoverDurationSec;
+  if (rawVoDur !== undefined && rawVoDur > 0) {
+    const voSpeed = film.voiceover?.speed ?? 1.0;
+    const voDur = rawVoDur / voSpeed;
     const sumShotDurations = film.shots.reduce((acc, shot) => acc + shot.dur, 0);
     const diff = Math.abs(sumShotDurations - voDur);
     if (diff > toleranceSec) {
