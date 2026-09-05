@@ -62,6 +62,7 @@ export function calculateAABBOverlapArea(a: BlockAABB, b: BlockAABB): number {
   return xOverlap * yOverlap;
 }
 
+// Validates film schema, audio assets, duration invariants, and geometric bounding box constraints.
 export function validateFilmAudioAndAssets(filmInput: unknown, options?: ValidationOptions): Film {
   const film = parseFilm(filmInput);
   const toleranceSec = options?.toleranceSec ?? 0.1;
