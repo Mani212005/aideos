@@ -62,6 +62,7 @@ export function calculateAABBOverlapArea(a: BlockAABB, b: BlockAABB): number {
   return xOverlap * yOverlap;
 }
 
+// Validates film schema, audio assets, duration invariants, and geometric bounding box constraints.
 export function validateFilmAudioAndAssets(filmInput: unknown, options?: ValidationOptions): Film {
   const film = parseFilm(filmInput);
   const toleranceSec = options?.toleranceSec ?? 0.1;
@@ -72,8 +73,10 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
   }
 
   // 1. Duration sum invariant check against voiceover duration (when provided)
-  const voDur = options?.measuredVoiceoverDurationSec;
-  if (voDur !== undefined && voDur > 0) {
+  const rawVoDur = options?.measuredVoiceoverDurationSec;
+  if (rawVoDur !== undefined && rawVoDur > 0) {
+    const voSpeed = film.voiceover?.speed ?? 1.0;
+    const voDur = rawVoDur / voSpeed;
     const sumShotDurations = film.shots.reduce((acc, shot) => acc + shot.dur, 0);
     const diff = Math.abs(sumShotDurations - voDur);
     if (diff > toleranceSec) {

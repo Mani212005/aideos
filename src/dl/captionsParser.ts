@@ -104,6 +104,8 @@ export function generateWordsFromFilm(film: Record<string, unknown>): CaptionWor
 
   if (film?.shots && Array.isArray(film.shots)) {
     for (const shot of film.shots) {
+      const explicitPos = (shot.position as number | undefined) ?? (shot.startSec as number | undefined);
+      const shotStartSec = explicitPos !== undefined ? explicitPos : currentStartSec;
       const shotDurationSec = (shot.dur as number) || (shot.duration as number) || 3;
       let shotText = ((shot.scriptText as string) || "").trim();
       if (!shotText && shot.blocks && Array.isArray(shot.blocks)) {
@@ -117,7 +119,7 @@ export function generateWordsFromFilm(film: Record<string, unknown>): CaptionWor
       if (rawWords.length > 0) {
         const wordDur = shotDurationSec / rawWords.length;
         rawWords.forEach((w: string, idx: number) => {
-          const wStart = currentStartSec + idx * wordDur;
+          const wStart = shotStartSec + idx * wordDur;
           const wEnd = wStart + wordDur;
           words.push({
             text: w,
@@ -126,7 +128,7 @@ export function generateWordsFromFilm(film: Record<string, unknown>): CaptionWor
           });
         });
       }
-      currentStartSec += shotDurationSec;
+      currentStartSec = shotStartSec + shotDurationSec;
     }
   }
 

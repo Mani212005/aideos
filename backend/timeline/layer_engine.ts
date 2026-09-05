@@ -517,9 +517,12 @@ export function trimLayerClipEdge(
     });
   }
 
+  // Resolve layer collisions after trim to prevent overlapping adjacent clips
+  const resolvedClips = resolveLayerCollisions(newClips, clipIndex);
+
   const updatedFilm: LayeredFilm = {
     ...film,
-    clips: newClips,
+    clips: resolvedClips,
   };
 
   return {
@@ -651,36 +654,78 @@ export function deleteLayerClip(
 }
 
 /**
- * Prevent two clips on the same layer from overlapping in time.
+ * Prevent two clips on the same layer from overlapping in time using cascading ripple resolution.
  * Pushes downstream colliding clips.
  */
 export function resolveLayerCollisions(clips: Clip[], movedIndex: number): Clip[] {
   const resolved = JSON.parse(JSON.stringify(clips)) as Clip[];
+  if (movedIndex < 0 || movedIndex >= resolved.length) return resolved;
+
   const target = resolved[movedIndex];
   const targetLayer = target.layerId;
-  let targetStart = target.position;
-  let targetDur = target.end - target.start;
-  let targetEnd = targetStart + targetDur;
 
-  for (let i = 0; i < resolved.length; i++) {
-    if (i === movedIndex) continue;
-    const s = resolved[i];
-    if (s.layerId !== targetLayer) continue;
+  let changed = true;
+  let iterations = 0;
+  const maxIterations = resolved.length * 10;
 
-    const sDur = s.end - s.start;
-    const sStart = s.position;
-    const sEnd = sStart + sDur;
+  while (changed && iterations < maxIterations) {
+    changed = false;
+    iterations++;
 
-    // Detect overlap
-    if (targetStart < sEnd && targetEnd > sStart) {
-      if (targetStart >= sStart) {
-        // Target overlaps right side of s -> push target after s
-        targetStart = Number(sEnd.toFixed(3));
-        target.position = targetStart;
-        targetEnd = targetStart + targetDur;
-      } else {
-        // Target overlaps left side of s -> push s after target
-        s.position = Number(targetEnd.toFixed(3));
+    const targetDur = target.end - target.start;
+    const targetStart = target.position;
+    const targetEnd = targetStart + targetDur;
+
+    for (let i = 0; i < resolved.length; i++) {
+      if (i === movedIndex) continue;
+      const s = resolved[i];
+      if (s.layerId !== targetLayer) continue;
+
+      const sDur = s.end - s.start;
+      const sStart = s.position;
+      const sEnd = sStart + sDur;
+
+      if (targetStart < sEnd && targetEnd > sStart) {
+        if (targetStart >= sStart) {
+          const newTargetStart = Number(sEnd.toFixed(3));
+          if (target.position !== newTargetStart) {
+            target.position = newTargetStart;
+            changed = true;
+          }
+        } else {
+          const newSStart = Number(targetEnd.toFixed(3));
+          if (s.position !== newSStart) {
+            s.position = newSStart;
+            changed = true;
+          }
+        }
+      }
+    }
+
+    for (let i = 0; i < resolved.length; i++) {
+      const a = resolved[i];
+      if (a.layerId !== targetLayer) continue;
+      const aDur = a.end - a.start;
+      const aStart = a.position;
+      const aEnd = aStart + aDur;
+
+      for (let j = 0; j < resolved.length; j++) {
+        if (i === j) continue;
+        const b = resolved[j];
+        if (b.layerId !== targetLayer) continue;
+        const bDur = b.end - b.start;
+        const bStart = b.position;
+        const bEnd = bStart + bDur;
+
+        if (aStart < bEnd && aEnd > bStart) {
+          if (aStart < bStart || (aStart === bStart && (i === movedIndex || i < j))) {
+            const newBStart = Number(aEnd.toFixed(3));
+            if (b.position !== newBStart) {
+              b.position = newBStart;
+              changed = true;
+            }
+          }
+        }
       }
     }
   }

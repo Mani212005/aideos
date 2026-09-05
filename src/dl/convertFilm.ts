@@ -3,7 +3,7 @@
  * Preserves 100% data fidelity across all 5 production films.
  */
 
-import type { Film, Shot } from "./schema";
+import type { Film, Shot, AudioClip } from "./schema";
 import type { LayeredFilm, Layer, Clip, AnimationPayload, AudioPayload } from "./layeredSchema";
 import { computeShotStartTimes } from "../../backend/timeline/timeline";
 import { generateWordsFromFilm } from "./captionsParser";
@@ -24,6 +24,24 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
       hidden: false,
       muted: false,
       height: 48,
+    },
+    {
+      id: "layer-audio-music",
+      number: 2,
+      label: "Background Music",
+      locked: false,
+      hidden: false,
+      muted: false,
+      height: 40,
+    },
+    {
+      id: "layer-audio-sfx",
+      number: 4,
+      label: "Sound Effects",
+      locked: false,
+      hidden: false,
+      muted: false,
+      height: 40,
     },
     {
       id: "layer-animation-main",
@@ -47,8 +65,31 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
 
   const clips: Clip[] = [];
 
-  // 1. Audio Clips (Voiceover, Music, SFX)
-  if (film.voiceover?.src) {
+  // 1. Audio Clips (Voiceover, Multi-Clip Audio, Music, SFX)
+  if (film.audioClips && film.audioClips.length > 0) {
+    for (const ac of film.audioClips) {
+      const layerId =
+        ac.channel === "music"
+          ? "layer-audio-music"
+          : ac.channel === "sfx"
+            ? "layer-audio-sfx"
+            : "layer-audio-spine";
+      clips.push({
+        id: ac.id,
+        layerId,
+        position: ac.position,
+        start: ac.start ?? 0,
+        end: ac.end,
+        kind: "audio",
+        payload: {
+          src: ac.src,
+          channel: ac.channel || "voiceover",
+        },
+        volume: ac.volume ?? 1,
+        opacity: 1,
+      });
+    }
+  } else if (film.voiceover?.src) {
     const totalVoDur = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
     clips.push({
       id: "clip-voiceover-spine",
@@ -63,6 +104,44 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
       },
       volume: film.voiceover.volume ?? 1,
       opacity: 1,
+    });
+  }
+
+  if (film.music?.src) {
+    const totalDur = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
+    clips.push({
+      id: "clip-music-main",
+      layerId: "layer-audio-music",
+      position: 0,
+      start: 0,
+      end: totalDur,
+      kind: "audio",
+      payload: {
+        src: film.music.src,
+        channel: "music",
+        duckUnderVoiceover: film.music.duckUnderVoiceover ?? true,
+      },
+      volume: film.music.volume ?? 1,
+      opacity: 1,
+    });
+  }
+
+  if (film.sfx && film.sfx.length > 0) {
+    film.sfx.forEach((sfx, idx) => {
+      clips.push({
+        id: `clip-sfx-${idx}`,
+        layerId: "layer-audio-sfx",
+        position: sfx.timeSec,
+        start: 0,
+        end: 1,
+        kind: "audio",
+        payload: {
+          src: sfx.src,
+          channel: "sfx",
+        },
+        volume: sfx.volume ?? 1,
+        opacity: 1,
+      });
     });
   }
 
@@ -171,7 +250,56 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm): Film {
     };
   });
 
-  const voClip = layeredFilm.clips.find((c) => c.kind === "audio" && (c.payload as AudioPayload)?.channel === "voiceover");
+  const audioClipsList = layeredFilm.clips
+    .filter((c) => c.kind === "audio")
+    .sort((a, b) => a.position - b.position);
+
+  const voClips = audioClipsList.filter(
+    (c) => (c.payload as AudioPayload)?.channel === "voiceover" || !(c.payload as AudioPayload)?.channel
+  );
+  const musicClips = audioClipsList.filter(
+    (c) => (c.payload as AudioPayload)?.channel === "music"
+  );
+  const sfxClips = audioClipsList.filter(
+    (c) => (c.payload as AudioPayload)?.channel === "sfx"
+  );
+
+  const isDedicatedSpine = voClips.length === 1 && voClips[0].id === "clip-voiceover-spine";
+  const audioClips: AudioClip[] | undefined =
+    voClips.length > 0 && !isDedicatedSpine
+      ? voClips.map((c) => ({
+          id: c.id,
+          src: (c.payload as AudioPayload).src,
+          position: c.position,
+          start: c.start,
+          end: c.end,
+          volume: c.volume ?? 1,
+          channel: "voiceover" as const,
+        }))
+      : undefined;
+
+  const voiceover = voClips.length > 0
+    ? {
+        src: (voClips[0].payload as AudioPayload).src,
+        volume: voClips[0].volume ?? 1,
+      }
+    : undefined;
+
+  const music = musicClips.length > 0
+    ? {
+        src: (musicClips[0].payload as AudioPayload).src,
+        volume: musicClips[0].volume ?? 1,
+        duckUnderVoiceover: (musicClips[0].payload as AudioPayload).duckUnderVoiceover ?? true,
+      }
+    : undefined;
+
+  const sfx = sfxClips.length > 0
+    ? sfxClips.map((c) => ({
+        timeSec: c.position,
+        src: (c.payload as AudioPayload).src,
+        volume: c.volume ?? 1,
+      }))
+    : undefined;
 
   return {
     id: layeredFilm.id,
@@ -182,6 +310,10 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm): Film {
     canvas: layeredFilm.canvas,
     chapters: layeredFilm.chapters,
     shots,
-    ...(voClip ? { voiceover: { src: (voClip.payload as AudioPayload).src, volume: voClip.volume ?? 1 } } : {}),
+    ...(voiceover ? { voiceover } : {}),
+    ...(audioClips ? { audioClips } : {}),
+    ...(music ? { music } : {}),
+    ...(sfx ? { sfx } : {}),
   };
 }
+

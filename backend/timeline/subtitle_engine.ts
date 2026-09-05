@@ -190,17 +190,18 @@ export function mergeSubtitleClips(
 
   const c1 = film.clips[idx1];
   const c2 = film.clips[idx2];
-  const c2Dur = c2.end - c2.start;
-  const mergedEnd = (c2.position + c2Dur) - c1.position;
+  const [earlier, later] = c1.position <= c2.position ? [c1, c2] : [c2, c1];
+  const laterDur = later.end - later.start;
+  const mergedEnd = (later.position + laterDur) - earlier.position;
 
-  const text1 = (c1.payload as any).text || "";
-  const text2 = (c2.payload as any).text || "";
+  const text1 = (earlier.payload as any)?.text || "";
+  const text2 = (later.payload as any)?.text || "";
   const mergedText = `${text1} ${text2}`.trim();
 
   const mergedClip: Clip = {
-    id: `${c1.id}-merged`,
-    layerId: c1.layerId,
-    position: c1.position,
+    id: `${earlier.id}-merged`,
+    layerId: earlier.layerId,
+    position: earlier.position,
     start: 0,
     end: Number(mergedEnd.toFixed(3)),
     kind: "subtitle",

@@ -4,7 +4,7 @@
 
 import React from "react";
 import { Audio } from "@remotion/media";
-import { Sequence, useCurrentFrame, staticFile } from "remotion";
+import { Sequence, staticFile } from "remotion";
 import { FilmView } from "./Film";
 import { TOTAL_FRAMES, FILM, TIMELINE, FPS, type FilmProps } from "./runtime";
 import { calculateDuckingVolume, type SpeechInterval } from "./audio/ducking";
@@ -16,10 +16,7 @@ import { generateWordsFromFilm } from "./captionsParser";
  * Mixes three audio layers (voiceover, music with sidechain ducking, and sfx).
  */
 
-/**
- * Narration level. Ramped at both ends: cutting a voice track in at full level
- * puts an audible click on the first and last frames.
- */
+// Calculates narration volume level ramped at head and tail.
 export const voiceLevel = (frame: number, level: number) =>
   level *
   Math.min(1, frame / 6) *
@@ -29,32 +26,28 @@ export const voiceLevel = (frame: number, level: number) =>
 export const Video: React.FC<FilmProps> = ({
   accent,
   voiceoverSrc,
+  voiceoverVolume,
   musicSrc,
   musicVolume,
   showRail,
   showGrid,
 }) => {
-  const frame = useCurrentFrame();
-  const effectiveVoiceoverSrc = voiceoverSrc.trim() || FILM.voiceover?.src || "";
-  const effectiveMusicSrc = musicSrc.trim() || FILM.music?.src || FILM.audio?.src || "";
-  const effectiveMusicVolume = FILM.music?.volume ?? musicVolume ?? 1;
+  const effectiveVoiceoverSrc = (voiceoverSrc ?? "").trim() || FILM.voiceover?.src || "";
+  const effectiveVoiceoverVolume = voiceoverVolume ?? FILM.voiceover?.volume ?? 1;
+  const effectiveMusicSrc = (musicSrc ?? "").trim() || FILM.music?.src || FILM.audio?.src || "";
+  const effectiveMusicVolume = musicVolume ?? FILM.music?.volume ?? 1;
 
-  // Extract speech intervals from timeline shots with narration
-  const speechIntervals: SpeechInterval[] = TIMELINE.filter((t) => Boolean(t.shot.scriptText)).map(
-    (t) => ({
-      startSec: t.from / FPS,
-      endSec: t.to / FPS,
-    }),
-  );
-
-  const currentDuckingVolume = calculateDuckingVolume({
-    frame,
-    fps: FPS,
-    totalFrames: TOTAL_FRAMES,
-    musicVolume: effectiveMusicVolume,
-    duckUnderVoiceover: FILM.music?.duckUnderVoiceover ?? true,
-    speechIntervals,
-  });
+  // Extract speech intervals from audio clips or timeline shots with narration
+  const speechIntervals: SpeechInterval[] =
+    FILM.audioClips && FILM.audioClips.length > 0
+      ? FILM.audioClips.map((ac) => ({
+          startSec: ac.position,
+          endSec: ac.position + (ac.end - (ac.start ?? 0)) / (ac.speed ?? 1.0),
+        }))
+      : TIMELINE.filter((t) => Boolean(t.shot.scriptText)).map((t) => ({
+          startSec: t.from / FPS,
+          endSec: t.to / FPS,
+        }));
 
   return (
     <>
@@ -64,16 +57,47 @@ export const Video: React.FC<FilmProps> = ({
           key={`aideos-music-${FILM.id}`}
           src={staticFile(effectiveMusicSrc)}
           trimBefore={Math.round((FILM.audio?.trimBefore ?? 0) * FPS)}
-          volume={() => currentDuckingVolume}
+          volume={(f) =>
+            calculateDuckingVolume({
+              frame: f,
+              fps: FPS,
+              totalFrames: TOTAL_FRAMES,
+              musicVolume: effectiveMusicVolume,
+              duckUnderVoiceover: FILM.music?.duckUnderVoiceover ?? true,
+              speechIntervals,
+            })
+          }
         />
       ) : null}
 
-      {/* 2. Voiceover Track */}
-      {effectiveVoiceoverSrc.trim().length > 0 ? (
+      {/* 2. Voiceover & Multi-Clip Audio Track */}
+      {FILM.audioClips && FILM.audioClips.length > 0 ? (
+        FILM.audioClips.map((ac) => {
+          const speed = ac.speed ?? 1.0;
+          const startFrame = Math.round(ac.position * FPS);
+          const startFrom = Math.round((ac.start ?? 0) * FPS);
+          const endAt = Math.round(ac.end * FPS);
+          const rawDurFrames = Math.max(1, endAt - startFrom);
+          const effectiveDurFrames = Math.max(1, Math.round(rawDurFrames / speed));
+          const clipLevel = (ac.volume ?? 1) * effectiveVoiceoverVolume;
+
+          return (
+            <Sequence key={ac.id} from={startFrame} durationInFrames={effectiveDurFrames}>
+              <Audio
+                src={staticFile(ac.src)}
+                trimBefore={startFrom}
+                playbackRate={speed}
+                volume={(f) => voiceLevel(f, clipLevel)}
+              />
+            </Sequence>
+          );
+        })
+      ) : effectiveVoiceoverSrc.trim().length > 0 ? (
         <Audio
           key={`aideos-voiceover-${FILM.id}`}
           src={staticFile(effectiveVoiceoverSrc)}
-          volume={() => voiceLevel(frame, FILM.voiceover?.volume ?? 1)}
+          playbackRate={FILM.voiceover?.speed ?? 1.0}
+          volume={(f) => voiceLevel(f, effectiveVoiceoverVolume)}
         />
       ) : null}
 
@@ -101,4 +125,5 @@ export const Video: React.FC<FilmProps> = ({
     </>
   );
 };
+
 

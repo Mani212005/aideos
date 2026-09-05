@@ -13,6 +13,7 @@ import {
   type UpdateAction,
   generateUUID,
 } from "./updates";
+import { resolveLayerCollisions } from "./layer_engine";
 import fs from "fs";
 import { execSync } from "child_process";
 
@@ -218,6 +219,38 @@ export function closeAudioGapWithDependencies(
         label: `Trim ${clip.id} to end at gap boundary ${gapStartSec.toFixed(2)}s`,
         timestamp: Date.now(),
       });
+    }
+  }
+
+  // Resolve layer collisions across all layers to prevent stacked clips
+  for (const layer of film.layers) {
+    const layerIndices = newClips
+      .map((c, idx) => (c.layerId === layer.id ? idx : -1))
+      .filter((idx) => idx !== -1);
+    for (const cIdx of layerIndices) {
+      const resolved = resolveLayerCollisions(newClips, cIdx);
+      for (let k = 0; k < newClips.length; k++) {
+        if (newClips[k].position !== resolved[k].position) {
+          const oldP = newClips[k].position;
+          newClips[k].position = resolved[k].position;
+          const existingAction = actions.find(
+            (a) => a.path[0] === "clips" && a.path[1] === k && a.path[2] === "position"
+          );
+          if (existingAction) {
+            existingAction.newValue = newClips[k].position;
+          } else {
+            actions.push({
+              type: "update",
+              path: ["clips", k, "position"],
+              oldValue: oldP,
+              newValue: newClips[k].position,
+              transactionId: txId,
+              label: `Shift ${newClips[k].id} to resolve collision`,
+              timestamp: Date.now(),
+            });
+          }
+        }
+      }
     }
   }
 

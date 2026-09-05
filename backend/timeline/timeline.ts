@@ -166,39 +166,91 @@ export function moveMultipleShots(
 }
 
 /**
- * Prevent two clips on the same track/layer from overlapping.
+ * Prevent two clips on the same track/layer from overlapping using cascading ripple resolution.
  */
 export function resolveTrackCollisions(shots: Shot[], movedIndex: number): Shot[] {
   const resolved = JSON.parse(JSON.stringify(shots)) as Shot[];
+  if (movedIndex < 0 || movedIndex >= resolved.length) return resolved;
+
   const initialStarts = computeShotStartTimes(shots);
+  for (let i = 0; i < resolved.length; i++) {
+    if (resolved[i].position === undefined && resolved[i].startSec === undefined) {
+      resolved[i].position = initialStarts[i];
+      resolved[i].startSec = initialStarts[i];
+    }
+  }
+
   const target = resolved[movedIndex];
   const targetLayer = target.layer ?? target.track ?? 0;
-  const targetDur = getShotDuration(target);
-  let targetStart = target.position ?? target.startSec ?? initialStarts[movedIndex];
-  let targetEnd = targetStart + targetDur;
 
-  for (let i = 0; i < resolved.length; i++) {
-    if (i === movedIndex) continue;
-    const s = resolved[i];
-    const sLayer = s.layer ?? s.track ?? 0;
-    if (sLayer !== targetLayer) continue;
+  let changed = true;
+  let iterations = 0;
+  const maxIterations = resolved.length * 10;
 
-    const sDur = getShotDuration(s);
-    const sStart = s.position ?? s.startSec ?? initialStarts[i];
-    const sEnd = sStart + sDur;
+  while (changed && iterations < maxIterations) {
+    changed = false;
+    iterations++;
 
-    // Check collision
-    if (targetStart < sEnd && targetEnd > sStart) {
-      if (targetStart >= sStart) {
-        // Target overlaps right side of s -> push target after s
-        targetStart = Number(sEnd.toFixed(3));
-        target.position = targetStart;
-        target.startSec = targetStart;
-        targetEnd = targetStart + targetDur;
-      } else {
-        // Target overlaps left side of s -> push s after target
-        s.position = Number(targetEnd.toFixed(3));
-        s.startSec = s.position;
+    const targetDur = getShotDuration(target);
+    const targetStart = target.position ?? target.startSec ?? 0;
+    const targetEnd = targetStart + targetDur;
+
+    for (let i = 0; i < resolved.length; i++) {
+      if (i === movedIndex) continue;
+      const s = resolved[i];
+      const sLayer = s.layer ?? s.track ?? 0;
+      if (sLayer !== targetLayer) continue;
+
+      const sDur = getShotDuration(s);
+      const sStart = s.position ?? s.startSec ?? 0;
+      const sEnd = sStart + sDur;
+
+      if (targetStart < sEnd && targetEnd > sStart) {
+        if (targetStart >= sStart) {
+          const newTargetStart = Number(sEnd.toFixed(3));
+          if (target.position !== newTargetStart) {
+            target.position = newTargetStart;
+            target.startSec = newTargetStart;
+            changed = true;
+          }
+        } else {
+          const newSStart = Number(targetEnd.toFixed(3));
+          if (s.position !== newSStart) {
+            s.position = newSStart;
+            s.startSec = newSStart;
+            changed = true;
+          }
+        }
+      }
+    }
+
+    for (let i = 0; i < resolved.length; i++) {
+      const a = resolved[i];
+      const aLayer = a.layer ?? a.track ?? 0;
+      if (aLayer !== targetLayer) continue;
+      const aDur = getShotDuration(a);
+      const aStart = a.position ?? a.startSec ?? 0;
+      const aEnd = aStart + aDur;
+
+      for (let j = 0; j < resolved.length; j++) {
+        if (i === j) continue;
+        const b = resolved[j];
+        const bLayer = b.layer ?? b.track ?? 0;
+        if (bLayer !== targetLayer) continue;
+        const bDur = getShotDuration(b);
+        const bStart = b.position ?? b.startSec ?? 0;
+        const bEnd = bStart + bDur;
+
+        if (aStart < bEnd && aEnd > bStart) {
+          if (aStart < bStart || (aStart === bStart && (i === movedIndex || i < j))) {
+            const newBStart = Number(aEnd.toFixed(3));
+            if (b.position !== newBStart) {
+              b.position = newBStart;
+              b.startSec = newBStart;
+              changed = true;
+            }
+          }
+        }
       }
     }
   }
@@ -285,8 +337,11 @@ export function trimShotEdge(
     });
   }
 
+  // Resolve collisions after trim to prevent overlapping adjacent shots
+  const resolvedShots = resolveTrackCollisions(newShots, shotIndex);
+
   return {
-    film: { ...film, shots: newShots },
+    film: { ...film, shots: resolvedShots },
     actions,
     transactionId: txId,
   };
@@ -341,6 +396,9 @@ export function splitShotAtTime(
     dur: durLeft,
   };
 
+  const rightShotBlocks = (targetShot.blocks || []).filter((b) => b.c !== "MetaphorViewer");
+  const rightShotStage = targetShot.stage === "frame" && rightShotBlocks.length === 0 ? "none" : targetShot.stage;
+
   const rightShot: Shot = {
     ...JSON.parse(JSON.stringify(targetShot)),
     id: `${targetShot.id}-b`,
@@ -349,6 +407,9 @@ export function splitShotAtTime(
     start: Number((origIn + durLeft).toFixed(3)),
     end: Number((origIn + origDur).toFixed(3)),
     dur: durRight,
+    metaphor: undefined,
+    blocks: rightShotBlocks,
+    stage: rightShotStage,
   };
 
   const newShots = JSON.parse(JSON.stringify(film.shots)) as Shot[];

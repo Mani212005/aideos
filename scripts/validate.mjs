@@ -1,11 +1,10 @@
 /**
- * Validate the active design-language film, and print its runsheet.
+ * File Description: Validates the active design-language film manifest and prints its runsheet bar chart.
  *
- * The schema enforces §08's rhythm rules — no device past 25s, never the same
- * device twice in a row, a text beat every 60–90s, the canvas returning as an
- * anchor — so this catches a pacing mistake in two seconds rather than after a
- * twenty-five minute render. The printed runsheet is the same bar chart the
- * spec draws, in text.
+ * The schema enforces section 08 rhythm rules: no device past 25s, never the same
+ * device twice in a row, a text beat every 60-90s, the canvas returning as an
+ * anchor, catching pacing mistakes quickly. The printed runsheet is the same
+ * bar chart the spec draws, in text.
  */
 import * as esbuild from "esbuild";
 import path from "node:path";
@@ -14,6 +13,7 @@ import { mkdir } from "node:fs/promises";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+// Loads and bundles a TypeScript source module via esbuild for Node execution.
 const load = async (rel, name) => {
   const tmp = path.join(ROOT, "node_modules", ".cache", name);
   await mkdir(path.dirname(tmp), { recursive: true });
@@ -30,7 +30,7 @@ const load = async (rel, name) => {
 
 const { ACTIVE_FILM } = await load("src/dl/activeFilm.ts", "dl-film.mjs");
 const { parseFilm, DEVICE_BLOCKS } = await load("src/dl/schema.ts", "dl-schema.mjs");
-const { validateFilmWithNodeAssets: validateFilmAudioAndAssets } = await load("src/dl/validateFilmNode.ts", "dl-validate.mjs");
+const { validateFilmAudioAndAssets } = await load("src/dl/validateFilm.ts", "dl-validate.mjs");
 const { buildTimeline, totalFrames } = await load("src/dl/camera.ts", "dl-camera.mjs");
 const { lintMetaphorSourceFiles } = await load("backend/visual_pipeline/lintMetaphors.ts", "dl-lint.mjs");
 
@@ -48,10 +48,11 @@ const film = validateFilmAudioAndAssets(ACTIVE_FILM);
 const timeline = buildTimeline(film);
 const frames = totalFrames(timeline);
 const seconds = frames / film.fps;
+// Formats seconds into MM:SS timestamp string.
 const stamp = (s) =>
   `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 
-console.log(`\n✓ ${film.id} — valid`);
+console.log(`\n✓ ${film.id} - valid`);
 console.log(
   `  ${film.shots.length} shots · ${film.canvas.nodes.length} nodes · ${film.canvas.edges.length} edges`,
 );
