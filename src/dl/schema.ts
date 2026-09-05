@@ -1,3 +1,7 @@
+/**
+ * File Description: Defines the core Zod schema contracts, film data structures, block types, and theme definitions for Aideos.
+ */
+
 import { z } from "zod";
 
 /**

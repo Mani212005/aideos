@@ -424,7 +424,6 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {activeTransition === "paper-rip" && (
           <PaperRip active={isTransitioning} progress={transitionProgress} frame={frame} />
         )}
-        {showRail ? <Rail film={film} timeline={timeline} /> : null}
         {captionWords && captionWords.length > 0 && <KineticSubtitles words={captionWords} />}
 
         {/* Master Audio Track & Multi-Clip Voiceover Spine */}
