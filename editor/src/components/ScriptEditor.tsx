@@ -3,6 +3,23 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import {
+  FileEdit,
+  FileText,
+  Mic,
+  Save,
+  Sparkles,
+  Loader2,
+  X,
+  Volume2,
+  Download,
+  Film as FilmIcon,
+  Play,
+  Pause,
+  Lightbulb,
+  Clapperboard,
+  CheckCircle2,
+} from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 
 interface ScriptEditorProps {
@@ -13,28 +30,28 @@ interface ScriptEditorProps {
 
 const VOICES = [
   // KOKORO LOCAL NEURAL VOICES (ONNX)
-  { id: "kokoro-am_adam", name: "⚡ Kokoro: Adam (Crisp Explainer - Male)", provider: "Kokoro Neural" },
-  { id: "kokoro-af_bella", name: "⚡ Kokoro: Bella (Warm Narrative - Female)", provider: "Kokoro Neural" },
-  { id: "kokoro-af_sarah", name: "⚡ Kokoro: Sarah (Clear Professional - Female)", provider: "Kokoro Neural" },
-  { id: "kokoro-am_michael", name: "⚡ Kokoro: Michael (Deep Narrative - Male)", provider: "Kokoro Neural" },
-  { id: "kokoro-af_nicole", name: "⚡ Kokoro: Nicole (Dynamic Tech - Female)", provider: "Kokoro Neural" },
-  { id: "kokoro-am_echo", name: "⚡ Kokoro: Echo (Cinematic - Male)", provider: "Kokoro Neural" },
+  { id: "kokoro-am_adam", name: "Kokoro: Adam (Crisp Explainer - Male)", provider: "Kokoro Neural" },
+  { id: "kokoro-af_bella", name: "Kokoro: Bella (Warm Narrative - Female)", provider: "Kokoro Neural" },
+  { id: "kokoro-af_sarah", name: "Kokoro: Sarah (Clear Professional - Female)", provider: "Kokoro Neural" },
+  { id: "kokoro-am_michael", name: "Kokoro: Michael (Deep Narrative - Male)", provider: "Kokoro Neural" },
+  { id: "kokoro-af_nicole", name: "Kokoro: Nicole (Dynamic Tech - Female)", provider: "Kokoro Neural" },
+  { id: "kokoro-am_echo", name: "Kokoro: Echo (Cinematic - Male)", provider: "Kokoro Neural" },
 
   // DEEPGRAM AURA NEURAL VOICES
-  { id: "aura-helios-en", name: "⚡ Deepgram: Helios (Tech Lead - Male)", provider: "Deepgram Aura" },
-  { id: "aura-asteria-en", name: "⚡ Deepgram: Asteria (Clear Narrative - Female)", provider: "Deepgram Aura" },
-  { id: "aura-luna-en", name: "⚡ Deepgram: Luna (Warm Explainer - Female)", provider: "Deepgram Aura" },
-  { id: "aura-orion-en", name: "⚡ Deepgram: Orion (Deep Narrative - Male)", provider: "Deepgram Aura" },
-  { id: "aura-arcas-en", name: "⚡ Deepgram: Arcas (Calm Technical - Male)", provider: "Deepgram Aura" },
-  { id: "aura-angus-en", name: "⚡ Deepgram: Angus (Dynamic Fast - Male)", provider: "Deepgram Aura" },
-  { id: "aura-athena-en", name: "⚡ Deepgram: Athena (Polished Corporate - Female)", provider: "Deepgram Aura" },
+  { id: "aura-helios-en", name: "Deepgram: Helios (Tech Lead - Male)", provider: "Deepgram Aura" },
+  { id: "aura-asteria-en", name: "Deepgram: Asteria (Clear Narrative - Female)", provider: "Deepgram Aura" },
+  { id: "aura-luna-en", name: "Deepgram: Luna (Warm Explainer - Female)", provider: "Deepgram Aura" },
+  { id: "aura-orion-en", name: "Deepgram: Orion (Deep Narrative - Male)", provider: "Deepgram Aura" },
+  { id: "aura-arcas-en", name: "Deepgram: Arcas (Calm Technical - Male)", provider: "Deepgram Aura" },
+  { id: "aura-angus-en", name: "Deepgram: Angus (Dynamic Fast - Male)", provider: "Deepgram Aura" },
+  { id: "aura-athena-en", name: "Deepgram: Athena (Polished Corporate - Female)", provider: "Deepgram Aura" },
 
   // MACOS SYSTEM VOICES
-  { id: "macos-daniel", name: "🎙️ macOS: Daniel (UK English Male)", provider: "macOS System" },
-  { id: "macos-samantha", name: "🎙️ macOS: Samantha (US English Female)", provider: "macOS System" },
-  { id: "macos-alex", name: "🎙️ macOS: Alex (US Classic Male)", provider: "macOS System" },
-  { id: "macos-eddy", name: "🎙️ macOS: Eddy (UK English Male)", provider: "macOS System" },
-  { id: "macos-flo", name: "🎙️ macOS: Flo (UK English Female)", provider: "macOS System" },
+  { id: "macos-daniel", name: "macOS: Daniel (UK English Male)", provider: "macOS System" },
+  { id: "macos-samantha", name: "macOS: Samantha (US English Female)", provider: "macOS System" },
+  { id: "macos-alex", name: "macOS: Alex (US Classic Male)", provider: "macOS System" },
+  { id: "macos-eddy", name: "macOS: Eddy (UK English Male)", provider: "macOS System" },
+  { id: "macos-flo", name: "macOS: Flo (UK English Female)", provider: "macOS System" },
 ];
 
 /**
@@ -224,7 +241,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save script");
-      setStatusMsg({ type: "success", text: `✓ Script saved to ${data.file}` });
+      setStatusMsg({ type: "success", text: `Script saved to ${data.file}` });
       setTimeout(() => setStatusMsg(null), 3500);
     } catch (err: any) {
       setStatusMsg({ type: "error", text: `Error: ${err.message}` });
@@ -242,7 +259,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       return;
     }
     setBuildingScenes(true);
-    setStatusMsg({ type: "info", text: "✨ Parsing screenplay into video scenes, visual metaphors, and canvas nodes..." });
+    setStatusMsg({ type: "info", text: "Parsing screenplay into video scenes, visual metaphors, and canvas nodes..." });
     try {
       const res = await fetch("/api/parse-script-scenes", {
         method: "POST",
@@ -271,7 +288,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
 
       setStatusMsg({
         type: "success",
-        text: `🎉 Successfully built ${data.shots.length} video scenes and graph nodes from screenplay!`,
+        text: `Successfully built ${data.shots.length} video scenes and graph nodes from screenplay!`,
       });
       setTimeout(() => setStatusMsg(null), 5000);
     } catch (err: any) {
@@ -292,7 +309,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
     setGenerating(true);
     setStatusMsg({
       type: "info",
-      text: `🎙️ Synthesizing voiceover (${spokenWords.length} words, ~${estimateDuration(spokenWords.length)}) using ${selectedVoice}...`,
+      text: `Synthesizing voiceover (${spokenWords.length} words, ~${estimateDuration(spokenWords.length)}) using ${selectedVoice}...`,
     });
     try {
       const res = await fetch("/api/generate-voiceover", {
@@ -311,7 +328,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       setViewMode("spoken");
       setStatusMsg({
         type: "success",
-        text: `🎉 Voiceover synthesized from screenplay (${data.spokenWordCount} spoken words, ${data.estimatedDurationSec}s)!`,
+        text: `Voiceover synthesized from screenplay (${data.spokenWordCount} spoken words, ${data.estimatedDurationSec}s)!`,
       });
 
       const updatedFilm: Film = data.film || {
@@ -367,7 +384,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#222]">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xl">📝</span>
+            <FileEdit size={18} className="text-[#635BFF]" />
             <h2 className="text-xl font-bold tracking-tight">Script & Voiceover Studio</h2>
             <span className="text-xs bg-[#1E1E24] text-[#8A8A8E] border border-[#333] px-2.5 py-0.5 rounded-full font-mono">
               {film.id}
@@ -383,9 +400,15 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
           <button
             onClick={handleSaveScript}
             disabled={saving || loading}
-            className="text-xs px-3.5 py-1.5 rounded bg-[#1A1A1E] hover:bg-[#25252D] border border-[#333] text-white font-bold transition-all disabled:opacity-50"
+            className="text-xs px-3.5 py-1.5 rounded bg-[#1A1A1E] hover:bg-[#25252D] border border-[#333] text-white font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
           >
-            {saving ? "Saving..." : "💾 Save Script"}
+            {saving ? (
+              "Saving..."
+            ) : (
+              <>
+                <Save size={13} /> Save Script
+              </>
+            )}
           </button>
           
           <button
@@ -394,7 +417,11 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
             className="text-xs px-3.5 py-1.5 rounded bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
             title="Automatically parse timestamped scenes, visual cues, and on-screen text into video shots"
           >
-            <span>{buildingScenes ? "⏳" : "✨"}</span>
+            {buildingScenes ? (
+              <Loader2 size={13} className="animate-spin text-amber-300" />
+            ) : (
+              <Sparkles size={13} className="text-amber-300" />
+            )}
             <span>{buildingScenes ? "Parsing Scenes..." : "Auto-Build Scenes from Script"}</span>
           </button>
 
@@ -403,7 +430,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
             disabled={generating || loading || !script.trim()}
             className="text-xs px-4 py-1.5 rounded font-bold flex items-center gap-1.5 shadow-lg transition-all disabled:opacity-50 active:scale-95 bg-[#635BFF] hover:bg-[#5249e6] text-white shadow-[#635BFF]/20"
           >
-            <span className={generating ? "animate-spin" : ""}>🎙️</span>
+            <Mic size={13} className={generating ? "animate-pulse" : ""} />
             <span>{generating ? "Synthesizing Audio..." : "Generate Voiceover (.wav)"}</span>
           </button>
         </div>
@@ -421,7 +448,9 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
           }`}
         >
           <span>{statusMsg.text}</span>
-          <button onClick={() => setStatusMsg(null)} className="text-gray-400 hover:text-white px-2">×</button>
+          <button onClick={() => setStatusMsg(null)} className="text-gray-400 hover:text-white px-2">
+            <X size={14} className="hover:text-white" />
+          </button>
         </div>
       )}
 
@@ -447,8 +476,8 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                 <span className="text-[#635BFF] font-mono font-bold">{estimateDuration(spokenWords.length)}</span>
               </span>
               {hasVOTags && (
-                <span className="text-[11px] bg-emerald-950/60 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800 font-medium">
-                  ✓ Screenplay Separated
+                <span className="text-[11px] bg-emerald-950/60 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800 font-medium flex items-center gap-1">
+                  <CheckCircle2 size={12} /> Screenplay Separated
                 </span>
               )}
             </div>
@@ -457,21 +486,21 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
             <div className="flex items-center gap-1 bg-[#1A1A22] p-0.5 rounded border border-[#333]">
               <button
                 onClick={() => setViewMode("screenplay")}
-                className={`text-[11px] px-2.5 py-1 rounded font-medium transition-all ${
+                className={`text-[11px] px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition-all ${
                   viewMode === "screenplay" ? "bg-[#635BFF] text-white font-bold" : "text-gray-400 hover:text-white"
                 }`}
                 title="Full director screenplay editor with visual cues and scene headers"
               >
-                📝 Full Screenplay
+                <FileText size={13} /> Full Screenplay
               </button>
               <button
                 onClick={() => setViewMode("spoken")}
-                className={`text-[11px] px-2.5 py-1 rounded font-medium transition-all ${
+                className={`text-[11px] px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition-all ${
                   viewMode === "spoken" ? "bg-[#635BFF] text-white font-bold" : "text-gray-400 hover:text-white"
                 }`}
                 title="Preview strictly the dialogue lines that will be spoken by AI"
               >
-                🎙️ Spoken Text
+                <Mic size={13} /> Spoken Text
               </button>
             </div>
           </div>
@@ -493,8 +522,9 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
             {/* VIEW MODE 2: SPOKEN TEXT ONLY */}
             {viewMode === "spoken" && (
               <div className="w-full h-full min-h-[380px] p-4 bg-[#0E0E12] text-[#F5F5F5] font-mono text-sm leading-relaxed overflow-y-auto">
-                <div className="p-3 bg-emerald-950/30 border border-emerald-900/60 rounded-lg text-xs text-emerald-300 mb-4">
-                  💡 This is the exact dialogue synthesized by the voice engine. Visual directions and notes are excluded from speech.
+                <div className="p-3 bg-emerald-950/30 border border-emerald-900/60 rounded-lg text-xs text-emerald-300 mb-4 flex items-start gap-2">
+                  <Lightbulb size={14} className="text-emerald-400 shrink-0 mt-0.5" />
+                  <span>This is the exact dialogue synthesized by the voice engine. Visual directions and notes are excluded from speech.</span>
                 </div>
                 <div className="whitespace-pre-wrap text-gray-200">
                   {spokenText || "No spoken dialogue detected. Add **VO:** blocks or plain script text."}
@@ -510,7 +540,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-full bg-[#635BFF]/20 text-[#635BFF] flex items-center justify-center font-bold text-sm">
-                    🔊
+                    <Volume2 size={16} className="text-[#635BFF]" />
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-white">Generated Voiceover Audio</h4>
@@ -524,9 +554,9 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                   <a
                     href={audioUrl}
                     download={`voiceover_${film.id}.wav`}
-                    className="text-xs px-3 py-1.5 rounded bg-[#1A1A22] hover:bg-[#252530] border border-[#333] text-gray-300 hover:text-white font-medium flex items-center gap-1"
+                    className="text-xs px-3 py-1.5 rounded bg-[#1A1A22] hover:bg-[#252530] border border-[#333] text-gray-300 hover:text-white font-medium flex items-center gap-1.5"
                   >
-                    <span>📥</span> Download .wav
+                    <Download size={13} /> Download .wav
                   </a>
                   {onNavigateToVideo && (
                     <button
@@ -537,9 +567,9 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                         }
                         onNavigateToVideo();
                       }}
-                      className="text-xs px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1"
+                      className="text-xs px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5"
                     >
-                      <span>🎬</span> View in Video Player
+                      <FilmIcon size={13} /> View in Video Player
                     </button>
                   )}
                 </div>
@@ -570,7 +600,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                   className="w-10 h-10 rounded-full bg-[#635BFF] hover:bg-[#5249e6] text-white flex items-center justify-center font-bold text-sm shadow-md transition-all active:scale-95 shrink-0"
                   title={isPlaying ? "Pause audio" : "Play voiceover"}
                 >
-                  {isPlaying ? "⏸" : "▶"}
+                  {isPlaying ? <Pause size={14} className="fill-current" /> : <Play size={14} className="fill-current" />}
                 </button>
 
                 <span className="text-xs font-mono text-[#8A8A8E] w-12 text-right">
@@ -622,7 +652,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
           {/* Voice Model Selector Card */}
           <div className="bg-[#121216] border border-[#26262E] rounded-xl p-4 flex flex-col gap-3">
             <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-              <span>🎙️</span> AI Voice Synthesis Engine
+              <Mic size={15} className="text-[#635BFF]" /> AI Voice Synthesis Engine
             </h3>
             <p className="text-xs text-[#8A8A8E]">
               Select from Kokoro ONNX, Deepgram Aura, or macOS neural voices:
@@ -659,7 +689,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
           {/* Screenplay Workflow Card */}
           <div className="bg-[#121216] border border-[#26262E] rounded-xl p-4 flex flex-col gap-3 text-xs text-[#8A8A8E]">
             <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-              <span>🎬</span> Screenplay Workflow Guide
+              <Clapperboard size={15} className="text-[#635BFF]" /> Screenplay Workflow Guide
             </h3>
             <ul className="space-y-2 list-disc list-inside text-[11px]">
               <li><strong>Write dialogue:</strong> Use **VO:**, **Voiceover:**, or **Narrator:** tags per scene.</li>
