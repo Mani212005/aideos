@@ -727,12 +727,6 @@ function filmApiPlugin(): Plugin {
                 }
               }
 
-              // Invalidate stale word transcript cache on new audio generation
-              const staleCachePath = path.join(scriptsDir, `voiceover_${projectId}_words.json`);
-              if (fs.existsSync(staleCachePath)) {
-                try { fs.unlinkSync(staleCachePath); } catch (_) {}
-              }
-
               sendJson(res, 200, {
                 ok: true,
                 filename: outFilename,
@@ -747,105 +741,6 @@ function filmApiPlugin(): Plugin {
             } else {
               sendJson(res, 500, { error: 'Failed to synthesize voiceover audio.' });
             }
-          }).catch(err => sendJson(res, 500, { error: String(err) }));
-          return;
-        }
-
-        // Handle /api/audio-transcript/:id (Extracts or loads word-by-word timestamps for interactive voiceover editing)
-        if (url.startsWith('/api/audio-transcript/') && req.method === 'GET') {
-          const rawId = url.slice('/api/audio-transcript/'.length);
-          const [id, queryStr] = rawId.split('?');
-          const forceRefresh = Boolean(queryStr && (queryStr.includes('force=1') || queryStr.includes('refresh=1') || queryStr.includes('t=')));
-          const scriptsDir = path.resolve(__dirname, '../scripts');
-          const publicDir = path.resolve(__dirname, '../public');
-          const cachePath = path.join(scriptsDir, `voiceover_${id}_words.json`);
-          const audioPath = path.join(publicDir, `voiceover_${id}.wav`);
-
-          if (!forceRefresh && fs.existsSync(cachePath)) {
-            try {
-              const cached = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
-              const scriptPath = path.join(scriptsDir, `${id}.md`);
-              let scriptWordsCount = 0;
-              if (fs.existsSync(scriptPath)) {
-                const spoken = extractSpokenVoiceover(fs.readFileSync(scriptPath, 'utf8'));
-                scriptWordsCount = spoken.split(/\s+/).filter(Boolean).length;
-              }
-              if (Array.isArray(cached.words) && (scriptWordsCount === 0 || cached.words.length >= Math.min(scriptWordsCount * 0.7, 800))) {
-                sendJson(res, 200, { ok: true, words: cached.words, source: 'cache' });
-                return;
-              } else {
-                console.log(`[STT] Bypassing stale cache (${cached?.words?.length || 0} words vs ${scriptWordsCount} script words)`);
-              }
-            } catch (_) {}
-          }
-
-          if (!fs.existsSync(audioPath)) {
-            sendJson(res, 404, { error: `Audio file voiceover_${id}.wav not found.` });
-            return;
-          }
-
-          // Align words from script with sceneIndex
-          void (async () => {
-            const scriptPath = path.join(scriptsDir, `${id}.md`);
-            let rawScript = '';
-            if (fs.existsSync(scriptPath)) rawScript = fs.readFileSync(scriptPath, 'utf8');
-            const spokenBlocks = extractSpokenVoiceoverBlocks(rawScript);
-            const totalWordsCount = spokenBlocks.reduce((acc, b) => acc + b.split(/\s+/).filter(Boolean).length, 0);
-            const totalDurationSec = 30; // standard shot duration estimate
-            const secPerWord = totalDurationSec / (totalWordsCount || 1);
-
-            const fallbackWords: any[] = [];
-            let globalWordIdx = 0;
-
-            for (let sceneIdx = 0; sceneIdx < spokenBlocks.length; sceneIdx++) {
-              const wordsList = spokenBlocks[sceneIdx].split(/\s+/).filter(Boolean);
-              for (const w of wordsList) {
-                fallbackWords.push({
-                  id: `w-${globalWordIdx}`,
-                  word: w.replace(/[^\w]/g, '').toLowerCase(),
-                  punctuated: w,
-                  start: Number((globalWordIdx * secPerWord).toFixed(2)),
-                  end: Number(((globalWordIdx + 1) * secPerWord).toFixed(2)),
-                  confidence: 0.9,
-                  sceneIndex: sceneIdx,
-                });
-                globalWordIdx++;
-              }
-            }
-
-            fs.writeFileSync(cachePath, JSON.stringify({ words: fallbackWords }, null, 2), 'utf8');
-            sendJson(res, 200, { ok: true, words: fallbackWords, source: 'script-alignment' });
-          })();
-          return;
-        }
-
-        // Handle /api/update-script-words (Applies inline word edits & feedback back to the script)
-        if (url === '/api/update-script-words' && req.method === 'POST') {
-          void readBody(req).then((body: any) => {
-            const { projectId, updatedScript, wordChanges } = body || {};
-            const scriptsDir = path.resolve(__dirname, '../scripts');
-            const scriptPath = path.join(scriptsDir, `${projectId}.md`);
-            const cachePath = path.join(scriptsDir, `voiceover_${projectId}_words.json`);
-
-            if (updatedScript) {
-              fs.writeFileSync(scriptPath, updatedScript, 'utf8');
-            } else if (wordChanges && Array.isArray(wordChanges) && fs.existsSync(scriptPath)) {
-              let content = fs.readFileSync(scriptPath, 'utf8');
-              for (const change of wordChanges) {
-                if (change.oldText && change.newText !== undefined) {
-                  content = content.replace(change.oldText, change.newText);
-                }
-              }
-              fs.writeFileSync(scriptPath, content, 'utf8');
-            }
-
-            // Invalidate STT transcript cache so next synthesis gets fresh word timings
-            if (fs.existsSync(cachePath)) {
-              try { fs.unlinkSync(cachePath); } catch (_) {}
-            }
-
-            const currentScript = fs.existsSync(scriptPath) ? fs.readFileSync(scriptPath, 'utf8') : '';
-            sendJson(res, 200, { ok: true, script: currentScript });
           }).catch(err => sendJson(res, 500, { error: String(err) }));
           return;
         }
