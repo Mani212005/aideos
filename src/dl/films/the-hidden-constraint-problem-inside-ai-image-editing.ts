@@ -1,3 +1,6 @@
+/**
+ * File Description: Production Film Definition for "The Hidden Constraint Problem Inside AI Image Editing".
+ */
 import type { Film } from "../schema";
 
 export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
@@ -108,7 +111,7 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
   "shots": [
     {
       "id": "hook",
-      "dur": 26.65,
+      "dur": 24.65,
       "look": "hook",
       "move": "cut",
       "stage": "frame",
@@ -127,7 +130,20 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
           "c": "TextReveal",
           "text": "ChatGPT IMAGES 2.5 fades in small, bottom corner - not the hero of the shot.",
           "size": "headline"
-        },
+        }
+      ]
+    },
+    {
+      "id": "hook-tag",
+      "dur": 2,
+      "look": "hook",
+      "move": "pan",
+      "stage": "frame",
+      "zoom": 1,
+      "drift": false,
+      "visualDirection": "Cold open. A single photograph fills the frame - a person in a black jacket. Text overlay types out: change the jacket to red. keep everything else exactly the same.",
+      "scriptText": "Ask an image model to change one thing in a photo, but keep everything else pixel for pixel identical, and you're not asking it to draw anymore. You're asking it to obey constraints. That's a fundamentally harder problem than generating a picture from nothing. OpenAI just shipped ChatGPT Images 2.5, but the interesting part isn't the feature list. It's what a system actually needs to be capable of to pull this off.",
+      "blocks": [
         {
           "c": "Body",
           "text": "Cold open. A single photograph fills the frame - a person in a black jacket. Text overlay types out: change the jacket to red. keep everything else exactly the same."
