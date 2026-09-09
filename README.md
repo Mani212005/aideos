@@ -104,7 +104,7 @@ The Aideos Timeline & Trimmer implements industry-standard non-linear editing ge
 ## 📦 Per-Video Package Architecture & Generative SVG Engine
 
 1. **Self-Contained Video Packages (`videos/<slug>/`):**
-   * Each explainer video is packaged in a self-contained directory containing `film.json`, `shotlist.json`, `treatment.json`, and a `visuals/` directory.
+   * Each explainer video is packaged in a self-contained directory containing `film.json`, `script.md`, `voiceover.wav` + `voiceover_words.json`, `footage/` (GPU B-roll clips), `visuals/`, `shotlist.json`, and `treatment.json`.
    * Discovered and loaded dynamically at runtime via the unified loader `src/dl/videoPackageLoader.ts`.
 2. **Generative SVG Synthesis (`backend/scene/generateSvg.ts`):**
    * Synthesizes bespoke, theme-harmonized React SVG components tailored to shot visual directions.

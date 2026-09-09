@@ -54,8 +54,9 @@ to the canvas every 90s, and at most three accents in a frame.
   skipping the last step is a compile error rather than an empty frame.
 - **A new film:** write `films/<topic>.ts` as pure data (`import type` only -
   the validator loads it in plain Node) and point `activeFilm.ts` at it, or create a
-  standalone video package under `videos/<slug>/` (`film.json`, `shotlist.json`,
-  `treatment.json`, `visuals/`) and load via `src/dl/videoPackageLoader.ts`.
+  standalone video package under `videos/<slug>/` (`film.json`, `script.md`,
+  `voiceover.wav`, `footage/`, `shotlist.json`, `treatment.json`, `visuals/`) and
+  load via `src/dl/videoPackageLoader.ts`.
 
 ## Deliberately not implemented
 

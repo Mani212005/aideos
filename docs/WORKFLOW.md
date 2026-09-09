@@ -104,7 +104,7 @@ Aideos is engineered around 4 strict architectural invariants:
 1. **2D Node Layout**: Positions concept nodes on the continuous spatial graph with bounding boxes $(x, y, w, h)$.
 2. **Character Rigging**: Pure TypeScript vector rigs (`astronaut.ts`, `developer.ts`) provide 2-level hierarchical kinematic transforms.
 3. **Keyframe Interpolation**: Evaluates pose keyframes via `ease-out-expo` (`motion.ts`) across normalized progress $t \in [0, 1]$.
-4. **Package Assembly**: Assembles self-contained video package under `videos/<slug>/` (`film.json`, `shotlist.json`, `treatment.json`, `visuals/`) loaded by `src/dl/videoPackageLoader.ts`.
+4. **Package Assembly**: Assembles self-contained video package under `videos/<slug>/` (`film.json`, `script.md`, `voiceover.wav`, `footage/`, `shotlist.json`, `treatment.json`, `visuals/`) loaded by `src/dl/videoPackageLoader.ts`.
 
 ### Stage 5: Remotion Video Rendering (`src/dl/Film.tsx`)
 1. **Compositions**:
