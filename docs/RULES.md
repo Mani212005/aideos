@@ -22,12 +22,11 @@ Every AI agent working on the `aideos` project MUST read and adhere strictly to 
 
 Every agent producing a video in the `aideos` repository MUST follow this strict 3-stage lifecycle:
 
-### Stage A: Script Storage & FIFO Memory Rotation
-1. **Directory Location**: When the user provides a script, store it under the `scripts/` folder (e.g. `scripts/video-script-<name>.txt`).
-2. **Git Ignore Requirement**: `scripts/` MUST remain gitignored so user scripts and raw text are never committed to version control.
-3. **3-Script FIFO Memory Budget**:
-   - The `scripts/` folder MUST hold a **maximum of 3 script files** at any given time.
-   - When a new script arrives and the folder already contains 3 scripts, the agent MUST automatically identify and remove the **oldest script file** before saving the new one (First-In, First-Out memory rotation).
+### Stage A: Script Storage & Package Isolation
+1. **Directory Location**: When the user provides a script, store it under the self-contained package folder as `videos/<slug>/script.md`.
+2. **Git Ignore Requirement**: `videos/*/script.md`, `videos/*/footage/`, and `videos/*/voiceover.wav` MUST remain gitignored so local screenplay text, raw voiceover, and footage artifacts are never committed to version control.
+3. **Package Isolation**:
+   - Each project maintains its own isolated workspace under `videos/<slug>/` containing `film.json`, `script.md`, `voiceover.wav`, `voiceover_words.json`, `footage/`, and `visuals/`.
 
 ### Stage B: Interactive Design & Color Palette Review (`localhost` Dev Server)
 1. **Native Localhost Server (NO LAVISH DEPENDENCY)**:

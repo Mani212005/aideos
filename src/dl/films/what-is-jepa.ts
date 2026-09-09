@@ -474,7 +474,7 @@ export const whatIsJepaFilm: Film = {
     }
   ],
   "voiceover": {
-    "src": "voiceover_what-is-jepa.wav",
+    "src": "videos/what-is-jepa/voiceover.wav",
     "volume": 1,
     "speed": 1,
     "version": "1788118015571"
@@ -482,7 +482,7 @@ export const whatIsJepaFilm: Film = {
   "audioClips": [
     {
       "id": "clip-voiceover-master",
-      "src": "voiceover_what-is-jepa.wav",
+      "src": "videos/what-is-jepa/voiceover.wav",
       "position": 0,
       "start": 0,
       "end": 139.8918,

@@ -119,7 +119,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       });
 
     // Check if voiceover audio already exists on disk
-    const existingAudio = film.voiceover?.src || `/voiceover_${film.id}.wav`;
+    const existingAudio = film.voiceover?.src || `videos/${film.id}/voiceover.wav`;
     fetch(existingAudio, { method: "HEAD" })
       .then((res) => {
         if (isMounted && res.ok) {
@@ -646,7 +646,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                   <div>
                     <h4 className="text-sm font-bold text-white">Generated Voiceover Audio</h4>
                     <p className="text-xs text-[#8A8A8E] font-mono">
-                      public/voiceover_{film.id}.wav ({formatTime(duration)}) · {spokenWords.length} spoken words
+                      videos/{film.id}/voiceover.wav ({formatTime(duration)}) · {spokenWords.length} spoken words
                     </p>
                   </div>
                 </div>
@@ -783,7 +783,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
 
             <div className="p-2.5 rounded bg-[#181820] border border-[#2A2A35] text-[11px] text-[#8A8A8E] space-y-1">
               <div>• <strong>Spoken Narration:</strong> {spokenWords.length} spoken dialogue words</div>
-              <div>• <strong>Location:</strong> <code className="text-gray-300">public/voiceover_{film.id}.wav</code></div>
+              <div>• <strong>Location:</strong> <code className="text-gray-300">videos/{film.id}/voiceover.wav</code></div>
             </div>
           </div>
 

@@ -34,6 +34,68 @@ const exportName = (id: string) =>
 const filmModule = (film: Film) =>
   `import type { Film } from "../schema";\n\nexport const ${exportName(film.id)}: Film = ${JSON.stringify(film, null, 2)};\n`;
 
+// Loads a film by id, preferring the video package's film.json (authoritative) and
+// falling back to the generated src/dl/films/<id>.ts module.
+function readFilm(filmId: string): Film | null {
+  const pkgFilmPath = path.join(videosDir, filmId, 'film.json');
+  if (fs.existsSync(pkgFilmPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(pkgFilmPath, 'utf8'));
+    } catch {
+      // Fall through to the .ts module
+    }
+  }
+  const filmPath = path.join(filmsDir, `${filmId}.ts`);
+  if (fs.existsSync(filmPath)) {
+    const jsonMatch = fs.readFileSync(filmPath, 'utf8').match(/=\s*(\{[\s\S]*\})\s*;/);
+    if (jsonMatch) return JSON.parse(jsonMatch[1]);
+  }
+  return null;
+}
+
+// Persists a film to both the video package (authoritative, read by the editor Player)
+// and the generated src/dl/films/<id>.ts module (read by Remotion's CLI render/activeFilm
+// bundle), so the two never drift the way they did when B-roll auto-wiring only touched one.
+function writeFilm(filmId: string, film: Film): void {
+  const pkgDir = path.join(videosDir, filmId);
+  if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
+  fs.writeFileSync(path.join(pkgDir, 'film.json'), JSON.stringify(film, null, 2), 'utf8');
+
+  const filmPath = path.join(filmsDir, `${filmId}.ts`);
+  if (fs.existsSync(filmPath)) {
+    fs.writeFileSync(filmPath, filmModule(film), 'utf8');
+  }
+}
+
+// Wires a finished B-roll clip into a shot's blocks as an AnalogyInset, replacing any
+// existing one, and persists the film to both authoritative locations.
+function wireFootageIntoFilm(filmId: string, shotId: string, relPath: string, promptText: string): void {
+  const film = readFilm(filmId);
+  if (!film) return;
+  const targetShot = film.shots.find((s) => s.id === shotId);
+  if (!targetShot) return;
+
+  targetShot.needsFootage = true;
+  const existingInset = targetShot.blocks.find((b) => b.c === 'AnalogyInset');
+  if (existingInset) {
+    (existingInset as any).src = relPath;
+    (existingInset as any).fullScreenHero = true;
+  } else {
+    targetShot.blocks = [
+      {
+        c: 'AnalogyInset',
+        caption: (targetShot.visualDirection || promptText || 'GPU B-Roll').slice(0, 60),
+        src: relPath,
+        fullScreenHero: true,
+      } as any,
+      ...targetShot.blocks.filter((b) => b.c !== 'AnalogyInset'),
+    ];
+  }
+
+  writeFilm(filmId, film);
+  console.log(`[broll] Successfully wired ${relPath} into shot ${shotId} of ${filmId}`);
+}
+
 const sendJson = (res: ServerResponse, status: number, body: unknown) => {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json');
@@ -54,6 +116,51 @@ const readBody = (req: IncomingMessage) =>
     });
     req.on('error', reject);
   });
+
+const ASSET_MIME_TYPES: Record<string, string> = {
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.mov': 'video/quicktime',
+  '.wav': 'audio/wav',
+  '.mp3': 'audio/mpeg',
+  '.json': 'application/json',
+  '.md': 'text/markdown',
+  '.vtt': 'text/vtt',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+};
+
+// Serves a file from disk with byte-range support, so video/audio scrubbing works for
+// per-video package assets that live outside Vite's publicDir (which won't follow the
+// public/videos -> ../videos symlink due to its realpath containment check).
+function serveFileWithRange(req: IncomingMessage, res: ServerResponse, filePath: string) {
+  const stat = fs.statSync(filePath);
+  const contentType = ASSET_MIME_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
+  const range = req.headers.range;
+
+  if (range) {
+    const match = /bytes=(\d*)-(\d*)/.exec(range);
+    const start = match && match[1] ? parseInt(match[1], 10) : 0;
+    const end = match && match[2] ? parseInt(match[2], 10) : stat.size - 1;
+    res.writeHead(206, {
+      'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': end - start + 1,
+      'Content-Type': contentType,
+    });
+    fs.createReadStream(filePath, { start, end }).pipe(res);
+    return;
+  }
+
+  res.writeHead(200, {
+    'Content-Length': stat.size,
+    'Content-Type': contentType,
+    'Accept-Ranges': 'bytes',
+  });
+  fs.createReadStream(filePath).pipe(res);
+}
 
 interface BrollJobRecord {
   jobId: string;
@@ -108,47 +215,21 @@ async function startBrollJob(filmId: string, shotId: string, promptText: string,
         }
 
         if (st.state === 'done') {
-          const footageDir = path.resolve(__dirname, '../public/footage');
+          const footageDir = path.join(videosDir, filmId, 'footage');
           if (!fs.existsSync(footageDir)) fs.mkdirSync(footageDir, { recursive: true });
-          const relPath = `footage/${filmId}_${shotId}.mp4`;
-          const destPath = path.join(footageDir, `${filmId}_${shotId}.mp4`);
+          const relPath = `videos/${filmId}/footage/${shotId}.mp4`;
+          const destPath = path.join(footageDir, `${shotId}.mp4`);
           await engine.fetchOutput(handle.jobId, destPath);
 
           current.footageSrc = relPath;
           current.progress = 1;
           current.finishedAt = Date.now();
 
-          // Auto-wire footage into film file so it persists immediately
+          // Auto-wire footage into the film so it persists immediately. videos/<id>/film.json
+          // is the authoritative copy the editor Player reads; src/dl/films/<id>.ts is kept in
+          // sync too since it's what Remotion's CLI render/activeFilm bundle reads.
           try {
-            const filmPath = path.join(filmsDir, `${filmId}.ts`);
-            if (fs.existsSync(filmPath)) {
-              const fileContent = fs.readFileSync(filmPath, 'utf8');
-              const jsonMatch = fileContent.match(/=\s*(\{[\s\S]*\})\s*;/);
-              if (jsonMatch) {
-                const filmObj: Film = JSON.parse(jsonMatch[1]);
-                const targetShot = filmObj.shots.find((s) => s.id === shotId);
-                if (targetShot) {
-                  targetShot.needsFootage = true;
-                  const existingInset = targetShot.blocks.find((b) => b.c === 'AnalogyInset');
-                  if (existingInset) {
-                    (existingInset as any).src = relPath;
-                    (existingInset as any).fullScreenHero = true;
-                  } else {
-                    targetShot.blocks = [
-                      {
-                        c: 'AnalogyInset',
-                        caption: (targetShot.visualDirection || promptText || 'GPU B-Roll').slice(0, 60),
-                        src: relPath,
-                        fullScreenHero: true,
-                      } as any,
-                      ...targetShot.blocks.filter((b) => b.c !== 'AnalogyInset'),
-                    ];
-                  }
-                  fs.writeFileSync(filmPath, filmModule(filmObj), 'utf8');
-                  console.log(`[broll] Successfully wired ${relPath} into shot ${shotId} of ${filmId}`);
-                }
-              }
-            }
+            wireFootageIntoFilm(filmId, shotId, relPath, promptText);
           } catch (e) {
             console.error(`[broll] Failed to auto-wire footage into film file:`, e);
           }
@@ -191,6 +272,19 @@ function filmApiPlugin(): Plugin {
           res.setHeader('Cache-Control', 'no-cache');
         }
 
+        // Serve self-contained video package assets (footage, voiceover, script) directly
+        // from videos/<slug>/ on disk. staticFile('videos/<slug>/...') resolves to this
+        // same URL path under Vite's publicDir, but Vite's own static middleware won't
+        // follow the public/videos symlink, so it's served explicitly here instead.
+        if (url.startsWith('/videos/') && req.method === 'GET') {
+          const rel = decodeURIComponent(url.slice('/videos/'.length));
+          const filePath = path.join(videosDir, rel);
+          if (!rel.includes('..') && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+            serveFileWithRange(req, res, filePath);
+            return;
+          }
+        }
+
         // Handle /api/export endpoint for 1-click video rendering
         if (url === '/api/export' && req.method === 'POST') {
           void readBody(req)
@@ -204,8 +298,7 @@ function filmApiPlugin(): Plugin {
               // Enforce rule: Don't render video till B-roll is complete and footage is retrieved
               const pendingBroll = (film.shots || []).filter((s) => {
                 if (!s.needsFootage) return false;
-                const relPath = `footage/${film.id}_${s.id}.mp4`;
-                const fullPath = path.resolve(__dirname, '../public', relPath);
+                const fullPath = path.join(videosDir, film.id, 'footage', `${s.id}.mp4`);
                 return !fs.existsSync(fullPath);
               });
               if (pendingBroll.length > 0) {
@@ -275,13 +368,7 @@ function filmApiPlugin(): Plugin {
               }
 
               // Load film definition (prefer clientFilm if provided)
-              const filmPath = path.join(filmsDir, `${filmId}.ts`);
-              let filmObj: Film | null = clientFilm || null;
-              if (!filmObj && fs.existsSync(filmPath)) {
-                const content = fs.readFileSync(filmPath, 'utf8');
-                const jsonMatch = content.match(/=\s*(\{[\s\S]*\})\s*;/);
-                if (jsonMatch) filmObj = JSON.parse(jsonMatch[1]);
-              }
+              let filmObj: Film | null = clientFilm || readFilm(filmId);
 
               if (!filmObj) {
                 sendJson(res, 404, { error: `Film ${filmId} not found` });
@@ -290,7 +377,7 @@ function filmApiPlugin(): Plugin {
 
               // If client passed updated film, persist it first so shot flags are synchronized
               if (clientFilm) {
-                fs.writeFileSync(filmPath, filmModule(clientFilm), 'utf8');
+                writeFilm(filmId, clientFilm);
               }
 
               const spawnedJobs: BrollJobRecord[] = [];
@@ -298,8 +385,7 @@ function filmApiPlugin(): Plugin {
               if (allPending) {
                 const pendingShots = filmObj.shots.filter((s) => {
                   if (!s.needsFootage) return false;
-                  const relPath = `footage/${filmId}_${s.id}.mp4`;
-                  return !fs.existsSync(path.resolve(__dirname, '../public', relPath));
+                  return !fs.existsSync(path.join(videosDir, filmId, 'footage', `${s.id}.mp4`));
                 });
 
                 if (pendingShots.length === 0) {
@@ -359,14 +445,14 @@ function filmApiPlugin(): Plugin {
             return;
           }
 
-          const footageDir = path.resolve(__dirname, '../public/footage');
+          const footageDir = path.join(videosDir, filmId, 'footage');
           const existingFootage: Record<string, string> = {};
           if (fs.existsSync(footageDir)) {
             const files = fs.readdirSync(footageDir);
             for (const f of files) {
-              if (f.startsWith(`${filmId}_`) && f.endsWith('.mp4')) {
-                const shotId = f.slice(`${filmId}_`.length, -4);
-                existingFootage[shotId] = `footage/${f}`;
+              if (f.endsWith('.mp4')) {
+                const shotId = f.slice(0, -4);
+                existingFootage[shotId] = `videos/${filmId}/footage/${f}`;
               }
             }
           }
@@ -383,33 +469,19 @@ function filmApiPlugin(): Plugin {
           return;
         }
 
-        // Handle /api/scripts/:id (Read and Save scripts)
+        // Handle /api/scripts/:id (Read and Save scripts, self-contained under videos/<id>/)
         if (url.startsWith('/api/scripts/')) {
           const scriptId = url.slice('/api/scripts/'.length);
-          const scriptsDir = path.resolve(__dirname, '../scripts');
-          if (!fs.existsSync(scriptsDir)) fs.mkdirSync(scriptsDir, { recursive: true });
+          const pkgDir = path.join(videosDir, scriptId);
 
           if (req.method === 'GET') {
-            const possibleFiles = [
-              path.join(scriptsDir, `${scriptId}.md`),
-              path.join(scriptsDir, `${scriptId}.txt`),
-              path.join(scriptsDir, `video-script-${scriptId}.md`),
-              path.join(scriptsDir, `video-script-${scriptId}-4min.md`),
-              path.join(scriptsDir, `video-script-${scriptId}-3min.md`),
-            ];
+            const scriptFile = path.join(pkgDir, 'script.md');
             let foundScript = '';
-            for (const f of possibleFiles) {
-              if (fs.existsSync(f)) {
-                foundScript = fs.readFileSync(f, 'utf8');
-                break;
-              }
-            }
-            if (!foundScript) {
-              // Try reading film definition to generate draft script
-              const filmFile = path.join(filmsDir, `${scriptId}.ts`);
-              if (fs.existsSync(filmFile)) {
-                foundScript = `# ${scriptId}\n\nPaste your narration script here. Each paragraph will sync with your video scenes and visual metaphors.\n\nClick "Generate Voiceover (.wav)" to generate studio audio.`;
-              }
+            if (fs.existsSync(scriptFile)) {
+              foundScript = fs.readFileSync(scriptFile, 'utf8');
+            } else if (fs.existsSync(path.join(filmsDir, `${scriptId}.ts`)) || fs.existsSync(path.join(pkgDir, 'film.json'))) {
+              // Draft placeholder for an existing project that has no script yet
+              foundScript = `# ${scriptId}\n\nPaste your narration script here. Each paragraph will sync with your video scenes and visual metaphors.\n\nClick "Generate Voiceover (.wav)" to generate studio audio.`;
             }
             sendJson(res, 200, { ok: true, script: foundScript });
             return;
@@ -418,9 +490,10 @@ function filmApiPlugin(): Plugin {
           if (req.method === 'POST') {
             void readBody(req).then((body: any) => {
               const { script } = body || {};
-              const targetFile = path.join(scriptsDir, `${scriptId}.md`);
+              if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
+              const targetFile = path.join(pkgDir, 'script.md');
               fs.writeFileSync(targetFile, script || '', 'utf8');
-              sendJson(res, 200, { ok: true, file: `scripts/${scriptId}.md` });
+              sendJson(res, 200, { ok: true, file: `videos/${scriptId}/script.md` });
             }).catch(err => sendJson(res, 500, { error: String(err) }));
             return;
           }
@@ -465,8 +538,8 @@ function filmApiPlugin(): Plugin {
             }
             const shotTexts: string[] = film.shots?.map((s: any) => (s.scriptText || s.id || '').trim()).filter(Boolean) || [];
             const scriptInput = scriptText ? splitScriptIntoSegments(scriptText) : shotTexts.length > 0 ? shotTexts : [film.title];
-            const outDir = path.resolve(__dirname, `../out/films/${film.id}`);
-            const audioResult = await produceAudioPipeline(scriptInput, outDir);
+            const pkgDir = path.join(videosDir, film.id);
+            const audioResult = await produceAudioPipeline(scriptInput, pkgDir);
 
             // Update shot durations to match audio segments accurately (1:1 shot-level mapping)
             const updatedShots = film.shots.map((shot: any, idx: number) => {
@@ -480,14 +553,20 @@ function filmApiPlugin(): Plugin {
             const updatedFilm = {
               ...film,
               shots: updatedShots,
-              voiceover: { src: `voiceover.wav`, volume: 1 },
+              voiceover: { src: `videos/${film.id}/voiceover.wav`, volume: 1 },
             };
 
-            // Copy synthesized voiceover to public folder so remotion can stream it
-            const publicDir = path.resolve(__dirname, '../public');
-            if (fs.existsSync(audioResult.voiceoverPath)) {
-              fs.copyFileSync(audioResult.voiceoverPath, path.join(publicDir, 'voiceover.wav'));
-            }
+            // Flatten per-segment word timings onto the film's timeline for the Pretext
+            // kinetic captions editor
+            const flatWords = audioResult.segments.flatMap((seg) =>
+              seg.words.map((w) => ({
+                word: w.word,
+                punctuated_word: w.punctuated_word,
+                start: Number((seg.startOffset + w.start).toFixed(3)),
+                end: Number((seg.startOffset + w.end).toFixed(3)),
+              }))
+            );
+            fs.writeFileSync(path.join(pkgDir, 'voiceover_words.json'), JSON.stringify({ words: flatWords }, null, 2), 'utf8');
 
             sendJson(res, 200, { ok: true, film: updatedFilm, audioResult });
           }).catch(err => {
@@ -587,14 +666,11 @@ function filmApiPlugin(): Plugin {
               return;
             }
 
-            const publicDir = path.resolve(__dirname, '../public');
-            const scriptsDir = path.resolve(__dirname, '../scripts');
-            if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
-            if (!fs.existsSync(scriptsDir)) fs.mkdirSync(scriptsDir, { recursive: true });
+            const pkgDir = path.join(videosDir, projectId);
+            if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
 
-            const outFilename = `voiceover_${projectId}.wav`;
-            const publicPath = path.join(publicDir, outFilename);
-            const scriptsPath = path.join(scriptsDir, outFilename);
+            const outFilename = 'voiceover.wav';
+            const publicPath = path.join(pkgDir, outFilename);
 
             let generated = false;
 
@@ -670,7 +746,6 @@ function filmApiPlugin(): Plugin {
 
                 const wavBuffer = encodeWav(merged, sampleRate);
                 fs.writeFileSync(publicPath, wavBuffer);
-                fs.writeFileSync(scriptsPath, wavBuffer);
                 generated = true;
                 console.log(`[TTS] Kokoro synthesized full audio: ${(totalLength / sampleRate).toFixed(2)}s`);
               } catch (err) {
@@ -707,7 +782,6 @@ function filmApiPlugin(): Plugin {
                   if (dgRes.ok) {
                     const audioBuffer = Buffer.from(await dgRes.arrayBuffer());
                     fs.writeFileSync(publicPath, audioBuffer);
-                    fs.writeFileSync(scriptsPath, audioBuffer);
                     generated = true;
                   } else {
                     console.warn('[TTS] Deepgram API returned', dgRes.status, await dgRes.text());
@@ -737,7 +811,6 @@ function filmApiPlugin(): Plugin {
                 if (say.status === 0 && fs.existsSync(tmpAiff)) {
                   spawnSync('ffmpeg', ['-y', '-i', tmpAiff, '-ar', '48000', '-ac', '1', publicPath]);
                   if (fs.existsSync(publicPath)) {
-                    fs.copyFileSync(publicPath, scriptsPath);
                     generated = true;
                   }
                 }
@@ -748,13 +821,8 @@ function filmApiPlugin(): Plugin {
             }
 
             if (generated) {
-              const scriptDocPath = path.join(scriptsDir, `${projectId}.md`);
+              const scriptDocPath = path.join(pkgDir, 'script.md');
               fs.writeFileSync(scriptDocPath, script, 'utf8');
-
-              // Also copy to default voiceover.wav for universal fallback
-              try {
-                fs.copyFileSync(publicPath, path.join(publicDir, 'voiceover.wav'));
-              } catch (_) {}
 
               // Measure exact audio duration via ffprobe
               let measuredDuration = 5.0;
@@ -799,7 +867,7 @@ function filmApiPlugin(): Plugin {
                       ...parsedFilm,
                       shots: computedShots,
                       voiceover: {
-                        src: outFilename,
+                        src: `videos/${projectId}/${outFilename}`,
                         volume: 1,
                         speed: 1,
                         version: Date.now().toString(),
@@ -807,12 +875,7 @@ function filmApiPlugin(): Plugin {
                       },
                       audioClips: undefined,
                     } as Film;
-                    fs.writeFileSync(filmFile, filmModule(updatedFilm), 'utf8');
-
-                    // Sync to video package
-                    const pkgDir = path.join(videosDir, projectId);
-                    if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
-                    fs.writeFileSync(path.join(pkgDir, 'film.json'), JSON.stringify(updatedFilm, null, 2), 'utf8');
+                    writeFilm(projectId, updatedFilm);
                   }
                 } catch (syncErr) {
                   console.warn('[TTS] Automatic shot duration scaling error:', syncErr);
@@ -822,8 +885,8 @@ function filmApiPlugin(): Plugin {
               sendJson(res, 200, {
                 ok: true,
                 filename: outFilename,
-                audioSrc: `/${outFilename}?t=${Date.now()}`,
-                scriptFile: `scripts/${projectId}.md`,
+                audioSrc: `/videos/${projectId}/${outFilename}?t=${Date.now()}`,
+                scriptFile: `videos/${projectId}/script.md`,
                 spokenWordCount: cleanText.split(/\s+/).filter(Boolean).length,
                 estimatedDurationSec: Math.round(measuredDuration),
                 actualDurationSec: measuredDuration,
@@ -873,10 +936,7 @@ function filmApiPlugin(): Plugin {
             } catch (_) {}
 
             if (result.ok && result.updatedFilm && result.patchOps && result.patchOps.length > 0) {
-              const filmFile = path.join(filmsDir, `${result.updatedFilm.id}.ts`);
-              if (fs.existsSync(filmFile)) {
-                fs.writeFileSync(filmFile, filmModule(result.updatedFilm), 'utf8');
-              }
+              writeFilm(result.updatedFilm.id, result.updatedFilm);
             }
             sendJson(res, 200, result);
           }).catch((err) => sendJson(res, 500, { error: String(err) }));
@@ -911,11 +971,11 @@ function filmApiPlugin(): Plugin {
               return;
             }
 
-            // 1. Create scripts/<id>.md
-            const scriptsDir = path.resolve(__dirname, '../scripts');
-            if (!fs.existsSync(scriptsDir)) fs.mkdirSync(scriptsDir, { recursive: true });
+            // 1. Create videos/<id>/script.md
+            const newPkgDir = path.join(videosDir, cleanId);
+            if (!fs.existsSync(newPkgDir)) fs.mkdirSync(newPkgDir, { recursive: true });
             const initialScript = script.trim() || `# ${title}\n\nWrite your voiceover narration script here.\n\nEvery paragraph maps to visual scenes, 3D camera angles, and animated primitives.\n\nClick "🎙️ Generate Voiceover (.wav)" when ready!`;
-            fs.writeFileSync(path.join(scriptsDir, `${cleanId}.md`), initialScript, 'utf8');
+            fs.writeFileSync(path.join(newPkgDir, 'script.md'), initialScript, 'utf8');
 
             let newFilm: Film;
 
@@ -1143,10 +1203,11 @@ function filmApiPlugin(): Plugin {
               };
             }
 
-            // 2. Create src/dl/films/<id>.ts and .json
+            // 2. Create src/dl/films/<id>.ts (for Remotion's CLI render/activeFilm bundle)
+            // and videos/<id>/film.json (authoritative, read by the editor Player)
             const filmFile = path.join(filmsDir, `${cleanId}.ts`);
             fs.writeFileSync(filmFile, filmModule(newFilm), 'utf8');
-            fs.writeFileSync(path.join(filmsDir, `${cleanId}.json`), JSON.stringify(newFilm, null, 2), 'utf8');
+            writeFilm(cleanId, newFilm);
 
             // 3. Point activeFilm.ts to new film
             const activeFilmFile = path.resolve(__dirname, '../src/dl/activeFilm.ts');
@@ -1290,12 +1351,7 @@ function filmApiPlugin(): Plugin {
               return;
             }
             const file = path.join(filmsDir, `${id}.ts`);
-            fs.writeFileSync(file, filmModule(parsed.data), 'utf8');
-
-            // Sync to video package
-            const pkgDir = path.join(videosDir, id);
-            if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
-            fs.writeFileSync(path.join(pkgDir, 'film.json'), JSON.stringify(parsed.data, null, 2), 'utf8');
+            writeFilm(id, parsed.data);
 
             const activeFilmFile = path.resolve(__dirname, '../src/dl/activeFilm.ts');
             fs.writeFileSync(
