@@ -32,6 +32,7 @@ public/*.mov
 # Transitions directory
 transitions/
 public/transitions/
+public/footage/
 
 # GPU-rendered b-roll clips from staged assemble runs: large binaries, kept out
 # of the repository like all media (see the note above).

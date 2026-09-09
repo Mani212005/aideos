@@ -1,5 +1,5 @@
 import React from "react";
-import { Img, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { Img, OffthreadVideo, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { accentAt, FAINT, MONO, PALETTE, rule, SERIF, SUNKEN, useLayout } from "./tokens";
 import { EXPO, frames, MS, useEntrance, useProgress } from "./motion";
 import { useAccent } from "./accent";
@@ -639,6 +639,7 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
   }
 
   const isVisible = frame >= start + delayFrames;
+  const isVideo = Boolean(resolvedSrc?.match(/\.(mp4|webm|mov)$/i));
 
   if (fullScreenHero && isVisible && resolvedSrc) {
     return (
@@ -658,16 +659,29 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
           padding: layout.grid * 4,
         }}
       >
-        <Img
-          src={staticFile(resolvedSrc)}
-          style={{
-            maxWidth: "94%",
-            maxHeight: "84%",
-            objectFit: "contain",
-            borderRadius: layout.radius.inner,
-            boxShadow: "0 30px 80px rgba(0,0,0,0.85), 0 0 50px rgba(255,107,0,0.25)",
-          }}
-        />
+        {isVideo ? (
+          <OffthreadVideo
+            src={staticFile(resolvedSrc)}
+            style={{
+              maxWidth: "94%",
+              maxHeight: "84%",
+              objectFit: "contain",
+              borderRadius: layout.radius.inner,
+              boxShadow: "0 30px 80px rgba(0,0,0,0.85), 0 0 50px rgba(255,107,0,0.25)",
+            }}
+          />
+        ) : (
+          <Img
+            src={staticFile(resolvedSrc)}
+            style={{
+              maxWidth: "94%",
+              maxHeight: "84%",
+              objectFit: "contain",
+              borderRadius: layout.radius.inner,
+              boxShadow: "0 30px 80px rgba(0,0,0,0.85), 0 0 50px rgba(255,107,0,0.25)",
+            }}
+          />
+        )}
         {caption ? (
           <div
             style={{
@@ -706,10 +720,17 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
       }}
     >
       {resolvedSrc ? (
-        <Img
-          src={staticFile(resolvedSrc)}
-          style={{ maxWidth: "100%", maxHeight: layout.px(260), objectFit: "contain", borderRadius: layout.radius.chip }}
-        />
+        isVideo ? (
+          <OffthreadVideo
+            src={staticFile(resolvedSrc)}
+            style={{ maxWidth: "100%", maxHeight: layout.px(260), objectFit: "contain", borderRadius: layout.radius.chip }}
+          />
+        ) : (
+          <Img
+            src={staticFile(resolvedSrc)}
+            style={{ maxWidth: "100%", maxHeight: layout.px(260), objectFit: "contain", borderRadius: layout.radius.chip }}
+          />
+        )
       ) : (
         <span
           style={{

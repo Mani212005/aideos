@@ -14,6 +14,10 @@ import type { Film } from '../src/dl/schema.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence } from '../backend/audio.ts'
 import { executeCritique } from '../backend/critique/engine.ts'
 import { extractSpokenBlocks as extractSpokenVoiceoverBlocks, buildFilmPartsFromScript, hasScreenplayTags } from '../backend/scriptIntake.ts'
+import dotenv from 'dotenv'
+dotenv.config({ path: path.resolve(__dirname, '../.env'), quiet: true })
+import { createEngine } from '../backend/engine/index.ts'
+import type { VideoJobSpec } from '../backend/engine/types.ts'
 
 const filmsDir = path.resolve(__dirname, '../src/dl/films');
 const videosDir = path.resolve(__dirname, '../videos');
@@ -51,6 +55,126 @@ const readBody = (req: IncomingMessage) =>
     req.on('error', reject);
   });
 
+interface BrollJobRecord {
+  jobId: string;
+  filmId: string;
+  shotId: string;
+  prompt: string;
+  state: 'queued' | 'running' | 'done' | 'failed';
+  progress: number;
+  error?: string;
+  footageSrc?: string;
+  startedAt: number;
+  finishedAt?: number;
+}
+
+const brollJobs = new Map<string, BrollJobRecord>();
+
+async function startBrollJob(filmId: string, shotId: string, promptText: string, seconds: number): Promise<BrollJobRecord> {
+  const engine = createEngine('ssh-wangp');
+  const spec: VideoJobSpec = {
+    prompt: promptText.replace(/\s*\n+\s*/g, ' ').trim(),
+    seconds: Math.min(Math.max(seconds, 3), 8),
+    width: 832,
+    height: 480,
+    fps: 16,
+    modelProfile: 'small',
+  };
+
+  const handle = await engine.submit(spec);
+  const record: BrollJobRecord = {
+    jobId: handle.jobId,
+    filmId,
+    shotId,
+    prompt: promptText,
+    state: 'running',
+    progress: 0.05,
+    startedAt: Date.now(),
+  };
+  brollJobs.set(handle.jobId, record);
+
+  // Background polling loop
+  (async () => {
+    try {
+      while (true) {
+        await new Promise((r) => setTimeout(r, 6000));
+        const st = await engine.status(handle.jobId);
+        const current = brollJobs.get(handle.jobId);
+        if (!current) break;
+
+        current.state = st.state;
+        if (typeof st.progress === 'number') {
+          current.progress = Math.max(current.progress, st.progress);
+        }
+
+        if (st.state === 'done') {
+          const footageDir = path.resolve(__dirname, '../public/footage');
+          if (!fs.existsSync(footageDir)) fs.mkdirSync(footageDir, { recursive: true });
+          const relPath = `footage/${filmId}_${shotId}.mp4`;
+          const destPath = path.join(footageDir, `${filmId}_${shotId}.mp4`);
+          await engine.fetchOutput(handle.jobId, destPath);
+
+          current.footageSrc = relPath;
+          current.progress = 1;
+          current.finishedAt = Date.now();
+
+          // Auto-wire footage into film file so it persists immediately
+          try {
+            const filmPath = path.join(filmsDir, `${filmId}.ts`);
+            if (fs.existsSync(filmPath)) {
+              const fileContent = fs.readFileSync(filmPath, 'utf8');
+              const jsonMatch = fileContent.match(/=\s*(\{[\s\S]*\})\s*;/);
+              if (jsonMatch) {
+                const filmObj: Film = JSON.parse(jsonMatch[1]);
+                const targetShot = filmObj.shots.find((s) => s.id === shotId);
+                if (targetShot) {
+                  targetShot.needsFootage = true;
+                  const existingInset = targetShot.blocks.find((b) => b.c === 'AnalogyInset');
+                  if (existingInset) {
+                    (existingInset as any).src = relPath;
+                    (existingInset as any).fullScreenHero = true;
+                  } else {
+                    targetShot.blocks = [
+                      {
+                        c: 'AnalogyInset',
+                        caption: (targetShot.visualDirection || promptText || 'GPU B-Roll').slice(0, 60),
+                        src: relPath,
+                        fullScreenHero: true,
+                      } as any,
+                      ...targetShot.blocks.filter((b) => b.c !== 'AnalogyInset'),
+                    ];
+                  }
+                  fs.writeFileSync(filmPath, filmModule(filmObj), 'utf8');
+                  console.log(`[broll] Successfully wired ${relPath} into shot ${shotId} of ${filmId}`);
+                }
+              }
+            }
+          } catch (e) {
+            console.error(`[broll] Failed to auto-wire footage into film file:`, e);
+          }
+          break;
+        }
+
+        if (st.state === 'failed') {
+          current.error = st.error || 'GPU render failed';
+          current.finishedAt = Date.now();
+          console.error(`[broll] Job ${handle.jobId} failed:`, current.error);
+          break;
+        }
+      }
+    } catch (err: any) {
+      const current = brollJobs.get(handle.jobId);
+      if (current) {
+        current.state = 'failed';
+        current.error = err?.message || String(err);
+      }
+      console.error(`[broll] Polling error on ${handle.jobId}:`, err);
+    }
+  })();
+
+  return record;
+}
+
 // Vite plugin to provide simple read/write API for films and video rendering
 function filmApiPlugin(): Plugin {
   return {
@@ -76,6 +200,22 @@ function filmApiPlugin(): Plugin {
                 sendJson(res, 400, { error: 'film is required' });
                 return;
               }
+
+              // Enforce rule: Don't render video till B-roll is complete and footage is retrieved
+              const pendingBroll = (film.shots || []).filter((s) => {
+                if (!s.needsFootage) return false;
+                const relPath = `footage/${film.id}_${s.id}.mp4`;
+                const fullPath = path.resolve(__dirname, '../public', relPath);
+                return !fs.existsSync(fullPath);
+              });
+              if (pendingBroll.length > 0) {
+                sendJson(res, 400, {
+                  error: `Cannot render video: GPU B-Roll footage is still pending for ${pendingBroll.length} shot(s) (${pendingBroll.map(s => s.id).join(', ')}). Please complete B-roll generation first.`,
+                  pendingShotIds: pendingBroll.map((s) => s.id),
+                });
+                return;
+              }
+
               const outDir = path.resolve(__dirname, '../out');
               if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
@@ -121,6 +261,125 @@ function filmApiPlugin(): Plugin {
             .catch((err) => {
               sendJson(res, 500, { error: String(err) });
             });
+          return;
+        }
+
+        // Handle /api/broll/generate (Triggers GPU diffusion generation on remote box for B-Roll shots)
+        if (url === '/api/broll/generate' && req.method === 'POST') {
+          void readBody(req)
+            .then(async (body: any) => {
+              const { filmId, shotId, prompt: customPrompt, allPending, film: clientFilm } = body || {};
+              if (!filmId) {
+                sendJson(res, 400, { error: 'filmId is required' });
+                return;
+              }
+
+              // Load film definition (prefer clientFilm if provided)
+              const filmPath = path.join(filmsDir, `${filmId}.ts`);
+              let filmObj: Film | null = clientFilm || null;
+              if (!filmObj && fs.existsSync(filmPath)) {
+                const content = fs.readFileSync(filmPath, 'utf8');
+                const jsonMatch = content.match(/=\s*(\{[\s\S]*\})\s*;/);
+                if (jsonMatch) filmObj = JSON.parse(jsonMatch[1]);
+              }
+
+              if (!filmObj) {
+                sendJson(res, 404, { error: `Film ${filmId} not found` });
+                return;
+              }
+
+              // If client passed updated film, persist it first so shot flags are synchronized
+              if (clientFilm) {
+                fs.writeFileSync(filmPath, filmModule(clientFilm), 'utf8');
+              }
+
+              const spawnedJobs: BrollJobRecord[] = [];
+
+              if (allPending) {
+                const pendingShots = filmObj.shots.filter((s) => {
+                  if (!s.needsFootage) return false;
+                  const relPath = `footage/${filmId}_${s.id}.mp4`;
+                  return !fs.existsSync(path.resolve(__dirname, '../public', relPath));
+                });
+
+                if (pendingShots.length === 0) {
+                  sendJson(res, 200, { ok: true, message: 'All B-roll footage already rendered and available', jobs: [] });
+                  return;
+                }
+
+                for (const shot of pendingShots) {
+                  const existing = Array.from(brollJobs.values()).find(
+                    (j) => j.filmId === filmId && j.shotId === shot.id && (j.state === 'running' || j.state === 'queued')
+                  );
+                  if (existing) {
+                    spawnedJobs.push(existing);
+                  } else {
+                    const promptText = shot.visualDirection || shot.scriptText || 'Cinematic photoreal scene';
+                    const record = await startBrollJob(filmId, shot.id, promptText, shot.dur || 5);
+                    spawnedJobs.push(record);
+                  }
+                }
+              } else if (shotId) {
+                const shot = filmObj.shots.find((s) => s.id === shotId);
+                if (!shot) {
+                  sendJson(res, 404, { error: `Shot ${shotId} not found in film` });
+                  return;
+                }
+
+                const existing = Array.from(brollJobs.values()).find(
+                  (j) => j.filmId === filmId && j.shotId === shotId && (j.state === 'running' || j.state === 'queued')
+                );
+                if (existing) {
+                  spawnedJobs.push(existing);
+                } else {
+                  const promptText = customPrompt || shot.visualDirection || shot.scriptText || 'Cinematic photoreal scene';
+                  const record = await startBrollJob(filmId, shot.id, promptText, shot.dur || 5);
+                  spawnedJobs.push(record);
+                }
+              } else {
+                sendJson(res, 400, { error: 'Either shotId or allPending must be provided' });
+                return;
+              }
+
+              sendJson(res, 200, { ok: true, jobs: spawnedJobs });
+            })
+            .catch((err) => {
+              console.error('[broll] Error in /api/broll/generate:', err);
+              sendJson(res, 500, { error: String(err) });
+            });
+          return;
+        }
+
+        // Handle /api/broll/status (Check live GPU progress and existing footage)
+        if (url === '/api/broll/status' && req.method === 'GET') {
+          const parsedUrl = new URL(req.url || '', 'http://localhost');
+          const filmId = parsedUrl.searchParams.get('filmId');
+          if (!filmId) {
+            sendJson(res, 400, { error: 'filmId query parameter is required' });
+            return;
+          }
+
+          const footageDir = path.resolve(__dirname, '../public/footage');
+          const existingFootage: Record<string, string> = {};
+          if (fs.existsSync(footageDir)) {
+            const files = fs.readdirSync(footageDir);
+            for (const f of files) {
+              if (f.startsWith(`${filmId}_`) && f.endsWith('.mp4')) {
+                const shotId = f.slice(`${filmId}_`.length, -4);
+                existingFootage[shotId] = `footage/${f}`;
+              }
+            }
+          }
+
+          const jobs = Array.from(brollJobs.values()).filter((j) => j.filmId === filmId);
+          const isGenerating = jobs.some((j) => j.state === 'queued' || j.state === 'running');
+
+          sendJson(res, 200, {
+            ok: true,
+            jobs,
+            isGenerating,
+            existingFootage,
+          });
           return;
         }
 

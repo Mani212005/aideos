@@ -64,6 +64,19 @@ export default function App() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // GPU B-Roll generation state
+  const [isGeneratingBroll, setIsGeneratingBroll] = useState<boolean>(false);
+  const [brollProgress, setBrollProgress] = useState<{ activeShotId?: string; progress: number; message: string; count: number; total: number } | null>(null);
+
+  const pendingBrollShots = useMemo(() => {
+    if (!film || !film.shots) return [];
+    return film.shots.filter((s) => {
+      if (!s.needsFootage) return false;
+      const hasInsetWithSrc = s.blocks.some((b) => b.c === "AnalogyInset" && Boolean((b as any).src));
+      return !hasInsetWithSrc;
+    });
+  }, [film]);
+
   // Playback & Playhead state
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentFrame, setCurrentFrame] = useState<number>(0);
@@ -423,7 +436,95 @@ export default function App() {
     }
   };
 
+  const handleGenerateVideoWithBroll = async () => {
+    if (pendingBrollShots.length > 0) {
+      setIsGeneratingBroll(true);
+      try {
+        playerRef.current?.pause();
+      } catch (_) {}
+      setStatus({ ok: true, text: `🎬 Triggering GPU video generation for ${pendingBrollShots.length} B-Roll scene(s) on NVIDIA L4 (Wan2.1)...` });
+
+      try {
+        const genRes = await fetch("/api/broll/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filmId: film.id, allPending: true, film }),
+        });
+        const genData = await genRes.json();
+        if (!genRes.ok) throw new Error(genData.error || "Failed to submit GPU B-Roll jobs");
+
+        // Poll until all B-roll jobs are done
+        let done = false;
+        while (!done) {
+          await new Promise((r) => setTimeout(r, 4000));
+          const stRes = await fetch(`/api/broll/status?filmId=${film.id}`);
+          if (stRes.ok) {
+            const stData = await stRes.json();
+            const jobs: any[] = stData.jobs || [];
+            const running = jobs.filter((j) => j.state === "running" || j.state === "queued");
+            const failed = jobs.filter((j) => j.state === "failed");
+            if (failed.length > 0) {
+              console.warn("Some B-roll jobs failed:", failed);
+            }
+
+            if (running.length === 0) {
+              done = true;
+            } else {
+              const first = running[0];
+              const pct = Math.round((first.progress || 0) * 100);
+              setBrollProgress({
+                activeShotId: first.shotId,
+                progress: pct,
+                message: `Denoising on NVIDIA L4 with Wan2.1: ${pct}%`,
+                count: jobs.length - running.length,
+                total: jobs.length,
+              });
+              setStatus({ ok: true, text: `🎬 Generating B-roll (${first.shotId}): ${pct}% on GPU...` });
+            }
+          }
+        }
+
+        // Fetch updated film with footage wired in
+        const filmRes = await fetch(`/api/films/${film.id}`);
+        if (filmRes.ok) {
+          const filmData = await filmRes.json();
+          if (filmData.film) {
+            setFilm(filmData.film);
+          }
+        }
+
+        setStatus({ ok: true, text: "✓ All B-roll footage ready! Displaying final video product." });
+        setRegenerateKey((k) => k + 1);
+      } catch (err: any) {
+        setStatus({ ok: false, text: `B-Roll GPU error: ${err.message || String(err)}` });
+      } finally {
+        setIsGeneratingBroll(false);
+        setBrollProgress(null);
+      }
+    } else {
+      setIsRegenerating(true);
+      setStatus({ ok: true, text: "🔄 Video preview regenerating with latest theme and fonts..." });
+      try {
+        playerRef.current?.pause();
+      } catch (_) {}
+      setTimeout(() => {
+        setRegenerateKey((k) => k + 1);
+        setIsRegenerating(false);
+        setStatus({ ok: true, text: "✓ Video preview successfully recompiled with latest theme & settings!" });
+        setTimeout(() => setStatus(null), 4000);
+      }, 450);
+    }
+  };
+
   const handleExport = async () => {
+    if (pendingBrollShots.length > 0) {
+      alert(`Cannot export video: ${pendingBrollShots.length} B-Roll shot(s) are still missing footage. Please click "Generate Video" to synthesize the footage on the GPU first.`);
+      return;
+    }
+    if (isGeneratingBroll) {
+      alert("GPU B-Roll generation is currently running on the NVIDIA L4 worker. Please wait for footage to download before exporting.");
+      return;
+    }
     setIsExporting(true);
     setExportResult(null);
     setExportError(null);
@@ -816,25 +917,31 @@ export default function App() {
           {mode === "video" && (
             <div className="flex items-center gap-2">
               <button
-                onClick={() => {
-                  setIsRegenerating(true);
-                  setStatus({ ok: true, text: "🔄 Video preview regenerating with latest theme and fonts..." });
-                  try {
-                    playerRef.current?.pause();
-                  } catch (_) {}
-                  setTimeout(() => {
-                    setRegenerateKey((k) => k + 1);
-                    setIsRegenerating(false);
-                    setStatus({ ok: true, text: "✓ Video preview successfully recompiled with latest theme & settings!" });
-                    setTimeout(() => setStatus(null), 4000);
-                  }, 450);
-                }}
-                disabled={isRegenerating}
-                className="text-xs px-3.5 py-1.5 rounded bg-yellow-500 hover:bg-yellow-400 text-black font-bold flex items-center gap-1.5 shadow-md transition-all active:scale-95"
-                title="Force re-render Remotion timeline with latest Pretext captions & transitions"
+                onClick={handleGenerateVideoWithBroll}
+                disabled={isRegenerating || isGeneratingBroll}
+                className={`text-xs px-3.5 py-1.5 rounded font-bold flex items-center gap-1.5 shadow-md transition-all active:scale-95 ${
+                  pendingBrollShots.length > 0
+                    ? "bg-amber-500 hover:bg-amber-400 text-black animate-pulse"
+                    : "bg-yellow-500 hover:bg-yellow-400 text-black"
+                }`}
+                title={
+                  pendingBrollShots.length > 0
+                    ? `Generate video: Render ${pendingBrollShots.length} pending B-roll scenes on GPU box`
+                    : "Force re-render Remotion timeline with latest settings"
+                }
               >
-                <span className={isRegenerating ? "animate-spin" : ""}>🔄</span>
-                <span>{isRegenerating ? "Regenerating..." : "Regenerate"}</span>
+                <span className={isRegenerating || isGeneratingBroll ? "animate-spin" : ""}>
+                  {isGeneratingBroll ? "🎬" : "🔄"}
+                </span>
+                <span>
+                  {isGeneratingBroll
+                    ? `GPU Generating (${brollProgress?.progress ?? 0}%)...`
+                    : isRegenerating
+                    ? "Regenerating..."
+                    : pendingBrollShots.length > 0
+                    ? `Generate Video (${pendingBrollShots.length} B-Roll)`
+                    : "Regenerate Video"}
+                </span>
               </button>
               <button
                 onClick={handleExport}
@@ -960,6 +1067,33 @@ export default function App() {
                     <span>📝</span>
                     <span>Go to Script Studio & Generate Voiceover</span>
                   </button>
+                </div>
+              ) : isGeneratingBroll ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#0C0C10]">
+                  <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4 text-3xl animate-bounce">
+                    🎬
+                  </div>
+                  <h3 className="text-base font-bold text-white mb-1 font-mono">
+                    Synthesizing Diffusion Video on GPU Box
+                  </h3>
+                  <p className="text-xs text-amber-400 font-mono mb-4">
+                    Remote Box: 100.98.174.122 · NVIDIA L4 (24GB) · Wan2.1 Diffusion
+                  </p>
+                  <p className="text-xs text-gray-400 max-w-md mb-6 leading-relaxed">
+                    Per production rules, the video player will unlock and present the final video once all diffusion video footage is completely rendered and retrieved.
+                  </p>
+                  <div className="w-72 bg-gray-800 rounded-full h-3 mb-3 overflow-hidden border border-gray-700">
+                    <div
+                      className="bg-gradient-to-r from-amber-500 via-[#635BFF] to-emerald-400 h-3 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.max(5, brollProgress?.progress ?? 15)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs font-mono text-gray-200">
+                    {brollProgress ? `${brollProgress.message}` : "Submitting Wan2.1 generation jobs to remote GPU box..."}
+                  </div>
+                  <div className="text-[11px] font-mono text-gray-500 mt-2">
+                    Generating shot footage {brollProgress?.count ?? 0} of {brollProgress?.total ?? pendingBrollShots.length}...
+                  </div>
                 </div>
               ) : (
                 <>

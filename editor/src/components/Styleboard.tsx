@@ -3,7 +3,7 @@
  * SVG character animations, metaphor badges, 3D camera controls, and animated primitive specimens.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { Film, Shot, Block, BackgroundPreset, CameraAngle } from "../../../src/dl/schema";
 import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
 import { CHARACTER_RIGS } from "../../../src/dl/characters";
@@ -255,6 +255,64 @@ export function Styleboard({
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const [editingShotIdx, setEditingShotIdx] = useState<number | null>(null);
 
+  // B-Roll GPU job tracking state
+  const [brollJobStatus, setBrollJobStatus] = useState<Record<string, { state: string; progress?: number; footageSrc?: string; error?: string }>>({});
+  const [existingFootage, setExistingFootage] = useState<Record<string, string>>({});
+  const [isTriggeringBroll, setIsTriggeringBroll] = useState<Record<string, boolean>>({});
+
+  // Poll B-roll status on mount and periodically while in Styleboard
+  useEffect(() => {
+    let timer: any;
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch(`/api/broll/status?filmId=${film.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.existingFootage) setExistingFootage(data.existingFootage);
+          if (data.jobs && Array.isArray(data.jobs)) {
+            const map: Record<string, any> = {};
+            data.jobs.forEach((j: any) => { map[j.shotId] = j; });
+            setBrollJobStatus(map);
+          }
+        }
+      } catch (_) {}
+    };
+
+    fetchStatus();
+    timer = setInterval(fetchStatus, 4000);
+    return () => clearInterval(timer);
+  }, [film.id]);
+
+  const handleTriggerBroll = async (shotId: string, currentFilmState?: Film) => {
+    const targetFilm = currentFilmState || film;
+    const shot = targetFilm.shots.find((s) => s.id === shotId);
+    if (!shot) return;
+    setIsTriggeringBroll((prev) => ({ ...prev, [shotId]: true }));
+    try {
+      const res = await fetch('/api/broll/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filmId: targetFilm.id,
+          shotId: shot.id,
+          prompt: shot.visualDirection || shot.scriptText,
+          film: targetFilm,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setSaveToast(`🚀 Started GPU video generation for ${shotId} on NVIDIA L4 (Wan2.1)`);
+        setTimeout(() => setSaveToast(null), 5000);
+      } else {
+        alert(`B-Roll generation error: ${data.error}`);
+      }
+    } catch (e: any) {
+      alert(`Network error: ${e?.message || e}`);
+    } finally {
+      setIsTriggeringBroll((prev) => ({ ...prev, [shotId]: false }));
+    }
+  };
+
   // Derive active theme directly from film.theme (single source of truth)
   const currentBg: BackgroundPreset = film.theme?.background || "paper-white";
   const currentCamera: CameraAngle = film.theme?.cameraAngle || "isometric";
@@ -344,11 +402,21 @@ export function Styleboard({
     } else if (mode === "b-roll") {
       // Set needsFootage flag
       const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat");
-      updatedShots[shotIdx] = {
+      const updatedShot = {
         ...shot,
         needsFootage: true,
         blocks: filteredBlocks,
       };
+      updatedShots[shotIdx] = updatedShot;
+      const updatedFilm = {
+        ...film,
+        shots: updatedShots,
+      };
+      onUpdateFilm(updatedFilm);
+
+      // Whenever B-roll is selected, start making video immediately on GPU
+      void handleTriggerBroll(shot.id, updatedFilm);
+      return;
     } else {
       // Standard narrative text / devices
       const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat");
@@ -605,6 +673,56 @@ export function Styleboard({
                         </button>
                       </div>
                     </div>
+
+                    {/* B-Roll GPU Generation Live Banner */}
+                    {hasBroll && (
+                      <div className="px-4 py-2 bg-[#171720] border-b border-[#222] flex items-center justify-between text-xs">
+                        {brollJobStatus[shot.id]?.state === "running" || brollJobStatus[shot.id]?.state === "queued" ? (
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2 text-amber-400 font-mono">
+                              <span className="animate-spin">🔄</span>
+                              <span>GPU Generating... {Math.round((brollJobStatus[shot.id]?.progress ?? 0) * 100)}%</span>
+                            </div>
+                            <span className="text-[10px] text-amber-500/70 font-mono">NVIDIA L4 · Wan2.1</span>
+                          </div>
+                        ) : existingFootage[shot.id] || shot.blocks.some((b) => b.c === "AnalogyInset" && (b as any).src) ? (
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-1.5 text-emerald-400 font-mono">
+                              <span>✓</span>
+                              <span className="truncate max-w-[180px]">
+                                Footage Ready ({existingFootage[shot.id] || (shot.blocks.find((b) => b.c === "AnalogyInset") as any)?.src})
+                              </span>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTriggerBroll(shot.id);
+                              }}
+                              disabled={isTriggeringBroll[shot.id]}
+                              className="text-[10px] font-mono bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded transition-colors cursor-pointer"
+                              title="Re-render footage with Wan2.1 on GPU"
+                            >
+                              ⚡ Re-Generate
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-gray-400 font-mono">🎬 B-Roll Footage Pending</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTriggerBroll(shot.id);
+                              }}
+                              disabled={isTriggeringBroll[shot.id]}
+                              className="text-[10px] font-mono font-bold bg-amber-500 hover:bg-amber-400 text-black px-2.5 py-0.5 rounded transition-all shadow cursor-pointer"
+                              title="Generate photoreal diffusion video with Wan2.1 on remote GPU"
+                            >
+                              {isTriggeringBroll[shot.id] ? "Connecting..." : "⚡ Generate Video on GPU"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Simulated Remotion Visual Frame */}
                     <div 

@@ -103,6 +103,17 @@ export const ShotModal: React.FC<ShotModalProps> = ({
         needsFootage: true,
         blocks: filteredBlocks,
       });
+
+      // Immediately trigger GPU B-roll generation on the remote GPU box
+      fetch("/api/broll/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filmId: film.id,
+          shotId: shot.id,
+          prompt: shot.visualDirection || shot.scriptText,
+        }),
+      }).catch((err) => console.error("Failed to trigger B-roll:", err));
     } else {
       const filteredBlocks = shot.blocks.filter((b) => b.c !== "CharacterBeat");
       updateCurrentShot({
@@ -248,6 +259,38 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                     durationInFrames={1}
                     start={0}
                   />
+                </div>
+              </div>
+            )}
+
+            {/* Live GPU B-Roll Preview Box */}
+            {isBrollMode && (
+              <div className="bg-[#121218] border border-amber-500/30 rounded-2xl p-4 flex flex-col items-center justify-center min-h-[190px] relative overflow-hidden shadow-inner">
+                <div className="absolute top-2.5 left-3 text-[10px] font-mono text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <span>GPU B-Roll · Wan2.1 Diffusion (NVIDIA L4)</span>
+                </div>
+                <div className="w-full flex flex-col items-center justify-center pt-5 gap-2">
+                  <div className="text-3xl">🎬</div>
+                  <p className="text-[11px] text-gray-300 font-mono text-center max-w-xs">
+                    {shot.visualDirection ? `"${shot.visualDirection}"` : "Cinematic scene prompt"}
+                  </p>
+                  <button
+                    onClick={() => {
+                      fetch("/api/broll/generate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          filmId: film.id,
+                          shotId: shot.id,
+                          prompt: shot.visualDirection || shot.scriptText,
+                        }),
+                      }).catch(() => {});
+                    }}
+                    className="mt-1 px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black text-xs font-mono font-bold rounded-lg transition-colors shadow flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>⚡</span> Trigger / Re-generate Video on GPU
+                  </button>
                 </div>
               </div>
             )}
