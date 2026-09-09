@@ -222,6 +222,7 @@ test("V-4: For each metaphor type, its rendered SVG root declares viewBox and pr
   }
 });
 
+// V-5: Render high-res PNG stills for all metaphor types in Long and Reel for visual review
 test("V-5 / Visual Review: Render high-res PNG stills for all metaphor types in Long and Reel", (t) => {
   if (process.env.RUN_VISUAL_TESTS !== "1") {
     t.skip("Visual review test: run with npm run test:visual");
