@@ -1,0 +1,43 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:02.713
+Every image AI you've heard of just swapped its brain.
+
+00:00:02.913 --> 00:00:10.933
+In twenty twenty two, Stable Diffusion, Midjourney four, and Runway Gen-1 all ran on the same backbone: the convolutional U-Net.
+
+00:00:11.133 --> 00:00:18.695
+U-Net denoises through a fixed hierarchy: local convolutions, downsampling, a bottleneck, then upsampling back out.
+
+00:00:18.895 --> 00:00:27.357
+That hierarchy is a hardcoded inductive bias. It's efficient at small resolutions, but convolution compute hits a quality ceiling as scale grows.
+
+00:00:27.557 --> 00:00:30.378
+Convolutions only ever see their local neighborhood.
+
+00:00:30.578 --> 00:00:34.111
+So the field looked at what worked in language, and started over.
+
+00:00:34.311 --> 00:00:43.479
+A Diffusion Transformer treats an image exactly like a sentence. It slices the latent into two-by-two patches and flattens them into a sequence of visual tokens.
+
+00:00:43.679 --> 00:00:51.309
+Standard Vision Transformer blocks then run self-attention across that sequence, so every patch can relate to every other patch directly.
+
+00:00:51.509 --> 00:00:56.148
+No fixed neighborhood. No multiscale bottleneck. Just global attention.
+
+00:00:56.348 --> 00:01:01.944
+Timestep t and prompt c modulate the block through adaptive layer norm, gate initialized at zero.
+
+00:01:02.144 --> 00:01:10.062
+The block starts as pure identity, then learns exactly how much to speak, replacing U-Net's tangle of cross-attention injection layers.
+
+00:01:10.262 --> 00:01:12.931
+That simplicity is what let the architecture scale.
+
+00:01:13.131 --> 00:01:23.058
+Transformers obey scaling laws. More parameters, more compute, drive Frechet Inception Distance monotonically lower, with crisper text alignment at every step.
+
+00:01:23.258 --> 00:01:31.004
+Sora. Flux. SD3. Movie Gen. Every state of the art visual generator now runs the same architecture as your LLM.
