@@ -1,7 +1,3 @@
-/**
- * File Description: Production Film Definition for "What is JEPA" explaining Joint Embedding Predictive Architecture.
- */
-
 import type { Film } from "../schema";
 
 export const whatIsJepaFilm: Film = {
@@ -126,12 +122,17 @@ export const whatIsJepaFilm: Film = {
   "shots": [
     {
       "id": "the-hook",
-      "dur": 17.5192,
+      "position": 0,
+      "start": 0,
+      "end": 17.986,
+      "startSec": 0,
+      "dur": 17.986,
       "stage": "anchor",
       "look": "intro",
       "move": "cut",
       "drift": true,
       "zoom": 1,
+      "scriptText": "Meet Yann LeCun, the pioneer Meta hired to lead its artificial intelligence lab. While the tech industry went all in on chatbots, he has been arguing the one thing almost nobody wanted to hear: LLMs are a dead end that will never achieve real physical understanding.",
       "visualDirection": "Black screen. Blinking cursor types quote. Yann LeCun rubber stamp.",
       "speed": 1,
       "blocks": [
@@ -230,17 +231,19 @@ export const whatIsJepaFilm: Film = {
             }
           ]
         }
-      ],
-      "scriptText": "Meet Yann LeCun, the pioneer Meta hired to lead its artificial intelligence lab. While the tech industry went all in on chatbots, he has been arguing the one thing almost nobody wanted to hear: LLMs are a dead end that will never achieve real physical understanding."
+      ]
     },
     {
       "id": "who-is-lecun",
+      "position": 17.986,
+      "startSec": 17.986,
       "dur": 16.7351,
       "stage": "frame",
       "look": "lecun",
       "move": "pan",
       "drift": true,
       "zoom": 1,
+      "scriptText": "A French American computer scientist and NYU professor, LeCun won the 2018 Turing Award for inventing convolutional networks. For over a decade, he directed FAIR as Meta Chief AI Scientist reporting straight to Mark Zuckerberg.",
       "visualDirection": "Split screen: LLM text wall vs toddler physics understanding.",
       "speed": 1,
       "blocks": [
@@ -258,17 +261,19 @@ export const whatIsJepaFilm: Film = {
           "c": "AnalogyInset",
           "caption": "Visual B-Roll"
         }
-      ],
-      "scriptText": "A French American computer scientist and NYU professor, LeCun won the 2018 Turing Award for inventing convolutional networks. For over a decade, he directed FAIR as Meta Chief AI Scientist reporting straight to Mark Zuckerberg."
+      ]
     },
     {
       "id": "the-breakup",
+      "position": 34.721,
+      "startSec": 34.721,
       "dur": 15.5588,
       "stage": "frame",
       "look": "breakup",
       "move": "pan",
       "drift": true,
       "zoom": 1,
+      "scriptText": "In late 2025, LeCun stepped down from Meta to cofound AMI Labs, raising over one billion dollars in seed funding from Nvidia, Jeff Bezos, and Eric Schmidt to build machines with genuine physical intelligence.",
       "visualDirection": "Meta logo cracking. AMI Labs launch with $1B+ seed.",
       "metaphor": "rocket-launch",
       "speed": 1,
@@ -285,11 +290,12 @@ export const whatIsJepaFilm: Film = {
           "format": "plain",
           "suffix": "B+"
         }
-      ],
-      "scriptText": "In late 2025, LeCun stepped down from Meta to cofound AMI Labs, raising over one billion dollars in seed funding from Nvidia, Jeff Bezos, and Eric Schmidt to build machines with genuine physical intelligence."
+      ]
     },
     {
       "id": "canvas-anchor-1",
+      "position": 50.28,
+      "startSec": 50.28,
       "dur": 9.4915,
       "stage": "none",
       "look": [
@@ -299,18 +305,21 @@ export const whatIsJepaFilm: Film = {
       "move": "zoom-out",
       "drift": true,
       "zoom": 0.85,
+      "scriptText": "To understand why he walked away from chatbots, we have to look at the fundamental difference between predicting tokens and building internal world models.",
       "speed": 1,
-      "blocks": [],
-      "scriptText": "To understand why he walked away from chatbots, we have to look at the fundamental difference between predicting tokens and building internal world models."
+      "blocks": []
     },
     {
       "id": "jepa-concept-part1",
+      "position": 59.772,
+      "startSec": 59.772,
       "dur": 16.5579,
       "stage": "frame",
       "look": "jepa-concept",
       "move": "pan",
       "drift": true,
       "zoom": 1,
+      "scriptText": "JEPA stands for Joint Embedding Predictive Architecture. Generative models waste compute redrawing every missing pixel. JEPA does something smarter: it predicts abstract, high-level representations, throwing away the noise and keeping the core meaning.",
       "visualDirection": "Generative extra finger vs JEPA abstract cloud.",
       "metaphor": "glowing-cluster",
       "speed": 1,
@@ -324,17 +333,19 @@ export const whatIsJepaFilm: Film = {
           "c": "Body",
           "text": "Predicts abstract representations instead of reconstructing every tiny detail."
         }
-      ],
-      "scriptText": "JEPA stands for Joint Embedding Predictive Architecture. Generative models waste compute redrawing every missing pixel. JEPA does something smarter: it predicts abstract, high-level representations, throwing away the noise and keeping the core meaning."
+      ]
     },
     {
       "id": "joint-encoders",
+      "position": 76.33,
+      "startSec": 76.33,
       "dur": 15.0636,
       "stage": "anchor",
       "look": "encoders",
       "move": "pan",
       "drift": true,
       "zoom": 1,
+      "scriptText": "Inside JEPA, two neural networks, a context encoder and a target encoder, compare notes in embedding space. The architecture learns how the physical world behaves entirely by observing video without human labels.",
       "visualDirection": "Context encoder and target encoder comparing notes in embedding space.",
       "speed": 1,
       "blocks": [
@@ -351,11 +362,12 @@ export const whatIsJepaFilm: Film = {
           "c": "Body",
           "text": "Learning what goes together in the real world entirely by watching."
         }
-      ],
-      "scriptText": "Inside JEPA, two neural networks, a context encoder and a target encoder, compare notes in embedding space. The architecture learns how the physical world behaves entirely by observing video without human labels."
+      ]
     },
     {
       "id": "canvas-anchor-2",
+      "position": 91.394,
+      "startSec": 91.394,
       "dur": 8.0893,
       "stage": "none",
       "look": [
@@ -365,18 +377,21 @@ export const whatIsJepaFilm: Film = {
       "move": "zoom-out",
       "drift": true,
       "zoom": 0.85,
+      "scriptText": "From simple image understanding, the research team rapidly scaled the architecture into interactive spatial world models.",
       "speed": 1,
-      "blocks": [],
-      "scriptText": "From simple image understanding, the research team rapidly scaled the architecture into interactive spatial world models."
+      "blocks": []
     },
     {
       "id": "world-models-evolution",
+      "position": 99.483,
+      "startSec": 99.483,
       "dur": 15.3459,
       "stage": "frame",
       "look": "world-models",
       "move": "pan",
       "drift": true,
       "zoom": 1,
+      "scriptText": "The architecture evolved from Image JEPA to Video JEPA 2, trained on over one million hours of video. It can control robotic arms to manipulate unfamiliar objects in new environments with minimal real-world demonstration data.",
       "visualDirection": "Timeline from I-JEPA to V-JEPA to V-JEPA 2 controlling robot arm.",
       "speed": 1,
       "blocks": [
@@ -404,17 +419,19 @@ export const whatIsJepaFilm: Film = {
           "delayFrames": 30,
           "fullScreenHero": true
         }
-      ],
-      "scriptText": "The architecture evolved from Image JEPA to Video JEPA 2, trained on over one million hours of video. It can control robotic arms to manipulate unfamiliar objects in new environments with minimal real-world demonstration data."
+      ]
     },
     {
       "id": "how-to-try",
+      "position": 114.829,
+      "startSec": 114.829,
       "dur": 12.3045,
       "stage": "anchor",
       "look": "world-models",
       "move": "pan",
       "drift": true,
       "zoom": 1,
+      "scriptText": "Meta has open-sourced V-JEPA 2 on Hugging Face and GitHub. With just a few lines of Python using the transformers library, developers can load the model and test world prediction.",
       "visualDirection": "Hugging Face & GitHub transformers open source.",
       "metaphor": "custom",
       "speed": 1,
@@ -428,17 +445,19 @@ export const whatIsJepaFilm: Film = {
           "c": "Body",
           "text": "Open source on Hugging Face & GitHub facebookresearch/vjepa2"
         }
-      ],
-      "scriptText": "Meta has open-sourced V-JEPA 2 on Hugging Face and GitHub. With just a few lines of Python using the transformers library, developers can load the model and test world prediction."
+      ]
     },
     {
       "id": "the-close",
+      "position": 127.133,
+      "startSec": 127.133,
       "dur": 12.7592,
       "stage": "anchor",
       "look": "conclusion",
       "move": "pan",
       "drift": true,
       "zoom": 1,
+      "scriptText": "While others race to scale autocomplete, Yann LeCun has placed his career on machines that simulate reality. If you enjoyed this breakdown, subscribe for more deep architectural explainers.",
       "visualDirection": "Pull back split screen: Chat window fades, glowing 3D world simulation.",
       "speed": 1,
       "blocks": [
@@ -451,8 +470,7 @@ export const whatIsJepaFilm: Film = {
           "c": "Body",
           "text": "Yann LeCun bet his entire career on real world intelligence."
         }
-      ],
-      "scriptText": "While others race to scale autocomplete, Yann LeCun has placed his career on machines that simulate reality. If you enjoyed this breakdown, subscribe for more deep architectural explainers."
+      ]
     }
   ],
   "voiceover": {
@@ -460,5 +478,17 @@ export const whatIsJepaFilm: Film = {
     "volume": 1,
     "speed": 1,
     "version": "1788118015571"
-  }
+  },
+  "audioClips": [
+    {
+      "id": "clip-voiceover-master",
+      "src": "voiceover_what-is-jepa.wav",
+      "position": 0,
+      "start": 0,
+      "end": 139.8918,
+      "volume": 1,
+      "speed": 1,
+      "channel": "voiceover"
+    }
+  ]
 };
