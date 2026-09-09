@@ -1,3 +1,6 @@
+/**
+ * File Description: Shadow Film module for the "Why Diffusion Transformers (DiT) Replaced U-Net" video package.
+ */
 import type { Film } from "../schema";
 
 export const whyDitReplacedUnetFilm: Film = {
