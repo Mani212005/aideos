@@ -104,7 +104,12 @@ test("R-4: Converted rig binds 100% valid semantic color tokens", () => {
 });
 
 // R-5: Render check: render one frame per pose preset and write images to disk for human review
-test("R-5 / Visual Review: Render high-res PNG stills for all pose presets to out/rigs/", () => {
+test("R-5 / Visual Review: Render high-res PNG stills for all pose presets to out/rigs/", (t) => {
+  if (process.env.RUN_VISUAL_TESTS !== "1") {
+    t.skip("Visual review test: run with npm run test:visual");
+    return;
+  }
+
   fs.mkdirSync(OUT_RIGS_DIR, { recursive: true });
 
   const svg = makeValidAnnotatedSvg();
