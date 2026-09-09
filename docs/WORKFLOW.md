@@ -120,7 +120,7 @@ Aideos is engineered around 4 strict architectural invariants:
 
 The Aideos Web Studio runs on `http://localhost:3001` (launched with the global terminal command `aideos`):
 
-* **📝 Script Studio**: Write and edit shot narration text, generate voiceovers, and inspect word timings.
+* **📝 Script Studio**: Write and edit screenplay narration text and generate voiceover audio directly from spoken dialogue.
 * **🗺️ Spatial Map**: Drag and drop nodes across the 2D infinite canvas, edit labels, and route directed edges.
 * **🎞️ Timeline & Trimmer**: Multi-track timeline displaying audio waveforms, shot cuts, and live playhead scrubbing.
 * **🎨 Studio Theme**: Select paper textures (Blueprint, Archival White, Charcoal), typography, and accent colors.

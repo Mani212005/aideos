@@ -161,7 +161,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
   const [duration, setDuration] = useState<number>(0);
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
 
-  // Load existing script and transcript on mount or when active film changes
+  // Load existing script and audio on mount or when active film changes
   useEffect(() => {
     let isMounted = true;
     setLoading(true);

@@ -496,7 +496,7 @@ function filmApiPlugin(): Plugin {
               return;
             }
 
-            // Extract ONLY spoken dialogue lines if screenplay format is present, or use spokenTextOverride directly from words
+            // Extract ONLY spoken dialogue lines if screenplay format is present, or use spoken text override directly
             const cleanText = spokenTextOverride && typeof spokenTextOverride === 'string' && spokenTextOverride.trim()
               ? spokenTextOverride.trim()
               : extractSpokenVoiceover(script || '');
