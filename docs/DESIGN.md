@@ -55,8 +55,9 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 ## ⚙️ 7 Core Editor Subsystems
 
 ### 1. Script Studio Layer (`ScriptEditor.tsx`)
-- **Purpose**: Narrative authoring studio where creators write spoken scripts, structure explanation blocks, and define visual direction cues per shot.
-- **Backend Sync**: Automatically triggers ElevenLabs/Kokoro TTS voiceover generation and derives timeline duration locks.
+- **Purpose**: Narrative authoring studio where creators write spoken scripts, structure explanation blocks, and define visual direction cues per shot using raw screenplay markdown or interactive Visual Studio cards.
+- **Claude Intake & Sub-Shots**: Parses timestamped sections, `[VISUAL]`, `[NARRATION]`, and `[ON SCREEN]` tag blocks with zero tag leakage into spoken dialogue, two-way sync, and automatic sub-shot compilation via `backend/scriptIntake.ts`.
+- **Backend Sync**: Automatically triggers Kokoro ONNX TTS voiceover generation and derives timeline duration locks.
 
 ### 2. Spatial Mind Map Layer (`MindMap.tsx`)
 - **Purpose**: Interactive 2D spatial canvas rendering the underlying graph topology (`CanvasNode` and `CanvasEdge`).

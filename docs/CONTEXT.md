@@ -161,12 +161,19 @@ Pre-built tactile paper backgrounds:
 ### `backend/audio.ts`
 * `trimSilence(samples, threshold)`: Trims leading and trailing silence samples (below amplitude threshold) from raw Float32Array audio.
 * `chunkTextForTTS(text, maxChars)`: Splits text blocks exceeding maxChars (~800 chars) at sentence boundaries for Kokoro ONNX.
-* `splitScriptIntoSegments(script)`: Splits a narration script into distinct shot-scoped segments (one per shot/beat) without slicing internal sentences.
+* `splitScriptIntoSegments(script)`: Splits a narration script into distinct shot-scoped segments (strictly by narration beats for Claude-tagged scripts, or blank-line paragraphs for untagged prose).
 * `measureAudioDuration(filePath)`: Measures exact audio file duration using ffprobe.
 * `concatAudioSegments(audioFiles, silenceWavPath, outWavPath)`: Merges audio clips with fixed pause buffers via FFmpeg concat filters.
 * `produceAudioPipeline(script, outDir, options)`: Generates audio-first synthesis, timeline offset calculations, and VTT caption files.
 * `buildFilmFromAudioResult(title, audioResult, options)`: Compiles verified audio durations into a structured `Film` object.
 * `processAudioForFilm(film, outDir)`: Generates audio for a film using the neural audio pipeline.
+
+### `backend/scriptIntake.ts`
+* `parseClaudeScript(raw)`: Parses a raw Claude or legacy screenplay into structured `ScriptSegment` items containing ordered visual, narration, and on-screen beats.
+* `serializeSegmentsToScript(segments)`: Serializes structured segments back into canonical markdown with timestamp headers and bracket tags.
+* `hasScreenplayTags(raw)`: Returns true when raw script text contains at least one recognizable screenplay tag beat.
+* `extractSpokenBlocks(raw)`: Extracts strictly the spoken narration dialogue with zero visual or on-screen tag leakage.
+* `buildFilmPartsFromScript(raw)`: Compiles a Claude screenplay into Remotion-ready sub-shots, canvas nodes and edges, and on-screen `TextReveal` blocks.
 
 ### `backend/sync.ts`
 * `runSemanticVisualSync(film, captions)`: Evaluates spoken words against visual device blocks.
@@ -198,5 +205,5 @@ Pre-built tactile paper backgrounds:
 * **`MindMap.tsx`**: 2D infinite spatial canvas for dragging and connecting nodes.
 * **`TimelineEditor.tsx`**: Multi-track visual timeline with audio waveforms and playhead scrubbing.
 * **`CustomizationEditor.tsx`**: Studio theme customizer for paper textures, typography, and script-to-metaphor director.
-* **`ScriptEditor.tsx`**: Structured chapter and script text writer with instant voiceover generation.
+* **`ScriptEditor.tsx`**: Three-mode narrative authoring studio (Full Screenplay markdown, Visual Studio segment cards, and Spoken Text preview) with two-way sync, sub-shot scene compilation, and instant voiceover generation.
 * **`KineticCaptionEditor.tsx`**: Word-level subtitle editor with live frame seeking.
