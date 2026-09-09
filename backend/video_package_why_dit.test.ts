@@ -71,7 +71,7 @@ test("Video Package: satisfies all Aideos pacing and rhythm rules", () => {
   let deviceBlockCount = 0;
   for (const shot of film.shots) {
     for (const block of shot.blocks) {
-      if (DEVICE_BLOCKS.includes(block.c)) {
+      if ((DEVICE_BLOCKS as readonly string[]).includes(block.c)) {
         deviceBlockCount++;
       }
     }
