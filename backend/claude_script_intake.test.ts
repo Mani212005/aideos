@@ -354,3 +354,11 @@ test("extractSpokenBlocks never speaks visual or onscreen text even if script ha
   assert.deepEqual(spoken, [], "should return empty array rather than leaking visual instructions to TTS");
 });
 
+test("buildFilmPartsFromScript scales shot durations precisely to match targetDurationSec master clock", () => {
+  const parts = buildFilmPartsFromScript(MIXED_ORDER_SCRIPT, 45.5);
+  const totalDur = parts.shots.reduce((acc, s) => acc + s.dur, 0);
+  assert.equal(Number(totalDur.toFixed(2)), 45.5);
+  assert.equal(parts.durationSec, 45.5);
+});
+
+

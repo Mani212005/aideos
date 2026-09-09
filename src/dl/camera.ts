@@ -115,7 +115,12 @@ export const buildTimeline = (film: Film, targetDurationSec?: number): TimedShot
   };
 
   const baseTotalDur = film.shots.reduce((acc, s) => acc + getShotDur(s), 0);
-  const effectiveTotalSec = targetDurationSec && targetDurationSec > 0 ? targetDurationSec : baseTotalDur;
+  const effectiveTotalSec =
+    targetDurationSec && targetDurationSec > 0
+      ? targetDurationSec
+      : film.voiceover?.durationSec && film.voiceover.durationSec > 0
+        ? film.voiceover.durationSec
+        : baseTotalDur;
   const scaleRatio = baseTotalDur > 0 ? effectiveTotalSec / baseTotalDur : 1;
 
   return film.shots.map((shot, index) => {

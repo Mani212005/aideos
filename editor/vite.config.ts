@@ -175,13 +175,13 @@ function filmApiPlugin(): Plugin {
         // Handle /api/parse-script-scenes (Intelligently construct shots, visual directions & nodes from screenplay)
         if (url === '/api/parse-script-scenes' && req.method === 'POST') {
           void readBody(req).then((body: any) => {
-            const { script, filmTitle: _filmTitle = "Film" } = body || {};
+            const { script, filmTitle: _filmTitle = "Film", targetDurationSec } = body || {};
             if (!script) {
               sendJson(res, 400, { error: 'Script text is required' });
               return;
             }
 
-            const { shots, nodes, edges, spokenText, wordCount, durationSec } = buildFilmPartsFromScript(script);
+            const { shots, nodes, edges, spokenText, wordCount, durationSec } = buildFilmPartsFromScript(script, targetDurationSec);
 
             sendJson(res, 200, {
               ok: true,

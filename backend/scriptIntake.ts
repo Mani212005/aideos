@@ -413,7 +413,10 @@ function estimateShotDuration(narrationText?: string): number {
  * and on-screen TextReveal overlays, splitting any multi-beat segment into alternating-move
  * micro-shots driven by narration length.
  */
-export function buildFilmPartsFromScript(raw: string): {
+export function buildFilmPartsFromScript(
+  raw: string,
+  targetDurationSec?: number,
+): {
   shots: GeneratedShot[];
   nodes: GeneratedNode[];
   edges: GeneratedEdge[];
@@ -471,6 +474,21 @@ export function buildFilmPartsFromScript(raw: string): {
     });
   });
 
+  if (targetDurationSec && targetDurationSec > 0 && shots.length > 0) {
+    const rawTotal = shots.reduce((sum, s) => sum + s.dur, 0);
+    if (rawTotal > 0) {
+      const scale = targetDurationSec / rawTotal;
+      shots.forEach((s) => {
+        s.dur = Number((s.dur * scale).toFixed(2));
+      });
+      const newTotal = shots.reduce((sum, s) => sum + s.dur, 0);
+      const diff = Number((targetDurationSec - newTotal).toFixed(2));
+      if (Math.abs(diff) >= 0.01) {
+        shots[shots.length - 1].dur = Number((shots[shots.length - 1].dur + diff).toFixed(2));
+      }
+    }
+  }
+
   const edges: GeneratedEdge[] = [];
   for (let i = 0; i < nodes.length - 1; i++) {
     edges.push({ from: nodes[i].id, to: nodes[i + 1].id, dashed: false });
@@ -479,7 +497,7 @@ export function buildFilmPartsFromScript(raw: string): {
   const spokenBlocks = extractSpokenBlocks(raw);
   const spokenText = spokenBlocks.join("\n\n");
   const wordCount = spokenText.split(/\s+/).filter(Boolean).length;
-  const durationSec = Math.round((wordCount / 150) * 60);
+  const durationSec = targetDurationSec && targetDurationSec > 0 ? targetDurationSec : Math.round((wordCount / 150) * 60);
 
   return { shots, nodes, edges, spokenText, wordCount, durationSec };
 }

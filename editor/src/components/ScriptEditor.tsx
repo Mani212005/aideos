@@ -248,7 +248,11 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       const res = await fetch("/api/parse-script-scenes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script, filmTitle: film.title }),
+        body: JSON.stringify({
+          script,
+          filmTitle: film.title,
+          targetDurationSec: film.voiceover?.durationSec,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to parse scenes");

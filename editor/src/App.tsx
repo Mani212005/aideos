@@ -5,7 +5,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { Player, type PlayerRef } from "@remotion/player";
 import { FilmView } from "../../src/dl/Film";
-import { buildTimeline, totalFrames } from "../../src/dl/camera";
+import { buildTimeline, totalFrames, activeShotAt } from "../../src/dl/camera";
 import { kvcacheFilm } from "../../src/dl/films/kvcache";
 import { whatIsJepaFilm } from "../../src/dl/films/what-is-jepa";
 import type { CanvasEdge, Film, Shot } from "../../src/dl/schema";
@@ -107,20 +107,46 @@ export default function App() {
     }
   };
 
-  // Sync Remotion Player frame updates to currentFrame
+  const timeline = useMemo(() => {
+    try {
+      return buildTimeline(film, film.voiceover?.durationSec);
+    } catch(e) {
+      console.error(e);
+      return null;
+    }
+  }, [film]);
+
+  const duration = timeline ? totalFrames(timeline) : 300;
+
+  // Sync Remotion Player frame updates to currentFrame without triggering 30fps root re-renders during playback
   useEffect(() => {
     const player = playerRef.current;
     if (!player) return;
+    let lastShotId: string | undefined = undefined;
+
     const onFrameUpdate = (e: any) => {
-      if (typeof e?.detail?.frame === "number") {
-        setCurrentFrame(e.detail.frame);
+      if (typeof e?.detail?.frame !== "number") return;
+      const frame = e.detail.frame;
+
+      // While playing, only trigger state update if the active shot changed (to avoid 30fps re-render stutter)
+      if (player.isPlaying()) {
+        const currentShot = activeShotAt(timeline || [], frame);
+        const shotId = currentShot?.shot?.id;
+        if (shotId !== lastShotId) {
+          lastShotId = shotId;
+          setCurrentFrame(frame);
+        }
+      } else {
+        lastShotId = undefined;
+        setCurrentFrame(frame);
       }
     };
+
     player.addEventListener("frameupdate", onFrameUpdate);
     return () => {
       player.removeEventListener("frameupdate", onFrameUpdate);
     };
-  }, [playerRef.current]);
+  }, [playerRef.current, timeline]);
 
   // Styleboard / presentation state
   const [accent, setAccent] = useState(film.accent || "#635BFF");
@@ -335,21 +361,13 @@ export default function App() {
   }, []);
 
   const audioDurationSec = useMemo(() => {
+    if (film.voiceover?.durationSec && film.voiceover.durationSec > 0) {
+      return film.voiceover.durationSec;
+    }
     if (!film || !film.shots || film.shots.length === 0) return undefined;
     const baseShotSec = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
     return baseShotSec > 0 ? baseShotSec : undefined;
   }, [film]);
-
-  const timeline = useMemo(() => {
-    try {
-      return buildTimeline(film);
-    } catch(e) {
-      console.error(e);
-      return null;
-    }
-  }, [film]);
-
-  const duration = timeline ? totalFrames(timeline) : 300;
 
   const handleSave = async () => {
     setSaving(true);
@@ -484,6 +502,18 @@ export default function App() {
   // Derive presentation props from storyStyle
   const showGrid = storyStyle === "technical";
   const showRail = storyStyle !== "minimal";
+
+  const playerInputProps = useMemo(
+    () => ({
+      film,
+      timeline: timeline || [],
+      accent,
+      showGrid,
+      showRail,
+      captionWords,
+    }),
+    [film, timeline, accent, showGrid, showRail, captionWords]
+  );
 
   return (
     <div className="flex flex-col h-screen bg-[#0A0A0B] text-[#F5F5F5] overflow-hidden font-sans antialiased">
@@ -912,100 +942,116 @@ export default function App() {
 
           {mode === "video" && (
             <div className="w-full h-full bg-[#0A0A0B] border border-[#333] rounded-lg overflow-hidden flex flex-col">
-              {/* TOP SECTION: Remotion Video Player Preview */}
-              <div
-                onMouseDown={handlePlayerMouseDown}
-                onMouseMove={handlePlayerMouseMove}
-                onMouseUp={handlePlayerMouseUp}
-                className="flex-1 bg-black relative flex items-center justify-center min-h-0"
-              >
-                {timeline ? (
-                  <>
-                    <Player
-                      ref={playerRef}
-                      key={regenerateKey}
-                      component={FilmView}
-                      inputProps={{
-                        film,
-                        timeline,
-                        accent,
-                        showGrid,
-                        showRail,
-                        captionWords,
-                      }}
-                      durationInFrames={duration}
-                      fps={film.fps}
-                      compositionWidth={FORMATS[format].width}
-                      compositionHeight={FORMATS[format].height}
-                      style={{ width: "100%", height: "100%", maxHeight: "100%" }}
-                      controls
-                      clickToPlay={false}
-                      acknowledgeRemotionLicense
-                    />
-
-                    {/* Google Stitch-Style On-Canvas AI & Element Inspector */}
-                    <OnCanvasAiEditor
-                      film={film}
-                      timeline={timeline}
-                      currentFrame={currentFrame}
-                      onUpdateFilm={handleUpdateFilmWithHistory}
-                      accent={accent}
-                    />
-
-                    {selection?.type === "shot" && (
-                      <div className="absolute top-4 left-4 bg-[#111]/80 backdrop-blur border border-[#333] rounded px-3 py-1.5 text-xs text-white z-20 pointer-events-none">
-                        Reviewing Shot: <span className="font-mono text-[#635BFF]">{selection.id}</span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-red-500">Error building timeline. Check console.</div>
-                )}
-              </div>
-
-              {/* VERTICAL SPLIT RESIZER DRAG HANDLE */}
-              <div
-                onMouseDown={() => setIsResizingTimeline(true)}
-                className={`h-2.5 bg-[#18181B] hover:bg-[#635BFF] cursor-row-resize flex items-center justify-center transition-colors border-y border-[#27272A] z-40 select-none group ${
-                  isResizingTimeline ? "bg-[#635BFF] ring-2 ring-[#635BFF]" : ""
-                }`}
-                title="Drag up/down to adjust timeline height"
-              >
-                <div className="w-12 h-1 rounded-full bg-gray-500 group-hover:bg-white transition-colors flex items-center justify-center gap-0.5">
-                  <div className="w-1 h-1 rounded-full bg-black/60" />
-                  <div className="w-1 h-1 rounded-full bg-black/60" />
-                  <div className="w-1 h-1 rounded-full bg-black/60" />
+              {!film.voiceover?.src ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#0C0C10]">
+                  <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4 text-3xl">
+                    🎙️
+                  </div>
+                  <h3 className="text-base font-bold text-white mb-2 font-mono">
+                    Voiceover Required Before Video
+                  </h3>
+                  <p className="text-xs text-gray-400 max-w-md mb-6 leading-relaxed">
+                    Aideos requires synthesized voiceover dialogue as the authoritative master clock to construct and synchronize video scenes and camera timing. Please generate voiceover in the Script Studio first.
+                  </p>
+                  <button
+                    onClick={() => setMode("script")}
+                    className="px-5 py-2.5 bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>📝</span>
+                    <span>Go to Script Studio & Generate Voiceover</span>
+                  </button>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* TOP SECTION: Remotion Video Player Preview */}
+                  <div
+                    onMouseDown={handlePlayerMouseDown}
+                    onMouseMove={handlePlayerMouseMove}
+                    onMouseUp={handlePlayerMouseUp}
+                    className="flex-1 bg-black relative flex items-center justify-center min-h-0"
+                  >
+                    {timeline ? (
+                      <>
+                        <Player
+                          ref={playerRef}
+                          key={regenerateKey}
+                          component={FilmView}
+                          inputProps={playerInputProps}
+                          durationInFrames={duration}
+                          fps={film.fps}
+                          compositionWidth={FORMATS[format].width}
+                          compositionHeight={FORMATS[format].height}
+                          style={{ width: "100%", height: "100%", maxHeight: "100%" }}
+                          controls
+                          clickToPlay={false}
+                          acknowledgeRemotionLicense
+                        />
 
-              {/* BOTTOM SECTION: Embedded Multi-Track Timeline & Trimmer with dynamic height */}
-              <div
-                style={{ height: `${timelineHeight}px` }}
-                className="bg-[#0E0E10] shrink-0 overflow-hidden"
-              >
-                <TimelineEditor
-                  film={film}
-                  onUpdateFilm={handleUpdateFilmWithHistory}
-                  totalDurationSec={audioDurationSec}
-                  isEmbedded={true}
-                  isPlaying={isPlaying}
-                  playerRef={playerRef}
-                  onSelectShot={(shotId) => setSelection(shotId ? { type: "shot", id: shotId } : null)}
-                  onTogglePlay={() => {
-                    if (playerRef.current?.isPlaying()) {
-                      playerRef.current.pause();
-                      setIsPlaying(false);
-                    } else {
-                      playerRef.current?.play();
-                      setIsPlaying(true);
-                    }
-                  }}
-                  onPreviewSeek={(frame) => {
-                    setCurrentFrame(frame);
-                    playerRef.current?.seekTo(frame);
-                  }}
-                />
-              </div>
+                        {/* Google Stitch-Style On-Canvas AI & Element Inspector */}
+                        <OnCanvasAiEditor
+                          film={film}
+                          timeline={timeline}
+                          currentFrame={currentFrame}
+                          onUpdateFilm={handleUpdateFilmWithHistory}
+                          accent={accent}
+                        />
+
+                        {selection?.type === "shot" && (
+                          <div className="absolute top-4 left-4 bg-[#111]/80 backdrop-blur border border-[#333] rounded px-3 py-1.5 text-xs text-white z-20 pointer-events-none">
+                            Reviewing Shot: <span className="font-mono text-[#635BFF]">{selection.id}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-red-500">Error building timeline. Check console.</div>
+                    )}
+                  </div>
+
+                  {/* VERTICAL SPLIT RESIZER DRAG HANDLE */}
+                  <div
+                    onMouseDown={() => setIsResizingTimeline(true)}
+                    className={`h-2.5 bg-[#18181B] hover:bg-[#635BFF] cursor-row-resize flex items-center justify-center transition-colors border-y border-[#27272A] z-40 select-none group ${
+                      isResizingTimeline ? "bg-[#635BFF] ring-2 ring-[#635BFF]" : ""
+                    }`}
+                    title="Drag up/down to adjust timeline height"
+                  >
+                    <div className="w-12 h-1 rounded-full bg-gray-500 group-hover:bg-white transition-colors flex items-center justify-center gap-0.5">
+                      <div className="w-1 h-1 rounded-full bg-black/60" />
+                      <div className="w-1 h-1 rounded-full bg-black/60" />
+                      <div className="w-1 h-1 rounded-full bg-black/60" />
+                    </div>
+                  </div>
+
+                  {/* BOTTOM SECTION: Embedded Multi-Track Timeline & Trimmer with dynamic height */}
+                  <div
+                    style={{ height: `${timelineHeight}px` }}
+                    className="bg-[#0E0E10] shrink-0 overflow-hidden"
+                  >
+                    <TimelineEditor
+                      film={film}
+                      onUpdateFilm={handleUpdateFilmWithHistory}
+                      totalDurationSec={audioDurationSec}
+                      isEmbedded={true}
+                      isPlaying={isPlaying}
+                      playerRef={playerRef}
+                      onSelectShot={(shotId) => setSelection(shotId ? { type: "shot", id: shotId } : null)}
+                      onTogglePlay={() => {
+                        if (playerRef.current?.isPlaying()) {
+                          playerRef.current.pause();
+                          setIsPlaying(false);
+                        } else {
+                          playerRef.current?.play();
+                          setIsPlaying(true);
+                        }
+                      }}
+                      onPreviewSeek={(frame) => {
+                        setCurrentFrame(frame);
+                        playerRef.current?.seekTo(frame);
+                      }}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           )}
 
