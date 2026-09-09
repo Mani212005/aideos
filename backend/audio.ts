@@ -7,6 +7,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { execSync } from "child_process";
 import { Film, parseFilm } from "../src/dl/schema";
+import { extractSpokenBlocks, hasScreenplayTags } from "./scriptIntake";
 
 export interface WordInfo {
   word: string;
@@ -137,17 +138,18 @@ export function splitScriptIntoSegments(script: string | string[]): string[] {
     throw new Error("A shot with no narration is not allowed mid-script in v1");
   }
 
-  // Split text by blank lines / paragraphs (one segment per shot/beat)
-  const paragraphs = trimmed.split(/\n\s*\n+/);
-  const rawSegments: string[] = [];
+  // Claude-tagged screenplays ([VISUAL]/[NARRATION]/[ON SCREEN], VO:/Voiceover:/Narrator:) are
+  // segmented strictly by their narration beats so visual and on-screen directions never leak
+  // into TTS input. Untagged prose falls back to blank-line paragraph splitting.
+  const rawSegments: string[] = hasScreenplayTags(trimmed)
+    ? extractSpokenBlocks(trimmed)
+    : trimmed.split(/\n\s*\n+/).map((p) => p.trim());
 
-  for (const para of paragraphs) {
-    const p = para.trim();
+  for (const p of rawSegments) {
     if (!p) {
       // Empty paragraph mid-script
       throw new Error("A shot with no narration is not allowed mid-script in v1");
     }
-    rawSegments.push(p);
   }
 
   if (rawSegments.length === 0) {

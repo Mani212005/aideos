@@ -13,6 +13,7 @@ import { filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence } from '../backend/audio.ts'
 import { executeCritique } from '../backend/critique/engine.ts'
+import { extractSpokenBlocks as extractSpokenVoiceoverBlocks, buildFilmPartsFromScript } from '../backend/scriptIntake.ts'
 
 const filmsDir = path.resolve(__dirname, '../src/dl/films');
 const videosDir = path.resolve(__dirname, '../videos');
@@ -166,96 +167,6 @@ function filmApiPlugin(): Plugin {
           }
         }
 
-        // Extracts strictly the spoken dialogue/narration lines as separate per-scene/per-shot blocks from a director screenplay
-        function extractSpokenVoiceoverBlocks(raw: string): string[] {
-          const lines = raw.split("\n");
-          const spokenParagraphs: string[] = [];
-          let isCapturingVO = false;
-          let currentVO: string[] = [];
-
-          for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-
-            // Stop capturing if we reach production notes or sources
-            if (
-              line.toLowerCase().startsWith("### production notes") ||
-              line.toLowerCase().startsWith("## production notes") ||
-              line.toLowerCase().startsWith("### notes") ||
-              line.toLowerCase().startsWith("## notes")
-            ) {
-              break;
-            }
-
-            // Detect VO start tag (e.g. **VO (energetic):**, **VO:**, VO:, Voiceover:, Narrator:)
-            if (
-              /^\*{0,2}VO\s*(\([^)]*\))?\s*:\*{0,2}/i.test(line) ||
-              /^\*{0,2}Voiceover\s*(\([^)]*\))?\s*:\*{0,2}/i.test(line) ||
-              /^\*{0,2}Narrator\s*(\([^)]*\))?\s*:\*{0,2}/i.test(line)
-            ) {
-              if (currentVO.length > 0) {
-                spokenParagraphs.push(currentVO.join(" "));
-                currentVO = [];
-              }
-              isCapturingVO = true;
-              const afterTag = line
-                .replace(/^\*{0,2}(VO|Voiceover|Narrator)\s*(\([^)]*\))?\s*:\*{0,2}\s*/i, "")
-                .trim();
-              if (afterTag) currentVO.push(afterTag);
-              continue;
-            }
-
-            // Boundary checks: VISUAL, ON-SCREEN TEXT, scene headers ##, dividers ---
-            if (
-              /^\*{0,2}(VISUAL|ON-SCREEN TEXT|SCREEN|GRAPHICS|AUDIO|SFX)\s*:\*{0,2}/i.test(line) ||
-              /^#{1,4}\s+/.test(line) ||
-              line === "---" ||
-              line === "***"
-            ) {
-              if (isCapturingVO && currentVO.length > 0) {
-                spokenParagraphs.push(currentVO.join(" "));
-                currentVO = [];
-              }
-              isCapturingVO = false;
-              continue;
-            }
-
-            if (isCapturingVO && line.length > 0) {
-              currentVO.push(line);
-            }
-          }
-
-          if (currentVO.length > 0) {
-            spokenParagraphs.push(currentVO.join(" "));
-          }
-
-          // If VO tags were identified, return strictly spoken dialogue
-          if (spokenParagraphs.length > 0) {
-            return spokenParagraphs
-              .map((p) =>
-                p
-                  .replace(/["“”]/g, "")
-                  .replace(/\*+/g, "")
-                  .replace(/\u2014/g, " - ")
-                  .replace(/\u2013/g, " - ")
-                  .trim()
-              )
-              .filter(Boolean);
-          }
-
-          // Fallback: clean markdown syntax for raw prose and split by paragraphs
-          const cleaned = raw
-            .replace(/^#+\s+/gm, "")
-            .replace(/\*\*([^*]+)\*\*/g, "$1")
-            .replace(/\*([^*]+)\*/g, "$1")
-            .replace(/`([^`]+)`/g, "$1")
-            .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-            .replace(/\u2014/g, " - ")
-            .replace(/\u2013/g, " - ")
-            .trim();
-
-          return cleaned.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
-        }
-
         // Extracts strictly the spoken dialogue/narration lines from a director screenplay
         function extractSpokenVoiceover(raw: string): string {
           return extractSpokenVoiceoverBlocks(raw).join("\n\n");
@@ -270,96 +181,7 @@ function filmApiPlugin(): Plugin {
               return;
             }
 
-            const spokenText = extractSpokenVoiceover(script);
-            const sections = script.split(/^##\s+/m);
-            const shots: any[] = [];
-            const nodes: any[] = [];
-            let currentTime = 0;
-
-            for (const sec of sections) {
-              const lines = sec.split("\n").map((l: string) => l.trim()).filter(Boolean);
-              if (lines.length === 0) continue;
-
-              const header = lines[0];
-              if (header.toLowerCase().includes("production notes") || header.startsWith("#")) continue;
-
-              const timeMatch = header.match(/\[(\d+):(\d+)\s*([-\u2013\u2014])\s*(\d+):(\d+)\]\s*(.*)/i);
-              let startSec = currentTime;
-              let endSec = currentTime + 12;
-              let title = header;
-
-              if (timeMatch) {
-                startSec = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
-                endSec = parseInt(timeMatch[3], 10) * 60 + parseInt(timeMatch[4], 10);
-                title = timeMatch[5] || header;
-              }
-              const duration = Math.max(5, endSec - startSec);
-              currentTime = endSec;
-
-              let visualText = "";
-              let onScreenText = "";
-              let voText = "";
-
-              for (const l of lines) {
-                if (/^\*{0,2}VISUAL:\*{0,2}\s*(.*)/i.test(l)) {
-                  visualText = l.replace(/^\*{0,2}VISUAL:\*{0,2}\s*/i, "").replace(/["“”]/g, "");
-                } else if (/^\*{0,2}ON-SCREEN TEXT:\*{0,2}\s*(.*)/i.test(l)) {
-                  onScreenText = l.replace(/^\*{0,2}ON-SCREEN TEXT:\*{0,2}\s*/i, "").replace(/["“”]/g, "");
-                } else if (/^\*{0,2}VO\s*(\([^)]*\))?:\*{0,2}\s*(.*)/i.test(l)) {
-                  voText = l.replace(/^\*{0,2}VO\s*(\([^)]*\))?:\*{0,2}\s*/i, "").replace(/["“”]/g, "");
-                }
-              }
-
-              const slug = title
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, "-")
-                .replace(/^-+|-+$/g, "")
-                .slice(0, 24) || `scene-${shots.length + 1}`;
-
-              nodes.push({
-                id: slug,
-                label: title.slice(0, 24),
-                sub: onScreenText.slice(0, 32) || visualText.slice(0, 32) || "Key concept",
-                x: -200 + (shots.length % 3) * 260,
-                y: -100 + Math.floor(shots.length / 3) * 180,
-                w: 230,
-                h: 68,
-              });
-
-              const blocks: any[] = [];
-              if (onScreenText) {
-                blocks.push({ c: "TextReveal", text: onScreenText.slice(0, 160), size: "headline" });
-              }
-              if (visualText) {
-                blocks.push({ c: "Body", text: visualText.slice(0, 300) });
-              }
-              if (blocks.length === 0) {
-                blocks.push({ c: "TextReveal", text: title, size: "headline" });
-              }
-
-              shots.push({
-                id: slug,
-                dur: duration,
-                look: slug,
-                move: shots.length === 0 ? "cut" : "pan",
-                stage: shots.length === 0 ? "anchor" : shots.length === sections.length - 2 ? "anchor" : "frame",
-                zoom: 1,
-                drift: true,
-                visualDirection: visualText || undefined,
-                metaphor: "custom",
-                scriptText: voText || undefined,
-                blocks,
-              });
-            }
-
-            const edges = [];
-            for (let i = 0; i < nodes.length - 1; i++) {
-              edges.push({
-                from: nodes[i].id,
-                to: nodes[i + 1].id,
-                dashed: false,
-              });
-            }
+            const { shots, nodes, edges, spokenText, wordCount, durationSec } = buildFilmPartsFromScript(script);
 
             sendJson(res, 200, {
               ok: true,
@@ -367,8 +189,8 @@ function filmApiPlugin(): Plugin {
               nodes,
               edges,
               spokenText,
-              wordCount: spokenText.split(/\s+/).filter(Boolean).length,
-              durationSec: Math.round((spokenText.split(/\s+/).filter(Boolean).length / 150) * 60),
+              wordCount,
+              durationSec,
             });
           }).catch(err => sendJson(res, 500, { error: String(err) }));
           return;
