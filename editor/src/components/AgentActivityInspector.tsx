@@ -8,6 +8,7 @@
  */
 
 import React, { useState } from "react";
+import { Bot, Check, X } from "lucide-react";
 
 export interface AgentTraceStep {
   id: string;
@@ -32,8 +33,8 @@ export const AgentActivityInspector: React.FC = () => {
       status: "done",
       details: [
         "parallel.beta.search({ query: 'FlashAttention-3 GPU Asynchronous Tensor Cores', maxResults: 4 })",
-        "✓ Extracted hardware throughput facts (Hopper H100 FP16 TMA overlap)",
-        "✓ Reconciled citation claims against arXiv:2407.08608",
+        "Extracted hardware throughput facts (Hopper H100 FP16 TMA overlap)",
+        "Reconciled citation claims against arXiv:2407.08608",
       ],
     },
     {
@@ -45,8 +46,8 @@ export const AgentActivityInspector: React.FC = () => {
       status: "done",
       details: [
         "textToSpeechClient.synthesizeSpeech({ voice: 'en-US-Journey-F' })",
-        "✓ Measured exact audio duration: 35.040s (shot durations sum = 35.040s)",
-        "✓ Generated word-level karaoke subtitle stream (captions.vtt)",
+        "Measured exact audio duration: 35.040s (shot durations sum = 35.040s)",
+        "Generated word-level karaoke subtitle stream (captions.vtt)",
       ],
     },
     {
@@ -58,8 +59,8 @@ export const AgentActivityInspector: React.FC = () => {
       status: "done",
       details: [
         "generateRelationshipAwareCanvas(conceptEntities)",
-        "✓ Assigned presenter archetype: developer rig (100% theme-token color compliance)",
-        "✓ Placed 3 structural devices: MatrixGrid, TokenStrip, LayerStack",
+        "Assigned presenter archetype: developer rig (100% theme-token color compliance)",
+        "Placed 3 structural devices: MatrixGrid, TokenStrip, LayerStack",
       ],
     },
     {
@@ -72,7 +73,7 @@ export const AgentActivityInspector: React.FC = () => {
       details: [
         "validateFilm(compiledFilm) -> 0 errors, 0 warnings",
         "verifyTrajectoryContinuity(scene) -> Max velocity jump Δv = 0.0051 deg/s (Threshold: 5.0 deg/s)",
-        "✓ Audio master clock invariant locked within ±0.0ms",
+        "Audio master clock invariant locked within ±0.0ms",
       ],
     },
   ];
@@ -85,7 +86,8 @@ export const AgentActivityInspector: React.FC = () => {
         title="Open Agent Activity & Tool Execution Trace"
       >
         <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-        <span>🤖 Agent Trace</span>
+        <Bot size={12} />
+        <span>Agent Trace</span>
       </button>
 
       {isOpen && (
@@ -93,7 +95,8 @@ export const AgentActivityInspector: React.FC = () => {
           {/* Panel Header */}
           <div className="p-3 bg-[#18181B] border-b border-[#27272A] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-cyan-400">🤖 AGENT ACTIVITY INSPECTOR</span>
+              <Bot size={14} className="text-cyan-400" />
+              <span className="text-xs font-bold text-cyan-400">AGENT ACTIVITY</span>
               <span className="text-[9px] font-mono bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 px-1.5 py-0.5 rounded">
                 Live Trace
               </span>
@@ -102,7 +105,7 @@ export const AgentActivityInspector: React.FC = () => {
               onClick={() => setIsOpen(false)}
               className="text-gray-400 hover:text-white text-xs p-1"
             >
-              ✕
+              <X size={12} />
             </button>
           </div>
 
@@ -115,8 +118,8 @@ export const AgentActivityInspector: React.FC = () => {
               >
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-white text-[11px]">{step.title}</span>
-                  <span className="text-[9px] text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-1.5 py-0.5 rounded font-bold">
-                    ✓ {step.status.toUpperCase()}
+                  <span className="text-[9px] text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                    <Check size={10} /> {step.status.toUpperCase()}
                   </span>
                 </div>
 

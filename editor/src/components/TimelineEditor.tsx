@@ -32,6 +32,24 @@ import {
   type DragContext,
 } from "./timeline/state";
 import { generateWordsFromFilm } from "../../../src/dl/captionsParser";
+import {
+  Film as FilmIcon,
+  FileText,
+  Play,
+  Pause,
+  CheckCircle2,
+  AlertTriangle,
+  Mic,
+  Undo2,
+  Redo2,
+  Scissors,
+  Trash2,
+  Volume2,
+  VolumeX,
+  Layers,
+  MessageSquare,
+  BarChart2,
+} from "lucide-react";
 
 // Computes timeline duration of an audio clip accounting for playback speed.
 function getAudioEffectiveDuration(ac: AudioClip): number {
@@ -877,23 +895,25 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           <div className="flex bg-[#27272A] p-0.5 rounded-lg border border-[#3F3F46]">
             <button
               onClick={() => setActiveTab("tracks")}
-              className={`text-[11px] px-2.5 py-1 rounded-md font-bold transition-colors ${
+              className={`text-[11px] px-2.5 py-1 rounded-md font-bold transition-colors flex items-center gap-1.5 ${
                 activeTab === "tracks"
                   ? "bg-[#635BFF] text-white shadow"
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              🎞️ Tracks
+              <FilmIcon className="w-3 h-3" />
+              <span>Tracks</span>
             </button>
             <button
               onClick={() => setActiveTab("transcript")}
-              className={`text-[11px] px-2.5 py-1 rounded-md font-bold transition-colors ${
+              className={`text-[11px] px-2.5 py-1 rounded-md font-bold transition-colors flex items-center gap-1.5 ${
                 activeTab === "transcript"
                   ? "bg-[#635BFF] text-white shadow"
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              📝 Script & Words
+              <FileText className="w-3 h-3" />
+              <span>Script</span>
             </button>
           </div>
 
@@ -903,14 +923,14 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           {onTogglePlay && (
             <button
               onClick={onTogglePlay}
-              className={`px-3 py-1 text-xs font-bold rounded flex items-center gap-1.5 shadow transition-all ${
+              className={`px-3 py-1 text-xs font-bold rounded flex items-center gap-1.5 shadow transition-all cursor-pointer ${
                 isPlaying
                   ? "bg-amber-500 hover:bg-amber-400 text-black"
                   : "bg-emerald-600 hover:bg-emerald-500 text-white"
               }`}
               title={isPlaying ? "Pause Timeline (Space)" : "Play Timeline (Space)"}
             >
-              <span>{isPlaying ? "⏸️" : "▶️"}</span>
+              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
             </button>
           )}
 
@@ -940,12 +960,25 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 : `Drifted by ${driftSec > 0 ? "+" : ""}${driftSec.toFixed(2)}s from voiceover. Click to Re-align.`
             }
           >
-            <span>{isSynchronized ? "🟢 In Sync" : `⚠️ Drifted ${driftSec > 0 ? "+" : ""}${driftSec.toFixed(1)}s (⚡ Re-align)`}</span>
+            {isSynchronized ? (
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                <span>In Sync</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 text-amber-400" />
+                <span>Drifted {driftSec > 0 ? "+" : ""}${driftSec.toFixed(1)}s (Re-align)</span>
+              </span>
+            )}
           </button>
 
           {/* Voiceover & Speaker Speed Control Bar */}
           <div className="flex items-center gap-1.5 bg-[#18181B] px-2 py-1 rounded border border-[#3F3F46] text-[10px] font-mono">
-            <span className="text-yellow-400 font-bold">🎙️ Speed</span>
+            <span className="text-yellow-400 font-bold flex items-center gap-1">
+              <Mic className="w-3 h-3" />
+              <span>Speed</span>
+            </span>
             <input
               type="range"
               min="0.5"
@@ -981,18 +1014,20 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           <button
             onClick={handleUndo}
             disabled={!txManagerRef.current.canUndo()}
-            className="p-1 px-2 rounded bg-[#27272A] hover:bg-[#3F3F46] disabled:opacity-30 text-xs text-gray-200 border border-[#3F3F46]"
+            className="p-1 px-2 rounded bg-[#27272A] hover:bg-[#3F3F46] disabled:opacity-30 text-xs text-gray-200 border border-[#3F3F46] flex items-center gap-1 cursor-pointer"
             title="Undo (Cmd+Z)"
           >
-            ↩️ Undo
+            <Undo2 className="w-3 h-3" />
+            <span>Undo</span>
           </button>
           <button
             onClick={handleRedo}
             disabled={!txManagerRef.current.canRedo()}
-            className="p-1 px-2 rounded bg-[#27272A] hover:bg-[#3F3F46] disabled:opacity-30 text-xs text-gray-200 border border-[#3F3F46]"
+            className="p-1 px-2 rounded bg-[#27272A] hover:bg-[#3F3F46] disabled:opacity-30 text-xs text-gray-200 border border-[#3F3F46] flex items-center gap-1 cursor-pointer"
             title="Redo (Cmd+Shift+Z)"
           >
-            ↪️ Redo
+            <Redo2 className="w-3 h-3" />
+            <span>Redo</span>
           </button>
 
           <div className="h-4 w-[1px] bg-[#3F3F46] mx-1" />
@@ -1011,10 +1046,11 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 }
               }
             }}
-            className="text-[11px] px-2.5 py-1 rounded-md bg-[#27272A] hover:bg-[#3F3F46] text-white font-bold border border-[#3F3F46] flex items-center gap-1"
+            className="text-[11px] px-2.5 py-1 rounded-md bg-[#27272A] hover:bg-[#3F3F46] text-white font-bold border border-[#3F3F46] flex items-center gap-1 cursor-pointer"
             title="Split selected shot or audio clip at playhead (S key)"
           >
-            <span>✂️ Split</span>
+            <Scissors className="w-3 h-3" />
+            <span>Split</span>
           </button>
 
           {/* Delete Button */}
@@ -1039,10 +1075,10 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
               }
             }}
             disabled={(!selectedAudioId && selectedShotIds.length === 0) || (!selectedAudioId && film.shots.length <= 1)}
-            className="text-[11px] px-2 py-1 rounded-md bg-red-950/60 hover:bg-red-900 border border-red-800 disabled:opacity-30 text-red-200"
+            className="text-[11px] px-2 py-1 rounded-md bg-red-950/60 hover:bg-red-900 border border-red-800 disabled:opacity-30 text-red-200 cursor-pointer"
             title="Delete Selected Clip (Backspace)"
           >
-            🗑️
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
 
           <div className="h-4 w-[1px] bg-[#3F3F46] mx-1" />
@@ -1073,7 +1109,10 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
               </div>
               <div className="h-14 border-b border-[#27272A] p-2 flex flex-col justify-between bg-[#141416]">
                 <div className="flex items-center justify-between text-yellow-400 font-bold">
-                  <span>🗣️ Voiceover</span>
+                  <span className="flex items-center gap-1.5">
+                    <Mic className="w-3 h-3 text-yellow-400" />
+                    <span>Voiceover</span>
+                  </span>
                   <button
                     onClick={() => {
                       const currentVol = film.voiceover?.volume ?? 1;
@@ -1102,29 +1141,42 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                         "Toggle voiceover mute"
                       );
                     }}
-                    className="text-[9px] px-1.5 py-0.5 rounded bg-black/70 hover:bg-black text-yellow-300 font-mono"
+                    className="text-[9px] px-1.5 py-0.5 rounded bg-black/70 hover:bg-black text-yellow-300 font-mono cursor-pointer"
                   >
-                    {(film.voiceover?.volume ?? 1) > 0 ? "🔊 On" : "🔇 Mute"}
+                    {(film.voiceover?.volume ?? 1) > 0 ? (
+                      <span className="flex items-center gap-1"><Volume2 className="w-2.5 h-2.5" /> On</span>
+                    ) : (
+                      <span className="flex items-center gap-1"><VolumeX className="w-2.5 h-2.5" /> Mute</span>
+                    )}
                   </button>
                 </div>
                 <div className="text-[9px] text-gray-500 truncate">Trimmable audio</div>
               </div>
               <div className="h-20 border-b border-[#27272A] p-2 flex flex-col justify-between bg-[#141416]">
                 <div className="flex items-center justify-between text-blue-400 font-bold">
-                  <span>🎬 Shots</span>
+                  <span className="flex items-center gap-1.5">
+                    <FilmIcon className="w-3 h-3 text-blue-400" />
+                    <span>Shots</span>
+                  </span>
                   <span className="text-[9px] text-gray-400">{film.shots.length}</span>
                 </div>
                 <div className="text-[9px] text-gray-500">Drag to move/trim</div>
               </div>
               <div className="h-14 border-b border-[#27272A] p-2 flex flex-col justify-between bg-[#141416]">
                 <div className="flex items-center justify-between text-purple-400 font-bold">
-                  <span>🖼️ Visual Device</span>
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="w-3 h-3 text-purple-400" />
+                    <span>Visual Device</span>
+                  </span>
                 </div>
                 <div className="text-[9px] text-gray-500">Click to change</div>
               </div>
               <div className="h-14 border-b border-[#27272A] p-2 flex flex-col justify-between bg-[#141416]">
                 <div className="flex items-center justify-between text-emerald-400 font-bold">
-                  <span>💬 Subtitles</span>
+                  <span className="flex items-center gap-1.5">
+                    <MessageSquare className="w-3 h-3 text-emerald-400" />
+                    <span>Subtitles</span>
+                  </span>
                 </div>
                 <div className="text-[9px] text-gray-500">Phrase-locked</div>
               </div>
@@ -1240,7 +1292,10 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1 truncate pointer-events-none">
-                        <span className="truncate">🗣️ {aClip.src}</span>
+                        <span className="truncate flex items-center gap-1">
+                          <Mic className="w-2.5 h-2.5 shrink-0 text-yellow-400" />
+                          <span>{aClip.src}</span>
+                        </span>
                         {(aClip.speed ?? 1.0) !== 1.0 && (
                           <span className="bg-yellow-400 text-black px-1 rounded text-[8px] font-bold shrink-0">
                             {(aClip.speed ?? 1.0).toFixed(2)}x
@@ -1478,7 +1533,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                       style={{ left: startSec * zoomLevel, width: Math.max(20, dur * zoomLevel) }}
                       title={`Visual Device: ${label} (Click to cycle / inspect)`}
                     >
-                      <span>📊</span>
+                      <BarChart2 className="w-3 h-3 text-purple-300 shrink-0" />
                       <span className="truncate">{label}</span>
                     </div>
                   );
@@ -1527,11 +1582,12 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         <div className="flex-1 p-4 overflow-y-auto bg-[#09090B] flex flex-col gap-3">
           <div className="bg-[#18181B] p-3 rounded-lg border border-[#27272A] flex items-center justify-between">
             <div>
-              <h3 className="font-bold text-xs text-yellow-400">
-                🎙️ Screenplay & Shot Breakdown
+              <h3 className="font-bold text-xs text-yellow-400 flex items-center gap-1.5">
+                <Mic className="w-3.5 h-3.5" />
+                <span>Screenplay & Shots</span>
               </h3>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                Click any shot card or dialogue phrase to seek the timeline directly to that scene.
+                Click a shot or dialogue phrase to seek the timeline.
               </p>
             </div>
             <div className="text-xs text-gray-400 font-mono">

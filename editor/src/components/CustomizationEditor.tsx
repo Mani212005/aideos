@@ -1,6 +1,29 @@
 // File Description: Customization and Theme Studio Editor for selecting paper textures, typography fonts, video types, storytelling styles, accent colors, saving themes, and directing script-to-visual metaphors.
 
 import React, { useState } from "react";
+import {
+  Palette,
+  Save,
+  Bell,
+  ScrollText,
+  Type,
+  Film as FilmIcon,
+  Check,
+  Sparkles,
+  Lightbulb,
+  Video,
+  Target,
+  GraduationCap,
+  Zap,
+  Building2,
+  Wrench,
+  Compass,
+  Box,
+  Maximize2,
+  Orbit,
+  Map,
+  Loader2,
+} from "lucide-react";
 import type { Film, BackgroundPreset, FontPreset, VideoType, StoryStyle, CameraAngle, Shot } from "../../../src/dl/schema";
 import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
 
@@ -20,49 +43,49 @@ const FONTS: Array<{ id: FontPreset; name: string; category: string; preview: st
   { id: "inter", name: "Inter", category: "Clean Functional UI", preview: "Optimized memory throughput and zero-copy buffers.", style: "font-sans" },
 ];
 
-const VIDEO_TYPES: Array<{ id: VideoType; name: string; icon: string; desc: string }> = [
-  { id: "educational", name: "Educational Deep-Dive", icon: "🎓", desc: "Layered concept breakdown with visual hierarchy and deliberate pacing." },
-  { id: "fact", name: "60s Quick Fact / Reel", icon: "⚡", desc: "High-energy micro-lesson with kinetic motion and rapid payoff zooms." },
-  { id: "case-study", name: "Architecture Case Study", icon: "🏗️", desc: "Real-world engineering topologies, benchmark graphs, and data flows." },
-  { id: "tutorial", name: "Step-by-Step Tutorial", icon: "🛠️", desc: "Chronological walkthrough with code blocks and parameter inspects." },
+const VIDEO_TYPES: Array<{ id: VideoType; name: string; icon: React.ComponentType<{ className?: string }>; desc: string }> = [
+  { id: "educational", name: "Educational", icon: GraduationCap, desc: "Layered concept breakdown with visual hierarchy and deliberate pacing." },
+  { id: "fact", name: "60s Quick Fact", icon: Zap, desc: "High-energy micro-lesson with kinetic motion and rapid payoff zooms." },
+  { id: "case-study", name: "Architecture Case Study", icon: Building2, desc: "Engineering topologies, benchmark graphs, and data flows." },
+  { id: "tutorial", name: "Step-by-Step Tutorial", icon: Wrench, desc: "Walkthrough with code blocks and parameter inspects." },
 ];
 
-const STORY_STYLES: Array<{ id: StoryStyle; name: string; icon: string; desc: string; sample: string }> = [
+const STORY_STYLES: Array<{ id: StoryStyle; name: string; icon: React.ComponentType<{ className?: string }>; desc: string; sample: string }> = [
   {
     id: "spatial-map",
-    name: "Spatial Mind-Map & Flowchart",
-    icon: "🗺️",
+    name: "Spatial Mind-Map",
+    icon: Compass,
     desc: "Concepts are connected nodes in a continuous 2D spatial canvas. The camera smoothly zooms into nodes to reveal animated stages.",
-    sample: "Continuous camera navigation · Reversible zoom-in/out frames",
+    sample: "Continuous camera navigation · Reversible zoom frames",
   },
   {
     id: "script-metaphor",
-    name: "Script-Driven Visual Metaphors",
-    icon: "✨",
-    desc: "Visual animations are generated directly from the narration script cues (e.g. spider webs, liquid containers, balance scales, escapement gears).",
+    name: "Visual Metaphors",
+    icon: Sparkles,
+    desc: "Visual animations are generated directly from the narration script cues.",
     sample: "Spider Web Weaving · Fluid Reservoirs · Physical Balance Scales",
   },
 ];
 
-const METAPHOR_OPTIONS: Array<{ id: NonNullable<Shot["metaphor"]> | "none" | "character-beat" | "b-roll"; label: string; icon: string }> = [
-  { id: "none", label: "Default Spatial Node", icon: "🗺️" },
-  { id: "character-beat", label: "SVG Character Rig (Astronaut / Developer)", icon: "🎭" },
-  { id: "character-throw", label: "Sleeping Computer Reads & Throws Script", icon: "💻" },
-  { id: "b-roll", label: "GPU B-Roll Scene (AI Generated)", icon: "🎬" },
-  { id: "spider-web", label: "Spider Web Weaving", icon: "🕸️" },
-  { id: "liquid-bucket", label: "Liquid Buffer Reservoir", icon: "🚰" },
-  { id: "balance-scale", label: "Balance Scale Equilibrium", icon: "⚖️" },
-  { id: "clock-gears", label: "Escapement Clock Gears", icon: "⏱️" },
-  { id: "rocket-launch", label: "Scale & Throughput Rocket", icon: "🚀" },
+const METAPHOR_OPTIONS: Array<{ id: NonNullable<Shot["metaphor"]> | "none" | "character-beat" | "b-roll"; label: string }> = [
+  { id: "none", label: "Default Spatial Node" },
+  { id: "character-beat", label: "Character Rig (Astronaut / Developer)" },
+  { id: "character-throw", label: "Reading & Discarding Script" },
+  { id: "b-roll", label: "B-Roll Scene (AI Generated)" },
+  { id: "spider-web", label: "Spider Web Weaving" },
+  { id: "liquid-bucket", label: "Liquid Buffer Reservoir" },
+  { id: "balance-scale", label: "Balance Scale Equilibrium" },
+  { id: "clock-gears", label: "Escapement Clock Gears" },
+  { id: "rocket-launch", label: "Scale & Throughput Rocket" },
 ];
 
-const CAMERA_ANGLES: Array<{ id: CameraAngle; name: string; icon: string; desc: string }> = [
-  { id: "flat", name: "2D Direct Orthogonal", icon: "📐", desc: "Classic flat direct face-on view with maximum geometric clarity." },
-  { id: "isometric", name: "3D Isometric Technical", icon: "🧊", desc: "26° technical CAD perspective with dimensional floating depth." },
-  { id: "cinematic-tilt", name: "Cinematic Dutch Tilt", icon: "🎥", desc: "Subtle rolling pitch angle for high-production dynamic feel." },
-  { id: "low-angle", name: "Dramatic Low-Angle Hero", icon: "🔺", desc: "Looking upward at system topology from below." },
-  { id: "orbit", name: "Continuous 3D Orbit", icon: "🛰️", desc: "Gyroscopic floating orbit with continuous camera movement." },
-  { id: "top-down", name: "Overhead Blueprint", icon: "🗺️", desc: "Architectural top-down master blueprint inspect." },
+const CAMERA_ANGLES: Array<{ id: CameraAngle; name: string; icon: React.ComponentType<{ className?: string }>; desc: string }> = [
+  { id: "flat", name: "2D Direct Orthogonal", icon: Box, desc: "Classic flat direct face-on view with maximum geometric clarity." },
+  { id: "isometric", name: "3D Isometric Technical", icon: Box, desc: "26° technical CAD perspective with dimensional floating depth." },
+  { id: "cinematic-tilt", name: "Cinematic Dutch Tilt", icon: Video, desc: "Subtle rolling pitch angle for high-production dynamic feel." },
+  { id: "low-angle", name: "Dramatic Low-Angle Hero", icon: Maximize2, desc: "Looking upward at system topology from below." },
+  { id: "orbit", name: "Continuous 3D Orbit", icon: Orbit, desc: "Gyroscopic floating orbit with continuous camera movement." },
+  { id: "top-down", name: "Overhead Blueprint", icon: Map, desc: "Architectural top-down master blueprint inspect." },
 ];
 
 const ACCENT_COLORS = [
@@ -128,10 +151,10 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `HTTP ${res.status}: Failed to save film theme to disk`);
       }
-      setSaveToast(`✓ Saved theme & visual directions to ${film.id}.ts!`);
+      setSaveToast(`Saved theme & visual directions to ${film.id}.ts`);
       setTimeout(() => setSaveToast(null), 4000);
     } catch (err: any) {
-      setSaveToast("⚠️ " + (err.message || "Failed to save"));
+      setSaveToast(err.message || "Failed to save");
       setTimeout(() => setSaveToast(null), 5000);
     } finally {
       setIsSaving(false);
@@ -224,10 +247,10 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
       <div className="sticky top-0 z-30 bg-[#0A0A0B]/95 backdrop-blur border-b border-[#27272A] pb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2 text-white">
-            <span>🎨</span> Video Customization & Design System Studio
+            <Palette className="w-5 h-5 text-[#635BFF]" /> Customization Studio
           </h2>
           <p className="text-xs text-gray-400 mt-1">
-            Customize paper textures, typography, storytelling architecture, and video output categories.
+            Theme, typography, storytelling style, and visual directions.
           </p>
         </div>
 
@@ -252,8 +275,8 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
                 : "bg-[#10B981] hover:bg-[#059669] text-black hover:scale-105"
             }`}
           >
-            <span>{isSaving ? "⏳" : "💾"}</span>
-            <span>{isSaving ? "Saving Theme..." : "Save Theme & Apply"}</span>
+            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            <span>{isSaving ? "Saving..." : "Save Theme"}</span>
           </button>
         </div>
       </div>
@@ -261,7 +284,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
       {/* Save Toast Feedback */}
       {saveToast && (
         <div className="p-3 bg-emerald-950/90 border border-emerald-500 rounded-lg text-emerald-200 text-xs font-mono flex items-center gap-2 shadow-xl animate-fade-in">
-          <span>🔔</span> {saveToast}
+          <Bell className="w-3.5 h-3.5 text-emerald-400" /> {saveToast}
         </div>
       )}
 
@@ -269,9 +292,9 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
-            <span>📜</span> 1. Paper Library & Video Background
+            <ScrollText className="w-3.5 h-3.5 text-gray-400" /> 1. Paper Library & Background
           </label>
-          <span className="text-[11px] text-gray-500 font-mono">6 Tactile Canvas Textures</span>
+          <span className="text-[11px] text-gray-500 font-mono">6 Textures</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -329,9 +352,9 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
-            <span>🔤</span> 2. Video Typography & Narrative Font
+            <Type className="w-3.5 h-3.5 text-gray-400" /> 2. Typography & Font
           </label>
-          <span className="text-[11px] text-gray-500 font-mono">Google Fonts Ready</span>
+          <span className="text-[11px] text-gray-500 font-mono">Google Fonts</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -370,9 +393,9 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
-            <span>🎬</span> 3. Storytelling & Editing Architecture
+            <FilmIcon className="w-3.5 h-3.5 text-gray-400" /> 3. Storytelling Style
           </label>
-          <span className="text-[11px] text-gray-500 font-mono">Visual Rendering Engine</span>
+          <span className="text-[11px] text-gray-500 font-mono">Visual Engine</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -390,7 +413,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{style.icon}</span>
+                    <style.icon className="w-4 h-4 text-[#635BFF]" />
                     <h4 className="text-sm font-bold text-white">{style.name}</h4>
                   </div>
                   {isSelected && (
@@ -401,7 +424,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
                 <p className="text-xs text-gray-400 leading-relaxed">{style.desc}</p>
 
                 <div className="px-2.5 py-1.5 rounded bg-black/40 border border-white/5 text-[11px] font-mono text-gray-300 flex items-center gap-2">
-                  <span className="text-green-400">✓</span> {style.sample}
+                  <Check className="w-3 h-3 text-emerald-400 shrink-0" /> {style.sample}
                 </div>
               </button>
             );
@@ -409,15 +432,15 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
         </div>
       </div>
 
-      {/* 4. SCRIPT ➔ VISUAL METAPHOR DIRECTOR (HUMAN & AI CO-PILOT) */}
+      {/* 4. SCRIPT METAPHOR DIRECTOR */}
       <div className="space-y-4 bg-[#121214] p-5 rounded-2xl border border-[#27272A]">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-[#27272A] pb-3">
           <div>
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <span>✨</span> Script ➔ Visual Metaphor Director (Human & AI Co-Pilot)
+              <Sparkles className="w-4 h-4 text-[#635BFF]" /> Script Metaphor Director
             </h3>
             <p className="text-xs text-gray-400 mt-0.5">
-              Inspect how each script sentence will be visually depicted. Customize the visual metaphor or provide your direct visual instructions.
+              Configure visual metaphors and direction for each script line.
             </p>
           </div>
           <span className="text-[11px] font-mono text-yellow-400 bg-yellow-950/60 border border-yellow-500/30 px-2 py-0.5 rounded">
@@ -453,7 +476,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
                   </p>
                 </div>
 
-                {/* Right: AI Visual Cue Selector & Human Direction */}
+                {/* Right: Visual Cue Selector & Direction */}
                 <div className="flex flex-col gap-2 shrink-0 w-full md:w-auto">
                   <div className="flex items-center gap-2">
                     <select
@@ -468,18 +491,18 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
                     >
                       {METAPHOR_OPTIONS.map((opt) => (
                         <option key={opt.id} value={opt.id}>
-                          {opt.icon} {opt.label}
+                          {opt.label}
                         </option>
                       ))}
                     </select>
 
                     <input
                       type="text"
-                      placeholder="Type custom visual idea for this line..."
+                      placeholder="Custom visual idea..."
                       value={shot.visualDirection || ""}
                       onChange={(e) => handleUpdateShotVisualDirection(idx, e.target.value)}
                       className="bg-black/50 border border-[#27272A] focus:border-yellow-400 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600 w-full sm:w-80 font-mono focus:outline-none"
-                      title="Provide your custom visual direction for this specific line"
+                      title="Provide custom visual direction for this line"
                     />
                   </div>
 
@@ -493,7 +516,8 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
                       }
                       className="text-[11px] text-left text-yellow-400/90 hover:text-yellow-300 flex items-center gap-1 font-mono transition-colors"
                     >
-                      <span>💡</span> Quick Apply: "Computer reads script once while sleeping & throws it out window"
+                      <Lightbulb className="w-3 h-3 text-yellow-400 shrink-0" />
+                      <span>Apply: "Computer reads script while sleeping & throws it out window"</span>
                     </button>
                   )}
                 </div>
@@ -507,9 +531,9 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
-            <span>🎥</span> 5. Dynamic 3D Camera Angles & Perspectives
+            <Video className="w-3.5 h-3.5 text-gray-400" /> 5. Camera Angles & Perspectives
           </label>
-          <span className="text-[11px] text-gray-500 font-mono">Real-Time 3D Spatial Framing</span>
+          <span className="text-[11px] text-gray-500 font-mono">Spatial Framing</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -527,7 +551,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
               >
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{ca.icon}</span>
+                    <ca.icon className="w-4 h-4 text-[#635BFF]" />
                     <h4 className="text-xs font-bold text-white">{ca.name}</h4>
                   </div>
                   {isSelected && (
@@ -545,9 +569,9 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
-            <span>🎯</span> 6. Video Category & Output Intent
+            <Target className="w-3.5 h-3.5 text-gray-400" /> 6. Video Category
           </label>
-          <span className="text-[11px] text-gray-500 font-mono">Pacing & Structure Optimizer</span>
+          <span className="text-[11px] text-gray-500 font-mono">Pacing Optimizer</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -564,7 +588,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-base">{vt.icon}</span>
+                  <vt.icon className="w-4 h-4 text-[#635BFF]" />
                   <h4 className="text-xs font-bold text-white">{vt.name}</h4>
                 </div>
                 <p className="text-[10px] text-gray-400 leading-tight mt-1">{vt.desc}</p>
@@ -574,10 +598,10 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
         </div>
       </div>
 
-      {/* 6. ACCENT COLOR PALETTE */}
+      {/* 7. ACCENT COLOR PALETTE */}
       <div className="space-y-3">
         <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
-          <span>🎨</span> 6. Studio Accent Color
+          <Palette className="w-3.5 h-3.5 text-gray-400" /> 7. Accent Color
         </label>
         <div className="flex flex-wrap gap-3">
           {ACCENT_COLORS.map((a) => (

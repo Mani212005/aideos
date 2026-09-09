@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import type { Film } from "../../../src/dl/schema";
+import { Film as FilmIcon, X, Bot, FileText, AlertTriangle, Loader2, Sparkles, Plus } from "lucide-react";
 
 interface NewProjectModalProps {
   isOpen: boolean;
@@ -12,14 +13,14 @@ interface NewProjectModalProps {
 }
 
 const ARCHETYPES = [
-  { id: "astronaut", name: "Astronaut Guide", icon: "🚀", domain: "Space, Physics & Exploration" },
-  { id: "developer", name: "Lead Engineer", icon: "💻", domain: "Software, Cloud & Infrastructure" },
-  { id: "dataEngineer", name: "Data Architect", icon: "📊", domain: "Data, Databases & Pipelines" },
-  { id: "scientist", name: "Research Scientist", icon: "🔬", domain: "AI, Math & Hardware Architecture" },
-  { id: "executive", name: "Tech Executive", icon: "👔", domain: "Leadership, Strategy & Vision" },
-  { id: "robot", name: "Cyber Robot", icon: "🤖", domain: "Robotics, Algorithms & State Machines" },
-  { id: "educator", name: "Academic Tutor", icon: "🎓", domain: "Concepts, Tutorials & Walkthroughs" },
-  { id: "mascot", name: "Creative Mascot", icon: "🦊", domain: "Branding, Product & Culture" },
+  { id: "astronaut", name: "Astronaut Guide", domain: "Space, Physics & Exploration" },
+  { id: "developer", name: "Lead Engineer", domain: "Software, Cloud & Infrastructure" },
+  { id: "dataEngineer", name: "Data Architect", domain: "Data, Databases & Pipelines" },
+  { id: "scientist", name: "Research Scientist", domain: "AI, Math & Hardware Architecture" },
+  { id: "executive", name: "Tech Executive", domain: "Leadership, Strategy & Vision" },
+  { id: "robot", name: "Cyber Robot", domain: "Robotics, Algorithms & State Machines" },
+  { id: "educator", name: "Academic Tutor", domain: "Concepts, Tutorials & Walkthroughs" },
+  { id: "mascot", name: "Creative Mascot", domain: "Branding, Product & Culture" },
 ];
 
 const THEMES = [
@@ -30,12 +31,12 @@ const THEMES = [
 ];
 
 const VOICES = [
-  { id: "kokoro-am_adam", name: "⚡ Kokoro: Adam (Crisp Technical - Male)" },
-  { id: "kokoro-af_bella", name: "⚡ Kokoro: Bella (Warm Explainer - Female)" },
-  { id: "kokoro-af_nicole", name: "⚡ Kokoro: Nicole (Dynamic Tech - Female)" },
-  { id: "kokoro-am_michael", name: "⚡ Kokoro: Michael (Deep Narrative - Male)" },
-  { id: "aura-helios-en", name: "⚡ Deepgram: Helios (Tech Lead - Male)" },
-  { id: "aura-asteria-en", name: "⚡ Deepgram: Asteria (Clear Narrative - Female)" },
+  { id: "kokoro-am_adam", name: "Kokoro: Adam (Technical - Male)" },
+  { id: "kokoro-af_bella", name: "Kokoro: Bella (Explainer - Female)" },
+  { id: "kokoro-af_nicole", name: "Kokoro: Nicole (Tech - Female)" },
+  { id: "kokoro-am_michael", name: "Kokoro: Michael (Narrative - Male)" },
+  { id: "aura-helios-en", name: "Deepgram: Helios (Tech Lead - Male)" },
+  { id: "aura-asteria-en", name: "Deepgram: Asteria (Narrative - Female)" },
 ];
 
 /**
@@ -132,17 +133,17 @@ export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjec
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-[#20222D] pb-3.5">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🎬</span>
+            <FilmIcon size={20} className="text-[#635BFF]" />
             <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">Script Intake & Film Compiler</h3>
-              <p className="text-xs text-[#8A8A8E]">Paste your script or outline to compile a full animated explainer video</p>
+              <h3 className="text-lg font-bold text-white tracking-tight">Script Intake</h3>
+              <p className="text-xs text-[#8A8A8E]">Compile an animated explainer video from script or outline</p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-[#20222D] transition-all"
           >
-            ×
+            <X size={16} />
           </button>
         </div>
 
@@ -157,8 +158,8 @@ export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjec
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            <span>🤖</span>
-            <span>Paste Script & AI Compile</span>
+            <Bot size={14} />
+            <span>Script Intake</span>
           </button>
           <button
             type="button"
@@ -169,15 +170,15 @@ export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjec
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            <span>📄</span>
-            <span>Blank Project Outline</span>
+            <FileText size={14} />
+            <span>Blank Project</span>
           </button>
         </div>
 
         {/* Error message */}
         {error && (
           <div className="p-3 bg-red-950/50 border border-red-800/80 rounded-xl text-xs text-red-300 flex items-center gap-2">
-            <span>⚠️</span>
+            <AlertTriangle size={14} />
             <span>{error}</span>
           </div>
         )}
@@ -241,7 +242,7 @@ export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjec
               >
                 {ARCHETYPES.map((arch) => (
                   <option key={arch.id} value={arch.id}>
-                    {arch.icon} {arch.name} ({arch.domain})
+                    {arch.name} ({arch.domain})
                   </option>
                 ))}
               </select>
@@ -312,12 +313,18 @@ export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjec
               disabled={isSubmitting || !title.trim()}
               className="text-xs px-5 py-2.5 rounded-xl bg-[#635BFF] hover:bg-[#5249e6] active:scale-95 text-white font-bold transition-all shadow-lg shadow-[#635BFF]/30 disabled:opacity-50 flex items-center gap-2"
             >
-              <span>{isSubmitting ? "⏳" : tab === "intake" ? "✨" : "➕"}</span>
+              {isSubmitting ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : tab === "intake" ? (
+                <Sparkles size={14} />
+              ) : (
+                <Plus size={14} />
+              )}
               <span>
                 {isSubmitting
-                  ? "Compiling Film & Audio..."
+                  ? "Compiling Film..."
                   : tab === "intake"
-                  ? "Compile Film from Script"
+                  ? "Compile Film"
                   : "Create Project"}
               </span>
             </button>

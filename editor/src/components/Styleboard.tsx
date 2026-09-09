@@ -3,11 +3,40 @@
  * SVG character animations, metaphor badges, 3D camera controls, and animated primitive specimens.
  */
 
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import type { Film, Shot, Block, BackgroundPreset, CameraAngle } from "../../../src/dl/schema";
 import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
 import { CHARACTER_RIGS } from "../../../src/dl/characters";
 import { ShotModal } from "./ShotModal";
+import {
+  User,
+  Code,
+  Bot,
+  FlaskConical,
+  Briefcase,
+  Headphones,
+  BookOpen,
+  Cpu,
+  Square,
+  Box,
+  Video,
+  Maximize2,
+  Orbit,
+  Compass,
+  Film as FilmIcon,
+  Sparkles,
+  Type,
+  Grid,
+  BarChart3,
+  Target,
+  Check,
+  RotateCw,
+  Loader2,
+  Save,
+  Bell,
+  Edit3,
+  Layers,
+} from "lucide-react";
 
 interface StyleboardProps {
   film: Film;
@@ -19,15 +48,15 @@ interface StyleboardProps {
   onUpdateFilm?: (film: Film) => void;
 }
 
-const RIG_ICONS: Record<string, string> = {
-  astronaut: "👨‍🚀",
-  developer: "🧑‍💻",
-  robot: "🤖",
-  scientist: "🔬",
-  executive: "👔",
-  "data-engineer": "🎧",
-  educator: "📚",
-  mascot: "💠",
+const RIG_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  astronaut: User,
+  developer: Code,
+  robot: Bot,
+  scientist: FlaskConical,
+  executive: Briefcase,
+  "data-engineer": Headphones,
+  educator: BookOpen,
+  mascot: Cpu,
 };
 
 const ACCENTS = [
@@ -40,13 +69,13 @@ const ACCENTS = [
   { name: "Violet Deep", hex: "#8B5CF6" },
 ];
 
-const CAMERA_ANGLES: Array<{ id: CameraAngle; name: string; icon: string }> = [
-  { id: "flat", name: "Flat 2D", icon: "📐" },
-  { id: "isometric", name: "Isometric 3D", icon: "🧊" },
-  { id: "cinematic-tilt", name: "Cinematic Tilt", icon: "🎥" },
-  { id: "low-angle", name: "Hero Low-Angle", icon: "🔺" },
-  { id: "orbit", name: "Dynamic Orbit", icon: "🛰️" },
-  { id: "top-down", name: "Overhead Blueprint", icon: "🗺️" },
+const CAMERA_ANGLES: Array<{ id: CameraAngle; name: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = [
+  { id: "flat", name: "Flat 2D", icon: Square },
+  { id: "isometric", name: "Isometric 3D", icon: Box },
+  { id: "cinematic-tilt", name: "Cinematic Tilt", icon: Video },
+  { id: "low-angle", name: "Hero Low-Angle", icon: Maximize2 },
+  { id: "orbit", name: "Dynamic Orbit", icon: Orbit },
+  { id: "top-down", name: "Overhead Blueprint", icon: Compass },
 ];
 
 /**
@@ -69,41 +98,41 @@ function getMapBounds(film: Film) {
 }
 
 /**
- * Derives a prominent visual metaphor label and emoji badge from a shot.
+ * Derives a prominent visual metaphor label and Lucide icon from a shot.
  */
 function getMetaphorInfo(shot: Shot) {
   // Check if shot has a CharacterBeat
   const charBlock = shot.blocks.find(b => b.c === "CharacterBeat") as any;
   if (charBlock) {
     const charName = charBlock.characterId === "developer" ? "Tech Architect" : "Astro Guide";
-    return { label: `SVG Character: ${charName}`, icon: "🎭", color: "#635BFF" };
+    return { label: `Character: ${charName}`, icon: User, color: "#635BFF" };
   }
 
   if (shot.needsFootage) {
-    return { label: "GPU B-Roll Video Scene", icon: "🎬", color: "#F59E0B" };
+    return { label: "GPU B-Roll Scene", icon: FilmIcon, color: "#F59E0B" };
   }
 
   if (shot.metaphor) {
     if (shot.metaphor.includes("throw") || shot.metaphor.includes("character")) {
-      return { label: "Character Action Metaphor", icon: "🤖", color: "#F43F5E" };
+      return { label: "Character Metaphor", icon: Bot, color: "#F43F5E" };
     }
     if (shot.metaphor.includes("matrix") || shot.metaphor.includes("grid")) {
-      return { label: "Memory Matrix Grid", icon: "🔲", color: "#635BFF" };
+      return { label: "Memory Matrix", icon: Grid, color: "#635BFF" };
     }
-    return { label: shot.metaphor, icon: "✨", color: "#10B981" };
+    return { label: shot.metaphor, icon: Sparkles, color: "#10B981" };
   }
 
   // Infer from standard blocks
   const hasTokenStrip = shot.blocks.some(b => b.c === "TokenStrip");
-  if (hasTokenStrip) return { label: "Tokenization Sequence", icon: "🔤", color: "#F59E0B" };
+  if (hasTokenStrip) return { label: "Token Sequence", icon: Type, color: "#F59E0B" };
 
   const hasMatrix = shot.blocks.some(b => b.c === "MatrixGrid");
-  if (hasMatrix) return { label: "Memory Allocation Grid", icon: "🔲", color: "#635BFF" };
+  if (hasMatrix) return { label: "Memory Grid", icon: Grid, color: "#635BFF" };
 
   const hasStat = shot.blocks.some(b => b.c === "StatCounter");
-  if (hasStat) return { label: "High-Impact Metric", icon: "📊", color: "#10B981" };
+  if (hasStat) return { label: "Metric Card", icon: BarChart3, color: "#10B981" };
 
-  return { label: "Narrative & Spatial Node", icon: "🎯", color: "#8A8A8E" };
+  return { label: "Spatial Node", icon: Target, color: "#8A8A8E" };
 }
 
 /**
@@ -115,11 +144,12 @@ function renderBlockPreview(block: Block, accent: string) {
       const charBlock = block as any;
       const rig = CHARACTER_RIGS[charBlock.characterId as keyof typeof CHARACTER_RIGS] || CHARACTER_RIGS.astronaut;
       const poseKeyframes = charBlock.keyframes || [{ t: 0, pose: "neutral" }];
+      const RigIcon = RIG_ICONS[charBlock.characterId] || User;
       return (
         <div className="bg-[#121218] p-3 rounded-xl border border-[#635BFF]/40 flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#635BFF]/20 border border-[#635BFF]/50 flex items-center justify-center text-xl">
-              {RIG_ICONS[charBlock.characterId] || "👨‍🚀"}
+            <div className="w-10 h-10 rounded-lg bg-[#635BFF]/20 border border-[#635BFF]/50 flex items-center justify-center text-[#635BFF]">
+              <RigIcon size={20} />
             </div>
             <div>
               <div className="text-xs font-bold text-white flex items-center gap-1.5">
@@ -268,7 +298,36 @@ export function Styleboard({
         const res = await fetch(`/api/broll/status?filmId=${film.id}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.existingFootage) setExistingFootage(data.existingFootage);
+          if (data.existingFootage) {
+            setExistingFootage(data.existingFootage);
+            let hasNewWiring = false;
+            const updatedShots = film.shots.map((s) => {
+              const src = data.existingFootage[s.id];
+              if (s.needsFootage && src) {
+                const hasInset = s.blocks.some((b) => b.c === "AnalogyInset" && (b as any).src === src);
+                if (!hasInset) {
+                  hasNewWiring = true;
+                  const filtered = s.blocks.filter((b) => b.c !== "CharacterBeat" && b.c !== "AnalogyInset");
+                  return {
+                    ...s,
+                    blocks: [
+                      {
+                        c: "AnalogyInset",
+                        caption: (s.visualDirection || s.scriptText || "GPU B-Roll").slice(0, 60),
+                        src,
+                        fullScreenHero: true,
+                      } as Block,
+                      ...filtered,
+                    ],
+                  };
+                }
+              }
+              return s;
+            });
+            if (hasNewWiring && onUpdateFilm) {
+              onUpdateFilm({ ...film, shots: updatedShots });
+            }
+          }
           if (data.jobs && Array.isArray(data.jobs)) {
             const map: Record<string, any> = {};
             data.jobs.forEach((j: any) => { map[j.shotId] = j; });
@@ -281,7 +340,7 @@ export function Styleboard({
     fetchStatus();
     timer = setInterval(fetchStatus, 4000);
     return () => clearInterval(timer);
-  }, [film.id]);
+  }, [film]);
 
   const handleTriggerBroll = async (shotId: string, currentFilmState?: Film) => {
     const targetFilm = currentFilmState || film;
@@ -301,7 +360,7 @@ export function Styleboard({
       });
       const data = await res.json();
       if (data.ok) {
-        setSaveToast(`🚀 Started GPU video generation for ${shotId} on NVIDIA L4 (Wan2.1)`);
+        setSaveToast(`Started GPU video generation for ${shotId} on NVIDIA L4`);
         setTimeout(() => setSaveToast(null), 5000);
       } else {
         alert(`B-Roll generation error: ${data.error}`);
@@ -362,10 +421,10 @@ export function Styleboard({
         throw new Error(data.error || `HTTP ${res.status}: Failed to save film`);
       }
 
-      setSaveToast(`✓ Saved Storyboard & Themes to ${film.id}.ts!`);
+      setSaveToast(`Saved Storyboard & Themes to ${film.id}.ts`);
       setTimeout(() => setSaveToast(null), 4000);
     } catch (err: any) {
-      setSaveToast("⚠️ " + (err.message || "Failed to save"));
+      setSaveToast("Error: " + (err.message || "Failed to save"));
       setTimeout(() => setSaveToast(null), 5000);
     } finally {
       setIsSaving(false);
@@ -400,12 +459,19 @@ export function Styleboard({
         blocks: [charBlock, ...filteredBlocks],
       };
     } else if (mode === "b-roll") {
-      // Set needsFootage flag
-      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat");
+      // Set needsFootage flag and attach AnalogyInset block
+      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat" && b.c !== "AnalogyInset");
+      const footageSrc = existingFootage[shot.id] || `footage/${film.id}_${shot.id}.mp4`;
+      const analogyBlock: Block = {
+        c: "AnalogyInset",
+        caption: (shot.visualDirection || shot.scriptText || "GPU B-Roll").slice(0, 60),
+        src: footageSrc,
+        fullScreenHero: true,
+      } as any;
       const updatedShot = {
         ...shot,
         needsFootage: true,
-        blocks: filteredBlocks,
+        blocks: [analogyBlock, ...filteredBlocks],
       };
       updatedShots[shotIdx] = updatedShot;
       const updatedFilm = {
@@ -442,7 +508,7 @@ export function Styleboard({
         {/* Brand Accent Palette */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] text-[#8A8A8E] font-bold uppercase tracking-wider">
-            Brand Accent Token
+            Accent Token
           </label>
           <div className="flex items-center gap-2">
             {ACCENTS.map((a) => (
@@ -458,7 +524,7 @@ export function Styleboard({
                 style={{ backgroundColor: a.hex }}
                 title={a.name}
               >
-                {accent === a.hex && <span className="text-[10px] text-white font-bold">✓</span>}
+                {accent === a.hex && <Check size={12} className="text-white" />}
               </button>
             ))}
           </div>
@@ -467,31 +533,34 @@ export function Styleboard({
         {/* 3D Camera Perspective Selector */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] text-[#8A8A8E] font-bold uppercase tracking-wider">
-            3D Camera Perspective
+            Camera Perspective
           </label>
           <div className="flex items-center gap-1.5 bg-[#1A1A22] p-1 rounded-lg border border-[#333]">
-            {CAMERA_ANGLES.map((cam) => (
-              <button
-                key={cam.id}
-                onClick={() => handleThemeChange("cameraAngle", cam.id)}
-                className={`text-xs px-2.5 py-1 rounded font-medium flex items-center gap-1 transition-all ${
-                  currentCamera === cam.id
-                    ? "bg-[#635BFF] text-white font-bold shadow"
-                    : "text-gray-400 hover:text-white"
-                }`}
-                title={cam.name}
-              >
-                <span>{cam.icon}</span>
-                <span className="capitalize">{cam.name}</span>
-              </button>
-            ))}
+            {CAMERA_ANGLES.map((cam) => {
+              const CamIcon = cam.icon;
+              return (
+                <button
+                  key={cam.id}
+                  onClick={() => handleThemeChange("cameraAngle", cam.id)}
+                  className={`text-xs px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition-all ${
+                    currentCamera === cam.id
+                      ? "bg-[#635BFF] text-white font-bold shadow"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                  title={cam.name}
+                >
+                  <CamIcon size={12} />
+                  <span className="capitalize">{cam.name}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Background Canvas Selector (Connected to BACKGROUND_THEMES) */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] text-[#8A8A8E] font-bold uppercase tracking-wider">
-            Background Canvas
+            Canvas Background
           </label>
           <div className="flex items-center gap-1.5 bg-[#1A1A22] p-1 rounded-lg border border-[#333]">
             {Object.values(BACKGROUND_THEMES).map((bg) => (
@@ -516,27 +585,27 @@ export function Styleboard({
           <div className="flex items-center gap-1 bg-[#1A1A20] p-1 rounded-lg border border-[#333]">
             <button
               onClick={() => setActiveTab("storyboard")}
-              className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all ${
+              className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all flex items-center gap-1.5 ${
                 activeTab === "storyboard" ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
               }`}
             >
-              🎬 Storyboard ({film.shots.length})
+              <FilmIcon size={12} /> Storyboard ({film.shots.length})
             </button>
             <button
               onClick={() => setActiveTab("primitives")}
-              className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all ${
+              className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all flex items-center gap-1.5 ${
                 activeTab === "primitives" ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
               }`}
             >
-              🧩 Primitives
+              <Layers size={12} /> Primitives
             </button>
             <button
               onClick={() => setActiveTab("spatial")}
-              className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all ${
+              className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all flex items-center gap-1.5 ${
                 activeTab === "spatial" ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
               }`}
             >
-              🗺️ Topology
+              <Compass size={12} /> Topology
             </button>
           </div>
 
@@ -549,8 +618,8 @@ export function Styleboard({
                 : "bg-emerald-500 hover:bg-emerald-400 text-black active:scale-95"
             }`}
           >
-            <span>{isSaving ? "⏳" : "💾"}</span>
-            <span>{isSaving ? "Saving..." : "Save Storyboard & Apply"}</span>
+            {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+            <span>{isSaving ? "Saving..." : "Save Storyboard"}</span>
           </button>
         </div>
       </div>
@@ -558,7 +627,7 @@ export function Styleboard({
       {/* Save Toast Feedback */}
       {saveToast && (
         <div className="mx-6 mt-4 p-3 bg-emerald-950/90 border border-emerald-500 rounded-lg text-emerald-200 text-xs font-mono flex items-center gap-2 shadow-xl animate-fade-in">
-          <span>🔔</span> {saveToast}
+          <Bell size={14} /> {saveToast}
         </div>
       )}
 
@@ -571,14 +640,14 @@ export function Styleboard({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-                  <span>🎬</span> Visual Keyframe Storyboard
+                  <FilmIcon size={16} /> Keyframe Storyboard
                 </h3>
                 <p className="text-xs text-[#8A8A8E] mt-0.5">
-                  Click any card to select for timeline editing, or switch visual modes (Standard, SVG Character, GPU B-Roll) directly below.
+                  Select a card to edit the timeline, or switch visual modes.
                 </p>
               </div>
               <div className="text-xs text-[#8A8A8E] font-mono">
-                Total Film Duration: <span className="text-white font-bold">{film.shots.reduce((acc, s) => acc + s.dur, 0).toFixed(1)}s</span>
+                Duration: <span className="text-white font-bold">{film.shots.reduce((acc, s) => acc + s.dur, 0).toFixed(1)}s</span>
               </div>
             </div>
 
@@ -609,16 +678,17 @@ export function Styleboard({
                       
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-mono bg-[#1E1E24] text-[#8A8A8E] px-2 py-0.5 rounded border border-[#333]">
-                          ⏱️ {shot.dur}s
+                          {shot.dur}s
                         </span>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingShotIdx(idx);
                           }}
-                          className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#635BFF] hover:bg-[#5248E5] text-white transition-colors"
+                          className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#635BFF] hover:bg-[#5248E5] text-white transition-colors flex items-center gap-1"
                         >
-                          ✏️ Edit Scene
+                          <Edit3 size={10} />
+                          <span>Edit</span>
                         </button>
                       </div>
                     </div>
@@ -629,7 +699,7 @@ export function Styleboard({
                       style={{ backgroundColor: `${metaphor.color}15`, color: metaphor.color }}
                     >
                       <div className="flex items-center gap-2">
-                        <span>{metaphor.icon}</span>
+                        <metaphor.icon size={13} />
                         <span className="font-bold">{metaphor.label}</span>
                       </div>
 
@@ -652,24 +722,24 @@ export function Styleboard({
                             e.stopPropagation();
                             handleSetShotMode(idx, "character");
                           }}
-                          className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all ${
+                          className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all flex items-center gap-1 ${
                             activeMode === "character" ? "bg-[#635BFF] text-white font-bold" : "text-gray-400 hover:text-white"
                           }`}
                           title="SVG Character Rig Animation"
                         >
-                          🎭 Character
+                          <User size={10} /> Character
                         </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSetShotMode(idx, "b-roll");
                           }}
-                          className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all ${
+                          className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all flex items-center gap-1 ${
                             activeMode === "b-roll" ? "bg-amber-600 text-white font-bold" : "text-gray-400 hover:text-white"
                           }`}
                           title="GPU B-Roll Scene"
                         >
-                          🎬 B-Roll
+                          <FilmIcon size={10} /> B-Roll
                         </button>
                       </div>
                     </div>
@@ -680,7 +750,7 @@ export function Styleboard({
                         {brollJobStatus[shot.id]?.state === "running" || brollJobStatus[shot.id]?.state === "queued" ? (
                           <div className="flex items-center justify-between w-full">
                             <div className="flex items-center gap-2 text-amber-400 font-mono">
-                              <span className="animate-spin">🔄</span>
+                              <Loader2 size={12} className="animate-spin" />
                               <span>GPU Generating... {Math.round((brollJobStatus[shot.id]?.progress ?? 0) * 100)}%</span>
                             </div>
                             <span className="text-[10px] text-amber-500/70 font-mono">NVIDIA L4 · Wan2.1</span>
@@ -688,7 +758,7 @@ export function Styleboard({
                         ) : existingFootage[shot.id] || shot.blocks.some((b) => b.c === "AnalogyInset" && (b as any).src) ? (
                           <div className="flex items-center justify-between w-full">
                             <div className="flex items-center gap-1.5 text-emerald-400 font-mono">
-                              <span>✓</span>
+                              <Check size={12} />
                               <span className="truncate max-w-[180px]">
                                 Footage Ready ({existingFootage[shot.id] || (shot.blocks.find((b) => b.c === "AnalogyInset") as any)?.src})
                               </span>
@@ -699,15 +769,17 @@ export function Styleboard({
                                 handleTriggerBroll(shot.id);
                               }}
                               disabled={isTriggeringBroll[shot.id]}
-                              className="text-[10px] font-mono bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded transition-colors cursor-pointer"
+                              className="text-[10px] font-mono bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded transition-colors cursor-pointer flex items-center gap-1"
                               title="Re-render footage with Wan2.1 on GPU"
                             >
-                              ⚡ Re-Generate
+                              <RotateCw size={10} /> Regenerate
                             </button>
                           </div>
                         ) : (
                           <div className="flex items-center justify-between w-full">
-                            <span className="text-gray-400 font-mono">🎬 B-Roll Footage Pending</span>
+                            <span className="text-gray-400 font-mono flex items-center gap-1.5">
+                              <FilmIcon size={11} /> Footage Pending
+                            </span>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -717,7 +789,7 @@ export function Styleboard({
                               className="text-[10px] font-mono font-bold bg-amber-500 hover:bg-amber-400 text-black px-2.5 py-0.5 rounded transition-all shadow cursor-pointer"
                               title="Generate photoreal diffusion video with Wan2.1 on remote GPU"
                             >
-                              {isTriggeringBroll[shot.id] ? "Connecting..." : "⚡ Generate Video on GPU"}
+                              {isTriggeringBroll[shot.id] ? "Connecting..." : "Generate Video"}
                             </button>
                           </div>
                         )}
@@ -754,13 +826,13 @@ export function Styleboard({
                     {/* Card Footer: Camera & Spatial Anchoring */}
                     <div className="bg-[#14141A] px-4 py-2 border-t border-[#222] flex items-center justify-between text-[11px] text-[#8A8A8E]">
                       <div className="flex items-center gap-1.5">
-                        <span>🎯 Look:</span>
+                        <span>Look:</span>
                         <span className="font-mono text-white">
                           {Array.isArray(shot.look) ? shot.look.join(" -> ") : shot.look}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 font-mono">
-                        <span>📷 Move:</span>
+                        <span>Move:</span>
                         <span className="text-white capitalize">{shot.move} ({shot.zoom || 1}x)</span>
                       </div>
                     </div>
@@ -777,10 +849,10 @@ export function Styleboard({
           <div className="flex flex-col gap-6">
             <div>
               <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-                <span>🧩</span> Core Animated Primitives Specimen
+                <Layers size={16} /> Primitives Specimen
               </h3>
               <p className="text-xs text-[#8A8A8E] mt-0.5">
-                Every video scene is constructed strictly using these mathematically refined, accessible primitives.
+                Scene construction primitives.
               </p>
             </div>
 
@@ -790,13 +862,15 @@ export function Styleboard({
               <div className="bg-[#121216] border border-[#635BFF]/40 rounded-2xl p-5 flex flex-col gap-3">
                 <div className="flex items-center justify-between border-b border-[#26262E] pb-2">
                   <span className="text-xs font-mono font-bold text-white">00 · CharacterBeat</span>
-                  <span className="badge badge-xs badge-primary font-mono">SVG 2-Level Rig</span>
+                  <span className="badge badge-xs badge-primary font-mono">SVG Rig</span>
                 </div>
                 <div className="p-3 bg-[#0A0A0E] rounded-xl border border-[#222] flex items-center gap-3">
-                  <span className="text-2xl">👨‍🚀</span>
+                  <div className="w-8 h-8 rounded-lg bg-[#635BFF]/20 border border-[#635BFF]/40 flex items-center justify-center text-[#635BFF]">
+                    <User size={18} />
+                  </div>
                   <div>
                     <div className="text-xs font-bold text-white">Astro Guide / Tech Architect</div>
-                    <div className="text-[10px] text-[#8A8A8E]">8 Presets · Ease-Out-Expo Kinematics</div>
+                    <div className="text-[10px] text-[#8A8A8E]">8 Presets · Kinematics</div>
                   </div>
                 </div>
               </div>
@@ -920,10 +994,10 @@ export function Styleboard({
           <div className="flex flex-col gap-4">
             <div>
               <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-                <span>🗺️</span> 2D Infinite Canvas Topology
+                <Compass size={16} /> Spatial Canvas Topology
               </h3>
               <p className="text-xs text-[#8A8A8E] mt-0.5">
-                Node coordinate space and camera traversal paths across the continuous 2D spatial canvas.
+                Node coordinates and camera traversal paths.
               </p>
             </div>
 

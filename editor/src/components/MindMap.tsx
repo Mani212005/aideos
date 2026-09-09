@@ -1,6 +1,7 @@
 // File Description: Renders an interactive, Excalidraw-style movable node graph on the canvas with drag-and-drop.
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import type { Film, CanvasNode, CanvasEdge } from "../../../src/dl/schema";
+import { Move, Share2, Plus, X } from "lucide-react";
 
 interface MindMapProps {
   film: Film;
@@ -101,7 +102,8 @@ export function MindMap({
       {/* Top Controls Bar */}
       <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
         <div className="bg-[#1A1A1B]/90 backdrop-blur px-3 py-1.5 rounded-md border border-[#333] text-xs text-gray-400 font-mono flex items-center gap-2 pointer-events-none">
-          <span className="text-yellow-400 font-bold">✥ Movable Spatial Graph</span>
+          <Move size={12} className="text-yellow-400" />
+          <span className="text-yellow-400 font-bold">Spatial Graph</span>
           <span>· {nodes.length} Nodes · {edges.length} Edges</span>
         </div>
 
@@ -117,7 +119,8 @@ export function MindMap({
           }`}
           title="Toggle Graph Connections Inspector"
         >
-          <span>🕸️ Connections ({edges.length})</span>
+          <Share2 size={12} />
+          <span>Connections ({edges.length})</span>
         </button>
 
         {onAddNode && (
@@ -128,7 +131,8 @@ export function MindMap({
             }}
             className="px-2.5 py-1.5 rounded-md text-xs font-mono bg-[#27272A] hover:bg-[#3F3F46] text-gray-200 border border-[#3F3F46] flex items-center gap-1 cursor-pointer"
           >
-            <span>+ Add Node</span>
+            <Plus size={12} />
+            <span>Node</span>
           </button>
         )}
 
@@ -140,7 +144,8 @@ export function MindMap({
             }}
             className="px-2.5 py-1.5 rounded-md text-xs font-mono bg-[#27272A] hover:bg-[#3F3F46] text-gray-200 border border-[#3F3F46] flex items-center gap-1 cursor-pointer"
           >
-            <span>+ Add Connection</span>
+            <Plus size={12} />
+            <span>Connection</span>
           </button>
         )}
       </div>
@@ -153,7 +158,8 @@ export function MindMap({
         >
           <div className="flex items-center justify-between pb-1.5 border-b border-[#27272A]">
             <div className="flex items-center gap-1.5">
-              <span className="text-yellow-400 font-bold">🕸️ GRAPH CONNECTIONS</span>
+              <Share2 size={12} className="text-yellow-400" />
+              <span className="text-yellow-400 font-bold">GRAPH CONNECTIONS</span>
               <span className="text-[10px] bg-black/60 px-1.5 py-0.5 rounded text-gray-400">
                 {edges.length} active
               </span>
@@ -163,7 +169,7 @@ export function MindMap({
               className="text-gray-400 hover:text-white text-xs px-1 cursor-pointer"
               title="Hide Connections Inspector"
             >
-              ✕
+              <X size={12} />
             </button>
           </div>
 

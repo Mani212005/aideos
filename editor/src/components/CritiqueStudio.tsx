@@ -7,6 +7,7 @@
 import { useState } from "react";
 import type { Film } from "../../../src/dl/schema";
 import { executeCritique, type CritiqueResponse } from "../../../backend/critique/engine";
+import { Bot, Undo2, Check, AlertOctagon, MessageSquare, Loader2, Sparkles, AlertTriangle } from "lucide-react";
 
 interface CritiqueStudioProps {
   film: Film;
@@ -17,12 +18,12 @@ interface CritiqueStudioProps {
 }
 
 const QUICK_CRITIQUES = [
-  { label: "🎯 ScaleBar to 0.75", prompt: "Make the scale bar density 0.75" },
-  { label: "🎨 Blueprint Theme", prompt: "Switch visual theme to blueprint" },
-  { label: "🌑 Smooth Dark Theme", prompt: "Switch visual theme to smooth dark" },
-  { label: "⏱️ Shorten Shot 2", prompt: "Shorten shot 2 by 1 second" },
-  { label: "👋 Wave Action Later", prompt: "Make the actor wave later" },
-  { label: "🔄 Turn Actor Left", prompt: "Set actor facing direction to left" },
+  { label: "ScaleBar to 0.75", prompt: "Make the scale bar density 0.75" },
+  { label: "Blueprint Theme", prompt: "Switch visual theme to blueprint" },
+  { label: "Smooth Dark Theme", prompt: "Switch visual theme to smooth dark" },
+  { label: "Shorten Shot 2", prompt: "Shorten shot 2 by 1 second" },
+  { label: "Wave Action Later", prompt: "Make the actor wave later" },
+  { label: "Turn Actor Left", prompt: "Set actor facing direction to left" },
 ];
 
 export function CritiqueStudio({
@@ -86,14 +87,14 @@ export function CritiqueStudio({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#222]">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="text-2xl">🤖</span>
-            <h2 className="text-xl font-bold tracking-tight text-white">Natural-Language Critique Studio</h2>
+            <Bot size={22} className="text-[#635BFF]" />
+            <h2 className="text-xl font-bold tracking-tight text-white">Critique Studio</h2>
             <span className="text-xs bg-[#1E1E24] text-[#8A8A8E] border border-[#333] px-2.5 py-0.5 rounded-full font-mono">
-              Deterministic Patch Engine
+              Patch Engine
             </span>
           </div>
           <p className="text-xs text-[#8A8A8E] mt-1">
-            Type instructions in plain English to refine timing, adjust visual devices, scale actors, or swap themes with instant deep-diff verification.
+            Instructions to refine timing, visual devices, actors, or themes with deep-diff verification.
           </p>
         </div>
 
@@ -105,7 +106,7 @@ export function CritiqueStudio({
             className="text-xs px-3.5 py-1.5 rounded-lg bg-[#1A1A1E] hover:bg-[#25252D] border border-[#333] text-white font-bold transition-all disabled:opacity-40 flex items-center gap-1.5"
             title="Revert to previous film state (Undo)"
           >
-            <span>↩️</span>
+            <Undo2 size={13} />
             <span>Undo ({undoStack.length})</span>
           </button>
         </div>
@@ -121,8 +122,12 @@ export function CritiqueStudio({
           }`}
         >
           <div className="flex items-center gap-2">
-            <span>{validationStatus.ok ? "✓" : "❌"}</span>
-            <span className="font-bold">{validationStatus.ok ? "Film Invariants Healthy:" : "Validation Error:"}</span>
+            {validationStatus.ok ? (
+              <Check size={14} className="text-emerald-400" />
+            ) : (
+              <AlertOctagon size={14} className="text-red-400" />
+            )}
+            <span className="font-bold">{validationStatus.ok ? "Invariants Healthy:" : "Validation Error:"}</span>
             <span>{validationStatus.message}</span>
           </div>
           {validationStatus.rule && (
@@ -136,8 +141,8 @@ export function CritiqueStudio({
       {/* Main Critique Input Box */}
       <div className="mt-6 flex flex-col gap-3 bg-[#121216] border border-[#262632] p-5 rounded-2xl shadow-xl">
         <label className="text-xs text-gray-300 font-bold uppercase tracking-wider flex items-center gap-2">
-          <span>💬</span>
-          <span>Director Critique / Instruction</span>
+          <MessageSquare size={13} />
+          <span>Instruction</span>
         </label>
         
         <div className="flex items-center gap-2">
@@ -154,7 +159,7 @@ export function CritiqueStudio({
             disabled={isProcessing || !critiqueInput.trim()}
             className="px-5 py-3 rounded-xl bg-[#635BFF] hover:bg-[#5249e6] active:scale-95 text-white font-bold text-sm transition-all shadow-lg shadow-[#635BFF]/30 disabled:opacity-40 flex items-center gap-2 shrink-0"
           >
-            <span>{isProcessing ? "⏳" : "⚡"}</span>
+            {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
             <span>{isProcessing ? "Analyzing..." : "Review Patch"}</span>
           </button>
         </div>
@@ -188,7 +193,11 @@ export function CritiqueStudio({
         >
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <div className="flex items-center gap-2">
-              <span className="text-xl">{pendingResponse.ok ? "✨" : "⚠️"}</span>
+              {pendingResponse.ok ? (
+                <Sparkles size={18} className="text-emerald-400" />
+              ) : (
+                <AlertTriangle size={18} className="text-red-400" />
+              )}
               <h3 className="text-sm font-bold text-white">
                 {pendingResponse.ok ? "Proposed Transactional Patch" : "Patch Validation Refusal"}
               </h3>
@@ -212,7 +221,7 @@ export function CritiqueStudio({
           {!pendingResponse.ok && pendingResponse.error && (
             <div className="p-3.5 bg-red-950/60 border border-red-700/80 rounded-xl text-xs text-red-200 font-mono space-y-1.5">
               <div className="font-bold flex items-center gap-1.5 text-red-100">
-                <span>🛑</span>
+                <AlertOctagon size={14} className="text-red-400" />
                 <span>Rollback Triggered by: {pendingResponse.failingRule || "Validation Gate"}</span>
               </div>
               <p className="text-[11px] text-red-300/90 whitespace-pre-wrap">{pendingResponse.error}</p>
@@ -242,8 +251,8 @@ export function CritiqueStudio({
                 onClick={handleApplyPatch}
                 className="text-xs px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold transition-all shadow-lg shadow-emerald-900/40 flex items-center gap-2"
               >
-                <span>✓</span>
-                <span>Apply Patch to Film</span>
+                <Check size={14} />
+                <span>Apply Patch</span>
               </button>
             </div>
           )}
@@ -254,7 +263,7 @@ export function CritiqueStudio({
       {history.length > 0 && (
         <div className="mt-8 flex flex-col gap-3">
           <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-400">
-            Recent Applied Critiques ({history.length})
+            Recent Critiques ({history.length})
           </h3>
           <div className="flex flex-col gap-2">
             {history.map((item, idx) => (
@@ -263,7 +272,7 @@ export function CritiqueStudio({
                 className="p-3 bg-[#121216] border border-[#222] rounded-xl flex items-center justify-between text-xs"
               >
                 <div className="flex items-center gap-2.5">
-                  <span className="text-emerald-400">✓</span>
+                  <Check size={12} className="text-emerald-400 shrink-0" />
                   <span className="font-medium text-white">"{item.critique}"</span>
                   <span className="text-gray-500">→</span>
                   <span className="text-gray-400">{item.outcome}</span>

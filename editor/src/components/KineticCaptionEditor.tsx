@@ -4,7 +4,7 @@ File Description: This component implements the Kinetic Caption & Pretext Inspec
 
 import React, { useState, useMemo, useEffect } from "react";
 import { prepareWithSegments, layoutWithLines, type LayoutLine } from "@chenglou/pretext";
-import { Search, Play, Edit2, Sparkles, Clock, FileText } from "lucide-react";
+import { Search, Play, Edit2, Sparkles, Clock, FileText, Subtitles } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 
 export interface CaptionWordItem {
@@ -100,7 +100,7 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
       <div className="flex items-center justify-between border-b border-rgba(245,245,245,0.10) pb-4">
         <div>
           <h3 className="font-bold text-lg text-[#F5F5F5] flex items-center gap-2">
-            <span>💬</span> Pretext Kinetic Subtitle Studio
+            <Subtitles size={18} className="text-[#635BFF]" /> Kinetic Subtitles
           </h3>
           <p className="text-xs text-[#8A8A8E]">
             Interactive word column for {film?.title || "Active Video"} ({localWords.length} words total)

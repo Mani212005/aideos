@@ -8,6 +8,7 @@ import React from "react";
 import type { Film, Shot } from "../../../src/dl/schema";
 import { getShotDuration } from "../../../backend/timeline/timeline";
 import type { TransitionType } from "../transitions";
+import { Sliders, Camera, Sparkles, Mic, X } from "lucide-react";
 
 interface ClipInspectorProps {
   film: Film;
@@ -47,7 +48,8 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-[#27272A]">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-yellow-400">⚙️ CLIP INSPECTOR</span>
+          <Sliders size={14} className="text-yellow-400" />
+          <span className="font-bold text-yellow-400 uppercase tracking-wider">Clip Inspector</span>
           <span className="text-[10px] font-mono bg-black/60 px-1.5 py-0.5 rounded text-gray-400">
             Shot {shotIndex + 1}
           </span>
@@ -57,7 +59,7 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
           className="text-gray-400 hover:text-white p-1 rounded"
           title="Close Inspector"
         >
-          ✕
+          <X size={14} />
         </button>
       </div>
 
@@ -169,9 +171,10 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
 
       {/* Transition & Camera Framing */}
       <div className="flex flex-col gap-2.5 bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
-        <span className="text-[10px] font-mono text-yellow-400 font-bold uppercase tracking-wider">
-          🎬 Transition & Camera
-        </span>
+        <div className="flex items-center gap-1.5 text-[10px] font-mono text-yellow-400 font-bold uppercase tracking-wider">
+          <Camera size={13} />
+          <span>Transition & Camera</span>
+        </div>
 
         {/* Transition Selector */}
         <div className="flex items-center justify-between gap-2">
@@ -231,16 +234,17 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
       {/* Visual Device / Metaphor Selector */}
       <div className="flex flex-col gap-2.5 bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider">
-            🖼️ Visual Device / Metaphor
-          </span>
+          <div className="flex items-center gap-1.5 text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider">
+            <Sparkles size={13} />
+            <span>Visual Metaphor</span>
+          </div>
           {shot.metaphor ? (
             <span className="text-[9px] bg-purple-950/80 border border-purple-500/50 text-purple-300 px-1.5 py-0.5 rounded font-mono">
               Active
             </span>
           ) : (
             <span className="text-[9px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded font-mono">
-              None (Character Scene)
+              Character Scene
             </span>
           )}
         </div>
@@ -281,13 +285,13 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
             }}
             className="bg-black/60 border border-[#333] rounded px-2 py-1.5 text-xs text-white font-mono outline-none focus:border-purple-400"
           >
-            <option value="none">🚫 None (Pure Character & Typography)</option>
-            <option value="glowing-cluster">🪐 Latent Neural Space & Embeddings</option>
-            <option value="balance-scale">⚖️ Equilibrium Balance Scale</option>
-            <option value="clock-gears">⚙️ Latency & Throughput Gears</option>
-            <option value="liquid-bucket">🧪 Dynamic Buffer Reservoir</option>
-            <option value="typing-cursor-quote">💬 Terminal Code / Quote Statement</option>
-            <option value="rocket-launch">🚀 Scalability & Deployment Rocket</option>
+            <option value="none">None (Character & Typography)</option>
+            <option value="glowing-cluster">Latent Neural Space & Embeddings</option>
+            <option value="balance-scale">Equilibrium Balance Scale</option>
+            <option value="clock-gears">Latency & Throughput Gears</option>
+            <option value="liquid-bucket">Dynamic Buffer Reservoir</option>
+            <option value="typing-cursor-quote">Terminal Code / Quote Statement</option>
+            <option value="rocket-launch">Scalability & Deployment Rocket</option>
           </select>
         </div>
       </div>
@@ -295,9 +299,10 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
       {/* Screenplay Narration & Speaker Speed */}
       <div className="flex flex-col gap-2.5 bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
         <div className="flex items-center justify-between">
-          <label className="text-[10px] font-mono text-yellow-400 font-bold uppercase tracking-wider">
-            🎙️ Narration & Speaker Speed
-          </label>
+          <div className="flex items-center gap-1.5 text-[10px] font-mono text-yellow-400 font-bold uppercase tracking-wider">
+            <Mic size={13} />
+            <span>Narration & Speed</span>
+          </div>
           <span className="text-[10px] font-mono bg-yellow-950/80 text-yellow-400 px-1.5 py-0.5 rounded border border-yellow-500/40 font-bold">
             {(shot.speed ?? 1.0).toFixed(2)}x
           </span>

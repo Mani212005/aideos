@@ -6,6 +6,27 @@ import React, { useState } from "react";
 import type { Film, Shot, Block } from "../../../src/dl/schema";
 import { POSE_PRESETS, getAllCharacterRigs } from "../../../src/dl/characters";
 import { CharacterRigView } from "../../../src/dl/CharacterRig";
+import {
+  Mic,
+  Sparkles,
+  Palette,
+  LayoutGrid,
+  User,
+  Video,
+  Film as FilmIcon,
+  Maximize2,
+  Check,
+  Zap,
+  X,
+  LayoutTemplate,
+  Code,
+  Bot,
+  FlaskConical,
+  Briefcase,
+  Headphones,
+  BookOpen,
+  Cpu,
+} from "lucide-react";
 
 export interface ShotModalProps {
   isOpen: boolean;
@@ -16,26 +37,26 @@ export interface ShotModalProps {
   onSelectShotIndex?: (index: number) => void;
 }
 
-const RIG_ICONS: Record<string, string> = {
-  astronaut: "👨‍🚀",
-  developer: "🧑‍💻",
-  robot: "🤖",
-  scientist: "🔬",
-  executive: "👔",
-  "data-engineer": "🎧",
-  educator: "📚",
-  mascot: "💠",
+const RIG_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  astronaut: User,
+  developer: Code,
+  robot: Bot,
+  scientist: FlaskConical,
+  executive: Briefcase,
+  "data-engineer": Headphones,
+  educator: BookOpen,
+  mascot: Cpu,
 };
 
 const PRESET_GESTURES = [
-  { id: "neutral", label: "Rest / Attentive", icon: "🧍", desc: "Natural relaxed posture" },
-  { id: "present-right", label: "Point Right", icon: "👉", desc: "Points to charts & cards on the right" },
-  { id: "present-left", label: "Point Left", icon: "👈", desc: "Points to headlines on the left" },
-  { id: "think", label: "Thinking", icon: "🤔", desc: "Hand on chin / problem analysis" },
-  { id: "shrug", label: "Shrug / Tradeoff", icon: "🤷", desc: "Explaining complexity & dilemmas" },
-  { id: "wave", label: "Wave Greeting", icon: "👋", desc: "Friendly intro greeting" },
-  { id: "crossed-arms", label: "Authoritative", icon: "💪", desc: "Confident architecture stance" },
-  { id: "celebrate", label: "Celebrate", icon: "🙌", desc: "Both arms up / payoff milestone" },
+  { id: "neutral", label: "Rest / Attentive", desc: "Natural relaxed posture" },
+  { id: "present-right", label: "Point Right", desc: "Points to charts & cards on the right" },
+  { id: "present-left", label: "Point Left", desc: "Points to headlines on the left" },
+  { id: "think", label: "Thinking", desc: "Hand on chin / problem analysis" },
+  { id: "shrug", label: "Shrug / Tradeoff", desc: "Explaining complexity & dilemmas" },
+  { id: "wave", label: "Wave Greeting", desc: "Friendly intro greeting" },
+  { id: "crossed-arms", label: "Authoritative", desc: "Confident architecture stance" },
+  { id: "celebrate", label: "Celebrate", desc: "Both arms up / payoff milestone" },
 ];
 
 export const ShotModal: React.FC<ShotModalProps> = ({
@@ -53,10 +74,11 @@ export const ShotModal: React.FC<ShotModalProps> = ({
   const shot = film.shots[shotIndex];
   const allRigs = getAllCharacterRigs();
 
-  // Find active character block if one exists
+  // Find active character block or b-roll inset if one exists
   const charBlock = shot.blocks.find((b) => b.c === "CharacterBeat") as any;
+  const analogyBlock = shot.blocks.find((b) => b.c === "AnalogyInset") as any;
   const isCharacterMode = !!charBlock;
-  const isBrollMode = !!shot.needsFootage;
+  const isBrollMode = !!shot.needsFootage || !!analogyBlock;
   const activeMode = isCharacterMode ? "character" : isBrollMode ? "b-roll" : "standard";
 
   // Selected character ID & timeline gestures
@@ -81,7 +103,7 @@ export const ShotModal: React.FC<ShotModalProps> = ({
   const setVisualMode = (mode: "standard" | "character" | "b-roll") => {
     if (mode === "character") {
       const filteredBlocks = shot.blocks.filter(
-        (b) => b.c !== "CharacterBeat" && b.c !== "MetaphorViewer"
+        (b) => b.c !== "CharacterBeat" && b.c !== "MetaphorViewer" && b.c !== "AnalogyInset"
       );
       const newCharBlock: Block = {
         c: "CharacterBeat",
@@ -98,10 +120,20 @@ export const ShotModal: React.FC<ShotModalProps> = ({
         blocks: [newCharBlock, ...filteredBlocks],
       });
     } else if (mode === "b-roll") {
-      const filteredBlocks = shot.blocks.filter((b) => b.c !== "CharacterBeat");
+      const filteredBlocks = shot.blocks.filter(
+        (b) => b.c !== "CharacterBeat" && b.c !== "AnalogyInset"
+      );
+      const footageSrc = analogyBlock?.src || `footage/${film.id}_${shot.id}.mp4`;
+      const newAnalogyBlock: Block = {
+        c: "AnalogyInset",
+        caption: (shot.visualDirection || shot.scriptText || "GPU B-Roll").slice(0, 60),
+        src: footageSrc,
+        fullScreenHero: true,
+      } as any;
+
       updateCurrentShot({
         needsFootage: true,
-        blocks: filteredBlocks,
+        blocks: [newAnalogyBlock, ...filteredBlocks],
       });
 
       // Immediately trigger GPU B-roll generation on the remote GPU box
@@ -115,7 +147,9 @@ export const ShotModal: React.FC<ShotModalProps> = ({
         }),
       }).catch((err) => console.error("Failed to trigger B-roll:", err));
     } else {
-      const filteredBlocks = shot.blocks.filter((b) => b.c !== "CharacterBeat");
+      const filteredBlocks = shot.blocks.filter(
+        (b) => b.c !== "CharacterBeat" && b.c !== "AnalogyInset"
+      );
       updateCurrentShot({
         needsFootage: false,
         blocks:
@@ -234,7 +268,7 @@ export const ShotModal: React.FC<ShotModalProps> = ({
               className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-gray-400 hover:text-white flex items-center justify-center text-lg transition-colors"
               title="Close modal"
             >
-              ✕
+              <X size={16} />
             </button>
           </div>
         </div>
@@ -247,7 +281,7 @@ export const ShotModal: React.FC<ShotModalProps> = ({
             
             {/* Live Character Visual Preview Box */}
             {isCharacterMode && (
-              <div className="bg-[#121218] border border-[#272732] rounded-2xl p-4 flex flex-col items-center justify-center min-h-[190px] relative overflow-hidden shadow-inner">
+              <div className="bg-[#121218] border border-[#27272A] rounded-2xl p-4 flex flex-col items-center justify-center min-h-[190px] relative overflow-hidden shadow-inner">
                 <div className="absolute top-2.5 left-3 text-[10px] font-mono text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span>Live Pose: {currentActiveGestureId}</span>
@@ -268,10 +302,24 @@ export const ShotModal: React.FC<ShotModalProps> = ({
               <div className="bg-[#121218] border border-amber-500/30 rounded-2xl p-4 flex flex-col items-center justify-center min-h-[190px] relative overflow-hidden shadow-inner">
                 <div className="absolute top-2.5 left-3 text-[10px] font-mono text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                  <span>GPU B-Roll · Wan2.1 Diffusion (NVIDIA L4)</span>
+                  <span>GPU B-Roll · Wan2.1 Diffusion</span>
                 </div>
                 <div className="w-full flex flex-col items-center justify-center pt-5 gap-2">
-                  <div className="text-3xl">🎬</div>
+                  {analogyBlock?.src ? (
+                    <div className="w-full flex flex-col items-center gap-2">
+                      <video
+                        src={`/${analogyBlock.src.replace(/^\//, "")}`}
+                        controls
+                        className="w-full max-h-48 rounded-lg object-contain bg-black border border-amber-500/40"
+                      />
+                      <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                        <Check size={12} />
+                        <span>B-Roll footage attached</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <Video size={28} className="text-amber-400" />
+                  )}
                   <p className="text-[11px] text-gray-300 font-mono text-center max-w-xs">
                     {shot.visualDirection ? `"${shot.visualDirection}"` : "Cinematic scene prompt"}
                   </p>
@@ -289,7 +337,8 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                     }}
                     className="mt-1 px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black text-xs font-mono font-bold rounded-lg transition-colors shadow flex items-center gap-1.5 cursor-pointer"
                   >
-                    <span>⚡</span> Trigger / Re-generate Video on GPU
+                    <Zap size={12} />
+                    <span>{analogyBlock?.src ? "Re-generate Video" : "Generate Video"}</span>
                   </button>
                 </div>
               </div>
@@ -297,24 +346,23 @@ export const ShotModal: React.FC<ShotModalProps> = ({
 
             <div>
               <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5 mb-2">
-                <span>🎙️</span> Voiceover Narration (Spoken Text)
+                <Mic size={14} />
+                <span>Voiceover Narration</span>
               </label>
               <textarea
                 value={shot.scriptText || ""}
                 onChange={(e) => updateCurrentShot({ scriptText: e.target.value })}
                 rows={3}
-                placeholder="Type the exact narration spoken during this scene..."
+                placeholder="Narration spoken during this scene..."
                 className="w-full bg-[#121218] border border-[#272732] focus:border-[#635BFF] rounded-xl p-3 text-xs text-gray-200 placeholder-gray-600 focus:outline-none transition-colors font-sans leading-relaxed"
               />
-              <p className="text-[10px] text-gray-500 mt-1">
-                The AI voice synthesizer reads this sentence aloud to establish scene duration.
-              </p>
             </div>
 
             {/* Scene Visual Idea / Direction Prompt */}
             <div>
               <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5 mb-2">
-                <span>💡</span> Visual Action & Direction Note
+                <Sparkles size={14} />
+                <span>Visual Direction</span>
               </label>
               <input
                 type="text"
@@ -370,7 +418,7 @@ export const ShotModal: React.FC<ShotModalProps> = ({
             {/* 1. VISUAL MODE MACRO SELECTOR */}
             <div>
               <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5 mb-2.5">
-                <span>🎨</span> Step 1: Choose What Visuals Appear in This Scene
+                <Palette size={14} /> Visual Mode
               </label>
 
               <div className="grid grid-cols-3 gap-3">
@@ -383,11 +431,11 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">📝</span>
+                    <LayoutGrid size={16} className="text-gray-300" />
                     <span className="text-xs font-bold">Standard Card</span>
                   </div>
                   <span className="text-[10px] text-gray-400 leading-tight">
-                    Clean typography, metric counters, or device frames
+                    Typography, metrics, or device frames
                   </span>
                 </button>
 
@@ -400,11 +448,11 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">🎭</span>
+                    <User size={16} className="text-[#635BFF]" />
                     <span className="text-xs font-bold text-[#635BFF]">SVG Character</span>
                   </div>
                   <span className="text-[10px] text-gray-400 leading-tight">
-                    Animated human/space guide with one-click gestures
+                    Animated guide with gestures
                   </span>
                 </button>
 
@@ -417,11 +465,11 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">🎬</span>
+                    <FilmIcon size={16} className="text-amber-400" />
                     <span className="text-xs font-bold text-amber-400">GPU B-Roll</span>
                   </div>
                   <span className="text-[10px] text-gray-400 leading-tight">
-                    Cinematic AI generated video footage overlay
+                    AI generated video footage overlay
                   </span>
                 </button>
               </div>
@@ -436,47 +484,50 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                 {/* 2A. Character Picker */}
                 <div>
                   <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-300 block mb-2">
-                    A. Select Animated Character (8 Diverse Models)
+                    Character Model
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {allRigs.map((rig) => (
-                      <button
-                        key={rig.id}
-                        onClick={() => setCharacterRig(rig.id)}
-                        className={`p-2.5 rounded-xl border text-left flex flex-col justify-between h-20 transition-all ${
-                          activeCharId === rig.id
-                            ? "bg-[#635BFF]/20 border-[#635BFF] ring-2 ring-[#635BFF]/40 text-white shadow-md shadow-[#635BFF]/15"
-                            : "bg-[#101014] border-[#272732] text-gray-400 hover:border-gray-500 hover:text-white"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span className="text-xl">{RIG_ICONS[rig.id] || "🧍"}</span>
-                          {activeCharId === rig.id && (
-                            <span className="text-[8px] font-mono text-[#635BFF] font-bold bg-[#635BFF]/20 px-1 py-0.5 rounded">
-                              ACTIVE
-                            </span>
-                          )}
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-white truncate">{rig.name}</div>
-                          <div className="text-[9px] text-gray-400 truncate">{rig.description || "Vector rig"}</div>
-                        </div>
-                      </button>
-                    ))}
+                    {allRigs.map((rig) => {
+                      const RigIcon = RIG_ICONS[rig.id] || User;
+                      return (
+                        <button
+                          key={rig.id}
+                          onClick={() => setCharacterRig(rig.id)}
+                          className={`p-2.5 rounded-xl border text-left flex flex-col justify-between h-20 transition-all ${
+                            activeCharId === rig.id
+                              ? "bg-[#635BFF]/20 border-[#635BFF] ring-2 ring-[#635BFF]/40 text-white shadow-md shadow-[#635BFF]/15"
+                              : "bg-[#101014] border-[#272732] text-gray-400 hover:border-gray-500 hover:text-white"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <RigIcon size={18} className={activeCharId === rig.id ? "text-[#635BFF]" : "text-gray-400"} />
+                            {activeCharId === rig.id && (
+                              <span className="text-[8px] font-mono text-[#635BFF] font-bold bg-[#635BFF]/20 px-1 py-0.5 rounded">
+                                ACTIVE
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-white truncate">{rig.name}</div>
+                            <div className="text-[9px] text-gray-400 truncate">{rig.description || "Vector rig"}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* 2B. Timeline Moments (Human Friendly!) */}
+                {/* 2B. Timeline Moments */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-300">
-                      B. Timeline Moments (Click a moment, then pick its gesture below)
+                      Timeline Moments
                     </label>
                     <button
                       onClick={addGestureMoment}
                       className="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold transition-colors"
                     >
-                      + Add Gesture Moment
+                      + Add Moment
                     </button>
                   </div>
 
@@ -487,7 +538,6 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                       const timeSec = (p.t * shot.dur).toFixed(1);
                       const timeLabel = p.t === 0 ? "Start (0.0s)" : p.t >= 0.9 ? "End" : `${timeSec}s`;
                       const gestureName = PRESET_GESTURES.find((g) => g.id === (p.pose || "neutral"))?.label || "Pose";
-                      const gestureIcon = PRESET_GESTURES.find((g) => g.id === (p.pose || "neutral"))?.icon || "🧍";
 
                       return (
                         <button
@@ -499,17 +549,17 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                               : "bg-[#101014] text-gray-300 border-[#333] hover:border-gray-500 hover:text-white"
                           }`}
                         >
-                          <span>{gestureIcon} Moment {idx + 1} ({timeLabel}): <strong className="underline">{gestureName}</strong></span>
+                          <span>Moment {idx + 1} ({timeLabel}): <strong className="underline">{gestureName}</strong></span>
                           {poses.length > 1 && (
                             <span
                               onClick={(e) => {
                                 e.stopPropagation();
                                 removeGestureMoment(idx);
                               }}
-                              className="text-white/60 hover:text-red-400 font-bold ml-1 text-sm"
-                              title="Delete this moment"
+                              className="text-white/60 hover:text-red-400 font-bold ml-1 text-xs"
+                              title="Delete moment"
                             >
-                              ×
+                              <X size={12} className="inline" />
                             </span>
                           )}
                         </button>
@@ -518,11 +568,11 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                   </div>
                 </div>
 
-                {/* 2C. 1-Click Gesture Presets (With Active Selection Highlight!) */}
+                {/* 2C. Gesture Presets */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-300">
-                      C. Choose Gesture for Moment {activeGestureIdx + 1}
+                      Gesture for Moment {activeGestureIdx + 1}
                     </label>
                     <span className="text-[10px] font-mono text-[#635BFF] bg-[#635BFF]/10 px-2 py-0.5 rounded border border-[#635BFF]/30">
                       Active: {PRESET_GESTURES.find((g) => g.id === currentActiveGestureId)?.label}
@@ -537,17 +587,17 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                         <button
                           key={g.id}
                           onClick={() => applyGesturePreset(g.id)}
-                          className={`p-3 rounded-xl border text-left transition-all group flex flex-col justify-between h-24 ${
+                          className={`p-3 rounded-xl border text-left transition-all group flex flex-col justify-between h-20 ${
                             isGestureSelected
                               ? "bg-[#635BFF]/25 border-[#635BFF] ring-2 ring-[#635BFF]/40 text-white shadow-lg shadow-[#635BFF]/15 scale-[1.02]"
                               : "bg-[#101014] border-[#272732] hover:border-[#635BFF]/60 hover:bg-[#635BFF]/5 text-gray-300"
                           }`}
                         >
                           <div className="flex items-center justify-between w-full">
-                            <span className="text-xl">{g.icon}</span>
+                            <span className="text-[10px] font-mono text-gray-400 uppercase">Gesture</span>
                             {isGestureSelected ? (
-                              <span className="text-[9px] font-mono font-bold bg-[#635BFF] text-white px-1.5 py-0.5 rounded">
-                                ✓ ACTIVE
+                              <span className="text-[9px] font-mono font-bold bg-[#635BFF] text-white px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <Check size={10} /> ACTIVE
                               </span>
                             ) : (
                               <span className="text-[9px] font-mono text-gray-500 group-hover:text-[#635BFF]">
@@ -569,10 +619,10 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                   </div>
                 </div>
 
-                {/* 2D. Stage Layout (Hero Full Frame vs Anchored Beside Text) */}
+                {/* 2D. Stage Layout */}
                 <div>
                   <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-gray-300 block mb-2">
-                    D. Character Framing on Screen
+                    Character Framing
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
@@ -584,10 +634,10 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                       }`}
                     >
                       <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>🌟</span> Hero Full Screen
+                        <Maximize2 size={14} /> Full Screen
                       </div>
                       <div className="text-[10px] text-gray-400 mt-1 leading-snug">
-                        Character takes center stage scaled to 65% frame height
+                        Character centered at 65% frame height
                       </div>
                     </button>
 
@@ -600,10 +650,10 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                       }`}
                     >
                       <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>🪟</span> Anchored Card
+                        <LayoutTemplate size={14} /> Anchored Card
                       </div>
                       <div className="text-[10px] text-gray-400 mt-1 leading-snug">
-                        Character stands beside headline text in floating card panel
+                        Character beside headline text in floating card
                       </div>
                     </button>
                   </div>
@@ -619,7 +669,7 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                   Standard Scene Blocks
                 </h4>
                 <p className="text-xs text-gray-400">
-                  This scene displays clean kinetic text reveals and concept cards on the 2D spatial canvas.
+                  Displays kinetic text reveals and concept cards on the spatial canvas.
                 </p>
 
                 <div className="space-y-2">
@@ -638,13 +688,13 @@ export const ShotModal: React.FC<ShotModalProps> = ({
             {activeMode === "b-roll" && (
               <div className="space-y-4 bg-[#14141A] p-5 rounded-2xl border border-[#272732]">
                 <h4 className="text-xs font-bold text-amber-400 font-mono uppercase tracking-wider flex items-center gap-1.5">
-                  <span>🎬</span> Cinematic AI Video Footage Scene
+                  <FilmIcon size={14} /> AI Video Footage
                 </h4>
                 <p className="text-xs text-gray-400 leading-relaxed">
-                  This scene renders full-bleed AI video footage generated from Wan2.1 / Recraft V4 based on your visual direction prompt.
+                  Renders full-bleed AI video footage generated from Wan2.1 / Recraft V4 based on visual direction.
                 </p>
-                <div className="p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl text-amber-200 text-xs font-mono">
-                  ✓ B-Roll footage generation spec ready for this scene
+                <div className="p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl text-amber-200 text-xs font-mono flex items-center gap-1.5">
+                  <Check size={12} /> B-Roll footage specification ready
                 </div>
               </div>
             )}
@@ -664,10 +714,10 @@ export const ShotModal: React.FC<ShotModalProps> = ({
 
           <button
             onClick={onClose}
-            className="px-6 py-2 rounded-xl bg-[#10B981] hover:bg-[#059669] text-black font-bold text-xs flex items-center gap-2 shadow-lg transition-all active:scale-95"
+            className="px-6 py-2 rounded-xl bg-[#10B981] hover:bg-[#059669] text-black font-bold text-xs flex items-center gap-1.5 shadow-lg transition-all active:scale-95"
           >
-            <span>✓</span>
-            <span>Apply to Scene & Save</span>
+            <Check size={14} />
+            <span>Save</span>
           </button>
         </div>
 

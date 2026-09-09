@@ -24,6 +24,21 @@ import { AgentActivityInspector } from "./components/AgentActivityInspector";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
 import { AssetBin, type MediaAsset } from "./components/AssetBin";
+import {
+  FileText,
+  Compass,
+  Film as FilmIcon,
+  Palette,
+  Check,
+  Download,
+  RotateCw,
+  Loader2,
+  Mic,
+  Plus,
+  Subtitles,
+  LayoutGrid,
+  Bot,
+} from "lucide-react";
 import { DEFAULT_GIRAFFE_CAPTION_WORDS, generateWordsFromFilm, captionWordsToVtt } from "../../src/dl/captionsParser";
 import { validateFilmAudioAndAssets } from "../../src/dl/validateFilm";
 
@@ -442,7 +457,7 @@ export default function App() {
       try {
         playerRef.current?.pause();
       } catch (_) {}
-      setStatus({ ok: true, text: `🎬 Triggering GPU video generation for ${pendingBrollShots.length} B-Roll scene(s) on NVIDIA L4 (Wan2.1)...` });
+      setStatus({ ok: true, text: `Triggering GPU video generation for ${pendingBrollShots.length} B-Roll scene(s)...` });
 
       try {
         const genRes = await fetch("/api/broll/generate", {
@@ -479,7 +494,7 @@ export default function App() {
                 count: jobs.length - running.length,
                 total: jobs.length,
               });
-              setStatus({ ok: true, text: `🎬 Generating B-roll (${first.shotId}): ${pct}% on GPU...` });
+              setStatus({ ok: true, text: `Generating B-roll (${first.shotId}): ${pct}% on GPU...` });
             }
           }
         }
@@ -493,7 +508,7 @@ export default function App() {
           }
         }
 
-        setStatus({ ok: true, text: "✓ All B-roll footage ready! Displaying final video product." });
+        setStatus({ ok: true, text: "All B-roll footage ready. Video updated." });
         setRegenerateKey((k) => k + 1);
       } catch (err: any) {
         setStatus({ ok: false, text: `B-Roll GPU error: ${err.message || String(err)}` });
@@ -503,14 +518,14 @@ export default function App() {
       }
     } else {
       setIsRegenerating(true);
-      setStatus({ ok: true, text: "🔄 Video preview regenerating with latest theme and fonts..." });
+      setStatus({ ok: true, text: "Updating video preview..." });
       try {
         playerRef.current?.pause();
       } catch (_) {}
       setTimeout(() => {
         setRegenerateKey((k) => k + 1);
         setIsRegenerating(false);
-        setStatus({ ok: true, text: "✓ Video preview successfully recompiled with latest theme & settings!" });
+        setStatus({ ok: true, text: "Video preview recompiled with latest settings." });
         setTimeout(() => setStatus(null), 4000);
       }, 450);
     }
@@ -528,7 +543,7 @@ export default function App() {
     setIsExporting(true);
     setExportResult(null);
     setExportError(null);
-    setStatus({ ok: true, text: "⏳ Rendering high-definition MP4 via Remotion engine... Please wait." });
+    setStatus({ ok: true, text: "Rendering MP4 via Remotion engine..." });
     try {
       const res = await fetch("/api/export", {
         method: "POST",
@@ -548,7 +563,7 @@ export default function App() {
       link.click();
       document.body.removeChild(link);
 
-      setStatus({ ok: true, text: `🎉 Export complete! Downloaded ${data.filename}` });
+      setStatus({ ok: true, text: `Export complete: ${data.filename}` });
     } catch (err: any) {
       setExportError(err.message || String(err));
       setStatus({ ok: false, text: `Export error: ${err.message || String(err)}` });
@@ -639,8 +654,9 @@ export default function App() {
           >
             {isExporting ? "EXPORTING..." : "EXPORT"}
           </button>
-          <span className="text-emerald-400 text-xs font-mono px-2 py-0.5 border border-emerald-500/40 bg-emerald-950/30">
-            ✓ SYNCED
+          <span className="text-emerald-400 text-xs font-mono px-2 py-0.5 border border-emerald-500/40 bg-emerald-950/30 flex items-center gap-1">
+            <Check size={12} />
+            <span>SYNCED</span>
           </span>
         </div>
       </header>
@@ -658,7 +674,7 @@ export default function App() {
             }`}
             title="Script Studio"
           >
-            <span className="text-lg">📝</span>
+            <FileText size={18} />
             <span className="text-[9px] mt-1 uppercase font-mono">Script</span>
           </button>
           <button
@@ -668,7 +684,7 @@ export default function App() {
             }`}
             title="Spatial Map"
           >
-            <span className="text-lg">🗺️</span>
+            <Compass size={18} />
             <span className="text-[9px] mt-1 uppercase font-mono">Map</span>
           </button>
           <button
@@ -676,9 +692,9 @@ export default function App() {
             className={`w-full flex flex-col items-center py-3 text-xs font-mono transition-none border-l-2 ${
               mode === "video" ? "bg-[#635BFF]/20 text-[#635BFF] border-[#635BFF]" : "text-gray-400 border-transparent hover:text-white"
             }`}
-            title="Video Layer (Player & Timeline)"
+            title="Video Layer"
           >
-            <span className="text-lg">🎬</span>
+            <FilmIcon size={18} />
             <span className="text-[9px] mt-1 uppercase font-mono">Video</span>
           </button>
           <button
@@ -686,9 +702,9 @@ export default function App() {
             className={`w-full flex flex-col items-center py-3 text-xs font-mono transition-none border-l-2 ${
               mode === "customization" ? "bg-[#635BFF]/20 text-[#635BFF] border-[#635BFF]" : "text-gray-400 border-transparent hover:text-white"
             }`}
-            title="Studio Theme"
+            title="Theme"
           >
-            <span className="text-lg">🎨</span>
+            <Palette size={18} />
             <span className="text-[9px] mt-1 uppercase font-mono">Theme</span>
           </button>
           <button
@@ -696,9 +712,9 @@ export default function App() {
             className={`w-full flex flex-col items-center py-3 text-xs font-mono transition-none border-l-2 ${
               mode === "critique" ? "bg-[#635BFF]/20 text-[#635BFF] border-[#635BFF]" : "text-gray-400 border-transparent hover:text-white"
             }`}
-            title="Natural Language Critique Studio"
+            title="Critique Studio"
           >
-            <span className="text-lg">🤖</span>
+            <Bot size={18} />
             <span className="text-[9px] mt-1 uppercase font-mono">Critique</span>
           </button>
         </nav>
@@ -709,11 +725,11 @@ export default function App() {
             <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-400">PROJECT METRICS</h2>
             <button
               onClick={() => setIsNewProjectOpen(true)}
-              className="text-[10px] px-2.5 py-1 bg-[#635BFF] hover:bg-[#5249e6] text-white font-bold rounded-lg flex items-center gap-1 shadow-md shadow-[#635BFF]/30 font-sans transition-all"
-              title="Paste a raw script or outline and compile a complete animated explainer film"
+              className="text-[10px] px-2.5 py-1 bg-[#635BFF] hover:bg-[#5249e6] text-white font-bold rounded-lg flex items-center gap-1.5 shadow-md shadow-[#635BFF]/30 font-sans transition-all"
+              title="Create new project"
             >
-              <span>✨</span>
-              <span>+ Script Intake</span>
+              <Plus size={13} />
+              <span>New Project</span>
             </button>
           </div>
 
@@ -834,7 +850,7 @@ export default function App() {
                         };
                         const updatedFilm = { ...film, shots: [...film.shots, newShot] };
                         handleUpdateFilmWithHistory(updatedFilm);
-                        setStatus({ ok: true, text: `✓ Added "${asset.filename}" to timeline as Shot ${updatedFilm.shots.length}` });
+                        setStatus({ ok: true, text: `Added "${asset.filename}" to timeline as Shot ${updatedFilm.shots.length}` });
                       }}
                     />
                   </div>
@@ -896,22 +912,38 @@ export default function App() {
         
         {/* Top bar with Layer switcher */}
         <div className="flex justify-between items-center shrink-0">
-          <div className="flex bg-[#1A1A1B] p-1 rounded-lg border border-[#333] overflow-x-auto max-w-full">
-            {(["script", "map", "customization", "styleboard", "captions", "video"] as Mode[]).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={`text-xs px-3 py-1.5 rounded-md font-bold tracking-wide transition-colors whitespace-nowrap ${
-                  mode === m ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
-                }`}
-              >
-                {m === "script" ? "📝 Script Studio" :
-                 m === "map" ? "🗺️ Spatial Map" :
-                 m === "customization" ? "🎨 Studio Theme" :
-                 m === "styleboard" ? "📐 Styleboard" :
-                 m === "captions" ? "💬 Pretext Captions" : "🎬 Video Layer"}
-              </button>
-            ))}
+          <div className="flex bg-[#1A1A1B] p-1 rounded-lg border border-[#333] overflow-x-auto max-w-full gap-1">
+            {(["script", "map", "customization", "styleboard", "captions", "video"] as const).map((m) => {
+              const icons = {
+                script: FileText,
+                map: Compass,
+                customization: Palette,
+                styleboard: LayoutGrid,
+                captions: Subtitles,
+                video: FilmIcon,
+              };
+              const labels = {
+                script: "Script",
+                map: "Spatial Map",
+                customization: "Theme",
+                styleboard: "Styleboard",
+                captions: "Captions",
+                video: "Video",
+              };
+              const Icon = icons[m];
+              return (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`text-xs px-3 py-1.5 rounded-md font-bold tracking-wide transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                    mode === m ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <Icon size={14} />
+                  <span>{labels[m]}</span>
+                </button>
+              );
+            })}
           </div>
 
           {mode === "video" && (
@@ -926,16 +958,18 @@ export default function App() {
                 }`}
                 title={
                   pendingBrollShots.length > 0
-                    ? `Generate video: Render ${pendingBrollShots.length} pending B-roll scenes on GPU box`
-                    : "Force re-render Remotion timeline with latest settings"
+                    ? `Render ${pendingBrollShots.length} pending B-roll scenes on GPU`
+                    : "Re-render video timeline"
                 }
               >
-                <span className={isRegenerating || isGeneratingBroll ? "animate-spin" : ""}>
-                  {isGeneratingBroll ? "🎬" : "🔄"}
-                </span>
+                {isGeneratingBroll || isRegenerating ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <RotateCw size={14} />
+                )}
                 <span>
                   {isGeneratingBroll
-                    ? `GPU Generating (${brollProgress?.progress ?? 0}%)...`
+                    ? `Generating (${brollProgress?.progress ?? 0}%)...`
                     : isRegenerating
                     ? "Regenerating..."
                     : pendingBrollShots.length > 0
@@ -951,15 +985,17 @@ export default function App() {
                     ? "bg-gray-700 text-gray-400 cursor-not-allowed"
                     : "bg-emerald-600 hover:bg-emerald-500 text-white"
                 }`}
-                title="Render and export full high-definition MP4 video"
+                title="Export MP4 video"
               >
                 {isExporting ? (
                   <>
-                    <span className="animate-spin">⏳</span> Rendering MP4...
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Rendering...</span>
                   </>
                 ) : (
                   <>
-                    <span>📥</span> Export MP4
+                    <Download size={14} />
+                    <span>Export</span>
                   </>
                 )}
               </button>
@@ -1051,36 +1087,36 @@ export default function App() {
             <div className="w-full h-full bg-[#0A0A0B] border border-[#333] rounded-lg overflow-hidden flex flex-col">
               {!film.voiceover?.src ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#0C0C10]">
-                  <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4 text-3xl">
-                    🎙️
+                  <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4">
+                    <Mic className="text-amber-400" size={28} />
                   </div>
                   <h3 className="text-base font-bold text-white mb-2 font-mono">
-                    Voiceover Required Before Video
+                    Voiceover Required
                   </h3>
                   <p className="text-xs text-gray-400 max-w-md mb-6 leading-relaxed">
-                    Aideos requires synthesized voiceover dialogue as the authoritative master clock to construct and synchronize video scenes and camera timing. Please generate voiceover in the Script Studio first.
+                    Generate synthesized voiceover in Script Studio to establish timeline synchronization.
                   </p>
                   <button
                     onClick={() => setMode("script")}
                     className="px-5 py-2.5 bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-2 cursor-pointer"
                   >
-                    <span>📝</span>
-                    <span>Go to Script Studio & Generate Voiceover</span>
+                    <FileText size={14} />
+                    <span>Go to Script Studio</span>
                   </button>
                 </div>
               ) : isGeneratingBroll ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#0C0C10]">
-                  <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4 text-3xl animate-bounce">
-                    🎬
+                  <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4">
+                    <FilmIcon className="text-amber-400 animate-pulse" size={28} />
                   </div>
                   <h3 className="text-base font-bold text-white mb-1 font-mono">
-                    Synthesizing Diffusion Video on GPU Box
+                    Synthesizing Video on GPU
                   </h3>
                   <p className="text-xs text-amber-400 font-mono mb-4">
-                    Remote Box: 100.98.174.122 · NVIDIA L4 (24GB) · Wan2.1 Diffusion
+                    Remote: NVIDIA L4 · Wan2.1 Diffusion
                   </p>
                   <p className="text-xs text-gray-400 max-w-md mb-6 leading-relaxed">
-                    Per production rules, the video player will unlock and present the final video once all diffusion video footage is completely rendered and retrieved.
+                    The video player unlocks automatically once diffusion rendering completes.
                   </p>
                   <div className="w-72 bg-gray-800 rounded-full h-3 mb-3 overflow-hidden border border-gray-700">
                     <div
@@ -1233,7 +1269,7 @@ export default function App() {
             body: JSON.stringify({ id: newFilm.id }),
           }).catch(() => {});
           setMode("script");
-          setStatus({ ok: true, text: `🎉 Created and saved project "${newFilm.title}"!` });
+          setStatus({ ok: true, text: `Created project "${newFilm.title}"` });
           setTimeout(() => setStatus(null), 4000);
         }}
       />

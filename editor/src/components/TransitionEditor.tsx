@@ -1,6 +1,7 @@
 import React from "react";
 import { TRANSITION_PRESETS, getTransitionFrames } from "../transitions";
 import type { TransitionType } from "../transitions";
+import { Scissors, ZoomIn, Zap, MoveRight, Flame } from "lucide-react";
 
 export interface TransitionEditorProps {
   selectedTransition: TransitionType;
@@ -10,9 +11,17 @@ export interface TransitionEditorProps {
   onApplyToAll: () => void;
 }
 
+const TRANSITION_ICONS: Record<TransitionType, React.ComponentType<{ size?: number; className?: string }>> = {
+  "paper-rip": Scissors,
+  "zoom-morph": ZoomIn,
+  "matrix-glitch": Zap,
+  "whip-pan": MoveRight,
+  "film-burn": Flame,
+};
+
 /**
- * Human Video Editor Transition Control Panel
- * Styled like Premiere Pro / After Effects transition inspector.
+ * Transition Control Panel
+ * Premiere Pro / After Effects style transition inspector.
  */
 export const TransitionEditor: React.FC<TransitionEditorProps> = ({
   selectedTransition,
@@ -23,6 +32,7 @@ export const TransitionEditor: React.FC<TransitionEditorProps> = ({
 }) => {
   const activePreset = TRANSITION_PRESETS[selectedTransition] || TRANSITION_PRESETS["paper-rip"];
   const framesCount = getTransitionFrames(durationSec, 30);
+  const ActiveIcon = TRANSITION_ICONS[activePreset.id] || Scissors;
 
   return (
     <div style={{ padding: "20px", background: "#121214", borderRadius: "12px", border: "1px solid #27272A", color: "#F4F4F5" }}>
@@ -30,10 +40,10 @@ export const TransitionEditor: React.FC<TransitionEditorProps> = ({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
         <div>
           <h3 style={{ fontSize: "16px", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-            <span>{activePreset.icon}</span> Human Video Editor — Transition Inspector
+            <ActiveIcon size={18} /> Transition Inspector
           </h3>
           <p style={{ fontSize: "12px", color: "#A1A1AA", margin: "4px 0 0 0" }}>
-            Standardized transition parameters & frame timing controls
+            Transition parameters and frame timing
           </p>
         </div>
         <button
@@ -49,7 +59,7 @@ export const TransitionEditor: React.FC<TransitionEditorProps> = ({
             cursor: "pointer",
           }}
         >
-          Apply to All Cut Boundaries
+          Apply to All
         </button>
       </div>
 
@@ -57,6 +67,7 @@ export const TransitionEditor: React.FC<TransitionEditorProps> = ({
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px", marginBottom: "20px" }}>
         {Object.values(TRANSITION_PRESETS).map((preset) => {
           const isSelected = preset.id === selectedTransition;
+          const PresetIcon = TRANSITION_ICONS[preset.id] || Scissors;
           return (
             <div
               key={preset.id}
@@ -70,7 +81,9 @@ export const TransitionEditor: React.FC<TransitionEditorProps> = ({
                 transition: "all 0.2s ease",
               }}
             >
-              <div style={{ fontSize: "20px", marginBottom: "4px" }}>{preset.icon}</div>
+              <div style={{ marginBottom: "6px", color: isSelected ? "#10B981" : "#A1A1AA" }}>
+                <PresetIcon size={18} />
+              </div>
               <div style={{ fontSize: "13px", fontWeight: 700, color: isSelected ? "#10B981" : "#FFF" }}>{preset.name}</div>
               <div style={{ fontSize: "11px", color: "#71717A", marginTop: "4px", lineHeight: "1.3" }}>{preset.description}</div>
             </div>

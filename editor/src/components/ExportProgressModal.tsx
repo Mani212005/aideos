@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import type { Film } from "../../../src/dl/schema";
+import { Check, AlertTriangle, Film as FilmIcon, Loader2, Download, FileVideo } from "lucide-react";
 
 export interface ExportProgressModalProps {
   isOpen: boolean;
@@ -89,19 +90,25 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#635BFF]/15 border border-[#635BFF]/30 flex items-center justify-center text-xl">
-              {result ? "🎉" : error ? "⚠️" : "🎬"}
+            <div className="w-10 h-10 rounded-xl bg-[#635BFF]/15 border border-[#635BFF]/30 flex items-center justify-center">
+              {result ? (
+                <Check className="text-emerald-400" size={20} />
+              ) : error ? (
+                <AlertTriangle className="text-amber-400" size={20} />
+              ) : (
+                <FilmIcon className="text-[#635BFF]" size={20} />
+              )}
             </div>
             <div>
               <h2 className="text-lg font-bold tracking-tight">
-                {result ? "Export Complete!" : error ? "Export Encountered an Error" : "Rendering High-Definition Video"}
+                {result ? "Export Complete" : error ? "Export Failed" : "Rendering Video"}
               </h2>
               <p className="text-xs text-gray-400">
                 {result
-                  ? "Your video has been rendered and downloaded to your disk."
+                  ? "Your video has been rendered and downloaded."
                   : error
                   ? "Rendering failed. Please check the logs."
-                  : "Rendering 1080p video with spatial camera moves, voiceover, and animations."}
+                  : "Rendering 1080p video with audio synchronization."}
               </p>
             </div>
           </div>
@@ -151,10 +158,10 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
               {result ? "100% Completed" : error ? "Halted" : `Processing: ${progress}%`}
             </span>
             <div className="flex items-center gap-4 text-xs font-mono text-gray-400">
-              <span>⏱️ Elapsed: {formatTime(elapsedSec)}</span>
+              <span>Elapsed: {formatTime(elapsedSec)}</span>
               {!result && !error && (
                 <span className="text-[#635BFF] font-bold">
-                  ⏳ Est. remaining: ~{formatTime(remainingSec)}
+                  Est. remaining: ~{formatTime(remainingSec)}
                 </span>
               )}
             </div>
@@ -179,7 +186,7 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
         <div className="p-4 rounded-xl border border-[#27272A] bg-[#141417]/80 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-[#222] border border-[#333] flex items-center justify-center font-mono text-xs font-bold text-[#635BFF]">
-              {result ? "✓" : currentStage.id}
+              {result ? <Check size={14} className="text-emerald-400" /> : currentStage.id}
             </div>
             <div>
               <h4 className="text-xs font-bold text-white">{currentStage.title}</h4>
@@ -188,7 +195,8 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
           </div>
           {!result && !error && (
             <span className="text-[11px] font-mono text-gray-500 flex items-center gap-1.5">
-              <span className="animate-spin text-sm">⚙️</span> Rendering...
+              <Loader2 size={13} className="animate-spin text-[#635BFF]" />
+              <span>Rendering...</span>
             </span>
           )}
         </div>
@@ -197,7 +205,7 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
         {result ? (
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
             <div className="flex items-center gap-2 text-xs text-emerald-300">
-              <span>💾</span>
+              <FileVideo size={14} />
               <span className="font-mono font-bold truncate max-w-sm">{result.filename}</span>
             </div>
             <a
@@ -205,18 +213,15 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
               download={result.filename}
               className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow-lg transition-all flex items-center gap-1.5"
             >
-              <span>📥</span> Download Again
+              <Download size={14} />
+              <span>Download Again</span>
             </a>
           </div>
         ) : error ? (
           <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/30 text-xs text-red-300 font-mono">
             {error}
           </div>
-        ) : (
-          <p className="text-[11px] text-gray-500 text-center font-mono">
-            💡 You can keep this browser tab open while Remotion renders all frames safely in the background.
-          </p>
-        )}
+        ) : null}
       </div>
     </div>
   );

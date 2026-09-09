@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { Folder, Upload, Video, Music, Image as ImageIcon, AlertTriangle, Loader2 } from "lucide-react";
 
 export interface MediaAsset {
   id: string;
@@ -91,7 +92,8 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
         {/* Compact Header */}
         <div className="flex items-center justify-between pb-1.5 border-b border-[#27272A]">
           <div className="flex items-center gap-1.5">
-            <span className="text-yellow-400 font-bold text-[11px] uppercase tracking-wider">📁 MEDIA LIBRARY</span>
+            <Folder size={12} className="text-yellow-400" />
+            <span className="text-yellow-400 font-bold text-[11px] uppercase tracking-wider">Media Library</span>
             <span className="text-[9px] bg-black/60 px-1 py-0.5 rounded text-gray-400 font-bold">
               {assets.length}
             </span>
@@ -109,17 +111,19 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
             className="text-[10px] px-2 py-0.5 rounded bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold shadow flex items-center gap-1 disabled:opacity-50 cursor-pointer transition-colors"
             title="Upload MP4, MOV, PNG, JPG, or WAV asset"
           >
-            <span>{isUploading ? "⏳" : "➕ Upload"}</span>
+            {isUploading ? <Loader2 size={10} className="animate-spin" /> : <Upload size={10} />}
+            <span>Upload</span>
           </button>
         </div>
 
         <div className="text-[9px] text-gray-400 font-sans italic px-0.5">
-          💡 Drag & drop any item into Timeline below or click + Insert
+          Drag & drop items into Timeline or click Insert
         </div>
 
         {uploadError && (
-          <div className="p-1.5 rounded bg-red-950/80 border border-red-500 text-red-300 text-[10px]">
-            ⚠️ {uploadError}
+          <div className="p-1.5 rounded bg-red-950/80 border border-red-500 text-red-300 text-[10px] flex items-center gap-1">
+            <AlertTriangle size={10} />
+            <span>{uploadError}</span>
           </div>
         )}
 
@@ -127,7 +131,7 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
         <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-0.5">
           {assets.length === 0 ? (
             <div className="py-4 text-center text-gray-500 text-[10px]">
-              No media uploaded yet. Click ➕ Upload to add video/audio.
+              No media uploaded yet.
             </div>
           ) : (
             assets.map((asset) => (
@@ -139,8 +143,14 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
                 title="Drag into Timeline to place clip"
               >
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                  <div className="w-6 h-6 rounded bg-black/60 flex items-center justify-center text-xs shrink-0 border border-[#333]">
-                    {asset.type === "video" ? "🎬" : asset.type === "audio" ? "🎵" : "🖼️"}
+                  <div className="w-6 h-6 rounded bg-black/60 flex items-center justify-center text-gray-400 shrink-0 border border-[#333]">
+                    {asset.type === "video" ? (
+                      <Video size={12} />
+                    ) : asset.type === "audio" ? (
+                      <Music size={12} />
+                    ) : (
+                      <ImageIcon size={12} />
+                    )}
                   </div>
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-gray-200 truncate font-sans font-medium group-hover:text-yellow-300 transition-colors" title={asset.filename}>
@@ -179,9 +189,12 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
       {/* Upload Zone */}
       <div className="flex items-center justify-between bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
         <div>
-          <h3 className="font-bold text-xs text-yellow-400">📁 Media Library & Asset Bin</h3>
+          <h3 className="font-bold text-xs text-yellow-400 flex items-center gap-1.5">
+            <Folder size={14} />
+            <span>Media Library</span>
+          </h3>
           <p className="text-[11px] text-gray-400 mt-0.5">
-            Upload MP4, MOV, PNG, JPG, or WAV assets. Drag & drop directly into the timeline or click to insert.
+            Upload MP4, MOV, PNG, JPG, or WAV assets. Drag & drop into the timeline or click to insert.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -195,16 +208,18 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="text-xs px-3 py-1.5 rounded-lg bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold shadow flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+            className="text-xs px-3 py-1.5 rounded-lg bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold shadow flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
           >
-            <span>{isUploading ? "⏳ Uploading..." : "➕ Upload Media"}</span>
+            {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+            <span>{isUploading ? "Uploading..." : "Upload Media"}</span>
           </button>
         </div>
       </div>
 
       {uploadError && (
-        <div className="p-2.5 rounded bg-red-950/80 border border-red-500 text-red-300 text-xs">
-          ⚠️ {uploadError}
+        <div className="p-2.5 rounded bg-red-950/80 border border-red-500 text-red-300 text-xs flex items-center gap-1.5">
+          <AlertTriangle size={14} />
+          <span>{uploadError}</span>
         </div>
       )}
 
@@ -212,7 +227,7 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {assets.length === 0 ? (
           <div className="col-span-full py-12 text-center text-gray-500 text-xs font-mono">
-            (No external media assets uploaded yet. Click Upload Media above to add footage.)
+            No media assets uploaded yet.
           </div>
         ) : (
           assets.map((asset) => (
@@ -225,8 +240,14 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact
               title="Drag onto timeline to place"
             >
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-yellow-300 font-bold flex items-center gap-1">
-                  <span>{asset.type === "video" ? "🎬" : asset.type === "audio" ? "🎵" : "🖼️"}</span>
+                <span className="text-yellow-300 font-bold flex items-center gap-1.5">
+                  {asset.type === "video" ? (
+                    <Video size={13} />
+                  ) : asset.type === "audio" ? (
+                    <Music size={13} />
+                  ) : (
+                    <ImageIcon size={13} />
+                  )}
                   <span className="capitalize">{asset.type}</span>
                 </span>
                 {asset.duration && (

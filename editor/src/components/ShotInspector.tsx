@@ -5,6 +5,18 @@
  */
 
 import React, { useState } from "react";
+import {
+  Trash2,
+  X,
+  Layers,
+  Clock,
+  FileText,
+  User,
+  Type,
+  Film as FilmIcon,
+  Mic,
+  Sparkles,
+} from "lucide-react";
 import type { Film, Shot, Block } from "../../../src/dl/schema";
 import { getShotDuration } from "../../../backend/timeline/timeline";
 import { POSE_PRESETS, getAllCharacterRigs } from "../../../src/dl/characters";
@@ -20,13 +32,13 @@ interface ShotInspectorProps {
 type InspectorTab = "visuals" | "timing" | "narration";
 
 const METAPHOR_OPTIONS = [
-  { id: "none", name: "Clean Scene", icon: "🚫", desc: "Pure character rig & typography" },
-  { id: "glowing-cluster", name: "Latent Embeddings", icon: "🪐", desc: "Multi-dimensional latent space" },
-  { id: "balance-scale", name: "Balance Scale", icon: "⚖️", desc: "Trade-off equilibrium" },
-  { id: "clock-gears", name: "Latency Gears", icon: "⚙️", desc: "Pipeline throughput" },
-  { id: "liquid-bucket", name: "Buffer Reservoir", icon: "🧪", desc: "Memory capacity" },
-  { id: "typing-cursor-quote", name: "Terminal Code", icon: "💬", desc: "Code & command quotes" },
-  { id: "rocket-launch", name: "Scale & Deploy", icon: "🚀", desc: "Scalability trajectory" },
+  { id: "none", name: "Clean Scene", desc: "Pure character rig & typography" },
+  { id: "glowing-cluster", name: "Latent Embeddings", desc: "Multi-dimensional latent space" },
+  { id: "balance-scale", name: "Balance Scale", desc: "Trade-off equilibrium" },
+  { id: "clock-gears", name: "Latency Gears", desc: "Pipeline throughput" },
+  { id: "liquid-bucket", name: "Buffer Reservoir", desc: "Memory capacity" },
+  { id: "typing-cursor-quote", name: "Terminal Code", desc: "Code & command quotes" },
+  { id: "rocket-launch", name: "Scale & Deploy", desc: "Scalability trajectory" },
 ];
 
 const TRANSITIONS = [
@@ -38,10 +50,10 @@ const TRANSITIONS = [
 ];
 
 const MOTIONS = [
-  { id: "cut", name: "Cut (Instant)", icon: "✂️" },
-  { id: "pan", name: "Cinematic Pan", icon: "↔️" },
-  { id: "zoom-in", name: "Zoom In", icon: "🔍" },
-  { id: "zoom-out", name: "Zoom Out", icon: "🔎" },
+  { id: "cut", name: "Cut (Instant)" },
+  { id: "pan", name: "Pan" },
+  { id: "zoom-in", name: "Zoom In" },
+  { id: "zoom-out", name: "Zoom Out" },
 ];
 
 export const ShotInspector: React.FC<ShotInspectorProps> = ({
@@ -178,18 +190,18 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
           {onDeleteShot && film.shots.length > 1 && (
             <button
               onClick={() => onDeleteShot(shotIndex)}
-              className="p-1 px-1.5 rounded hover:bg-red-950/80 text-red-400 hover:text-red-300 text-xs transition-colors"
+              className="p-1 px-1.5 rounded hover:bg-red-950/80 text-red-400 hover:text-red-300 text-xs transition-colors cursor-pointer"
               title="Delete Shot"
             >
-              🗑️
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
           <button
             onClick={onClose}
-            className="p-1 px-1.5 rounded hover:bg-[#27272A] text-gray-400 hover:text-white text-xs transition-colors"
+            className="p-1 px-1.5 rounded hover:bg-[#27272A] text-gray-400 hover:text-white text-xs transition-colors cursor-pointer"
             title="Close Inspector"
           >
-            ✕
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -198,37 +210,37 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
       <div className="grid grid-cols-3 bg-[#141417] p-1 rounded-xl border border-[#27272A]">
         <button
           onClick={() => setActiveTab("visuals")}
-          className={`py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+          className={`py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             activeTab === "visuals"
               ? "bg-[#635BFF] text-white shadow"
               : "text-gray-400 hover:text-white"
           }`}
         >
-          <span>🎭</span>
+          <Layers className="w-3.5 h-3.5" />
           <span>Visuals</span>
         </button>
 
         <button
           onClick={() => setActiveTab("timing")}
-          className={`py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+          className={`py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             activeTab === "timing"
               ? "bg-[#635BFF] text-white shadow"
               : "text-gray-400 hover:text-white"
           }`}
         >
-          <span>⏱️</span>
+          <Clock className="w-3.5 h-3.5" />
           <span>Timing</span>
         </button>
 
         <button
           onClick={() => setActiveTab("narration")}
-          className={`py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+          className={`py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             activeTab === "narration"
               ? "bg-[#635BFF] text-white shadow"
               : "text-gray-400 hover:text-white"
           }`}
         >
-          <span>🎙️</span>
+          <FileText className="w-3.5 h-3.5" />
           <span>Script</span>
         </button>
       </div>
@@ -251,7 +263,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
                     : "bg-[#1C1C1F] border-[#27272A] text-gray-400 hover:border-gray-500 hover:text-gray-200"
                 }`}
               >
-                <span className="text-base">🧑‍🚀</span>
+                <User className="w-4 h-4 text-yellow-400 shrink-0" />
                 <div className="flex flex-col min-w-0">
                   <span className="font-bold text-[11px]">Character Rig</span>
                   <span className="text-[9px] opacity-70 truncate">Animated Vector Actor</span>
@@ -267,7 +279,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
                     : "bg-[#1C1C1F] border-[#27272A] text-gray-400 hover:border-gray-500 hover:text-gray-200"
                 }`}
               >
-                <span className="text-base">🪐</span>
+                <Layers className="w-4 h-4 text-purple-400 shrink-0" />
                 <div className="flex flex-col min-w-0">
                   <span className="font-bold text-[11px]">Visual Device</span>
                   <span className="text-[9px] opacity-70 truncate">Latent Space / Graphs</span>
@@ -283,7 +295,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
                     : "bg-[#1C1C1F] border-[#27272A] text-gray-400 hover:border-gray-500 hover:text-gray-200"
                 }`}
               >
-                <span className="text-base">📝</span>
+                <Type className="w-4 h-4 text-blue-400 shrink-0" />
                 <div className="flex flex-col min-w-0">
                   <span className="font-bold text-[11px]">Standard</span>
                   <span className="text-[9px] opacity-70 truncate">Pure Typography</span>
@@ -299,9 +311,9 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
                     : "bg-[#1C1C1F] border-[#27272A] text-gray-400 hover:border-gray-500 hover:text-gray-200"
                 }`}
               >
-                <span className="text-base">🎞️</span>
+                <FilmIcon className="w-4 h-4 text-emerald-400 shrink-0" />
                 <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-[11px]">GPU B-Roll</span>
+                  <span className="font-bold text-[11px]">B-Roll</span>
                   <span className="text-[9px] opacity-70 truncate">Cinematic Footage</span>
                 </div>
               </button>
@@ -337,14 +349,14 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
                 <span className="text-[10px] text-gray-400">1-Click Poses</span>
                 <div className="grid grid-cols-4 gap-1">
                   {[
-                    { id: "neutral", label: "Rest 🧍" },
-                    { id: "think", label: "Think 🤔" },
-                    { id: "present-right", label: "Point 👉" },
-                    { id: "present-left", label: "Point 👈" },
-                    { id: "wave-left", label: "Wave 👋" },
-                    { id: "celebrate", label: "Cheer 🎉" },
-                    { id: "shrug", label: "Shrug 🤷" },
-                    { id: "walk", label: "Walk 🚶" },
+                    { id: "neutral", label: "Rest" },
+                    { id: "think", label: "Think" },
+                    { id: "present-right", label: "Point R" },
+                    { id: "present-left", label: "Point L" },
+                    { id: "wave-left", label: "Wave" },
+                    { id: "celebrate", label: "Cheer" },
+                    { id: "shrug", label: "Shrug" },
+                    { id: "walk", label: "Walk" },
                   ].map((preset) => (
                     <button
                       key={preset.id}
@@ -393,7 +405,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
               >
                 {METAPHOR_OPTIONS.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.icon} {m.name}
+                    {m.name}
                   </option>
                 ))}
               </select>
@@ -417,7 +429,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
                 >
                   {MOTIONS.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.icon} {m.name}
+                      {m.name}
                     </option>
                   ))}
                 </select>
@@ -442,7 +454,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
 
             {/* Cinematic Drift Toggle */}
             <div className="flex items-center justify-between pt-1 border-t border-[#27272A]">
-              <span className="text-[11px] text-gray-300">Cinematic Drift (100% → 104%)</span>
+              <span className="text-[11px] text-gray-300">Cinematic Drift</span>
               <input
                 type="checkbox"
                 checked={shot.drift ?? true}
@@ -491,8 +503,9 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
           {/* Speaker Speed Control Bar */}
           <div className="flex flex-col gap-2 bg-[#141417] p-2.5 rounded-xl border border-[#27272A]">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-mono text-yellow-400 font-bold uppercase tracking-wider">
-                🎙️ Speaker Playback Speed
+              <label className="text-[10px] font-mono text-yellow-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Mic className="w-3 h-3 text-yellow-400" />
+                <span>Playback Speed</span>
               </label>
               <span className="font-mono text-yellow-300 font-bold text-xs bg-black/60 px-2 py-0.5 rounded">
                 {(shot.speed ?? 1.0).toFixed(2)}x
@@ -553,8 +566,9 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
             className="w-full bg-black/60 border border-[#3F3F46] rounded-lg p-2.5 text-xs text-white outline-none resize-none focus:border-yellow-400 leading-relaxed font-sans"
           />
 
-          <p className="text-[10px] text-gray-400 leading-normal">
-            💡 Words typed here automatically align to the audio track and generate phrase-locked karaoke subtitles.
+          <p className="text-[10px] text-gray-400 leading-normal flex items-center gap-1.5">
+            <Sparkles className="w-3 h-3 text-yellow-400 shrink-0" />
+            <span>Words align with audio to generate phrase-locked subtitles.</span>
           </p>
         </div>
       )}

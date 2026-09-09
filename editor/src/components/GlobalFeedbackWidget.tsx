@@ -3,7 +3,7 @@ File Description: This component implements a global floating chatbot and feedba
 */
 
 import { useState, useRef, useEffect } from "react";
-import { MessageSquare, X, Send, Bot, Sparkles } from "lucide-react";
+import { MessageSquare, X, Send, Bot, Sparkles, FileText, Palette, Clock } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 
 interface FeedbackMessage {
@@ -344,9 +344,12 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUp
                 border: "1px solid rgba(245, 245, 245, 0.12)",
                 color: "#F5F5F5",
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
               }}
             >
-              ✍️ Polish Script
+              <FileText size={11} /> Polish Script
             </button>
             <button
               onClick={() => handleChipClick("Adjust color palette and contrast")}
@@ -359,9 +362,12 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUp
                 border: "1px solid rgba(245, 245, 245, 0.12)",
                 color: "#F5F5F5",
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
               }}
             >
-              🎨 Color & Style
+              <Palette size={11} /> Color & Style
             </button>
             <button
               onClick={() => handleChipClick("Fix shot transition timing")}
@@ -374,9 +380,12 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUp
                 border: "1px solid rgba(245, 245, 245, 0.12)",
                 color: "#F5F5F5",
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
               }}
             >
-              ⏱️ Timing & Motion
+              <Clock size={11} /> Timing & Motion
             </button>
           </div>
 
