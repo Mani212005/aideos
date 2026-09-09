@@ -156,19 +156,22 @@ Aideos explicitly separates **verifiable geometric truth** from **subjective vis
 # 1. Install dependencies
 npm install
 
-# 2. Run all 197 automated test suites
+# 2. Run fast automated test suite
 npm test
 
-# 3. Run design-language and runsheet validation
+# 3. Run visual PNG rendering review test suite (opt-in)
+npm run test:visual
+
+# 4. Run design-language and runsheet validation
 npm run validate
 
-# 4. Start the Aideos Studio Editor
+# 5. Start the Aideos Studio Editor
 npm run editor
 
-# 5. Render 16:9 Long-Form Explainer Film
+# 6. Render 16:9 Long-Form Explainer Film
 npm run render
 
-# 6. Render 9:16 Vertical Companion Reel
+# 7. Render 9:16 Vertical Companion Reel
 npm run render:reel
 ```
 
