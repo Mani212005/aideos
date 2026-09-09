@@ -38,12 +38,6 @@ export interface ProduceAudioResult {
   captionsVttContent: string;
 }
 
-export interface ScreenplayWord {
-  punctuated: string;
-  deleted?: boolean;
-  sceneIndex?: number;
-}
-
 /**
  * Trims leading and trailing silence samples (below amplitude threshold) from raw Float32Array audio.
  */
@@ -119,87 +113,6 @@ export function chunkTextForTTS(text: string, maxChars = 800): string[] {
   }
 
   return chunks.filter(Boolean);
-}
-
-/**
- * Synchronizes modified interactive words back into per-scene VO blocks without destroying screenplay structure.
- */
-export function syncWordsIntoScreenplay(script: string, transcriptWords: ScreenplayWord[]): string {
-  if (!transcriptWords || transcriptWords.length === 0) {
-    return script;
-  }
-
-  const activeWords = transcriptWords.filter((w) => !w.deleted);
-  const hasVOTags = /^\*{0,2}(?:VO|Voiceover|Narrator)\s*(\([^)]*\))?\s*:\*{0,2}/im.test(script);
-
-  if (hasVOTags) {
-    const lines = script.split("\n");
-    const newLines: string[] = [];
-    let voBlockIndex = -1;
-    let isCapturingVO = false;
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-
-      // Check for VO tag start line
-      if (/^\*{0,2}(VO|Voiceover|Narrator)\s*(\([^)]*\))?\s*:\*{0,2}/i.test(line)) {
-        voBlockIndex++;
-        isCapturingVO = true;
-
-        // Preserve tag prefix e.g. **VO (energetic):** or **VO:**
-        const tagMatch = line.match(/^(\*{0,2}(?:VO|Voiceover|Narrator)(?:\s*\([^)]*\))?\s*:\*{0,2})/i);
-        const tagPrefix = tagMatch ? tagMatch[1] : "**VO:**";
-
-        // Get words partitioned for this specific scene / VO block
-        const sceneWords = activeWords
-          .filter((w) => (w.sceneIndex ?? 0) === voBlockIndex)
-          .map((w) => w.punctuated)
-          .join(" ");
-
-        newLines.push(`${tagPrefix} ${sceneWords}`.trimEnd());
-        continue;
-      }
-
-      // Boundary checks: VISUAL, ON-SCREEN TEXT, scene headers ##, dividers ---
-      if (
-        /^\*{0,2}(VISUAL|ON-SCREEN TEXT|SCREEN|GRAPHICS|AUDIO|SFX)\s*:\*{0,2}/i.test(line) ||
-        /^#{1,4}\s+/.test(line) ||
-        line === "---" ||
-        line === "***"
-      ) {
-        isCapturingVO = false;
-        newLines.push(line);
-        continue;
-      }
-
-      // If inside an old multiline VO block, skip continuation lines since we replaced the block
-      if (isCapturingVO) {
-        if (line.trim().length === 0) {
-          isCapturingVO = false;
-          newLines.push(line);
-        }
-        continue;
-      }
-
-      newLines.push(line);
-    }
-    return newLines.join("\n");
-  } else {
-    // Plain script without VO tags: partition across existing paragraphs
-    const paragraphs = script.split(/\n\s*\n+/);
-    if (paragraphs.length > 1) {
-      const updatedParagraphs = paragraphs.map((p, idx) => {
-        const pWords = activeWords
-          .filter((w) => (w.sceneIndex ?? 0) === idx)
-          .map((w) => w.punctuated)
-          .join(" ");
-        return pWords || p;
-      });
-      return updatedParagraphs.join("\n\n");
-    } else {
-      return activeWords.map((w) => w.punctuated).join(" ");
-    }
-  }
 }
 
 /**

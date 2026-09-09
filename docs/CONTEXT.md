@@ -161,7 +161,6 @@ Pre-built tactile paper backgrounds:
 ### `backend/audio.ts`
 * `trimSilence(samples, threshold)`: Trims leading and trailing silence samples (below amplitude threshold) from raw Float32Array audio.
 * `chunkTextForTTS(text, maxChars)`: Splits text blocks exceeding maxChars (~800 chars) at sentence boundaries for Kokoro ONNX.
-* `syncWordsIntoScreenplay(script, transcriptWords)`: Synchronizes modified interactive words back into per-scene VO blocks without destroying screenplay structure.
 * `splitScriptIntoSegments(script)`: Splits a narration script into distinct shot-scoped segments (one per shot/beat) without slicing internal sentences.
 * `measureAudioDuration(filePath)`: Measures exact audio file duration using ffprobe.
 * `concatAudioSegments(audioFiles, silenceWavPath, outWavPath)`: Merges audio clips with fixed pause buffers via FFmpeg concat filters.

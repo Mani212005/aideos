@@ -5,7 +5,7 @@
 import fs from "fs";
 import path from "path";
 import { whatIsJepaFilm } from "../src/dl/films/what-is-jepa";
-import { chunkTextForTTS, trimSilence, splitScriptIntoSegments, syncWordsIntoScreenplay } from "../backend/audio";
+import { chunkTextForTTS, trimSilence, splitScriptIntoSegments } from "../backend/audio";
 
 // Helper function to encode Float32Array into 16-bit PCM WAV buffer
 function encodeWav(float32Data: Float32Array, rate: number): Buffer {
@@ -192,71 +192,6 @@ async function runVerification() {
   const is1to1Mapping = shots.length === segments.length;
   console.log(`   - 1:1 Mapping: ${is1to1Mapping ? "PASS (1:1)" : "FAIL"}`);
 
-  // 6. Screenplay Synchronization Verification
-  console.log(`\n5. Screenplay Synchronization & Tag Preservation Verification:`);
-  const sampleScreenplay = [
-    "# What is JEPA - Director Cut",
-    "",
-    "## Scene 1 (the-hook)",
-    "**VISUAL:** Graph animation with neon nodes connecting across canvas.",
-    "**ON-SCREEN TEXT:** JEPA Architecture",
-    "**VO:** Meet Yann LeCun, Meta pioneer. He argues LLMs are a dead end.",
-    "",
-    "## Scene 2 (who-is-lecun)",
-    "**VISUAL:** Split screen comparing LLMs vs human toddler learning physics.",
-    "**Voiceover:** A French American computer scientist, LeCun won the Turing Award.",
-    "",
-    "## Scene 3 (the-close)",
-    "**VISUAL:** World model simulation showing predictive representations.",
-    "**Narrator:** World models predict representations instead of raw pixels.",
-  ].join("\n");
-
-  const editedWords = [
-    { punctuated: "Meet", sceneIndex: 0 },
-    { punctuated: "Yann", sceneIndex: 0 },
-    { punctuated: "LeCun,", sceneIndex: 0 },
-    { punctuated: "Meta", sceneIndex: 0 },
-    { punctuated: "AI", sceneIndex: 0 },
-    { punctuated: "chief.", sceneIndex: 0 },
-    { punctuated: "He", sceneIndex: 0 },
-    { punctuated: "proves", sceneIndex: 0 },
-    { punctuated: "LLMs", sceneIndex: 0 },
-    { punctuated: "are", sceneIndex: 0 },
-    { punctuated: "limited.", sceneIndex: 0 },
-
-    { punctuated: "A", sceneIndex: 1 },
-    { punctuated: "Turing", sceneIndex: 1 },
-    { punctuated: "laureate,", sceneIndex: 1 },
-    { punctuated: "LeCun", sceneIndex: 1 },
-    { punctuated: "created", sceneIndex: 1 },
-    { punctuated: "modern", sceneIndex: 1 },
-    { punctuated: "computer", sceneIndex: 1 },
-    { punctuated: "vision.", sceneIndex: 1 },
-
-    { punctuated: "World", sceneIndex: 2 },
-    { punctuated: "models", sceneIndex: 2 },
-    { punctuated: "learn", sceneIndex: 2 },
-    { punctuated: "abstractions", sceneIndex: 2 },
-    { punctuated: "directly.", sceneIndex: 2 },
-  ];
-
-  const syncedScreenplay = syncWordsIntoScreenplay(sampleScreenplay, editedWords);
-  const screenplayChecks = {
-    scene1HeaderPreserved: syncedScreenplay.includes("## Scene 1 (the-hook)"),
-    scene2HeaderPreserved: syncedScreenplay.includes("## Scene 2 (who-is-lecun)"),
-    scene3HeaderPreserved: syncedScreenplay.includes("## Scene 3 (the-close)"),
-    scene1VisualPreserved: syncedScreenplay.includes("**VISUAL:** Graph animation with neon nodes connecting across canvas."),
-    scene2VisualPreserved: syncedScreenplay.includes("**VISUAL:** Split screen comparing LLMs vs human toddler learning physics."),
-    scene3VisualPreserved: syncedScreenplay.includes("**VISUAL:** World model simulation showing predictive representations."),
-    scene1OnScreenTextPreserved: syncedScreenplay.includes("**ON-SCREEN TEXT:** JEPA Architecture"),
-    scene1VOUpdated: syncedScreenplay.includes("**VO:** Meet Yann LeCun, Meta AI chief. He proves LLMs are limited."),
-    scene2VoiceoverUpdated: syncedScreenplay.includes("**Voiceover:** A Turing laureate, LeCun created modern computer vision."),
-    scene3NarratorUpdated: syncedScreenplay.includes("**Narrator:** World models learn abstractions directly."),
-  };
-
-  const allScreenplayChecksPassed = Object.values(screenplayChecks).every(Boolean);
-  console.log(`   - Screenplay Structure & Tag Preservation: ${allScreenplayChecksPassed ? "PASS (100% tags intact)" : "FAIL"}`);
-
   // Generate Evidence Telemetry Report (JSON and Markdown)
   const legacyChunks = chunkTextForTTS(fullText, 220);
   const chunkComparison = shots.map((s, idx) => {
@@ -288,19 +223,12 @@ async function runVerification() {
       legacyChunkCount: legacyChunks.length,
       newChunkCount: chunks.length,
       shotScoped1to1Mapping: is1to1Mapping,
-      screenplayPreservationPassed: allScreenplayChecksPassed,
     },
     chunkComparison,
     rawSilencePaddingMeasurements: rawLeadTrails,
     perShotDurationAlignment: perShotDurations,
     silenceGapsDetected: gaps,
     interShotTransitionGaps: interShotGaps,
-    screenplayPreservationVerification: {
-      checks: screenplayChecks,
-      allPassed: allScreenplayChecksPassed,
-      sampleOriginalScreenplay: sampleScreenplay,
-      syncedScreenplayOutput: syncedScreenplay,
-    },
   };
 
   const reportJsonPath = path.join(evidenceDir, "voiceover_stutter_verification_report.json");
@@ -315,7 +243,6 @@ async function runVerification() {
     `- **Compounded Dead-Air Silence Eliminated:** ${totalDeadAirEliminated}ms (~${(totalDeadAirEliminated / 1000).toFixed(2)}s of silence stripped)`,
     `- **Synthesis Chunk Count:** Reduced from ${legacyChunks.length} aggressive sub-chunks (220-char) down to ${chunks.length} intact shot-level chunks (800-char threshold, 1:1 with shots)`,
     `- **Inter-Shot Controlled Pauses:** Single 200ms pause placed between adjacent shots`,
-    `- **Screenplay Structure Preservation:** 100% of scene headers, visual directions, on-screen text, and VO tags preserved`,
     "",
     "## 2. Shot-Scoped Chunking & Index Alignment Table",
     "| Shot # | Shot ID | Chars | Sentences | Old Chunks (220) | New Chunks (800) | 1:1 Shot Scope |",
@@ -332,17 +259,7 @@ async function runVerification() {
       return `| ${p.shotIndex} (\`${p.shotId}\`) | ${p.leadMs}ms | ${p.trailMs}ms | ${p.deadAirAvoidedMs}ms | ${pauseStr} |`;
     }),
     "",
-    "## 4. Screenplay Structure & Word Partitioning Verification",
-    `- **Scene Headers Preserved:** ${screenplayChecks.scene1HeaderPreserved && screenplayChecks.scene2HeaderPreserved && screenplayChecks.scene3HeaderPreserved ? "✓ PASS (All 3 scenes)" : "✗ FAIL"}`,
-    `- **Visual Directions Preserved:** ${screenplayChecks.scene1VisualPreserved && screenplayChecks.scene2VisualPreserved && screenplayChecks.scene3VisualPreserved ? "✓ PASS" : "✗ FAIL"}`,
-    `- **On-Screen Text Preserved:** ${screenplayChecks.scene1OnScreenTextPreserved ? "✓ PASS" : "✗ FAIL"}`,
-    `- **Per-Scene Word Partitioning (VO / Voiceover / Narrator tags):** ${screenplayChecks.scene1VOUpdated && screenplayChecks.scene2VoiceoverUpdated && screenplayChecks.scene3NarratorUpdated ? "✓ PASS" : "✗ FAIL"}`,
-    "",
-    "```markdown",
-    syncedScreenplay,
-    "```",
-    "",
-    "## 5. Artifact Verification Locations",
+    "## 4. Artifact Verification Locations",
     `- Telemetry Data: \`${reportJsonPath}\``,
     `- Synthesized WAV: \`${wavPath}\``,
   ].join("\n");
@@ -354,7 +271,6 @@ async function runVerification() {
   console.log("1. 220-char aggressive chunking: ELIMINATED (threshold raised to 800 chars).");
   console.log("2. Compounding silence: ELIMINATED (trimmed raw padding, added 200ms controlled pause).");
   console.log("3. Sentence vs Shot index mismatch: FIXED (shot-scoped 1:1 segmentation).");
-  console.log("4. Screenplay tag destruction: FIXED (per-scene word partitioning).");
   console.log(`\nEvidence saved to: ${evidenceDir}`);
 }
 
