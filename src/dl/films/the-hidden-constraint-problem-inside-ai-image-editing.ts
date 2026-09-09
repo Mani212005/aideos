@@ -1,0 +1,293 @@
+import type { Film } from "../schema";
+
+export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
+  "id": "the-hidden-constraint-problem-inside-ai-image-editing",
+  "title": "The Hidden Constraint Problem Inside AI Image Editing",
+  "fps": 30,
+  "accent": "#10B981",
+  "theme": {
+    "background": "dot-grid",
+    "fontFamily": "geist",
+    "storyStyle": "script-metaphor",
+    "cameraAngle": "isometric",
+    "accent": "#10B981"
+  },
+  "chapters": [
+    "HOOK",
+    "WHAT CHANGED",
+    "HOW THE PROBLEM IS REPRE",
+    "WHY EDITING IS HARDER TH",
+    "MULTI-TURN CONSISTENCY",
+    "THE BIGGER IDEA"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "hook",
+        "label": "HOOK",
+        "sub": "ChatGPT IMAGES 2.5 fades in smal",
+        "x": -200,
+        "y": -100,
+        "w": 230,
+        "h": 68
+      },
+      {
+        "id": "what-changed",
+        "label": "WHAT CHANGED",
+        "sub": "How does a model actually do thi",
+        "x": 60,
+        "y": -100,
+        "w": 230,
+        "h": 68
+      },
+      {
+        "id": "how-the-problem-is-represented",
+        "label": "HOW THE PROBLEM IS REPRE",
+        "sub": "TEXT → EMBEDDING → CROSS-ATTENTI",
+        "x": 320,
+        "y": -100,
+        "w": 230,
+        "h": 68
+      },
+      {
+        "id": "why-editing-is-harder-than-generating",
+        "label": "WHY EDITING IS HARDER TH",
+        "sub": "PRESERVE: identity · pose · back",
+        "x": -200,
+        "y": 80,
+        "w": 230,
+        "h": 68
+      },
+      {
+        "id": "multi-turn-consistency",
+        "label": "MULTI-TURN CONSISTENCY",
+        "sub": "Three sequential thumbnails - sa",
+        "x": 60,
+        "y": 80,
+        "w": 230,
+        "h": 68
+      },
+      {
+        "id": "the-bigger-idea",
+        "label": "THE BIGGER IDEA",
+        "sub": "Final title card - Generation is",
+        "x": 320,
+        "y": 80,
+        "w": 230,
+        "h": 68
+      }
+    ],
+    "edges": [
+      {
+        "from": "hook",
+        "to": "what-changed",
+        "dashed": false
+      },
+      {
+        "from": "what-changed",
+        "to": "how-the-problem-is-represented",
+        "dashed": false
+      },
+      {
+        "from": "how-the-problem-is-represented",
+        "to": "why-editing-is-harder-than-generating",
+        "dashed": false
+      },
+      {
+        "from": "why-editing-is-harder-than-generating",
+        "to": "multi-turn-consistency",
+        "dashed": false
+      },
+      {
+        "from": "multi-turn-consistency",
+        "to": "the-bigger-idea",
+        "dashed": false
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "hook",
+      "dur": 26.65,
+      "look": "hook",
+      "move": "cut",
+      "stage": "frame",
+      "zoom": 1,
+      "drift": true,
+      "visualDirection": "Cold open. A single photograph fills the frame - a person in a black jacket. Text overlay types out: change the jacket to red. keep everything else exactly the same.",
+      "scriptText": "Ask an image model to change one thing in a photo, but keep everything else pixel for pixel identical, and you're not asking it to draw anymore. You're asking it to obey constraints. That's a fundamentally harder problem than generating a picture from nothing. OpenAI just shipped ChatGPT Images 2.5, but the interesting part isn't the feature list. It's what a system actually needs to be capable of to pull this off.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "ChatGPT IMAGES 2.5 fades in small, bottom corner - not the hero of the shot.",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "Cold open. A single photograph fills the frame - a person in a black jacket. Text overlay types out: change the jacket to red. keep everything else exactly the same."
+        }
+      ]
+    },
+    {
+      "id": "what-changed",
+      "dur": 23.41,
+      "look": "what-changed",
+      "move": "pan",
+      "stage": "none",
+      "zoom": 1,
+      "drift": true,
+      "visualDirection": "The four boxes shrink and slide off-screen. A single question fades in center-frame.",
+      "scriptText": "According to OpenAI's own announcement, Images 2.5 preserves more of an original image during edits, keeps identity and detail consistent across a multi-turn conversation, produces more natural lighting and texture, and cuts generation latency by up to fifty percent. Two new API models, Flare and Sunburst, ship alongside it for speed and precision. That's what OpenAI says it does. They haven't published how.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "How does a model actually do this?",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "The four boxes shrink and slide off-screen. A single question fades in center-frame."
+        }
+      ]
+    },
+    {
+      "id": "how-the-problem-is-represented-1",
+      "dur": 22.32,
+      "look": "how-the-problem-is-represented",
+      "move": "pan",
+      "stage": "frame",
+      "zoom": 1,
+      "drift": true,
+      "visualDirection": "The word jacket highlights, with animated lines fanning out to a highlighted region of the token grid - an attention visualization.",
+      "scriptText": "Start with the image itself. Modern systems don't usually reason over raw RGB pixels - that's computationally brutal. Instead, an image gets compressed into a grid of learned tokens, or a lower-dimensional latent - a representation that captures structure and semantics far more efficiently than pixels do. Your prompt goes through a parallel transformation: words become embeddings, vectors encoding meaning.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "TEXT → EMBEDDING → CROSS-ATTENTION → VISUAL TOKENS",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "The word jacket highlights, with animated lines fanning out to a highlighted region of the token grid - an attention visualization."
+        }
+      ]
+    },
+    {
+      "id": "how-the-problem-is-represented-2",
+      "dur": 26.65,
+      "look": "how-the-problem-is-represented",
+      "move": "zoom-out",
+      "stage": "anchor",
+      "zoom": 1,
+      "drift": true,
+      "visualDirection": "The word jacket highlights, with animated lines fanning out to a highlighted region of the token grid - an attention visualization.",
+      "scriptText": "To connect red jacket to an actual region of the image, the model needs cross-attention - letting the token for jacket look across the visual representation and weight the regions that matter. OpenAI has publicly described its GPT-Image line as running text and image tokens through one shared transformer, then converting that representation into final pixels through a diffusion-based decoding step, rather than bolting a separate image model onto a language model.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "HOW THE PROBLEM IS REPRESENTED",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "The word jacket highlights, with animated lines fanning out to a highlighted region of the token grid - an attention visualization."
+        }
+      ]
+    },
+    {
+      "id": "why-editing-is-harder-than-generating-1",
+      "dur": 21.24,
+      "look": "why-editing-is-harder-than-generating",
+      "move": "pan",
+      "stage": "none",
+      "zoom": 1,
+      "drift": true,
+      "visualDirection": "Animated diagram - most of the token grid turns locked gray, only the jacket region stays active and colored.",
+      "scriptText": "Here's the actual hard part. Generating from scratch satisfies one instruction. Editing satisfies two: apply the change, and preserve everything you didn't mention - the face, the pose, the background, the lighting, the camera angle. A system with no preservation mechanism just regenerates the whole scene, and it drifts - a jaw reshapes slightly, a shadow moves.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "PRESERVE: identity · pose · background · lighting · composition",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "Animated diagram - most of the token grid turns locked gray, only the jacket region stays active and colored."
+        }
+      ]
+    },
+    {
+      "id": "why-editing-is-harder-than-generating-2",
+      "dur": 13.32,
+      "look": "why-editing-is-harder-than-generating",
+      "move": "zoom-out",
+      "stage": "anchor",
+      "zoom": 1,
+      "drift": true,
+      "visualDirection": "Animated diagram - most of the token grid turns locked gray, only the jacket region stays active and colored.",
+      "scriptText": "Avoiding that means treating the original image's tokens as a strong conditioning signal, anchoring most of the representation and only letting the targeted region actually update. It's a constraint-satisfaction problem wearing a generative model's clothes.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "WHY EDITING IS HARDER THAN GENERATING",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "Animated diagram - most of the token grid turns locked gray, only the jacket region stays active and colored."
+        }
+      ]
+    },
+    {
+      "id": "multi-turn-consistency",
+      "dur": 19.8,
+      "look": "multi-turn-consistency",
+      "move": "pan",
+      "stage": "frame",
+      "zoom": 1,
+      "drift": true,
+      "visualDirection": "Three sequential thumbnails - same photo across three edits (shirt, background, lighting) - with a faint generation loss flicker on a fourth, mislabeled weak system thumbnail for contrast.",
+      "scriptText": "Multi-turn editing compounds this. Change the shirt, then the background, then the lighting, and each pass risks re-encoding the image and quietly losing fidelity - like a photocopy of a photocopy. Holding quality across turns means carrying forward one stable representation of the image, instead of reconstructing it from nothing on every request.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "MULTI-TURN CONSISTENCY",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "Three sequential thumbnails - same photo across three edits (shirt, background, lighting) - with a faint generation loss flicker on a fourth, mislabeled weak system thumbnail for contrast."
+        }
+      ]
+    },
+    {
+      "id": "the-bigger-idea",
+      "dur": 12.97,
+      "look": "the-bigger-idea",
+      "move": "pan",
+      "stage": "none",
+      "zoom": 1,
+      "drift": true,
+      "visualDirection": "Pull back to a wide shot of the whole pipeline diagram built across the video - text, tokens, attention, preservation - all connected into one loop.",
+      "scriptText": "The real advance isn't prettier pixels. It's treating image generation as constrained multimodal reasoning: knowing what to touch, what to leave alone, and how every piece of the image relates to every other piece.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Final title card - Generation is one problem. Preservation is another.",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "Pull back to a wide shot of the whole pipeline diagram built across the video - text, tokens, attention, preservation - all connected into one loop."
+        }
+      ]
+    }
+  ],
+  "voiceover": {
+    "src": "voiceover_the-hidden-constraint-problem-inside-ai-image-editing.wav",
+    "volume": 1,
+    "speed": 1,
+    "version": "1788945136237",
+    "durationSec": 166.357
+  }
+};

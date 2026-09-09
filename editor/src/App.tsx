@@ -636,7 +636,11 @@ export default function App() {
                     <div className="flex flex-col gap-1 bg-[#18181B] p-2.5 rounded border border-[#27272A] text-[11px]">
                       <div className="flex justify-between text-gray-400">
                         <span>Duration</span>
-                        <span className="text-yellow-400 font-bold">{(duration / (film.fps || 30)).toFixed(1)}s ({duration}f)</span>
+                        {film.voiceover?.src ? (
+                          <span className="text-yellow-400 font-bold">{(duration / (film.fps || 30)).toFixed(1)}s ({duration}f)</span>
+                        ) : (
+                          <span className="text-gray-500 font-mono italic">-- (Pending VO)</span>
+                        )}
                       </div>
                       <div className="flex justify-between text-gray-400">
                         <span>FPS</span>

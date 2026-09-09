@@ -277,3 +277,80 @@ This entire section, including any [NARRATION] blocks, must be ignored.
   assert.equal(segments[0].beats.length, 1);
   assert.equal(segments[0].beats[0].text, "Only this line should survive.");
 });
+
+test("parses bare timestamp headers without hashes and inline bracket tags on the same line", () => {
+  const script = `0:00–0:20 — HOOK
+
+[VISUAL: Cold open. A single photograph fills the frame — a person in a black jacket.]
+
+[NARRATION] Ask an image model to change one thing in a photo, but keep everything else pixel for pixel identical.
+
+[ON SCREEN: "ChatGPT IMAGES 2.5" fades in small, bottom corner — not the hero of the shot.]
+
+0:20–0:55 — WHAT CHANGED
+
+[VISUAL: Quick montage, four labeled boxes appearing in sequence: "Reference fidelity," "Precision editing," "Multi-turn consistency," "–50% latency."]
+
+[NARRATION] According to OpenAI's own announcement, Images 2.5 preserves more of an original image during edits.
+
+[VISUAL: The four boxes shrink and slide off-screen. A single question fades in center-frame.]
+
+[ON SCREEN: "How does a model actually do this?"]
+`;
+
+  const segments = parseClaudeScript(script);
+  assert.equal(segments.length, 2);
+
+  assert.equal(segments[0].title, "HOOK");
+  assert.equal(segments[0].timeStart, "0:00");
+  assert.equal(segments[0].timeEnd, "0:20");
+  assert.equal(segments[0].beats.length, 3);
+  assert.equal(segments[0].beats[0].type, "visual");
+  assert.ok(segments[0].beats[0].text.startsWith("Cold open"));
+  assert.ok(!segments[0].beats[0].text.includes("[VISUAL"));
+  assert.equal(segments[0].beats[1].type, "narration");
+  assert.ok(segments[0].beats[1].text.startsWith("Ask an image model"));
+  assert.ok(!segments[0].beats[1].text.includes("[NARRATION"));
+  assert.equal(segments[0].beats[2].type, "onscreen");
+  assert.ok(segments[0].beats[2].text.startsWith("ChatGPT IMAGES 2.5"));
+
+  assert.equal(segments[1].title, "WHAT CHANGED");
+  assert.equal(segments[1].timeStart, "0:20");
+  assert.equal(segments[1].timeEnd, "0:55");
+  assert.equal(segments[1].beats.length, 4);
+
+  // Spoken voiceover extraction: MUST contain ONLY narration text
+  const spoken = extractSpokenBlocks(script);
+  assert.equal(spoken.length, 2);
+  assert.equal(
+    spoken[0],
+    "Ask an image model to change one thing in a photo, but keep everything else pixel for pixel identical."
+  );
+  assert.equal(
+    spoken[1],
+    "According to OpenAI's own announcement, Images 2.5 preserves more of an original image during edits."
+  );
+
+  const fullSpoken = spoken.join(" ");
+  assert.ok(!/visual|on screen|hook|what changed|0:00|0:20|0:55/i.test(fullSpoken));
+  assert.ok(!fullSpoken.includes("["));
+  assert.ok(!fullSpoken.includes("]"));
+
+  // Film parts compilation associates visual, narration, and onscreen into structured shots
+  const parts = buildFilmPartsFromScript(script);
+  assert.equal(parts.nodes.length, 2);
+  assert.equal(parts.shots.length, 2);
+  assert.equal(parts.shots[0].scriptText, spoken[0]);
+  assert.ok(parts.shots[0].visualDirection?.startsWith("Cold open"));
+  assert.ok(parts.shots[0].blocks.some((b) => b.c === "TextReveal" && b.text.includes("ChatGPT IMAGES 2.5")));
+});
+
+test("extractSpokenBlocks never speaks visual or onscreen text even if script has no narration tags", () => {
+  const visualOnlyScript = `## 0:00-0:10 - INTRO
+[VISUAL: Futuristic city with flying cars zooming past neon skyscrapers.]
+[ON SCREEN: "2049"]
+`;
+  const spoken = extractSpokenBlocks(visualOnlyScript);
+  assert.deepEqual(spoken, [], "should return empty array rather than leaking visual instructions to TTS");
+});
+

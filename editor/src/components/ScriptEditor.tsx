@@ -16,7 +16,6 @@ import {
   Film as FilmIcon,
   Play,
   Pause,
-  Lightbulb,
   Clapperboard,
   CheckCircle2,
   LayoutGrid,
@@ -30,6 +29,7 @@ import {
   parseClaudeScript,
   serializeSegmentsToScript,
   extractSpokenBlocks as extractSpokenBlocksShared,
+  hasScreenplayTags,
 } from "../../../backend/scriptIntake";
 import type { ScriptSegment, BeatType } from "../../../backend/scriptIntake";
 
@@ -66,27 +66,10 @@ const VOICES = [
 ];
 
 /**
- * Calculates estimated speech duration in minutes and seconds from word count.
- */
-function estimateDuration(wordCount: number): string {
-  const totalSeconds = Math.round((wordCount / 150) * 60);
-  const mins = Math.floor(totalSeconds / 60);
-  const secs = totalSeconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
-/**
  * Extracts strictly the spoken dialogue from a director screenplay text as separate per-scene/shot paragraphs.
  */
 export function extractSpokenBlocks(raw: string): string[] {
   return extractSpokenBlocksShared(raw);
-}
-
-/**
- * Extracts strictly the spoken dialogue from a director screenplay text as single joined string.
- */
-function extractSpokenPreview(raw: string): string {
-  return extractSpokenBlocks(raw).join("\n\n");
 }
 
 /**
@@ -100,7 +83,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
   const [buildingScenes, setBuildingScenes] = useState<boolean>(false);
   const [selectedVoice, setSelectedVoice] = useState<string>("kokoro-am_adam");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"screenplay" | "studio" | "spoken">("screenplay");
+  const [viewMode, setViewMode] = useState<"screenplay" | "studio">("screenplay");
   const [segments, setSegments] = useState<ScriptSegment[]>([]);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
 
@@ -154,11 +137,12 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
     };
   }, [film.id]);
 
-  // Compute word counts and duration
-  const spokenText = extractSpokenPreview(script);
+  // Compute word counts and structured screenplay status
+  const spokenBlocks = extractSpokenBlocks(script);
+  const spokenText = spokenBlocks.join(" ");
   const spokenWords = spokenText.split(/\s+/).filter(Boolean);
   const totalWords = script.split(/\s+/).filter(Boolean);
-  const hasVOTags = /^\*{0,2}(?:VO|Voiceover|Narrator)\s*(\([^)]*\))?\s*:\*{0,2}/im.test(script);
+  const isStructured = hasScreenplayTags(script);
 
   /**
    * Saves the current script text to disk under scripts/<projectId>.md.
@@ -279,6 +263,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       };
 
       onUpdateFilm(updatedFilm);
+      setSegments(parseClaudeScript(script));
 
       await fetch(`/api/films/${film.id}`, {
         method: "POST",
@@ -309,7 +294,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
     setGenerating(true);
     setStatusMsg({
       type: "info",
-      text: `Synthesizing voiceover (${spokenWords.length} words, ~${estimateDuration(spokenWords.length)}) using ${selectedVoice}...`,
+      text: `Synthesizing voiceover (${spokenWords.length} spoken words) using ${selectedVoice}...`,
     });
     try {
       const res = await fetch("/api/generate-voiceover", {
@@ -325,10 +310,12 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       if (!res.ok) throw new Error(data.error || "Voice synthesis failed");
 
       setAudioUrl(data.audioSrc);
-      setViewMode("spoken");
+      if (data.actualDurationSec) {
+        setDuration(data.actualDurationSec);
+      }
       setStatusMsg({
         type: "success",
-        text: `Voiceover synthesized from screenplay (${data.spokenWordCount} spoken words, ${data.estimatedDurationSec}s)!`,
+        text: `Voiceover synthesized from screenplay (${data.spokenWordCount} spoken words, ${data.actualDurationSec ? data.actualDurationSec.toFixed(1) : data.estimatedDurationSec}s actual duration)!`,
       });
 
       const updatedFilm: Film = data.film || {
@@ -339,10 +326,18 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
           volume: 1.0,
           version: Date.now().toString(),
           speed: film.voiceover?.speed ?? 1.0,
+          durationSec: data.actualDurationSec || data.estimatedDurationSec,
         },
         audioClips: undefined, // Clear stale clip overrides so fresh voiceover spine takes effect across the player
       };
       onUpdateFilm(updatedFilm);
+
+      // Persist the updated film with voiceover to server
+      await fetch(`/api/films/${film.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ film: updatedFilm }),
+      }).catch(() => {});
 
       if (audioRef.current) {
         audioRef.current.load();
@@ -473,16 +468,20 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
               </span>
               <span>
                 <strong>Duration:</strong>{" "}
-                <span className="text-[#635BFF] font-mono font-bold">{estimateDuration(spokenWords.length)}</span>
+                {duration > 0 ? (
+                  <span className="text-emerald-400 font-mono font-bold">{formatTime(duration)}</span>
+                ) : (
+                  <span className="text-gray-500 font-mono italic">--:-- (Pending VO)</span>
+                )}
               </span>
-              {hasVOTags && (
+              {isStructured && (
                 <span className="text-[11px] bg-emerald-950/60 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800 font-medium flex items-center gap-1">
-                  <CheckCircle2 size={12} /> Screenplay Separated
+                  <CheckCircle2 size={12} /> Screenplay Structured
                 </span>
               )}
             </div>
 
-            {/* View Mode Toggle: Screenplay vs Spoken Text */}
+            {/* View Mode Toggle: Screenplay vs Visual Studio */}
             <div className="flex items-center gap-1 bg-[#1A1A22] p-0.5 rounded border border-[#333]">
               <button
                 onClick={() => setViewMode("screenplay")}
@@ -501,15 +500,6 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                 title="Interactive segment cards for editing Narration, Visual, and On-Screen beats"
               >
                 <LayoutGrid size={13} /> Visual Studio
-              </button>
-              <button
-                onClick={() => setViewMode("spoken")}
-                className={`text-[11px] px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition-all ${
-                  viewMode === "spoken" ? "bg-[#635BFF] text-white font-bold" : "text-gray-400 hover:text-white"
-                }`}
-                title="Preview strictly the dialogue lines that will be spoken by AI"
-              >
-                <Mic size={13} /> Spoken Text
               </button>
             </div>
           </div>
@@ -636,19 +626,6 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                 >
                   <Plus size={13} /> Add Segment
                 </button>
-              </div>
-            )}
-
-            {/* VIEW MODE 2: SPOKEN TEXT ONLY */}
-            {viewMode === "spoken" && (
-              <div className="w-full h-full min-h-[380px] p-4 bg-[#0E0E12] text-[#F5F5F5] font-mono text-sm leading-relaxed overflow-y-auto">
-                <div className="p-3 bg-emerald-950/30 border border-emerald-900/60 rounded-lg text-xs text-emerald-300 mb-4 flex items-start gap-2">
-                  <Lightbulb size={14} className="text-emerald-400 shrink-0 mt-0.5" />
-                  <span>This is the exact dialogue synthesized by the voice engine. Visual directions and notes are excluded from speech.</span>
-                </div>
-                <div className="whitespace-pre-wrap text-gray-200">
-                  {spokenText || "No spoken dialogue detected. Add **VO:** blocks or plain script text."}
-                </div>
               </div>
             )}
 
@@ -801,7 +778,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
             </select>
 
             <div className="p-2.5 rounded bg-[#181820] border border-[#2A2A35] text-[11px] text-[#8A8A8E] space-y-1">
-              <div>• <strong>Pacing:</strong> Spoken only at ~150 wpm (~{estimateDuration(spokenWords.length)})</div>
+              <div>• <strong>Spoken Narration:</strong> {spokenWords.length} spoken dialogue words</div>
               <div>• <strong>Location:</strong> <code className="text-gray-300">public/voiceover_{film.id}.wav</code></div>
             </div>
           </div>
@@ -814,8 +791,8 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
             <ul className="space-y-2 list-disc list-inside text-[11px]">
               <li><strong>Write dialogue:</strong> Use [VISUAL], [NARRATION], and [ON SCREEN] tag blocks per scene (legacy VO:/Voiceover:/Narrator: still work).</li>
               <li><strong>Edit visually:</strong> Switch to Visual Studio to edit each beat as a card, two-way synced with the raw markdown.</li>
-              <li><strong>Preview:</strong> Switch to Spoken Text to see exactly what will be synthesized.</li>
-              <li><strong>Generate Voiceover:</strong> Synthesizes the screenplay's spoken dialogue directly.</li>
+              <li><strong>Auto-Build:</strong> Automatically constructs video shots, visual metaphors, and canvas nodes directly from the script.</li>
+              <li><strong>Generate Voiceover:</strong> Synthesizes strictly the screenplay's spoken dialogue into audio.</li>
             </ul>
           </div>
         </div>

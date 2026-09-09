@@ -453,6 +453,7 @@ export const filmBaseSchema = z.object({
       volume: z.number().min(0).max(2).default(1),
       speed: z.number().min(0.25).max(4).default(1).optional(),
       version: z.string().optional(),
+      durationSec: z.number().min(0).optional(),
     })
     .optional(),
   audioClips: z.array(audioClipSchema).optional(),

@@ -48,7 +48,7 @@ export interface GeneratedShot {
   zoom: number;
   drift: boolean;
   visualDirection?: string;
-  metaphor: "custom";
+  metaphor?: "spider-web" | "liquid-bucket" | "balance-scale" | "clock-gears" | "rocket-launch" | "character-throw" | "glowing-cluster" | "typing-cursor-quote" | "custom";
   scriptText?: string;
   blocks: GeneratedBlock[];
 }
@@ -79,9 +79,11 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/** Strips markdown emphasis/quote markup and normalizes dashes/whitespace in beat body text. */
+/** Strips markdown emphasis/quote markup, tags, and normalizes dashes/whitespace in beat body text. */
 function cleanBeatText(text: string): string {
   return text
+    .replace(/^\[?\s*(?:VISUAL(?:S|\s+DIRECTION|\s+CUE)?|NARRATION|NARRATOR|VOICEOVER|VO|ON[-\s]*SCREEN(?:\s+TEXT)?|TEXT\s+OVERLAY)\s*:\s*/i, "")
+    .replace(/\]\s*$/, "")
     .replace(/["“”]/g, "")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
@@ -91,14 +93,14 @@ function cleanBeatText(text: string): string {
     .trim();
 }
 
-/** Detects a "## Production Notes" / "## Notes" section header that ends screenplay parsing. */
+/** Detects a notes or fact-check section header that ends screenplay parsing. */
 function isProductionNotesHeader(line: string): boolean {
-  return /^#{1,4}\s*(production notes|notes)\b/i.test(line);
+  return /^#{0,4}\s*(production notes?|notes?|fact check|source notes?|sources?|references?)\b/i.test(line);
 }
 
 /** Detects a standalone closing word-count note, e.g. "*(Narration word count: ~450 words)*". */
 function isWordCountNote(line: string): boolean {
-  return /^\*{0,2}\(.*word count.*\)\*{0,2}$/i.test(line);
+  return /^\*{0,2}[\(\[](?:Narration\s*)?word count.*[\)\]]\*{0,2}$/i.test(line);
 }
 
 /** Parsed pieces of a `## [timestamp] - Title (id)` style segment header line. */
@@ -109,12 +111,19 @@ interface SegmentHeaderInfo {
   explicitId?: string;
 }
 
-/** Matches a segment header line and extracts its timestamp range, title, and optional explicit id. */
+/** Matches a segment header line (with or without # markdown hashes) and extracts its timestamp range, title, and optional explicit id. */
 function matchSegmentHeader(line: string): SegmentHeaderInfo | null {
-  const m = line.match(/^#{1,4}\s+(.*)$/);
-  if (!m) return null;
-  let headerText = m[1].trim();
+  let headerText = line.trim();
   if (!headerText) return null;
+
+  const hashMatch = headerText.match(/^#{1,4}\s+(.*)$/);
+  if (hashMatch) {
+    headerText = hashMatch[1].trim();
+  } else {
+    const isBareTimestamp = /^(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})\b/.test(headerText);
+    const isBareScene = /^(?:Scene|Shot|Segment|Act)\s+\d+\b/i.test(headerText);
+    if (!isBareTimestamp && !isBareScene) return null;
+  }
 
   let timeStart: string | undefined;
   let timeEnd: string | undefined;
@@ -135,13 +144,28 @@ function matchSegmentHeader(line: string): SegmentHeaderInfo | null {
   return { title: headerText, timeStart, timeEnd, explicitId };
 }
 
-/** Matches a `[VISUAL]`, `[NARRATION]`, or `[ON SCREEN]` bracket tag, with optional inline `: text`. */
+/** Matches a `[VISUAL]`, `[NARRATION]`, or `[ON SCREEN]` bracket tag, supporting inline text on the same line. */
 function matchBracketTag(line: string): { type: BeatType; inline?: string } | null {
-  const m = line.match(/^\[(VISUAL|NARRATION|ON\s*SCREEN)\s*(?::\s*(.*?))?\]\s*$/i);
+  const m = line.match(
+    /^\[(VISUAL(?:S|\s+DIRECTION|\s+CUE)?|NARRATION|NARRATOR|VOICEOVER|VO|ON[-\s]*SCREEN(?:\s+TEXT)?|TEXT\s+OVERLAY)\s*(?::\s*|\s*\]\s*:?\s*|\s*\])(.*)$/i
+  );
   if (!m) return null;
-  const rawType = m[1].toUpperCase().replace(/\s+/g, " ");
-  const type: BeatType = rawType.startsWith("VISUAL") ? "visual" : rawType.startsWith("NARRATION") ? "narration" : "onscreen";
-  const inline = m[2] ? m[2].trim() : undefined;
+
+  const rawTag = m[1].toUpperCase().replace(/[-\s]+/g, " ");
+  let type: BeatType;
+  if (rawTag.startsWith("VISUAL")) {
+    type = "visual";
+  } else if (rawTag.startsWith("NARRATION") || rawTag.startsWith("NARRATOR") || rawTag.startsWith("VO")) {
+    type = "narration";
+  } else {
+    type = "onscreen";
+  }
+
+  let inline = m[2] ? m[2].trim() : "";
+  if (inline.endsWith("]")) {
+    inline = inline.slice(0, -1).trim();
+  }
+
   return { type, inline: inline || undefined };
 }
 
@@ -189,7 +213,7 @@ export function parseClaudeScript(raw: string): ScriptSegment[] {
 
   const flushSegment = () => {
     flushBeat();
-    if (current) segments.push(current);
+    if (current && current.beats.length > 0) segments.push(current);
     current = null;
   };
 
@@ -309,7 +333,8 @@ export function serializeSegmentsToScript(segments: ScriptSegment[]): string {
 /** Fallback extraction for free-form prose with no recognizable screenplay tags at all. */
 function legacyExtractSpokenBlocks(raw: string): string[] {
   const cleaned = (raw || "")
-    .replace(/^#+\s+/gm, "")
+    .replace(/^#{1,6}\s+.*$/gm, "") // Strip markdown headers
+    .replace(/^(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2}).*$/gm, "") // Strip timestamp headers
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
@@ -328,13 +353,20 @@ export function hasScreenplayTags(raw: string): boolean {
 
 /**
  * Extracts strictly the spoken NARRATION dialogue from a Claude/legacy screenplay, one paragraph
- * per beat, guaranteed to contain zero VISUAL or ON SCREEN text. Falls back to paragraph-splitting
- * untagged prose when no narration tags are present anywhere in the document.
+ * per beat, guaranteed to contain zero VISUAL or ON SCREEN text.
+ * If screenplay tags are detected, returns ONLY narration beats (never falls back to speaking visual/on-screen text).
+ * Falls back to paragraph-splitting untagged prose only when zero screenplay tags exist in the document.
  */
 export function extractSpokenBlocks(raw: string): string[] {
   const segments = parseClaudeScript(raw);
   const narration = segments.flatMap((seg) => seg.beats.filter((b) => b.type === "narration").map((b) => b.text));
   if (narration.length > 0) return narration;
+
+  // If the document contains ANY screenplay tags or directions, NEVER speak the raw prose
+  if (/\[(?:VISUAL|NARRATION|ON[-\s]*SCREEN)/i.test(raw) || /^\*{0,2}(?:VISUAL|ON-SCREEN TEXT|VO)\s*:/im.test(raw)) {
+    return [];
+  }
+
   return legacyExtractSpokenBlocks(raw);
 }
 
@@ -429,11 +461,10 @@ export function buildFilmPartsFromScript(raw: string): {
         dur: estimateShotDuration(group.narration),
         look: seg.id,
         move,
-        stage: gi === 0 ? "frame" : "anchor",
+        stage: gi === 0 ? (segIdx % 2 === 1 ? "none" : "frame") : "anchor",
         zoom: 1,
         drift: true,
         visualDirection: group.visual || undefined,
-        metaphor: "custom",
         scriptText: group.narration || undefined,
         blocks: blocks.slice(0, 12),
       });

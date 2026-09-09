@@ -13,7 +13,7 @@ import { filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence } from '../backend/audio.ts'
 import { executeCritique } from '../backend/critique/engine.ts'
-import { extractSpokenBlocks as extractSpokenVoiceoverBlocks, buildFilmPartsFromScript } from '../backend/scriptIntake.ts'
+import { extractSpokenBlocks as extractSpokenVoiceoverBlocks, buildFilmPartsFromScript, hasScreenplayTags } from '../backend/scriptIntake.ts'
 
 const filmsDir = path.resolve(__dirname, '../src/dl/films');
 const videosDir = path.resolve(__dirname, '../videos');
@@ -323,6 +323,11 @@ function filmApiPlugin(): Plugin {
               ? spokenTextOverride.trim()
               : extractSpokenVoiceover(script || '');
 
+            if (!cleanText || !cleanText.trim()) {
+              sendJson(res, 400, { error: 'No spoken narration dialogue found in script. Please add [NARRATION] blocks.' });
+              return;
+            }
+
             const publicDir = path.resolve(__dirname, '../public');
             const scriptsDir = path.resolve(__dirname, '../scripts');
             if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
@@ -539,10 +544,16 @@ function filmApiPlugin(): Plugin {
                         volume: 1,
                         speed: 1,
                         version: Date.now().toString(),
+                        durationSec: measuredDuration,
                       },
                       audioClips: undefined,
                     } as Film;
                     fs.writeFileSync(filmFile, filmModule(updatedFilm), 'utf8');
+
+                    // Sync to video package
+                    const pkgDir = path.join(videosDir, projectId);
+                    if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
+                    fs.writeFileSync(path.join(pkgDir, 'film.json'), JSON.stringify(updatedFilm, null, 2), 'utf8');
                   }
                 } catch (syncErr) {
                   console.warn('[TTS] Automatic shot duration scaling error:', syncErr);
@@ -650,11 +661,33 @@ function filmApiPlugin(): Plugin {
             let newFilm: Film;
 
             if (autoCompile && script.trim()) {
-              // Intelligently parse raw script paragraphs into structured shots & relationship-aware canvas
-              const paragraphs = script
-                .split(/\n\s*\n+/)
-                .map((p: string) => p.trim())
-                .filter((p: string) => p.length > 0 && !p.startsWith('#') && !p.toLowerCase().startsWith('production note'));
+              if (hasScreenplayTags(script)) {
+                const parts = buildFilmPartsFromScript(script);
+                newFilm = {
+                  id: cleanId,
+                  title: title.trim(),
+                  fps: 30,
+                  accent,
+                  theme: {
+                    background: theme as any,
+                    fontFamily: "geist",
+                    storyStyle: "script-metaphor",
+                    cameraAngle: "isometric",
+                    accent,
+                  },
+                  chapters: parts.nodes.map(n => n.label),
+                  canvas: {
+                    nodes: parts.nodes,
+                    edges: parts.edges,
+                  },
+                  shots: parts.shots as any,
+                };
+              } else {
+                // Intelligently parse raw script paragraphs into structured shots & relationship-aware canvas
+                const paragraphs = script
+                  .split(/\n\s*\n+/)
+                  .map((p: string) => p.trim())
+                  .filter((p: string) => p.length > 0 && !p.startsWith('#') && !p.toLowerCase().startsWith('production note'));
 
               const count = Math.max(3, paragraphs.length);
               const nodes: any[] = [];
@@ -778,6 +811,7 @@ function filmApiPlugin(): Plugin {
                 },
                 shots,
               };
+              }
             } else {
               newFilm = {
                 id: cleanId,
