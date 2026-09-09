@@ -1,7 +1,7 @@
 // File Description: Renders an interactive, Excalidraw-style movable node graph on the canvas with drag-and-drop.
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import type { Film, CanvasNode, CanvasEdge } from "../../../src/dl/schema";
-import { Move, Share2, Plus, X } from "lucide-react";
+import { Move, Share2, Plus, X, ArrowRight } from "lucide-react";
 
 interface MindMapProps {
   film: Film;
@@ -190,7 +190,7 @@ export function MindMap({
                     </option>
                   ))}
                 </select>
-                <span className="text-gray-500 font-bold shrink-0">→</span>
+                <ArrowRight className="w-3.5 h-3.5 text-gray-500 shrink-0" />
                 <select
                   className="min-w-0 flex-1 bg-black/60 border border-[#333] rounded px-1.5 py-1 text-[11px] text-white"
                   value={edge.to}
@@ -202,26 +202,21 @@ export function MindMap({
                     </option>
                   ))}
                 </select>
-                <label
-                  className="flex items-center gap-1 text-[10px] text-gray-400 cursor-pointer shrink-0"
-                  title="Dashed edge"
-                >
+                <label className="flex items-center gap-1 text-[10px] text-gray-400 shrink-0 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={edge.dashed ?? false}
+                    checked={Boolean(edge.dashed)}
                     onChange={(e) => onUpdateEdge?.(edgeIndex, { dashed: e.target.checked })}
-                    className="accent-[#635BFF]"
                   />
-                  <span className="text-[9px]">Dashed</span>
+                  dashed
                 </label>
                 {onRemoveEdge && (
                   <button
                     onClick={() => onRemoveEdge(edgeIndex)}
-                    disabled={edges.length <= 1}
-                    className="px-1 text-red-400 hover:text-red-300 disabled:opacity-20 font-bold text-sm shrink-0 cursor-pointer"
+                    className="p-1 text-red-400 hover:text-red-300 disabled:opacity-20 shrink-0 cursor-pointer"
                     title="Delete connection"
                   >
-                    ×
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>

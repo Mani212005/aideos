@@ -7,7 +7,7 @@
 import { useState } from "react";
 import type { Film } from "../../../src/dl/schema";
 import { executeCritique, type CritiqueResponse } from "../../../backend/critique/engine";
-import { Bot, Undo2, Check, AlertOctagon, MessageSquare, Loader2, Sparkles, AlertTriangle } from "lucide-react";
+import { Bot, Undo2, Check, AlertOctagon, MessageSquare, Loader2, Sparkles, AlertTriangle, ArrowRight } from "lucide-react";
 
 interface CritiqueStudioProps {
   film: Film;
@@ -274,7 +274,7 @@ export function CritiqueStudio({
                 <div className="flex items-center gap-2.5">
                   <Check size={12} className="text-emerald-400 shrink-0" />
                   <span className="font-medium text-white">"{item.critique}"</span>
-                  <span className="text-gray-500">→</span>
+                  <ArrowRight size={12} className="text-gray-500 shrink-0" />
                   <span className="text-gray-400">{item.outcome}</span>
                 </div>
                 <span className="text-[10px] text-gray-600 font-mono">{item.time}</span>

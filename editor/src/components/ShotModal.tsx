@@ -26,6 +26,9 @@ import {
   Headphones,
   BookOpen,
   Cpu,
+  Clock,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 
 export interface ShotModalProps {
@@ -236,8 +239,8 @@ export const ShotModal: React.FC<ShotModalProps> = ({
             <h2 className="text-base font-bold text-white truncate max-w-md">
               {shot.id}
             </h2>
-            <span className="text-xs font-mono text-gray-400 bg-black/40 px-2 py-0.5 rounded border border-white/5">
-              ⏱️ {shot.dur} seconds
+            <span className="text-xs font-mono text-gray-400 bg-black/40 px-2 py-0.5 rounded border border-white/5 flex items-center gap-1.5">
+              <Clock className="w-3 h-3 text-[#8A8A8E]" /> {shot.dur}s
             </span>
           </div>
 
@@ -248,17 +251,17 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                 <button
                   onClick={() => onSelectShotIndex(Math.max(0, shotIndex - 1))}
                   disabled={shotIndex === 0}
-                  className="px-2.5 py-1 text-xs font-mono text-gray-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-2.5 py-1 text-xs font-mono text-gray-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
                 >
-                  ← Previous
+                  <ArrowLeft className="w-3 h-3" /> Previous
                 </button>
                 <span className="text-gray-600">|</span>
                 <button
                   onClick={() => onSelectShotIndex(Math.min(film.shots.length - 1, shotIndex + 1))}
                   disabled={shotIndex === film.shots.length - 1}
-                  className="px-2.5 py-1 text-xs font-mono text-gray-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-2.5 py-1 text-xs font-mono text-gray-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
                 >
-                  Next →
+                  Next <ArrowRight className="w-3 h-3" />
                 </button>
               </div>
             )}

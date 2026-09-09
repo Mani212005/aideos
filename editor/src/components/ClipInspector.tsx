@@ -8,7 +8,7 @@ import React from "react";
 import type { Film, Shot } from "../../../src/dl/schema";
 import { getShotDuration } from "../../../backend/timeline/timeline";
 import type { TransitionType } from "../transitions";
-import { Sliders, Camera, Sparkles, Mic, X } from "lucide-react";
+import { Sliders, Camera, Sparkles, Mic, X, Clock } from "lucide-react";
 
 interface ClipInspectorProps {
   film: Film;
@@ -79,8 +79,8 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
 
       {/* Numeric Timeline Timing (Position, In, Out, Duration) */}
       <div className="flex flex-col gap-2.5 bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
-        <span className="text-[10px] font-mono text-yellow-400 font-bold uppercase tracking-wider">
-          ⏱️ Timeline Timing
+        <span className="text-[10px] font-mono text-yellow-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+          <Clock className="w-3 h-3" /> Timing
         </span>
 
         {/* Position */}

@@ -38,6 +38,7 @@ import {
   Subtitles,
   LayoutGrid,
   Bot,
+  ArrowLeft,
 } from "lucide-react";
 import { DEFAULT_GIRAFFE_CAPTION_WORDS, generateWordsFromFilm, captionWordsToVtt } from "../../src/dl/captionsParser";
 import { validateFilmAudioAndAssets } from "../../src/dl/validateFilm";
@@ -864,7 +865,7 @@ export default function App() {
                 onClick={() => setSelection(null)}
                 className="text-xs text-gray-400 hover:text-white flex items-center gap-1"
               >
-                ← Back to overview
+                <ArrowLeft className="w-3.5 h-3.5" /> Back
               </button>
               <NodeEditor 
                 film={film} 
@@ -883,8 +884,8 @@ export default function App() {
                 onClick={() => setSelection(null)}
                 className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 transition-colors self-start pb-1 font-mono"
               >
-                <span>←</span>
-                <span>Back to Overview</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back</span>
               </button>
               <ShotInspector
                 film={film}

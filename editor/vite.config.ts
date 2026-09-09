@@ -974,7 +974,7 @@ function filmApiPlugin(): Plugin {
             // 1. Create videos/<id>/script.md
             const newPkgDir = path.join(videosDir, cleanId);
             if (!fs.existsSync(newPkgDir)) fs.mkdirSync(newPkgDir, { recursive: true });
-            const initialScript = script.trim() || `# ${title}\n\nWrite your voiceover narration script here.\n\nEvery paragraph maps to visual scenes, 3D camera angles, and animated primitives.\n\nClick "🎙️ Generate Voiceover (.wav)" when ready!`;
+            const initialScript = script.trim() || `# ${title}\n\nWrite your voiceover narration script here.\n\nEvery paragraph maps to visual scenes, 3D camera angles, and animated primitives.\n\nClick "Generate Voiceover (.wav)" when ready!`;
             fs.writeFileSync(path.join(newPkgDir, 'script.md'), initialScript, 'utf8');
 
             let newFilm: Film;
