@@ -19,8 +19,19 @@ import {
   Lightbulb,
   Clapperboard,
   CheckCircle2,
+  LayoutGrid,
+  Plus,
+  Trash2,
+  Eye,
+  Camera,
 } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
+import {
+  parseClaudeScript,
+  serializeSegmentsToScript,
+  extractSpokenBlocks as extractSpokenBlocksShared,
+} from "../../../backend/scriptIntake";
+import type { ScriptSegment, BeatType } from "../../../backend/scriptIntake";
 
 interface ScriptEditorProps {
   film: Film;
@@ -68,86 +79,7 @@ function estimateDuration(wordCount: number): string {
  * Extracts strictly the spoken dialogue from a director screenplay text as separate per-scene/shot paragraphs.
  */
 export function extractSpokenBlocks(raw: string): string[] {
-  const lines = raw.split("\n");
-  const spokenParagraphs: string[] = [];
-  let isCapturingVO = false;
-  let currentVO: string[] = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (
-      line.toLowerCase().startsWith("### production notes") ||
-      line.toLowerCase().startsWith("## production notes") ||
-      line.toLowerCase().startsWith("### notes") ||
-      line.toLowerCase().startsWith("## notes")
-    ) {
-      break;
-    }
-
-    if (
-      /^\*{0,2}VO\s*(\([^)]*\))?\s*:\*{0,2}/i.test(line) ||
-      /^\*{0,2}Voiceover\s*(\([^)]*\))?\s*:\*{0,2}/i.test(line) ||
-      /^\*{0,2}Narrator\s*(\([^)]*\))?\s*:\*{0,2}/i.test(line)
-    ) {
-      if (currentVO.length > 0) {
-        spokenParagraphs.push(currentVO.join(" "));
-        currentVO = [];
-      }
-      isCapturingVO = true;
-      const afterTag = line
-        .replace(/^\*{0,2}(VO|Voiceover|Narrator)\s*(\([^)]*\))?\s*:\*{0,2}\s*/i, "")
-        .trim();
-      if (afterTag) currentVO.push(afterTag);
-      continue;
-    }
-
-    if (
-      /^\*{0,2}(VISUAL|ON-SCREEN TEXT|SCREEN|GRAPHICS|AUDIO|SFX)\s*:\*{0,2}/i.test(line) ||
-      /^#{1,4}\s+/.test(line) ||
-      line === "---" ||
-      line === "***"
-    ) {
-      if (isCapturingVO && currentVO.length > 0) {
-        spokenParagraphs.push(currentVO.join(" "));
-        currentVO = [];
-      }
-      isCapturingVO = false;
-      continue;
-    }
-
-    if (isCapturingVO && line.length > 0) {
-      currentVO.push(line);
-    }
-  }
-
-  if (currentVO.length > 0) {
-    spokenParagraphs.push(currentVO.join(" "));
-  }
-
-  if (spokenParagraphs.length > 0) {
-    return spokenParagraphs
-      .map((p) =>
-        p
-          .replace(/["“”]/g, "")
-          .replace(/\*+/g, "")
-          .replace(/\u2014/g, " - ")
-          .replace(/\u2013/g, " - ")
-          .trim()
-      )
-      .filter(Boolean);
-  }
-
-  const fallback = raw
-    .replace(/^#+\s+/gm, "")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/\u2014/g, " - ")
-    .replace(/\u2013/g, " - ")
-    .trim();
-
-  return fallback.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+  return extractSpokenBlocksShared(raw);
 }
 
 /**
@@ -168,7 +100,8 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
   const [buildingScenes, setBuildingScenes] = useState<boolean>(false);
   const [selectedVoice, setSelectedVoice] = useState<string>("kokoro-am_adam");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"screenplay" | "spoken">("screenplay");
+  const [viewMode, setViewMode] = useState<"screenplay" | "studio" | "spoken">("screenplay");
+  const [segments, setSegments] = useState<ScriptSegment[]>([]);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
 
   // Audio player state
@@ -248,6 +181,73 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
     } finally {
       setSaving(false);
     }
+  };
+
+  /**
+   * Re-parses the raw screenplay markdown into segment cards and switches to Visual Studio view.
+   */
+  const switchToStudio = () => {
+    setSegments(parseClaudeScript(script));
+    setViewMode("studio");
+  };
+
+  /**
+   * Applies a new segment list to state and immediately re-serializes it back into the raw markdown script.
+   */
+  const updateSegments = (next: ScriptSegment[]) => {
+    setSegments(next);
+    setScript(serializeSegmentsToScript(next));
+  };
+
+  /**
+   * Updates a segment's title text and keeps the raw markdown in sync.
+   */
+  const updateSegmentTitle = (segIdx: number, title: string) => {
+    updateSegments(segments.map((s, i) => (i === segIdx ? { ...s, title } : s)));
+  };
+
+  /**
+   * Updates one beat's body text within a segment and keeps the raw markdown in sync.
+   */
+  const updateBeatText = (segIdx: number, beatIdx: number, text: string) => {
+    updateSegments(
+      segments.map((s, si) =>
+        si !== segIdx ? s : { ...s, beats: s.beats.map((b, bi) => (bi === beatIdx ? { ...b, text } : b)) }
+      )
+    );
+  };
+
+  /**
+   * Appends a new empty beat of the given type to a segment.
+   */
+  const addBeat = (segIdx: number, type: BeatType) => {
+    updateSegments(
+      segments.map((s, si) => (si !== segIdx ? s : { ...s, beats: [...s.beats, { type, text: "" }] }))
+    );
+  };
+
+  /**
+   * Removes one beat from a segment.
+   */
+  const removeBeat = (segIdx: number, beatIdx: number) => {
+    updateSegments(
+      segments.map((s, si) => (si !== segIdx ? s : { ...s, beats: s.beats.filter((_, bi) => bi !== beatIdx) }))
+    );
+  };
+
+  /**
+   * Appends a fresh, empty segment card to the screenplay.
+   */
+  const addSegment = () => {
+    const nextIndex = segments.length + 1;
+    updateSegments([...segments, { id: `segment-${nextIndex}`, title: `Segment ${nextIndex}`, beats: [] }]);
+  };
+
+  /**
+   * Removes a segment card entirely from the screenplay.
+   */
+  const removeSegment = (segIdx: number) => {
+    updateSegments(segments.filter((_, i) => i !== segIdx));
   };
 
   /**
@@ -494,6 +494,15 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                 <FileText size={13} /> Full Screenplay
               </button>
               <button
+                onClick={switchToStudio}
+                className={`text-[11px] px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition-all ${
+                  viewMode === "studio" ? "bg-[#635BFF] text-white font-bold" : "text-gray-400 hover:text-white"
+                }`}
+                title="Interactive segment cards for editing Narration, Visual, and On-Screen beats"
+              >
+                <LayoutGrid size={13} /> Visual Studio
+              </button>
+              <button
                 onClick={() => setViewMode("spoken")}
                 className={`text-[11px] px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition-all ${
                   viewMode === "spoken" ? "bg-[#635BFF] text-white font-bold" : "text-gray-400 hover:text-white"
@@ -513,10 +522,121 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
               <textarea
                 value={script}
                 onChange={(e) => setScript(e.target.value)}
-                placeholder="Paste your director script here with ## [timestamp] headers, **VISUAL:** notes, **ON-SCREEN TEXT:** and **VO:** dialogue..."
+                placeholder="Paste your Claude screenplay here with ## 0:00-0:20 - TITLE headers, [VISUAL], [NARRATION], and [ON SCREEN] tag blocks..."
                 className="w-full h-full min-h-[380px] p-4 bg-transparent text-[#F5F5F5] font-mono text-sm leading-relaxed outline-none resize-none selection:bg-[#635BFF]/30 placeholder:text-gray-600"
                 spellCheck={false}
               />
+            )}
+
+            {/* VIEW MODE 1.5: VISUAL STUDIO SEGMENT CARDS */}
+            {viewMode === "studio" && (
+              <div className="w-full h-full min-h-[380px] p-4 bg-[#0E0E12] overflow-y-auto flex flex-col gap-4">
+                {segments.length === 0 && (
+                  <div className="p-3 bg-blue-950/30 border border-blue-900/60 rounded-lg text-xs text-blue-300">
+                    No segments detected yet. Add a segment below or paste a screenplay with{" "}
+                    <code className="text-blue-200">## timestamp - Title</code> headers in Full Screenplay.
+                  </div>
+                )}
+
+                {segments.map((seg, segIdx) => (
+                  <div key={seg.id} className="bg-[#121216] border border-[#2A2A35] rounded-xl p-4 flex flex-col gap-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        {(seg.timeStart || seg.timeEnd) && (
+                          <span className="text-[10px] bg-[#1E1E24] text-[#8A8A8E] border border-[#333] px-2 py-0.5 rounded-full font-mono shrink-0">
+                            {seg.timeStart}-{seg.timeEnd}
+                          </span>
+                        )}
+                        <input
+                          value={seg.title}
+                          onChange={(e) => updateSegmentTitle(segIdx, e.target.value)}
+                          placeholder="Segment title"
+                          className="flex-1 bg-transparent text-sm font-bold text-white outline-none border-b border-transparent focus:border-[#635BFF] py-0.5"
+                        />
+                      </div>
+                      <button
+                        onClick={() => removeSegment(segIdx)}
+                        className="text-gray-500 hover:text-red-400 p-1 rounded shrink-0"
+                        title="Delete segment"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      {seg.beats.map((beat, beatIdx) => {
+                        const beatMeta =
+                          beat.type === "narration"
+                            ? { label: "Narration", icon: <Mic size={11} />, color: "text-emerald-300 border-emerald-900/60 bg-emerald-950/30" }
+                            : beat.type === "visual"
+                            ? { label: "Visual", icon: <Camera size={11} />, color: "text-amber-300 border-amber-900/60 bg-amber-950/30" }
+                            : { label: "On-Screen", icon: <Eye size={11} />, color: "text-[#635BFF] border-[#635BFF]/40 bg-[#635BFF]/10" };
+                        const beatWords = beat.text.split(/\s+/).filter(Boolean);
+                        return (
+                          <div key={beatIdx} className={`border rounded-lg p-2.5 ${beatMeta.color}`}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wide flex items-center gap-1.5">
+                                {beatMeta.icon} {beatMeta.label}
+                                {beat.type === "narration" && beatWords.length > 0 && (
+                                  <span className="font-mono font-normal opacity-70">({beatWords.length}w)</span>
+                                )}
+                              </span>
+                              <button
+                                onClick={() => removeBeat(segIdx, beatIdx)}
+                                className="opacity-60 hover:opacity-100"
+                                title="Remove beat"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                            <textarea
+                              value={beat.text}
+                              onChange={(e) => updateBeatText(segIdx, beatIdx, e.target.value)}
+                              placeholder={
+                                beat.type === "narration"
+                                  ? "Spoken voiceover dialogue..."
+                                  : beat.type === "visual"
+                                  ? "Camera, animation, or diagram direction..."
+                                  : "Text overlay or headline..."
+                              }
+                              rows={2}
+                              className="w-full bg-transparent text-xs text-[#F5F5F5] outline-none resize-none placeholder:text-gray-600 font-sans"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pt-1 border-t border-[#222]">
+                      <button
+                        onClick={() => addBeat(segIdx, "narration")}
+                        className="text-[10px] px-2 py-1 rounded bg-emerald-950/40 hover:bg-emerald-950/70 border border-emerald-900/60 text-emerald-300 font-medium flex items-center gap-1"
+                      >
+                        <Plus size={10} /> Narration
+                      </button>
+                      <button
+                        onClick={() => addBeat(segIdx, "visual")}
+                        className="text-[10px] px-2 py-1 rounded bg-amber-950/40 hover:bg-amber-950/70 border border-amber-900/60 text-amber-300 font-medium flex items-center gap-1"
+                      >
+                        <Plus size={10} /> Visual
+                      </button>
+                      <button
+                        onClick={() => addBeat(segIdx, "onscreen")}
+                        className="text-[10px] px-2 py-1 rounded bg-[#635BFF]/10 hover:bg-[#635BFF]/20 border border-[#635BFF]/40 text-[#635BFF] font-medium flex items-center gap-1"
+                      >
+                        <Plus size={10} /> On-Screen
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  onClick={addSegment}
+                  className="text-xs px-3 py-2 rounded-lg border border-dashed border-[#333] text-gray-400 hover:text-white hover:border-[#635BFF] flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <Plus size={13} /> Add Segment
+                </button>
+              </div>
             )}
 
             {/* VIEW MODE 2: SPOKEN TEXT ONLY */}
@@ -692,7 +812,8 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
               <Clapperboard size={15} className="text-[#635BFF]" /> Screenplay Workflow Guide
             </h3>
             <ul className="space-y-2 list-disc list-inside text-[11px]">
-              <li><strong>Write dialogue:</strong> Use **VO:**, **Voiceover:**, or **Narrator:** tags per scene.</li>
+              <li><strong>Write dialogue:</strong> Use [VISUAL], [NARRATION], and [ON SCREEN] tag blocks per scene (legacy VO:/Voiceover:/Narrator: still work).</li>
+              <li><strong>Edit visually:</strong> Switch to Visual Studio to edit each beat as a card, two-way synced with the raw markdown.</li>
               <li><strong>Preview:</strong> Switch to Spoken Text to see exactly what will be synthesized.</li>
               <li><strong>Generate Voiceover:</strong> Synthesizes the screenplay's spoken dialogue directly.</li>
             </ul>

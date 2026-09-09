@@ -79,7 +79,7 @@ Aideos is engineered around 4 strict architectural invariants:
 3. **Output**: `videos/<slug>/treatment.json` containing chapter claims, narration lines, and visual direction notes.
 
 ### Stage 2: Audio Synthesis & Alignment (`backend/audio.ts`)
-1. **Shot-Scoped Segmentation**: Splits script text by paragraphs or explicit shot arrays into discrete shot-scoped narration segments without slicing internal sentence punctuation.
+1. **Shot-Scoped Segmentation**: Splits script text by Claude screenplay tags (`[NARRATION]`), paragraphs, or explicit shot arrays into discrete shot-scoped narration segments without slicing internal sentence punctuation or leaking visual tags.
 2. **TTS Synthesis & Chunking**: Synthesizes speech per shot segment via Google Cloud Neural Audio or Kokoro ONNX using an 800-character chunking threshold with sentence-boundary splitting.
 3. **Silence Trimming & Concat**: Trims leading and trailing raw silence samples from audio buffers and inserts a single controlled 200ms pause between distinct shot boundaries before merging into `voiceover.wav`.
 4. **Alignment**: Derives exact word-level millisecond start/end timestamps, written to `captions.vtt`.
@@ -120,7 +120,7 @@ Aideos is engineered around 4 strict architectural invariants:
 
 The Aideos Web Studio runs on `http://localhost:3001` (launched with the global terminal command `aideos`):
 
-* **📝 Script Studio**: Write and edit screenplay narration text and generate voiceover audio directly from spoken dialogue.
+* **📝 Script Studio**: Write and edit screenplay narration text in Full Screenplay markdown, interactive Visual Studio beat cards, or Spoken Text view, with auto-splitting into Remotion sub-shots and instant voiceover generation.
 * **🗺️ Spatial Map**: Drag and drop nodes across the 2D infinite canvas, edit labels, and route directed edges.
 * **🎞️ Timeline & Trimmer**: Multi-track timeline displaying audio waveforms, shot cuts, and live playhead scrubbing.
 * **🎨 Studio Theme**: Select paper textures (Blueprint, Archival White, Charcoal), typography, and accent colors.
