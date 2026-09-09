@@ -38,6 +38,10 @@ public/footage/
 # of the repository like all media (see the note above).
 production/*/footage/
 
+# Per-video package footage (see src/dl/videoPackageLoader.ts): same media exclusion,
+# now scoped to videos/<slug>/footage/ instead of the old global public/footage/.
+videos/*/footage/
+
 # Runtime and local conversation state
 data/
 
@@ -47,4 +51,7 @@ scripts/*.txt
 scripts/*.json
 scripts/*.py
 scripts/*.mjs
+
+# Per-video screenplay markdown, same treatment as the old global scripts/*.md.
+videos/*/script.md
 

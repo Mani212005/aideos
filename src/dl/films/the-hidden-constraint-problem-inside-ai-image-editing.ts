@@ -118,6 +118,12 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
       "scriptText": "Ask an image model to change one thing in a photo, but keep everything else pixel for pixel identical, and you're not asking it to draw anymore. You're asking it to obey constraints. That's a fundamentally harder problem than generating a picture from nothing. OpenAI just shipped ChatGPT Images 2.5, but the interesting part isn't the feature list. It's what a system actually needs to be capable of to pull this off.",
       "blocks": [
         {
+          "c": "AnalogyInset",
+          "caption": "Cold open. A single photograph fills the frame - a person in",
+          "src": "videos/the-hidden-constraint-problem-inside-ai-image-editing/footage/hook.mp4",
+          "fullScreenHero": true
+        },
+        {
           "c": "TextReveal",
           "text": "ChatGPT IMAGES 2.5 fades in small, bottom corner - not the hero of the shot.",
           "size": "headline"
