@@ -1,4 +1,5 @@
 {
+  "schemaVersion": "1.0.0",
   "id": "the-hidden-constraint-problem-inside-ai-image-editing",
   "title": "The Hidden Constraint Problem Inside AI Image Editing",
   "fps": 30,
@@ -106,18 +107,23 @@
   "shots": [
     {
       "id": "hook",
+      "position": 0,
+      "start": 0,
+      "end": 24.65,
+      "startSec": 0,
       "dur": 24.65,
+      "stage": "frame",
       "look": "hook",
       "move": "cut",
-      "stage": "frame",
-      "zoom": 1,
       "drift": true,
-      "visualDirection": "Cold open. A single photograph fills the frame - a person in a black jacket. Text overlay types out: change the jacket to red. keep everything else exactly the same.",
+      "zoom": 1,
       "scriptText": "Ask an image model to change one thing in a photo, but keep everything else pixel for pixel identical, and you're not asking it to draw anymore. You're asking it to obey constraints. That's a fundamentally harder problem than generating a picture from nothing. OpenAI just shipped ChatGPT Images 2.5, but the interesting part isn't the feature list. It's what a system actually needs to be capable of to pull this off.",
+      "visualDirection": "Cold open. A single photograph fills the frame - a person in a black jacket. Text overlay types out: change the jacket to red. keep everything else exactly the same.",
+      "speed": 1,
       "blocks": [
         {
           "c": "AnalogyInset",
-          "caption": "Cold open. A single photograph fills the frame - a person in",
+          "caption": "Cold open. A single photograph fills the frame - a person in a black jacket.",
           "src": "videos/the-hidden-constraint-problem-inside-ai-image-editing/footage/hook.mp4",
           "fullScreenHero": true
         },
@@ -130,14 +136,17 @@
     },
     {
       "id": "hook-tag",
+      "position": 24.65,
+      "startSec": 24.65,
       "dur": 2,
+      "stage": "frame",
       "look": "hook",
       "move": "pan",
-      "stage": "frame",
-      "zoom": 1,
       "drift": false,
-      "visualDirection": "Cold open. A single photograph fills the frame - a person in a black jacket. Text overlay types out: change the jacket to red. keep everything else exactly the same.",
+      "zoom": 1,
       "scriptText": "Ask an image model to change one thing in a photo, but keep everything else pixel for pixel identical, and you're not asking it to draw anymore. You're asking it to obey constraints. That's a fundamentally harder problem than generating a picture from nothing. OpenAI just shipped ChatGPT Images 2.5, but the interesting part isn't the feature list. It's what a system actually needs to be capable of to pull this off.",
+      "visualDirection": "Cold open. A single photograph fills the frame - a person in a black jacket. Text overlay types out: change the jacket to red. keep everything else exactly the same.",
+      "speed": 1,
       "blocks": [
         {
           "c": "Body",
@@ -147,14 +156,17 @@
     },
     {
       "id": "what-changed",
+      "position": 26.65,
+      "startSec": 26.65,
       "dur": 23.41,
+      "stage": "none",
       "look": "what-changed",
       "move": "pan",
-      "stage": "none",
-      "zoom": 1,
       "drift": true,
-      "visualDirection": "The four boxes shrink and slide off-screen. A single question fades in center-frame.",
+      "zoom": 1,
       "scriptText": "According to OpenAI's own announcement, Images 2.5 preserves more of an original image during edits, keeps identity and detail consistent across a multi-turn conversation, produces more natural lighting and texture, and cuts generation latency by up to fifty percent. Two new API models, Flare and Sunburst, ship alongside it for speed and precision. That's what OpenAI says it does. They haven't published how.",
+      "visualDirection": "The four boxes shrink and slide off-screen. A single question fades in center-frame.",
+      "speed": 1,
       "blocks": [
         {
           "c": "TextReveal",
@@ -169,14 +181,17 @@
     },
     {
       "id": "how-the-problem-is-represented-1",
+      "position": 50.06,
+      "startSec": 50.06,
       "dur": 22.32,
+      "stage": "frame",
       "look": "how-the-problem-is-represented",
       "move": "pan",
-      "stage": "frame",
-      "zoom": 1,
       "drift": true,
-      "visualDirection": "The word jacket highlights, with animated lines fanning out to a highlighted region of the token grid - an attention visualization.",
+      "zoom": 1,
       "scriptText": "Start with the image itself. Modern systems don't usually reason over raw RGB pixels - that's computationally brutal. Instead, an image gets compressed into a grid of learned tokens, or a lower-dimensional latent - a representation that captures structure and semantics far more efficiently than pixels do. Your prompt goes through a parallel transformation: words become embeddings, vectors encoding meaning.",
+      "visualDirection": "The word jacket highlights, with animated lines fanning out to a highlighted region of the token grid - an attention visualization.",
+      "speed": 1,
       "blocks": [
         {
           "c": "TextReveal",
@@ -191,14 +206,17 @@
     },
     {
       "id": "how-the-problem-is-represented-2",
+      "position": 72.38,
+      "startSec": 72.38,
       "dur": 26.65,
+      "stage": "anchor",
       "look": "how-the-problem-is-represented",
       "move": "zoom-out",
-      "stage": "anchor",
-      "zoom": 1,
       "drift": true,
-      "visualDirection": "The word jacket highlights, with animated lines fanning out to a highlighted region of the token grid - an attention visualization.",
+      "zoom": 1,
       "scriptText": "To connect red jacket to an actual region of the image, the model needs cross-attention - letting the token for jacket look across the visual representation and weight the regions that matter. OpenAI has publicly described its GPT-Image line as running text and image tokens through one shared transformer, then converting that representation into final pixels through a diffusion-based decoding step, rather than bolting a separate image model onto a language model.",
+      "visualDirection": "The word jacket highlights, with animated lines fanning out to a highlighted region of the token grid - an attention visualization.",
+      "speed": 1,
       "blocks": [
         {
           "c": "TextReveal",
@@ -213,14 +231,17 @@
     },
     {
       "id": "why-editing-is-harder-than-generating-1",
+      "position": 99.03,
+      "startSec": 99.03,
       "dur": 21.24,
+      "stage": "none",
       "look": "why-editing-is-harder-than-generating",
       "move": "pan",
-      "stage": "none",
-      "zoom": 1,
       "drift": true,
-      "visualDirection": "Animated diagram - most of the token grid turns locked gray, only the jacket region stays active and colored.",
+      "zoom": 1,
       "scriptText": "Here's the actual hard part. Generating from scratch satisfies one instruction. Editing satisfies two: apply the change, and preserve everything you didn't mention - the face, the pose, the background, the lighting, the camera angle. A system with no preservation mechanism just regenerates the whole scene, and it drifts - a jaw reshapes slightly, a shadow moves.",
+      "visualDirection": "Animated diagram - most of the token grid turns locked gray, only the jacket region stays active and colored.",
+      "speed": 1,
       "blocks": [
         {
           "c": "TextReveal",
@@ -235,14 +256,17 @@
     },
     {
       "id": "why-editing-is-harder-than-generating-2",
+      "position": 120.27,
+      "startSec": 120.27,
       "dur": 13.32,
+      "stage": "anchor",
       "look": "why-editing-is-harder-than-generating",
       "move": "zoom-out",
-      "stage": "anchor",
-      "zoom": 1,
       "drift": true,
-      "visualDirection": "Animated diagram - most of the token grid turns locked gray, only the jacket region stays active and colored.",
+      "zoom": 1,
       "scriptText": "Avoiding that means treating the original image's tokens as a strong conditioning signal, anchoring most of the representation and only letting the targeted region actually update. It's a constraint-satisfaction problem wearing a generative model's clothes.",
+      "visualDirection": "Animated diagram - most of the token grid turns locked gray, only the jacket region stays active and colored.",
+      "speed": 1,
       "blocks": [
         {
           "c": "TextReveal",
@@ -257,14 +281,17 @@
     },
     {
       "id": "multi-turn-consistency",
+      "position": 133.59,
+      "startSec": 133.59,
       "dur": 19.8,
+      "stage": "frame",
       "look": "multi-turn-consistency",
       "move": "pan",
-      "stage": "frame",
-      "zoom": 1,
       "drift": true,
-      "visualDirection": "Three sequential thumbnails - same photo across three edits (shirt, background, lighting) - with a faint generation loss flicker on a fourth, mislabeled weak system thumbnail for contrast.",
+      "zoom": 1,
       "scriptText": "Multi-turn editing compounds this. Change the shirt, then the background, then the lighting, and each pass risks re-encoding the image and quietly losing fidelity - like a photocopy of a photocopy. Holding quality across turns means carrying forward one stable representation of the image, instead of reconstructing it from nothing on every request.",
+      "visualDirection": "Three sequential thumbnails - same photo across three edits (shirt, background, lighting) - with a faint generation loss flicker on a fourth, mislabeled weak system thumbnail for contrast.",
+      "speed": 1,
       "blocks": [
         {
           "c": "TextReveal",
@@ -279,14 +306,17 @@
     },
     {
       "id": "the-bigger-idea",
+      "position": 153.39000000000001,
+      "startSec": 153.39000000000001,
       "dur": 12.97,
+      "stage": "none",
       "look": "the-bigger-idea",
       "move": "pan",
-      "stage": "none",
-      "zoom": 1,
       "drift": true,
-      "visualDirection": "Pull back to a wide shot of the whole pipeline diagram built across the video - text, tokens, attention, preservation - all connected into one loop.",
+      "zoom": 1,
       "scriptText": "The real advance isn't prettier pixels. It's treating image generation as constrained multimodal reasoning: knowing what to touch, what to leave alone, and how every piece of the image relates to every other piece.",
+      "visualDirection": "Pull back to a wide shot of the whole pipeline diagram built across the video - text, tokens, attention, preservation - all connected into one loop.",
+      "speed": 1,
       "blocks": [
         {
           "c": "TextReveal",
@@ -298,6 +328,54 @@
           "text": "Pull back to a wide shot of the whole pipeline diagram built across the video - text, tokens, attention, preservation - all connected into one loop."
         }
       ]
+    },
+    {
+      "id": "shot-screen-recording-6473",
+      "position": 166.36,
+      "startSec": 166.36,
+      "dur": 5,
+      "stage": "frame",
+      "look": "hook",
+      "move": "cut",
+      "drift": true,
+      "zoom": 1,
+      "visualDirection": "B-roll video: Screen_Recording_2026-08-28_at_2.51.04_PM.mp4",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Screen Recording 2026 08 28 at 2.51.04 PM",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "Imported video clip (5.0s)"
+        }
+      ]
+    },
+    {
+      "id": "shot-screen-recording-3219",
+      "position": 171.36,
+      "startSec": 171.36,
+      "dur": 5,
+      "stage": "frame",
+      "look": "hook",
+      "move": "cut",
+      "drift": true,
+      "zoom": 1,
+      "visualDirection": "B-roll video: Screen_Recording_2026-08-28_at_2.51.04_PM.mov",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Screen Recording 2026 08 28 at 2.51.04 PM",
+          "size": "headline"
+        },
+        {
+          "c": "Body",
+          "text": "Imported video clip (5.0s)"
+        }
+      ]
     }
   ],
   "voiceover": {
@@ -306,5 +384,17 @@
     "speed": 1,
     "version": "1788945136237",
     "durationSec": 166.357
-  }
+  },
+  "audioClips": [
+    {
+      "id": "clip-voiceover-master",
+      "src": "voiceover_the-hidden-constraint-problem-inside-ai-image-editing.wav",
+      "position": 0,
+      "start": 0,
+      "end": 166.357,
+      "volume": 1,
+      "speed": 1,
+      "channel": "voiceover"
+    }
+  ]
 }

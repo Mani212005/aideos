@@ -140,10 +140,40 @@ function serveFileWithRange(req: IncomingMessage, res: ServerResponse, filePath:
   const contentType = ASSET_MIME_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
   const range = req.headers.range;
 
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Accept-Ranges, Content-Type');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
   if (range) {
-    const match = /bytes=(\d*)-(\d*)/.exec(range);
-    const start = match && match[1] ? parseInt(match[1], 10) : 0;
-    const end = match && match[2] ? parseInt(match[2], 10) : stat.size - 1;
+    const match = /bytes=(-?\d*)-(\d*)/.exec(range);
+    let start = 0;
+    let end = stat.size - 1;
+
+    if (match) {
+      if (match[1].startsWith('-')) {
+        const suffix = parseInt(match[1].slice(1), 10);
+        start = Math.max(0, stat.size - suffix);
+        end = stat.size - 1;
+      } else {
+        start = match[1] ? parseInt(match[1], 10) : 0;
+        end = match[2] ? parseInt(match[2], 10) : stat.size - 1;
+      }
+    }
+
+    if (start >= stat.size || end >= stat.size || start > end) {
+      res.writeHead(416, { 'Content-Range': `bytes */${stat.size}` });
+      res.end();
+      return;
+    }
+
     res.writeHead(206, {
       'Content-Range': `bytes ${start}-${end}/${stat.size}`,
       'Accept-Ranges': 'bytes',
