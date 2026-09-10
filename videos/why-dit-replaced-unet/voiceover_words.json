@@ -1,0 +1,1360 @@
+{
+  "words": [
+    {
+      "word": "every",
+      "punctuated_word": "Every",
+      "start": 0,
+      "end": 0.27
+    },
+    {
+      "word": "image",
+      "punctuated_word": "image",
+      "start": 0.27,
+      "end": 0.54
+    },
+    {
+      "word": "ai",
+      "punctuated_word": "AI",
+      "start": 0.54,
+      "end": 0.81
+    },
+    {
+      "word": "youve",
+      "punctuated_word": "you've",
+      "start": 0.81,
+      "end": 1.09
+    },
+    {
+      "word": "heard",
+      "punctuated_word": "heard",
+      "start": 1.09,
+      "end": 1.36
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 1.36,
+      "end": 1.63
+    },
+    {
+      "word": "just",
+      "punctuated_word": "just",
+      "start": 1.63,
+      "end": 1.9
+    },
+    {
+      "word": "swapped",
+      "punctuated_word": "swapped",
+      "start": 1.9,
+      "end": 2.17
+    },
+    {
+      "word": "its",
+      "punctuated_word": "its",
+      "start": 2.17,
+      "end": 2.44
+    },
+    {
+      "word": "brain",
+      "punctuated_word": "brain.",
+      "start": 2.44,
+      "end": 2.71
+    },
+    {
+      "word": "in",
+      "punctuated_word": "In",
+      "start": 2.913,
+      "end": 3.313
+    },
+    {
+      "word": "twenty",
+      "punctuated_word": "twenty",
+      "start": 3.313,
+      "end": 3.713
+    },
+    {
+      "word": "twenty",
+      "punctuated_word": "twenty",
+      "start": 3.713,
+      "end": 4.113
+    },
+    {
+      "word": "two",
+      "punctuated_word": "two,",
+      "start": 4.113,
+      "end": 4.513
+    },
+    {
+      "word": "stable",
+      "punctuated_word": "Stable",
+      "start": 4.513,
+      "end": 4.913
+    },
+    {
+      "word": "diffusion",
+      "punctuated_word": "Diffusion,",
+      "start": 4.913,
+      "end": 5.323
+    },
+    {
+      "word": "midjourney",
+      "punctuated_word": "Midjourney",
+      "start": 5.323,
+      "end": 5.723
+    },
+    {
+      "word": "four",
+      "punctuated_word": "four,",
+      "start": 5.723,
+      "end": 6.123
+    },
+    {
+      "word": "and",
+      "punctuated_word": "and",
+      "start": 6.123,
+      "end": 6.523
+    },
+    {
+      "word": "runway",
+      "punctuated_word": "Runway",
+      "start": 6.523,
+      "end": 6.923
+    },
+    {
+      "word": "gen1",
+      "punctuated_word": "Gen-1",
+      "start": 6.923,
+      "end": 7.323
+    },
+    {
+      "word": "all",
+      "punctuated_word": "all",
+      "start": 7.323,
+      "end": 7.723
+    },
+    {
+      "word": "ran",
+      "punctuated_word": "ran",
+      "start": 7.723,
+      "end": 8.123
+    },
+    {
+      "word": "on",
+      "punctuated_word": "on",
+      "start": 8.123,
+      "end": 8.523
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 8.523,
+      "end": 8.923
+    },
+    {
+      "word": "same",
+      "punctuated_word": "same",
+      "start": 8.923,
+      "end": 9.333
+    },
+    {
+      "word": "backbone",
+      "punctuated_word": "backbone:",
+      "start": 9.333,
+      "end": 9.733
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 9.733,
+      "end": 10.133
+    },
+    {
+      "word": "convolutional",
+      "punctuated_word": "convolutional",
+      "start": 10.133,
+      "end": 10.533
+    },
+    {
+      "word": "unet",
+      "punctuated_word": "U-Net.",
+      "start": 10.533,
+      "end": 10.933
+    },
+    {
+      "word": "unet",
+      "punctuated_word": "U-Net",
+      "start": 11.133,
+      "end": 11.633
+    },
+    {
+      "word": "denoises",
+      "punctuated_word": "denoises",
+      "start": 11.633,
+      "end": 12.143
+    },
+    {
+      "word": "through",
+      "punctuated_word": "through",
+      "start": 12.143,
+      "end": 12.643
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 12.643,
+      "end": 13.153
+    },
+    {
+      "word": "fixed",
+      "punctuated_word": "fixed",
+      "start": 13.153,
+      "end": 13.653
+    },
+    {
+      "word": "hierarchy",
+      "punctuated_word": "hierarchy:",
+      "start": 13.653,
+      "end": 14.153
+    },
+    {
+      "word": "local",
+      "punctuated_word": "local",
+      "start": 14.153,
+      "end": 14.663
+    },
+    {
+      "word": "convolutions",
+      "punctuated_word": "convolutions,",
+      "start": 14.663,
+      "end": 15.163
+    },
+    {
+      "word": "downsampling",
+      "punctuated_word": "downsampling,",
+      "start": 15.163,
+      "end": 15.673
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 15.673,
+      "end": 16.173
+    },
+    {
+      "word": "bottleneck",
+      "punctuated_word": "bottleneck,",
+      "start": 16.173,
+      "end": 16.683
+    },
+    {
+      "word": "then",
+      "punctuated_word": "then",
+      "start": 16.683,
+      "end": 17.183
+    },
+    {
+      "word": "upsampling",
+      "punctuated_word": "upsampling",
+      "start": 17.183,
+      "end": 17.683
+    },
+    {
+      "word": "back",
+      "punctuated_word": "back",
+      "start": 17.683,
+      "end": 18.193
+    },
+    {
+      "word": "out",
+      "punctuated_word": "out.",
+      "start": 18.193,
+      "end": 18.693
+    },
+    {
+      "word": "that",
+      "punctuated_word": "That",
+      "start": 18.895,
+      "end": 19.275
+    },
+    {
+      "word": "hierarchy",
+      "punctuated_word": "hierarchy",
+      "start": 19.275,
+      "end": 19.665
+    },
+    {
+      "word": "is",
+      "punctuated_word": "is",
+      "start": 19.665,
+      "end": 20.045
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 20.045,
+      "end": 20.435
+    },
+    {
+      "word": "hardcoded",
+      "punctuated_word": "hardcoded",
+      "start": 20.435,
+      "end": 20.815
+    },
+    {
+      "word": "inductive",
+      "punctuated_word": "inductive",
+      "start": 20.815,
+      "end": 21.205
+    },
+    {
+      "word": "bias",
+      "punctuated_word": "bias.",
+      "start": 21.205,
+      "end": 21.585
+    },
+    {
+      "word": "its",
+      "punctuated_word": "It's",
+      "start": 21.585,
+      "end": 21.975
+    },
+    {
+      "word": "efficient",
+      "punctuated_word": "efficient",
+      "start": 21.975,
+      "end": 22.355
+    },
+    {
+      "word": "at",
+      "punctuated_word": "at",
+      "start": 22.355,
+      "end": 22.745
+    },
+    {
+      "word": "small",
+      "punctuated_word": "small",
+      "start": 22.745,
+      "end": 23.125
+    },
+    {
+      "word": "resolutions",
+      "punctuated_word": "resolutions,",
+      "start": 23.125,
+      "end": 23.515
+    },
+    {
+      "word": "but",
+      "punctuated_word": "but",
+      "start": 23.515,
+      "end": 23.895
+    },
+    {
+      "word": "convolution",
+      "punctuated_word": "convolution",
+      "start": 23.895,
+      "end": 24.275
+    },
+    {
+      "word": "compute",
+      "punctuated_word": "compute",
+      "start": 24.275,
+      "end": 24.665
+    },
+    {
+      "word": "hits",
+      "punctuated_word": "hits",
+      "start": 24.665,
+      "end": 25.045
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 25.045,
+      "end": 25.435
+    },
+    {
+      "word": "quality",
+      "punctuated_word": "quality",
+      "start": 25.435,
+      "end": 25.815
+    },
+    {
+      "word": "ceiling",
+      "punctuated_word": "ceiling",
+      "start": 25.815,
+      "end": 26.205
+    },
+    {
+      "word": "as",
+      "punctuated_word": "as",
+      "start": 26.205,
+      "end": 26.585
+    },
+    {
+      "word": "scale",
+      "punctuated_word": "scale",
+      "start": 26.585,
+      "end": 26.975
+    },
+    {
+      "word": "grows",
+      "punctuated_word": "grows.",
+      "start": 26.975,
+      "end": 27.355
+    },
+    {
+      "word": "convolutions",
+      "punctuated_word": "Convolutions",
+      "start": 27.557,
+      "end": 27.957
+    },
+    {
+      "word": "only",
+      "punctuated_word": "only",
+      "start": 27.957,
+      "end": 28.367
+    },
+    {
+      "word": "ever",
+      "punctuated_word": "ever",
+      "start": 28.367,
+      "end": 28.767
+    },
+    {
+      "word": "see",
+      "punctuated_word": "see",
+      "start": 28.767,
+      "end": 29.167
+    },
+    {
+      "word": "their",
+      "punctuated_word": "their",
+      "start": 29.167,
+      "end": 29.577
+    },
+    {
+      "word": "local",
+      "punctuated_word": "local",
+      "start": 29.577,
+      "end": 29.977
+    },
+    {
+      "word": "neighborhood",
+      "punctuated_word": "neighborhood.",
+      "start": 29.977,
+      "end": 30.377
+    },
+    {
+      "word": "so",
+      "punctuated_word": "So",
+      "start": 30.578,
+      "end": 30.868
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 30.868,
+      "end": 31.168
+    },
+    {
+      "word": "field",
+      "punctuated_word": "field",
+      "start": 31.168,
+      "end": 31.458
+    },
+    {
+      "word": "looked",
+      "punctuated_word": "looked",
+      "start": 31.458,
+      "end": 31.758
+    },
+    {
+      "word": "at",
+      "punctuated_word": "at",
+      "start": 31.758,
+      "end": 32.048
+    },
+    {
+      "word": "what",
+      "punctuated_word": "what",
+      "start": 32.048,
+      "end": 32.348
+    },
+    {
+      "word": "worked",
+      "punctuated_word": "worked",
+      "start": 32.348,
+      "end": 32.638
+    },
+    {
+      "word": "in",
+      "punctuated_word": "in",
+      "start": 32.638,
+      "end": 32.928
+    },
+    {
+      "word": "language",
+      "punctuated_word": "language,",
+      "start": 32.928,
+      "end": 33.228
+    },
+    {
+      "word": "and",
+      "punctuated_word": "and",
+      "start": 33.228,
+      "end": 33.518
+    },
+    {
+      "word": "started",
+      "punctuated_word": "started",
+      "start": 33.518,
+      "end": 33.818
+    },
+    {
+      "word": "over",
+      "punctuated_word": "over.",
+      "start": 33.818,
+      "end": 34.108
+    },
+    {
+      "word": "a",
+      "punctuated_word": "A",
+      "start": 34.311,
+      "end": 34.661
+    },
+    {
+      "word": "diffusion",
+      "punctuated_word": "Diffusion",
+      "start": 34.661,
+      "end": 35.021
+    },
+    {
+      "word": "transformer",
+      "punctuated_word": "Transformer",
+      "start": 35.021,
+      "end": 35.371
+    },
+    {
+      "word": "treats",
+      "punctuated_word": "treats",
+      "start": 35.371,
+      "end": 35.721
+    },
+    {
+      "word": "an",
+      "punctuated_word": "an",
+      "start": 35.721,
+      "end": 36.071
+    },
+    {
+      "word": "image",
+      "punctuated_word": "image",
+      "start": 36.071,
+      "end": 36.431
+    },
+    {
+      "word": "exactly",
+      "punctuated_word": "exactly",
+      "start": 36.431,
+      "end": 36.781
+    },
+    {
+      "word": "like",
+      "punctuated_word": "like",
+      "start": 36.781,
+      "end": 37.131
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 37.131,
+      "end": 37.481
+    },
+    {
+      "word": "sentence",
+      "punctuated_word": "sentence.",
+      "start": 37.481,
+      "end": 37.841
+    },
+    {
+      "word": "it",
+      "punctuated_word": "It",
+      "start": 37.841,
+      "end": 38.191
+    },
+    {
+      "word": "slices",
+      "punctuated_word": "slices",
+      "start": 38.191,
+      "end": 38.541
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 38.541,
+      "end": 38.891
+    },
+    {
+      "word": "latent",
+      "punctuated_word": "latent",
+      "start": 38.891,
+      "end": 39.251
+    },
+    {
+      "word": "into",
+      "punctuated_word": "into",
+      "start": 39.251,
+      "end": 39.601
+    },
+    {
+      "word": "twobytwo",
+      "punctuated_word": "two-by-two",
+      "start": 39.601,
+      "end": 39.951
+    },
+    {
+      "word": "patches",
+      "punctuated_word": "patches",
+      "start": 39.951,
+      "end": 40.301
+    },
+    {
+      "word": "and",
+      "punctuated_word": "and",
+      "start": 40.301,
+      "end": 40.661
+    },
+    {
+      "word": "flattens",
+      "punctuated_word": "flattens",
+      "start": 40.661,
+      "end": 41.011
+    },
+    {
+      "word": "them",
+      "punctuated_word": "them",
+      "start": 41.011,
+      "end": 41.361
+    },
+    {
+      "word": "into",
+      "punctuated_word": "into",
+      "start": 41.361,
+      "end": 41.721
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 41.721,
+      "end": 42.071
+    },
+    {
+      "word": "sequence",
+      "punctuated_word": "sequence",
+      "start": 42.071,
+      "end": 42.421
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 42.421,
+      "end": 42.771
+    },
+    {
+      "word": "visual",
+      "punctuated_word": "visual",
+      "start": 42.771,
+      "end": 43.131
+    },
+    {
+      "word": "tokens",
+      "punctuated_word": "tokens.",
+      "start": 43.131,
+      "end": 43.481
+    },
+    {
+      "word": "standard",
+      "punctuated_word": "Standard",
+      "start": 43.679,
+      "end": 44.059
+    },
+    {
+      "word": "vision",
+      "punctuated_word": "Vision",
+      "start": 44.059,
+      "end": 44.439
+    },
+    {
+      "word": "transformer",
+      "punctuated_word": "Transformer",
+      "start": 44.439,
+      "end": 44.819
+    },
+    {
+      "word": "blocks",
+      "punctuated_word": "blocks",
+      "start": 44.819,
+      "end": 45.209
+    },
+    {
+      "word": "then",
+      "punctuated_word": "then",
+      "start": 45.209,
+      "end": 45.589
+    },
+    {
+      "word": "run",
+      "punctuated_word": "run",
+      "start": 45.589,
+      "end": 45.969
+    },
+    {
+      "word": "selfattention",
+      "punctuated_word": "self-attention",
+      "start": 45.969,
+      "end": 46.349
+    },
+    {
+      "word": "across",
+      "punctuated_word": "across",
+      "start": 46.349,
+      "end": 46.729
+    },
+    {
+      "word": "that",
+      "punctuated_word": "that",
+      "start": 46.729,
+      "end": 47.109
+    },
+    {
+      "word": "sequence",
+      "punctuated_word": "sequence,",
+      "start": 47.109,
+      "end": 47.489
+    },
+    {
+      "word": "so",
+      "punctuated_word": "so",
+      "start": 47.489,
+      "end": 47.879
+    },
+    {
+      "word": "every",
+      "punctuated_word": "every",
+      "start": 47.879,
+      "end": 48.259
+    },
+    {
+      "word": "patch",
+      "punctuated_word": "patch",
+      "start": 48.259,
+      "end": 48.639
+    },
+    {
+      "word": "can",
+      "punctuated_word": "can",
+      "start": 48.639,
+      "end": 49.019
+    },
+    {
+      "word": "relate",
+      "punctuated_word": "relate",
+      "start": 49.019,
+      "end": 49.399
+    },
+    {
+      "word": "to",
+      "punctuated_word": "to",
+      "start": 49.399,
+      "end": 49.779
+    },
+    {
+      "word": "every",
+      "punctuated_word": "every",
+      "start": 49.779,
+      "end": 50.169
+    },
+    {
+      "word": "other",
+      "punctuated_word": "other",
+      "start": 50.169,
+      "end": 50.549
+    },
+    {
+      "word": "patch",
+      "punctuated_word": "patch",
+      "start": 50.549,
+      "end": 50.929
+    },
+    {
+      "word": "directly",
+      "punctuated_word": "directly.",
+      "start": 50.929,
+      "end": 51.309
+    },
+    {
+      "word": "no",
+      "punctuated_word": "No",
+      "start": 51.509,
+      "end": 52.029
+    },
+    {
+      "word": "fixed",
+      "punctuated_word": "fixed",
+      "start": 52.029,
+      "end": 52.539
+    },
+    {
+      "word": "neighborhood",
+      "punctuated_word": "neighborhood.",
+      "start": 52.539,
+      "end": 53.059
+    },
+    {
+      "word": "no",
+      "punctuated_word": "No",
+      "start": 53.059,
+      "end": 53.569
+    },
+    {
+      "word": "multiscale",
+      "punctuated_word": "multiscale",
+      "start": 53.569,
+      "end": 54.089
+    },
+    {
+      "word": "bottleneck",
+      "punctuated_word": "bottleneck.",
+      "start": 54.089,
+      "end": 54.599
+    },
+    {
+      "word": "just",
+      "punctuated_word": "Just",
+      "start": 54.599,
+      "end": 55.119
+    },
+    {
+      "word": "global",
+      "punctuated_word": "global",
+      "start": 55.119,
+      "end": 55.629
+    },
+    {
+      "word": "attention",
+      "punctuated_word": "attention.",
+      "start": 55.629,
+      "end": 56.149
+    },
+    {
+      "word": "timestep",
+      "punctuated_word": "Timestep",
+      "start": 56.348,
+      "end": 56.698
+    },
+    {
+      "word": "t",
+      "punctuated_word": "t",
+      "start": 56.698,
+      "end": 57.048
+    },
+    {
+      "word": "and",
+      "punctuated_word": "and",
+      "start": 57.048,
+      "end": 57.398
+    },
+    {
+      "word": "prompt",
+      "punctuated_word": "prompt",
+      "start": 57.398,
+      "end": 57.748
+    },
+    {
+      "word": "c",
+      "punctuated_word": "c",
+      "start": 57.748,
+      "end": 58.098
+    },
+    {
+      "word": "modulate",
+      "punctuated_word": "modulate",
+      "start": 58.098,
+      "end": 58.448
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 58.448,
+      "end": 58.798
+    },
+    {
+      "word": "block",
+      "punctuated_word": "block",
+      "start": 58.798,
+      "end": 59.148
+    },
+    {
+      "word": "through",
+      "punctuated_word": "through",
+      "start": 59.148,
+      "end": 59.498
+    },
+    {
+      "word": "adaptive",
+      "punctuated_word": "adaptive",
+      "start": 59.498,
+      "end": 59.848
+    },
+    {
+      "word": "layer",
+      "punctuated_word": "layer",
+      "start": 59.848,
+      "end": 60.198
+    },
+    {
+      "word": "norm",
+      "punctuated_word": "norm,",
+      "start": 60.198,
+      "end": 60.548
+    },
+    {
+      "word": "gate",
+      "punctuated_word": "gate",
+      "start": 60.548,
+      "end": 60.898
+    },
+    {
+      "word": "initialized",
+      "punctuated_word": "initialized",
+      "start": 60.898,
+      "end": 61.248
+    },
+    {
+      "word": "at",
+      "punctuated_word": "at",
+      "start": 61.248,
+      "end": 61.598
+    },
+    {
+      "word": "zero",
+      "punctuated_word": "zero.",
+      "start": 61.598,
+      "end": 61.948
+    },
+    {
+      "word": "the",
+      "punctuated_word": "The",
+      "start": 62.144,
+      "end": 62.544
+    },
+    {
+      "word": "block",
+      "punctuated_word": "block",
+      "start": 62.544,
+      "end": 62.934
+    },
+    {
+      "word": "starts",
+      "punctuated_word": "starts",
+      "start": 62.934,
+      "end": 63.334
+    },
+    {
+      "word": "as",
+      "punctuated_word": "as",
+      "start": 63.334,
+      "end": 63.724
+    },
+    {
+      "word": "pure",
+      "punctuated_word": "pure",
+      "start": 63.724,
+      "end": 64.124
+    },
+    {
+      "word": "identity",
+      "punctuated_word": "identity,",
+      "start": 64.124,
+      "end": 64.524
+    },
+    {
+      "word": "then",
+      "punctuated_word": "then",
+      "start": 64.524,
+      "end": 64.914
+    },
+    {
+      "word": "learns",
+      "punctuated_word": "learns",
+      "start": 64.914,
+      "end": 65.314
+    },
+    {
+      "word": "exactly",
+      "punctuated_word": "exactly",
+      "start": 65.314,
+      "end": 65.704
+    },
+    {
+      "word": "how",
+      "punctuated_word": "how",
+      "start": 65.704,
+      "end": 66.104
+    },
+    {
+      "word": "much",
+      "punctuated_word": "much",
+      "start": 66.104,
+      "end": 66.504
+    },
+    {
+      "word": "to",
+      "punctuated_word": "to",
+      "start": 66.504,
+      "end": 66.894
+    },
+    {
+      "word": "speak",
+      "punctuated_word": "speak,",
+      "start": 66.894,
+      "end": 67.294
+    },
+    {
+      "word": "replacing",
+      "punctuated_word": "replacing",
+      "start": 67.294,
+      "end": 67.684
+    },
+    {
+      "word": "unets",
+      "punctuated_word": "U-Net's",
+      "start": 67.684,
+      "end": 68.084
+    },
+    {
+      "word": "tangle",
+      "punctuated_word": "tangle",
+      "start": 68.084,
+      "end": 68.474
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 68.474,
+      "end": 68.874
+    },
+    {
+      "word": "crossattention",
+      "punctuated_word": "cross-attention",
+      "start": 68.874,
+      "end": 69.274
+    },
+    {
+      "word": "injection",
+      "punctuated_word": "injection",
+      "start": 69.274,
+      "end": 69.664
+    },
+    {
+      "word": "layers",
+      "punctuated_word": "layers.",
+      "start": 69.664,
+      "end": 70.064
+    },
+    {
+      "word": "that",
+      "punctuated_word": "That",
+      "start": 70.262,
+      "end": 70.592
+    },
+    {
+      "word": "simplicity",
+      "punctuated_word": "simplicity",
+      "start": 70.592,
+      "end": 70.932
+    },
+    {
+      "word": "is",
+      "punctuated_word": "is",
+      "start": 70.932,
+      "end": 71.262
+    },
+    {
+      "word": "what",
+      "punctuated_word": "what",
+      "start": 71.262,
+      "end": 71.592
+    },
+    {
+      "word": "let",
+      "punctuated_word": "let",
+      "start": 71.592,
+      "end": 71.932
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 71.932,
+      "end": 72.262
+    },
+    {
+      "word": "architecture",
+      "punctuated_word": "architecture",
+      "start": 72.262,
+      "end": 72.602
+    },
+    {
+      "word": "scale",
+      "punctuated_word": "scale.",
+      "start": 72.602,
+      "end": 72.932
+    },
+    {
+      "word": "transformers",
+      "punctuated_word": "Transformers",
+      "start": 73.131,
+      "end": 73.601
+    },
+    {
+      "word": "obey",
+      "punctuated_word": "obey",
+      "start": 73.601,
+      "end": 74.081
+    },
+    {
+      "word": "scaling",
+      "punctuated_word": "scaling",
+      "start": 74.081,
+      "end": 74.551
+    },
+    {
+      "word": "laws",
+      "punctuated_word": "laws.",
+      "start": 74.551,
+      "end": 75.021
+    },
+    {
+      "word": "more",
+      "punctuated_word": "More",
+      "start": 75.021,
+      "end": 75.491
+    },
+    {
+      "word": "parameters",
+      "punctuated_word": "parameters,",
+      "start": 75.491,
+      "end": 75.971
+    },
+    {
+      "word": "more",
+      "punctuated_word": "more",
+      "start": 75.971,
+      "end": 76.441
+    },
+    {
+      "word": "compute",
+      "punctuated_word": "compute,",
+      "start": 76.441,
+      "end": 76.911
+    },
+    {
+      "word": "drive",
+      "punctuated_word": "drive",
+      "start": 76.911,
+      "end": 77.381
+    },
+    {
+      "word": "frechet",
+      "punctuated_word": "Frechet",
+      "start": 77.381,
+      "end": 77.861
+    },
+    {
+      "word": "inception",
+      "punctuated_word": "Inception",
+      "start": 77.861,
+      "end": 78.331
+    },
+    {
+      "word": "distance",
+      "punctuated_word": "Distance",
+      "start": 78.331,
+      "end": 78.801
+    },
+    {
+      "word": "monotonically",
+      "punctuated_word": "monotonically",
+      "start": 78.801,
+      "end": 79.281
+    },
+    {
+      "word": "lower",
+      "punctuated_word": "lower,",
+      "start": 79.281,
+      "end": 79.751
+    },
+    {
+      "word": "with",
+      "punctuated_word": "with",
+      "start": 79.751,
+      "end": 80.221
+    },
+    {
+      "word": "crisper",
+      "punctuated_word": "crisper",
+      "start": 80.221,
+      "end": 80.691
+    },
+    {
+      "word": "text",
+      "punctuated_word": "text",
+      "start": 80.691,
+      "end": 81.171
+    },
+    {
+      "word": "alignment",
+      "punctuated_word": "alignment",
+      "start": 81.171,
+      "end": 81.641
+    },
+    {
+      "word": "at",
+      "punctuated_word": "at",
+      "start": 81.641,
+      "end": 82.111
+    },
+    {
+      "word": "every",
+      "punctuated_word": "every",
+      "start": 82.111,
+      "end": 82.581
+    },
+    {
+      "word": "step",
+      "punctuated_word": "step.",
+      "start": 82.581,
+      "end": 83.061
+    },
+    {
+      "word": "sora",
+      "punctuated_word": "Sora.",
+      "start": 83.258,
+      "end": 83.648
+    },
+    {
+      "word": "flux",
+      "punctuated_word": "Flux.",
+      "start": 83.648,
+      "end": 84.028
+    },
+    {
+      "word": "sd3",
+      "punctuated_word": "SD3.",
+      "start": 84.028,
+      "end": 84.418
+    },
+    {
+      "word": "movie",
+      "punctuated_word": "Movie",
+      "start": 84.418,
+      "end": 84.808
+    },
+    {
+      "word": "gen",
+      "punctuated_word": "Gen.",
+      "start": 84.808,
+      "end": 85.198
+    },
+    {
+      "word": "every",
+      "punctuated_word": "Every",
+      "start": 85.198,
+      "end": 85.578
+    },
+    {
+      "word": "state",
+      "punctuated_word": "state",
+      "start": 85.578,
+      "end": 85.968
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 85.968,
+      "end": 86.358
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 86.358,
+      "end": 86.748
+    },
+    {
+      "word": "art",
+      "punctuated_word": "art",
+      "start": 86.748,
+      "end": 87.128
+    },
+    {
+      "word": "visual",
+      "punctuated_word": "visual",
+      "start": 87.128,
+      "end": 87.518
+    },
+    {
+      "word": "generator",
+      "punctuated_word": "generator",
+      "start": 87.518,
+      "end": 87.908
+    },
+    {
+      "word": "now",
+      "punctuated_word": "now",
+      "start": 87.908,
+      "end": 88.298
+    },
+    {
+      "word": "runs",
+      "punctuated_word": "runs",
+      "start": 88.298,
+      "end": 88.678
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 88.678,
+      "end": 89.068
+    },
+    {
+      "word": "same",
+      "punctuated_word": "same",
+      "start": 89.068,
+      "end": 89.458
+    },
+    {
+      "word": "architecture",
+      "punctuated_word": "architecture",
+      "start": 89.458,
+      "end": 89.838
+    },
+    {
+      "word": "as",
+      "punctuated_word": "as",
+      "start": 89.838,
+      "end": 90.228
+    },
+    {
+      "word": "your",
+      "punctuated_word": "your",
+      "start": 90.228,
+      "end": 90.618
+    },
+    {
+      "word": "llm",
+      "punctuated_word": "LLM.",
+      "start": 90.618,
+      "end": 91.008
+    }
+  ]
+}
