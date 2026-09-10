@@ -241,9 +241,10 @@ const Dynamic3DHeroOverlay: React.FC<{ frame: number; timeline: ReturnType<typeo
   for (const t of timeline) {
     const shot = t.shot;
     const heroBlock = shot.blocks.find(
-      (b: Block): b is Extract<Block, { c: "AnalogyInset" }> => b.c === "AnalogyInset" && !!b.fullScreenHero
+      (b: Block): b is Extract<Block, { c: "AnalogyInset" }> =>
+        b.c === "AnalogyInset" && !!b.fullScreenHero && Boolean(b.framesDir) && !b.src
     );
-    if (!heroBlock) continue;
+    if (!heroBlock || !heroBlock.framesDir) continue;
 
     const delay = heroBlock.delayFrames || 0;
     const total = heroBlock.totalFrames || 180;
@@ -254,7 +255,7 @@ const Dynamic3DHeroOverlay: React.FC<{ frame: number; timeline: ReturnType<typeo
       const elapsed = frame - startFrame + 1;
       const currentFrame = Math.max(1, Math.min(total, elapsed));
       const pad = String(currentFrame).padStart(4, "0");
-      const dir = heroBlock.framesDir || "tea1_motion";
+      const dir = heroBlock.framesDir;
       const imgSrc = `${dir}/frame_${pad}.png`;
 
       const fadeIn = Math.min(1, elapsed / 8);

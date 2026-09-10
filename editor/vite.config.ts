@@ -283,6 +283,14 @@ function filmApiPlugin(): Plugin {
             serveFileWithRange(req, res, filePath);
             return;
           }
+          const m = rel.match(/^([^/]+)\/footage\/([^/]+)$/);
+          if (m && !rel.includes('..')) {
+            const legacyPath = path.resolve(__dirname, '../public/footage', `${m[1]}_${m[2]}`);
+            if (fs.existsSync(legacyPath) && fs.statSync(legacyPath).isFile()) {
+              serveFileWithRange(req, res, legacyPath);
+              return;
+            }
+          }
         }
 
         // Handle /api/export endpoint for 1-click video rendering
