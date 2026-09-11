@@ -22,9 +22,7 @@ export function isGoogleAiConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
 }
 
-/**
- * Executes a structured JSON prompt against Gemini with clean JSON parsing and markdown stripping.
- */
+/** Executes a structured JSON prompt against Gemini with clean JSON parsing, markdown stripping, and a 3-attempt retry loop. */
 export async function generateStructuredJson<T>(
   prompt: string,
   options?: {
@@ -72,9 +70,7 @@ export async function generateStructuredJson<T>(
   );
 }
 
-/**
- * Executes a plain-text prompt against Gemini.
- */
+/** Executes a plain-text prompt against Gemini. */
 export async function generateText(
   prompt: string,
   options?: {

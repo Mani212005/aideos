@@ -158,6 +158,12 @@ Pre-built tactile paper backgrounds:
 
 ## 6. Backend Produce & Validation Engine (`backend/`, `src/dl/validateFilm.ts`)
 
+### `backend/modelClient.ts`
+* `getGoogleAiClient()`: Builds and returns the authenticated Google Gen AI client using GEMINI_API_KEY or GOOGLE_API_KEY.
+* `isGoogleAiConfigured()`: Checks if Google AI API key credentials are configured in the environment.
+* `generateStructuredJson(prompt, options)`: Executes a structured JSON prompt against Gemini with clean JSON parsing, markdown stripping, and a 3-attempt retry loop.
+* `generateText(prompt, options)`: Executes a plain-text prompt against Gemini.
+
 ### `backend/audio.ts`
 * `trimSilence(samples, threshold)`: Trims leading and trailing silence samples (below amplitude threshold) from raw Float32Array audio.
 * `chunkTextForTTS(text, maxChars)`: Splits text blocks exceeding maxChars (~800 chars) at sentence boundaries for Kokoro ONNX.
