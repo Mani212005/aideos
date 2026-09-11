@@ -175,7 +175,7 @@ export default function App() {
     return () => {
       player.removeEventListener("frameupdate", onFrameUpdate);
     };
-  }, [playerRef.current, timeline]);
+  }, [timeline]);
 
   // Styleboard / presentation state
   const [accent, setAccent] = useState(film.accent || "#635BFF");
@@ -226,7 +226,7 @@ export default function App() {
       const dynamicWords = generateWordsFromFilm(film);
       setCaptionWords(dynamicWords);
     }
-  }, [film?.id]);
+  }, [film]);
 
   // Adjustable timeline height state (vertical split resizer)
   const [timelineHeight, setTimelineHeight] = useState<number>(320);

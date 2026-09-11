@@ -21,7 +21,7 @@ export const TOTAL_FRAMES = totalFrames(TIMELINE);
  * The Studio hand-off surface.
  *
  * Deliberately small. Everything here is something a person plausibly wants to
- * change at the last moment without opening an editor — the colour, the audio,
+ * change at the last moment without opening an editor - the colour, the audio,
  * the proofing overlays. Anything else is a design decision, and design
  * decisions live in the schema where they can be validated.
  */

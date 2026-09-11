@@ -8,9 +8,9 @@ import type { BlockProps } from "./primitives";
 
 /**
  * ---------------------------------------------------------------------------
- * DESIGN LANGUAGE — DEVICE LIBRARY
+ * DESIGN LANGUAGE - DEVICE LIBRARY
  * ---------------------------------------------------------------------------
- * Implements §07. One canvas cannot hold six minutes — attention decays after
+ * Implements §07. One canvas cannot hold six minutes - attention decays after
  * roughly twenty seconds of the same visual device. So the canvas is the spine
  * and these are what you zoom into and back out of.
  *
@@ -24,7 +24,7 @@ import type { BlockProps } from "./primitives";
  * than finishing in 400ms and then sitting dead for twenty seconds.
  */
 
-/** Where in a shot a device's sweep runs — after the entrance, before the exit. */
+/** Where in a shot a device's sweep runs - after the entrance, before the exit. */
 const sweepWindow = (durationInFrames: number, fps: number) => ({
   from: frames(MS.enter, fps),
   span: Math.max(1, durationInFrames - frames(MS.enter + MS.move, fps)),
@@ -43,7 +43,7 @@ const useSweep = (start: number, durationInFrames: number, delayMs = 0) => {
 };
 
 /* -------------------------------------------------------------------------- */
-/* TokenStrip — the metronome device                                           */
+/* TokenStrip - the metronome device                                           */
 /* -------------------------------------------------------------------------- */
 
 export const TokenStrip: React.FC<
@@ -89,7 +89,7 @@ export const TokenStrip: React.FC<
 };
 
 /* -------------------------------------------------------------------------- */
-/* AttentionArcs — which token looks at which                                  */
+/* AttentionArcs - which token looks at which                                  */
 /* -------------------------------------------------------------------------- */
 
 export const AttentionArcs: React.FC<
@@ -161,7 +161,7 @@ export const AttentionArcs: React.FC<
 };
 
 /* -------------------------------------------------------------------------- */
-/* VectorSpace — meaning as position                                           */
+/* VectorSpace - meaning as position                                           */
 /* -------------------------------------------------------------------------- */
 
 export const VectorSpace: React.FC<
@@ -247,7 +247,7 @@ export const VectorSpace: React.FC<
 };
 
 /* -------------------------------------------------------------------------- */
-/* MatrixGrid — weights as a lit grid                                          */
+/* MatrixGrid - weights as a lit grid                                          */
 /* -------------------------------------------------------------------------- */
 
 export const MatrixGrid: React.FC<
@@ -266,7 +266,7 @@ export const MatrixGrid: React.FC<
   const rows = values.length;
   const cols = values[0]?.length ?? 0;
 
-  // One row at a time — never all cells at once. A grid that lights up in a
+  // One row at a time - never all cells at once. A grid that lights up in a
   // single frame reads as a texture; lit row by row it reads as a computation.
   const head = progress * (sweep === "row" ? rows : rows * cols);
 
@@ -296,7 +296,7 @@ export const MatrixGrid: React.FC<
         style={{
           display: "grid",
           // Cells stay roughly square. Letting the grid take the full panel
-          // width turns a matrix into a spreadsheet — the shape is the point.
+          // width turns a matrix into a spreadsheet - the shape is the point.
           gridTemplateColumns: `repeat(${cols}, minmax(0, ${layout.px(104)}px))`,
           gap: layout.px(4),
           borderLeft: `1px solid ${rule(2)}`,
@@ -350,7 +350,7 @@ export const MatrixGrid: React.FC<
 };
 
 /* -------------------------------------------------------------------------- */
-/* Distribution — the answer as probability                                    */
+/* Distribution - the answer as probability                                    */
 /* -------------------------------------------------------------------------- */
 
 export const Distribution: React.FC<
@@ -474,7 +474,7 @@ export const Distribution: React.FC<
 };
 
 /* -------------------------------------------------------------------------- */
-/* LayerStack — depth                                                          */
+/* LayerStack - depth                                                          */
 /* -------------------------------------------------------------------------- */
 
 export const LayerStack: React.FC<
@@ -555,7 +555,7 @@ export const LayerStack: React.FC<
 };
 
 /* -------------------------------------------------------------------------- */
-/* ScaleBar — orders of magnitude                                              */
+/* ScaleBar - orders of magnitude                                              */
 /* -------------------------------------------------------------------------- */
 
 export const ScaleBar: React.FC<
@@ -613,7 +613,7 @@ export const ScaleBar: React.FC<
 };
 
 /* -------------------------------------------------------------------------- */
-/* AnalogyInset — the only texture in the system                               */
+/* AnalogyInset - the only texture in the system                               */
 /* -------------------------------------------------------------------------- */
 
 export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string; framesDir?: string; totalFrames?: number; delayFrames?: number; fullScreenHero?: boolean }> = ({
@@ -716,7 +716,6 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
         minHeight: layout.px(220),
         overflow: "hidden",
         opacity: isVisible ? 1 : 0.05,
-        transition: "opacity 0.2s ease",
       }}
     >
       {resolvedSrc ? (
@@ -747,7 +746,7 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
 };
 
 /* -------------------------------------------------------------------------- */
-/* TextBeat — the breather                                                     */
+/* TextBeat - the breather                                                     */
 /* -------------------------------------------------------------------------- */
 
 /**

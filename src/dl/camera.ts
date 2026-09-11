@@ -3,14 +3,14 @@ import { easeExpo, MS } from "./motion";
 
 /**
  * ---------------------------------------------------------------------------
- * DESIGN LANGUAGE — CAMERA & CONTINUITY
+ * DESIGN LANGUAGE - CAMERA & CONTINUITY
  * ---------------------------------------------------------------------------
  * Implements §06. This is the single decision that stops the output reading as
  * a deck: there is one canvas per film and it never resets. Every idea is a
  * node in real space, every relationship is a drawn edge, and a "scene" is just
  * where the camera is looking.
  *
- * Pure — no React, no Remotion imports — so the validator and the storyboard
+ * Pure - no React, no Remotion imports - so the validator and the storyboard
  * generator can solve the same camera path in plain Node.
  */
 
@@ -35,7 +35,7 @@ export const union = (boxes: Box[]): Box => {
  * Forward edges leave the right face and enter the left, bending through the
  * midpoint so the curve reads as a wire rather than an arrow. A backward edge
  * (target sits left of source) instead drops out of the bottom and loops under
- * everything — routing it straight would draw it *through* the nodes between.
+ * everything - routing it straight would draw it *through* the nodes between.
  */
 export const edgePath = (a: CanvasNode, b: CanvasNode): string => {
   const x1 = a.x + a.w;
@@ -62,7 +62,7 @@ const PAD = 46;
  *
  * Fit-to-box rather than authored coordinates is what makes rule 1 of §09 true:
  * reorder the script, move a node, and every shot re-frames itself. It is also
- * what makes the reel free — the same solve against a 9:16 frame naturally
+ * what makes the reel free - the same solve against a 9:16 frame naturally
  * gives a narrower camera on tight shots and pulls back far enough on the
  * payoff that the whole structure still fits. Neither format is authored twice.
  */
@@ -82,7 +82,7 @@ export const lookBox = (film: Film, shot: Shot): Box => {
   const ids = Array.isArray(shot.look) ? shot.look : [shot.look];
   const boxes = ids.map((id) => byId.get(id)).filter((n): n is CanvasNode => Boolean(n)).map(nodeBox);
   // The schema rejects unknown ids, so an empty result here means an empty
-  // canvas — fall back to the whole thing rather than dividing by zero.
+  // canvas - fall back to the whole thing rather than dividing by zero.
   return boxes.length > 0 ? union(boxes) : union(film.canvas.nodes.map(nodeBox));
 };
 
@@ -101,7 +101,7 @@ export type TimedShot = {
 /**
  * Lay the shots out on the timeline. Starts are computed, never authored, so
  * the whole class of "scene 7 starts 0.5s before scene 6 ends" bugs cannot
- * occur — that failure silently distorted every camera move in the old engine.
+ * occur - that failure silently distorted every camera move in the old engine.
  */
 export const buildTimeline = (film: Film, targetDurationSec?: number): TimedShot[] => {
   let cursor = 0;
@@ -170,7 +170,7 @@ export const shotAt = (timeline: TimedShot[], frame: number): TimedShot => {
  *
  * Move, never cut: every station is reached by a 900ms travel on the expo
  * curve, and only an explicit `cut` (a chapter boundary) is allowed to jump.
- * Scale interpolates in log space — linear scale interpolation makes a zoom
+ * Scale interpolates in log space - linear scale interpolation makes a zoom
  * start fast and crawl to a halt, which fights the curve doing the easing.
  */
 export const camAt = (
@@ -220,7 +220,7 @@ export const nodeArrivals = (film: Film, timeline: TimedShot[]): Map<string, num
   return arrivals;
 };
 
-/** An edge arrives with its target — and draws 70ms before the node enters. */
+/** An edge arrives with its target - and draws 70ms before the node enters. */
 export const edgeArrival = (edge: CanvasEdge, arrivals: Map<string, number>) =>
   arrivals.get(edge.to) ?? Infinity;
 

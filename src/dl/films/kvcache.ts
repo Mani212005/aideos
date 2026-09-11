@@ -2,7 +2,7 @@ import type { Film } from "../schema";
 
 export const kvcacheFilm: Film = {
   "id": "kvcache",
-  "title": "Why your LLM remembers — the KV cache",
+  "title": "Why your LLM remembers - the KV cache",
   "fps": 30,
   "accent": "#635BFF",
   "theme": {
@@ -152,7 +152,7 @@ export const kvcacheFilm: Film = {
         },
         {
           "c": "Body",
-          "text": "It would have to, thousands of times per answer. Something has to remember for it — and that something has a price."
+          "text": "It would have to, thousands of times per answer. Something has to remember for it - and that something has a price."
         }
       ]
     },
@@ -336,7 +336,7 @@ export const kvcacheFilm: Film = {
         },
         {
           "c": "Body",
-          "text": "The key is how it answers being looked up. The value is what it says when it is. Neither depends on anything that comes after it — which is the whole reason this works."
+          "text": "The key is how it answers being looked up. The value is what it says when it is. Neither depends on anything that comes after it - which is the whole reason this works."
         }
       ]
     },
@@ -607,7 +607,7 @@ export const kvcacheFilm: Film = {
         },
         {
           "c": "Body",
-          "text": "At that length the cache for a 70B model runs to tens of gigabytes — bigger than a lot of the weights it is reading from."
+          "text": "At that length the cache for a 70B model runs to tens of gigabytes - bigger than a lot of the weights it is reading from."
         }
       ]
     },

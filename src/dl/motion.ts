@@ -2,7 +2,7 @@ import { Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 
 /**
  * ---------------------------------------------------------------------------
- * DESIGN LANGUAGE — MOTION GRAMMAR
+ * DESIGN LANGUAGE - MOTION GRAMMAR
  * ---------------------------------------------------------------------------
  * Implements §03. One curve, four durations, one entrance. The point of fixing
  * these is that independently animated elements read as one piece: if every
@@ -15,7 +15,7 @@ import { Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
  * It is chosen for what it *feels* like rather than what it looks like on a
  * graph: it has already arrived while a linear move is still crossing, which
  * reads as a UI responding rather than an object falling. No springs, no
- * bounce — overshoot implies mass, and none of this has mass.
+ * bounce - overshoot implies mass, and none of this has mass.
  */
 export const EXPO = Easing.bezier(0.16, 1, 0.3, 1);
 
@@ -46,7 +46,7 @@ export type Entrance = { opacity: number; transform: string };
 
 /**
  * The one entrance in the system: invisible, sitting 12px low, fading up into
- * place over 400ms on the curve. Never a slide across the screen — horizontal
+ * place over 400ms on the curve. Never a slide across the screen - horizontal
  * entrances imply the thing came from somewhere, and on a canvas where position
  * carries meaning that is a lie.
  *
@@ -82,7 +82,7 @@ export const useEntrance = (
 
 /**
  * Progress 0..1 through a timed move that begins at `startFrame`, on the curve.
- * Used for anything that is not an entrance — camera moves, bars growing, edges
+ * Used for anything that is not an entrance - camera moves, bars growing, edges
  * drawing, counters counting.
  */
 export const useProgress = (

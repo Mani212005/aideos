@@ -9,7 +9,7 @@ import type { BackgroundPreset, FontPreset } from "./schema";
 
 /**
  * ---------------------------------------------------------------------------
- * DESIGN LANGUAGE — TOKENS
+ * DESIGN LANGUAGE - TOKENS
  * ---------------------------------------------------------------------------
  * Implements §01 Color and §02 Type of the Video Design Language.
  *
@@ -181,7 +181,7 @@ export const rule = (strength = 1) => ink(0.12 * strength);
 /** Muted, dimmed. Axis ticks and legend text that must sit under the labels. */
 export const FAINT = "#94A3B8";
 
-/** Surface, dimmed. A card inside a card — the only nesting depth allowed. */
+/** Surface, dimmed. A card inside a card - the only nesting depth allowed. */
 export const SUNKEN = "#F1EFEA";
 
 /** Accent at an alpha. Fills behind an active border are always this at ~0.10. */
@@ -238,7 +238,7 @@ export type DLLayout = {
     letterSpacing: string;
     fontWeight: number;
   };
-  /** Uppercase mono label — the system's only decorative treatment. */
+  /** Uppercase mono label - the system's only decorative treatment. */
   label: (size?: number) => React.CSSProperties;
   /** A raw size in authored pixels, converted to render pixels. */
   px: (n: number) => number;

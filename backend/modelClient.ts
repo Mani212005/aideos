@@ -36,25 +36,40 @@ export async function generateStructuredJson<T>(
   const ai = getGoogleAiClient();
   const modelName = options?.model || DEFAULT_GEMINI_MODEL;
 
-  const response = await ai.models.generateContent({
-    model: modelName,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      systemInstruction: options?.systemInstruction,
-      temperature: options?.temperature ?? 0.2,
-    },
-  });
+  const MAX_ATTEMPTS = 3;
+  let lastError: unknown;
 
-  const rawText = response.text || "";
-  let cleaned = rawText.trim();
-  if (cleaned.startsWith("```json")) {
-    cleaned = cleaned.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-  } else if (cleaned.startsWith("```")) {
-    cleaned = cleaned.replace(/^```\s*/, "").replace(/\s*```$/, "");
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          systemInstruction: options?.systemInstruction,
+          temperature: options?.temperature ?? 0.2,
+        },
+      });
+
+      const rawText = response.text || "";
+      let cleaned = rawText.trim();
+      if (cleaned.startsWith("```json")) {
+        cleaned = cleaned.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+      } else if (cleaned.startsWith("```")) {
+        cleaned = cleaned.replace(/^```\s*/, "").replace(/\s*```$/, "");
+      }
+
+      return JSON.parse(cleaned) as T;
+    } catch (err) {
+      lastError = err;
+    }
   }
 
-  return JSON.parse(cleaned) as T;
+  throw new Error(
+    `generateStructuredJson: failed to produce valid JSON after ${MAX_ATTEMPTS} attempts: ${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }`
+  );
 }
 
 /**

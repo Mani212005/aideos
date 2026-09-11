@@ -164,11 +164,11 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     };
 
     animId = requestAnimationFrame(tick);
+    const player = playerRef.current;
     return () => {
       cancelAnimationFrame(animId);
-      const p = playerRef.current;
-      if (p && typeof p.getCurrentFrame === "function") {
-        setPlayheadSec(p.getCurrentFrame() / fps);
+      if (player && typeof player.getCurrentFrame === "function") {
+        setPlayheadSec(player.getCurrentFrame() / fps);
       }
     };
   }, [isPlaying, dragContext.mode, playerRef, fps, zoomLevel]);

@@ -7,7 +7,7 @@ dotenv.config();
 
 const film = {
   id: "rl-adapters",
-  title: "RL Adapters — Fine-Tuning with Reinforcement Learning",
+  title: "RL Adapters - Fine-Tuning with Reinforcement Learning",
   fps: 30,
   accent: "#635BFF",
   chapters: ["definition", "architectures", "ppo vs grpo", "self learning"],

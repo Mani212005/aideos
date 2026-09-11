@@ -179,7 +179,6 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
                   color: isActive ? highlightColor : isPast ? primaryColor : "rgba(255, 255, 255, 0.38)",
                   transform: `scale(${dynamicScale})`,
                   display: "inline-block",
-                  transition: "color 0.08s ease, transform 0.08s ease",
                   textShadow: isActive
                     ? `0 0 20px ${highlightColor}88, 0 2px 6px rgba(0,0,0,0.8)`
                     : isPast

@@ -3,7 +3,7 @@
  * SVG character animations, metaphor badges, 3D camera controls, and animated primitive specimens.
  */
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Film, Shot, Block, BackgroundPreset, CameraAngle } from "../../../src/dl/schema";
 import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
 import { CHARACTER_RIGS } from "../../../src/dl/characters";
@@ -290,6 +290,12 @@ export function Styleboard({
   const [existingFootage, setExistingFootage] = useState<Record<string, string>>({});
   const [isTriggeringBroll, setIsTriggeringBroll] = useState<Record<string, boolean>>({});
 
+  // Keep the latest onUpdateFilm callback available to the polling effect without resetting its interval on every parent render
+  const onUpdateFilmRef = useRef(onUpdateFilm);
+  useEffect(() => {
+    onUpdateFilmRef.current = onUpdateFilm;
+  }, [onUpdateFilm]);
+
   // Poll B-roll status on mount and periodically while in Styleboard
   useEffect(() => {
     let timer: any;
@@ -324,8 +330,8 @@ export function Styleboard({
               }
               return s;
             });
-            if (hasNewWiring && onUpdateFilm) {
-              onUpdateFilm({ ...film, shots: updatedShots });
+            if (hasNewWiring && onUpdateFilmRef.current) {
+              onUpdateFilmRef.current({ ...film, shots: updatedShots });
             }
           }
           if (data.jobs && Array.isArray(data.jobs)) {

@@ -17,7 +17,7 @@ import { useAlign } from "./align";
 
 /**
  * ---------------------------------------------------------------------------
- * DESIGN LANGUAGE — PRIMITIVES
+ * DESIGN LANGUAGE - PRIMITIVES
  * ---------------------------------------------------------------------------
  * Implements §04. Animation is baked into each component rather than applied by
  * the scene that uses it: a caller can decide *when* something enters (by its
@@ -43,7 +43,7 @@ const stripPunct = (w: string) => w.replace(/[^\p{L}\p{N}-]/gu, "").toLowerCase(
  * Split a headline into animatable words.
  *
  * Two things this has to get right. First, the animation unit is the *word*,
- * not the markup chunk — splitting on markers orphans full stops onto their own
+ * not the markup chunk - splitting on markers orphans full stops onto their own
  * line, where they fade up as a floating dot. Second, `*marked*` spans are
  * stripped from the output: leaving the asterisks in is how a marker convention
  * ends up printed on screen at 134px.
@@ -125,7 +125,7 @@ export const Kicker: React.FC<BlockProps & { text: string }> = ({ text, start, i
  * The headline treatment. Words rise on a 70ms stagger; the accent word draws
  * an underline under itself once it has landed.
  *
- * One accent word, never two — §01 budgets three accents per *frame*, and the
+ * One accent word, never two - §01 budgets three accents per *frame*, and the
  * headline is only ever entitled to one of them.
  */
 export const TextReveal: React.FC<
@@ -614,7 +614,7 @@ export const Plot: React.FC<
 
 /**
  * A hairline rectangle that grows from `fromRect` to `toRect` on the curve.
- * This is the §08 join — a canvas node's border becoming a device frame — and
+ * This is the §08 join - a canvas node's border becoming a device frame - and
  * it is deliberately the same shape in both directions, so a zoom-out is
  * always the exact reverse of the entry that produced it.
  */

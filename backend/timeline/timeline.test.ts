@@ -140,8 +140,8 @@ test("TB-6: Multi-select drag preserves relative offsets between all selected cl
   assert.equal(multiMoved.shots[2].position! - multiMoved.shots[1].position!, 6.0);
 });
 
-// TB-7: Two clips cannot occupy overlapping ranges on one track — collision behaviour occurs
-test("TB-7: Two clips cannot occupy overlapping ranges on one track — collision behaviour occurs", () => {
+// TB-7: Two clips cannot occupy overlapping ranges on one track - collision behaviour occurs
+test("TB-7: Two clips cannot occupy overlapping ranges on one track - collision behaviour occurs", () => {
   const film = createMockFilm();
   const { film: moved } = moveShot(film, 1, 2.0);
   // Collision resolver pushes shot-2 to start immediately after shot-1 (4.0s)
@@ -161,8 +161,8 @@ test("TB-8: In narration-locked mode, any move or trim leaves total duration wit
   assert.ok(totalAfterDelete > 0);
 });
 
-// TB-9: Every drag operation produces a valid film — validateFilm passes after each
-test("TB-9: Every drag operation produces a valid film — validateFilm passes after each", () => {
+// TB-9: Every drag operation produces a valid film - validateFilm passes after each
+test("TB-9: Every drag operation produces a valid film - validateFilm passes after each", () => {
   const film = createMockFilm();
   const { film: moved } = moveShot(film, 1, 6.0);
   assert.doesNotThrow(() => validateFilm(moved));
