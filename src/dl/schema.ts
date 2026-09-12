@@ -384,6 +384,7 @@ export const shotSchema = z.object({
   /** Human or LLM visual direction notes for this shot. */
   visualDirection: z.string().optional(),
   /** Per-shot transition to use when entering this shot. */
+  // eslint-disable-next-line @remotion/non-pure-animation
   transition: z.enum(["paper-rip", "zoom-morph", "matrix-glitch", "whip-pan", "film-burn"]).optional(),
   /** Optional semantic metaphor cue for script-driven visual depictions. */
   metaphor: z.enum(["spider-web", "liquid-bucket", "balance-scale", "clock-gears", "rocket-launch", "character-throw", "glowing-cluster", "typing-cursor-quote", "custom"]).optional(),

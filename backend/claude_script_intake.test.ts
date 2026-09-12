@@ -279,17 +279,17 @@ This entire section, including any [NARRATION] blocks, must be ignored.
 });
 
 test("parses bare timestamp headers without hashes and inline bracket tags on the same line", () => {
-  const script = `0:00–0:20 — HOOK
+  const script = `0:00\u20130:20 \u2014 HOOK
 
-[VISUAL: Cold open. A single photograph fills the frame — a person in a black jacket.]
+[VISUAL: Cold open. A single photograph fills the frame \u2014 a person in a black jacket.]
 
 [NARRATION] Ask an image model to change one thing in a photo, but keep everything else pixel for pixel identical.
 
-[ON SCREEN: "ChatGPT IMAGES 2.5" fades in small, bottom corner — not the hero of the shot.]
+[ON SCREEN: "ChatGPT IMAGES 2.5" fades in small, bottom corner \u2014 not the hero of the shot.]
 
-0:20–0:55 — WHAT CHANGED
+0:20\u20130:55 \u2014 WHAT CHANGED
 
-[VISUAL: Quick montage, four labeled boxes appearing in sequence: "Reference fidelity," "Precision editing," "Multi-turn consistency," "–50% latency."]
+[VISUAL: Quick montage, four labeled boxes appearing in sequence: "Reference fidelity," "Precision editing," "Multi-turn consistency," "\u201350% latency."]
 
 [NARRATION] According to OpenAI's own announcement, Images 2.5 preserves more of an original image during edits.
 

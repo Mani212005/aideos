@@ -87,8 +87,8 @@ function cleanBeatText(text: string): string {
     .replace(/["“”]/g, "")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/—/g, " - ")
-    .replace(/–/g, " - ")
+    .replace(/\u2014/g, " - ")
+    .replace(/\u2013/g, " - ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -120,18 +120,18 @@ function matchSegmentHeader(line: string): SegmentHeaderInfo | null {
   if (hashMatch) {
     headerText = hashMatch[1].trim();
   } else {
-    const isBareTimestamp = /^(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})\b/.test(headerText);
+    const isBareTimestamp = /^(\d{1,2}:\d{2})\s*[-\u2013\u2014]\s*(\d{1,2}:\d{2})\b/.test(headerText);
     const isBareScene = /^(?:Scene|Shot|Segment|Act)\s+\d+\b/i.test(headerText);
     if (!isBareTimestamp && !isBareScene) return null;
   }
 
   let timeStart: string | undefined;
   let timeEnd: string | undefined;
-  const tm = headerText.match(/^(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})(.*)$/);
+  const tm = headerText.match(/^(\d{1,2}:\d{2})\s*[-\u2013\u2014]\s*(\d{1,2}:\d{2})(.*)$/);
   if (tm) {
     timeStart = tm[1];
     timeEnd = tm[2];
-    headerText = tm[3].replace(/^\s*[-–—:]\s*/, "").trim();
+    headerText = tm[3].replace(/^\s*[-\u2013\u2014:]\s*/, "").trim();
   }
 
   let explicitId: string | undefined;
@@ -334,13 +334,13 @@ export function serializeSegmentsToScript(segments: ScriptSegment[]): string {
 function legacyExtractSpokenBlocks(raw: string): string[] {
   const cleaned = (raw || "")
     .replace(/^#{1,6}\s+.*$/gm, "") // Strip markdown headers
-    .replace(/^(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2}).*$/gm, "") // Strip timestamp headers
+    .replace(/^(\d{1,2}:\d{2})\s*[-\u2013\u2014]\s*(\d{1,2}:\d{2}).*$/gm, "") // Strip timestamp headers
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/—/g, " - ")
-    .replace(/–/g, " - ")
+    .replace(/\u2014/g, " - ")
+    .replace(/\u2013/g, " - ")
     .trim();
 
   return cleaned.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);

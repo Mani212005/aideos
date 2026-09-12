@@ -94,10 +94,17 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
   const [duration, setDuration] = useState<number>(0);
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
 
+  // Keep the latest film available to the film-switch effect without forcing it to re-run on every edit
+  const filmRef = useRef(film);
+  useEffect(() => {
+    filmRef.current = film;
+  }, [film]);
+
   // Load existing script and audio on mount or when active film changes
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
+    const currentFilm = filmRef.current;
     fetch(`/api/scripts/${film.id}`)
       .then((res) => res.json())
       .then((data) => {
@@ -105,8 +112,8 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
         if (data.ok && data.script) {
           setScript(data.script);
         } else {
-          const defaultScript = `# ${film.title}\n\n` +
-            film.shots.map((s, idx) => {
+          const defaultScript = `# ${currentFilm.title}\n\n` +
+            currentFilm.shots.map((s, idx) => {
               const body = s.blocks.map(b => "text" in b ? b.text : "label" in b ? b.label : "").filter(Boolean).join(" ");
               return `## Scene ${idx + 1} (${s.id})\n${body || "Describe the visual action and narration for this shot."}\n`;
             }).join("\n");
@@ -119,7 +126,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       });
 
     // Check if voiceover audio already exists on disk
-    const existingAudio = film.voiceover?.src || `videos/${film.id}/voiceover.wav`;
+    const existingAudio = currentFilm.voiceover?.src || `videos/${film.id}/voiceover.wav`;
     fetch(existingAudio, { method: "HEAD" })
       .then((res) => {
         if (isMounted && res.ok) {
@@ -128,11 +135,12 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       })
       .catch(() => {});
 
+    const audio = audioRef.current;
     return () => {
       isMounted = false;
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
       }
     };
   }, [film.id]);

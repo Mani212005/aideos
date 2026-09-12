@@ -2,7 +2,7 @@ import type { Film } from "../schema";
 
 export const rlAdaptersFilm: Film = {
   "id": "rl-adapters",
-  "title": "RL Adapters — Fine-Tuning with Reinforcement Learning",
+  "title": "RL Adapters - Fine-Tuning with Reinforcement Learning",
   "fps": 30,
   "accent": "#635BFF",
   "chapters": [

@@ -1,7 +1,7 @@
 /**
  * Render a handful of real frames from the design-language film.
  *
- * One bundle, one browser, many stills — letting each renderStill launch its
+ * One bundle, one browser, many stills - letting each renderStill launch its
  * own Chromium disconnects partway through a batch.
  */
 import { bundle } from "@remotion/bundler";
@@ -39,7 +39,7 @@ console.log("bundling…");
 const serveUrl = await bundle({ entryPoint: path.join(ROOT, "src/index.ts") });
 
 // One browser for every still. Opening one per frame is the single biggest
-// cost in this script — the render itself is milliseconds.
+// cost in this script - the render itself is milliseconds.
 const browser = await openBrowser("chrome");
 
 const comps = new Map();

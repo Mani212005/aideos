@@ -8,7 +8,7 @@ import type { Film, Shot } from "./schema";
 
 /**
  * ---------------------------------------------------------------------------
- * DESIGN LANGUAGE — THE INTERACTIVE GLASSMORPHIC CANVAS GRAPH
+ * DESIGN LANGUAGE - THE INTERACTIVE GLASSMORPHIC CANVAS GRAPH
  * ---------------------------------------------------------------------------
  * High-clarity, luminous multi-agent graph architecture.
  * Features:
@@ -104,7 +104,6 @@ const Node: React.FC<{
           : "0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.08)",
         opacity: 0.35 + 0.65 * Math.max(0, Math.min(1, arrived)),
         transform: isLive ? "scale(1.02)" : "scale(1.0)",
-        transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
       }}
     >
       {/* Top Tag & Status Beacon */}

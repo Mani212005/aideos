@@ -1,5 +1,5 @@
 # ==============================================================================
-# AIDEOS STUDIO & VIDEO COMPILER — GOOGLE CLOUD RUN DOCKERFILE
+# AIDEOS STUDIO & VIDEO COMPILER - GOOGLE CLOUD RUN DOCKERFILE
 # ==============================================================================
 # Containerizes the Aideos Vite Studio Editor, Google GenAI agent compiler,
 # and Remotion video rendering pipeline with pre-installed Chromium and FFmpeg.

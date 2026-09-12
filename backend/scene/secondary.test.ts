@@ -111,7 +111,7 @@ test("SM-3: Critical damping settles to target within 25 frames without oscillat
   );
 });
 
-// SM-4: Primary joints unaffected by the secondary pass — deep-compare before and after
+// SM-4: Primary joints unaffected by the secondary pass - deep-compare before and after
 test("SM-4: Primary joints are 100% unaffected by secondary pass (deep-compare before vs after)", () => {
   const scene = makeSceneWithSecondaryJoint();
   const compiled = compileScene(scene);

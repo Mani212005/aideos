@@ -113,7 +113,7 @@ export const clipSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   layerId: z.string().min(1),
 
-  /** Timeline placement — STORED, never derived. */
+  /** Timeline placement - STORED, never derived. */
   position: z.number().min(0),
   /** Source range in-point within source material (seconds) */
   start: z.number().min(0).default(0),

@@ -254,8 +254,9 @@ export async function produceAudioPipeline(
 
   let ttsClient: TextToSpeechClient | null = null;
   try {
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GOOGLE_API_KEY) {
-      ttsClient = new TextToSpeechClient();
+    const apiKey = process.env.GOOGLE_API_KEY;
+    if (apiKey || process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      ttsClient = new TextToSpeechClient(apiKey ? { apiKey } : undefined);
     }
   } catch {
     // Fallback to local audio synthesis

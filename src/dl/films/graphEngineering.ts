@@ -159,7 +159,7 @@ export const graphEngineeringFilm: Film = {
       "stage": "frame",
       "zoom": 0.6,
       "drift": true,
-      "scriptText": "Then you try to build something real — five agents, one goal — and it falls apart. Agents talk over each other. State gets lost. One agent loops forever and burns your API budget while you are asleep.",
+      "scriptText": "Then you try to build something real - five agents, one goal - and it falls apart. Agents talk over each other. State gets lost. One agent loops forever and burns your API budget while you are asleep.",
       "blocks": [
         {
           "c": "Kicker",
@@ -193,7 +193,7 @@ export const graphEngineeringFilm: Film = {
       "stage": "none",
       "zoom": 0.6,
       "drift": true,
-      "scriptText": "There is a reason for that. And there is a fix. It is called graph engineering — and once you see it, you cannot unsee it.",
+      "scriptText": "There is a reason for that. And there is a fix. It is called graph engineering - and once you see it, you cannot unsee it.",
       "blocks": []
     },
     {
@@ -248,7 +248,7 @@ export const graphEngineeringFilm: Film = {
       "stage": "none",
       "zoom": 0.6,
       "drift": true,
-      "scriptText": "So the moment you need looping — or branching, or five agents working at once — a straight chain breaks. You need a graph. Nodes. Edges. And something flowing between them.",
+      "scriptText": "So the moment you need looping - or branching, or five agents working at once - a straight chain breaks. You need a graph. Nodes. Edges. And something flowing between them.",
       "blocks": []
     },
     {
@@ -259,7 +259,7 @@ export const graphEngineeringFilm: Film = {
       "stage": "frame",
       "zoom": 0.6,
       "drift": true,
-      "scriptText": "Every graph-based agent system runs on four things. One — state. A shared object every agent reads and writes to. Not 'the conversation.' Real structured data: the task, the plan, the results so far, and the errors.",
+      "scriptText": "Every graph-based agent system runs on four things. One - state. A shared object every agent reads and writes to. Not 'the conversation.' Real structured data: the task, the plan, the results so far, and the errors.",
       "blocks": [
         {
           "c": "Kicker",
@@ -293,7 +293,7 @@ export const graphEngineeringFilm: Film = {
       "stage": "frame",
       "zoom": 0.6,
       "drift": true,
-      "scriptText": "Two — nodes. Each one does one job: an LLM call, a tool call, or a human checkpoint. Nodes can contain entire agents inside them — nesting like Russian dolls. Three — edges. Conditional edges: a function that looks at the state and asks, 'what happens next?'",
+      "scriptText": "Two - nodes. Each one does one job: an LLM call, a tool call, or a human checkpoint. Nodes can contain entire agents inside them - nesting like Russian dolls. Three - edges. Conditional edges: a function that looks at the state and asks, 'what happens next?'",
       "blocks": [
         {
           "c": "Kicker",
@@ -335,7 +335,7 @@ export const graphEngineeringFilm: Film = {
       "stage": "frame",
       "zoom": 0.6,
       "drift": true,
-      "scriptText": "This — right here — is the actual engineering. Not the prompts. The routing. And four — checkpoints. Save state after every step. When an agent runs for ten minutes and step forty-one crashes, you do not want to lose steps one through forty.",
+      "scriptText": "This - right here - is the actual engineering. Not the prompts. The routing. And four - checkpoints. Save state after every step. When an agent runs for ten minutes and step forty-one crashes, you do not want to lose steps one through forty.",
       "blocks": [
         {
           "c": "Kicker",
@@ -374,7 +374,7 @@ export const graphEngineeringFilm: Film = {
       "stage": "frame",
       "zoom": 0.6,
       "drift": true,
-      "scriptText": "Okay. Here is how you actually go from one agent to an army. Pattern one: the Supervisor. Picture a general and five soldiers. The soldiers never talk to each other — they report back to the general, who decides who moves next. One brain, many hands.",
+      "scriptText": "Okay. Here is how you actually go from one agent to an army. Pattern one: the Supervisor. Picture a general and five soldiers. The soldiers never talk to each other - they report back to the general, who decides who moves next. One brain, many hands.",
       "blocks": [
         {
           "c": "Kicker",
@@ -408,7 +408,7 @@ export const graphEngineeringFilm: Film = {
       "stage": "frame",
       "zoom": 0.6,
       "drift": true,
-      "scriptText": "Pattern two: Fan-out, fan-in. This is the real army move. Say you need to research five competitors. You do not send one agent to do it five times in a row — you spawn five agents at once, each takes one competitor, and they all report back to a single reducer that merges the results.",
+      "scriptText": "Pattern two: Fan-out, fan-in. This is the real army move. Say you need to research five competitors. You do not send one agent to do it five times in a row - you spawn five agents at once, each takes one competitor, and they all report back to a single reducer that merges the results.",
       "blocks": [
         {
           "c": "Kicker",
@@ -451,7 +451,7 @@ export const graphEngineeringFilm: Film = {
       "stage": "none",
       "zoom": 0.6,
       "drift": true,
-      "scriptText": "But here is the trap almost everyone falls into: if two agents write to the same piece of state at the same time, and you have not told your system how to merge them — one silently erases the other's work. Nobody warns you about this. I am warning you.",
+      "scriptText": "But here is the trap almost everyone falls into: if two agents write to the same piece of state at the same time, and you have not told your system how to merge them - one silently erases the other's work. Nobody warns you about this. I am warning you.",
       "blocks": []
     },
     {
@@ -496,7 +496,7 @@ export const graphEngineeringFilm: Film = {
       "stage": "frame",
       "zoom": 0.6,
       "drift": true,
-      "scriptText": "Three things will bite you the first time you build this for real. Loops that never end — because you asked an AI 'are we done yet?' and it cannot decide. Fix: always cap it with a hard iteration limit.",
+      "scriptText": "Three things will bite you the first time you build this for real. Loops that never end - because you asked an AI 'are we done yet?' and it cannot decide. Fix: always cap it with a hard iteration limit.",
       "blocks": [
         {
           "c": "Kicker",
@@ -533,7 +533,7 @@ export const graphEngineeringFilm: Film = {
       "stage": "frame",
       "zoom": 0.6,
       "drift": true,
-      "scriptText": "Cost that quietly explodes — because every hop through your graph is a full model call. And debugging — in a graph, you must log every state change at every step, or you will be flying blind. These are not edge cases. These are Tuesday.",
+      "scriptText": "Cost that quietly explodes - because every hop through your graph is a full model call. And debugging - in a graph, you must log every state change at every step, or you will be flying blind. These are not edge cases. These are Tuesday.",
       "blocks": [
         {
           "c": "Kicker",
@@ -576,7 +576,7 @@ export const graphEngineeringFilm: Film = {
       "stage": "none",
       "zoom": 0.6,
       "drift": true,
-      "scriptText": "So here is the whole idea in one image: Stop thinking about your agents as a line. Start thinking about them as a map — with a shared memory, decision points at every fork, and a plan for what happens when five paths need to become one.",
+      "scriptText": "So here is the whole idea in one image: Stop thinking about your agents as a line. Start thinking about them as a map - with a shared memory, decision points at every fork, and a plan for what happens when five paths need to become one.",
       "blocks": []
     },
     {
@@ -587,7 +587,7 @@ export const graphEngineeringFilm: Film = {
       "stage": "frame",
       "zoom": 0.6,
       "drift": true,
-      "scriptText": "The agents you have been building? They were never the hard part. The coordination between them — that is the actual skill. That is the part nobody teaches. And now you know it. If this made something click for you — go build your army.",
+      "scriptText": "The agents you have been building? They were never the hard part. The coordination between them - that is the actual skill. That is the part nobody teaches. And now you know it. If this made something click for you - go build your army.",
       "blocks": [
         {
           "c": "Kicker",
