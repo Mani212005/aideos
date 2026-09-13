@@ -362,3 +362,25 @@ test("buildFilmPartsFromScript scales shot durations precisely to match targetDu
 });
 
 
+
+// Regression test: a [VISUAL] beat directs the renderer and must never be printed for the viewer
+test("buildFilmPartsFromScript keeps visual directions off screen and on the shot's visualDirection", () => {
+  const parts = buildFilmPartsFromScript(SUBSHOT_SCRIPT);
+  const context = parts.shots.find((s) => s.id === "context");
+
+  assert.ok(context, "the CONTEXT segment produces a shot");
+  assert.equal(
+    context.visualDirection,
+    "Wide establishing shot of the whiteboard.",
+    "the direction travels on the shot, where the renderer reads it",
+  );
+
+  for (const shot of parts.shots) {
+    for (const block of shot.blocks) {
+      assert.ok(
+        !block.text.includes("Wide establishing shot"),
+        `stage direction "${block.text}" was compiled into an on-screen block`,
+      );
+    }
+  }
+});

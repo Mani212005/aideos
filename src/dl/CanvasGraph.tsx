@@ -36,23 +36,27 @@ const useActiveness = (timeline: TimedShot[], id: string) => {
   return before ? 1 - p : 0;
 };
 
-const getNodeCategoryTag = (id: string, label: string): { tag: string; icon: string } => {
-  const lower = (id + " " + label).toLowerCase();
-  if (lower.includes("super")) return { tag: "SUPERVISOR", icon: "👑" };
-  if (lower.includes("state") || lower.includes("memory")) return { tag: "SHARED STATE", icon: "◈" };
-  if (lower.includes("loop") || lower.includes("cycle")) return { tag: "CYCLIC LOOP", icon: "↻" };
-  if (lower.includes("fan") || lower.includes("parallel")) return { tag: "FAN-OUT / IN", icon: "⑂" };
-  if (lower.includes("trap") || lower.includes("guard")) return { tag: "FAILURE GUARD", icon: "🛡️" };
-  if (lower.includes("chain") || lower.includes("linear")) return { tag: "LINEAR PIPELINE", icon: "→" };
-  if (lower.includes("graph") || lower.includes("map")) return { tag: "MASTER GRAPH", icon: "⬡" };
-  return { tag: "AGENT NODE", icon: "⚡" };
-};
+/**
+ * The tag a node wears.
+ *
+ * It used to be guessed from substrings in the node's id and label, which meant a film about
+ * memory bandwidth got a card reading "SHARED STATE" and every other node read "AGENT NODE" -
+ * labels from a different subject entirely, stated on screen as fact. A node's only
+ * topic-independent truth is where it sits in the argument, so that is what it says.
+ */
+const getNodeCategoryTag = (position: number, total: number): { tag: string; icon: string } => ({
+  tag: `${String(position).padStart(2, "0")} / ${String(total).padStart(2, "0")}`,
+  icon: "",
+});
 
 const Node: React.FC<{
   node: Film["canvas"]["nodes"][number];
   timeline: TimedShot[];
   arrival: number;
-}> = ({ node, timeline, arrival }) => {
+  /** One-based position of this node in the canvas, and how many there are. */
+  position: number;
+  total: number;
+}> = ({ node, timeline, arrival, position, total }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const accent = useAccent();
@@ -63,7 +67,7 @@ const Node: React.FC<{
   const active = useActiveness(timeline, node.id);
   const isLive = active > 0.4;
 
-  const { tag, icon } = getNodeCategoryTag(node.id, node.label);
+  const { tag } = getNodeCategoryTag(position, total);
 
   const border = interpolateColors(
     active,
@@ -71,8 +75,11 @@ const Node: React.FC<{
     [interpolateColors(arrived, [0, 1], ["rgba(255, 255, 255, 0.08)", "rgba(255, 255, 255, 0.16)"]), accent],
   );
 
+  // The active card is tinted by the film's one colour rather than by a warm brown baked in
+  // when the accent happened to be orange; a film that sets a different accent got a node
+  // whose glow and whose fill disagreed.
   const background = isLive
-    ? "linear-gradient(145deg, rgba(42, 20, 10, 0.94) 0%, rgba(24, 10, 5, 0.98) 100%)"
+    ? `linear-gradient(145deg, ${accentAt(accent, 0.18)} 0%, ${accentAt(accent, 0.06)} 100%)`
     : "linear-gradient(145deg, rgba(22, 26, 36, 0.88) 0%, rgba(12, 14, 20, 0.96) 100%)";
 
   const labelColor = isLive ? "#FFFFFF" : interpolateColors(arrived, [0, 1], [PALETTE.muted, "#E2E8F0"]);
@@ -125,7 +132,6 @@ const Node: React.FC<{
             gap: 4,
           }}
         >
-          <span>{icon}</span>
           <span>{tag}</span>
         </div>
 
@@ -226,8 +232,8 @@ const Edges: React.FC<{ film: Film; timeline: TimedShot[]; arrivals: Map<string,
           </feMerge>
         </filter>
         <linearGradient id="activeEdgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FF6B00" />
-          <stop offset="100%" stopColor="#FFA000" />
+          <stop offset="0%" stopColor={accent} />
+          <stop offset="100%" stopColor={accentAt(accent, 0.45)} />
         </linearGradient>
       </defs>
 
@@ -324,18 +330,26 @@ export const CanvasGraph: React.FC<{ film: Film; timeline: TimedShot[]; cam: Cam
         style={{
           position: "absolute",
           inset: 0,
-          transformOrigin: "center center",
+          // camTransform composes translate-then-scale on the assumption that canvas
+          // coordinates map straight through, which is what camera.ts's solveCam and
+          // projectBox both compute. A centred origin instead scales about the middle
+          // of the frame, displacing everything by half the frame times (ppu - 1): at
+          // the zoom a two-node shot solves to, that pushed the nodes clean off screen
+          // and rendered a black frame where the canvas should be.
+          transformOrigin: "0 0",
           transform: camTransform(cam, { width, height }, activeAngle, frame),
           transformStyle: "preserve-3d",
         }}
       >
         <Edges film={film} timeline={timeline} arrivals={arrivals} />
-        {film.canvas.nodes.map((node) => (
+        {film.canvas.nodes.map((node, i) => (
           <Node
             key={node.id}
             node={node}
             timeline={timeline}
             arrival={arrivals.get(node.id) ?? Infinity}
+            position={i + 1}
+            total={film.canvas.nodes.length}
           />
         ))}
       </div>

@@ -455,9 +455,9 @@ export function buildFilmPartsFromScript(
       if (blocks.length === 0) {
         blocks.push({ c: "TextReveal", text: (seg.title || shotId).slice(0, 180), size: "headline" });
       }
-      if (group.visual) {
-        blocks.push({ c: "Body", text: group.visual.slice(0, 300) });
-      }
+      // A [VISUAL] beat is a direction to the renderer, not copy for the viewer. It used to be
+      // pushed on as a Body block, which printed "Slow push in as the node dims" on screen in
+      // the finished film. It travels on the shot's visualDirection field instead.
 
       shots.push({
         id: shotId,

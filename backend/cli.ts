@@ -16,6 +16,9 @@ import { runIdeate, runShoot, runPrompts } from "./ideation/stages";
 import { compileFilm, extractJobSpecs } from "./ideation/compile";
 import type { Treatment } from "./ideation/schemas";
 import { generateStructuredJson, isGoogleAiConfigured } from "./modelClient";
+import { runProduction } from "./pipeline/run";
+import type { ProductionFormat, ProductionProgress, ProductionStage } from "./pipeline/types";
+import type { TtsBackendName } from "./tts";
 
 dotenv.config({ quiet: true });
 
@@ -436,6 +439,119 @@ program
       console.log("All b-roll rendered. Wire clips into AnalogyInset src fields by hand, then re-assemble with --install.");
     },
   );
+
+/** Renders a progress event as one readable CLI line. */
+function formatProgress(event: ProductionProgress): string {
+  const seconds = (event.elapsedMs / 1000).toFixed(0).padStart(4);
+  const pct = event.progress !== undefined ? ` ${Math.round(event.progress * 100)}%` : "";
+  return `[${seconds}s] ${event.stage.padEnd(9)} ${event.status.padEnd(8)}${pct} ${event.message}`;
+}
+
+program
+  .command("film")
+  .description(
+    "One call from a script to finished, verified mp4s: narration, design, GPU b-roll, render, review",
+  )
+  .option("--script <text>", "narration script or Claude screenplay as a literal string")
+  .option("--script-file <path>", "path to a screenplay markdown file")
+  .option("--title <title>", "film title; also the source of the package slug")
+  .option("--slug <slug>", "package slug under videos/ (lowercase letters, digits, dashes)")
+  .option("--formats <list>", "comma-separated formats to render", "long,reel")
+  .option("--out <dir>", "where the finished mp4s land", "out")
+  .option("--broll", "generate b-roll footage on the GPU and wire it into the film")
+  .option("--broll-engine <name>", "which VideoEngine renders b-roll", "ssh-wangp")
+  .option("--broll-clips <n>", "maximum number of b-roll clips", "4")
+  .option("--broll-seconds <n>", "length of each b-roll clip in seconds", "8")
+  .option("--tts <backend>", "pin the speech synthesizer (kokoro, google, say, tone)")
+  .option("--voice <voice>", "voice id for the chosen synthesizer")
+  .option("--speed <n>", "narration pace multiplier; below 1 slows delivery", "1")
+  .option("--music <src>", "background music filename inside public/")
+  .option("--no-resume", "ignore cached stage results and run everything again")
+  .option("--force <stages>", "comma-separated stages to re-run even when resuming")
+  .option("--stop-after <stage>", "stop cleanly after this stage")
+  .option("--skip-verify", "skip the closing frame and audio inspection pass")
+  .action(
+    async (options: {
+      script?: string;
+      scriptFile?: string;
+      title?: string;
+      slug?: string;
+      formats: string;
+      out: string;
+      broll?: boolean;
+      brollEngine: string;
+      brollClips: string;
+      brollSeconds: string;
+      tts?: TtsBackendName;
+      voice?: string;
+      speed: string;
+      music?: string;
+      resume: boolean;
+      force?: string;
+      stopAfter?: ProductionStage;
+      skipVerify?: boolean;
+    }) => {
+      const script = options.scriptFile
+        ? await fs.readFile(path.resolve(ROOT, options.scriptFile), "utf-8")
+        : options.script;
+      if (!script) throw new Error("pass either --script or --script-file");
+
+      const title =
+        options.title ??
+        script.match(/^#\s+(.+)$/m)?.[1]?.trim() ??
+        "Untitled Aideos Film";
+
+      const result = await runProduction(
+        {
+          script,
+          title,
+          slug: options.slug,
+          formats: options.formats.split(",").map((f) => f.trim()).filter(Boolean) as ProductionFormat[],
+          outDir: options.out,
+          broll: Boolean(options.broll),
+          brollEngine: options.brollEngine,
+          brollMaxClips: Number(options.brollClips),
+          brollSeconds: Number(options.brollSeconds),
+          ttsBackend: options.tts,
+          voice: options.voice,
+          speed: Number(options.speed),
+          music: options.music,
+          resume: options.resume,
+          force: options.force?.split(",").map((s) => s.trim()) as ProductionStage[] | undefined,
+          stopAfter: options.stopAfter,
+          skipVerify: options.skipVerify,
+        },
+        (event) => console.log(formatProgress(event)),
+      );
+
+      console.log(`\n${result.title} (${result.slug})`);
+      console.log(`  ${result.shotCount} shots · ${result.durationSec.toFixed(2)}s · narrated by ${result.ttsBackend}`);
+      console.log(`  film manifest: ${path.relative(ROOT, result.filmPath)}`);
+      for (const clip of result.brollClips) {
+        console.log(`  b-roll ${clip.shotId}: ${path.relative(ROOT, clip.path)} (${clip.durationSec.toFixed(2)}s)`);
+      }
+      for (const output of result.outputs) {
+        console.log(
+          `  ${output.format}: ${path.relative(ROOT, output.path)} ` +
+            `(${output.width}x${output.height}, ${output.durationSec.toFixed(2)}s, ` +
+            `${(output.sizeBytes / 1024 / 1024).toFixed(1)} MB)`,
+        );
+      }
+      if (result.warnings.length > 0) {
+        console.log(`\n  ${result.warnings.length} warning(s):`);
+        for (const warning of result.warnings) console.log(`    - ${warning}`);
+      }
+      if (result.stoppedAfter) console.log(`\n  stopped after the ${result.stoppedAfter} stage, as requested`);
+    },
+  );
+
+program
+  .command("mcp")
+  .description("Serve the production pipeline as an MCP server over stdio")
+  .action(async () => {
+    const { startMcpServer } = await import("./mcp/server");
+    await startMcpServer();
+  });
 
 program
   .command("engine-test")

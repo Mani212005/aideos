@@ -98,8 +98,6 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
       );
   const contentStart = isCut ? current.from : current.from + Math.round(openFrames * 0.55);
 
-  const hasMultiple = shot.blocks.length > 1;
-
   return (
     <div
       style={{
@@ -124,7 +122,10 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
           padding: shot.stage === "frame" ? 0 : layout.grid * 5,
           display: "flex",
           flexDirection: "column",
-          justifyContent: shot.stage === "frame" && !hasMultiple ? "center" : "space-between",
+          // Centred, always. Spreading two blocks to the top and bottom of a full-frame
+          // panel left a void the height of the frame between a headline and the device
+          // it introduces, which reads as a layout accident rather than a composition.
+          justifyContent: "center",
           alignItems: "center",
           gap: layout.grid * 2.5,
           opacity: contentIn,
@@ -323,6 +324,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
   const { width, height, fps } = useVideoConfig();
   const current = shotAt(timeline, frame);
   const cam = camAt(film, timeline, frame, { width, height });
+  const isReel = width < height;
 
   // The whole composition drifts 100 -> 104% across a held shot; the diagram
   // inside never moves once drawn. It is the difference between a still frame
@@ -341,8 +343,12 @@ export const FilmView: React.FC<FilmViewProps> = ({
     current.shot.stage === "none"
       ? 0
       : Math.max(0, Math.min(1, easeExpo((frame - current.from) / frames(MS.move, fps))));
+  // A text beat is transparent all the way to the canvas, so whatever node the camera is
+  // sitting on is directly behind the headline at whatever scale the shot solved to. At a
+  // 6% dim the node's own label was still legible enough to collide with the words in front
+  // of it; 3% keeps the structure present without putting two texts in the same place.
   const canvasOpacity =
-    current.shot.stage === "frame" ? 1 - 0.94 * panelOpen : 1 - 0.72 * panelOpen;
+    current.shot.stage === "frame" ? 1 - 0.97 * panelOpen : 1 - 0.72 * panelOpen;
 
   // Paper rip transition between mind-map nodes (Enam Al-Amin paper tear style)
   const transitionFrames = frames(600, fps);
@@ -425,7 +431,20 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {activeTransition === "paper-rip" && (
           <PaperRip active={isTransitioning} progress={transitionProgress} frame={frame} />
         )}
-        {captionWords && captionWords.length > 0 && <KineticSubtitles words={captionWords} />}
+        {/* Burned-in subtitles are a reel-only treatment. src/dl/README.md rules them out of
+            the design language because they fight the panel for the same space and every
+            long-form platform draws its own from the sidecar track - but a vertical frame
+            already reserves its bottom fifth for platform chrome, and social video is
+            watched muted, so there the caption has somewhere to live and a job to do. */}
+        {isReel && captionWords && captionWords.length > 0 ? (
+          <KineticSubtitles
+            words={captionWords}
+            maxWidth={width * 0.86}
+            fontSize={Math.round(width * 0.042)}
+            highlightColor={accent}
+            position="bottom"
+          />
+        ) : null}
 
         {/* Master Audio Track & Multi-Clip Voiceover Spine */}
         {includeAudio && (
