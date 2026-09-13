@@ -574,3 +574,63 @@ test("Phase 3 Negative Case: Unanchored spline drifts across distant unkeyed gap
     `Unanchored curve must drift away from rest during gap (got: ${leftVal.toFixed(2)})`,
   );
 });
+
+// Regression C-15: A pinned clock makes the whole CompiledScene, meta included, reproducible.
+test("C-15: compileScene with a pinned clock is byte-identical across runs", () => {
+  const first = compileScene(makeValidScene(), { clockMs: 1_700_000_000_000 });
+  const second = compileScene(makeValidScene(), { clockMs: 1_700_000_000_000 });
+
+  assert.equal(JSON.stringify(first), JSON.stringify(second));
+  assert.equal(first.meta.compiledAt, "2023-11-14T22:13:20.000Z");
+  assert.equal(first.meta.compileTimeMs, 0);
+
+  // Without a pinned clock the frames are still identical; only the diagnostic meta drifts.
+  const live1 = compileScene(makeValidScene());
+  const live2 = compileScene(makeValidScene());
+  assert.equal(JSON.stringify(live1.frames), JSON.stringify(live2.frames));
+});
+
+// Regression C-16: A background's authored transform reaches the compiled frame.
+test("C-16: background transform is compiled rather than dropped", () => {
+  const scene = makeValidScene();
+  scene.background.position = { x: 120, y: -40 };
+  scene.background.scale = 1.5;
+  scene.background.rotation = 12;
+  scene.background.opacity = 0.8;
+
+  const compiled = compileScene(scene);
+  const bg = compiled.frames[0].entities.find((e) => e.entityId === "bg-main")!;
+
+  assert.equal(bg.kind, "background");
+  assert.deepEqual(bg.transform, { x: 120, y: -40, scale: 1.5, rotation: 12, opacity: 0.8 });
+});
+
+// Regression C-17: An animation clip naming an element the asset does not declare fails the compile.
+test("C-17: dangling custom animation targets fail the compile loudly", () => {
+  const scene = makeValidScene();
+  scene.props[0].animation = {
+    timelineId: "prop-spin-in",
+    clips: [
+      {
+        clipId: "wheel-fade",
+        targets: ["wheel-front"],
+        property: "opacity",
+        from: 0,
+        to: 1,
+        startFrame: 0,
+        durationFrames: 20,
+      },
+    ],
+  };
+
+  const ok = compileScene(scene, { assetElementIds: { "prop-bicycle": ["wheel-front", "wheel-rear"] } });
+  const prop = ok.frames[0].entities.find((e) => e.entityId === "prop-bicycle")!;
+  assert.equal(prop.elementStates!["wheel-front"].opacity, 0);
+  assert.equal(ok.frames[89].entities.find((e) => e.entityId === "prop-bicycle")!.elementStates!["wheel-front"].opacity, 1);
+
+  scene.props[0].animation.clips[0].targets = ["wheel-that-is-not-there"];
+  assert.throws(
+    () => compileScene(scene, { assetElementIds: { "prop-bicycle": ["wheel-front", "wheel-rear"] } }),
+    /SCENE_ANIMATION_COMPILE_FAILED/,
+  );
+});

@@ -1,64 +1,111 @@
 /**
  * File Description: Node-runtime asset verifier for Aideos Scene Graphs.
- * Extends the pure validateScene validator with filesystem SVG asset existence and element ID checks.
+ * Extends the pure validateScene validator with filesystem checks the pure layer cannot make:
+ * that every asset's SVG exists and parses, and that every element id referenced by a rotating
+ * sub-group (D1) or by a custom animation clip is actually declared in that SVG document.
  */
 
 import fs from "fs";
 import path from "path";
 import { validateScene as pureValidateScene, type ValidationResult } from "./validateScene";
-import type { Scene } from "./types";
+import type { EnvironmentAsset, Scene } from "./types";
+import { collectSvgElementIds, parseSvgDocument } from "./svgDocument";
 
+/** Resolves an asset svgSource, which may be absolute or relative to the working directory. */
+function resolveAssetPath(svgSource: string): string {
+  return path.isAbsolute(svgSource) ? svgSource : path.resolve(process.cwd(), svgSource);
+}
+
+/** Reads an asset's SVG off disk and returns the element ids it declares, or null if unreadable. */
+export function readAssetElementIds(svgSource: string): string[] | null {
+  try {
+    const content = fs.readFileSync(resolveAssetPath(svgSource), "utf8");
+    return collectSvgElementIds(parseSvgDocument(content));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Collects, for every asset in a scene whose SVG is readable, the element ids it declares.
+ * Feed the result to compileScene's assetElementIds option so dangling animation targets fail.
+ */
+export function collectSceneAssetElementIds(scene: Scene): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  const assets: EnvironmentAsset[] = [];
+  if (scene.background) assets.push(scene.background);
+  if (Array.isArray(scene.props)) assets.push(...scene.props);
+
+  for (const asset of assets) {
+    if (!asset.svgSource) continue;
+    const ids = readAssetElementIds(asset.svgSource);
+    if (ids) out[asset.assetId] = ids;
+  }
+  return out;
+}
+
+/** Validates a scene including every filesystem-backed check the pure validator cannot make. */
 export function validateSceneWithNodeAssets(sceneInput: Scene): ValidationResult {
   const result = pureValidateScene(sceneInput);
 
-  if (sceneInput.background) {
-    const asset = sceneInput.background;
-    if (asset.svgSource) {
-      const resolvedPath = path.isAbsolute(asset.svgSource)
-        ? asset.svgSource
-        : path.resolve(process.cwd(), asset.svgSource);
+  const assets: EnvironmentAsset[] = [];
+  if (sceneInput.background) assets.push(sceneInput.background);
+  if (Array.isArray(sceneInput.props)) assets.push(...sceneInput.props);
 
-      if (!fs.existsSync(resolvedPath)) {
+  for (const asset of assets) {
+    if (!asset.svgSource) continue;
+    const resolvedPath = resolveAssetPath(asset.svgSource);
+
+    if (!fs.existsSync(resolvedPath)) {
+      result.isValid = false;
+      result.errors.push({
+        rule: 11,
+        entityId: asset.assetId,
+        message: `Asset "${asset.assetId}" svgSource file not found on disk: "${asset.svgSource}"`,
+      });
+      continue;
+    }
+
+    // Parse once and reuse: a malformed asset must fail here rather than at render time.
+    let declaredIds: string[];
+    try {
+      declaredIds = collectSvgElementIds(parseSvgDocument(fs.readFileSync(resolvedPath, "utf8")));
+    } catch (err) {
+      result.isValid = false;
+      result.errors.push({
+        rule: 11,
+        entityId: asset.assetId,
+        message: `Asset "${asset.assetId}" svgSource "${asset.svgSource}" is not parseable SVG: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      });
+      continue;
+    }
+
+    const declared = new Set(declaredIds);
+
+    // Rule 16: every D1 rotating sub-group must name an element that exists in the document.
+    for (const sub of asset.subGroups ?? []) {
+      if (sub.elementId && !declared.has(sub.elementId)) {
         result.isValid = false;
         result.errors.push({
-          rule: 11,
+          rule: 16,
           entityId: asset.assetId,
-          message: `Asset "${asset.assetId}" svgSource file not found on disk: "${asset.svgSource}"`,
+          message: `RotatingSubGroup elementId "${sub.elementId}" not found in SVG source "${asset.svgSource}"`,
         });
       }
     }
-  }
 
-  if (sceneInput.props) {
-    for (const prop of sceneInput.props) {
-      if (prop.svgSource) {
-        const resolvedPath = path.isAbsolute(prop.svgSource)
-          ? prop.svgSource
-          : path.resolve(process.cwd(), prop.svgSource);
-
-        if (!fs.existsSync(resolvedPath)) {
+    // Rule 20: every custom animation clip must target an element that exists in the document.
+    for (const clip of asset.animation?.clips ?? []) {
+      for (const target of clip.targets ?? []) {
+        if (!declared.has(target)) {
           result.isValid = false;
           result.errors.push({
-            rule: 11,
-            entityId: prop.assetId,
-            message: `Asset "${prop.assetId}" svgSource file not found on disk: "${prop.svgSource}"`,
+            rule: 20,
+            entityId: asset.assetId,
+            message: `Animation clip "${clip.clipId}" targets element id "${target}", which is not declared in SVG source "${asset.svgSource}". Declared ids: [${declaredIds.join(", ")}]`,
           });
-        } else if (prop.subGroups && prop.subGroups.length > 0) {
-          try {
-            const content = fs.readFileSync(resolvedPath, "utf8");
-            for (const sub of prop.subGroups) {
-              if (sub.elementId && !content.includes(`id="${sub.elementId}"`)) {
-                result.isValid = false;
-                result.errors.push({
-                  rule: 16,
-                  entityId: prop.assetId,
-                  message: `RotatingSubGroup elementId "${sub.elementId}" not found in SVG source "${prop.svgSource}"`,
-                });
-              }
-            }
-          } catch {
-            // Read error
-          }
         }
       }
     }

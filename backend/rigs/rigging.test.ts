@@ -10,7 +10,7 @@ import fs from "fs";
 import path from "path";
 import { parseSvgToCharacterRig, namespaceSvgIds } from "./fromSvg";
 import { POSE_PRESETS } from "../../src/dl/characters/presets";
-import { renderFrameStill } from "../scene/renderStill";
+import { renderFrameStill, readPngDimensions } from "../scene/renderStill";
 import { CHARACTER_RIGS } from "../../src/dl/characters";
 
 const OUT_RIGS_DIR = path.resolve("out/rigs");
@@ -143,6 +143,14 @@ test("R-5 / Visual Review: Render high-res PNG stills for all pose presets to ou
     assert.ok(fs.existsSync(outPng), `Rendered pose PNG must exist: ${outPng}`);
     const size = fs.statSync(outPng).size;
     assert.ok(size > 1000, `Pose PNG must have non-zero size (got ${size} bytes)`);
+    // A review still that is not the composition's own aspect ratio is a misleading record of
+    // the frame: the rig would appear cropped and off-centre in the image but not in the video.
+    const dims = readPngDimensions(outPng);
+    assert.deepEqual(
+      dims,
+      { width: 1920, height: 1080 },
+      `Pose still must be a true 1920x1080 raster, got ${dims.width}x${dims.height}`,
+    );
     renderedFiles.push(outPng);
   }
 

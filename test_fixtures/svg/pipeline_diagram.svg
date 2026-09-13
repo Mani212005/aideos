@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet" width="600" height="400">
+  <!--
+    Animatable scene asset: a three-stage pipeline diagram. Every part that moves carries its own
+    id so a declarative animation timeline (src/dl/scene/svgAnimation.ts) can address it. The
+    document itself is static: it contains no <animate>, no script and no CSS transitions.
+    Colours are the active PALETTE tokens (src/dl/tokens.ts), not invented values.
+  -->
+  <g id="edge-in-model">
+    <path d="M-110 0 L-40 0" fill="none" stroke="#64748B" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <g id="edge-model-out">
+    <path d="M40 0 L110 0" fill="none" stroke="#64748B" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  <g id="node-input">
+    <rect x="-180" y="-34" width="70" height="68" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="2" />
+    <text x="-145" y="6" text-anchor="middle" fill="#111827" font-size="13" font-family="monospace">in</text>
+  </g>
+
+  <g id="node-model">
+    <rect x="-40" y="-46" width="80" height="92" rx="10" fill="#FFFFFF" stroke="#FF6B00" stroke-width="3" />
+    <text x="0" y="6" text-anchor="middle" fill="#111827" font-size="13" font-family="monospace">model</text>
+  </g>
+
+  <g id="node-output">
+    <rect x="110" y="-34" width="70" height="68" rx="8" fill="#FFFFFF" stroke="#111827" stroke-width="2" />
+    <text x="145" y="6" text-anchor="middle" fill="#111827" font-size="13" font-family="monospace">out</text>
+  </g>
+
+  <g id="token">
+    <circle cx="-145" cy="0" r="9" fill="#FF6B00" />
+  </g>
+
+  <g id="caption">
+    <text x="0" y="110" text-anchor="middle" fill="#64748B" font-size="15" font-family="monospace">one token, three stages</text>
+  </g>
+</svg>
