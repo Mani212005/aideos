@@ -614,6 +614,86 @@ function filmApiPlugin(): Plugin {
           return;
         }
 
+        // Handle /api/visuals (List the SVG animations authored for a video package)
+        if (url === '/api/visuals' && req.method === 'GET') {
+          const parsed = new URL(req.url || '', 'http://localhost');
+          const filmId = parsed.searchParams.get('filmId') || '';
+          if (!FILM_ID.test(filmId)) {
+            sendJson(res, 400, { error: 'filmId is required' });
+            return;
+          }
+          const visualsDir = path.join(videosDir, filmId, 'visuals');
+          if (!fs.existsSync(visualsDir)) {
+            sendJson(res, 200, { ok: true, visuals: [] });
+            return;
+          }
+          const visuals = fs
+            .readdirSync(visualsDir)
+            .filter(f => f.toLowerCase().endsWith('.svg'))
+            .map(f => {
+              const stats = fs.statSync(path.join(visualsDir, f));
+              return {
+                name: f.replace(/\.svg$/i, ''),
+                src: `videos/${filmId}/visuals/${f}`,
+                sizeBytes: stats.size,
+                updatedAt: stats.mtimeMs,
+              };
+            })
+            .sort((a, b) => b.updatedAt - a.updatedAt);
+          sendJson(res, 200, { ok: true, visuals });
+          return;
+        }
+
+        // Handle /api/visuals/save (Write an authored SVG animation into the video package)
+        if (url === '/api/visuals/save' && req.method === 'POST') {
+          void readBody(req)
+            .then((body: any) => {
+              const { filmId, name, svg } = body || {};
+              if (!FILM_ID.test(String(filmId || ''))) {
+                sendJson(res, 400, { error: 'filmId must be a film id (lowercase letters, digits and dashes)' });
+                return;
+              }
+              const safeName = String(name || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 48);
+              if (!safeName) {
+                sendJson(res, 400, { error: 'name is required' });
+                return;
+              }
+              if (typeof svg !== 'string' || !svg.includes('<svg')) {
+                sendJson(res, 400, { error: 'svg must be SVG markup containing an <svg> root' });
+                return;
+              }
+              const visualsDir = path.join(videosDir, String(filmId), 'visuals');
+              fs.mkdirSync(visualsDir, { recursive: true });
+              const filePath = path.join(visualsDir, `${safeName}.svg`);
+              fs.writeFileSync(filePath, svg, 'utf8');
+              sendJson(res, 200, {
+                ok: true,
+                name: safeName,
+                src: `videos/${filmId}/visuals/${safeName}.svg`,
+              });
+            })
+            .catch(err => sendJson(res, 400, { error: String(err) }));
+          return;
+        }
+
+        // Handle /api/visuals/delete (Remove an authored SVG animation from the video package)
+        if (url === '/api/visuals/delete' && req.method === 'POST') {
+          void readBody(req)
+            .then((body: any) => {
+              const { filmId, name } = body || {};
+              const safeName = String(name || '').trim().replace(/[^a-z0-9-]/g, '');
+              if (!FILM_ID.test(String(filmId || '')) || !safeName) {
+                sendJson(res, 400, { error: 'filmId and name are required' });
+                return;
+              }
+              const filePath = path.join(videosDir, String(filmId), 'visuals', `${safeName}.svg`);
+              if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+              sendJson(res, 200, { ok: true });
+            })
+            .catch(err => sendJson(res, 400, { error: String(err) }));
+          return;
+        }
+
         // Handle /api/media/list (List all uploaded / available media assets)
         if (url === '/api/media/list' && req.method === 'GET') {
           const mediaDir = path.resolve(__dirname, '../public/media');
@@ -1416,6 +1496,17 @@ export default defineConfig({
     strictPort: true,
     fs: {
       allow: ['..']
+    },
+    watch: {
+      // Saving a film rewrites its generated module and package manifest. Those are data, not
+      // editor source, so watching them would hot-reload the page on every autosave and throw the
+      // user back to the first stage mid-edit.
+      ignored: [
+        path.resolve(__dirname, '../src/dl/films/**'),
+        path.resolve(__dirname, '../src/dl/activeFilm.ts'),
+        path.resolve(__dirname, '../videos/**'),
+        path.resolve(__dirname, '../out/**'),
+      ]
     }
   },
   resolve: {

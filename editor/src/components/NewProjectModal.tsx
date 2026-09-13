@@ -1,33 +1,90 @@
 /**
- * File Description: Script Intake & New Project Creation Studio Modal dialog for pasting raw scripts, selecting character archetypes & themes, and automatically compiling production video projects.
+ * File Description: New project dialog for Aideos Studio.
+ * Two honest ways to start: paste a script and let Aideos compile a first cut from it, or create an
+ * empty project and build it up by hand. The dialog asks for exactly what the compiler needs (a
+ * title, a narrator archetype, a theme and a voice) and shows the run time the pasted script
+ * implies, so the user knows what they are about to get before they commit.
  */
 
 import { useState } from "react";
 import type { Film } from "../../../src/dl/schema";
-import { Film as FilmIcon, X, Bot, FileText, AlertTriangle, Loader2, Sparkles, Plus } from "lucide-react";
+import { AlertTriangle, Bot, FileText, Plus, Sparkles } from "lucide-react";
+import { Badge, Button, Card, Field, Input, Modal, Note, SegmentedTabs, Select, Spinner, Stat, Textarea, cn } from "./ui";
 
-interface NewProjectModalProps {
+export interface NewProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onProjectCreated: (film: Film, script: string) => void;
 }
 
 const ARCHETYPES = [
-  { id: "astronaut", name: "Astronaut Guide", domain: "Space, Physics & Exploration" },
-  { id: "developer", name: "Lead Engineer", domain: "Software, Cloud & Infrastructure" },
-  { id: "dataEngineer", name: "Data Architect", domain: "Data, Databases & Pipelines" },
-  { id: "scientist", name: "Research Scientist", domain: "AI, Math & Hardware Architecture" },
-  { id: "executive", name: "Tech Executive", domain: "Leadership, Strategy & Vision" },
-  { id: "robot", name: "Cyber Robot", domain: "Robotics, Algorithms & State Machines" },
-  { id: "educator", name: "Academic Tutor", domain: "Concepts, Tutorials & Walkthroughs" },
-  { id: "mascot", name: "Creative Mascot", domain: "Branding, Product & Culture" },
+  {
+    id: "astronaut",
+    name: "Astronaut Guide",
+    domain: "Space, Physics & Exploration",
+  },
+  {
+    id: "developer",
+    name: "Lead Engineer",
+    domain: "Software, Cloud & Infrastructure",
+  },
+  {
+    id: "dataEngineer",
+    name: "Data Architect",
+    domain: "Data, Databases & Pipelines",
+  },
+  {
+    id: "scientist",
+    name: "Research Scientist",
+    domain: "AI, Math & Hardware Architecture",
+  },
+  {
+    id: "executive",
+    name: "Tech Executive",
+    domain: "Leadership, Strategy & Vision",
+  },
+  {
+    id: "robot",
+    name: "Cyber Robot",
+    domain: "Robotics, Algorithms & State Machines",
+  },
+  {
+    id: "educator",
+    name: "Academic Tutor",
+    domain: "Concepts, Tutorials & Walkthroughs",
+  },
+  {
+    id: "mascot",
+    name: "Creative Mascot",
+    domain: "Branding, Product & Culture",
+  },
 ];
 
 const THEMES = [
-  { id: "smooth-dark", name: "Smooth Dark", accent: "#FF6B00", bgPreview: "bg-[#0A0B10]" },
-  { id: "paper-white", name: "Paper White", accent: "#635BFF", bgPreview: "bg-[#F8F9FA]" },
-  { id: "blueprint-grid", name: "Blueprint", accent: "#00E5FF", bgPreview: "bg-[#0A192F]" },
-  { id: "subtle-dots", name: "Terminal Dots", accent: "#10B981", bgPreview: "bg-[#111827]" },
+  {
+    id: "smooth-dark",
+    name: "Smooth Dark",
+    accent: "#FF6B00",
+    swatch: "#0A0A0B",
+  },
+  {
+    id: "paper-white",
+    name: "Paper White",
+    accent: "#635BFF",
+    swatch: "#F5F5F5",
+  },
+  {
+    id: "blueprint-grid",
+    name: "Blueprint",
+    accent: "#00E5FF",
+    swatch: "#F5F5F5",
+  },
+  {
+    id: "subtle-dots",
+    name: "Terminal Dots",
+    accent: "#10B981",
+    swatch: "#F5F5F5",
+  },
 ];
 
 const VOICES = [
@@ -39,10 +96,12 @@ const VOICES = [
   { id: "aura-asteria-en", name: "Deepgram: Asteria (Narrative - Female)" },
 ];
 
-/**
- * Modal dialog for pasting raw scripts and compiling full video projects.
- */
-export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjectModalProps) {
+/** Dialog for creating a project, optionally compiling a first cut from a pasted script. */
+export function NewProjectModal({
+  isOpen,
+  onClose,
+  onProjectCreated,
+}: NewProjectModalProps) {
   const [tab, setTab] = useState<"intake" | "blank">("intake");
   const [title, setTitle] = useState<string>("");
   const [slug, setSlug] = useState<string>("");
@@ -52,8 +111,6 @@ export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjec
   const [voiceId, setVoiceId] = useState<string>("kokoro-am_adam");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
-  if (!isOpen) return null;
 
   const wordCount = script.trim().split(/\s+/).filter(Boolean).length;
   const estimatedSeconds = Math.round((wordCount / 145) * 60);
@@ -115,222 +172,175 @@ export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjec
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create and compile project.");
+      if (!res.ok)
+        throw new Error(data.error || "Failed to create and compile project.");
 
       onProjectCreated(data.film, data.script);
       onClose();
-    } catch (err: any) {
-      setError(err.message || String(err));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const activeTheme = THEMES.find((t) => t.id === themeId) ?? THEMES[0];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 font-sans">
-      <div className="bg-[#0F1015] border border-[#262733] w-full max-w-2xl rounded-2xl p-6 shadow-2xl flex flex-col gap-5 text-[#F5F5F5] max-h-[90vh] overflow-y-auto">
-        
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-[#20222D] pb-3.5">
-          <div className="flex items-center gap-3">
-            <FilmIcon size={20} className="text-[#635BFF]" />
-            <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">Script Intake</h3>
-              <p className="text-xs text-[#8A8A8E]">Compile an animated explainer video from script or outline</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-[#20222D] transition-all"
-          >
-            <X size={16} />
-          </button>
-        </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      dismissible={!isSubmitting}
+      title="New project"
+      subtitle="Start from a script, or start empty and build it up."
+      icon={<Plus className="h-5 w-5" />}
+      width="max-w-3xl"
+      footer={
+        <>
+          <Button size="md" onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button size="md" tone="primary" disabled={isSubmitting || !title.trim()} onClick={handleCreate}>
+            {isSubmitting ? <Spinner /> : <Sparkles className="h-4 w-4" />}
+            {isSubmitting
+              ? "Compiling"
+              : tab === "intake" && script.trim()
+                ? "Create and compile"
+                : "Create project"}
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={handleCreate} className="flex flex-col gap-4">
+        <SegmentedTabs
+          ariaLabel="How to start"
+          value={tab}
+          onChange={setTab}
+          items={[
+            { value: "intake", label: "From a script", icon: <FileText className="h-3.5 w-3.5" /> },
+            { value: "blank", label: "Empty project", icon: <Plus className="h-3.5 w-3.5" /> },
+          ]}
+        />
 
-        {/* Tab Selection */}
-        <div className="flex items-center bg-[#15161E] p-1 rounded-xl border border-[#262733]">
-          <button
-            type="button"
-            onClick={() => setTab("intake")}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-              tab === "intake"
-                ? "bg-[#635BFF] text-white shadow-lg shadow-[#635BFF]/30"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            <Bot size={14} />
-            <span>Script Intake</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("blank")}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-              tab === "blank"
-                ? "bg-[#635BFF] text-white shadow-lg shadow-[#635BFF]/30"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            <FileText size={14} />
-            <span>Blank Project</span>
-          </button>
-        </div>
+        {error ? (
+          <Note tone="danger" icon={<AlertTriangle className="h-3.5 w-3.5" />}>
+            {error}
+          </Note>
+        ) : null}
 
-        {/* Error message */}
-        {error && (
-          <div className="p-3 bg-red-950/50 border border-red-800/80 rounded-xl text-xs text-red-300 flex items-center gap-2">
-            <AlertTriangle size={14} />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleCreate} className="flex flex-col gap-4">
-          
-          {/* Project Title Input */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-300 font-bold uppercase tracking-wider flex items-center justify-between">
-              <span>Video Title <span className="text-red-400">*</span></span>
-              {slug && <span className="text-[11px] font-mono text-[#8A8A8E]">slug: {slug}</span>}
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Why Liquid Water Cannot Exist on Mars"
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Project title" htmlFor="np-title" hint="Shown in the switcher and burned into the film.">
+            <Input
+              id="np-title"
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
-              className="bg-[#15161E] border border-[#2B2D3C] rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-[#635BFF] placeholder:text-gray-600 font-medium transition-all"
+              placeholder="Why attention scales"
               autoFocus
             />
-          </div>
+          </Field>
+          <Field label="Identifier" htmlFor="np-slug" hint="Lowercase letters, digits and dashes. Used for file paths.">
+            <Input
+              id="np-slug"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="why-attention-scales"
+            />
+          </Field>
+        </div>
 
-          {/* Script Paste Input */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs text-gray-300 font-bold uppercase tracking-wider">
-                {tab === "intake" ? "Voiceover Script / Narration" : "Initial Notes"}
-              </label>
-              {tab === "intake" && wordCount > 0 && (
-                <span className="text-[11px] text-emerald-400 font-mono">
-                  {wordCount} words · ~{estimatedTimeFormatted} runtime
-                </span>
-              )}
-            </div>
-            <textarea
-              rows={tab === "intake" ? 6 : 3}
-              placeholder={
-                tab === "intake"
-                  ? "Paste your narration script, screenplay or talking points here...\n\nExample:\nMars was once a warm wet world with deep oceans, but today pure liquid water cannot exist on its surface.\n\nThe primary culprit is the Martian atmosphere, which is less than 1% as dense as Earth's.\n\nBecause atmospheric pressure sits below the thermodynamic triple point of water, ice sublimates directly into vapor."
-                  : "Write initial ideas or bullet points for your new project."
-              }
+        {tab === "intake" ? (
+          <Field
+            label="Script"
+            htmlFor="np-script"
+            aside={`${wordCount} words, about ${estimatedTimeFormatted}`}
+            hint="Paste a screenplay or plain narration. Aideos compiles scenes, canvas nodes and shot timings from it."
+          >
+            <Textarea
+              id="np-script"
               value={script}
               onChange={(e) => setScript(e.target.value)}
-              className="bg-[#15161E] border border-[#2B2D3C] rounded-xl p-3.5 text-xs text-white outline-none focus:border-[#635BFF] placeholder:text-gray-600 resize-none font-mono leading-relaxed transition-all"
+              rows={9}
+              placeholder="## 0:00 - The hook&#10;[NARRATION] Ask an image model to change one thing..."
+              spellCheck={false}
             />
+          </Field>
+        ) : (
+          <Note tone="quiet" icon={<FileText className="h-3.5 w-3.5" />}>
+            An empty project starts with one placeholder shot. Write the script in the Script stage afterwards.
+          </Note>
+        )}
+
+        <div>
+          <p className="mb-1.5 font-sans text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-soft">
+            Narrator archetype
+          </p>
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+            {ARCHETYPES.map((a) => (
+              <Card
+                key={a.id}
+                interactive
+                selected={characterId === a.id}
+                onClick={() => setCharacterId(a.id)}
+                className="flex flex-col gap-0.5 p-2"
+              >
+                <span className="flex items-center gap-1 font-sans text-[11px] font-extrabold">
+                  <Bot className="h-3 w-3 shrink-0" />
+                  {a.name}
+                </span>
+                <span className={cn("font-sans text-[9px] leading-snug", characterId === a.id ? "opacity-90" : "text-ink-mute")}>
+                  {a.domain}
+                </span>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <p className="mb-1.5 font-sans text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-soft">
+              Theme
+            </p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {THEMES.map((t) => (
+                <Card
+                  key={t.id}
+                  interactive
+                  selected={themeId === t.id}
+                  onClick={() => setThemeId(t.id)}
+                  className="flex items-center gap-2 p-2"
+                >
+                  <span
+                    className="h-5 w-5 shrink-0 border-2 border-ink"
+                    style={{ backgroundColor: t.accent }}
+                    aria-hidden
+                  />
+                  <span className="truncate font-sans text-[11px] font-extrabold">{t.name}</span>
+                </Card>
+              ))}
+            </div>
           </div>
 
-          {/* Customization Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            
-            {/* Character Archetype */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-gray-300 font-bold uppercase tracking-wider">
-                Presenter Archetype
-              </label>
-              <select
-                value={characterId}
-                onChange={(e) => setCharacterId(e.target.value)}
-                className="bg-[#15161E] border border-[#2B2D3C] rounded-xl px-3.5 py-2 text-xs text-white outline-none focus:border-[#635BFF] font-medium"
-              >
-                {ARCHETYPES.map((arch) => (
-                  <option key={arch.id} value={arch.id}>
-                    {arch.name} ({arch.domain})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Neural Voice */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-gray-300 font-bold uppercase tracking-wider">
-                Voiceover Voice
-              </label>
-              <select
-                value={voiceId}
-                onChange={(e) => setVoiceId(e.target.value)}
-                className="bg-[#15161E] border border-[#2B2D3C] rounded-xl px-3.5 py-2 text-xs text-white outline-none focus:border-[#635BFF] font-medium"
-              >
+          <div className="flex flex-col gap-3">
+            <Field label="Narration voice" htmlFor="np-voice">
+              <Select id="np-voice" value={voiceId} onChange={(e) => setVoiceId(e.target.value)}>
                 {VOICES.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name}
                   </option>
                 ))}
-              </select>
-            </div>
-
-            {/* Visual Theme */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-gray-300 font-bold uppercase tracking-wider">
-                Visual Theme
-              </label>
-              <select
-                value={themeId}
-                onChange={(e) => setThemeId(e.target.value)}
-                className="bg-[#15161E] border border-[#2B2D3C] rounded-xl px-3.5 py-2 text-xs text-white outline-none focus:border-[#635BFF] font-medium"
-              >
-                {THEMES.map((th) => (
-                  <option key={th.id} value={th.id}>
-                    {th.name} ({th.accent})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Identifier Preview */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-gray-300 font-bold uppercase tracking-wider">
-                Project File Slug
-              </label>
-              <input
-                type="text"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                placeholder="project-slug"
-                className="bg-[#15161E] border border-[#2B2D3C] rounded-xl px-3.5 py-2 text-xs text-white font-mono outline-none focus:border-[#635BFF]"
-              />
+              </Select>
+            </Field>
+            <div className="border-2 border-ink bg-paper-3 p-2.5">
+              <Stat label="Words" value={wordCount} />
+              <Stat label="Estimated run time" value={estimatedTimeFormatted} tone="select" />
+              <Stat label="Accent" value={activeTheme.accent} />
+              <div className="mt-1.5">
+                <Badge tone="quiet">{tab === "intake" ? "Compiles scenes on create" : "Starts empty"}</Badge>
+              </div>
             </div>
           </div>
-
-          {/* Modal Footer Controls */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#20222D]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-xs px-4 py-2 rounded-xl text-gray-400 hover:text-white hover:bg-[#1A1A22] font-semibold transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || !title.trim()}
-              className="text-xs px-5 py-2.5 rounded-xl bg-[#635BFF] hover:bg-[#5249e6] active:scale-95 text-white font-bold transition-all shadow-lg shadow-[#635BFF]/30 disabled:opacity-50 flex items-center gap-2"
-            >
-              {isSubmitting ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : tab === "intake" ? (
-                <Sparkles size={14} />
-              ) : (
-                <Plus size={14} />
-              )}
-              <span>
-                {isSubmitting
-                  ? "Compiling Film..."
-                  : tab === "intake"
-                  ? "Compile Film"
-                  : "Create Project"}
-              </span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        </div>
+      </form>
+    </Modal>
   );
 }

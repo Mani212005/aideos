@@ -1,360 +1,293 @@
 /**
- * File Description: Dedicated Clip Inspector & Numeric Precision Panel (Phase T-F).
- * Provides frame-accurate and sub-second numeric editing for clip position,
- * in/out points, duration, layer, transition, camera zoom, and visual properties.
+ * File Description: Timeline clip inspector for Aideos Studio.
+ * Shows exactly what a selected clip is and lets the user set its numbers precisely rather than by
+ * dragging: timeline position, source in and out points, derived duration, volume, and the lane it
+ * lives on. Every change goes through the same layer-engine operations the drag gestures use, so
+ * typing a number and dragging a handle produce identical, equally undoable results.
  */
 
-import React from "react";
-import type { Film, Shot } from "../../../src/dl/schema";
-import { getShotDuration } from "../../../backend/timeline/timeline";
-import type { TransitionType } from "../transitions";
-import { Sliders, Camera, Sparkles, Mic, X, Clock } from "lucide-react";
+import { Link2, Scissors, Trash2, Unlink } from "lucide-react";
+import type { Clip } from "../../../src/dl/layeredSchema";
+import type {
+  AnimationPayload,
+  AudioPayload,
+  SubtitlePayload,
+  TextPayload,
+  VideoPayload,
+} from "../../../src/dl/layeredSchema";
+import {
+  clipDuration,
+  clipEndSec,
+} from "../../../backend/timeline/layer_engine";
+import type { LayeredTimelineApi } from "../state/useLayeredTimeline";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Field,
+  NumberStepper,
+  Panel,
+  PanelBody,
+  PanelHeader,
+  Range,
+  Select,
+  Stat,
+} from "./ui";
 
-interface ClipInspectorProps {
-  film: Film;
-  selectedShotId: string | null;
-  onUpdateShot: (shotIndex: number, updatedShot: Partial<Shot>, label: string) => void;
+const KIND_TONE = {
+  animation: "select",
+  video: "info",
+  audio: "success",
+  text: "warn",
+  subtitle: "primary",
+  image: "quiet",
+} as const;
+
+export interface ClipInspectorProps {
+  api: LayeredTimelineApi;
+  clipId: string;
+  fps: number;
+  onSeekFrame: (frame: number) => void;
   onClose: () => void;
 }
 
-export const ClipInspector: React.FC<ClipInspectorProps> = ({
-  film,
-  selectedShotId,
-  onUpdateShot,
+/** Human summary of what a clip actually contains. */
+function describeClip(clip: Clip): string {
+  switch (clip.kind) {
+    case "animation":
+      return (
+        (clip.payload as AnimationPayload).scriptText ||
+        (clip.payload as AnimationPayload).shotId
+      );
+    case "audio":
+      return (clip.payload as AudioPayload).src;
+    case "video":
+      return (clip.payload as VideoPayload).src;
+    case "text":
+      return (clip.payload as TextPayload).text;
+    case "subtitle":
+      return (clip.payload as SubtitlePayload).text;
+    default:
+      return clip.id;
+  }
+}
+
+/** Precise numeric editor for one timeline clip. */
+export function ClipInspector({
+  api,
+  clipId,
+  fps,
+  onSeekFrame,
   onClose,
-}) => {
-  if (!selectedShotId) return null;
+}: ClipInspectorProps) {
+  const clip = api.layered.clips.find((c) => c.id === clipId);
 
-  const shotIndex = film.shots.findIndex((s) => s.id === selectedShotId);
-  if (shotIndex === -1) return null;
+  if (!clip) {
+    return (
+      <EmptyState
+        title="That clip is gone"
+        description="It was deleted, split or merged. Pick another clip on the timeline."
+        action={
+          <Button size="sm" onClick={onClose}>
+            Clear selection
+          </Button>
+        }
+      />
+    );
+  }
 
-  const shot = film.shots[shotIndex];
-  const fps = film.fps || 30;
-  const dur = getShotDuration(shot);
-  const pos = shot.position ?? shot.startSec ?? 0;
-  const startIn = shot.start ?? shot.inSec ?? 0;
-  const endOut = shot.end ?? (startIn + dur);
-
-  const transitionTypes: TransitionType[] = [
-    "paper-rip",
-    "zoom-morph",
-    "matrix-glitch",
-    "whip-pan",
-    "film-burn",
-  ];
+  const lane = api.layered.layers.find((l) => l.id === clip.layerId);
+  const duration = clipDuration(clip);
+  const partner = clip.linkedClipId
+    ? api.layered.clips.find((c) => c.id === clip.linkedClipId)
+    : undefined;
+  const locked = Boolean(lane?.locked);
+  const isSubtitle = clip.kind === "subtitle";
+  const readOnly = locked || isSubtitle;
 
   return (
-    <div className="w-80 bg-[#121214] border-l border-[#27272A] p-4 flex flex-col gap-4 overflow-y-auto text-xs select-none">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-[#27272A]">
-        <div className="flex items-center gap-2">
-          <Sliders size={14} className="text-yellow-400" />
-          <span className="font-bold text-yellow-400 uppercase tracking-wider">Clip Inspector</span>
-          <span className="text-[10px] font-mono bg-black/60 px-1.5 py-0.5 rounded text-gray-400">
-            Shot {shotIndex + 1}
-          </span>
-        </div>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-white p-1 rounded"
-          title="Close Inspector"
-        >
-          <X size={14} />
-        </button>
-      </div>
-
-      {/* Clip Identity */}
-      <div className="flex flex-col gap-1">
-        <label className="text-[10px] font-mono text-gray-400 uppercase font-bold">Clip ID</label>
-        <input
-          type="text"
-          value={shot.id}
-          onChange={(e) => {
-            const clean = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
-            onUpdateShot(shotIndex, { id: clean }, `Rename shot to ${clean}`);
-          }}
-          className="bg-[#18181B] border border-[#333] rounded px-2 py-1 text-xs text-white font-mono focus:border-yellow-400 outline-none"
+    <div className="flex flex-col gap-3 p-2">
+      <Panel tone="flat" className="border-2">
+        <PanelHeader
+          title={clip.kind}
+          actions={
+            <Badge tone={KIND_TONE[clip.kind]}>{duration.toFixed(2)}s</Badge>
+          }
         />
-      </div>
-
-      {/* Numeric Timeline Timing (Position, In, Out, Duration) */}
-      <div className="flex flex-col gap-2.5 bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
-        <span className="text-[10px] font-mono text-yellow-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-          <Clock className="w-3 h-3" /> Timing
-        </span>
-
-        {/* Position */}
-        <div className="flex items-center justify-between gap-2">
-          <label className="text-[11px] text-gray-300">Position (Start)</label>
-          <div className="flex items-center gap-1">
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={Number(pos.toFixed(2))}
-              onChange={(e) => {
-                const val = Math.max(0, parseFloat(e.target.value) || 0);
-                onUpdateShot(shotIndex, { position: val, startSec: val }, `Set ${shot.id} position to ${val}s`);
-              }}
-              className="w-20 bg-black/60 border border-[#333] rounded px-1.5 py-1 text-right font-mono text-xs text-yellow-300"
-            />
-            <span className="text-[10px] text-gray-500 font-mono">s ({Math.round(pos * fps)}f)</span>
-          </div>
-        </div>
-
-        {/* Duration */}
-        <div className="flex items-center justify-between gap-2">
-          <label className="text-[11px] text-gray-300">Duration</label>
-          <div className="flex items-center gap-1">
-            <input
-              type="number"
-              step="0.01"
-              min="0.5"
-              max="90"
-              value={Number(dur.toFixed(2))}
-              onChange={(e) => {
-                const val = Math.max(0.5, Math.min(90, parseFloat(e.target.value) || 0.5));
-                onUpdateShot(
-                  shotIndex,
-                  { dur: val, end: startIn + val },
-                  `Set ${shot.id} duration to ${val}s`
-                );
-              }}
-              className="w-20 bg-black/60 border border-[#333] rounded px-1.5 py-1 text-right font-mono text-xs text-yellow-300"
-            />
-            <span className="text-[10px] text-gray-500 font-mono">s ({Math.round(dur * fps)}f)</span>
-          </div>
-        </div>
-
-        {/* Source In-Point */}
-        <div className="flex items-center justify-between gap-2">
-          <label className="text-[11px] text-gray-300">Source In</label>
-          <div className="flex items-center gap-1">
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={Number(startIn.toFixed(2))}
-              onChange={(e) => {
-                const val = Math.max(0, parseFloat(e.target.value) || 0);
-                onUpdateShot(shotIndex, { start: val, inSec: val }, `Set ${shot.id} source in to ${val}s`);
-              }}
-              className="w-20 bg-black/60 border border-[#333] rounded px-1.5 py-1 text-right font-mono text-xs text-gray-200"
-            />
-            <span className="text-[10px] text-gray-500 font-mono">s</span>
-          </div>
-        </div>
-
-        {/* Source Out-Point */}
-        <div className="flex items-center justify-between gap-2">
-          <label className="text-[11px] text-gray-300">Source Out</label>
-          <div className="flex items-center gap-1">
-            <input
-              type="number"
-              step="0.01"
-              min="0.5"
-              value={Number(endOut.toFixed(2))}
-              onChange={(e) => {
-                const val = Math.max(startIn + 0.5, parseFloat(e.target.value) || startIn + 0.5);
-                onUpdateShot(
-                  shotIndex,
-                  { end: val, dur: val - startIn },
-                  `Set ${shot.id} source out to ${val}s`
-                );
-              }}
-              className="w-20 bg-black/60 border border-[#333] rounded px-1.5 py-1 text-right font-mono text-xs text-gray-200"
-            />
-            <span className="text-[10px] text-gray-500 font-mono">s</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Transition & Camera Framing */}
-      <div className="flex flex-col gap-2.5 bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
-        <div className="flex items-center gap-1.5 text-[10px] font-mono text-yellow-400 font-bold uppercase tracking-wider">
-          <Camera size={13} />
-          <span>Transition & Camera</span>
-        </div>
-
-        {/* Transition Selector */}
-        <div className="flex items-center justify-between gap-2">
-          <label className="text-[11px] text-gray-300">Transition</label>
-          <select
-            value={shot.transition || "paper-rip"}
-            onChange={(e) => {
-              const trans = e.target.value as TransitionType;
-              onUpdateShot(shotIndex, { transition: trans }, `Set transition to ${trans}`);
-            }}
-            className="bg-black/60 border border-[#333] rounded px-2 py-1 text-xs text-white font-mono outline-none"
+        <PanelBody scroll={false} className="flex flex-col gap-2 p-2">
+          <p
+            className="nb-clamp-2 font-mono text-[10px] leading-snug text-ink-soft"
+            title={describeClip(clip)}
           >
-            {transitionTypes.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Camera Zoom */}
-        <div className="flex items-center justify-between gap-2">
-          <label className="text-[11px] text-gray-300">Camera Zoom</label>
-          <div className="flex items-center gap-2">
-            <input
-              type="range"
-              min="0.5"
-              max="2.5"
-              step="0.05"
-              value={shot.zoom ?? 1}
-              onChange={(e) => {
-                const z = parseFloat(e.target.value);
-                onUpdateShot(shotIndex, { zoom: z }, `Set camera zoom to ${z}x`);
-              }}
-              className="w-20 accent-yellow-400 cursor-pointer"
-            />
-            <span className="text-[10px] font-mono text-gray-300 w-8 text-right">
-              {(shot.zoom ?? 1).toFixed(2)}x
-            </span>
-          </div>
-        </div>
-
-        {/* Camera Drift Toggle */}
-        <div className="flex items-center justify-between">
-          <label className="text-[11px] text-gray-300">Cinematic Drift</label>
-          <input
-            type="checkbox"
-            checked={shot.drift ?? false}
-            onChange={(e) => {
-              onUpdateShot(shotIndex, { drift: e.target.checked }, `Toggle drift for ${shot.id}`);
-            }}
-            className="accent-yellow-400 cursor-pointer"
+            {describeClip(clip)}
+          </p>
+          <Stat label="Clip id" value={clip.id} />
+          <Stat label="Starts" value={`${clip.position.toFixed(2)}s`} />
+          <Stat label="Ends" value={`${clipEndSec(clip).toFixed(2)}s`} />
+          <Stat
+            label="Frames"
+            value={`${Math.round(clip.position * fps)} to ${Math.round(clipEndSec(clip) * fps)}`}
           />
-        </div>
-      </div>
+          {partner ? (
+            <div className="mt-1 flex items-center gap-1.5 border-2 border-ink bg-primary px-2 py-1 shadow-nb-sm">
+              <Link2 className="h-3 w-3" />
+              <span className="truncate font-mono text-[10px] font-bold">
+                Linked to {partner.id}
+              </span>
+            </div>
+          ) : null}
+          {readOnly ? (
+            <p className="border-2 border-ink bg-sunken px-2 py-1 font-sans text-[10px] leading-snug text-ink-soft shadow-nb-sm">
+              {locked
+                ? `Lane "${lane?.label}" is locked. Unlock it in the timeline to edit this clip.`
+                : "Subtitle cues are generated from the caption track. Edit their timing in the Captions stage."}
+            </p>
+          ) : null}
+        </PanelBody>
+      </Panel>
 
-      {/* Visual Device / Metaphor Selector */}
-      <div className="flex flex-col gap-2.5 bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider">
-            <Sparkles size={13} />
-            <span>Visual Metaphor</span>
-          </div>
-          {shot.metaphor ? (
-            <span className="text-[9px] bg-purple-950/80 border border-purple-500/50 text-purple-300 px-1.5 py-0.5 rounded font-mono">
-              Active
-            </span>
-          ) : (
-            <span className="text-[9px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded font-mono">
-              Character Scene
-            </span>
-          )}
-        </div>
+      <Panel tone="flat" className="border-2">
+        <PanelHeader title="Timing" />
+        <PanelBody scroll={false} className="flex flex-col gap-2.5 p-2">
+          <Field label="Position" aside="seconds on the timeline">
+            <NumberStepper
+              value={clip.position}
+              min={0}
+              step={1 / fps}
+              precision={3}
+              unit="s"
+              disabled={readOnly}
+              onChange={(next) => api.moveClip(clip.id, next)}
+              title="Where this clip starts on the timeline"
+            />
+          </Field>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] text-gray-300">Metaphor Overlay</label>
-          <select
-            value={shot.metaphor || "none"}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "none") {
-                // Remove metaphor and filter out MetaphorViewer blocks to restore pure character/text scene
-                const cleanBlocks = shot.blocks.filter((b) => b.c !== "MetaphorViewer");
-                onUpdateShot(
-                  shotIndex,
-                  { metaphor: undefined, blocks: cleanBlocks },
-                  `Remove visual device from ${shot.id}`
-                );
-              } else {
-                // Add or update MetaphorViewer block while PRESERVING character and text blocks
-                const otherBlocks = shot.blocks.filter((b) => b.c !== "MetaphorViewer");
-                const newMetaphorBlock = {
-                  c: "MetaphorViewer",
-                  metaphorType: val,
-                  content: {
-                    kind: val,
-                    title: shot.blocks.find((b) => b.c === "TextReveal")?.text || "Latent Architecture",
-                    subtitle: "Predictive Representation",
-                    caption: shot.scriptText || "System Architecture",
-                  },
-                };
-                onUpdateShot(
-                  shotIndex,
-                  { metaphor: val as any, blocks: [...otherBlocks, newMetaphorBlock as any] },
-                  `Set visual device to ${val} for ${shot.id}`
-                );
+          <Field label="In point" aside="into the source">
+            <NumberStepper
+              value={clip.start}
+              min={0}
+              step={1 / fps}
+              precision={3}
+              unit="s"
+              disabled={readOnly}
+              onChange={(next) =>
+                api.trimClip(clip.id, "left", next - clip.start)
               }
-            }}
-            className="bg-black/60 border border-[#333] rounded px-2 py-1.5 text-xs text-white font-mono outline-none focus:border-purple-400"
-          >
-            <option value="none">None (Character & Typography)</option>
-            <option value="glowing-cluster">Latent Neural Space & Embeddings</option>
-            <option value="balance-scale">Equilibrium Balance Scale</option>
-            <option value="clock-gears">Latency & Throughput Gears</option>
-            <option value="liquid-bucket">Dynamic Buffer Reservoir</option>
-            <option value="typing-cursor-quote">Terminal Code / Quote Statement</option>
-            <option value="rocket-launch">Scalability & Deployment Rocket</option>
-          </select>
-        </div>
-      </div>
+              title="Where playback starts inside the source material"
+            />
+          </Field>
 
-      {/* Screenplay Narration & Speaker Speed */}
-      <div className="flex flex-col gap-2.5 bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-[10px] font-mono text-yellow-400 font-bold uppercase tracking-wider">
-            <Mic size={13} />
-            <span>Narration & Speed</span>
-          </div>
-          <span className="text-[10px] font-mono bg-yellow-950/80 text-yellow-400 px-1.5 py-0.5 rounded border border-yellow-500/40 font-bold">
-            {(shot.speed ?? 1.0).toFixed(2)}x
-          </span>
-        </div>
+          <Field label="Out point" aside="into the source">
+            <NumberStepper
+              value={clip.end}
+              min={0}
+              step={1 / fps}
+              precision={3}
+              unit="s"
+              disabled={readOnly}
+              onChange={(next) =>
+                api.trimClip(clip.id, "right", next - clip.end)
+              }
+              title="Where playback stops inside the source material"
+            />
+          </Field>
 
-        {/* Speaker Speed Control Slider */}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between text-[11px] text-gray-300">
-            <span>Playback Speed</span>
-            <span className="font-mono text-yellow-300 font-bold">{(shot.speed ?? 1.0).toFixed(2)}x</span>
-          </div>
-          <input
-            type="range"
-            min="0.5"
-            max="2.0"
-            step="0.05"
-            value={shot.speed ?? 1.0}
-            onChange={(e) => {
-              const spd = parseFloat(e.target.value) || 1.0;
-              onUpdateShot(shotIndex, { speed: spd }, `Set speaker speed to ${spd}x`);
-            }}
-            className="w-full accent-yellow-400 cursor-pointer"
+          <Stat
+            label="Duration"
+            value={`${duration.toFixed(3)}s`}
+            tone="select"
           />
-          {/* Quick Speed Preset Buttons */}
-          <div className="flex items-center justify-between gap-1 mt-0.5">
-            {[0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => onUpdateShot(shotIndex, { speed: preset }, `Set speaker speed to ${preset}x`)}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors ${
-                  Math.abs((shot.speed ?? 1.0) - preset) < 0.01
-                    ? "bg-yellow-400 text-black font-bold"
-                    : "bg-[#27272A] text-gray-400 hover:text-white"
-                }`}
-              >
-                {preset}x
-              </button>
-            ))}
-          </div>
-        </div>
+        </PanelBody>
+      </Panel>
 
-        <textarea
-          rows={3}
-          value={shot.scriptText || ""}
-          onChange={(e) => {
-            onUpdateShot(shotIndex, { scriptText: e.target.value }, `Edit ${shot.id} script text`);
+      {clip.kind === "audio" || clip.kind === "video" ? (
+        <Panel tone="flat" className="border-2">
+          <PanelHeader title="Level" />
+          <PanelBody scroll={false} className="flex flex-col gap-1.5 p-2">
+            <Field
+              label="Volume"
+              aside={`${Math.round((clip.volume ?? 1) * 100)}%`}
+            >
+              <Range
+                min={0}
+                max={1}
+                step={0.05}
+                value={clip.volume ?? 1}
+                disabled={locked}
+                onChange={(e) =>
+                  api.setClipVolume(clip.id, Number(e.target.value))
+                }
+                aria-label="Clip volume"
+              />
+            </Field>
+          </PanelBody>
+        </Panel>
+      ) : null}
+
+      <Panel tone="flat" className="border-2">
+        <PanelHeader title="Lane" />
+        <PanelBody scroll={false} className="flex flex-col gap-2 p-2">
+          <Field label="On lane" htmlFor="clip-lane">
+            <Select
+              id="clip-lane"
+              value={clip.layerId}
+              disabled={readOnly}
+              onChange={(e) =>
+                api.moveClip(clip.id, clip.position, e.target.value)
+              }
+            >
+              {api.lanes.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </PanelBody>
+      </Panel>
+
+      <div className="flex flex-col gap-1.5">
+        <Button
+          size="sm"
+          block
+          onClick={() => onSeekFrame(Math.round(clip.position * fps))}
+        >
+          Move playhead to this clip
+        </Button>
+        <Button
+          size="sm"
+          block
+          disabled={readOnly}
+          onClick={() => api.splitClip(clip.id, clip.position + duration / 2)}
+          title="Cut this clip in half"
+        >
+          <Scissors className="h-3.5 w-3.5" />
+          Split in half
+        </Button>
+        {partner ? (
+          <Button
+            size="sm"
+            block
+            disabled={locked}
+            onClick={() => api.unlinkClip(clip.id)}
+          >
+            <Unlink className="h-3.5 w-3.5" />
+            Unlink pair
+          </Button>
+        ) : null}
+        <Button
+          size="sm"
+          block
+          tone="danger"
+          disabled={readOnly}
+          onClick={() => {
+            if (api.removeClip(clip.id)) onClose();
           }}
-          placeholder="Spoken narration for this shot..."
-          className="w-full bg-black/60 border border-[#333] rounded p-2 text-xs text-gray-200 outline-none resize-none focus:border-yellow-400 font-sans leading-relaxed mt-1"
-        />
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Delete clip
+        </Button>
       </div>
     </div>
   );
-};
+}

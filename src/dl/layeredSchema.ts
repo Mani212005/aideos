@@ -119,6 +119,12 @@ export const clipSchema = z.object({
   start: z.number().min(0).default(0),
   /** Source range out-point within source material (seconds) */
   end: z.number().min(0),
+  /**
+   * Total length of the underlying source material in seconds, when it is known.
+   * Trims clamp against it so a clip can never reference media that does not exist.
+   * Synthetic clips (animation, text, subtitle) leave this undefined and trim freely.
+   */
+  sourceDuration: z.number().positive().optional(),
 
   kind: clipKindSchema,
   payload: z.union([

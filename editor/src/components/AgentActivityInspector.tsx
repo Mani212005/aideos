@@ -28,7 +28,8 @@ export const AgentActivityInspector: React.FC = () => {
       id: "step-1",
       phase: "grounding",
       title: "1. Factual Research & Grounding (Parallel Search)",
-      description: "Queried live web corpora via parallel-web SDK; extracted 4 verified architectural citations.",
+      description:
+        "Queried live web corpora via parallel-web SDK; extracted 4 verified architectural citations.",
       timestamp: "10:48:02 AM",
       status: "done",
       details: [
@@ -41,7 +42,8 @@ export const AgentActivityInspector: React.FC = () => {
       id: "step-2",
       phase: "synthesis",
       title: "2. Neural Speech & Phonetic Alignment (Google TTS)",
-      description: "Synthesized 6 shot segments via Google Cloud Neural Voice with phrase-locked VTT timing spine.",
+      description:
+        "Synthesized 6 shot segments via Google Cloud Neural Voice with phrase-locked VTT timing spine.",
       timestamp: "10:48:06 AM",
       status: "done",
       details: [
@@ -54,7 +56,8 @@ export const AgentActivityInspector: React.FC = () => {
       id: "step-3",
       phase: "authoring",
       title: "3. Spatial Canvas & Vector Metaphors",
-      description: "Constructed relationship-aware node coordinates and bound typed MetaphorContent vector devices.",
+      description:
+        "Constructed relationship-aware node coordinates and bound typed MetaphorContent vector devices.",
       timestamp: "10:48:11 AM",
       status: "done",
       details: [
@@ -67,7 +70,8 @@ export const AgentActivityInspector: React.FC = () => {
       id: "step-4",
       phase: "validation",
       title: "4. 19-Rule Invariant Gate & Self-Correction Loop",
-      description: "Verified kinematic continuity (C1 Hermite splines) and spatial bounds with zero rule violations.",
+      description:
+        "Verified kinematic continuity (C1 Hermite splines) and spatial bounds with zero rule violations.",
       timestamp: "10:48:14 AM",
       status: "done",
       details: [
@@ -82,28 +86,28 @@ export const AgentActivityInspector: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="text-[11px] font-mono px-2.5 py-1 rounded bg-[#18181B] hover:bg-[#27272A] border border-[#3F3F46] text-cyan-300 font-bold flex items-center gap-1.5 shadow transition-all"
+        className="text-[11px] font-mono px-2.5 py-1 bg-paper-3 hover:bg-sunken border-2 border-ink text-ink font-bold flex items-center gap-1.5 shadow transition-all shadow-nb-sm hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
         title="Open Agent Activity & Tool Execution Trace"
       >
-        <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+        <span className="w-2 h-2 bg-info animate-pulse" />
         <Bot size={12} />
         <span>Agent Trace</span>
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-9 w-[440px] max-h-[520px] bg-[#121214] border border-cyan-500/40 rounded-xl shadow-2xl z-50 flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute right-0 top-9 w-[440px] max-h-[520px] bg-paper-3 border-2 border-ink/40 shadow-nb-sm z-50 flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
           {/* Panel Header */}
-          <div className="p-3 bg-[#18181B] border-b border-[#27272A] flex items-center justify-between">
+          <div className="p-3 bg-paper-3 border-b-2 border-ink flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bot size={14} className="text-cyan-400" />
-              <span className="text-xs font-bold text-cyan-400">AGENT ACTIVITY</span>
-              <span className="text-[9px] font-mono bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 px-1.5 py-0.5 rounded">
+              <Bot size={14} className="text-ink" />
+              <span className="text-xs font-bold text-ink">AGENT ACTIVITY</span>
+              <span className="text-[9px] font-mono bg-info/25 border-2 border-ink/50 text-ink px-1.5 py-0.5  shadow-nb-sm">
                 Live Trace
               </span>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-gray-400 hover:text-white text-xs p-1"
+              className="text-ink-soft hover:text-ink text-xs p-1"
             >
               <X size={12} />
             </button>
@@ -114,30 +118,32 @@ export const AgentActivityInspector: React.FC = () => {
             {defaultSteps.map((step) => (
               <div
                 key={step.id}
-                className="bg-[#18181B] border border-[#27272A] rounded-lg p-2.5 flex flex-col gap-1.5 shadow-sm"
+                className="bg-paper-3 border-2 border-ink p-2.5 flex flex-col gap-1.5 shadow-nb-sm"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-[11px]">{step.title}</span>
-                  <span className="text-[9px] text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                  <span className="font-bold text-ink text-[11px]">
+                    {step.title}
+                  </span>
+                  <span className="text-[9px] text-ink bg-success/25 border-2 border-ink/40 px-1.5 py-0.5 font-bold flex items-center gap-1 shadow-nb-sm">
                     <Check size={10} /> {step.status.toUpperCase()}
                   </span>
                 </div>
 
-                <p className="text-[10px] text-gray-300 font-sans leading-relaxed">
+                <p className="text-[10px] text-ink font-sans leading-relaxed">
                   {step.description}
                 </p>
 
                 {step.details && (
-                  <div className="bg-black/60 rounded p-2 text-[9px] text-gray-400 font-mono flex flex-col gap-1 border border-white/5">
+                  <div className="bg-sunken p-2 text-[9px] text-ink-soft font-mono flex flex-col gap-1 border-2 border-ink shadow-nb-sm">
                     {step.details.map((d, i) => (
-                      <div key={i} className="text-gray-300">
+                      <div key={i} className="text-ink">
                         {d}
                       </div>
                     ))}
                   </div>
                 )}
 
-                <div className="text-[9px] text-gray-500 text-right">
+                <div className="text-[9px] text-ink-soft text-right">
                   {step.timestamp}
                 </div>
               </div>

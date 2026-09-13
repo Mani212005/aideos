@@ -1,0 +1,95 @@
+/**
+ * File Description: Neobrutalism design tokens for the Aideos editor chrome.
+ * Single source of truth for colour, border weight, hard-shadow offset, motion and typography
+ * used by every editor panel, toolbar, lane, modal and control. The editor is a light
+ * application end to end: the only dark surface in the product is --nb-matte, the small matte
+ * drawn directly behind the video frame so footage exposure is judged correctly. Contrast pairs
+ * are documented inline and are all WCAG AA or better. This file styles the editor only; the
+ * rendered video design language lives in src/dl/README.md and is deliberately untouched.
+ */
+
+:root {
+  /* --- Paper: the chrome ------------------------------------------------
+     Warm bone slabs carry the whole application. Every slab is outlined in
+     ink and dropped with a hard, blur-free shadow. */
+  --nb-paper: #ede9de; /* app canvas */
+  --nb-paper-2: #f7f4ec; /* raised panel / card */
+  --nb-paper-3: #ffffff; /* inputs, highest surface */
+
+  /* --- Sunken: dense working surfaces -----------------------------------
+     Timeline canvas, lane gutters, code and script grounds. Recessed by
+     being darker paper, never by going dark. */
+  --nb-sunken: #dfd9c9; /* working canvas (timeline lanes, script ground) */
+  --nb-sunken-2: #d2cbb8; /* deeper recess (ruler, lane gutters, tracks) */
+  --nb-sunken-3: #c3bba5; /* deepest recess (inactive / disabled ground) */
+
+  /* --- Matte -------------------------------------------------------------
+     The only dark surface in the editor. Sized to the video frame itself so
+     footage exposure reads true, never used as a region of the UI. */
+  --nb-matte: #0e0e12;
+  --nb-matte-text: #efede6;
+
+  /* --- Ink ---------------------------------------------------------------
+     ink on paper 15.5:1 | on sunken 13.3:1 | on sunken-2 11.6:1
+     ink-soft on paper 6.4:1 | on sunken 5.5:1 | on sunken-2 4.8:1
+     ink-mute on paper 5.2:1 | on sunken 4.5:1 (labels only on sunken-2) */
+  --nb-ink: #14140f;
+  --nb-ink-soft: #55524a;
+  --nb-ink-mute: #63604f;
+
+  /* --- Role accents ------------------------------------------------------
+     Each accent has exactly one role and always sits inside an ink border.
+     Contrast of its own text colour on the fill:
+     primary 13.0:1 (ink) | select 5.3:1 (bone) | success 8.1:1 (ink)
+     danger 5.7:1 (ink)   | warn 7.9:1 (ink)    | info 7.9:1 (ink) */
+  --nb-primary: #ffd23f; /* primary action */
+  --nb-select: #5b4bff; /* selection, active navigation, snap guide */
+  --nb-select-ink: #ffffff;
+  --nb-success: #35c08a; /* healthy, synced, committed */
+  --nb-danger: #ff4d4d; /* destructive, playhead head */
+  --nb-warn: #ff8a00; /* pending, drifted, needs attention */
+  --nb-info: #3bb3e8; /* informational */
+
+  /* Text-safe variants of the two accents that fall below AA as small text on paper.
+     select-text 5.7:1 | danger-text 4.6:1 */
+  --nb-select-text: #4a38e8;
+  --nb-danger-text: #c42b2b;
+
+  /* --- Timeline clip palette --------------------------------------------
+     Clip bodies are saturated pastels so ink text and ink borders read on
+     them at lane heights as small as 28px. Ink on each fill:
+     anim 9.0:1 | video 11.6:1 | audio 12.4:1 | text 11.9:1 | sub 10.1:1 */
+  --nb-clip-anim: #b9a7ff;
+  --nb-clip-video: #7fd8f5;
+  --nb-clip-audio: #8ee6a8;
+  --nb-clip-text: #ffc49b;
+  --nb-clip-subtitle: #f2a9d0;
+  --nb-clip-image: #d7e88c;
+
+  /* --- Structure --------------------------------------------------------- */
+  --nb-border: 2px; /* default slab outline */
+  --nb-border-thick: 3px; /* modals, primary actions, focus */
+  --nb-border-hair: 1px; /* seams inside dense working surfaces */
+  --nb-radius: 0px;
+
+  --nb-offset-sm: 2px;
+  --nb-offset: 4px;
+  --nb-offset-lg: 6px;
+
+  /* --- Motion ------------------------------------------------------------
+     Short and mechanical. Nothing floats, nothing fades slowly. */
+  --nb-ease: cubic-bezier(0.2, 0.9, 0.2, 1);
+  --nb-dur: 90ms;
+  --nb-dur-fast: 50ms;
+
+  /* --- Spacing rhythm ----------------------------------------------------
+     All editor padding and gaps step on this 4px scale. */
+  --nb-gutter: 12px;
+  --nb-gutter-lg: 20px;
+
+  /* --- Typography -------------------------------------------------------- */
+  --nb-font-sans: "Geist", system-ui, -apple-system, sans-serif;
+  --nb-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+  --nb-track-tight: -0.02em;
+  --nb-track-label: 0.08em;
+}

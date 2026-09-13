@@ -1,11 +1,14 @@
 /**
- * File Description: Media Library & Asset Bin Component for Aideos Studio (Phase T-E).
- * Allows users to upload and manage MP4/MOV videos, WAV/MP3 audio, and PNG/SVG images,
- * and drag-and-drop or click to insert them as clips on the timeline and trimmer.
+ * File Description: Media bin for Aideos Studio.
+ * Lists the MP4, MOV, WAV, MP3, PNG and SVG assets available to the open project, uploads new ones,
+ * and is the drag source that feeds the timeline. Each row is a full drag handle carrying the asset
+ * payload, so it can be dropped onto a specific lane at a specific time, and also offers a click
+ * action that drops it at the playhead for users who would rather not drag.
  */
 
-import React, { useState, useEffect, useRef } from "react";
-import { Folder, Upload, Video, Music, Image as ImageIcon, AlertTriangle, Loader2 } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { AlertTriangle, Film, Image as ImageIcon, Music, Plus, Upload } from "lucide-react";
+import { Badge, Button, Card, EmptyState, Note, PanelHeader, Spinner, cn } from "./ui";
 
 export interface MediaAsset {
   id: string;
@@ -16,261 +19,197 @@ export interface MediaAsset {
   sizeBytes?: number;
 }
 
-interface AssetBinProps {
+export interface AssetBinProps {
+  /** Insert the asset at the playhead on its natural lane. */
   onInsertAssetAsShot: (asset: MediaAsset) => void;
-  compact?: boolean;
 }
 
-export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot, compact = false }) => {
+const TYPE_ICON = {
+  video: Film,
+  audio: Music,
+  image: ImageIcon,
+} as const;
+
+const TYPE_TONE = {
+  video: "info",
+  audio: "success",
+  image: "primary",
+} as const;
+
+/** Format a byte count for a dense list row. */
+function formatSize(bytes?: number): string {
+  if (!bytes) return "";
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}kb`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}mb`;
+}
+
+/** Media library and drag source for the timeline. */
+export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot }) => {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch asset bin files
-  const refreshAssets = async () => {
+  /** Reload the asset list from the dev server. */
+  const refreshAssets = useCallback(async () => {
     try {
       const res = await fetch("/api/media/list");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.assets) setAssets(data.assets);
-      }
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.assets) setAssets(data.assets as MediaAsset[]);
     } catch {
-      // Ignore network error
+      // The bin is additive: a failed list must not break the Edit stage.
     }
-  };
-
-  useEffect(() => {
-    refreshAssets();
   }, []);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    void refreshAssets();
+  }, [refreshAssets]);
+
+  /** Upload the chosen file and prepend it to the bin. */
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
     setUploadError(null);
 
-    try {
-      const reader = new FileReader();
-      reader.onload = async () => {
+    const reader = new FileReader();
+    reader.onerror = () => {
+      setUploadError("That file could not be read.");
+      setIsUploading(false);
+    };
+    reader.onload = async () => {
+      try {
         const base64Data = (reader.result as string).split(",")[1];
         const res = await fetch("/api/media/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ filename: file.name, base64Data }),
         });
-
         if (!res.ok) {
-          const err = await res.json();
+          const err = await res.json().catch(() => ({}));
           throw new Error(err.error || "Upload failed");
         }
-
         const data = await res.json();
         if (data.asset) {
-          setAssets((prev) => [data.asset, ...prev.filter((a) => a.id !== data.asset.id)]);
+          setAssets((prev) => [data.asset as MediaAsset, ...prev.filter((a) => a.id !== data.asset.id)]);
         }
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      setUploadError((err as Error).message);
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    };
+    reader.readAsDataURL(file);
+  }, []);
 
+  /** Put the asset payload on the drag event so the timeline can place it precisely. */
   const handleDragStart = (e: React.DragEvent, asset: MediaAsset) => {
     e.dataTransfer.setData("application/json", JSON.stringify(asset));
     e.dataTransfer.setData("text/plain", asset.src);
     e.dataTransfer.effectAllowed = "copy";
   };
 
-  if (compact) {
-    return (
-      <div className="flex flex-col gap-2 bg-[#141416] p-2.5 rounded-xl border border-[#27272A] font-mono text-xs shadow-inner">
-        {/* Compact Header */}
-        <div className="flex items-center justify-between pb-1.5 border-b border-[#27272A]">
-          <div className="flex items-center gap-1.5">
-            <Folder size={12} className="text-yellow-400" />
-            <span className="text-yellow-400 font-bold text-[11px] uppercase tracking-wider">Media Library</span>
-            <span className="text-[9px] bg-black/60 px-1 py-0.5 rounded text-gray-400 font-bold">
-              {assets.length}
-            </span>
-          </div>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            accept="video/mp4,video/quicktime,video/webm,image/png,image/jpeg,image/svg+xml,audio/wav,audio/mpeg"
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="text-[10px] px-2 py-0.5 rounded bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold shadow flex items-center gap-1 disabled:opacity-50 cursor-pointer transition-colors"
-            title="Upload MP4, MOV, PNG, JPG, or WAV asset"
-          >
-            {isUploading ? <Loader2 size={10} className="animate-spin" /> : <Upload size={10} />}
-            <span>Upload</span>
-          </button>
-        </div>
-
-        <div className="text-[9px] text-gray-400 font-sans italic px-0.5">
-          Drag & drop items into Timeline or click Insert
-        </div>
-
-        {uploadError && (
-          <div className="p-1.5 rounded bg-red-950/80 border border-red-500 text-red-300 text-[10px] flex items-center gap-1">
-            <AlertTriangle size={10} />
-            <span>{uploadError}</span>
-          </div>
-        )}
-
-        {/* Compact Asset List */}
-        <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-0.5">
-          {assets.length === 0 ? (
-            <div className="py-4 text-center text-gray-500 text-[10px]">
-              No media uploaded yet.
-            </div>
-          ) : (
-            assets.map((asset) => (
-              <div
-                key={asset.id}
-                draggable={true}
-                onDragStart={(e) => handleDragStart(e, asset)}
-                className="bg-[#1C1C1F] hover:bg-[#27272A] border border-[#27272A] hover:border-yellow-400/80 rounded-lg p-1.5 flex items-center justify-between gap-1.5 transition-all text-[11px] cursor-grab active:cursor-grabbing group select-none shadow-sm"
-                title="Drag into Timeline to place clip"
-              >
-                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                  <div className="w-6 h-6 rounded bg-black/60 flex items-center justify-center text-gray-400 shrink-0 border border-[#333]">
-                    {asset.type === "video" ? (
-                      <Video size={12} />
-                    ) : asset.type === "audio" ? (
-                      <Music size={12} />
-                    ) : (
-                      <ImageIcon size={12} />
-                    )}
-                  </div>
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-gray-200 truncate font-sans font-medium group-hover:text-yellow-300 transition-colors" title={asset.filename}>
-                      {asset.filename}
-                    </span>
-                    <div className="flex items-center gap-1 text-[9px] text-gray-400 font-mono">
-                      <span className="capitalize">{asset.type}</span>
-                      {asset.duration !== undefined && asset.duration > 0 && (
-                        <span>· {asset.duration.toFixed(1)}s</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onInsertAssetAsShot(asset);
-                  }}
-                  className="px-2 py-1 bg-[#635BFF] hover:bg-yellow-400 hover:text-black text-white text-[10px] font-bold rounded shadow shrink-0 transition-colors cursor-pointer"
-                  title="Insert asset onto timeline"
-                >
-                  + Insert
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-full bg-[#0E0E10] text-[#E1E1E6] p-4 gap-3 overflow-y-auto">
-      {/* Upload Zone */}
-      <div className="flex items-center justify-between bg-[#18181B] p-3 rounded-xl border border-[#27272A]">
-        <div>
-          <h3 className="font-bold text-xs text-yellow-400 flex items-center gap-1.5">
-            <Folder size={14} />
-            <span>Media Library</span>
-          </h3>
-          <p className="text-[11px] text-gray-400 mt-0.5">
-            Upload MP4, MOV, PNG, JPG, or WAV assets. Drag & drop into the timeline or click to insert.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            accept="video/mp4,video/quicktime,video/webm,image/png,image/jpeg,image/svg+xml,audio/wav,audio/mpeg"
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="text-xs px-3 py-1.5 rounded-lg bg-[#635BFF] hover:bg-[#5248E5] text-white font-bold shadow flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-          >
-            {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-            <span>{isUploading ? "Uploading..." : "Upload Media"}</span>
-          </button>
-        </div>
-      </div>
-
-      {uploadError && (
-        <div className="p-2.5 rounded bg-red-950/80 border border-red-500 text-red-300 text-xs flex items-center gap-1.5">
-          <AlertTriangle size={14} />
-          <span>{uploadError}</span>
-        </div>
-      )}
-
-      {/* Asset Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {assets.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-gray-500 text-xs font-mono">
-            No media assets uploaded yet.
-          </div>
-        ) : (
-          assets.map((asset) => (
-            <div
-              key={asset.id}
-              draggable={true}
-              onDragStart={(e) => handleDragStart(e, asset)}
-              onClick={() => onInsertAssetAsShot(asset)}
-              className="bg-[#141416] border border-[#27272A] hover:border-yellow-400 rounded-xl p-3 flex flex-col justify-between gap-2.5 cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02] group shadow select-none"
-              title="Drag onto timeline to place"
+    <div className="flex h-full min-h-0 flex-col">
+      <PanelHeader
+        title="Media bin"
+        actions={
+          <>
+            <Badge tone="quiet">{assets.length}</Badge>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept="video/mp4,video/quicktime,video/webm,image/png,image/jpeg,image/svg+xml,audio/wav,audio/mpeg"
+              className="hidden"
+              aria-label="Upload a media file"
+            />
+            <Button
+              size="xs"
+              tone="primary"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              title="Upload MP4, MOV, WAV, MP3, PNG, JPG or SVG"
             >
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-yellow-300 font-bold flex items-center gap-1.5">
-                  {asset.type === "video" ? (
-                    <Video size={13} />
-                  ) : asset.type === "audio" ? (
-                    <Music size={13} />
-                  ) : (
-                    <ImageIcon size={13} />
-                  )}
-                  <span className="capitalize">{asset.type}</span>
-                </span>
-                {asset.duration && (
-                  <span className="text-[10px] text-gray-400 bg-black/60 px-1.5 py-0.5 rounded">
-                    {asset.duration.toFixed(1)}s
-                  </span>
-                )}
-              </div>
+              {isUploading ? <Spinner /> : <Upload className="h-3 w-3" />}
+              Add
+            </Button>
+          </>
+        }
+      />
 
-              <div className="text-xs text-gray-200 font-bold truncate group-hover:text-yellow-300" title={asset.filename}>
-                {asset.filename}
-              </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {uploadError ? (
+          <Note tone="danger" icon={<AlertTriangle className="h-3.5 w-3.5" />} className="mb-2">
+            {uploadError}
+          </Note>
+        ) : null}
 
-              <button
-                className="w-full text-[10px] py-1 rounded bg-[#27272A] group-hover:bg-yellow-400 group-hover:text-black font-bold transition-colors cursor-pointer"
-              >
-                + Add to Timeline
-              </button>
-            </div>
-          ))
+        {assets.length === 0 ? (
+          <EmptyState
+            icon={<Upload className="h-5 w-5" />}
+            title="No media yet"
+            description="Add footage, music or stills, then drag them onto a timeline lane."
+            action={
+              <Button size="sm" tone="primary" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="h-3.5 w-3.5" />
+                Upload media
+              </Button>
+            }
+            className="min-h-[220px]"
+          />
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {assets.map((asset) => {
+              const Icon = TYPE_ICON[asset.type] ?? Film;
+              return (
+                <li key={asset.id}>
+                  <Card
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, asset)}
+                    className={cn("flex cursor-grab flex-col gap-1.5 p-2 active:cursor-grabbing")}
+                    title={`${asset.filename}\nDrag onto a lane, or use Add to timeline to drop it at the playhead.`}
+                  >
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center border-2 border-ink bg-sunken">
+                        <Icon className="h-3 w-3" />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate font-sans text-[11px] font-bold">
+                        {asset.filename}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="flex items-center gap-1">
+                        <Badge tone={TYPE_TONE[asset.type] ?? "quiet"} className="px-1 py-0">
+                          {asset.type}
+                        </Badge>
+                        {asset.sizeBytes ? (
+                          <span className="font-mono text-[9px] text-ink-mute">{formatSize(asset.sizeBytes)}</span>
+                        ) : null}
+                      </span>
+                      <Button
+                        size="xs"
+                        onClick={() => onInsertAssetAsShot(asset)}
+                        title="Drop this asset at the playhead"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add
+                      </Button>
+                    </div>
+                  </Card>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
+
+      <p className="shrink-0 border-t-2 border-ink bg-paper px-2 py-1.5 font-sans text-[10px] leading-snug text-ink-mute">
+        Drag a row onto any lane to place it at that exact time, or press Add to drop it at the playhead.
+      </p>
     </div>
   );
 };
-

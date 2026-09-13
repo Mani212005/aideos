@@ -95,7 +95,7 @@ The Aideos Timeline & Trimmer implements industry-standard non-linear editing ge
    * Excludes the dragged clip from its own boundaries (`_snap_ignore_ids`).
    * Holds lock onto snap anchors until mouse delta exceeds a 12px threshold.
 4. **Explicit Drag State Machine:**
-   * Disjoint states (`idle`, `drag-clip`, `resize-left`, `resize-right`, `playhead-scrub`, `box-select`, `vo-trim`) with clean entry/exit hooks.
+   * Disjoint states (`idle`, `move`, `trim-start`, `trim-end`, `scrub`, `marquee`) with clean entry/exit hooks.
 5. **Pending Overrides Preview Layer:**
    * 60 FPS live preview during mouse dragging without committing to the persistent document until mouse release.
 

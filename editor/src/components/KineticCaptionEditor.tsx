@@ -3,8 +3,20 @@ File Description: This component implements the Kinetic Caption & Pretext Inspec
 */
 
 import React, { useState, useMemo, useEffect } from "react";
-import { prepareWithSegments, layoutWithLines, type LayoutLine } from "@chenglou/pretext";
-import { Search, Play, Edit2, Sparkles, Clock, FileText, Subtitles } from "lucide-react";
+import {
+  prepareWithSegments,
+  layoutWithLines,
+  type LayoutLine,
+} from "@chenglou/pretext";
+import {
+  Search,
+  Play,
+  Edit2,
+  Sparkles,
+  Clock,
+  FileText,
+  Subtitles,
+} from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 
 export interface CaptionWordItem {
@@ -52,7 +64,10 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
   const pretextStats = useMemo(() => {
     try {
       const fontSpec = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
-      const prep = prepareWithSegments(fullText || "Aideos kinetic video captions", fontSpec);
+      const prep = prepareWithSegments(
+        fullText || "Aideos kinetic video captions",
+        fontSpec,
+      );
       const res = layoutWithLines(prep, maxWidth, lineHeight);
       return {
         lineCount: res.lines.length,
@@ -95,18 +110,19 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-4 text-sm bg-[#101013] p-5 rounded-xl border border-rgba(245,245,245,0.10) text-[#F5F5F5] font-sans">
+    <div className="flex flex-col gap-4 text-sm bg-paper p-5 border-2 border-ink text-ink font-sans">
       {/* Header Info Bar */}
-      <div className="flex items-center justify-between border-b border-rgba(245,245,245,0.10) pb-4">
+      <div className="flex items-center justify-between border-b-2 border-ink pb-4">
         <div>
-          <h3 className="font-bold text-lg text-[#F5F5F5] flex items-center gap-2">
-            <Subtitles size={18} className="text-[#635BFF]" /> Kinetic Subtitles
+          <h3 className="font-bold text-lg text-ink flex items-center gap-2">
+            <Subtitles size={18} className="text-select-text" /> Kinetic Subtitles
           </h3>
-          <p className="text-xs text-[#8A8A8E]">
-            Interactive word column for {film?.title || "Active Video"} ({localWords.length} words total)
+          <p className="text-xs text-ink-soft">
+            Interactive word column for {film?.title || "Active Video"} (
+            {localWords.length} words total)
           </p>
         </div>
-        <span className="text-xs px-3 py-1.5 bg-[#635BFF]/20 text-[#635BFF] font-mono rounded-full border border-[#635BFF]/40 flex items-center gap-1.5">
+        <span className="text-xs px-3 py-1.5 bg-select/20 text-select-text font-mono border border-select/40 flex items-center gap-1.5">
           <Sparkles size={12} />
           Pretext Engine Active
         </span>
@@ -115,26 +131,29 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
       {/* Grid Layout: Left Interactive Word Column (Full Script) | Right Pretext Controls & Preview */}
       <div className="grid grid-cols-12 gap-5">
         {/* Left Column: Interactive Word List Column */}
-        <div className="col-span-5 flex flex-col gap-3 bg-[#0A0A0B] p-4 rounded-xl border border-rgba(245,245,245,0.10)">
+        <div className="col-span-5 flex flex-col gap-3 bg-paper p-4 border-2 border-ink">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-semibold text-[#F5F5F5] uppercase tracking-wider flex items-center gap-1.5">
-              <FileText size={14} className="text-[#635BFF]" />
+            <h4 className="text-xs font-semibold text-ink uppercase tracking-wider flex items-center gap-1.5">
+              <FileText size={14} className="text-select-text" />
               Interactive Word Column
             </h4>
-            <span className="text-xs text-[#8A8A8E] font-mono">
+            <span className="text-xs text-ink-soft font-mono">
               {filteredWords.length} / {localWords.length} words
             </span>
           </div>
 
           {/* Search Filter Bar */}
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-2.5 text-[#8A8A8E]" />
+            <Search
+              size={14}
+              className="absolute left-3 top-2.5 text-ink-soft"
+            />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search words in script..."
-              className="w-full bg-[#101013] border border-rgba(245,245,245,0.15) rounded-lg pl-9 pr-3 py-1.5 text-xs text-[#F5F5F5] focus:outline-none focus:border-[#635BFF]"
+              className="w-full bg-paper-3 border-2 border-ink pl-9 pr-3 py-1.5 text-xs text-ink focus:outline-none focus:border-select"
             />
           </div>
 
@@ -143,13 +162,15 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
             {filteredWords.map((wordItem, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-2 rounded-lg bg-[#101013] border border-rgba(245,245,245,0.06) hover:border-[#635BFF]/50 transition-colors group"
+                className="flex items-center justify-between p-2 bg-paper-3 border-2 border-ink hover:border-select/50 transition-colors group"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <button
-                    onClick={() => onSeekToFrame && onSeekToFrame(wordItem.startFrame)}
+                    onClick={() =>
+                      onSeekToFrame && onSeekToFrame(wordItem.startFrame)
+                    }
                     title={`Seek video to frame ${wordItem.startFrame}`}
-                    className="p-1 rounded bg-[#635BFF]/15 text-[#635BFF] hover:bg-[#635BFF] hover:text-white transition-colors"
+                    className="p-1 bg-select/15 text-select-text hover:bg-select hover:text-ink transition-colors"
                   >
                     <Play size={10} />
                   </button>
@@ -158,15 +179,20 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
                     <input
                       type="text"
                       value={wordItem.text}
-                      onChange={(e) => handleWordUpdate(idx, { ...wordItem, text: e.target.value })}
+                      onChange={(e) =>
+                        handleWordUpdate(idx, {
+                          ...wordItem,
+                          text: e.target.value,
+                        })
+                      }
                       onBlur={() => setEditingIndex(null)}
                       autoFocus
-                      className="bg-[#0A0A0B] border border-[#635BFF] text-xs px-1.5 py-0.5 rounded text-[#F5F5F5] focus:outline-none"
+                      className="bg-paper border border-select text-xs px-1.5 py-0.5 text-ink focus:outline-none"
                     />
                   ) : (
                     <span
                       onClick={() => setEditingIndex(idx)}
-                      className="text-xs font-medium text-[#F5F5F5] truncate cursor-pointer hover:text-[#635BFF]"
+                      className="text-xs font-medium text-ink truncate cursor-pointer hover:text-select-text"
                       title="Click to edit word"
                     >
                       {wordItem.text}
@@ -174,14 +200,14 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 font-mono text-[11px] text-[#8A8A8E]">
+                <div className="flex items-center gap-2 font-mono text-[11px] text-ink-soft">
                   <span className="flex items-center gap-1">
-                    <Clock size={10} />
-                    f{wordItem.startFrame}-{wordItem.endFrame}
+                    <Clock size={10} />f{wordItem.startFrame}-
+                    {wordItem.endFrame}
                   </span>
                   <button
                     onClick={() => setEditingIndex(idx)}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 text-[#8A8A8E] hover:text-[#F5F5F5]"
+                    className="opacity-0 group-hover:opacity-100 p-0.5 text-ink-soft hover:text-ink"
                   >
                     <Edit2 size={10} />
                   </button>
@@ -195,9 +221,11 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
         <div className="col-span-7 flex flex-col gap-4">
           {/* Full Script Text Area */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-[#F5F5F5]">Full Script Text:</label>
+            <label className="text-xs font-semibold text-ink">
+              Full Script Text:
+            </label>
             <textarea
-              className="w-full bg-[#0A0A0B] border border-rgba(245,245,245,0.15) rounded-lg p-3 text-[#F5F5F5] text-xs focus:outline-none focus:border-[#635BFF] font-sans"
+              className="w-full bg-paper-3 border-2 border-ink p-3 text-ink text-xs focus:outline-none focus:border-select font-sans"
               rows={3}
               value={fullText}
               onChange={handleFullTextChange}
@@ -206,43 +234,61 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
           </div>
 
           {/* Pretext Zero-DOM Telemetry */}
-          <div className="grid grid-cols-3 gap-2 bg-[#0A0A0B] p-3 rounded-lg border border-rgba(245,245,245,0.10) font-mono text-xs">
+          <div className="grid grid-cols-3 gap-2 bg-paper p-3 border-2 border-ink font-mono text-xs">
             <div>
-              <span className="text-[#8A8A8E] block text-[10px]">Lines (Pretext)</span>
-              <span className="text-[#F5F5F5] font-bold text-sm">{pretextStats.lineCount} lines</span>
+              <span className="text-ink-soft block text-[10px]">
+                Lines (Pretext)
+              </span>
+              <span className="text-ink font-bold text-sm">
+                {pretextStats.lineCount} lines
+              </span>
             </div>
             <div>
-              <span className="text-[#8A8A8E] block text-[10px]">Box Height</span>
-              <span className="text-[#F5F5F5] font-bold text-sm">{pretextStats.totalHeight} px</span>
+              <span className="text-ink-soft block text-[10px]">
+                Box Height
+              </span>
+              <span className="text-ink font-bold text-sm">
+                {pretextStats.totalHeight} px
+              </span>
             </div>
             <div>
-              <span className="text-[#8A8A8E] block text-[10px]">Wrap Max-Width</span>
-              <span className="text-[#635BFF] font-bold text-sm">{maxWidth} px</span>
+              <span className="text-ink-soft block text-[10px]">
+                Wrap Max-Width
+              </span>
+              <span className="text-select-text font-bold text-sm">
+                {maxWidth} px
+              </span>
             </div>
           </div>
 
           {/* Controls */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-[#8A8A8E]">Font Size: {fontSize}px</label>
+              <label className="text-xs text-ink-soft">
+                Font Size: {fontSize}px
+              </label>
               <input
+                aria-label="Caption font size"
                 type="range"
                 min={24}
                 max={72}
                 value={fontSize}
                 onChange={(e) => setFontSize(Number(e.target.value))}
-                className="accent-[#635BFF]"
+                className="accent-select"
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-[#8A8A8E]">Wrap Width: {maxWidth}px</label>
+              <label className="text-xs text-ink-soft">
+                Wrap Width: {maxWidth}px
+              </label>
               <input
+                aria-label="Caption wrap width"
                 type="range"
                 min={320}
                 max={1000}
                 value={maxWidth}
                 onChange={(e) => setMaxWidth(Number(e.target.value))}
-                className="accent-[#635BFF]"
+                className="accent-select"
               />
             </div>
           </div>
@@ -250,22 +296,28 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
           {/* Highlight Accent */}
           <div className="flex items-center justify-between gap-4 pt-1">
             <div className="flex items-center gap-2">
-              <label className="text-xs text-[#8A8A8E]">Accent Highlight:</label>
+              <label className="text-xs text-ink-soft">Accent Highlight:</label>
               <input
                 type="color"
                 value={highlightColor}
                 onChange={(e) => setHighlightColor(e.target.value)}
-                className="w-7 h-7 rounded border-none cursor-pointer bg-transparent"
+                className="w-7 h-7 border-none cursor-pointer bg-transparent"
               />
             </div>
           </div>
 
           {/* Real-time Pretext Lines Preview */}
-          <div className="flex flex-col gap-1.5 pt-2 border-t border-rgba(245,245,245,0.10)">
-            <span className="text-xs text-[#8A8A8E] font-semibold">Pretext Line-Wrapped Kinetic Preview:</span>
+          <div className="flex flex-col gap-1.5 pt-2 border-t-2 border-ink">
+            <span className="text-xs text-ink-soft font-semibold">
+              Pretext Line-Wrapped Kinetic Preview:
+            </span>
             <div
-              className="bg-[#0A0A0B] p-4 rounded-lg border border-rgba(245,245,245,0.10) flex flex-col items-center justify-center text-center gap-1 min-h-[100px]"
-              style={{ maxWidth: `${maxWidth}px`, width: "100%", margin: "0 auto" }}
+              className="flex min-h-[100px] flex-col items-center justify-center gap-1 border-2 border-ink bg-matte p-4 text-center"
+              style={{
+                maxWidth: `${maxWidth}px`,
+                width: "100%",
+                margin: "0 auto",
+              }}
             >
               {pretextStats.lines.map((line: string, lIdx: number) => (
                 <div

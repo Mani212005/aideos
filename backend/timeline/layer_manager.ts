@@ -1,9 +1,11 @@
 /**
  * File Description: Layer Management & Dynamic Z-Ordering Engine (Phase L-6).
  * Implements user-controlled layer operations (U-2 & U-3):
- * - Adding, deleting, renaming, and reordering layers.
- * - Layer state controls: lock (refuses edits), hide (excludes from render), mute, height.
- * - Multi-layer compositing resolver (sorts visible clips ascending by layer.number).
+ * - Adding, deleting, renaming, and reordering layers with unique, in-range z-order numbers.
+ * - Layer state controls: lock (refuses edits), hide (excludes from render), mute (excludes from
+ *   the audio mix), and lane height.
+ * - Multi-layer compositing resolver (sorts visible clips ascending by layer.number, stable within
+ *   a layer) and the matching audio resolver that honours mute.
  */
 
 import type { LayeredFilm, Layer, Clip } from "../../src/dl/layeredSchema";
@@ -23,9 +25,16 @@ export function addLayer(
   const newLayers = JSON.parse(JSON.stringify(film.layers)) as Layer[];
   const existingNumbers = new Set(newLayers.map((l) => l.number));
 
-  let layerNum = targetNumber ?? (Math.max(0, ...newLayers.map((l) => l.number)) + 10);
-  while (existingNumbers.has(layerNum)) {
+  let layerNum = Math.min(100, targetNumber ?? Math.max(0, ...newLayers.map((l) => l.number)) + 10);
+  while (existingNumbers.has(layerNum) && layerNum < 100) {
     layerNum += 1;
+  }
+  // When the top of the range is taken, fall back to the first free slot from the bottom.
+  while (existingNumbers.has(layerNum) && layerNum > 0) {
+    layerNum -= 1;
+  }
+  if (existingNumbers.has(layerNum)) {
+    throw new Error("Cannot add another layer: all 101 z-order slots are in use");
   }
 
   const slug = label.toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 16);
@@ -153,6 +162,9 @@ export function reorderLayer(
   if (layerIdx === -1) {
     throw new Error(`Layer "${layerId}" not found`);
   }
+  if (!Number.isInteger(newNumber) || newNumber < 0 || newNumber > 100) {
+    throw new Error(`Reorder rejected: z-index ${newNumber} is outside the valid range 0..100`);
+  }
 
   const newLayers = JSON.parse(JSON.stringify(film.layers)) as Layer[];
   const oldNum = newLayers[layerIdx].number;
@@ -213,8 +225,11 @@ export function setLayerProperty(
   const txId = generateUUID();
   const actions: UpdateAction[] = [];
 
-  for (const [key, val] of Object.entries(updates)) {
+  for (const [key, rawVal] of Object.entries(updates)) {
+    // Lane height is clamped into the schema range so a drag cannot write an invalid film.
+    const val = key === "height" ? Math.max(20, Math.min(200, Number(rawVal))) : rawVal;
     const oldVal = (layer as any)[key];
+    if (oldVal === val) continue;
     (layer as any)[key] = val;
     actions.push({
       type: "update",
@@ -234,38 +249,84 @@ export function setLayerProperty(
   };
 }
 
-/**
- * Composite Resolver: Collects visible clips at a given frame,
- * excluding hidden layers, and sorts them ascending by layer.number (topmost paints last).
- */
-export function getRenderableClipsAtFrame(film: LayeredFilm, frame: number): Clip[] {
-  const fps = film.fps || 30;
-  const timeSec = frame / fps;
-
-  // Build layer lookup
+/** Build a layer id to layer lookup for the composite resolvers. */
+function buildLayerMap(film: LayeredFilm): Map<string, Layer> {
   const layerMap = new Map<string, Layer>();
   for (const layer of film.layers) {
     layerMap.set(layer.id, layer);
   }
+  return layerMap;
+}
 
-  const visibleClips: Clip[] = [];
+/** True when the clip is playing at the given timeline second. */
+function isClipLiveAt(clip: Clip, timeSec: number): boolean {
+  const clipEnd = clip.position + (clip.end - clip.start);
+  return timeSec >= clip.position && timeSec < clipEnd;
+}
 
-  for (const clip of film.clips) {
+/**
+ * Composite Resolver: Collects visible clips at a given frame, excluding hidden layers, and sorts
+ * them ascending by layer.number so the topmost layer paints last. Clips sharing a layer number
+ * keep their stored document order, which keeps the composite stable across re-renders.
+ */
+export function getRenderableClipsAtFrame(film: LayeredFilm, frame: number): Clip[] {
+  const fps = film.fps || 30;
+  const timeSec = frame / fps;
+  const layerMap = buildLayerMap(film);
+
+  const visible: Array<{ clip: Clip; order: number; z: number }> = [];
+
+  film.clips.forEach((clip, order) => {
     const layer = layerMap.get(clip.layerId);
-    if (!layer || layer.hidden) continue; // Exclude hidden layers (L6-4)
+    if (!layer || layer.hidden) return; // Exclude hidden layers (L6-4)
+    if (!isClipLiveAt(clip, timeSec)) return;
+    visible.push({ clip, order, z: layer.number });
+  });
 
-    const dur = clip.end - clip.start;
-    const clipEnd = clip.position + dur;
+  return visible.sort((a, b) => a.z - b.z || a.order - b.order).map((v) => v.clip);
+}
 
-    if (timeSec >= clip.position && timeSec < clipEnd) {
-      visibleClips.push(clip);
-    }
+/**
+ * Audio Resolver: Collects audible clips at a given frame, excluding muted layers and clips whose
+ * own volume is zero. Mirrors getRenderableClipsAtFrame so preview and export agree on what the
+ * mute flag means.
+ */
+export function getAudibleClipsAtFrame(film: LayeredFilm, frame: number): Clip[] {
+  const fps = film.fps || 30;
+  const timeSec = frame / fps;
+  const layerMap = buildLayerMap(film);
+
+  return film.clips.filter((clip) => {
+    if (clip.kind !== "audio" && clip.kind !== "video") return false;
+    const layer = layerMap.get(clip.layerId);
+    if (!layer || layer.muted) return false;
+    if ((clip.volume ?? 1) <= 0) return false;
+    return isClipLiveAt(clip, timeSec);
+  });
+}
+
+/**
+ * Z-order helper that moves a layer one step up or down past its nearest neighbour, swapping the
+ * two stored numbers. Used by the timeline layer list so reordering never produces duplicates.
+ */
+export function shiftLayerOrder(
+  film: LayeredFilm,
+  layerId: string,
+  direction: "up" | "down"
+): { film: LayeredFilm; actions: UpdateAction[]; transactionId: string } {
+  const layer = film.layers.find((l) => l.id === layerId);
+  if (!layer) {
+    throw new Error(`Layer "${layerId}" not found`);
   }
 
-  // Sort ascending by layer.number (higher layer paints over lower layer)
-  return visibleClips.sort((a, b) => {
-    const numA = layerMap.get(a.layerId)?.number ?? 0;
-    const numB = layerMap.get(b.layerId)?.number ?? 0;
-    return numA - numB;
-  });
+  const neighbours = film.layers
+    .filter((l) => (direction === "up" ? l.number > layer.number : l.number < layer.number))
+    .sort((a, b) => (direction === "up" ? a.number - b.number : b.number - a.number));
+
+  const neighbour = neighbours[0];
+  if (!neighbour) {
+    return { film, actions: [], transactionId: generateUUID() };
+  }
+
+  return reorderLayer(film, layerId, neighbour.number);
 }

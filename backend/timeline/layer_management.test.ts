@@ -16,6 +16,8 @@ import {
   reorderLayer,
   setLayerProperty,
   getRenderableClipsAtFrame,
+  getAudibleClipsAtFrame,
+  shiftLayerOrder,
 } from "./layer_manager";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
 import type { LayeredFilm } from "../../src/dl/layeredSchema";
@@ -181,4 +183,128 @@ test("L6-6: Deleting a layer removes the layer and all clips residing on it", ()
   assert.equal(deletedFilm.clips.some((c) => c.layerId === "layer-titles"), false);
 
   assert.doesNotThrow(() => validateLayeredFilm(deletedFilm));
+});
+
+// ==============================================================================
+// REGRESSION: MUTE, Z-ORDER STABILITY AND LAYER PROPERTY BOUNDS
+// ==============================================================================
+
+test("Regression: a muted layer is excluded from the audio mix but still renders", () => {
+  const film = createMockMultiLayerFilm();
+  const { film: muted } = setLayerProperty(film, "layer-audio", { muted: true });
+
+  const audible = getAudibleClipsAtFrame(muted, 60);
+  assert.equal(
+    audible.find((c) => c.id === "clip-vo"),
+    undefined,
+    "a muted layer contributes nothing to the mix",
+  );
+
+  // Muting is an audio-only flag: the layer's clips are still part of the visual composite.
+  const renderable = getRenderableClipsAtFrame(muted, 60);
+  assert.ok(renderable.some((c) => c.id === "clip-vo"));
+});
+
+test("Regression: a hidden layer is excluded from the composite but stays audible", () => {
+  const film = createMockMultiLayerFilm();
+  const { film: hidden } = setLayerProperty(film, "layer-audio", { hidden: true });
+
+  assert.equal(
+    getRenderableClipsAtFrame(hidden, 60).find((c) => c.id === "clip-vo"),
+    undefined,
+  );
+  assert.ok(getAudibleClipsAtFrame(hidden, 60).some((c) => c.id === "clip-vo"));
+});
+
+test("Regression: a clip muted to zero volume drops out of the mix", () => {
+  const film = createMockMultiLayerFilm();
+  const silenced: LayeredFilm = {
+    ...film,
+    clips: film.clips.map((c) => (c.id === "clip-vo" ? { ...c, volume: 0 } : c)),
+  };
+  assert.equal(
+    getAudibleClipsAtFrame(silenced, 60).find((c) => c.id === "clip-vo"),
+    undefined,
+  );
+});
+
+test("Regression: shifting layer order swaps with the nearest neighbour and keeps numbers unique", () => {
+  const film = createMockMultiLayerFilm();
+  const videoBefore = film.layers.find((l) => l.id === "layer-video")!.number;
+  const animBefore = film.layers.find((l) => l.id === "layer-anim")!.number;
+
+  const { film: shifted } = shiftLayerOrder(film, "layer-video", "up");
+  const videoAfter = shifted.layers.find((l) => l.id === "layer-video")!.number;
+  const animAfter = shifted.layers.find((l) => l.id === "layer-anim")!.number;
+
+  assert.equal(videoAfter, animBefore);
+  assert.equal(animAfter, videoBefore);
+  assert.equal(new Set(shifted.layers.map((l) => l.number)).size, shifted.layers.length);
+  assert.doesNotThrow(() => validateLayeredFilm(shifted));
+
+  // Shifting the topmost layer up is a no-op rather than an error or a duplicate number.
+  const top = [...shifted.layers].sort((a, b) => b.number - a.number)[0];
+  const { film: unchanged, actions } = shiftLayerOrder(shifted, top.id, "up");
+  assert.equal(actions.length, 0);
+  assert.deepEqual(unchanged.layers, shifted.layers);
+});
+
+test("Regression: reordering to an out-of-range z-index is refused", () => {
+  const film = createMockMultiLayerFilm();
+  assert.throws(() => reorderLayer(film, "layer-video", 101), /outside the valid range/);
+  assert.throws(() => reorderLayer(film, "layer-video", -1), /outside the valid range/);
+  assert.throws(() => reorderLayer(film, "layer-video", 3.5), /outside the valid range/);
+});
+
+test("Regression: added layers always receive a unique in-range z-index", () => {
+  let film = createMockMultiLayerFilm();
+  for (let i = 0; i < 6; i++) {
+    const res = addLayer(film, `Extra ${i}`);
+    film = res.film;
+  }
+  const numbers = film.layers.map((l) => l.number);
+  assert.equal(new Set(numbers).size, numbers.length, "layer numbers must stay unique");
+  assert.ok(numbers.every((n) => Number.isInteger(n) && n >= 0 && n <= 100));
+  assert.doesNotThrow(() => validateLayeredFilm(film));
+});
+
+test("Regression: lane height is clamped into the schema range", () => {
+  const film = createMockMultiLayerFilm();
+  const { film: tiny } = setLayerProperty(film, "layer-video", { height: 4 });
+  assert.equal(tiny.layers.find((l) => l.id === "layer-video")!.height, 20);
+
+  const { film: huge } = setLayerProperty(film, "layer-video", { height: 900 });
+  assert.equal(huge.layers.find((l) => l.id === "layer-video")!.height, 200);
+  assert.doesNotThrow(() => validateLayeredFilm(huge));
+});
+
+test("Regression: setting a property to its current value records no action", () => {
+  const film = createMockMultiLayerFilm();
+  const { actions } = setLayerProperty(film, "layer-video", { hidden: false });
+  assert.equal(actions.length, 0, "a no-op toggle must not create an undo step");
+});
+
+test("Regression: the composite keeps stored order for clips sharing a layer", () => {
+  const film = createMockMultiLayerFilm();
+  const stacked: LayeredFilm = {
+    ...film,
+    clips: [
+      ...film.clips,
+      {
+        id: "clip-overlay-a",
+        layerId: "layer-titles",
+        position: 0,
+        start: 0,
+        end: 5,
+        kind: "text",
+        payload: { text: "First", size: "headline" },
+        opacity: 1,
+        volume: 1,
+      },
+    ],
+  };
+
+  const first = getRenderableClipsAtFrame(stacked, 30).map((c) => c.id);
+  const second = getRenderableClipsAtFrame(stacked, 30).map((c) => c.id);
+  assert.deepEqual(first, second, "composite order must be stable across calls");
 });
