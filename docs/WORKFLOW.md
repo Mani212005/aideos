@@ -91,9 +91,10 @@ Aideos is engineered around 4 strict architectural invariants:
    - Explaining memory allocation or arrays -> `MatrixGrid`
    - Highlighting big performance numbers -> `StatCounter`
    - Conceptual trade-offs -> `ComparisonView`
-2. **Bespoke Generative SVG Synthesis (`backend/scene/generateSvg.ts`)**:
-   - For custom visual directions, synthesizes theme-harmonized React SVG components into `videos/<slug>/visuals/`.
-   - Validates geometric invariants (Rule V-4 explicit `viewBox` and `preserveAspectRatio="xMidYMid meet"`, center 60% viewport rule).
+2. **Bespoke Generative SVG Synthesis & Animation (`backend/scene/generateSvg.ts`, `src/dl/scene/`)**:
+   - For custom visual directions, synthesizes theme-harmonized React SVG components or static animatable `.svg` assets into `videos/<slug>/visuals/` via generate-validate-repair loops.
+   - Validates geometric invariants (Rule V-4 explicit `viewBox` and `preserveAspectRatio="xMidYMid meet"`, Rule V-2 middle-60% viewport centering, addressable element IDs, self-containment, and frame-driven determinism).
+   - Animates static SVG documents via declarative element-level timelines (`src/dl/scene/svgAnimation.ts`) with audio-first retiming (`src/dl/scene/sceneTiming.ts`).
 3. **Pacing Invariant Verification (`src/dl/validateFilm.ts`)**:
    - First shot must cut (`move: "cut"`).
    - No device hold exceeds 25 seconds.

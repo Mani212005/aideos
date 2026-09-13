@@ -106,9 +106,10 @@ The Aideos Timeline & Trimmer implements industry-standard non-linear editing ge
 1. **Self-Contained Video Packages (`videos/<slug>/`):**
    * Each explainer video is packaged in a self-contained directory containing `film.json`, `script.md`, `voiceover.wav` + `voiceover_words.json`, `footage/` (GPU B-roll clips), `visuals/`, `shotlist.json`, and `treatment.json`.
    * Discovered and loaded dynamically at runtime via the unified loader `src/dl/videoPackageLoader.ts`.
-2. **Generative SVG Synthesis (`backend/scene/generateSvg.ts`):**
-   * Synthesizes bespoke, theme-harmonized React SVG components tailored to shot visual directions.
-   * Enforces geometric invariant rules including Rule V-4 (`viewBox` and `preserveAspectRatio="xMidYMid meet"`), middle-60% viewport centering, semantic color token hooks (`useAccent`), and procedural frame animation props.
+2. **Generative SVG Synthesis & Custom Animation (`backend/scene/`, `src/dl/scene/`):**
+   * Synthesizes bespoke React SVG components and static animatable `.svg` scene assets via automated generate-validate-repair loops.
+   * Enforces geometric invariant rules (Rule V-4 `viewBox` and `preserveAspectRatio="xMidYMid meet"`, Rule V-2 middle-60% viewport centering), addressable element IDs, self-containment, and frame-driven determinism.
+   * Declarative custom SVG animation engine (`src/dl/scene/`) drives element-level motion (translations, scale, rotate, draw-on strokes, staggered entry) with audio-first retiming. See [src/dl/scene/README.md](src/dl/scene/README.md).
 
 ---
 

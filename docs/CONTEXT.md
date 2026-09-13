@@ -193,9 +193,33 @@ Pre-built tactile paper backgrounds:
 
 ### `backend/scene/generateSvg.ts`
 * `buildSvgPrompt(options)`: Constructs the system prompt for synthesizing bespoke React SVG visual components with invariant rules.
-* `validateGeneratedSvg(code)`: Validates generated React SVG code against geometric (viewBox, aspect ratio) and export invariants.
-* `cleanCodeFence(raw)`: Strips markdown code fences (` ```tsx `, ` ```typescript `, etc.) from generated LLM code.
-* `synthesizeBespokeSvg(options, llmCaller, targetDir)`: Synthesizes, validates, and saves a bespoke SVG component to `videos/<slug>/visuals/`.
+* `buildSvgAssetPrompt(options)`: Constructs the system prompt for synthesizing plain animatable static SVG scene assets.
+* `validateGeneratedSvg(code)`: Validates generated React SVG code against geometric (viewBox, aspect ratio), determinism, self-containment, center-60% containment, and export invariants.
+* `validateGeneratedSvgAsset(svgText)`: Validates generated static SVG scene assets (viewBox, preserveAspectRatio, static purity, unique element IDs, center-60% containment).
+* `buildRepairPrompt(basePrompt, rejected, errors)`: Constructs retry prompt feeding validator failure reasons back to the model.
+* `cleanCodeFence(raw)`: Strips markdown code fences (` ```tsx `, ` ```typescript `, ` ```svg `, etc.) from generated LLM code.
+* `synthesizeBespokeSvg(options, llmCaller, targetDir)`: Synthesizes, validates, and saves a bespoke React SVG component to `videos/<slug>/visuals/` with automated repair retry loop.
+* `synthesizeAnimatableSvgAsset(options, llmCaller, targetDir)`: Synthesizes, validates, and saves a plain animatable static SVG asset to `videos/<slug>/visuals/` with declared element IDs.
+
+### `backend/scene/loadSceneAssets.ts`
+* `loadSceneAssets(scene, options)`: Reads a scene's SVG assets off disk on the Node side, returning `svgSources` and `elementIdsByAssetId` for browser components.
+
+### `backend/scene/renderStill.ts`
+* `findChromeBinary()`: Locates an installed Chrome or Chromium binary for high-accuracy rasterization.
+* `renderFrameSvgMarkup(frame, options)`: Renders a `CompiledFrame` to deterministic SVG markup string via `ReactDOMServer`.
+* `renderFrameStill(frame, outputPath, options)`: Renders a `CompiledFrame` into a true 1920x1080 PNG image file on disk using headless Chrome with output dimension verification.
+
+### `src/dl/scene/` (Custom SVG Animation & Scene Graph)
+* Deep reference documentation in [`src/dl/scene/README.md`](../src/dl/scene/README.md).
+* `svgAnimation.ts`: Declarative timeline types (`SvgAnimationClip`, `SvgAnimationTimeline`), easing curves, stagger calculations, validator (`validateSvgTimeline`), and compiler (`compileSvgTimeline`).
+* `svgDocument.ts`: Pure dependency-free SVG document parser (`parseSvgDocument`), element ID discovery (`collectSvgElementIds`), and bounds calculation.
+* `svgReact.tsx`: React SVG renderer (`renderSvgDocumentToReact`) with instance namespacing and per-frame element state transforms.
+* `SceneClip.tsx`: Remotion composition entry point with single compilation and current frame selection.
+* `sceneTiming.ts`: Audio-first retiming helpers (`framesForAudioMs`, `audioSyncDriftMs`, `alignSceneToAudio`, `retimeSvgTimeline`).
+* `SceneView.tsx`: Pure browser-safe SVG scene renderer with no filesystem imports.
+* `compile.ts`: Pure deterministic compiler (`compileScene`) threading keyframes, actions, and custom animation timelines onto frames.
+* `validateScene.ts`: Phase 1 semantic and physical integrity validator (`validateScene`) including Rule 20 timeline consistency.
+* `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`, `collectSceneAssetElementIds`).
 
 ### `src/dl/validateFilm.ts`
 * `validateFilm(film)`: Runs Zod schema parsing and structural integrity assertions.
