@@ -2,10 +2,13 @@
  * File Description: Pure deterministic compiler for the Aideos 2D Scene Graph (Phase 3).
  * Compiles high-level scenes, actions, and tracks into dense, verified per-frame execution data.
  * Implements joint-mask blending, Catmull-Rom spline interpolation, rest-hold gap anchoring (C-14),
- * hierarchical kinematic transform composition (C-6), environment sub-rotation (D1), and per-frame derived layering (D5).
+ * hierarchical kinematic transform composition (C-6), environment sub-rotation (D1), custom
+ * element-level SVG animation timelines, and per-frame derived layering (D5).
  */
 
 import type { Scene, EnvironmentAsset, SchemaVersion } from "./types";
+import type { SvgElementState } from "./svgAnimation";
+import { compileSvgTimeline } from "./svgAnimation";
 import { validateScene } from "./validateScene";
 import { getActionDefinition, getAffectedJointsForAction } from "./actions";
 import { getCharacterRigById } from "../characters";
@@ -32,6 +35,8 @@ export interface CompiledEntity {
   joints?: Record<string, number>; // absolute degrees for each joint
   composedPivots?: Record<string, { x: number; y: number; rotation: number }>; // hierarchical pivots
   subGroupRotations?: Array<{ elementId: string; degrees: number }>; // D1
+  /** Resolved custom SVG animation state for this frame, keyed by element id inside the asset. */
+  elementStates?: Record<string, SvgElementState>;
 }
 
 export interface CompiledFrame {
@@ -57,6 +62,17 @@ export interface CompiledScene {
 export interface CompileOptions {
   skipContinuityVerification?: boolean;
   velocityToleranceDegPerSec?: number;
+  /**
+   * Pins the wall clock used for the diagnostic meta fields (compiledAt, compileTimeMs).
+   * Pass a fixed value when the whole CompiledScene must be byte-identical across runs.
+   */
+  clockMs?: number;
+  /**
+   * Element ids declared by each asset's SVG document, keyed by assetId. When supplied, custom
+   * animation clips that target an id the document does not declare fail the compile instead of
+   * silently animating nothing.
+   */
+  assetElementIds?: Record<string, string[]>;
 }
 
 /** Evaluates 2D rigid transform rotating point (cx, cy) around pivot (px, py) by angleDeg. */
@@ -85,7 +101,8 @@ export function rotatePointAroundPivot(
  * @param options Optional compilation overrides.
  */
 export function compileScene(scene: Scene, options: CompileOptions = {}): CompiledScene {
-  const startTime = Date.now();
+  const pinnedClock = typeof options.clockMs === "number";
+  const startTime = pinnedClock ? options.clockMs! : Date.now();
 
   // 1. Semantic Validation
   const validation = validateScene(scene);
@@ -410,6 +427,22 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
     });
   }
 
+  // 3b. Compile custom element-level SVG animation timelines (one per asset, optional).
+  const assetElementStates: Map<string, Array<Record<string, SvgElementState>>> = new Map();
+  for (const asset of allAssets) {
+    if (!asset.animation) continue;
+    try {
+      const compiledTimeline = compileSvgTimeline(asset.animation, {
+        durationFrames: totalFrames,
+        availableElementIds: options.assetElementIds?.[asset.assetId],
+      });
+      assetElementStates.set(asset.assetId, compiledTimeline.frames);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(`SCENE_ANIMATION_COMPILE_FAILED: asset "${asset.assetId}": ${detail}`);
+    }
+  }
+
   // 4. Pre-compile Actor Positions (positionTracks)
   const actorPosCurves: Map<string, { x: number[]; y: number[] }> = new Map();
   for (const actor of scene.actors) {
@@ -470,6 +503,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
           elementId: sg.elementId,
           degrees: sg.angles[f],
         })),
+        elementStates: assetElementStates.get(scene.background.assetId)?.[f],
       });
     }
 
@@ -498,6 +532,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
             elementId: sg.elementId,
             degrees: sg.angles[f],
           })),
+          elementStates: assetElementStates.get(prop.assetId)?.[f],
         });
       }
     }
@@ -577,7 +612,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
     };
   }
 
-  const compileTimeMs = Date.now() - startTime;
+  const compileTimeMs = pinnedClock ? 0 : Date.now() - startTime;
 
   return {
     schemaVersion: scene.schemaVersion,
@@ -586,7 +621,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
     durationFrames: totalFrames,
     frames: compiledFrames,
     meta: {
-      compiledAt: new Date().toISOString(),
+      compiledAt: new Date(startTime).toISOString(),
       continuityVerified: !options.skipContinuityVerification,
       maxVelocityDiscontinuity,
       warnings,

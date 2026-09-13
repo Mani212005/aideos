@@ -1,8 +1,11 @@
 /**
  * File Description: Pure TypeScript data contract for the Aideos 2D Scene Graph.
  * Defines serializable scene hierarchy (background, props, actors), tracks, keyframes,
- * rotating subgroups (D1), actions, model sheets (D2), and scene root. (Axiom 1: pure data).
+ * rotating subgroups (D1), custom SVG animation timelines, actions, model sheets (D2),
+ * and scene root. (Axiom 1: pure data).
  */
+
+import type { SvgAnimationTimeline } from "./svgAnimation";
 
 export type SchemaVersion = string; // e.g. "1.0.0"
 
@@ -48,6 +51,11 @@ export interface EnvironmentAsset {
   tracks?: Track[];
   /** D1: Multiple rotating sub-groups per asset (e.g. front + rear bicycle wheels). */
   subGroups?: RotatingSubGroup[];
+  /**
+   * Custom element-level SVG animation for this asset: which elements of its SVG document move,
+   * along which property, over which frames. See svgAnimation.ts for the clip format.
+   */
+  animation?: SvgAnimationTimeline;
 }
 
 export interface ScheduledAction {

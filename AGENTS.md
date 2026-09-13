@@ -54,6 +54,12 @@ File Description: This file defines the core guidelines, coding principles, and 
 ## Rule 3 (No Long Dashes) and screenplay parsing
 - `backend/scriptIntake.ts` legitimately matches literal em/en dash characters as part of normalizing user-authored screenplay input (e.g. bare timestamp headers like "0:00" through "0:20" followed by a dash-separated title). To keep the module free of literal dash bytes while preserving that behavior, it and its test (`backend/claude_script_intake.test.ts`) use `\u2014`/`\u2013` escapes inside regex and template-literal fixtures instead of the raw characters. Follow the same pattern (escape sequence, not raw character) whenever dash-handling code or its test fixtures genuinely need to represent an em/en dash.
 
+## Scene graph and custom SVG animation
+- The scene engine renders a static `.svg` asset plus a separate declarative animation timeline. The clip format, its rules and the determinism contract are documented in [src/dl/scene/README.md](src/dl/scene/README.md); read that before touching `src/dl/scene/**`.
+- `src/dl/scene/**` is browser bundle code and must stay free of Node imports, because Remotion bundles it. The filesystem half lives in `src/dl/scene/validateSceneNode.ts` and `backend/scene/loadSceneAssets.ts`, which are the Node-only modules by design. `SceneView` therefore takes asset source text as a prop rather than reading it.
+- Rasterize review stills with headless Chrome via `backend/scene/renderStill.ts`, never `qlmanage`: qlmanage ignores the document aspect ratio and emits a square thumbnail, so stills made with it are a misleading record of the frame. `renderFrameStill` verifies the PNG dimensions and throws if they are wrong.
+- Anything a model generates into `videos/<slug>/visuals/` passes `backend/scene/generateSvg.ts` first. Its validators enforce every rule the prompt states (mandated viewBox, centre-60% containment, well-formedness, frame-driven purity, self-containment) and the synthesis entry points retry with the errors fed back. Add a rule to the validator, not only to the prompt: a rule that is only asked for is not enforced.
+
 ## Maintaining this file
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.
 - Keep it concise. Prefer pointers to authoritative files over copying details.

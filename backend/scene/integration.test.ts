@@ -14,9 +14,11 @@ import { validateScene } from "../../src/dl/scene/validateScene";
 import { compileScene } from "../../src/dl/scene/compile";
 import { authorScene, reviseScene } from "./author";
 import { type PatchOp } from "../../src/dl/scene/patch";
-import { renderFrameStill } from "./renderStill";
+import { renderFrameStill, readPngDimensions } from "./renderStill";
+import { loadSceneAssets } from "./loadSceneAssets";
 
 const STAGE_SVG = path.resolve("test_fixtures/svg/stage_and_prop.svg");
+const PROP_SVG = path.resolve("test_fixtures/svg/prop_turbine.svg");
 const OUT_FRAMES_DIR = path.resolve("out/integration");
 
 // Deep diff helper
@@ -78,8 +80,8 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Renderi
       props: [
         {
           assetId: "prop-fan",
-          svgSource: STAGE_SVG,
-          position: { x: 960, y: 180 },
+          svgSource: PROP_SVG,
+          position: { x: 1500, y: 760 },
           scale: 1.0,
           rotation: 0,
           opacity: 1.0,
@@ -138,7 +140,17 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Renderi
 
   // STEP 2: Compile & assert continuity and audio invariant
   console.log("\n[Step 2] Compiling initial scene...");
-  const compiled1 = compileScene(initialScene);
+  // Load the scene's real SVG artwork so the rendered stills show the authored stage and prop
+  // rather than the renderer's placeholder geometry.
+  const sceneAssets = loadSceneAssets(initialScene);
+  assert.ok(
+    Object.keys(sceneAssets.svgSources).length > 0,
+    "Scene assets must load from disk for rendering",
+  );
+
+  const compiled1 = compileScene(initialScene, {
+    assetElementIds: sceneAssets.elementIdsByAssetId,
+  });
   assert.equal(compiled1.frames.length, 120);
   assert.equal(compiled1.meta.continuityVerified, true);
   const diffMs = Math.abs((compiled1.durationFrames / compiled1.fps) * 1000 - initialScene.audioDurationMs);
@@ -152,10 +164,16 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Renderi
   for (const f of sampleFrames) {
     const frameData = compiled1.frames[f];
     const frameOutPng = path.join(OUT_FRAMES_DIR, `frame_${f}.png`);
-    renderFrameStill(frameData, frameOutPng);
+    renderFrameStill(frameData, frameOutPng, { svgSources: sceneAssets.svgSources });
     assert.ok(fs.existsSync(frameOutPng), `PNG file must exist: ${frameOutPng}`);
     const size = fs.statSync(frameOutPng).size;
     assert.ok(size > 1000, `Rendered PNG must have non-zero size (got ${size} bytes)`);
+    const dims = readPngDimensions(frameOutPng);
+    assert.deepEqual(
+      dims,
+      { width: 1920, height: 1080 },
+      `Rendered still must be a true 1920x1080 raster, got ${dims.width}x${dims.height}`,
+    );
     renderedInitialPaths.push(frameOutPng);
     console.log(`  -> Rendered PNG frame ${f} to ${frameOutPng} (${(size / 1024).toFixed(1)} KB)`);
   }
@@ -205,10 +223,16 @@ test("§13 Complete System Integration Test: 10-Step Full Authoring, PNG Renderi
   for (const f of sampleFrames) {
     const frameData = compiled2.frames[f];
     const frameOutPng = path.join(OUT_FRAMES_DIR, `revised_frame_${f}.png`);
-    renderFrameStill(frameData, frameOutPng);
+    renderFrameStill(frameData, frameOutPng, { svgSources: sceneAssets.svgSources });
     assert.ok(fs.existsSync(frameOutPng), `PNG file must exist: ${frameOutPng}`);
     const size = fs.statSync(frameOutPng).size;
     assert.ok(size > 1000, `Rendered revised PNG must have non-zero size (got ${size} bytes)`);
+    const dims = readPngDimensions(frameOutPng);
+    assert.deepEqual(
+      dims,
+      { width: 1920, height: 1080 },
+      `Rendered revised still must be a true 1920x1080 raster, got ${dims.width}x${dims.height}`,
+    );
     renderedRevisedPaths.push(frameOutPng);
     console.log(`  -> Rendered revised PNG frame ${f} to ${frameOutPng} (${(size / 1024).toFixed(1)} KB)`);
   }

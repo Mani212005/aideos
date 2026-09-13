@@ -1,10 +1,12 @@
 /**
  * File Description: Comprehensive semantic validator for Aideos Scene Graph data (Phase 1).
- * Enforces 18 strict error validation rules and normalized median scale warnings (W1).
+ * Enforces 18 strict error validation rules, custom SVG animation timeline rules (Rule 20),
+ * and normalized median scale warnings (W1).
  * 100% pure TypeScript validator with zero Node runtime dependencies.
  */
 
 import type { Scene, EnvironmentAsset, ActorInstance, Track } from "./types";
+import { validateSvgTimeline } from "./svgAnimation";
 import { getCharacterRigById } from "../characters";
 import { getModelSheet } from "./modelSheet";
 import { ACTION_METADATA, getAffectedJointsForAction } from "./actions";
@@ -212,6 +214,22 @@ export function validateScene(scene: Scene): ValidationResult {
         } else {
           subGroupElementIds.add(sg.elementId);
         }
+      }
+    }
+
+    // Rule 20: Custom element-level SVG animation timeline is internally consistent.
+    // Target existence against the real SVG document is checked by validateSceneNode, which is
+    // the layer that can read the asset off disk.
+    if (asset.animation) {
+      const timelineErrors = validateSvgTimeline(asset.animation, {
+        durationFrames: scene.durationFrames,
+      });
+      for (const te of timelineErrors) {
+        errors.push({
+          rule: 20,
+          entityId: asset.assetId,
+          message: `Asset "${asset.assetId}" animation timeline "${asset.animation.timelineId}" clip "${te.clipId}": ${te.message}`,
+        });
       }
     }
   }
