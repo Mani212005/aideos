@@ -551,6 +551,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
             </div>
 
             <input
+              aria-label="Shot duration in seconds"
               type="range"
               min="0.5"
               max="30"
@@ -589,6 +590,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
             </div>
 
             <input
+              aria-label="Narration speed multiplier"
               type="range"
               min="0.5"
               max="2.0"

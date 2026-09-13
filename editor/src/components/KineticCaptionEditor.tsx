@@ -268,6 +268,7 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
                 Font Size: {fontSize}px
               </label>
               <input
+                aria-label="Caption font size"
                 type="range"
                 min={24}
                 max={72}
@@ -281,6 +282,7 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
                 Wrap Width: {maxWidth}px
               </label>
               <input
+                aria-label="Caption wrap width"
                 type="range"
                 min={320}
                 max={1000}

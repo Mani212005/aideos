@@ -43,10 +43,10 @@ function layerIdForChannel(channel: AudioClip["channel"] | undefined): string {
 export function defaultTimelineLayers(): Layer[] {
   return [
     { id: CONVERTED_LAYER_IDS.voiceover, number: 0, label: "Voiceover", locked: false, hidden: false, muted: false, height: 52 },
-    { id: CONVERTED_LAYER_IDS.music, number: 2, label: "Music", locked: false, hidden: false, muted: false, height: 44 },
-    { id: CONVERTED_LAYER_IDS.sfx, number: 4, label: "Sound Effects", locked: false, hidden: false, muted: false, height: 44 },
+    { id: CONVERTED_LAYER_IDS.music, number: 2, label: "Music", locked: false, hidden: false, muted: false, height: 48 },
+    { id: CONVERTED_LAYER_IDS.sfx, number: 4, label: "Sound Effects", locked: false, hidden: false, muted: false, height: 48 },
     { id: CONVERTED_LAYER_IDS.animation, number: 10, label: "Scenes", locked: false, hidden: false, muted: false, height: 76 },
-    { id: CONVERTED_LAYER_IDS.subtitles, number: 20, label: "Subtitles", locked: false, hidden: false, muted: false, height: 40 },
+    { id: CONVERTED_LAYER_IDS.subtitles, number: 20, label: "Subtitles", locked: false, hidden: false, muted: false, height: 48 },
   ];
 }
 
@@ -80,7 +80,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
         locked: false,
         hidden: false,
         muted: false,
-        height: 44,
+        height: 48,
       });
       return layerId;
     }

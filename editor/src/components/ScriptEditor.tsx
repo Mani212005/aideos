@@ -667,7 +667,7 @@ export function ScriptEditor({
                 value={script}
                 onChange={(e) => setScript(e.target.value)}
                 placeholder="Paste your Claude screenplay here with ## 0:00-0:20 - TITLE headers, [VISUAL], [NARRATION], and [ON SCREEN] tag blocks..."
-                className="w-full h-full min-h-[380px] p-4 bg-transparent text-ink font-mono text-sm leading-relaxed outline-none resize-none selection:bg-select/30 placeholder:text-ink-mute"
+                aria-label="Screenplay text" className="w-full h-full min-h-[380px] p-4 bg-transparent text-ink font-mono text-sm leading-relaxed outline-none resize-none selection:bg-select/30 placeholder:text-ink-mute"
                 spellCheck={false}
               />
             )}
@@ -909,7 +909,8 @@ export function ScriptEditor({
                     if (audioRef.current)
                       audioRef.current.currentTime = newTime;
                   }}
-                  className="flex-1 accent-select cursor-pointer h-1.5 bg-sunken "
+                  aria-label="Voiceover playback position"
+                  className="flex-1 accent-select cursor-pointer h-1.5 bg-sunken"
                 />
 
                 <span className="text-xs font-mono text-ink w-12">
@@ -955,6 +956,7 @@ export function ScriptEditor({
             <select
               value={selectedVoice}
               onChange={(e) => setSelectedVoice(e.target.value)}
+              aria-label="Narration voice"
               className="w-full bg-paper-3 border-2 border-ink p-2.5 text-xs text-ink outline-none focus:border-select font-medium shadow-nb-sm"
             >
               <optgroup label="Kokoro Local Neural (ONNX)">
