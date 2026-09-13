@@ -5,7 +5,7 @@
  * spread across the whole duration so the output can actually be looked at rather than assumed.
  */
 
-import { execFileSync, spawn } from "child_process";
+import { execFileSync, spawn, spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import type { ProductionFormat, RenderedOutput } from "./types";
@@ -20,10 +20,15 @@ export const FORMAT_SPECS: Record<ProductionFormat, { composition: string; width
 /** Encoder settings shared by both formats. Tuned for text legibility, not for file size. */
 const ENCODE_FLAGS = [
   "--codec=h264",
-  // The design language is fine hairlines and small mono type; the default JPEG quality
-  // smears both. 95 keeps them crisp without the cost of a full PNG frame pipeline.
-  "--jpeg-quality=95",
+  // PNG frames rather than the default JPEG. The design language is fine hairlines and small
+  // mono type, and JPEG chroma subsampling smears both before the encoder ever sees them. It
+  // also fixes the delivery format: a JPEG frame pipeline tags the stream yuvj420p, the
+  // deprecated full-range variant, which players that assume limited range render with
+  // crushed blacks - and this film is almost entirely black. Measured cost is under two
+  // minutes on a three-minute film.
+  "--image-format=png",
   "--crf=16",
+  "--pixel-format=yuv420p",
   "--audio-codec=aac",
   "--audio-bitrate=320k",
   "--gl=angle",
@@ -128,33 +133,39 @@ export interface AudioReport {
   clippedSamples: number;
 }
 
-/** Runs ffmpeg's astats and silencedetect over a file and parses the numbers that matter. */
+/**
+ * Runs ffmpeg's astats and silencedetect over a file and parses the numbers that matter.
+ *
+ * The report goes to stderr, not stdout, and `-f null` writes nothing to stdout at all. Reading
+ * the wrong stream gives an empty report, which parses as a peak of zero and makes every render
+ * look like it is clipping.
+ */
 export function analyseAudio(filePath: string): AudioReport {
-  let output = "";
-  try {
-    execFileSync(
-      "ffmpeg",
-      ["-v", "info", "-i", filePath, "-af", "silencedetect=noise=-50dB:d=1.0,astats=metadata=1:reset=0", "-f", "null", "-"],
-      { stdio: ["ignore", "pipe", "pipe"] },
-    );
-  } catch (err) {
-    // ffmpeg writes its filter reports to stderr and exits non-zero on -f null with some
-    // builds; the report is still what we want, so read it off the error rather than failing.
-    output = String((err as { stderr?: Buffer }).stderr ?? "");
-  }
-  if (!output) {
-    output = execFileSync(
-      "ffmpeg",
-      ["-v", "info", "-i", filePath, "-af", "silencedetect=noise=-50dB:d=1.0,astats=metadata=1:reset=0", "-f", "null", "-"],
-      { stdio: ["ignore", "pipe", "pipe"], encoding: "buffer" },
-    ).toString();
+  const probe = spawnSync(
+    "ffmpeg",
+    [
+      "-hide_banner", "-nostats",
+      "-i", filePath,
+      "-af", "silencedetect=noise=-50dB:d=1.0,astats=metadata=1:reset=0",
+      "-f", "null", "-",
+    ],
+    { encoding: "utf8", maxBuffer: 1024 * 1024 * 64 },
+  );
+  const output = `${probe.stderr ?? ""}${probe.stdout ?? ""}`;
+  if (!output.includes("Peak level dB")) {
+    throw new Error(`ffmpeg produced no audio statistics for ${filePath}`);
   }
 
-  /** Pulls the last numeric value reported for an astats field. */
-  const lastNumber = (label: string): number => {
-    const matches = [...output.matchAll(new RegExp(`${label}:\\s*(-?[\\d.]+|-?inf)`, "g"))];
-    const value = matches.length > 0 ? matches[matches.length - 1][1] : "0";
-    return value.includes("inf") ? -Infinity : Number(value);
+  /** Every value astats reported for a field, one per channel plus the overall summary. */
+  const values = (label: string): number[] =>
+    [...output.matchAll(new RegExp(`${label}:\\s*(-?[\\d.]+|-?inf)`, "g"))].map((m) =>
+      m[1].includes("inf") ? -Infinity : Number(m[1]),
+    );
+
+  /** The worst channel, which is the one that decides whether the mix clips. */
+  const worst = (label: string): number => {
+    const all = values(label);
+    return all.length > 0 ? Math.max(...all) : -Infinity;
   };
 
   const silences: AudioReport["silences"] = [];
@@ -164,21 +175,26 @@ export function analyseAudio(filePath: string): AudioReport {
     silences.push({ startSec: starts[i] ?? Number(m[1]), durationSec: Number(m[2]) });
   });
 
-  const streamLine = execFileSync("ffprobe", [
-    "-v", "error",
-    "-select_streams", "a:0",
-    "-show_entries", "stream=channels,sample_rate",
-    "-of", "csv=p=0",
-    filePath,
-  ]).toString().trim().split(",");
+  // Queried one field at a time: a multi-field csv comes back in the container's own field
+  // order rather than the order asked for, which silently swaps channels and sample rate.
+  const streamField = (field: string): number => {
+    const value = execFileSync("ffprobe", [
+      "-v", "error",
+      "-select_streams", "a:0",
+      "-show_entries", `stream=${field}`,
+      "-of", "csv=p=0",
+      filePath,
+    ]).toString().trim();
+    return Number(value) || 0;
+  };
 
   return {
-    peakDb: lastNumber("Peak level dB"),
-    rmsDb: lastNumber("RMS level dB"),
-    channels: Number(streamLine[0] ?? 0),
-    sampleRate: Number(streamLine[1] ?? 0),
+    peakDb: worst("Peak level dB"),
+    rmsDb: worst("RMS level dB"),
+    channels: streamField("channels"),
+    sampleRate: streamField("sample_rate"),
     silences,
-    clippedSamples: lastNumber("Number of clipped samples") || 0,
+    clippedSamples: Math.max(0, worst("Number of clipped samples")),
   };
 }
 

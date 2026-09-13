@@ -400,7 +400,10 @@ export async function runProduction(
     // ---- assemble: wire footage in, install as the active film, validate ---------------------
     const assembled = await runStage<Film>(
       "assemble",
-      fingerprint(designFingerprint, brollClips.map((c) => c.staticPath)),
+      // Fingerprinted on the compiled film itself, not on the inputs that produced it: a
+      // change to the design compiler produces a different film from identical inputs, and
+      // hashing the inputs alone let a stale assembly survive the change.
+      fingerprint(design.film, brollClips.map((c) => c.staticPath)),
       () => readFilm(slug),
       async () => {
         let film = readFilm(slug);
@@ -419,7 +422,12 @@ export async function runProduction(
             );
             continue;
           }
-          film = wireFootageIntoFilm(slug, clip.shotId, clip.staticPath, shot.visualDirection ?? clip.prompt);
+          // The caption the design stage already put on the placeholder inset came from the
+          // screenplay's on-screen copy. The visual direction is an instruction to the
+          // generator, and printing it under the plate puts a stage direction on screen.
+          const existing = shot.blocks.find((b) => b.c === "AnalogyInset");
+          const caption = existing && "caption" in existing ? existing.caption : shot.ch ?? "";
+          film = wireFootageIntoFilm(slug, clip.shotId, clip.staticPath, caption);
         }
 
         const wired = film.shots.filter((s) => s.blocks.some((b) => b.c === "AnalogyInset" && Boolean(b.src))).length;

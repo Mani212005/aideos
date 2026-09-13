@@ -650,15 +650,14 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
   const isVideo = Boolean(resolvedSrc?.match(/\.(mp4|webm|mov)$/i));
 
   if (fullScreenHero && isVisible && resolvedSrc) {
-    // The plate runs to the frame edge in both formats rather than floating as a small
-    // letterboxed rectangle. Contain, not cover: a generated clip is 832x480, and cropping
-    // it to fill a 9:16 frame would throw away most of the shot and upscale the rest.
+    // A hero plate owns the frame. In a 16:9 frame a 16:9 clip covers it with a crop of a
+    // couple of percent, so it runs edge to edge; in 9:16 covering would throw away two
+    // thirds of the shot, so it sits as a full-width band with the canvas above and below.
     const heroMedia: React.CSSProperties = {
       width: "100%",
-      maxHeight: "92%",
-      objectFit: "contain",
-      borderRadius: layout.radius.inner,
-      boxShadow: "0 30px 80px rgba(0, 0, 0, 0.85)",
+      height: layout.format === "long" ? "100%" : "auto",
+      maxHeight: "100%",
+      objectFit: layout.format === "long" ? "cover" : "contain",
     };
     return (
       <div
@@ -669,12 +668,12 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
           width: "100%",
           height: "100%",
           zIndex: 50,
-          background: "radial-gradient(ellipse at center, rgba(16,18,24,0.94) 0%, rgba(5,6,9,0.98) 100%)",
+          background: palette.canvas,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          padding: layout.grid * 4,
+          overflow: "hidden",
         }}
       >
         {isVideo ? (
@@ -685,12 +684,12 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
         {caption ? (
           <div
             style={{
-              marginTop: layout.grid * 2,
-              fontSize: layout.px(13),
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: palette.muted,
-              fontFamily: MONO,
+              ...layout.label(14),
+              position: "absolute",
+              left: layout.margin.left,
+              bottom: layout.margin.bottom,
+              color: "rgba(245, 245, 245, 0.72)",
+              textShadow: "0 2px 12px rgba(0, 0, 0, 0.9)",
             }}
           >
             {caption}

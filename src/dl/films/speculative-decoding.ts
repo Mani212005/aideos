@@ -137,6 +137,7 @@ export const speculativeDecodingFilm: Film = {
         {
           "c": "AnalogyInset",
           "caption": "One token at a time",
+          "src": "videos/speculative-decoding/footage/beat-01.mp4",
           "fullScreenHero": true
         }
       ]
@@ -204,7 +205,7 @@ export const speculativeDecodingFilm: Film = {
         {
           "c": "StatCounter",
           "to": 70,
-          "label": "Memory bound, not compute bound",
+          "label": "Parameters",
           "format": "plain",
           "suffix": "B"
         }
@@ -218,7 +219,8 @@ export const speculativeDecodingFilm: Film = {
       "look": [
         "waiting",
         "memory-bound",
-        "asymmetry"
+        "asymmetry",
+        "verify"
       ],
       "move": "zoom-out",
       "drift": true,
@@ -271,36 +273,6 @@ export const speculativeDecodingFilm: Film = {
       "id": "beat-08",
       "ch": "The Asymmetry",
       "dur": 7.681,
-      "stage": "anchor",
-      "look": "asymmetry",
-      "move": "pan",
-      "drift": true,
-      "zoom": 1.05,
-      "scriptText": "Checking a word is fast, because a whole batch of them can be examined in a single pass, using weights you were going to load anyway.",
-      "speed": 1,
-      "blocks": [
-        {
-          "c": "TokenStrip",
-          "tokens": [
-            "t+1",
-            "t+2",
-            "t+3",
-            "t+4",
-            "t+5"
-          ],
-          "lit": [
-            0,
-            1,
-            2
-          ],
-          "caption": "Accepted to the first mismatch"
-        }
-      ]
-    },
-    {
-      "id": "beat-09",
-      "ch": "The Asymmetry",
-      "dur": 8.796,
       "stage": "none",
       "look": [
         "memory-bound",
@@ -310,6 +282,25 @@ export const speculativeDecodingFilm: Film = {
       "move": "zoom-out",
       "drift": true,
       "zoom": 0.9,
+      "scriptText": "Checking a word is fast, because a whole batch of them can be examined in a single pass, using weights you were going to load anyway.",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "beat-09",
+      "ch": "The Asymmetry",
+      "dur": 8.796,
+      "stage": "none",
+      "look": [
+        "waiting",
+        "memory-bound",
+        "asymmetry",
+        "draft",
+        "verify"
+      ],
+      "move": "zoom-out",
+      "drift": true,
+      "zoom": 0.8,
       "scriptText": "So here is the move. Instead of asking the expensive model to write the answer, we are going to ask it to grade one that somebody else already wrote.",
       "visualDirection": "The camera pulls back across the canvas so the whole argument so far is visible at once.",
       "speed": 1,
@@ -332,6 +323,7 @@ export const speculativeDecodingFilm: Film = {
         {
           "c": "AnalogyInset",
           "caption": "A small model writes ahead",
+          "src": "videos/speculative-decoding/footage/beat-10.mp4",
           "fullScreenHero": true
         }
       ]
@@ -407,7 +399,7 @@ export const speculativeDecodingFilm: Film = {
             1,
             2
           ],
-          "caption": "Verify all five at once"
+          "caption": "Accepted to the first mismatch"
         }
       ]
     },
@@ -428,6 +420,7 @@ export const speculativeDecodingFilm: Film = {
         {
           "c": "AnalogyInset",
           "caption": "One Pass, Many Checks",
+          "src": "videos/speculative-decoding/footage/beat-14.mp4",
           "fullScreenHero": true
         }
       ]
@@ -440,7 +433,8 @@ export const speculativeDecodingFilm: Film = {
       "look": [
         "draft",
         "verify",
-        "identical"
+        "identical",
+        "memory-bound"
       ],
       "move": "zoom-out",
       "drift": true,
@@ -487,6 +481,7 @@ export const speculativeDecodingFilm: Film = {
         {
           "c": "AnalogyInset",
           "caption": "Exactly the Same Answer",
+          "src": "videos/speculative-decoding/footage/beat-17.mp4",
           "fullScreenHero": true
         }
       ]
@@ -530,7 +525,7 @@ export const speculativeDecodingFilm: Film = {
         {
           "c": "StatCounter",
           "to": 2,
-          "label": "Two to three times faster",
+          "label": "Throughput gain",
           "format": "plain",
           "suffix": "x"
         }

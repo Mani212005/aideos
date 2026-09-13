@@ -333,6 +333,34 @@ function layoutCanvas(concepts: ConceptEntity[]): { nodes: CanvasNode[]; edges: 
 }
 
 /**
+ * The group of nodes a spine shot pulls back to take in.
+ *
+ * The obvious choice - the node before, the node itself and the node after - lands on three
+ * nodes of the same serpentine row, a box six times wider than it is tall. Framing that fills a
+ * 16:9 frame and shrinks to an unreadable strip in 9:16. Reaching for a node on the next row as
+ * well gives the group two rows of height, which reads in both formats from the one camera solve
+ * that section 06 allows.
+ *
+ * `reach` widens the window. Two spine beats in a row would otherwise solve to the same framing
+ * and hold a completely still frame across both; widening the second one turns the pair into a
+ * continuous pull-back instead.
+ */
+function spineLook(nodes: CanvasNode[], index: number, reach: number): string[] {
+  const picked: CanvasNode[] = [];
+  for (let offset = -reach; offset <= reach; offset++) {
+    picked.push(nodes[Math.min(nodes.length - 1, Math.max(0, index + offset))]);
+  }
+
+  const spansRows = new Set(picked.map((n) => n.y)).size > 1;
+  if (!spansRows) {
+    const otherRow = nodes.find((n) => n.y !== nodes[index].y && Math.abs(n.x - nodes[index].x) < nodes[index].w);
+    if (otherRow) picked.push(otherRow);
+  }
+
+  return [...new Set(picked.map((n) => n.id))];
+}
+
+/**
  * Compiles a screenplay and its measured narration into a validated film.
  *
  * The runsheet rules are satisfied by construction rather than by retrying against the validator:
@@ -389,6 +417,7 @@ export function compileFilmFromScreenplay(
   let sinceCanvas = 0;
   let lastSectionIndex = -1;
   let lastDeviceKind: string | null = null;
+  let consecutiveSpine = 0;
   let devicesUsed = 0;
   const maxDevices = Math.max(2, Math.round(beats.length / 5));
 
@@ -451,9 +480,12 @@ export function compileFilmFromScreenplay(
     // The spine shot is the film's breath: it pulls back to take in the node just left behind
     // together with the one being approached, so the canvas visibly accumulates instead of
     // holding the same framing with nothing moving in it.
-    const neighbours = [nodeIds[Math.max(0, nodeIndex - 1)], nodeId, nodeIds[Math.min(nodeIds.length - 1, nodeIndex + 1)]];
-    const look: Shot["look"] = stage === "none" ? [...new Set(neighbours)] : nodeId;
-    const zoom = stage === "none" ? 0.9 : stage === "anchor" ? 1.05 : 1;
+    consecutiveSpine = stage === "none" ? consecutiveSpine + 1 : 0;
+    const look: Shot["look"] =
+      stage === "none" ? spineLook(nodes, nodeIndex, Math.min(3, consecutiveSpine)) : nodeId;
+    // Each further spine beat in a run pulls back a little more, so the camera keeps moving.
+    const zoom =
+      stage === "none" ? Math.max(0.6, 1 - 0.1 * consecutiveSpine) : stage === "anchor" ? 1.05 : 1;
     const move: Shot["move"] = i === 0 || isSectionStart ? "cut" : stage === "none" ? "zoom-out" : "pan";
 
     shots.push({
