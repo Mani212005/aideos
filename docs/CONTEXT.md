@@ -18,13 +18,15 @@ The root data contract defining a complete video composition (stored in `src/dl/
 * `chapters: string[]` (Ordered list of chapter titles for the progress rail)
 * `canvas: { nodes: CanvasNode[], edges: CanvasEdge[] }` (The continuous 2D spatial graph)
 * `shots: Shot[]` (Ordered chronological sequence of camera shots and visual blocks)
-* `voiceover?: { src: string, volume?: number }` (Master audio track source file)
+* `voiceover?: { src: string, volume?: number, speed?: number }` (Master audio track source file)
+* `layers?: LayerDefinition[]` (Persisted non-linear track definitions and settings)
+* `audioClips?: AudioClip[]` (Persisted multi-track audio clips)
 
 ### `Shot`
 A single continuous camera view and duration window on the timeline.
 * `id: string` (Unique shot identifier, e.g. "shot-intro")
 * `ch?: string` (Chapter assignment for chapter rail tracking)
-* `dur: number` (Authored duration in seconds; locked by master audio clock $\pm 50\text{ms}$)
+* `dur: number` (Authored duration in seconds; locked by master audio clock +/- 50ms)
 * `stage: "anchor" | "frame" | "none"` (Visual staging: "frame"=Hero center stage, "anchor"=grows from canvas node, "none"=empty canvas)
 * `look: string | string[] | "all"` (Node ID(s) targeted by the camera viewport)
 * `move: "cut" | "pan" | "zoom-in" | "zoom-out" | "hold"` (Camera motion transition)
@@ -35,6 +37,7 @@ A single continuous camera view and duration window on the timeline.
 * `visualDirection?: string` (Human/AI visual intent prompt)
 * `metaphor?: string` (Assigned visual metaphor ID)
 * `needsFootage?: boolean` (Flag indicating AI video b-roll overlay)
+* `layerId?: string` (Explicit lane assignment when placed off default track)
 
 ### `CanvasNode`
 A 2D rectangular concept card on the continuous spatial map.
@@ -108,13 +111,13 @@ An individual vector path inside a limb:
 ### `POSE_PRESETS` (`src/dl/characters/presets.ts`)
 8 built-in one-click gesture configurations:
 * `neutral`: Rest posture, attentive listening.
-* `present-right`: Body tilted $-4^\circ$, left arm $-35^\circ$, right arm $+20^\circ$ pointing right.
-* `present-left`: Body tilted $+4^\circ$, left arm $+20^\circ$, right arm $-35^\circ$ pointing left.
-* `think`: Body tilted $-2^\circ$, head $+8^\circ$, right hand to chin at $-65^\circ$.
-* `shrug`: Both arms raised at $-45^\circ$ and $+45^\circ$, head $+6^\circ$.
-* `wave`: Right arm raised $+85^\circ$ with $+15^\circ$ wave flick.
-* `crossed-arms`: Left arm $-40^\circ$, right arm $+40^\circ$ crossed over chest.
-* `celebrate`: Both arms raised high at $+110^\circ$ and $-110^\circ$.
+* `present-right`: Body tilted -4 deg, left arm -35 deg, right arm +20 deg pointing right.
+* `present-left`: Body tilted +4 deg, left arm +20 deg, right arm -35 deg pointing left.
+* `think`: Body tilted -2 deg, head +8 deg, right hand to chin at -65 deg.
+* `shrug`: Both arms raised at -45 deg and +45 deg, head +6 deg.
+* `wave`: Right arm raised +85 deg with +15 deg wave flick.
+* `crossed-arms`: Left arm -40 deg, right arm +40 deg crossed over chest.
+* `celebrate`: Both arms raised high at +110 deg and -110 deg.
 
 ---
 
@@ -123,7 +126,7 @@ An individual vector path inside a limb:
 | Function | Signature | Description |
 | :--- | :--- | :--- |
 | `buildTimeline(film, targetDur)` | `(Film, number?) => TimedShot[]` | Builds linear frame timeline, assigning start frame `from`, end frame `to`, and frame counts. |
-| `camAt(film, timeline, frame, viewport)` | `(Film, TimedShot[], number, Size) => Cam` | Solves continuous camera position $(x, y)$ and zoom factor at any exact frame. |
+| `camAt(film, timeline, frame, viewport)` | `(Film, TimedShot[], number, Size) => Cam` | Solves continuous camera position (x, y) and zoom factor at any exact frame. |
 | `shotAt(timeline, frame)` | `(TimedShot[], number) => TimedShot` | Returns the active shot and chapter metadata at the current playhead frame. |
 | `lookBox(film, shot)` | `(Film, Shot) => Box` | Calculates bounding box enclosing all nodes targeted by the shot's `look` parameter. |
 | `projectBox(box, cam, viewport)` | `(Box, Cam, Size) => Box` | Projects 2D world-space coordinates into 2D screen-space pixel coordinates. |
@@ -131,10 +134,9 @@ An individual vector path inside a limb:
 
 ---
 
-## 5. Design System Tokens (`src/dl/tokens.ts`, `src/dl/motion.ts`)
+## 5. Design System Tokens (`src/dl/tokens.ts`, `src/dl/motion.ts`, `editor/src/styles/tokens.css`)
 
-### `PALETTE`
-The strict 6-color semantic palette tokens:
+### Rendered Video Design System (`src/dl/tokens.ts`)
 * `canvas`: `#0A0A0B` (Deepest canvas background layer)
 * `surface`: `#101013` (Raised card surface background)
 * `ink`: `#F5F5F5` (High-contrast typography text)
@@ -142,14 +144,23 @@ The strict 6-color semantic palette tokens:
 * `hairline`: `rgba(245, 245, 245, 0.10)` (Subtle borders and separators)
 * `accent`: `#635BFF` (Default brand focus color)
 
-### `BACKGROUND_THEMES`
-Pre-built tactile paper backgrounds:
+### Rendered Video Background Themes (`src/dl/tokens.ts`)
 * `paper-white`: Archival textured paper with organic fiber lighting (`#F8F6F0`).
 * `parchment`: Warm academic manila cream paper with aged grain (`#F4EFEA`).
 * `blueprint`: Deep cyan engineering blueprint grid (`#0B2545`).
 * `charcoal`: Dark tactile slate paper with crisp silver ink (`#121214`).
 * `dot-grid`: Minimalist precision dot matrix on crisp surface (`#FAF9F6`).
 * `smooth-dark`: Studio deep matte dark presentation (`#0A0A0B`).
+
+### Editor Chrome Neobrutalism Design System (`editor/src/styles/tokens.css`)
+* `--nb-paper`: `#EDE9DE` (Main light application background canvas)
+* `--nb-surface`: `#F8F5EE` (Raised panel and editor card surface)
+* `--nb-subtle`: `#E2DDD0` (Sunken background, lane tracks, inputs)
+* `--nb-ink`: `#121214` (High-contrast typography and borders)
+* `--nb-muted`: `#66645E` (Secondary helper text and metadata)
+* `--nb-border`: `#121214` (Solid 2-4px structural boundaries)
+* `--nb-accent`: `#FF5500` (Neobrutal primary action accent)
+* `--nb-matte`: `#0A0A0B` (Strictly reserved for video frame matte behind preview)
 
 ### `EXPO` Motion Token (`src/dl/motion.ts`)
 * `EXPO = [0.16, 1, 0.3, 1]`: Native ease-out-expo cubic-bezier easing curve ensuring high initial velocity and soft, organic landing.
@@ -197,7 +208,7 @@ Pre-built tactile paper backgrounds:
 * `validateGeneratedSvg(code)`: Validates generated React SVG code against geometric (viewBox, aspect ratio), determinism, self-containment, center-60% containment, and export invariants.
 * `validateGeneratedSvgAsset(svgText)`: Validates generated static SVG scene assets (viewBox, preserveAspectRatio, static purity, unique element IDs, center-60% containment).
 * `buildRepairPrompt(basePrompt, rejected, errors)`: Constructs retry prompt feeding validator failure reasons back to the model.
-* `cleanCodeFence(raw)`: Strips markdown code fences (` ```tsx `, ` ```typescript `, ` ```svg `, etc.) from generated LLM code.
+* `cleanCodeFence(raw)`: Strips markdown code fences from generated LLM code.
 * `synthesizeBespokeSvg(options, llmCaller, targetDir)`: Synthesizes, validates, and saves a bespoke React SVG component to `videos/<slug>/visuals/` with automated repair retry loop.
 * `synthesizeAnimatableSvgAsset(options, llmCaller, targetDir)`: Synthesizes, validates, and saves a plain animatable static SVG asset to `videos/<slug>/visuals/` with declared element IDs.
 
@@ -228,12 +239,40 @@ Pre-built tactile paper backgrounds:
 
 ---
 
-## 7. Interactive Web Studio Components (`editor/src/components/`)
+## 7. Non-Linear Layer Engine & Timeline Tools (`backend/timeline/`)
 
-* **`ShotModal.tsx`**: 80% screen pop-up for visual mode switching, one-click gesture posing (`Wave`, `Point`, `Think`, `Celebrate`), and narration editing.
-* **`Styleboard.tsx`**: Storyboard gallery with live scene cards, 3D perspective toggles, and background canvas pickers.
-* **`MindMap.tsx`**: 2D infinite spatial canvas for dragging and connecting nodes.
-* **`TimelineEditor.tsx`**: Multi-track visual timeline with audio waveforms and playhead scrubbing.
-* **`CustomizationEditor.tsx`**: Studio theme customizer for paper textures, typography, and script-to-metaphor director.
-* **`ScriptEditor.tsx`**: Three-mode narrative authoring studio (Full Screenplay markdown, Visual Studio segment cards, and Spoken Text preview) with two-way sync, sub-shot scene compilation, and instant voiceover generation.
-* **`KineticCaptionEditor.tsx`**: Word-level subtitle editor with live frame seeking.
+* **`layer_engine.ts`**: Pure functional engine operating over `LayeredFilm`. Provides `buildLayerModelFromFilm`, `convertLayeredFilmToFilm` (lossless round-trip with base film), `moveClip`, `trimClip`, `splitClip`, `deleteClip`, and deterministic left-to-right sweep `resolveTrackCollisions`.
+* **`layer_manager.ts`**: Track management functions (`addLayer`, `removeLayer`, `reorderLayers`, `setLayerVisibility`, `setLayerMuted`, `setLayerLocked`).
+* **`drag_machine.ts`**: Pure pointer-drag state machine managing `move`, `trim-start`, `trim-end`, `scrub`, and `marquee` gestures with `DRAG_THRESHOLD_PX`, Escape cancellation, and zero sticky states.
+* **`snap.ts`**: Magnetic snapping engine (`computeSnapPoints`, `snapTimeToTargets`) with zoom-adaptive thresholds and self-ignore boundaries.
+* **`waveform.ts`**: Node-side FFmpeg audio peak extraction (`extractWaveformPeaks`) producing normalized amplitude vectors.
+* **`voiceover_engine.ts`**: Browser-safe voiceover gap analysis, cue retiming, and drift calculation (`calculateNarrationDrift`).
+* **`subtitle_engine.ts`**: VTT subtitle cue splitting, merging, retiming, and validation.
+
+---
+
+## 8. Interactive Web Studio Architecture (`editor/`)
+
+### 7 Sequential Editing Stages (`editor/src/screens/`)
+* **`ScriptStage.tsx` (`ScriptEditor.tsx`)**: Screenplay markdown editor with tag parsing, Visual Studio segment cards, and Kokoro ONNX TTS voiceover synthesis.
+* **`StoryStage.tsx` (`MindMap.tsx`, `NodeEditor.tsx`)**: 2D infinite spatial canvas for dragging nodes, editing labels, and connecting directed edges.
+* **`LookStage.tsx` (`Styleboard.tsx`, `CustomizationEditor.tsx`)**: Storyboard keyframe gallery, 1-click character gesture posing, canvas texture selection, and typography styling.
+* **`MotionStage.tsx` (`motionTemplates.ts`)**: Custom SVG animation authoring studio with element-level timeline keyframing, motion templates, and live scrubbing.
+* **`EditStage.tsx` (`TimelineEditor.tsx`, `InspectorPanel.tsx`, `AssetBin.tsx`)**: Non-linear multi-track timeline with clip dragging, sticky snapping, waveform preview, track mute/hide/lock, and clip/shot inspector.
+* **`CaptionsStage.tsx` (`KineticCaptionEditor.tsx`)**: Word-level subtitle karaoke editor powered by `@chenglou/pretext`.
+* **`ReviewStage.tsx` (`CritiqueStudio.tsx`, `ExportProgressModal.tsx`)**: AI critique drawer, pacing and coverage health charts (`Charts.tsx`), and headless MP4 export progress.
+
+### State & Integration Layer (`editor/src/state/`)
+* **`useFilmProject.ts`**: Owns the active `Film` document, autosave debounce, and single labelled undo/redo transaction stack.
+* **`useLayeredTimeline.ts`**: Derives `LayeredFilm`, executes layer engine mutations, folds changes back losslessly via `convertLayeredFilmToFilm`, and computes `renderFilm` for preview and export.
+
+### Handcrafted Neobrutalism UI Primitives (`editor/src/components/ui/`)
+* **`Badge.tsx`**: Status indicators and token chips.
+* **`Button.tsx`**: Neobrutalist buttons with tactile depression on click.
+* **`Charts.tsx`**: Pure SVG data visualizations (coverage map, duration distribution, loudness curve, pacing breakdown).
+* **`Feedback.tsx`**: Inline error, warning, empty states, and toast notifications.
+* **`Field.tsx`**: Text, numeric, and select inputs with monospace technical typography.
+* **`Modal.tsx`**: Accessible dialog wrappers with focus trap and backdrop dismiss.
+* **`Panel.tsx`**: Bordered containers and sections with hard shadows.
+* **`Tabs.tsx`**: Segmented switches and tab lists.
+* **`Toolbar.tsx`**: Grouped action strips and icon button bars.
