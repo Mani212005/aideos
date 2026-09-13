@@ -15,8 +15,8 @@ import {
   deleteAudioSection,
   closeAudioGapWithDependencies,
   calculateSyncDrift,
-  extractAudioPeaks,
 } from "./voiceover_engine";
+import { extractAudioPeaks } from "./waveform";
 import { TimelineTransactionManager } from "./updates";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
 import type { LayeredFilm } from "../../src/dl/layeredSchema";
@@ -248,4 +248,45 @@ test("L4 Negative Case: Attempting to split non-audio clip with splitAudioClip t
     () => splitAudioClip(film, "clip-anim-1", 2.0),
     /is of kind "animation", not audio/
   );
+});
+
+// ==============================================================================
+// REGRESSION: DRIFT IS A NARRATION MEASUREMENT, NOT A TOTAL AUDIO MEASUREMENT
+// ==============================================================================
+
+test("Regression: narration drift ignores music and sound effects", () => {
+  const film = createMockAudioFilm();
+  const baseline = calculateSyncDrift(film);
+  assert.equal(baseline.isSynchronized, true);
+
+  const withBed: LayeredFilm = {
+    ...film,
+    layers: [
+      ...film.layers,
+      { id: "layer-music", number: 3, label: "Music", locked: false, hidden: false, muted: false, height: 40 },
+    ],
+    clips: [
+      ...film.clips,
+      {
+        id: "clip-music-bed",
+        layerId: "layer-music",
+        position: 0,
+        start: 0,
+        end: 40,
+        kind: "audio",
+        payload: { src: "bgm.mp3", channel: "music" },
+        opacity: 1,
+        volume: 0.4,
+      },
+    ],
+  };
+
+  const withBedReport = calculateSyncDrift(withBed);
+  assert.equal(
+    withBedReport.driftSec,
+    baseline.driftSec,
+    "adding a 40s music bed to a synchronised film must not report drift",
+  );
+  assert.equal(withBedReport.isSynchronized, true);
+  assert.ok(!withBedReport.statusLabel.includes("Drifted"));
 });

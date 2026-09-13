@@ -1,10 +1,23 @@
-/*
-File Description: This component implements a global floating chatbot and feedback drawer across all editor screens in Aideos, allowing users to submit video, script, and visual feedback or chat with the AI assistant.
-*/
+/**
+ * File Description: Global AI assistant for Aideos Studio.
+ * A dockable panel available from every stage that takes plain-language feedback ("shorten shot 2",
+ * "switch to the blueprint theme"), runs it through the critique engine, and applies the result as
+ * one undoable project edit. Conversation history is kept per project so the assistant remembers
+ * what was already asked for on this film.
+ */
 
 import { useState, useRef, useEffect } from "react";
-import { MessageSquare, X, Send, Bot, Sparkles, FileText, Palette, Clock } from "lucide-react";
+import { X, Send, Bot, Sparkles, Trash2 } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
+import { Badge, Button, Card, Input, Spinner, cn } from "./ui";
+
+/** Ready-made requests that show what the assistant can actually do. */
+const QUICK_PROMPTS = [
+  "Shorten shot 2 by one second",
+  "Switch the theme to blueprint",
+  "Make the scale bar density 0.75",
+  "Set the actor facing direction to left",
+];
 
 interface FeedbackMessage {
   id: string;
@@ -22,7 +35,12 @@ interface GlobalFeedbackWidgetProps {
 }
 
 // Renders the global floating feedback chatbot widget present across all editor views.
-export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUpdateFilm }: GlobalFeedbackWidgetProps) {
+export function GlobalFeedbackWidget({
+  film,
+  activeMode,
+  activeSelectionId,
+  onUpdateFilm,
+}: GlobalFeedbackWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState("");
   const storageKey = `aideos_feedback_history_${film.id}`;
@@ -32,7 +50,10 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUp
     id: `welcome-${f.id}`,
     sender: "assistant",
     text: `Ahoy! I am your Aideos AI Video Assistant. Submit your feedback on "${f.title}" or ask for script, audio, timing, and animation adjustments!`,
-    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    timestamp: new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
   });
 
   const [messages, setMessages] = useState<FeedbackMessage[]>(() => {
@@ -41,8 +62,8 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUp
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (_) {
-        // Fall back to default initial welcome message
+      } catch {
+        // Fall back to the default welcome message.
       }
     }
     return [createDefaultWelcome(film)];
@@ -65,7 +86,9 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUp
           setMessages(parsed);
           return;
         }
-      } catch (_) {}
+      } catch {
+        // Fall back to the default welcome message.
+      }
     }
     setMessages([createDefaultWelcome(film)]);
   }, [film]);
@@ -81,7 +104,10 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUp
     const messageContent = (textToSend || inputText).trim();
     if (!messageContent) return;
 
-    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const timeStr = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
     const currentContext = `Mode: ${activeMode}${activeSelectionId ? ` | Selected: ${activeSelectionId}` : ""}`;
 
     const userMsg: FeedbackMessage = {
@@ -110,16 +136,26 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUp
       const assistantMsg: FeedbackMessage = {
         id: `assistant-${Date.now()}`,
         sender: "assistant",
-        text: data.explanation || (data.ok ? "Captain, adjustments have been applied to the composition!" : (data.error || "Unable to apply adjustment.")),
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        text:
+          data.explanation ||
+          (data.ok
+            ? "Captain, adjustments have been applied to the composition!"
+            : data.error || "Unable to apply adjustment."),
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
       };
       setMessages((prev) => [...prev, assistantMsg]);
-    } catch (err: any) {
+    } catch (err) {
       const assistantMsg: FeedbackMessage = {
         id: `assistant-${Date.now()}`,
         sender: "assistant",
-        text: `Error applying critique: ${err.message || String(err)}`,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        text: `Error applying critique: ${err instanceof Error ? err.message : String(err)}`,
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } finally {
@@ -138,354 +174,129 @@ export function GlobalFeedbackWidget({ film, activeMode, activeSelectionId, onUp
       id: `welcome-${Date.now()}`,
       sender: "assistant",
       text: `Chat reset. Share feedback on "${film.title}" anytime!`,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
     setMessages([defaultMsg]);
     localStorage.removeItem(storageKey);
   };
 
   return (
-    <div style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 9999, fontFamily: "Geist, sans-serif" }}>
-      {/* Expanded Feedback & Chatbot Panel */}
-      {isOpen && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: "64px",
-            right: "0",
-            width: "390px",
-            height: "540px",
-            backgroundColor: "#101013",
-            border: "1px solid rgba(99, 91, 255, 0.35)",
-            borderRadius: "16px",
-            boxShadow: "0 20px 50px rgba(0, 0, 0, 0.7), 0 0 20px rgba(99, 91, 255, 0.15)",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-            backdropFilter: "blur(12px)",
-          }}
-        >
-          {/* Header Bar */}
-          <div
-            style={{
-              padding: "14px 16px",
-              backgroundColor: "rgba(10, 10, 11, 0.9)",
-              borderBottom: "1px solid rgba(245, 245, 245, 0.1)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "8px",
-                  backgroundColor: "rgba(99, 91, 255, 0.2)",
-                  border: "1px solid #635BFF",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#635BFF",
-                }}
-              >
-                <Bot size={18} />
-              </div>
-              <div>
-                <div style={{ fontSize: "14px", fontWeight: 600, color: "#F5F5F5", display: "flex", alignItems: "center", gap: "6px" }}>
-                  Aideos Assistant
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      padding: "2px 6px",
-                      borderRadius: "10px",
-                      backgroundColor: "rgba(99, 91, 255, 0.2)",
-                      color: "#635BFF",
-                      fontFamily: "JetBrains Mono, monospace",
-                    }}
+    <div className="fixed bottom-4 right-4 z-[95] font-sans">
+      {isOpen ? (
+        <div className="mb-2 flex h-[min(560px,70vh)] w-[min(380px,92vw)] flex-col border-3 border-ink bg-paper-2 shadow-nb-xl">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b-2 border-ink bg-primary px-3 py-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <Bot className="h-4 w-4 shrink-0 text-ink" />
+              <span className="truncate font-sans text-[12px] font-extrabold uppercase tracking-[0.06em] text-ink">
+                AI assistant
+              </span>
+              <Badge tone="neutral" title="What the assistant can see right now">
+                {activeMode}
+              </Badge>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button size="xs" iconOnly onClick={handleClearHistory} title="Clear this conversation">
+                <Trash2 className="h-3 w-3" />
+              </Button>
+              <Button size="xs" iconOnly onClick={() => setIsOpen(false)} title="Close the assistant">
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto bg-sunken p-2">
+            <ul className="flex flex-col gap-2">
+              {messages.map((msg) => (
+                <li
+                  key={msg.id}
+                  className={cn("flex", msg.sender === "user" ? "justify-end" : "justify-start")}
+                >
+                  <div
+                    className={cn(
+                      "max-w-[86%] border-2 border-ink px-2.5 py-1.5 shadow-nb-xs",
+                      msg.sender === "user" ? "bg-select text-select-ink" : "bg-paper-3 text-ink",
+                    )}
                   >
-                    AI FEEDBACK
-                  </span>
-                </div>
-                <div style={{ fontSize: "11px", color: "#8A8A8E" }}>
-                  Project: {film.title}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <button
-                onClick={handleClearHistory}
-                title="Clear feedback history"
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#8A8A8E",
-                  cursor: "pointer",
-                  fontSize: "11px",
-                  padding: "4px 8px",
-                  borderRadius: "4px",
-                }}
-              >
-                Reset
-              </button>
-              <button
-                onClick={() => setIsOpen(false)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#8A8A8E",
-                  cursor: "pointer",
-                  padding: "4px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* Active Context Banner */}
-          <div
-            style={{
-              padding: "6px 16px",
-              backgroundColor: "rgba(99, 91, 255, 0.08)",
-              borderBottom: "1px solid rgba(99, 91, 255, 0.15)",
-              fontSize: "11px",
-              fontFamily: "JetBrains Mono, monospace",
-              color: "#8A8A8E",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <span>Active Screen: <strong style={{ color: "#F5F5F5" }}>{activeMode}</strong></span>
-            <span>Shots: {film.shots?.length || 0}</span>
-          </div>
-
-          {/* Messages Stream */}
-          <div
-            style={{
-              flex: 1,
-              padding: "16px",
-              overflowY: "auto",
-              display: "flex",
-              flexDirection: "column",
-              gap: "12px",
-            }}
-          >
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: msg.sender === "user" ? "flex-end" : "flex-start",
-                }}
-              >
-                <div
-                  style={{
-                    maxWidth: "85%",
-                    padding: "10px 14px",
-                    borderRadius: msg.sender === "user" ? "14px 14px 2px 14px" : "14px 14px 14px 2px",
-                    backgroundColor: msg.sender === "user" ? "#635BFF" : "rgba(245, 245, 245, 0.06)",
-                    color: "#F5F5F5",
-                    fontSize: "13px",
-                    lineHeight: "1.45",
-                    border: msg.sender === "user" ? "none" : "1px solid rgba(245, 245, 245, 0.1)",
-                  }}
-                >
-                  {msg.text}
-                </div>
-                <div
-                  style={{
-                    fontSize: "10px",
-                    color: "#8A8A8E",
-                    marginTop: "4px",
-                    padding: "0 4px",
-                    fontFamily: "JetBrains Mono, monospace",
-                  }}
-                >
-                  {msg.timestamp}
-                </div>
-              </div>
-            ))}
-
-            {isTyping && (
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#8A8A8E", fontSize: "12px", padding: "6px 10px", backgroundColor: "rgba(99, 91, 255, 0.1)", borderRadius: "8px", border: "1px solid rgba(99, 91, 255, 0.2)" }}>
-                <Sparkles size={14} className="animate-spin" style={{ color: "#635BFF" }} />
-                <span>Firstmate Agent is executing changes in background...</span>
-              </div>
-            )}
+                    <p className="whitespace-pre-wrap break-words font-sans text-[11px] leading-relaxed">
+                      {msg.text}
+                    </p>
+                    <p
+                      className={cn(
+                        "mt-1 font-mono text-[9px] tabular-nums",
+                        msg.sender === "user" ? "text-ink/75" : "text-ink-mute",
+                      )}
+                    >
+                      {msg.timestamp}
+                      {msg.context ? ` \u00b7 ${msg.context}` : ""}
+                    </p>
+                  </div>
+                </li>
+              ))}
+              {isTyping ? (
+                <li className="flex justify-start">
+                  <div className="border-2 border-ink bg-paper-3 px-2.5 py-1.5 text-ink shadow-nb-xs">
+                    <Spinner label="Thinking" />
+                  </div>
+                </li>
+              ) : null}
+            </ul>
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Feedback Chips */}
-          <div
-            style={{
-              padding: "8px 12px",
-              display: "flex",
-              gap: "6px",
-              overflowX: "auto",
-              borderTop: "1px solid rgba(245, 245, 245, 0.06)",
-              backgroundColor: "rgba(10, 10, 11, 0.5)",
-            }}
-          >
-            <button
-              onClick={() => handleChipClick("Suggest script narration polish")}
-              style={{
-                whiteSpace: "nowrap",
-                fontSize: "11px",
-                padding: "4px 10px",
-                borderRadius: "12px",
-                backgroundColor: "rgba(245, 245, 245, 0.08)",
-                border: "1px solid rgba(245, 245, 245, 0.12)",
-                color: "#F5F5F5",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
+          <div className="shrink-0 border-t-2 border-ink bg-paper p-2">
+            <div className="mb-2 flex flex-wrap gap-1">
+              {QUICK_PROMPTS.map((prompt) => (
+                <Card
+                  key={prompt}
+                  interactive
+                  onClick={() => handleChipClick(prompt)}
+                  className="px-1.5 py-0.5 font-sans text-[10px] font-bold"
+                >
+                  {prompt}
+                </Card>
+              ))}
+            </div>
+            <form
+              className="flex items-center gap-1.5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleSendMessage();
               }}
             >
-              <FileText size={11} /> Polish Script
-            </button>
-            <button
-              onClick={() => handleChipClick("Adjust color palette and contrast")}
-              style={{
-                whiteSpace: "nowrap",
-                fontSize: "11px",
-                padding: "4px 10px",
-                borderRadius: "12px",
-                backgroundColor: "rgba(245, 245, 245, 0.08)",
-                border: "1px solid rgba(245, 245, 245, 0.12)",
-                color: "#F5F5F5",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              <Palette size={11} /> Color & Style
-            </button>
-            <button
-              onClick={() => handleChipClick("Fix shot transition timing")}
-              style={{
-                whiteSpace: "nowrap",
-                fontSize: "11px",
-                padding: "4px 10px",
-                borderRadius: "12px",
-                backgroundColor: "rgba(245, 245, 245, 0.08)",
-                border: "1px solid rgba(245, 245, 245, 0.12)",
-                color: "#F5F5F5",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              <Clock size={11} /> Timing & Motion
-            </button>
+              <Input
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Ask for a change to this film"
+                aria-label="Message the AI assistant"
+                className="h-8 py-0"
+              />
+              <Button type="submit" size="sm" tone="primary" iconOnly disabled={isTyping || !inputText.trim()}>
+                <Send className="h-3.5 w-3.5" />
+              </Button>
+            </form>
           </div>
-
-          {/* Input Box Form */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSendMessage();
-            }}
-            style={{
-              padding: "12px 14px",
-              backgroundColor: "#0A0A0B",
-              borderTop: "1px solid rgba(245, 245, 245, 0.1)",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Type feedback or request edit..."
-              style={{
-                flex: 1,
-                backgroundColor: "#101013",
-                border: "1px solid rgba(245, 245, 245, 0.15)",
-                borderRadius: "10px",
-                padding: "10px 12px",
-                color: "#F5F5F5",
-                fontSize: "13px",
-                outline: "none",
-              }}
-            />
-            <button
-              type="submit"
-              disabled={!inputText.trim()}
-              style={{
-                backgroundColor: inputText.trim() ? "#635BFF" : "rgba(245, 245, 245, 0.1)",
-                color: inputText.trim() ? "#FFFFFF" : "#8A8A8E",
-                border: "none",
-                borderRadius: "10px",
-                width: "38px",
-                height: "38px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: inputText.trim() ? "pointer" : "not-allowed",
-                transition: "background 0.2s ease",
-              }}
-            >
-              <Send size={16} />
-            </button>
-          </form>
         </div>
-      )}
+      ) : null}
 
-      {/* Floating Global Trigger Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          padding: "12px 18px",
-          borderRadius: "30px",
-          backgroundColor: "#101013",
-          color: "#F5F5F5",
-          border: "1px solid rgba(99, 91, 255, 0.5)",
-          boxShadow: "0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(99, 91, 255, 0.25)",
-          cursor: "pointer",
-          transition: "transform 0.2s ease, box-shadow 0.2s ease",
-          fontSize: "13px",
-          fontWeight: 600,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "scale(1.05)";
-          e.currentTarget.style.boxShadow = "0 10px 35px rgba(0, 0, 0, 0.6), 0 0 22px rgba(99, 91, 255, 0.4)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "scale(1)";
-          e.currentTarget.style.boxShadow = "0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(99, 91, 255, 0.25)";
-        }}
-      >
-        <div
-          style={{
-            width: "24px",
-            height: "24px",
-            borderRadius: "50%",
-            backgroundColor: "#635BFF",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#FFFFFF",
-          }}
+      {/* Collapsed, the trigger is a single square so it covers as little of the inspector as
+          possible; the label only appears while the panel is open. */}
+      <div className="flex justify-end">
+        <Button
+          size="md"
+          iconOnly={!isOpen}
+          tone={isOpen ? "default" : "select"}
+          onClick={() => setIsOpen(!isOpen)}
+          className="shadow-nb"
+          aria-label={isOpen ? "Close the AI assistant" : "Open the AI assistant"}
+          title={isOpen ? "Close the AI assistant" : "Open the AI assistant"}
         >
-          {isOpen ? <X size={14} /> : <MessageSquare size={14} />}
-        </div>
-        <span>AI Feedback</span>
-      </button>
+          {isOpen ? <X className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+          {isOpen ? <span>Close</span> : null}
+        </Button>
+      </div>
     </div>
   );
 }

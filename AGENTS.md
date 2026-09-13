@@ -60,6 +60,46 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Rasterize review stills with headless Chrome via `backend/scene/renderStill.ts`, never `qlmanage`: qlmanage ignores the document aspect ratio and emits a square thumbnail, so stills made with it are a misleading record of the frame. `renderFrameStill` verifies the PNG dimensions and throws if they are wrong.
 - Anything a model generates into `videos/<slug>/visuals/` passes `backend/scene/generateSvg.ts` first. Its validators enforce every rule the prompt states (mandated viewBox, centre-60% containment, well-formedness, frame-driven purity, self-containment) and the synthesis entry points retry with the errors fed back. Add a rule to the validator, not only to the prompt: a rule that is only asked for is not enforced.
 
+## Editor design system (editor/**)
+
+- The editor chrome has its own design system, entirely separate from the rendered-video design
+  language in `src/dl/README.md`. Tokens live in `editor/src/styles/tokens.css`, are exposed to
+  Tailwind through `editor/tailwind.config.js`, and are consumed through the primitives in
+  `editor/src/components/ui/`. Never hard-code a hex value in an editor component: add or use a token.
+- The editor is a light application end to end. The one dark token is `--nb-matte`, reserved for the
+  matte directly behind the video frame and for previews *of* rendered video (for example the kinetic
+  caption preview). Everything else is paper, sunken paper or ink.
+- Tailwind's JIT caches generated classes: after editing `tailwind.config.js` or adding a token,
+  restart the Vite dev server or new utility classes silently resolve to their defaults.
+- Screens live in `editor/src/screens/` (one per stage in the left rail) and compose the components
+  in `editor/src/components/`. `editor/src/App.tsx` owns navigation, playback and selection only.
+
+## Editor state and the timeline layer model
+
+- `editor/src/state/useFilmProject.ts` owns the open film, the single labelled undo history and
+  autosave. Screens never mutate the film directly: they call `commit(nextFilm, label)` so one user
+  gesture is always one undo step.
+- `editor/src/state/useLayeredTimeline.ts` is the only path from editor UI into
+  `backend/timeline/layer_engine.ts` and `layer_manager.ts`. It derives a `LayeredFilm`, applies one
+  engine operation, folds the result back with `convertLayeredFilmToFilm(next, film)` and commits it.
+  It also exposes `renderFilm`, the film with hidden lanes removed and muted lanes silenced, which is
+  what both the preview player and export use so the two always agree.
+- `convertLayeredFilmToFilm` takes the originating Film as a `base` argument. Passing it is required
+  for a lossless round trip: captions, voiceover metadata and per-shot fields the layer model does not
+  model are carried through from that base.
+- The pointer-drag state machine is pure and lives in `backend/timeline/drag_machine.ts` (not in the
+  editor) so its transitions can be regression tested in `drag_machine.test.ts`. The timeline attaches
+  its window pointer listeners unconditionally; attaching them only while a drag is open leaves a race
+  in which a fast release is missed and the gesture sticks.
+- The editor must not import `src/dl/films/*`. Those modules are rewritten on every autosave, so
+  importing them makes Vite hot-reload the whole page mid-edit. `editor/vite.config.ts` also lists
+  them (and `videos/**`) under `server.watch.ignored` for the same reason.
+- `backend/timeline/voiceover_engine.ts` is imported by the browser bundle and must stay free of Node
+  built-ins. ffmpeg-based waveform extraction lives in `backend/timeline/waveform.ts`; the editor
+  decodes waveforms in the browser instead (`editor/src/components/timeline/useAudioPeaks.ts`).
+- Every `backend/timeline/*.test.ts` file is wired into the root `npm test` script. Keep it that way:
+  suites that are not listed there silently rot.
+
 ## Maintaining this file
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.
 - Keep it concise. Prefer pointers to authoritative files over copying details.

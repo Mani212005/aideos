@@ -51,7 +51,7 @@ Projects competing in the Parallel Partner Track must demonstrate genuine web se
 Web / mobile accessibility and platform artifact delivery.
 
 ### Implementation & Evidence
-* **PWA Standalone Manifest**: Configured at `editor/public/manifest.json` with standalone display mode, 192px/512px icon configurations, and theme styling (`#FF6B00` on `#0A0A0B`).
+* **PWA Standalone Manifest**: Configured at `public/manifest.json` (the editor's Vite `publicDir`, see `editor/vite.config.ts`) with standalone display mode, SVG and 192px PNG icons, and the editor's Neobrutalism light theme colour `#EDE9DE`.
 * **Touch & Responsive Viewport**: Editor and player support dynamic aspect-ratio switching between 16:9 Long and 9:16 Vertical Reel with safe mobile touch margins.
 * **Installability**: Installable on Android devices and Chrome desktop via the native browser "Install Aideos Studio" action.
 

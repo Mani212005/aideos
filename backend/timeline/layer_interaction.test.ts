@@ -24,6 +24,7 @@ import {
 import {
   collectSnapTargets,
   calculateStickySnap,
+  calculateClipSnap,
   type SnapTarget,
 } from "./snap";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
@@ -302,4 +303,215 @@ test("L2 Negative 3: Moving nonexistent clip throws error", () => {
     () => moveLayerClip(film, "nonexistent-clip", 5.0),
     /Clip "nonexistent-clip" not found/
   );
+});
+
+// ==============================================================================
+// REGRESSION: LOCKED LAYERS, LINKED PAIRS, DETERMINISTIC RIPPLE AND SNAPPING
+// Each test below pins a defect found by driving the real editor in a browser.
+// ==============================================================================
+
+/** Build a film whose video and audio clips are a symmetrically linked A/V pair. */
+function createLinkedPairFilm(): LayeredFilm {
+  const film = createMockLayeredFilm();
+  const video = film.clips.find((c) => c.id === "clip-video-1")!;
+  const audio: (typeof film.clips)[number] = {
+    id: "clip-video-1-audio",
+    layerId: "layer-audio",
+    position: video.position,
+    start: video.start,
+    end: video.end,
+    sourceDuration: 6.0,
+    kind: "audio",
+    payload: { src: "sample.mp4", channel: "external" },
+    linkedClipId: video.id,
+    opacity: 1,
+    volume: 1,
+  };
+  video.linkedClipId = audio.id;
+  video.sourceDuration = 6.0;
+  // The mock voiceover clip occupies 0s..20s on layer-audio, so park the pair after it.
+  audio.position = 20.0;
+  video.position = 20.0;
+  film.clips.push(audio);
+  return film;
+}
+
+/** Mark one layer of a film as locked and return the modified copy. */
+function withLockedLayer(film: LayeredFilm, layerId: string): LayeredFilm {
+  return {
+    ...film,
+    layers: film.layers.map((l) => (l.id === layerId ? { ...l, locked: true } : l)),
+  };
+}
+
+test("Regression: a locked layer refuses moves, trims, splits and deletes", () => {
+  const film = withLockedLayer(createMockLayeredFilm(), "layer-anim");
+
+  assert.throws(() => moveLayerClip(film, "clip-anim-1", 5.0), /is locked/);
+  assert.throws(() => trimLayerClipEdge(film, "clip-anim-1", "right", 1.0), /is locked/);
+  assert.throws(() => splitLayerClipAtTime(film, "clip-anim-1", 2.0), /is locked/);
+  assert.throws(() => deleteLayerClip(film, "clip-anim-1"), /is locked/);
+  assert.throws(() => moveMultipleLayerClips(film, ["clip-anim-1", "clip-anim-2"], 1.0), /is locked/);
+
+  // The unlocked layers on the same film are still fully editable.
+  assert.doesNotThrow(() => moveLayerClip(film, "clip-video-1", 3.0));
+});
+
+test("Regression: dragging a clip onto a locked layer is refused", () => {
+  const film = withLockedLayer(createMockLayeredFilm(), "layer-video");
+  assert.throws(() => moveLayerClip(film, "clip-anim-1", 2.0, "layer-video"), /is locked/);
+});
+
+test("Regression: trimming a linked A/V pair keeps both halves in sync", () => {
+  const film = createLinkedPairFilm();
+
+  const { film: rightTrimmed } = trimLayerClipEdge(film, "clip-video-1", "right", -1.0);
+  const vRight = rightTrimmed.clips.find((c) => c.id === "clip-video-1")!;
+  const aRight = rightTrimmed.clips.find((c) => c.id === "clip-video-1-audio")!;
+  assert.equal(vRight.end, 5.0);
+  assert.equal(aRight.end, 5.0, "linked audio must be trimmed with its video");
+
+  const { film: leftTrimmed } = trimLayerClipEdge(rightTrimmed, "clip-video-1", "left", 1.0);
+  const vLeft = leftTrimmed.clips.find((c) => c.id === "clip-video-1")!;
+  const aLeft = leftTrimmed.clips.find((c) => c.id === "clip-video-1-audio")!;
+  assert.equal(vLeft.start, 1.0);
+  assert.equal(aLeft.start, 1.0);
+  assert.equal(vLeft.position, aLeft.position);
+  assert.doesNotThrow(() => validateLayeredFilm(leftTrimmed));
+});
+
+test("Regression: splitting a linked A/V pair splits both and re-links the halves", () => {
+  const film = createLinkedPairFilm();
+  const { film: split } = splitLayerClipAtTime(film, "clip-video-1", 23.0);
+
+  // The original ids are gone and four clips now carry symmetric links.
+  assert.equal(split.clips.filter((c) => c.id === "clip-video-1").length, 0);
+  assert.equal(split.clips.filter((c) => c.id === "clip-video-1-audio").length, 0);
+
+  const linked = split.clips.filter((c) => c.linkedClipId);
+  assert.equal(linked.length, 4, "both halves of both clips stay linked");
+  for (const clip of linked) {
+    const partner = split.clips.find((c) => c.id === clip.linkedClipId);
+    assert.ok(partner, `partner of ${clip.id} must exist`);
+    assert.equal(partner!.linkedClipId, clip.id, "links must stay symmetric after a split");
+    assert.equal(partner!.position, clip.position, "split halves must stay aligned in time");
+  }
+
+  assert.doesNotThrow(() => validateLayeredFilm(split));
+});
+
+test("Regression: deleting one half of a linked pair removes both and leaves no dangling link", () => {
+  const film = createLinkedPairFilm();
+
+  const { film: deleted } = deleteLayerClip(film, "clip-video-1");
+  assert.equal(deleted.clips.find((c) => c.id === "clip-video-1"), undefined);
+  assert.equal(deleted.clips.find((c) => c.id === "clip-video-1-audio"), undefined);
+  assert.doesNotThrow(() => validateLayeredFilm(deleted));
+
+  // Deleting only the selected clip must still clear the partner's reference.
+  const { film: single } = deleteLayerClip(film, "clip-video-1", { deleteLinked: false });
+  const survivor = single.clips.find((c) => c.id === "clip-video-1-audio")!;
+  assert.equal(survivor.linkedClipId, null, "a surviving partner must not dangle");
+  assert.doesNotThrow(() => validateLayeredFilm(single));
+});
+
+test("Regression: multi-select drag carries linked partners and preserves relative offsets", () => {
+  const film = createLinkedPairFilm();
+  const { film: moved } = moveMultipleLayerClips(film, ["clip-video-1", "clip-anim-1"], 2.0);
+
+  const video = moved.clips.find((c) => c.id === "clip-video-1")!;
+  const audio = moved.clips.find((c) => c.id === "clip-video-1-audio")!;
+  const anim = moved.clips.find((c) => c.id === "clip-anim-1")!;
+
+  assert.equal(video.position, 22.0);
+  assert.equal(audio.position, 22.0, "the unselected linked partner rides along");
+  assert.equal(anim.position, 2.0);
+  assert.doesNotThrow(() => validateLayeredFilm(moved));
+});
+
+test("Regression: a right-edge trim clamps at the end of the source media", () => {
+  const film = createLinkedPairFilm();
+  // The pair is 6.0s of source material; asking for 40 more seconds must stop at the media end.
+  const { film: trimmed } = trimLayerClipEdge(film, "clip-video-1", "right", 40);
+  const video = trimmed.clips.find((c) => c.id === "clip-video-1")!;
+  assert.equal(video.end, 6.0, "trim must clamp at sourceDuration rather than inventing media");
+});
+
+test("Regression: a left-edge trim cannot move the in-point before the start of the media", () => {
+  const film = createLinkedPairFilm();
+  assert.throws(
+    () => trimLayerClipEdge(film, "clip-video-1", "left", -1.0),
+    /in-point cannot move before the start of the source media/,
+  );
+});
+
+test("Regression: collision resolution is a deterministic downstream ripple", () => {
+  const film = createMockLayeredFilm();
+  // Drop clip-anim-2 on top of clip-anim-1, which occupies 0s..4s on the same layer.
+  const { film: moved } = moveLayerClip(film, "clip-anim-2", 1.0);
+  const first = moved.clips.find((c) => c.id === "clip-anim-1")!;
+  const second = moved.clips.find((c) => c.id === "clip-anim-2")!;
+
+  assert.equal(first.position, 0, "a clip the user did not touch never moves backwards");
+  assert.equal(second.position, 4.0, "the dropped clip ripples to the first free slot");
+
+  // Running the resolver again is a no-op, which proves the sweep is stable.
+  const { film: again } = moveLayerClip(moved, "clip-anim-2", 4.0);
+  assert.equal(again.clips.find((c) => c.id === "clip-anim-2")!.position, 4.0);
+  assert.doesNotThrow(() => validateLayeredFilm(again));
+});
+
+test("Regression: snap targets exclude the dragged clip's linked partner", () => {
+  const film = createLinkedPairFilm();
+  const targets = collectSnapTargets(film as any, 0, 40, ["clip-video-1"]);
+  const selfTargets = targets.filter(
+    (t) => t.sourceId === "clip-video-1" || t.sourceId === "clip-video-1-audio",
+  );
+  assert.equal(selfTargets.length, 0, "a linked pair must never snap to itself");
+});
+
+test("Regression: the background snap grid thins out as the timeline zooms out", () => {
+  const film = createMockLayeredFilm();
+  const dense = collectSnapTargets(film as any, 0, 300, [], 120).filter((t) => t.type === "grid");
+  const sparse = collectSnapTargets(film as any, 0, 300, [], 4).filter((t) => t.type === "grid");
+  assert.ok(dense.length > sparse.length, "a zoomed-in timeline offers more grid targets");
+  assert.ok(sparse.length < 40, "a zoomed-out timeline must not be sticky everywhere");
+});
+
+test("Regression: a dragged clip snaps on whichever of its two edges is closer", () => {
+  const targets: SnapTarget[] = [{ timeSec: 10.0, type: "boundary", label: "previous cut" }];
+
+  // Tail of a 4s clip lands near the target: the clip starts at 6.0s so its end butts up at 10.0s.
+  const byEnd = calculateClipSnap(6.12, 4, targets, 40, null, 10);
+  assert.equal(byEnd.snappedEdge, "end");
+  assert.equal(Number(byEnd.snappedTimeSec.toFixed(3)), 6.0);
+
+  // Head of the same clip near the target snaps the start instead.
+  const byStart = calculateClipSnap(10.1, 4, targets, 40, null, 10);
+  assert.equal(byStart.snappedEdge, "start");
+  assert.equal(byStart.snappedTimeSec, 10.0);
+});
+
+test("Regression: an explicit boundary beats a background grid line at the same distance", () => {
+  const targets: SnapTarget[] = [
+    { timeSec: 5.0, type: "grid" },
+    { timeSec: 5.0, type: "boundary", sourceId: "clip-x", label: "clip-x cut" },
+  ];
+  const res = calculateStickySnap(5.05, targets, 40, null, 12);
+  assert.equal(res.activeSnap?.type, "boundary");
+});
+
+test("Regression: splitting an animation clip gives each half a unique shot id", () => {
+  const film = createMockLayeredFilm();
+  const { film: split } = splitLayerClipAtTime(film, "clip-anim-1", 2.0);
+
+  const animClips = split.clips.filter((c) => c.kind === "animation");
+  const shotIds = animClips.map((c) => (c.payload as { shotId: string }).shotId);
+  assert.equal(
+    new Set(shotIds).size,
+    shotIds.length,
+    "two halves of a split shot must not share a shot id, or the Film manifest collapses them",
+  );
+  assert.equal(new Set(animClips.map((c) => c.id)).size, animClips.length);
+  assert.doesNotThrow(() => validateLayeredFilm(split));
 });

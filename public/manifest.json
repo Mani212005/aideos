@@ -1,0 +1,14 @@
+{
+  "name": "Aideos Studio",
+  "short_name": "Aideos",
+  "description": "Script, stage, time and export explainer videos.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#EDE9DE",
+  "theme_color": "#EDE9DE",
+  "orientation": "any",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/favicon.png", "sizes": "192x192", "type": "image/png" }
+  ]
+}

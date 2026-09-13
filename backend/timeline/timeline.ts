@@ -165,94 +165,47 @@ export function moveMultipleShots(
   };
 }
 
+/** Tolerance used for every float comparison on the shot timeline, a tenth of a millisecond. */
+const SHOT_EPS = 1e-4;
+
 /**
- * Prevent two clips on the same track/layer from overlapping using cascading ripple resolution.
+ * Prevent two shots on the same track from overlapping, using a single deterministic left to right
+ * ripple sweep. Shots keep their stored order by time; each one is placed at the later of its own
+ * position and the end of the shot before it, so a collision only ever pushes work downstream.
+ * The shot named by `movedIndex` wins ties at identical positions because it is the one the user
+ * just placed. Shots that neither move nor already carry an explicit position keep their implicit
+ * layout, so a trim that causes no collision does not rewrite the whole film.
  */
 export function resolveTrackCollisions(shots: Shot[], movedIndex: number): Shot[] {
   const resolved = JSON.parse(JSON.stringify(shots)) as Shot[];
   if (movedIndex < 0 || movedIndex >= resolved.length) return resolved;
 
-  const initialStarts = computeShotStartTimes(shots);
-  for (let i = 0; i < resolved.length; i++) {
-    if (resolved[i].position === undefined && resolved[i].startSec === undefined) {
-      resolved[i].position = initialStarts[i];
-      resolved[i].startSec = initialStarts[i];
-    }
-  }
+  const implicitStarts = computeShotStartTimes(shots);
 
-  const target = resolved[movedIndex];
-  const targetLayer = target.layer ?? target.track ?? 0;
+  /** Effective timeline start of a shot, falling back to its implicit sequential position. */
+  const startOf = (index: number) =>
+    resolved[index].position ?? resolved[index].startSec ?? implicitStarts[index] ?? 0;
 
-  let changed = true;
-  let iterations = 0;
-  const maxIterations = resolved.length * 10;
+  const targetLayer = resolved[movedIndex].layer ?? resolved[movedIndex].track ?? 0;
+  const order = resolved
+    .map((s, i) => ((s.layer ?? s.track ?? 0) === targetLayer ? i : -1))
+    .filter((i) => i !== -1)
+    .sort((a, b) => startOf(a) - startOf(b) || (a === movedIndex ? -1 : b === movedIndex ? 1 : a - b));
 
-  while (changed && iterations < maxIterations) {
-    changed = false;
-    iterations++;
+  let cursor = 0;
+  for (const index of order) {
+    const shot = resolved[index];
+    const dur = getShotDuration(shot);
+    const wanted = startOf(index);
+    const placedStart = Number(Math.max(wanted, cursor).toFixed(3));
+    const hasExplicitPosition = shot.position !== undefined || shot.startSec !== undefined;
 
-    const targetDur = getShotDuration(target);
-    const targetStart = target.position ?? target.startSec ?? 0;
-    const targetEnd = targetStart + targetDur;
-
-    for (let i = 0; i < resolved.length; i++) {
-      if (i === movedIndex) continue;
-      const s = resolved[i];
-      const sLayer = s.layer ?? s.track ?? 0;
-      if (sLayer !== targetLayer) continue;
-
-      const sDur = getShotDuration(s);
-      const sStart = s.position ?? s.startSec ?? 0;
-      const sEnd = sStart + sDur;
-
-      if (targetStart < sEnd && targetEnd > sStart) {
-        if (targetStart >= sStart) {
-          const newTargetStart = Number(sEnd.toFixed(3));
-          if (target.position !== newTargetStart) {
-            target.position = newTargetStart;
-            target.startSec = newTargetStart;
-            changed = true;
-          }
-        } else {
-          const newSStart = Number(targetEnd.toFixed(3));
-          if (s.position !== newSStart) {
-            s.position = newSStart;
-            s.startSec = newSStart;
-            changed = true;
-          }
-        }
-      }
+    if (hasExplicitPosition || Math.abs(placedStart - wanted) > SHOT_EPS) {
+      shot.position = placedStart;
+      shot.startSec = placedStart;
     }
 
-    for (let i = 0; i < resolved.length; i++) {
-      const a = resolved[i];
-      const aLayer = a.layer ?? a.track ?? 0;
-      if (aLayer !== targetLayer) continue;
-      const aDur = getShotDuration(a);
-      const aStart = a.position ?? a.startSec ?? 0;
-      const aEnd = aStart + aDur;
-
-      for (let j = 0; j < resolved.length; j++) {
-        if (i === j) continue;
-        const b = resolved[j];
-        const bLayer = b.layer ?? b.track ?? 0;
-        if (bLayer !== targetLayer) continue;
-        const bDur = getShotDuration(b);
-        const bStart = b.position ?? b.startSec ?? 0;
-        const bEnd = bStart + bDur;
-
-        if (aStart < bEnd && aEnd > bStart) {
-          if (aStart < bStart || (aStart === bStart && (i === movedIndex || i < j))) {
-            const newBStart = Number(aEnd.toFixed(3));
-            if (b.position !== newBStart) {
-              b.position = newBStart;
-              b.startSec = newBStart;
-              changed = true;
-            }
-          }
-        }
-      }
-    }
+    cursor = placedStart + dur;
   }
 
   return resolved;

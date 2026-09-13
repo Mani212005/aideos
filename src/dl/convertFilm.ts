@@ -1,6 +1,12 @@
 /**
  * File Description: Lossless Bidirectional Converter between Film and LayeredFilm (Phase L-1).
- * Preserves 100% data fidelity across all 5 production films.
+ * Forward conversion lays a Film out onto z-ordered layers; reverse conversion folds a LayeredFilm
+ * back into the canonical Film manifest. The reverse direction accepts the originating Film as a
+ * base so every field the layer model does not represent (captions, voiceover metadata, per-shot
+ * transition and footage flags, schema version) survives a round trip untouched. Audio clips that
+ * the legacy `voiceover`, `music` and `sfx` summary fields cannot fully describe (because they were
+ * moved, trimmed, split or imported) are written out to `audioClips`, which forward conversion then
+ * treats as the authority for those channels.
  */
 
 import type { Film, Shot, AudioClip } from "./schema";
@@ -8,72 +14,90 @@ import type { LayeredFilm, Layer, Clip, AnimationPayload, AudioPayload } from ".
 import { computeShotStartTimes } from "../../backend/timeline/timeline";
 import { generateWordsFromFilm } from "./captionsParser";
 
+/** Ids that forward conversion synthesizes from the legacy summary fields. */
+const SPINE_CLIP_ID = "clip-voiceover-spine";
+const MUSIC_CLIP_ID = "clip-music-main";
+
+/** Fixed synthetic duration used for an sfx cue, which the Film schema does not store. */
+const SFX_CLIP_DURATION = 1;
+
+/** Layer ids used by the forward conversion, kept stable so films reopen with the same lanes. */
+export const CONVERTED_LAYER_IDS = {
+  voiceover: "layer-audio-spine",
+  music: "layer-audio-music",
+  sfx: "layer-audio-sfx",
+  footage: "layer-audio-footage",
+  animation: "layer-animation-main",
+  subtitles: "layer-subtitles-main",
+} as const;
+
+/** Resolve which audio lane a channel belongs on. */
+function layerIdForChannel(channel: AudioClip["channel"] | undefined): string {
+  if (channel === "music") return CONVERTED_LAYER_IDS.music;
+  if (channel === "sfx") return CONVERTED_LAYER_IDS.sfx;
+  if (channel === "external") return CONVERTED_LAYER_IDS.footage;
+  return CONVERTED_LAYER_IDS.voiceover;
+}
+
+/** The lane set a film starts with before the user adds, renames or reorders any lane. */
+export function defaultTimelineLayers(): Layer[] {
+  return [
+    { id: CONVERTED_LAYER_IDS.voiceover, number: 0, label: "Voiceover", locked: false, hidden: false, muted: false, height: 52 },
+    { id: CONVERTED_LAYER_IDS.music, number: 2, label: "Music", locked: false, hidden: false, muted: false, height: 44 },
+    { id: CONVERTED_LAYER_IDS.sfx, number: 4, label: "Sound Effects", locked: false, hidden: false, muted: false, height: 44 },
+    { id: CONVERTED_LAYER_IDS.animation, number: 10, label: "Scenes", locked: false, hidden: false, muted: false, height: 76 },
+    { id: CONVERTED_LAYER_IDS.subtitles, number: 20, label: "Subtitles", locked: false, hidden: false, muted: false, height: 40 },
+  ];
+}
+
 /**
  * Converts a legacy/generated Film manifest into an OpenShot-grade LayeredFilm.
+ * When the film carries its own `layers` list that list is used verbatim, with any lane a clip
+ * still needs appended, so user-created lanes survive a reload.
  */
 export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
   const fps = film.fps || 30;
   const startTimes = computeShotStartTimes(film.shots);
 
-  const layers: Layer[] = [
-    {
-      id: "layer-audio-spine",
-      number: 0,
-      label: "Voiceover Audio",
-      locked: false,
-      hidden: false,
-      muted: false,
-      height: 48,
-    },
-    {
-      id: "layer-audio-music",
-      number: 2,
-      label: "Background Music",
-      locked: false,
-      hidden: false,
-      muted: false,
-      height: 40,
-    },
-    {
-      id: "layer-audio-sfx",
-      number: 4,
-      label: "Sound Effects",
-      locked: false,
-      hidden: false,
-      muted: false,
-      height: 40,
-    },
-    {
-      id: "layer-animation-main",
-      number: 10,
-      label: "Spatial Animation",
-      locked: false,
-      hidden: false,
-      muted: false,
-      height: 72,
-    },
-    {
-      id: "layer-subtitles-main",
-      number: 20,
-      label: "Subtitles",
-      locked: false,
-      hidden: false,
-      muted: false,
-      height: 40,
-    },
-  ];
+  const layers: Layer[] =
+    film.layers && film.layers.length > 0
+      ? (JSON.parse(JSON.stringify(film.layers)) as Layer[])
+      : defaultTimelineLayers();
+
+  /** Guarantee a lane exists before a clip is routed onto it, appending a default when missing. */
+  const ensureLayer = (layerId: string): string => {
+    if (layers.some((l) => l.id === layerId)) return layerId;
+    const fallback = defaultTimelineLayers().find((l) => l.id === layerId);
+    if (fallback) {
+      layers.push(fallback);
+      return layerId;
+    }
+    if (layerId === CONVERTED_LAYER_IDS.footage) {
+      layers.push({
+        id: CONVERTED_LAYER_IDS.footage,
+        number: 5,
+        label: "Footage Audio",
+        locked: false,
+        hidden: false,
+        muted: false,
+        height: 44,
+      });
+      return layerId;
+    }
+    // A lane referenced by a clip but missing from the manifest falls back to the scenes lane.
+    return ensureLayer(CONVERTED_LAYER_IDS.animation);
+  };
 
   const clips: Clip[] = [];
+  const declaredChannels = new Set<string>();
 
-  // 1. Audio Clips (Voiceover, Multi-Clip Audio, Music, SFX)
+  // 1. Audio clips. When the film carries an explicit audioClips list, that list is the authority
+  //    for every channel it mentions and the legacy summary fields for those channels are skipped.
   if (film.audioClips && film.audioClips.length > 0) {
     for (const ac of film.audioClips) {
-      const layerId =
-        ac.channel === "music"
-          ? "layer-audio-music"
-          : ac.channel === "sfx"
-            ? "layer-audio-sfx"
-            : "layer-audio-spine";
+      const channel = ac.channel || "voiceover";
+      declaredChannels.add(channel);
+      const layerId = ensureLayer(ac.layerId ?? layerIdForChannel(channel));
       clips.push({
         id: ac.id,
         layerId,
@@ -81,37 +105,37 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
         start: ac.start ?? 0,
         end: ac.end,
         kind: "audio",
-        payload: {
-          src: ac.src,
-          channel: ac.channel || "voiceover",
-        },
-        volume: ac.volume ?? 1,
+        payload: { src: ac.src, channel },
+        volume: Math.min(1, ac.volume ?? 1),
         opacity: 1,
       });
     }
-  } else if (film.voiceover?.src) {
-    const totalVoDur = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
+  }
+
+  if (!declaredChannels.has("voiceover") && film.voiceover?.src) {
+    const totalVoDur =
+      film.voiceover.durationSec && film.voiceover.durationSec > 0
+        ? film.voiceover.durationSec
+        : film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
     clips.push({
-      id: "clip-voiceover-spine",
-      layerId: "layer-audio-spine",
+      id: SPINE_CLIP_ID,
+      layerId: ensureLayer(CONVERTED_LAYER_IDS.voiceover),
       position: 0,
       start: 0,
       end: totalVoDur,
+      sourceDuration: film.voiceover.durationSec,
       kind: "audio",
-      payload: {
-        src: film.voiceover.src,
-        channel: "voiceover",
-      },
-      volume: film.voiceover.volume ?? 1,
+      payload: { src: film.voiceover.src, channel: "voiceover" },
+      volume: Math.min(1, film.voiceover.volume ?? 1),
       opacity: 1,
     });
   }
 
-  if (film.music?.src) {
+  if (!declaredChannels.has("music") && film.music?.src) {
     const totalDur = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
     clips.push({
-      id: "clip-music-main",
-      layerId: "layer-audio-music",
+      id: MUSIC_CLIP_ID,
+      layerId: ensureLayer(CONVERTED_LAYER_IDS.music),
       position: 0,
       start: 0,
       end: totalDur,
@@ -121,31 +145,28 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
         channel: "music",
         duckUnderVoiceover: film.music.duckUnderVoiceover ?? true,
       },
-      volume: film.music.volume ?? 1,
+      volume: Math.min(1, film.music.volume ?? 1),
       opacity: 1,
     });
   }
 
-  if (film.sfx && film.sfx.length > 0) {
+  if (!declaredChannels.has("sfx") && film.sfx && film.sfx.length > 0) {
     film.sfx.forEach((sfx, idx) => {
       clips.push({
         id: `clip-sfx-${idx}`,
-        layerId: "layer-audio-sfx",
+        layerId: ensureLayer(CONVERTED_LAYER_IDS.sfx),
         position: sfx.timeSec,
         start: 0,
-        end: 1,
+        end: SFX_CLIP_DURATION,
         kind: "audio",
-        payload: {
-          src: sfx.src,
-          channel: "sfx",
-        },
-        volume: sfx.volume ?? 1,
+        payload: { src: sfx.src, channel: "sfx" },
+        volume: Math.min(1, sfx.volume ?? 1),
         opacity: 1,
       });
     });
   }
 
-  // 2. Animation Clips (from shots)
+  // 2. Animation clips, one per shot.
   for (let i = 0; i < film.shots.length; i++) {
     const shot = film.shots[i];
     const pos = shot.position ?? shot.startSec ?? startTimes[i] ?? 0;
@@ -153,7 +174,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
 
     clips.push({
       id: `clip-anim-${shot.id}`,
-      layerId: "layer-animation-main",
+      layerId: ensureLayer(shot.layerId ?? CONVERTED_LAYER_IDS.animation),
       position: pos,
       start: shot.start ?? 0,
       end: (shot.start ?? 0) + dur,
@@ -177,28 +198,28 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
     });
   }
 
-  // 3. Subtitle Clips (from parsed cues)
+  // 3. Subtitle clips derived from the parsed caption cues.
   const captionWords = generateWordsFromFilm(film as unknown as Record<string, unknown>);
   for (let i = 0; i < captionWords.length; i++) {
     const cw = captionWords[i];
     const wStartSec = Number((cw.startFrame / fps).toFixed(3));
-    const nextStartSec = i < captionWords.length - 1
-      ? Number((captionWords[i + 1].startFrame / fps).toFixed(3))
-      : Number((cw.endFrame / fps).toFixed(3));
-    const cueDur = Math.max(0.01, Number((Math.min(cw.endFrame / fps - wStartSec, nextStartSec - wStartSec)).toFixed(3)));
+    const nextStartSec =
+      i < captionWords.length - 1
+        ? Number((captionWords[i + 1].startFrame / fps).toFixed(3))
+        : Number((cw.endFrame / fps).toFixed(3));
+    const cueDur = Math.max(
+      0.01,
+      Number(Math.min(cw.endFrame / fps - wStartSec, nextStartSec - wStartSec).toFixed(3)),
+    );
 
     clips.push({
       id: `clip-sub-${i}-${cw.text.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
-      layerId: "layer-subtitles-main",
+      layerId: ensureLayer(CONVERTED_LAYER_IDS.subtitles),
       position: wStartSec,
       start: 0,
       end: cueDur,
       kind: "subtitle",
-      payload: {
-        text: cw.text,
-        startFrame: cw.startFrame,
-        endFrame: cw.endFrame,
-      },
+      payload: { text: cw.text, startFrame: cw.startFrame, endFrame: cw.endFrame },
       opacity: 1,
       volume: 1,
     });
@@ -217,10 +238,50 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
   };
 }
 
+/** True when an audio clip is exactly what forward conversion would synthesize from `voiceover`. */
+function isPlainSpine(clip: Clip): boolean {
+  return clip.id === SPINE_CLIP_ID && clip.position === 0 && clip.start === 0;
+}
+
+/** True when an audio clip is exactly what forward conversion would synthesize from `music`. */
+function isPlainMusic(clip: Clip): boolean {
+  return clip.id === MUSIC_CLIP_ID && clip.position === 0 && clip.start === 0;
+}
+
+/** True when an audio clip is exactly what forward conversion would synthesize from `sfx`. */
+function isPlainSfx(clip: Clip): boolean {
+  return /^clip-sfx-\d+$/.test(clip.id) && clip.start === 0 && clip.end === SFX_CLIP_DURATION;
+}
+
+/** True when a lane list is still exactly the derived default set, ignoring lane order. */
+function isDefaultLayerSet(layers: Layer[]): boolean {
+  const defaults = defaultTimelineLayers();
+  const byId = new Map(defaults.map((l) => [l.id, l]));
+  // The footage audio lane is derived on demand, so it does not count as a user change.
+  const meaningful = layers.filter((l) => l.id !== CONVERTED_LAYER_IDS.footage);
+  if (meaningful.length !== defaults.length) return false;
+  return meaningful.every((l) => {
+    const d = byId.get(l.id);
+    return (
+      d !== undefined &&
+      d.number === l.number &&
+      d.label === l.label &&
+      d.locked === l.locked &&
+      d.hidden === l.hidden &&
+      d.muted === l.muted &&
+      d.height === l.height
+    );
+  });
+}
+
 /**
  * Converts a LayeredFilm back into a canonical Film manifest.
+ * Pass the Film the layered copy was derived from as `base` so fields outside the layer model
+ * (captions, voiceover metadata, per-shot transition and footage flags) round trip unchanged.
  */
-export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm): Film {
+export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film): Film {
+  const baseShots = new Map<string, Shot>((base?.shots ?? []).map((s) => [s.id, s]));
+
   const animClips = layeredFilm.clips
     .filter((c) => c.kind === "animation")
     .sort((a, b) => a.position - b.position);
@@ -228,9 +289,16 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm): Film {
   const shots: Shot[] = animClips.map((c) => {
     const p = c.payload as AnimationPayload;
     const dur = Number((c.end - c.start).toFixed(3));
+    const shotId = p.shotId || c.id.replace(/^clip-anim-/, "");
+    const original = baseShots.get(shotId);
 
     return {
-      id: p.shotId || c.id.replace(/^clip-anim-/, ""),
+      // Fields the layer model does not represent are carried through from the base shot.
+      ...(original ?? {}),
+      id: shotId,
+      // Only shots dragged off the default scene lane need to record where they live, so an
+      // ordinary edit does not rewrite every shot in the manifest.
+      layerId: c.layerId === CONVERTED_LAYER_IDS.animation ? undefined : c.layerId,
       ch: p.ch,
       position: c.position,
       startSec: c.position,
@@ -250,40 +318,41 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm): Film {
     };
   });
 
-  const audioClipsList = layeredFilm.clips
-    .filter((c) => c.kind === "audio")
-    .sort((a, b) => a.position - b.position);
+  const audioClipsList = layeredFilm.clips.filter((c) => c.kind === "audio").sort((a, b) => a.position - b.position);
 
-  const voClips = audioClipsList.filter(
-    (c) => (c.payload as AudioPayload)?.channel === "voiceover" || !(c.payload as AudioPayload)?.channel
-  );
-  const musicClips = audioClipsList.filter(
-    (c) => (c.payload as AudioPayload)?.channel === "music"
-  );
-  const sfxClips = audioClipsList.filter(
-    (c) => (c.payload as AudioPayload)?.channel === "sfx"
+  /** Read the channel off an audio clip payload, defaulting to the voiceover channel. */
+  const channelOf = (c: Clip): AudioClip["channel"] => (c.payload as AudioPayload)?.channel ?? "voiceover";
+
+  const voClips = audioClipsList.filter((c) => channelOf(c) === "voiceover");
+  const musicClips = audioClipsList.filter((c) => channelOf(c) === "music");
+  const sfxClips = audioClipsList.filter((c) => channelOf(c) === "sfx");
+
+  // Only clips that the summary fields cannot fully describe need an explicit audioClips entry.
+  const explicitClips = audioClipsList.filter(
+    (c) => !(isPlainSpine(c) || isPlainMusic(c) || isPlainSfx(c)),
   );
 
-  const isDedicatedSpine = voClips.length === 1 && voClips[0].id === "clip-voiceover-spine";
   const audioClips: AudioClip[] | undefined =
-    voClips.length > 0 && !isDedicatedSpine
-      ? voClips.map((c) => ({
+    explicitClips.length > 0
+      ? explicitClips.map((c) => ({
           id: c.id,
           src: (c.payload as AudioPayload).src,
           position: c.position,
           start: c.start,
           end: c.end,
           volume: c.volume ?? 1,
-          channel: "voiceover" as const,
+          channel: channelOf(c),
+          layerId: c.layerId === layerIdForChannel(channelOf(c)) ? undefined : c.layerId,
         }))
       : undefined;
 
   const voiceover = voClips.length > 0
     ? {
+        ...(base?.voiceover ?? {}),
         src: (voClips[0].payload as AudioPayload).src,
         volume: voClips[0].volume ?? 1,
       }
-    : undefined;
+    : base?.voiceover;
 
   const music = musicClips.length > 0
     ? {
@@ -302,6 +371,7 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm): Film {
     : undefined;
 
   return {
+    ...(base ?? {}),
     id: layeredFilm.id,
     title: layeredFilm.title,
     fps: layeredFilm.fps as 24 | 30 | 60,
@@ -310,10 +380,12 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm): Film {
     canvas: layeredFilm.canvas,
     chapters: layeredFilm.chapters,
     shots,
+    // Lanes are only written out once they differ from the derived default set, so untouched
+    // films never gain a layers block they did not ask for.
+    ...(isDefaultLayerSet(layeredFilm.layers) ? { layers: base?.layers } : { layers: layeredFilm.layers }),
     ...(voiceover ? { voiceover } : {}),
-    ...(audioClips ? { audioClips } : {}),
+    ...(audioClips ? { audioClips } : { audioClips: undefined }),
     ...(music ? { music } : {}),
     ...(sfx ? { sfx } : {}),
   };
 }
-

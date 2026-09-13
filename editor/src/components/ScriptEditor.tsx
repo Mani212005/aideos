@@ -41,28 +41,100 @@ interface ScriptEditorProps {
 
 const VOICES = [
   // KOKORO LOCAL NEURAL VOICES (ONNX)
-  { id: "kokoro-am_adam", name: "Kokoro: Adam (Crisp Explainer - Male)", provider: "Kokoro Neural" },
-  { id: "kokoro-af_bella", name: "Kokoro: Bella (Warm Narrative - Female)", provider: "Kokoro Neural" },
-  { id: "kokoro-af_sarah", name: "Kokoro: Sarah (Clear Professional - Female)", provider: "Kokoro Neural" },
-  { id: "kokoro-am_michael", name: "Kokoro: Michael (Deep Narrative - Male)", provider: "Kokoro Neural" },
-  { id: "kokoro-af_nicole", name: "Kokoro: Nicole (Dynamic Tech - Female)", provider: "Kokoro Neural" },
-  { id: "kokoro-am_echo", name: "Kokoro: Echo (Cinematic - Male)", provider: "Kokoro Neural" },
+  {
+    id: "kokoro-am_adam",
+    name: "Kokoro: Adam (Crisp Explainer - Male)",
+    provider: "Kokoro Neural",
+  },
+  {
+    id: "kokoro-af_bella",
+    name: "Kokoro: Bella (Warm Narrative - Female)",
+    provider: "Kokoro Neural",
+  },
+  {
+    id: "kokoro-af_sarah",
+    name: "Kokoro: Sarah (Clear Professional - Female)",
+    provider: "Kokoro Neural",
+  },
+  {
+    id: "kokoro-am_michael",
+    name: "Kokoro: Michael (Deep Narrative - Male)",
+    provider: "Kokoro Neural",
+  },
+  {
+    id: "kokoro-af_nicole",
+    name: "Kokoro: Nicole (Dynamic Tech - Female)",
+    provider: "Kokoro Neural",
+  },
+  {
+    id: "kokoro-am_echo",
+    name: "Kokoro: Echo (Cinematic - Male)",
+    provider: "Kokoro Neural",
+  },
 
   // DEEPGRAM AURA NEURAL VOICES
-  { id: "aura-helios-en", name: "Deepgram: Helios (Tech Lead - Male)", provider: "Deepgram Aura" },
-  { id: "aura-asteria-en", name: "Deepgram: Asteria (Clear Narrative - Female)", provider: "Deepgram Aura" },
-  { id: "aura-luna-en", name: "Deepgram: Luna (Warm Explainer - Female)", provider: "Deepgram Aura" },
-  { id: "aura-orion-en", name: "Deepgram: Orion (Deep Narrative - Male)", provider: "Deepgram Aura" },
-  { id: "aura-arcas-en", name: "Deepgram: Arcas (Calm Technical - Male)", provider: "Deepgram Aura" },
-  { id: "aura-angus-en", name: "Deepgram: Angus (Dynamic Fast - Male)", provider: "Deepgram Aura" },
-  { id: "aura-athena-en", name: "Deepgram: Athena (Polished Corporate - Female)", provider: "Deepgram Aura" },
+  {
+    id: "aura-helios-en",
+    name: "Deepgram: Helios (Tech Lead - Male)",
+    provider: "Deepgram Aura",
+  },
+  {
+    id: "aura-asteria-en",
+    name: "Deepgram: Asteria (Clear Narrative - Female)",
+    provider: "Deepgram Aura",
+  },
+  {
+    id: "aura-luna-en",
+    name: "Deepgram: Luna (Warm Explainer - Female)",
+    provider: "Deepgram Aura",
+  },
+  {
+    id: "aura-orion-en",
+    name: "Deepgram: Orion (Deep Narrative - Male)",
+    provider: "Deepgram Aura",
+  },
+  {
+    id: "aura-arcas-en",
+    name: "Deepgram: Arcas (Calm Technical - Male)",
+    provider: "Deepgram Aura",
+  },
+  {
+    id: "aura-angus-en",
+    name: "Deepgram: Angus (Dynamic Fast - Male)",
+    provider: "Deepgram Aura",
+  },
+  {
+    id: "aura-athena-en",
+    name: "Deepgram: Athena (Polished Corporate - Female)",
+    provider: "Deepgram Aura",
+  },
 
   // MACOS SYSTEM VOICES
-  { id: "macos-daniel", name: "macOS: Daniel (UK English Male)", provider: "macOS System" },
-  { id: "macos-samantha", name: "macOS: Samantha (US English Female)", provider: "macOS System" },
-  { id: "macos-alex", name: "macOS: Alex (US Classic Male)", provider: "macOS System" },
-  { id: "macos-eddy", name: "macOS: Eddy (UK English Male)", provider: "macOS System" },
-  { id: "macos-flo", name: "macOS: Flo (UK English Female)", provider: "macOS System" },
+  {
+    id: "macos-daniel",
+    name: "macOS: Daniel (UK English Male)",
+    provider: "macOS System",
+  },
+  {
+    id: "macos-samantha",
+    name: "macOS: Samantha (US English Female)",
+    provider: "macOS System",
+  },
+  {
+    id: "macos-alex",
+    name: "macOS: Alex (US Classic Male)",
+    provider: "macOS System",
+  },
+  {
+    id: "macos-eddy",
+    name: "macOS: Eddy (UK English Male)",
+    provider: "macOS System",
+  },
+  {
+    id: "macos-flo",
+    name: "macOS: Flo (UK English Female)",
+    provider: "macOS System",
+  },
 ];
 
 /**
@@ -75,7 +147,11 @@ export function extractSpokenBlocks(raw: string): string[] {
 /**
  * Script & Narration Editor component with screenplay parsing and direct voiceover synthesis from the screenplay's spoken dialogue.
  */
-export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEditorProps) {
+export function ScriptEditor({
+  film,
+  onUpdateFilm,
+  onNavigateToVideo,
+}: ScriptEditorProps) {
   const [script, setScript] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -83,9 +159,14 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
   const [buildingScenes, setBuildingScenes] = useState<boolean>(false);
   const [selectedVoice, setSelectedVoice] = useState<string>("kokoro-am_adam");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"screenplay" | "studio">("screenplay");
+  const [viewMode, setViewMode] = useState<"screenplay" | "studio">(
+    "screenplay",
+  );
   const [segments, setSegments] = useState<ScriptSegment[]>([]);
-  const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{
+    type: "success" | "error" | "info";
+    text: string;
+  } | null>(null);
 
   // Audio player state
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -112,11 +193,19 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
         if (data.ok && data.script) {
           setScript(data.script);
         } else {
-          const defaultScript = `# ${currentFilm.title}\n\n` +
-            currentFilm.shots.map((s, idx) => {
-              const body = s.blocks.map(b => "text" in b ? b.text : "label" in b ? b.label : "").filter(Boolean).join(" ");
-              return `## Scene ${idx + 1} (${s.id})\n${body || "Describe the visual action and narration for this shot."}\n`;
-            }).join("\n");
+          const defaultScript =
+            `# ${currentFilm.title}\n\n` +
+            currentFilm.shots
+              .map((s, idx) => {
+                const body = s.blocks
+                  .map((b) =>
+                    "text" in b ? b.text : "label" in b ? b.label : "",
+                  )
+                  .filter(Boolean)
+                  .join(" ");
+                return `## Scene ${idx + 1} (${s.id})\n${body || "Describe the visual action and narration for this shot."}\n`;
+              })
+              .join("\n");
           setScript(defaultScript);
         }
         setLoading(false);
@@ -126,7 +215,8 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       });
 
     // Check if voiceover audio already exists on disk
-    const existingAudio = currentFilm.voiceover?.src || `videos/${film.id}/voiceover.wav`;
+    const existingAudio =
+      currentFilm.voiceover?.src || `videos/${film.id}/voiceover.wav`;
     fetch(existingAudio, { method: "HEAD" })
       .then((res) => {
         if (isMounted && res.ok) {
@@ -195,7 +285,9 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
    * Updates a segment's title text and keeps the raw markdown in sync.
    */
   const updateSegmentTitle = (segIdx: number, title: string) => {
-    updateSegments(segments.map((s, i) => (i === segIdx ? { ...s, title } : s)));
+    updateSegments(
+      segments.map((s, i) => (i === segIdx ? { ...s, title } : s)),
+    );
   };
 
   /**
@@ -204,8 +296,15 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
   const updateBeatText = (segIdx: number, beatIdx: number, text: string) => {
     updateSegments(
       segments.map((s, si) =>
-        si !== segIdx ? s : { ...s, beats: s.beats.map((b, bi) => (bi === beatIdx ? { ...b, text } : b)) }
-      )
+        si !== segIdx
+          ? s
+          : {
+              ...s,
+              beats: s.beats.map((b, bi) =>
+                bi === beatIdx ? { ...b, text } : b,
+              ),
+            },
+      ),
     );
   };
 
@@ -214,7 +313,9 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
    */
   const addBeat = (segIdx: number, type: BeatType) => {
     updateSegments(
-      segments.map((s, si) => (si !== segIdx ? s : { ...s, beats: [...s.beats, { type, text: "" }] }))
+      segments.map((s, si) =>
+        si !== segIdx ? s : { ...s, beats: [...s.beats, { type, text: "" }] },
+      ),
     );
   };
 
@@ -223,7 +324,11 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
    */
   const removeBeat = (segIdx: number, beatIdx: number) => {
     updateSegments(
-      segments.map((s, si) => (si !== segIdx ? s : { ...s, beats: s.beats.filter((_, bi) => bi !== beatIdx) }))
+      segments.map((s, si) =>
+        si !== segIdx
+          ? s
+          : { ...s, beats: s.beats.filter((_, bi) => bi !== beatIdx) },
+      ),
     );
   };
 
@@ -232,7 +337,10 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
    */
   const addSegment = () => {
     const nextIndex = segments.length + 1;
-    updateSegments([...segments, { id: `segment-${nextIndex}`, title: `Segment ${nextIndex}`, beats: [] }]);
+    updateSegments([
+      ...segments,
+      { id: `segment-${nextIndex}`, title: `Segment ${nextIndex}`, beats: [] },
+    ]);
   };
 
   /**
@@ -247,11 +355,17 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
    */
   const handleAutoBuildScenes = async () => {
     if (!script.trim()) {
-      setStatusMsg({ type: "error", text: "Please enter a script before building scenes." });
+      setStatusMsg({
+        type: "error",
+        text: "Please enter a script before building scenes.",
+      });
       return;
     }
     setBuildingScenes(true);
-    setStatusMsg({ type: "info", text: "Parsing screenplay into video scenes, visual metaphors, and canvas nodes..." });
+    setStatusMsg({
+      type: "info",
+      text: "Parsing screenplay into video scenes, visual metaphors, and canvas nodes...",
+    });
     try {
       const res = await fetch("/api/parse-script-scenes", {
         method: "POST",
@@ -289,7 +403,10 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       });
       setTimeout(() => setStatusMsg(null), 5000);
     } catch (err: any) {
-      setStatusMsg({ type: "error", text: `Scene parsing error: ${err.message}` });
+      setStatusMsg({
+        type: "error",
+        text: `Scene parsing error: ${err.message}`,
+      });
     } finally {
       setBuildingScenes(false);
     }
@@ -300,7 +417,10 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
    */
   const handleGenerateVoiceover = async () => {
     if (!script.trim()) {
-      setStatusMsg({ type: "error", text: "Please enter some script text before generating voiceover." });
+      setStatusMsg({
+        type: "error",
+        text: "Please enter some script text before generating voiceover.",
+      });
       return;
     }
     setGenerating(true);
@@ -385,20 +505,22 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
   };
 
   return (
-    <div className="w-full h-full bg-[#0A0A0B] text-[#F5F5F5] flex flex-col p-6 overflow-y-auto font-sans">
-      
+    <div className="w-full h-full bg-paper text-ink flex flex-col p-6 overflow-y-auto font-sans">
       {/* Top Header & Project Metadata */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#222]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b-2 border-ink">
         <div>
           <div className="flex items-center gap-2">
-            <FileEdit size={18} className="text-[#635BFF]" />
-            <h2 className="text-xl font-bold tracking-tight">Script & Voiceover Studio</h2>
-            <span className="text-xs bg-[#1E1E24] text-[#8A8A8E] border border-[#333] px-2.5 py-0.5 rounded-full font-mono">
+            <FileEdit size={18} className="text-select-text" />
+            <h2 className="text-xl font-extrabold tracking-[-0.02em]">
+              Script & Voiceover Studio
+            </h2>
+            <span className="text-xs bg-paper-3 text-ink-soft border-2 border-ink px-2.5 py-0.5 font-mono shadow-nb-sm">
               {film.id}
             </span>
           </div>
-          <p className="text-xs text-[#8A8A8E] mt-1">
-            Write or paste your director screenplay, then generate voiceover directly from its spoken dialogue.
+          <p className="text-xs text-ink-soft mt-1">
+            Write or paste your director screenplay, then generate voiceover
+            directly from its spoken dialogue.
           </p>
         </div>
 
@@ -407,7 +529,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
           <button
             onClick={handleSaveScript}
             disabled={saving || loading}
-            className="text-xs px-3.5 py-1.5 rounded bg-[#1A1A1E] hover:bg-[#25252D] border border-[#333] text-white font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
+            className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 font-sans text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:pointer-events-none disabled:opacity-40 bg-paper-3 text-ink"
           >
             {saving ? (
               "Saving..."
@@ -417,28 +539,36 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
               </>
             )}
           </button>
-          
+
           <button
             onClick={handleAutoBuildScenes}
             disabled={buildingScenes || loading || !script.trim()}
-            className="text-xs px-3.5 py-1.5 rounded bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
+            className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 font-sans text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:pointer-events-none disabled:opacity-40 bg-warn text-ink"
             title="Automatically parse timestamped scenes, visual cues, and on-screen text into video shots"
           >
             {buildingScenes ? (
-              <Loader2 size={13} className="animate-spin text-amber-300" />
+              <Loader2 size={13} className="animate-spin text-ink" />
             ) : (
-              <Sparkles size={13} className="text-amber-300" />
+              <Sparkles size={13} className="text-ink" />
             )}
-            <span>{buildingScenes ? "Parsing Scenes..." : "Auto-Build Scenes from Script"}</span>
+            <span>
+              {buildingScenes
+                ? "Parsing Scenes..."
+                : "Auto-Build Scenes from Script"}
+            </span>
           </button>
 
           <button
             onClick={handleGenerateVoiceover}
             disabled={generating || loading || !script.trim()}
-            className="text-xs px-4 py-1.5 rounded font-bold flex items-center gap-1.5 shadow-lg transition-all disabled:opacity-50 active:scale-95 bg-[#635BFF] hover:bg-[#5249e6] text-white shadow-[#635BFF]/20"
+            className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 font-sans text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:pointer-events-none disabled:opacity-40 bg-primary text-ink"
           >
             <Mic size={13} className={generating ? "animate-pulse" : ""} />
-            <span>{generating ? "Synthesizing Audio..." : "Generate Voiceover (.wav)"}</span>
+            <span>
+              {generating
+                ? "Synthesizing Audio..."
+                : "Generate Voiceover (.wav)"}
+            </span>
           </button>
         </div>
       </div>
@@ -446,59 +576,70 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
       {/* Status banner */}
       {statusMsg && (
         <div
-          className={`mt-4 p-3 rounded-lg border text-xs font-medium flex items-center justify-between transition-all ${
+          className={`mt-4 p-3 border text-xs font-medium flex items-center justify-between transition-all ${
             statusMsg.type === "success"
-              ? "bg-emerald-950/40 border-emerald-800 text-emerald-300"
+              ? "bg-success/25 border-2 border-ink text-ink"
               : statusMsg.type === "error"
-              ? "bg-red-950/40 border-red-800 text-red-300"
-              : "bg-blue-950/40 border-blue-800 text-blue-300"
+                ? "bg-danger/25 border-2 border-ink text-ink"
+                : "bg-info/25 border-2 border-ink text-ink"
           }`}
         >
           <span>{statusMsg.text}</span>
-          <button onClick={() => setStatusMsg(null)} className="text-gray-400 hover:text-white px-2">
-            <X size={14} className="hover:text-white" />
+          <button
+            onClick={() => setStatusMsg(null)}
+            className="text-ink-soft hover:text-ink px-2"
+          >
+            <X size={14} className="hover:text-ink" />
           </button>
         </div>
       )}
 
       {/* Main Grid: Script Editor + Settings */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6 flex-1 min-h-0">
-        
         {/* LEFT 3 COLS: Big Screenplay Editor */}
         <div className="lg:col-span-3 flex flex-col gap-3 min-h-[420px]">
-          
           {/* Editor Header Bar with Multi-View Switcher */}
-          <div className="flex items-center justify-between bg-[#121216] border border-[#26262E] px-4 py-2 rounded-t-lg flex-wrap gap-2">
-            <div className="flex items-center gap-4 text-xs text-[#8A8A8E]">
+          <div className="flex items-center justify-between bg-paper-3 border-2 border-ink px-4 py-2 flex-wrap gap-2 shadow-nb-sm">
+            <div className="flex items-center gap-4 text-xs text-ink-soft">
               <span>
                 <strong>Spoken VO:</strong>{" "}
-                <span className="text-emerald-400 font-mono font-bold">{spokenWords.length} words</span>
+                <span className="text-ink font-mono font-bold">
+                  {spokenWords.length} words
+                </span>
               </span>
               <span>
                 <strong>Total Script:</strong>{" "}
-                <span className="text-gray-300 font-mono font-bold">{totalWords.length} words</span>
+                <span className="text-ink font-mono font-bold">
+                  {totalWords.length} words
+                </span>
               </span>
               <span>
                 <strong>Duration:</strong>{" "}
                 {duration > 0 ? (
-                  <span className="text-emerald-400 font-mono font-bold">{formatTime(duration)}</span>
+                  <span className="text-ink font-mono font-bold">
+                    {formatTime(duration)}
+                  </span>
                 ) : (
-                  <span className="text-gray-500 font-mono italic">--:-- (Pending VO)</span>
+                  <span className="text-ink-soft font-mono italic">
+                    --:-- (Pending VO)
+                  </span>
                 )}
               </span>
               {isStructured && (
-                <span className="text-[11px] bg-emerald-950/60 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800 font-medium flex items-center gap-1">
+                <span className="text-[11px] bg-success/25 text-ink px-2 py-0.5 border-2 border-ink font-medium flex items-center gap-1 shadow-nb-sm">
                   <CheckCircle2 size={12} /> Screenplay Structured
                 </span>
               )}
             </div>
 
             {/* View Mode Toggle: Screenplay vs Visual Studio */}
-            <div className="flex items-center gap-1 bg-[#1A1A22] p-0.5 rounded border border-[#333]">
+            <div className="flex items-center gap-1 bg-paper-3 p-0.5 border-2 border-ink shadow-nb-sm">
               <button
                 onClick={() => setViewMode("screenplay")}
-                className={`text-[11px] px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition-all ${
-                  viewMode === "screenplay" ? "bg-[#635BFF] text-white font-bold" : "text-gray-400 hover:text-white"
+                className={`text-[11px] px-2.5 py-1 font-medium flex items-center gap-1.5 transition-all ${
+                  viewMode === "screenplay"
+                    ? "bg-select text-select-ink font-bold"
+                    : "text-ink-soft hover:text-ink"
                 }`}
                 title="Full director screenplay editor with visual cues and scene headers"
               >
@@ -506,8 +647,10 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
               </button>
               <button
                 onClick={switchToStudio}
-                className={`text-[11px] px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition-all ${
-                  viewMode === "studio" ? "bg-[#635BFF] text-white font-bold" : "text-gray-400 hover:text-white"
+                className={`text-[11px] px-2.5 py-1 font-medium flex items-center gap-1.5 transition-all ${
+                  viewMode === "studio"
+                    ? "bg-select text-select-ink font-bold"
+                    : "text-ink-soft hover:text-ink"
                 }`}
                 title="Interactive segment cards for editing Narration, Visual, and On-Screen beats"
               >
@@ -517,48 +660,54 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
           </div>
 
           {/* Text / Spoken Preview Area */}
-          <div className="flex-1 relative bg-[#121216] border-x border-b border-[#26262E] rounded-b-lg overflow-hidden flex flex-col">
-
+          <div className="flex-1 relative bg-paper-3 border-x border-b-2 border-ink overflow-hidden flex flex-col">
             {/* VIEW MODE 1: FULL SCREENPLAY EDITOR */}
             {viewMode === "screenplay" && (
               <textarea
                 value={script}
                 onChange={(e) => setScript(e.target.value)}
                 placeholder="Paste your Claude screenplay here with ## 0:00-0:20 - TITLE headers, [VISUAL], [NARRATION], and [ON SCREEN] tag blocks..."
-                className="w-full h-full min-h-[380px] p-4 bg-transparent text-[#F5F5F5] font-mono text-sm leading-relaxed outline-none resize-none selection:bg-[#635BFF]/30 placeholder:text-gray-600"
+                className="w-full h-full min-h-[380px] p-4 bg-transparent text-ink font-mono text-sm leading-relaxed outline-none resize-none selection:bg-select/30 placeholder:text-ink-mute"
                 spellCheck={false}
               />
             )}
 
             {/* VIEW MODE 1.5: VISUAL STUDIO SEGMENT CARDS */}
             {viewMode === "studio" && (
-              <div className="w-full h-full min-h-[380px] p-4 bg-[#0E0E12] overflow-y-auto flex flex-col gap-4">
+              <div className="w-full h-full min-h-[380px] p-4 bg-paper overflow-y-auto flex flex-col gap-4">
                 {segments.length === 0 && (
-                  <div className="p-3 bg-blue-950/30 border border-blue-900/60 rounded-lg text-xs text-blue-300">
-                    No segments detected yet. Add a segment below or paste a screenplay with{" "}
-                    <code className="text-blue-200">## timestamp - Title</code> headers in Full Screenplay.
+                  <div className="p-3 bg-info/25 border-2 border-ink/60 text-xs text-ink shadow-nb-sm">
+                    No segments detected yet. Add a segment below or paste a
+                    screenplay with{" "}
+                    <code className="text-ink">## timestamp - Title</code>{" "}
+                    headers in Full Screenplay.
                   </div>
                 )}
 
                 {segments.map((seg, segIdx) => (
-                  <div key={seg.id} className="bg-[#121216] border border-[#2A2A35] rounded-xl p-4 flex flex-col gap-3">
+                  <div
+                    key={seg.id}
+                    className="bg-paper-3 border-2 border-ink p-4 flex flex-col gap-3 shadow-nb-sm"
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-1">
                         {(seg.timeStart || seg.timeEnd) && (
-                          <span className="text-[10px] bg-[#1E1E24] text-[#8A8A8E] border border-[#333] px-2 py-0.5 rounded-full font-mono shrink-0">
+                          <span className="text-[10px] bg-paper-3 text-ink-soft border-2 border-ink px-2 py-0.5 font-mono shrink-0 shadow-nb-sm">
                             {seg.timeStart}-{seg.timeEnd}
                           </span>
                         )}
                         <input
                           value={seg.title}
-                          onChange={(e) => updateSegmentTitle(segIdx, e.target.value)}
+                          onChange={(e) =>
+                            updateSegmentTitle(segIdx, e.target.value)
+                          }
                           placeholder="Segment title"
-                          className="flex-1 bg-transparent text-sm font-bold text-white outline-none border-b border-transparent focus:border-[#635BFF] py-0.5"
+                          className="flex-1 bg-transparent text-sm font-bold text-ink outline-none border-b border-transparent focus:border-select py-0.5"
                         />
                       </div>
                       <button
                         onClick={() => removeSegment(segIdx)}
-                        className="text-gray-500 hover:text-red-400 p-1 rounded shrink-0"
+                        className="text-ink-soft hover:text-ink p-1 shrink-0"
                         title="Delete segment"
                       >
                         <Trash2 size={13} />
@@ -569,19 +718,42 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                       {seg.beats.map((beat, beatIdx) => {
                         const beatMeta =
                           beat.type === "narration"
-                            ? { label: "Narration", icon: <Mic size={11} />, color: "text-emerald-300 border-emerald-900/60 bg-emerald-950/30" }
+                            ? {
+                                label: "Narration",
+                                icon: <Mic size={11} />,
+                                color:
+                                  "text-ink border-2 border-ink/60 bg-success/25",
+                              }
                             : beat.type === "visual"
-                            ? { label: "Visual", icon: <Camera size={11} />, color: "text-amber-300 border-amber-900/60 bg-amber-950/30" }
-                            : { label: "On-Screen", icon: <Eye size={11} />, color: "text-[#635BFF] border-[#635BFF]/40 bg-[#635BFF]/10" };
-                        const beatWords = beat.text.split(/\s+/).filter(Boolean);
+                              ? {
+                                  label: "Visual",
+                                  icon: <Camera size={11} />,
+                                  color:
+                                    "text-ink border-2 border-ink/60 bg-warn/25",
+                                }
+                              : {
+                                  label: "On-Screen",
+                                  icon: <Eye size={11} />,
+                                  color:
+                                    "text-select-text border-select/40 bg-select/10",
+                                };
+                        const beatWords = beat.text
+                          .split(/\s+/)
+                          .filter(Boolean);
                         return (
-                          <div key={beatIdx} className={`border rounded-lg p-2.5 ${beatMeta.color}`}>
+                          <div
+                            key={beatIdx}
+                            className={`border p-2.5 ${beatMeta.color}`}
+                          >
                             <div className="flex items-center justify-between mb-1.5">
                               <span className="text-[10px] font-bold uppercase tracking-wide flex items-center gap-1.5">
                                 {beatMeta.icon} {beatMeta.label}
-                                {beat.type === "narration" && beatWords.length > 0 && (
-                                  <span className="font-mono font-normal opacity-70">({beatWords.length}w)</span>
-                                )}
+                                {beat.type === "narration" &&
+                                  beatWords.length > 0 && (
+                                    <span className="font-mono font-normal opacity-70">
+                                      ({beatWords.length}w)
+                                    </span>
+                                  )}
                               </span>
                               <button
                                 onClick={() => removeBeat(segIdx, beatIdx)}
@@ -593,38 +765,40 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                             </div>
                             <textarea
                               value={beat.text}
-                              onChange={(e) => updateBeatText(segIdx, beatIdx, e.target.value)}
+                              onChange={(e) =>
+                                updateBeatText(segIdx, beatIdx, e.target.value)
+                              }
                               placeholder={
                                 beat.type === "narration"
                                   ? "Spoken voiceover dialogue..."
                                   : beat.type === "visual"
-                                  ? "Camera, animation, or diagram direction..."
-                                  : "Text overlay or headline..."
+                                    ? "Camera, animation, or diagram direction..."
+                                    : "Text overlay or headline..."
                               }
                               rows={2}
-                              className="w-full bg-transparent text-xs text-[#F5F5F5] outline-none resize-none placeholder:text-gray-600 font-sans"
+                              className="w-full bg-transparent text-xs text-ink outline-none resize-none placeholder:text-ink-mute font-sans"
                             />
                           </div>
                         );
                       })}
                     </div>
 
-                    <div className="flex items-center gap-1.5 pt-1 border-t border-[#222]">
+                    <div className="flex items-center gap-1.5 pt-1 border-t-2 border-ink">
                       <button
                         onClick={() => addBeat(segIdx, "narration")}
-                        className="text-[10px] px-2 py-1 rounded bg-emerald-950/40 hover:bg-emerald-950/70 border border-emerald-900/60 text-emerald-300 font-medium flex items-center gap-1"
+                        className="text-[10px] px-2 py-1 bg-success/25 hover:bg-success/25 border-2 border-ink/60 text-ink font-medium flex items-center gap-1 shadow-nb-sm hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
                       >
                         <Plus size={10} /> Narration
                       </button>
                       <button
                         onClick={() => addBeat(segIdx, "visual")}
-                        className="text-[10px] px-2 py-1 rounded bg-amber-950/40 hover:bg-amber-950/70 border border-amber-900/60 text-amber-300 font-medium flex items-center gap-1"
+                        className="text-[10px] px-2 py-1 bg-warn/25 hover:bg-warn/25 border-2 border-ink/60 text-ink font-medium flex items-center gap-1 shadow-nb-sm hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
                       >
                         <Plus size={10} /> Visual
                       </button>
                       <button
                         onClick={() => addBeat(segIdx, "onscreen")}
-                        className="text-[10px] px-2 py-1 rounded bg-[#635BFF]/10 hover:bg-[#635BFF]/20 border border-[#635BFF]/40 text-[#635BFF] font-medium flex items-center gap-1"
+                        className="text-[10px] px-2 py-1 bg-select/10 hover:bg-select/20 border border-select/40 text-select-text font-medium flex items-center gap-1"
                       >
                         <Plus size={10} /> On-Screen
                       </button>
@@ -634,27 +808,29 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
 
                 <button
                   onClick={addSegment}
-                  className="text-xs px-3 py-2 rounded-lg border border-dashed border-[#333] text-gray-400 hover:text-white hover:border-[#635BFF] flex items-center justify-center gap-1.5 transition-all"
+                  className="text-xs px-3 py-2 border border-dashed border-2 border-ink text-ink-soft hover:text-ink hover:border-select flex items-center justify-center gap-1.5 transition-all shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
                 >
                   <Plus size={13} /> Add Segment
                 </button>
               </div>
             )}
-
           </div>
 
           {/* AUDIO PLAYER EMBEDDED BELOW SCRIPT */}
           {audioUrl && (
-            <div className="mt-2 bg-[#121216] border border-[#2E2E38] rounded-xl p-4 flex flex-col gap-3 shadow-xl">
+            <div className="mt-2 bg-paper-3 border-2 border-ink p-4 flex flex-col gap-3 shadow-nb-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-[#635BFF]/20 text-[#635BFF] flex items-center justify-center font-bold text-sm">
-                    <Volume2 size={16} className="text-[#635BFF]" />
+                  <div className="w-8 h-8 bg-select/20 text-select-text flex items-center justify-center font-bold text-sm">
+                    <Volume2 size={16} className="text-select-text" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white">Generated Voiceover Audio</h4>
-                    <p className="text-xs text-[#8A8A8E] font-mono">
-                      videos/{film.id}/voiceover.wav ({formatTime(duration)}) · {spokenWords.length} spoken words
+                    <h4 className="text-sm font-bold text-ink">
+                      Generated Voiceover Audio
+                    </h4>
+                    <p className="text-xs text-ink-soft font-mono">
+                      videos/{film.id}/voiceover.wav ({formatTime(duration)}) ·{" "}
+                      {spokenWords.length} spoken words
                     </p>
                   </div>
                 </div>
@@ -663,7 +839,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                   <a
                     href={audioUrl}
                     download={`voiceover_${film.id}.wav`}
-                    className="text-xs px-3 py-1.5 rounded bg-[#1A1A22] hover:bg-[#252530] border border-[#333] text-gray-300 hover:text-white font-medium flex items-center gap-1.5"
+                    className="text-xs px-3 py-1.5 bg-paper-3 hover:bg-sunken border-2 border-ink text-ink hover:text-ink font-medium flex items-center gap-1.5 shadow-nb-sm hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
                   >
                     <Download size={13} /> Download .wav
                   </a>
@@ -676,7 +852,7 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                         }
                         onNavigateToVideo();
                       }}
-                      className="text-xs px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5"
+                      className="text-xs px-3 py-1.5 bg-success hover:bg-success text-ink font-bold flex items-center gap-1.5"
                     >
                       <FilmIcon size={13} /> View in Video Player
                     </button>
@@ -689,7 +865,8 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                 ref={audioRef}
                 src={audioUrl}
                 onTimeUpdate={() => {
-                  if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+                  if (audioRef.current)
+                    setCurrentTime(audioRef.current.currentTime);
                 }}
                 onLoadedMetadata={() => {
                   if (audioRef.current) setDuration(audioRef.current.duration);
@@ -703,16 +880,20 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
               />
 
               {/* Custom High-Fidelity Audio Controls */}
-              <div className="flex items-center gap-4 bg-[#0A0A0E] border border-[#222] p-3 rounded-lg">
+              <div className="flex items-center gap-4 bg-paper border-2 border-ink p-3  shadow-nb-sm">
                 <button
                   onClick={togglePlayAudio}
-                  className="w-10 h-10 rounded-full bg-[#635BFF] hover:bg-[#5249e6] text-white flex items-center justify-center font-bold text-sm shadow-md transition-all active:scale-95 shrink-0"
+                  className="w-10 h-10 bg-select hover:bg-select text-select-ink flex items-center justify-center font-bold text-sm shadow-nb-sm transition-all active:scale-95 shrink-0"
                   title={isPlaying ? "Pause audio" : "Play voiceover"}
                 >
-                  {isPlaying ? <Pause size={14} className="fill-current" /> : <Play size={14} className="fill-current" />}
+                  {isPlaying ? (
+                    <Pause size={14} className="fill-current" />
+                  ) : (
+                    <Play size={14} className="fill-current" />
+                  )}
                 </button>
 
-                <span className="text-xs font-mono text-[#8A8A8E] w-12 text-right">
+                <span className="text-xs font-mono text-ink-soft w-12 text-right">
                   {formatTime(currentTime)}
                 </span>
 
@@ -725,25 +906,29 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
                   onChange={(e) => {
                     const newTime = parseFloat(e.target.value);
                     setCurrentTime(newTime);
-                    if (audioRef.current) audioRef.current.currentTime = newTime;
+                    if (audioRef.current)
+                      audioRef.current.currentTime = newTime;
                   }}
-                  className="flex-1 accent-[#635BFF] cursor-pointer h-1.5 bg-[#222] rounded-lg"
+                  className="flex-1 accent-select cursor-pointer h-1.5 bg-sunken "
                 />
 
-                <span className="text-xs font-mono text-white w-12">
+                <span className="text-xs font-mono text-ink w-12">
                   {formatTime(duration)}
                 </span>
 
-                <div className="flex items-center gap-1 bg-[#1A1A20] p-0.5 rounded border border-[#333]">
+                <div className="flex items-center gap-1 bg-paper-3 p-0.5 border-2 border-ink shadow-nb-sm">
                   {[1.0, 1.25, 1.5].map((speed) => (
                     <button
                       key={speed}
                       onClick={() => {
                         setPlaybackRate(speed);
-                        if (audioRef.current) audioRef.current.playbackRate = speed;
+                        if (audioRef.current)
+                          audioRef.current.playbackRate = speed;
                       }}
-                      className={`text-[11px] px-2 py-0.5 rounded font-mono ${
-                        playbackRate === speed ? "bg-[#635BFF] text-white font-bold" : "text-gray-400 hover:text-white"
+                      className={`text-[11px] px-2 py-0.5 font-mono ${
+                        playbackRate === speed
+                          ? "bg-select text-select-ink font-bold"
+                          : "text-ink-soft hover:text-ink"
                       }`}
                     >
                       {speed}x
@@ -757,60 +942,91 @@ export function ScriptEditor({ film, onUpdateFilm, onNavigateToVideo }: ScriptEd
 
         {/* RIGHT 1 COL: Voice Settings & Workflow Guide */}
         <div className="flex flex-col gap-4">
-          
           {/* Voice Model Selector Card */}
-          <div className="bg-[#121216] border border-[#26262E] rounded-xl p-4 flex flex-col gap-3">
-            <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-              <Mic size={15} className="text-[#635BFF]" /> AI Voice Synthesis Engine
+          <div className="bg-paper-3 border-2 border-ink p-4 flex flex-col gap-3 shadow-nb-sm">
+            <h3 className="text-sm font-bold text-ink flex items-center gap-1.5">
+              <Mic size={15} className="text-select-text" /> AI Voice Synthesis
+              Engine
             </h3>
-            <p className="text-xs text-[#8A8A8E]">
+            <p className="text-xs text-ink-soft">
               Select from Kokoro ONNX, Deepgram Aura, or macOS neural voices:
             </p>
 
             <select
               value={selectedVoice}
               onChange={(e) => setSelectedVoice(e.target.value)}
-              className="w-full bg-[#1A1A20] border border-[#333] rounded-lg p-2.5 text-xs text-white outline-none focus:border-[#635BFF] font-medium"
+              className="w-full bg-paper-3 border-2 border-ink p-2.5 text-xs text-ink outline-none focus:border-select font-medium shadow-nb-sm"
             >
               <optgroup label="Kokoro Local Neural (ONNX)">
-                {VOICES.filter(v => v.provider === "Kokoro Neural").map(v => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
-                ))}
+                {VOICES.filter((v) => v.provider === "Kokoro Neural").map(
+                  (v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ),
+                )}
               </optgroup>
               <optgroup label="Deepgram Aura Neural">
-                {VOICES.filter(v => v.provider === "Deepgram Aura").map(v => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
-                ))}
+                {VOICES.filter((v) => v.provider === "Deepgram Aura").map(
+                  (v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ),
+                )}
               </optgroup>
               <optgroup label="macOS System High-Definition">
-                {VOICES.filter(v => v.provider === "macOS System").map(v => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
-                ))}
+                {VOICES.filter((v) => v.provider === "macOS System").map(
+                  (v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ),
+                )}
               </optgroup>
             </select>
 
-            <div className="p-2.5 rounded bg-[#181820] border border-[#2A2A35] text-[11px] text-[#8A8A8E] space-y-1">
-              <div>• <strong>Spoken Narration:</strong> {spokenWords.length} spoken dialogue words</div>
-              <div>• <strong>Location:</strong> <code className="text-gray-300">videos/{film.id}/voiceover.wav</code></div>
+            <div className="p-2.5 bg-paper-3 border-2 border-ink text-[11px] text-ink-soft space-y-1 shadow-nb-sm">
+              <div>
+                • <strong>Spoken Narration:</strong> {spokenWords.length} spoken
+                dialogue words
+              </div>
+              <div>
+                • <strong>Location:</strong>{" "}
+                <code className="text-ink">videos/{film.id}/voiceover.wav</code>
+              </div>
             </div>
           </div>
 
           {/* Screenplay Workflow Card */}
-          <div className="bg-[#121216] border border-[#26262E] rounded-xl p-4 flex flex-col gap-3 text-xs text-[#8A8A8E]">
-            <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-              <Clapperboard size={15} className="text-[#635BFF]" /> Screenplay Workflow Guide
+          <div className="bg-paper-3 border-2 border-ink p-4 flex flex-col gap-3 text-xs text-ink-soft shadow-nb-sm">
+            <h3 className="text-sm font-bold text-ink flex items-center gap-1.5">
+              <Clapperboard size={15} className="text-select-text" /> Screenplay
+              Workflow Guide
             </h3>
             <ul className="space-y-2 list-disc list-inside text-[11px]">
-              <li><strong>Write dialogue:</strong> Use [VISUAL], [NARRATION], and [ON SCREEN] tag blocks per scene (legacy VO:/Voiceover:/Narrator: still work).</li>
-              <li><strong>Edit visually:</strong> Switch to Visual Studio to edit each beat as a card, two-way synced with the raw markdown.</li>
-              <li><strong>Auto-Build:</strong> Automatically constructs video shots, visual metaphors, and canvas nodes directly from the script.</li>
-              <li><strong>Generate Voiceover:</strong> Synthesizes strictly the screenplay's spoken dialogue into audio.</li>
+              <li>
+                <strong>Write dialogue:</strong> Use [VISUAL], [NARRATION], and
+                [ON SCREEN] tag blocks per scene (legacy
+                VO:/Voiceover:/Narrator: still work).
+              </li>
+              <li>
+                <strong>Edit visually:</strong> Switch to Visual Studio to edit
+                each beat as a card, two-way synced with the raw markdown.
+              </li>
+              <li>
+                <strong>Auto-Build:</strong> Automatically constructs video
+                shots, visual metaphors, and canvas nodes directly from the
+                script.
+              </li>
+              <li>
+                <strong>Generate Voiceover:</strong> Synthesizes strictly the
+                screenplay's spoken dialogue into audio.
+              </li>
             </ul>
           </div>
         </div>
-
       </div>
-
     </div>
   );
 }

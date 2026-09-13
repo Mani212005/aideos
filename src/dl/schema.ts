@@ -363,6 +363,8 @@ export const shotSchema = z.object({
   end: z.number().min(0).optional(),
   /** Track / layer index (0 = main shots, 1 = b-roll/overlay, 2 = subtitles, etc.) */
   layer: z.number().int().min(0).max(10).optional(),
+  /** Editor timeline lane this shot sits on. See timelineLayerSchema. */
+  layerId: z.string().optional(),
   /** Legacy alias for position */
   startSec: z.number().min(0).optional(),
   dur: z.number().min(0.5).max(90),
@@ -426,11 +428,30 @@ export const audioClipSchema = z.object({
   volume: z.number().min(0).max(2).default(1),
   speed: z.number().min(0.25).max(4).default(1).optional(),
   channel: z.enum(["voiceover", "music", "sfx", "external"]).default("voiceover"),
+  /** Timeline lane this clip sits on. See timelineLayerSchema. */
+  layerId: z.string().optional(),
+});
+
+/**
+ * A timeline lane the editor draws clips on. Purely an editing construct: it carries z-order and
+ * the per-lane visibility, lock and mute flags, and never changes how a shot itself renders.
+ * Optional on a film so every existing manifest keeps working with the default lane set.
+ */
+export const timelineLayerSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]+$/),
+  /** Z-order. Higher numbers paint on top. */
+  number: z.number().int().min(0).max(100),
+  label: z.string().min(1).max(40),
+  locked: z.boolean().default(false),
+  hidden: z.boolean().default(false),
+  muted: z.boolean().default(false),
+  height: z.number().min(20).max(200).default(56),
 });
 
 export type SfxItem = z.infer<typeof sfxItemSchema>;
 export type MusicTrack = z.infer<typeof musicTrackSchema>;
 export type AudioClip = z.infer<typeof audioClipSchema>;
+export type TimelineLayer = z.infer<typeof timelineLayerSchema>;
 
 export const filmBaseSchema = z.object({
   schemaVersion: z.string().default("1.0.0").optional(),
@@ -458,6 +479,8 @@ export const filmBaseSchema = z.object({
     })
     .optional(),
   audioClips: z.array(audioClipSchema).optional(),
+  /** Editor timeline lanes. Absent means the editor derives its default lane set. */
+  layers: z.array(timelineLayerSchema).optional(),
   captions: z.string().min(1).optional(),
   sfx: z.array(sfxItemSchema).optional(),
   music: musicTrackSchema.optional(),

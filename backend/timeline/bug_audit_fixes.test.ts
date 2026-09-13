@@ -179,8 +179,8 @@ test("Finding 4: resolveTrackCollisions cascades through 3 or more sequential sh
     createTestShot({ id: "s3", ch: "ch1", position: 12, startSec: 12, start: 0, end: 4, dur: 4, stage: "frame", look: "n3", move: "pan", blocks: [] }),
   ];
 
-  // s1 placed at 5s (dur 4, ends at 9s). s2 starts at 4s (dur 5 -> pushed to 9s..14s).
-  // s3 was at 12s (dur 4). When s2 ends at 14s, s3 must cascade to 14s!
+  // s2 already occupied 4s..9s, so it keeps its slot. s1 was dropped at 5s, collides, and ripples
+  // downstream to 9s..13s. s3 was at 12s (dur 4) and now collides with s1, so it cascades to 13s.
   const resolved = resolveTrackCollisions(shots, 0);
   const r1 = resolved[0];
   const r2 = resolved[1];

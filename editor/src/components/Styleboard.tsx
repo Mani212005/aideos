@@ -4,7 +4,13 @@
  */
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import type { Film, Shot, Block, BackgroundPreset, CameraAngle } from "../../../src/dl/schema";
+import type {
+  Film,
+  Shot,
+  Block,
+  BackgroundPreset,
+  CameraAngle,
+} from "../../../src/dl/schema";
 import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
 import { CHARACTER_RIGS } from "../../../src/dl/characters";
 import { ShotModal } from "./ShotModal";
@@ -48,7 +54,10 @@ interface StyleboardProps {
   onUpdateFilm?: (film: Film) => void;
 }
 
-const RIG_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+const RIG_ICONS: Record<
+  string,
+  React.ComponentType<{ size?: number; className?: string }>
+> = {
   astronaut: User,
   developer: Code,
   robot: Bot,
@@ -69,7 +78,11 @@ const ACCENTS = [
   { name: "Violet Deep", hex: "#8B5CF6" },
 ];
 
-const CAMERA_ANGLES: Array<{ id: CameraAngle; name: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = [
+const CAMERA_ANGLES: Array<{
+  id: CameraAngle;
+  name: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+}> = [
   { id: "flat", name: "Flat 2D", icon: Square },
   { id: "isometric", name: "Isometric 3D", icon: Box },
   { id: "cinematic-tilt", name: "Cinematic Tilt", icon: Video },
@@ -84,10 +97,10 @@ const CAMERA_ANGLES: Array<{ id: CameraAngle; name: string; icon: React.Componen
 function getMapBounds(film: Film) {
   const { nodes } = film.canvas;
   if (nodes.length === 0) return { minX: 0, minY: 0, width: 1, height: 1 };
-  const minX = Math.min(...nodes.map(node => node.x));
-  const minY = Math.min(...nodes.map(node => node.y));
-  const maxX = Math.max(...nodes.map(node => node.x + node.w));
-  const maxY = Math.max(...nodes.map(node => node.y + node.h));
+  const minX = Math.min(...nodes.map((node) => node.x));
+  const minY = Math.min(...nodes.map((node) => node.y));
+  const maxX = Math.max(...nodes.map((node) => node.x + node.w));
+  const maxY = Math.max(...nodes.map((node) => node.y + node.h));
   const padding = 80;
   return {
     minX: minX - padding,
@@ -102,9 +115,10 @@ function getMapBounds(film: Film) {
  */
 function getMetaphorInfo(shot: Shot) {
   // Check if shot has a CharacterBeat
-  const charBlock = shot.blocks.find(b => b.c === "CharacterBeat") as any;
+  const charBlock = shot.blocks.find((b) => b.c === "CharacterBeat") as any;
   if (charBlock) {
-    const charName = charBlock.characterId === "developer" ? "Tech Architect" : "Astro Guide";
+    const charName =
+      charBlock.characterId === "developer" ? "Tech Architect" : "Astro Guide";
     return { label: `Character: ${charName}`, icon: User, color: "#635BFF" };
   }
 
@@ -113,7 +127,10 @@ function getMetaphorInfo(shot: Shot) {
   }
 
   if (shot.metaphor) {
-    if (shot.metaphor.includes("throw") || shot.metaphor.includes("character")) {
+    if (
+      shot.metaphor.includes("throw") ||
+      shot.metaphor.includes("character")
+    ) {
       return { label: "Character Metaphor", icon: Bot, color: "#F43F5E" };
     }
     if (shot.metaphor.includes("matrix") || shot.metaphor.includes("grid")) {
@@ -123,14 +140,16 @@ function getMetaphorInfo(shot: Shot) {
   }
 
   // Infer from standard blocks
-  const hasTokenStrip = shot.blocks.some(b => b.c === "TokenStrip");
-  if (hasTokenStrip) return { label: "Token Sequence", icon: Type, color: "#F59E0B" };
+  const hasTokenStrip = shot.blocks.some((b) => b.c === "TokenStrip");
+  if (hasTokenStrip)
+    return { label: "Token Sequence", icon: Type, color: "#F59E0B" };
 
-  const hasMatrix = shot.blocks.some(b => b.c === "MatrixGrid");
+  const hasMatrix = shot.blocks.some((b) => b.c === "MatrixGrid");
   if (hasMatrix) return { label: "Memory Grid", icon: Grid, color: "#635BFF" };
 
-  const hasStat = shot.blocks.some(b => b.c === "StatCounter");
-  if (hasStat) return { label: "Metric Card", icon: BarChart3, color: "#10B981" };
+  const hasStat = shot.blocks.some((b) => b.c === "StatCounter");
+  if (hasStat)
+    return { label: "Metric Card", icon: BarChart3, color: "#10B981" };
 
   return { label: "Spatial Node", icon: Target, color: "#8A8A8E" };
 }
@@ -142,26 +161,34 @@ function renderBlockPreview(block: Block, accent: string) {
   switch (block.c) {
     case "CharacterBeat":
       const charBlock = block as any;
-      const rig = CHARACTER_RIGS[charBlock.characterId as keyof typeof CHARACTER_RIGS] || CHARACTER_RIGS.astronaut;
+      const rig =
+        CHARACTER_RIGS[charBlock.characterId as keyof typeof CHARACTER_RIGS] ||
+        CHARACTER_RIGS.astronaut;
       const poseKeyframes = charBlock.keyframes || [{ t: 0, pose: "neutral" }];
       const RigIcon = RIG_ICONS[charBlock.characterId] || User;
       return (
-        <div className="bg-[#121218] p-3 rounded-xl border border-[#635BFF]/40 flex items-center justify-between shadow-md">
+        <div className="bg-paper-3 p-3 border border-select/40 flex items-center justify-between shadow-nb-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#635BFF]/20 border border-[#635BFF]/50 flex items-center justify-center text-[#635BFF]">
+            <div className="w-10 h-10 bg-select/20 border border-select/50 flex items-center justify-center text-select-text">
               <RigIcon size={20} />
             </div>
             <div>
-              <div className="text-xs font-bold text-white flex items-center gap-1.5">
+              <div className="text-xs font-bold text-ink flex items-center gap-1.5">
                 <span>{rig.name}</span>
-                <span className="badge badge-xs badge-primary font-mono">{charBlock.stage || "frame"}</span>
+                <span className="badge badge-xs badge-primary font-mono">
+                  {charBlock.stage || "frame"}
+                </span>
               </div>
-              <div className="text-[10px] text-gray-400 font-mono mt-0.5">
-                Pose: <span className="text-[#635BFF] font-bold">{poseKeyframes[0]?.pose || "neutral"}</span> ({poseKeyframes.length} keyframes)
+              <div className="text-[10px] text-ink-soft font-mono mt-0.5">
+                Pose:{" "}
+                <span className="text-select-text font-bold">
+                  {poseKeyframes[0]?.pose || "neutral"}
+                </span>{" "}
+                ({poseKeyframes.length} keyframes)
               </div>
             </div>
           </div>
-          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded">
+          <span className="text-[10px] font-mono text-ink bg-success/25 border-2 border-ink/30 px-2 py-0.5  shadow-nb-sm">
             60 FPS SVG
           </span>
         </div>
@@ -170,12 +197,18 @@ function renderBlockPreview(block: Block, accent: string) {
     case "TextReveal":
       return (
         <div className="py-1">
-          <div className={`font-bold text-white tracking-tight ${block.size === "display" ? "text-base" : "text-sm"}`}>
+          <div
+            className={`font-bold text-ink tracking-tight ${block.size === "display" ? "text-base" : "text-sm"}`}
+          >
             {block.text}
           </div>
           {block.accentWord && (
-            <div className="text-[11px] font-mono mt-0.5" style={{ color: accent }}>
-              Key Accent: <span className="underline decoration-2">{block.accentWord}</span>
+            <div
+              className="text-[11px] font-mono mt-0.5"
+              style={{ color: accent }}
+            >
+              Key Accent:{" "}
+              <span className="underline decoration-2">{block.accentWord}</span>
             </div>
           )}
         </div>
@@ -183,35 +216,41 @@ function renderBlockPreview(block: Block, accent: string) {
 
     case "Body":
       return (
-        <p className="text-xs text-[#8A8A8E] leading-relaxed line-clamp-2">
+        <p className="text-xs text-ink-soft leading-relaxed line-clamp-2">
           {block.text}
         </p>
       );
 
     case "Kicker":
       return (
-        <span className="text-[10px] font-mono uppercase tracking-widest text-[#8A8A8E] bg-[#1E1E24] px-2 py-0.5 rounded border border-[#333]">
+        <span className="text-[10px] font-mono uppercase tracking-widest text-ink-soft bg-paper-3 px-2 py-0.5 border-2 border-ink shadow-nb-sm">
           {block.text}
         </span>
       );
 
     case "StatCounter":
       return (
-        <div className="flex items-baseline gap-2 bg-[#121218] p-2.5 rounded-lg border border-[#262632]">
-          <span className="text-xl font-bold font-mono" style={{ color: accent }}>
-            {block.to}{block.suffix || ""}
+        <div className="flex items-baseline gap-2 bg-paper-3 p-2.5 border-2 border-ink shadow-nb-sm">
+          <span
+            className="text-xl font-bold font-mono"
+            style={{ color: accent }}
+          >
+            {block.to}
+            {block.suffix || ""}
           </span>
-          <span className="text-xs text-[#8A8A8E] uppercase tracking-wider">{block.label}</span>
+          <span className="text-xs text-ink-soft uppercase tracking-wider">
+            {block.label}
+          </span>
         </div>
       );
 
     case "TokenStrip":
       return (
-        <div className="flex flex-wrap gap-1 bg-[#121218] p-2 rounded-lg border border-[#262632]">
+        <div className="flex flex-wrap gap-1 bg-paper-3 p-2 border-2 border-ink shadow-nb-sm">
           {block.tokens.slice(0, 6).map((tok, i) => (
             <span
               key={i}
-              className="text-[10px] font-mono px-1.5 py-0.5 rounded border"
+              className="text-[10px] font-mono px-1.5 py-0.5 border"
               style={{
                 borderColor: i === 0 ? accent : "#333",
                 backgroundColor: i === 0 ? `${accent}20` : "#1A1A22",
@@ -222,19 +261,21 @@ function renderBlockPreview(block: Block, accent: string) {
             </span>
           ))}
           {block.tokens.length > 6 && (
-            <span className="text-[10px] text-gray-500 font-mono self-center">+{block.tokens.length - 6} more</span>
+            <span className="text-[10px] text-ink-soft font-mono self-center">
+              +{block.tokens.length - 6} more
+            </span>
           )}
         </div>
       );
 
     case "MatrixGrid":
       return (
-        <div className="bg-[#121218] p-2 rounded-lg border border-[#262632] flex items-center justify-between">
+        <div className="bg-paper-3 p-2 border-2 border-ink flex items-center justify-between shadow-nb-sm">
           <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map((cell) => (
               <div
                 key={cell}
-                className="w-4 h-4 rounded-sm border flex items-center justify-center text-[9px] font-mono"
+                className="w-4 h-4 border flex items-center justify-center text-[9px] font-mono"
                 style={{
                   borderColor: cell <= 3 ? accent : "#333",
                   backgroundColor: cell <= 3 ? `${accent}30` : "#161620",
@@ -245,26 +286,34 @@ function renderBlockPreview(block: Block, accent: string) {
               </div>
             ))}
           </div>
-          <span className="text-[10px] text-[#8A8A8E] font-mono">KV Cache Cells</span>
+          <span className="text-[10px] text-ink-soft font-mono">
+            KV Cache Cells
+          </span>
         </div>
       );
 
     case "ProgressBar":
       return (
-        <div className="w-full bg-[#121218] p-2 rounded-lg border border-[#262632] flex flex-col gap-1">
-          <div className="flex justify-between text-[10px] text-[#8A8A8E]">
+        <div className="w-full bg-paper-3 p-2 border-2 border-ink flex flex-col gap-1 shadow-nb-sm">
+          <div className="flex justify-between text-[10px] text-ink-soft">
             <span>{block.label || "Progress"}</span>
             <span className="font-mono">{Math.round(block.value * 100)}%</span>
           </div>
-          <div className="w-full h-1.5 bg-[#222] rounded-full overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${block.value * 100}%`, backgroundColor: accent }} />
+          <div className="w-full h-1.5 bg-sunken overflow-hidden">
+            <div
+              className="h-full "
+              style={{
+                width: `${block.value * 100}%`,
+                backgroundColor: accent,
+              }}
+            />
           </div>
         </div>
       );
 
     default:
       return (
-        <div className="text-[11px] font-mono text-gray-400 bg-[#16161E] px-2 py-1 rounded border border-[#2A2A35]">
+        <div className="text-[11px] font-mono text-ink-soft bg-paper-3 px-2 py-1 border-2 border-ink shadow-nb-sm">
           {block.c} primitive
         </div>
       );
@@ -280,15 +329,26 @@ export function Styleboard({
   onAccentChange,
   onUpdateFilm,
 }: StyleboardProps) {
-  const [activeTab, setActiveTab] = useState<"storyboard" | "primitives" | "spatial">("storyboard");
+  const [activeTab, setActiveTab] = useState<
+    "storyboard" | "primitives" | "spatial"
+  >("storyboard");
   const [isSaving, setIsSaving] = useState(false);
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const [editingShotIdx, setEditingShotIdx] = useState<number | null>(null);
 
   // B-Roll GPU job tracking state
-  const [brollJobStatus, setBrollJobStatus] = useState<Record<string, { state: string; progress?: number; footageSrc?: string; error?: string }>>({});
-  const [existingFootage, setExistingFootage] = useState<Record<string, string>>({});
-  const [isTriggeringBroll, setIsTriggeringBroll] = useState<Record<string, boolean>>({});
+  const [brollJobStatus, setBrollJobStatus] = useState<
+    Record<
+      string,
+      { state: string; progress?: number; footageSrc?: string; error?: string }
+    >
+  >({});
+  const [existingFootage, setExistingFootage] = useState<
+    Record<string, string>
+  >({});
+  const [isTriggeringBroll, setIsTriggeringBroll] = useState<
+    Record<string, boolean>
+  >({});
 
   // Keep the latest onUpdateFilm callback available to the polling effect without resetting its interval on every parent render
   const onUpdateFilmRef = useRef(onUpdateFilm);
@@ -310,16 +370,24 @@ export function Styleboard({
             const updatedShots = film.shots.map((s) => {
               const src = data.existingFootage[s.id];
               if (s.needsFootage && src) {
-                const hasInset = s.blocks.some((b) => b.c === "AnalogyInset" && (b as any).src === src);
+                const hasInset = s.blocks.some(
+                  (b) => b.c === "AnalogyInset" && (b as any).src === src,
+                );
                 if (!hasInset) {
                   hasNewWiring = true;
-                  const filtered = s.blocks.filter((b) => b.c !== "CharacterBeat" && b.c !== "AnalogyInset");
+                  const filtered = s.blocks.filter(
+                    (b) => b.c !== "CharacterBeat" && b.c !== "AnalogyInset",
+                  );
                   return {
                     ...s,
                     blocks: [
                       {
                         c: "AnalogyInset",
-                        caption: (s.visualDirection || s.scriptText || "GPU B-Roll").slice(0, 60),
+                        caption: (
+                          s.visualDirection ||
+                          s.scriptText ||
+                          "GPU B-Roll"
+                        ).slice(0, 60),
                         src,
                         fullScreenHero: true,
                       } as Block,
@@ -336,7 +404,9 @@ export function Styleboard({
           }
           if (data.jobs && Array.isArray(data.jobs)) {
             const map: Record<string, any> = {};
-            data.jobs.forEach((j: any) => { map[j.shotId] = j; });
+            data.jobs.forEach((j: any) => {
+              map[j.shotId] = j;
+            });
             setBrollJobStatus(map);
           }
         }
@@ -348,15 +418,18 @@ export function Styleboard({
     return () => clearInterval(timer);
   }, [film]);
 
-  const handleTriggerBroll = async (shotId: string, currentFilmState?: Film) => {
+  const handleTriggerBroll = async (
+    shotId: string,
+    currentFilmState?: Film,
+  ) => {
     const targetFilm = currentFilmState || film;
     const shot = targetFilm.shots.find((s) => s.id === shotId);
     if (!shot) return;
     setIsTriggeringBroll((prev) => ({ ...prev, [shotId]: true }));
     try {
-      const res = await fetch('/api/broll/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/broll/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           filmId: targetFilm.id,
           shotId: shot.id,
@@ -407,12 +480,13 @@ export function Styleboard({
     try {
       const filmToSave = {
         ...film,
-        accent: accent === "#635BFF" ? (film.theme?.accent || undefined) : accent,
+        accent: accent === "#635BFF" ? film.theme?.accent || undefined : accent,
         theme: {
           ...(film.theme || {}),
           background: currentBg,
           cameraAngle: currentCamera,
-          accent: accent === "#635BFF" ? (film.theme?.accent || undefined) : accent,
+          accent:
+            accent === "#635BFF" ? film.theme?.accent || undefined : accent,
         },
       };
 
@@ -424,7 +498,9 @@ export function Styleboard({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${res.status}: Failed to save film`);
+        throw new Error(
+          data.error || `HTTP ${res.status}: Failed to save film`,
+        );
       }
 
       setSaveToast(`Saved Storyboard & Themes to ${film.id}.ts`);
@@ -440,7 +516,10 @@ export function Styleboard({
   /**
    * Toggles or changes a shot's visual mode (Standard, SVG Character, or B-Roll).
    */
-  const handleSetShotMode = (shotIdx: number, mode: "standard" | "character" | "b-roll") => {
+  const handleSetShotMode = (
+    shotIdx: number,
+    mode: "standard" | "character" | "b-roll",
+  ) => {
     if (!onUpdateFilm) return;
     const updatedShots = [...film.shots];
     const shot = updatedShots[shotIdx];
@@ -448,7 +527,9 @@ export function Styleboard({
 
     if (mode === "character") {
       // Remove other device blocks and add CharacterBeat
-      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat" && b.c !== "MetaphorViewer");
+      const filteredBlocks = shot.blocks.filter(
+        (b) => b.c !== "CharacterBeat" && b.c !== "MetaphorViewer",
+      );
       const charBlock: Block = {
         c: "CharacterBeat",
         characterId: "astronaut",
@@ -466,11 +547,18 @@ export function Styleboard({
       };
     } else if (mode === "b-roll") {
       // Set needsFootage flag and attach AnalogyInset block
-      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat" && b.c !== "AnalogyInset");
-      const footageSrc = existingFootage[shot.id] || `footage/${film.id}_${shot.id}.mp4`;
+      const filteredBlocks = shot.blocks.filter(
+        (b) => b.c !== "CharacterBeat" && b.c !== "AnalogyInset",
+      );
+      const footageSrc =
+        existingFootage[shot.id] || `footage/${film.id}_${shot.id}.mp4`;
       const analogyBlock: Block = {
         c: "AnalogyInset",
-        caption: (shot.visualDirection || shot.scriptText || "GPU B-Roll").slice(0, 60),
+        caption: (
+          shot.visualDirection ||
+          shot.scriptText ||
+          "GPU B-Roll"
+        ).slice(0, 60),
         src: footageSrc,
         fullScreenHero: true,
       } as any;
@@ -491,11 +579,14 @@ export function Styleboard({
       return;
     } else {
       // Standard narrative text / devices
-      const filteredBlocks = shot.blocks.filter(b => b.c !== "CharacterBeat");
+      const filteredBlocks = shot.blocks.filter((b) => b.c !== "CharacterBeat");
       updatedShots[shotIdx] = {
         ...shot,
         needsFootage: false,
-        blocks: filteredBlocks.length > 0 ? filteredBlocks : [{ c: "Body", text: shot.scriptText || "Scene narrative" }],
+        blocks:
+          filteredBlocks.length > 0
+            ? filteredBlocks
+            : [{ c: "Body", text: shot.scriptText || "Scene narrative" }],
       };
     }
 
@@ -506,14 +597,12 @@ export function Styleboard({
   };
 
   return (
-    <div className="w-full h-full bg-[#0A0A0B] text-[#F5F5F5] flex flex-col overflow-hidden font-sans">
-      
+    <div className="w-full h-full bg-paper text-ink flex flex-col overflow-hidden font-sans">
       {/* TOP ART DIRECTION & PERSISTENCE HEADER */}
-      <div className="bg-[#121216] border-b border-[#26262E] p-4 flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-md">
-        
+      <div className="bg-paper-3 border-b-2 border-ink p-4 flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-nb-sm">
         {/* Brand Accent Palette */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] text-[#8A8A8E] font-bold uppercase tracking-wider">
+          <label className="text-[11px] text-ink-soft font-bold uppercase tracking-wider">
             Accent Token
           </label>
           <div className="flex items-center gap-2">
@@ -524,13 +613,15 @@ export function Styleboard({
                   onAccentChange(a.hex);
                   handleThemeChange("accent", a.hex);
                 }}
-                className={`w-7 h-7 rounded-full border-2 transition-all flex items-center justify-center ${
-                  accent === a.hex ? "border-white scale-110 shadow-lg shadow-white/10" : "border-transparent opacity-80 hover:opacity-100"
+                className={`w-7 h-7 border-2 transition-all flex items-center justify-center ${
+                  accent === a.hex
+                    ? "border-2 border-ink scale-110 shadow-nb-sm shadow-white/10"
+                    : "border-transparent opacity-80 hover:opacity-100"
                 }`}
                 style={{ backgroundColor: a.hex }}
                 title={a.name}
               >
-                {accent === a.hex && <Check size={12} className="text-white" />}
+                {accent === a.hex && <Check size={12} className="text-ink" />}
               </button>
             ))}
           </div>
@@ -538,20 +629,20 @@ export function Styleboard({
 
         {/* 3D Camera Perspective Selector */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] text-[#8A8A8E] font-bold uppercase tracking-wider">
+          <label className="text-[11px] text-ink-soft font-bold uppercase tracking-wider">
             Camera Perspective
           </label>
-          <div className="flex items-center gap-1.5 bg-[#1A1A22] p-1 rounded-lg border border-[#333]">
+          <div className="flex items-center gap-1.5 bg-paper-3 p-1 border-2 border-ink shadow-nb-sm">
             {CAMERA_ANGLES.map((cam) => {
               const CamIcon = cam.icon;
               return (
                 <button
                   key={cam.id}
                   onClick={() => handleThemeChange("cameraAngle", cam.id)}
-                  className={`text-xs px-2.5 py-1 rounded font-medium flex items-center gap-1.5 transition-all ${
+                  className={`text-xs px-2.5 py-1 font-medium flex items-center gap-1.5 transition-all ${
                     currentCamera === cam.id
-                      ? "bg-[#635BFF] text-white font-bold shadow"
-                      : "text-gray-400 hover:text-white"
+                      ? "bg-select text-select-ink font-bold shadow"
+                      : "text-ink-soft hover:text-ink"
                   }`}
                   title={cam.name}
                 >
@@ -565,18 +656,18 @@ export function Styleboard({
 
         {/* Background Canvas Selector (Connected to BACKGROUND_THEMES) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] text-[#8A8A8E] font-bold uppercase tracking-wider">
+          <label className="text-[11px] text-ink-soft font-bold uppercase tracking-wider">
             Canvas Background
           </label>
-          <div className="flex items-center gap-1.5 bg-[#1A1A22] p-1 rounded-lg border border-[#333]">
+          <div className="flex items-center gap-1.5 bg-paper-3 p-1 border-2 border-ink shadow-nb-sm">
             {Object.values(BACKGROUND_THEMES).map((bg) => (
               <button
                 key={bg.id}
                 onClick={() => handleThemeChange("background", bg.id)}
-                className={`text-xs px-2.5 py-1 rounded font-medium flex items-center gap-1 transition-all ${
+                className={`text-xs px-2.5 py-1 font-medium flex items-center gap-1 transition-all ${
                   currentBg === bg.id
-                    ? "bg-[#635BFF] text-white font-bold shadow"
-                    : "text-gray-400 hover:text-white"
+                    ? "bg-select text-select-ink font-bold shadow"
+                    : "text-ink-soft hover:text-ink"
                 }`}
                 title={bg.description}
               >
@@ -588,27 +679,33 @@ export function Styleboard({
 
         {/* View Tabs & Save Storyboard Button */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-[#1A1A20] p-1 rounded-lg border border-[#333]">
+          <div className="flex items-center gap-1 bg-paper-3 p-1 border-2 border-ink shadow-nb-sm">
             <button
               onClick={() => setActiveTab("storyboard")}
-              className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === "storyboard" ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
+              className={`text-xs px-3 py-1.5 font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === "storyboard"
+                  ? "bg-select text-select-ink shadow"
+                  : "text-ink-soft hover:text-ink"
               }`}
             >
               <FilmIcon size={12} /> Storyboard ({film.shots.length})
             </button>
             <button
               onClick={() => setActiveTab("primitives")}
-              className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === "primitives" ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
+              className={`text-xs px-3 py-1.5 font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === "primitives"
+                  ? "bg-select text-select-ink shadow"
+                  : "text-ink-soft hover:text-ink"
               }`}
             >
               <Layers size={12} /> Primitives
             </button>
             <button
               onClick={() => setActiveTab("spatial")}
-              className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === "spatial" ? "bg-[#635BFF] text-white shadow" : "text-gray-400 hover:text-white"
+              className={`text-xs px-3 py-1.5 font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === "spatial"
+                  ? "bg-select text-select-ink shadow"
+                  : "text-ink-soft hover:text-ink"
               }`}
             >
               <Compass size={12} /> Topology
@@ -618,13 +715,17 @@ export function Styleboard({
           <button
             onClick={handleSaveStoryboard}
             disabled={isSaving}
-            className={`px-4 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-lg transition-all ${
+            className={`px-4 py-1.5 font-bold text-xs flex items-center gap-1.5 shadow-nb-sm transition-all ${
               isSaving
-                ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-                : "bg-emerald-500 hover:bg-emerald-400 text-black active:scale-95"
+                ? "bg-sunken text-ink-soft cursor-not-allowed"
+                : "bg-success hover:bg-success text-ink active:scale-95"
             }`}
           >
-            {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+            {isSaving ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <Save size={12} />
+            )}
             <span>{isSaving ? "Saving..." : "Save Storyboard"}</span>
           </button>
         </div>
@@ -632,28 +733,30 @@ export function Styleboard({
 
       {/* Save Toast Feedback */}
       {saveToast && (
-        <div className="mx-6 mt-4 p-3 bg-emerald-950/90 border border-emerald-500 rounded-lg text-emerald-200 text-xs font-mono flex items-center gap-2 shadow-xl animate-fade-in">
+        <div className="mx-6 mt-4 p-3 bg-success/25 border-2 border-ink text-ink text-xs font-mono flex items-center gap-2 shadow-nb-sm animate-fade-in">
           <Bell size={14} /> {saveToast}
         </div>
       )}
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 overflow-y-auto p-6">
-        
         {/* VIEW 1: RICH KEYFRAME STORYBOARD GALLERY */}
         {activeTab === "storyboard" && (
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                <h3 className="text-base font-bold text-ink tracking-tight flex items-center gap-2">
                   <FilmIcon size={16} /> Keyframe Storyboard
                 </h3>
-                <p className="text-xs text-[#8A8A8E] mt-0.5">
+                <p className="text-xs text-ink-soft mt-0.5">
                   Select a card to edit the timeline, or switch visual modes.
                 </p>
               </div>
-              <div className="text-xs text-[#8A8A8E] font-mono">
-                Duration: <span className="text-white font-bold">{film.shots.reduce((acc, s) => acc + s.dur, 0).toFixed(1)}s</span>
+              <div className="text-xs text-ink-soft font-mono">
+                Duration:{" "}
+                <span className="text-ink font-bold">
+                  {film.shots.reduce((acc, s) => acc + s.dur, 0).toFixed(1)}s
+                </span>
               </div>
             </div>
 
@@ -661,29 +764,37 @@ export function Styleboard({
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {film.shots.map((shot, idx) => {
                 const metaphor = getMetaphorInfo(shot);
-                const hasChar = shot.blocks.some(b => b.c === "CharacterBeat");
+                const hasChar = shot.blocks.some(
+                  (b) => b.c === "CharacterBeat",
+                );
                 const hasBroll = !!shot.needsFootage;
-                const activeMode = hasChar ? "character" : hasBroll ? "b-roll" : "standard";
+                const activeMode = hasChar
+                  ? "character"
+                  : hasBroll
+                    ? "b-roll"
+                    : "standard";
 
                 return (
                   <div
                     key={shot.id}
-                    className="bg-[#121216] border border-[#26262E] hover:border-[#635BFF] rounded-2xl overflow-hidden shadow-xl flex flex-col transition-all hover:scale-[1.01] hover:shadow-[#635BFF]/10 group"
+                    className="bg-paper-3 border-2 border-ink hover:border-select overflow-hidden shadow-nb-sm flex flex-col transition-all hover:scale-[1.01] shadow-nb-sm group"
                   >
                     {/* Keyframe Card Header */}
-                    <div 
+                    <div
                       onClick={() => setEditingShotIdx(idx)}
-                      className="bg-[#16161D] px-4 py-2.5 border-b border-[#26262E] flex items-center justify-between cursor-pointer"
+                      className="bg-paper-3 px-4 py-2.5 border-b-2 border-ink flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-mono font-bold bg-[#20202A] text-gray-300 px-2 py-0.5 rounded border border-[#333]">
+                        <span className="text-[11px] font-mono font-bold bg-paper-3 text-ink px-2 py-0.5 border-2 border-ink shadow-nb-sm">
                           Shot {idx + 1}
                         </span>
-                        <span className="text-xs font-mono text-white font-bold">{shot.id}</span>
+                        <span className="text-xs font-mono text-ink font-bold">
+                          {shot.id}
+                        </span>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-mono bg-[#1E1E24] text-[#8A8A8E] px-2 py-0.5 rounded border border-[#333]">
+                        <span className="text-[11px] font-mono bg-paper-3 text-ink-soft px-2 py-0.5 border-2 border-ink shadow-nb-sm">
                           {shot.dur}s
                         </span>
                         <button
@@ -691,7 +802,7 @@ export function Styleboard({
                             e.stopPropagation();
                             setEditingShotIdx(idx);
                           }}
-                          className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#635BFF] hover:bg-[#5248E5] text-white transition-colors flex items-center gap-1"
+                          className="text-[10px] font-mono font-bold px-2 py-0.5 bg-select hover:bg-select text-select-ink transition-colors flex items-center gap-1"
                         >
                           <Edit3 size={10} />
                           <span>Edit</span>
@@ -701,8 +812,11 @@ export function Styleboard({
 
                     {/* Metaphor & Creative Direction Banner */}
                     <div
-                      className="px-4 py-2 flex items-center justify-between text-xs font-medium border-b border-[#222]"
-                      style={{ backgroundColor: `${metaphor.color}15`, color: metaphor.color }}
+                      className="px-4 py-2 flex items-center justify-between text-xs font-medium border-b-2 border-ink"
+                      style={{
+                        backgroundColor: `${metaphor.color}15`,
+                        color: metaphor.color,
+                      }}
                     >
                       <div className="flex items-center gap-2">
                         <metaphor.icon size={13} />
@@ -710,14 +824,16 @@ export function Styleboard({
                       </div>
 
                       {/* 1-Click Render Mode Switcher */}
-                      <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-lg border border-white/10">
+                      <div className="flex items-center gap-1 bg-sunken p-0.5 border-2 border-ink shadow-nb-sm">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSetShotMode(idx, "standard");
                           }}
-                          className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all ${
-                            activeMode === "standard" ? "bg-white/20 text-white font-bold" : "text-gray-400 hover:text-white"
+                          className={`text-[10px] px-2 py-0.5 font-mono transition-all ${
+                            activeMode === "standard"
+                              ? "bg-paper-3 text-ink font-bold"
+                              : "text-ink-soft hover:text-ink"
                           }`}
                           title="Standard Device / Text Mode"
                         >
@@ -728,8 +844,10 @@ export function Styleboard({
                             e.stopPropagation();
                             handleSetShotMode(idx, "character");
                           }}
-                          className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all flex items-center gap-1 ${
-                            activeMode === "character" ? "bg-[#635BFF] text-white font-bold" : "text-gray-400 hover:text-white"
+                          className={`text-[10px] px-2 py-0.5 font-mono transition-all flex items-center gap-1 ${
+                            activeMode === "character"
+                              ? "bg-select text-select-ink font-bold"
+                              : "text-ink-soft hover:text-ink"
                           }`}
                           title="SVG Character Rig Animation"
                         >
@@ -740,8 +858,10 @@ export function Styleboard({
                             e.stopPropagation();
                             handleSetShotMode(idx, "b-roll");
                           }}
-                          className={`text-[10px] px-2 py-0.5 rounded font-mono transition-all flex items-center gap-1 ${
-                            activeMode === "b-roll" ? "bg-amber-600 text-white font-bold" : "text-gray-400 hover:text-white"
+                          className={`text-[10px] px-2 py-0.5 font-mono transition-all flex items-center gap-1 ${
+                            activeMode === "b-roll"
+                              ? "bg-warn text-ink font-bold"
+                              : "text-ink-soft hover:text-ink"
                           }`}
                           title="GPU B-Roll Scene"
                         >
@@ -752,21 +872,41 @@ export function Styleboard({
 
                     {/* B-Roll GPU Generation Live Banner */}
                     {hasBroll && (
-                      <div className="px-4 py-2 bg-[#171720] border-b border-[#222] flex items-center justify-between text-xs">
-                        {brollJobStatus[shot.id]?.state === "running" || brollJobStatus[shot.id]?.state === "queued" ? (
+                      <div className="px-4 py-2 bg-paper-3 border-b-2 border-ink flex items-center justify-between text-xs">
+                        {brollJobStatus[shot.id]?.state === "running" ||
+                        brollJobStatus[shot.id]?.state === "queued" ? (
                           <div className="flex items-center justify-between w-full">
-                            <div className="flex items-center gap-2 text-amber-400 font-mono">
+                            <div className="flex items-center gap-2 text-ink font-mono">
                               <Loader2 size={12} className="animate-spin" />
-                              <span>GPU Generating... {Math.round((brollJobStatus[shot.id]?.progress ?? 0) * 100)}%</span>
+                              <span>
+                                GPU Generating...{" "}
+                                {Math.round(
+                                  (brollJobStatus[shot.id]?.progress ?? 0) *
+                                    100,
+                                )}
+                                %
+                              </span>
                             </div>
-                            <span className="text-[10px] text-amber-500/70 font-mono">NVIDIA L4 · Wan2.1</span>
+                            <span className="text-[10px] text-ink font-mono">
+                              NVIDIA L4 · Wan2.1
+                            </span>
                           </div>
-                        ) : existingFootage[shot.id] || shot.blocks.some((b) => b.c === "AnalogyInset" && (b as any).src) ? (
+                        ) : existingFootage[shot.id] ||
+                          shot.blocks.some(
+                            (b) => b.c === "AnalogyInset" && (b as any).src,
+                          ) ? (
                           <div className="flex items-center justify-between w-full">
-                            <div className="flex items-center gap-1.5 text-emerald-400 font-mono">
+                            <div className="flex items-center gap-1.5 text-ink font-mono">
                               <Check size={12} />
                               <span className="truncate max-w-[180px]">
-                                Footage Ready ({existingFootage[shot.id] || (shot.blocks.find((b) => b.c === "AnalogyInset") as any)?.src})
+                                Footage Ready (
+                                {existingFootage[shot.id] ||
+                                  (
+                                    shot.blocks.find(
+                                      (b) => b.c === "AnalogyInset",
+                                    ) as any
+                                  )?.src}
+                                )
                               </span>
                             </div>
                             <button
@@ -775,7 +915,7 @@ export function Styleboard({
                                 handleTriggerBroll(shot.id);
                               }}
                               disabled={isTriggeringBroll[shot.id]}
-                              className="text-[10px] font-mono bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded transition-colors cursor-pointer flex items-center gap-1"
+                              className="text-[10px] font-mono bg-success/20 hover:bg-success/30 text-ink px-2 py-0.5 transition-colors cursor-pointer flex items-center gap-1"
                               title="Re-render footage with Wan2.1 on GPU"
                             >
                               <RotateCw size={10} /> Regenerate
@@ -783,7 +923,7 @@ export function Styleboard({
                           </div>
                         ) : (
                           <div className="flex items-center justify-between w-full">
-                            <span className="text-gray-400 font-mono flex items-center gap-1.5">
+                            <span className="text-ink-soft font-mono flex items-center gap-1.5">
                               <FilmIcon size={11} /> Footage Pending
                             </span>
                             <button
@@ -792,10 +932,12 @@ export function Styleboard({
                                 handleTriggerBroll(shot.id);
                               }}
                               disabled={isTriggeringBroll[shot.id]}
-                              className="text-[10px] font-mono font-bold bg-amber-500 hover:bg-amber-400 text-black px-2.5 py-0.5 rounded transition-all shadow cursor-pointer"
+                              className="text-[10px] font-mono font-bold bg-warn hover:bg-warn text-ink px-2.5 py-0.5 transition-all shadow cursor-pointer"
                               title="Generate photoreal diffusion video with Wan2.1 on remote GPU"
                             >
-                              {isTriggeringBroll[shot.id] ? "Connecting..." : "Generate Video"}
+                              {isTriggeringBroll[shot.id]
+                                ? "Connecting..."
+                                : "Generate Video"}
                             </button>
                           </div>
                         )}
@@ -803,14 +945,18 @@ export function Styleboard({
                     )}
 
                     {/* Simulated Remotion Visual Frame */}
-                    <div 
+                    <div
                       onClick={() => setEditingShotIdx(idx)}
-                      className="p-4 bg-[#0A0A0E] flex-1 flex flex-col gap-3 min-h-[160px] relative cursor-pointer"
+                      className="p-4 bg-paper flex-1 flex flex-col gap-3 min-h-[160px] relative cursor-pointer"
                     >
                       {/* Background texture preview */}
-                      <div className="absolute inset-0 opacity-15 pointer-events-none" style={{
-                        backgroundColor: BACKGROUND_THEMES[currentBg]?.canvas || "#0A0A0B",
-                      }} />
+                      <div
+                        className="absolute inset-0 opacity-15 pointer-events-none"
+                        style={{
+                          backgroundColor:
+                            BACKGROUND_THEMES[currentBg]?.canvas || "#0A0A0B",
+                        }}
+                      />
 
                       {/* Render Shot Blocks */}
                       <div className="relative z-10 flex flex-col gap-2">
@@ -823,26 +969,29 @@ export function Styleboard({
 
                       {/* Script Narration Text Excerpt */}
                       {shot.scriptText && (
-                        <div className="mt-auto pt-2 border-t border-[#1C1C24] text-[11px] italic text-gray-400 line-clamp-2">
+                        <div className="mt-auto pt-2 border-t-2 border-ink text-[11px] italic text-ink-soft line-clamp-2">
                           "{shot.scriptText}"
                         </div>
                       )}
                     </div>
 
                     {/* Card Footer: Camera & Spatial Anchoring */}
-                    <div className="bg-[#14141A] px-4 py-2 border-t border-[#222] flex items-center justify-between text-[11px] text-[#8A8A8E]">
+                    <div className="bg-paper-3 px-4 py-2 border-t-2 border-ink flex items-center justify-between text-[11px] text-ink-soft">
                       <div className="flex items-center gap-1.5">
                         <span>Look:</span>
-                        <span className="font-mono text-white">
-                          {Array.isArray(shot.look) ? shot.look.join(" -> ") : shot.look}
+                        <span className="font-mono text-ink">
+                          {Array.isArray(shot.look)
+                            ? shot.look.join(" -> ")
+                            : shot.look}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 font-mono">
                         <span>Move:</span>
-                        <span className="text-white capitalize">{shot.move} ({shot.zoom || 1}x)</span>
+                        <span className="text-ink capitalize">
+                          {shot.move} ({shot.zoom || 1}x)
+                        </span>
                       </div>
                     </div>
-
                   </div>
                 );
               })}
@@ -854,78 +1003,110 @@ export function Styleboard({
         {activeTab === "primitives" && (
           <div className="flex flex-col gap-6">
             <div>
-              <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+              <h3 className="text-base font-bold text-ink tracking-tight flex items-center gap-2">
                 <Layers size={16} /> Primitives Specimen
               </h3>
-              <p className="text-xs text-[#8A8A8E] mt-0.5">
+              <p className="text-xs text-ink-soft mt-0.5">
                 Scene construction primitives.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              
               {/* Primitive 0: CharacterBeat */}
-              <div className="bg-[#121216] border border-[#635BFF]/40 rounded-2xl p-5 flex flex-col gap-3">
-                <div className="flex items-center justify-between border-b border-[#26262E] pb-2">
-                  <span className="text-xs font-mono font-bold text-white">00 · CharacterBeat</span>
-                  <span className="badge badge-xs badge-primary font-mono">SVG Rig</span>
+              <div className="bg-paper-3 border border-select/40 p-5 flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
+                  <span className="text-xs font-mono font-bold text-ink">
+                    00 · CharacterBeat
+                  </span>
+                  <span className="badge badge-xs badge-primary font-mono">
+                    SVG Rig
+                  </span>
                 </div>
-                <div className="p-3 bg-[#0A0A0E] rounded-xl border border-[#222] flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#635BFF]/20 border border-[#635BFF]/40 flex items-center justify-center text-[#635BFF]">
+                <div className="p-3 bg-paper border-2 border-ink flex items-center gap-3 shadow-nb-sm">
+                  <div className="w-8 h-8 bg-select/20 border border-select/40 flex items-center justify-center text-select-text">
                     <User size={18} />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-white">Astro Guide / Tech Architect</div>
-                    <div className="text-[10px] text-[#8A8A8E]">8 Presets · Kinematics</div>
+                    <div className="text-xs font-bold text-ink">
+                      Astro Guide / Tech Architect
+                    </div>
+                    <div className="text-[10px] text-ink-soft">
+                      8 Presets · Kinematics
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Primitive 1: TextReveal */}
-              <div className="bg-[#121216] border border-[#26262E] rounded-2xl p-5 flex flex-col gap-3">
-                <div className="flex items-center justify-between border-b border-[#26262E] pb-2">
-                  <span className="text-xs font-mono font-bold text-white">01 · TextReveal</span>
-                  <span className="text-[10px] text-gray-400 font-mono">Display & Subhead</span>
+              <div className="bg-paper-3 border-2 border-ink p-5 flex flex-col gap-3 shadow-nb-sm">
+                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
+                  <span className="text-xs font-mono font-bold text-ink">
+                    01 · TextReveal
+                  </span>
+                  <span className="text-[10px] text-ink-soft font-mono">
+                    Display & Subhead
+                  </span>
                 </div>
-                <div className="p-3 bg-[#0A0A0E] rounded-xl border border-[#222]">
-                  <h4 className="text-base font-bold text-white leading-snug">
-                    A model never re-reads your <span style={{ color: accent }} className="underline decoration-2">prompt</span>.
+                <div className="p-3 bg-paper border-2 border-ink shadow-nb-sm">
+                  <h4 className="text-base font-bold text-ink leading-snug">
+                    A model never re-reads your{" "}
+                    <span
+                      style={{ color: accent }}
+                      className="underline decoration-2"
+                    >
+                      prompt
+                    </span>
+                    .
                   </h4>
-                  <p className="text-xs text-[#8A8A8E] mt-2">
-                    Kinetic word-by-word reveal with cubic-bezier easing and landing underline.
+                  <p className="text-xs text-ink-soft mt-2">
+                    Kinetic word-by-word reveal with cubic-bezier easing and
+                    landing underline.
                   </p>
                 </div>
               </div>
 
               {/* Primitive 2: StatCounter */}
-              <div className="bg-[#121216] border border-[#26262E] rounded-2xl p-5 flex flex-col gap-3">
-                <div className="flex items-center justify-between border-b border-[#26262E] pb-2">
-                  <span className="text-xs font-mono font-bold text-white">02 · StatCounter</span>
-                  <span className="text-[10px] text-gray-400 font-mono">Animated Numbers</span>
+              <div className="bg-paper-3 border-2 border-ink p-5 flex flex-col gap-3 shadow-nb-sm">
+                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
+                  <span className="text-xs font-mono font-bold text-ink">
+                    02 · StatCounter
+                  </span>
+                  <span className="text-[10px] text-ink-soft font-mono">
+                    Animated Numbers
+                  </span>
                 </div>
-                <div className="p-3 bg-[#0A0A0E] rounded-xl border border-[#222] flex items-center gap-3">
-                  <span className="text-3xl font-mono font-extrabold" style={{ color: accent }}>
+                <div className="p-3 bg-paper border-2 border-ink flex items-center gap-3 shadow-nb-sm">
+                  <span
+                    className="text-3xl font-mono font-extrabold"
+                    style={{ color: accent }}
+                  >
                     10x
                   </span>
                   <div className="text-xs">
-                    <div className="text-white font-bold">Throughput Gain</div>
-                    <div className="text-[10px] text-[#8A8A8E]">High-impact metric card</div>
+                    <div className="text-ink font-bold">Throughput Gain</div>
+                    <div className="text-[10px] text-ink-soft">
+                      High-impact metric card
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Primitive 3: MatrixGrid */}
-              <div className="bg-[#121216] border border-[#26262E] rounded-2xl p-5 flex flex-col gap-3">
-                <div className="flex items-center justify-between border-b border-[#26262E] pb-2">
-                  <span className="text-xs font-mono font-bold text-white">03 · MatrixGrid</span>
-                  <span className="text-[10px] text-gray-400 font-mono">Memory Allocation</span>
+              <div className="bg-paper-3 border-2 border-ink p-5 flex flex-col gap-3 shadow-nb-sm">
+                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
+                  <span className="text-xs font-mono font-bold text-ink">
+                    03 · MatrixGrid
+                  </span>
+                  <span className="text-[10px] text-ink-soft font-mono">
+                    Memory Allocation
+                  </span>
                 </div>
-                <div className="p-3 bg-[#0A0A0E] rounded-xl border border-[#222] flex flex-col gap-2">
+                <div className="p-3 bg-paper border-2 border-ink flex flex-col gap-2 shadow-nb-sm">
                   <div className="grid grid-cols-4 gap-1.5">
                     {[1, 2, 3, 4, 5, 6, 7, 8].map((c) => (
                       <div
                         key={c}
-                        className="h-6 rounded border flex items-center justify-center text-[10px] font-mono"
+                        className="h-6 border flex items-center justify-center text-[10px] font-mono"
                         style={{
                           borderColor: c <= 4 ? accent : "#333",
                           backgroundColor: c <= 4 ? `${accent}25` : "#14141C",
@@ -940,57 +1121,80 @@ export function Styleboard({
               </div>
 
               {/* Primitive 4: TokenStrip */}
-              <div className="bg-[#121216] border border-[#26262E] rounded-2xl p-5 flex flex-col gap-3">
-                <div className="flex items-center justify-between border-b border-[#26262E] pb-2">
-                  <span className="text-xs font-mono font-bold text-white">04 · TokenStrip</span>
-                  <span className="text-[10px] text-gray-400 font-mono">Sequence IDs</span>
+              <div className="bg-paper-3 border-2 border-ink p-5 flex flex-col gap-3 shadow-nb-sm">
+                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
+                  <span className="text-xs font-mono font-bold text-ink">
+                    04 · TokenStrip
+                  </span>
+                  <span className="text-[10px] text-ink-soft font-mono">
+                    Sequence IDs
+                  </span>
                 </div>
-                <div className="p-3 bg-[#0A0A0E] rounded-xl border border-[#222] flex flex-wrap gap-1.5">
-                  {["Write", "a", "prompt", "about", "caching"].map((t, idx) => (
-                    <span
-                      key={idx}
-                      className="text-xs font-mono px-2 py-1 rounded border"
-                      style={{
-                        borderColor: idx === 2 ? accent : "#333",
-                        backgroundColor: idx === 2 ? `${accent}30` : "#16161E",
-                        color: idx === 2 ? "white" : "#8A8A8E",
-                      }}
-                    >
-                      {t}
-                    </span>
-                  ))}
+                <div className="p-3 bg-paper border-2 border-ink flex flex-wrap gap-1.5 shadow-nb-sm">
+                  {["Write", "a", "prompt", "about", "caching"].map(
+                    (t, idx) => (
+                      <span
+                        key={idx}
+                        className="text-xs font-mono px-2 py-1 border"
+                        style={{
+                          borderColor: idx === 2 ? accent : "#333",
+                          backgroundColor:
+                            idx === 2 ? `${accent}30` : "#16161E",
+                          color: idx === 2 ? "white" : "#8A8A8E",
+                        }}
+                      >
+                        {t}
+                      </span>
+                    ),
+                  )}
                 </div>
               </div>
 
               {/* Primitive 5: ProgressBar */}
-              <div className="bg-[#121216] border border-[#26262E] rounded-2xl p-5 flex flex-col gap-3">
-                <div className="flex items-center justify-between border-b border-[#26262E] pb-2">
-                  <span className="text-xs font-mono font-bold text-white">05 · ProgressBar</span>
-                  <span className="text-[10px] text-gray-400 font-mono">Chapter Timeline</span>
+              <div className="bg-paper-3 border-2 border-ink p-5 flex flex-col gap-3 shadow-nb-sm">
+                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
+                  <span className="text-xs font-mono font-bold text-ink">
+                    05 · ProgressBar
+                  </span>
+                  <span className="text-[10px] text-ink-soft font-mono">
+                    Chapter Timeline
+                  </span>
                 </div>
-                <div className="p-3 bg-[#0A0A0E] rounded-xl border border-[#222] flex flex-col gap-2">
-                  <div className="flex justify-between text-xs text-[#8A8A8E]">
+                <div className="p-3 bg-paper border-2 border-ink flex flex-col gap-2 shadow-nb-sm">
+                  <div className="flex justify-between text-xs text-ink-soft">
                     <span>Chapter 2: Decode Phase</span>
-                    <span className="font-mono text-white">65%</span>
+                    <span className="font-mono text-ink">65%</span>
                   </div>
-                  <div className="w-full h-2 bg-[#222] rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: "65%", backgroundColor: accent }} />
+                  <div className="w-full h-2 bg-sunken overflow-hidden">
+                    <div
+                      className="h-full "
+                      style={{ width: "65%", backgroundColor: accent }}
+                    />
                   </div>
                 </div>
               </div>
 
               {/* Primitive 6: CodeBlock */}
-              <div className="bg-[#121216] border border-[#26262E] rounded-2xl p-5 flex flex-col gap-3">
-                <div className="flex items-center justify-between border-b border-[#26262E] pb-2">
-                  <span className="text-xs font-mono font-bold text-white">06 · CodeBlock</span>
-                  <span className="text-[10px] text-gray-400 font-mono">JetBrains Mono</span>
+              <div className="bg-paper-3 border-2 border-ink p-5 flex flex-col gap-3 shadow-nb-sm">
+                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
+                  <span className="text-xs font-mono font-bold text-ink">
+                    06 · CodeBlock
+                  </span>
+                  <span className="text-[10px] text-ink-soft font-mono">
+                    JetBrains Mono
+                  </span>
                 </div>
-                <div className="p-3 bg-[#0A0A0E] rounded-xl border border-[#222] font-mono text-[11px] leading-relaxed text-gray-300">
-                  <div><span className="text-purple-400">const</span> kvCache = <span className="text-yellow-400">new</span> Map();</div>
-                  <div>kvCache.<span className="text-blue-400">set</span>(tokenId, [k, v]);</div>
+                <div className="p-3 bg-paper border-2 border-ink font-mono text-[11px] leading-relaxed text-ink shadow-nb-sm">
+                  <div>
+                    <span className="text-ink">const</span> kvCache ={" "}
+                    <span className="text-ink">new</span> Map();
+                  </div>
+                  <div>
+                    kvCache.<span className="text-ink">set</span>(tokenId, [k,
+                    v]);
+                  </div>
                 </div>
               </div>
-
             </div>
           </div>
         )}
@@ -999,15 +1203,15 @@ export function Styleboard({
         {activeTab === "spatial" && (
           <div className="flex flex-col gap-4">
             <div>
-              <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+              <h3 className="text-base font-bold text-ink tracking-tight flex items-center gap-2">
                 <Compass size={16} /> Spatial Canvas Topology
               </h3>
-              <p className="text-xs text-[#8A8A8E] mt-0.5">
+              <p className="text-xs text-ink-soft mt-0.5">
                 Node coordinates and camera traversal paths.
               </p>
             </div>
 
-            <div className="relative aspect-video max-h-[500px] bg-[#0C0C10] border border-[#26262E] rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl">
+            <div className="relative aspect-video max-h-[500px] bg-paper border-2 border-ink overflow-hidden flex items-center justify-center shadow-nb-sm">
               <svg
                 className="w-full h-full p-4"
                 viewBox={`${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`}
@@ -1015,7 +1219,9 @@ export function Styleboard({
               >
                 {/* Edges */}
                 {film.canvas.edges.map((edge, i) => {
-                  const from = film.canvas.nodes.find((n) => n.id === edge.from);
+                  const from = film.canvas.nodes.find(
+                    (n) => n.id === edge.from,
+                  );
                   const to = film.canvas.nodes.find((n) => n.id === edge.to);
                   if (!from || !to) return null;
                   return (
@@ -1077,7 +1283,6 @@ export function Styleboard({
             </div>
           </div>
         )}
-
       </div>
 
       {/* Spacious 80% Viewport Scene Inspector Modal */}
@@ -1093,7 +1298,6 @@ export function Styleboard({
           onSelectShotIndex={(idx) => setEditingShotIdx(idx)}
         />
       )}
-
     </div>
   );
 }

@@ -5,7 +5,8 @@
  * - Deleting audio sections leaving silent gaps (U-8).
  * - Close-Gap action that ripples following audio clips AND shifts dependent visual/subtitle clips (U-9).
  * - Audio drift calculation between voiceover source duration and timeline duration.
- * - PCM waveform peak extraction.
+ * This module stays free of Node-only imports so the editor bundle can use it in the browser;
+ * PCM waveform extraction lives in ./waveform.ts because it shells out to ffmpeg.
  */
 
 import type { LayeredFilm, Clip } from "../../src/dl/layeredSchema";
@@ -14,14 +15,6 @@ import {
   generateUUID,
 } from "./updates";
 import { resolveLayerCollisions } from "./layer_engine";
-import fs from "fs";
-import { execSync } from "child_process";
-
-export interface WaveformData {
-  peaks: number[]; // Normalized amplitude peaks [0..1]
-  durationSec: number;
-  sampleRate: number;
-}
 
 export interface SyncDriftReport {
   totalTimelineDurationSec: number;
@@ -222,35 +215,38 @@ export function closeAudioGapWithDependencies(
     }
   }
 
-  // Resolve layer collisions across all layers to prevent stacked clips
+  // Resolve collisions once across every layer. The earliest clip on each layer anchors the pass
+  // and everything after it ripples downstream, which is a single linear sweep per layer.
+  const anchors: number[] = [];
   for (const layer of film.layers) {
-    const layerIndices = newClips
-      .map((c, idx) => (c.layerId === layer.id ? idx : -1))
-      .filter((idx) => idx !== -1);
-    for (const cIdx of layerIndices) {
-      const resolved = resolveLayerCollisions(newClips, cIdx);
-      for (let k = 0; k < newClips.length; k++) {
-        if (newClips[k].position !== resolved[k].position) {
-          const oldP = newClips[k].position;
-          newClips[k].position = resolved[k].position;
-          const existingAction = actions.find(
-            (a) => a.path[0] === "clips" && a.path[1] === k && a.path[2] === "position"
-          );
-          if (existingAction) {
-            existingAction.newValue = newClips[k].position;
-          } else {
-            actions.push({
-              type: "update",
-              path: ["clips", k, "position"],
-              oldValue: oldP,
-              newValue: newClips[k].position,
-              transactionId: txId,
-              label: `Shift ${newClips[k].id} to resolve collision`,
-              timestamp: Date.now(),
-            });
-          }
-        }
-      }
+    let earliest = -1;
+    for (let i = 0; i < newClips.length; i++) {
+      if (newClips[i].layerId !== layer.id) continue;
+      if (earliest === -1 || newClips[i].position < newClips[earliest].position) earliest = i;
+    }
+    if (earliest !== -1) anchors.push(earliest);
+  }
+
+  const resolved = resolveLayerCollisions(newClips, anchors);
+  for (let k = 0; k < newClips.length; k++) {
+    if (newClips[k].position === resolved[k].position) continue;
+    const oldP = newClips[k].position;
+    newClips[k].position = resolved[k].position;
+    const existingAction = actions.find(
+      (a) => a.path[0] === "clips" && a.path[1] === k && a.path[2] === "position",
+    );
+    if (existingAction) {
+      existingAction.newValue = newClips[k].position;
+    } else {
+      actions.push({
+        type: "update",
+        path: ["clips", k, "position"],
+        oldValue: oldP,
+        newValue: newClips[k].position,
+        transactionId: txId,
+        label: `Shift ${newClips[k].id} to resolve collision`,
+        timestamp: Date.now(),
+      });
     }
   }
 
@@ -262,7 +258,9 @@ export function closeAudioGapWithDependencies(
 }
 
 /**
- * Compute real-time narration drift between active audio and total timeline length.
+ * Compute real-time narration drift between the narration track and the visual timeline length.
+ * Only voiceover-channel audio counts: music and sound effects are free to run past or stop short
+ * of the visuals, so including them reported drift on perfectly synchronised films.
  */
 export function calculateSyncDrift(film: LayeredFilm): SyncDriftReport {
   let maxVisualEnd = 0;
@@ -276,17 +274,17 @@ export function calculateSyncDrift(film: LayeredFilm): SyncDriftReport {
       maxVisualEnd = Math.max(maxVisualEnd, clipEnd);
     }
     if (clip.kind === "audio") {
-      totalAudioDur += dur;
+      const channel = (clip.payload as { channel?: string })?.channel ?? "voiceover";
+      if (channel === "voiceover") totalAudioDur += dur;
     }
   }
 
   const driftSec = Number((maxVisualEnd - totalAudioDur).toFixed(3));
   const isSynchronized = Math.abs(driftSec) <= 0.05;
 
-  let statusLabel = `🟢 In Sync (±0.0s)`;
-  if (!isSynchronized) {
-    statusLabel = `⚠️ Drifted ${driftSec > 0 ? "+" : ""}${driftSec.toFixed(1)}s`;
-  }
+  const statusLabel = isSynchronized
+    ? "In sync (within 0.05s)"
+    : `Drifted ${driftSec > 0 ? "+" : ""}${driftSec.toFixed(1)}s`;
 
   return {
     totalTimelineDurationSec: maxVisualEnd,
@@ -295,60 +293,4 @@ export function calculateSyncDrift(film: LayeredFilm): SyncDriftReport {
     isSynchronized,
     statusLabel,
   };
-}
-
-/**
- * Extract normalized PCM waveform peaks from a local audio file.
- */
-export function extractAudioPeaks(audioFilePath: string, numPeaks = 100): WaveformData {
-  if (!fs.existsSync(audioFilePath)) {
-    // Return deterministic synthetic peaks if file not present on disk
-    return {
-      peaks: Array.from({ length: numPeaks }).map((_, i) => Math.abs(Math.sin(i * 0.15) * 0.8 + 0.2)),
-      durationSec: 10.0,
-      sampleRate: 44100,
-    };
-  }
-
-  try {
-    // Measure duration via ffprobe
-    const durOutput = execSync(
-      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${audioFilePath}"`
-    )
-      .toString()
-      .trim();
-    const durationSec = parseFloat(durOutput) || 10.0;
-
-    // Extract raw 8-bit mono PCM stream
-    const rawPcm = execSync(
-      `ffmpeg -i "${audioFilePath}" -ac 1 -ar 8000 -f u8 - 2>/dev/null | head -c 80000`,
-      { maxBuffer: 10 * 1024 * 1024 }
-    );
-
-    const step = Math.floor(rawPcm.length / numPeaks);
-    const peaks: number[] = [];
-
-    for (let i = 0; i < numPeaks; i++) {
-      let maxVal = 0;
-      const startIdx = i * step;
-      const endIdx = Math.min(rawPcm.length, startIdx + step);
-      for (let j = startIdx; j < endIdx; j++) {
-        const sample = Math.abs(rawPcm[j] - 128) / 128;
-        if (sample > maxVal) maxVal = sample;
-      }
-      peaks.push(Number(maxVal.toFixed(3)));
-    }
-
-    return {
-      peaks,
-      durationSec,
-      sampleRate: 44100,
-    };
-  } catch {
-    return {
-      peaks: Array.from({ length: numPeaks }).map((_, i) => Math.abs(Math.sin(i * 0.15) * 0.8 + 0.2)),
-      durationSec: 10.0,
-      sampleRate: 44100,
-    };
-  }
 }
