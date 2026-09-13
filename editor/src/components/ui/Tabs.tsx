@@ -18,7 +18,7 @@ export interface SegmentedTabItem<T extends string> {
 }
 
 export interface SegmentedTabsProps<T extends string> {
-  items: ReadonlyArray<SegmentedTabItem<T>>;
+  items: ReadonlyArray<SegmentedTabItem<NoInfer<T>>>;
   value: T;
   onChange: (value: T) => void;
   size?: "sm" | "md";
