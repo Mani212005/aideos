@@ -14,7 +14,7 @@ import type { Film } from "../../src/dl/schema";
 import { produceAudioPipeline, type ProduceAudioResult } from "../audio";
 import { hasScreenplayTags, parseClaudeScript } from "../scriptIntake";
 import { createEngine } from "../engine";
-import { compileFilmFromScreenplay, type FootageRequest } from "./design";
+import { compileFilmFromScreenplay, FOOTAGE_HEADROOM_SEC, type FootageRequest } from "./design";
 import {
   PUBLIC_DIR,
   ROOT,
@@ -172,6 +172,12 @@ export async function runProduction(
   const resume = request.resume ?? true;
   const forced = new Set(request.force ?? []);
 
+  // B-roll is opt-in, and deliberately so: a clip costs roughly ten minutes of shared GPU
+  // time. Treating an unset flag as consent meant any caller that simply did not mention
+  // b-roll - a test, an MCP client, a script - silently submitted jobs to the remote box
+  // and then blocked polling them.
+  const wantsBroll = request.broll === true;
+
   const state = loadState(slug, title);
   state.title = title;
 
@@ -317,7 +323,7 @@ export async function runProduction(
     if (shouldStop("narrate")) return buildResult("narrate");
 
     // ---- design: compile the screenplay and the timing spine into a film ---------------------
-    const designFingerprint = fingerprint(script, narration.shotDurations, request.music ?? null, request.broll ?? false);
+    const designFingerprint = fingerprint(script, narration.shotDurations, request.music ?? null, wantsBroll);
 
     const design = await runStage(
       "design",
@@ -330,7 +336,7 @@ export async function runProduction(
         const compiled = compileFilmFromScreenplay(script, narration.segments, narration.shotDurations, {
           title,
           slug,
-          maxFootageShots: request.broll === false ? 0 : (request.brollMaxClips ?? 4),
+          maxFootageShots: wantsBroll ? (request.brollMaxClips ?? 4) : 0,
           maxFootageSec: request.brollSeconds ?? 8,
           ...(request.music ? { music: { src: request.music, volume: 0.5, duckUnderVoiceover: true } } : {}),
         });
@@ -348,18 +354,28 @@ export async function runProduction(
     if (shouldStop("design")) return buildResult("design");
 
     // ---- broll: render footage on the GPU and wire it into the film --------------------------
-    const footageRequests = design.footage.length > 0
-      ? design.footage
-      : readFilm(slug)?.shots
-          .filter((s) => s.needsFootage)
-          .map((s) => ({ shotId: s.id, prompt: s.visualDirection ?? s.scriptText ?? "", seconds: Math.min(8, s.dur) })) ?? [];
+    // On a resume the design stage is cached, so its footage requests have to be rebuilt from
+    // the film. They are rebuilt the same way the design stage builds them - same budget, same
+    // headroom - because a request that differs returns a clip the assemble stage then drops.
+    const footageBudget = request.brollSeconds ?? 8;
+    const footageRequests = !wantsBroll
+      ? []
+      : design.footage.length > 0
+        ? design.footage
+        : readFilm(slug)?.shots
+            .filter((s) => s.needsFootage)
+            .map((s) => ({
+              shotId: s.id,
+              prompt: s.visualDirection ?? s.scriptText ?? "",
+              seconds: Math.min(footageBudget, Math.max(3, s.dur + FOOTAGE_HEADROOM_SEC)),
+            })) ?? [];
 
     const brollClips = await runStage<BrollClip[]>(
       "broll",
-      fingerprint(footageRequests, request.broll ?? false, request.brollEngine ?? "ssh-wangp"),
+      fingerprint(footageRequests, wantsBroll, request.brollEngine ?? "ssh-wangp"),
       () => (state.brollClips.length > 0 && state.brollClips.every((c) => fs.existsSync(c.path)) ? state.brollClips : null),
       async () => {
-        if (request.broll === false || footageRequests.length === 0) {
+        if (!wantsBroll || footageRequests.length === 0) {
           emit("broll", "running", "no footage requested");
           return [];
         }
@@ -432,8 +448,6 @@ export async function runProduction(
 
         const wired = film.shots.filter((s) => s.blocks.some((b) => b.c === "AnalogyInset" && Boolean(b.src))).length;
         emit("assemble", "running", `${wired} shot(s) carry B-roll`);
-
-        setActiveFilm(slug);
         return film;
       },
     );
@@ -455,6 +469,12 @@ export async function runProduction(
         return cached.length === formats.length && cached.every((o) => fs.existsSync(o.path)) ? cached : null;
       },
       async () => {
+        // Remotion's CLI bundles whichever film src/dl/activeFilm.ts names, so pointing it at
+        // this run is part of rendering. It happens here rather than during assembly because
+        // assembly is reached by runs that stop before rendering, and those must not leave the
+        // repository pointing at a film nothing ever rendered.
+        setActiveFilm(slug);
+
         const produced: RenderedOutput[] = [];
         for (const format of formats) {
           const outPath = path.join(outDir, `${slug}-${format}.mp4`);

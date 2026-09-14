@@ -37,7 +37,7 @@ export interface NarrationBeat {
  * the shot's duration reliably returns something a fraction of a second shorter, and the tail of
  * the shot renders black. Asking for a second more absorbs the quantisation with room to spare.
  */
-const FOOTAGE_HEADROOM_SEC = 1;
+export const FOOTAGE_HEADROOM_SEC = 1;
 
 /** Marker a screenplay uses to request GPU B-roll for a beat. */
 const FOOTAGE_MARKER = /\b(b-?roll|footage|live action|generated video|cinematic plate)\b/i;

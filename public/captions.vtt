@@ -1,10 +1,46 @@
 WEBVTT
 
-00:00:00.000 --> 00:00:02.231
-Welcome to Aideos audio pipeline.
+00:00:00.000 --> 00:00:02.748
+This is the first thing the narrator
 
-00:00:02.431 --> 00:00:04.941
-We test segment splitting and caption alignment.
+00:00:02.748 --> 00:00:03.999
+says out loud.
 
-00:00:05.141 --> 00:00:08.249
-Every shot duration sums to the audio file duration.
+00:00:04.199 --> 00:00:06.984
+This is the second thing, and it
+
+00:00:06.984 --> 00:00:09.589
+runs a little longer than the first
+
+00:00:09.589 --> 00:00:10.599
+one did.
+
+00:00:10.799 --> 00:00:12.944
+To produce a single token the model
+
+00:00:12.944 --> 00:00:16.399
+reads seventy billion parameters out of memory.
+
+00:00:16.599 --> 00:00:19.647
+The arithmetic is trivial next to the
+
+00:00:19.647 --> 00:00:21.740
+move, so the chip spends its life
+
+00:00:21.740 --> 00:00:22.599
+waiting.
+
+00:00:22.798 --> 00:00:25.151
+In practice this delivers two to three
+
+00:00:25.151 --> 00:00:27.997
+times the throughput on ordinary prose.
+
+00:00:28.198 --> 00:00:31.154
+Which is the lesson underneath all of
+
+00:00:31.154 --> 00:00:33.681
+it, and the reason the trick works
+
+00:00:33.681 --> 00:00:34.598
+at all.

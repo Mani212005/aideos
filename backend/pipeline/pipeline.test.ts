@@ -14,10 +14,20 @@ import os from "os";
 import path from "path";
 import { parseClaudeScript } from "../scriptIntake";
 import { compileFilmFromScreenplay, flattenScreenplay } from "./design";
-import { buildFootagePrompt } from "./run";
-import { slugify, writeFilm, readFilm, wireFootageIntoFilm, VIDEOS_DIR, FILMS_DIR } from "./filmStore";
+import { buildFootagePrompt, runProduction } from "./run";
+import {
+  slugify,
+  writeFilm,
+  readFilm,
+  wireFootageIntoFilm,
+  readActiveFilmSource,
+  restoreActiveFilmSource,
+  VIDEOS_DIR,
+  FILMS_DIR,
+} from "./filmStore";
 import { buildTimeline, totalFrames } from "../../src/dl/camera";
 import type { SegmentAudioInfo } from "../audio";
+import type { ProductionProgress } from "./types";
 
 const SCRIPT = `# Probe Film
 
@@ -239,4 +249,135 @@ test("packageDir refuses a slug that could escape the videos directory", async (
   assert.throws(() => packageDir("Not A Slug"), /invalid film id/);
   assert.ok(packageDir("fine-slug").startsWith(VIDEOS_DIR));
   assert.ok(os.tmpdir().length > 0);
+});
+
+// Regression test for the defect that hung a validation run: B-roll is opt-in, and a caller
+// that does not ask for it must never reach the GPU engine. The engine name here is deliberately
+// one createEngine() rejects, so if the stage ever runs the test fails loudly instead of
+// silently submitting jobs to a shared box and blocking on them.
+test("runProduction: never touches the b-roll engine unless b-roll was asked for", async () => {
+  const slug = `probe-noboll-${Date.now().toString(36)}`;
+  const events: ProductionProgress[] = [];
+
+  try {
+    const result = await runProduction(
+      {
+        script: SCRIPT,
+        title: "Probe Film",
+        slug,
+        ttsBackend: "tone",
+        brollEngine: "engine-that-does-not-exist",
+        stopAfter: "assemble",
+        resume: false,
+      },
+      (event) => events.push(event),
+    );
+
+    assert.equal(result.stoppedAfter, "assemble");
+    assert.equal(result.brollClips.length, 0, "no clips may be produced when b-roll was not requested");
+
+    const film = readFilm(slug);
+    assert.ok(film, "the film must be written");
+    assert.equal(
+      film.shots.filter((s) => s.needsFootage).length,
+      0,
+      "no shot may be flagged for footage when b-roll was not requested",
+    );
+
+    const brollMessages = events.filter((e) => e.stage === "broll").map((e) => e.message);
+    assert.ok(
+      brollMessages.some((m) => m.includes("no footage requested")),
+      `the b-roll stage must report that it had nothing to do, got: ${JSON.stringify(brollMessages)}`,
+    );
+  } finally {
+    fs.rmSync(path.join(VIDEOS_DIR, slug), { recursive: true, force: true });
+    fs.rmSync(path.join(FILMS_DIR, `${slug}.ts`), { force: true });
+  }
+});
+
+// The narration timing spine is what every later stage is locked to, so a run has to produce
+// a package whose audio, word timings and film all agree before anything is rendered.
+test("runProduction: writes a package whose film matches the narration it synthesized", async () => {
+  const slug = `probe-spine-${Date.now().toString(36)}`;
+
+  try {
+    const result = await runProduction(
+      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", broll: false, stopAfter: "design", resume: false },
+      () => undefined,
+    );
+
+    const pkgDir = path.join(VIDEOS_DIR, slug);
+    for (const name of ["script.md", "voiceover.wav", "captions.vtt", "voiceover_words.json", "film.json"]) {
+      assert.ok(fs.existsSync(path.join(pkgDir, name)), `${name} must be written`);
+    }
+
+    const film = readFilm(slug);
+    assert.ok(film);
+    assert.equal(film.shots.length, flattenScreenplay(parseClaudeScript(SCRIPT)).length);
+
+    const shotSum = film.shots.reduce((sum, s) => sum + s.dur, 0);
+    assert.ok(
+      Math.abs(shotSum - result.durationSec) < 0.01,
+      `film runs ${shotSum.toFixed(3)}s against ${result.durationSec.toFixed(3)}s of narration`,
+    );
+
+    const words = JSON.parse(fs.readFileSync(path.join(pkgDir, "voiceover_words.json"), "utf8")).words as Array<{
+      start: number;
+      end: number;
+    }>;
+    assert.ok(words.length > 0, "word timings must be written");
+    assert.ok(
+      words[words.length - 1].end <= result.durationSec + 0.01,
+      "no word may be timed past the end of the audio",
+    );
+  } finally {
+    fs.rmSync(path.join(VIDEOS_DIR, slug), { recursive: true, force: true });
+    fs.rmSync(path.join(FILMS_DIR, `${slug}.ts`), { force: true });
+  }
+});
+
+// A resumed run must reuse the stages whose inputs have not changed rather than redoing them.
+test("runProduction: resuming reuses the stages whose inputs have not changed", async () => {
+  const slug = `probe-resume-${Date.now().toString(36)}`;
+
+  try {
+    await runProduction(
+      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", broll: false, stopAfter: "design", resume: false },
+      () => undefined,
+    );
+
+    const events: ProductionProgress[] = [];
+    await runProduction(
+      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", broll: false, stopAfter: "design", resume: true },
+      (event) => events.push(event),
+    );
+
+    for (const stage of ["intake", "narrate", "design"]) {
+      const statuses = events.filter((e) => e.stage === stage).map((e) => e.status);
+      assert.ok(statuses.includes("skipped"), `${stage} should have been reused, saw ${JSON.stringify(statuses)}`);
+    }
+  } finally {
+    fs.rmSync(path.join(VIDEOS_DIR, slug), { recursive: true, force: true });
+    fs.rmSync(path.join(FILMS_DIR, `${slug}.ts`), { force: true });
+  }
+});
+
+// Regression test: a run that stops before rendering must not repoint the repository's active
+// film. setActiveFilm rewrites src/dl/activeFilm.ts, which Remotion's CLI bundles, so doing it
+// during assembly left the tree importing a film that a partial run never produced.
+test("runProduction: a run that stops before rendering leaves the active film alone", async () => {
+  const slug = `probe-active-${Date.now().toString(36)}`;
+  const before = readActiveFilmSource();
+
+  try {
+    await runProduction(
+      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", broll: false, stopAfter: "assemble", resume: false },
+      () => undefined,
+    );
+    assert.equal(readActiveFilmSource(), before, "src/dl/activeFilm.ts must be untouched by a partial run");
+  } finally {
+    restoreActiveFilmSource(before);
+    fs.rmSync(path.join(VIDEOS_DIR, slug), { recursive: true, force: true });
+    fs.rmSync(path.join(FILMS_DIR, `${slug}.ts`), { force: true });
+  }
 });
