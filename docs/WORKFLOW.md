@@ -78,11 +78,11 @@ Aideos is engineered around 4 strict architectural invariants:
    - Chapter 5: Conclusion & Future Outlook
 3. **Output**: `videos/<slug>/treatment.json` containing chapter claims, narration lines, and visual direction notes.
 
-### Stage 2: Audio Synthesis & Alignment (`backend/audio.ts`)
+### Stage 2: Audio Synthesis & Alignment (`backend/audio.ts`, `backend/pcm.ts`, `backend/tts.ts`)
 1. **Shot-Scoped Segmentation**: Splits script text by Claude screenplay tags (`[NARRATION]`), paragraphs, or explicit shot arrays into discrete shot-scoped narration segments without slicing internal sentence punctuation or leaking visual tags.
-2. **TTS Synthesis & Chunking**: Synthesizes speech per shot segment via Google Cloud Neural Audio or Kokoro ONNX using an 800-character chunking threshold with sentence-boundary splitting.
-3. **Silence Trimming & Concat**: Trims leading and trailing raw silence samples from audio buffers and inserts a single controlled 200ms pause between distinct shot boundaries before merging into `voiceover.wav`.
-4. **Alignment**: Derives exact word-level millisecond start/end timestamps, written to `captions.vtt`.
+2. **TTS Synthesis & Chunking**: Synthesizes speech per shot segment via Kokoro-82M ONNX (offline default), Google Cloud Neural Audio, or macOS say using sentence-boundary splitting.
+3. **Sample-Domain Assembly & Normalization**: Trims silence samples from Float32 buffers, applies short boundary fades to eliminate stitch clicks, inserts exact whole-sample pauses between shot boundaries, normalizes peak amplitude, and writes `voiceover.wav`.
+4. **Alignment & Cues**: Derives exact word-level millisecond start/end timestamps, written to `captions.vtt` and `voiceover_words.json`.
 
 ### Stage 3: Semantic Visual Sync Gate (`backend/sync.ts`)
 1. **Semantic Match**: Inspects each spoken sentence to determine the best visual presentation:
@@ -113,7 +113,10 @@ Aideos is engineered around 4 strict architectural invariants:
    - `Reel`: 1080x1920 vertical format for mobile, TikTok, and social shorts.
 2. **Audio Stack**:
    - Dynamic ducking: Automatically attenuates background music when narration is speaking and restores volume during breath gaps.
-   - Kinetic Subtitles: Synchronized word-level karaoke text reveal.
+   - Kinetic Subtitles: Synchronized word-level karaoke text reveal in vertical Reel format positioned in the bottom safe area with active theme accent color.
+
+3. **Autonomous Production Pipeline (`backend/pipeline/run.ts`)**:
+   - See [docs/PRODUCTION_PIPELINE.md](PRODUCTION_PIPELINE.md) for the unified entry point coordinating intake, narrate, design, b-roll, assemble, render, and verify.
 
 ---
 
@@ -145,3 +148,5 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos test` | Executes full 35-test verification suite | Test TAP results |
 | `aideos produce` | Runs audio-first produce pipeline | `voiceover.wav`, `captions.vtt`, `film.ts` |
 | `aideos ideate "<topic>"` | Runs staged LLM dramatic ideation | `treatment.json` |
+| `npm run backend -- film` | Autonomous pipeline (intake, narrate, design, b-roll, assemble, render, verify) | `out/<slug>-long.mp4`, `out/<slug>-reel.mp4` |
+| `npm run backend -- mcp` | Starts Model Context Protocol (MCP) server over stdio | MCP stdio interface |

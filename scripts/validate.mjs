@@ -49,8 +49,12 @@ const timeline = buildTimeline(film);
 const frames = totalFrames(timeline);
 const seconds = frames / film.fps;
 // Formats seconds into MM:SS timestamp string.
-const stamp = (s) =>
-  `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+// Round to whole seconds first, then split: rounding the remainder independently
+// printed "01:60" for anything landing in the last half second of a minute.
+const stamp = (s) => {
+  const total = Math.round(s);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+};
 
 console.log(`\n✓ ${film.id} - valid`);
 console.log(

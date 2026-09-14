@@ -1,6 +1,6 @@
 import React from "react";
 import { Img, OffthreadVideo, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { accentAt, FAINT, MONO, PALETTE, rule, SERIF, SUNKEN, useLayout } from "./tokens";
+import { accentAt, MONO, SERIF, useLayout, useTokens } from "./tokens";
 import { EXPO, frames, MS, useEntrance, useProgress } from "./motion";
 import { useAccent } from "./accent";
 import { AlignContext } from "./align";
@@ -50,6 +50,7 @@ export const TokenStrip: React.FC<
   BlockProps & { tokens: string[]; lit: number[]; caption?: string }
 > = ({ tokens, lit, caption, start, index, durationInFrames }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const sweep = useSweep(start, durationInFrames);
@@ -72,9 +73,9 @@ export const TokenStrip: React.FC<
                 fontSize: layout.type("body").fontSize * 0.9,
                 padding: `${layout.grid}px ${layout.grid * 1.5}px`,
                 borderRadius: layout.radius.chip * 0.6,
-                border: `1px solid ${on ? accentAt(accent, 0.5) : rule()}`,
-                background: on ? accentAt(accent, preset ? 0.22 : 0.1 + landing * 0.08) : SUNKEN,
-                color: on ? PALETTE.ink : PALETTE.muted,
+                border: `1px solid ${on ? accentAt(accent, 0.5) : palette.rule()}`,
+                background: on ? accentAt(accent, preset ? 0.22 : 0.1 + landing * 0.08) : palette.sunken,
+                color: on ? palette.ink : palette.muted,
                 whiteSpace: "pre",
               }}
             >
@@ -96,6 +97,7 @@ export const AttentionArcs: React.FC<
   BlockProps & { tokens: string[]; focus: number; links: number[]; note?: string }
 > = ({ tokens, focus, links, note, start, index, durationInFrames }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const sweep = useSweep(start, durationInFrames);
@@ -119,7 +121,7 @@ export const AttentionArcs: React.FC<
       }}
     >
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", flex: 1, minHeight: 0 }}>
-        <path d={`M${step * 0.4} ${baseline} H${W - step * 0.4}`} stroke={rule()} />
+        <path d={`M${step * 0.4} ${baseline} H${W - step * 0.4}`} stroke={palette.rule()} />
         {links.map((target, i) => {
           // Strongest link first, so opacity encodes rank without a colour ramp.
           const weight = 1 - i / (links.length + 0.6);
@@ -133,7 +135,7 @@ export const AttentionArcs: React.FC<
               key={target}
               d={d}
               fill="none"
-              stroke={i === 0 ? accent : rule(2.2)}
+              stroke={i === 0 ? accent : palette.rule(2.2)}
               strokeWidth={i === 0 ? 2 : 1.2}
               opacity={weight}
               strokeDasharray={400}
@@ -149,7 +151,7 @@ export const AttentionArcs: React.FC<
             fontFamily={MONO}
             fontSize={16}
             textAnchor="middle"
-            fill={i === focus ? accent : PALETTE.muted}
+            fill={i === focus ? accent : palette.muted}
           >
             {token}
           </text>
@@ -173,6 +175,7 @@ export const VectorSpace: React.FC<
   }
 > = ({ points, arrow, xLabel, yLabel, start, index, durationInFrames }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const sweep = useSweep(start, durationInFrames);
@@ -190,10 +193,10 @@ export const VectorSpace: React.FC<
   return (
     <div style={{ ...enter, width: "100%", flex: 1, minHeight: 0, display: "flex" }}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", flex: 1, minHeight: 0 }}>
-        <path d={`M${pad.l} ${pad.t} V${H - pad.b} H${W - pad.r}`} stroke={rule(2)} fill="none" />
+        <path d={`M${pad.l} ${pad.t} V${H - pad.b} H${W - pad.r}`} stroke={palette.rule(2)} fill="none" />
         {points.map((pt, i) => (
           <g key={i}>
-            <circle cx={px(pt.x)} cy={py(pt.y)} r={3} fill={rule(2.8)} />
+            <circle cx={px(pt.x)} cy={py(pt.y)} r={3} fill={palette.rule(2.8)} />
             {pt.label ? (
               <text
                 x={px(pt.x) + 8}
@@ -201,7 +204,7 @@ export const VectorSpace: React.FC<
                 fontFamily={SERIF}
                 fontStyle="italic"
                 fontSize={14}
-                fill={PALETTE.muted}
+                fill={palette.muted}
               >
                 {pt.label}
               </text>
@@ -232,12 +235,12 @@ export const VectorSpace: React.FC<
           </g>
         ) : null}
         {xLabel ? (
-          <text x={pad.l} y={H - 12} fontFamily={MONO} fontSize={11} fill={FAINT}>
+          <text x={pad.l} y={H - 12} fontFamily={MONO} fontSize={11} fill={palette.faint}>
             {xLabel}
           </text>
         ) : null}
         {yLabel ? (
-          <text x={pad.l - 6} y={pad.t + 2} fontFamily={MONO} fontSize={11} fill={FAINT} textAnchor="end">
+          <text x={pad.l - 6} y={pad.t + 2} fontFamily={MONO} fontSize={11} fill={palette.faint} textAnchor="end">
             {yLabel}
           </text>
         ) : null}
@@ -260,6 +263,7 @@ export const MatrixGrid: React.FC<
   }
 > = ({ values, rowLabel, colLabel, valueLabel, sweep, start, index, durationInFrames }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const progress = useSweep(start, durationInFrames);
@@ -286,7 +290,7 @@ export const MatrixGrid: React.FC<
           fontFamily: SERIF,
           fontStyle: "italic",
           fontSize: layout.type("subhead").fontSize * 0.7,
-          color: PALETTE.muted,
+          color: palette.muted,
           flex: "none",
         }}
       >
@@ -299,8 +303,8 @@ export const MatrixGrid: React.FC<
           // width turns a matrix into a spreadsheet - the shape is the point.
           gridTemplateColumns: `repeat(${cols}, minmax(0, ${layout.px(104)}px))`,
           gap: layout.px(4),
-          borderLeft: `1px solid ${rule(2)}`,
-          borderRight: `1px solid ${rule(2)}`,
+          borderLeft: `1px solid ${palette.rule(2)}`,
+          borderRight: `1px solid ${palette.rule(2)}`,
           padding: `${layout.px(6)}px ${layout.px(10)}px`,
         }}
       >
@@ -323,7 +327,7 @@ export const MatrixGrid: React.FC<
                       ? accentAt(accent, 0.1 + v * 0.28)
                       : `rgba(245,245,245,${0.02 + v * 0.1})`
                     : `rgba(245,245,245,0.02)`,
-                  color: lit ? (hot ? accent : FAINT) : rule(3),
+                  color: lit ? (hot ? accent : palette.faint) : palette.rule(3),
                 }}
               >
                 {v.toFixed(2)}
@@ -361,6 +365,7 @@ export const Distribution: React.FC<
   }
 > = ({ prompt, items, note, start, index, durationInFrames }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const grow = useProgress(start, 900, MS.stagger * index + MS.enter);
@@ -377,14 +382,14 @@ export const Distribution: React.FC<
             fontFamily: SERIF,
             fontStyle: "italic",
             fontSize: layout.type("body").fontSize,
-            color: PALETTE.muted,
+            color: palette.muted,
             marginBottom: layout.grid,
           }}
         >
           {prompt.split("___").map((part, i, all) => (
             <React.Fragment key={i}>
               {part}
-              {i < all.length - 1 ? <span style={{ color: PALETTE.ink }}>___</span> : null}
+              {i < all.length - 1 ? <span style={{ color: palette.ink }}>___</span> : null}
             </React.Fragment>
           ))}
         </div>
@@ -399,7 +404,7 @@ export const Distribution: React.FC<
               style={{
                 fontFamily: MONO,
                 fontSize: layout.type("caption").fontSize,
-                color: winner ? accent : FAINT,
+                color: winner ? accent : palette.faint,
                 width: layout.px(90),
                 flex: "none",
                 textAlign: "right",
@@ -422,7 +427,7 @@ export const Distribution: React.FC<
                   height: "100%",
                   width: `${width * 100}%`,
                   borderRadius: layout.px(2),
-                  background: winner ? accent : rule(2.2),
+                  background: winner ? accent : palette.rule(2.2),
                 }}
               />
             </span>
@@ -430,7 +435,7 @@ export const Distribution: React.FC<
               style={{
                 fontFamily: MONO,
                 fontSize: layout.type("caption").fontSize * 0.9,
-                color: winner ? accent : FAINT,
+                color: winner ? accent : palette.faint,
                 width: layout.px(48),
                 flex: "none",
               }}
@@ -462,7 +467,7 @@ export const Distribution: React.FC<
             fontFamily: SERIF,
             fontStyle: "italic",
             fontSize: layout.type("subhead").fontSize * 0.8,
-            color: PALETTE.ink,
+            color: palette.ink,
           }}
         >
           {sorted[0]?.label}
@@ -481,6 +486,7 @@ export const LayerStack: React.FC<
   BlockProps & { count: number; bottomLabel?: string; topLabel?: string }
 > = ({ count, bottomLabel, topLabel, start, index, durationInFrames }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const travel = useSweep(start, durationInFrames);
@@ -520,7 +526,7 @@ export const LayerStack: React.FC<
               flex: 1,
               minHeight: layout.px(3),
               borderRadius: layout.px(2),
-              border: `1px solid ${i === lit ? accent : rule()}`,
+              border: `1px solid ${i === lit ? accent : palette.rule()}`,
               background: i === lit ? accentAt(accent, 0.3) : `rgba(245,245,245,0.03)`,
             }}
           />
@@ -562,6 +568,7 @@ export const ScaleBar: React.FC<
   BlockProps & { ticks: string[]; value: number; label?: string }
 > = ({ ticks, value, label, start, index, durationInFrames }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const grow = useSweep(start, durationInFrames) * value;
@@ -575,13 +582,13 @@ export const ScaleBar: React.FC<
   return (
     <div style={{ ...enter, width: "100%", flex: 1, minHeight: 0, display: "flex", maxHeight: layout.px(260) }}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", flex: 1, minHeight: 0 }}>
-        <path d={`M${left} ${axis} H${right}`} stroke={rule(2)} />
+        <path d={`M${left} ${axis} H${right}`} stroke={palette.rule(2)} />
         {ticks.map((tick, i) => {
           const x = left + (i / (ticks.length - 1)) * (right - left);
           return (
             <g key={tick}>
-              <path d={`M${x} ${axis - 7} V${axis + 7}`} stroke={rule(2)} />
-              <text x={x} y={axis + 26} fontFamily={MONO} fontSize={12} fill={FAINT} textAnchor="middle">
+              <path d={`M${x} ${axis - 7} V${axis + 7}`} stroke={palette.rule(2)} />
+              <text x={x} y={axis + 26} fontFamily={MONO} fontSize={12} fill={palette.faint} textAnchor="middle">
                 {tick}
               </text>
             </g>
@@ -628,6 +635,7 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
 }) => {
   const frame = useCurrentFrame();
   const layout = useLayout();
+  const palette = useTokens();
   const enter = useEntrance(start + delayFrames, index, layout.px(12));
 
   let resolvedSrc = src;
@@ -642,6 +650,15 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
   const isVideo = Boolean(resolvedSrc?.match(/\.(mp4|webm|mov)$/i));
 
   if (fullScreenHero && isVisible && resolvedSrc) {
+    // A hero plate owns the frame. In a 16:9 frame a 16:9 clip covers it with a crop of a
+    // couple of percent, so it runs edge to edge; in 9:16 covering would throw away two
+    // thirds of the shot, so it sits as a full-width band with the canvas above and below.
+    const heroMedia: React.CSSProperties = {
+      width: "100%",
+      height: layout.format === "long" ? "100%" : "auto",
+      maxHeight: "100%",
+      objectFit: layout.format === "long" ? "cover" : "contain",
+    };
     return (
       <div
         style={{
@@ -651,46 +668,28 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
           width: "100%",
           height: "100%",
           zIndex: 50,
-          background: "radial-gradient(ellipse at center, rgba(16,18,24,0.94) 0%, rgba(5,6,9,0.98) 100%)",
+          background: palette.canvas,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          padding: layout.grid * 4,
+          overflow: "hidden",
         }}
       >
         {isVideo ? (
-          <OffthreadVideo
-            src={staticFile(resolvedSrc)}
-            style={{
-              maxWidth: "94%",
-              maxHeight: "84%",
-              objectFit: "contain",
-              borderRadius: layout.radius.inner,
-              boxShadow: "0 30px 80px rgba(0,0,0,0.85), 0 0 50px rgba(255,107,0,0.25)",
-            }}
-          />
+          <OffthreadVideo src={staticFile(resolvedSrc)} style={heroMedia} />
         ) : (
-          <Img
-            src={staticFile(resolvedSrc)}
-            style={{
-              maxWidth: "94%",
-              maxHeight: "84%",
-              objectFit: "contain",
-              borderRadius: layout.radius.inner,
-              boxShadow: "0 30px 80px rgba(0,0,0,0.85), 0 0 50px rgba(255,107,0,0.25)",
-            }}
-          />
+          <Img src={staticFile(resolvedSrc)} style={heroMedia} />
         )}
         {caption ? (
           <div
             style={{
-              marginTop: layout.grid * 2,
-              fontSize: layout.px(13),
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "rgba(240,237,230,0.75)",
-              fontFamily: "monospace",
+              ...layout.label(14),
+              position: "absolute",
+              left: layout.margin.left,
+              bottom: layout.margin.bottom,
+              color: "rgba(245, 245, 245, 0.72)",
+              textShadow: "0 2px 12px rgba(0, 0, 0, 0.9)",
             }}
           >
             {caption}
@@ -705,7 +704,7 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
       style={{
         ...enter,
         width: "100%",
-        border: `1px dashed ${rule(1.8)}`,
+        border: `1px dashed ${palette.rule(1.8)}`,
         borderRadius: layout.radius.inner,
         display: "flex",
         flexDirection: "column",
@@ -735,7 +734,7 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
           style={{
             width: layout.px(90),
             height: layout.px(90),
-            border: `1px solid ${rule(2.4)}`,
+            border: `1px solid ${palette.rule(2.4)}`,
             borderRadius: layout.radius.chip,
           }}
         />

@@ -98,13 +98,23 @@ export type TimedShot = {
   chapter: number;
 };
 
+/** No shot is allowed to collapse below half a second of screen time. */
+const MIN_SHOT_FRAMES = 15;
+
 /**
  * Lay the shots out on the timeline. Starts are computed, never authored, so
  * the whole class of "scene 7 starts 0.5s before scene 6 ends" bugs cannot
  * occur - that failure silently distorted every camera move in the old engine.
+ *
+ * Boundaries are rounded, not durations. Rounding each duration independently
+ * and summing them lets a half-frame error per shot accumulate, so by the end
+ * of a three-minute film the picture sat up to half a second away from the
+ * narration it was describing. Rounding the running total instead keeps every
+ * shot start within half a frame of its true time no matter how many precede it.
  */
 export const buildTimeline = (film: Film, targetDurationSec?: number): TimedShot[] => {
   let cursor = 0;
+  let elapsedSec = 0;
   let chapter = -1;
 
   const getShotDur = (s: Shot): number => {
@@ -125,16 +135,26 @@ export const buildTimeline = (film: Film, targetDurationSec?: number): TimedShot
 
   return film.shots.map((shot, index) => {
     const rawDur = getShotDur(shot);
+    const idealEndSec = elapsedSec + rawDur * scaleRatio;
     let from = cursor;
-    let durationInFrames = Math.max(15, Math.round(rawDur * scaleRatio * film.fps));
+    // Round the running total, never the individual duration: the next shot's
+    // start is therefore always within half a frame of its true time.
+    const exactFrames = Math.round(idealEndSec * film.fps) - from;
+    const clamped = exactFrames < MIN_SHOT_FRAMES;
+    let durationInFrames = clamped ? MIN_SHOT_FRAMES : exactFrames;
 
     const explicitPos = shot.position ?? shot.startSec;
     if (explicitPos !== undefined) {
       from = Math.round(explicitPos * film.fps);
-      durationInFrames = Math.max(15, Math.round(rawDur * film.fps));
+      durationInFrames = Math.max(MIN_SHOT_FRAMES, Math.round(rawDur * film.fps));
       cursor = Math.max(cursor, from + durationInFrames);
+      elapsedSec = cursor / film.fps;
     } else {
       cursor += durationInFrames;
+      // Only a clamped shot moves the clock off the script's own timing; an
+      // unclamped one carries the exact ideal end forward so rounding never
+      // compounds from shot to shot.
+      elapsedSec = clamped ? cursor / film.fps : idealEndSec;
     }
 
     const to = from + durationInFrames;

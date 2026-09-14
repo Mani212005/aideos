@@ -2,7 +2,7 @@ import React from "react";
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import {
   accentAt,
-  FAINT,
+  useTokens,
   ink,
   MONO,
   PALETTE,
@@ -132,6 +132,7 @@ export const TextReveal: React.FC<
   BlockProps & { text: string; size?: "display" | "headline" | "subhead"; accentWord?: string }
 > = ({ text, size = "headline", accentWord, start, index }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const align = useAlign();
   let fps = 30;
@@ -147,7 +148,7 @@ export const TextReveal: React.FC<
     <div
       style={{
         ...layout.type(size),
-        color: PALETTE.ink,
+        color: palette.ink,
         display: "flex",
         flexWrap: "wrap",
         justifyContent: align === "center" ? "center" : "flex-start",
@@ -211,6 +212,7 @@ const Word: React.FC<{ word: string; start: number; index: number; accent: strin
 
 export const Body: React.FC<BlockProps & { text: string }> = ({ text, start, index }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const align = useAlign();
   const enter = useEntrance(start, index, layout.px(12));
   return (
@@ -218,7 +220,7 @@ export const Body: React.FC<BlockProps & { text: string }> = ({ text, start, ind
       style={{
         ...enter,
         ...layout.type("body"),
-        color: PALETTE.muted,
+        color: palette.muted,
         // A measure, not a full-bleed line. Body copy running the width of a
         // 1920 frame is unreadable regardless of how big the type is.
         maxWidth: layout.format === "long" ? layout.px(680) : "100%",
@@ -235,6 +237,7 @@ export const Body: React.FC<BlockProps & { text: string }> = ({ text, start, ind
 /** Maths, in italic serif. `*token*` accents a symbol. */
 export const MathLine: React.FC<BlockProps & { text: string }> = ({ text, start, index }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
 
@@ -246,7 +249,7 @@ export const MathLine: React.FC<BlockProps & { text: string }> = ({ text, start,
           fontFamily: SERIF,
           fontStyle: "italic",
           fontSize: layout.type("subhead").fontSize * 0.85,
-          color: PALETTE.ink,
+          color: palette.ink,
           lineHeight: 1.3,
         }}
       >
@@ -285,6 +288,7 @@ export const StatCounter: React.FC<
   BlockProps & { to: number; label: string; format: "plain" | "compact"; suffix?: string }
 > = ({ to, label, format, suffix, start, index }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const p = useProgress(start, 900, MS.stagger * index);
@@ -310,7 +314,7 @@ export const StatCounter: React.FC<
       >
         {formattedValue}
         {suffix ? (
-          <span style={{ fontSize: "0.42em", color: PALETTE.muted }}> {suffix}</span>
+          <span style={{ fontSize: "0.42em", color: palette.muted }}> {suffix}</span>
         ) : null}
       </div>
       <div style={layout.label()}>{label}</div>
@@ -324,12 +328,13 @@ export const StatCounter: React.FC<
 
 export const Divider: React.FC<BlockProps> = ({ start, index }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const draw = useProgress(start, MS.enter, MS.stagger * index);
   return (
     <div
       style={{
         height: 1,
-        background: rule(),
+        background: palette.rule(),
         transformOrigin: "left",
         transform: `scaleX(${draw})`,
         marginBlock: layout.grid,
@@ -340,6 +345,7 @@ export const Divider: React.FC<BlockProps> = ({ start, index }) => {
 
 export const IconLabel: React.FC<BlockProps & { text: string }> = ({ text, start, index }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const align = useAlign();
   const enter = useEntrance(start, index, layout.px(12));
@@ -357,7 +363,7 @@ export const IconLabel: React.FC<BlockProps & { text: string }> = ({ text, start
         style={{
           width: layout.px(22),
           height: layout.px(22),
-          border: `1px solid ${rule(2)}`,
+          border: `1px solid ${palette.rule(2)}`,
           borderRadius: layout.radius.chip * 0.7,
           display: "flex",
           alignItems: "center",
@@ -374,7 +380,7 @@ export const IconLabel: React.FC<BlockProps & { text: string }> = ({ text, start
           }}
         />
       </span>
-      <span style={{ fontFamily: MONO, fontSize: layout.type("caption").fontSize, color: PALETTE.muted }}>
+      <span style={{ fontFamily: MONO, fontSize: layout.type("caption").fontSize, color: palette.muted }}>
         {text}
       </span>
     </div>
@@ -443,6 +449,7 @@ export const ProgressBar: React.FC<
   BlockProps & { value: number; label?: string; chapters?: number }
 > = ({ value, label, chapters, start, index }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const p = useProgress(start, 900, MS.stagger * index) * value;
@@ -459,7 +466,7 @@ export const ProgressBar: React.FC<
         style={{
           height: layout.px(4),
           borderRadius: layout.px(2),
-          background: rule(),
+          background: palette.rule(),
           overflow: "hidden",
         }}
       >
@@ -473,7 +480,7 @@ export const ProgressBar: React.FC<
               style={{
                 flex: 1,
                 height: layout.px(2),
-                background: i / chapters < value ? accent : rule(),
+                background: i / chapters < value ? accent : palette.rule(),
               }}
             />
           ))}
@@ -550,6 +557,7 @@ export const Plot: React.FC<
   }
 > = ({ points, xLabel, yLabel, endLabel, start, index }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const p = useProgress(start, 2600, MS.stagger * index);
@@ -570,12 +578,12 @@ export const Plot: React.FC<
     // than the space its aspect ratio wants, and letterboxes inside it.
     <div style={{ ...enter, width: "100%", flex: 1, minHeight: 0, display: "flex" }}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", flex: 1, minHeight: 0 }}>
-        <g stroke={rule(0.6)} strokeWidth={1}>
+        <g stroke={palette.rule(0.6)} strokeWidth={1}>
           {[0.25, 0.5, 0.75].map((f) => (
             <path key={f} d={`M${pad.l} ${pad.t + f * (H - pad.t - pad.b)} H${W - pad.r}`} />
           ))}
         </g>
-        <path d={`M${pad.l} ${pad.t} V${H - pad.b} H${W - pad.r}`} stroke={rule(2)} fill="none" />
+        <path d={`M${pad.l} ${pad.t} V${H - pad.b} H${W - pad.r}`} stroke={palette.rule(2)} fill="none" />
         <path
           d={d}
           fill="none"
@@ -586,12 +594,12 @@ export const Plot: React.FC<
         />
         <circle cx={head.x} cy={head.y} r={4.5} fill={accent} opacity={p > 0.02 ? 1 : 0} />
         {yLabel ? (
-          <text x={pad.l - 8} y={pad.t + 4} fontFamily={MONO} fontSize={11} fill={FAINT} textAnchor="end">
+          <text x={pad.l - 8} y={pad.t + 4} fontFamily={MONO} fontSize={11} fill={palette.faint} textAnchor="end">
             {yLabel}
           </text>
         ) : null}
         {xLabel ? (
-          <text x={pad.l} y={H - 12} fontFamily={MONO} fontSize={11} fill={FAINT}>
+          <text x={pad.l} y={H - 12} fontFamily={MONO} fontSize={11} fill={palette.faint}>
             {xLabel}
           </text>
         ) : null}
@@ -601,7 +609,7 @@ export const Plot: React.FC<
             y={H - 12}
             fontFamily={MONO}
             fontSize={11}
-            fill={FAINT}
+            fill={palette.faint}
             textAnchor="end"
           >
             {endLabel}

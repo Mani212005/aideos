@@ -172,6 +172,55 @@ export const PALETTE = {
 /** Deep slate archival ink at an arbitrary alpha. Hairlines, scrims, grid lines. */
 export const ink = (alpha: number) => `rgba(17, 24, 39, ${alpha})`;
 
+/** The six values a component needs, resolved against whichever theme is actually rendering. */
+export interface ThemeTokens {
+  canvas: string;
+  surface: string;
+  ink: string;
+  muted: string;
+  hairline: string;
+  /** The active theme's ink at an arbitrary alpha. */
+  inkAt: (alpha: number) => string;
+  /** Hairline at a multiple of its base strength, in the active theme's ink. */
+  rule: (strength?: number) => string;
+  /** Muted, dimmed. Axis ticks and legend text that must sit under the labels. */
+  faint: string;
+  /** Surface, dimmed. A card inside a card - the only nesting depth allowed. */
+  sunken: string;
+}
+
+/** Splits a #rrggbb string into its three channel values. */
+const channels = (hex: string): string => {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
+};
+
+/**
+ * The palette of the theme currently rendering.
+ *
+ * The module-level `PALETTE`, `ink`, `rule`, `FAINT` and `SUNKEN` constants are all derived from
+ * the paper-white theme, so a component that reads them paints archival-paper ink no matter what
+ * canvas it is sitting on. On the dark themes every film in this repository actually uses, that
+ * put #111827 text on a #0A0A0B background and hairlines at an alpha of black on near-black -
+ * headlines that were technically drawn and practically invisible. Reading through the theme
+ * context instead makes each component correct on whichever canvas it lands.
+ */
+export const useTokens = (): ThemeTokens => {
+  const theme = useTheme();
+  const inkAt = (alpha: number) => `rgba(${channels(theme.ink)}, ${alpha})`;
+  return {
+    canvas: theme.canvas,
+    surface: theme.surface,
+    ink: theme.ink,
+    muted: theme.muted,
+    hairline: theme.hairline,
+    inkAt,
+    rule: (strength = 1) => inkAt(0.12 * strength),
+    faint: theme.muted,
+    sunken: theme.surface,
+  };
+};
+
 /**
  * Hairline at a multiple of its base strength. `1` is the token; `2` is the
  * emphasis used for chart axes, which need to out-read the grid behind them.

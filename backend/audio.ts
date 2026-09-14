@@ -1,13 +1,33 @@
 /**
- * File Description: Audio synthesis, segmentation, silence trimming, timeline offset calculation, and captions generation pipeline.
+ * File Description: Audio-first narration pipeline. Splits a script into shot-scoped segments,
+ * synthesizes each through a pluggable TTS backend, assembles the result in the sample domain
+ * (trim, fade, exact-offset concatenation, peak normalization), and emits voiceover.wav,
+ * captions.vtt, voiceover_words.json and the shot duration spine the film timeline is locked to.
+ *
+ * Assembly happens on samples rather than on encoded files on purpose: the old ffmpeg concat
+ * path could stitch together chunks with different sample rates or channel layouts, left the
+ * TTS engine's own leading and trailing silence in place, and measured the total back off the
+ * encoded file. Those three together are what produced audible stutter at segment boundaries
+ * and a growing drift between the narration and the visuals describing it.
  */
 
-import { TextToSpeechClient } from "@google-cloud/text-to-speech";
+import { execSync } from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { execSync } from "child_process";
 import { Film, parseFilm } from "../src/dl/schema";
 import { extractSpokenBlocks, hasScreenplayTags } from "./scriptIntake";
+import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
+import {
+  assembleSegments,
+  deriveShotDurations,
+  distributeWordTimings,
+  encodeWav,
+  normalizePeak,
+  DEFAULT_ASSEMBLE_OPTIONS,
+  type PcmChunk,
+} from "./pcm";
+
+export { trimSilence } from "./pcm";
 
 export interface WordInfo {
   word: string;
@@ -37,28 +57,39 @@ export interface ProduceAudioResult {
   voiceoverPath: string;
   captionsPath: string;
   captionsVttContent: string;
+  /** Absolute-timeline word list, mirrored to voiceover_words.json. */
+  words: WordInfo[];
+  /** Sidecar path holding the absolute word timings. */
+  wordsPath: string;
+  /** Which synthesizer produced the narration, for provenance in logs and manifests. */
+  ttsBackend: string;
 }
 
-/**
- * Trims leading and trailing silence samples (below amplitude threshold) from raw Float32Array audio.
- */
-export function trimSilence(samples: Float32Array, threshold = 0.005): Float32Array {
-  let start = 0;
-  while (start < samples.length && Math.abs(samples[start]) <= threshold) {
-    start++;
-  }
-  if (start >= samples.length) {
-    return new Float32Array(0);
-  }
-  let end = samples.length - 1;
-  while (end > start && Math.abs(samples[end]) <= threshold) {
-    end--;
-  }
-  return samples.subarray(start, end + 1);
+/** Knobs the production pipeline and the editor both drive the narration synthesis with. */
+export interface ProduceAudioOptions {
+  /** Silence between two segments, in milliseconds. */
+  gapMs?: number;
+  /** Silence between chunks inside one segment, in milliseconds. */
+  chunkGapMs?: number;
+  /** Pin a specific synthesizer instead of auto-selecting. */
+  backend?: TtsBackendName;
+  /** Voice id, interpreted by the chosen backend. */
+  voice?: string;
+  /** Narration pace multiplier. Below 1 slows delivery, which reads better for explainer copy. */
+  speed?: number;
+  /** Called once per synthesized chunk so long runs can report progress. */
+  onProgress?: (done: number, total: number, label: string) => void;
 }
 
+/** Shots shorter than the schema's floor get merged into their neighbour. */
+const SCHEMA_MIN_DUR = 0.5;
+
 /**
- * Splits text blocks exceeding maxChars (~800 chars / ~500 tokens) at sentence boundaries for Kokoro ONNX.
+ * Splits text blocks exceeding maxChars at sentence boundaries.
+ *
+ * Kokoro truncates past its phoneme-token limit, so over-long input silently loses its tail.
+ * Splitting on sentences (and only falling back to word splitting for text with no sentence
+ * punctuation at all) keeps each piece prosodically whole.
  */
 export function chunkTextForTTS(text: string, maxChars = 800): string[] {
   const rawParagraphs = text.split(/\r?\n+/).map((p) => p.trim()).filter(Boolean);
@@ -196,7 +227,15 @@ export async function measureAudioDuration(filePath: string): Promise<number> {
   }
 }
 
-/** Concatenate segment audio files with fixed silence gaps using ffmpeg filter_complex. */
+/**
+ * Concatenate encoded audio files with fixed silence gaps through ffmpeg.
+ *
+ * Kept for callers that already hold encoded files. Every input is forced through aresample and
+ * aformat first: ffmpeg's concat filter requires identical rate, layout and sample format on
+ * every input, and feeding it mixed inputs is what used to yield silent channel drops or a hard
+ * "Input link parameters differ" failure mid-run. The narration pipeline itself no longer uses
+ * this path - it concatenates in the sample domain, where the result is exact by construction.
+ */
 export async function concatAudioSegments(
   audioFiles: string[],
   silenceWavPath: string,
@@ -211,14 +250,12 @@ export async function concatAudioSegments(
     return await measureAudioDuration(outWavPath);
   }
 
-  const inputsStr = audioFiles
-    .flatMap((f, i) => (i === 0 ? [`-i "${f}"`] : [`-i "${silenceWavPath}"`, `-i "${f}"`]))
-    .join(" ");
-
-  const count = audioFiles.length * 2 - 1;
-  const filterStr =
-    Array.from({ length: count }, (_, i) => `[${i}:a]`).join("") +
-    `concat=n=${count}:v=0:a=1[outa]`;
+  const inputs = audioFiles.flatMap((f, i) => (i === 0 ? [f] : [silenceWavPath, f]));
+  const inputsStr = inputs.map((f) => `-i "${f}"`).join(" ");
+  const normalize = inputs
+    .map((_, i) => `[${i}:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo[n${i}]`)
+    .join(";");
+  const filterStr = `${normalize};${inputs.map((_, i) => `[n${i}]`).join("")}concat=n=${inputs.length}:v=0:a=1[outa]`;
 
   execSync(
     `ffmpeg -y ${inputsStr} -filter_complex "${filterStr}" -map "[outa]" -ar 44100 -ac 2 "${outWavPath}"`,
@@ -227,191 +264,139 @@ export async function concatAudioSegments(
   return await measureAudioDuration(outWavPath);
 }
 
+/** Synthesize every segment's chunks through the backend, reporting progress as it goes. */
+async function synthesizeSegments(
+  segmentTexts: string[],
+  backend: TtsBackend,
+  onProgress?: ProduceAudioOptions["onProgress"],
+): Promise<PcmChunk[][]> {
+  const plan = segmentTexts.map((text) => chunkTextForTTS(text, backend.maxChars));
+  const total = plan.reduce((sum, chunks) => sum + chunks.length, 0);
+  let done = 0;
+
+  const out: PcmChunk[][] = [];
+  for (const chunks of plan) {
+    const synthesized: PcmChunk[] = [];
+    for (const text of chunks) {
+      const samples = await backend.synthesize(text);
+      if (samples.length === 0) {
+        throw new Error(`TTS backend "${backend.name}" returned no audio for: "${text.slice(0, 60)}..."`);
+      }
+      synthesized.push({ text, samples });
+      done += 1;
+      onProgress?.(done, total, text.slice(0, 48));
+    }
+    out.push(synthesized);
+  }
+  return out;
+}
+
 /**
- * Phase 1 & 2: Audio-first synthesis, timeline offset calculation, gap handling,
- * and VTT caption generation using Google Cloud Text-to-Speech / Neural Audio.
+ * Merge any segment whose assembled audio falls under the schema's minimum shot duration
+ * into its neighbour. Merging joins already-synthesized chunk lists rather than re-running
+ * TTS, so the audio is bit-identical and the pass is effectively free.
+ */
+function mergeShortSegments(
+  segmentChunks: PcmChunk[][],
+  durations: number[],
+): PcmChunk[][] | null {
+  const shortIdx = durations.findIndex((d) => d < SCHEMA_MIN_DUR);
+  if (shortIdx < 0 || segmentChunks.length < 2) return null;
+  const target = shortIdx > 0 ? shortIdx - 1 : 0;
+  const merged = segmentChunks.map((c) => c.slice());
+  merged[target] = [...merged[target], ...merged[target + 1]];
+  merged.splice(target + 1, 1);
+  return merged;
+}
+
+/**
+ * Audio-first synthesis: script in, narration track plus the exact timing spine out.
+ *
+ * The returned shot durations are boundary-to-boundary, so shot i starts at exactly the sample
+ * where segment i's speech starts and the inter-segment gap lands at the tail of shot i rather
+ * than pushing shot i+1's visuals late. Their sum equals the audio duration exactly.
  */
 export async function produceAudioPipeline(
   script: string | string[],
   outDir: string,
-  options?: { gapMs?: number },
+  options?: ProduceAudioOptions,
 ): Promise<ProduceAudioResult> {
-  let segmentTexts = splitScriptIntoSegments(script);
-  const gapMs = options?.gapMs ?? 200;
-  const gapSec = gapMs / 1000;
+  const segmentTexts = splitScriptIntoSegments(script);
+  const gapMs = options?.gapMs ?? DEFAULT_ASSEMBLE_OPTIONS.segmentGapMs;
+  const chunkGapMs = options?.chunkGapMs ?? DEFAULT_ASSEMBLE_OPTIONS.chunkGapMs;
 
   await fs.mkdir(outDir, { recursive: true });
-  const tmpDir = path.join(outDir, ".tmp_audio");
-  await fs.mkdir(tmpDir, { recursive: true });
 
-  const silencePath = path.join(tmpDir, "silence.wav");
-  execSync(`ffmpeg -y -f lavfi -i anullsrc=r=44100:cl=mono -t ${gapSec} "${silencePath}"`);
+  const backend = await createTtsBackend({ backend: options?.backend, voice: options?.voice, speed: options?.speed });
+  console.log(`[narration] synthesizing ${segmentTexts.length} segment(s) with ${backend.name}`);
 
-  let segments: SegmentAudioInfo[] = [];
-
-  // Loop to synthesize and check segment durations.
-  const SCHEMA_MIN_DUR = 0.5;
-
-  let ttsClient: TextToSpeechClient | null = null;
+  let segmentChunks: PcmChunk[][];
   try {
-    const apiKey = process.env.GOOGLE_API_KEY;
-    if (apiKey || process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      ttsClient = new TextToSpeechClient(apiKey ? { apiKey } : undefined);
-    }
-  } catch {
-    // Fallback to local audio synthesis
+    segmentChunks = await synthesizeSegments(segmentTexts, backend, options?.onProgress);
+  } finally {
+    await backend.close?.();
   }
 
-  while (true) {
-    segments = [];
-    const audioFiles: string[] = [];
+  const assembleOptions = {
+    ...DEFAULT_ASSEMBLE_OPTIONS,
+    sampleRate: PCM_SAMPLE_RATE,
+    segmentGapMs: gapMs,
+    chunkGapMs,
+  };
 
-    for (let i = 0; i < segmentTexts.length; i++) {
-      const text = segmentTexts[i];
-      console.log(`[Audio-First TTS] Synthesizing segment ${i + 1}/${segmentTexts.length}: "${text.slice(0, 40)}..."`);
-      
-      const segFile = path.join(tmpDir, `seg_${i}.wav`);
-
-      if (ttsClient) {
-        try {
-          const [response] = await ttsClient.synthesizeSpeech({
-            input: { text },
-            voice: { languageCode: "en-US", name: "en-US-Journey-F" },
-            audioConfig: { audioEncoding: "LINEAR16", sampleRateHertz: 44100 },
-          });
-          if (response.audioContent) {
-            await fs.writeFile(segFile, response.audioContent as Buffer);
-          }
-        } catch (ttsErr) {
-          console.warn(`[Audio-First TTS] Google Cloud TTS failed (${(ttsErr as Error).message}), using high-definition macOS system speech synthesis fallback...`);
-          execSync(`say -v Samantha -o "${segFile}" --data-format=LEF32@44100 "${text.replace(/"/g, '\\"')}" 2>/dev/null || ffmpeg -y -f lavfi -i "sine=frequency=440:duration=3" "${segFile}"`);
-        }
-      } else {
-        console.warn(`[Audio-First TTS] Google Cloud TTS client not authenticated, using high-definition macOS system speech synthesis fallback...`);
-        execSync(`say -v Samantha -o "${segFile}" --data-format=LEF32@44100 "${text.replace(/"/g, '\\"')}" 2>/dev/null || ffmpeg -y -f lavfi -i "sine=frequency=440:duration=3" "${segFile}"`);
-      }
-
-      audioFiles.push(segFile);
-      const dur = await measureAudioDuration(segFile);
-
-      // Exact word-level timing derivation from speech segment duration
-      const rawTokens = text.split(/\s+/).filter(Boolean);
-      const secPerToken = rawTokens.length > 0 ? dur / rawTokens.length : 0.3;
-
-      const words: WordInfo[] = rawTokens.map((w, wIdx) => ({
-        word: w.toLowerCase().replace(/[^\w]/g, ""),
-        punctuated_word: w,
-        start: Number((wIdx * secPerToken).toFixed(2)),
-        end: Number(((wIdx + 1) * secPerToken).toFixed(2)),
-      }));
-
-      const utterances: UtteranceInfo[] = [
-        {
-          start: 0,
-          end: dur,
-          transcript: text,
-        },
-      ];
-
-      segments.push({
-        text,
-        duration: dur,
-        startOffset: 0,
-        words,
-        utterances,
-      });
-    }
-
-    // Check if any segment's measured duration + gap share is < SCHEMA_MIN_DUR
-    let underMinIndex = -1;
-    for (let i = 0; i < segments.length; i++) {
-      const segDur = segments[i].duration + (i < segments.length - 1 ? gapSec : 0);
-      if (segDur < SCHEMA_MIN_DUR) {
-        underMinIndex = i;
-        break;
-      }
-    }
-
-    if (underMinIndex >= 0 && segmentTexts.length > 1) {
-      console.log(`Segment ${underMinIndex + 1} (${segments[underMinIndex].duration.toFixed(2)}s) under schema minimum ${SCHEMA_MIN_DUR}s; merging with neighbor.`);
-      const newSegmentsText: string[] = [];
-      const mergeTarget = underMinIndex > 0 ? underMinIndex - 1 : underMinIndex;
-      for (let i = 0; i < segmentTexts.length; i++) {
-        if (i === mergeTarget) {
-          newSegmentsText.push(`${segmentTexts[mergeTarget]} ${segmentTexts[mergeTarget + 1]}`);
-          i++; // Skip merged next segment
-        } else {
-          newSegmentsText.push(segmentTexts[i]);
-        }
-      }
-      segmentTexts = newSegmentsText;
-      // Loop again with merged segments
-      continue;
-    }
-
-    break;
+  let assembled = assembleSegments(segmentChunks, assembleOptions);
+  for (;;) {
+    const merged = mergeShortSegments(segmentChunks, assembled.segments.map((s) => s.durationSec));
+    if (!merged) break;
+    console.log(`[narration] a segment fell under ${SCHEMA_MIN_DUR}s; merging it into its neighbour`);
+    segmentChunks = merged;
+    assembled = assembleSegments(segmentChunks, assembleOptions);
   }
 
-  // Concatenate all audio segments into voiceover.wav
+  const normalized = normalizePeak(assembled.samples);
+
   const voiceoverPath = path.join(outDir, "voiceover.wav");
-  const audioFiles = segments.map((_, i) => path.join(tmpDir, `seg_${i}.wav`));
-  const totalAudioDuration = await concatAudioSegments(audioFiles, silencePath, voiceoverPath);
+  await fs.writeFile(voiceoverPath, encodeWav(normalized, assembled.sampleRate));
 
-  // Also copy to public/ directory if outDir is not public/
+  // Remotion resolves staticFile() against public/, so the render always needs a copy there.
   const publicDir = path.resolve(__dirname, "../public");
   if (path.resolve(outDir) !== publicDir) {
     await fs.mkdir(publicDir, { recursive: true });
     await fs.copyFile(voiceoverPath, path.join(publicDir, "voiceover.wav"));
   }
 
-  // Calculate timeline start offsets and shot durations
-  let currentOffset = 0;
-  const shotDurations: number[] = [];
+  // Shot durations run boundary to boundary so every shot starts exactly where its narration
+  // does, and the final shot absorbs the tail. Summing them reproduces the audio length exactly.
+  const segments: SegmentAudioInfo[] = [];
+  const shotDurations = deriveShotDurations(assembled.segments, assembled.totalSec);
+  const absoluteWords: WordInfo[] = [];
 
-  for (let i = 0; i < segments.length; i++) {
-    segments[i].startOffset = currentOffset;
-    const isLast = i === segments.length - 1;
-    const dur = segments[i].duration + (isLast ? 0 : gapSec);
-    shotDurations.push(dur);
-    currentOffset += dur;
-  }
+  assembled.segments.forEach((seg) => {
+    const relativeWords = distributeWordTimings(seg.text, seg.durationSec);
+    relativeWords.forEach((w) => {
+      absoluteWords.push({
+        word: w.word,
+        punctuated_word: w.punctuated_word,
+        start: Number((seg.startSec + w.start).toFixed(3)),
+        end: Number((seg.startSec + w.end).toFixed(3)),
+      });
+    });
 
-  // Adjust total sum of shotDurations to equal totalAudioDuration exact by construction
-  const sumShotDur = shotDurations.reduce((a, b) => a + b, 0);
-  const diff = totalAudioDuration - sumShotDur;
-  if (Math.abs(diff) > 0.0001 && shotDurations.length > 0) {
-    shotDurations[shotDurations.length - 1] += diff;
-  }
+    segments.push({
+      text: seg.text,
+      duration: seg.durationSec,
+      startOffset: seg.startSec,
+      words: relativeWords,
+      utterances: [{ start: 0, end: seg.durationSec, transcript: seg.text }],
+    });
+  });
 
-  // Generate captions.vtt
-  console.log("Generating captions.vtt on concatenated timeline...");
-  const vttLines = ["WEBVTT", ""];
-
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i];
-    if (seg.utterances && seg.utterances.length > 0) {
-      for (const u of seg.utterances) {
-        const startTime = formatTime(seg.startOffset + u.start);
-        const endTime = formatTime(seg.startOffset + u.end);
-        vttLines.push(`${startTime} --> ${endTime}`);
-        vttLines.push(u.transcript);
-        vttLines.push("");
-      }
-    } else if (seg.words && seg.words.length > 0) {
-      for (let w = 0; w < seg.words.length; w += 5) {
-        const chunk = seg.words.slice(w, w + 5);
-        const startTime = formatTime(seg.startOffset + chunk[0].start);
-        const endTime = formatTime(seg.startOffset + chunk[chunk.length - 1].end);
-        vttLines.push(`${startTime} --> ${endTime}`);
-        vttLines.push(chunk.map((cw) => cw.punctuated_word || cw.word).join(" "));
-        vttLines.push("");
-      }
-    }
-  }
-
-  const vttContent = vttLines.join("\n");
+  const vttContent = buildCaptionsVtt(absoluteWords);
   const captionsPath = path.join(outDir, "captions.vtt");
   await fs.writeFile(captionsPath, vttContent, "utf-8");
+
+  const wordsPath = path.join(outDir, "voiceover_words.json");
+  await fs.writeFile(wordsPath, JSON.stringify({ words: absoluteWords }, null, 2), "utf-8");
 
   if (path.resolve(outDir) !== publicDir) {
     await fs.copyFile(captionsPath, path.join(publicDir, "captions.vtt"));
@@ -420,20 +405,61 @@ export async function produceAudioPipeline(
   return {
     segments,
     shotDurations,
-    totalAudioDuration,
+    totalAudioDuration: assembled.totalSec,
     voiceoverPath,
     captionsPath,
     captionsVttContent: vttContent,
+    words: absoluteWords,
+    wordsPath,
+    ttsBackend: backend.name,
   };
+}
+
+/**
+ * Builds readable WebVTT cues from absolute word timings.
+ *
+ * Cues break on sentence punctuation or after seven words, whichever comes first, so a cue is
+ * a phrase a viewer can read rather than a whole ten-second paragraph pinned to the screen.
+ */
+export function buildCaptionsVtt(words: WordInfo[]): string {
+  const lines = ["WEBVTT", ""];
+  let chunk: WordInfo[] = [];
+
+  const flush = () => {
+    if (chunk.length === 0) return;
+    lines.push(`${formatTime(chunk[0].start)} --> ${formatTime(chunk[chunk.length - 1].end)}`);
+    lines.push(chunk.map((w) => w.punctuated_word || w.word).join(" "));
+    lines.push("");
+    chunk = [];
+  };
+
+  for (const word of words) {
+    chunk.push(word);
+    const text = word.punctuated_word || word.word;
+    if (/[.!?]["')\]]?$/.test(text) || chunk.length >= 7) flush();
+  }
+  flush();
+
+  return lines.join("\n");
 }
 
 import { buildBriefFromSegmentFallback } from "./ideation/segmentSync";
 import { generateRelationshipAwareCanvas, type ConceptEntity } from "./ideation/graphLayout";
 
+/**
+ * The part of a narration result a film is built from: the spoken segments and their
+ * durations. Narrowed from ProduceAudioResult so callers (and tests) can construct a film
+ * from a timing spine without also having to produce a wav on disk.
+ */
+export type FilmTimingSpine = Pick<
+  ProduceAudioResult,
+  "segments" | "shotDurations" | "totalAudioDuration"
+>;
+
 /** Construct a valid Film schema object from produce result. */
 export function buildFilmFromAudioResult(
   title: string,
-  audioResult: ProduceAudioResult,
+  audioResult: FilmTimingSpine,
   options?: {
     music?: { src: string; volume?: number; duckUnderVoiceover?: boolean };
     sfx?: Array<{ timeSec: number; src: string; volume?: number }>;
@@ -494,7 +520,7 @@ export function buildFilmFromAudioResult(
     chapters,
     canvas: { nodes, edges },
     shots,
-    voiceover: { src: "voiceover.wav", volume: 1 },
+    voiceover: { src: "voiceover.wav", volume: 1, durationSec: audioResult.totalAudioDuration },
     captions: "captions.vtt",
     ...(options?.music ? { music: options.music } : {}),
     ...(options?.sfx ? { sfx: options.sfx } : {}),
@@ -503,7 +529,7 @@ export function buildFilmFromAudioResult(
   return parseFilm(filmRaw);
 }
 
-/** Generate audio for film using the Google Cloud / Neural Audio Pipeline. */
+/** Generate audio for film using the narration pipeline and rebuild the film around it. */
 export async function processAudioForFilm(film: Film, outDir: string): Promise<Film> {
   const validShots = film.shots.map((s) => (s.scriptText || "").trim()).filter((t) => t.length > 0);
 

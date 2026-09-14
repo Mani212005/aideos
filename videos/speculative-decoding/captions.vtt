@@ -1,0 +1,292 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:02.232
+Ask a large language model a question,
+
+00:00:02.232 --> 00:00:03.946
+and watch the answer arrive.
+
+00:00:03.946 --> 00:00:05.237
+It does not appear.
+
+00:00:05.237 --> 00:00:06.105
+It trickles.
+
+00:00:06.305 --> 00:00:07.968
+One word, then the next, then the
+
+00:00:07.968 --> 00:00:09.722
+next, at a pace that has almost
+
+00:00:09.722 --> 00:00:11.570
+nothing to do with how much compute
+
+00:00:11.570 --> 00:00:12.206
+you own.
+
+00:00:12.406 --> 00:00:14.468
+Here is the part that surprises people.
+
+00:00:14.468 --> 00:00:17.642
+During that trickle, your very expensive accelerator
+
+00:00:17.642 --> 00:00:19.907
+is sitting almost completely idle.
+
+00:00:20.107 --> 00:00:22.094
+To produce a single token, the model
+
+00:00:22.094 --> 00:00:23.789
+has to read every one of its
+
+00:00:23.789 --> 00:00:25.126
+weights out of memory.
+
+00:00:25.126 --> 00:00:27.867
+For a seventy billion parameter model, that
+
+00:00:27.867 --> 00:00:30.419
+is well over a hundred gigabytes moved,
+
+00:00:30.419 --> 00:00:31.191
+for one word.
+
+00:00:31.391 --> 00:00:34.845
+The arithmetic itself is trivial by comparison.
+
+00:00:34.845 --> 00:00:36.775
+The chip finishes the math in a
+
+00:00:36.775 --> 00:00:38.609
+small fraction of the time, and then
+
+00:00:38.609 --> 00:00:39.274
+it waits.
+
+00:00:39.274 --> 00:00:41.108
+And then it waits again, for the
+
+00:00:41.108 --> 00:00:43.060
+next word, and the one after that,
+
+00:00:43.060 --> 00:00:45.012
+for as long as the answer runs.
+
+00:00:45.213 --> 00:00:46.910
+Which leads somewhere strange.
+
+00:00:46.910 --> 00:00:49.062
+Reading those weights costs the same whether
+
+00:00:49.062 --> 00:00:51.214
+you use them to compute one token
+
+00:00:51.214 --> 00:00:52.433
+or a hundred.
+
+00:00:52.433 --> 00:00:54.716
+The bottleneck is the trip, not the
+
+00:00:54.716 --> 00:00:55.457
+cargo.
+
+00:00:55.657 --> 00:00:57.680
+That asymmetry is the whole trick.
+
+00:00:57.680 --> 00:00:59.994
+Generating a word is slow, because each
+
+00:00:59.994 --> 00:01:02.017
+one depends on the one before it.
+
+00:01:02.217 --> 00:01:04.191
+Checking a word is fast, because a
+
+00:01:04.191 --> 00:01:06.257
+whole batch of them can be examined
+
+00:01:06.257 --> 00:01:08.024
+in a single pass, using weights you
+
+00:01:08.024 --> 00:01:09.698
+were going to load anyway.
+
+00:01:09.898 --> 00:01:11.125
+So here is the move.
+
+00:01:11.125 --> 00:01:13.537
+Instead of asking the expensive model to
+
+00:01:13.537 --> 00:01:15.257
+write the answer, we are going to
+
+00:01:15.257 --> 00:01:17.267
+ask it to grade one that somebody
+
+00:01:17.267 --> 00:01:18.494
+else already wrote.
+
+00:01:18.694 --> 00:01:20.874
+Alongside the large model, we run a
+
+00:01:20.874 --> 00:01:21.514
+small one.
+
+00:01:21.514 --> 00:01:24.127
+Maybe twenty times smaller, and far quicker.
+
+00:01:24.327 --> 00:01:26.515
+Most of what any model writes is
+
+00:01:26.515 --> 00:01:27.850
+not actually hard.
+
+00:01:27.850 --> 00:01:30.936
+Articles, prepositions, the second half of a
+
+00:01:30.936 --> 00:01:31.833
+common phrase.
+
+00:01:31.833 --> 00:01:33.802
+The small model gets those right almost
+
+00:01:33.802 --> 00:01:34.918
+every time.
+
+00:01:35.118 --> 00:01:37.017
+So it runs ahead and drafts the
+
+00:01:37.017 --> 00:01:39.414
+next handful of tokens by itself.
+
+00:01:39.414 --> 00:01:41.811
+Five words, guessed cheaply, in the time
+
+00:01:41.811 --> 00:01:43.710
+the large model would have spent on
+
+00:01:43.710 --> 00:01:44.683
+part of one.
+
+00:01:44.883 --> 00:01:46.782
+Now the large model reads all five
+
+00:01:46.782 --> 00:01:49.417
+drafted tokens in a single forward pass.
+
+00:01:49.417 --> 00:01:51.102
+One trip to memory.
+
+00:01:51.102 --> 00:01:52.787
+One set of weights loaded.
+
+00:01:52.787 --> 00:01:55.422
+Five predictions checked in parallel.
+
+00:01:55.622 --> 00:01:57.899
+It compares each drafted token against what
+
+00:01:57.899 --> 00:01:59.436
+it would have chosen itself.
+
+00:01:59.636 --> 00:02:01.936
+Everything from the beginning of the draft
+
+00:02:01.936 --> 00:02:04.236
+up to the first disagreement is accepted
+
+00:02:04.236 --> 00:02:05.511
+and kept, in one go.
+
+00:02:05.711 --> 00:02:08.106
+At that first disagreement, the large model
+
+00:02:08.106 --> 00:02:10.500
+supplies the correct token itself, drawn from
+
+00:02:10.500 --> 00:02:13.217
+a carefully corrected distribution.
+
+00:02:13.217 --> 00:02:15.611
+Nothing is quietly dropped, and nothing is
+
+00:02:15.611 --> 00:02:17.498
+silently approximated.
+
+00:02:17.698 --> 00:02:20.659
+That is what makes speculative decoding unusual
+
+00:02:20.659 --> 00:02:21.665
+among speed-ups.
+
+00:02:21.866 --> 00:02:23.592
+The text you get out is sampled
+
+00:02:23.592 --> 00:02:26.181
+from exactly the same distribution as the
+
+00:02:26.181 --> 00:02:26.850
+slow path.
+
+00:02:26.850 --> 00:02:28.479
+Bit for bit, it is the same
+
+00:02:28.479 --> 00:02:29.148
+model.
+
+00:02:29.348 --> 00:02:31.867
+In practice, on ordinary prose, the draft
+
+00:02:31.867 --> 00:02:34.574
+is accepted often enough to deliver two
+
+00:02:34.574 --> 00:02:36.261
+to three times the throughput.
+
+00:02:36.261 --> 00:02:38.989
+No retraining, no quantisation, no loss of
+
+00:02:38.989 --> 00:02:39.842
+quality.
+
+00:02:39.842 --> 00:02:42.341
+You are simply using the memory bandwidth
+
+00:02:42.341 --> 00:02:44.027
+you were already paying for.
+
+00:02:44.227 --> 00:02:46.775
+On dense or unpredictable text, more of
+
+00:02:46.775 --> 00:02:49.081
+the draft gets rejected, and the gain
+
+00:02:49.081 --> 00:02:50.554
+shrinks toward nothing.
+
+00:02:50.554 --> 00:02:52.728
+The speed-up is really a bet on
+
+00:02:52.728 --> 00:02:54.925
+how predictable your output is.
+
+00:02:55.125 --> 00:02:57.396
+Which is the lesson hiding underneath all
+
+00:02:57.396 --> 00:02:58.036
+of it.
+
+00:02:58.036 --> 00:03:00.328
+The wait was never the arithmetic.
+
+00:03:00.328 --> 00:03:02.207
+It was the walk to memory.
+
+00:03:02.207 --> 00:03:03.765
+And once you see that, the fix
+
+00:03:03.765 --> 00:03:05.531
+stops looking like a trick, and starts
+
+00:03:05.531 --> 00:03:08.349
+looking obvious: make every walk carry more.
