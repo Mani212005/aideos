@@ -301,6 +301,71 @@ const accentCost = (b: Block): number => {
   return isDevice(b) ? 1 : 0;
 };
 
+/**
+ * ---------------------------------------------------------------------------
+ * THE SCENE LAYER
+ * ---------------------------------------------------------------------------
+ * A film's spatial canvas is either a node graph or a scene graph, never both.
+ * `canvas` is the node graph; `scene` is the vector stage from `scene/types.ts`,
+ * drawn from committed SVG assets and driven by declarative animation clips.
+ *
+ * Mirroring the scene contract in Zod is what lets a hand-authored timeline of
+ * several hundred clips fail at bundle time with a field path, instead of
+ * rendering a film with one prop silently missing.
+ */
+export const svgAnimationClipSchema = z.object({
+  clipId: z.string().min(1),
+  targets: z.array(z.string().min(1)).min(1),
+  property: z.enum([
+    "translateX",
+    "translateY",
+    "scale",
+    "scaleX",
+    "scaleY",
+    "rotate",
+    "opacity",
+    "drawOn",
+  ]),
+  from: z.number(),
+  to: z.number(),
+  startFrame: z.number().int().min(0),
+  durationFrames: z.number().int().min(1),
+  easing: z.enum(["linear", "expoOut", "expoIn", "expoInOut", "hold"]).optional(),
+  staggerFrames: z.number().int().min(0).optional(),
+  origin: z.object({ x: z.number(), y: z.number() }).optional(),
+});
+
+export const svgAnimationTimelineSchema = z.object({
+  timelineId: z.string().min(1),
+  clips: z.array(svgAnimationClipSchema),
+});
+
+export const environmentAssetSchema = z.object({
+  assetId: z.string().min(1),
+  svgSource: z.string().min(1).endsWith(".svg"),
+  layer: z.number().int().optional(),
+  position: z.object({ x: z.number(), y: z.number() }),
+  scale: z.number().positive(),
+  rotation: z.number(),
+  opacity: z.number().min(0).max(1),
+  animation: svgAnimationTimelineSchema.optional(),
+});
+
+export const sceneSchema = z.object({
+  schemaVersion: z.string().min(1),
+  sceneId: z.string().min(1),
+  fps: z.number().int().positive(),
+  durationFrames: z.number().int().positive(),
+  audioSource: z.string().min(1),
+  audioDurationMs: z.number().min(0),
+  sceneSize: z.object({ w: z.number().positive(), h: z.number().positive() }),
+  background: environmentAssetSchema,
+  props: z.array(environmentAssetSchema),
+  actors: z.array(z.unknown()).default([]),
+});
+
+export type FilmScene = z.infer<typeof sceneSchema>;
+
 export const stageSchema = z.enum(["anchor", "frame", "none"]).default("anchor");
 export const lookSchema = z.union([z.string(), z.array(z.string()).min(1), z.literal("all")]);
 export const moveSchema = z.enum(["pan", "zoom-in", "zoom-out", "hold", "cut"]).default("pan");
@@ -467,6 +532,12 @@ export const filmBaseSchema = z.object({
     nodes: z.array(nodeSchema).min(2).max(24),
     edges: z.array(edgeSchema).min(1).max(48),
   }),
+  /**
+   * A vector stage that replaces the node graph as this film's canvas. Present means the film is
+   * drawn from committed SVG assets driven by declarative animation clips; absent is the default
+   * node-graph film. See scene/README.md.
+   */
+  scene: sceneSchema.optional(),
   shots: z.array(shotSchema).min(1),
   audio: z.object({ src: z.string().min(1), trimBefore: z.number().min(0).default(0) }).optional(),
   voiceover: z
@@ -482,6 +553,12 @@ export const filmBaseSchema = z.object({
   /** Editor timeline lanes. Absent means the editor derives its default lane set. */
   layers: z.array(timelineLayerSchema).optional(),
   captions: z.string().min(1).optional(),
+  /**
+   * Burn kinetic subtitles into the picture. Omit to keep the long-standing default of on.
+   * Set false for a film that puts its own words on screen: §04 leaves subtitles to the platform,
+   * and a second line of type fighting a text card for the same space reads as a mistake.
+   */
+  subtitles: z.boolean().optional(),
   sfx: z.array(sfxItemSchema).optional(),
   music: musicTrackSchema.optional(),
 });

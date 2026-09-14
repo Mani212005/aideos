@@ -119,7 +119,11 @@ export const Video: React.FC<FilmProps> = ({
         accent={accent}
         showGrid={showGrid}
         showRail={showRail}
-        captionWords={generateWordsFromFilm(FILM as unknown as Record<string, unknown>)}
+        captionWords={
+          FILM.subtitles === false
+            ? []
+            : generateWordsFromFilm(FILM as unknown as Record<string, unknown>)
+        }
         includeAudio={false}
       />
     </>

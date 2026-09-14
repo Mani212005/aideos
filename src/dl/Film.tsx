@@ -9,6 +9,7 @@ import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext } from "./accent";
 import { BlockView } from "./Block";
 import { CanvasGraph } from "./CanvasGraph";
+import { SceneStage } from "./SceneStage";
 import { PaperRip } from "./PaperRip";
 import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
 import {
@@ -428,9 +429,16 @@ export const FilmView: React.FC<FilmViewProps> = ({
 
         {/* Unified Spatial Canvas Graph & Stage */}
         <AbsoluteFill style={{ transform: `scale(${drift})` }}>
-          <AbsoluteFill style={{ opacity: canvasOpacity }}>
-            <CanvasGraph film={film} timeline={timeline} cam={cam} />
-          </AbsoluteFill>
+          {/* A film's canvas is either a node graph or a vector scene, never both. A scene runs
+              its own continuous motion and raises its own scrim under text, so it is not dimmed
+              by the panel the way a diagram is: dimming it would stop the film mid-shot. */}
+          {film.scene ? (
+            <SceneStage scene={film.scene} width={width} height={height} accent={accent} />
+          ) : (
+            <AbsoluteFill style={{ opacity: canvasOpacity }}>
+              <CanvasGraph film={film} timeline={timeline} cam={cam} />
+            </AbsoluteFill>
+          )}
           {showGrid ? <Grid /> : null}
           <Stage film={film} timeline={timeline} />
         </AbsoluteFill>
