@@ -108,7 +108,11 @@ function buildProps(
       const authored = typeof props.transform === "string" ? props.transform : "";
       props.transform = authored ? `${authored} ${animatedTransform}` : animatedTransform;
     }
-    if (state.opacity !== 1) {
+    // Only a clip that actually drives opacity may overwrite the authored attribute. Deciding
+    // from the value instead would break both directions: an element authored opacity="0" and
+    // faded in would snap back to invisible on the frame its fade reached 1, and an element
+    // authored faint and merely translated would be forced to full opacity.
+    if (state.opacityDriven || state.opacity !== 1) {
       props.opacity = state.opacity;
     }
   }

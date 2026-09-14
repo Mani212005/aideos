@@ -1,0 +1,32 @@
+<!--
+  File Description: Jupiter: the first giant, a banded disc with a storm wider than the Earth.
+  Static artwork for the film Still Talking. Nothing here animates itself: element ids are the
+  handles that videos/still-talking/film.json drives through the declarative SVG timeline.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <clipPath id="jup-clip">
+      <circle cx="0" cy="0" r="238" />
+    </clipPath>
+    <linearGradient id="jup-shade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0A0A0B" stop-opacity="0" />
+      <stop offset="52%" stop-color="#0A0A0B" stop-opacity="0.16" />
+      <stop offset="100%" stop-color="#0A0A0B" stop-opacity="0.72" />
+    </linearGradient>
+  </defs>
+  <g id="jupiter-body">
+    <circle id="jup-disc" cx="0" cy="0" r="238" fill="#141416" />
+    <g clip-path="url(#jup-clip)">
+      <rect id="jup-band-1" x="-340" y="-178" width="680" height="40" fill="rgba(245, 245, 245, 0.050)" />
+      <rect id="jup-band-2" x="-340" y="-122" width="680" height="32" fill="rgba(245, 245, 245, 0.090)" />
+      <rect id="jup-band-3" x="-340" y="-66" width="680" height="44" fill="rgba(245, 245, 245, 0.040)" />
+      <rect id="jup-band-4" x="-340" y="4" width="680" height="28" fill="rgba(245, 245, 245, 0.100)" />
+      <rect id="jup-band-5" x="-340" y="60" width="680" height="50" fill="rgba(245, 245, 245, 0.055)" />
+      <rect id="jup-band-6" x="-340" y="136" width="680" height="34" fill="rgba(245, 245, 245, 0.080)" />
+      <ellipse id="jup-spot" cx="-104" cy="-96" rx="58" ry="32" fill="rgba(99, 91, 255, 0.420)" />
+      <ellipse id="jup-spot-core" cx="-104" cy="-96" rx="27" ry="15" fill="rgba(99, 91, 255, 0.680)" />
+      <rect id="jup-terminator" x="-240" y="-240" width="480" height="480" fill="url(#jup-shade)" />
+    </g>
+    <circle id="jup-limb" cx="0" cy="0" r="238" fill="none" stroke="rgba(245, 245, 245, 0.300)" stroke-width="1.6" />
+  </g>
+</svg>

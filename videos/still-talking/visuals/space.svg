@@ -1,0 +1,19 @@
+<!--
+  File Description: The void the whole film sits on, with one faint galactic band for depth.
+  Static artwork for the film Still Talking. Nothing here animates itself: element ids are the
+  handles that videos/still-talking/film.json drives through the declarative SVG timeline.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <radialGradient id="band-grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F5F5F5" stop-opacity="0.05" />
+      <stop offset="52%" stop-color="#F5F5F5" stop-opacity="0.018" />
+      <stop offset="100%" stop-color="#F5F5F5" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect id="void-fill" x="-320" y="-220" width="640" height="440" fill="#0A0A0B" />
+  <g id="milky-band">
+    <ellipse id="milky-band-1" cx="-40" cy="-30" rx="330" ry="96" transform="rotate(-9 -40 -30)" fill="url(#band-grad)" />
+    <ellipse id="milky-band-2" cx="70" cy="6" rx="270" ry="54" transform="rotate(-7 70 6)" fill="url(#band-grad)" />
+  </g>
+</svg>

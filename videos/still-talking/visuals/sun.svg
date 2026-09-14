@@ -1,0 +1,29 @@
+<!--
+  File Description: The sun: home, and the fixed point the signal is always aimed back at.
+  Static artwork for the film Still Talking. Nothing here animates itself: element ids are the
+  handles that videos/still-talking/film.json drives through the declarative SVG timeline.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <radialGradient id="sun-halo-grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F5F5F5" stop-opacity="0.4" />
+      <stop offset="38%" stop-color="#F5F5F5" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#F5F5F5" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <g id="sun-body">
+    <circle id="sun-halo" cx="0" cy="0" r="96" fill="url(#sun-halo-grad)" />
+    <g id="sun-rays">
+      <line x1="26" y1="0" x2="84" y2="0" stroke="rgba(245, 245, 245, 0.260)" stroke-width="1.2" />
+      <line x1="18.38" y1="18.38" x2="36.77" y2="36.77" stroke="rgba(245, 245, 245, 0.140)" stroke-width="1.2" />
+      <line x1="0" y1="26" x2="0" y2="84" stroke="rgba(245, 245, 245, 0.260)" stroke-width="1.2" />
+      <line x1="-18.38" y1="18.38" x2="-36.77" y2="36.77" stroke="rgba(245, 245, 245, 0.140)" stroke-width="1.2" />
+      <line x1="-26" y1="0" x2="-84" y2="0" stroke="rgba(245, 245, 245, 0.260)" stroke-width="1.2" />
+      <line x1="-18.38" y1="-18.38" x2="-36.77" y2="-36.77" stroke="rgba(245, 245, 245, 0.140)" stroke-width="1.2" />
+      <line x1="0" y1="-26" x2="0" y2="-84" stroke="rgba(245, 245, 245, 0.260)" stroke-width="1.2" />
+      <line x1="18.38" y1="-18.38" x2="36.77" y2="-36.77" stroke="rgba(245, 245, 245, 0.140)" stroke-width="1.2" />
+    </g>
+    <circle id="sun-corona" cx="0" cy="0" r="30" fill="none" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1.1" />
+    <circle id="sun-core" cx="0" cy="0" r="19" fill="#F5F5F5" />
+  </g>
+</svg>

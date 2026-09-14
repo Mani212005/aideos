@@ -116,6 +116,7 @@ export const SceneView: React.FC<SceneViewProps> = ({
           rotate: (existing?.rotate ?? 0) + sg.degrees,
           opacity: existing?.opacity ?? 1,
           drawOn: existing?.drawOn ?? 1,
+          opacityDriven: existing?.opacityDriven ?? false,
           originX: existing?.originX ?? 0,
           originY: existing?.originY ?? 0,
         };
