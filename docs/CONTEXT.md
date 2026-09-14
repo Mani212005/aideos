@@ -137,6 +137,7 @@ An individual vector path inside a limb:
 ## 5. Design System Tokens (`src/dl/tokens.ts`, `src/dl/motion.ts`, `editor/src/styles/tokens.css`)
 
 ### Rendered Video Design System (`src/dl/tokens.ts`)
+* `useTokens()`: React hook providing active theme-token colors for Remotion components dynamically.
 * `canvas`: `#0A0A0B` (Deepest canvas background layer)
 * `surface`: `#101013` (Raised card surface background)
 * `ink`: `#F5F5F5` (High-contrast typography text)
@@ -176,14 +177,35 @@ An individual vector path inside a limb:
 * `generateText(prompt, options)`: Executes a plain-text prompt against Gemini.
 
 ### `backend/audio.ts`
-* `trimSilence(samples, threshold)`: Trims leading and trailing silence samples (below amplitude threshold) from raw Float32Array audio.
+* `trimSilence(samples, threshold)`: Re-exported from `backend/pcm.ts`; trims silence samples below amplitude threshold from raw Float32Array audio.
 * `chunkTextForTTS(text, maxChars)`: Splits text blocks exceeding maxChars (~800 chars) at sentence boundaries for Kokoro ONNX.
 * `splitScriptIntoSegments(script)`: Splits a narration script into distinct shot-scoped segments (strictly by narration beats for Claude-tagged scripts, or blank-line paragraphs for untagged prose).
 * `measureAudioDuration(filePath)`: Measures exact audio file duration using ffprobe.
-* `concatAudioSegments(audioFiles, silenceWavPath, outWavPath)`: Merges audio clips with fixed pause buffers via FFmpeg concat filters.
-* `produceAudioPipeline(script, outDir, options)`: Generates audio-first synthesis, timeline offset calculations, and VTT caption files.
+* `concatAudioSegments(audioFiles, silenceWavPath, outWavPath)`: Merges audio clips with fixed pause buffers via FFmpeg concat filter with format normalization.
+* `produceAudioPipeline(script, outDir, options)`: Synthesizes script into sample-domain audio timing spine, emitting `voiceover.wav`, `captions.vtt`, and `voiceover_words.json`.
+* `buildCaptionsVtt(words)`: Builds phrase-grouped WebVTT caption tracks from absolute word timings.
 * `buildFilmFromAudioResult(title, audioResult, options)`: Compiles verified audio durations into a structured `Film` object.
-* `processAudioForFilm(film, outDir)`: Generates audio for a film using the neural audio pipeline.
+* `processAudioForFilm(film, outDir)`: Generates audio for a film using the narration pipeline and rebuilds the film around it.
+
+### `backend/pcm.ts`
+* `trimSilence(samples, threshold)`: Trims leading and trailing silence samples from Float32Array audio.
+* `assembleSegments(segmentChunks, options)`: Assembles synthesized audio segments in the sample domain with exact inter-segment gaps and boundary fades.
+* `deriveShotDurations(segments, totalSec)`: Derives boundary-to-boundary shot durations matching narration sample boundaries.
+* `distributeWordTimings(text, durationSec)`: Calculates relative word start and end offsets across a segment duration.
+* `normalizePeak(samples, targetDb)`: Normalizes Float32 audio samples to peak dBFS without clipping.
+* `encodeWav(samples, sampleRate)`: Encodes Float32Array audio directly into a standard 16-bit mono PCM WAV buffer.
+* `decodeWav(buffer)`: Decodes a WAV buffer into normalized Float32Array samples.
+
+### `backend/tts.ts`
+* `createTtsBackend(options)`: Instantiates pluggable TTS engine (`kokoro` via worker process, `google`, `say`, `tone`).
+* `KokoroTtsBackend`: Local offline ONNX synthesizer using Kokoro-82M (default).
+
+### Production Pipeline & MCP Server (`backend/pipeline/`, `backend/mcp/`)
+* Deep reference documentation in [`docs/PRODUCTION_PIPELINE.md`](PRODUCTION_PIPELINE.md).
+* `runProduction(request, onProgress)` (`backend/pipeline/run.ts`): Single typed programmatic entry point driving `intake`, `narrate`, `design`, `broll`, `assemble`, `render`, `verify`.
+* `compileScreenplayToFilm(screenplay, spine, options)` (`backend/pipeline/design.ts`): Compiles screenplay and narration spine into validated `Film`.
+* `renderFormat(slug, format, options)` (`backend/pipeline/render.ts`): Drives Remotion render with headless verification and contact sheet generation.
+* `startMcpServer()` (`backend/mcp/server.ts`): Exposes the production pipeline as an MCP stdio server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`.
 
 ### `backend/scriptIntake.ts`
 * `parseClaudeScript(raw)`: Parses a raw Claude or legacy screenplay into structured `ScriptSegment` items containing ordered visual, narration, and on-screen beats.

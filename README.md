@@ -68,13 +68,13 @@ Below is a live trace from the Aideos compilation and self-correction engine ver
 1. **Axiom 1 (Films and Scenes are Pure Data):** Zero runtime logic or browser solvers inside film manifests (`src/dl/films/*.ts` or `videos/<slug>/film.json`). Solvers execute at compile/ideation time and emit pure serializable JSON documents.
 2. **Axiom 2 (Audio-First Timing Spine):** The narration voiceover drives the master clock. Total shot durations lock to the audio length within $\pm 50\text{ms}$.
 3. **Axiom 3 (Derived Spatial Framing):** The camera solves framing and zoom levels from graph node coordinates, never hard-coded pixel coordinates.
-4. **Axiom 4 (Strict Theme-Token Palette):** Every vector path, block, and character rig binds strictly to semantic theme tokens (`canvas`, `surface`, `ink`, `muted`, `hairline`, `accent`).
+4. **Axiom 4 (Strict Theme-Token Palette):** Every vector path, block, and character rig binds strictly to semantic theme tokens (`canvas`, `surface`, `ink`, `muted`, `hairline`, `accent`) resolved dynamically through `useTokens()` (`src/dl/tokens.ts`).
 
 ---
 
 ## 🎬 Two Formats, One Film
 
-`Long` (1920×1080) and `Reel` (1080×1920) are not two separate edits. They derive automatically from the exact same canvas and shot list; the vertical reel solves framing with safe mobile padding, centered typography ($\le 8$ complete words), and phrase-locked subtitles (`KineticSubtitles.tsx`).
+`Long` (1920x1080) and `Reel` (1080x1920) are not two separate edits. They derive automatically from the exact same canvas and shot list; the vertical reel solves framing with safe mobile padding, centered typography ($\le 8$ complete words), and phrase-locked kinetic subtitles (`KineticSubtitles.tsx`) positioned in the bottom safe area using the active theme accent token.
 
 ---
 
@@ -174,7 +174,15 @@ npm run render
 
 # 7. Render 9:16 Vertical Companion Reel
 npm run render:reel
+
+# 8. Run end-to-end production pipeline (intake -> narrate -> design -> b-roll -> assemble -> render -> verify)
+npm run backend -- film --script-file videos/speculative-decoding/script.md --title "Speculative Decoding" --slug speculative-decoding --broll --formats long,reel
+
+# 9. Start Model Context Protocol (MCP) server
+npm run backend -- mcp
 ```
+
+See [docs/PRODUCTION_PIPELINE.md](docs/PRODUCTION_PIPELINE.md) for full programmatic and MCP pipeline documentation.
 
 ---
 

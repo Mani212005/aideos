@@ -11,7 +11,7 @@ same film, not two edits of it.
 
 | Spec section          | Here                                            |
 | --------------------- | ----------------------------------------------- |
-| §01 Color             | `tokens.ts` - `PALETTE` + the derivation helpers |
+| §01 Color             | `tokens.ts` - `useTokens()`, `PALETTE` + derivation helpers |
 | §02 Type              | `tokens.ts` - `SCALE`, `useLayout().type()`    |
 | §03 Motion grammar    | `motion.ts` - `EXPO`, `MS`, `useEntrance`        |
 | §04 Primitives        | `primitives.tsx`                                 |
@@ -63,8 +63,10 @@ to the canvas every 90s, and at most three accents in a frame.
 
 - **No code primitive.** The spec is explicit: ideas are carried by graphs,
   vectors and distributions, never by a syntax-highlighted editor.
-- **No captions.** Not part of this design language. Burned-in subtitles fight
-  the panel for the same space, and every platform this ships to draws its own.
+- **No captions in Long format.** Burned-in subtitles fight the 16:9 panel for
+  the same space, and long-form platforms draw their own from the sidecar track
+  (`captions.vtt`). In vertical Reel format, kinetic captions are enabled at the
+  bottom fifth safe area for muted social viewing.
 - **No shadows, no grain, no vignette.** Depth is a hairline and a lift in
   surface value.
 

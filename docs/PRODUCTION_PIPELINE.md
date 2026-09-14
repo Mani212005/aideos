@@ -40,8 +40,8 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 | `narrate`  | Synthesizes narration and derives the timing spine every later stage is locked to     | `voiceover.wav`, `captions.vtt`, `voiceover_words.json`, `narration.json` |
 | `design`   | Compiles the screenplay plus the spine into a validated film                          | `film.json` and its `src/dl/films/<slug>.ts` shadow |
 | `broll`    | Renders GPU footage for the flagged shots and fetches the clips                       | `videos/<slug>/footage/<shotId>.mp4`                |
-| `assemble` | Wires each clip into its shot as a full-screen inset, installs the film as active     | `film.json`, `src/dl/activeFilm.ts`                 |
-| `render`   | Drives Remotion for each requested format                                             | `out/<slug>-long.mp4`, `out/<slug>-reel.mp4`        |
+| `assemble` | Wires each clip into its shot as a full-screen inset                                 | `film.json` and its `src/dl/films/<slug>.ts` shadow |
+| `render`   | Installs the film as active and drives Remotion for each requested format            | `src/dl/activeFilm.ts`, `out/<slug>-long.mp4`, `out/<slug>-reel.mp4` |
 | `verify`   | Probes the rendered files and writes contact sheets across the whole duration         | `out/review/<slug>/<format>-sheet.jpg`              |
 
 Progress arrives through the second argument to `runProduction`: one `ProductionProgress` per
