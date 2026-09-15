@@ -54,7 +54,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 ## Production Pipeline
 - `backend/pipeline/run.ts`'s `runProduction` is the one programmatic entry point from a script to finished mp4s (intake, narrate, design, b-roll, assemble, render, verify), with typed progress, per-stage resume via `videos/<slug>/run-state.json`, and stage-tagged errors. `backend/mcp/server.ts` exposes the same thing as MCP tools over stdio. Both are documented in [docs/PRODUCTION_PIPELINE.md](docs/PRODUCTION_PIPELINE.md); drive a film through `runProduction` rather than chaining the older staged commands by hand.
 - Narration is assembled in the sample domain (`backend/pcm.ts`), never by concatenating encoded files: trim, boundary fade, exact gap insertion and peak normalization on Float32 samples. That is what keeps segment offsets exact and boundaries click-free, and `backend/voiceover_stutter.test.ts` holds each defect class closed. Speech synthesis backends live in `backend/tts.ts`; Kokoro is the offline default and runs in a separate process (`backend/kokoroWorker.mjs`) because its voice-file resolution and ONNX thread pool both break under the TypeScript loader.
-- Components must read colour through `useTokens()` from `src/dl/tokens.ts`, not the module-level `PALETTE`/`rule()`/`FAINT`/`SUNKEN` constants: those are derived from the paper-white theme and paint near-black text on the dark canvases every film actually uses.
+- Components must read colour through `useTokens()` from `src/dl/tokens.ts`, not the module-level `PALETTE`/`rule()`/`FAINT`/`SUNKEN` constants: those are derived from the paper-white theme and paint near-black text on the dark canvases every film actually uses. `useLayout().label()` now resolves its muted colour from the rendering theme too, so mono labels are correct without each call site overriding `color`.
 - `src/dl/camera.ts` rounds cumulative timeline position, not individual shot durations, and `CanvasGraph`'s camera transform needs `transform-origin: 0 0` to agree with `solveCam`/`projectBox`. Both are load-bearing for audio-visual sync and framing; see the comments at each site before changing them.
 
 ## Rule 3 (No Long Dashes) and screenplay parsing
@@ -105,6 +105,22 @@ File Description: This file defines the core guidelines, coding principles, and 
   decodes waveforms in the browser instead (`editor/src/components/timeline/useAudioPeaks.ts`).
 - Every `backend/timeline/*.test.ts` file is wired into the root `npm test` script. Keep it that way:
   suites that are not listed there silently rot.
+
+## Frame safe areas and the palette guard
+
+- `src/dl/fullScreenHeroLayout.ts` owns all `fullScreenHero` geometry and is the single
+  definition of `SUBTITLE_BAND_TOP_RATIO`, the top of the reel's burned-in caption card. Both
+  hero paths use it (`AnalogyInset` in `src/dl/devices.tsx` and `Dynamic3DHeroOverlay` in
+  `src/dl/Film.tsx`) and `KineticSubtitles` derives its "bottom" position from it, so caption
+  placement and the thing it must avoid come from one number. Put new frame-safe-area geometry
+  there rather than re-deriving it in a component: it is a plain module with no Remotion
+  imports, which is what makes it unit testable in `backend/fullScreenHeroLayout.test.ts`.
+- `backend/design_language_palette.test.ts` walks `src/dl/**` and fails on colour literals
+  outside the locked palette (6-digit hex, 3-digit hex and `rgb()`/`rgba()` alike) or on
+  typefaces other than Geist and JetBrains Mono. Files that predate the guard are listed in its
+  `KNOWN_DRIFT` ledger, which is shrink-only: a listed file that becomes clean fails the test
+  until it is removed from the list. Subtrees with their own enforcement (`films/`, `scene/`,
+  `tokens.ts`) are excluded and say why in the file.
 
 ## Maintaining this file
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.

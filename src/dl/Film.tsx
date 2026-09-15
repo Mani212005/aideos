@@ -4,7 +4,8 @@
 
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
-import { accentAt, PALETTE, rule, useLayout, BACKGROUND_THEMES, resolveFont, ThemeContext } from "./tokens";
+import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext } from "./tokens";
+import { getFullScreenHeroLayout, heroScrimGradient } from "./fullScreenHeroLayout";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext } from "./accent";
 import { BlockView } from "./Block";
@@ -115,7 +116,7 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
         top: rect.y,
         width: rect.w,
         height: rect.h,
-        border: heroOnly ? "none" : `1px solid ${rule(shot.stage === "frame" ? 0 : 1)}`,
+        border: heroOnly || shot.stage === "frame" ? "none" : `1px solid ${bgTheme.hairline}`,
         borderRadius: heroOnly ? 0 : layout.radius.card,
         background:
           shot.stage === "frame" || heroOnly ? "transparent" : bgTheme.surface,
@@ -180,6 +181,10 @@ const Rail: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline 
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const layout = useLayout();
+  // The rail's unfilled track has to come from the rendering theme. The module-level
+  // rule() is paper-white ink, which is invisible on a dark canvas and leaves the rail
+  // showing only its filled half, so the film stops saying where you are in it.
+  const palette = useTokens();
   const current = shotAt(timeline, frame);
   const total = totalFrames(timeline);
   const progress = frame / total;
@@ -214,14 +219,14 @@ const Rail: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline 
               style={{
                 flex: 1,
                 height: layout.px(2),
-                background: i <= chapterIndex ? "currentColor" : rule(),
+                background: i <= chapterIndex ? "currentColor" : palette.rule(),
                 color: i <= chapterIndex ? undefined : "transparent",
               }}
             />
           ))}
         </div>
       ) : (
-        <div style={{ height: layout.px(3), background: rule(), borderRadius: layout.px(2) }}>
+        <div style={{ height: layout.px(3), background: palette.rule(), borderRadius: layout.px(2) }}>
           <div
             style={{
               height: "100%",
@@ -247,7 +252,20 @@ export type FilmViewProps = {
   includeAudio?: boolean;
 };
 
+/**
+ * The PNG-sequence variant of a `fullScreenHero` block. It shares
+ * `getFullScreenHeroLayout` with `AnalogyInset` so both hero paths fill the frame
+ * and place their caption in the same safe area on either canvas.
+ */
 const Dynamic3DHeroOverlay: React.FC<{ frame: number; timeline: ReturnType<typeof buildTimeline> }> = ({ frame, timeline }) => {
+  const layout = useLayout();
+  const palette = useTokens();
+  const labelStyle = layout.label(14);
+  const heroLayout = getFullScreenHeroLayout({
+    ...layout,
+    labelHeight: Number(labelStyle.fontSize) * 1.6,
+  });
+
   for (const t of timeline) {
     const shot = t.shot;
     const heroBlock = shot.blocks.find(
@@ -277,40 +295,30 @@ const Dynamic3DHeroOverlay: React.FC<{ frame: number; timeline: ReturnType<typeo
           style={{
             zIndex: 100,
             opacity,
-            background: "radial-gradient(ellipse at 50% 45%, rgba(13, 17, 23, 0.96) 0%, rgba(6, 8, 12, 0.99) 100%)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 40,
+            background: palette.canvas,
+            overflow: "hidden",
           }}
         >
-          <Img
-            src={staticFile(imgSrc)}
-            alt={heroBlock.caption || "3D Kinematic Sequence"}
+          <Img src={staticFile(imgSrc)} alt={heroBlock.caption || ""} style={heroLayout.media} />
+          <AbsoluteFill
             style={{
-              maxWidth: "88%",
-              maxHeight: "80%",
-              objectFit: "contain",
-              filter: "drop-shadow(0 30px 60px rgba(0,0,0,0.9)) drop-shadow(0 0 50px rgba(0,240,255,0.22))",
+              pointerEvents: "none",
+              background: heroScrimGradient(heroLayout.scrimStops, (alpha) => accentAt(palette.canvas, alpha)),
             }}
           />
-          <div
-            style={{
-              marginTop: 20,
-              fontSize: 13,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              color: "rgba(240, 237, 230, 0.8)",
-              fontFamily: "monospace",
-              background: "rgba(255, 255, 255, 0.06)",
-              padding: "6px 16px",
-              borderRadius: 6,
-              border: "1px solid rgba(255, 255, 255, 0.12)",
-            }}
-          >
-            {heroBlock.caption || "AIDEOS KINEMATIC SIMULATION · CONTACT DYNAMICS"}
-          </div>
+          {heroBlock.caption ? (
+            <div
+              style={{
+                ...labelStyle,
+                position: "absolute",
+                ...heroLayout.caption,
+                color: palette.inkAt(0.72),
+                textShadow: `0 ${layout.px(2)}px ${layout.px(12)}px ${accentAt(palette.canvas, 0.9)}`,
+              }}
+            >
+              {heroBlock.caption}
+            </div>
+          ) : null}
         </AbsoluteFill>
       );
     }
