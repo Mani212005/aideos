@@ -9,6 +9,7 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
   "theme": {
     "background": "dot-grid",
     "fontFamily": "geist",
+    "videoType": "case-study",
     "storyStyle": "script-metaphor",
     "cameraAngle": "isometric",
     "accent": "#10B981"
@@ -27,8 +28,8 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
         "id": "hook",
         "label": "HOOK",
         "sub": "ChatGPT IMAGES 2.5 fades in smal",
-        "x": -200,
-        "y": -100,
+        "x": 100,
+        "y": -420,
         "w": 230,
         "h": 68
       },
@@ -36,8 +37,8 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
         "id": "what-changed",
         "label": "WHAT CHANGED",
         "sub": "How does a model actually do thi",
-        "x": 60,
-        "y": -100,
+        "x": 100,
+        "y": -270,
         "w": 230,
         "h": 68
       },
@@ -45,7 +46,7 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
         "id": "how-the-problem-is-represented",
         "label": "HOW THE PROBLEM IS REPRE",
         "sub": "TEXT → EMBEDDING → CROSS-ATTENTI",
-        "x": 320,
+        "x": 90,
         "y": -100,
         "w": 230,
         "h": 68
@@ -54,8 +55,8 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
         "id": "why-editing-is-harder-than-generating",
         "label": "WHY EDITING IS HARDER TH",
         "sub": "PRESERVE: identity · pose · back",
-        "x": -200,
-        "y": 80,
+        "x": 80,
+        "y": 70,
         "w": 230,
         "h": 68
       },
@@ -63,8 +64,8 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
         "id": "multi-turn-consistency",
         "label": "MULTI-TURN CONSISTENCY",
         "sub": "Three sequential thumbnails - sa",
-        "x": 60,
-        "y": 80,
+        "x": 70,
+        "y": 230,
         "w": 230,
         "h": 68
       },
@@ -72,8 +73,8 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
         "id": "the-bigger-idea",
         "label": "THE BIGGER IDEA",
         "sub": "Final title card - Generation is",
-        "x": 320,
-        "y": 80,
+        "x": 60,
+        "y": 420,
         "w": 230,
         "h": 68
       }
@@ -139,6 +140,8 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
     {
       "id": "hook-tag",
       "position": 24.65,
+      "start": 0,
+      "end": 2,
       "startSec": 24.65,
       "dur": 2,
       "stage": "frame",
@@ -159,6 +162,8 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
     {
       "id": "what-changed",
       "position": 26.65,
+      "start": 0,
+      "end": 23.41,
       "startSec": 26.65,
       "dur": 23.41,
       "stage": "none",
@@ -183,8 +188,10 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
     },
     {
       "id": "how-the-problem-is-represented-1",
-      "position": 50.06,
-      "startSec": 50.06,
+      "position": 50.643,
+      "start": 0,
+      "end": 22.32,
+      "startSec": 50.643,
       "dur": 22.32,
       "stage": "frame",
       "look": "how-the-problem-is-represented",
@@ -208,8 +215,10 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
     },
     {
       "id": "how-the-problem-is-represented-2",
-      "position": 72.38,
-      "startSec": 72.38,
+      "position": 72.963,
+      "start": 0,
+      "end": 26.65,
+      "startSec": 72.963,
       "dur": 26.65,
       "stage": "anchor",
       "look": "how-the-problem-is-represented",
@@ -233,8 +242,10 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
     },
     {
       "id": "why-editing-is-harder-than-generating-1",
-      "position": 99.03,
-      "startSec": 99.03,
+      "position": 99.613,
+      "start": 0,
+      "end": 21.24,
+      "startSec": 99.613,
       "dur": 21.24,
       "stage": "none",
       "look": "why-editing-is-harder-than-generating",
@@ -258,8 +269,10 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
     },
     {
       "id": "why-editing-is-harder-than-generating-2",
-      "position": 120.27,
-      "startSec": 120.27,
+      "position": 120.853,
+      "start": 0,
+      "end": 13.32,
+      "startSec": 120.853,
       "dur": 13.32,
       "stage": "anchor",
       "look": "why-editing-is-harder-than-generating",
@@ -283,8 +296,10 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
     },
     {
       "id": "multi-turn-consistency",
-      "position": 133.59,
-      "startSec": 133.59,
+      "position": 134.173,
+      "start": 0,
+      "end": 19.8,
+      "startSec": 134.173,
       "dur": 19.8,
       "stage": "frame",
       "look": "multi-turn-consistency",
@@ -308,8 +323,10 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
     },
     {
       "id": "the-bigger-idea",
-      "position": 153.39000000000001,
-      "startSec": 153.39000000000001,
+      "position": 153.973,
+      "start": 0,
+      "end": 12.97,
+      "startSec": 153.973,
       "dur": 12.97,
       "stage": "none",
       "look": "the-bigger-idea",
@@ -333,8 +350,10 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
     },
     {
       "id": "shot-screen-recording-6473",
-      "position": 166.36,
-      "startSec": 166.36,
+      "position": 166.943,
+      "start": 0,
+      "end": 5,
+      "startSec": 166.943,
       "dur": 5,
       "stage": "frame",
       "look": "hook",
@@ -357,8 +376,10 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
     },
     {
       "id": "shot-screen-recording-3219",
-      "position": 171.36,
-      "startSec": 171.36,
+      "position": 171.943,
+      "start": 0,
+      "end": 5,
+      "startSec": 171.943,
       "dur": 5,
       "stage": "frame",
       "look": "hook",
@@ -397,6 +418,53 @@ export const theHiddenConstraintProblemInsideAiImageEditingFilm: Film = {
       "volume": 1,
       "speed": 1,
       "channel": "voiceover"
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer-audio-spine",
+      "number": 0,
+      "label": "Voiceover",
+      "locked": false,
+      "hidden": false,
+      "muted": false,
+      "height": 52
+    },
+    {
+      "id": "layer-audio-music",
+      "number": 2,
+      "label": "Music",
+      "locked": false,
+      "hidden": false,
+      "muted": false,
+      "height": 48
+    },
+    {
+      "id": "layer-audio-sfx",
+      "number": 4,
+      "label": "Sound Effects",
+      "locked": false,
+      "hidden": false,
+      "muted": false,
+      "height": 48
+    },
+    {
+      "id": "layer-animation-main",
+      "number": 10,
+      "label": "Scenes",
+      "locked": false,
+      "hidden": false,
+      "muted": false,
+      "height": 76
+    },
+    {
+      "id": "layer-subtitles-main",
+      "number": 20,
+      "label": "Subtitles",
+      "locked": false,
+      "hidden": false,
+      "muted": true,
+      "height": 48
     }
   ]
 };
