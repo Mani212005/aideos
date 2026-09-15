@@ -175,6 +175,27 @@ export function buildScene(timing: VoiceoverTiming): Scene {
   /** Frame one past the last frame of a named shot. */
   const to = (shotId: string): number => at(shotId, 1);
 
+  const bySegment = new Map(timing.segments.map((segment) => [segment.shotId, segment]));
+  /**
+   * Frame a given phrase is spoken at, from the narration's own word offsets.
+   * Aiming a beat at a word rather than at a fraction of the shot is what keeps a cue on the
+   * thing being said: the payoff word of a sentence is usually near its end, not its middle.
+   * Throws when the phrase is not in that shot, so re-writing a line cannot silently mis-time it.
+   */
+  const word = (shotId: string, phrase: string, edge: "start" | "end" = "start"): number => {
+    const segment = bySegment.get(shotId);
+    if (!segment) throw new Error(`No shot "${shotId}" in the measured narration.`);
+    const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const wanted = phrase.split(/\s+/).map(normalize).filter(Boolean);
+    for (let i = 0; i + wanted.length <= segment.words.length; i++) {
+      if (wanted.every((w, k) => normalize(segment.words[i + k].word) === w)) {
+        const hit = edge === "start" ? segment.words[i] : segment.words[i + wanted.length - 1];
+        return Math.round((edge === "start" ? hit.startSec : hit.endSec) * FPS);
+      }
+    }
+    throw new Error(`"${phrase}" is not spoken in shot "${shotId}": ${segment.text}`);
+  };
+
   // ---------------------------------------------------------------- backdrop
   const space: EnvironmentAsset = {
     assetId: "space",
@@ -242,16 +263,16 @@ export function buildScene(timing: VoiceoverTiming): Scene {
       .add({ id: "boundary-in", targets: ["boundary-body"], property: "opacity", from: 0, to: 1, start: at("particles-change", 0.02), end: at("particles-change", 0.4) })
       .add({ id: "boundary-approach", targets: ["boundary-body"], property: "translateX", from: 0, to: -380, start: from("particles-change"), end: at("particles-change", 0.98), easing: "linear" })
       .add({ id: "boundary-near", targets: ["boundary-body"], property: "translateX", from: -380, to: -742, start: at("particles-change", 0.98), end: at("last-breath", 0.96), easing: "linear" })
-      .add({ id: "boundary-cross", targets: ["boundary-body"], property: "translateX", from: -742, to: -1012, start: at("last-breath", 0.96), end: at("across-the-edge", 0.9), easing: "linear" })
-      .add({ id: "boundary-recede", targets: ["boundary-body"], property: "translateX", from: -1012, to: -2040, start: at("across-the-edge", 0.9), end: to("going-dark"), easing: "linear" })
+      .add({ id: "boundary-cross", targets: ["boundary-body"], property: "translateX", from: -742, to: -1012, start: at("last-breath", 0.96), end: word("across-the-edge", "edge", "end"), easing: "linear" })
+      .add({ id: "boundary-recede", targets: ["boundary-body"], property: "translateX", from: -1012, to: -2040, start: word("across-the-edge", "edge", "end"), end: to("going-dark"), easing: "linear" })
       .add({ id: "boundary-out", targets: ["boundary-body"], property: "opacity", from: 1, to: 0, start: at("going-dark", 0.1), end: to("going-dark") })
       // The arc draws itself across the frame: the edge is not there until it is measured.
       .add({ id: "arc-draw", targets: ["bubble-arc"], property: "drawOn", from: 0, to: 1, start: at("particles-change", 0.12), end: at("last-breath", 0.2), easing: "linear" })
       .add({ id: "arc-inner-draw", targets: ["bubble-arc-inner"], property: "drawOn", from: 0, to: 1, start: at("particles-change", 0.4), end: at("last-breath", 0.45), easing: "linear" })
       // Solar wind: streaming outward, then decelerating to a dead stop, then gone.
       .add({ id: "wind-stream", targets: windIds(), property: "translateX", from: 0, to: 108, start: at("particles-change", 0.1), end: at("particles-change", 0.62), stagger: 5, easing: "linear" })
-      .add({ id: "wind-stall", targets: windIds(), property: "translateX", from: 108, to: 152, start: at("last-breath", 0.05), end: at("last-breath", 0.78), easing: "expoOut" })
-      .add({ id: "wind-die", targets: windIds(), property: "opacity", from: 1, to: 0, start: at("last-breath", 0.1), end: at("last-breath", 0.55), stagger: 8 })
+      .add({ id: "wind-stall", targets: windIds(), property: "translateX", from: 108, to: 152, start: at("last-breath", 0.05), end: word("last-breath", "stopped", "end"), easing: "expoOut" })
+      .add({ id: "wind-die", targets: windIds(), property: "opacity", from: 1, to: 0, start: word("last-breath", "simply"), end: word("last-breath", "simply") + 34, stagger: 4 })
       // What is waiting outside arrives cold, dense and unordered.
       .add({ id: "ism-arrive", targets: ismIds(), property: "opacity", from: 0, to: 0.55, start: at("last-breath", 0.12), end: at("last-breath", 0.32), stagger: 4 })
       .build(),
@@ -341,7 +362,7 @@ export function buildScene(timing: VoiceoverTiming): Scene {
       // The rings draw themselves on as the craft arrives, back halves first.
       .add({ id: "rings-draw", targets: ringIds(), property: "drawOn", from: 0, to: 1, start: at("saturn", 0.1), end: at("saturn", 0.56), stagger: 16, easing: "linear" })
       // Titan's atmosphere is the discovery that cost the craft the rest of its tour.
-      .add({ id: "haze-found", targets: ["titan-haze", "titan-haze-ring"], property: "opacity", from: 0, to: 1, start: at("saturn", 0.6), end: at("saturn", 0.86) })
+      .add({ id: "haze-found", targets: ["titan-haze", "titan-haze-ring"], property: "opacity", from: 0, to: 1, start: word("saturn", "atmosphere"), end: word("saturn", "one", "end") })
       .add({ id: "haze-swell", targets: ["titan-haze-ring"], property: "scale", from: 1, to: 1.55, start: at("saturn", 0.64), end: at("out-of-plane", 0.2), origin: { x: 0, y: 0 } })
       .add({ id: "haze-fade", targets: ["titan-haze", "titan-haze-ring"], property: "opacity", from: 1, to: 0.35, start: at("out-of-plane", 0.25), end: at("out-of-plane", 0.6) })
       .build(),
@@ -440,7 +461,7 @@ export function buildScene(timing: VoiceoverTiming): Scene {
     scale: 1,
     rotation: 0,
     opacity: 1,
-    animation: buildProbeTimeline({ at, from, to, durationFrames }),
+    animation: buildProbeTimeline({ at, from, to, word, durationFrames }),
   };
 
   // -------------------------------------------------------------- the record
@@ -482,7 +503,7 @@ export function buildScene(timing: VoiceoverTiming): Scene {
     scale: 4.8,
     rotation: 0,
     opacity: 1,
-    animation: buildScrimTimeline({ at, from, to, durationFrames }),
+    animation: buildScrimTimeline({ at, from, to, word, durationFrames }),
   };
 
   return {
@@ -517,6 +538,8 @@ interface FrameHelpers {
   at: (shotId: string, fraction?: number) => number;
   from: (shotId: string) => number;
   to: (shotId: string) => number;
+  /** Frame a phrase is spoken at, so a cue can land on a word rather than on a fraction. */
+  word: (shotId: string, phrase: string, edge?: "start" | "end") => number;
   durationFrames: number;
 }
 
@@ -525,7 +548,7 @@ interface FrameHelpers {
  * and how it goes dark one lamp at a time. This is the longest timeline in the film because the
  * craft is the only thing on screen in every shot of it.
  */
-function buildProbeTimeline({ at, from, to, durationFrames }: FrameHelpers) {
+function buildProbeTimeline({ at, from, to, word, durationFrames }: FrameHelpers) {
   const timeline = new Timeline("voyager", durationFrames);
   const centre = { x: 0, y: 0 };
 
@@ -585,7 +608,7 @@ function buildProbeTimeline({ at, from, to, durationFrames }: FrameHelpers) {
     .add({ id: "rtg-live", targets: ["rtg-glow"], property: "opacity", from: 0, to: 1, start: at("one-job", 0.7), end: at("not-coming-back", 0.1) })
 
     // Looking back is a mechanical act: the camera boom swings all the way round, then returns.
-    .add({ id: "boom-sci-turn", targets: ["probe-boom-sci"], property: "rotate", from: 0, to: 166, start: at("turn-around", 0.12), end: at("turn-around", 0.84), origin: { x: 26, y: 6 }, easing: "expoInOut" })
+    .add({ id: "boom-sci-turn", targets: ["probe-boom-sci"], property: "rotate", from: 0, to: 166, start: word("turn-around", "asked"), end: word("turn-around", "time", "end"), origin: { x: 26, y: 6 }, easing: "expoInOut" })
     .add({ id: "boom-sci-return", targets: ["probe-boom-sci"], property: "rotate", from: 166, to: 0, start: at("eyes-closed", 0.16), end: at("eyes-closed", 0.92), origin: { x: 26, y: 6 }, easing: "expoInOut" })
     .add({ id: "shutter-1", targets: ["lamp-sci-1", "lamp-sci-2", "lamp-sci-3"], property: "opacity", from: 1, to: 0.25, start: at("sixty-photographs", 0.1), end: at("sixty-photographs", 0.2), stagger: 9 })
     .add({ id: "shutter-2", targets: ["lamp-sci-1", "lamp-sci-2", "lamp-sci-3"], property: "opacity", from: 0.25, to: 1, start: at("sixty-photographs", 0.3), end: at("sixty-photographs", 0.42), stagger: 9 })
@@ -598,9 +621,9 @@ function buildProbeTimeline({ at, from, to, durationFrames }: FrameHelpers) {
     .add({ id: "thread-gone", targets: ["signal-thread"], property: "opacity", from: 0.62, to: 0, start: at("keep-going", 0.02), end: at("keep-going", 0.4) })
 
     // Going dark: instruments shut down one by one to keep the radio alive, and then that too.
-    .add({ id: "mag-off", targets: ["lamp-mag-1"], property: "opacity", from: 1, to: 0, start: at("going-dark", 0.12), end: at("going-dark", 0.5) })
-    .add({ id: "rtg-cools", targets: ["rtg-glow"], property: "opacity", from: 1, to: 0, start: at("going-dark", 0.3), end: at("going-dark", 0.86) })
-    .add({ id: "rtg-dims", targets: ["rtg-1", "rtg-2", "rtg-3"], property: "opacity", from: 1, to: 0.3, start: at("going-dark", 0.22), end: at("going-dark", 0.5), stagger: 18 })
+    .add({ id: "mag-off", targets: ["lamp-mag-1"], property: "opacity", from: 1, to: 0, start: word("going-dark", "Instruments"), end: word("going-dark", "down", "end") })
+    .add({ id: "rtg-cools", targets: ["rtg-glow"], property: "opacity", from: 1, to: 0, start: word("going-dark", "one by one"), end: word("going-dark", "alive", "end") })
+    .add({ id: "rtg-dims", targets: ["rtg-1", "rtg-2", "rtg-3"], property: "opacity", from: 1, to: 0.3, start: word("going-dark", "one by one"), end: word("going-dark", "keep"), stagger: 12 })
     .add({ id: "radio-last", targets: ["lamp-radio"], property: "opacity", from: 1, to: 0, start: at("the-last-one", 0.1), end: at("the-last-one", 0.96) })
 
     // The record catches one last highlight as the craft turns away.
@@ -608,7 +631,7 @@ function buildProbeTimeline({ at, from, to, durationFrames }: FrameHelpers) {
     .add({ id: "glint-dim", targets: ["record-glint"], property: "opacity", from: 1, to: 0.2, start: from("keep-going"), end: at("longer-than-the-sun", 0.2) })
     .add({ id: "glint-catches", targets: ["record-glint"], property: "opacity", from: 0.2, to: 1, start: at("longer-than-the-sun", 0.2), end: durationFrames });
 
-  addSignalPulses(timeline, { at, from, to, durationFrames });
+  addSignalPulses(timeline, { at, from, to, word, durationFrames });
   return timeline.build();
 }
 
