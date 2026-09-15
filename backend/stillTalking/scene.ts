@@ -251,6 +251,13 @@ export function buildScene(timing: VoiceoverTiming): Scene {
   };
 
   // ------------------------------------------------------------- heliopause
+  // The wind has to finish streaming before it can start stalling, and a stagger over fourteen
+  // streamers pushes the last of them well past the clip's own end frame. Deriving the stall's
+  // start from where the stream actually finishes keeps the two apart at any narration length.
+  const windStagger = 4;
+  const windStreamEnd = at("particles-change", 0.5) + windStagger * (windIds().length - 1);
+  const windStallStart = Math.max(windStreamEnd, at("last-breath", 0.05));
+
   const boundary: EnvironmentAsset = {
     assetId: "boundary",
     svgSource: "videos/still-talking/visuals/boundary.svg",
@@ -270,8 +277,8 @@ export function buildScene(timing: VoiceoverTiming): Scene {
       .add({ id: "arc-draw", targets: ["bubble-arc"], property: "drawOn", from: 0, to: 1, start: at("particles-change", 0.12), end: at("last-breath", 0.2), easing: "linear" })
       .add({ id: "arc-inner-draw", targets: ["bubble-arc-inner"], property: "drawOn", from: 0, to: 1, start: at("particles-change", 0.4), end: at("last-breath", 0.45), easing: "linear" })
       // Solar wind: streaming outward, then decelerating to a dead stop, then gone.
-      .add({ id: "wind-stream", targets: windIds(), property: "translateX", from: 0, to: 108, start: at("particles-change", 0.1), end: at("particles-change", 0.62), stagger: 5, easing: "linear" })
-      .add({ id: "wind-stall", targets: windIds(), property: "translateX", from: 108, to: 152, start: at("last-breath", 0.05), end: word("last-breath", "stopped", "end"), easing: "expoOut" })
+      .add({ id: "wind-stream", targets: windIds(), property: "translateX", from: 0, to: 108, start: at("particles-change", 0.08), end: at("particles-change", 0.5), stagger: windStagger, easing: "linear" })
+      .add({ id: "wind-stall", targets: windIds(), property: "translateX", from: 108, to: 152, start: windStallStart, end: word("last-breath", "stopped", "end"), easing: "expoOut" })
       .add({ id: "wind-die", targets: windIds(), property: "opacity", from: 1, to: 0, start: word("last-breath", "simply"), end: word("last-breath", "simply") + 34, stagger: 4 })
       // What is waiting outside arrives cold, dense and unordered.
       .add({ id: "ism-arrive", targets: ismIds(), property: "opacity", from: 0, to: 0.55, start: at("last-breath", 0.12), end: at("last-breath", 0.32), stagger: 4 })

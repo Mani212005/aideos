@@ -86,6 +86,12 @@ File Description: This file defines the core guidelines, coding principles, and 
   `backend/stillTalking/scene.ts`: a clip must start from the value the previous clip on that
   property left behind (otherwise the value snaps on screen), and one element may only ever be
   given one transform `origin` (the compiler applies the last origin it sees to every frame).
+- Aim a cue at a spoken word, not at a fraction of its shot: the payoff word of a sentence is
+  usually near its end. `buildScene`'s `word()` helper reads the narration's own offsets and throws
+  when the phrase is no longer in that shot, so rewriting a line cannot silently mis-time the film.
+- Chrome drawn over a scene needs its own ground. A node graph leaves the bottom of the frame
+  empty, but a star field will put a dot straight through a glyph of the chapter rail, so `Rail`
+  carries its own scrim rather than trusting what is behind it.
 - Opacity has one trap worth knowing: an authored `opacity` attribute and a clip that drives
   opacity both want the same attribute. The compiled state wins only when a clip actually drives
   it (`SvgElementState.opacityDriven`), so an element authored `opacity="0"` can be faded fully in,

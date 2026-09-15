@@ -6,9 +6,8 @@
  * videos/still-talking/film.json and its generated shadow src/dl/films/still-talking.ts.
  */
 
-import * as fs from "fs";
-import * as path from "path";
 import { parseFilm, type Film, type Shot } from "../../src/dl/schema";
+import { writeFilm, setActiveFilm } from "../pipeline/filmStore";
 import type { Scene } from "../../src/dl/scene/types";
 import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNode";
 import { compileScene } from "../../src/dl/scene/compile";
@@ -123,23 +122,9 @@ export function buildFilm(): { film: Film; scene: Scene } {
   return { film, scene };
 }
 
-/** `still-talking` becomes `stillTalkingFilm`: film ids may carry dashes, identifiers may not. */
-function exportName(id: string): string {
-  return `${id.replace(/-([a-z0-9])/g, (_m, c: string) => c.toUpperCase())}Film`;
-}
-
-/**
- * Renders the generated shadow module exactly as editor/vite.config.ts writes it.
- * The manifest and its shadow are only ever written together, which is the one rule that stops
- * the two from drifting apart.
- */
-function filmModule(film: Film): string {
-  return `import type { Film } from "../schema";\n\nexport const ${exportName(film.id)}: Film = ${JSON.stringify(film, null, 2)};\n`;
-}
-
 /** Builds everything and writes it to disk, failing on any validation the engines can do for us. */
 export function buildPackage(): void {
-  const root = path.resolve(__dirname, "../..");
+
 
   writeAssets();
   const { film, scene } = buildFilm();
@@ -155,17 +140,10 @@ export function buildPackage(): void {
   const assets = loadSceneAssets(scene);
   const compiled = compileScene(scene, { assetElementIds: assets.elementIdsByAssetId, clockMs: 0 });
 
-  fs.writeFileSync(
-    path.join(root, "videos", FILM_ID, "film.json"),
-    `${JSON.stringify(film, null, 2)}\n`,
-    "utf8",
-  );
-  fs.writeFileSync(path.join(root, "src/dl/films", `${FILM_ID}.ts`), filmModule(film), "utf8");
-  fs.writeFileSync(
-    path.join(root, "src/dl/activeFilm.ts"),
-    `import { ${exportName(FILM_ID)} } from "./films/${FILM_ID}";\nimport type { Film } from "./schema";\n\nexport const ACTIVE_FILM: Film = ${exportName(FILM_ID)};\n`,
-    "utf8",
-  );
+  // film.json and its generated shadow are only ever written together, by the project's own
+  // store, which validates before either lands.
+  writeFilm(FILM_ID, film);
+  setActiveFilm(FILM_ID);
   buildSvgSources();
 
   const clipCount = [scene.background, ...scene.props].reduce(

@@ -4,7 +4,7 @@
 
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
-import { accentAt, PALETTE, rule, useLayout, BACKGROUND_THEMES, resolveFont, ThemeContext } from "./tokens";
+import { accentAt, PALETTE, rule, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext } from "./tokens";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext } from "./accent";
 import { BlockView } from "./Block";
@@ -181,6 +181,7 @@ const Rail: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline 
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const layout = useLayout();
+  const palette = useTokens();
   const current = shotAt(timeline, frame);
   const total = totalFrames(timeline);
   const progress = frame / total;
@@ -189,7 +190,26 @@ const Rail: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline 
   const stamp = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
   const chapterIndex = Math.min(current.chapter, film.chapters.length - 1);
 
+  // The rail is chrome, and chrome has to stay readable over whatever the film is doing behind
+  // it. A node graph leaves the bottom of the frame empty, but a scene can put a star or a limb
+  // straight through a glyph, so the rail carries its own ground rather than trusting the frame.
+  const scrimHeight = layout.margin.bottom * 3.2;
+
   return (
+    <>
+    <div
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: scrimHeight,
+        pointerEvents: "none",
+        // Opaque for the band the rail actually occupies, then faded out: a star showing through
+        // a glyph at even a few percent still reads as a collision.
+        background: `linear-gradient(to top, ${palette.canvas} 0%, ${palette.canvas} 56%, ${accentAt(palette.canvas, 0)} 100%)`,
+      }}
+    />
     <div
       style={{
         position: "absolute",
@@ -234,6 +254,7 @@ const Rail: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline 
         </div>
       )}
     </div>
+    </>
   );
 };
 

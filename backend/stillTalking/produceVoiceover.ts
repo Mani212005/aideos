@@ -1,36 +1,48 @@
 /**
  * File Description: Audio-first narration step for the film "Still Talking".
- * Runs the project's TTS pipeline over the beat sheet's spoken narration, writes the master
- * voiceover into the video package, and records the measured per-shot durations and word offsets to
- * videos/still-talking/voiceover_words.json. The film's visuals are compiled from that measurement,
- * so the timeline is locked to the audio rather than the other way round.
+ * Runs the project's narration pipeline over the beat sheet's spoken text and records the shot
+ * spine it produced: which shot each narration segment belongs to, where it starts, how long it
+ * runs, and when each word inside it is spoken. The film's picture is compiled from that
+ * measurement, so a re-recorded take retimes the film instead of drifting away from it.
+ *
+ * The pipeline itself owns voiceover.wav, captions.vtt and voiceover_words.json, which are shared
+ * artefacts every film produces. This step owns shot-spine.json, the same measurement keyed by
+ * shot, and that is the only narration artefact the film builder reads.
  */
 
 import * as fs from "fs";
 import * as path from "path";
-import { execFileSync, spawnSync } from "child_process";
+import { spawnSync } from "child_process";
 import dotenv from "dotenv";
-import { produceAudioPipeline, measureAudioDuration } from "../audio";
+import { produceAudioPipeline } from "../audio";
 import { narrationSegments, spokenWordCount, BEATS } from "./beats";
 
 dotenv.config();
 
 /**
- * Reading rate handed to the macOS `say` fallback, in its own nominal words per minute.
- * Its default of 175 reads at roughly 210 real words a minute, which is conversation speed and
- * far too quick to narrate over. 140 lands the film at a documentary cadence.
+ * Delivery loudness for the master, in LUFS, with its true-peak ceiling in dBFS.
+ * The pipeline peak-normalizes, which leaves a neural voice around -21 LUFS: correct on paper and
+ * noticeably quiet next to anything else on a feed. Loudness normalizing on top of it is a per-film
+ * mastering decision, so it lives here rather than in the shared pipeline.
  */
-const NARRATION_RATE_WPM = 140;
+const TARGET_LUFS = -16;
+const TARGET_TRUE_PEAK_DB = -1;
+
+/**
+ * Narration pace multiplier handed to the synthesizer.
+ * Slightly under one reads as narration rather than as conversation, which is what a film about
+ * something that has been travelling for fifty years needs.
+ */
+const NARRATION_SPEED = 0.94;
 
 /** Silence held between narration beats, which is also the film's smallest breathing space. */
-const BEAT_GAP_MS = 550;
-
-/** Peak the mastered voiceover is normalized to, leaving a decibel of headroom below full scale. */
-const TARGET_PEAK_DB = -1;
+const BEAT_GAP_MS = 520;
 
 /** The measurement the film builder reads back: what was said, and exactly when. */
 export interface VoiceoverTiming {
   totalDurationSec: number;
+  /** Which synthesizer produced the take, recorded for provenance. */
+  ttsBackend?: string;
   segments: Array<{
     shotId: string;
     text: string;
@@ -45,41 +57,73 @@ export function packageDir(): string {
   return path.resolve(__dirname, "../../videos/still-talking");
 }
 
-/** Path of the measured timing artefact the film builder consumes. */
+/** Path of the shot spine artefact the film builder consumes. */
 export function timingPath(): string {
-  return path.join(packageDir(), "voiceover_words.json");
+  return path.join(packageDir(), "shot-spine.json");
 }
 
-/** Reads the peak level of a wav in dBFS, as ffmpeg's volumedetect filter reports it. */
+/** Runs ffmpeg and hands back its report, which is written to stderr rather than to stdout. */
+function ffmpegReport(args: string[]): string {
+  const run = spawnSync("ffmpeg", args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+  if (run.error) throw run.error;
+  return run.stderr ?? "";
+}
+
+/** Measured loudness of a wav: integrated LUFS and true peak in dBFS. */
+function measureLoudness(wavPath: string): { lufs: number; truePeakDb: number } {
+  const report = ffmpegReport([
+    "-i", wavPath,
+    "-af", `loudnorm=I=${TARGET_LUFS}:TP=${TARGET_TRUE_PEAK_DB}:LRA=7:print_format=json`,
+    "-f", "null", "-",
+  ]);
+  const json = report.slice(report.lastIndexOf("{"), report.lastIndexOf("}") + 1);
+  const parsed = JSON.parse(json) as { input_i: string; input_tp: string };
+  return { lufs: Number.parseFloat(parsed.input_i), truePeakDb: Number.parseFloat(parsed.input_tp) };
+}
+
+/** Reads the sample peak of a wav in dBFS, as ffmpeg's volumedetect filter reports it. */
 function measurePeakDb(wavPath: string): number {
-  // volumedetect writes its report to stderr, which is where the measurement has to be read from.
-  const run = spawnSync("ffmpeg", ["-i", wavPath, "-af", "volumedetect", "-f", "null", "-"], {
-    encoding: "utf8",
-  });
-  const match = (run.stderr ?? "").match(/max_volume:\s*(-?[\d.]+) dB/);
+  const report = ffmpegReport(["-i", wavPath, "-af", "volumedetect", "-f", "null", "-"]);
+  const match = report.match(/max_volume:\s*(-?[\d.]+) dB/);
   if (!match) throw new Error(`Could not read a peak level from ${wavPath}.`);
   return Number.parseFloat(match[1]);
 }
 
 /**
- * Peak-normalizes the master voiceover so it sits a decibel below full scale.
- * Raw synthesis peaks several decibels low, which plays quiet next to anything else on a feed;
- * normalizing to a fixed target rather than to zero keeps the headroom that stops it clipping.
+ * Masters the narration for delivery without changing its length.
+ * Two things have to be true at once and neither follows from the other. Loudness normalization
+ * rides the voice's isolated plosive peaks down and brings the body of the narration up, which is
+ * what puts the film at the level everything else on a feed sits at; peak normalization then
+ * spends the headroom that leaves, so the file is as loud as it can be while still holding a
+ * decibel clear of full scale. Doing only the second is how a correct-looking master plays quiet.
  */
-function normalizePeak(wavPath: string): number {
-  const before = measurePeakDb(wavPath);
-  const gainDb = TARGET_PEAK_DB - before;
-  const staged = `${wavPath}.normalized.wav`;
-  execFileSync(
-    "ffmpeg",
-    ["-y", "-i", wavPath, "-af", `volume=${gainDb.toFixed(2)}dB`, "-ar", "44100", "-ac", "2", staged],
-    { stdio: ["ignore", "ignore", "pipe"] },
-  );
-  fs.renameSync(staged, wavPath);
-  return measurePeakDb(wavPath);
+function masterForDelivery(wavPath: string): { lufs: number; truePeakDb: number } {
+  const staged = `${wavPath}.mastered.wav`;
+  ffmpegReport([
+    "-y", "-i", wavPath,
+    "-af", `loudnorm=I=${TARGET_LUFS}:TP=${TARGET_TRUE_PEAK_DB}:LRA=7`,
+    "-ar", "44100", "-ac", "2", staged,
+  ]);
+  if (!fs.existsSync(staged)) throw new Error(`Mastering produced no output for ${wavPath}.`);
+
+  const gainDb = TARGET_TRUE_PEAK_DB - measurePeakDb(staged);
+  const peaked = `${wavPath}.peaked.wav`;
+  ffmpegReport([
+    "-y", "-i", staged,
+    "-af", `volume=${gainDb.toFixed(2)}dB`,
+    "-ar", "44100", "-ac", "2", peaked,
+  ]);
+  fs.rmSync(staged, { force: true });
+  fs.renameSync(peaked, wavPath);
+
+  // Remotion resolves staticFile() against public/, so the copy there has to be the mastered one.
+  const publicCopy = path.resolve(__dirname, "../../public/voiceover.wav");
+  if (fs.existsSync(path.dirname(publicCopy))) fs.copyFileSync(wavPath, publicCopy);
+
+  return { lufs: measureLoudness(wavPath).lufs, truePeakDb: measurePeakDb(wavPath) };
 }
 
-/** Synthesizes the narration and records its measured timing next to the wav. */
+/** Synthesizes the narration and records the shot spine it produced. */
 export async function produceVoiceover(): Promise<VoiceoverTiming> {
   const outDir = packageDir();
   fs.mkdirSync(outDir, { recursive: true });
@@ -91,7 +135,7 @@ export async function produceVoiceover(): Promise<VoiceoverTiming> {
 
   const result = await produceAudioPipeline(segments, outDir, {
     gapMs: BEAT_GAP_MS,
-    sayRateWpm: NARRATION_RATE_WPM,
+    speed: NARRATION_SPEED,
   });
 
   if (result.segments.length !== BEATS.length) {
@@ -101,30 +145,26 @@ export async function produceVoiceover(): Promise<VoiceoverTiming> {
     );
   }
 
-  const peakDb = normalizePeak(result.voiceoverPath);
-  const totalDurationSec = await measureAudioDuration(result.voiceoverPath);
+  const mastered = masterForDelivery(result.voiceoverPath);
 
-  // Normalizing re-encodes the master, so the shot durations are re-anchored to the length the
-  // file actually has now. The film's frame count comes from this number and nothing else.
-  const shotDurations = [...result.shotDurations];
-  const drift = totalDurationSec - shotDurations.reduce((a, b) => a + b, 0);
-  shotDurations[shotDurations.length - 1] += drift;
-
+  // Shot spans run boundary to boundary, so a shot starts exactly where its narration does and
+  // the spans sum to the length of the wav.
   let cursor = 0;
   const timing: VoiceoverTiming = {
-    totalDurationSec,
+    totalDurationSec: result.totalAudioDuration,
+    ttsBackend: result.ttsBackend,
     segments: result.segments.map((segment, i) => {
       const startSec = cursor;
-      cursor += shotDurations[i];
+      cursor += result.shotDurations[i];
       return {
         shotId: BEATS[i].id,
         text: segment.text,
         startSec: Number(startSec.toFixed(3)),
-        durationSec: Number(shotDurations[i].toFixed(3)),
+        durationSec: Number(result.shotDurations[i].toFixed(3)),
         words: segment.words.map((w) => ({
           word: w.punctuated_word ?? w.word,
-          startSec: Number((startSec + w.start).toFixed(3)),
-          endSec: Number((startSec + w.end).toFixed(3)),
+          startSec: Number((segment.startOffset + w.start).toFixed(3)),
+          endSec: Number((segment.startOffset + w.end).toFixed(3)),
         })),
       };
     }),
@@ -132,12 +172,14 @@ export async function produceVoiceover(): Promise<VoiceoverTiming> {
 
   fs.writeFileSync(timingPath(), `${JSON.stringify(timing, null, 2)}\n`, "utf8");
   console.log(
-    `[still-talking] voiceover.wav is ${totalDurationSec.toFixed(2)}s across ${timing.segments.length} shots, peaking at ${peakDb.toFixed(1)} dBFS.`,
+    `[still-talking] voiceover.wav is ${result.totalAudioDuration.toFixed(2)}s across ` +
+      `${timing.segments.length} shots, synthesized with ${result.ttsBackend}, ` +
+      `mastered to ${mastered.lufs.toFixed(1)} LUFS / ${mastered.truePeakDb.toFixed(1)} dBTP.`,
   );
   return timing;
 }
 
-/** Reads back the measured timing, failing loudly when the audio step has not run yet. */
+/** Reads back the measured shot spine, failing loudly when the audio step has not run yet. */
 export function readVoiceoverTiming(): VoiceoverTiming {
   const file = timingPath();
   if (!fs.existsSync(file)) {
