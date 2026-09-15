@@ -82,6 +82,12 @@ export interface ProduceAudioOptions {
   speed?: number;
   /** Called once per synthesized chunk so long runs can report progress. */
   onProgress?: (done: number, total: number, label: string) => void;
+  /**
+   * Also copy the voiceover and captions into public/ so the editor's live preview picks them up.
+   * Defaults to true. Tests that drive this pipeline against a throwaway probe package must pass
+   * false, or every test run overwrites whatever film's audio is actually live in public/.
+   */
+  syncToPreview?: boolean;
 }
 
 /** Shots shorter than the schema's floor get merged into their neighbour. */
@@ -363,7 +369,8 @@ export async function produceAudioPipeline(
 
   // Remotion resolves staticFile() against public/, so the render always needs a copy there.
   const publicDir = path.resolve(__dirname, "../public");
-  if (path.resolve(outDir) !== publicDir) {
+  const syncToPreview = options?.syncToPreview ?? true;
+  if (syncToPreview && path.resolve(outDir) !== publicDir) {
     await fs.mkdir(publicDir, { recursive: true });
     await fs.copyFile(voiceoverPath, path.join(publicDir, "voiceover.wav"));
   }
@@ -401,7 +408,7 @@ export async function produceAudioPipeline(
   const wordsPath = path.join(outDir, "voiceover_words.json");
   await fs.writeFile(wordsPath, JSON.stringify({ words: absoluteWords }, null, 2), "utf-8");
 
-  if (path.resolve(outDir) !== publicDir) {
+  if (syncToPreview && path.resolve(outDir) !== publicDir) {
     await fs.copyFile(captionsPath, path.join(publicDir, "captions.vtt"));
   }
 

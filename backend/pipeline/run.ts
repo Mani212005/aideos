@@ -307,6 +307,7 @@ export async function runProduction(
           backend: request.ttsBackend,
           voice: request.voice,
           speed: request.speed,
+          syncToPreview: request.syncToPreview,
           onProgress: (done, total, label) =>
             emit("narrate", "running", `synthesizing ${done}/${total}: "${label}"`, done / total),
         });
