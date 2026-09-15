@@ -68,9 +68,9 @@ export const stillTalkingFilm: Film = {
     "schemaVersion": "1.0.0",
     "sceneId": "still-talking",
     "fps": 30,
-    "durationFrames": 4555,
+    "durationFrames": 4621,
     "audioSource": "videos/still-talking/voiceover.wav",
-    "audioDurationMs": 151834,
+    "audioDurationMs": 154034,
     "sceneSize": {
       "w": 1920,
       "h": 1920
@@ -98,7 +98,7 @@ export const stillTalkingFilm: Film = {
             "from": 0,
             "to": -46,
             "startFrame": 0,
-            "durationFrames": 4555,
+            "durationFrames": 4621,
             "easing": "linear"
           }
         ]
@@ -152,7 +152,7 @@ export const stillTalkingFilm: Film = {
               "from": -80,
               "to": -244,
               "startFrame": 1641,
-              "durationFrames": 2914,
+              "durationFrames": 2980,
               "easing": "linear"
             },
             {
@@ -204,7 +204,7 @@ export const stillTalkingFilm: Film = {
               "from": 0.7,
               "to": 0.9,
               "startFrame": 3986,
-              "durationFrames": 569,
+              "durationFrames": 635,
               "easing": "linear"
             }
           ]
@@ -257,7 +257,7 @@ export const stillTalkingFilm: Film = {
               "from": -320,
               "to": -1050,
               "startFrame": 1641,
-              "durationFrames": 2914,
+              "durationFrames": 2980,
               "easing": "linear"
             },
             {
@@ -296,7 +296,7 @@ export const stillTalkingFilm: Film = {
               "from": 0.7,
               "to": 0.4,
               "startFrame": 3641,
-              "durationFrames": 914,
+              "durationFrames": 980,
               "easing": "linear"
             }
           ]
@@ -2017,7 +2017,7 @@ export const stillTalkingFilm: Film = {
               "from": 0.78,
               "to": 0.72,
               "startFrame": 4328,
-              "durationFrames": 227,
+              "durationFrames": 293,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -2132,7 +2132,7 @@ export const stillTalkingFilm: Film = {
               "from": -66,
               "to": -18,
               "startFrame": 4328,
-              "durationFrames": 227
+              "durationFrames": 293
             },
             {
               "clipId": "whip-out",
@@ -2167,7 +2167,7 @@ export const stillTalkingFilm: Film = {
               "from": 0,
               "to": 236,
               "startFrame": 4328,
-              "durationFrames": 227,
+              "durationFrames": 293,
               "easing": "linear"
             },
             {
@@ -2194,7 +2194,7 @@ export const stillTalkingFilm: Film = {
               "from": -7,
               "to": -11,
               "startFrame": 4328,
-              "durationFrames": 227,
+              "durationFrames": 293,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -2458,7 +2458,7 @@ export const stillTalkingFilm: Film = {
               "from": 1,
               "to": 1.6,
               "startFrame": 4497,
-              "durationFrames": 58,
+              "durationFrames": 124,
               "origin": {
                 "x": 22,
                 "y": 24
@@ -2473,7 +2473,7 @@ export const stillTalkingFilm: Film = {
               "from": 1,
               "to": 0.2,
               "startFrame": 4328,
-              "durationFrames": 181
+              "durationFrames": 194
             },
             {
               "clipId": "glint-catches",
@@ -2483,8 +2483,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.2,
               "to": 1,
-              "startFrame": 4509,
-              "durationFrames": 46
+              "startFrame": 4522,
+              "durationFrames": 99
             },
             {
               "clipId": "pulse-1-x",
@@ -4130,7 +4130,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "longer-than-the-sun",
       "ch": "still talking",
-      "dur": 1.9333,
+      "dur": 4.1333,
       "stage": "frame",
       "look": "all",
       "move": "pan",
@@ -4153,7 +4153,7 @@ export const stillTalkingFilm: Film = {
     "src": "videos/still-talking/voiceover.wav",
     "volume": 1,
     "speed": 1,
-    "durationSec": 151.8333
+    "durationSec": 154.0333
   },
   "subtitles": false
 };
