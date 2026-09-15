@@ -66,6 +66,31 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Rasterize review stills with headless Chrome via `backend/scene/renderStill.ts`, never `qlmanage`: qlmanage ignores the document aspect ratio and emits a square thumbnail, so stills made with it are a misleading record of the frame. `renderFrameStill` verifies the PNG dimensions and throws if they are wrong.
 - Anything a model generates into `videos/<slug>/visuals/` passes `backend/scene/generateSvg.ts` first. Its validators enforce every rule the prompt states (mandated viewBox, centre-60% containment, well-formedness, frame-driven purity, self-containment) and the synthesis entry points retry with the errors fed back. Add a rule to the validator, not only to the prompt: a rule that is only asked for is not enforced.
 
+## Scene films (a film whose canvas is a scene)
+
+- A film's canvas is either the node graph (`film.canvas`) or a vector scene (`film.scene`), never
+  both: `src/dl/Film.tsx` renders `SceneStage` in place of `CanvasGraph` when `scene` is present.
+  `videos/still-talking/` is the worked example; its [README](videos/still-talking/README.md)
+  covers the staging conventions and the rebuild commands.
+- One `Scene` spans the whole film, not one per shot. That is what makes continuity real, because
+  the engine holds each element's last value until another clip takes over. Shots then carry only
+  the text cards that overlay it.
+- `SceneView` is pure and cannot read disk, so committed assets reach the Remotion bundle through
+  the generated `src/dl/scene/assets/svgSources.generated.ts`. Regenerate it with
+  `npx tsx backend/scene/buildSvgSources.ts` whenever a `videos/*/visuals/*.svg` changes.
+- Compose a scene film on a **square** scene space (1920 x 1920). Each format takes a 1080-wide
+  strip through the centre, so the shared safe area is the centre 1080 square; the wide cut also
+  sees the left and right wings, and the reel also sees the top and bottom bands. `SceneStage`
+  covers rather than contains, so a scene of any other aspect would be cropped, not letterboxed.
+- Two rules the engine cannot check, both enforced by the `Timeline` builder in
+  `backend/stillTalking/scene.ts`: a clip must start from the value the previous clip on that
+  property left behind (otherwise the value snaps on screen), and one element may only ever be
+  given one transform `origin` (the compiler applies the last origin it sees to every frame).
+- Opacity has one trap worth knowing: an authored `opacity` attribute and a clip that drives
+  opacity both want the same attribute. The compiled state wins only when a clip actually drives
+  it (`SvgElementState.opacityDriven`), so an element authored `opacity="0"` can be faded fully in,
+  and an element authored faint can be translated without being forced opaque.
+
 ## Editor design system (editor/**)
 
 - The editor chrome has its own design system, entirely separate from the rendered-video design
