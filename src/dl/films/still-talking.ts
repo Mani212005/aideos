@@ -68,9 +68,9 @@ export const stillTalkingFilm: Film = {
     "schemaVersion": "1.0.0",
     "sceneId": "still-talking",
     "fps": 30,
-    "durationFrames": 4857,
+    "durationFrames": 4555,
     "audioSource": "videos/still-talking/voiceover.wav",
-    "audioDurationMs": 161898,
+    "audioDurationMs": 151834,
     "sceneSize": {
       "w": 1920,
       "h": 1920
@@ -98,7 +98,7 @@ export const stillTalkingFilm: Film = {
             "from": 0,
             "to": -46,
             "startFrame": 0,
-            "durationFrames": 4857,
+            "durationFrames": 4555,
             "easing": "linear"
           }
         ]
@@ -128,7 +128,7 @@ export const stillTalkingFilm: Film = {
               "from": 0,
               "to": -44,
               "startFrame": 0,
-              "durationFrames": 1578,
+              "durationFrames": 1485,
               "easing": "linear"
             },
             {
@@ -139,8 +139,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": -44,
               "to": -80,
-              "startFrame": 1578,
-              "durationFrames": 164,
+              "startFrame": 1485,
+              "durationFrames": 156,
               "easing": "expoInOut"
             },
             {
@@ -151,8 +151,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": -80,
               "to": -244,
-              "startFrame": 1742,
-              "durationFrames": 3115,
+              "startFrame": 1641,
+              "durationFrames": 2914,
               "easing": "linear"
             },
             {
@@ -164,8 +164,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.7,
               "to": 0.3,
-              "startFrame": 1154,
-              "durationFrames": 1027,
+              "startFrame": 1098,
+              "durationFrames": 957,
               "easing": "linear"
             },
             {
@@ -177,8 +177,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.7,
               "to": 0.95,
-              "startFrame": 2300,
-              "durationFrames": 1513,
+              "startFrame": 2161,
+              "durationFrames": 1403,
               "easing": "linear"
             },
             {
@@ -190,8 +190,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.7,
               "to": 0.35,
-              "startFrame": 3274,
-              "durationFrames": 626,
+              "startFrame": 3062,
+              "durationFrames": 579,
               "easing": "linear"
             },
             {
@@ -203,8 +203,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.7,
               "to": 0.9,
-              "startFrame": 4238,
-              "durationFrames": 619,
+              "startFrame": 3986,
+              "durationFrames": 569,
               "easing": "linear"
             }
           ]
@@ -233,7 +233,7 @@ export const stillTalkingFilm: Film = {
               "from": 0,
               "to": -162,
               "startFrame": 0,
-              "durationFrames": 1578,
+              "durationFrames": 1485,
               "easing": "linear"
             },
             {
@@ -244,8 +244,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": -162,
               "to": -320,
-              "startFrame": 1578,
-              "durationFrames": 164,
+              "startFrame": 1485,
+              "durationFrames": 156,
               "easing": "expoInOut"
             },
             {
@@ -256,8 +256,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": -320,
               "to": -1050,
-              "startFrame": 1742,
-              "durationFrames": 3115,
+              "startFrame": 1641,
+              "durationFrames": 2914,
               "easing": "linear"
             },
             {
@@ -269,8 +269,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.7,
               "to": 0.34,
-              "startFrame": 1346,
-              "durationFrames": 954,
+              "startFrame": 1274,
+              "durationFrames": 887,
               "easing": "linear"
             },
             {
@@ -282,8 +282,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.7,
               "to": 0.96,
-              "startFrame": 2517,
-              "durationFrames": 1134,
+              "startFrame": 2362,
+              "durationFrames": 1040,
               "easing": "linear"
             },
             {
@@ -295,8 +295,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.7,
               "to": 0.4,
-              "startFrame": 3900,
-              "durationFrames": 957,
+              "startFrame": 3641,
+              "durationFrames": 914,
               "easing": "linear"
             }
           ]
@@ -324,8 +324,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 3277,
-              "durationFrames": 64
+              "startFrame": 3065,
+              "durationFrames": 54
             },
             {
               "clipId": "boundary-approach",
@@ -335,8 +335,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": -380,
-              "startFrame": 3274,
-              "durationFrames": 165,
+              "startFrame": 3062,
+              "durationFrames": 140,
               "easing": "linear"
             },
             {
@@ -347,8 +347,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": -380,
               "to": -742,
-              "startFrame": 3439,
-              "durationFrames": 204,
+              "startFrame": 3202,
+              "durationFrames": 192,
               "easing": "linear"
             },
             {
@@ -359,8 +359,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": -742,
               "to": -1012,
-              "startFrame": 3643,
-              "durationFrames": 51,
+              "startFrame": 3394,
+              "durationFrames": 49,
               "easing": "linear"
             },
             {
@@ -371,8 +371,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": -1012,
               "to": -2040,
-              "startFrame": 3694,
-              "durationFrames": 731,
+              "startFrame": 3443,
+              "durationFrames": 728,
               "easing": "linear"
             },
             {
@@ -383,8 +383,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 4257,
-              "durationFrames": 168
+              "startFrame": 4005,
+              "durationFrames": 166
             },
             {
               "clipId": "arc-draw",
@@ -394,8 +394,8 @@ export const stillTalkingFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 3294,
-              "durationFrames": 190,
+              "startFrame": 3079,
+              "durationFrames": 165,
               "easing": "linear"
             },
             {
@@ -406,8 +406,8 @@ export const stillTalkingFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 3341,
-              "durationFrames": 195,
+              "startFrame": 3119,
+              "durationFrames": 175,
               "easing": "linear"
             },
             {
@@ -431,10 +431,10 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 108,
-              "startFrame": 3291,
-              "durationFrames": 87,
+              "startFrame": 3073,
+              "durationFrames": 61,
               "easing": "linear",
-              "staggerFrames": 5
+              "staggerFrames": 4
             },
             {
               "clipId": "wind-stall",
@@ -457,8 +457,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 108,
               "to": 152,
-              "startFrame": 3452,
-              "durationFrames": 183,
+              "startFrame": 3215,
+              "durationFrames": 172,
               "easing": "expoOut"
             },
             {
@@ -482,7 +482,7 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 3615,
+              "startFrame": 3354,
               "durationFrames": 34,
               "staggerFrames": 4
             },
@@ -527,8 +527,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 0.55,
-              "startFrame": 3467,
-              "durationFrames": 42,
+              "startFrame": 3229,
+              "durationFrames": 39,
               "staggerFrames": 4
             }
           ]
@@ -561,8 +561,8 @@ export const stillTalkingFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 322,
-              "durationFrames": 122,
+              "startFrame": 323,
+              "durationFrames": 103,
               "easing": "linear",
               "staggerFrames": 22
             },
@@ -575,7 +575,7 @@ export const stillTalkingFilm: Film = {
               "from": 0,
               "to": 1,
               "startFrame": 329,
-              "durationFrames": 68
+              "durationFrames": 58
             },
             {
               "clipId": "earth-dim",
@@ -585,8 +585,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.4,
-              "startFrame": 1104,
-              "durationFrames": 204
+              "startFrame": 1050,
+              "durationFrames": 189
             },
             {
               "clipId": "earth-last-look",
@@ -596,7 +596,7 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.4,
               "to": 0,
-              "startFrame": 2095,
+              "startFrame": 1969,
               "durationFrames": 75
             },
             {
@@ -607,8 +607,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 2.6,
-              "startFrame": 341,
-              "durationFrames": 94,
+              "startFrame": 339,
+              "durationFrames": 79,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -622,8 +622,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.9,
               "to": 0,
-              "startFrame": 341,
-              "durationFrames": 94
+              "startFrame": 339,
+              "durationFrames": 79
             },
             {
               "clipId": "earth-ping-2-reset",
@@ -633,7 +633,7 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 2.6,
               "to": 1,
-              "startFrame": 435,
+              "startFrame": 418,
               "durationFrames": 7,
               "easing": "hold",
               "origin": {
@@ -649,7 +649,7 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 0.9,
-              "startFrame": 435,
+              "startFrame": 418,
               "durationFrames": 7,
               "easing": "hold"
             },
@@ -661,8 +661,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 2.6,
-              "startFrame": 442,
-              "durationFrames": 103,
+              "startFrame": 425,
+              "durationFrames": 89,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -676,8 +676,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.9,
               "to": 0,
-              "startFrame": 442,
-              "durationFrames": 103
+              "startFrame": 425,
+              "durationFrames": 89
             },
             {
               "clipId": "rings-shrink-x-1",
@@ -687,8 +687,8 @@ export const stillTalkingFilm: Film = {
               "property": "scaleX",
               "from": 1,
               "to": 0.62,
-              "startFrame": 1154,
-              "durationFrames": 238,
+              "startFrame": 1098,
+              "durationFrames": 218,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -702,8 +702,8 @@ export const stillTalkingFilm: Film = {
               "property": "scaleX",
               "from": 0.62,
               "to": 0.42,
-              "startFrame": 1742,
-              "durationFrames": 225,
+              "startFrame": 1641,
+              "durationFrames": 199,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -717,8 +717,8 @@ export const stillTalkingFilm: Film = {
               "property": "scaleX",
               "from": 0.42,
               "to": 0.54,
-              "startFrame": 1967,
-              "durationFrames": 214,
+              "startFrame": 1840,
+              "durationFrames": 215,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -732,8 +732,8 @@ export const stillTalkingFilm: Film = {
               "property": "scaleY",
               "from": 1,
               "to": 0.62,
-              "startFrame": 1154,
-              "durationFrames": 238,
+              "startFrame": 1098,
+              "durationFrames": 218,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -747,8 +747,8 @@ export const stillTalkingFilm: Film = {
               "property": "scaleY",
               "from": 0.62,
               "to": 0.42,
-              "startFrame": 1742,
-              "durationFrames": 225,
+              "startFrame": 1641,
+              "durationFrames": 199,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -762,8 +762,8 @@ export const stillTalkingFilm: Film = {
               "property": "scaleY",
               "from": 0.42,
               "to": 0.045,
-              "startFrame": 1967,
-              "durationFrames": 171,
+              "startFrame": 1840,
+              "durationFrames": 172,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -777,8 +777,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 92,
-              "startFrame": 1967,
-              "durationFrames": 214,
+              "startFrame": 1840,
+              "durationFrames": 215,
               "easing": "linear"
             },
             {
@@ -789,7 +789,7 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.95,
-              "startFrame": 1978,
+              "startFrame": 1851,
               "durationFrames": 75
             },
             {
@@ -800,8 +800,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.95,
               "to": 0,
-              "startFrame": 2117,
-              "durationFrames": 124
+              "startFrame": 1991,
+              "durationFrames": 117
             }
           ]
         }
@@ -828,8 +828,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1304,
-              "durationFrames": 70
+              "startFrame": 1235,
+              "durationFrames": 64
             },
             {
               "clipId": "jup-approach",
@@ -839,8 +839,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 1780,
               "to": 80,
-              "startFrame": 1311,
-              "durationFrames": 230,
+              "startFrame": 1242,
+              "durationFrames": 209,
               "easing": "expoOut"
             },
             {
@@ -851,8 +851,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 80,
               "to": -2140,
-              "startFrame": 1586,
-              "durationFrames": 170,
+              "startFrame": 1493,
+              "durationFrames": 160,
               "easing": "expoIn"
             },
             {
@@ -863,8 +863,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.5,
               "to": 1.9,
-              "startFrame": 1311,
-              "durationFrames": 230,
+              "startFrame": 1242,
+              "durationFrames": 209,
               "easing": "expoOut",
               "origin": {
                 "x": 0,
@@ -879,8 +879,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1.9,
               "to": 2.45,
-              "startFrame": 1586,
-              "durationFrames": 170,
+              "startFrame": 1493,
+              "durationFrames": 160,
               "easing": "expoIn",
               "origin": {
                 "x": 0,
@@ -895,8 +895,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1699,
-              "durationFrames": 52
+              "startFrame": 1600,
+              "durationFrames": 49
             },
             {
               "clipId": "bands-a",
@@ -907,8 +907,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 48,
-              "startFrame": 1351,
-              "durationFrames": 400,
+              "startFrame": 1278,
+              "durationFrames": 371,
               "easing": "linear"
             },
             {
@@ -920,8 +920,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": -40,
-              "startFrame": 1351,
-              "durationFrames": 400,
+              "startFrame": 1278,
+              "durationFrames": 371,
               "easing": "linear"
             },
             {
@@ -933,8 +933,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 22,
-              "startFrame": 1351,
-              "durationFrames": 400,
+              "startFrame": 1278,
+              "durationFrames": 371,
               "easing": "linear"
             },
             {
@@ -946,8 +946,8 @@ export const stillTalkingFilm: Film = {
               "property": "rotate",
               "from": 0,
               "to": 26,
-              "startFrame": 1351,
-              "durationFrames": 400,
+              "startFrame": 1278,
+              "durationFrames": 371,
               "easing": "linear",
               "origin": {
                 "x": -62,
@@ -963,8 +963,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 34,
-              "startFrame": 1351,
-              "durationFrames": 400,
+              "startFrame": 1278,
+              "durationFrames": 371,
               "easing": "linear"
             },
             {
@@ -975,8 +975,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.8,
               "to": 1,
-              "startFrame": 1369,
-              "durationFrames": 357,
+              "startFrame": 1295,
+              "durationFrames": 330,
               "easing": "linear"
             }
           ]
@@ -1005,8 +1005,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1696,
-              "durationFrames": 73
+              "startFrame": 1597,
+              "durationFrames": 68
             },
             {
               "clipId": "sat-approach",
@@ -1016,8 +1016,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 1820,
               "to": 60,
-              "startFrame": 1703,
-              "durationFrames": 242,
+              "startFrame": 1604,
+              "durationFrames": 216,
               "easing": "expoOut"
             },
             {
@@ -1028,7 +1028,7 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 60,
               "to": -2180,
-              "startFrame": 1980,
+              "startFrame": 1853,
               "durationFrames": 213,
               "easing": "expoIn"
             },
@@ -1040,8 +1040,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.45,
               "to": 1.5,
-              "startFrame": 1703,
-              "durationFrames": 242,
+              "startFrame": 1604,
+              "durationFrames": 216,
               "easing": "expoOut",
               "origin": {
                 "x": 0,
@@ -1056,7 +1056,7 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1.82,
-              "startFrame": 1980,
+              "startFrame": 1853,
               "durationFrames": 213,
               "easing": "expoIn",
               "origin": {
@@ -1072,8 +1072,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 1820,
               "to": 60,
-              "startFrame": 1703,
-              "durationFrames": 242,
+              "startFrame": 1604,
+              "durationFrames": 216,
               "easing": "expoOut"
             },
             {
@@ -1084,7 +1084,7 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 60,
               "to": -2180,
-              "startFrame": 1980,
+              "startFrame": 1853,
               "durationFrames": 213,
               "easing": "expoIn"
             },
@@ -1096,8 +1096,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.45,
               "to": 0.82,
-              "startFrame": 1703,
-              "durationFrames": 242,
+              "startFrame": 1604,
+              "durationFrames": 216,
               "easing": "expoOut",
               "origin": {
                 "x": 0,
@@ -1112,7 +1112,7 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.82,
               "to": 0.98,
-              "startFrame": 1980,
+              "startFrame": 1853,
               "durationFrames": 213,
               "easing": "expoIn",
               "origin": {
@@ -1129,8 +1129,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 2117,
-              "durationFrames": 74
+              "startFrame": 1991,
+              "durationFrames": 72
             },
             {
               "clipId": "rings-draw",
@@ -1145,8 +1145,8 @@ export const stillTalkingFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 1765,
-              "durationFrames": 103,
+              "startFrame": 1661,
+              "durationFrames": 91,
               "easing": "linear",
               "staggerFrames": 16
             },
@@ -1159,8 +1159,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1909,
-              "durationFrames": 41
+              "startFrame": 1777,
+              "durationFrames": 48
             },
             {
               "clipId": "haze-swell",
@@ -1170,8 +1170,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 1.55,
-              "startFrame": 1886,
-              "durationFrames": 124,
+              "startFrame": 1768,
+              "durationFrames": 115,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1186,8 +1186,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.35,
-              "startFrame": 2021,
-              "durationFrames": 74
+              "startFrame": 1894,
+              "durationFrames": 75
             }
           ]
         }
@@ -1214,8 +1214,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 2520,
-              "durationFrames": 58
+              "startFrame": 2365,
+              "durationFrames": 55
             },
             {
               "clipId": "survey-settle",
@@ -1225,8 +1225,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1.18,
               "to": 1.35,
-              "startFrame": 2520,
-              "durationFrames": 81,
+              "startFrame": 2365,
+              "durationFrames": 76,
               "origin": {
                 "x": 100.5,
                 "y": 25.5
@@ -1240,8 +1240,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1.35,
               "to": 5,
-              "startFrame": 2694,
-              "durationFrames": 168,
+              "startFrame": 2528,
+              "durationFrames": 155,
               "easing": "expoIn",
               "origin": {
                 "x": 100.5,
@@ -1256,8 +1256,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 2709,
-              "durationFrames": 137
+              "startFrame": 2542,
+              "durationFrames": 127
             },
             {
               "clipId": "plates-taken",
@@ -1326,8 +1326,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 2529,
-              "durationFrames": 16,
+              "startFrame": 2374,
+              "durationFrames": 14,
               "staggerFrames": 2
             },
             {
@@ -1338,8 +1338,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 0.85,
-              "startFrame": 2526,
-              "durationFrames": 28
+              "startFrame": 2371,
+              "durationFrames": 26
             },
             {
               "clipId": "sweep-across",
@@ -1349,8 +1349,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 690,
-              "startFrame": 2529,
-              "durationFrames": 132,
+              "startFrame": 2374,
+              "durationFrames": 123,
               "easing": "linear"
             },
             {
@@ -1361,8 +1361,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.85,
               "to": 0,
-              "startFrame": 2649,
-              "durationFrames": 33
+              "startFrame": 2486,
+              "durationFrames": 31
             },
             {
               "clipId": "mark-found",
@@ -1372,8 +1372,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 2672,
-              "durationFrames": 45
+              "startFrame": 2508,
+              "durationFrames": 41
             },
             {
               "clipId": "mark-out",
@@ -1383,8 +1383,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 2768,
-              "durationFrames": 78
+              "startFrame": 2597,
+              "durationFrames": 72
             }
           ]
         }
@@ -1411,8 +1411,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 2694,
-              "durationFrames": 105
+              "startFrame": 2528,
+              "durationFrames": 97
             },
             {
               "clipId": "plate-open",
@@ -1422,8 +1422,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.45,
               "to": 1.3,
-              "startFrame": 2694,
-              "durationFrames": 168,
+              "startFrame": 2528,
+              "durationFrames": 155,
               "origin": {
                 "x": 96,
                 "y": -46
@@ -1437,8 +1437,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1.3,
               "to": 1.6,
-              "startFrame": 2866,
-              "durationFrames": 290,
+              "startFrame": 2687,
+              "durationFrames": 273,
               "easing": "linear",
               "origin": {
                 "x": 96,
@@ -1453,8 +1453,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 3170,
-              "durationFrames": 95
+              "startFrame": 2972,
+              "durationFrames": 82
             },
             {
               "clipId": "reticle-in",
@@ -1464,8 +1464,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 0.95,
-              "startFrame": 2741,
-              "durationFrames": 58
+              "startFrame": 2571,
+              "durationFrames": 54
             },
             {
               "clipId": "reticle-close",
@@ -1475,8 +1475,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 2.7,
               "to": 1,
-              "startFrame": 2741,
-              "durationFrames": 117,
+              "startFrame": 2571,
+              "durationFrames": 109,
               "origin": {
                 "x": 96,
                 "y": -46
@@ -1490,8 +1490,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 2.3,
-              "startFrame": 3129,
-              "durationFrames": 71,
+              "startFrame": 2937,
+              "durationFrames": 61,
               "origin": {
                 "x": 96,
                 "y": -46
@@ -1505,8 +1505,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.95,
               "to": 0,
-              "startFrame": 3129,
-              "durationFrames": 62
+              "startFrame": 2937,
+              "durationFrames": 53
             },
             {
               "clipId": "speck-settle",
@@ -1516,8 +1516,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.55,
               "to": 1.25,
-              "startFrame": 2768,
-              "durationFrames": 86,
+              "startFrame": 2597,
+              "durationFrames": 79,
               "origin": {
                 "x": 96,
                 "y": -46
@@ -1531,8 +1531,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1.25,
               "to": 1,
-              "startFrame": 2866,
-              "durationFrames": 104,
+              "startFrame": 2687,
+              "durationFrames": 99,
               "origin": {
                 "x": 96,
                 "y": -46
@@ -1546,8 +1546,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 2.8,
-              "startFrame": 2882,
-              "durationFrames": 104,
+              "startFrame": 2702,
+              "durationFrames": 99,
               "origin": {
                 "x": 96,
                 "y": -46
@@ -1561,8 +1561,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.85,
               "to": 0,
-              "startFrame": 2882,
-              "durationFrames": 104
+              "startFrame": 2702,
+              "durationFrames": 99
             },
             {
               "clipId": "halo-reset",
@@ -1572,7 +1572,7 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 2.8,
               "to": 1,
-              "startFrame": 2986,
+              "startFrame": 2801,
               "durationFrames": 10,
               "easing": "hold",
               "origin": {
@@ -1588,7 +1588,7 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 0.85,
-              "startFrame": 2986,
+              "startFrame": 2801,
               "durationFrames": 10,
               "easing": "hold"
             },
@@ -1600,8 +1600,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 2.8,
-              "startFrame": 2996,
-              "durationFrames": 117,
+              "startFrame": 2811,
+              "durationFrames": 111,
               "origin": {
                 "x": 96,
                 "y": -46
@@ -1615,8 +1615,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.85,
               "to": 0,
-              "startFrame": 2996,
-              "durationFrames": 117
+              "startFrame": 2811,
+              "durationFrames": 111
             },
             {
               "clipId": "beam-drift",
@@ -1626,8 +1626,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": -30,
-              "startFrame": 2709,
-              "durationFrames": 550,
+              "startFrame": 2542,
+              "durationFrames": 507,
               "easing": "linear"
             },
             {
@@ -1638,8 +1638,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 22,
-              "startFrame": 2709,
-              "durationFrames": 550,
+              "startFrame": 2542,
+              "durationFrames": 507,
               "easing": "linear"
             },
             {
@@ -1650,8 +1650,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.32,
-              "startFrame": 2719,
-              "durationFrames": 225
+              "startFrame": 2551,
+              "durationFrames": 210
             }
           ]
         }
@@ -1678,8 +1678,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 0.62,
-              "startFrame": 1154,
-              "durationFrames": 248,
+              "startFrame": 1098,
+              "durationFrames": 227,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1693,8 +1693,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.62,
               "to": 0.4,
-              "startFrame": 1742,
-              "durationFrames": 246,
+              "startFrame": 1641,
+              "durationFrames": 221,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1708,8 +1708,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.4,
               "to": 0.26,
-              "startFrame": 2300,
-              "durationFrames": 263,
+              "startFrame": 2161,
+              "durationFrames": 244,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1723,8 +1723,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.26,
               "to": 0.15,
-              "startFrame": 3274,
-              "durationFrames": 426,
+              "startFrame": 3062,
+              "durationFrames": 389,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1738,8 +1738,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.15,
               "to": 0.1,
-              "startFrame": 4238,
-              "durationFrames": 377,
+              "startFrame": 3986,
+              "durationFrames": 359,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1753,8 +1753,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1154,
-              "durationFrames": 366
+              "startFrame": 1098,
+              "durationFrames": 334
             },
             {
               "clipId": "halo-thin-1",
@@ -1764,8 +1764,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.5,
-              "startFrame": 1154,
-              "durationFrames": 366
+              "startFrame": 1098,
+              "durationFrames": 334
             },
             {
               "clipId": "halo-thin-2",
@@ -1775,8 +1775,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.5,
               "to": 0.2,
-              "startFrame": 2300,
-              "durationFrames": 309
+              "startFrame": 2161,
+              "durationFrames": 287
             },
             {
               "clipId": "halo-gone",
@@ -1786,8 +1786,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.2,
               "to": 0,
-              "startFrame": 3274,
-              "durationFrames": 474
+              "startFrame": 3062,
+              "durationFrames": 437
             },
             {
               "clipId": "corona-thin",
@@ -1797,8 +1797,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.3,
-              "startFrame": 1742,
-              "durationFrames": 487
+              "startFrame": 1641,
+              "durationFrames": 456
             },
             {
               "clipId": "corona-gone",
@@ -1808,8 +1808,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.3,
               "to": 0,
-              "startFrame": 3274,
-              "durationFrames": 293
+              "startFrame": 3062,
+              "durationFrames": 261
             }
           ]
         }
@@ -1851,8 +1851,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.52,
               "to": 1.3,
-              "startFrame": 303,
-              "durationFrames": 169,
+              "startFrame": 307,
+              "durationFrames": 143,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1866,8 +1866,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1.3,
               "to": 1.75,
-              "startFrame": 670,
-              "durationFrames": 148,
+              "startFrame": 626,
+              "durationFrames": 144,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1881,8 +1881,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1.75,
               "to": 0.7,
-              "startFrame": 1104,
-              "durationFrames": 146,
+              "startFrame": 1050,
+              "durationFrames": 136,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1896,8 +1896,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.7,
               "to": 0.62,
-              "startFrame": 1346,
-              "durationFrames": 174,
+              "startFrame": 1274,
+              "durationFrames": 158,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1911,8 +1911,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.62,
               "to": 0.8,
-              "startFrame": 1578,
-              "durationFrames": 121,
+              "startFrame": 1485,
+              "durationFrames": 115,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1926,8 +1926,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.8,
               "to": 0.6,
-              "startFrame": 1742,
-              "durationFrames": 158,
+              "startFrame": 1641,
+              "durationFrames": 139,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1941,8 +1941,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.6,
               "to": 0.9,
-              "startFrame": 2300,
-              "durationFrames": 169,
+              "startFrame": 2161,
+              "durationFrames": 157,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1956,8 +1956,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.9,
               "to": 0.5,
-              "startFrame": 2517,
-              "durationFrames": 138,
+              "startFrame": 2362,
+              "durationFrames": 130,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1971,8 +1971,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.5,
               "to": 0.64,
-              "startFrame": 3274,
-              "durationFrames": 151,
+              "startFrame": 3062,
+              "durationFrames": 129,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -1986,8 +1986,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.64,
               "to": 0.88,
-              "startFrame": 3813,
-              "durationFrames": 168,
+              "startFrame": 3564,
+              "durationFrames": 160,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -2001,8 +2001,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.88,
               "to": 0.78,
-              "startFrame": 4238,
-              "durationFrames": 168,
+              "startFrame": 3986,
+              "durationFrames": 167,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -2016,8 +2016,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.78,
               "to": 0.72,
-              "startFrame": 4595,
-              "durationFrames": 262,
+              "startFrame": 4328,
+              "durationFrames": 227,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -2031,8 +2031,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 303,
-              "durationFrames": 260
+              "startFrame": 307,
+              "durationFrames": 223
             },
             {
               "clipId": "float-2",
@@ -2042,8 +2042,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": -18,
               "to": -46,
-              "startFrame": 670,
-              "durationFrames": 260
+              "startFrame": 626,
+              "durationFrames": 254
             },
             {
               "clipId": "float-3",
@@ -2053,8 +2053,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 8,
-              "startFrame": 1104,
-              "durationFrames": 312
+              "startFrame": 1050,
+              "durationFrames": 287
             },
             {
               "clipId": "float-4",
@@ -2064,8 +2064,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": 8,
               "to": -28,
-              "startFrame": 1578,
-              "durationFrames": 156
+              "startFrame": 1485,
+              "durationFrames": 148
             },
             {
               "clipId": "climb-out-of-plane",
@@ -2075,8 +2075,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": -28,
               "to": -98,
-              "startFrame": 1967,
-              "durationFrames": 214,
+              "startFrame": 1840,
+              "durationFrames": 215,
               "easing": "expoOut"
             },
             {
@@ -2087,8 +2087,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": -98,
               "to": -72,
-              "startFrame": 2300,
-              "durationFrames": 278
+              "startFrame": 2161,
+              "durationFrames": 259
             },
             {
               "clipId": "drop-below-the-plate",
@@ -2098,8 +2098,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": -72,
               "to": 34,
-              "startFrame": 2670,
-              "durationFrames": 118
+              "startFrame": 2506,
+              "durationFrames": 109
             },
             {
               "clipId": "float-6",
@@ -2109,8 +2109,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": 34,
               "to": -92,
-              "startFrame": 3274,
-              "durationFrames": 293
+              "startFrame": 3062,
+              "durationFrames": 261
             },
             {
               "clipId": "float-7",
@@ -2120,8 +2120,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": -92,
               "to": -66,
-              "startFrame": 3813,
-              "durationFrames": 324
+              "startFrame": 3564,
+              "durationFrames": 319
             },
             {
               "clipId": "float-8",
@@ -2131,8 +2131,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": -66,
               "to": -18,
-              "startFrame": 4595,
-              "durationFrames": 262
+              "startFrame": 4328,
+              "durationFrames": 227
             },
             {
               "clipId": "whip-out",
@@ -2142,8 +2142,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 108,
-              "startFrame": 1578,
-              "durationFrames": 92,
+              "startFrame": 1485,
+              "durationFrames": 87,
               "easing": "expoIn"
             },
             {
@@ -2154,8 +2154,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 108,
               "to": 0,
-              "startFrame": 1670,
-              "durationFrames": 140,
+              "startFrame": 1572,
+              "durationFrames": 129,
               "easing": "expoOut"
             },
             {
@@ -2166,8 +2166,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 236,
-              "startFrame": 4595,
-              "durationFrames": 262,
+              "startFrame": 4328,
+              "durationFrames": 227,
               "easing": "linear"
             },
             {
@@ -2178,8 +2178,8 @@ export const stillTalkingFilm: Film = {
               "property": "rotate",
               "from": 0,
               "to": -7,
-              "startFrame": 1967,
-              "durationFrames": 214,
+              "startFrame": 1840,
+              "durationFrames": 215,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -2193,8 +2193,8 @@ export const stillTalkingFilm: Film = {
               "property": "rotate",
               "from": -7,
               "to": -11,
-              "startFrame": 4595,
-              "durationFrames": 262,
+              "startFrame": 4328,
+              "durationFrames": 227,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -2208,8 +2208,8 @@ export const stillTalkingFilm: Film = {
               "property": "rotate",
               "from": -46,
               "to": 0,
-              "startFrame": 322,
-              "durationFrames": 150,
+              "startFrame": 323,
+              "durationFrames": 127,
               "origin": {
                 "x": 26,
                 "y": 6
@@ -2223,8 +2223,8 @@ export const stillTalkingFilm: Film = {
               "property": "rotate",
               "from": 54,
               "to": 0,
-              "startFrame": 348,
-              "durationFrames": 157,
+              "startFrame": 345,
+              "durationFrames": 134,
               "origin": {
                 "x": 18,
                 "y": -14
@@ -2238,8 +2238,8 @@ export const stillTalkingFilm: Film = {
               "property": "rotate",
               "from": -58,
               "to": 0,
-              "startFrame": 378,
-              "durationFrames": 156,
+              "startFrame": 371,
+              "durationFrames": 133,
               "origin": {
                 "x": 6,
                 "y": 14
@@ -2256,8 +2256,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 416,
-              "durationFrames": 41,
+              "startFrame": 402,
+              "durationFrames": 35,
               "staggerFrames": 14
             },
             {
@@ -2268,8 +2268,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 405,
-              "durationFrames": 45
+              "startFrame": 393,
+              "durationFrames": 38
             },
             {
               "clipId": "rtg-live",
@@ -2279,8 +2279,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 435,
-              "durationFrames": 74
+              "startFrame": 418,
+              "durationFrames": 64
             },
             {
               "clipId": "boom-sci-turn",
@@ -2290,8 +2290,8 @@ export const stillTalkingFilm: Film = {
               "property": "rotate",
               "from": 0,
               "to": 166,
-              "startFrame": 2426,
-              "durationFrames": 75,
+              "startFrame": 2278,
+              "durationFrames": 68,
               "easing": "expoInOut",
               "origin": {
                 "x": 26,
@@ -2306,8 +2306,8 @@ export const stillTalkingFilm: Film = {
               "property": "rotate",
               "from": 166,
               "to": 0,
-              "startFrame": 3150,
-              "durationFrames": 112,
+              "startFrame": 2954,
+              "durationFrames": 98,
               "easing": "expoInOut",
               "origin": {
                 "x": 26,
@@ -2324,8 +2324,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.25,
-              "startFrame": 2532,
-              "durationFrames": 16,
+              "startFrame": 2376,
+              "durationFrames": 15,
               "staggerFrames": 9
             },
             {
@@ -2338,8 +2338,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.25,
               "to": 1,
-              "startFrame": 2563,
-              "durationFrames": 18,
+              "startFrame": 2405,
+              "durationFrames": 17,
               "staggerFrames": 9
             },
             {
@@ -2352,8 +2352,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 3156,
-              "durationFrames": 38,
+              "startFrame": 2960,
+              "durationFrames": 33,
               "staggerFrames": 22
             },
             {
@@ -2376,8 +2376,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.62,
-              "startFrame": 3900,
-              "durationFrames": 304
+              "startFrame": 3641,
+              "durationFrames": 311
             },
             {
               "clipId": "thread-stops-short",
@@ -2387,8 +2387,8 @@ export const stillTalkingFilm: Film = {
               "property": "drawOn",
               "from": 1,
               "to": 0.3,
-              "startFrame": 4452,
-              "durationFrames": 133,
+              "startFrame": 4196,
+              "durationFrames": 123,
               "easing": "expoOut"
             },
             {
@@ -2399,8 +2399,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.62,
               "to": 0,
-              "startFrame": 4599,
-              "durationFrames": 74
+              "startFrame": 4331,
+              "durationFrames": 65
             },
             {
               "clipId": "mag-off",
@@ -2410,8 +2410,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 4304,
-              "durationFrames": 29
+              "startFrame": 4055,
+              "durationFrames": 31
             },
             {
               "clipId": "rtg-cools",
@@ -2421,8 +2421,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 4333,
-              "durationFrames": 76
+              "startFrame": 4086,
+              "durationFrames": 69
             },
             {
               "clipId": "rtg-dims",
@@ -2434,8 +2434,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.3,
-              "startFrame": 4333,
-              "durationFrames": 38,
+              "startFrame": 4086,
+              "durationFrames": 25,
               "staggerFrames": 12
             },
             {
@@ -2446,8 +2446,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 4442,
-              "durationFrames": 146
+              "startFrame": 4187,
+              "durationFrames": 135
             },
             {
               "clipId": "record-swells",
@@ -2457,8 +2457,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 1.6,
-              "startFrame": 4791,
-              "durationFrames": 66,
+              "startFrame": 4497,
+              "durationFrames": 58,
               "origin": {
                 "x": 22,
                 "y": 24
@@ -2472,8 +2472,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.2,
-              "startFrame": 4595,
-              "durationFrames": 209
+              "startFrame": 4328,
+              "durationFrames": 181
             },
             {
               "clipId": "glint-catches",
@@ -2483,8 +2483,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.2,
               "to": 1,
-              "startFrame": 4804,
-              "durationFrames": 53
+              "startFrame": 4509,
+              "durationFrames": 46
             },
             {
               "clipId": "pulse-1-x",
@@ -3297,51 +3297,6 @@ export const stillTalkingFilm: Film = {
               "staggerFrames": 34
             },
             {
-              "clipId": "pulse-19-x",
-              "targets": [
-                "signal-pulse-1",
-                "signal-pulse-2",
-                "signal-pulse-3"
-              ],
-              "property": "translateX",
-              "from": 0,
-              "to": -666,
-              "startFrame": 3640,
-              "durationFrames": 130,
-              "easing": "linear",
-              "staggerFrames": 34
-            },
-            {
-              "clipId": "pulse-19-y",
-              "targets": [
-                "signal-pulse-1",
-                "signal-pulse-2",
-                "signal-pulse-3"
-              ],
-              "property": "translateY",
-              "from": 0,
-              "to": 78,
-              "startFrame": 3640,
-              "durationFrames": 130,
-              "easing": "linear",
-              "staggerFrames": 34
-            },
-            {
-              "clipId": "pulse-19-fade",
-              "targets": [
-                "signal-pulse-1",
-                "signal-pulse-2",
-                "signal-pulse-3"
-              ],
-              "property": "opacity",
-              "from": 0.95,
-              "to": 0,
-              "startFrame": 3640,
-              "durationFrames": 130,
-              "easing": "expoIn",
-              "staggerFrames": 34
-            },
-            {
               "clipId": "solo-pulse-x",
               "targets": [
                 "signal-pulse-1"
@@ -3349,8 +3304,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": -666,
-              "startFrame": 3954,
-              "durationFrames": 264,
+              "startFrame": 3696,
+              "durationFrames": 269,
               "easing": "linear"
             },
             {
@@ -3361,8 +3316,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 78,
-              "startFrame": 3954,
-              "durationFrames": 264,
+              "startFrame": 3696,
+              "durationFrames": 269,
               "easing": "linear"
             },
             {
@@ -3373,8 +3328,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.06,
-              "startFrame": 3954,
-              "durationFrames": 264,
+              "startFrame": 3696,
+              "durationFrames": 269,
               "easing": "linear"
             },
             {
@@ -3385,8 +3340,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 0.3,
-              "startFrame": 3954,
-              "durationFrames": 264,
+              "startFrame": 3696,
+              "durationFrames": 269,
               "easing": "linear",
               "origin": {
                 "x": 0,
@@ -3401,8 +3356,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": -412.92,
-              "startFrame": 4275,
-              "durationFrames": 139,
+              "startFrame": 4023,
+              "durationFrames": 137,
               "easing": "linear"
             },
             {
@@ -3413,8 +3368,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 48.36,
-              "startFrame": 4275,
-              "durationFrames": 139,
+              "startFrame": 4023,
+              "durationFrames": 137,
               "easing": "linear"
             },
             {
@@ -3425,8 +3380,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.55,
               "to": 0,
-              "startFrame": 4275,
-              "durationFrames": 139,
+              "startFrame": 4023,
+              "durationFrames": 137,
               "easing": "linear"
             }
           ]
@@ -3454,8 +3409,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 679,
-              "durationFrames": 52
+              "startFrame": 634,
+              "durationFrames": 51
             },
             {
               "clipId": "record-open",
@@ -3465,8 +3420,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 0.07,
               "to": 2.1,
-              "startFrame": 687,
-              "durationFrames": 139,
+              "startFrame": 643,
+              "durationFrames": 136,
               "origin": {
                 "x": 0,
                 "y": 0
@@ -3480,8 +3435,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": -152,
-              "startFrame": 687,
-              "durationFrames": 139,
+              "startFrame": 643,
+              "durationFrames": 136,
               "easing": "linear"
             },
             {
@@ -3492,8 +3447,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -384,
-              "startFrame": 687,
-              "durationFrames": 139,
+              "startFrame": 643,
+              "durationFrames": 136,
               "easing": "linear"
             },
             {
@@ -3504,8 +3459,8 @@ export const stillTalkingFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 748,
-              "durationFrames": 278,
+              "startFrame": 702,
+              "durationFrames": 272,
               "easing": "linear"
             },
             {
@@ -3516,8 +3471,8 @@ export const stillTalkingFilm: Film = {
               "property": "rotate",
               "from": 0,
               "to": 38,
-              "startFrame": 696,
-              "durationFrames": 408,
+              "startFrame": 651,
+              "durationFrames": 399,
               "easing": "linear",
               "origin": {
                 "x": 0,
@@ -3532,8 +3487,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": -80,
               "to": 280,
-              "startFrame": 713,
-              "durationFrames": 369,
+              "startFrame": 668,
+              "durationFrames": 361,
               "easing": "linear"
             },
             {
@@ -3544,7 +3499,7 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 913,
+              "startFrame": 863,
               "durationFrames": 43
             },
             {
@@ -3568,8 +3523,8 @@ export const stillTalkingFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 922,
-              "durationFrames": 43,
+              "startFrame": 872,
+              "durationFrames": 42,
               "easing": "linear",
               "staggerFrames": 8
             },
@@ -3581,8 +3536,8 @@ export const stillTalkingFilm: Film = {
               "property": "scale",
               "from": 2.1,
               "to": 0.07,
-              "startFrame": 1104,
-              "durationFrames": 108,
+              "startFrame": 1050,
+              "durationFrames": 101,
               "easing": "expoOut",
               "origin": {
                 "x": 0,
@@ -3597,8 +3552,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateX",
               "from": -152,
               "to": 0,
-              "startFrame": 1104,
-              "durationFrames": 108,
+              "startFrame": 1050,
+              "durationFrames": 101,
               "easing": "expoOut"
             },
             {
@@ -3609,8 +3564,8 @@ export const stillTalkingFilm: Film = {
               "property": "translateY",
               "from": -384,
               "to": 0,
-              "startFrame": 1104,
-              "durationFrames": 108,
+              "startFrame": 1050,
+              "durationFrames": 101,
               "easing": "expoOut"
             },
             {
@@ -3621,8 +3576,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1104,
-              "durationFrames": 92
+              "startFrame": 1050,
+              "durationFrames": 87
             }
           ]
         }
@@ -3650,7 +3605,7 @@ export const stillTalkingFilm: Film = {
               "from": 0,
               "to": 0.44,
               "startFrame": 18,
-              "durationFrames": 55
+              "durationFrames": 56
             },
             {
               "clipId": "scrim-down-0",
@@ -3660,8 +3615,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.44,
               "to": 0,
-              "startFrame": 255,
-              "durationFrames": 45
+              "startFrame": 258,
+              "durationFrames": 46
             },
             {
               "clipId": "scrim-up-1",
@@ -3671,8 +3626,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 0.34,
-              "startFrame": 1351,
-              "durationFrames": 51
+              "startFrame": 1278,
+              "durationFrames": 47
             },
             {
               "clipId": "scrim-down-1",
@@ -3682,8 +3637,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.34,
               "to": 0,
-              "startFrame": 1504,
-              "durationFrames": 65
+              "startFrame": 1417,
+              "durationFrames": 60
             },
             {
               "clipId": "scrim-up-2",
@@ -3693,8 +3648,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 0.34,
-              "startFrame": 1749,
-              "durationFrames": 52
+              "startFrame": 1647,
+              "durationFrames": 46
             },
             {
               "clipId": "scrim-down-2",
@@ -3704,8 +3659,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.34,
               "to": 0,
-              "startFrame": 1891,
-              "durationFrames": 65
+              "startFrame": 1772,
+              "durationFrames": 58
             },
             {
               "clipId": "scrim-up-3",
@@ -3715,8 +3670,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 0.3,
-              "startFrame": 2682,
-              "durationFrames": 55
+              "startFrame": 2517,
+              "durationFrames": 51
             },
             {
               "clipId": "scrim-down-3",
@@ -3726,8 +3681,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.3,
               "to": 0,
-              "startFrame": 2799,
-              "durationFrames": 59
+              "startFrame": 2625,
+              "durationFrames": 55
             },
             {
               "clipId": "scrim-up-4",
@@ -3737,8 +3692,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 0.34,
-              "startFrame": 3281,
-              "durationFrames": 50
+              "startFrame": 3068,
+              "durationFrames": 43
             },
             {
               "clipId": "scrim-down-4",
@@ -3748,8 +3703,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.34,
               "to": 0,
-              "startFrame": 3378,
-              "durationFrames": 57
+              "startFrame": 3151,
+              "durationFrames": 48
             },
             {
               "clipId": "scrim-up-5",
@@ -3759,8 +3714,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 0.3,
-              "startFrame": 3910,
-              "durationFrames": 51
+              "startFrame": 3651,
+              "durationFrames": 52
             },
             {
               "clipId": "scrim-down-5",
@@ -3770,8 +3725,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0.3,
               "to": 0,
-              "startFrame": 4116,
-              "durationFrames": 88
+              "startFrame": 3862,
+              "durationFrames": 90
             },
             {
               "clipId": "scrim-close",
@@ -3781,8 +3736,8 @@ export const stillTalkingFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 0.34,
-              "startFrame": 4595,
-              "durationFrames": 67
+              "startFrame": 4328,
+              "durationFrames": 57
             }
           ]
         }
@@ -3794,7 +3749,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "departure",
       "ch": "departure",
-      "dur": 10.1,
+      "dur": 10.2333,
       "stage": "frame",
       "look": "all",
       "move": "cut",
@@ -3815,7 +3770,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "one-job",
       "ch": "departure",
-      "dur": 6.2667,
+      "dur": 5.3,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -3829,7 +3784,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "not-coming-back",
       "ch": "departure",
-      "dur": 5.9667,
+      "dur": 5.3333,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -3843,7 +3798,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "the-record",
       "ch": "departure",
-      "dur": 14.4667,
+      "dur": 14.1333,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -3857,7 +3812,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "let-go",
       "ch": "departure",
-      "dur": 1.6667,
+      "dur": 1.6,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -3871,7 +3826,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "falling-outward",
       "ch": "the grand tour",
-      "dur": 6.4,
+      "dur": 5.8667,
       "stage": "none",
       "look": "all",
       "move": "cut",
@@ -3885,7 +3840,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "jupiter",
       "ch": "the grand tour",
-      "dur": 7.7333,
+      "dur": 7.0333,
       "stage": "frame",
       "look": "all",
       "move": "pan",
@@ -3905,7 +3860,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "slingshot",
       "ch": "the grand tour",
-      "dur": 5.4667,
+      "dur": 5.2,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -3919,7 +3874,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "saturn",
       "ch": "the grand tour",
-      "dur": 7.5,
+      "dur": 6.6333,
       "stage": "frame",
       "look": "all",
       "move": "pan",
@@ -3939,7 +3894,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "out-of-plane",
       "ch": "out of the plane",
-      "dur": 7.1333,
+      "dur": 7.1667,
       "stage": "none",
       "look": "all",
       "move": "cut",
@@ -3953,7 +3908,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "nothing-but-distance",
       "ch": "out of the plane",
-      "dur": 3.9667,
+      "dur": 3.5333,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -3967,7 +3922,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "turn-around",
       "ch": "pale blue dot",
-      "dur": 7.2333,
+      "dur": 6.7,
       "stage": "none",
       "look": "all",
       "move": "cut",
@@ -3981,7 +3936,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "sixty-photographs",
       "ch": "pale blue dot",
-      "dur": 5.1,
+      "dur": 4.8,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -3995,7 +3950,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "pale-blue-pixel",
       "ch": "pale blue dot",
-      "dur": 6.5333,
+      "dur": 6.0333,
       "stage": "frame",
       "look": "all",
       "move": "pan",
@@ -4015,7 +3970,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "that-is-everyone",
       "ch": "pale blue dot",
-      "dur": 8.6667,
+      "dur": 8.2333,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -4029,7 +3984,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "eyes-closed",
       "ch": "pale blue dot",
-      "dur": 4.9333,
+      "dur": 4.2667,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -4043,7 +3998,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "particles-change",
       "ch": "the edge",
-      "dur": 5.6,
+      "dur": 4.7667,
       "stage": "frame",
       "look": "all",
       "move": "cut",
@@ -4063,7 +4018,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "last-breath",
       "ch": "the edge",
-      "dur": 6.9667,
+      "dur": 6.5667,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -4091,7 +4046,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "still-out-there",
       "ch": "still talking",
-      "dur": 2.9,
+      "dur": 2.5667,
       "stage": "none",
       "look": "all",
       "move": "cut",
@@ -4105,7 +4060,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "twenty-two-watts",
       "ch": "still talking",
-      "dur": 11.2667,
+      "dur": 11.5,
       "stage": "frame",
       "look": "all",
       "move": "pan",
@@ -4127,7 +4082,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "going-dark",
       "ch": "still talking",
-      "dur": 6.2333,
+      "dur": 6.1667,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -4141,7 +4096,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "the-last-one",
       "ch": "still talking",
-      "dur": 5.6667,
+      "dur": 5.2333,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -4155,7 +4110,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "keep-going",
       "ch": "still talking",
-      "dur": 6.5333,
+      "dur": 5.6333,
       "stage": "frame",
       "look": "all",
       "move": "pan",
@@ -4175,7 +4130,7 @@ export const stillTalkingFilm: Film = {
     {
       "id": "longer-than-the-sun",
       "ch": "still talking",
-      "dur": 2.2,
+      "dur": 1.9333,
       "stage": "frame",
       "look": "all",
       "move": "pan",
@@ -4198,7 +4153,7 @@ export const stillTalkingFilm: Film = {
     "src": "videos/still-talking/voiceover.wav",
     "volume": 1,
     "speed": 1,
-    "durationSec": 161.9
+    "durationSec": 151.8333
   },
   "subtitles": false
 };

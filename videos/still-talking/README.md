@@ -49,7 +49,8 @@ single frame, and every value an element holds is carried forward from the clip 
 ## Rebuilding it
 
 ```bash
-# 1. Narration first. Writes voiceover.wav and the measured voiceover_words.json beside it.
+# 1. Narration first. Synthesizes with the project's TTS pipeline, masters the result for
+#    delivery, and writes the shot spine the picture is compiled from.
 npx tsx backend/stillTalking/produceVoiceover.ts
 
 # 2. Artwork, scene timelines, film.json, its shadow module and the bundled SVG source map.
@@ -59,9 +60,18 @@ npx tsx backend/stillTalking/buildFilm.ts
 npx tsx backend/stillTalking/reviewFrames.ts 0.5
 
 # 4. Final renders.
-npx remotion render Long out/still-talking-long.mp4
-npx remotion render Reel out/still-talking-reel.mp4
+npx remotion render Long out/still-talking-long.mp4 --concurrency=2
+npx remotion render Reel out/still-talking-reel.mp4 --concurrency=2
 ```
 
-Step 2 is the only thing that may write `film.json` and `src/dl/films/still-talking.ts`: they are
-written together and `backend/still_talking_film.test.ts` fails if they ever drift apart.
+Step 1 owns `shot-spine.json`, which is the narration measured per shot and the only narration
+artefact the film builder reads. `voiceover.wav`, `captions.vtt` and `voiceover_words.json` beside
+it belong to the shared pipeline.
+
+Step 2 is the only thing that may write `film.json` and `src/dl/films/still-talking.ts`: they go
+through `backend/pipeline/filmStore.ts` so both land together, and
+`backend/still_talking_film.test.ts` fails if they ever drift apart.
+
+Every frame number in the timeline is derived from step 1's measurement, so a re-recorded take
+retimes the whole film rather than drifting away from it. The cues that have to land on a specific
+word ask for it by name, and the build fails if that word is no longer in that shot.
