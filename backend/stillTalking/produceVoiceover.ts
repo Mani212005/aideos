@@ -38,6 +38,14 @@ const NARRATION_SPEED = 0.94;
 /** Silence held between narration beats, which is also the film's smallest breathing space. */
 const BEAT_GAP_MS = 520;
 
+/**
+ * Silence appended after the last word, in milliseconds.
+ * Narration assembly trims its tail, which leaves the film cutting to black under a tenth of a
+ * second after the final syllable and gives the closing card no time to be read. The handle is
+ * part of the take rather than a frame count added later, so the scene stays clocked to its audio.
+ */
+const TAIL_HANDLE_MS = 2200;
+
 /** The measurement the film builder reads back: what was said, and exactly when. */
 export interface VoiceoverTiming {
   totalDurationSec: number;
@@ -123,6 +131,25 @@ function masterForDelivery(wavPath: string): { lufs: number; truePeakDb: number 
   return { lufs: measureLoudness(wavPath).lufs, truePeakDb: measurePeakDb(wavPath) };
 }
 
+/**
+ * Appends the tail handle to the master and copies the result where Remotion reads it.
+ * Padding the take rather than the timeline is what keeps the scene honestly clocked to its
+ * audio: the film is exactly as long as the wav, tail included.
+ */
+function appendTailHandle(wavPath: string): void {
+  const padded = `${wavPath}.padded.wav`;
+  ffmpegReport([
+    "-y", "-i", wavPath,
+    "-af", `apad=pad_dur=${(TAIL_HANDLE_MS / 1000).toFixed(3)}`,
+    "-ar", "44100", "-ac", "2", padded,
+  ]);
+  if (!fs.existsSync(padded)) throw new Error(`Could not append a tail handle to ${wavPath}.`);
+  fs.renameSync(padded, wavPath);
+
+  const publicCopy = path.resolve(__dirname, "../../public/voiceover.wav");
+  if (fs.existsSync(path.dirname(publicCopy))) fs.copyFileSync(wavPath, publicCopy);
+}
+
 /** Synthesizes the narration and records the shot spine it produced. */
 export async function produceVoiceover(): Promise<VoiceoverTiming> {
   const outDir = packageDir();
@@ -146,21 +173,27 @@ export async function produceVoiceover(): Promise<VoiceoverTiming> {
   }
 
   const mastered = masterForDelivery(result.voiceoverPath);
+  appendTailHandle(result.voiceoverPath);
+  const tailSec = TAIL_HANDLE_MS / 1000;
 
   // Shot spans run boundary to boundary, so a shot starts exactly where its narration does and
   // the spans sum to the length of the wav.
+  const shotDurations = result.shotDurations.map((d, i) =>
+    i === result.shotDurations.length - 1 ? d + tailSec : d,
+  );
+
   let cursor = 0;
   const timing: VoiceoverTiming = {
-    totalDurationSec: result.totalAudioDuration,
+    totalDurationSec: Number((result.totalAudioDuration + tailSec).toFixed(3)),
     ttsBackend: result.ttsBackend,
     segments: result.segments.map((segment, i) => {
       const startSec = cursor;
-      cursor += result.shotDurations[i];
+      cursor += shotDurations[i];
       return {
         shotId: BEATS[i].id,
         text: segment.text,
         startSec: Number(startSec.toFixed(3)),
-        durationSec: Number(result.shotDurations[i].toFixed(3)),
+        durationSec: Number(shotDurations[i].toFixed(3)),
         words: segment.words.map((w) => ({
           word: w.punctuated_word ?? w.word,
           startSec: Number((segment.startOffset + w.start).toFixed(3)),
@@ -172,7 +205,7 @@ export async function produceVoiceover(): Promise<VoiceoverTiming> {
 
   fs.writeFileSync(timingPath(), `${JSON.stringify(timing, null, 2)}\n`, "utf8");
   console.log(
-    `[still-talking] voiceover.wav is ${result.totalAudioDuration.toFixed(2)}s across ` +
+    `[still-talking] voiceover.wav is ${timing.totalDurationSec.toFixed(2)}s across ` +
       `${timing.segments.length} shots, synthesized with ${result.ttsBackend}, ` +
       `mastered to ${mastered.lufs.toFixed(1)} LUFS / ${mastered.truePeakDb.toFixed(1)} dBTP.`,
   );
