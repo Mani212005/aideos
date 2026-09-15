@@ -269,6 +269,7 @@ test("runProduction: never touches the b-roll engine unless b-roll was asked for
         brollEngine: "engine-that-does-not-exist",
         stopAfter: "assemble",
         resume: false,
+        syncToPreview: false,
       },
       (event) => events.push(event),
     );
@@ -302,7 +303,7 @@ test("runProduction: writes a package whose film matches the narration it synthe
 
   try {
     const result = await runProduction(
-      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", broll: false, stopAfter: "design", resume: false },
+      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", broll: false, stopAfter: "design", resume: false, syncToPreview: false },
       () => undefined,
     );
 
@@ -342,13 +343,13 @@ test("runProduction: resuming reuses the stages whose inputs have not changed", 
 
   try {
     await runProduction(
-      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", broll: false, stopAfter: "design", resume: false },
+      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", broll: false, stopAfter: "design", resume: false, syncToPreview: false },
       () => undefined,
     );
 
     const events: ProductionProgress[] = [];
     await runProduction(
-      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", broll: false, stopAfter: "design", resume: true },
+      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", broll: false, stopAfter: "design", resume: true, syncToPreview: false },
       (event) => events.push(event),
     );
 
@@ -371,7 +372,7 @@ test("runProduction: a run that stops before rendering leaves the active film al
 
   try {
     await runProduction(
-      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", broll: false, stopAfter: "assemble", resume: false },
+      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", broll: false, stopAfter: "assemble", resume: false, syncToPreview: false },
       () => undefined,
     );
     assert.equal(readActiveFilmSource(), before, "src/dl/activeFilm.ts must be untouched by a partial run");

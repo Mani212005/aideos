@@ -88,7 +88,10 @@ test("duration sum invariant holds within ±50ms for live synthesized audio", as
   );
   let result;
   try {
-    result = (await Promise.race([produceAudioPipeline(script, tmpOut), timeoutPromise])) as any;
+    result = (await Promise.race([
+      produceAudioPipeline(script, tmpOut, { syncToPreview: false }),
+      timeoutPromise,
+    ])) as any;
   } catch (err: any) {
     t.skip(`Skipping live Deepgram test due to network/timeout error: ${err.message}`);
     return;
