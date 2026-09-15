@@ -578,6 +578,57 @@ function buildRecord(): string {
   );
 }
 
+/**
+ * Builds the flight path: the route the craft has already flown, carrying the lower band.
+ * It is placed so it dips below what the wide cut can see and sweeps across the bottom third of
+ * the reel, which is the part of the frame a landscape composition leaves empty. Waypoints sit on
+ * it at the two encounters and at the boundary, and light as the film reaches each of them.
+ */
+function buildTrajectory(): string {
+  // One cubic from the sun, out under the planets, and up to where the craft is now.
+  const path = "M -330 -115 C -180 190, 120 230, 330 -190";
+
+  /** Point on that cubic at parameter t, so a waypoint sits exactly on the drawn line. */
+  const pointAt = (t: number): { x: number; y: number } => {
+    const p0 = { x: -330, y: -115 };
+    const p1 = { x: -180, y: 190 };
+    const p2 = { x: 120, y: 230 };
+    const p3 = { x: 330, y: -190 };
+    const mt = 1 - t;
+    return {
+      x: mt * mt * mt * p0.x + 3 * mt * mt * t * p1.x + 3 * mt * t * t * p2.x + t * t * t * p3.x,
+      y: mt * mt * mt * p0.y + 3 * mt * mt * t * p1.y + 3 * mt * t * t * p2.y + t * t * t * p3.y,
+    };
+  };
+
+  const waypoints = [
+    { id: "waypoint-jupiter", t: 0.34 },
+    { id: "waypoint-saturn", t: 0.56 },
+    { id: "waypoint-edge", t: 0.82 },
+  ];
+  const marks = waypoints.map((w) => {
+    const p = pointAt(w.t);
+    return (
+      `    <g id="${w.id}" opacity="0">` +
+      `<circle cx="${r2(p.x)}" cy="${r2(p.y)}" r="5.5" fill="none" stroke="${accentAlpha(0.7)}" stroke-width="1.6" />` +
+      `<circle cx="${r2(p.x)}" cy="${r2(p.y)}" r="2" fill="${COLOR.accent}" /></g>`
+    );
+  });
+
+  return document_(
+    "The flight path: where the craft has already been, and the three places it passed.",
+    [
+      '  <g id="trajectory-body">',
+      `    <path id="traj-path" d="${path}" fill="none" stroke="${inkAlpha(0.46)}" stroke-width="2.8" ` +
+        `stroke-linecap="round" />`,
+      `    <path id="traj-path-glow" d="${path}" fill="none" stroke="${accentAlpha(0.2)}" stroke-width="8" ` +
+        `stroke-linecap="round" />`,
+      marks.join("\n"),
+      "  </g>",
+    ].join("\n"),
+  );
+}
+
 /** Builds the scrim: a plain darkening plate the timeline lifts under every text card. */
 function buildScrim(): string {
   return document_(
@@ -629,6 +680,7 @@ export function buildAllArtwork(): Record<string, string> {
     "plate.svg": buildPlate(),
     "boundary.svg": buildBoundary(),
     "record.svg": buildRecord(),
+    "trajectory.svg": buildTrajectory(),
     "scrim.svg": buildScrim(),
   };
 }

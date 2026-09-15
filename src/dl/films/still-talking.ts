@@ -535,9 +535,158 @@ export const stillTalkingFilm: Film = {
         }
       },
       {
+        "assetId": "trajectory",
+        "svgSource": "videos/still-talking/visuals/trajectory.svg",
+        "layer": 4,
+        "position": {
+          "x": 800,
+          "y": 1672
+        },
+        "scale": 0.8,
+        "rotation": 0,
+        "opacity": 1,
+        "animation": {
+          "timelineId": "flight-path",
+          "clips": [
+            {
+              "clipId": "path-in",
+              "targets": [
+                "trajectory-body"
+              ],
+              "property": "opacity",
+              "from": 0,
+              "to": 1,
+              "startFrame": 323,
+              "durationFrames": 95
+            },
+            {
+              "clipId": "path-leg-1",
+              "targets": [
+                "traj-path",
+                "traj-path-glow"
+              ],
+              "property": "drawOn",
+              "from": 0,
+              "to": 0.2,
+              "startFrame": 339,
+              "durationFrames": 759,
+              "easing": "linear"
+            },
+            {
+              "clipId": "path-leg-2",
+              "targets": [
+                "traj-path",
+                "traj-path-glow"
+              ],
+              "property": "drawOn",
+              "from": 0.2,
+              "to": 0.42,
+              "startFrame": 1098,
+              "durationFrames": 366,
+              "easing": "linear"
+            },
+            {
+              "clipId": "path-leg-3",
+              "targets": [
+                "traj-path",
+                "traj-path-glow"
+              ],
+              "property": "drawOn",
+              "from": 0.42,
+              "to": 0.64,
+              "startFrame": 1485,
+              "durationFrames": 335,
+              "easing": "linear"
+            },
+            {
+              "clipId": "path-leg-4",
+              "targets": [
+                "traj-path",
+                "traj-path-glow"
+              ],
+              "property": "drawOn",
+              "from": 0.64,
+              "to": 0.82,
+              "startFrame": 1840,
+              "durationFrames": 442,
+              "easing": "linear"
+            },
+            {
+              "clipId": "path-leg-5",
+              "targets": [
+                "traj-path",
+                "traj-path-glow"
+              ],
+              "property": "drawOn",
+              "from": 0.82,
+              "to": 1,
+              "startFrame": 3062,
+              "durationFrames": 470,
+              "easing": "linear"
+            },
+            {
+              "clipId": "path-recede",
+              "targets": [
+                "trajectory-body"
+              ],
+              "property": "translateX",
+              "from": 0,
+              "to": -230,
+              "startFrame": 3564,
+              "durationFrames": 1057,
+              "easing": "linear"
+            },
+            {
+              "clipId": "path-settle",
+              "targets": [
+                "trajectory-body"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.6,
+              "startFrame": 3564,
+              "durationFrames": 284
+            },
+            {
+              "clipId": "mark-jupiter",
+              "targets": [
+                "waypoint-jupiter"
+              ],
+              "property": "opacity",
+              "from": 0,
+              "to": 1,
+              "startFrame": 1316,
+              "durationFrames": 85
+            },
+            {
+              "clipId": "mark-saturn",
+              "targets": [
+                "waypoint-saturn"
+              ],
+              "property": "opacity",
+              "from": 0,
+              "to": 1,
+              "startFrame": 1681,
+              "durationFrames": 79
+            },
+            {
+              "clipId": "mark-edge",
+              "targets": [
+                "waypoint-edge"
+              ],
+              "property": "opacity",
+              "from": 0,
+              "to": 1,
+              "startFrame": 3434,
+              "durationFrames": 81
+            }
+          ]
+        }
+      },
+      {
         "assetId": "home-system",
         "svgSource": "videos/still-talking/visuals/home-system.svg",
-        "layer": 4,
+        "layer": 5,
         "position": {
           "x": 470,
           "y": 1285
@@ -809,7 +958,7 @@ export const stillTalkingFilm: Film = {
       {
         "assetId": "jupiter",
         "svgSource": "videos/still-talking/visuals/jupiter.svg",
-        "layer": 5,
+        "layer": 6,
         "position": {
           "x": 1000,
           "y": 850
@@ -985,7 +1134,7 @@ export const stillTalkingFilm: Film = {
       {
         "assetId": "saturn",
         "svgSource": "videos/still-talking/visuals/saturn.svg",
-        "layer": 6,
+        "layer": 7,
         "position": {
           "x": 1000,
           "y": 850
@@ -1195,7 +1344,7 @@ export const stillTalkingFilm: Film = {
       {
         "assetId": "survey",
         "svgSource": "videos/still-talking/visuals/survey.svg",
-        "layer": 7,
+        "layer": 8,
         "position": {
           "x": 1000,
           "y": 850
@@ -1392,7 +1541,7 @@ export const stillTalkingFilm: Film = {
       {
         "assetId": "plate",
         "svgSource": "videos/still-talking/visuals/plate.svg",
-        "layer": 8,
+        "layer": 9,
         "position": {
           "x": 1000,
           "y": 850
@@ -1659,7 +1808,7 @@ export const stillTalkingFilm: Film = {
       {
         "assetId": "sun",
         "svgSource": "videos/still-talking/visuals/sun.svg",
-        "layer": 9,
+        "layer": 10,
         "position": {
           "x": 470,
           "y": 1285
@@ -1817,7 +1966,7 @@ export const stillTalkingFilm: Film = {
       {
         "assetId": "probe",
         "svgSource": "videos/still-talking/visuals/probe.svg",
-        "layer": 10,
+        "layer": 11,
         "position": {
           "x": 1130,
           "y": 1210
@@ -3390,7 +3539,7 @@ export const stillTalkingFilm: Film = {
       {
         "assetId": "record",
         "svgSource": "videos/still-talking/visuals/record.svg",
-        "layer": 11,
+        "layer": 12,
         "position": {
           "x": 1152,
           "y": 1234
@@ -3585,7 +3734,7 @@ export const stillTalkingFilm: Film = {
       {
         "assetId": "scrim",
         "svgSource": "videos/still-talking/visuals/scrim.svg",
-        "layer": 12,
+        "layer": 13,
         "position": {
           "x": 960,
           "y": 960
