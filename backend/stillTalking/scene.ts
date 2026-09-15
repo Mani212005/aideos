@@ -29,6 +29,14 @@ const PLACEMENT = {
   /** The record starts life as the small disc on the craft's flank and grows out of it. */
   recordOnFlank: { x: 1152, y: 1234 },
   boundary: { x: 1960, y: 960 },
+  /**
+   * The flight path hangs below the action line, in the band only the reel can see. The wide cut's
+   * visible window stops at world y 1500 (it takes the centre 1080-tall strip of the 1920-tall
+   * scene), so this sits low enough, at the trajectory asset's own scale (0.8, see the asset
+   * below), that even its highest point stays under that line: the wide cut crops it clean and the
+   * reel gets a lower third that carries the journey instead of bare sky.
+   */
+  trajectory: { x: 800, y: 1672 },
   centre: { x: 960, y: 960 },
 };
 
@@ -289,7 +297,7 @@ export function buildScene(timing: VoiceoverTiming): Scene {
   const homeSystem: EnvironmentAsset = {
     assetId: "home-system",
     svgSource: "videos/still-talking/visuals/home-system.svg",
-    layer: 4,
+    layer: 5,
     position: PLACEMENT.sun,
     scale: 0.95,
     rotation: 0,
@@ -324,7 +332,7 @@ export function buildScene(timing: VoiceoverTiming): Scene {
   const jupiter: EnvironmentAsset = {
     assetId: "jupiter",
     svgSource: "videos/still-talking/visuals/jupiter.svg",
-    layer: 5,
+    layer: 6,
     position: PLACEMENT.insert,
     scale: 1,
     rotation: 0,
@@ -350,7 +358,7 @@ export function buildScene(timing: VoiceoverTiming): Scene {
   const saturn: EnvironmentAsset = {
     assetId: "saturn",
     svgSource: "videos/still-talking/visuals/saturn.svg",
-    layer: 6,
+    layer: 7,
     position: PLACEMENT.insert,
     scale: 1,
     rotation: 0,
@@ -380,7 +388,7 @@ export function buildScene(timing: VoiceoverTiming): Scene {
   const survey: EnvironmentAsset = {
     assetId: "survey",
     svgSource: "videos/still-talking/visuals/survey.svg",
-    layer: 7,
+    layer: 8,
     position: PLACEMENT.insert,
     scale: 1,
     rotation: 0,
@@ -405,7 +413,7 @@ export function buildScene(timing: VoiceoverTiming): Scene {
   const plate: EnvironmentAsset = {
     assetId: "plate",
     svgSource: "videos/still-talking/visuals/plate.svg",
-    layer: 8,
+    layer: 9,
     position: PLACEMENT.insert,
     scale: 1,
     rotation: 0,
@@ -439,7 +447,7 @@ export function buildScene(timing: VoiceoverTiming): Scene {
   const sun: EnvironmentAsset = {
     assetId: "sun",
     svgSource: "videos/still-talking/visuals/sun.svg",
-    layer: 9,
+    layer: 10,
     position: PLACEMENT.sun,
     scale: 1,
     rotation: 0,
@@ -463,7 +471,7 @@ export function buildScene(timing: VoiceoverTiming): Scene {
   const probe: EnvironmentAsset = {
     assetId: "probe",
     svgSource: "videos/still-talking/visuals/probe.svg",
-    layer: 10,
+    layer: 11,
     position: PLACEMENT.probe,
     scale: 1,
     rotation: 0,
@@ -475,7 +483,7 @@ export function buildScene(timing: VoiceoverTiming): Scene {
   const record: EnvironmentAsset = {
     assetId: "record",
     svgSource: "videos/still-talking/visuals/record.svg",
-    layer: 11,
+    layer: 12,
     position: PLACEMENT.recordOnFlank,
     scale: 1,
     rotation: 0,
@@ -501,11 +509,42 @@ export function buildScene(timing: VoiceoverTiming): Scene {
       .build(),
   };
 
+  // --------------------------------------------------------- the road behind
+  // The path draws itself as the craft actually flies it, so the lower band fills in over the
+  // first two acts rather than being present from frame one, and then recedes for the rest.
+  const trajectory: EnvironmentAsset = {
+    assetId: "trajectory",
+    svgSource: "videos/still-talking/visuals/trajectory.svg",
+    layer: 4,
+    position: PLACEMENT.trajectory,
+    // Smaller than every other asset on purpose: at scale 1 the curve's own highest point (the
+    // whip up to the edge waypoint) sits above world y 1500 and leaks into the wide cut. Shrinking
+    // it is what buys the headroom to keep the whole curve, including that point, below the line.
+    scale: 0.8,
+    rotation: 0,
+    opacity: 1,
+    animation: new Timeline("flight-path", durationFrames)
+      .add({ id: "path-in", targets: ["trajectory-body"], property: "opacity", from: 0, to: 1, start: at("one-job", 0.1), end: at("one-job", 0.7) })
+      .add({ id: "path-leg-1", targets: ["traj-path", "traj-path-glow"], property: "drawOn", from: 0, to: 0.2, start: at("one-job", 0.2), end: to("let-go"), easing: "linear" })
+      .add({ id: "path-leg-2", targets: ["traj-path", "traj-path-glow"], property: "drawOn", from: 0.2, to: 0.42, start: from("falling-outward"), end: at("jupiter", 0.9), easing: "linear" })
+      .add({ id: "path-leg-3", targets: ["traj-path", "traj-path-glow"], property: "drawOn", from: 0.42, to: 0.64, start: from("slingshot"), end: at("saturn", 0.9), easing: "linear" })
+      .add({ id: "path-leg-4", targets: ["traj-path", "traj-path-glow"], property: "drawOn", from: 0.64, to: 0.82, start: from("out-of-plane"), end: at("turn-around", 0.6), easing: "linear" })
+      .add({ id: "path-leg-5", targets: ["traj-path", "traj-path-glow"], property: "drawOn", from: 0.82, to: 1, start: from("particles-change"), end: at("across-the-edge", 0.8), easing: "linear" })
+      // Once it is complete the road slides away behind the craft for the rest of the film.
+      .add({ id: "path-recede", targets: ["trajectory-body"], property: "translateX", from: 0, to: -230, start: from("still-out-there"), end: durationFrames, easing: "linear" })
+      .add({ id: "path-settle", targets: ["trajectory-body"], property: "opacity", from: 1, to: 0.6, start: from("still-out-there"), end: at("twenty-two-watts", 0.6) })
+      // Each waypoint lights as the craft reaches the place it marks.
+      .add({ id: "mark-jupiter", targets: ["waypoint-jupiter"], property: "opacity", from: 0, to: 1, start: at("jupiter", 0.2), end: at("jupiter", 0.6) })
+      .add({ id: "mark-saturn", targets: ["waypoint-saturn"], property: "opacity", from: 0, to: 1, start: at("saturn", 0.2), end: at("saturn", 0.6) })
+      .add({ id: "mark-edge", targets: ["waypoint-edge"], property: "opacity", from: 0, to: 1, start: at("across-the-edge", 0.2), end: at("across-the-edge", 0.7) })
+      .build(),
+  };
+
   // ------------------------------------------------------------------ scrim
   const scrim: EnvironmentAsset = {
     assetId: "scrim",
     svgSource: "videos/still-talking/visuals/scrim.svg",
-    layer: 12,
+    layer: 13,
     position: PLACEMENT.centre,
     scale: 4.8,
     rotation: 0,
@@ -526,6 +565,7 @@ export function buildScene(timing: VoiceoverTiming): Scene {
       starsFar,
       starsNear,
       boundary,
+      trajectory,
       homeSystem,
       jupiter,
       saturn,

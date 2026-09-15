@@ -46,6 +46,7 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const layout = useLayout();
+  const palette = useTokens();
   const active = activeShotAt(timeline, frame);
   if (!active || active.shot.stage === "none") return null;
   const current = active;
@@ -126,9 +127,28 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
         display: "flex",
       }}
     >
+      {/* A card printed straight onto a scene has a star field behind it, and a single lit dot
+          landing on a glyph reads as a broken character. The film-level scrim sets the mood but
+          is far too light to suppress one; this band is local to the type, so the picture stays
+          visible around the card while nothing shows through the letters themselves. */}
+      {film.scene && shot.blocks.length > 0 ? (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: "50%",
+            transform: "translateY(-50%)",
+            height: "42%",
+            pointerEvents: "none",
+            background: `linear-gradient(to bottom, ${accentAt(palette.canvas, 0)} 0%, ${accentAt(palette.canvas, 0.86)} 26%, ${accentAt(palette.canvas, 0.86)} 74%, ${accentAt(palette.canvas, 0)} 100%)`,
+          }}
+        />
+      ) : null}
       <div
         style={{
           flex: 1,
+          position: "relative",
           padding: shot.stage === "frame" || heroOnly ? 0 : layout.grid * 5,
           display: "flex",
           flexDirection: "column",
@@ -193,7 +213,10 @@ const Rail: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline 
   // The rail is chrome, and chrome has to stay readable over whatever the film is doing behind
   // it. A node graph leaves the bottom of the frame empty, but a scene can put a star or a limb
   // straight through a glyph, so the rail carries its own ground rather than trusting the frame.
-  const scrimHeight = layout.margin.bottom * 3.2;
+  // Sized to the rail, not to the margin. A reel's bottom margin is two and a half times the
+  // long cut's because the design language reserves the bottom fifth of a vertical frame for the
+  // platform's own chrome, so scaling the scrim by that margin blacked out 40% of the reel.
+  const scrimHeight = layout.margin.bottom * 0.5 + layout.px(120);
 
   return (
     <>
