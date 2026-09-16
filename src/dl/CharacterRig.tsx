@@ -7,7 +7,7 @@
 import React from "react";
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { EXPO } from "./motion";
-import { PALETTE } from "./tokens";
+import { MONO, PALETTE } from "./tokens";
 import { useAccent } from "./accent";
 import type { CharacterRig, PoseKeyframe, PoseTransform, SemanticToken } from "./characters/types";
 import { getCharacterRigById } from "./characters";
@@ -164,7 +164,7 @@ export const CharacterRigView: React.FC<CharacterBeatProps> = ({
   const rig: CharacterRig | null = getCharacterRigById(characterId);
   if (!rig) {
     return (
-      <div style={{ color: PALETTE.muted, fontFamily: "sans-serif" }}>
+      <div style={{ color: PALETTE.muted, fontFamily: MONO }}>
         Character &quot;{characterId}&quot; not found
       </div>
     );

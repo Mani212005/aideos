@@ -294,6 +294,7 @@ export type DLLayout = {
 };
 
 export const useLayout = (): DLLayout => {
+  const theme = useTheme();
   let width = 1920;
   let height = 1080;
   try {
@@ -336,12 +337,15 @@ export const useLayout = (): DLLayout => {
         fontWeight: s.weight,
       };
     },
+    // Muted comes from the theme that is actually rendering, not from the module-level
+    // paper-white PALETTE: the latter paints every label slate blue on the dark canvases
+    // every film uses, which is both unreadable and outside the locked palette.
     label: (size = 16) => ({
       fontFamily: MONO,
       fontSize: size * typeScale * k * 0.75,
       letterSpacing: "0.14em",
       textTransform: "uppercase",
-      color: PALETTE.muted,
+      color: theme.muted,
     }),
   };
 };
