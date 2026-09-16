@@ -11,8 +11,10 @@ import {
   moveShot,
   moveMultipleShots,
   trimShotEdge,
+  rippleTrimShotEdge,
   splitShotAtTime,
   deleteShot,
+  rippleDeleteShot,
 } from "./timeline";
 import {
   TimelineTransactionManager,
@@ -264,3 +266,132 @@ test("TC-5: 50 sequential operations and 50 undos returns film deep-equal to ini
 
   assert.deepEqual(current, film);
 });
+
+// ==============================================================================
+// MAGNETIC RIPPLE EDITING & LINKED TRIMMING TESTS
+// ==============================================================================
+
+test("Ripple Trim Right Edge: Lengthening shot shifts all subsequent shots rightward without dead gaps", () => {
+  const film = createMockFilm();
+  // Initially: shot-1 [0, 4], shot-2 [4, 10], shot-3 [10, 15]
+  const { film: result } = rippleTrimShotEdge(film, 0, "right", 2.0);
+
+  // Shot-1 duration increased from 4.0s to 6.0s
+  assert.equal(getShotDuration(result.shots[0]), 6.0);
+  assert.equal(result.shots[0].end, 6.0);
+  assert.equal(result.shots[0].position, 0);
+
+  // Shot-2 shifted right by 2.0s: starts at 6.0s
+  assert.equal(result.shots[1].position, 6.0);
+  assert.equal(getShotDuration(result.shots[1]), 6.0);
+
+  // Shot-3 shifted right by 2.0s: starts at 12.0s
+  assert.equal(result.shots[2].position, 12.0);
+  assert.equal(getShotDuration(result.shots[2]), 5.0);
+});
+
+test("Ripple Trim Right Edge: Shortening shot shifts all subsequent shots leftward without dead gaps", () => {
+  const film = createMockFilm();
+  // Shorten shot-1 by 1.5s
+  const { film: result } = rippleTrimShotEdge(film, 0, "right", -1.5);
+
+  // Shot-1 duration decreased from 4.0s to 2.5s
+  assert.equal(getShotDuration(result.shots[0]), 2.5);
+  assert.equal(result.shots[0].end, 2.5);
+  assert.equal(result.shots[0].position, 0);
+
+  // Shot-2 shifted left by 1.5s: starts at 2.5s, exactly against shot-1
+  assert.equal(result.shots[1].position, 2.5);
+
+  // Shot-3 shifted left by 1.5s: starts at 8.5s
+  assert.equal(result.shots[2].position, 8.5);
+});
+
+test("Ripple Trim Left Edge: Advances in-point, anchors start, and shifts downstream clips leftward", () => {
+  const film = createMockFilm();
+  // Trim 1.0s off the head of shot-2
+  const { film: result } = rippleTrimShotEdge(film, 1, "left", 1.0);
+
+  // Shot-1 is unaffected
+  assert.equal(result.shots[0].position ?? 0, 0);
+  assert.equal(getShotDuration(result.shots[0]), 4.0);
+
+  // Shot-2 starts at 4.0s, in-point is 1.0s, duration is 5.0s (ends at 9.0s)
+  assert.equal(result.shots[1].position, 4.0);
+  assert.equal(result.shots[1].start, 1.0);
+  assert.equal(getShotDuration(result.shots[1]), 5.0);
+
+  // Shot-3 shifted left by 1.0s: from 10.0s to 9.0s
+  assert.equal(result.shots[2].position, 9.0);
+});
+
+test("Ripple Delete: Removes shot and shifts subsequent shots leftward to close the gap", () => {
+  const film = createMockFilm();
+  // Delete shot-2 (duration 6.0s, positioned at 4.0s)
+  const { film: result } = rippleDeleteShot(film, 1);
+
+  assert.equal(result.shots.length, 2);
+  assert.equal(result.shots[0].id, "shot-1");
+  assert.equal(result.shots[0].position ?? 0, 0);
+  assert.equal(getShotDuration(result.shots[0]), 4.0);
+
+  // Shot-3 (now index 1) shifted left from 10.0s to 4.0s, closing the gap completely
+  assert.equal(result.shots[1].id, "shot-3");
+  assert.equal(result.shots[1].position, 4.0);
+  assert.equal(getShotDuration(result.shots[1]), 5.0);
+});
+
+test("Ripple Trim with Linked Audio Clips: Trims associated audio clip and ripples subsequent audio clips in sync", () => {
+  const film = createMockFilm();
+  film.audioClips = [
+    { id: "shot-1", src: "audio1.wav", position: 0, start: 0, end: 4, volume: 1, channel: "voiceover" },
+    { id: "shot-2", src: "audio2.wav", position: 4, start: 0, end: 6, volume: 1, channel: "voiceover" },
+    { id: "shot-3", src: "audio3.wav", position: 10, start: 0, end: 5, volume: 1, channel: "voiceover" },
+  ];
+
+  // Trim right edge of shot-1 by +1.0s
+  const { film: result } = rippleTrimShotEdge(film, 0, "right", 1.0);
+
+  assert.ok(result.audioClips);
+  assert.equal(result.audioClips.length, 3);
+  // Associated audio clip trimmed in lockstep
+  assert.equal(result.audioClips[0].end, 5.0);
+  // Downstream audio clips shifted right by 1.0s
+  assert.equal(result.audioClips[1].position, 5.0);
+  assert.equal(result.audioClips[2].position, 11.0);
+});
+
+test("Ripple Delete with Linked Audio Clips: Removes associated audio clip and shifts subsequent audio clips", () => {
+  const film = createMockFilm();
+  film.audioClips = [
+    { id: "shot-1", src: "audio1.wav", position: 0, start: 0, end: 4, volume: 1, channel: "voiceover" },
+    { id: "shot-2", src: "audio2.wav", position: 4, start: 0, end: 6, volume: 1, channel: "voiceover" },
+    { id: "shot-3", src: "audio3.wav", position: 10, start: 0, end: 5, volume: 1, channel: "voiceover" },
+  ];
+
+  const { film: result } = rippleDeleteShot(film, 1);
+  assert.ok(result.audioClips);
+  assert.equal(result.audioClips.length, 2);
+  assert.equal(result.audioClips[0].id, "shot-1");
+  assert.equal(result.audioClips[1].id, "shot-3");
+  assert.equal(result.audioClips[1].position, 4.0);
+});
+
+test("Ripple Trim Negative Case: Trim reducing duration below 0.5s is rejected", () => {
+  const film = createMockFilm();
+  // Shot-1 duration is 4.0s; trimming right edge by -3.6s would make duration 0.4s < 0.5s minimum
+  assert.throws(
+    () => rippleTrimShotEdge(film, 0, "right", -3.6),
+    /cannot fall below minimum/
+  );
+});
+
+test("Ripple Delete Negative Case: Deleting the only remaining shot is rejected", () => {
+  const film = createMockFilm();
+  film.shots = [film.shots[0]];
+  assert.throws(
+    () => rippleDeleteShot(film, 0),
+    /Cannot delete the only remaining shot/
+  );
+});
+

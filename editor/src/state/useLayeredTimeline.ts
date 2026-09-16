@@ -15,8 +15,10 @@ import {
   moveLayerClip,
   moveMultipleLayerClips,
   trimLayerClipEdge,
+  rippleTrimLayerClipEdge,
   splitLayerClipAtTime,
   deleteLayerClip,
+  rippleDeleteLayerClip,
   unlinkClips,
   clipDuration,
   clipEndSec,
@@ -47,10 +49,13 @@ export interface LayeredTimelineApi {
   contentEndSec: number;
   moveClip: (clipId: string, positionSec: number, targetLayerId?: string) => boolean;
   moveClips: (clipIds: string[], deltaSec: number) => boolean;
-  trimClip: (clipId: string, edge: "left" | "right", deltaSec: number) => boolean;
+  trimClip: (clipId: string, edge: "left" | "right", deltaSec: number, ripple?: boolean) => boolean;
+  rippleTrimClip: (clipId: string, edge: "left" | "right", deltaSec: number) => boolean;
   splitClip: (clipId: string, atSec: number) => boolean;
-  removeClip: (clipId: string, deleteLinked?: boolean) => boolean;
-  removeClips: (clipIds: string[]) => boolean;
+  removeClip: (clipId: string, deleteLinked?: boolean, ripple?: boolean) => boolean;
+  removeClips: (clipIds: string[], ripple?: boolean) => boolean;
+  rippleRemoveClip: (clipId: string, deleteLinked?: boolean) => boolean;
+  rippleRemoveClips: (clipIds: string[]) => boolean;
   unlinkClip: (clipId: string) => boolean;
   setClipVolume: (clipId: string, volume: number) => boolean;
   importAsset: (asset: MediaAssetInput, positionSec: number, layerId?: string) => boolean;
@@ -155,11 +160,22 @@ export function useLayeredTimeline({ film, commit, onReject }: UseLayeredTimelin
   );
 
   const trimClip = useCallback(
-    (clipId: string, edge: "left" | "right", deltaSec: number) =>
-      apply(`Trim ${clipId} ${edge === "left" ? "in" : "out"}`, () =>
-        trimLayerClipEdge(layered, clipId, edge, deltaSec),
+    (clipId: string, edge: "left" | "right", deltaSec: number, ripple = false) =>
+      apply(
+        `${ripple ? "Ripple trim" : "Trim"} ${clipId} ${edge === "left" ? "in" : "out"}`,
+        () =>
+          ripple
+            ? rippleTrimLayerClipEdge(layered, clipId, edge, deltaSec)
+            : trimLayerClipEdge(layered, clipId, edge, deltaSec),
       ),
     [apply, layered],
+  );
+
+  // Trims a clip edge in ripple mode to automatically shift adjacent clips.
+  const rippleTrimClip = useCallback(
+    (clipId: string, edge: "left" | "right", deltaSec: number) =>
+      trimClip(clipId, edge, deltaSec, true),
+    [trimClip],
   );
 
   const splitClip = useCallback(
@@ -169,28 +185,53 @@ export function useLayeredTimeline({ film, commit, onReject }: UseLayeredTimelin
   );
 
   const removeClip = useCallback(
-    (clipId: string, deleteLinked = true) =>
-      apply(`Delete ${clipId}`, () => deleteLayerClip(layered, clipId, { deleteLinked })),
+    (clipId: string, deleteLinked = true, ripple = false) =>
+      apply(
+        `${ripple ? "Ripple delete" : "Delete"} ${clipId}`,
+        () =>
+          ripple
+            ? rippleDeleteLayerClip(layered, clipId, { deleteLinked })
+            : deleteLayerClip(layered, clipId, { deleteLinked }),
+      ),
     [apply, layered],
   );
 
+  // Removes a clip and ripples following clips to close gaps.
+  const rippleRemoveClip = useCallback(
+    (clipId: string, deleteLinked = true) => removeClip(clipId, deleteLinked, true),
+    [removeClip],
+  );
+
   const removeClips = useCallback(
-    (clipIds: string[]) => {
+    (clipIds: string[], ripple = false) => {
       if (clipIds.length === 0) return false;
       if (clipIds.length === 1) {
-        return apply(`Delete ${clipIds[0]}`, () => deleteLayerClip(layered, clipIds[0], { deleteLinked: true }));
+        return removeClip(clipIds[0], true, ripple);
       }
       // Every removal is applied to the same working copy so the whole selection is one undo step.
-      return apply(`Delete ${clipIds.length} clips`, () => {
-        let working = layered;
-        for (const id of clipIds) {
-          if (!working.clips.some((c) => c.id === id)) continue;
-          working = deleteLayerClip(working, id, { deleteLinked: true }).film;
-        }
-        return { film: working };
-      });
+      return apply(
+        `${ripple ? "Ripple delete" : "Delete"} ${clipIds.length} clips`,
+        () => {
+          let working = layered;
+          for (const id of clipIds) {
+            if (!working.clips.some((c) => c.id === id)) continue;
+            working = (ripple ? rippleDeleteLayerClip : deleteLayerClip)(
+              working,
+              id,
+              { deleteLinked: true },
+            ).film;
+          }
+          return { film: working };
+        },
+      );
     },
-    [apply, layered],
+    [apply, layered, removeClip],
+  );
+
+  // Removes multiple clips and ripples following clips to close gaps.
+  const rippleRemoveClips = useCallback(
+    (clipIds: string[]) => removeClips(clipIds, true),
+    [removeClips],
   );
 
   const unlinkClip = useCallback(
@@ -258,9 +299,12 @@ export function useLayeredTimeline({ film, commit, onReject }: UseLayeredTimelin
     moveClip,
     moveClips,
     trimClip,
+    rippleTrimClip,
     splitClip,
     removeClip,
     removeClips,
+    rippleRemoveClip,
+    rippleRemoveClips,
     unlinkClip,
     setClipVolume,
     importAsset,

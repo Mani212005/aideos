@@ -17,11 +17,14 @@ import * as path from "path";
 import { Film, parseFilm } from "../src/dl/schema";
 import { extractSpokenBlocks, hasScreenplayTags } from "./scriptIntake";
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
+import * as fsSync from "fs";
+import * as crypto from "crypto";
 import {
   assembleSegments,
   deriveShotDurations,
   distributeWordTimings,
   encodeWav,
+  decodeWav,
   normalizePeak,
   DEFAULT_ASSEMBLE_OPTIONS,
   type PcmChunk,
@@ -540,3 +543,148 @@ export async function processAudioForFilm(film: Film, outDir: string): Promise<F
   const audioResult = await produceAudioPipeline(validShots, outDir);
   return buildFilmFromAudioResult(film.title, audioResult);
 }
+
+/** Result of pitch-corrected WSOLA time-stretching for an audio track. */
+export interface RetimedAudioResult {
+  filePath: string;
+  durationSec: number;
+}
+
+/** Build an FFmpeg atempo filter chain supporting arbitrary playback speed factors. */
+export function buildAtempoFilter(speed: number): string {
+  if (speed <= 0) {
+    throw new Error(`Invalid speed: ${speed}. Speed must be positive.`);
+  }
+  const filters: string[] = [];
+  let s = speed;
+  while (s > 2.0) {
+    filters.push("atempo=2.0");
+    s /= 2.0;
+  }
+  while (s < 0.5) {
+    filters.push("atempo=0.5");
+    s /= 0.5;
+  }
+  filters.push(`atempo=${s.toFixed(4)}`);
+  return filters.join(",");
+}
+
+/** Resolve an audio source URL or file reference to an absolute path on disk. */
+export function resolveAudioSourcePath(src: string): string {
+  const cleanSrc = src.split("?")[0].split("#")[0];
+  const candidates = [
+    path.resolve(cleanSrc),
+    path.resolve(process.cwd(), cleanSrc.replace(/^\//, "")),
+    path.resolve(process.cwd(), "public", cleanSrc.replace(/^\//, "")),
+    path.resolve(process.cwd(), "videos", cleanSrc.replace(/^\/?videos\/?/, "")),
+    path.resolve(process.cwd(), ".tmp_audio", cleanSrc.replace(/^\/?(\.tmp_audio|api\/audio)\/?/, "")),
+  ];
+  for (const candidate of candidates) {
+    if (fsSync.existsSync(candidate) && fsSync.statSync(candidate).isFile()) {
+      return candidate;
+    }
+  }
+  throw new Error(`Audio source file not found: ${src}`);
+}
+
+/** Synchronously retimes an audio file using FFmpeg WSOLA-based atempo filter and caches the result. */
+export function retimeAudioSync(
+  src: string,
+  speed: number,
+  options?: { cacheDir?: string; outPath?: string }
+): RetimedAudioResult {
+  if (speed <= 0 || !Number.isFinite(speed)) {
+    throw new Error(`Invalid speed: ${speed}`);
+  }
+
+  const resolved = resolveAudioSourcePath(src);
+  const cacheDir = options?.cacheDir || path.resolve(process.cwd(), ".tmp_audio");
+  if (!fsSync.existsSync(cacheDir)) {
+    fsSync.mkdirSync(cacheDir, { recursive: true });
+  }
+
+  // Also ensure public/.tmp_audio exists for direct web serving if needed
+  const publicTmp = path.resolve(process.cwd(), "public/.tmp_audio");
+  if (!fsSync.existsSync(publicTmp)) {
+    try {
+      fsSync.mkdirSync(publicTmp, { recursive: true });
+    } catch {
+      // Best-effort directory creation
+    }
+  }
+
+  // If 1.0x speed, measure original duration and return original file
+  if (Math.abs(speed - 1.0) < 0.001) {
+    let dur = 0;
+    try {
+      const buf = fsSync.readFileSync(resolved);
+      const dec = decodeWav(buf);
+      dur = Number((dec.samples.length / dec.sampleRate).toFixed(3));
+    } catch {
+      dur = 0;
+    }
+    return { filePath: resolved, durationSec: dur };
+  }
+
+  const stat = fsSync.statSync(resolved);
+  const hash = crypto
+    .createHash("md5")
+    .update(`${resolved}:${stat.mtimeMs}:${speed.toFixed(3)}`)
+    .digest("hex")
+    .slice(0, 10);
+  const ext = path.extname(resolved) || ".wav";
+  const base = path.basename(resolved, ext).replace(/[^a-zA-Z0-9_-]/g, "_");
+  const outFilename = `retimed_${base}_${speed.toFixed(3).replace(".", "_")}x_${hash}.wav`;
+  const outPath = options?.outPath || path.join(cacheDir, outFilename);
+
+  // Return cached result if already rendered and valid
+  if (fsSync.existsSync(outPath) && fsSync.statSync(outPath).size > 44) {
+    let dur = 0;
+    try {
+      const buf = fsSync.readFileSync(outPath);
+      const dec = decodeWav(buf);
+      dur = Number((dec.samples.length / dec.sampleRate).toFixed(3));
+    } catch {
+      dur = 0;
+    }
+    return { filePath: outPath, durationSec: dur };
+  }
+
+  const filter = buildAtempoFilter(speed);
+  const cmd = `ffmpeg -y -i "${resolved}" -filter:a "${filter}" -vn -c:a pcm_s16le "${outPath}"`;
+  execSync(cmd, { stdio: ["ignore", "pipe", "pipe"] });
+
+  let durationSec = 0;
+  try {
+    const buf = fsSync.readFileSync(outPath);
+    const decoded = decodeWav(buf);
+    durationSec = Number((decoded.samples.length / decoded.sampleRate).toFixed(3));
+  } catch {
+    const durOutput = execSync(
+      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${outPath}"`
+    ).toString().trim();
+    durationSec = Number(parseFloat(durOutput).toFixed(3));
+  }
+
+  // Mirror to public/.tmp_audio if directory is available
+  try {
+    const publicOut = path.join(publicTmp, outFilename);
+    if (!fsSync.existsSync(publicOut)) {
+      fsSync.copyFileSync(outPath, publicOut);
+    }
+  } catch {
+    // Best-effort mirror
+  }
+
+  return { filePath: outPath, durationSec };
+}
+
+/** Retimes an audio file using FFmpeg WSOLA-based atempo filter and caches the result. */
+export async function retimeAudio(
+  src: string,
+  speed: number,
+  options?: { cacheDir?: string; outPath?: string }
+): Promise<RetimedAudioResult> {
+  return retimeAudioSync(src, speed, options);
+}
+

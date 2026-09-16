@@ -14,6 +14,10 @@ import {
   formatTime,
   produceAudioPipeline,
   buildFilmFromAudioResult,
+  retimeAudio,
+  retimeAudioSync,
+  buildAtempoFilter,
+  resolveAudioSourcePath,
 } from "./audio";
 
 test("segment splitting handles shot-scoped multi-sentence and newline-separated scripts", () => {
@@ -137,3 +141,54 @@ test("buildFilmFromAudioResult produces valid film JSON matching audio result", 
   const shotSum = film.shots.reduce((sum, s) => sum + s.dur, 0);
   assert.ok(Math.abs(shotSum - dummyResult.totalAudioDuration) < 0.05);
 });
+
+test("buildAtempoFilter builds valid single and chained atempo filters", () => {
+  assert.equal(buildAtempoFilter(1.5), "atempo=1.5000");
+  assert.equal(buildAtempoFilter(0.8), "atempo=0.8000");
+  assert.equal(buildAtempoFilter(3.0), "atempo=2.0,atempo=1.5000");
+  assert.equal(buildAtempoFilter(0.4), "atempo=0.5,atempo=0.8000");
+  assert.throws(() => buildAtempoFilter(0), /Invalid speed/);
+  assert.throws(() => buildAtempoFilter(-1), /Invalid speed/);
+});
+
+test("resolveAudioSourcePath resolves files across packages and public directories", () => {
+  const whyDit = resolveAudioSourcePath("videos/why-dit-replaced-unet/voiceover.wav");
+  assert.ok(whyDit.includes("why-dit-replaced-unet"));
+
+  const withSlash = resolveAudioSourcePath("/videos/why-dit-replaced-unet/voiceover.wav");
+  assert.equal(whyDit, withSlash);
+
+  assert.throws(() => resolveAudioSourcePath("nonexistent/missing_file.wav"), /not found/);
+});
+
+test("retimeAudio retimes audio across 0.8x, 1.2x, 1.5x, 2.0x speeds with WSOLA duration scaling", async () => {
+  const sourcePath = "videos/why-dit-replaced-unet/voiceover.wav";
+  const orig = retimeAudioSync(sourcePath, 1.0);
+  assert.ok(orig.durationSec > 0);
+
+  const speeds = [0.8, 1.2, 1.5, 2.0];
+  for (const speed of speeds) {
+    const retimed = await retimeAudio(sourcePath, speed);
+    assert.ok(retimed.filePath.endsWith(".wav"));
+    // Expected duration is original duration divided by speed, within 1% tolerance
+    const expectedDur = orig.durationSec / speed;
+    assert.ok(
+      Math.abs(retimed.durationSec - expectedDur) < expectedDur * 0.02,
+      `Duration mismatch at speed ${speed}: got ${retimed.durationSec}, expected ${expectedDur}`
+    );
+  }
+});
+
+test("retimeAudioSync caches results so subsequent calls return immediately from disk", () => {
+  const sourcePath = "videos/why-dit-replaced-unet/voiceover.wav";
+  const first = retimeAudioSync(sourcePath, 1.5);
+  const start = Date.now();
+  const second = retimeAudioSync(sourcePath, 1.5);
+  const elapsed = Date.now() - start;
+
+  assert.equal(first.filePath, second.filePath);
+  assert.equal(first.durationSec, second.durationSec);
+  // Cache lookup should take less than 100ms
+  assert.ok(elapsed < 100, `Expected cached lookup under 100ms, took ${elapsed}ms`);
+});
+

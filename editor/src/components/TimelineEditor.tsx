@@ -18,6 +18,7 @@ import React, {
 } from "react";
 import {
   ArrowLeftRight,
+  ChevronsLeftRight,
   Layers,
   Magnet,
   Maximize2,
@@ -171,6 +172,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   const [pxPerSec, setPxPerSec] = useState(28);
   const [tool, setTool] = useState<TimelineTool>("select");
   const [snapEnabled, setSnapEnabled] = useState(true);
+  const [rippleEnabled, setRippleEnabled] = useState(false);
   const [drag, setDrag] = useState<DragState>(IDLE_DRAG);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewport, setViewport] = useState({ left: 0, width: 1200 });
@@ -313,14 +315,34 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         return;
       }
 
+      // Find associated audio/video partner
+      const partner = api.layered.clips.find(
+        (c) =>
+          c.id !== clip.id &&
+          (c.id === clip.linkedClipId ||
+            c.linkedClipId === clip.id ||
+            (((c.kind === "audio" && clip.kind !== "audio") ||
+              (c.kind !== "audio" && clip.kind === "audio")) &&
+              (c.id === `clip-audio-${clip.id}` ||
+                clip.id === `clip-audio-${c.id}` ||
+                Math.abs(c.position - clip.position) < 0.05)))
+      );
+
       const additive = e.shiftKey || e.metaKey || e.ctrlKey;
       let nextSelection: string[];
       if (additive) {
-        nextSelection = selection.has(clip.id)
-          ? selectedClipIds.filter((id) => id !== clip.id)
-          : [...selectedClipIds, clip.id];
+        if (selection.has(clip.id)) {
+          const toRemove = new Set([clip.id, ...(partner ? [partner.id] : [])]);
+          nextSelection = selectedClipIds.filter((id) => !toRemove.has(id));
+        } else {
+          nextSelection = [
+            ...selectedClipIds,
+            clip.id,
+            ...(partner && !selectedClipIds.includes(partner.id) ? [partner.id] : []),
+          ];
+        }
       } else {
-        nextSelection = selection.has(clip.id) ? selectedClipIds : [clip.id];
+        nextSelection = partner ? [clip.id, partner.id] : [clip.id];
       }
       onSelectionChange(nextSelection);
 
@@ -329,7 +351,9 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           ? nextSelection
               .map((id) => clipById.get(id))
               .filter((c): c is Clip => Boolean(c) && isDraggable(c!))
-          : [clip];
+          : partner && isDraggable(partner)
+            ? [clip, partner]
+            : [clip];
 
       setDragState(
         beginDrag({
@@ -553,13 +577,13 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       }
 
       if (commit.mode === "trim-start") {
-        api.trimClip(primaryId, "left", commit.candidateSec - origin.position);
+        api.trimClip(primaryId, "left", commit.candidateSec - origin.position, rippleEnabled);
         return;
       }
 
       if (commit.mode === "trim-end") {
         const originEnd = origin.position + (origin.end - origin.start);
-        api.trimClip(primaryId, "right", commit.candidateSec - originEnd);
+        api.trimClip(primaryId, "right", commit.candidateSec - originEnd, rippleEnabled);
       }
     };
 
@@ -671,8 +695,8 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   /** Delete every selected clip as one undoable step. */
   const deleteSelection = useCallback(() => {
     if (selectedClipIds.length === 0) return;
-    if (api.removeClips(selectedClipIds)) onSelectionChange([]);
-  }, [api, onSelectionChange, selectedClipIds]);
+    if (api.removeClips(selectedClipIds, rippleEnabled)) onSelectionChange([]);
+  }, [api, onSelectionChange, rippleEnabled, selectedClipIds]);
 
   /** Nudge the playhead by whole frames. */
   const nudgePlayhead = useCallback(
@@ -726,6 +750,11 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           break;
         case "n":
           setSnapEnabled((prev) => !prev);
+          break;
+        case "r":
+        case "R":
+          e.preventDefault();
+          setRippleEnabled((prev) => !prev);
           break;
         case "Delete":
         case "Backspace":
@@ -940,6 +969,16 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           >
             <Magnet className="h-3.5 w-3.5" />
             Snap
+          </Button>
+          <Button
+            size="sm"
+            tone={rippleEnabled ? "primary" : "default"}
+            active={rippleEnabled}
+            onClick={() => setRippleEnabled((p) => !p)}
+            title="Ripple mode: auto-close gaps when trimming or deleting clips (R)"
+          >
+            <ChevronsLeftRight className="h-3.5 w-3.5" />
+            Ripple
           </Button>
         </ToolbarGroup>
 
