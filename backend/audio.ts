@@ -11,10 +11,11 @@
  * and a growing drift between the narration and the visuals describing it.
  */
 
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { Film, parseFilm } from "../src/dl/schema";
+import { getRetimedAudioFilename } from "../src/dl/audio/retime";
 import { extractSpokenBlocks, hasScreenplayTags } from "./scriptIntake";
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
 import * as fsSync from "fs";
@@ -626,15 +627,7 @@ export function retimeAudioSync(
     return { filePath: resolved, durationSec: dur };
   }
 
-  const stat = fsSync.statSync(resolved);
-  const hash = crypto
-    .createHash("md5")
-    .update(`${resolved}:${stat.mtimeMs}:${speed.toFixed(3)}`)
-    .digest("hex")
-    .slice(0, 10);
-  const ext = path.extname(resolved) || ".wav";
-  const base = path.basename(resolved, ext).replace(/[^a-zA-Z0-9_-]/g, "_");
-  const outFilename = `retimed_${base}_${speed.toFixed(3).replace(".", "_")}x_${hash}.wav`;
+  const outFilename = getRetimedAudioFilename(src, speed);
   const outPath = options?.outPath || path.join(cacheDir, outFilename);
 
   // Return cached result if already rendered and valid
@@ -651,8 +644,9 @@ export function retimeAudioSync(
   }
 
   const filter = buildAtempoFilter(speed);
-  const cmd = `ffmpeg -y -i "${resolved}" -filter:a "${filter}" -vn -c:a pcm_s16le "${outPath}"`;
-  execSync(cmd, { stdio: ["ignore", "pipe", "pipe"] });
+  execFileSync("ffmpeg", ["-y", "-i", resolved, "-filter:a", filter, "-vn", "-c:a", "pcm_s16le", outPath], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 
   let durationSec = 0;
   try {
@@ -660,9 +654,17 @@ export function retimeAudioSync(
     const decoded = decodeWav(buf);
     durationSec = Number((decoded.samples.length / decoded.sampleRate).toFixed(3));
   } catch {
-    const durOutput = execSync(
-      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${outPath}"`
-    ).toString().trim();
+    const durOutput = execFileSync("ffprobe", [
+      "-v",
+      "error",
+      "-show_entries",
+      "format=duration",
+      "-of",
+      "default=noprint_wrappers=1:nokey=1",
+      outPath,
+    ])
+      .toString()
+      .trim();
     durationSec = Number(parseFloat(durOutput).toFixed(3));
   }
 
@@ -686,5 +688,27 @@ export async function retimeAudio(
   options?: { cacheDir?: string; outPath?: string }
 ): Promise<RetimedAudioResult> {
   return retimeAudioSync(src, speed, options);
+}
+
+/** Pre-renders all retimed audio tracks in a film so Remotion CLI can access them statically. */
+export function ensureRetimedAudio(film: Film): void {
+  if (film.voiceover?.src && film.voiceover.speed && Math.abs(film.voiceover.speed - 1.0) > 0.001) {
+    try {
+      retimeAudioSync(film.voiceover.src, film.voiceover.speed);
+    } catch {
+      // Best-effort pre-render
+    }
+  }
+  if (film.audioClips) {
+    for (const clip of film.audioClips) {
+      if (clip.src && clip.speed && Math.abs(clip.speed - 1.0) > 0.001) {
+        try {
+          retimeAudioSync(clip.src, clip.speed);
+        } catch {
+          // Best-effort pre-render
+        }
+      }
+    }
+  }
 }
 

@@ -11,7 +11,7 @@ import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
-import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath } from '../backend/audio.ts'
+import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
 import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
 import { executeCritique } from '../backend/critique/engine.ts'
 import { extractSpokenBlocks as extractSpokenVoiceoverBlocks, buildFilmPartsFromScript, hasScreenplayTags } from '../backend/scriptIntake.ts'
@@ -332,6 +332,11 @@ function filmApiPlugin(): Plugin {
             serveFileWithRange(req, res, filePath);
             return;
           }
+          const pubPath = path.join(path.resolve(__dirname, '../public/.tmp_audio'), rel);
+          if (!rel.includes('..') && fs.existsSync(pubPath) && fs.statSync(pubPath).isFile()) {
+            serveFileWithRange(req, res, pubPath);
+            return;
+          }
         }
 
         // Handle /api/audio/retime (Pitch-corrected WSOLA time-stretching with FFmpeg atempo)
@@ -430,6 +435,9 @@ function filmApiPlugin(): Plugin {
               const composition = format === 'reel' ? 'Reel' : 'Long';
               const filename = `aideos_${film.id}_${format || 'long'}_${Date.now()}.mp4`;
               const outPath = path.join(outDir, filename);
+
+              // Ensure retimed audio is pre-rendered for Remotion CLI
+              ensureRetimedAudio(film);
 
               // Save active film first so remotion bundles it
               const filmFile = path.join(filmsDir, `${film.id}.ts`);

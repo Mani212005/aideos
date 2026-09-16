@@ -105,19 +105,8 @@ function requireClipIndex(film: LayeredFilm, clipId: string): number {
 
 /** Index of a clip's linked partner, or -1 when it has none or the partner is missing. */
 function linkedPartnerIndex(clips: Clip[], clip: Clip): number {
-  if (clip.linkedClipId) {
-    const idx = clips.findIndex((c) => c.id === clip.linkedClipId);
-    if (idx !== -1) return idx;
-  }
-  return clips.findIndex(
-    (c) =>
-      c.id !== clip.id &&
-      ((c.kind === "audio" && clip.kind !== "audio") || (c.kind !== "audio" && clip.kind === "audio")) &&
-      (c.id === clip.id ||
-        c.id === `clip-audio-${clip.id}` ||
-        clip.id === `clip-audio-${c.id}` ||
-        Math.abs(c.position - clip.position) < 0.05)
-  );
+  if (!clip.linkedClipId) return -1;
+  return clips.findIndex((c) => c.id === clip.linkedClipId);
 }
 
 /** True when two half-open timeline intervals genuinely overlap beyond float noise. */

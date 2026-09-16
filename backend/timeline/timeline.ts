@@ -552,8 +552,7 @@ export function rippleTrimShotEdge(
       (ac) =>
         ac.id === shot.id ||
         ac.id === `clip-audio-${shot.id}` ||
-        ac.id === `ac-${shot.id}` ||
-        Math.abs(ac.position - currentPos) < 0.05
+        ac.id === `ac-${shot.id}`
     );
 
     if (linkedAudioIdx !== -1) {
@@ -651,8 +650,7 @@ export function rippleDeleteShot(
           !(
             ac.id === deletedShot.id ||
             ac.id === `clip-audio-${deletedShot.id}` ||
-            ac.id === `ac-${deletedShot.id}` ||
-            Math.abs(ac.position - deletedPos) < 0.05
+            ac.id === `ac-${deletedShot.id}`
           )
       )
       .map((ac) => {

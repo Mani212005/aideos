@@ -316,17 +316,9 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       }
 
       // Find associated audio/video partner
-      const partner = api.layered.clips.find(
-        (c) =>
-          c.id !== clip.id &&
-          (c.id === clip.linkedClipId ||
-            c.linkedClipId === clip.id ||
-            (((c.kind === "audio" && clip.kind !== "audio") ||
-              (c.kind !== "audio" && clip.kind === "audio")) &&
-              (c.id === `clip-audio-${clip.id}` ||
-                clip.id === `clip-audio-${c.id}` ||
-                Math.abs(c.position - clip.position) < 0.05)))
-      );
+      const partner = clip.linkedClipId
+        ? api.layered.clips.find((c) => c.id === clip.linkedClipId)
+        : undefined;
 
       const additive = e.shiftKey || e.metaKey || e.ctrlKey;
       let nextSelection: string[];
@@ -622,6 +614,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     onSelectionChange,
     onSeekFrame,
     pxPerSec,
+    rippleEnabled,
     setDragState,
     snapEnabled,
     snapTargets,

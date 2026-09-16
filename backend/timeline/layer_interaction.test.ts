@@ -15,8 +15,10 @@ import {
   moveLayerClip,
   moveMultipleLayerClips,
   trimLayerClipEdge,
+  rippleTrimLayerClipEdge,
   splitLayerClipAtTime,
   deleteLayerClip,
+  rippleDeleteLayerClip,
 } from "./layer_engine";
 import {
   TimelineTransactionManager,
@@ -514,4 +516,26 @@ test("Regression: splitting an animation clip gives each half a unique shot id",
   );
   assert.equal(new Set(animClips.map((c) => c.id)).size, animClips.length);
   assert.doesNotThrow(() => validateLayeredFilm(split));
+});
+
+test("Regression: deleting or trimming clip at 0.0s does not affect unlinked voiceover at 0.0s", () => {
+  const film = createMockLayeredFilm();
+  // clip-vo is on layer-audio at position 0..20, clip-video-1 is on layer-video at position 0..6 (not linked)
+  const { film: afterDelete } = deleteLayerClip(film, "clip-video-1");
+  const voClip = afterDelete.clips.find((c) => c.id === "clip-vo");
+  assert.ok(voClip, "Unlinked voiceover clip at 0.0s must not be deleted when deleting video clip at 0.0s");
+  assert.equal(voClip.position, 0);
+  assert.equal(voClip.end, 20.0);
+
+  const { film: afterRippleDelete } = rippleDeleteLayerClip(film, "clip-video-1");
+  const voClipRipple = afterRippleDelete.clips.find((c) => c.id === "clip-vo");
+  assert.ok(voClipRipple, "Unlinked voiceover clip at 0.0s must not be deleted when ripple deleting video clip");
+  assert.equal(voClipRipple.position, 0);
+  assert.equal(voClipRipple.end, 20.0);
+
+  const { film: afterRippleTrim } = rippleTrimLayerClipEdge(film, "clip-video-1", "right", -2.0);
+  const voClipTrim = afterRippleTrim.clips.find((c) => c.id === "clip-vo");
+  assert.ok(voClipTrim, "Unlinked voiceover clip at 0.0s must not be trimmed when ripple trimming video clip");
+  assert.equal(voClipTrim.position, 0);
+  assert.equal(voClipTrim.end, 20.0);
 });

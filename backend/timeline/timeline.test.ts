@@ -395,3 +395,36 @@ test("Ripple Delete Negative Case: Deleting the only remaining shot is rejected"
   );
 });
 
+test("Ripple Delete preserves unassociated audio tracks (e.g. background music) starting at 0.0s", () => {
+  const film = createMockFilm();
+  film.audioClips = [
+    { id: "clip-music-main", src: "music.mp3", position: 0, start: 0, end: 30, volume: 0.5, channel: "music" },
+    { id: "shot-1", src: "audio1.wav", position: 0, start: 0, end: 4, volume: 1, channel: "voiceover" },
+    { id: "shot-2", src: "audio2.wav", position: 4, start: 0, end: 6, volume: 1, channel: "voiceover" },
+  ];
+
+  const { film: result } = rippleDeleteShot(film, 0);
+  assert.ok(result.audioClips);
+  const music = result.audioClips.find((ac) => ac.id === "clip-music-main");
+  assert.ok(music, "Background music track must not be deleted when deleting shot 0");
+  assert.equal(music.position, 0);
+  assert.equal(music.end, 30);
+});
+
+test("Ripple Trim preserves unassociated audio tracks starting at 0.0s", () => {
+  const film = createMockFilm();
+  film.audioClips = [
+    { id: "clip-music-main", src: "music.mp3", position: 0, start: 0, end: 30, volume: 0.5, channel: "music" },
+    { id: "shot-1", src: "audio1.wav", position: 0, start: 0, end: 4, volume: 1, channel: "voiceover" },
+    { id: "shot-2", src: "audio2.wav", position: 4, start: 0, end: 6, volume: 1, channel: "voiceover" },
+  ];
+
+  const { film: result } = rippleTrimShotEdge(film, 0, "right", 1.0);
+  assert.ok(result.audioClips);
+  const music = result.audioClips.find((ac) => ac.id === "clip-music-main");
+  assert.ok(music, "Background music track must not be trimmed when trimming shot 0");
+  assert.equal(music.position, 0);
+  assert.equal(music.end, 30);
+});
+
+

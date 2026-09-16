@@ -427,6 +427,7 @@ export const audioClipSchema = z.object({
   end: z.number().min(0),
   volume: z.number().min(0).max(2).default(1),
   speed: z.number().min(0.25).max(4).default(1).optional(),
+  retimedSrc: z.string().optional(),
   channel: z.enum(["voiceover", "music", "sfx", "external"]).default("voiceover"),
   /** Timeline lane this clip sits on. See timelineLayerSchema. */
   layerId: z.string().optional(),
@@ -474,6 +475,7 @@ export const filmBaseSchema = z.object({
       src: z.string().min(1),
       volume: z.number().min(0).max(2).default(1),
       speed: z.number().min(0.25).max(4).default(1).optional(),
+      retimedSrc: z.string().optional(),
       version: z.string().optional(),
       durationSec: z.number().min(0).optional(),
     })

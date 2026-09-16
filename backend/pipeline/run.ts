@@ -11,7 +11,7 @@ import fs from "fs";
 import fsp from "fs/promises";
 import path from "path";
 import type { Film } from "../../src/dl/schema";
-import { produceAudioPipeline, type ProduceAudioResult } from "../audio";
+import { ensureRetimedAudio, produceAudioPipeline, type ProduceAudioResult } from "../audio";
 import { hasScreenplayTags, parseClaudeScript } from "../scriptIntake";
 import { createEngine } from "../engine";
 import { compileFilmFromScreenplay, FOOTAGE_HEADROOM_SEC, type FootageRequest } from "./design";
@@ -473,6 +473,7 @@ export async function runProduction(
         // this run is part of rendering. It happens here rather than during assembly because
         // assembly is reached by runs that stop before rendering, and those must not leave the
         // repository pointing at a film nothing ever rendered.
+        ensureRetimedAudio(currentFilm);
         setActiveFilm(slug);
 
         const produced: RenderedOutput[] = [];

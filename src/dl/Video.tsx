@@ -8,6 +8,7 @@ import { Sequence, staticFile } from "remotion";
 import { FilmView } from "./Film";
 import { TOTAL_FRAMES, FILM, TIMELINE, FPS, type FilmProps } from "./runtime";
 import { calculateDuckingVolume, type SpeechInterval } from "./audio/ducking";
+import { getRetimedAudioRelPath } from "./audio/retime";
 import { generateWordsFromFilm } from "./captionsParser";
 
 /**
@@ -81,7 +82,7 @@ export const Video: React.FC<FilmProps> = ({
           const startFrom = isRetimed ? Math.round(((ac.start ?? 0) / speed) * FPS) : Math.round((ac.start ?? 0) * FPS);
           const clipLevel = (ac.volume ?? 1) * effectiveVoiceoverVolume;
           const audioSrc = isRetimed
-            ? `/api/audio/retime?src=${encodeURIComponent(ac.src)}&speed=${speed}`
+            ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
             : staticFile(ac.src);
 
           return (
@@ -100,7 +101,7 @@ export const Video: React.FC<FilmProps> = ({
           const speed = FILM.voiceover?.speed ?? 1.0;
           const isRetimed = Math.abs(speed - 1.0) > 0.001;
           const audioSrc = isRetimed
-            ? `/api/audio/retime?src=${encodeURIComponent(effectiveVoiceoverSrc)}&speed=${speed}`
+            ? staticFile(FILM.voiceover?.retimedSrc || getRetimedAudioRelPath(effectiveVoiceoverSrc, speed))
             : staticFile(effectiveVoiceoverSrc);
 
           return (

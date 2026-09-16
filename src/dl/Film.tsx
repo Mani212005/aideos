@@ -12,6 +12,7 @@ import { BlockView } from "./Block";
 import { CanvasGraph } from "./CanvasGraph";
 import { PaperRip } from "./PaperRip";
 import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
+import { getRetimedAudioRelPath } from "./audio/retime";
 import {
   buildTimeline,
   camAt,
@@ -476,7 +477,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
                 const startFrom = isRetimed ? Math.round(((ac.start ?? 0) / speed) * fps) : Math.round((ac.start ?? 0) * fps);
                 const endAt = isRetimed ? Math.round((ac.end / speed) * fps) : Math.round(ac.end * fps);
                 const audioSrc = isRetimed
-                  ? `/api/audio/retime?src=${encodeURIComponent(ac.src)}&speed=${speed}`
+                  ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
                   : staticFile(ac.src);
 
                 return (
@@ -497,7 +498,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
                   const speed = film.voiceover.speed ?? 1.0;
                   const isRetimed = Math.abs(speed - 1.0) > 0.001;
                   const audioSrc = isRetimed
-                    ? `/api/audio/retime?src=${encodeURIComponent(film.voiceover.src)}&speed=${speed}`
+                    ? staticFile(film.voiceover.retimedSrc || getRetimedAudioRelPath(film.voiceover.src, speed))
                     : staticFile(film.voiceover.src);
 
                   return (
