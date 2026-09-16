@@ -19,7 +19,6 @@ import { getRetimedAudioFilename } from "../src/dl/audio/retime";
 import { extractSpokenBlocks, hasScreenplayTags } from "./scriptIntake";
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
 import * as fsSync from "fs";
-import * as crypto from "crypto";
 import {
   assembleSegments,
   deriveShotDurations,

@@ -473,7 +473,7 @@ export async function runProduction(
         // this run is part of rendering. It happens here rather than during assembly because
         // assembly is reached by runs that stop before rendering, and those must not leave the
         // repository pointing at a film nothing ever rendered.
-        ensureRetimedAudio(currentFilm);
+        ensureRetimedAudio(assembled);
         setActiveFilm(slug);
 
         const produced: RenderedOutput[] = [];
