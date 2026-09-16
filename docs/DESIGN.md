@@ -86,9 +86,11 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 - **Purpose**: Non-linear multi-track timeline editor with direct manipulation, track controls, and clip inspection.
 - **Features**:
   - **Pure Pointer-Drag Machine (`backend/timeline/drag_machine.ts`)**: Manages `move`, `trim-start`, `trim-end`, `scrub`, and `marquee` gestures with pixel-based thresholds and Escape-key cancellation.
+  - **Magnetic Ripple Editing**: Auto-shifts downstream clips when trimming or deleting to close or prevent dead gaps (toggle via toolbar or `R` shortcut).
+  - **Linked Audio-Video Trimming**: Automatically trims and shifts associated audio and video clips in lockstep.
   - **Track Controls**: Independent layer locking, muting, hiding, reordering, and track addition.
   - **Magnetic Snapping (`backend/timeline/snap.ts`)**: Snaps clip boundaries to playhead, markers, and other clips with self-ignore and zoom-adaptive thresholds.
-  - **Audio Waveforms (`src/components/timeline/useAudioPeaks.ts`)**: Browser-side Web Audio peak extraction rendered directly on clip bodies.
+  - **Audio Waveforms (`src/components/timeline/useAudioPeaks.ts`)**: Server pre-computed peak fetching (`/api/audio/peaks`) with Web Audio API fallback rendered directly on clip bodies.
   - **Inspector Panel**: Unified sidebar for shot editing, transition selection (`TransitionEditor.tsx`), clip adjustments, and asset bin management.
 
 ### 6. Captions Stage (`CaptionsStage.tsx` / `KineticCaptionEditor.tsx`)

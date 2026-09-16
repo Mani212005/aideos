@@ -89,7 +89,8 @@ The Aideos Timeline & Trimmer implements industry-standard non-linear editing ge
    * `layer`: Integer track index (0 = main shots, 1 = b-roll/devices, 2 = subtitles, 3 = audio).
    * Eliminates ghost frames during gaps: timeline gaps produce `activeShotAt = null`, rendering clean spatial canvas backgrounds.
 2. **Transaction-Grouped `UpdateAction` Engine:**
-   * Multi-clip drags or ripple edits share a single transaction UUID.
+   * Multi-clip drags, linked audio-video trims, or ripple edits share a single transaction UUID.
+   * Magnetic ripple editing (toggle via `R` key) auto-shifts downstream clips to close or prevent dead gaps.
    * Universal `Cmd + Z` / `Cmd + Shift + Z` undoes/redoes multi-clip gestures as a single atomic step.
 3. **Sticky Snapping with Self-Ignore:**
    * Excludes the dragged clip from its own boundaries (`_snap_ignore_ids`).

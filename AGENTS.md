@@ -102,7 +102,7 @@ File Description: This file defines the core guidelines, coding principles, and 
   them (and `videos/**`) under `server.watch.ignored` for the same reason.
 - `backend/timeline/voiceover_engine.ts` is imported by the browser bundle and must stay free of Node
   built-ins. ffmpeg-based waveform extraction lives in `backend/timeline/waveform.ts`; the editor
-  decodes waveforms in the browser instead (`editor/src/components/timeline/useAudioPeaks.ts`).
+  fetches peaks via `/api/audio/peaks` and falls back to in-browser decoding (`editor/src/components/timeline/useAudioPeaks.ts`).
 - Every `backend/timeline/*.test.ts` file is wired into the root `npm test` script. Keep it that way:
   suites that are not listed there silently rot.
 
