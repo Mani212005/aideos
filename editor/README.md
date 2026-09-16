@@ -26,7 +26,7 @@ The editor interface is organized into 7 sequential editing stages located in `s
 2. **Story (`StoryStage.tsx` / `MindMap.tsx`)**: 2D infinite spatial canvas for positioning concept nodes, wiring directed relationship edges, and inspecting camera framing targets.
 3. **Look (`LookStage.tsx` / `Styleboard.tsx` / `CustomizationEditor.tsx`)**: Storyboard gallery, one-click character gesture posing, background canvas texture pickers, and typography styling.
 4. **Motion (`MotionStage.tsx`)**: Authoring studio for bespoke SVG movie animations, element-level timeline keyframing, and pre-built motion templates.
-5. **Edit (`EditStage.tsx` / `TimelineEditor.tsx`)**: Multi-track non-linear timeline editor with audio waveform visualizations, track controls (lock, mute, hide), clip trimming, and clip inspector.
+5. **Edit (`EditStage.tsx` / `TimelineEditor.tsx`)**: Multi-track non-linear timeline editor with audio waveform visualizations, track controls (lock, mute, hide), magnetic ripple editing (R), linked audio-video clip trimming, and clip inspector.
 6. **Captions (`CaptionsStage.tsx` / `KineticCaptionEditor.tsx`)**: Word-level kinetic subtitle editor with audio-synchronized keyword highlighting and phrase locks.
 7. **Review (`ReviewStage.tsx` / `CritiqueStudio.tsx` / `ExportProgressModal.tsx`)**: AI Critique Studio drawer for natural-language feedback, project health and pacing analytics charts, and headless MP4 render progress.
 
@@ -35,9 +35,9 @@ The editor interface is organized into 7 sequential editing stages located in `s
 ## ⚙️ State Management & Timeline Layer Engine
 
 - **Project State (`src/state/useFilmProject.ts`)**: Manages the open `Film` document, automated background saving to `videos/<slug>/film.json`, and an atomic single-transaction labelled undo/redo history.
-- **Layered Timeline Bridge (`src/state/useLayeredTimeline.ts`)**: Converts `Film` into a `LayeredFilm`, applies pure engine mutations via `backend/timeline/layer_engine.ts`, and folds changes back losslessly using `convertLayeredFilmToFilm(layered, baseFilm)`.
+- **Layered Timeline Bridge (`src/state/useLayeredTimeline.ts`)**: Converts `Film` into a `LayeredFilm`, applies pure engine mutations (including magnetic ripple trims and ripple deletes) via `backend/timeline/layer_engine.ts`, and folds changes back losslessly using `convertLayeredFilmToFilm(layered, baseFilm)`.
 - **Pure Pointer-Drag Machine (`backend/timeline/drag_machine.ts`)**: Pure state machine managing timeline gestures (`move`, `trim-start`, `trim-end`, `scrub`, `marquee`) with pixel-based drag thresholds, Escape-key cancel recovery, and zero sticky-drag states.
-- **Browser Audio Peak Extraction (`src/components/timeline/useAudioPeaks.ts`)**: Decodes normalized audio waveform peaks directly in the browser via Web Audio API without pulling Node child processes into the browser bundle.
+- **Audio Peak Extraction (`src/components/timeline/useAudioPeaks.ts`)**: Fetches pre-computed waveform envelope peaks from `/api/audio/peaks` with fallback to in-browser Web Audio API decoding without pulling Node child processes into the browser bundle.
 
 ---
 

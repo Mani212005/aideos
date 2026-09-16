@@ -11,17 +11,20 @@
  * and a growing drift between the narration and the visuals describing it.
  */
 
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { Film, parseFilm } from "../src/dl/schema";
+import { getRetimedAudioFilename } from "../src/dl/audio/retime";
 import { extractSpokenBlocks, hasScreenplayTags } from "./scriptIntake";
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
+import * as fsSync from "fs";
 import {
   assembleSegments,
   deriveShotDurations,
   distributeWordTimings,
   encodeWav,
+  decodeWav,
   normalizePeak,
   DEFAULT_ASSEMBLE_OPTIONS,
   type PcmChunk,
@@ -540,3 +543,171 @@ export async function processAudioForFilm(film: Film, outDir: string): Promise<F
   const audioResult = await produceAudioPipeline(validShots, outDir);
   return buildFilmFromAudioResult(film.title, audioResult);
 }
+
+/** Result of pitch-corrected WSOLA time-stretching for an audio track. */
+export interface RetimedAudioResult {
+  filePath: string;
+  durationSec: number;
+}
+
+/** Build an FFmpeg atempo filter chain supporting arbitrary playback speed factors. */
+export function buildAtempoFilter(speed: number): string {
+  if (speed <= 0) {
+    throw new Error(`Invalid speed: ${speed}. Speed must be positive.`);
+  }
+  const filters: string[] = [];
+  let s = speed;
+  while (s > 2.0) {
+    filters.push("atempo=2.0");
+    s /= 2.0;
+  }
+  while (s < 0.5) {
+    filters.push("atempo=0.5");
+    s /= 0.5;
+  }
+  filters.push(`atempo=${s.toFixed(4)}`);
+  return filters.join(",");
+}
+
+/** Resolve an audio source URL or file reference to an absolute path on disk. */
+export function resolveAudioSourcePath(src: string): string {
+  const cleanSrc = src.split("?")[0].split("#")[0];
+  const candidates = [
+    path.resolve(cleanSrc),
+    path.resolve(process.cwd(), cleanSrc.replace(/^\//, "")),
+    path.resolve(process.cwd(), "public", cleanSrc.replace(/^\//, "")),
+    path.resolve(process.cwd(), "videos", cleanSrc.replace(/^\/?videos\/?/, "")),
+    path.resolve(process.cwd(), ".tmp_audio", cleanSrc.replace(/^\/?(\.tmp_audio|api\/audio)\/?/, "")),
+  ];
+  for (const candidate of candidates) {
+    if (fsSync.existsSync(candidate) && fsSync.statSync(candidate).isFile()) {
+      return candidate;
+    }
+  }
+  throw new Error(`Audio source file not found: ${src}`);
+}
+
+/** Synchronously retimes an audio file using FFmpeg WSOLA-based atempo filter and caches the result. */
+export function retimeAudioSync(
+  src: string,
+  speed: number,
+  options?: { cacheDir?: string; outPath?: string }
+): RetimedAudioResult {
+  if (speed <= 0 || !Number.isFinite(speed)) {
+    throw new Error(`Invalid speed: ${speed}`);
+  }
+
+  const resolved = resolveAudioSourcePath(src);
+  const cacheDir = options?.cacheDir || path.resolve(process.cwd(), ".tmp_audio");
+  if (!fsSync.existsSync(cacheDir)) {
+    fsSync.mkdirSync(cacheDir, { recursive: true });
+  }
+
+  // Also ensure public/.tmp_audio exists for direct web serving if needed
+  const publicTmp = path.resolve(process.cwd(), "public/.tmp_audio");
+  if (!fsSync.existsSync(publicTmp)) {
+    try {
+      fsSync.mkdirSync(publicTmp, { recursive: true });
+    } catch {
+      // Best-effort directory creation
+    }
+  }
+
+  // If 1.0x speed, measure original duration and return original file
+  if (Math.abs(speed - 1.0) < 0.001) {
+    let dur = 0;
+    try {
+      const buf = fsSync.readFileSync(resolved);
+      const dec = decodeWav(buf);
+      dur = Number((dec.samples.length / dec.sampleRate).toFixed(3));
+    } catch {
+      dur = 0;
+    }
+    return { filePath: resolved, durationSec: dur };
+  }
+
+  const outFilename = getRetimedAudioFilename(src, speed);
+  const outPath = options?.outPath || path.join(cacheDir, outFilename);
+
+  // Return cached result if already rendered and valid
+  if (fsSync.existsSync(outPath) && fsSync.statSync(outPath).size > 44) {
+    let dur = 0;
+    try {
+      const buf = fsSync.readFileSync(outPath);
+      const dec = decodeWav(buf);
+      dur = Number((dec.samples.length / dec.sampleRate).toFixed(3));
+    } catch {
+      dur = 0;
+    }
+    return { filePath: outPath, durationSec: dur };
+  }
+
+  const filter = buildAtempoFilter(speed);
+  execFileSync("ffmpeg", ["-y", "-i", resolved, "-filter:a", filter, "-vn", "-c:a", "pcm_s16le", outPath], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  let durationSec = 0;
+  try {
+    const buf = fsSync.readFileSync(outPath);
+    const decoded = decodeWav(buf);
+    durationSec = Number((decoded.samples.length / decoded.sampleRate).toFixed(3));
+  } catch {
+    const durOutput = execFileSync("ffprobe", [
+      "-v",
+      "error",
+      "-show_entries",
+      "format=duration",
+      "-of",
+      "default=noprint_wrappers=1:nokey=1",
+      outPath,
+    ])
+      .toString()
+      .trim();
+    durationSec = Number(parseFloat(durOutput).toFixed(3));
+  }
+
+  // Mirror to public/.tmp_audio if directory is available
+  try {
+    const publicOut = path.join(publicTmp, outFilename);
+    if (!fsSync.existsSync(publicOut)) {
+      fsSync.copyFileSync(outPath, publicOut);
+    }
+  } catch {
+    // Best-effort mirror
+  }
+
+  return { filePath: outPath, durationSec };
+}
+
+/** Retimes an audio file using FFmpeg WSOLA-based atempo filter and caches the result. */
+export async function retimeAudio(
+  src: string,
+  speed: number,
+  options?: { cacheDir?: string; outPath?: string }
+): Promise<RetimedAudioResult> {
+  return retimeAudioSync(src, speed, options);
+}
+
+/** Pre-renders all retimed audio tracks in a film so Remotion CLI can access them statically. */
+export function ensureRetimedAudio(film: Film): void {
+  if (film.voiceover?.src && film.voiceover.speed && Math.abs(film.voiceover.speed - 1.0) > 0.001) {
+    try {
+      retimeAudioSync(film.voiceover.src, film.voiceover.speed);
+    } catch {
+      // Best-effort pre-render
+    }
+  }
+  if (film.audioClips) {
+    for (const clip of film.audioClips) {
+      if (clip.src && clip.speed && Math.abs(clip.speed - 1.0) > 0.001) {
+        try {
+          retimeAudioSync(clip.src, clip.speed);
+        } catch {
+          // Best-effort pre-render
+        }
+      }
+    }
+  }
+}
+

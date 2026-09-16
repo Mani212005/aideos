@@ -895,3 +895,196 @@ export function deleteLayerClip(
 
   return { film: { ...film, clips: newClips }, actions, transactionId: txId };
 }
+
+/** Ripple trim a clip edge and shift subsequent clips on affected lanes by the duration delta. */
+export function rippleTrimLayerClipEdge(
+  film: LayeredFilm,
+  clipId: string,
+  edge: "left" | "right",
+  deltaSec: number,
+): { film: LayeredFilm; actions: UpdateAction[]; transactionId: string } {
+  const clipIndex = requireClipIndex(film, clipId);
+  const targetClip = film.clips[clipIndex];
+  assertLayerEditable(film, targetClip.layerId, "Ripple trim");
+
+  const newClips = JSON.parse(JSON.stringify(film.clips)) as Clip[];
+  const fps = film.fps || 30;
+  const frameDelta = Math.round(deltaSec * fps) / fps;
+  const txId = generateUUID();
+  const actions: UpdateAction[] = [];
+  const affectedLaneIds = new Set<string>([targetClip.layerId]);
+
+  const linkedIdx = linkedPartnerIndex(newClips, newClips[clipIndex]);
+  if (linkedIdx !== -1) {
+    assertLayerEditable(film, newClips[linkedIdx].layerId, "Ripple trim");
+    affectedLaneIds.add(newClips[linkedIdx].layerId);
+  }
+
+  const origOldDur = targetClip.end - targetClip.start;
+  const origPos = targetClip.position;
+  let durationDelta = 0;
+
+  // Applies the trim edge adjustment and in/out points to a single target clip.
+  const applyTrim = (index: number) => {
+    const clip = newClips[index];
+    const oldStart = clip.start;
+    const oldEnd = clip.end;
+    const oldDur = oldEnd - oldStart;
+
+    if (edge === "right") {
+      let proposedEnd = oldEnd + frameDelta;
+      if (clip.sourceDuration !== undefined && proposedEnd > clip.sourceDuration + EPS) {
+        proposedEnd = clip.sourceDuration;
+      }
+      if (proposedEnd - oldStart < MIN_CLIP_DURATION - EPS) {
+        throw new TimelineEditError(
+          "min-duration",
+          `Trim rejected: clip duration cannot fall below minimum (${MIN_CLIP_DURATION}s)`,
+        );
+      }
+      clip.end = round3(proposedEnd);
+      durationDelta = round3(clip.end - oldStart - oldDur);
+      actions.push({
+        type: "update",
+        path: ["clips", index, "end"],
+        oldValue: oldEnd,
+        newValue: clip.end,
+        transactionId: txId,
+        label: `Ripple trim ${clip.id} right edge to ${clip.end.toFixed(2)}s`,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const proposedStart = oldStart + frameDelta;
+    if (proposedStart < -EPS) {
+      throw new TimelineEditError(
+        "media-bounds",
+        "Trim rejected: in-point cannot move before the start of the source media",
+      );
+    }
+    if (oldEnd - proposedStart < MIN_CLIP_DURATION - EPS) {
+      throw new TimelineEditError(
+        "min-duration",
+        `Trim rejected: clip duration cannot fall below minimum (${MIN_CLIP_DURATION}s)`,
+      );
+    }
+
+    clip.start = round3(proposedStart);
+    durationDelta = round3(oldEnd - clip.start - oldDur);
+    actions.push({
+      type: "update",
+      path: ["clips", index, "start"],
+      oldValue: oldStart,
+      newValue: clip.start,
+      transactionId: txId,
+      label: `Ripple trim ${clip.id} start to ${clip.start.toFixed(2)}s`,
+      timestamp: Date.now(),
+    });
+  };
+
+  applyTrim(clipIndex);
+  if (linkedIdx !== -1) applyTrim(linkedIdx);
+
+  // Ripple shift all subsequent clips on affected lanes by durationDelta
+  const anchorIndices = new Set<number>([clipIndex]);
+  if (linkedIdx !== -1) anchorIndices.add(linkedIdx);
+
+  for (let i = 0; i < newClips.length; i++) {
+    if (anchorIndices.has(i)) continue;
+    const clip = newClips[i];
+    if (affectedLaneIds.has(clip.layerId) && clip.position >= origPos + origOldDur - EPS) {
+      const oldPos = clip.position;
+      clip.position = Math.max(0, round3(clip.position + durationDelta));
+      actions.push({
+        type: "update",
+        path: ["clips", i, "position"],
+        oldValue: oldPos,
+        newValue: clip.position,
+        transactionId: txId,
+        label: `Ripple shift ${clip.id} by ${durationDelta > 0 ? "+" : ""}${durationDelta.toFixed(2)}s`,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  return {
+    film: { ...film, clips: newClips },
+    actions,
+    transactionId: txId,
+  };
+}
+
+/** Ripple delete a clip and its linked partner, shifting downstream clips leftward to close the gap. */
+export function rippleDeleteLayerClip(
+  film: LayeredFilm,
+  clipId: string,
+  options: DeleteLayerClipOptions = {},
+): { film: LayeredFilm; actions: UpdateAction[]; transactionId: string } {
+  const deleteLinked = options.deleteLinked ?? true;
+  const clipIndex = requireClipIndex(film, clipId);
+  const deletedClip = film.clips[clipIndex];
+  assertLayerEditable(film, deletedClip.layerId, "Ripple delete");
+
+  const partnerIndex = linkedPartnerIndex(film.clips, deletedClip);
+  const removeIds = new Set<string>([clipId]);
+  if (deleteLinked && partnerIndex !== -1) {
+    assertLayerEditable(film, film.clips[partnerIndex].layerId, "Ripple delete");
+    removeIds.add(film.clips[partnerIndex].id);
+  }
+
+  const deletedDur = clipDuration(deletedClip);
+  const deletedPos = deletedClip.position;
+  const affectedLaneIds = new Set<string>([deletedClip.layerId]);
+  if (deleteLinked && partnerIndex !== -1) {
+    affectedLaneIds.add(film.clips[partnerIndex].layerId);
+  }
+
+  const txId = generateUUID();
+  const actions: UpdateAction[] = [];
+
+  for (const id of removeIds) {
+    const idx = film.clips.findIndex((c) => c.id === id);
+    if (idx !== -1) {
+      actions.push({
+        type: "delete",
+        path: ["clips", idx],
+        oldValue: film.clips[idx],
+        newValue: null,
+        transactionId: txId,
+        label: `Ripple delete ${id}`,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  const newClips: Clip[] = [];
+  for (let i = 0; i < film.clips.length; i++) {
+    const clip = film.clips[i];
+    if (removeIds.has(clip.id)) continue;
+    const cloned = JSON.parse(JSON.stringify(clip)) as Clip;
+    if (cloned.linkedClipId && removeIds.has(cloned.linkedClipId)) {
+      cloned.linkedClipId = null;
+    }
+
+    // Shift subsequent clips on affected lanes
+    if (affectedLaneIds.has(cloned.layerId) && cloned.position >= deletedPos + deletedDur - EPS) {
+      const oldPos = cloned.position;
+      cloned.position = Math.max(0, round3(cloned.position - deletedDur));
+      actions.push({
+        type: "update",
+        path: ["clips", newClips.length, "position"],
+        oldValue: oldPos,
+        newValue: cloned.position,
+        transactionId: txId,
+        label: `Ripple shift ${cloned.id} left by ${deletedDur.toFixed(2)}s`,
+        timestamp: Date.now(),
+      });
+    }
+
+    newClips.push(cloned);
+  }
+
+  return { film: { ...film, clips: newClips }, actions, transactionId: txId };
+}
+

@@ -11,7 +11,8 @@ import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
-import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence } from '../backend/audio.ts'
+import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
+import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
 import { executeCritique } from '../backend/critique/engine.ts'
 import { extractSpokenBlocks as extractSpokenVoiceoverBlocks, buildFilmPartsFromScript, hasScreenplayTags } from '../backend/scriptIntake.ts'
 import dotenv from 'dotenv'
@@ -323,6 +324,87 @@ function filmApiPlugin(): Plugin {
           }
         }
 
+        // Serve cached pitch-corrected retimed audio directly from .tmp_audio/
+        if (url.startsWith('/.tmp_audio/') && req.method === 'GET') {
+          const rel = decodeURIComponent(url.slice('/.tmp_audio/'.length));
+          const filePath = path.join(path.resolve(__dirname, '../.tmp_audio'), rel);
+          if (!rel.includes('..') && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+            serveFileWithRange(req, res, filePath);
+            return;
+          }
+          const pubPath = path.join(path.resolve(__dirname, '../public/.tmp_audio'), rel);
+          if (!rel.includes('..') && fs.existsSync(pubPath) && fs.statSync(pubPath).isFile()) {
+            serveFileWithRange(req, res, pubPath);
+            return;
+          }
+        }
+
+        // Handle /api/audio/retime (Pitch-corrected WSOLA time-stretching with FFmpeg atempo)
+        if (url.startsWith('/api/audio/retime')) {
+          if (req.method === 'GET') {
+            const parsedUrl = new URL(req.url ?? '', 'http://localhost');
+            const src = parsedUrl.searchParams.get('src');
+            const speed = parseFloat(parsedUrl.searchParams.get('speed') || '1.0');
+            if (!src) {
+              sendJson(res, 400, { error: 'src parameter is required' });
+              return;
+            }
+            try {
+              const result = retimeAudioSync(src, speed);
+              serveFileWithRange(req, res, result.filePath);
+            } catch (err: any) {
+              console.error('[audio/retime] Error retiming audio:', err);
+              sendJson(res, 500, { error: err?.message || 'Failed to retime audio' });
+            }
+            return;
+          }
+
+          if (req.method === 'POST') {
+            void readBody(req).then((body) => {
+              const { src, speed } = (body as { src?: string; speed?: number }) || {};
+              if (!src) {
+                sendJson(res, 400, { error: 'src is required' });
+                return;
+              }
+              const numSpeed = typeof speed === 'number' && speed > 0 ? speed : 1.0;
+              try {
+                const result = retimeAudioSync(src, numSpeed);
+                sendJson(res, 200, {
+                  success: true,
+                  url: `/api/audio/retime?src=${encodeURIComponent(src)}&speed=${numSpeed}`,
+                  path: result.filePath,
+                  duration: result.durationSec,
+                });
+              } catch (err: any) {
+                console.error('[audio/retime] Error retiming audio:', err);
+                sendJson(res, 500, { error: err?.message || 'Failed to retime audio' });
+              }
+            });
+            return;
+          }
+        }
+
+        // Handle /api/audio/peaks (Compute or fetch amplitude envelope peaks for timeline waveforms)
+        if (url.startsWith('/api/audio/peaks') && req.method === 'GET') {
+          const parsedUrl = new URL(req.url ?? '', 'http://localhost');
+          const src = parsedUrl.searchParams.get('src');
+          const points = parseInt(parsedUrl.searchParams.get('points') || '100', 10);
+          if (!src) {
+            sendJson(res, 400, { error: 'src parameter is required' });
+            return;
+          }
+          try {
+            const resolvedPath = resolveAudioSourcePath(src);
+            const peakCount = Math.max(10, Math.min(5000, points));
+            const peaksData = extractAudioPeaks(resolvedPath, peakCount);
+            sendJson(res, 200, peaksData);
+          } catch (err: any) {
+            console.error('[audio/peaks] Error extracting audio peaks:', err);
+            sendJson(res, 500, { error: err?.message || 'Failed to extract audio peaks' });
+          }
+          return;
+        }
+
         // Handle /api/export endpoint for 1-click video rendering
         if (url === '/api/export' && req.method === 'POST') {
           void readBody(req)
@@ -353,6 +435,9 @@ function filmApiPlugin(): Plugin {
               const composition = format === 'reel' ? 'Reel' : 'Long';
               const filename = `aideos_${film.id}_${format || 'long'}_${Date.now()}.mp4`;
               const outPath = path.join(outDir, filename);
+
+              // Ensure retimed audio is pre-rendered for Remotion CLI
+              ensureRetimedAudio(film);
 
               // Save active film first so remotion bundles it
               const filmFile = path.join(filmsDir, `${film.id}.ts`);

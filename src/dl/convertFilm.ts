@@ -105,7 +105,12 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
         start: ac.start ?? 0,
         end: ac.end,
         kind: "audio",
-        payload: { src: ac.src, channel },
+        payload: {
+          src: ac.src,
+          channel,
+          speed: ac.speed,
+          retimedSrc: ac.retimedSrc,
+        },
         volume: Math.min(1, ac.volume ?? 1),
         opacity: 1,
       });
@@ -188,6 +193,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
         cameraAngle: shot.cameraAngle,
         drift: shot.drift ?? false,
         zoom: shot.zoom ?? 1,
+        speed: shot.speed,
         scriptText: shot.scriptText,
         visualDirection: shot.visualDirection,
         metaphor: shot.metaphor,
@@ -240,7 +246,9 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
 
 /** True when an audio clip is exactly what forward conversion would synthesize from `voiceover`. */
 function isPlainSpine(clip: Clip): boolean {
-  return clip.id === SPINE_CLIP_ID && clip.position === 0 && clip.start === 0;
+  const p = clip.payload as AudioPayload | undefined;
+  const isDefaultSpeed = !p?.speed || Math.abs(p.speed - 1) < 0.001;
+  return clip.id === SPINE_CLIP_ID && clip.position === 0 && clip.start === 0 && isDefaultSpeed;
 }
 
 /** True when an audio clip is exactly what forward conversion would synthesize from `music`. */
@@ -311,6 +319,7 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
       cameraAngle: p.cameraAngle,
       drift: p.drift,
       zoom: p.zoom,
+      speed: p.speed,
       scriptText: p.scriptText,
       visualDirection: p.visualDirection,
       metaphor: p.metaphor,
@@ -334,16 +343,21 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
 
   const audioClips: AudioClip[] | undefined =
     explicitClips.length > 0
-      ? explicitClips.map((c) => ({
-          id: c.id,
-          src: (c.payload as AudioPayload).src,
-          position: c.position,
-          start: c.start,
-          end: c.end,
-          volume: c.volume ?? 1,
-          channel: channelOf(c),
-          layerId: c.layerId === layerIdForChannel(channelOf(c)) ? undefined : c.layerId,
-        }))
+      ? explicitClips.map((c) => {
+          const p = c.payload as AudioPayload;
+          return {
+            id: c.id,
+            src: p.src,
+            position: c.position,
+            start: c.start,
+            end: c.end,
+            volume: c.volume ?? 1,
+            speed: p.speed,
+            retimedSrc: p.retimedSrc,
+            channel: channelOf(c),
+            layerId: c.layerId === layerIdForChannel(channelOf(c)) ? undefined : c.layerId,
+          };
+        })
       : undefined;
 
   const voiceover = voClips.length > 0

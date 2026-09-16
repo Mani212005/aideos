@@ -18,9 +18,22 @@ The root data contract defining a complete video composition (stored in `src/dl/
 * `chapters: string[]` (Ordered list of chapter titles for the progress rail)
 * `canvas: { nodes: CanvasNode[], edges: CanvasEdge[] }` (The continuous 2D spatial graph)
 * `shots: Shot[]` (Ordered chronological sequence of camera shots and visual blocks)
-* `voiceover?: { src: string, volume?: number, speed?: number }` (Master audio track source file)
+* `voiceover?: { src: string, volume?: number, speed?: number, retimedSrc?: string }` (Master audio track source file)
 * `layers?: LayerDefinition[]` (Persisted non-linear track definitions and settings)
 * `audioClips?: AudioClip[]` (Persisted multi-track audio clips)
+
+### `AudioClip`
+A discrete audio track entry on the multi-track timeline.
+* `id: string` (Unique audio clip identifier)
+* `src: string` (Source audio asset file path or URL)
+* `position: number` (Timeline start timestamp in seconds)
+* `start?: number` (In-point offset into source media in seconds, default 0)
+* `end: number` (Out-point offset into source media in seconds)
+* `volume?: number` (Audio level multiplier, 0.0 to 2.0, default 1.0)
+* `speed?: number` (Playback rate multiplier, 0.25 to 4.0, default 1.0)
+* `retimedSrc?: string` (Cached path to pitch-corrected WSOLA time-stretched WAV file)
+* `channel?: "voiceover" | "music" | "sfx" | "external"` (Audio routing channel)
+* `layerId?: string` (Assigned timeline layer ID)
 
 ### `Shot`
 A single continuous camera view and duration window on the timeline.
@@ -186,6 +199,16 @@ An individual vector path inside a limb:
 * `buildCaptionsVtt(words)`: Builds phrase-grouped WebVTT caption tracks from absolute word timings.
 * `buildFilmFromAudioResult(title, audioResult, options)`: Compiles verified audio durations into a structured `Film` object.
 * `processAudioForFilm(film, outDir)`: Generates audio for a film using the narration pipeline and rebuilds the film around it.
+* `buildAtempoFilter(speed)`: Builds a cascaded FFmpeg atempo filter chain for arbitrary playback speed factors.
+* `resolveAudioSourcePath(src)`: Resolves an audio URL or relative path to an absolute path on disk.
+* `retimeAudioSync(src, speed, options)`: Synchronously retimes audio via FFmpeg WSOLA atempo filter and caches the resulting pitch-corrected WAV.
+* `retimeAudio(src, speed, options)`: Asynchronously retimes audio via WSOLA atempo filter and caches the result.
+* `ensureRetimedAudio(film)`: Pre-renders all retimed audio tracks for a film to ensure static availability for Remotion CLI renders.
+
+### `src/dl/audio/retime.ts` (Deterministic Retimed Audio Paths)
+* `sanitizeAudioName(src)`: Converts audio source path into a filesystem-safe identifier.
+* `getRetimedAudioFilename(src, speed)`: Computes deterministic filename for a retimed audio track.
+* `getRetimedAudioRelPath(src, speed)`: Computes relative public path (`.tmp_audio/...`) for a retimed audio track.
 
 ### `backend/pcm.ts`
 * `trimSilence(samples, threshold)`: Trims leading and trailing silence samples from Float32Array audio.
@@ -263,11 +286,12 @@ An individual vector path inside a limb:
 
 ## 7. Non-Linear Layer Engine & Timeline Tools (`backend/timeline/`)
 
-* **`layer_engine.ts`**: Pure functional engine operating over `LayeredFilm`. Provides `buildLayerModelFromFilm`, `convertLayeredFilmToFilm` (lossless round-trip with base film), `moveClip`, `trimClip`, `splitClip`, `deleteClip`, and deterministic left-to-right sweep `resolveTrackCollisions`.
+* **`layer_engine.ts`**: Pure functional engine operating over `LayeredFilm`. Provides `buildLayerModelFromFilm`, `convertLayeredFilmToFilm` (lossless round-trip with base film), `moveClip`, `trimClip`, `rippleTrimLayerClipEdge`, `splitClip`, `deleteClip`, `rippleDeleteLayerClip`, and deterministic left-to-right sweep `resolveTrackCollisions`.
+* **`timeline.ts`**: Pure functional operations on `Film` shots and associated audio clips (`moveShot`, `moveMultipleShots`, `trimShotEdge`, `rippleTrimShotEdge`, `splitShotAtTime`, `deleteShot`, `rippleDeleteShot`).
 * **`layer_manager.ts`**: Track management functions (`addLayer`, `removeLayer`, `reorderLayers`, `setLayerVisibility`, `setLayerMuted`, `setLayerLocked`).
 * **`drag_machine.ts`**: Pure pointer-drag state machine managing `move`, `trim-start`, `trim-end`, `scrub`, and `marquee` gestures with `DRAG_THRESHOLD_PX`, Escape cancellation, and zero sticky states.
 * **`snap.ts`**: Magnetic snapping engine (`computeSnapPoints`, `snapTimeToTargets`) with zoom-adaptive thresholds and self-ignore boundaries.
-* **`waveform.ts`**: Node-side FFmpeg audio peak extraction (`extractWaveformPeaks`) producing normalized amplitude vectors.
+* **`waveform.ts`**: Node-side FFmpeg audio peak extraction (`extractWaveformPeaks`, `extractAudioPeaks`) producing normalized amplitude vectors.
 * **`voiceover_engine.ts`**: Browser-safe voiceover gap analysis, cue retiming, and drift calculation (`calculateNarrationDrift`).
 * **`subtitle_engine.ts`**: VTT subtitle cue splitting, merging, retiming, and validation.
 
@@ -280,13 +304,13 @@ An individual vector path inside a limb:
 * **`StoryStage.tsx` (`MindMap.tsx`, `NodeEditor.tsx`)**: 2D infinite spatial canvas for dragging nodes, editing labels, and connecting directed edges.
 * **`LookStage.tsx` (`Styleboard.tsx`, `CustomizationEditor.tsx`)**: Storyboard keyframe gallery, 1-click character gesture posing, canvas texture selection, and typography styling.
 * **`MotionStage.tsx` (`motionTemplates.ts`)**: Custom SVG animation authoring studio with element-level timeline keyframing, motion templates, and live scrubbing.
-* **`EditStage.tsx` (`TimelineEditor.tsx`, `InspectorPanel.tsx`, `AssetBin.tsx`)**: Non-linear multi-track timeline with clip dragging, sticky snapping, waveform preview, track mute/hide/lock, and clip/shot inspector.
+* **`EditStage.tsx` (`TimelineEditor.tsx`, `InspectorPanel.tsx`, `AssetBin.tsx`)**: Non-linear multi-track timeline with clip dragging, sticky snapping, magnetic ripple editing (R), linked audio-video trimming, waveform preview, track mute/hide/lock, and clip/shot inspector.
 * **`CaptionsStage.tsx` (`KineticCaptionEditor.tsx`)**: Word-level subtitle karaoke editor powered by `@chenglou/pretext`.
 * **`ReviewStage.tsx` (`CritiqueStudio.tsx`, `ExportProgressModal.tsx`)**: AI critique drawer, pacing and coverage health charts (`Charts.tsx`), and headless MP4 export progress.
 
 ### State & Integration Layer (`editor/src/state/`)
 * **`useFilmProject.ts`**: Owns the active `Film` document, autosave debounce, and single labelled undo/redo transaction stack.
-* **`useLayeredTimeline.ts`**: Derives `LayeredFilm`, executes layer engine mutations, folds changes back losslessly via `convertLayeredFilmToFilm`, and computes `renderFilm` for preview and export.
+* **`useLayeredTimeline.ts`**: Derives `LayeredFilm`, executes layer engine mutations (`moveClip`, `trimClip`, `rippleTrimClip`, `splitClip`, `removeClip`, `rippleRemoveClip`), folds changes back losslessly via `convertLayeredFilmToFilm`, and computes `renderFilm` for preview and export.
 
 ### Handcrafted Neobrutalism UI Primitives (`editor/src/components/ui/`)
 * **`Badge.tsx`**: Status indicators and token chips.

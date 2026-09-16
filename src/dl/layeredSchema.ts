@@ -42,6 +42,7 @@ export const animationPayloadSchema = z.object({
   cameraAngle: cameraAngleSchema.optional(),
   drift: z.boolean().default(false),
   zoom: z.number().min(0.4).max(2.5).default(1),
+  speed: z.number().min(0.25).max(4).default(1).optional(),
   scriptText: z.string().optional(),
   visualDirection: z.string().optional(),
   metaphor: z.enum([
@@ -71,6 +72,8 @@ export const audioPayloadSchema = z.object({
   src: z.string().min(1),
   channel: z.enum(["voiceover", "music", "sfx", "external"]).default("voiceover"),
   duckUnderVoiceover: z.boolean().optional(),
+  speed: z.number().min(0.25).max(4).default(1).optional(),
+  retimedSrc: z.string().optional(),
 });
 
 /** Text / Typography Overlay Payload */

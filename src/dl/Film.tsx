@@ -12,6 +12,7 @@ import { BlockView } from "./Block";
 import { CanvasGraph } from "./CanvasGraph";
 import { PaperRip } from "./PaperRip";
 import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
+import { getRetimedAudioRelPath } from "./audio/retime";
 import {
   buildTimeline,
   camAt,
@@ -469,18 +470,23 @@ export const FilmView: React.FC<FilmViewProps> = ({
             {film.audioClips && film.audioClips.length > 0 ? (
               film.audioClips.map((ac) => {
                 const speed = ac.speed ?? 1.0;
+                const isRetimed = Math.abs(speed - 1.0) > 0.001;
                 const startFrame = Math.round(ac.position * fps);
-                const startFrom = Math.round((ac.start ?? 0) * fps);
-                const endAt = Math.round(ac.end * fps);
-                const rawDurFrames = Math.max(1, endAt - startFrom);
+                const rawDurFrames = Math.max(1, Math.round(ac.end * fps) - Math.round((ac.start ?? 0) * fps));
                 const effectiveDurFrames = Math.max(1, Math.round(rawDurFrames / speed));
+                const startFrom = isRetimed ? Math.round(((ac.start ?? 0) / speed) * fps) : Math.round((ac.start ?? 0) * fps);
+                const endAt = isRetimed ? Math.round((ac.end / speed) * fps) : Math.round(ac.end * fps);
+                const audioSrc = isRetimed
+                  ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
+                  : staticFile(ac.src);
+
                 return (
                   <Sequence key={ac.id} from={startFrame} durationInFrames={effectiveDurFrames}>
                     <Audio
-                      src={staticFile(ac.src)}
+                      src={audioSrc}
                       startFrom={startFrom}
                       endAt={endAt}
-                      playbackRate={speed}
+                      playbackRate={1.0}
                       volume={() => ac.volume ?? 1}
                     />
                   </Sequence>
@@ -488,12 +494,22 @@ export const FilmView: React.FC<FilmViewProps> = ({
               })
             ) : (
               film.voiceover?.src && (
-                <Audio
-                  key={`vo-${film.voiceover.src}`}
-                  src={staticFile(film.voiceover.src)}
-                  playbackRate={film.voiceover?.speed ?? 1.0}
-                  volume={() => film.voiceover?.volume ?? 1}
-                />
+                (() => {
+                  const speed = film.voiceover.speed ?? 1.0;
+                  const isRetimed = Math.abs(speed - 1.0) > 0.001;
+                  const audioSrc = isRetimed
+                    ? staticFile(film.voiceover.retimedSrc || getRetimedAudioRelPath(film.voiceover.src, speed))
+                    : staticFile(film.voiceover.src);
+
+                  return (
+                    <Audio
+                      key={`vo-${film.voiceover.src}-${speed}`}
+                      src={audioSrc}
+                      playbackRate={1.0}
+                      volume={() => film.voiceover?.volume ?? 1}
+                    />
+                  );
+                })()
               )
             )}
 
