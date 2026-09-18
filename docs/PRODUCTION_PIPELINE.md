@@ -62,6 +62,21 @@ while reusing the rest.
 `stopAfter` ends a run cleanly after a named stage, which is how you inspect the film design before
 paying for GPU time or a render.
 
+## Auto-prompt: producing from a raw prompt
+
+`backend/pipeline/director.ts`'s `runDirector` is the entry point above `runProduction` for when
+there is no screenplay yet, only an idea. It drafts one with an LLM briefed on
+[`docs/DIRECTOR_GUIDE.md`](DIRECTOR_GUIDE.md), validates the draft against the same grammar
+`backend/scriptIntake.ts` parses, retries a rejected draft with the specific reason fed back to the
+model, and hands a passing draft to `runProduction` unchanged:
+
+```bash
+npm run backend -- direct "Why attention scales quadratically" --broll --formats long,reel
+```
+
+`aideos direct "<prompt>"` does the same from the CLI launcher. See docs/DIRECTOR_GUIDE.md section 4
+for the details; the plan is always model-driven, so there is no canned screenplay in the path.
+
 ## Narration
 
 `backend/audio.ts` synthesizes each shot's narration, assembles the pieces in the sample domain,

@@ -535,9 +535,9 @@ As the Creative Director, your mission is to transform this structure into a cap
 ---
 
 ## 📋 Key Files & References:
-- **Director Guide**: [\`docs/DIRECTOR_GUIDE.md\`](file:///Users/manijoshi/firstmate/projects/aideos/docs/DIRECTOR_GUIDE.md) (Directing principles, visual rhythm, and pacing invariants)
-- **Active Film JSON**: [\`videos/${opts.projectId}/film.json\`](file:///Users/manijoshi/firstmate/projects/aideos/videos/${opts.projectId}/film.json)
-- **Screenplay / Narration**: [\`videos/${opts.projectId}/script.md\`](file:///Users/manijoshi/firstmate/projects/aideos/videos/${opts.projectId}/script.md)
+- **Director Guide**: [\`docs/DIRECTOR_GUIDE.md\`](docs/DIRECTOR_GUIDE.md) (Directing principles, visual rhythm, and pacing invariants)
+- **Active Film JSON**: [\`videos/${opts.projectId}/film.json\`](videos/${opts.projectId}/film.json)
+- **Screenplay / Narration**: [\`videos/${opts.projectId}/script.md\`](videos/${opts.projectId}/script.md)
 
 ---
 

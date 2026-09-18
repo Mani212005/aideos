@@ -191,6 +191,18 @@ test("Agent Director: compiles 67-beat script across 16 sections without invaria
       `Shot ${idx} (${shot.id}): ${sinceBeat}s without text beat (limit 90s)`,
     );
   });
+
+  // 9. Invariant: Audio Sync. DIRECTOR_GUIDE.md's directing discipline asserts this in prose
+  // ("Every shot duration locks to the measured narration audio timing, +-50ms") but nothing in
+  // this suite checked it: every other invariant here is about the film's own shape, not about
+  // it staying locked to the narration spine that was actually measured and handed in.
+  film.shots.forEach((shot, idx) => {
+    assert.ok(
+      Math.abs(shot.dur - shotDurations[idx]) <= 0.05,
+      `Shot ${idx} (${shot.id}): dur ${shot.dur}s drifted from the measured narration ` +
+        `duration ${shotDurations[idx]}s by more than the 50ms audio-sync budget`,
+    );
+  });
 });
 
 test("Agent Director: handles boundary case of 1 section (satisfying min 2 nodes schema invariant)", () => {

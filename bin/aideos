@@ -72,7 +72,7 @@ if [ "$#" -gt 0 ]; then
       cd "$AIDEOS_DIR" && npm run lint "$@"
       exit 0
       ;;
-    ideate|shoot|prompts|assemble|produce|generate|engine-test)
+    ideate|shoot|prompts|assemble|produce|generate|engine-test|film|direct|mcp)
       cd "$AIDEOS_DIR" && npm run backend -- "$CMD" "$@"
       exit 0
       ;;
@@ -90,11 +90,17 @@ if [ "$#" -gt 0 ]; then
       echo "  aideos test          Run full test suite"
       echo "  aideos produce       Audio-first timing spine generation"
       echo "  aideos ideate        Staged ideation chain (treatment.json)"
+      echo "  aideos direct <prompt>  Auto-prompt: LLM director plans and produces a film from a prompt"
+      echo "  aideos film          One call from a screenplay to finished, verified mp4s"
       echo ""
       exit 0
       ;;
     *)
-      # If not a known subcommand, proceed to default launcher
+      # Any other subcommand is a backend CLI command (e.g. mcp, or one added later);
+      # forward it rather than silently falling through to the interactive launcher below,
+      # which would otherwise swallow the command and start the Studio dev server instead.
+      cd "$AIDEOS_DIR" && npm run backend -- "$CMD" "$@"
+      exit 0
       ;;
   esac
 fi
