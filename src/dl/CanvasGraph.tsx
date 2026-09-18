@@ -1,6 +1,6 @@
 import React from "react";
 import { interpolateColors, useCurrentFrame, useVideoConfig } from "remotion";
-import { accentAt, MONO, PALETTE, SANS } from "./tokens";
+import { accentAt, MONO, PALETTE, SANS, useTokens } from "./tokens";
 import { easeExpo, frames, MS } from "./motion";
 import { useAccent } from "./accent";
 import { camTransform, edgePath, getCameraPerspective, nodeArrivals, shotAt, type Cam, type TimedShot } from "./camera";
@@ -60,6 +60,7 @@ const Node: React.FC<{
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const accent = useAccent();
+  const palette = useTokens();
 
   const arrived = easeExpo(
     (frame - arrival - frames(MS.stagger, fps)) / frames(MS.enter, fps),
@@ -82,7 +83,7 @@ const Node: React.FC<{
     ? `linear-gradient(145deg, ${accentAt(accent, 0.18)} 0%, ${accentAt(accent, 0.06)} 100%)`
     : "linear-gradient(145deg, rgba(22, 26, 36, 0.88) 0%, rgba(12, 14, 20, 0.96) 100%)";
 
-  const labelColor = isLive ? "#FFFFFF" : interpolateColors(arrived, [0, 1], [PALETTE.muted, "#E2E8F0"]);
+  const labelColor = isLive ? "#FFFFFF" : interpolateColors(arrived, [0, 1], [palette.muted, "#E2E8F0"]);
 
   // Animated pulse waves for active radar beacon
   const pulseScale = 1 + 0.8 * ((frame % 30) / 30);

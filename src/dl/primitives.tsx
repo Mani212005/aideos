@@ -649,11 +649,3 @@ export const useJoin = (
     },
   };
 };
-
-export const hairlineFrame = (layout: DLLayout): React.CSSProperties => ({
-  border: `1px solid ${rule()}`,
-  borderRadius: layout.radius.card,
-  background: PALETTE.canvas,
-});
-
-export const scrim = ink(0.02);
