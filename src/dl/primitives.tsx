@@ -1,3 +1,7 @@
+/**
+ * File Description: Core animated primitives for the video design system including TextReveal, StatCounter, CodeBlock, and Card components.
+ */
+
 import React from "react";
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import {
@@ -649,11 +653,3 @@ export const useJoin = (
     },
   };
 };
-
-export const hairlineFrame = (layout: DLLayout): React.CSSProperties => ({
-  border: `1px solid ${rule()}`,
-  borderRadius: layout.radius.card,
-  background: PALETTE.canvas,
-});
-
-export const scrim = ink(0.02);
