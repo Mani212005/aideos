@@ -1,3 +1,7 @@
+/**
+ * File Description: Interactive glassmorphic canvas graph renderer with camera perspective, glowing active states, and connection curves.
+ */
+
 import React from "react";
 import { interpolateColors, useCurrentFrame, useVideoConfig } from "remotion";
 import { accentAt, MONO, PALETTE, SANS, useTokens } from "./tokens";

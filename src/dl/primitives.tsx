@@ -1,3 +1,7 @@
+/**
+ * File Description: Core animated primitives for the video design system including TextReveal, StatCounter, CodeBlock, and Card components.
+ */
+
 import React from "react";
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import {
