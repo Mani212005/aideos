@@ -66,14 +66,14 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
   const open = isCut ? 1 : easeExpo((frame - current.from) / openFrames);
   const close = isCut ? 0 : easeExpo((frame - (current.to - closeFrames)) / closeFrames);
 
-  // A shot whose only block is a full-screen hero plate has no panel to speak of: the plate
+  // A shot containing a full-screen hero plate has no panel to speak of: the plate
   // is the station. Keeping the usual margins around it framed the footage as a small
   // letterboxed rectangle floating on black, which is what a stock-footage slideshow looks
   // like. It runs to the frame edge instead.
-  const heroOnly =
-    shot.blocks.length === 1 && shot.blocks[0].c === "AnalogyInset" && Boolean(shot.blocks[0].fullScreenHero);
+  const hasHero =
+    shot.blocks.some((b: Block) => b.c === "AnalogyInset" && Boolean(b.fullScreenHero));
 
-  const target = heroOnly
+  const target = hasHero
     ? { x: 0, y: 0, w: width, h: height }
     : {
         x: layout.margin.left,
@@ -101,7 +101,7 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
     };
   }
 
-  const contentIn = isCut
+  const contentIn = isCut || hasHero
     ? 1
     : interpolate(
         frame,
@@ -109,7 +109,7 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
         [0, 1],
         { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
       );
-  const contentStart = isCut ? current.from : current.from + Math.round(openFrames * 0.55);
+  const contentStart = isCut || hasHero ? current.from : current.from + Math.round(openFrames * 0.55);
 
   return (
     <div
@@ -119,11 +119,11 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
         top: rect.y,
         width: rect.w,
         height: rect.h,
-        border: heroOnly || shot.stage === "frame" ? "none" : `1px solid ${bgTheme.hairline}`,
-        borderRadius: heroOnly ? 0 : layout.radius.card,
+        border: hasHero || shot.stage === "frame" ? "none" : `1px solid ${bgTheme.hairline}`,
+        borderRadius: hasHero ? 0 : layout.radius.card,
         background:
-          shot.stage === "frame" || heroOnly ? "transparent" : bgTheme.surface,
-        boxShadow: shot.stage === "frame" || heroOnly ? "none" : "0 16px 40px rgba(0, 0, 0, 0.35)",
+          shot.stage === "frame" || hasHero ? "transparent" : bgTheme.surface,
+        boxShadow: shot.stage === "frame" || hasHero ? "none" : "0 16px 40px rgba(0, 0, 0, 0.35)",
         opacity,
         overflow: "hidden",
         display: "flex",
@@ -151,7 +151,7 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
         style={{
           flex: 1,
           position: "relative",
-          padding: shot.stage === "frame" || heroOnly ? 0 : layout.grid * 5,
+          padding: shot.stage === "frame" || hasHero ? 0 : layout.grid * 5,
           display: "flex",
           flexDirection: "column",
           // Centred, always. Spreading two blocks to the top and bottom of a full-frame

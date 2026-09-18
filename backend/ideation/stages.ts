@@ -47,7 +47,10 @@ async function callLlm(options: {
   maxTokens: number;
 }): Promise<unknown> {
   if (!isGoogleAiConfigured()) {
-    throw new Error("GEMINI_API_KEY is not set. Please set it in .env or the environment.");
+    throw new Error(
+      "GEMINI_API_KEY is not set. To ideate via cloud API, set GEMINI_API_KEY in .env; " +
+        "or use the Agent Director workflow (docs/DIRECTOR_GUIDE.md) to direct films directly with your coding agent.",
+    );
   }
 
   const prompt = `${options.user}\n\nPlease emit your output as structured JSON conforming to the '${options.toolName}' schema.`;

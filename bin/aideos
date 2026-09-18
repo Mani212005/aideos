@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# File Description: Global CLI launcher for Aideos. Running 'aideos' opens the interactive
-# visual studio editor on localhost:3001 in your browser, and subcommands forward to the backend engine.
+# File Description: Global CLI launcher for Aideos. Running 'aideos' starts the interactive
+# visual studio on localhost:3001, opens the browser, connects the AI coding agent in tmux,
+# and activates the bi-directional Auto-Prompter.
 
 set -e
 
@@ -17,13 +18,17 @@ else
   exit 1
 fi
 
-# Subcommand dispatch
+CONFIG_DIR="${HOME}/.config/aideos"
+CONFIG_FILE="${CONFIG_DIR}/agent"
+SESSION_FILE="${AIDEOS_DIR}/.aideos_session.json"
+TMUX_SESSION="aideos"
+
+# Subcommand dispatch for non-interactive commands
 if [ "$#" -gt 0 ]; then
   CMD="$1"
   shift
   case "$CMD" in
     exit|stop|down|kill)
-      # Terminate any active process running on port 3001 or Aideos on port 3000
       PIDS=$(lsof -tiTCP:3001 -sTCP:LISTEN 2>/dev/null || true)
       if [ -n "$PIDS" ]; then
         kill $PIDS 2>/dev/null || true
@@ -36,38 +41,46 @@ if [ "$#" -gt 0 ]; then
           fi
         done
       fi
-      echo "The local host is stopped, Hope you make something amazing!"
+      echo "The local host is stopped. Hope you make something amazing!"
       exit 0
       ;;
     validate)
       cd "$AIDEOS_DIR" && npm run validate "$@"
+      exit 0
       ;;
     render)
       cd "$AIDEOS_DIR" && npm run render "$@"
+      exit 0
       ;;
     "render:reel"|reel)
       cd "$AIDEOS_DIR" && npm run render:reel "$@"
+      exit 0
       ;;
     studio)
       cd "$AIDEOS_DIR" && npm run studio "$@"
+      exit 0
       ;;
     frames)
       cd "$AIDEOS_DIR" && npm run frames "$@"
+      exit 0
       ;;
     test)
       cd "$AIDEOS_DIR" && npm test "$@"
+      exit 0
       ;;
     lint)
       cd "$AIDEOS_DIR" && npm run lint "$@"
+      exit 0
       ;;
     ideate|shoot|prompts|assemble|produce|generate|engine-test)
       cd "$AIDEOS_DIR" && npm run backend -- "$CMD" "$@"
+      exit 0
       ;;
     help|--help|-h)
-      echo "Aideos: Explainer Video Engine as Data"
+      echo "Aideos: Autonomous Explainer Video Director"
       echo ""
       echo "Usage:"
-      echo "  aideos               Launch and open visual editor (localhost:3001)"
+      echo "  aideos               Launch Studio (localhost:3001) and connect AI coding agent"
       echo "  aideos exit          Stop local editor dev server"
       echo "  aideos validate      Validate active film schema and print runsheet"
       echo "  aideos render        Render long-form video (out/long.mp4)"
@@ -78,53 +91,212 @@ if [ "$#" -gt 0 ]; then
       echo "  aideos produce       Audio-first timing spine generation"
       echo "  aideos ideate        Staged ideation chain (treatment.json)"
       echo ""
+      exit 0
       ;;
     *)
-      # Forward any custom command to backend CLI
-      cd "$AIDEOS_DIR" && npm run backend -- "$CMD" "$@"
+      # If not a known subcommand, proceed to default launcher
       ;;
   esac
-  exit 0
 fi
 
-# Default action (no args): Open / Launch Editor on localhost:3001
+# 1. Start Localhost Studio if not already running
 PORT=3001
-
-# Check if Vite editor is already listening on port 3001 or 3000
 IS_RUNNING=0
 if lsof -nP -iTCP:3001 -sTCP:LISTEN >/dev/null 2>&1; then
   PORT=3001
   IS_RUNNING=1
 elif lsof -nP -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1; then
-  # Check if port 3000 is Aideos
   if curl -s http://localhost:3000/ | grep -qi "aideos\|editor"; then
     PORT=3000
     IS_RUNNING=1
   fi
 fi
 
-if [ "$IS_RUNNING" -eq 1 ]; then
-  echo "🎬 Aideos Editor is already running on http://localhost:$PORT/"
-  open "http://localhost:$PORT/"
+if [ "$IS_RUNNING" -eq 0 ]; then
+  echo "🚀 Starting Aideos Studio on http://localhost:3001..."
+  cd "$AIDEOS_DIR/editor"
+  nohup npm run dev > /tmp/aideos-editor.log 2>&1 &
+  SERVER_PID=$!
+
+  # Wait for server to become ready (up to 10s)
+  for i in {1..20}; do
+    if lsof -nP -iTCP:3001 -sTCP:LISTEN >/dev/null 2>&1; then
+      PORT=3001
+      break
+    elif lsof -nP -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1 && curl -s http://localhost:3000/ | grep -qi "editor"; then
+      PORT=3000
+      break
+    fi
+    sleep 0.5
+  done
+  echo "✓ Aideos Studio ready at http://localhost:$PORT/ (PID: $SERVER_PID)"
+else
+  echo "🎬 Aideos Studio is running on http://localhost:$PORT/"
+fi
+
+# Open in default browser
+open "http://localhost:$PORT/" 2>/dev/null || true
+
+# 2. Interactive agent selection menu (always prompts)
+SAVED_AGENT=""
+if [ -f "$CONFIG_FILE" ]; then
+  SAVED_AGENT="$(cat "$CONFIG_FILE" | tr -d '[:space:]')"
+fi
+
+DEFAULT_LABEL="Claude Code [1]"
+DEFAULT_VAL="claude"
+if [ "$SAVED_AGENT" = "agy" ] || [ "$SAVED_AGENT" = "antigravity" ]; then
+  DEFAULT_LABEL="Antigravity CLI [2] (Locked Default)"
+  DEFAULT_VAL="agy"
+elif [ "$SAVED_AGENT" = "pi" ]; then
+  DEFAULT_LABEL="Pi Coding Agent [3] (Locked Default)"
+  DEFAULT_VAL="pi"
+elif [ "$SAVED_AGENT" = "codex" ]; then
+  DEFAULT_LABEL="Codex CLI [4] (Locked Default)"
+  DEFAULT_VAL="codex"
+elif [ "$SAVED_AGENT" = "none" ]; then
+  DEFAULT_LABEL="Web Studio Only [5] (Locked Default)"
+  DEFAULT_VAL="none"
+elif [ "$SAVED_AGENT" = "claude" ]; then
+  DEFAULT_LABEL="Claude Code [1] (Locked Default)"
+  DEFAULT_VAL="claude"
+fi
+
+TARGET_AGENT=""
+
+if [ -t 0 ]; then
+  while true; do
+    echo ""
+    echo "========================================================"
+    echo "  🎬 Aideos Video Director - Connected Coding Agent"
+    echo "========================================================"
+    echo "  1) Claude Code (claude)"
+    echo "  2) Antigravity CLI (agy)"
+    echo "  3) Pi Coding Agent (pi)"
+    echo "  4) Codex CLI (codex)"
+    echo "  5) Web Studio only (no terminal agent)"
+    echo "--------------------------------------------------------"
+    echo "  [p] Hard-lock / set a permanent default"
+    if [ -n "$SAVED_AGENT" ]; then
+      echo "  [c] Clear locked default"
+    fi
+    echo "========================================================"
+    read -rp "Select agent [1-5, p] (Enter for $DEFAULT_LABEL): " CHOICE < /dev/tty
+
+    case "$CHOICE" in
+      1|claude)
+        TARGET_AGENT="claude"
+        break
+        ;;
+      2|agy|antigravity)
+        TARGET_AGENT="agy"
+        break
+        ;;
+      3|pi)
+        TARGET_AGENT="pi"
+        break
+        ;;
+      4|codex)
+        TARGET_AGENT="codex"
+        break
+        ;;
+      5|none|studio)
+        TARGET_AGENT="none"
+        break
+        ;;
+      p|P)
+        echo ""
+        echo "Select the agent to hard-lock as your permanent default:"
+        echo "  1) Claude Code (claude)"
+        echo "  2) Antigravity CLI (agy)"
+        echo "  3) Pi Coding Agent (pi)"
+        echo "  4) Codex CLI (codex)"
+        echo "  5) Web Studio only"
+        read -rp "Hard-lock choice [1-5]: " PCHOICE < /dev/tty
+        PAGENT="claude"
+        case "$PCHOICE" in
+          2) PAGENT="agy" ;;
+          3) PAGENT="pi" ;;
+          4) PAGENT="codex" ;;
+          5) PAGENT="none" ;;
+          *) PAGENT="claude" ;;
+        esac
+        mkdir -p "$CONFIG_DIR"
+        echo "$PAGENT" > "$CONFIG_FILE"
+        echo "✓ Hard-locked $PAGENT as default! (You will still see this prompt every launch with it pre-selected)"
+        TARGET_AGENT="$PAGENT"
+        break
+        ;;
+      c|C)
+        rm -f "$CONFIG_FILE"
+        echo "✓ Cleared locked default."
+        SAVED_AGENT=""
+        DEFAULT_LABEL="Claude Code [1]"
+        DEFAULT_VAL="claude"
+        ;;
+      "")
+        TARGET_AGENT="$DEFAULT_VAL"
+        break
+        ;;
+      *)
+        echo "Invalid choice. Please enter 1-5 or p."
+        ;;
+    esac
+  done
+fi
+
+# Fallback for non-interactive pipes
+if [ -z "$TARGET_AGENT" ]; then
+  TARGET_AGENT="claude"
+fi
+
+if [ "$TARGET_AGENT" = "none" ]; then
+  echo "🎬 Aideos Studio is active on http://localhost:$PORT/. Happy editing!"
   exit 0
 fi
 
-echo "🚀 Starting Aideos Studio on http://localhost:3001..."
-cd "$AIDEOS_DIR/editor"
-nohup npm run dev > /tmp/aideos-editor.log 2>&1 &
-SERVER_PID=$!
+# 3. Connect selected coding agent to Aideos Auto-Prompter
+cd "$AIDEOS_DIR"
 
-# Wait for server to become ready (up to 10s)
-for i in {1..20}; do
-  if lsof -nP -iTCP:3001 -sTCP:LISTEN >/dev/null 2>&1; then
-    PORT=3001
-    break
-  elif lsof -nP -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1 && curl -s http://localhost:3000/ | grep -qi "editor"; then
-    PORT=3000
-    break
+if [ -n "$TMUX" ]; then
+  CURRENT_PANE="$(tmux display-message -p '#{pane_id}' 2>/dev/null || echo '')"
+  cat <<EOF > "$SESSION_FILE"
+{
+  "agent": "$TARGET_AGENT",
+  "sessionType": "tmux",
+  "tmuxSession": "$TMUX_SESSION",
+  "tmuxPane": "$CURRENT_PANE",
+  "updatedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+  echo "✨ Connected to active tmux session ($TMUX_SESSION, pane $CURRENT_PANE). Auto-prompter is active!"
+  exec "$TARGET_AGENT"
+else
+  if command -v tmux >/dev/null 2>&1; then
+    cat <<EOF > "$SESSION_FILE"
+{
+  "agent": "$TARGET_AGENT",
+  "sessionType": "tmux",
+  "tmuxSession": "$TMUX_SESSION",
+  "updatedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+    echo "⚡ Launching $TARGET_AGENT in tmux session [$TMUX_SESSION] with Aideos Auto-Prompter..."
+    if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+      echo "Attaching to existing tmux session [$TMUX_SESSION]..."
+      exec tmux attach-session -t "$TMUX_SESSION"
+    else
+      exec tmux new-session -s "$TMUX_SESSION" -c "$AIDEOS_DIR" "$TARGET_AGENT"
+    fi
+  else
+    cat <<EOF > "$SESSION_FILE"
+{
+  "agent": "$TARGET_AGENT",
+  "sessionType": "standalone",
+  "updatedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+    echo "✨ Launching $TARGET_AGENT in $AIDEOS_DIR..."
+    exec "$TARGET_AGENT"
   fi
-  sleep 0.5
-done
-
-echo "✓ Aideos Studio ready at http://localhost:$PORT/ (PID: $SERVER_PID)"
-open "http://localhost:$PORT/"
+fi

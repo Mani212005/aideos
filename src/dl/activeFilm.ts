@@ -1,3 +1,7 @@
+/**
+ * File Description: Defines the currently active film bundle rendered by default in studio and CLI.
+ */
+
 import { stillTalkingFilm } from "./films/still-talking";
 import type { Film } from "./schema";
 

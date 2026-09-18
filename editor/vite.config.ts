@@ -14,7 +14,19 @@ import type { Film } from '../src/dl/schema.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
 import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
 import { executeCritique } from '../backend/critique/engine.ts'
-import { extractSpokenBlocks as extractSpokenVoiceoverBlocks, buildFilmPartsFromScript, hasScreenplayTags } from '../backend/scriptIntake.ts'
+import {
+  extractSpokenBlocks as extractSpokenVoiceoverBlocks,
+  buildFilmPartsFromScript,
+  hasScreenplayTags,
+  generateAgentPrompt,
+  generateDirectorTaskDocument,
+} from '../backend/scriptIntake.ts'
+import {
+  dispatchPromptToAgent,
+  buildDirectingPrompt,
+  getAgentSession,
+  setAgentSession,
+} from '../backend/agentPrompter.ts'
 import dotenv from 'dotenv'
 dotenv.config({ path: path.resolve(__dirname, '../.env'), quiet: true })
 import { createEngine } from '../backend/engine/index.ts'
@@ -460,6 +472,18 @@ function filmApiPlugin(): Plugin {
                 }
               );
 
+              let renderLogs = '';
+              child.stdout?.on('data', (d) => {
+                const text = d.toString();
+                renderLogs = (renderLogs + text).slice(-4000);
+                process.stdout.write(text);
+              });
+              child.stderr?.on('data', (d) => {
+                const text = d.toString();
+                renderLogs = (renderLogs + text).slice(-4000);
+                process.stderr.write(text);
+              });
+
               child.on('close', (code) => {
                 if (code === 0) {
                   sendJson(res, 200, {
@@ -469,7 +493,7 @@ function filmApiPlugin(): Plugin {
                   });
                 } else {
                   sendJson(res, 500, {
-                    error: `Remotion render exited with code ${code}`,
+                    error: `Remotion render exited with code ${code}: ${renderLogs.trim()}`,
                   });
                 }
               });
@@ -630,13 +654,46 @@ function filmApiPlugin(): Plugin {
         // Handle /api/parse-script-scenes (Intelligently construct shots, visual directions & nodes from screenplay)
         if (url === '/api/parse-script-scenes' && req.method === 'POST') {
           void readBody(req).then((body: any) => {
-            const { script, filmTitle: _filmTitle = "Film", targetDurationSec } = body || {};
+            const { script, filmTitle = "Film", targetDurationSec, projectId = "kvcache" } = body || {};
             if (!script) {
               sendJson(res, 400, { error: 'Script text is required' });
               return;
             }
 
             const { shots, nodes, edges, spokenText, wordCount, durationSec } = buildFilmPartsFromScript(script, targetDurationSec);
+
+            const pkgDir = path.join(videosDir, projectId);
+            if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
+
+            // Persist screenplay doc
+            fs.writeFileSync(path.join(pkgDir, 'script.md'), script, 'utf8');
+
+            // Generate Creative Director directive & prompt for terminal coding agent
+            const taskOpts = {
+              projectId,
+              filmTitle,
+              shotCount: shots.length,
+              durationSec,
+              spokenWordCount: wordCount,
+            };
+            const agentPrompt = generateAgentPrompt(taskOpts);
+            const taskDoc = generateDirectorTaskDocument(taskOpts);
+
+            const taskPath = path.join(pkgDir, 'director_task.md');
+            fs.writeFileSync(taskPath, taskDoc, 'utf8');
+            const rootTaskPath = path.resolve(__dirname, '../.aideos_task.md');
+            fs.writeFileSync(rootTaskPath, taskDoc, 'utf8');
+
+            // Automatically prompt the active coding agent in tmux session
+            const directingPrompt = buildDirectingPrompt({
+              event: "auto_build_scenes",
+              filmId: projectId,
+              filmTitle,
+              scriptText: script,
+              durationSec,
+              shotCount: shots.length,
+            });
+            const dispatch = dispatchPromptToAgent(directingPrompt);
 
             sendJson(res, 200, {
               ok: true,
@@ -646,7 +703,41 @@ function filmApiPlugin(): Plugin {
               spokenText,
               wordCount,
               durationSec,
+              agentPrompt,
+              taskFile: `videos/${projectId}/director_task.md`,
+              dispatch,
             });
+          }).catch(err => sendJson(res, 500, { error: String(err) }));
+          return;
+        }
+
+        // Handle /api/prompt-agent (Directly auto-prompts active terminal agent)
+        if (url === '/api/prompt-agent' && req.method === 'POST') {
+          void readBody(req).then((body: any) => {
+            const { filmId = "kvcache", filmTitle = "Film", event = "custom_directive", customInstruction, script } = body || {};
+            const prompt = buildDirectingPrompt({
+              event,
+              filmId,
+              filmTitle,
+              customInstruction,
+              scriptText: script,
+            });
+            const dispatch = dispatchPromptToAgent(prompt);
+            sendJson(res, 200, { ok: true, dispatch, prompt });
+          }).catch(err => sendJson(res, 500, { error: String(err) }));
+          return;
+        }
+
+        // Handle /api/agent-session (Read/Update active agent session metadata)
+        if (url === '/api/agent-session' && req.method === 'GET') {
+          const session = getAgentSession();
+          sendJson(res, 200, { ok: true, session });
+          return;
+        }
+        if (url === '/api/agent-session' && req.method === 'POST') {
+          void readBody(req).then((body: any) => {
+            const updated = setAgentSession(body || {});
+            sendJson(res, 200, { ok: true, session: updated });
           }).catch(err => sendJson(res, 500, { error: String(err) }));
           return;
         }
@@ -1085,16 +1176,43 @@ function filmApiPlugin(): Plugin {
                 }
               }
 
+              const taskOpts = {
+                projectId,
+                filmTitle: updatedFilm?.title || projectId,
+                shotCount: updatedShots?.length || (updatedFilm?.shots?.length ?? 0),
+                durationSec: measuredDuration,
+                spokenWordCount: cleanText.split(/\s+/).filter(Boolean).length,
+              };
+              const agentPrompt = generateAgentPrompt(taskOpts);
+              const taskDoc = generateDirectorTaskDocument(taskOpts);
+
+              fs.writeFileSync(path.join(pkgDir, 'director_task.md'), taskDoc, 'utf8');
+              fs.writeFileSync(path.resolve(__dirname, '../.aideos_task.md'), taskDoc, 'utf8');
+
+              // Automatically prompt the active coding agent in tmux session
+              const directingPrompt = buildDirectingPrompt({
+                event: "voiceover_ready",
+                filmId: projectId,
+                filmTitle: taskOpts.filmTitle,
+                voiceoverFile: `videos/${projectId}/${outFilename}`,
+                durationSec: measuredDuration,
+                shotCount: taskOpts.shotCount,
+              });
+              const dispatch = dispatchPromptToAgent(directingPrompt);
+
               sendJson(res, 200, {
                 ok: true,
                 filename: outFilename,
                 audioSrc: `/videos/${projectId}/${outFilename}?t=${Date.now()}`,
                 scriptFile: `videos/${projectId}/script.md`,
-                spokenWordCount: cleanText.split(/\s+/).filter(Boolean).length,
+                spokenWordCount: taskOpts.spokenWordCount,
                 estimatedDurationSec: Math.round(measuredDuration),
                 actualDurationSec: measuredDuration,
                 shots: updatedShots,
                 film: updatedFilm,
+                agentPrompt,
+                taskFile: `videos/${projectId}/director_task.md`,
+                dispatch,
               });
             } else {
               sendJson(res, 500, { error: 'Failed to synthesize voiceover audio.' });

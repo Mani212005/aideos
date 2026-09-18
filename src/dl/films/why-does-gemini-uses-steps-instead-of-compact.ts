@@ -1,0 +1,1559 @@
+import type { Film } from "../schema";
+
+export const whyDoesGeminiUsesStepsInsteadOfCompactFilm: Film = {
+  "schemaVersion": "1.0.0",
+  "id": "why-does-gemini-uses-steps-instead-of-compact",
+  "title": "Why does gemini uses steps instead of compact?",
+  "fps": 30,
+  "accent": "#FF6B00",
+  "theme": {
+    "background": "smooth-dark",
+    "fontFamily": "geist",
+    "storyStyle": "script-metaphor",
+    "cameraAngle": "isometric",
+    "accent": "#FF6B00"
+  },
+  "chapters": [
+    "The Mystery",
+    "Token Prediction",
+    "Reasoning & Steps",
+    "Context Compaction",
+    "Compute vs Memory",
+    "Context Efficiency",
+    "Tool Comparison",
+    "Mastering AI Systems"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "intro",
+        "label": "The Mystery",
+        "sub": "Gemini vs Claude",
+        "x": 160,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      },
+      {
+        "id": "llm-basics",
+        "label": "Token Prediction",
+        "sub": "Core Transformer",
+        "x": 590,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      },
+      {
+        "id": "thinking",
+        "label": "Reasoning Steps",
+        "sub": "Internal Computation",
+        "x": 1020,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      },
+      {
+        "id": "compaction",
+        "label": "Context Compaction",
+        "sub": "Memory Management",
+        "x": 1020,
+        "y": 474,
+        "w": 280,
+        "h": 124
+      },
+      {
+        "id": "distinction",
+        "label": "Compute vs Memory",
+        "sub": "Key Differences",
+        "x": 590,
+        "y": 474,
+        "w": 280,
+        "h": 124
+      },
+      {
+        "id": "efficiency",
+        "label": "Context Efficiency",
+        "sub": "Token Economics",
+        "x": 160,
+        "y": 474,
+        "w": 280,
+        "h": 124
+      },
+      {
+        "id": "comparison",
+        "label": "Tool Comparison",
+        "sub": "Steps vs Thinking",
+        "x": 160,
+        "y": 748,
+        "w": 280,
+        "h": 124
+      },
+      {
+        "id": "conclusion",
+        "label": "Mastering AI",
+        "sub": "System Design",
+        "x": 590,
+        "y": 748,
+        "w": 280,
+        "h": 124
+      }
+    ],
+    "edges": [
+      {
+        "from": "intro",
+        "to": "llm-basics",
+        "dashed": false
+      },
+      {
+        "from": "llm-basics",
+        "to": "thinking",
+        "dashed": false
+      },
+      {
+        "from": "thinking",
+        "to": "compaction",
+        "dashed": false
+      },
+      {
+        "from": "compaction",
+        "to": "distinction",
+        "dashed": false
+      },
+      {
+        "from": "distinction",
+        "to": "efficiency",
+        "dashed": false
+      },
+      {
+        "from": "efficiency",
+        "to": "comparison",
+        "dashed": false
+      },
+      {
+        "from": "comparison",
+        "to": "conclusion",
+        "dashed": false
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "shot-1",
+      "dur": 3.1,
+      "stage": "frame",
+      "look": "intro",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Have you ever used Gemini inside",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Have you ever used Gemini inside",
+          "size": "headline",
+          "accentWord": "Have"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "developer",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": -20
+                },
+                "leftArm": {
+                  "rotate": 20
+                }
+              }
+            },
+            {
+              "t": 0.4,
+              "groups": {
+                "torso": {
+                  "rotate": 3
+                },
+                "rightArm": {
+                  "rotate": -65
+                },
+                "leftArm": {
+                  "rotate": -10
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shot-2",
+      "dur": 3.1,
+      "stage": "frame",
+      "look": "intro",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Instead of just giving you an",
+      "needsFootage": true,
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "AnalogyInset",
+          "caption": "Visualizing Instead of just giving you an",
+          "src": "videos/why-does-gemini-uses-steps-instead-of-compact/footage/shot-2.mp4",
+          "fullScreenHero": true
+        }
+      ]
+    },
+    {
+      "id": "shot-3",
+      "dur": 3.1,
+      "stage": "frame",
+      "look": "intro",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It looks like the AI is",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It looks like the AI is",
+          "size": "headline",
+          "accentWord": "It"
+        }
+      ]
+    },
+    {
+      "id": "shot-4",
+      "dur": 3.72,
+      "stage": "frame",
+      "look": "intro",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And then you use Claude Code",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And then you use Claude Code",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Steps",
+            "Thought",
+            "Compact"
+          ],
+          "lit": [
+            0,
+            2
+          ],
+          "caption": "AI Reasoning Interfaces"
+        }
+      ]
+    },
+    {
+      "id": "shot-5",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "intro",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing You might see things like **thinking**",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "You might see things like **thinking**",
+          "size": "headline",
+          "accentWord": "You"
+        }
+      ]
+    },
+    {
+      "id": "shot-6",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "intro",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So what is actually happening",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So what is actually happening",
+          "size": "headline",
+          "accentWord": "So"
+        }
+      ]
+    },
+    {
+      "id": "shot-7",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "intro",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And more importantly…",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And more importantly…",
+          "size": "headline",
+          "accentWord": "And"
+        }
+      ]
+    },
+    {
+      "id": "shot-8",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "intro",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing **Is Gemini actually thinking differently from",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "**Is Gemini actually thinking differently from",
+          "size": "headline",
+          "accentWord": "**Is"
+        }
+      ]
+    },
+    {
+      "id": "shot-9",
+      "dur": 2.79,
+      "stage": "none",
+      "look": [
+        "intro"
+      ],
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Let’s break it down",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "shot-10",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "llm-basics",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing First, forget everything you know about",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "First, forget everything you know about",
+          "size": "headline",
+          "accentWord": "First,"
+        }
+      ]
+    },
+    {
+      "id": "shot-11",
+      "dur": 3.72,
+      "stage": "frame",
+      "look": "llm-basics",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing At the most basic level, an",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "At the most basic level, an",
+          "size": "headline",
+          "accentWord": "At"
+        }
+      ]
+    },
+    {
+      "id": "shot-12",
+      "dur": 3.1,
+      "stage": "frame",
+      "look": "llm-basics",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing **It takes tokens as input and",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "**It takes tokens as input and",
+          "size": "headline",
+          "accentWord": "**It"
+        },
+        {
+          "c": "ScaleBar",
+          "ticks": [
+            "Input",
+            "Tokens",
+            "Predict"
+          ],
+          "value": 0.75,
+          "label": "Next-Token Pipeline"
+        }
+      ]
+    },
+    {
+      "id": "shot-13",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "llm-basics",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Your prompt gets converted into tokens",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Your prompt gets converted into tokens",
+          "size": "headline",
+          "accentWord": "Your"
+        }
+      ]
+    },
+    {
+      "id": "shot-14",
+      "dur": 5.58,
+      "stage": "frame",
+      "look": "llm-basics",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Those tokens go through a neural",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Those tokens go through a neural",
+          "size": "headline",
+          "accentWord": "Those"
+        }
+      ]
+    },
+    {
+      "id": "shot-15",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "llm-basics",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing But modern reasoning models add another",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "But modern reasoning models add another",
+          "size": "headline",
+          "accentWord": "But"
+        }
+      ]
+    },
+    {
+      "id": "shot-16",
+      "dur": 4.34,
+      "stage": "frame",
+      "look": "thinking",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Instead of immediately producing the final",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Instead of immediately producing the final",
+          "size": "headline",
+          "accentWord": "Instead"
+        }
+      ]
+    },
+    {
+      "id": "shot-17",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "thinking",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing For example, if I ask",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "For example, if I ask",
+          "size": "headline",
+          "accentWord": "For"
+        }
+      ]
+    },
+    {
+      "id": "shot-18",
+      "dur": 2.79,
+      "stage": "none",
+      "look": [
+        "thinking"
+      ],
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “Write a function that finds a",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "shot-19",
+      "dur": 4.96,
+      "stage": "frame",
+      "look": "thinking",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The model might internally reason about",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The model might internally reason about",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "Card",
+          "title": "Internal Reasoning",
+          "body": "Hypothesis generation -> Code analysis -> Error isolation",
+          "state": "active"
+        }
+      ]
+    },
+    {
+      "id": "shot-20",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "thinking",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And this is where Gemini gets",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And this is where Gemini gets",
+          "size": "headline",
+          "accentWord": "And"
+        }
+      ]
+    },
+    {
+      "id": "shot-21",
+      "dur": 6.19,
+      "stage": "frame",
+      "look": "thinking",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Google's Gemini API exposes **thought steps**",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Google's Gemini API exposes **thought steps**",
+          "size": "headline",
+          "accentWord": "Google's"
+        }
+      ]
+    },
+    {
+      "id": "shot-22",
+      "dur": 4.34,
+      "stage": "frame",
+      "look": "thinking",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So when you see Gemini showing",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So when you see Gemini showing",
+          "size": "headline",
+          "accentWord": "So"
+        }
+      ]
+    },
+    {
+      "id": "shot-23",
+      "dur": 3.1,
+      "stage": "frame",
+      "look": "thinking",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing You're seeing part of the model's",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "You're seeing part of the model's",
+          "size": "headline",
+          "accentWord": "You're"
+        }
+      ]
+    },
+    {
+      "id": "shot-24",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "thinking",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Now compare that with Claude",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Now compare that with Claude",
+          "size": "headline",
+          "accentWord": "Now"
+        }
+      ]
+    },
+    {
+      "id": "shot-25",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "compaction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Claude also has reasoning capabilities",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Claude also has reasoning capabilities",
+          "size": "headline",
+          "accentWord": "Claude"
+        }
+      ]
+    },
+    {
+      "id": "shot-26",
+      "dur": 2.79,
+      "stage": "none",
+      "look": [
+        "compaction"
+      ],
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing But **compact** is actually a different",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "shot-27",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "compaction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Compaction is primarily about **context management**",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Compaction is primarily about **context management**",
+          "size": "headline",
+          "accentWord": "Compaction"
+        },
+        {
+          "c": "LayerStack",
+          "count": 5,
+          "bottomLabel": "Full Chat History",
+          "topLabel": "Compacted Context"
+        }
+      ]
+    },
+    {
+      "id": "shot-28",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "compaction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Imagine you're using Claude Code for",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Imagine you're using Claude Code for",
+          "size": "headline",
+          "accentWord": "Imagine"
+        }
+      ]
+    },
+    {
+      "id": "shot-29",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "compaction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing You've given it hundreds of messages",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "You've given it hundreds of messages",
+          "size": "headline",
+          "accentWord": "You've"
+        }
+      ]
+    },
+    {
+      "id": "shot-30",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "compaction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It's read files",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It's read files",
+          "size": "headline",
+          "accentWord": "It's"
+        }
+      ]
+    },
+    {
+      "id": "shot-31",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "compaction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It has generated code",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It has generated code",
+          "size": "headline",
+          "accentWord": "It"
+        }
+      ]
+    },
+    {
+      "id": "shot-32",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "compaction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing You've run commands",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "You've run commands",
+          "size": "headline",
+          "accentWord": "You've"
+        }
+      ]
+    },
+    {
+      "id": "shot-33",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "compaction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing There are tool outputs everywhere",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "There are tool outputs everywhere",
+          "size": "headline",
+          "accentWord": "There"
+        }
+      ]
+    },
+    {
+      "id": "shot-34",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "compaction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing All of that becomes part of",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "All of that becomes part of",
+          "size": "headline",
+          "accentWord": "All"
+        }
+      ]
+    },
+    {
+      "id": "shot-35",
+      "dur": 2.79,
+      "stage": "none",
+      "look": [
+        "compaction"
+      ],
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And eventually, that context becomes enormous",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "shot-36",
+      "dur": 4.34,
+      "stage": "frame",
+      "look": "compaction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So Claude can summarize the older",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So Claude can summarize the older",
+          "size": "headline",
+          "accentWord": "So"
+        }
+      ]
+    },
+    {
+      "id": "shot-37",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "compaction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing That's compaction",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "That's compaction",
+          "size": "headline",
+          "accentWord": "That's"
+        }
+      ]
+    },
+    {
+      "id": "shot-38",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "compaction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So here's the important distinction",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So here's the important distinction",
+          "size": "headline",
+          "accentWord": "So"
+        }
+      ]
+    },
+    {
+      "id": "shot-39",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "distinction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing **Thinking is about computation.**",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "**Thinking is about computation.**",
+          "size": "headline",
+          "accentWord": "**Thinking"
+        },
+        {
+          "c": "Card",
+          "title": "Core Architecture",
+          "body": "Thinking is computation; Compaction is memory management.",
+          "state": "active"
+        }
+      ]
+    },
+    {
+      "id": "shot-40",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "distinction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing **Compaction is about memory.**",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "**Compaction is about memory.**",
+          "size": "headline",
+          "accentWord": "**Compaction"
+        }
+      ]
+    },
+    {
+      "id": "shot-41",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "distinction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And Gemini's visible “steps” are about",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And Gemini's visible “steps” are about",
+          "size": "headline",
+          "accentWord": "And"
+        }
+      ]
+    },
+    {
+      "id": "shot-42",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "distinction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing They're not three competing versions of",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "They're not three competing versions of",
+          "size": "headline",
+          "accentWord": "They're"
+        }
+      ]
+    },
+    {
+      "id": "shot-43",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "distinction",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Now here's where this gets really",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Now here's where this gets really",
+          "size": "headline",
+          "accentWord": "Now"
+        }
+      ]
+    },
+    {
+      "id": "shot-44",
+      "dur": 2.79,
+      "stage": "none",
+      "look": [
+        "distinction"
+      ],
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing You might think",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "shot-45",
+      "dur": 3.1,
+      "stage": "frame",
+      "look": "efficiency",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “Okay, just give the model more",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“Okay, just give the model more",
+          "size": "headline",
+          "accentWord": "“Okay,"
+        }
+      ]
+    },
+    {
+      "id": "shot-46",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "efficiency",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Not necessarily",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Not necessarily",
+          "size": "headline",
+          "accentWord": "Not"
+        }
+      ]
+    },
+    {
+      "id": "shot-47",
+      "dur": 3.72,
+      "stage": "frame",
+      "look": "efficiency",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing As context grows, models can become",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "As context grows, models can become",
+          "size": "headline",
+          "accentWord": "As"
+        }
+      ]
+    },
+    {
+      "id": "shot-48",
+      "dur": 3.1,
+      "stage": "frame",
+      "look": "efficiency",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And you're also paying for those",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And you're also paying for those",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "ScaleBar",
+          "ticks": [
+            "Small",
+            "Medium",
+            "Huge"
+          ],
+          "value": 0.5,
+          "label": "Context Efficiency"
+        }
+      ]
+    },
+    {
+      "id": "shot-49",
+      "dur": 3.1,
+      "stage": "frame",
+      "look": "efficiency",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing That's why modern AI systems increasingly",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "That's why modern AI systems increasingly",
+          "size": "headline",
+          "accentWord": "That's"
+        }
+      ]
+    },
+    {
+      "id": "shot-50",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "efficiency",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing **“Give the model everything.”**",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "**“Give the model everything.”**",
+          "size": "headline",
+          "accentWord": "**“Give"
+        }
+      ]
+    },
+    {
+      "id": "shot-51",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "efficiency",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And more like",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And more like",
+          "size": "headline",
+          "accentWord": "And"
+        }
+      ]
+    },
+    {
+      "id": "shot-52",
+      "dur": 3.1,
+      "stage": "frame",
+      "look": "efficiency",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing **“Give the model exactly what it",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "**“Give the model exactly what it",
+          "size": "headline",
+          "accentWord": "**“Give"
+        }
+      ]
+    },
+    {
+      "id": "shot-53",
+      "dur": 4.34,
+      "stage": "none",
+      "look": [
+        "efficiency"
+      ],
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing That's why you'll see techniques like",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "shot-54",
+      "dur": 3.72,
+      "stage": "frame",
+      "look": "comparison",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So…",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So…",
+          "size": "headline",
+          "accentWord": "So…"
+        }
+      ]
+    },
+    {
+      "id": "shot-55",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "comparison",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Which is better",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Which is better",
+          "size": "headline",
+          "accentWord": "Which"
+        }
+      ]
+    },
+    {
+      "id": "shot-56",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "comparison",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Gemini's steps",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Gemini's steps",
+          "size": "headline",
+          "accentWord": "Gemini's"
+        },
+        {
+          "c": "Card",
+          "title": "System Design",
+          "body": "Provide exact context needed rather than dumping entire history.",
+          "state": "active"
+        }
+      ]
+    },
+    {
+      "id": "shot-57",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "comparison",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Claude's thinking",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Claude's thinking",
+          "size": "headline",
+          "accentWord": "Claude's"
+        }
+      ]
+    },
+    {
+      "id": "shot-58",
+      "dur": 3.72,
+      "stage": "frame",
+      "look": "comparison",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Codex",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Codex",
+          "size": "headline",
+          "accentWord": "Codex"
+        }
+      ]
+    },
+    {
+      "id": "shot-59",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "comparison",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing There isn't a universal winner",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "There isn't a universal winner",
+          "size": "headline",
+          "accentWord": "There"
+        }
+      ]
+    },
+    {
+      "id": "shot-60",
+      "dur": 3.72,
+      "stage": "frame",
+      "look": "comparison",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing They're solving different problems, and the",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "They're solving different problems, and the",
+          "size": "headline",
+          "accentWord": "They're"
+        }
+      ]
+    },
+    {
+      "id": "shot-61",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "comparison",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The bigger lesson is this",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The bigger lesson is this",
+          "size": "headline",
+          "accentWord": "The"
+        }
+      ]
+    },
+    {
+      "id": "shot-62",
+      "dur": 2.79,
+      "stage": "none",
+      "look": [
+        "conclusion"
+      ],
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing **The future of AI isn't just",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "shot-63",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "conclusion",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It's about making them better at",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It's about making them better at",
+          "size": "headline",
+          "accentWord": "It's"
+        }
+      ]
+    },
+    {
+      "id": "shot-64",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "conclusion",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing better at managing context…",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "better at managing context…",
+          "size": "headline",
+          "accentWord": "better"
+        }
+      ]
+    },
+    {
+      "id": "shot-65",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "conclusion",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing and better at deciding **what information",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "and better at deciding **what information",
+          "size": "headline",
+          "accentWord": "and"
+        }
+      ]
+    },
+    {
+      "id": "shot-66",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "conclusion",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And once you understand tokens, context",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And once you understand tokens, context",
+          "size": "headline",
+          "accentWord": "And"
+        }
+      ]
+    },
+    {
+      "id": "shot-67",
+      "dur": 2.79,
+      "stage": "frame",
+      "look": "conclusion",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing you stop using AI like a",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "you stop using AI like a",
+          "size": "headline",
+          "accentWord": "you"
+        }
+      ]
+    },
+    {
+      "id": "shot-68",
+      "dur": 2.62,
+      "stage": "frame",
+      "look": "conclusion",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing You start using it like a",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "You start using it like a",
+          "size": "headline",
+          "accentWord": "You"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "developer",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": -15
+                },
+                "leftArm": {
+                  "rotate": 15
+                }
+              }
+            },
+            {
+              "t": 0.5,
+              "groups": {
+                "torso": {
+                  "rotate": 2
+                },
+                "rightArm": {
+                  "rotate": -50
+                },
+                "leftArm": {
+                  "rotate": -10
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "voiceover": {
+    "src": "videos/why-does-gemini-uses-steps-instead-of-compact/voiceover.wav",
+    "volume": 1,
+    "speed": 1,
+    "version": "1789664272787",
+    "durationSec": 212.481
+  }
+};

@@ -23,6 +23,10 @@ import {
   Trash2,
   Eye,
   Camera,
+  Bot,
+  Copy,
+  Check,
+  ArrowRight,
 } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import {
@@ -30,6 +34,7 @@ import {
   serializeSegmentsToScript,
   extractSpokenBlocks as extractSpokenBlocksShared,
   hasScreenplayTags,
+  generateAgentPrompt,
 } from "../../../backend/scriptIntake";
 import type { ScriptSegment, BeatType } from "../../../backend/scriptIntake";
 
@@ -167,6 +172,68 @@ export function ScriptEditor({
     type: "success" | "error" | "info";
     text: string;
   } | null>(null);
+
+  // Agent Directing Directive & Prompt state
+  const [agentDirective, setAgentDirective] = useState<{
+    prompt: string;
+    taskFile?: string;
+    shotCount?: number;
+    durationSec?: number;
+  } | null>(null);
+  const [copiedPrompt, setCopiedPrompt] = useState<boolean>(false);
+  const [promptingAgent, setPromptingAgent] = useState<boolean>(false);
+  const [lastDispatchResult, setLastDispatchResult] = useState<{
+    channel: string;
+    message: string;
+    session?: string;
+  } | null>(null);
+
+  const copyToClipboard = (text: string) => {
+    if (typeof navigator !== "undefined" && navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 3000);
+    }
+  };
+
+  const handlePromptAgentDirectly = async (customInstruction?: string) => {
+    setPromptingAgent(true);
+    setStatusMsg({
+      type: "info",
+      text: "⚡ Auto-prompter is transmitting directing instructions to your terminal coding agent...",
+    });
+
+    try {
+      const res = await fetch("/api/prompt-agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filmId: film.id,
+          filmTitle: film.title,
+          event: customInstruction ? "custom_directive" : "auto_build_scenes",
+          customInstruction,
+          script,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to prompt agent");
+
+      if (data.dispatch) {
+        setLastDispatchResult(data.dispatch);
+        setStatusMsg({
+          type: "success",
+          text: `⚡ ${data.dispatch.message || "Auto-prompted active coding agent in terminal!"}`,
+        });
+      }
+    } catch (err: any) {
+      setStatusMsg({
+        type: "error",
+        text: `Auto-prompter error: ${err.message}`,
+      });
+    } finally {
+      setPromptingAgent(false);
+    }
+  };
 
   // Audio player state
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -397,11 +464,31 @@ export function ScriptEditor({
         body: JSON.stringify({ film: updatedFilm }),
       });
 
+      const prompt = data.agentPrompt || generateAgentPrompt({
+        projectId: film.id,
+        filmTitle: film.title,
+        shotCount: data.shots?.length || film.shots.length,
+        durationSec: data.durationSec || film.voiceover?.durationSec,
+      });
+
+      setAgentDirective({
+        prompt,
+        taskFile: data.taskFile || `videos/${film.id}/director_task.md`,
+        shotCount: data.shots?.length || film.shots.length,
+        durationSec: data.durationSec || film.voiceover?.durationSec,
+      });
+
+      if (data.dispatch) {
+        setLastDispatchResult(data.dispatch);
+      }
+
       setStatusMsg({
         type: "success",
-        text: `Successfully built ${data.shots.length} video scenes and graph nodes from screenplay!`,
+        text: data.dispatch?.ok
+          ? `⚡ Built ${data.shots.length} scenes & ${data.dispatch.message}`
+          : `Successfully built ${data.shots.length} video scenes and graph nodes from screenplay!`,
       });
-      setTimeout(() => setStatusMsg(null), 5000);
+      setTimeout(() => setStatusMsg(null), 6000);
     } catch (err: any) {
       setStatusMsg({
         type: "error",
@@ -445,10 +532,6 @@ export function ScriptEditor({
       if (data.actualDurationSec) {
         setDuration(data.actualDurationSec);
       }
-      setStatusMsg({
-        type: "success",
-        text: `Voiceover synthesized from screenplay (${data.spokenWordCount} spoken words, ${data.actualDurationSec ? data.actualDurationSec.toFixed(1) : data.estimatedDurationSec}s actual duration)!`,
-      });
 
       const updatedFilm: Film = data.film || {
         ...film,
@@ -463,6 +546,31 @@ export function ScriptEditor({
         audioClips: undefined, // Clear stale clip overrides so fresh voiceover spine takes effect across the player
       };
       onUpdateFilm(updatedFilm);
+
+      const prompt = data.agentPrompt || generateAgentPrompt({
+        projectId: film.id,
+        filmTitle: film.title,
+        shotCount: data.shots?.length || updatedFilm.shots.length,
+        durationSec: data.actualDurationSec || data.estimatedDurationSec,
+      });
+
+      setAgentDirective({
+        prompt,
+        taskFile: data.taskFile || `videos/${film.id}/director_task.md`,
+        shotCount: data.shots?.length || updatedFilm.shots.length,
+        durationSec: data.actualDurationSec || data.estimatedDurationSec,
+      });
+
+      if (data.dispatch) {
+        setLastDispatchResult(data.dispatch);
+      }
+
+      setStatusMsg({
+        type: "success",
+        text: data.dispatch?.ok
+          ? `⚡ Synthesized voiceover (${data.actualDurationSec ? data.actualDurationSec.toFixed(1) : data.estimatedDurationSec}s) & ${data.dispatch.message}`
+          : `Voiceover synthesized from screenplay (${data.spokenWordCount} spoken words, ${data.actualDurationSec ? data.actualDurationSec.toFixed(1) : data.estimatedDurationSec}s actual duration)!`,
+      });
 
       // Persist the updated film with voiceover to server
       await fetch(`/api/films/${film.id}`, {
@@ -520,12 +628,12 @@ export function ScriptEditor({
           </div>
           <p className="text-xs text-ink-soft mt-1">
             Write or paste your director screenplay, then generate voiceover
-            directly from its spoken dialogue.
+            and auto-prompt the terminal AI coding agent.
           </p>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
             onClick={handleSaveScript}
             disabled={saving || loading}
@@ -544,7 +652,7 @@ export function ScriptEditor({
             onClick={handleAutoBuildScenes}
             disabled={buildingScenes || loading || !script.trim()}
             className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 font-sans text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:pointer-events-none disabled:opacity-40 bg-warn text-ink"
-            title="Automatically parse timestamped scenes, visual cues, and on-screen text into video shots"
+            title="Automatically parse timestamped scenes into video shots and dispatch to terminal AI agent"
           >
             {buildingScenes ? (
               <Loader2 size={13} className="animate-spin text-ink" />
@@ -553,9 +661,23 @@ export function ScriptEditor({
             )}
             <span>
               {buildingScenes
-                ? "Parsing Scenes..."
+                ? "Parsing & Prompting..."
                 : "Auto-Build Scenes from Script"}
             </span>
+          </button>
+
+          <button
+            onClick={() => handlePromptAgentDirectly()}
+            disabled={promptingAgent || loading}
+            className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 font-sans text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:pointer-events-none disabled:opacity-40 bg-info/40 text-ink"
+            title="Automatically dispatch current directing prompt into active terminal coding agent in tmux session"
+          >
+            {promptingAgent ? (
+              <Loader2 size={13} className="animate-spin text-ink" />
+            ) : (
+              <Bot size={13} className="text-ink" />
+            )}
+            <span>{promptingAgent ? "Prompting..." : "⚡ Auto-Prompt Agent"}</span>
           </button>
 
           <button
@@ -572,6 +694,97 @@ export function ScriptEditor({
           </button>
         </div>
       </div>
+
+      {/* Live Auto-Prompter Dispatch Status */}
+      {lastDispatchResult && (
+        <div className="mt-3 px-3.5 py-2.5 bg-success/20 border-2 border-ink flex items-center justify-between font-mono text-xs shadow-nb-sm animate-in fade-in duration-150">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-success animate-ping" />
+            <span className="font-bold text-ink">AUTO-PROMPTER:</span>
+            <span className="text-ink">{lastDispatchResult.message}</span>
+          </div>
+          <button
+            onClick={() => setLastDispatchResult(null)}
+            className="text-ink-soft hover:text-ink text-xs ml-2 p-0.5"
+            title="Dismiss status"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
+      {/* Agent Directing Bridge Banner */}
+      {agentDirective && (
+        <div className="mt-4 bg-paper-2 border-2 border-ink p-4 shadow-nb flex flex-col gap-3 font-sans animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-primary border-2 border-ink text-ink shadow-nb-sm">
+                <Bot size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-ink tracking-tight flex items-center gap-2">
+                  <span>🎬 Agent Directing Prompt Ready</span>
+                  <span className="text-[10px] font-mono bg-success/25 border border-ink text-ink px-1.5 py-0.5 font-bold">
+                    ACTIVE DIRECTIVE
+                  </span>
+                </h3>
+                <p className="text-xs text-ink-soft mt-0.5">
+                  Narration audio spine and base scene timing are compiled. Pass this directive to the coding agent in your terminal to design the visual metaphors, custom SVGs, and B-roll.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setAgentDirective(null)}
+              className="text-ink-soft hover:text-ink p-1"
+              title="Dismiss directive banner"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="relative bg-sunken border-2 border-ink p-3 rounded-none">
+            <pre className="text-xs font-mono text-ink whitespace-pre-wrap select-all leading-relaxed overflow-x-auto max-h-36">
+              {agentDirective.prompt}
+            </pre>
+          </div>
+
+          <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => copyToClipboard(agentDirective.prompt)}
+                className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 font-sans text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none bg-primary text-ink"
+              >
+                {copiedPrompt ? (
+                  <>
+                    <Check size={13} className="text-ink" />
+                    <span>Copied to Clipboard!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={13} className="text-ink" />
+                    <span>Copy Agent Prompt</span>
+                  </>
+                )}
+              </button>
+              {agentDirective.taskFile && (
+                <span className="text-[11px] font-mono text-ink-soft">
+                  Saved: <span className="font-bold text-ink">{agentDirective.taskFile}</span> & <span className="font-bold text-ink">.aideos_task.md</span>
+                </span>
+              )}
+            </div>
+
+            {onNavigateToVideo && (
+              <button
+                onClick={onNavigateToVideo}
+                className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 font-sans text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none bg-paper-3 text-ink"
+              >
+                <span>Open Studio Timeline</span>
+                <ArrowRight size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Status banner */}
       {statusMsg && (

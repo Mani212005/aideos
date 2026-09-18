@@ -129,7 +129,10 @@ program
   )
   .action(async (prompt: string, options: { format: "long" | "reel" | "both" }) => {
     if (!isGoogleAiConfigured()) {
-      throw new Error("GEMINI_API_KEY or GOOGLE_API_KEY is not set. Put it in .env or the environment.");
+      throw new Error(
+        "GEMINI_API_KEY or GOOGLE_API_KEY is not set. To generate directly with Gemini, set it in .env; " +
+          "or use the Agent Director workflow (docs/DIRECTOR_GUIDE.md) to direct films with your coding agent.",
+      );
     }
 
     console.log(`Generating film for prompt: "${prompt}" via Gemini...`);
