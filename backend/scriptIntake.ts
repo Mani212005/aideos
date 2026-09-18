@@ -501,3 +501,66 @@ export function buildFilmPartsFromScript(
 
   return { shots, nodes, edges, spokenText, wordCount, durationSec };
 }
+
+export interface DirectorTaskOptions {
+  projectId: string;
+  filmTitle?: string;
+  shotCount?: number;
+  durationSec?: number;
+  spokenWordCount?: number;
+}
+
+/** Generates a copy-pasteable directing prompt for terminal coding agents (Claude Code, AGY, Pi, Codex). */
+export function generateAgentPrompt(opts: DirectorTaskOptions): string {
+  const title = opts.filmTitle || opts.projectId;
+  return `Direct the explainer video for "${title}" (${opts.projectId}):
+1. Review docs/DIRECTOR_GUIDE.md for creative direction and visual invariants.
+2. Inspect videos/${opts.projectId}/film.json and videos/${opts.projectId}/script.md.
+3. Refine scene layouts, camera moves, and visual devices (TokenStrip, MatrixGrid, LayerStack, Plot, ScaleBar, custom SVGs, or B-roll).
+4. Run \`npm run validate:film videos/${opts.projectId}/film.json\` to verify with 0 errors.`;
+}
+
+/** Formats a full markdown directive task document to be written to videos/<id>/director_task.md and root .aideos_task.md */
+export function generateDirectorTaskDocument(opts: DirectorTaskOptions): string {
+  const title = opts.filmTitle || opts.projectId;
+  const shots = opts.shotCount ?? 0;
+  const duration = opts.durationSec ? `${opts.durationSec.toFixed(1)}s` : "measured";
+  const words = opts.spokenWordCount ?? 0;
+
+  return `# 🎬 Aideos Creative Director Directive: ${title}
+
+The screenplay narration spine for **${title}** has been compiled (${shots} shots, ${duration} runtime, ${words} spoken words).
+As the Creative Director, your mission is to transform this structure into a captivating, visually stunning explainer video.
+
+---
+
+## 📋 Key Files & References:
+- **Director Guide**: [\`docs/DIRECTOR_GUIDE.md\`](docs/DIRECTOR_GUIDE.md) (Directing principles, visual rhythm, and pacing invariants)
+- **Active Film JSON**: [\`videos/${opts.projectId}/film.json\`](videos/${opts.projectId}/film.json)
+- **Screenplay / Narration**: [\`videos/${opts.projectId}/script.md\`](videos/${opts.projectId}/script.md)
+
+---
+
+## 🎯 Directing Objectives:
+1. **Visual Metaphors & Show Don't Tell**:
+   - Replace generic text with evocative visual devices: \`TokenStrip\`, \`MatrixGrid\`, \`LayerStack\`, \`Plot\`, \`ScaleBar\`, \`Distribution\`, or \`AnalogyInset\` (B-roll footage).
+   - Author custom animated SVGs under \`videos/${opts.projectId}/visuals/\` if needed.
+2. **Camera Rhythm & Spatial Flow**:
+   - Ensure dynamic camera movement (\`cut\`, \`pan\`, \`zoom-in\`, \`zoom-out\`) between 2D canvas stations.
+   - Return to canvas spine (\`stage: "none"\`) or frame milestones (\`stage: "frame"\`) every 60-90s.
+3. **Pacing Invariants**:
+   - Never hold a visual device past 25s; rotate devices so no visual repeats back-to-back.
+   - Maintain audio sync (shot durations lock to narration audio).
+
+---
+
+## 🧪 Validation & Live Studio:
+- **Instant Validation**:
+  \`\`\`bash
+  npm run validate:film videos/${opts.projectId}/film.json
+  \`\`\`
+- **Live Studio Preview**:
+  Check hot-reloaded canvas and timeline on \`http://localhost:3001\`
+`;
+}
+

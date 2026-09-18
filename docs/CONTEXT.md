@@ -223,12 +223,20 @@ An individual vector path inside a limb:
 * `createTtsBackend(options)`: Instantiates pluggable TTS engine (`kokoro` via worker process, `google`, `say`, `tone`).
 * `KokoroTtsBackend`: Local offline ONNX synthesizer using Kokoro-82M (default).
 
-### Production Pipeline & MCP Server (`backend/pipeline/`, `backend/mcp/`)
-* Deep reference documentation in [`docs/PRODUCTION_PIPELINE.md`](PRODUCTION_PIPELINE.md).
+### Production Pipeline, Auto-Prompt Director & MCP Server (`backend/pipeline/`, `backend/mcp/`)
+* Deep reference documentation in [`docs/PRODUCTION_PIPELINE.md`](PRODUCTION_PIPELINE.md) and [`docs/DIRECTOR_GUIDE.md`](DIRECTOR_GUIDE.md).
 * `runProduction(request, onProgress)` (`backend/pipeline/run.ts`): Single typed programmatic entry point driving `intake`, `narrate`, `design`, `broll`, `assemble`, `render`, `verify`.
+* `runDirector(request, onProgress)` (`backend/pipeline/director.ts`): Auto-prompt entry point above `runProduction` that drafts a Claude screenplay from a raw prompt with an LLM and produces it end to end.
+* `draftScreenplay(prompt, options)` (`backend/pipeline/director.ts`): Drafts and validates a Claude screenplay from a natural language prompt, retrying rejected drafts with feedback.
 * `compileScreenplayToFilm(screenplay, spine, options)` (`backend/pipeline/design.ts`): Compiles screenplay and narration spine into validated `Film`.
 * `renderFormat(slug, format, options)` (`backend/pipeline/render.ts`): Drives Remotion render with headless verification and contact sheet generation.
 * `startMcpServer()` (`backend/mcp/server.ts`): Exposes the production pipeline as an MCP stdio server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`.
+
+### `backend/agentPrompter.ts` (Auto-Prompter & Agent Dispatcher)
+* `getAgentSession()`: Reads active agent session configuration (`.aideos_session.json`).
+* `setAgentSession(info)`: Registers or updates active agent session metadata.
+* `buildDirectingPrompt(opts)`: Builds structured directing instruction prompts for AI coding agents from Studio events.
+* `dispatchPromptToAgent(prompt, opts)`: Dispatches prompts directly into active tmux agent panes or writes to `.aideos_task.md`.
 
 ### `backend/scriptIntake.ts`
 * `parseClaudeScript(raw)`: Parses a raw Claude or legacy screenplay into structured `ScriptSegment` items containing ordered visual, narration, and on-screen beats.
@@ -277,10 +285,11 @@ An individual vector path inside a limb:
 * `validateScene.ts`: Phase 1 semantic and physical integrity validator (`validateScene`) including Rule 20 timeline consistency.
 * `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`, `collectSceneAssetElementIds`).
 
-### `src/dl/validateFilm.ts`
+### `src/dl/validateFilm.ts` & `scripts/validate_film.ts`
 * `validateFilm(film)`: Runs Zod schema parsing and structural integrity assertions.
 * `validatePacingInvariants(film)`: Enforces max 25s hold, no consecutive device repeats, and text breathers every 60-90s.
 * `validateFilmAudioAndAssets(film, projectDir)`: Enforces duration sum invariant ($\sum \text{Shots} = \text{Audio} \pm 50\text{ms}$) and confirms audio asset presence.
+* `scripts/validate_film.ts`: Standalone CLI validator (`npm run validate:film <path/to/film.json>`) validating arbitrary `film.json` files against all 19 cinematic invariants and printing a runsheet.
 
 ---
 

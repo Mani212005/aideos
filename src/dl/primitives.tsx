@@ -7,13 +7,9 @@ import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import {
   accentAt,
   useTokens,
-  ink,
   MONO,
-  PALETTE,
-  rule,
   SERIF,
   useLayout,
-  type DLLayout,
 } from "./tokens";
 import { EXPO, frames, MS, useEntrance, useProgress } from "./motion";
 import { useAccent } from "./accent";

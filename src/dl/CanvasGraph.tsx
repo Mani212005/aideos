@@ -4,7 +4,7 @@
 
 import React from "react";
 import { interpolateColors, useCurrentFrame, useVideoConfig } from "remotion";
-import { accentAt, MONO, PALETTE, SANS, useTokens } from "./tokens";
+import { accentAt, MONO, SANS, useTokens } from "./tokens";
 import { easeExpo, frames, MS } from "./motion";
 import { useAccent } from "./accent";
 import { camTransform, edgePath, getCameraPerspective, nodeArrivals, shotAt, type Cam, type TimedShot } from "./camera";

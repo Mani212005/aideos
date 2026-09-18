@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
-    "target": "ES2018",
-    "module": "commonjs",
+    "target": "ES2022",
+    "module": "esnext",
     "jsx": "react-jsx",
     "strict": true,
     "noEmit": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "lib": ["es2020", "dom"],
     "esModuleInterop": true,
     "skipLibCheck": true,

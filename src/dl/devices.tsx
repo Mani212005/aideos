@@ -3,7 +3,7 @@
  */
 
 import React from "react";
-import { Img, OffthreadVideo, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { Img, OffthreadVideo, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { accentAt, MONO, SERIF, useLayout, useTokens } from "./tokens";
 import { EXPO, frames, MS, useEntrance, useProgress } from "./motion";
 import { useAccent } from "./accent";
@@ -637,6 +637,7 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
   fullScreenHero = false,
   start,
   index,
+  durationInFrames,
 }) => {
   const frame = useCurrentFrame();
   const layout = useLayout();
@@ -678,7 +679,9 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
         }}
       >
         {isVideo ? (
-          <OffthreadVideo src={staticFile(resolvedSrc)} style={heroLayout.media} />
+          <Sequence from={start + delayFrames} durationInFrames={durationInFrames ? Math.max(1, durationInFrames - delayFrames) : undefined} layout="none">
+            <OffthreadVideo src={staticFile(resolvedSrc)} style={heroLayout.media} />
+          </Sequence>
         ) : (
           <Img src={staticFile(resolvedSrc)} style={heroLayout.media} />
         )}
@@ -728,10 +731,12 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
     >
       {resolvedSrc ? (
         isVideo ? (
-          <OffthreadVideo
-            src={staticFile(resolvedSrc)}
-            style={{ maxWidth: "100%", maxHeight: layout.px(260), objectFit: "contain", borderRadius: layout.radius.chip }}
-          />
+          <Sequence from={start + delayFrames} durationInFrames={durationInFrames ? Math.max(1, durationInFrames - delayFrames) : undefined} layout="none">
+            <OffthreadVideo
+              src={staticFile(resolvedSrc)}
+              style={{ maxWidth: "100%", maxHeight: layout.px(260), objectFit: "contain", borderRadius: layout.radius.chip }}
+            />
+          </Sequence>
         ) : (
           <Img
             src={staticFile(resolvedSrc)}

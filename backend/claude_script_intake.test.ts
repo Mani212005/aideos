@@ -13,6 +13,8 @@ import {
   extractSpokenBlocks,
   buildFilmPartsFromScript,
   hasScreenplayTags,
+  generateAgentPrompt,
+  generateDirectorTaskDocument,
 } from "./scriptIntake";
 import { splitScriptIntoSegments } from "./audio";
 import { shotSchema, nodeSchema } from "../src/dl/schema";
@@ -384,3 +386,35 @@ test("buildFilmPartsFromScript keeps visual directions off screen and on the sho
     }
   }
 });
+
+test("generateAgentPrompt formats concise, actionable agent prompt for terminal coding agents", () => {
+  const prompt = generateAgentPrompt({
+    projectId: "kv-cache",
+    filmTitle: "KV Cache Explainer",
+    shotCount: 5,
+    durationSec: 42.5,
+  });
+
+  assert.ok(prompt.includes('Direct the explainer video for "KV Cache Explainer" (kv-cache):'));
+  assert.ok(prompt.includes("docs/DIRECTOR_GUIDE.md"));
+  assert.ok(prompt.includes("videos/kv-cache/film.json"));
+  assert.ok(prompt.includes("npm run validate:film videos/kv-cache/film.json"));
+});
+
+test("generateDirectorTaskDocument generates markdown task doc referencing guidelines and film files", () => {
+  const doc = generateDirectorTaskDocument({
+    projectId: "kv-cache",
+    filmTitle: "KV Cache Explainer",
+    shotCount: 6,
+    durationSec: 48.2,
+    spokenWordCount: 120,
+  });
+
+  assert.ok(doc.includes("# 🎬 Aideos Creative Director Directive: KV Cache Explainer"));
+  assert.ok(doc.includes("6 shots, 48.2s runtime, 120 spoken words"));
+  assert.ok(doc.includes("docs/DIRECTOR_GUIDE.md"));
+  assert.ok(doc.includes("videos/kv-cache/film.json"));
+  assert.ok(doc.includes("videos/kv-cache/script.md"));
+  assert.ok(doc.includes("npm run validate:film videos/kv-cache/film.json"));
+});
+
