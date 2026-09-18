@@ -1,0 +1,2501 @@
+{
+  "totalDurationSec": 154.034,
+  "ttsBackend": "kokoro:af_heart",
+  "segments": [
+    {
+      "shotId": "departure",
+      "text": "In September of nineteen seventy seven, a machine about the size of a small car was bolted to the top of a rocket and pointed away from everything it had ever known.",
+      "startSec": 0,
+      "durationSec": 10.229,
+      "words": [
+        {
+          "word": "In",
+          "startSec": 0,
+          "endSec": 0.192
+        },
+        {
+          "word": "September",
+          "startSec": 0.192,
+          "endSec": 0.767
+        },
+        {
+          "word": "of",
+          "startSec": 0.767,
+          "endSec": 0.958
+        },
+        {
+          "word": "nineteen",
+          "startSec": 0.958,
+          "endSec": 1.534
+        },
+        {
+          "word": "seventy",
+          "startSec": 1.534,
+          "endSec": 2.109
+        },
+        {
+          "word": "seven,",
+          "startSec": 2.109,
+          "endSec": 2.597
+        },
+        {
+          "word": "a",
+          "startSec": 2.597,
+          "endSec": 2.789
+        },
+        {
+          "word": "machine",
+          "startSec": 2.789,
+          "endSec": 3.173
+        },
+        {
+          "word": "about",
+          "startSec": 3.173,
+          "endSec": 3.556
+        },
+        {
+          "word": "the",
+          "startSec": 3.556,
+          "endSec": 3.748
+        },
+        {
+          "word": "size",
+          "startSec": 3.748,
+          "endSec": 3.939
+        },
+        {
+          "word": "of",
+          "startSec": 3.939,
+          "endSec": 4.131
+        },
+        {
+          "word": "a",
+          "startSec": 4.131,
+          "endSec": 4.323
+        },
+        {
+          "word": "small",
+          "startSec": 4.323,
+          "endSec": 4.514
+        },
+        {
+          "word": "car",
+          "startSec": 4.514,
+          "endSec": 4.706
+        },
+        {
+          "word": "was",
+          "startSec": 4.706,
+          "endSec": 4.898
+        },
+        {
+          "word": "bolted",
+          "startSec": 4.898,
+          "endSec": 5.281
+        },
+        {
+          "word": "to",
+          "startSec": 5.281,
+          "endSec": 5.473
+        },
+        {
+          "word": "the",
+          "startSec": 5.473,
+          "endSec": 5.665
+        },
+        {
+          "word": "top",
+          "startSec": 5.665,
+          "endSec": 5.856
+        },
+        {
+          "word": "of",
+          "startSec": 5.856,
+          "endSec": 6.048
+        },
+        {
+          "word": "a",
+          "startSec": 6.048,
+          "endSec": 6.24
+        },
+        {
+          "word": "rocket",
+          "startSec": 6.24,
+          "endSec": 6.623
+        },
+        {
+          "word": "and",
+          "startSec": 6.623,
+          "endSec": 6.815
+        },
+        {
+          "word": "pointed",
+          "startSec": 6.815,
+          "endSec": 7.198
+        },
+        {
+          "word": "away",
+          "startSec": 7.198,
+          "endSec": 7.582
+        },
+        {
+          "word": "from",
+          "startSec": 7.582,
+          "endSec": 7.773
+        },
+        {
+          "word": "everything",
+          "startSec": 7.773,
+          "endSec": 8.54
+        },
+        {
+          "word": "it",
+          "startSec": 8.54,
+          "endSec": 8.732
+        },
+        {
+          "word": "had",
+          "startSec": 8.732,
+          "endSec": 8.923
+        },
+        {
+          "word": "ever",
+          "startSec": 8.923,
+          "endSec": 9.307
+        },
+        {
+          "word": "known.",
+          "startSec": 9.307,
+          "endSec": 9.709
+        }
+      ]
+    },
+    {
+      "shotId": "one-job",
+      "text": "It had one job. Fly past the outer planets, take pictures, and send them home.",
+      "startSec": 10.229,
+      "durationSec": 5.319,
+      "words": [
+        {
+          "word": "It",
+          "startSec": 10.229,
+          "endSec": 10.444
+        },
+        {
+          "word": "had",
+          "startSec": 10.444,
+          "endSec": 10.659
+        },
+        {
+          "word": "one",
+          "startSec": 10.659,
+          "endSec": 10.875
+        },
+        {
+          "word": "job.",
+          "startSec": 10.875,
+          "endSec": 11.327
+        },
+        {
+          "word": "Fly",
+          "startSec": 11.327,
+          "endSec": 11.542
+        },
+        {
+          "word": "past",
+          "startSec": 11.542,
+          "endSec": 11.757
+        },
+        {
+          "word": "the",
+          "startSec": 11.757,
+          "endSec": 11.972
+        },
+        {
+          "word": "outer",
+          "startSec": 11.972,
+          "endSec": 12.403
+        },
+        {
+          "word": "planets,",
+          "startSec": 12.403,
+          "endSec": 12.951
+        },
+        {
+          "word": "take",
+          "startSec": 12.951,
+          "endSec": 13.167
+        },
+        {
+          "word": "pictures,",
+          "startSec": 13.167,
+          "endSec": 13.931
+        },
+        {
+          "word": "and",
+          "startSec": 13.931,
+          "endSec": 14.146
+        },
+        {
+          "word": "send",
+          "startSec": 14.146,
+          "endSec": 14.361
+        },
+        {
+          "word": "them",
+          "startSec": 14.361,
+          "endSec": 14.576
+        },
+        {
+          "word": "home.",
+          "startSec": 14.576,
+          "endSec": 15.028
+        }
+      ]
+    },
+    {
+      "shotId": "not-coming-back",
+      "text": "It was never coming back. The people who built it knew that. They packed it a lunch anyway.",
+      "startSec": 15.549,
+      "durationSec": 5.302,
+      "words": [
+        {
+          "word": "It",
+          "startSec": 15.549,
+          "endSec": 15.731
+        },
+        {
+          "word": "was",
+          "startSec": 15.731,
+          "endSec": 15.913
+        },
+        {
+          "word": "never",
+          "startSec": 15.913,
+          "endSec": 16.276
+        },
+        {
+          "word": "coming",
+          "startSec": 16.276,
+          "endSec": 16.64
+        },
+        {
+          "word": "back.",
+          "startSec": 16.64,
+          "endSec": 17.022
+        },
+        {
+          "word": "The",
+          "startSec": 17.022,
+          "endSec": 17.204
+        },
+        {
+          "word": "people",
+          "startSec": 17.204,
+          "endSec": 17.386
+        },
+        {
+          "word": "who",
+          "startSec": 17.386,
+          "endSec": 17.567
+        },
+        {
+          "word": "built",
+          "startSec": 17.567,
+          "endSec": 17.749
+        },
+        {
+          "word": "it",
+          "startSec": 17.749,
+          "endSec": 17.931
+        },
+        {
+          "word": "knew",
+          "startSec": 17.931,
+          "endSec": 18.113
+        },
+        {
+          "word": "that.",
+          "startSec": 18.113,
+          "endSec": 18.495
+        },
+        {
+          "word": "They",
+          "startSec": 18.495,
+          "endSec": 18.677
+        },
+        {
+          "word": "packed",
+          "startSec": 18.677,
+          "endSec": 19.04
+        },
+        {
+          "word": "it",
+          "startSec": 19.04,
+          "endSec": 19.222
+        },
+        {
+          "word": "a",
+          "startSec": 19.222,
+          "endSec": 19.404
+        },
+        {
+          "word": "lunch",
+          "startSec": 19.404,
+          "endSec": 19.586
+        },
+        {
+          "word": "anyway.",
+          "startSec": 19.586,
+          "endSec": 20.331
+        }
+      ]
+    },
+    {
+      "shotId": "the-record",
+      "text": "Bolted to its side, a gold plated record. Greetings in fifty five languages. Whale song. Photographs of the world it was leaving. And instructions, etched into the cover, for anyone who might one day find it.",
+      "startSec": 20.851,
+      "durationSec": 14.154,
+      "words": [
+        {
+          "word": "Bolted",
+          "startSec": 20.851,
+          "endSec": 21.312
+        },
+        {
+          "word": "to",
+          "startSec": 21.312,
+          "endSec": 21.543
+        },
+        {
+          "word": "its",
+          "startSec": 21.543,
+          "endSec": 21.773
+        },
+        {
+          "word": "side,",
+          "startSec": 21.773,
+          "endSec": 22.13
+        },
+        {
+          "word": "a",
+          "startSec": 22.13,
+          "endSec": 22.361
+        },
+        {
+          "word": "gold",
+          "startSec": 22.361,
+          "endSec": 22.591
+        },
+        {
+          "word": "plated",
+          "startSec": 22.591,
+          "endSec": 23.052
+        },
+        {
+          "word": "record.",
+          "startSec": 23.052,
+          "endSec": 23.767
+        },
+        {
+          "word": "Greetings",
+          "startSec": 23.767,
+          "endSec": 24.228
+        },
+        {
+          "word": "in",
+          "startSec": 24.228,
+          "endSec": 24.458
+        },
+        {
+          "word": "fifty",
+          "startSec": 24.458,
+          "endSec": 24.919
+        },
+        {
+          "word": "five",
+          "startSec": 24.919,
+          "endSec": 25.15
+        },
+        {
+          "word": "languages.",
+          "startSec": 25.15,
+          "endSec": 26.095
+        },
+        {
+          "word": "Whale",
+          "startSec": 26.095,
+          "endSec": 26.325
+        },
+        {
+          "word": "song.",
+          "startSec": 26.325,
+          "endSec": 26.81
+        },
+        {
+          "word": "Photographs",
+          "startSec": 26.81,
+          "endSec": 27.501
+        },
+        {
+          "word": "of",
+          "startSec": 27.501,
+          "endSec": 27.732
+        },
+        {
+          "word": "the",
+          "startSec": 27.732,
+          "endSec": 27.962
+        },
+        {
+          "word": "world",
+          "startSec": 27.962,
+          "endSec": 28.193
+        },
+        {
+          "word": "it",
+          "startSec": 28.193,
+          "endSec": 28.423
+        },
+        {
+          "word": "was",
+          "startSec": 28.423,
+          "endSec": 28.654
+        },
+        {
+          "word": "leaving.",
+          "startSec": 28.654,
+          "endSec": 29.368
+        },
+        {
+          "word": "And",
+          "startSec": 29.368,
+          "endSec": 29.599
+        },
+        {
+          "word": "instructions,",
+          "startSec": 29.599,
+          "endSec": 30.417
+        },
+        {
+          "word": "etched",
+          "startSec": 30.417,
+          "endSec": 30.878
+        },
+        {
+          "word": "into",
+          "startSec": 30.878,
+          "endSec": 31.339
+        },
+        {
+          "word": "the",
+          "startSec": 31.339,
+          "endSec": 31.569
+        },
+        {
+          "word": "cover,",
+          "startSec": 31.569,
+          "endSec": 32.157
+        },
+        {
+          "word": "for",
+          "startSec": 32.157,
+          "endSec": 32.388
+        },
+        {
+          "word": "anyone",
+          "startSec": 32.388,
+          "endSec": 32.849
+        },
+        {
+          "word": "who",
+          "startSec": 32.849,
+          "endSec": 33.079
+        },
+        {
+          "word": "might",
+          "startSec": 33.079,
+          "endSec": 33.31
+        },
+        {
+          "word": "one",
+          "startSec": 33.31,
+          "endSec": 33.54
+        },
+        {
+          "word": "day",
+          "startSec": 33.54,
+          "endSec": 33.771
+        },
+        {
+          "word": "find",
+          "startSec": 33.771,
+          "endSec": 34.001
+        },
+        {
+          "word": "it.",
+          "startSec": 34.001,
+          "endSec": 34.485
+        }
+      ]
+    },
+    {
+      "shotId": "let-go",
+      "text": "Then they let it go.",
+      "startSec": 35.005,
+      "durationSec": 1.608,
+      "words": [
+        {
+          "word": "Then",
+          "startSec": 35.005,
+          "endSec": 35.183
+        },
+        {
+          "word": "they",
+          "startSec": 35.183,
+          "endSec": 35.362
+        },
+        {
+          "word": "let",
+          "startSec": 35.362,
+          "endSec": 35.54
+        },
+        {
+          "word": "it",
+          "startSec": 35.54,
+          "endSec": 35.719
+        },
+        {
+          "word": "go.",
+          "startSec": 35.719,
+          "endSec": 36.093
+        }
+      ]
+    },
+    {
+      "shotId": "falling-outward",
+      "text": "For eighteen months it fell outward through the dark, a small bright point, talking the whole way.",
+      "startSec": 36.614,
+      "durationSec": 5.865,
+      "words": [
+        {
+          "word": "For",
+          "startSec": 36.614,
+          "endSec": 36.855
+        },
+        {
+          "word": "eighteen",
+          "startSec": 36.855,
+          "endSec": 37.336
+        },
+        {
+          "word": "months",
+          "startSec": 37.336,
+          "endSec": 37.577
+        },
+        {
+          "word": "it",
+          "startSec": 37.577,
+          "endSec": 37.818
+        },
+        {
+          "word": "fell",
+          "startSec": 37.818,
+          "endSec": 38.059
+        },
+        {
+          "word": "outward",
+          "startSec": 38.059,
+          "endSec": 38.54
+        },
+        {
+          "word": "through",
+          "startSec": 38.54,
+          "endSec": 38.781
+        },
+        {
+          "word": "the",
+          "startSec": 38.781,
+          "endSec": 39.022
+        },
+        {
+          "word": "dark,",
+          "startSec": 39.022,
+          "endSec": 39.395
+        },
+        {
+          "word": "a",
+          "startSec": 39.395,
+          "endSec": 39.636
+        },
+        {
+          "word": "small",
+          "startSec": 39.636,
+          "endSec": 39.876
+        },
+        {
+          "word": "bright",
+          "startSec": 39.876,
+          "endSec": 40.117
+        },
+        {
+          "word": "point,",
+          "startSec": 40.117,
+          "endSec": 40.49
+        },
+        {
+          "word": "talking",
+          "startSec": 40.49,
+          "endSec": 40.972
+        },
+        {
+          "word": "the",
+          "startSec": 40.972,
+          "endSec": 41.213
+        },
+        {
+          "word": "whole",
+          "startSec": 41.213,
+          "endSec": 41.453
+        },
+        {
+          "word": "way.",
+          "startSec": 41.453,
+          "endSec": 41.959
+        }
+      ]
+    },
+    {
+      "shotId": "jupiter",
+      "text": "In March of nineteen seventy nine, Jupiter filled its cameras. A storm wider than the Earth, slowly turning.",
+      "startSec": 42.479,
+      "durationSec": 7.023,
+      "words": [
+        {
+          "word": "In",
+          "startSec": 42.479,
+          "endSec": 42.674
+        },
+        {
+          "word": "March",
+          "startSec": 42.674,
+          "endSec": 42.87
+        },
+        {
+          "word": "of",
+          "startSec": 42.87,
+          "endSec": 43.065
+        },
+        {
+          "word": "nineteen",
+          "startSec": 43.065,
+          "endSec": 43.651
+        },
+        {
+          "word": "seventy",
+          "startSec": 43.651,
+          "endSec": 44.236
+        },
+        {
+          "word": "nine,",
+          "startSec": 44.236,
+          "endSec": 44.539
+        },
+        {
+          "word": "Jupiter",
+          "startSec": 44.539,
+          "endSec": 45.125
+        },
+        {
+          "word": "filled",
+          "startSec": 45.125,
+          "endSec": 45.516
+        },
+        {
+          "word": "its",
+          "startSec": 45.516,
+          "endSec": 45.711
+        },
+        {
+          "word": "cameras.",
+          "startSec": 45.711,
+          "endSec": 46.511
+        },
+        {
+          "word": "A",
+          "startSec": 46.511,
+          "endSec": 46.707
+        },
+        {
+          "word": "storm",
+          "startSec": 46.707,
+          "endSec": 46.902
+        },
+        {
+          "word": "wider",
+          "startSec": 46.902,
+          "endSec": 47.293
+        },
+        {
+          "word": "than",
+          "startSec": 47.293,
+          "endSec": 47.488
+        },
+        {
+          "word": "the",
+          "startSec": 47.488,
+          "endSec": 47.683
+        },
+        {
+          "word": "Earth,",
+          "startSec": 47.683,
+          "endSec": 47.986
+        },
+        {
+          "word": "slowly",
+          "startSec": 47.986,
+          "endSec": 48.376
+        },
+        {
+          "word": "turning.",
+          "startSec": 48.376,
+          "endSec": 48.982
+        }
+      ]
+    },
+    {
+      "shotId": "slingshot",
+      "text": "It stole a little speed from the giant as it went past. The giant never noticed.",
+      "startSec": 49.501,
+      "durationSec": 5.2,
+      "words": [
+        {
+          "word": "It",
+          "startSec": 49.501,
+          "endSec": 49.722
+        },
+        {
+          "word": "stole",
+          "startSec": 49.722,
+          "endSec": 49.942
+        },
+        {
+          "word": "a",
+          "startSec": 49.942,
+          "endSec": 50.163
+        },
+        {
+          "word": "little",
+          "startSec": 50.163,
+          "endSec": 50.384
+        },
+        {
+          "word": "speed",
+          "startSec": 50.384,
+          "endSec": 50.605
+        },
+        {
+          "word": "from",
+          "startSec": 50.605,
+          "endSec": 50.825
+        },
+        {
+          "word": "the",
+          "startSec": 50.825,
+          "endSec": 51.046
+        },
+        {
+          "word": "giant",
+          "startSec": 51.046,
+          "endSec": 51.267
+        },
+        {
+          "word": "as",
+          "startSec": 51.267,
+          "endSec": 51.488
+        },
+        {
+          "word": "it",
+          "startSec": 51.488,
+          "endSec": 51.708
+        },
+        {
+          "word": "went",
+          "startSec": 51.708,
+          "endSec": 51.929
+        },
+        {
+          "word": "past.",
+          "startSec": 51.929,
+          "endSec": 52.393
+        },
+        {
+          "word": "The",
+          "startSec": 52.393,
+          "endSec": 52.613
+        },
+        {
+          "word": "giant",
+          "startSec": 52.613,
+          "endSec": 52.834
+        },
+        {
+          "word": "never",
+          "startSec": 52.834,
+          "endSec": 53.276
+        },
+        {
+          "word": "noticed.",
+          "startSec": 53.276,
+          "endSec": 54.181
+        }
+      ]
+    },
+    {
+      "shotId": "saturn",
+      "text": "Twenty months later, Saturn. It swung in close to the moon Titan to look for an atmosphere, and found one.",
+      "startSec": 54.701,
+      "durationSec": 6.645,
+      "words": [
+        {
+          "word": "Twenty",
+          "startSec": 54.701,
+          "endSec": 55.119
+        },
+        {
+          "word": "months",
+          "startSec": 55.119,
+          "endSec": 55.328
+        },
+        {
+          "word": "later,",
+          "startSec": 55.328,
+          "endSec": 55.861
+        },
+        {
+          "word": "Saturn.",
+          "startSec": 55.861,
+          "endSec": 56.509
+        },
+        {
+          "word": "It",
+          "startSec": 56.509,
+          "endSec": 56.718
+        },
+        {
+          "word": "swung",
+          "startSec": 56.718,
+          "endSec": 56.927
+        },
+        {
+          "word": "in",
+          "startSec": 56.927,
+          "endSec": 57.136
+        },
+        {
+          "word": "close",
+          "startSec": 57.136,
+          "endSec": 57.345
+        },
+        {
+          "word": "to",
+          "startSec": 57.345,
+          "endSec": 57.554
+        },
+        {
+          "word": "the",
+          "startSec": 57.554,
+          "endSec": 57.763
+        },
+        {
+          "word": "moon",
+          "startSec": 57.763,
+          "endSec": 57.972
+        },
+        {
+          "word": "Titan",
+          "startSec": 57.972,
+          "endSec": 58.39
+        },
+        {
+          "word": "to",
+          "startSec": 58.39,
+          "endSec": 58.599
+        },
+        {
+          "word": "look",
+          "startSec": 58.599,
+          "endSec": 58.808
+        },
+        {
+          "word": "for",
+          "startSec": 58.808,
+          "endSec": 59.018
+        },
+        {
+          "word": "an",
+          "startSec": 59.018,
+          "endSec": 59.227
+        },
+        {
+          "word": "atmosphere,",
+          "startSec": 59.227,
+          "endSec": 59.969
+        },
+        {
+          "word": "and",
+          "startSec": 59.969,
+          "endSec": 60.178
+        },
+        {
+          "word": "found",
+          "startSec": 60.178,
+          "endSec": 60.387
+        },
+        {
+          "word": "one.",
+          "startSec": 60.387,
+          "endSec": 60.826
+        }
+      ]
+    },
+    {
+      "shotId": "out-of-plane",
+      "text": "That choice cost it the rest of the tour. Titan bent its path up and out of the flat plane the planets travel in.",
+      "startSec": 61.346,
+      "durationSec": 7.168,
+      "words": [
+        {
+          "word": "That",
+          "startSec": 61.346,
+          "endSec": 61.574
+        },
+        {
+          "word": "choice",
+          "startSec": 61.574,
+          "endSec": 61.801
+        },
+        {
+          "word": "cost",
+          "startSec": 61.801,
+          "endSec": 62.029
+        },
+        {
+          "word": "it",
+          "startSec": 62.029,
+          "endSec": 62.257
+        },
+        {
+          "word": "the",
+          "startSec": 62.257,
+          "endSec": 62.484
+        },
+        {
+          "word": "rest",
+          "startSec": 62.484,
+          "endSec": 62.712
+        },
+        {
+          "word": "of",
+          "startSec": 62.712,
+          "endSec": 62.94
+        },
+        {
+          "word": "the",
+          "startSec": 62.94,
+          "endSec": 63.167
+        },
+        {
+          "word": "tour.",
+          "startSec": 63.167,
+          "endSec": 63.646
+        },
+        {
+          "word": "Titan",
+          "startSec": 63.646,
+          "endSec": 64.101
+        },
+        {
+          "word": "bent",
+          "startSec": 64.101,
+          "endSec": 64.329
+        },
+        {
+          "word": "its",
+          "startSec": 64.329,
+          "endSec": 64.556
+        },
+        {
+          "word": "path",
+          "startSec": 64.556,
+          "endSec": 64.784
+        },
+        {
+          "word": "up",
+          "startSec": 64.784,
+          "endSec": 65.012
+        },
+        {
+          "word": "and",
+          "startSec": 65.012,
+          "endSec": 65.239
+        },
+        {
+          "word": "out",
+          "startSec": 65.239,
+          "endSec": 65.467
+        },
+        {
+          "word": "of",
+          "startSec": 65.467,
+          "endSec": 65.695
+        },
+        {
+          "word": "the",
+          "startSec": 65.695,
+          "endSec": 65.922
+        },
+        {
+          "word": "flat",
+          "startSec": 65.922,
+          "endSec": 66.15
+        },
+        {
+          "word": "plane",
+          "startSec": 66.15,
+          "endSec": 66.378
+        },
+        {
+          "word": "the",
+          "startSec": 66.378,
+          "endSec": 66.605
+        },
+        {
+          "word": "planets",
+          "startSec": 66.605,
+          "endSec": 67.061
+        },
+        {
+          "word": "travel",
+          "startSec": 67.061,
+          "endSec": 67.516
+        },
+        {
+          "word": "in.",
+          "startSec": 67.516,
+          "endSec": 67.994
+        }
+      ]
+    },
+    {
+      "shotId": "nothing-but-distance",
+      "text": "There was nothing ahead of it any more. Nothing but distance.",
+      "startSec": 68.514,
+      "durationSec": 3.517,
+      "words": [
+        {
+          "word": "There",
+          "startSec": 68.514,
+          "endSec": 68.679
+        },
+        {
+          "word": "was",
+          "startSec": 68.679,
+          "endSec": 68.843
+        },
+        {
+          "word": "nothing",
+          "startSec": 68.843,
+          "endSec": 69.173
+        },
+        {
+          "word": "ahead",
+          "startSec": 69.173,
+          "endSec": 69.502
+        },
+        {
+          "word": "of",
+          "startSec": 69.502,
+          "endSec": 69.667
+        },
+        {
+          "word": "it",
+          "startSec": 69.667,
+          "endSec": 69.831
+        },
+        {
+          "word": "any",
+          "startSec": 69.831,
+          "endSec": 70.161
+        },
+        {
+          "word": "more.",
+          "startSec": 70.161,
+          "endSec": 70.506
+        },
+        {
+          "word": "Nothing",
+          "startSec": 70.506,
+          "endSec": 70.836
+        },
+        {
+          "word": "but",
+          "startSec": 70.836,
+          "endSec": 71
+        },
+        {
+          "word": "distance.",
+          "startSec": 71,
+          "endSec": 71.511
+        }
+      ]
+    },
+    {
+      "shotId": "turn-around",
+      "text": "Thirteen years after launch, out past the orbit of Neptune, it was asked to turn around one last time.",
+      "startSec": 72.031,
+      "durationSec": 6.705,
+      "words": [
+        {
+          "word": "Thirteen",
+          "startSec": 72.031,
+          "endSec": 72.486
+        },
+        {
+          "word": "years",
+          "startSec": 72.486,
+          "endSec": 72.713
+        },
+        {
+          "word": "after",
+          "startSec": 72.713,
+          "endSec": 73.168
+        },
+        {
+          "word": "launch,",
+          "startSec": 73.168,
+          "endSec": 73.52
+        },
+        {
+          "word": "out",
+          "startSec": 73.52,
+          "endSec": 73.748
+        },
+        {
+          "word": "past",
+          "startSec": 73.748,
+          "endSec": 73.975
+        },
+        {
+          "word": "the",
+          "startSec": 73.975,
+          "endSec": 74.202
+        },
+        {
+          "word": "orbit",
+          "startSec": 74.202,
+          "endSec": 74.657
+        },
+        {
+          "word": "of",
+          "startSec": 74.657,
+          "endSec": 74.885
+        },
+        {
+          "word": "Neptune,",
+          "startSec": 74.885,
+          "endSec": 75.464
+        },
+        {
+          "word": "it",
+          "startSec": 75.464,
+          "endSec": 75.692
+        },
+        {
+          "word": "was",
+          "startSec": 75.692,
+          "endSec": 75.919
+        },
+        {
+          "word": "asked",
+          "startSec": 75.919,
+          "endSec": 76.374
+        },
+        {
+          "word": "to",
+          "startSec": 76.374,
+          "endSec": 76.601
+        },
+        {
+          "word": "turn",
+          "startSec": 76.601,
+          "endSec": 76.829
+        },
+        {
+          "word": "around",
+          "startSec": 76.829,
+          "endSec": 77.283
+        },
+        {
+          "word": "one",
+          "startSec": 77.283,
+          "endSec": 77.511
+        },
+        {
+          "word": "last",
+          "startSec": 77.511,
+          "endSec": 77.738
+        },
+        {
+          "word": "time.",
+          "startSec": 77.738,
+          "endSec": 78.216
+        }
+      ]
+    },
+    {
+      "shotId": "sixty-photographs",
+      "text": "It aimed its cameras back the way it had come and took sixty photographs of home.",
+      "startSec": 78.735,
+      "durationSec": 4.809,
+      "words": [
+        {
+          "word": "It",
+          "startSec": 78.735,
+          "endSec": 78.921
+        },
+        {
+          "word": "aimed",
+          "startSec": 78.921,
+          "endSec": 79.292
+        },
+        {
+          "word": "its",
+          "startSec": 79.292,
+          "endSec": 79.478
+        },
+        {
+          "word": "cameras",
+          "startSec": 79.478,
+          "endSec": 80.035
+        },
+        {
+          "word": "back",
+          "startSec": 80.035,
+          "endSec": 80.22
+        },
+        {
+          "word": "the",
+          "startSec": 80.22,
+          "endSec": 80.406
+        },
+        {
+          "word": "way",
+          "startSec": 80.406,
+          "endSec": 80.592
+        },
+        {
+          "word": "it",
+          "startSec": 80.592,
+          "endSec": 80.777
+        },
+        {
+          "word": "had",
+          "startSec": 80.777,
+          "endSec": 80.963
+        },
+        {
+          "word": "come",
+          "startSec": 80.963,
+          "endSec": 81.149
+        },
+        {
+          "word": "and",
+          "startSec": 81.149,
+          "endSec": 81.334
+        },
+        {
+          "word": "took",
+          "startSec": 81.334,
+          "endSec": 81.52
+        },
+        {
+          "word": "sixty",
+          "startSec": 81.52,
+          "endSec": 81.891
+        },
+        {
+          "word": "photographs",
+          "startSec": 81.891,
+          "endSec": 82.448
+        },
+        {
+          "word": "of",
+          "startSec": 82.448,
+          "endSec": 82.634
+        },
+        {
+          "word": "home.",
+          "startSec": 82.634,
+          "endSec": 83.024
+        }
+      ]
+    },
+    {
+      "shotId": "pale-blue-pixel",
+      "text": "In one of them, caught by accident in a stray beam of sunlight, there is a single pale blue pixel.",
+      "startSec": 83.544,
+      "durationSec": 6.014,
+      "words": [
+        {
+          "word": "In",
+          "startSec": 83.544,
+          "endSec": 83.754
+        },
+        {
+          "word": "one",
+          "startSec": 83.754,
+          "endSec": 83.963
+        },
+        {
+          "word": "of",
+          "startSec": 83.963,
+          "endSec": 84.173
+        },
+        {
+          "word": "them,",
+          "startSec": 84.173,
+          "endSec": 84.498
+        },
+        {
+          "word": "caught",
+          "startSec": 84.498,
+          "endSec": 84.708
+        },
+        {
+          "word": "by",
+          "startSec": 84.708,
+          "endSec": 84.918
+        },
+        {
+          "word": "accident",
+          "startSec": 84.918,
+          "endSec": 85.547
+        },
+        {
+          "word": "in",
+          "startSec": 85.547,
+          "endSec": 85.756
+        },
+        {
+          "word": "a",
+          "startSec": 85.756,
+          "endSec": 85.966
+        },
+        {
+          "word": "stray",
+          "startSec": 85.966,
+          "endSec": 86.176
+        },
+        {
+          "word": "beam",
+          "startSec": 86.176,
+          "endSec": 86.385
+        },
+        {
+          "word": "of",
+          "startSec": 86.385,
+          "endSec": 86.595
+        },
+        {
+          "word": "sunlight,",
+          "startSec": 86.595,
+          "endSec": 87.13
+        },
+        {
+          "word": "there",
+          "startSec": 87.13,
+          "endSec": 87.34
+        },
+        {
+          "word": "is",
+          "startSec": 87.34,
+          "endSec": 87.549
+        },
+        {
+          "word": "a",
+          "startSec": 87.549,
+          "endSec": 87.759
+        },
+        {
+          "word": "single",
+          "startSec": 87.759,
+          "endSec": 87.969
+        },
+        {
+          "word": "pale",
+          "startSec": 87.969,
+          "endSec": 88.178
+        },
+        {
+          "word": "blue",
+          "startSec": 88.178,
+          "endSec": 88.388
+        },
+        {
+          "word": "pixel.",
+          "startSec": 88.388,
+          "endSec": 89.038
+        }
+      ]
+    },
+    {
+      "shotId": "that-is-everyone",
+      "text": "That is everyone. Every war, every love letter, every person who has ever lived, on one speck of dust suspended in a sunbeam.",
+      "startSec": 89.558,
+      "durationSec": 8.255,
+      "words": [
+        {
+          "word": "That",
+          "startSec": 89.558,
+          "endSec": 89.743
+        },
+        {
+          "word": "is",
+          "startSec": 89.743,
+          "endSec": 89.928
+        },
+        {
+          "word": "everyone.",
+          "startSec": 89.928,
+          "endSec": 90.685
+        },
+        {
+          "word": "Every",
+          "startSec": 90.685,
+          "endSec": 91.24
+        },
+        {
+          "word": "war,",
+          "startSec": 91.24,
+          "endSec": 91.526
+        },
+        {
+          "word": "every",
+          "startSec": 91.526,
+          "endSec": 92.081
+        },
+        {
+          "word": "love",
+          "startSec": 92.081,
+          "endSec": 92.266
+        },
+        {
+          "word": "letter,",
+          "startSec": 92.266,
+          "endSec": 92.737
+        },
+        {
+          "word": "every",
+          "startSec": 92.737,
+          "endSec": 93.291
+        },
+        {
+          "word": "person",
+          "startSec": 93.291,
+          "endSec": 93.661
+        },
+        {
+          "word": "who",
+          "startSec": 93.661,
+          "endSec": 93.846
+        },
+        {
+          "word": "has",
+          "startSec": 93.846,
+          "endSec": 94.031
+        },
+        {
+          "word": "ever",
+          "startSec": 94.031,
+          "endSec": 94.4
+        },
+        {
+          "word": "lived,",
+          "startSec": 94.4,
+          "endSec": 94.872
+        },
+        {
+          "word": "on",
+          "startSec": 94.872,
+          "endSec": 95.056
+        },
+        {
+          "word": "one",
+          "startSec": 95.056,
+          "endSec": 95.241
+        },
+        {
+          "word": "speck",
+          "startSec": 95.241,
+          "endSec": 95.426
+        },
+        {
+          "word": "of",
+          "startSec": 95.426,
+          "endSec": 95.611
+        },
+        {
+          "word": "dust",
+          "startSec": 95.611,
+          "endSec": 95.796
+        },
+        {
+          "word": "suspended",
+          "startSec": 95.796,
+          "endSec": 96.35
+        },
+        {
+          "word": "in",
+          "startSec": 96.35,
+          "endSec": 96.535
+        },
+        {
+          "word": "a",
+          "startSec": 96.535,
+          "endSec": 96.72
+        },
+        {
+          "word": "sunbeam.",
+          "startSec": 96.72,
+          "endSec": 97.293
+        }
+      ]
+    },
+    {
+      "shotId": "eyes-closed",
+      "text": "Then the cameras went off for good, to save power, and it kept going.",
+      "startSec": 97.813,
+      "durationSec": 4.257,
+      "words": [
+        {
+          "word": "Then",
+          "startSec": 97.813,
+          "endSec": 98.008
+        },
+        {
+          "word": "the",
+          "startSec": 98.008,
+          "endSec": 98.202
+        },
+        {
+          "word": "cameras",
+          "startSec": 98.202,
+          "endSec": 98.786
+        },
+        {
+          "word": "went",
+          "startSec": 98.786,
+          "endSec": 98.981
+        },
+        {
+          "word": "off",
+          "startSec": 98.981,
+          "endSec": 99.175
+        },
+        {
+          "word": "for",
+          "startSec": 99.175,
+          "endSec": 99.37
+        },
+        {
+          "word": "good,",
+          "startSec": 99.37,
+          "endSec": 99.672
+        },
+        {
+          "word": "to",
+          "startSec": 99.672,
+          "endSec": 99.866
+        },
+        {
+          "word": "save",
+          "startSec": 99.866,
+          "endSec": 100.061
+        },
+        {
+          "word": "power,",
+          "startSec": 100.061,
+          "endSec": 100.557
+        },
+        {
+          "word": "and",
+          "startSec": 100.557,
+          "endSec": 100.752
+        },
+        {
+          "word": "it",
+          "startSec": 100.752,
+          "endSec": 100.947
+        },
+        {
+          "word": "kept",
+          "startSec": 100.947,
+          "endSec": 101.141
+        },
+        {
+          "word": "going.",
+          "startSec": 101.141,
+          "endSec": 101.55
+        }
+      ]
+    },
+    {
+      "shotId": "particles-change",
+      "text": "On the twenty fifth of August, twenty twelve, the particles around it changed.",
+      "startSec": 102.07,
+      "durationSec": 4.766,
+      "words": [
+        {
+          "word": "On",
+          "startSec": 102.07,
+          "endSec": 102.261
+        },
+        {
+          "word": "the",
+          "startSec": 102.261,
+          "endSec": 102.453
+        },
+        {
+          "word": "twenty",
+          "startSec": 102.453,
+          "endSec": 102.835
+        },
+        {
+          "word": "fifth",
+          "startSec": 102.835,
+          "endSec": 103.026
+        },
+        {
+          "word": "of",
+          "startSec": 103.026,
+          "endSec": 103.218
+        },
+        {
+          "word": "August,",
+          "startSec": 103.218,
+          "endSec": 103.705
+        },
+        {
+          "word": "twenty",
+          "startSec": 103.705,
+          "endSec": 104.088
+        },
+        {
+          "word": "twelve,",
+          "startSec": 104.088,
+          "endSec": 104.385
+        },
+        {
+          "word": "the",
+          "startSec": 104.385,
+          "endSec": 104.576
+        },
+        {
+          "word": "particles",
+          "startSec": 104.576,
+          "endSec": 105.15
+        },
+        {
+          "word": "around",
+          "startSec": 105.15,
+          "endSec": 105.532
+        },
+        {
+          "word": "it",
+          "startSec": 105.532,
+          "endSec": 105.723
+        },
+        {
+          "word": "changed.",
+          "startSec": 105.723,
+          "endSec": 106.316
+        }
+      ]
+    },
+    {
+      "shotId": "last-breath",
+      "text": "The solar wind, the thin breath our sun has been exhaling for four and a half billion years, simply stopped.",
+      "startSec": 106.837,
+      "durationSec": 6.567,
+      "words": [
+        {
+          "word": "The",
+          "startSec": 106.837,
+          "endSec": 107.051
+        },
+        {
+          "word": "solar",
+          "startSec": 107.051,
+          "endSec": 107.48
+        },
+        {
+          "word": "wind,",
+          "startSec": 107.48,
+          "endSec": 107.813
+        },
+        {
+          "word": "the",
+          "startSec": 107.813,
+          "endSec": 108.027
+        },
+        {
+          "word": "thin",
+          "startSec": 108.027,
+          "endSec": 108.242
+        },
+        {
+          "word": "breath",
+          "startSec": 108.242,
+          "endSec": 108.456
+        },
+        {
+          "word": "our",
+          "startSec": 108.456,
+          "endSec": 108.671
+        },
+        {
+          "word": "sun",
+          "startSec": 108.671,
+          "endSec": 108.885
+        },
+        {
+          "word": "has",
+          "startSec": 108.885,
+          "endSec": 109.099
+        },
+        {
+          "word": "been",
+          "startSec": 109.099,
+          "endSec": 109.314
+        },
+        {
+          "word": "exhaling",
+          "startSec": 109.314,
+          "endSec": 109.957
+        },
+        {
+          "word": "for",
+          "startSec": 109.957,
+          "endSec": 110.172
+        },
+        {
+          "word": "four",
+          "startSec": 110.172,
+          "endSec": 110.386
+        },
+        {
+          "word": "and",
+          "startSec": 110.386,
+          "endSec": 110.601
+        },
+        {
+          "word": "a",
+          "startSec": 110.601,
+          "endSec": 110.815
+        },
+        {
+          "word": "half",
+          "startSec": 110.815,
+          "endSec": 111.029
+        },
+        {
+          "word": "billion",
+          "startSec": 111.029,
+          "endSec": 111.458
+        },
+        {
+          "word": "years,",
+          "startSec": 111.458,
+          "endSec": 111.791
+        },
+        {
+          "word": "simply",
+          "startSec": 111.791,
+          "endSec": 112.22
+        },
+        {
+          "word": "stopped.",
+          "startSec": 112.22,
+          "endSec": 112.884
+        }
+      ]
+    },
+    {
+      "shotId": "across-the-edge",
+      "text": "It had crossed the edge. The first thing we ever made to leave the sun behind entirely.",
+      "startSec": 113.404,
+      "durationSec": 5.397,
+      "words": [
+        {
+          "word": "It",
+          "startSec": 113.404,
+          "endSec": 113.598
+        },
+        {
+          "word": "had",
+          "startSec": 113.598,
+          "endSec": 113.791
+        },
+        {
+          "word": "crossed",
+          "startSec": 113.791,
+          "endSec": 114.178
+        },
+        {
+          "word": "the",
+          "startSec": 114.178,
+          "endSec": 114.372
+        },
+        {
+          "word": "edge.",
+          "startSec": 114.372,
+          "endSec": 114.778
+        },
+        {
+          "word": "The",
+          "startSec": 114.778,
+          "endSec": 114.972
+        },
+        {
+          "word": "first",
+          "startSec": 114.972,
+          "endSec": 115.165
+        },
+        {
+          "word": "thing",
+          "startSec": 115.165,
+          "endSec": 115.359
+        },
+        {
+          "word": "we",
+          "startSec": 115.359,
+          "endSec": 115.552
+        },
+        {
+          "word": "ever",
+          "startSec": 115.552,
+          "endSec": 115.939
+        },
+        {
+          "word": "made",
+          "startSec": 115.939,
+          "endSec": 116.133
+        },
+        {
+          "word": "to",
+          "startSec": 116.133,
+          "endSec": 116.326
+        },
+        {
+          "word": "leave",
+          "startSec": 116.326,
+          "endSec": 116.52
+        },
+        {
+          "word": "the",
+          "startSec": 116.52,
+          "endSec": 116.713
+        },
+        {
+          "word": "sun",
+          "startSec": 116.713,
+          "endSec": 116.907
+        },
+        {
+          "word": "behind",
+          "startSec": 116.907,
+          "endSec": 117.294
+        },
+        {
+          "word": "entirely.",
+          "startSec": 117.294,
+          "endSec": 118.281
+        }
+      ]
+    },
+    {
+      "shotId": "still-out-there",
+      "text": "It is still out there. Still talking.",
+      "startSec": 118.801,
+      "durationSec": 2.555,
+      "words": [
+        {
+          "word": "It",
+          "startSec": 118.801,
+          "endSec": 119.001
+        },
+        {
+          "word": "is",
+          "startSec": 119.001,
+          "endSec": 119.2
+        },
+        {
+          "word": "still",
+          "startSec": 119.2,
+          "endSec": 119.4
+        },
+        {
+          "word": "out",
+          "startSec": 119.4,
+          "endSec": 119.599
+        },
+        {
+          "word": "there.",
+          "startSec": 119.599,
+          "endSec": 120.018
+        },
+        {
+          "word": "Still",
+          "startSec": 120.018,
+          "endSec": 120.217
+        },
+        {
+          "word": "talking.",
+          "startSec": 120.217,
+          "endSec": 120.836
+        }
+      ]
+    },
+    {
+      "shotId": "twenty-two-watts",
+      "text": "Its voice is twenty two watts, about the same as the light in a fridge. By the time that whisper reaches the dishes in the desert, it is fainter than almost anything we know how to hear.",
+      "startSec": 121.356,
+      "durationSec": 11.5,
+      "words": [
+        {
+          "word": "Its",
+          "startSec": 121.356,
+          "endSec": 121.574
+        },
+        {
+          "word": "voice",
+          "startSec": 121.574,
+          "endSec": 121.793
+        },
+        {
+          "word": "is",
+          "startSec": 121.793,
+          "endSec": 122.011
+        },
+        {
+          "word": "twenty",
+          "startSec": 122.011,
+          "endSec": 122.447
+        },
+        {
+          "word": "two",
+          "startSec": 122.447,
+          "endSec": 122.666
+        },
+        {
+          "word": "watts,",
+          "startSec": 122.666,
+          "endSec": 123.004
+        },
+        {
+          "word": "about",
+          "startSec": 123.004,
+          "endSec": 123.441
+        },
+        {
+          "word": "the",
+          "startSec": 123.441,
+          "endSec": 123.659
+        },
+        {
+          "word": "same",
+          "startSec": 123.659,
+          "endSec": 123.877
+        },
+        {
+          "word": "as",
+          "startSec": 123.877,
+          "endSec": 124.095
+        },
+        {
+          "word": "the",
+          "startSec": 124.095,
+          "endSec": 124.314
+        },
+        {
+          "word": "light",
+          "startSec": 124.314,
+          "endSec": 124.532
+        },
+        {
+          "word": "in",
+          "startSec": 124.532,
+          "endSec": 124.75
+        },
+        {
+          "word": "a",
+          "startSec": 124.75,
+          "endSec": 124.969
+        },
+        {
+          "word": "fridge.",
+          "startSec": 124.969,
+          "endSec": 125.427
+        },
+        {
+          "word": "By",
+          "startSec": 125.427,
+          "endSec": 125.645
+        },
+        {
+          "word": "the",
+          "startSec": 125.645,
+          "endSec": 125.864
+        },
+        {
+          "word": "time",
+          "startSec": 125.864,
+          "endSec": 126.082
+        },
+        {
+          "word": "that",
+          "startSec": 126.082,
+          "endSec": 126.3
+        },
+        {
+          "word": "whisper",
+          "startSec": 126.3,
+          "endSec": 126.737
+        },
+        {
+          "word": "reaches",
+          "startSec": 126.737,
+          "endSec": 127.173
+        },
+        {
+          "word": "the",
+          "startSec": 127.173,
+          "endSec": 127.392
+        },
+        {
+          "word": "dishes",
+          "startSec": 127.392,
+          "endSec": 127.828
+        },
+        {
+          "word": "in",
+          "startSec": 127.828,
+          "endSec": 128.046
+        },
+        {
+          "word": "the",
+          "startSec": 128.046,
+          "endSec": 128.265
+        },
+        {
+          "word": "desert,",
+          "startSec": 128.265,
+          "endSec": 128.821
+        },
+        {
+          "word": "it",
+          "startSec": 128.821,
+          "endSec": 129.04
+        },
+        {
+          "word": "is",
+          "startSec": 129.04,
+          "endSec": 129.258
+        },
+        {
+          "word": "fainter",
+          "startSec": 129.258,
+          "endSec": 129.694
+        },
+        {
+          "word": "than",
+          "startSec": 129.694,
+          "endSec": 129.913
+        },
+        {
+          "word": "almost",
+          "startSec": 129.913,
+          "endSec": 130.349
+        },
+        {
+          "word": "anything",
+          "startSec": 130.349,
+          "endSec": 131.004
+        },
+        {
+          "word": "we",
+          "startSec": 131.004,
+          "endSec": 131.222
+        },
+        {
+          "word": "know",
+          "startSec": 131.222,
+          "endSec": 131.441
+        },
+        {
+          "word": "how",
+          "startSec": 131.441,
+          "endSec": 131.659
+        },
+        {
+          "word": "to",
+          "startSec": 131.659,
+          "endSec": 131.877
+        },
+        {
+          "word": "hear.",
+          "startSec": 131.877,
+          "endSec": 132.336
+        }
+      ]
+    },
+    {
+      "shotId": "going-dark",
+      "text": "Every year it gets a little colder. Instruments shut down one by one to keep the radio alive.",
+      "startSec": 132.855,
+      "durationSec": 6.167,
+      "words": [
+        {
+          "word": "Every",
+          "startSec": 132.855,
+          "endSec": 133.478
+        },
+        {
+          "word": "year",
+          "startSec": 133.478,
+          "endSec": 133.685
+        },
+        {
+          "word": "it",
+          "startSec": 133.685,
+          "endSec": 133.893
+        },
+        {
+          "word": "gets",
+          "startSec": 133.893,
+          "endSec": 134.101
+        },
+        {
+          "word": "a",
+          "startSec": 134.101,
+          "endSec": 134.308
+        },
+        {
+          "word": "little",
+          "startSec": 134.308,
+          "endSec": 134.516
+        },
+        {
+          "word": "colder.",
+          "startSec": 134.516,
+          "endSec": 135.16
+        },
+        {
+          "word": "Instruments",
+          "startSec": 135.16,
+          "endSec": 135.782
+        },
+        {
+          "word": "shut",
+          "startSec": 135.782,
+          "endSec": 135.99
+        },
+        {
+          "word": "down",
+          "startSec": 135.99,
+          "endSec": 136.198
+        },
+        {
+          "word": "one",
+          "startSec": 136.198,
+          "endSec": 136.405
+        },
+        {
+          "word": "by",
+          "startSec": 136.405,
+          "endSec": 136.613
+        },
+        {
+          "word": "one",
+          "startSec": 136.613,
+          "endSec": 136.821
+        },
+        {
+          "word": "to",
+          "startSec": 136.821,
+          "endSec": 137.028
+        },
+        {
+          "word": "keep",
+          "startSec": 137.028,
+          "endSec": 137.236
+        },
+        {
+          "word": "the",
+          "startSec": 137.236,
+          "endSec": 137.443
+        },
+        {
+          "word": "radio",
+          "startSec": 137.443,
+          "endSec": 137.859
+        },
+        {
+          "word": "alive.",
+          "startSec": 137.859,
+          "endSec": 138.502
+        }
+      ]
+    },
+    {
+      "shotId": "the-last-one",
+      "text": "Some time in the thirties, the last of them will go quiet, and it will stop answering.",
+      "startSec": 139.023,
+      "durationSec": 5.227,
+      "words": [
+        {
+          "word": "Some",
+          "startSec": 139.023,
+          "endSec": 139.235
+        },
+        {
+          "word": "time",
+          "startSec": 139.235,
+          "endSec": 139.447
+        },
+        {
+          "word": "in",
+          "startSec": 139.447,
+          "endSec": 139.659
+        },
+        {
+          "word": "the",
+          "startSec": 139.659,
+          "endSec": 139.871
+        },
+        {
+          "word": "thirties,",
+          "startSec": 139.871,
+          "endSec": 140.412
+        },
+        {
+          "word": "the",
+          "startSec": 140.412,
+          "endSec": 140.624
+        },
+        {
+          "word": "last",
+          "startSec": 140.624,
+          "endSec": 140.836
+        },
+        {
+          "word": "of",
+          "startSec": 140.836,
+          "endSec": 141.048
+        },
+        {
+          "word": "them",
+          "startSec": 141.048,
+          "endSec": 141.26
+        },
+        {
+          "word": "will",
+          "startSec": 141.26,
+          "endSec": 141.472
+        },
+        {
+          "word": "go",
+          "startSec": 141.472,
+          "endSec": 141.684
+        },
+        {
+          "word": "quiet,",
+          "startSec": 141.684,
+          "endSec": 142.013
+        },
+        {
+          "word": "and",
+          "startSec": 142.013,
+          "endSec": 142.225
+        },
+        {
+          "word": "it",
+          "startSec": 142.225,
+          "endSec": 142.437
+        },
+        {
+          "word": "will",
+          "startSec": 142.437,
+          "endSec": 142.649
+        },
+        {
+          "word": "stop",
+          "startSec": 142.649,
+          "endSec": 142.861
+        },
+        {
+          "word": "answering.",
+          "startSec": 142.861,
+          "endSec": 143.73
+        }
+      ]
+    },
+    {
+      "shotId": "keep-going",
+      "text": "And then it will simply keep going, in the dark, carrying its record, for a very long time.",
+      "startSec": 144.25,
+      "durationSec": 5.664,
+      "words": [
+        {
+          "word": "And",
+          "startSec": 144.25,
+          "endSec": 144.458
+        },
+        {
+          "word": "then",
+          "startSec": 144.458,
+          "endSec": 144.666
+        },
+        {
+          "word": "it",
+          "startSec": 144.666,
+          "endSec": 144.874
+        },
+        {
+          "word": "will",
+          "startSec": 144.874,
+          "endSec": 145.081
+        },
+        {
+          "word": "simply",
+          "startSec": 145.081,
+          "endSec": 145.497
+        },
+        {
+          "word": "keep",
+          "startSec": 145.497,
+          "endSec": 145.705
+        },
+        {
+          "word": "going,",
+          "startSec": 145.705,
+          "endSec": 146.027
+        },
+        {
+          "word": "in",
+          "startSec": 146.027,
+          "endSec": 146.235
+        },
+        {
+          "word": "the",
+          "startSec": 146.235,
+          "endSec": 146.443
+        },
+        {
+          "word": "dark,",
+          "startSec": 146.443,
+          "endSec": 146.765
+        },
+        {
+          "word": "carrying",
+          "startSec": 146.765,
+          "endSec": 147.181
+        },
+        {
+          "word": "its",
+          "startSec": 147.181,
+          "endSec": 147.388
+        },
+        {
+          "word": "record,",
+          "startSec": 147.388,
+          "endSec": 147.918
+        },
+        {
+          "word": "for",
+          "startSec": 147.918,
+          "endSec": 148.126
+        },
+        {
+          "word": "a",
+          "startSec": 148.126,
+          "endSec": 148.334
+        },
+        {
+          "word": "very",
+          "startSec": 148.334,
+          "endSec": 148.75
+        },
+        {
+          "word": "long",
+          "startSec": 148.75,
+          "endSec": 148.958
+        },
+        {
+          "word": "time.",
+          "startSec": 148.958,
+          "endSec": 149.394
+        }
+      ]
+    },
+    {
+      "shotId": "longer-than-the-sun",
+      "text": "Long enough that the sun will die first.",
+      "startSec": 149.914,
+      "durationSec": 4.12,
+      "words": [
+        {
+          "word": "Long",
+          "startSec": 149.914,
+          "endSec": 150.104
+        },
+        {
+          "word": "enough",
+          "startSec": 150.104,
+          "endSec": 150.484
+        },
+        {
+          "word": "that",
+          "startSec": 150.484,
+          "endSec": 150.674
+        },
+        {
+          "word": "the",
+          "startSec": 150.674,
+          "endSec": 150.865
+        },
+        {
+          "word": "sun",
+          "startSec": 150.865,
+          "endSec": 151.055
+        },
+        {
+          "word": "will",
+          "startSec": 151.055,
+          "endSec": 151.245
+        },
+        {
+          "word": "die",
+          "startSec": 151.245,
+          "endSec": 151.435
+        },
+        {
+          "word": "first.",
+          "startSec": 151.435,
+          "endSec": 151.834
+        }
+      ]
+    }
+  ]
+}

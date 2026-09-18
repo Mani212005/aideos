@@ -16,7 +16,7 @@ same film, not two edits of it.
 | §03 Motion grammar    | `motion.ts` - `EXPO`, `MS`, `useEntrance`        |
 | §04 Primitives        | `primitives.tsx`                                 |
 | §05 Stations          | `Film.tsx` - `Stage`                             |
-| §06 Camera/continuity | `camera.ts` + `CanvasGraph.tsx`                  |
+| §06 Camera/continuity | `camera.ts` + `CanvasGraph.tsx` / `SceneStage.tsx` |
 | §07 Device library    | `devices.tsx` + `CharacterRig.tsx` (`characters/`) |
 | Custom SVG animation  | `scene/` - see [scene/README.md](scene/README.md)  |
 | §08 Runsheet          | `schema.ts` `superRefine` + `scripts/validate-dl.mjs` |
@@ -66,7 +66,7 @@ to the canvas every 90s, and at most three accents in a frame.
 - **No captions in Long format.** Burned-in subtitles fight the 16:9 panel for
   the same space, and long-form platforms draw their own from the sidecar track
   (`captions.vtt`). In vertical Reel format, kinetic captions are enabled at the
-  bottom fifth safe area for muted social viewing.
+  bottom fifth safe area for muted social viewing (configurable via `subtitles: false`).
 - **No shadows, no grain, no vignette.** Depth is a hairline and a lift in
   surface value.
 

@@ -1,0 +1,2758 @@
+{
+  "words": [
+    {
+      "word": "in",
+      "punctuated_word": "In",
+      "start": 0,
+      "end": 0.192
+    },
+    {
+      "word": "september",
+      "punctuated_word": "September",
+      "start": 0.192,
+      "end": 0.767
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 0.767,
+      "end": 0.958
+    },
+    {
+      "word": "nineteen",
+      "punctuated_word": "nineteen",
+      "start": 0.958,
+      "end": 1.534
+    },
+    {
+      "word": "seventy",
+      "punctuated_word": "seventy",
+      "start": 1.534,
+      "end": 2.109
+    },
+    {
+      "word": "seven",
+      "punctuated_word": "seven,",
+      "start": 2.109,
+      "end": 2.597
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 2.597,
+      "end": 2.789
+    },
+    {
+      "word": "machine",
+      "punctuated_word": "machine",
+      "start": 2.789,
+      "end": 3.173
+    },
+    {
+      "word": "about",
+      "punctuated_word": "about",
+      "start": 3.173,
+      "end": 3.556
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 3.556,
+      "end": 3.748
+    },
+    {
+      "word": "size",
+      "punctuated_word": "size",
+      "start": 3.748,
+      "end": 3.939
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 3.939,
+      "end": 4.131
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 4.131,
+      "end": 4.323
+    },
+    {
+      "word": "small",
+      "punctuated_word": "small",
+      "start": 4.323,
+      "end": 4.514
+    },
+    {
+      "word": "car",
+      "punctuated_word": "car",
+      "start": 4.514,
+      "end": 4.706
+    },
+    {
+      "word": "was",
+      "punctuated_word": "was",
+      "start": 4.706,
+      "end": 4.898
+    },
+    {
+      "word": "bolted",
+      "punctuated_word": "bolted",
+      "start": 4.898,
+      "end": 5.281
+    },
+    {
+      "word": "to",
+      "punctuated_word": "to",
+      "start": 5.281,
+      "end": 5.473
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 5.473,
+      "end": 5.665
+    },
+    {
+      "word": "top",
+      "punctuated_word": "top",
+      "start": 5.665,
+      "end": 5.856
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 5.856,
+      "end": 6.048
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 6.048,
+      "end": 6.24
+    },
+    {
+      "word": "rocket",
+      "punctuated_word": "rocket",
+      "start": 6.24,
+      "end": 6.623
+    },
+    {
+      "word": "and",
+      "punctuated_word": "and",
+      "start": 6.623,
+      "end": 6.815
+    },
+    {
+      "word": "pointed",
+      "punctuated_word": "pointed",
+      "start": 6.815,
+      "end": 7.198
+    },
+    {
+      "word": "away",
+      "punctuated_word": "away",
+      "start": 7.198,
+      "end": 7.582
+    },
+    {
+      "word": "from",
+      "punctuated_word": "from",
+      "start": 7.582,
+      "end": 7.773
+    },
+    {
+      "word": "everything",
+      "punctuated_word": "everything",
+      "start": 7.773,
+      "end": 8.54
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 8.54,
+      "end": 8.732
+    },
+    {
+      "word": "had",
+      "punctuated_word": "had",
+      "start": 8.732,
+      "end": 8.923
+    },
+    {
+      "word": "ever",
+      "punctuated_word": "ever",
+      "start": 8.923,
+      "end": 9.307
+    },
+    {
+      "word": "known",
+      "punctuated_word": "known.",
+      "start": 9.307,
+      "end": 9.709
+    },
+    {
+      "word": "it",
+      "punctuated_word": "It",
+      "start": 10.229,
+      "end": 10.444
+    },
+    {
+      "word": "had",
+      "punctuated_word": "had",
+      "start": 10.444,
+      "end": 10.659
+    },
+    {
+      "word": "one",
+      "punctuated_word": "one",
+      "start": 10.659,
+      "end": 10.875
+    },
+    {
+      "word": "job",
+      "punctuated_word": "job.",
+      "start": 10.875,
+      "end": 11.327
+    },
+    {
+      "word": "fly",
+      "punctuated_word": "Fly",
+      "start": 11.327,
+      "end": 11.542
+    },
+    {
+      "word": "past",
+      "punctuated_word": "past",
+      "start": 11.542,
+      "end": 11.757
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 11.757,
+      "end": 11.972
+    },
+    {
+      "word": "outer",
+      "punctuated_word": "outer",
+      "start": 11.972,
+      "end": 12.403
+    },
+    {
+      "word": "planets",
+      "punctuated_word": "planets,",
+      "start": 12.403,
+      "end": 12.951
+    },
+    {
+      "word": "take",
+      "punctuated_word": "take",
+      "start": 12.951,
+      "end": 13.167
+    },
+    {
+      "word": "pictures",
+      "punctuated_word": "pictures,",
+      "start": 13.167,
+      "end": 13.931
+    },
+    {
+      "word": "and",
+      "punctuated_word": "and",
+      "start": 13.931,
+      "end": 14.146
+    },
+    {
+      "word": "send",
+      "punctuated_word": "send",
+      "start": 14.146,
+      "end": 14.361
+    },
+    {
+      "word": "them",
+      "punctuated_word": "them",
+      "start": 14.361,
+      "end": 14.576
+    },
+    {
+      "word": "home",
+      "punctuated_word": "home.",
+      "start": 14.576,
+      "end": 15.028
+    },
+    {
+      "word": "it",
+      "punctuated_word": "It",
+      "start": 15.549,
+      "end": 15.731
+    },
+    {
+      "word": "was",
+      "punctuated_word": "was",
+      "start": 15.731,
+      "end": 15.913
+    },
+    {
+      "word": "never",
+      "punctuated_word": "never",
+      "start": 15.913,
+      "end": 16.276
+    },
+    {
+      "word": "coming",
+      "punctuated_word": "coming",
+      "start": 16.276,
+      "end": 16.64
+    },
+    {
+      "word": "back",
+      "punctuated_word": "back.",
+      "start": 16.64,
+      "end": 17.022
+    },
+    {
+      "word": "the",
+      "punctuated_word": "The",
+      "start": 17.022,
+      "end": 17.204
+    },
+    {
+      "word": "people",
+      "punctuated_word": "people",
+      "start": 17.204,
+      "end": 17.386
+    },
+    {
+      "word": "who",
+      "punctuated_word": "who",
+      "start": 17.386,
+      "end": 17.567
+    },
+    {
+      "word": "built",
+      "punctuated_word": "built",
+      "start": 17.567,
+      "end": 17.749
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 17.749,
+      "end": 17.931
+    },
+    {
+      "word": "knew",
+      "punctuated_word": "knew",
+      "start": 17.931,
+      "end": 18.113
+    },
+    {
+      "word": "that",
+      "punctuated_word": "that.",
+      "start": 18.113,
+      "end": 18.495
+    },
+    {
+      "word": "they",
+      "punctuated_word": "They",
+      "start": 18.495,
+      "end": 18.677
+    },
+    {
+      "word": "packed",
+      "punctuated_word": "packed",
+      "start": 18.677,
+      "end": 19.04
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 19.04,
+      "end": 19.222
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 19.222,
+      "end": 19.404
+    },
+    {
+      "word": "lunch",
+      "punctuated_word": "lunch",
+      "start": 19.404,
+      "end": 19.586
+    },
+    {
+      "word": "anyway",
+      "punctuated_word": "anyway.",
+      "start": 19.586,
+      "end": 20.331
+    },
+    {
+      "word": "bolted",
+      "punctuated_word": "Bolted",
+      "start": 20.851,
+      "end": 21.312
+    },
+    {
+      "word": "to",
+      "punctuated_word": "to",
+      "start": 21.312,
+      "end": 21.543
+    },
+    {
+      "word": "its",
+      "punctuated_word": "its",
+      "start": 21.543,
+      "end": 21.773
+    },
+    {
+      "word": "side",
+      "punctuated_word": "side,",
+      "start": 21.773,
+      "end": 22.13
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 22.13,
+      "end": 22.361
+    },
+    {
+      "word": "gold",
+      "punctuated_word": "gold",
+      "start": 22.361,
+      "end": 22.591
+    },
+    {
+      "word": "plated",
+      "punctuated_word": "plated",
+      "start": 22.591,
+      "end": 23.052
+    },
+    {
+      "word": "record",
+      "punctuated_word": "record.",
+      "start": 23.052,
+      "end": 23.767
+    },
+    {
+      "word": "greetings",
+      "punctuated_word": "Greetings",
+      "start": 23.767,
+      "end": 24.228
+    },
+    {
+      "word": "in",
+      "punctuated_word": "in",
+      "start": 24.228,
+      "end": 24.458
+    },
+    {
+      "word": "fifty",
+      "punctuated_word": "fifty",
+      "start": 24.458,
+      "end": 24.919
+    },
+    {
+      "word": "five",
+      "punctuated_word": "five",
+      "start": 24.919,
+      "end": 25.15
+    },
+    {
+      "word": "languages",
+      "punctuated_word": "languages.",
+      "start": 25.15,
+      "end": 26.095
+    },
+    {
+      "word": "whale",
+      "punctuated_word": "Whale",
+      "start": 26.095,
+      "end": 26.325
+    },
+    {
+      "word": "song",
+      "punctuated_word": "song.",
+      "start": 26.325,
+      "end": 26.81
+    },
+    {
+      "word": "photographs",
+      "punctuated_word": "Photographs",
+      "start": 26.81,
+      "end": 27.501
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 27.501,
+      "end": 27.732
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 27.732,
+      "end": 27.962
+    },
+    {
+      "word": "world",
+      "punctuated_word": "world",
+      "start": 27.962,
+      "end": 28.193
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 28.193,
+      "end": 28.423
+    },
+    {
+      "word": "was",
+      "punctuated_word": "was",
+      "start": 28.423,
+      "end": 28.654
+    },
+    {
+      "word": "leaving",
+      "punctuated_word": "leaving.",
+      "start": 28.654,
+      "end": 29.368
+    },
+    {
+      "word": "and",
+      "punctuated_word": "And",
+      "start": 29.368,
+      "end": 29.599
+    },
+    {
+      "word": "instructions",
+      "punctuated_word": "instructions,",
+      "start": 29.599,
+      "end": 30.417
+    },
+    {
+      "word": "etched",
+      "punctuated_word": "etched",
+      "start": 30.417,
+      "end": 30.878
+    },
+    {
+      "word": "into",
+      "punctuated_word": "into",
+      "start": 30.878,
+      "end": 31.339
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 31.339,
+      "end": 31.569
+    },
+    {
+      "word": "cover",
+      "punctuated_word": "cover,",
+      "start": 31.569,
+      "end": 32.157
+    },
+    {
+      "word": "for",
+      "punctuated_word": "for",
+      "start": 32.157,
+      "end": 32.388
+    },
+    {
+      "word": "anyone",
+      "punctuated_word": "anyone",
+      "start": 32.388,
+      "end": 32.849
+    },
+    {
+      "word": "who",
+      "punctuated_word": "who",
+      "start": 32.849,
+      "end": 33.079
+    },
+    {
+      "word": "might",
+      "punctuated_word": "might",
+      "start": 33.079,
+      "end": 33.31
+    },
+    {
+      "word": "one",
+      "punctuated_word": "one",
+      "start": 33.31,
+      "end": 33.54
+    },
+    {
+      "word": "day",
+      "punctuated_word": "day",
+      "start": 33.54,
+      "end": 33.771
+    },
+    {
+      "word": "find",
+      "punctuated_word": "find",
+      "start": 33.771,
+      "end": 34.001
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it.",
+      "start": 34.001,
+      "end": 34.485
+    },
+    {
+      "word": "then",
+      "punctuated_word": "Then",
+      "start": 35.005,
+      "end": 35.183
+    },
+    {
+      "word": "they",
+      "punctuated_word": "they",
+      "start": 35.183,
+      "end": 35.362
+    },
+    {
+      "word": "let",
+      "punctuated_word": "let",
+      "start": 35.362,
+      "end": 35.54
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 35.54,
+      "end": 35.719
+    },
+    {
+      "word": "go",
+      "punctuated_word": "go.",
+      "start": 35.719,
+      "end": 36.093
+    },
+    {
+      "word": "for",
+      "punctuated_word": "For",
+      "start": 36.614,
+      "end": 36.855
+    },
+    {
+      "word": "eighteen",
+      "punctuated_word": "eighteen",
+      "start": 36.855,
+      "end": 37.336
+    },
+    {
+      "word": "months",
+      "punctuated_word": "months",
+      "start": 37.336,
+      "end": 37.577
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 37.577,
+      "end": 37.818
+    },
+    {
+      "word": "fell",
+      "punctuated_word": "fell",
+      "start": 37.818,
+      "end": 38.059
+    },
+    {
+      "word": "outward",
+      "punctuated_word": "outward",
+      "start": 38.059,
+      "end": 38.54
+    },
+    {
+      "word": "through",
+      "punctuated_word": "through",
+      "start": 38.54,
+      "end": 38.781
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 38.781,
+      "end": 39.022
+    },
+    {
+      "word": "dark",
+      "punctuated_word": "dark,",
+      "start": 39.022,
+      "end": 39.395
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 39.395,
+      "end": 39.636
+    },
+    {
+      "word": "small",
+      "punctuated_word": "small",
+      "start": 39.636,
+      "end": 39.876
+    },
+    {
+      "word": "bright",
+      "punctuated_word": "bright",
+      "start": 39.876,
+      "end": 40.117
+    },
+    {
+      "word": "point",
+      "punctuated_word": "point,",
+      "start": 40.117,
+      "end": 40.49
+    },
+    {
+      "word": "talking",
+      "punctuated_word": "talking",
+      "start": 40.49,
+      "end": 40.972
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 40.972,
+      "end": 41.213
+    },
+    {
+      "word": "whole",
+      "punctuated_word": "whole",
+      "start": 41.213,
+      "end": 41.453
+    },
+    {
+      "word": "way",
+      "punctuated_word": "way.",
+      "start": 41.453,
+      "end": 41.959
+    },
+    {
+      "word": "in",
+      "punctuated_word": "In",
+      "start": 42.479,
+      "end": 42.674
+    },
+    {
+      "word": "march",
+      "punctuated_word": "March",
+      "start": 42.674,
+      "end": 42.87
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 42.87,
+      "end": 43.065
+    },
+    {
+      "word": "nineteen",
+      "punctuated_word": "nineteen",
+      "start": 43.065,
+      "end": 43.651
+    },
+    {
+      "word": "seventy",
+      "punctuated_word": "seventy",
+      "start": 43.651,
+      "end": 44.236
+    },
+    {
+      "word": "nine",
+      "punctuated_word": "nine,",
+      "start": 44.236,
+      "end": 44.539
+    },
+    {
+      "word": "jupiter",
+      "punctuated_word": "Jupiter",
+      "start": 44.539,
+      "end": 45.125
+    },
+    {
+      "word": "filled",
+      "punctuated_word": "filled",
+      "start": 45.125,
+      "end": 45.516
+    },
+    {
+      "word": "its",
+      "punctuated_word": "its",
+      "start": 45.516,
+      "end": 45.711
+    },
+    {
+      "word": "cameras",
+      "punctuated_word": "cameras.",
+      "start": 45.711,
+      "end": 46.511
+    },
+    {
+      "word": "a",
+      "punctuated_word": "A",
+      "start": 46.511,
+      "end": 46.707
+    },
+    {
+      "word": "storm",
+      "punctuated_word": "storm",
+      "start": 46.707,
+      "end": 46.902
+    },
+    {
+      "word": "wider",
+      "punctuated_word": "wider",
+      "start": 46.902,
+      "end": 47.293
+    },
+    {
+      "word": "than",
+      "punctuated_word": "than",
+      "start": 47.293,
+      "end": 47.488
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 47.488,
+      "end": 47.683
+    },
+    {
+      "word": "earth",
+      "punctuated_word": "Earth,",
+      "start": 47.683,
+      "end": 47.986
+    },
+    {
+      "word": "slowly",
+      "punctuated_word": "slowly",
+      "start": 47.986,
+      "end": 48.376
+    },
+    {
+      "word": "turning",
+      "punctuated_word": "turning.",
+      "start": 48.376,
+      "end": 48.982
+    },
+    {
+      "word": "it",
+      "punctuated_word": "It",
+      "start": 49.501,
+      "end": 49.722
+    },
+    {
+      "word": "stole",
+      "punctuated_word": "stole",
+      "start": 49.722,
+      "end": 49.942
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 49.942,
+      "end": 50.163
+    },
+    {
+      "word": "little",
+      "punctuated_word": "little",
+      "start": 50.163,
+      "end": 50.384
+    },
+    {
+      "word": "speed",
+      "punctuated_word": "speed",
+      "start": 50.384,
+      "end": 50.605
+    },
+    {
+      "word": "from",
+      "punctuated_word": "from",
+      "start": 50.605,
+      "end": 50.825
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 50.825,
+      "end": 51.046
+    },
+    {
+      "word": "giant",
+      "punctuated_word": "giant",
+      "start": 51.046,
+      "end": 51.267
+    },
+    {
+      "word": "as",
+      "punctuated_word": "as",
+      "start": 51.267,
+      "end": 51.488
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 51.488,
+      "end": 51.708
+    },
+    {
+      "word": "went",
+      "punctuated_word": "went",
+      "start": 51.708,
+      "end": 51.929
+    },
+    {
+      "word": "past",
+      "punctuated_word": "past.",
+      "start": 51.929,
+      "end": 52.393
+    },
+    {
+      "word": "the",
+      "punctuated_word": "The",
+      "start": 52.393,
+      "end": 52.613
+    },
+    {
+      "word": "giant",
+      "punctuated_word": "giant",
+      "start": 52.613,
+      "end": 52.834
+    },
+    {
+      "word": "never",
+      "punctuated_word": "never",
+      "start": 52.834,
+      "end": 53.276
+    },
+    {
+      "word": "noticed",
+      "punctuated_word": "noticed.",
+      "start": 53.276,
+      "end": 54.181
+    },
+    {
+      "word": "twenty",
+      "punctuated_word": "Twenty",
+      "start": 54.701,
+      "end": 55.119
+    },
+    {
+      "word": "months",
+      "punctuated_word": "months",
+      "start": 55.119,
+      "end": 55.328
+    },
+    {
+      "word": "later",
+      "punctuated_word": "later,",
+      "start": 55.328,
+      "end": 55.861
+    },
+    {
+      "word": "saturn",
+      "punctuated_word": "Saturn.",
+      "start": 55.861,
+      "end": 56.509
+    },
+    {
+      "word": "it",
+      "punctuated_word": "It",
+      "start": 56.509,
+      "end": 56.718
+    },
+    {
+      "word": "swung",
+      "punctuated_word": "swung",
+      "start": 56.718,
+      "end": 56.927
+    },
+    {
+      "word": "in",
+      "punctuated_word": "in",
+      "start": 56.927,
+      "end": 57.136
+    },
+    {
+      "word": "close",
+      "punctuated_word": "close",
+      "start": 57.136,
+      "end": 57.345
+    },
+    {
+      "word": "to",
+      "punctuated_word": "to",
+      "start": 57.345,
+      "end": 57.554
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 57.554,
+      "end": 57.763
+    },
+    {
+      "word": "moon",
+      "punctuated_word": "moon",
+      "start": 57.763,
+      "end": 57.972
+    },
+    {
+      "word": "titan",
+      "punctuated_word": "Titan",
+      "start": 57.972,
+      "end": 58.39
+    },
+    {
+      "word": "to",
+      "punctuated_word": "to",
+      "start": 58.39,
+      "end": 58.599
+    },
+    {
+      "word": "look",
+      "punctuated_word": "look",
+      "start": 58.599,
+      "end": 58.808
+    },
+    {
+      "word": "for",
+      "punctuated_word": "for",
+      "start": 58.808,
+      "end": 59.018
+    },
+    {
+      "word": "an",
+      "punctuated_word": "an",
+      "start": 59.018,
+      "end": 59.227
+    },
+    {
+      "word": "atmosphere",
+      "punctuated_word": "atmosphere,",
+      "start": 59.227,
+      "end": 59.969
+    },
+    {
+      "word": "and",
+      "punctuated_word": "and",
+      "start": 59.969,
+      "end": 60.178
+    },
+    {
+      "word": "found",
+      "punctuated_word": "found",
+      "start": 60.178,
+      "end": 60.387
+    },
+    {
+      "word": "one",
+      "punctuated_word": "one.",
+      "start": 60.387,
+      "end": 60.826
+    },
+    {
+      "word": "that",
+      "punctuated_word": "That",
+      "start": 61.346,
+      "end": 61.574
+    },
+    {
+      "word": "choice",
+      "punctuated_word": "choice",
+      "start": 61.574,
+      "end": 61.801
+    },
+    {
+      "word": "cost",
+      "punctuated_word": "cost",
+      "start": 61.801,
+      "end": 62.029
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 62.029,
+      "end": 62.257
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 62.257,
+      "end": 62.484
+    },
+    {
+      "word": "rest",
+      "punctuated_word": "rest",
+      "start": 62.484,
+      "end": 62.712
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 62.712,
+      "end": 62.94
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 62.94,
+      "end": 63.167
+    },
+    {
+      "word": "tour",
+      "punctuated_word": "tour.",
+      "start": 63.167,
+      "end": 63.646
+    },
+    {
+      "word": "titan",
+      "punctuated_word": "Titan",
+      "start": 63.646,
+      "end": 64.101
+    },
+    {
+      "word": "bent",
+      "punctuated_word": "bent",
+      "start": 64.101,
+      "end": 64.329
+    },
+    {
+      "word": "its",
+      "punctuated_word": "its",
+      "start": 64.329,
+      "end": 64.556
+    },
+    {
+      "word": "path",
+      "punctuated_word": "path",
+      "start": 64.556,
+      "end": 64.784
+    },
+    {
+      "word": "up",
+      "punctuated_word": "up",
+      "start": 64.784,
+      "end": 65.012
+    },
+    {
+      "word": "and",
+      "punctuated_word": "and",
+      "start": 65.012,
+      "end": 65.239
+    },
+    {
+      "word": "out",
+      "punctuated_word": "out",
+      "start": 65.239,
+      "end": 65.467
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 65.467,
+      "end": 65.695
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 65.695,
+      "end": 65.922
+    },
+    {
+      "word": "flat",
+      "punctuated_word": "flat",
+      "start": 65.922,
+      "end": 66.15
+    },
+    {
+      "word": "plane",
+      "punctuated_word": "plane",
+      "start": 66.15,
+      "end": 66.378
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 66.378,
+      "end": 66.605
+    },
+    {
+      "word": "planets",
+      "punctuated_word": "planets",
+      "start": 66.605,
+      "end": 67.061
+    },
+    {
+      "word": "travel",
+      "punctuated_word": "travel",
+      "start": 67.061,
+      "end": 67.516
+    },
+    {
+      "word": "in",
+      "punctuated_word": "in.",
+      "start": 67.516,
+      "end": 67.994
+    },
+    {
+      "word": "there",
+      "punctuated_word": "There",
+      "start": 68.514,
+      "end": 68.679
+    },
+    {
+      "word": "was",
+      "punctuated_word": "was",
+      "start": 68.679,
+      "end": 68.843
+    },
+    {
+      "word": "nothing",
+      "punctuated_word": "nothing",
+      "start": 68.843,
+      "end": 69.173
+    },
+    {
+      "word": "ahead",
+      "punctuated_word": "ahead",
+      "start": 69.173,
+      "end": 69.502
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 69.502,
+      "end": 69.667
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 69.667,
+      "end": 69.831
+    },
+    {
+      "word": "any",
+      "punctuated_word": "any",
+      "start": 69.831,
+      "end": 70.161
+    },
+    {
+      "word": "more",
+      "punctuated_word": "more.",
+      "start": 70.161,
+      "end": 70.506
+    },
+    {
+      "word": "nothing",
+      "punctuated_word": "Nothing",
+      "start": 70.506,
+      "end": 70.836
+    },
+    {
+      "word": "but",
+      "punctuated_word": "but",
+      "start": 70.836,
+      "end": 71
+    },
+    {
+      "word": "distance",
+      "punctuated_word": "distance.",
+      "start": 71,
+      "end": 71.511
+    },
+    {
+      "word": "thirteen",
+      "punctuated_word": "Thirteen",
+      "start": 72.031,
+      "end": 72.486
+    },
+    {
+      "word": "years",
+      "punctuated_word": "years",
+      "start": 72.486,
+      "end": 72.713
+    },
+    {
+      "word": "after",
+      "punctuated_word": "after",
+      "start": 72.713,
+      "end": 73.168
+    },
+    {
+      "word": "launch",
+      "punctuated_word": "launch,",
+      "start": 73.168,
+      "end": 73.52
+    },
+    {
+      "word": "out",
+      "punctuated_word": "out",
+      "start": 73.52,
+      "end": 73.748
+    },
+    {
+      "word": "past",
+      "punctuated_word": "past",
+      "start": 73.748,
+      "end": 73.975
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 73.975,
+      "end": 74.202
+    },
+    {
+      "word": "orbit",
+      "punctuated_word": "orbit",
+      "start": 74.202,
+      "end": 74.657
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 74.657,
+      "end": 74.885
+    },
+    {
+      "word": "neptune",
+      "punctuated_word": "Neptune,",
+      "start": 74.885,
+      "end": 75.464
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 75.464,
+      "end": 75.692
+    },
+    {
+      "word": "was",
+      "punctuated_word": "was",
+      "start": 75.692,
+      "end": 75.919
+    },
+    {
+      "word": "asked",
+      "punctuated_word": "asked",
+      "start": 75.919,
+      "end": 76.374
+    },
+    {
+      "word": "to",
+      "punctuated_word": "to",
+      "start": 76.374,
+      "end": 76.601
+    },
+    {
+      "word": "turn",
+      "punctuated_word": "turn",
+      "start": 76.601,
+      "end": 76.829
+    },
+    {
+      "word": "around",
+      "punctuated_word": "around",
+      "start": 76.829,
+      "end": 77.283
+    },
+    {
+      "word": "one",
+      "punctuated_word": "one",
+      "start": 77.283,
+      "end": 77.511
+    },
+    {
+      "word": "last",
+      "punctuated_word": "last",
+      "start": 77.511,
+      "end": 77.738
+    },
+    {
+      "word": "time",
+      "punctuated_word": "time.",
+      "start": 77.738,
+      "end": 78.216
+    },
+    {
+      "word": "it",
+      "punctuated_word": "It",
+      "start": 78.735,
+      "end": 78.921
+    },
+    {
+      "word": "aimed",
+      "punctuated_word": "aimed",
+      "start": 78.921,
+      "end": 79.292
+    },
+    {
+      "word": "its",
+      "punctuated_word": "its",
+      "start": 79.292,
+      "end": 79.478
+    },
+    {
+      "word": "cameras",
+      "punctuated_word": "cameras",
+      "start": 79.478,
+      "end": 80.035
+    },
+    {
+      "word": "back",
+      "punctuated_word": "back",
+      "start": 80.035,
+      "end": 80.22
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 80.22,
+      "end": 80.406
+    },
+    {
+      "word": "way",
+      "punctuated_word": "way",
+      "start": 80.406,
+      "end": 80.592
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 80.592,
+      "end": 80.777
+    },
+    {
+      "word": "had",
+      "punctuated_word": "had",
+      "start": 80.777,
+      "end": 80.963
+    },
+    {
+      "word": "come",
+      "punctuated_word": "come",
+      "start": 80.963,
+      "end": 81.149
+    },
+    {
+      "word": "and",
+      "punctuated_word": "and",
+      "start": 81.149,
+      "end": 81.334
+    },
+    {
+      "word": "took",
+      "punctuated_word": "took",
+      "start": 81.334,
+      "end": 81.52
+    },
+    {
+      "word": "sixty",
+      "punctuated_word": "sixty",
+      "start": 81.52,
+      "end": 81.891
+    },
+    {
+      "word": "photographs",
+      "punctuated_word": "photographs",
+      "start": 81.891,
+      "end": 82.448
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 82.448,
+      "end": 82.634
+    },
+    {
+      "word": "home",
+      "punctuated_word": "home.",
+      "start": 82.634,
+      "end": 83.024
+    },
+    {
+      "word": "in",
+      "punctuated_word": "In",
+      "start": 83.544,
+      "end": 83.754
+    },
+    {
+      "word": "one",
+      "punctuated_word": "one",
+      "start": 83.754,
+      "end": 83.963
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 83.963,
+      "end": 84.173
+    },
+    {
+      "word": "them",
+      "punctuated_word": "them,",
+      "start": 84.173,
+      "end": 84.498
+    },
+    {
+      "word": "caught",
+      "punctuated_word": "caught",
+      "start": 84.498,
+      "end": 84.708
+    },
+    {
+      "word": "by",
+      "punctuated_word": "by",
+      "start": 84.708,
+      "end": 84.918
+    },
+    {
+      "word": "accident",
+      "punctuated_word": "accident",
+      "start": 84.918,
+      "end": 85.547
+    },
+    {
+      "word": "in",
+      "punctuated_word": "in",
+      "start": 85.547,
+      "end": 85.756
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 85.756,
+      "end": 85.966
+    },
+    {
+      "word": "stray",
+      "punctuated_word": "stray",
+      "start": 85.966,
+      "end": 86.176
+    },
+    {
+      "word": "beam",
+      "punctuated_word": "beam",
+      "start": 86.176,
+      "end": 86.385
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 86.385,
+      "end": 86.595
+    },
+    {
+      "word": "sunlight",
+      "punctuated_word": "sunlight,",
+      "start": 86.595,
+      "end": 87.13
+    },
+    {
+      "word": "there",
+      "punctuated_word": "there",
+      "start": 87.13,
+      "end": 87.34
+    },
+    {
+      "word": "is",
+      "punctuated_word": "is",
+      "start": 87.34,
+      "end": 87.549
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 87.549,
+      "end": 87.759
+    },
+    {
+      "word": "single",
+      "punctuated_word": "single",
+      "start": 87.759,
+      "end": 87.969
+    },
+    {
+      "word": "pale",
+      "punctuated_word": "pale",
+      "start": 87.969,
+      "end": 88.178
+    },
+    {
+      "word": "blue",
+      "punctuated_word": "blue",
+      "start": 88.178,
+      "end": 88.388
+    },
+    {
+      "word": "pixel",
+      "punctuated_word": "pixel.",
+      "start": 88.388,
+      "end": 89.038
+    },
+    {
+      "word": "that",
+      "punctuated_word": "That",
+      "start": 89.558,
+      "end": 89.743
+    },
+    {
+      "word": "is",
+      "punctuated_word": "is",
+      "start": 89.743,
+      "end": 89.928
+    },
+    {
+      "word": "everyone",
+      "punctuated_word": "everyone.",
+      "start": 89.928,
+      "end": 90.685
+    },
+    {
+      "word": "every",
+      "punctuated_word": "Every",
+      "start": 90.685,
+      "end": 91.24
+    },
+    {
+      "word": "war",
+      "punctuated_word": "war,",
+      "start": 91.24,
+      "end": 91.526
+    },
+    {
+      "word": "every",
+      "punctuated_word": "every",
+      "start": 91.526,
+      "end": 92.081
+    },
+    {
+      "word": "love",
+      "punctuated_word": "love",
+      "start": 92.081,
+      "end": 92.266
+    },
+    {
+      "word": "letter",
+      "punctuated_word": "letter,",
+      "start": 92.266,
+      "end": 92.737
+    },
+    {
+      "word": "every",
+      "punctuated_word": "every",
+      "start": 92.737,
+      "end": 93.291
+    },
+    {
+      "word": "person",
+      "punctuated_word": "person",
+      "start": 93.291,
+      "end": 93.661
+    },
+    {
+      "word": "who",
+      "punctuated_word": "who",
+      "start": 93.661,
+      "end": 93.846
+    },
+    {
+      "word": "has",
+      "punctuated_word": "has",
+      "start": 93.846,
+      "end": 94.031
+    },
+    {
+      "word": "ever",
+      "punctuated_word": "ever",
+      "start": 94.031,
+      "end": 94.4
+    },
+    {
+      "word": "lived",
+      "punctuated_word": "lived,",
+      "start": 94.4,
+      "end": 94.872
+    },
+    {
+      "word": "on",
+      "punctuated_word": "on",
+      "start": 94.872,
+      "end": 95.056
+    },
+    {
+      "word": "one",
+      "punctuated_word": "one",
+      "start": 95.056,
+      "end": 95.241
+    },
+    {
+      "word": "speck",
+      "punctuated_word": "speck",
+      "start": 95.241,
+      "end": 95.426
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 95.426,
+      "end": 95.611
+    },
+    {
+      "word": "dust",
+      "punctuated_word": "dust",
+      "start": 95.611,
+      "end": 95.796
+    },
+    {
+      "word": "suspended",
+      "punctuated_word": "suspended",
+      "start": 95.796,
+      "end": 96.35
+    },
+    {
+      "word": "in",
+      "punctuated_word": "in",
+      "start": 96.35,
+      "end": 96.535
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 96.535,
+      "end": 96.72
+    },
+    {
+      "word": "sunbeam",
+      "punctuated_word": "sunbeam.",
+      "start": 96.72,
+      "end": 97.293
+    },
+    {
+      "word": "then",
+      "punctuated_word": "Then",
+      "start": 97.813,
+      "end": 98.008
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 98.008,
+      "end": 98.202
+    },
+    {
+      "word": "cameras",
+      "punctuated_word": "cameras",
+      "start": 98.202,
+      "end": 98.786
+    },
+    {
+      "word": "went",
+      "punctuated_word": "went",
+      "start": 98.786,
+      "end": 98.981
+    },
+    {
+      "word": "off",
+      "punctuated_word": "off",
+      "start": 98.981,
+      "end": 99.175
+    },
+    {
+      "word": "for",
+      "punctuated_word": "for",
+      "start": 99.175,
+      "end": 99.37
+    },
+    {
+      "word": "good",
+      "punctuated_word": "good,",
+      "start": 99.37,
+      "end": 99.672
+    },
+    {
+      "word": "to",
+      "punctuated_word": "to",
+      "start": 99.672,
+      "end": 99.866
+    },
+    {
+      "word": "save",
+      "punctuated_word": "save",
+      "start": 99.866,
+      "end": 100.061
+    },
+    {
+      "word": "power",
+      "punctuated_word": "power,",
+      "start": 100.061,
+      "end": 100.557
+    },
+    {
+      "word": "and",
+      "punctuated_word": "and",
+      "start": 100.557,
+      "end": 100.752
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 100.752,
+      "end": 100.947
+    },
+    {
+      "word": "kept",
+      "punctuated_word": "kept",
+      "start": 100.947,
+      "end": 101.141
+    },
+    {
+      "word": "going",
+      "punctuated_word": "going.",
+      "start": 101.141,
+      "end": 101.55
+    },
+    {
+      "word": "on",
+      "punctuated_word": "On",
+      "start": 102.07,
+      "end": 102.261
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 102.261,
+      "end": 102.453
+    },
+    {
+      "word": "twenty",
+      "punctuated_word": "twenty",
+      "start": 102.453,
+      "end": 102.835
+    },
+    {
+      "word": "fifth",
+      "punctuated_word": "fifth",
+      "start": 102.835,
+      "end": 103.026
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 103.026,
+      "end": 103.218
+    },
+    {
+      "word": "august",
+      "punctuated_word": "August,",
+      "start": 103.218,
+      "end": 103.705
+    },
+    {
+      "word": "twenty",
+      "punctuated_word": "twenty",
+      "start": 103.705,
+      "end": 104.088
+    },
+    {
+      "word": "twelve",
+      "punctuated_word": "twelve,",
+      "start": 104.088,
+      "end": 104.385
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 104.385,
+      "end": 104.576
+    },
+    {
+      "word": "particles",
+      "punctuated_word": "particles",
+      "start": 104.576,
+      "end": 105.15
+    },
+    {
+      "word": "around",
+      "punctuated_word": "around",
+      "start": 105.15,
+      "end": 105.532
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 105.532,
+      "end": 105.723
+    },
+    {
+      "word": "changed",
+      "punctuated_word": "changed.",
+      "start": 105.723,
+      "end": 106.316
+    },
+    {
+      "word": "the",
+      "punctuated_word": "The",
+      "start": 106.837,
+      "end": 107.051
+    },
+    {
+      "word": "solar",
+      "punctuated_word": "solar",
+      "start": 107.051,
+      "end": 107.48
+    },
+    {
+      "word": "wind",
+      "punctuated_word": "wind,",
+      "start": 107.48,
+      "end": 107.813
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 107.813,
+      "end": 108.027
+    },
+    {
+      "word": "thin",
+      "punctuated_word": "thin",
+      "start": 108.027,
+      "end": 108.242
+    },
+    {
+      "word": "breath",
+      "punctuated_word": "breath",
+      "start": 108.242,
+      "end": 108.456
+    },
+    {
+      "word": "our",
+      "punctuated_word": "our",
+      "start": 108.456,
+      "end": 108.671
+    },
+    {
+      "word": "sun",
+      "punctuated_word": "sun",
+      "start": 108.671,
+      "end": 108.885
+    },
+    {
+      "word": "has",
+      "punctuated_word": "has",
+      "start": 108.885,
+      "end": 109.099
+    },
+    {
+      "word": "been",
+      "punctuated_word": "been",
+      "start": 109.099,
+      "end": 109.314
+    },
+    {
+      "word": "exhaling",
+      "punctuated_word": "exhaling",
+      "start": 109.314,
+      "end": 109.957
+    },
+    {
+      "word": "for",
+      "punctuated_word": "for",
+      "start": 109.957,
+      "end": 110.172
+    },
+    {
+      "word": "four",
+      "punctuated_word": "four",
+      "start": 110.172,
+      "end": 110.386
+    },
+    {
+      "word": "and",
+      "punctuated_word": "and",
+      "start": 110.386,
+      "end": 110.601
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 110.601,
+      "end": 110.815
+    },
+    {
+      "word": "half",
+      "punctuated_word": "half",
+      "start": 110.815,
+      "end": 111.029
+    },
+    {
+      "word": "billion",
+      "punctuated_word": "billion",
+      "start": 111.029,
+      "end": 111.458
+    },
+    {
+      "word": "years",
+      "punctuated_word": "years,",
+      "start": 111.458,
+      "end": 111.791
+    },
+    {
+      "word": "simply",
+      "punctuated_word": "simply",
+      "start": 111.791,
+      "end": 112.22
+    },
+    {
+      "word": "stopped",
+      "punctuated_word": "stopped.",
+      "start": 112.22,
+      "end": 112.884
+    },
+    {
+      "word": "it",
+      "punctuated_word": "It",
+      "start": 113.404,
+      "end": 113.598
+    },
+    {
+      "word": "had",
+      "punctuated_word": "had",
+      "start": 113.598,
+      "end": 113.791
+    },
+    {
+      "word": "crossed",
+      "punctuated_word": "crossed",
+      "start": 113.791,
+      "end": 114.178
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 114.178,
+      "end": 114.372
+    },
+    {
+      "word": "edge",
+      "punctuated_word": "edge.",
+      "start": 114.372,
+      "end": 114.778
+    },
+    {
+      "word": "the",
+      "punctuated_word": "The",
+      "start": 114.778,
+      "end": 114.972
+    },
+    {
+      "word": "first",
+      "punctuated_word": "first",
+      "start": 114.972,
+      "end": 115.165
+    },
+    {
+      "word": "thing",
+      "punctuated_word": "thing",
+      "start": 115.165,
+      "end": 115.359
+    },
+    {
+      "word": "we",
+      "punctuated_word": "we",
+      "start": 115.359,
+      "end": 115.552
+    },
+    {
+      "word": "ever",
+      "punctuated_word": "ever",
+      "start": 115.552,
+      "end": 115.939
+    },
+    {
+      "word": "made",
+      "punctuated_word": "made",
+      "start": 115.939,
+      "end": 116.133
+    },
+    {
+      "word": "to",
+      "punctuated_word": "to",
+      "start": 116.133,
+      "end": 116.326
+    },
+    {
+      "word": "leave",
+      "punctuated_word": "leave",
+      "start": 116.326,
+      "end": 116.52
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 116.52,
+      "end": 116.713
+    },
+    {
+      "word": "sun",
+      "punctuated_word": "sun",
+      "start": 116.713,
+      "end": 116.907
+    },
+    {
+      "word": "behind",
+      "punctuated_word": "behind",
+      "start": 116.907,
+      "end": 117.294
+    },
+    {
+      "word": "entirely",
+      "punctuated_word": "entirely.",
+      "start": 117.294,
+      "end": 118.281
+    },
+    {
+      "word": "it",
+      "punctuated_word": "It",
+      "start": 118.801,
+      "end": 119.001
+    },
+    {
+      "word": "is",
+      "punctuated_word": "is",
+      "start": 119.001,
+      "end": 119.2
+    },
+    {
+      "word": "still",
+      "punctuated_word": "still",
+      "start": 119.2,
+      "end": 119.4
+    },
+    {
+      "word": "out",
+      "punctuated_word": "out",
+      "start": 119.4,
+      "end": 119.599
+    },
+    {
+      "word": "there",
+      "punctuated_word": "there.",
+      "start": 119.599,
+      "end": 120.018
+    },
+    {
+      "word": "still",
+      "punctuated_word": "Still",
+      "start": 120.018,
+      "end": 120.217
+    },
+    {
+      "word": "talking",
+      "punctuated_word": "talking.",
+      "start": 120.217,
+      "end": 120.836
+    },
+    {
+      "word": "its",
+      "punctuated_word": "Its",
+      "start": 121.356,
+      "end": 121.574
+    },
+    {
+      "word": "voice",
+      "punctuated_word": "voice",
+      "start": 121.574,
+      "end": 121.793
+    },
+    {
+      "word": "is",
+      "punctuated_word": "is",
+      "start": 121.793,
+      "end": 122.011
+    },
+    {
+      "word": "twenty",
+      "punctuated_word": "twenty",
+      "start": 122.011,
+      "end": 122.447
+    },
+    {
+      "word": "two",
+      "punctuated_word": "two",
+      "start": 122.447,
+      "end": 122.666
+    },
+    {
+      "word": "watts",
+      "punctuated_word": "watts,",
+      "start": 122.666,
+      "end": 123.004
+    },
+    {
+      "word": "about",
+      "punctuated_word": "about",
+      "start": 123.004,
+      "end": 123.441
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 123.441,
+      "end": 123.659
+    },
+    {
+      "word": "same",
+      "punctuated_word": "same",
+      "start": 123.659,
+      "end": 123.877
+    },
+    {
+      "word": "as",
+      "punctuated_word": "as",
+      "start": 123.877,
+      "end": 124.095
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 124.095,
+      "end": 124.314
+    },
+    {
+      "word": "light",
+      "punctuated_word": "light",
+      "start": 124.314,
+      "end": 124.532
+    },
+    {
+      "word": "in",
+      "punctuated_word": "in",
+      "start": 124.532,
+      "end": 124.75
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 124.75,
+      "end": 124.969
+    },
+    {
+      "word": "fridge",
+      "punctuated_word": "fridge.",
+      "start": 124.969,
+      "end": 125.427
+    },
+    {
+      "word": "by",
+      "punctuated_word": "By",
+      "start": 125.427,
+      "end": 125.645
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 125.645,
+      "end": 125.864
+    },
+    {
+      "word": "time",
+      "punctuated_word": "time",
+      "start": 125.864,
+      "end": 126.082
+    },
+    {
+      "word": "that",
+      "punctuated_word": "that",
+      "start": 126.082,
+      "end": 126.3
+    },
+    {
+      "word": "whisper",
+      "punctuated_word": "whisper",
+      "start": 126.3,
+      "end": 126.737
+    },
+    {
+      "word": "reaches",
+      "punctuated_word": "reaches",
+      "start": 126.737,
+      "end": 127.173
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 127.173,
+      "end": 127.392
+    },
+    {
+      "word": "dishes",
+      "punctuated_word": "dishes",
+      "start": 127.392,
+      "end": 127.828
+    },
+    {
+      "word": "in",
+      "punctuated_word": "in",
+      "start": 127.828,
+      "end": 128.046
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 128.046,
+      "end": 128.265
+    },
+    {
+      "word": "desert",
+      "punctuated_word": "desert,",
+      "start": 128.265,
+      "end": 128.821
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 128.821,
+      "end": 129.04
+    },
+    {
+      "word": "is",
+      "punctuated_word": "is",
+      "start": 129.04,
+      "end": 129.258
+    },
+    {
+      "word": "fainter",
+      "punctuated_word": "fainter",
+      "start": 129.258,
+      "end": 129.694
+    },
+    {
+      "word": "than",
+      "punctuated_word": "than",
+      "start": 129.694,
+      "end": 129.913
+    },
+    {
+      "word": "almost",
+      "punctuated_word": "almost",
+      "start": 129.913,
+      "end": 130.349
+    },
+    {
+      "word": "anything",
+      "punctuated_word": "anything",
+      "start": 130.349,
+      "end": 131.004
+    },
+    {
+      "word": "we",
+      "punctuated_word": "we",
+      "start": 131.004,
+      "end": 131.222
+    },
+    {
+      "word": "know",
+      "punctuated_word": "know",
+      "start": 131.222,
+      "end": 131.441
+    },
+    {
+      "word": "how",
+      "punctuated_word": "how",
+      "start": 131.441,
+      "end": 131.659
+    },
+    {
+      "word": "to",
+      "punctuated_word": "to",
+      "start": 131.659,
+      "end": 131.877
+    },
+    {
+      "word": "hear",
+      "punctuated_word": "hear.",
+      "start": 131.877,
+      "end": 132.336
+    },
+    {
+      "word": "every",
+      "punctuated_word": "Every",
+      "start": 132.855,
+      "end": 133.478
+    },
+    {
+      "word": "year",
+      "punctuated_word": "year",
+      "start": 133.478,
+      "end": 133.685
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 133.685,
+      "end": 133.893
+    },
+    {
+      "word": "gets",
+      "punctuated_word": "gets",
+      "start": 133.893,
+      "end": 134.101
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 134.101,
+      "end": 134.308
+    },
+    {
+      "word": "little",
+      "punctuated_word": "little",
+      "start": 134.308,
+      "end": 134.516
+    },
+    {
+      "word": "colder",
+      "punctuated_word": "colder.",
+      "start": 134.516,
+      "end": 135.16
+    },
+    {
+      "word": "instruments",
+      "punctuated_word": "Instruments",
+      "start": 135.16,
+      "end": 135.782
+    },
+    {
+      "word": "shut",
+      "punctuated_word": "shut",
+      "start": 135.782,
+      "end": 135.99
+    },
+    {
+      "word": "down",
+      "punctuated_word": "down",
+      "start": 135.99,
+      "end": 136.198
+    },
+    {
+      "word": "one",
+      "punctuated_word": "one",
+      "start": 136.198,
+      "end": 136.405
+    },
+    {
+      "word": "by",
+      "punctuated_word": "by",
+      "start": 136.405,
+      "end": 136.613
+    },
+    {
+      "word": "one",
+      "punctuated_word": "one",
+      "start": 136.613,
+      "end": 136.821
+    },
+    {
+      "word": "to",
+      "punctuated_word": "to",
+      "start": 136.821,
+      "end": 137.028
+    },
+    {
+      "word": "keep",
+      "punctuated_word": "keep",
+      "start": 137.028,
+      "end": 137.236
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 137.236,
+      "end": 137.443
+    },
+    {
+      "word": "radio",
+      "punctuated_word": "radio",
+      "start": 137.443,
+      "end": 137.859
+    },
+    {
+      "word": "alive",
+      "punctuated_word": "alive.",
+      "start": 137.859,
+      "end": 138.502
+    },
+    {
+      "word": "some",
+      "punctuated_word": "Some",
+      "start": 139.023,
+      "end": 139.235
+    },
+    {
+      "word": "time",
+      "punctuated_word": "time",
+      "start": 139.235,
+      "end": 139.447
+    },
+    {
+      "word": "in",
+      "punctuated_word": "in",
+      "start": 139.447,
+      "end": 139.659
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 139.659,
+      "end": 139.871
+    },
+    {
+      "word": "thirties",
+      "punctuated_word": "thirties,",
+      "start": 139.871,
+      "end": 140.412
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 140.412,
+      "end": 140.624
+    },
+    {
+      "word": "last",
+      "punctuated_word": "last",
+      "start": 140.624,
+      "end": 140.836
+    },
+    {
+      "word": "of",
+      "punctuated_word": "of",
+      "start": 140.836,
+      "end": 141.048
+    },
+    {
+      "word": "them",
+      "punctuated_word": "them",
+      "start": 141.048,
+      "end": 141.26
+    },
+    {
+      "word": "will",
+      "punctuated_word": "will",
+      "start": 141.26,
+      "end": 141.472
+    },
+    {
+      "word": "go",
+      "punctuated_word": "go",
+      "start": 141.472,
+      "end": 141.684
+    },
+    {
+      "word": "quiet",
+      "punctuated_word": "quiet,",
+      "start": 141.684,
+      "end": 142.013
+    },
+    {
+      "word": "and",
+      "punctuated_word": "and",
+      "start": 142.013,
+      "end": 142.225
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 142.225,
+      "end": 142.437
+    },
+    {
+      "word": "will",
+      "punctuated_word": "will",
+      "start": 142.437,
+      "end": 142.649
+    },
+    {
+      "word": "stop",
+      "punctuated_word": "stop",
+      "start": 142.649,
+      "end": 142.861
+    },
+    {
+      "word": "answering",
+      "punctuated_word": "answering.",
+      "start": 142.861,
+      "end": 143.73
+    },
+    {
+      "word": "and",
+      "punctuated_word": "And",
+      "start": 144.25,
+      "end": 144.458
+    },
+    {
+      "word": "then",
+      "punctuated_word": "then",
+      "start": 144.458,
+      "end": 144.666
+    },
+    {
+      "word": "it",
+      "punctuated_word": "it",
+      "start": 144.666,
+      "end": 144.874
+    },
+    {
+      "word": "will",
+      "punctuated_word": "will",
+      "start": 144.874,
+      "end": 145.081
+    },
+    {
+      "word": "simply",
+      "punctuated_word": "simply",
+      "start": 145.081,
+      "end": 145.497
+    },
+    {
+      "word": "keep",
+      "punctuated_word": "keep",
+      "start": 145.497,
+      "end": 145.705
+    },
+    {
+      "word": "going",
+      "punctuated_word": "going,",
+      "start": 145.705,
+      "end": 146.027
+    },
+    {
+      "word": "in",
+      "punctuated_word": "in",
+      "start": 146.027,
+      "end": 146.235
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 146.235,
+      "end": 146.443
+    },
+    {
+      "word": "dark",
+      "punctuated_word": "dark,",
+      "start": 146.443,
+      "end": 146.765
+    },
+    {
+      "word": "carrying",
+      "punctuated_word": "carrying",
+      "start": 146.765,
+      "end": 147.181
+    },
+    {
+      "word": "its",
+      "punctuated_word": "its",
+      "start": 147.181,
+      "end": 147.388
+    },
+    {
+      "word": "record",
+      "punctuated_word": "record,",
+      "start": 147.388,
+      "end": 147.918
+    },
+    {
+      "word": "for",
+      "punctuated_word": "for",
+      "start": 147.918,
+      "end": 148.126
+    },
+    {
+      "word": "a",
+      "punctuated_word": "a",
+      "start": 148.126,
+      "end": 148.334
+    },
+    {
+      "word": "very",
+      "punctuated_word": "very",
+      "start": 148.334,
+      "end": 148.75
+    },
+    {
+      "word": "long",
+      "punctuated_word": "long",
+      "start": 148.75,
+      "end": 148.958
+    },
+    {
+      "word": "time",
+      "punctuated_word": "time.",
+      "start": 148.958,
+      "end": 149.394
+    },
+    {
+      "word": "long",
+      "punctuated_word": "Long",
+      "start": 149.914,
+      "end": 150.104
+    },
+    {
+      "word": "enough",
+      "punctuated_word": "enough",
+      "start": 150.104,
+      "end": 150.484
+    },
+    {
+      "word": "that",
+      "punctuated_word": "that",
+      "start": 150.484,
+      "end": 150.674
+    },
+    {
+      "word": "the",
+      "punctuated_word": "the",
+      "start": 150.674,
+      "end": 150.865
+    },
+    {
+      "word": "sun",
+      "punctuated_word": "sun",
+      "start": 150.865,
+      "end": 151.055
+    },
+    {
+      "word": "will",
+      "punctuated_word": "will",
+      "start": 151.055,
+      "end": 151.245
+    },
+    {
+      "word": "die",
+      "punctuated_word": "die",
+      "start": 151.245,
+      "end": 151.435
+    },
+    {
+      "word": "first",
+      "punctuated_word": "first.",
+      "start": 151.435,
+      "end": 151.834
+    }
+  ]
+}

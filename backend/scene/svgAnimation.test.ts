@@ -1,9 +1,10 @@
 /**
- * File Description: Test suite for the declarative custom SVG animation engine (A-1 through A-16).
+ * File Description: Test suite for the declarative custom SVG animation engine (A-1 through A-17).
  * Covers the SVG document parser, timeline validation and compilation, hold-and-evolve continuity,
  * staggered staged entry, draw-on reveals, render-time element identity and id namespacing,
- * byte-for-byte render determinism, audio-first retiming, the Remotion entry point, and a
- * RUN_VISUAL_TESTS-gated frame strip written to disk for human review.
+ * byte-for-byte render determinism, audio-first retiming, the Remotion entry point, compiled
+ * opacity winning over an authored opacity attribute, and a RUN_VISUAL_TESTS-gated frame strip
+ * written to disk for human review.
  */
 
 import { test } from "node:test";
@@ -31,6 +32,7 @@ import { compileScene } from "../../src/dl/scene/compile";
 import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNode";
 import { loadSceneAssets } from "./loadSceneAssets";
 import { renderFrameSvgMarkup, renderFrameStill, readPngDimensions } from "./renderStill";
+import { renderSvgNodes } from "../../src/dl/scene/svgReact";
 import React from "react";
 import ReactDOMServer from "react-dom/server";
 import { SceneClip } from "../../src/dl/scene/SceneClip";
@@ -476,4 +478,46 @@ test("A-16: SceneClip renders the scene frame for the current composition frame"
   assert.equal(clampedLocalFrame(0, 30), 0, "Frames before the clip starts hold the first frame");
   assert.equal(clampedLocalFrame(45, 30), 15);
   assert.equal(clampedLocalFrame(500, 30), 119, "Frames past the end hold the last frame");
+});
+
+// A-17: An authored opacity attribute and a clip that drives opacity must not fight each other.
+test("A-17: only a clip that drives opacity may overwrite an authored opacity attribute", () => {
+  const source = [
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">',
+    '  <circle id="hidden-dot" cx="50" cy="50" r="10" fill="#F5F5F5" opacity="0" />',
+    '  <rect id="faint-sheen" x="0" y="0" width="30" height="30" fill="#F5F5F5" opacity="0.07" />',
+    '  <circle id="plain-dot" cx="20" cy="50" r="10" fill="#F5F5F5" />',
+    "</svg>",
+  ].join("\n");
+  const doc = parseSvgDocument(source);
+
+  // One timeline: the hidden dot is faded all the way in, the faint sheen is only translated.
+  const timeline: SvgAnimationTimeline = {
+    timelineId: "opacity-and-attribute",
+    clips: [
+      { clipId: "fade-in", targets: ["hidden-dot"], property: "opacity", from: 0, to: 1, startFrame: 0, durationFrames: 10 },
+      { clipId: "sweep", targets: ["faint-sheen"], property: "translateX", from: 0, to: 40, startFrame: 0, durationFrames: 10 },
+    ],
+  };
+  const compiled = compileSvgTimeline(timeline, { durationFrames: 12 });
+
+  const markupAt = (frame: number) =>
+    ReactDOMServer.renderToStaticMarkup(
+      React.createElement(
+        "svg",
+        null,
+        renderSvgNodes(doc.children, { instanceId: "asset", elementStates: compiled.frames[frame] }),
+      ),
+    );
+
+  const midway = markupAt(5);
+  assert.ok(/id="hidden-dot--asset"[^>]*opacity="0\.\d+"/.test(midway), "A mid-fade value must reach the element");
+
+  const finished = markupAt(11);
+  // The dot was faded to exactly 1, so the authored opacity="0" must not win back.
+  assert.ok(/id="hidden-dot--asset"[^>]*opacity="1"/.test(finished), "A fully faded-in element must stay visible");
+  // The sheen's opacity is not driven at all, so its authored value survives being translated.
+  assert.ok(/id="faint-sheen--asset"[^>]*opacity="0\.07"/.test(finished), "An undriven authored opacity must survive");
+  // An element no clip touches still emits no opacity attribute of its own.
+  assert.ok(!/id="plain-dot--asset"[^>]*opacity=/.test(finished), "An untouched element needs no opacity attribute");
 });

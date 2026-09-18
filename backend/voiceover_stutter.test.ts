@@ -414,7 +414,7 @@ test("live narration synthesis produces a clean, drift-free track", async (t) =>
     "A U-Net is a funnel. It squeezes an image down, then expands it back up.",
   ];
   const outDir = path.join(__dirname, "../out/test_narration");
-  const result = await produceAudioPipeline(script, outDir);
+  const result = await produceAudioPipeline(script, outDir, { syncToPreview: false });
 
   const wav = decodeWav(await fs.readFile(result.voiceoverPath));
   assert.equal(wav.channels, 1);

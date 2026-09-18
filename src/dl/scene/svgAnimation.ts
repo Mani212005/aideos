@@ -72,6 +72,14 @@ export interface SvgElementState {
   opacity: number;
   /** 0 = nothing drawn, 1 = fully drawn. Rendered as stroke dashing on the target element. */
   drawOn: number;
+  /**
+   * True when a clip actually drives this element's opacity.
+   * The renderer needs to tell "faded to fully opaque" apart from "nothing touched opacity", and
+   * the value alone cannot: both read 1. Without this an element authored `opacity="0.07"` and
+   * moved by a translate clip would be forced to full opacity, and an element authored
+   * `opacity="0"` and faded in would snap back to invisible the instant its fade completed.
+   */
+  opacityDriven: boolean;
   /** Transform origin in the asset's own coordinate space. */
   originX: number;
   originY: number;
@@ -121,6 +129,7 @@ export function identitySvgElementState(origin?: Vec2): SvgElementState {
     rotate: 0,
     opacity: 1,
     drawOn: 1,
+    opacityDriven: false,
     originX: origin?.x ?? 0,
     originY: origin?.y ?? 0,
   };
@@ -224,6 +233,7 @@ type SvgStateSlot = "translateX" | "translateY" | "scaleX" | "scaleY" | "rotate"
 function assignSlot(state: SvgElementState, slot: SvgStateSlot, value: number): void {
   if (slot === "opacity" || slot === "drawOn") {
     state[slot] = quantize(Math.min(1, Math.max(0, value)));
+    if (slot === "opacity") state.opacityDriven = true;
     return;
   }
   state[slot] = quantize(value);

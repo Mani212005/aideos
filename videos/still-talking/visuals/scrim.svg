@@ -1,0 +1,8 @@
+<!--
+  File Description: The scrim: a darkening plate raised under on-screen text so the film stays readable.
+  Static artwork for the film Still Talking. Nothing here animates itself: element ids are the
+  handles that videos/still-talking/film.json drives through the declarative SVG timeline.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
+  <rect id="scrim-fill" x="-320" y="-220" width="640" height="440" fill="#0A0A0B" opacity="0" />
+</svg>
