@@ -387,6 +387,57 @@ export const IconLabel: React.FC<BlockProps & { text: string }> = ({ text, start
   );
 };
 
+/** Monospace animated code block for terminal commands and code snippets */
+export const CodeBlock: React.FC<
+  BlockProps & { code: string; language?: string; caption?: string }
+> = ({ code, language, caption, start, index }) => {
+  const layout = useLayout();
+  const tokens = useTokens();
+  const enter = useEntrance(start, index, layout.px(12));
+
+  return (
+    <div
+      style={{
+        ...enter,
+        border: "1px solid rgba(245, 245, 245, 0.10)",
+        borderRadius: layout.radius.inner + 4,
+        background: tokens.surface,
+        padding: `${layout.grid * 1.5}px ${layout.grid * 2}px`,
+        display: "flex",
+        flexDirection: "column",
+        gap: layout.grid,
+      }}
+    >
+      {(caption || language) && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {caption && (
+            <span style={{ fontFamily: MONO, fontSize: layout.type("caption").fontSize, color: tokens.muted }}>
+              {caption}
+            </span>
+          )}
+          {language && (
+            <span style={{ fontFamily: MONO, fontSize: 10, color: tokens.accent, textTransform: "uppercase" }}>
+              {language}
+            </span>
+          )}
+        </div>
+      )}
+      <pre
+        style={{
+          fontFamily: MONO,
+          fontSize: layout.type("mono").fontSize,
+          color: tokens.text,
+          margin: 0,
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+        }}
+      >
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+};
+
 /** High-clarity glassmorphic card with luminous accents */
 export const Card: React.FC<
   BlockProps & { title: string; body?: string; state: "idle" | "active" }

@@ -269,6 +269,12 @@ export const blockSchema = z.discriminatedUnion("c", [
     c: z.literal("IconLabel"),
     text: z.string().min(1).max(60),
   }),
+  z.object({
+    c: z.literal("CodeBlock"),
+    code: z.string().min(1).max(300),
+    language: z.string().max(20).optional(),
+    caption: z.string().max(60).optional(),
+  }),
 ]);
 
 export type Block = z.infer<typeof blockSchema>;
