@@ -131,3 +131,52 @@ test("writeImportWords: writes import_words.json in the WordInfo shape and a cap
   assert.match(vtt, /^WEBVTT/);
   assert.match(vtt, /Hello um world\./);
 });
+
+test("transcribe: cleans up temporary directory after transcription finishes", async () => {
+  const src = makeFixtureSource();
+  let createdWav = "";
+  await transcribe(
+    src,
+    { deepgramApiKey: "test-key" },
+    {
+      extractAudioTrack: (_srcPath, outWavPath) => {
+        createdWav = outWavPath;
+        fs.writeFileSync(outWavPath, "fake wav");
+      },
+      fetchImpl: (async () => ({
+        ok: true,
+        json: async () => ({ results: { channels: [{ alternatives: [{ words: [] }] }] } }),
+        text: async () => "",
+      })) as unknown as typeof fetch,
+    },
+  );
+  assert.ok(createdWav, "extractAudioTrack must have received an output path");
+  assert.equal(fs.existsSync(path.dirname(createdWav)), false, "temporary directory must be removed");
+});
+
+test("transcribe: cleans up temporary directory when transcription fails", async () => {
+  const src = makeFixtureSource();
+  let createdWav = "";
+  await assert.rejects(
+    () =>
+      transcribe(
+        src,
+        { deepgramApiKey: "bad-key" },
+        {
+          extractAudioTrack: (_srcPath, outWavPath) => {
+            createdWav = outWavPath;
+            fs.writeFileSync(outWavPath, "fake wav");
+          },
+          fetchImpl: (async () => ({
+            ok: false,
+            status: 500,
+            text: async () => "server error",
+            json: async () => ({}),
+          })) as unknown as typeof fetch,
+        },
+      ),
+    /500/,
+  );
+  assert.ok(createdWav, "extractAudioTrack must have received an output path");
+  assert.equal(fs.existsSync(path.dirname(createdWav)), false, "temporary directory must be removed on error");
+});

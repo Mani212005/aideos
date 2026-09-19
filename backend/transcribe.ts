@@ -102,31 +102,35 @@ async function transcribeWithDeepgram(
 /** Runs the local Whisper CLI (openai-whisper) with word-level timestamps and JSON output. */
 function defaultRunWhisper(wavPath: string): TranscribedWord[] {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-whisper-"));
-  execFileSync(
-    "whisper",
-    [wavPath, "--model", "base", "--output_format", "json", "--output_dir", outDir, "--word_timestamps", "True"],
-    { stdio: ["ignore", "pipe", "pipe"] },
-  );
-  const base = path.basename(wavPath, path.extname(wavPath));
-  const jsonPath = path.join(outDir, `${base}.json`);
-  const parsed = JSON.parse(fs.readFileSync(jsonPath, "utf8")) as {
-    segments: Array<{ words?: Array<{ word: string; start: number; end: number; probability?: number }> }>;
-  };
-  const words: TranscribedWord[] = [];
-  for (const seg of parsed.segments) {
-    for (const w of seg.words ?? []) {
-      const clean = w.word.trim();
-      if (!clean) continue;
-      words.push({
-        word: clean.toLowerCase().replace(/[^\p{L}\p{N}']/gu, ""),
-        start: w.start,
-        end: w.end,
-        punctuated_word: clean,
-        confidence: w.probability,
-      });
+  try {
+    execFileSync(
+      "whisper",
+      [wavPath, "--model", "base", "--output_format", "json", "--output_dir", outDir, "--word_timestamps", "True"],
+      { stdio: ["ignore", "pipe", "pipe"] },
+    );
+    const base = path.basename(wavPath, path.extname(wavPath));
+    const jsonPath = path.join(outDir, `${base}.json`);
+    const parsed = JSON.parse(fs.readFileSync(jsonPath, "utf8")) as {
+      segments?: Array<{ words?: Array<{ word: string; start: number; end: number; probability?: number }> }>;
+    };
+    const words: TranscribedWord[] = [];
+    for (const seg of parsed.segments ?? []) {
+      for (const w of seg.words ?? []) {
+        const clean = w.word.trim();
+        if (!clean) continue;
+        words.push({
+          word: clean.toLowerCase().replace(/[^\p{L}\p{N}']/gu, ""),
+          start: w.start,
+          end: w.end,
+          punctuated_word: clean,
+          confidence: w.probability,
+        });
+      }
     }
+    return words;
+  } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
   }
-  return words;
 }
 
 /**
@@ -142,19 +146,23 @@ export async function transcribe(
   const resolvedSrc = resolveAudioSourcePath(src);
   const extractAudioTrack = deps.extractAudioTrack ?? defaultExtractAudioTrack;
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-transcribe-"));
-  const tmpWav = path.join(tmpDir, "audio.wav");
-  extractAudioTrack(resolvedSrc, tmpWav);
+  try {
+    const tmpWav = path.join(tmpDir, "audio.wav");
+    extractAudioTrack(resolvedSrc, tmpWav);
 
-  const apiKey = opts.deepgramApiKey ?? resolveDeepgramApiKey();
-  if (apiKey) {
-    const fetchImpl = deps.fetchImpl ?? fetch;
-    const words = await transcribeWithDeepgram(tmpWav, apiKey, opts.deepgramModel ?? "nova-2", fetchImpl);
-    return { words, backend: "deepgram" };
+    const apiKey = opts.deepgramApiKey ?? resolveDeepgramApiKey();
+    if (apiKey) {
+      const fetchImpl = deps.fetchImpl ?? fetch;
+      const words = await transcribeWithDeepgram(tmpWav, apiKey, opts.deepgramModel ?? "nova-2", fetchImpl);
+      return { words, backend: "deepgram" };
+    }
+
+    const runWhisper = deps.runWhisper ?? defaultRunWhisper;
+    const words = runWhisper(tmpWav);
+    return { words, backend: "whisper" };
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
-
-  const runWhisper = deps.runWhisper ?? defaultRunWhisper;
-  const words = runWhisper(tmpWav);
-  return { words, backend: "whisper" };
 }
 
 /** Persists transcribed words plus a caption sidecar to a video package's own directory. */
