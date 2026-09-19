@@ -11,6 +11,7 @@ import { buildEditContext } from "./buildEditContext";
 import type { TranscribedWord } from "../transcribe";
 import type { LayeredFilm } from "../../src/dl/layeredSchema";
 
+/** Helper for constructing a TranscribedWord with concise positional arguments in tests. */
 function word(w: string, start: number, end: number, confidence?: number): TranscribedWord {
   return { word: w, start, end, confidence };
 }
@@ -65,6 +66,7 @@ test("detectSilences: never returns an inverted window when the margin would ove
   assert.deepEqual(windows, [], "a 0.6s gap inset by 0.3s on each side leaves nothing, so it must be dropped");
 });
 
+/** Builds a minimal LayeredFilm fixture with one video layer and clip for edit context tests. */
 function createLayeredFilmFixture(): LayeredFilm {
   return {
     id: "ctx-fixture",
