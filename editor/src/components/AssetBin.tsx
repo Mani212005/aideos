@@ -17,6 +17,9 @@ export interface MediaAsset {
   type: "video" | "audio" | "image";
   duration?: number;
   sizeBytes?: number;
+  width?: number;
+  height?: number;
+  fps?: number;
 }
 
 export interface AssetBinProps {

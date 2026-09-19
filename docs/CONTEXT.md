@@ -21,6 +21,8 @@ The root data contract defining a complete video composition (stored in `src/dl/
 * `voiceover?: { src: string, volume?: number, speed?: number, retimedSrc?: string }` (Master audio track source file)
 * `layers?: LayerDefinition[]` (Persisted non-linear track definitions and settings)
 * `audioClips?: AudioClip[]` (Persisted multi-track audio clips)
+* `videoClips?: VideoClip[]` (Persisted imported footage picture clips)
+* `overlayClips?: OverlayClip[]` (Persisted standalone text/image/subtitle overlay clips)
 
 ### `AudioClip`
 A discrete audio track entry on the multi-track timeline.
@@ -34,6 +36,51 @@ A discrete audio track entry on the multi-track timeline.
 * `retimedSrc?: string` (Cached path to pitch-corrected WSOLA time-stretched WAV file)
 * `channel?: "voiceover" | "music" | "sfx" | "external"` (Audio routing channel)
 * `layerId?: string` (Assigned timeline layer ID)
+* `linkedClipId?: string` (Id of the linked `videoClips` entry, kept symmetric on both sides)
+
+### `VideoClip`
+An imported footage picture clip entry on the multi-track timeline (`src/dl/schema.ts`).
+* `id: string` (Unique video clip identifier)
+* `src: string` (Source video asset file path or URL)
+* `position: number` (Timeline start timestamp in seconds)
+* `start?: number` (In-point offset into source media in seconds, default 0)
+* `end: number` (Out-point offset into source media in seconds)
+* `sourceDuration?: number` (Total length of the source file, when known)
+* `width?: number, height?: number` (Source video dimensions in pixels)
+* `opacity?: number` (Visual opacity, 0.0 to 1.0, default 1.0)
+* `volume?: number` (Embedded audio level multiplier, 0.0 to 2.0, default 1.0)
+* `muted?: boolean` (True to mute embedded audio track)
+* `layerId?: string` (Assigned timeline layer ID)
+* `linkedClipId?: string` (Id of the linked `audioClips` entry, kept symmetric on both sides)
+
+### `OverlayClip`
+A standalone text, image, or subtitle overlay clip not tied to the shot list (`src/dl/schema.ts`).
+* `id: string` (Unique overlay clip identifier)
+* `kind: "text" | "image" | "subtitle"` (Discriminator for overlay type)
+* `position: number` (Timeline start timestamp in seconds)
+* `start?: number` (In-point offset in seconds, default 0)
+* `end: number` (Out-point offset in seconds)
+* `opacity?: number` (Visual opacity, 0.0 to 1.0, default 1.0)
+* `layerId?: string` (Assigned timeline layer ID)
+* `payload: TextPayload | ImagePayload | SubtitlePayload` (Type-specific overlay content)
+
+### `TextPayload`
+Typography overlay payload for standalone text overlays and layered text clips.
+* `text: string` (Text content)
+* `size?: "kicker" | "headline" | "body" | "caption"` (Visual sizing hierarchy, default "headline")
+* `accentWord?: string` (Word to highlight in accent token color)
+* `x?: number, y?: number` (Optional fractional 0..1 viewport coordinates)
+
+### `ImagePayload`
+Static image overlay payload for standalone image overlays and layered image clips.
+* `src: string` (Source image file path or URL)
+* `scale?: number` (Display scale multiplier, default 1.0)
+* `x?: number, y?: number` (Optional fractional 0..1 viewport coordinates)
+
+### `SubtitlePayload`
+Standalone caption cue payload for standalone subtitle overlays.
+* `text: string` (Caption text content)
+* `startFrame?: number, endFrame?: number` (Optional frame-level timing bounds)
 
 ### `Shot`
 A single continuous camera view and duration window on the timeline.
@@ -293,9 +340,10 @@ An individual vector path inside a limb:
 
 ---
 
-## 7. Non-Linear Layer Engine & Timeline Tools (`backend/timeline/`)
+## 7. Non-Linear Layer Engine & Timeline Tools (`backend/timeline/`, `src/dl/convertFilm.ts`)
 
-* **`layer_engine.ts`**: Pure functional engine operating over `LayeredFilm`. Provides `buildLayerModelFromFilm`, `convertLayeredFilmToFilm` (lossless round-trip with base film), `moveClip`, `trimClip`, `rippleTrimLayerClipEdge`, `splitClip`, `deleteClip`, `rippleDeleteLayerClip`, and deterministic left-to-right sweep `resolveTrackCollisions`.
+* **`convertFilm.ts` (`src/dl/convertFilm.ts`)**: Lossless bidirectional converter between `Film` and `LayeredFilm` (`convertFilmToLayeredFilm`, `convertLayeredFilmToFilm`, `defaultTimelineLayers`, `CONVERTED_LAYER_IDS`), preserving multi-track `audioClips`, `videoClips`, and `overlayClips` with symmetric clip linking and on-demand lane resolution.
+* **`layer_engine.ts` (`backend/timeline/layer_engine.ts`)**: Pure functional engine operating over `LayeredFilm`. Provides `importMediaAssetToLayeredFilm`, `unlinkClips`, `moveLayerClip`, `moveMultipleLayerClips`, `trimLayerClipEdge`, `rippleTrimLayerClipEdge`, `splitLayerClipAtTime`, `deleteLayerClip`, `rippleDeleteLayerClip`, and deterministic left-to-right sweep `resolveLayerCollisions`.
 * **`timeline.ts`**: Pure functional operations on `Film` shots and associated audio clips (`moveShot`, `moveMultipleShots`, `trimShotEdge`, `rippleTrimShotEdge`, `splitShotAtTime`, `deleteShot`, `rippleDeleteShot`).
 * **`layer_manager.ts`**: Track management functions (`addLayer`, `removeLayer`, `reorderLayers`, `setLayerVisibility`, `setLayerMuted`, `setLayerLocked`).
 * **`drag_machine.ts`**: Pure pointer-drag state machine managing `move`, `trim-start`, `trim-end`, `scrub`, and `marquee` gestures with `DRAG_THRESHOLD_PX`, Escape cancellation, and zero sticky states.

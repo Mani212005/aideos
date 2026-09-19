@@ -6,6 +6,9 @@
  * - Layer compositing rules (topmost wins: video covers animation, animation draws over video).
  * - Source range trimming without re-encoding.
  * - Missing asset validation by name (Rule 6).
+ * Also holds the Phase 0 defect class closed: an imported video's picture used to be silently
+ * dropped on the round trip back to a Film manifest (audio survived, the picture did not), and
+ * footage audio used to collide onto the voiceover spine instead of its own lane.
  */
 
 import test from "node:test";
@@ -18,7 +21,35 @@ import {
   type MediaAssetInput,
 } from "./layer_engine";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
+import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
 import type { LayeredFilm } from "../../src/dl/layeredSchema";
+import type { Film } from "../../src/dl/schema";
+
+/** A minimal, otherwise-untouched Film manifest to import footage into. */
+function createBaseFilm(): Film {
+  return {
+    id: "test-video-overlay-film",
+    title: "Test Video Overlay Film",
+    fps: 30,
+    chapters: ["Ch 1"],
+    canvas: {
+      nodes: [{ id: "n1", label: "Node 1", x: 0, y: 0, w: 190, h: 62 }],
+      edges: [],
+    },
+    shots: [
+      {
+        id: "shot-1",
+        dur: 20,
+        stage: "frame",
+        look: "n1",
+        move: "cut",
+        drift: false,
+        zoom: 1,
+        blocks: [{ c: "StatCounter", to: 90, label: "Speed", format: "plain" }],
+      },
+    ],
+  };
+}
 
 function createBaseLayeredFilm(): LayeredFilm {
   return {
@@ -205,7 +236,7 @@ test("L3-7: Video clip payload stores valid source path for Remotion player", ()
 
   const { film: imported, videoClipId } = importMediaAssetToLayeredFilm(film, asset, 0);
   const vClip = imported.clips.find((c) => c.id === videoClipId)!;
-  assert.equal((vClip.payload as any).src, "media/demo.mp4");
+  assert.equal((vClip.payload as { src: string }).src, "media/demo.mp4");
 });
 
 // L3-8: Missing source asset fails validation by name when disk check is enabled
@@ -247,4 +278,126 @@ test("Phase L-3 Negative Case: Imported video creates kind='video' and kind='aud
   assert.notEqual(vClip.kind, "text");
   assert.equal(vClip.kind, "video");
   assert.equal(aClip.kind, "audio");
+});
+
+// ==============================================================================
+// REGRESSION: PHASE 0 DEFECT CLASS (the §2.1 spike, promoted to a test)
+// ==============================================================================
+
+test("Phase 0 regression: an imported video's picture no longer silently drops on the round trip to a Film", () => {
+  const baseFilm = createBaseFilm();
+  const layered = convertFilmToLayeredFilm(baseFilm);
+
+  const asset: MediaAssetInput = {
+    filename: "my_talk.mp4",
+    src: "media/my_talk.mp4",
+    type: "video",
+    duration: 8.0,
+    width: 1920,
+    height: 1080,
+  };
+  const { film: imported, videoClipId, audioClipId } = importMediaAssetToLayeredFilm(layered, asset, 2.0);
+
+  // Before the fix, folding back to a Film dropped the video clip entirely: only the footage
+  // audio survived, as an `external`-channel audioClips entry.
+  const folded = convertLayeredFilmToFilm(imported, baseFilm);
+
+  const videoEntry = folded.videoClips?.find((c) => c.id === videoClipId);
+  assert.ok(videoEntry, "the imported video's picture must survive the fold back to a Film");
+  assert.equal(videoEntry!.src, "media/my_talk.mp4");
+  assert.equal(videoEntry!.position, 2.0);
+  assert.equal(videoEntry!.end - videoEntry!.start, 8.0);
+  assert.equal(videoEntry!.width, 1920);
+  assert.equal(videoEntry!.height, 1080);
+  assert.equal(videoEntry!.linkedClipId, audioClipId, "the link to the footage audio clip must be symmetric");
+
+  const audioEntry = folded.audioClips?.find((c) => c.id === audioClipId);
+  assert.ok(audioEntry, "the footage audio entry must still be present");
+  assert.equal(audioEntry!.channel, "external");
+  assert.equal(audioEntry!.linkedClipId, videoClipId, "the link back to the video clip must be symmetric");
+
+  // And it survives a second forward conversion (a reload) rather than being dropped again.
+  const reopened = convertFilmToLayeredFilm(folded);
+  const reopenedVideo = reopened.clips.find((c) => c.id === videoClipId);
+  const reopenedAudio = reopened.clips.find((c) => c.id === audioClipId);
+  assert.ok(reopenedVideo, "the video clip must reappear after reopening the film");
+  assert.equal(reopenedVideo!.kind, "video");
+  assert.equal(reopenedVideo!.position, 2.0);
+  assert.equal(reopenedVideo!.linkedClipId, audioClipId);
+  assert.equal(reopenedAudio!.linkedClipId, videoClipId);
+  assert.doesNotThrow(() => validateLayeredFilm(reopened));
+});
+
+test("Phase 0 regression: importing footage never collides onto an existing voiceover spine clip", () => {
+  const baseFilm: Film = {
+    ...createBaseFilm(),
+    voiceover: { src: "voiceover.wav", volume: 1, durationSec: 20 },
+  };
+  const layered = convertFilmToLayeredFilm(baseFilm);
+
+  const asset: MediaAssetInput = {
+    filename: "interview.mp4",
+    src: "media/interview.mp4",
+    type: "video",
+    duration: 5.0,
+  };
+  // Drop the footage at 2s, well inside the 0..20s voiceover clip already on the spine.
+  const { film: imported, audioClipId } = importMediaAssetToLayeredFilm(layered, asset, 2.0);
+
+  const footageAudio = imported.clips.find((c) => c.id === audioClipId)!;
+  assert.notEqual(
+    footageAudio.layerId,
+    "layer-audio-spine",
+    "footage audio must never land on the voiceover spine lane",
+  );
+  assert.equal(footageAudio.layerId, "layer-audio-footage");
+  // The collision resolver must not have rippled it behind the voiceover clip.
+  assert.equal(footageAudio.position, 2.0);
+  assert.doesNotThrow(() => validateLayeredFilm(imported));
+});
+
+test("Phase 0 regression: a standalone text overlay clip survives the round trip to a Film and back", () => {
+  const baseFilm = createBaseFilm();
+  const layered = convertFilmToLayeredFilm(baseFilm);
+
+  const withOverlay: LayeredFilm = {
+    ...layered,
+    layers: [
+      ...layered.layers,
+      { id: "layer-text-overlay", number: 16, label: "Text Overlays", locked: false, hidden: false, muted: false, height: 48 },
+    ],
+    clips: [
+      ...layered.clips,
+      {
+        id: "clip-text-title",
+        layerId: "layer-text-overlay",
+        position: 1,
+        start: 0,
+        end: 3,
+        kind: "text",
+        payload: { text: "Title Card", size: "headline", accentWord: "Card" },
+        opacity: 1,
+        volume: 1,
+      },
+    ],
+  };
+
+  const folded = convertLayeredFilmToFilm(withOverlay, baseFilm);
+  const overlayEntry = folded.overlayClips?.find((c) => c.id === "clip-text-title");
+  assert.ok(overlayEntry, "a standalone text clip must be written out to overlayClips");
+  assert.equal(overlayEntry!.kind, "text");
+  assert.equal((overlayEntry!.payload as { text: string }).text, "Title Card");
+
+  const reopened = convertFilmToLayeredFilm(folded);
+  const reopenedClip = reopened.clips.find((c) => c.id === "clip-text-title");
+  assert.ok(reopenedClip, "the text overlay must reappear after reopening the film");
+  assert.equal(reopenedClip!.kind, "text");
+  assert.equal((reopenedClip!.payload as { text: string }).text, "Title Card");
+});
+
+test("Phase 0 regression: an untouched film does not gain videoClips or overlayClips", () => {
+  const baseFilm = createBaseFilm();
+  const back = convertLayeredFilmToFilm(convertFilmToLayeredFilm(baseFilm), baseFilm);
+  assert.equal(back.videoClips, undefined);
+  assert.equal(back.overlayClips, undefined);
 });

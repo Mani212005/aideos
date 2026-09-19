@@ -234,7 +234,10 @@ export function importMediaAssetToLayeredFilm(
       appendLayer(videoLayer, "Create video layer");
     }
 
-    let audioLayer = newLayers.find((l) => l.id === "layer-audio-footage" || l.id === "layer-audio-spine");
+    // Imported footage audio always gets its own lane, never the voiceover spine: sharing the
+    // spine made the collision resolver ripple the import behind an existing voiceover clip
+    // instead of honoring the position the user dropped it at.
+    let audioLayer = newLayers.find((l) => l.id === "layer-audio-footage");
     if (!audioLayer) {
       audioLayer = {
         id: "layer-audio-footage",

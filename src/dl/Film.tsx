@@ -3,7 +3,7 @@
  */
 
 import React from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
+import { AbsoluteFill, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
 import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext } from "./tokens";
 import { getFullScreenHeroLayout, heroScrimGradient } from "./fullScreenHeroLayout";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
@@ -14,6 +14,7 @@ import { SceneStage } from "./SceneStage";
 import { PaperRip } from "./PaperRip";
 import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
 import { getRetimedAudioRelPath } from "./audio/retime";
+import { Kicker, TextReveal, Body } from "./primitives";
 import {
   buildTimeline,
   camAt,
@@ -24,7 +25,7 @@ import {
   totalFrames,
   type TimedShot,
 } from "./camera";
-import type { Film, Block } from "./schema";
+import type { Film, Block, TextPayload, ImagePayload, SubtitlePayload } from "./schema";
 
 /**
  * ---------------------------------------------------------------------------
@@ -43,6 +44,122 @@ import type { Film, Block } from "./schema";
 
 /** How long the panel takes to shrink back into its node. Exit beats entrance. */
 const CLOSE_MS = 420;
+
+/**
+ * The imported-footage base plate. Mirrors how `audioClips` already map straight to
+ * `<Sequence>`s: each `film.videoClips` entry becomes one time-sequenced, full-bleed
+ * `<OffthreadVideo>`, painted first so it sits behind the canvas/shot content and any overlays.
+ */
+const ImportedVideoLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }) => {
+  if (!film.videoClips || film.videoClips.length === 0) return null;
+  return (
+    <>
+      {film.videoClips.map((vc) => (
+        <Sequence
+          key={vc.id}
+          from={Math.round(vc.position * fps)}
+          durationInFrames={Math.max(1, Math.round((vc.end - vc.start) * fps))}
+        >
+          <AbsoluteFill style={{ opacity: vc.opacity ?? 1 }}>
+            <OffthreadVideo
+              src={staticFile(vc.src)}
+              trimBefore={Math.round(vc.start * fps)}
+              volume={vc.muted ? 0 : (vc.volume ?? 1)}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          </AbsoluteFill>
+        </Sequence>
+      ))}
+    </>
+  );
+};
+
+/** One text overlay clip, sized and worded per its payload's `size`. */
+const OverlayText: React.FC<{ payload: TextPayload; durationInFrames: number }> = ({ payload, durationInFrames }) => {
+  const layout = useLayout();
+  const palette = useTokens();
+  if (payload.size === "kicker") {
+    return <Kicker text={payload.text} start={0} index={0} durationInFrames={durationInFrames} />;
+  }
+  if (payload.size === "body") {
+    return <Body text={payload.text} start={0} index={0} durationInFrames={durationInFrames} />;
+  }
+  if (payload.size === "caption") {
+    return <div style={{ ...layout.label(), color: palette.inkAt(0.8) }}>{payload.text}</div>;
+  }
+  return (
+    <TextReveal
+      text={payload.text}
+      size="headline"
+      accentWord={payload.accentWord}
+      start={0}
+      index={0}
+      durationInFrames={durationInFrames}
+    />
+  );
+};
+
+/**
+ * Standalone text/image/subtitle overlays the shot list cannot represent: what an AI edit (or a
+ * user) adds directly on top of the imported footage or the canvas, such as a title card. Absent
+ * `x`/`y` centers the overlay in a lower-third band; present, they are fractional (0..1) frame
+ * coordinates.
+ */
+const OverlayLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }) => {
+  if (!film.overlayClips || film.overlayClips.length === 0) return null;
+
+  return (
+    <>
+      {film.overlayClips.map((oc) => {
+        const durationInFrames = Math.max(1, Math.round((oc.end - oc.start) * fps));
+        const hasPosition = oc.payload && "x" in oc.payload && oc.payload.x !== undefined;
+        const positionStyle: React.CSSProperties = hasPosition
+          ? {
+              left: `${((oc.payload as { x?: number }).x ?? 0.5) * 100}%`,
+              top: `${((oc.payload as { y?: number }).y ?? 0.5) * 100}%`,
+              transform: "translate(-50%, -50%)",
+              alignItems: "center",
+              justifyContent: "center",
+            }
+          : { left: 0, right: 0, bottom: "10%", alignItems: "center", justifyContent: "center" };
+
+        return (
+          <Sequence key={oc.id} from={Math.round(oc.position * fps)} durationInFrames={durationInFrames}>
+            <div
+              style={{
+                position: "absolute",
+                display: "flex",
+                padding: "0 6%",
+                opacity: oc.opacity ?? 1,
+                pointerEvents: "none",
+                ...positionStyle,
+              }}
+            >
+              {oc.kind === "text" ? (
+                <OverlayText payload={oc.payload as TextPayload} durationInFrames={durationInFrames} />
+              ) : oc.kind === "image" ? (
+                <Img
+                  src={staticFile((oc.payload as ImagePayload).src)}
+                  style={{
+                    maxWidth: "60vw",
+                    maxHeight: "60vh",
+                    transform: `scale(${(oc.payload as ImagePayload).scale ?? 1})`,
+                    objectFit: "contain",
+                  }}
+                />
+              ) : (
+                <OverlayText
+                  payload={{ text: (oc.payload as SubtitlePayload).text, size: "caption" }}
+                  durationInFrames={durationInFrames}
+                />
+              )}
+            </div>
+          </Sequence>
+        );
+      })}
+    </>
+  );
+};
 
 const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline }) => {
   const frame = useCurrentFrame();
@@ -423,18 +540,27 @@ export const FilmView: React.FC<FilmViewProps> = ({
   const fontFamily = resolveFont(film.theme?.fontFamily);
   const activeTransition = current.shot.transition || transitionType || "paper-rip";
 
+  // An imported video is the base plate: the canvas/shot panel composites on top of it with a
+  // transparent background instead of the usual opaque paper/dark fill, so the footage stays
+  // visible underneath whatever the film draws (or nothing, when there is nothing to draw). A
+  // film with no videoClips renders exactly as it always has.
+  const hasVideoBase = Boolean(film.videoClips && film.videoClips.length > 0);
+
   return (
     <ThemeContext.Provider value={bgTheme}>
       <AccentContext.Provider value={accent}>
+        <ImportedVideoLayer film={film} fps={fps} />
         <AbsoluteFill
           style={{
-            backgroundColor: bgTheme.canvas,
+            backgroundColor: hasVideoBase ? "transparent" : bgTheme.canvas,
             color: bgTheme.ink,
             fontFamily,
           }}
         >
-        {/* Paper & Texture Library Filter Shaders */}
-        {bgTheme.gridType === "paper-fibers" && (
+        {/* Paper & Texture Library Filter Shaders. Skipped over an imported video: a paper grain
+            or blueprint grid is a treatment for the generated canvas look, not something that
+            belongs printed over someone's real footage. */}
+        {!hasVideoBase && bgTheme.gridType === "paper-fibers" && (
           <AbsoluteFill style={{ opacity: 0.28, pointerEvents: "none" }}>
             <svg width="100%" height="100%">
               <filter id="paper-grain">
@@ -449,7 +575,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
           </AbsoluteFill>
         )}
 
-        {bgTheme.gridType === "blueprint-grid" && (
+        {!hasVideoBase && bgTheme.gridType === "blueprint-grid" && (
           <AbsoluteFill style={{ opacity: 0.45, pointerEvents: "none" }}>
             <svg width="100%" height="100%">
               <defs>
@@ -466,7 +592,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
           </AbsoluteFill>
         )}
 
-        {bgTheme.gridType === "subtle-dots" && (
+        {!hasVideoBase && bgTheme.gridType === "subtle-dots" && (
           <AbsoluteFill style={{ opacity: 0.35, pointerEvents: "none" }}>
             <svg width="100%" height="100%">
               <defs>
@@ -494,6 +620,9 @@ export const FilmView: React.FC<FilmViewProps> = ({
           {showGrid ? <Grid /> : null}
           <Stage film={film} timeline={timeline} />
         </AbsoluteFill>
+
+        {/* Standalone text/image/subtitle overlays an AI edit or a user placed directly on top. */}
+        <OverlayLayer film={film} fps={fps} />
 
         {/* Full-Screen Dynamic 3D Hero Spotlight Overlay */}
         <Dynamic3DHeroOverlay frame={frame} timeline={timeline} />
