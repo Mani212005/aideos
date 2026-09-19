@@ -45,6 +45,33 @@ File Description: This file defines the core guidelines, coding principles, and 
 - `backend/scriptIntake.ts` is the single source of truth for parsing/serializing Claude-style screenplays (`## timestamp - Title` headers, `[VISUAL]`/`[NARRATION]`/`[ON SCREEN]` tag blocks, plus legacy `VO:`/`Voiceover:`/`Narrator:` conventions), extracting zero-leakage spoken narration, and compiling sub-shots/on-screen `TextReveal` blocks for Remotion.
 - It has no Node-only imports, so `editor/src/components/ScriptEditor.tsx` (browser bundle), `editor/vite.config.ts` (dev server), and `backend/audio.ts` all import it directly instead of re-implementing screenplay parsing. Extend this module rather than adding another parser copy.
 
+## Transcription and edit context (Phase 1)
+
+- `backend/transcribe.ts`'s `transcribe(src, opts, deps)` transcribes a video/audio source into
+  word-level timings: Deepgram's prerecorded `listen` API (`smart_format`, `punctuate`,
+  `filler_words`, `utterances` all on) when a key is configured, else a local Whisper CLI
+  fallback. Both paths return the same `TranscribedWord[]` shape (the existing `WordInfo` plus a
+  per-word `confidence`), so downstream code never needs to know which backend ran. The network
+  fetch, the ffmpeg extraction and the Whisper subprocess are all injectable via `deps`, mirroring
+  the `llmCaller` injection convention elsewhere, so tests exercise real routing/parsing logic
+  without ever touching the network or a real ASR process. `writeImportWords` persists the result
+  to `videos/<slug>/import_words.json` (`{words: TranscribedWord[]}`, each carrying a `filler`
+  flag once a detection pass has run) plus `import_captions.vtt` via `audio.ts`'s `buildCaptionsVtt`.
+- `backend/editContext/` holds the pure signal-detection and context-assembly modules
+  `detectFillers`, `detectSilences` and `buildEditContext`, each taking plain data and a
+  `TranscribedWord[]`/`LayeredFilm` and returning a typed result with no I/O. `detectFillers`
+  always flags a fixed strong-filler lexicon ("um", "uh", ...) and only flags a context-dependent
+  word or phrase ("like", "you know") when the ASR backend's own confidence for every word in the
+  span falls below a threshold, so a clearly-spoken "I like this" is never touched.
+- `backend/audio.ts`'s `resolveAudioSourcePath` resolves candidates against both `process.cwd()`
+  and a `REPO_ROOT` computed from `__dirname`. The editor dev server is launched with
+  `cd editor && npm run dev`, so its `process.cwd()` is `editor/`, not the repo root every other
+  caller (the pipeline CLI, `npm test`) runs from; a cwd-only lookup silently failed to find any
+  asset resolved from inside the editor (media upload playback, footage audio peaks, and now
+  transcription) whenever the source was a relative path like `media/<file>`. Any new code that
+  resolves a repo-relative asset path from within `editor/vite.config.ts` should reuse this helper
+  rather than building its own `process.cwd()`-relative lookup.
+
 ## Per-Video Package Layout
 - Every video is a self-contained package under `videos/<slug>/`: `film.json` (authoritative manifest; see `src/dl/videoPackageLoader.ts`), `script.md`, `voiceover.wav` + `voiceover_words.json`, `footage/<shotId>.mp4` (GPU B-roll), and `visuals/`. `script.md`, `voiceover.wav`, and `footage/` are gitignored build artifacts (see `.gitignore`), like the media exclusions they replaced.
 - `src/dl/films/<slug>.ts` is a generated shadow of `videos/<slug>/film.json`, kept only because a handful of tests (`backend/timeline/layer_model.test.ts`, `backend/visual_pipeline/phase_c.test.ts`) import named film exports from it directly, and because Remotion's CLI render / `src/dl/activeFilm.ts` bundle reads it. Never hand-edit content into only one of the two; use `backend/pipeline/filmStore.ts`'s `readFilm`/`writeFilm`/`wireFootageIntoFilm` from any backend code, or `editor/vite.config.ts`'s same-named helpers from the dev server. The two emit an identical module format on purpose.

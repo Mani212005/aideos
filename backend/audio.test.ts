@@ -181,6 +181,29 @@ test("resolveAudioSourcePath resolves files across packages and public directori
   assert.throws(() => resolveAudioSourcePath("nonexistent/missing_file.wav"), /not found/);
 });
 
+test("resolveAudioSourcePath finds a public/ source even when process.cwd() is not the repo root", () => {
+  // The editor's dev server is launched with `cd editor && npm run dev`, so its cwd is editor/,
+  // not the repo root every other caller runs from. Before the fix, a lookup relative only to
+  // process.cwd() silently missed every asset the editor itself imported (media/upload, footage
+  // audio peaks, transcription) whenever it ran from inside the editor directory.
+  const publicMediaDir = path.resolve(process.cwd(), "public/media");
+  fsSync.mkdirSync(publicMediaDir, { recursive: true });
+  const fixtureName = "resolve_audio_source_cwd_regression.wav";
+  const fixturePath = path.join(publicMediaDir, fixtureName);
+  fsSync.writeFileSync(fixturePath, fsSync.readFileSync(testAudioPath));
+
+  const editorCwd = path.resolve(process.cwd(), "editor");
+  const originalCwd = process.cwd();
+  try {
+    process.chdir(editorCwd);
+    const resolved = resolveAudioSourcePath(`media/${fixtureName}`);
+    assert.equal(resolved, fixturePath, "must resolve against the repo root, not the editor's own cwd");
+  } finally {
+    process.chdir(originalCwd);
+    fsSync.rmSync(fixturePath, { force: true });
+  }
+});
+
 test("retimeAudio retimes audio across 0.8x, 1.2x, 1.5x, 2.0x speeds with WSOLA duration scaling", async () => {
   const sourcePath = testAudioPath;
   const orig = retimeAudioSync(sourcePath, 1.0);
