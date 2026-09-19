@@ -1,12 +1,13 @@
 /**
- * File Description: Lossless Bidirectional Converter between Film and LayeredFilm (Phase L-1).
+ * File Description: Lossless Bidirectional Converter between Film and LayeredFilm (Phase L-1 and Phase 0).
  * Forward conversion lays a Film out onto z-ordered layers; reverse conversion folds a LayeredFilm
  * back into the canonical Film manifest. The reverse direction accepts the originating Film as a
  * base so every field the layer model does not represent (captions, voiceover metadata, per-shot
  * transition and footage flags, schema version) survives a round trip untouched. Audio clips that
  * the legacy `voiceover`, `music` and `sfx` summary fields cannot fully describe (because they were
- * moved, trimmed, split or imported) are written out to `audioClips`, which forward conversion then
- * treats as the authority for those channels.
+ * moved, trimmed, split or imported) are written out to `audioClips`, and imported video clips or
+ * standalone overlays are written out to `videoClips` and `overlayClips`, which forward conversion
+ * then treats as the authority for those channels.
  */
 
 import type { Film, Shot, AudioClip, VideoClip, OverlayClip } from "./schema";
