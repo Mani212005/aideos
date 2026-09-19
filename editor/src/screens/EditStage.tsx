@@ -131,6 +131,8 @@ export function EditStage({
           src: asset.src,
           type: kind,
           duration: asset.duration && asset.duration > 0 ? asset.duration : 5,
+          width: asset.width,
+          height: asset.height,
         },
         currentFrame / (film.fps || 30),
       );

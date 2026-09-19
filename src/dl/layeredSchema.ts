@@ -16,7 +16,14 @@ import {
   lookSchema,
   moveSchema,
   cameraAngleSchema,
+  textPayloadSchema,
+  imagePayloadSchema,
+  subtitlePayloadSchema,
 } from "./schema";
+import type { TextPayload, ImagePayload, SubtitlePayload } from "./schema";
+
+export { textPayloadSchema, imagePayloadSchema, subtitlePayloadSchema };
+export type { TextPayload, ImagePayload, SubtitlePayload };
 
 /** A user-created track. Pure ordering and display state. */
 export const layerSchema = z.object({
@@ -74,30 +81,6 @@ export const audioPayloadSchema = z.object({
   duckUnderVoiceover: z.boolean().optional(),
   speed: z.number().min(0.25).max(4).default(1).optional(),
   retimedSrc: z.string().optional(),
-});
-
-/** Text / Typography Overlay Payload */
-export const textPayloadSchema = z.object({
-  text: z.string().min(1),
-  size: z.enum(["kicker", "headline", "body", "caption"]).default("headline"),
-  accentWord: z.string().optional(),
-  x: z.number().optional(),
-  y: z.number().optional(),
-});
-
-/** Subtitle Caption Cue Payload */
-export const subtitlePayloadSchema = z.object({
-  text: z.string().min(1),
-  startFrame: z.number().int().min(0).optional(),
-  endFrame: z.number().int().min(0).optional(),
-});
-
-/** Static Image Payload */
-export const imagePayloadSchema = z.object({
-  src: z.string().min(1),
-  x: z.number().optional(),
-  y: z.number().optional(),
-  scale: z.number().positive().default(1),
 });
 
 export const clipKindSchema = z.enum([
@@ -169,6 +152,3 @@ export type LayeredFilm = z.infer<typeof layeredFilmSchema>;
 export type AnimationPayload = z.infer<typeof animationPayloadSchema>;
 export type AudioPayload = z.infer<typeof audioPayloadSchema>;
 export type VideoPayload = z.infer<typeof videoPayloadSchema>;
-export type TextPayload = z.infer<typeof textPayloadSchema>;
-export type SubtitlePayload = z.infer<typeof subtitlePayloadSchema>;
-export type ImagePayload = z.infer<typeof imagePayloadSchema>;

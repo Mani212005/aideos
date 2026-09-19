@@ -908,6 +908,9 @@ function filmApiPlugin(): Plugin {
             fs.writeFileSync(filePath, buffer);
 
             let duration = 5.0;
+            let width: number | undefined;
+            let height: number | undefined;
+            let fps: number | undefined;
             const ext = path.extname(safeName).toLowerCase();
             const isVideo = ['.mp4', '.mov', '.webm'].includes(ext);
             const isAudio = ['.mp3', '.wav', '.aac'].includes(ext);
@@ -927,6 +930,29 @@ function filmApiPlugin(): Plugin {
               }
             }
 
+            if (isVideo) {
+              try {
+                const out = spawnSync('ffprobe', [
+                  '-v', 'error',
+                  '-select_streams', 'v:0',
+                  '-show_entries', 'stream=width,height,r_frame_rate',
+                  '-of', 'csv=s=x:p=0',
+                  filePath
+                ]).stdout.toString().trim();
+                const [wStr, hStr, rateStr] = out.split('x');
+                const w = parseInt(wStr, 10);
+                const h = parseInt(hStr, 10);
+                if (!isNaN(w) && w > 0) width = w;
+                if (!isNaN(h) && h > 0) height = h;
+                if (rateStr) {
+                  const [num, den] = rateStr.split('/').map(Number);
+                  if (num > 0 && den > 0) fps = num / den;
+                }
+              } catch {
+                // Ignore probe error
+              }
+            }
+
             sendJson(res, 200, {
               ok: true,
               asset: {
@@ -935,6 +961,9 @@ function filmApiPlugin(): Plugin {
                 src: `media/${safeName}`,
                 type: isVideo ? 'video' : isAudio ? 'audio' : 'image',
                 duration,
+                ...(width ? { width } : {}),
+                ...(height ? { height } : {}),
+                ...(fps ? { fps } : {}),
               },
             });
           }).catch((err) => sendJson(res, 500, { error: String(err) }));

@@ -9,8 +9,18 @@
  * treats as the authority for those channels.
  */
 
-import type { Film, Shot, AudioClip } from "./schema";
-import type { LayeredFilm, Layer, Clip, AnimationPayload, AudioPayload } from "./layeredSchema";
+import type { Film, Shot, AudioClip, VideoClip, OverlayClip } from "./schema";
+import type {
+  LayeredFilm,
+  Layer,
+  Clip,
+  AnimationPayload,
+  AudioPayload,
+  VideoPayload,
+  TextPayload,
+  ImagePayload,
+  SubtitlePayload,
+} from "./layeredSchema";
 import { computeShotStartTimes } from "../../backend/timeline/timeline";
 import { generateWordsFromFilm } from "./captionsParser";
 
@@ -29,7 +39,18 @@ export const CONVERTED_LAYER_IDS = {
   footage: "layer-audio-footage",
   animation: "layer-animation-main",
   subtitles: "layer-subtitles-main",
+  video: "layer-video",
+  text: "layer-text-overlay",
+  image: "layer-image-overlay",
 } as const;
+
+/** Lane ids that are only ever created on demand (never part of the always-present default set). */
+const ON_DEMAND_LAYER_IDS: readonly string[] = [
+  CONVERTED_LAYER_IDS.footage,
+  CONVERTED_LAYER_IDS.video,
+  CONVERTED_LAYER_IDS.text,
+  CONVERTED_LAYER_IDS.image,
+];
 
 /** Resolve which audio lane a channel belongs on. */
 function layerIdForChannel(channel: AudioClip["channel"] | undefined): string {
@@ -37,6 +58,18 @@ function layerIdForChannel(channel: AudioClip["channel"] | undefined): string {
   if (channel === "sfx") return CONVERTED_LAYER_IDS.sfx;
   if (channel === "external") return CONVERTED_LAYER_IDS.footage;
   return CONVERTED_LAYER_IDS.voiceover;
+}
+
+/** Resolve which lane an overlay clip belongs on by default. */
+function layerIdForOverlayKind(kind: OverlayClip["kind"]): string {
+  if (kind === "image") return CONVERTED_LAYER_IDS.image;
+  if (kind === "subtitle") return CONVERTED_LAYER_IDS.subtitles;
+  return CONVERTED_LAYER_IDS.text;
+}
+
+/** A subtitle clip whose id matches the pattern forward-conversion synthesizes from voiceover words. */
+function isDerivedSubtitleId(id: string): boolean {
+  return /^clip-sub-\d+-/.test(id);
 }
 
 /** The lane set a film starts with before the user adds, renames or reorders any lane. */
@@ -84,6 +117,42 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
       });
       return layerId;
     }
+    if (layerId === CONVERTED_LAYER_IDS.video) {
+      layers.push({
+        id: CONVERTED_LAYER_IDS.video,
+        number: 15,
+        label: "Video Footage",
+        locked: false,
+        hidden: false,
+        muted: false,
+        height: 72,
+      });
+      return layerId;
+    }
+    if (layerId === CONVERTED_LAYER_IDS.text) {
+      layers.push({
+        id: CONVERTED_LAYER_IDS.text,
+        number: 16,
+        label: "Text Overlays",
+        locked: false,
+        hidden: false,
+        muted: false,
+        height: 48,
+      });
+      return layerId;
+    }
+    if (layerId === CONVERTED_LAYER_IDS.image) {
+      layers.push({
+        id: CONVERTED_LAYER_IDS.image,
+        number: 17,
+        label: "Image Overlays",
+        locked: false,
+        hidden: false,
+        muted: false,
+        height: 56,
+      });
+      return layerId;
+    }
     // A lane referenced by a clip but missing from the manifest falls back to the scenes lane.
     return ensureLayer(CONVERTED_LAYER_IDS.animation);
   };
@@ -111,6 +180,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
           speed: ac.speed,
           retimedSrc: ac.retimedSrc,
         },
+        linkedClipId: ac.linkedClipId ?? null,
         volume: Math.min(1, ac.volume ?? 1),
         opacity: 1,
       });
@@ -169,6 +239,44 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
         opacity: 1,
       });
     });
+  }
+
+  // 1b. Video clips: imported footage pictures. Symmetric with the audioClips branch above.
+  if (film.videoClips && film.videoClips.length > 0) {
+    for (const vc of film.videoClips) {
+      const layerId = ensureLayer(vc.layerId ?? CONVERTED_LAYER_IDS.video);
+      clips.push({
+        id: vc.id,
+        layerId,
+        position: vc.position,
+        start: vc.start ?? 0,
+        end: vc.end,
+        sourceDuration: vc.sourceDuration,
+        kind: "video",
+        payload: { src: vc.src, width: vc.width, height: vc.height },
+        linkedClipId: vc.linkedClipId ?? null,
+        volume: vc.muted ? 0 : Math.min(1, vc.volume ?? 1),
+        opacity: vc.opacity ?? 1,
+      });
+    }
+  }
+
+  // 1c. Overlay clips: text / image / standalone-subtitle clips the shot list cannot represent.
+  if (film.overlayClips && film.overlayClips.length > 0) {
+    for (const oc of film.overlayClips) {
+      const layerId = ensureLayer(oc.layerId ?? layerIdForOverlayKind(oc.kind));
+      clips.push({
+        id: oc.id,
+        layerId,
+        position: oc.position,
+        start: oc.start ?? 0,
+        end: oc.end,
+        kind: oc.kind,
+        payload: oc.payload,
+        opacity: oc.opacity ?? 1,
+        volume: 1,
+      });
+    }
   }
 
   // 2. Animation clips, one per shot.
@@ -265,8 +373,9 @@ function isPlainSfx(clip: Clip): boolean {
 function isDefaultLayerSet(layers: Layer[]): boolean {
   const defaults = defaultTimelineLayers();
   const byId = new Map(defaults.map((l) => [l.id, l]));
-  // The footage audio lane is derived on demand, so it does not count as a user change.
-  const meaningful = layers.filter((l) => l.id !== CONVERTED_LAYER_IDS.footage);
+  // Lanes created on demand (footage audio, video, text/image overlays) do not count as a user
+  // change: their presence only reflects that an import or an AI edit used them.
+  const meaningful = layers.filter((l) => !ON_DEMAND_LAYER_IDS.includes(l.id));
   if (meaningful.length !== defaults.length) return false;
   return meaningful.every((l) => {
     const d = byId.get(l.id);
@@ -356,8 +465,52 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
             retimedSrc: p.retimedSrc,
             channel: channelOf(c),
             layerId: c.layerId === layerIdForChannel(channelOf(c)) ? undefined : c.layerId,
+            linkedClipId: c.linkedClipId ?? undefined,
           };
         })
+      : undefined;
+
+  const videoClipsList = layeredFilm.clips.filter((c) => c.kind === "video").sort((a, b) => a.position - b.position);
+  const videoClips: VideoClip[] | undefined =
+    videoClipsList.length > 0
+      ? videoClipsList.map((c) => {
+          const p = c.payload as VideoPayload;
+          return {
+            id: c.id,
+            src: p.src,
+            position: c.position,
+            start: c.start,
+            end: c.end,
+            sourceDuration: c.sourceDuration,
+            width: p.width,
+            height: p.height,
+            opacity: c.opacity ?? 1,
+            volume: c.volume ?? 1,
+            layerId: c.layerId === CONVERTED_LAYER_IDS.video ? undefined : c.layerId,
+            linkedClipId: c.linkedClipId ?? undefined,
+          };
+        })
+      : undefined;
+
+  // Only text/image clips and *non-derived* subtitle clips need an explicit overlayClips entry;
+  // a subtitle clip generated from the voiceover words stays derived and is never written out.
+  const overlaySourceClips = layeredFilm.clips.filter(
+    (c) => c.kind === "text" || c.kind === "image" || (c.kind === "subtitle" && !isDerivedSubtitleId(c.id)),
+  );
+  const overlayClips: OverlayClip[] | undefined =
+    overlaySourceClips.length > 0
+      ? overlaySourceClips
+          .sort((a, b) => a.position - b.position)
+          .map((c) => ({
+            id: c.id,
+            kind: c.kind as OverlayClip["kind"],
+            position: c.position,
+            start: c.start,
+            end: c.end,
+            opacity: c.opacity ?? 1,
+            layerId: c.layerId === layerIdForOverlayKind(c.kind as OverlayClip["kind"]) ? undefined : c.layerId,
+            payload: c.payload as TextPayload | ImagePayload | SubtitlePayload,
+          }))
       : undefined;
 
   const voiceover = voClips.length > 0
@@ -399,6 +552,8 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
     ...(isDefaultLayerSet(layeredFilm.layers) ? { layers: base?.layers } : { layers: layeredFilm.layers }),
     ...(voiceover ? { voiceover } : {}),
     ...(audioClips ? { audioClips } : { audioClips: undefined }),
+    ...(videoClips ? { videoClips } : { videoClips: undefined }),
+    ...(overlayClips ? { overlayClips } : { overlayClips: undefined }),
     ...(music ? { music } : {}),
     ...(sfx ? { sfx } : {}),
   };

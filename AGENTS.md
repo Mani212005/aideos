@@ -112,6 +112,29 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Screens live in `editor/src/screens/` (one per stage in the left rail) and compose the components
   in `editor/src/components/`. `editor/src/App.tsx` owns navigation, playback and selection only.
 
+## Imported video and standalone overlay clips
+
+- `Film` carries `videoClips`/`overlayClips` arrays (`src/dl/schema.ts`), mirroring the `audioClips`
+  pattern: they are the authority for `video`/`image`/`text`/non-derived-`subtitle` layer clips once
+  any exist, written out by `convertLayeredFilmToFilm` and read back by `convertFilmToLayeredFilm`
+  (`src/dl/convertFilm.ts`) with `linkedClipId` kept symmetric between a video clip and its footage
+  audio counterpart in `audioClips`. A derived subtitle clip (from the voiceover words) is recognized
+  by its synthesized id (`clip-sub-<n>-...`) and never written out; only a standalone caption cue is.
+- `src/dl/Film.tsx`'s `FilmView` renders `film.videoClips` as full-bleed `<Sequence>`/`<OffthreadVideo>`
+  layers *behind* everything else, making the enclosing canvas background transparent (and skipping
+  the paper-grain/blueprint-grid/dot textures) whenever any exist, so the existing canvas/shot content
+  composites on top of the user's own footage instead of hiding it. `film.overlayClips` render above
+  that as simple text/image cards. Both are no-ops on a film with neither array, so every pre-existing
+  film renders unchanged. This is the one render tree both the editor's `<Player>` preview and the
+  Remotion CLI export (`Video.tsx` wraps `FilmView`) share, so a compositor change here reaches both.
+- `backend/timeline/layer_engine.ts`'s `importMediaAssetToLayeredFilm` always creates/uses a dedicated
+  `layer-audio-footage` lane for imported footage audio; it must never fall back to matching
+  `layer-audio-spine`, or the collision resolver ripples the import behind an existing voiceover clip.
+- `/api/media/upload` (`editor/vite.config.ts`) probes width/height/fps for a video via a second
+  `ffprobe` call and returns them alongside `duration`; `AssetBin`'s `MediaAsset` and `EditStage`'s
+  `insertAsset` thread `width`/`height` through to `importMediaAssetToLayeredFilm` so an imported
+  video's dimensions are known without re-probing.
+
 ## Editor state and the timeline layer model
 
 - `editor/src/state/useFilmProject.ts` owns the open film, the single labelled undo history and
