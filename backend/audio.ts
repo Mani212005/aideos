@@ -576,16 +576,27 @@ export function buildAtempoFilter(speed: number): string {
   return filters.join(",");
 }
 
+/**
+ * Repo root, resolved from this module's own location rather than `process.cwd()`. The editor's
+ * dev server is launched with `cd editor && npm run dev`, so its cwd is `editor/`, not the repo
+ * root the pipeline CLI and tests run from; a cwd-only lookup silently failed to find any footage
+ * asset (audio peaks, transcription) whenever the source was resolved from inside the editor.
+ */
+const REPO_ROOT = path.resolve(__dirname, "..");
+
 /** Resolve an audio source URL or file reference to an absolute path on disk. */
 export function resolveAudioSourcePath(src: string): string {
   const cleanSrc = src.split("?")[0].split("#")[0];
-  const candidates = [
-    path.resolve(cleanSrc),
-    path.resolve(process.cwd(), cleanSrc.replace(/^\//, "")),
-    path.resolve(process.cwd(), "public", cleanSrc.replace(/^\//, "")),
-    path.resolve(process.cwd(), "videos", cleanSrc.replace(/^\/?videos\/?/, "")),
-    path.resolve(process.cwd(), ".tmp_audio", cleanSrc.replace(/^\/?(\.tmp_audio|api\/audio)\/?/, "")),
-  ];
+  const bases = [process.cwd(), REPO_ROOT];
+  const candidates = [path.resolve(cleanSrc)];
+  for (const base of bases) {
+    candidates.push(
+      path.resolve(base, cleanSrc.replace(/^\//, "")),
+      path.resolve(base, "public", cleanSrc.replace(/^\//, "")),
+      path.resolve(base, "videos", cleanSrc.replace(/^\/?videos\/?/, "")),
+      path.resolve(base, ".tmp_audio", cleanSrc.replace(/^\/?(\.tmp_audio|api\/audio)\/?/, "")),
+    );
+  }
   for (const candidate of candidates) {
     if (fsSync.existsSync(candidate) && fsSync.statSync(candidate).isFile()) {
       return candidate;

@@ -13,6 +13,9 @@ import { filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
 import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
+import { transcribe, writeImportWords } from '../backend/transcribe.ts'
+import { detectFillers } from '../backend/editContext/detectFillers.ts'
+import { detectSilences } from '../backend/editContext/detectSilences.ts'
 import { executeCritique } from '../backend/critique/engine.ts'
 import {
   extractSpokenBlocks as extractSpokenVoiceoverBlocks,
@@ -966,6 +969,42 @@ function filmApiPlugin(): Plugin {
                 ...(fps ? { fps } : {}),
               },
             });
+          }).catch((err) => sendJson(res, 500, { error: String(err) }));
+          return;
+        }
+
+        // Handle /api/transcribe (word-level transcription of an imported video/audio source,
+        // via Deepgram when configured or a local Whisper fallback otherwise)
+        if (url === '/api/transcribe' && req.method === 'POST') {
+          void readBody(req).then(async (body: any) => {
+            const { filmId, src } = body || {};
+            if (!filmId || !src) {
+              sendJson(res, 400, { error: 'filmId and src are required' });
+              return;
+            }
+            try {
+              const result = await transcribe(src);
+              const fillers = detectFillers(result.words);
+              const fillerIndices = new Set<number>();
+              for (const span of fillers) {
+                for (let i = span.startIndex; i <= span.endIndex; i++) fillerIndices.add(i);
+              }
+              const words = result.words.map((w, i) => ({ ...w, filler: fillerIndices.has(i) }));
+              const silences = detectSilences(result.words);
+              const { wordsPath, vttPath } = writeImportWords(filmId, words, videosDir);
+              sendJson(res, 200, {
+                ok: true,
+                backend: result.backend,
+                words,
+                fillers,
+                silences,
+                wordsPath: path.relative(path.resolve(__dirname, '..'), wordsPath),
+                vttPath: path.relative(path.resolve(__dirname, '..'), vttPath),
+              });
+            } catch (err: any) {
+              console.error('[transcribe] Error transcribing source:', err);
+              sendJson(res, 500, { error: err?.message || 'Failed to transcribe source' });
+            }
           }).catch((err) => sendJson(res, 500, { error: String(err) }));
           return;
         }
