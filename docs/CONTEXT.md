@@ -131,15 +131,18 @@ Interactive, complex visual containers that spend 1 accent token:
 * **`VectorSpace`**: 2D embedding space with vector points and arrows (`points`, `arrow`, `xLabel`, `yLabel`).
 * **`AnalogyInset`**: Full-bleed cinematic video b-roll overlay (`caption`, `framesDir`, `totalFrames`).
 
-### B. Text Beats (`TEXT_BEATS`)
-Typography and metric cards that spend 0 accent tokens:
+### B. Text Beats & Animated Primitives (`TEXT_BEATS`, `src/dl/primitives.tsx`)
+Typography, code, metrics, and cards that spend 0 accent tokens (including the 7 design system animated primitives: `TextReveal`, `StatCounter`, `CodeBlock`, `Card`, `Divider`, `IconLabel`, `ProgressBar`):
 * **`TextReveal`**: Staggered word-by-word kinetic headline typography (`text`, `size`, `accentWord`).
 * **`StatCounter`**: High-impact numeric stat with animated counter (`to`, `label`, `suffix`, `format`).
+* **`CodeBlock`**: Monospace animated code block for terminal commands and code snippets (`code`, `language`, `caption`).
+* **`Card`**: High-clarity glassmorphic card grouping metadata or concepts (`title`, `body`, `state`).
+* **`Divider`**: Hairline separation rule for section breaks and topic transitions.
+* **`IconLabel`**: Icon with text label or status tag (`text`).
+* **`ProgressBar`**: Chapter or multi-step progress indicator (`value`, `label`).
 * **`Body`**: Multi-line narrative description text (`text`).
 * **`Kicker`**: Small uppercase tracking eyebrow tag above headlines (`text`).
 * **`MathLine`**: Mathematical formula rendered in Source Serif italic (`text`).
-* **`ProgressBar`**: Chapter progress indicator (`value`, `label`).
-* **`IconLabel`**: Icon with text label (`text`).
 
 ---
 
@@ -285,12 +288,24 @@ An individual vector path inside a limb:
 * `buildDirectingPrompt(opts)`: Builds structured directing instruction prompts for AI coding agents from Studio events.
 * `dispatchPromptToAgent(prompt, opts)`: Dispatches prompts directly into active tmux agent panes or writes to `.aideos_task.md`.
 
+### `backend/jev.ts` (TypeSafe Jev Decision Model & Primitive Selection)
+* `selectPrimitive(state, options)`: Selects the most appropriate animated primitive from the 7 design system primitives (`TextReveal`, `StatCounter`, `CodeBlock`, `Card`, `Divider`, `IconLabel`, `ProgressBar`) using TypeSafe Jev decision model evaluation with confidence gating, safe-generic fallback (`TextReveal` or `Card`), and fast deterministic heuristic fallback.
+* `decidePrimitiveWithModel(state, options)`: Sends structured choice question to TypeSafe System One (`/v1/systemone`) or OpenRouter alpha decisions endpoint with timeout handling.
+* `applyConfidenceGating(answer, state, options)`: Evaluates model choice against confidence thresholds (default 0.65 for complex primitives, 0.40 overall minimum), falling back to safe generic primitives or heuristics.
+* `heuristicPrimitiveSelection(state)`: Fast deterministic offline rule-based primitive selector for code, statistics, progress, cards, dividers, and icon labels.
+* `buildDecisionRequest(state, model)`: Constructs payload for TypeSafe and OpenRouter decisions API.
+* `parseDecisionResponse(val)`: Validates and parses decision response from Jev endpoint into typed `JevChoiceAnswer`.
+* `setMockJevHandler(handler)`, `getMockJevHandler()`, `clearMockJevHandler()`: Test hooks for injecting mock Jev decisions without live network calls.
+
 ### `backend/scriptIntake.ts`
 * `parseClaudeScript(raw)`: Parses a raw Claude or legacy screenplay into structured `ScriptSegment` items containing ordered visual, narration, and on-screen beats.
 * `serializeSegmentsToScript(segments)`: Serializes structured segments back into canonical markdown with timestamp headers and bracket tags.
 * `hasScreenplayTags(raw)`: Returns true when raw script text contains at least one recognizable screenplay tag beat.
 * `extractSpokenBlocks(raw)`: Extracts strictly the spoken narration dialogue with zero visual or on-screen tag leakage.
-* `buildFilmPartsFromScript(raw)`: Compiles a Claude screenplay into Remotion-ready sub-shots, canvas nodes and edges, and on-screen `TextReveal` blocks.
+* `buildBlocksForPrimitive(primitive, group, fallbackTitle)`: Builds conforming `GeneratedBlock` structures for any of the 7 animated primitives.
+* `selectScenePrimitives(segments, options)`: Maps screenplay segments to animated primitives with active components history tracking via Jev.
+* `buildFilmPartsFromScript(raw, targetDurationSec, options)`: Compiles a Claude screenplay into Remotion-ready sub-shots, canvas nodes and edges, supporting optional heuristic primitive mapping (`usePrimitives`).
+* `buildFilmPartsFromScriptAsync(raw, targetDurationSec, options)`: Compiles a Claude screenplay into Remotion-ready parts asynchronously using Jev for intelligent primitive selection across the 7 animated primitives.
 
 ### `backend/sync.ts`
 * `runSemanticVisualSync(film, captions)`: Evaluates spoken words against visual device blocks.

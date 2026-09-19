@@ -344,7 +344,7 @@ test("parses bare timestamp headers without hashes and inline bracket tags on th
   assert.equal(parts.shots.length, 2);
   assert.equal(parts.shots[0].scriptText, spoken[0]);
   assert.ok(parts.shots[0].visualDirection?.startsWith("Cold open"));
-  assert.ok(parts.shots[0].blocks.some((b) => b.c === "TextReveal" && b.text.includes("ChatGPT IMAGES 2.5")));
+  assert.ok(parts.shots[0].blocks.some((b) => b.c === "TextReveal" && b.text?.includes("ChatGPT IMAGES 2.5")));
 });
 
 test("extractSpokenBlocks never speaks visual or onscreen text even if script has no narration tags", () => {
@@ -380,7 +380,7 @@ test("buildFilmPartsFromScript keeps visual directions off screen and on the sho
   for (const shot of parts.shots) {
     for (const block of shot.blocks) {
       assert.ok(
-        !block.text.includes("Wide establishing shot"),
+        !block.text?.includes("Wide establishing shot"),
         `stage direction "${block.text}" was compiled into an on-screen block`,
       );
     }

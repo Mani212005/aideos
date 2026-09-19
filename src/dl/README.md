@@ -61,8 +61,6 @@ to the canvas every 90s, and at most three accents in a frame.
 
 ## Deliberately not implemented
 
-- **No code primitive.** The spec is explicit: ideas are carried by graphs,
-  vectors and distributions, never by a syntax-highlighted editor.
 - **No captions in Long format.** Burned-in subtitles fight the 16:9 panel for
   the same space, and long-form platforms draw their own from the sidecar track
   (`captions.vtt`). In vertical Reel format, kinetic captions are enabled at the

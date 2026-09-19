@@ -7,6 +7,7 @@ import type { Block } from "./schema";
 import {
   Body,
   Card,
+  CodeBlock,
   Divider,
   IconLabel,
   Kicker,
@@ -136,6 +137,8 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
       return <Divider {...timing} />;
     case "IconLabel":
       return <IconLabel {...timing} text={block.text} />;
+    case "CodeBlock":
+      return <CodeBlock {...timing} code={block.code} language={block.language} caption={block.caption} />;
     case "MetaphorViewer": {
       const metaphorType = block.content?.kind ?? block.metaphorType ?? "balance-scale";
       return (
