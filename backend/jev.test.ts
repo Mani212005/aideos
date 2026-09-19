@@ -8,12 +8,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ANIMATED_PRIMITIVES,
-  COMPLEX_PRIMITIVES,
-  DEFAULT_COMPLEX_CONFIDENCE_THRESHOLD,
-  DEFAULT_MIN_CONFIDENCE_THRESHOLD,
   DEFAULT_JEV_MODEL,
-  DEFAULT_JEV_TIMEOUT_MS,
-  SAFE_GENERIC_PRIMITIVES,
   applyConfidenceGating,
   buildDecisionRequest,
   clearMockJevHandler,
@@ -254,7 +249,7 @@ test("Jev: confidence gating falls back to heuristic when confidence is below mi
 });
 
 test("Jev: selectPrimitive uses mock handler cleanly without live network requests", async () => {
-  setMockJevHandler(async (state) => {
+  setMockJevHandler(async (state): Promise<JevChoiceAnswer> => {
     if (state.visual?.includes("code")) {
       return {
         choice: "CodeBlock",
@@ -363,7 +358,7 @@ Simply run the training script via python train.py.
 
   // Use mocked Jev to verify activeComponents tracking and selection
   const capturedStates: JevDecisionState[] = [];
-  setMockJevHandler(async (state) => {
+  setMockJevHandler(async (state): Promise<JevChoiceAnswer> => {
     capturedStates.push(state);
     if (state.onscreen?.some((t) => t.includes("12x"))) {
       return { choice: "StatCounter", confidence: 0.92, probabilities: { StatCounter: 0.92 } };

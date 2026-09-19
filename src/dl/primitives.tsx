@@ -393,6 +393,7 @@ export const CodeBlock: React.FC<
 > = ({ code, language, caption, start, index }) => {
   const layout = useLayout();
   const tokens = useTokens();
+  const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
 
   return (
@@ -416,7 +417,7 @@ export const CodeBlock: React.FC<
             </span>
           )}
           {language && (
-            <span style={{ fontFamily: MONO, fontSize: 10, color: tokens.accent, textTransform: "uppercase" }}>
+            <span style={{ fontFamily: MONO, fontSize: 10, color: accent, textTransform: "uppercase" }}>
               {language}
             </span>
           )}
@@ -425,8 +426,8 @@ export const CodeBlock: React.FC<
       <pre
         style={{
           fontFamily: MONO,
-          fontSize: layout.type("mono").fontSize,
-          color: tokens.text,
+          fontSize: layout.type("caption").fontSize,
+          color: tokens.ink,
           margin: 0,
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
