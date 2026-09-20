@@ -278,6 +278,8 @@ An individual vector path inside a limb:
 * `runProduction(request, onProgress)` (`backend/pipeline/run.ts`): Single typed programmatic entry point driving `intake`, `narrate`, `design`, `broll`, `assemble`, `render`, `verify`.
 * `runDirector(request, onProgress)` (`backend/pipeline/director.ts`): Auto-prompt entry point above `runProduction` that drafts a Claude screenplay from a raw prompt with an LLM and produces it end to end.
 * `draftScreenplay(prompt, options)` (`backend/pipeline/director.ts`): Drafts and validates a Claude screenplay from a natural language prompt, retrying rejected drafts with feedback.
+* `transformProseToScreenplay(prose, options)` (`backend/pipeline/director.ts`): Automatically transforms raw untagged prose into a structured Claude screenplay with visual and narration beats via LLM with validation retries and code fence stripping.
+* `buildProseTransformSystemInstruction()` (`backend/pipeline/director.ts`): Assembles the system instruction for transforming raw prose into structured scenes, visual directions, on-screen text, and narration beats.
 * `compileScreenplayToFilm(screenplay, spine, options)` (`backend/pipeline/design.ts`): Compiles screenplay and narration spine into validated `Film`.
 * `renderFormat(slug, format, options)` (`backend/pipeline/render.ts`): Drives Remotion render with headless verification and contact sheet generation.
 * `startMcpServer()` (`backend/mcp/server.ts`): Exposes the production pipeline as an MCP stdio server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`.
@@ -301,11 +303,12 @@ An individual vector path inside a limb:
 * `parseClaudeScript(raw)`: Parses a raw Claude or legacy screenplay into structured `ScriptSegment` items containing ordered visual, narration, and on-screen beats.
 * `serializeSegmentsToScript(segments)`: Serializes structured segments back into canonical markdown with timestamp headers and bracket tags.
 * `hasScreenplayTags(raw)`: Returns true when raw script text contains at least one recognizable screenplay tag beat.
+* `structureUntaggedProseToScript(raw)`: Deterministically structures untagged prose paragraphs into Claude screenplay segments with slug IDs, headlines, visual descriptions, and narration beats.
 * `extractSpokenBlocks(raw)`: Extracts strictly the spoken narration dialogue with zero visual or on-screen tag leakage.
 * `buildBlocksForPrimitive(primitive, group, fallbackTitle)`: Builds conforming `GeneratedBlock` structures for any of the 7 animated primitives.
 * `selectScenePrimitives(segments, options)`: Maps screenplay segments to animated primitives with active components history tracking via Jev.
-* `buildFilmPartsFromScript(raw, targetDurationSec, options)`: Compiles a Claude screenplay into Remotion-ready sub-shots, canvas nodes and edges, supporting optional heuristic primitive mapping (`usePrimitives`).
-* `buildFilmPartsFromScriptAsync(raw, targetDurationSec, options)`: Compiles a Claude screenplay into Remotion-ready parts asynchronously using Jev for intelligent primitive selection across the 7 animated primitives.
+* `buildFilmPartsFromScript(raw, targetDurationSec, options)`: Compiles a Claude screenplay (falling back to `structureUntaggedProseToScript` for untagged prose) into Remotion-ready sub-shots, canvas nodes and edges, supporting optional heuristic primitive mapping (`usePrimitives`).
+* `buildFilmPartsFromScriptAsync(raw, targetDurationSec, options)`: Compiles a Claude screenplay (falling back to `structureUntaggedProseToScript` for untagged prose) into Remotion-ready parts asynchronously using Jev for intelligent primitive selection across the 7 animated primitives.
 
 ### `backend/sync.ts`
 * `runSemanticVisualSync(film, captions)`: Evaluates spoken words against visual device blocks.
