@@ -31,6 +31,7 @@ import {
 import type { Film } from "../../../src/dl/schema";
 import {
   parseClaudeScript,
+  structureUntaggedProseToScript,
   serializeSegmentsToScript,
   extractSpokenBlocks as extractSpokenBlocksShared,
   hasScreenplayTags,
@@ -336,7 +337,11 @@ export function ScriptEditor({
    * Re-parses the raw screenplay markdown into segment cards and switches to Visual Studio view.
    */
   const switchToStudio = () => {
-    setSegments(parseClaudeScript(script));
+    let segs = parseClaudeScript(script);
+    if (segs.length === 0 && script.trim()) {
+      segs = structureUntaggedProseToScript(script);
+    }
+    setSegments(segs);
     setViewMode("studio");
   };
 
@@ -441,10 +446,30 @@ export function ScriptEditor({
           script,
           filmTitle: film.title,
           targetDurationSec: film.voiceover?.durationSec,
+          projectId: film.id,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to parse scenes");
+      if (!res.ok || !data.ok) throw new Error(data.error || "Failed to parse scenes");
+
+      if (!data.shots || data.shots.length === 0) {
+        setStatusMsg({
+          type: "error",
+          text: "No video scenes were generated from the script. Please check your script content.",
+        });
+        return;
+      }
+
+      if (data.script && data.transformed) {
+        setScript(data.script);
+        setSegments(parseClaudeScript(data.script));
+      } else {
+        let segs = parseClaudeScript(script);
+        if (segs.length === 0 && script.trim()) {
+          segs = structureUntaggedProseToScript(script);
+        }
+        setSegments(segs);
+      }
 
       const updatedFilm: Film = {
         ...film,
@@ -452,11 +477,10 @@ export function ScriptEditor({
           nodes: data.nodes.length > 0 ? data.nodes : film.canvas.nodes,
           edges: data.edges.length > 0 ? data.edges : film.canvas.edges,
         },
-        shots: data.shots.length > 0 ? data.shots : film.shots,
+        shots: data.shots,
       };
 
       onUpdateFilm(updatedFilm);
-      setSegments(parseClaudeScript(script));
 
       await fetch(`/api/films/${film.id}`, {
         method: "POST",
@@ -467,14 +491,14 @@ export function ScriptEditor({
       const prompt = data.agentPrompt || generateAgentPrompt({
         projectId: film.id,
         filmTitle: film.title,
-        shotCount: data.shots?.length || film.shots.length,
+        shotCount: data.shots.length,
         durationSec: data.durationSec || film.voiceover?.durationSec,
       });
 
       setAgentDirective({
         prompt,
         taskFile: data.taskFile || `videos/${film.id}/director_task.md`,
-        shotCount: data.shots?.length || film.shots.length,
+        shotCount: data.shots.length,
         durationSec: data.durationSec || film.voiceover?.durationSec,
       });
 
@@ -484,7 +508,9 @@ export function ScriptEditor({
 
       setStatusMsg({
         type: "success",
-        text: data.dispatch?.ok
+        text: data.transformed
+          ? `⚡ Auto-structured ${data.shots.length} scenes from prose with visual directions!`
+          : data.dispatch?.ok
           ? `⚡ Built ${data.shots.length} scenes & ${data.dispatch.message}`
           : `Successfully built ${data.shots.length} video scenes and graph nodes from screenplay!`,
       });

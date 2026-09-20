@@ -327,7 +327,7 @@ export function parseClaudeScript(raw: string): ScriptSegment[] {
       continue;
     }
 
-    if (line === "---" || line === "***") {
+    if (line === "---" || line === "***" || line.startsWith("```")) {
       flushBeat();
       continue;
     }
@@ -416,6 +416,64 @@ function legacyExtractSpokenBlocks(raw: string): string[] {
     .trim();
 
   return cleaned.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+}
+
+/** Extracts a short, punchy summary headline for a paragraph (2-8 words). */
+function deriveHeadlineFromText(text: string, maxLength = 40): string {
+  const clean = text
+    .replace(/^#+\s*/, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/["“”`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const firstSentence = clean.split(/[.?!]\s+/)[0] || clean;
+  if (firstSentence.length <= maxLength) return firstSentence;
+
+  const words = firstSentence.split(/\s+/);
+  let result = "";
+  for (const w of words) {
+    if ((result + " " + w).trim().length > maxLength) break;
+    result = (result + " " + w).trim();
+  }
+  return result || words.slice(0, 5).join(" ");
+}
+
+/** Deterministically structures untagged prose paragraphs into Claude screenplay segments. */
+export function structureUntaggedProseToScript(raw: string): ScriptSegment[] {
+  const paragraphs = legacyExtractSpokenBlocks(raw);
+  if (paragraphs.length === 0) return [];
+
+  const segments: ScriptSegment[] = [];
+  const usedIds = new Set<string>();
+
+  paragraphs.forEach((para, idx) => {
+    const headline = deriveHeadlineFromText(para, 36) || `Scene ${idx + 1}`;
+    let base = slugify(headline) || `scene-${idx + 1}`;
+    let id = base;
+    let n = 2;
+    while (usedIds.has(id)) {
+      id = `${base}-${n}`;
+      n++;
+    }
+    usedIds.add(id);
+
+    const onScreen = deriveHeadlineFromText(para, 44) || headline;
+    const visual = `Conceptual diagram and typographic presentation for ${headline.toLowerCase()}.`;
+
+    segments.push({
+      id,
+      title: `Scene ${idx + 1}: ${headline}`,
+      beats: [
+        { type: "visual", text: visual },
+        { type: "onscreen", text: onScreen },
+        { type: "narration", text: para },
+      ],
+    });
+  });
+
+  return segments;
 }
 
 /** True when the raw text contains at least one recognizable VISUAL/NARRATION/ON SCREEN beat. */
@@ -633,7 +691,10 @@ export function buildFilmPartsFromScript(
   wordCount: number;
   durationSec: number;
 } {
-  const segments = parseClaudeScript(raw);
+  let segments = parseClaudeScript(raw);
+  if (segments.length === 0 && raw && raw.trim()) {
+    segments = structureUntaggedProseToScript(raw);
+  }
   const shots: GeneratedShot[] = [];
   const nodes: GeneratedNode[] = [];
 
@@ -736,7 +797,10 @@ export async function buildFilmPartsFromScriptAsync(
   durationSec: number;
   decisions: Map<string, PrimitiveSelectionResult>;
 }> {
-  const segments = parseClaudeScript(raw);
+  let segments = parseClaudeScript(raw);
+  if (segments.length === 0 && raw && raw.trim()) {
+    segments = structureUntaggedProseToScript(raw);
+  }
   const decisions = await selectScenePrimitives(segments, options);
   const shots: GeneratedShot[] = [];
   const nodes: GeneratedNode[] = [];
