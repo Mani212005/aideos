@@ -21,7 +21,7 @@ import { detectFillers } from "../editContext/detectFillers";
 import { detectSilences } from "../editContext/detectSilences";
 import { planEdits, applyEditProgram } from "../editPlanner";
 import type { TranscribedWord } from "../transcribe";
-import { taskQueue } from "../agentBridge";
+import { taskQueue, traceBus } from "../agentBridge";
 
 /** Everything known about one background production run. */
 interface RunRecord {
@@ -449,6 +449,66 @@ export function createMcpServer(): McpServer {
       } catch (err: any) {
         return jsonResult({ ok: false, error: err?.message || String(err) });
       }
+    },
+  );
+
+  server.registerTool(
+    "aideos_report_step",
+    {
+      title: "Report execution step to live Agent Trace",
+      description:
+        "Report an autonomous tool call, reasoning step, research discovery, or invariant verification " +
+        "to the Aideos Studio live Agent Trace timeline streamed to the user via SSE.",
+      inputSchema: {
+        title: z.string().min(1).describe("Short title of the step or action taken."),
+        description: z.string().optional().describe("Detailed explanation of what was done or discovered."),
+        phase: z
+          .enum([
+            "grounding",
+            "synthesis",
+            "authoring",
+            "validation",
+            "ai_edit",
+            "broll",
+            "dispatch",
+            "complete",
+          ])
+          .optional()
+          .describe("Phase category for this step. Defaults to 'authoring'."),
+        status: z
+          .enum(["pending", "running", "done", "corrected", "failed"])
+          .optional()
+          .describe("Current execution status. Defaults to 'done'."),
+        details: z
+          .array(z.string())
+          .optional()
+          .describe("Optional list of technical sub-steps, code snippets, or rule verification checks."),
+        source: z
+          .string()
+          .optional()
+          .describe("Originating entity, defaults to 'agent'."),
+        filmId: z
+          .string()
+          .optional()
+          .describe("Optional film slug this step relates to."),
+        durationMs: z
+          .number()
+          .optional()
+          .describe("Optional execution duration in milliseconds."),
+      },
+    },
+    async (input) => {
+      const step = traceBus.recordStep({
+        title: input.title,
+        description: input.description || "",
+        phase: input.phase || "authoring",
+        status: input.status || "done",
+        details: input.details,
+        source: input.source || "agent",
+        filmId: input.filmId,
+        durationMs: input.durationMs,
+      });
+      return jsonResult({ ok: true, stepId: step.id, step });
     },
   );
 

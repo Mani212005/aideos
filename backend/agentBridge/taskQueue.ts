@@ -3,6 +3,7 @@
  */
 
 import type { AgentEventType, AgentTask, AgentTaskContext, DispatchChannel } from "./types";
+import { traceBus } from "./traceBus";
 
 /** Generates a unique, sortable task identifier. */
 function generateTaskId(): string {
@@ -165,3 +166,69 @@ export class TaskQueue {
 
 /** Global singleton task queue instance shared across the Aideos backend process. */
 export const taskQueue = new TaskQueue();
+
+// Automatically report task queue lifecycle transitions into the unified trace bus
+taskQueue.addListener((event, task) => {
+  if (event === "created") {
+    traceBus.recordStep({
+      id: `task-create-${task.id}`,
+      phase: "dispatch",
+      source: "bridge",
+      filmId: task.filmId,
+      title: `Task Dispatched: ${task.eventType}`,
+      description: `Dispatched task [${task.id}] for film "${task.filmTitle}" across channels: ${task.dispatchedChannels.join(", ")}`,
+      status: "pending",
+      details: [
+        `Prompt: ${task.prompt.slice(0, 100)}...`,
+        `Channels: ${task.dispatchedChannels.join(", ")}`,
+        `Timeout: ${(task.timeoutMs / 1000).toFixed(0)}s`,
+      ],
+    });
+  } else if (event === "claimed") {
+    traceBus.recordStep({
+      id: `task-claim-${task.id}`,
+      phase: "dispatch",
+      source: "agent",
+      filmId: task.filmId,
+      title: `Task Claimed by ${task.claimedBy || "Agent"}`,
+      description: `Active coding agent claimed task [${task.id}] (hybrid fallback timer defused)`,
+      status: "running",
+      details: [
+        `Agent: ${task.claimedBy || "agent"}`,
+        `Claimed at: ${task.claimedAt || new Date().toISOString()}`,
+      ],
+    });
+  } else if (event === "completed") {
+    traceBus.recordStep({
+      id: `task-complete-${task.id}`,
+      phase: "complete",
+      source: "agent",
+      filmId: task.filmId,
+      title: `Task Completed: ${task.eventType}`,
+      description: `Task [${task.id}] completed successfully by coding agent`,
+      status: "done",
+      details: task.result ? [`Result: ${typeof task.result === "object" ? JSON.stringify(task.result).slice(0, 120) : String(task.result)}`] : [],
+    });
+  } else if (event === "timed_out") {
+    traceBus.recordStep({
+      id: `task-timeout-${task.id}`,
+      phase: "dispatch",
+      source: "bridge",
+      filmId: task.filmId,
+      title: "Task Timed Out (Fallback Triggered)",
+      description: `No external coding agent claimed task [${task.id}] within ${(task.timeoutMs / 1000).toFixed(0)}s; falling back to in-process execution`,
+      status: "corrected",
+    });
+  } else if (event === "failed") {
+    traceBus.recordStep({
+      id: `task-fail-${task.id}`,
+      phase: "dispatch",
+      source: "bridge",
+      filmId: task.filmId,
+      title: `Task Failed: ${task.eventType}`,
+      description: `Task [${task.id}] failed: ${task.error || "Unknown error"}`,
+      status: "failed",
+      error: task.error,
+    });
+  }
+});

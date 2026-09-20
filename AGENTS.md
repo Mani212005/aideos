@@ -215,7 +215,11 @@ File Description: This file defines the core guidelines, coding principles, and 
 - `backend/agentBridge/` is the single authoritative hub for multi-channel outbound dispatch to connected AI coding agents.
 - `backend/agentBridge/dispatcher.ts`'s `dispatchTask` sends rich context payloads (script, audio timings, film manifest, director invariants) across Channel A (Firstmate steering inbox `FIRSTMATE_STEERING_INBOX` / `AIDEOS_AGENT_INBOX`), Channel B (MCP pull queue `aideos_get_pending_tasks`), and Channel C (tmux / local task file `.aideos_task.md`).
 - Hybrid Fallback (Decision 1): Unclaimed pending tasks trigger in-process fallback execution after `DEFAULT_AGENT_TIMEOUT_MS` (15s) timeout, defused when an agent claims the task via `aideos_claim_task` or `taskQueue.claimTask`.
-- MCP tools: `aideos_get_pending_tasks`, `aideos_claim_task`, and `aideos_complete_task` in `backend/mcp/server.ts` let external agents pull, claim, and complete studio tasks over stdio.
+## Live Real-Time Agent Trace Telemetry (Phase 3)
+- `backend/agentBridge/traceBus.ts` is the in-process event bus collecting trace steps from external coding agents, the bridge dispatcher, and in-process pipeline stages (AI-edit planner, neural TTS, GPU B-roll, invariant validation).
+- Server endpoints in `editor/vite.config.ts`: `GET /api/agent/trace` streams live trace steps to the studio via Server-Sent Events (SSE), and `POST /api/agent/trace/step` records server-side pipeline steps.
+- MCP tool `aideos_report_step` in `backend/mcp/server.ts` enables connected coding agents to report reasoning, tool calls, and invariant checks into the unified trace timeline.
+- `editor/src/components/AgentActivityInspector.tsx` renders live SSE telemetry with real-time status indicators (LIVE/CONNECTING/OFFLINE), phase filtering, and an honest empty state when idle.
 
 ## Maintaining this file
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.

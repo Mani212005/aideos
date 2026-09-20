@@ -20,6 +20,7 @@ import {
 } from "../timeline/layer_manager";
 import { closeAudioGapWithDependencies } from "../timeline/voiceover_engine";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
+import { traceBus } from "../agentBridge";
 
 export interface EditProgramResult {
   film: LayeredFilm;
@@ -555,6 +556,17 @@ export function applyEditProgram(
       const errorMsg = err instanceof Error ? err.message : String(err);
       rejected.push({ op, reason: errorMsg });
 
+      try {
+        traceBus.recordStep({
+          phase: "ai_edit",
+          source: "ai_edit",
+          title: "AI Edit: Transaction Rolled Back",
+          description: `Transaction rolled back due to error in "${op.op}": ${errorMsg}`,
+          status: "failed",
+          error: errorMsg,
+        });
+      } catch (_) {}
+
       // Rollback transaction immediately on single op failure
       return {
         film: originalFilm,
@@ -576,6 +588,17 @@ export function applyEditProgram(
     validateLayeredFilm(workingFilm);
   } catch (err: unknown) {
     const valErrorMsg = err instanceof Error ? err.message : String(err);
+    try {
+      traceBus.recordStep({
+        phase: "ai_edit",
+        source: "ai_edit",
+        title: "AI Edit: Post-Apply Validation Failed",
+        description: `Transaction rolled back due to post-apply validation failure: ${valErrorMsg}`,
+        status: "failed",
+        error: valErrorMsg,
+      });
+    } catch (_) {}
+
     return {
       film: originalFilm,
       applied: [],
@@ -589,6 +612,17 @@ export function applyEditProgram(
       warnings,
     };
   }
+
+  try {
+    traceBus.recordStep({
+      phase: "ai_edit",
+      source: "ai_edit",
+      title: "AI Edit: Program Applied",
+      description: `Successfully applied ${applied.length} edit operations`,
+      status: "done",
+      details: applied.map((a) => `${a.op}`),
+    });
+  } catch (_) {}
 
   return {
     film: workingFilm,

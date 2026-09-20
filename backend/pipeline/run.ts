@@ -14,6 +14,7 @@ import type { Film } from "../../src/dl/schema";
 import { ensureRetimedAudio, produceAudioPipeline, type ProduceAudioResult } from "../audio";
 import { hasScreenplayTags, parseClaudeScript } from "../scriptIntake";
 import { createEngine } from "../engine";
+import { traceBus } from "../agentBridge";
 import { compileFilmFromScreenplay, FOOTAGE_HEADROOM_SEC, type FootageRequest } from "./design";
 import {
   PUBLIC_DIR,
@@ -210,9 +211,43 @@ export async function runProduction(
   /** True when the caller asked the run to end after this stage. */
   const shouldStop = (stage: ProductionStage) => request.stopAfter === stage;
 
+  /** Maps production pipeline stages to unified trace phase categories. */
+  const stageToPhase = (s: ProductionStage): string => {
+    switch (s) {
+      case "intake":
+      case "design":
+      case "assemble":
+        return "authoring";
+      case "narrate":
+      case "render":
+        return "synthesis";
+      case "broll":
+        return "broll";
+      case "verify":
+        return "validation";
+      default:
+        return "authoring";
+    }
+  };
+
   /** Emits one progress event, tagged with the stage that is speaking. */
   const emit = (stage: ProductionStage, status: ProductionProgress["status"], message: string, progress?: number) => {
     onProgress?.({ stage, status, message, progress, elapsedMs: Date.now() - startedAt });
+    try {
+      traceBus.recordStep({
+        id: `prod-${slug}-${stage}`,
+        phase: stageToPhase(stage),
+        source: "pipeline",
+        filmId: slug,
+        title: `Pipeline: ${stage.toUpperCase()}`,
+        description: message,
+        status: status === "skipped" || status === "done" ? "done" : status === "failed" ? "failed" : "running",
+        details: [
+          `Elapsed: ${((Date.now() - startedAt) / 1000).toFixed(1)}s`,
+          `Progress: ${progress !== undefined ? `${(progress * 100).toFixed(0)}%` : status}`,
+        ],
+      });
+    } catch (_) {}
   };
 
   /**

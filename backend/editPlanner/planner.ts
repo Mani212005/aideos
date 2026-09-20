@@ -9,6 +9,7 @@ import type { EditContext } from "../editContext/buildEditContext";
 import { plannerOutputSchema, type EditOp } from "./schema";
 import { validateEditProgram } from "./validator";
 import { generateText } from "../modelClient";
+import { traceBus } from "../agentBridge";
 
 export interface PlanEditsOptions {
   maxAttempts?: number;
@@ -181,12 +182,29 @@ export async function planEdits(
   let prompt = basePrompt;
   const allWarnings: string[] = [];
 
+  traceBus.recordStep({
+    phase: "ai_edit",
+    source: "ai_edit",
+    title: "AI Edit: Planning Operations",
+    description: `Planning edit operations for request: "${request}"`,
+    status: "running",
+    details: [`Request: ${request}`, `Max Attempts: ${maxAttempts}`],
+  });
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let rawOutput: string;
     try {
       rawOutput = await caller(prompt);
     } catch (err: unknown) {
       if (attempt === maxAttempts) {
+        traceBus.recordStep({
+          phase: "ai_edit",
+          source: "ai_edit",
+          title: "AI Edit: Model Call Failed",
+          description: `Model call failed after ${maxAttempts} attempts`,
+          status: "failed",
+          error: err instanceof Error ? err.message : String(err),
+        });
         throw new Error(`Model call failed after ${maxAttempts} attempts: ${err instanceof Error ? err.message : String(err)}`);
       }
       continue;
@@ -200,6 +218,14 @@ export async function planEdits(
       parsed = JSON.parse(cleaned);
     } catch (parseErr) {
       if (attempt === maxAttempts) {
+        traceBus.recordStep({
+          phase: "ai_edit",
+          source: "ai_edit",
+          title: "AI Edit: JSON Parse Failed",
+          description: `Failed to parse model response as JSON`,
+          status: "failed",
+          error: String(parseErr),
+        });
         throw new Error(`Failed to parse model response as JSON: ${cleaned.slice(0, 200)}`);
       }
       prompt = buildRepairPrompt(basePrompt, cleaned, [`JSON syntax error: ${String(parseErr)}`]);
@@ -211,8 +237,24 @@ export async function planEdits(
     if (!outputParse.success) {
       const errors = outputParse.error.issues.map((i) => `Schema violation at ${i.path.join(".")}: ${i.message}`);
       if (attempt === maxAttempts) {
+        traceBus.recordStep({
+          phase: "ai_edit",
+          source: "ai_edit",
+          title: "AI Edit: Schema Validation Failed",
+          description: `Model output does not match PlannerOutput schema`,
+          status: "failed",
+          details: errors,
+        });
         throw new Error(`planEdits failed after ${maxAttempts} attempts: Model output does not match PlannerOutput schema: ${errors.join("; ")}`);
       }
+      traceBus.recordStep({
+        phase: "ai_edit",
+        source: "ai_edit",
+        title: `AI Edit: Attempt ${attempt} Schema Rejected (Self-Correcting)`,
+        description: `Model output had schema violations; sending repair feedback`,
+        status: "corrected",
+        details: errors,
+      });
       prompt = buildRepairPrompt(basePrompt, cleaned, errors);
       continue;
     }
@@ -224,6 +266,18 @@ export async function planEdits(
     allWarnings.push(...validation.warnings);
 
     if (validation.valid && validation.program) {
+      traceBus.recordStep({
+        phase: "ai_edit",
+        source: "ai_edit",
+        title: "AI Edit: Plan Validated",
+        description: plan,
+        status: "done",
+        details: [
+          `Operations: ${validation.program.length}`,
+          `Attempts: ${attempt}`,
+          ...validation.warnings,
+        ],
+      });
       return {
         plan,
         ops: validation.program,
@@ -233,9 +287,25 @@ export async function planEdits(
     }
 
     if (attempt === maxAttempts) {
+      traceBus.recordStep({
+        phase: "ai_edit",
+        source: "ai_edit",
+        title: "AI Edit: Validation Failed",
+        description: `Edit program validation failed after ${maxAttempts} attempts`,
+        status: "failed",
+        details: validation.errors,
+      });
       throw new Error(`Edit program validation failed after ${maxAttempts} attempts:\n${validation.errors.join("\n")}`);
     }
 
+    traceBus.recordStep({
+      phase: "ai_edit",
+      source: "ai_edit",
+      title: `AI Edit: Attempt ${attempt} Validation Rejected (Self-Correcting)`,
+      description: `Edit program failed simulation check; retrying with diagnostic feedback`,
+      status: "corrected",
+      details: validation.errors,
+    });
     prompt = buildRepairPrompt(basePrompt, cleaned, validation.errors);
   }
 
