@@ -12,6 +12,7 @@ import type { TimedShot } from "../../../src/dl/camera";
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../../src/dl/convertFilm";
 import { applyEditProgram } from "../../../backend/editPlanner/interpreter";
 import type { EditOp } from "../../../backend/editPlanner/schema";
+import type { EditContext } from "../../../backend/editContext/buildEditContext";
 
 interface OnCanvasAiEditorProps {
   film: Film;
@@ -25,6 +26,7 @@ interface PlannedState {
   plan: string;
   ops: EditOp[];
   warnings: string[];
+  context?: EditContext;
 }
 
 /** Formats an EditOp into a readable summary for the operations checklist. */
@@ -114,6 +116,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
         plan: data.plan,
         ops: data.ops || [],
         warnings: data.warnings || [],
+        context: data.context,
       });
     } catch (err: unknown) {
       setStatusMessage({
@@ -134,7 +137,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
 
     try {
       const layered = convertFilmToLayeredFilm(film);
-      const result = applyEditProgram(layered, plannedState.ops);
+      const result = applyEditProgram(layered, plannedState.ops, plannedState.context);
 
       if (result.rejected.length > 0) {
         const firstRej = result.rejected[0];

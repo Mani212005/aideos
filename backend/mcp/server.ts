@@ -326,7 +326,12 @@ export function createMcpServer(): McpServer {
 
       const fillers = detectFillers(transcript);
       const silences = detectSilences(transcript);
-      const durationSec = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
+      const clipsDuration = layered.clips.reduce(
+        (max: number, c: any) => Math.max(max, c.position + (c.end - c.start)),
+        0,
+      );
+      const shotsDuration = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
+      const durationSec = clipsDuration > 0 ? clipsDuration : shotsDuration > 0 ? shotsDuration : 30;
 
       const context = buildEditContext(layered, transcript, fillers, silences, {
         fps: film.fps,

@@ -12,6 +12,7 @@ import { CONVERTED_LAYER_IDS } from "../../src/dl/convertFilm";
 import {
   clipDuration,
   moveLayerClip,
+  resolveLayerCollisions,
   splitLayerClipAtTime,
 } from "../timeline/layer_engine";
 import {
@@ -228,24 +229,38 @@ function applySingleOp(
           (w) => w.start >= fromSec - 0.01 && w.end <= toSec + 0.01,
         );
 
-        const newSubtitleClips: Clip[] = relevantWords.map((w, i) => {
-          const cueDur = Math.max(0.05, round3(w.end - w.start));
-          return {
+        const newSubtitleClips: Clip[] = [];
+        let prevEnd = fromSec;
+        for (let i = 0; i < relevantWords.length; i++) {
+          const w = relevantWords[i];
+          const nextWord = relevantWords[i + 1];
+          const pos = round3(Math.max(w.start, prevEnd));
+          let cueDur = Math.max(0.01, round3(w.end - w.start));
+          if (nextWord && nextWord.start > pos) {
+            const available = round3(nextWord.start - pos);
+            if (cueDur > available) {
+              cueDur = available;
+            }
+          }
+          cueDur = Math.max(0.01, round3(cueDur));
+          prevEnd = round3(pos + cueDur);
+
+          newSubtitleClips.push({
             id: `clip-sub-ai-${i}-${shortId()}`,
             layerId,
-            position: round3(w.start),
+            position: pos,
             start: 0,
             end: cueDur,
             kind: "subtitle",
             payload: {
               text: w.punctuated_word || w.word,
-              startFrame: Math.round(w.start * (working.fps || 30)),
-              endFrame: Math.round(w.end * (working.fps || 30)),
+              startFrame: Math.round(pos * (working.fps || 30)),
+              endFrame: Math.round((pos + cueDur) * (working.fps || 30)),
             },
             opacity: 1,
             volume: 1,
-          };
-        });
+          });
+        }
 
         // Filter out existing subtitles in the target range to avoid overlaps
         const nonConflictingClips = working.clips.filter(
@@ -368,6 +383,7 @@ function applySingleOp(
             const newEnd = round3(c.start + currentDur / op.factor);
             return {
               ...c,
+              position: round3(c.position / op.factor),
               end: newEnd,
               payload: {
                 ...(c.payload as Record<string, unknown>),
@@ -377,7 +393,10 @@ function applySingleOp(
           }
           return c;
         });
-        working = { ...working, clips: updatedClips };
+        const baseAnchors = updatedClips
+          .map((c, i) => (baseLayerIds.has(c.layerId) ? i : -1))
+          .filter((i) => i !== -1);
+        working = { ...working, clips: resolveLayerCollisions(updatedClips, baseAnchors) };
       } else {
         const clipIdx = working.clips.findIndex((c) => c.id === op.clipId);
         if (clipIdx === -1) throw new Error(`Clip "${op.clipId}" not found for set_clip_speed`);
@@ -393,7 +412,25 @@ function applySingleOp(
             speed: op.factor,
           } as any,
         };
-        working = { ...working, clips: updatedClips };
+        const anchors: number[] = [clipIdx];
+        if (target.linkedClipId) {
+          const partnerIdx = working.clips.findIndex((c) => c.id === target.linkedClipId);
+          if (partnerIdx !== -1) {
+            const partner = working.clips[partnerIdx];
+            const partnerDur = partner.end - partner.start;
+            const partnerNewEnd = round3(partner.start + partnerDur / op.factor);
+            updatedClips[partnerIdx] = {
+              ...partner,
+              end: partnerNewEnd,
+              payload: {
+                ...(partner.payload as Record<string, unknown>),
+                speed: op.factor,
+              } as any,
+            };
+            anchors.push(partnerIdx);
+          }
+        }
+        working = { ...working, clips: resolveLayerCollisions(updatedClips, anchors) };
       }
       break;
     }
@@ -455,14 +492,29 @@ function applySingleOp(
       // Anchor start time at the earliest clip's position
       let cursor = Math.min(...segmentClips.map((c) => c.position));
       const newClips = [...working.clips];
+      const handled = new Set<string>();
 
       for (const clip of segmentClips) {
+        if (handled.has(clip.id)) continue;
         const idx = newClips.findIndex((c) => c.id === clip.id);
         const dur = clipDuration(clip);
         newClips[idx] = {
-          ...clip,
+          ...newClips[idx],
           position: round3(cursor),
         };
+        handled.add(clip.id);
+
+        if (clip.linkedClipId) {
+          const linkedIdx = newClips.findIndex((c) => c.id === clip.linkedClipId);
+          if (linkedIdx !== -1) {
+            newClips[linkedIdx] = {
+              ...newClips[linkedIdx],
+              position: round3(cursor),
+            };
+            handled.add(clip.linkedClipId);
+          }
+        }
+
         cursor += dur;
       }
 

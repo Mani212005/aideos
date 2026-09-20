@@ -38,6 +38,7 @@ function createLayeredFilmFromContext(context: EditContext): LayeredFilm {
     position: c.position,
     start: c.start,
     end: c.end,
+    linkedClipId: c.linkedClipId ?? null,
     kind: c.kind as any,
     payload: { src: "media/source.mp4" },
     opacity: 1,

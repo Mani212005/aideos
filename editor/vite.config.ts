@@ -1066,6 +1066,7 @@ function filmApiPlugin(): Plugin {
                   ops: planResult.ops,
                   attempts: planResult.attempts,
                   warnings: planResult.warnings,
+                  context,
                 });
                 return;
               }

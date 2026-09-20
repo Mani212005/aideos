@@ -219,3 +219,116 @@ test("interpreter: atomic rollback on error restores original film completely", 
   assert.ok(result.rejected.length > 0, "Should report rejected ops");
   assert.equal(result.film.accent, "#635BFF", "Accent should be rolled back to original");
 });
+
+test("interpreter: reorder_segments repositions linked audio and video in sync", () => {
+  const film: LayeredFilm = {
+    id: "test-reorder-film",
+    title: "Reorder Test Film",
+    fps: 30,
+    accent: "#635BFF",
+    canvas: { nodes: [{ id: "n1", label: "Scene", x: 0, y: 0, w: 190, h: 62 }], edges: [] },
+    chapters: [],
+    layers: [
+      { id: "layer-video", number: 15, label: "Video Footage", locked: false, hidden: false, muted: false, height: 72 },
+      { id: "layer-audio-footage", number: 5, label: "Footage Audio", locked: false, hidden: false, muted: false, height: 48 },
+    ],
+    clips: [
+      { id: "v1", layerId: "layer-video", position: 0, start: 0, end: 4, kind: "video", payload: { src: "media/clip1.mp4" }, linkedClipId: "a1", opacity: 1, volume: 1 },
+      { id: "a1", layerId: "layer-audio-footage", position: 0, start: 0, end: 4, kind: "audio", payload: { src: "media/clip1.mp4" }, linkedClipId: "v1", opacity: 1, volume: 1 },
+      { id: "v2", layerId: "layer-video", position: 4, start: 0, end: 6, kind: "video", payload: { src: "media/clip2.mp4" }, linkedClipId: "a2", opacity: 1, volume: 1 },
+      { id: "a2", layerId: "layer-audio-footage", position: 4, start: 0, end: 6, kind: "audio", payload: { src: "media/clip2.mp4" }, linkedClipId: "v2", opacity: 1, volume: 1 },
+    ],
+  };
+
+  const ops: EditOp[] = [
+    {
+      op: "reorder_segments",
+      order: ["v2", "v1"],
+    },
+  ];
+
+  const result = applyEditProgram(film, ops);
+  assert.equal(result.rejected.length, 0);
+
+  const v2 = result.film.clips.find((c) => c.id === "v2");
+  const a2 = result.film.clips.find((c) => c.id === "a2");
+  const v1 = result.film.clips.find((c) => c.id === "v1");
+  const a1 = result.film.clips.find((c) => c.id === "a1");
+
+  assert.equal(v2?.position, 0);
+  assert.equal(a2?.position, 0, "Linked audio a2 must move with v2 to 0s");
+  assert.equal(v1?.position, 6);
+  assert.equal(a1?.position, 6, "Linked audio a1 must move with v1 to 6s");
+});
+
+test("interpreter: set_clip_speed retimes linked partner and cascades collisions", () => {
+  const film: LayeredFilm = {
+    id: "test-speed-film",
+    title: "Speed Test Film",
+    fps: 30,
+    accent: "#635BFF",
+    canvas: { nodes: [{ id: "n1", label: "Scene", x: 0, y: 0, w: 190, h: 62 }], edges: [] },
+    chapters: [],
+    layers: [
+      { id: "layer-video", number: 15, label: "Video Footage", locked: false, hidden: false, muted: false, height: 72 },
+      { id: "layer-audio-footage", number: 5, label: "Footage Audio", locked: false, hidden: false, muted: false, height: 48 },
+    ],
+    clips: [
+      { id: "v1", layerId: "layer-video", position: 0, start: 0, end: 4, kind: "video", payload: { src: "media/clip1.mp4" }, linkedClipId: "a1", opacity: 1, volume: 1 },
+      { id: "a1", layerId: "layer-audio-footage", position: 0, start: 0, end: 4, kind: "audio", payload: { src: "media/clip1.mp4" }, linkedClipId: "v1", opacity: 1, volume: 1 },
+      { id: "v2", layerId: "layer-video", position: 4, start: 0, end: 8, kind: "video", payload: { src: "media/clip2.mp4" }, linkedClipId: "a2", opacity: 1, volume: 1 },
+      { id: "a2", layerId: "layer-audio-footage", position: 4, start: 0, end: 8, kind: "audio", payload: { src: "media/clip2.mp4" }, linkedClipId: "v2", opacity: 1, volume: 1 },
+    ],
+  };
+
+  // Slow down v1 by 0.5x (duration 4 -> 8s)
+  const ops: EditOp[] = [
+    {
+      op: "set_clip_speed",
+      clipId: "v1",
+      factor: 0.5,
+    },
+  ];
+
+  const result = applyEditProgram(film, ops);
+  assert.equal(result.rejected.length, 0);
+
+  const v1 = result.film.clips.find((c) => c.id === "v1");
+  const a1 = result.film.clips.find((c) => c.id === "a1");
+  const v2 = result.film.clips.find((c) => c.id === "v2");
+  const a2 = result.film.clips.find((c) => c.id === "a2");
+
+  assert.equal(v1?.end, 8);
+  assert.equal(a1?.end, 8, "Linked partner a1 must also be retimed to 8s");
+  assert.equal(v2?.position, 8, "Downstream clip v2 must be pushed to 8s to prevent overlap");
+  assert.equal(a2?.position, 8, "Downstream clip a2 must be pushed to 8s to prevent overlap");
+});
+
+test("interpreter: add_caption_track clamps adjacent subtitle cue durations to prevent overlap", () => {
+  const film = createLinkedFixture();
+  const context: EditContext = {
+    transcript: [
+      { word: "quick", start: 0.1, end: 0.13 },
+      { word: "words", start: 0.14, end: 0.3 },
+    ],
+    fillers: [],
+    silences: [],
+    lanes: film.layers,
+    clips: film.clips.map((c) => ({ id: c.id, kind: c.kind, layerId: c.layerId, position: c.position, start: c.start, end: c.end })),
+    meta: { fps: 30, durationSec: 12 },
+  };
+
+  const ops: EditOp[] = [
+    {
+      op: "add_caption_track",
+      style: "kinetic",
+    },
+  ];
+
+  const result = applyEditProgram(film, ops, context);
+  assert.equal(result.rejected.length, 0);
+
+  const subtitles = result.film.clips.filter((c) => c.kind === "subtitle");
+  assert.equal(subtitles.length, 2);
+  assert.ok(subtitles[0].position + (subtitles[0].end - subtitles[0].start) <= subtitles[1].position, "First subtitle must not overlap second subtitle");
+});
