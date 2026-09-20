@@ -355,3 +355,52 @@ test("MCP server exposes aideos_get_pending_tasks, aideos_claim_task, and aideos
   assert.equal(completed.status, "completed");
   assert.deepEqual(completed.result, { scenesCompiled: 4 });
 });
+
+// Test 12: dispatchTask writes authentic generated task ID to Firstmate inbox message
+test("dispatchTask writes authentic generated task ID to Firstmate inbox message and enables claiming", async () => {
+  clearAllFallbackTimers();
+  taskQueue.clear();
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-dispatch-inbox-"));
+  try {
+    const res = await dispatchTask({
+      eventType: "auto_build_scenes",
+      filmId: "inbox-task-test",
+      filmTitle: "Inbox Task Test",
+      inboxDir: tempDir,
+      enableFallback: false,
+    });
+
+    assert.equal(res.ok, true);
+    assert.ok(res.taskId.startsWith("task-"));
+    assert.ok(res.inboxMessagePath);
+    assert.ok(fs.existsSync(res.inboxMessagePath));
+
+    const content = fs.readFileSync(res.inboxMessagePath, "utf8");
+    assert.ok(content.includes(`**Task ID:** ${res.taskId}`));
+    assert.ok(!content.includes("**Task ID:** temp"));
+    assert.ok(content.includes(`aideos_claim_task({ taskId: "${res.taskId}" })`));
+    assert.ok(!content.includes('aideos_claim_task({ taskId: "temp" })'));
+
+    const claimed = taskQueue.claimTask(res.taskId, "inbox-reader-agent");
+    assert.equal(claimed.status, "claimed");
+    assert.equal(claimed.claimedBy, "inbox-reader-agent");
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+// Test 13: buildTaskContext gracefully handles invalid or non-conforming film identifiers
+test("buildTaskContext handles non-conforming film identifiers without throwing exceptions", () => {
+  assert.doesNotThrow(() => {
+    const context = buildTaskContext({
+      eventType: "auto_build_scenes",
+      filmId: "Invalid Slug With Spaces & UPPERCASE!",
+      filmTitle: "Non Conforming Film",
+    });
+
+    assert.equal(context.filmId, "Invalid Slug With Spaces & UPPERCASE!");
+    assert.equal(context.filmTitle, "Non Conforming Film");
+    assert.equal(context.film, null);
+  });
+});

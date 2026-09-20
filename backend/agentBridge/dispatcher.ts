@@ -198,35 +198,7 @@ export async function dispatchTask(opts: DispatchOptions): Promise<DispatchResul
 
   const channels: DispatchChannel[] = ["mcp_queue", "file_inbox"];
 
-  // 1. Channel A: Firstmate Steering Inbox
-  const inboxResult = writeFirstmateInboxMessage({
-    id: "temp",
-    eventType: opts.eventType,
-    filmId: opts.filmId,
-    filmTitle: context.filmTitle,
-    prompt,
-    context,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    status: "pending",
-    dispatchedChannels: [],
-    timeoutMs,
-  }, opts.inboxDir);
-
-  if (inboxResult.written) {
-    channels.push("firstmate_inbox");
-  }
-
-  // 2. Channel C: Local file & tmux
-  const localResult = dispatchLocalAndTmux(prompt, {
-    sessionName: opts.sessionName,
-    pane: opts.pane,
-  });
-  if (localResult.tmuxSent) {
-    channels.push("tmux");
-  }
-
-  // 3. Channel B: Enqueue task in TaskQueue
+  // 1. Channel B: Enqueue task in TaskQueue
   const task = taskQueue.createTask({
     eventType: opts.eventType,
     filmId: opts.filmId,
@@ -234,9 +206,26 @@ export async function dispatchTask(opts: DispatchOptions): Promise<DispatchResul
     prompt,
     context,
     dispatchedChannels: channels,
-    inboxMessagePath: inboxResult.filePath,
     timeoutMs,
   });
+
+  // 2. Channel A: Firstmate Steering Inbox
+  const inboxResult = writeFirstmateInboxMessage(task, opts.inboxDir);
+  if (inboxResult.written) {
+    channels.push("firstmate_inbox");
+    task.dispatchedChannels = [...channels];
+    task.inboxMessagePath = inboxResult.filePath;
+  }
+
+  // 3. Channel C: Local file & tmux
+  const localResult = dispatchLocalAndTmux(prompt, {
+    sessionName: opts.sessionName,
+    pane: opts.pane,
+  });
+  if (localResult.tmuxSent) {
+    channels.push("tmux");
+    task.dispatchedChannels = [...channels];
+  }
 
   // 4. Hybrid Fallback (Approved Decision 1)
   const enableFallback = opts.enableFallback !== false;

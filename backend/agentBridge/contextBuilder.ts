@@ -4,7 +4,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { readFilm, ROOT, VIDEOS_DIR } from "../pipeline/filmStore";
+import { FILM_ID, readFilm, ROOT, VIDEOS_DIR } from "../pipeline/filmStore";
 import type { AgentTaskContext, DispatchOptions } from "./types";
 
 /** Core design invariants enforced across the Aideos explainer video standard. */
@@ -36,7 +36,14 @@ export function buildTaskContext(opts: DispatchOptions, rootDir: string = ROOT):
   }
 
   // Film manifest resolution
-  const film = readFilm(filmId);
+  let film = null;
+  if (FILM_ID.test(filmId)) {
+    try {
+      film = readFilm(filmId);
+    } catch (_) {
+      film = null;
+    }
+  }
   const filmPath = path.join(pkgDir, "film.json");
 
   // Voiceover audio resolution
