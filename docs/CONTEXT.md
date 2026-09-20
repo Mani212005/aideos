@@ -282,13 +282,20 @@ An individual vector path inside a limb:
 * `buildProseTransformSystemInstruction()` (`backend/pipeline/director.ts`): Assembles the system instruction for transforming raw prose into structured scenes, visual directions, on-screen text, and narration beats.
 * `compileScreenplayToFilm(screenplay, spine, options)` (`backend/pipeline/design.ts`): Compiles screenplay and narration spine into validated `Film`.
 * `renderFormat(slug, format, options)` (`backend/pipeline/render.ts`): Drives Remotion render with headless verification and contact sheet generation.
-* `startMcpServer()` (`backend/mcp/server.ts`): Exposes the production pipeline as an MCP stdio server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`.
+* `startMcpServer()` (`backend/mcp/server.ts`): Exposes the production pipeline and agent bridge as an MCP stdio server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`, `aideos_edit_film`, `aideos_get_pending_tasks`, `aideos_claim_task`, and `aideos_complete_task`.
 
-### `backend/agentPrompter.ts` (Auto-Prompter & Agent Dispatcher)
-* `getAgentSession()`: Reads active agent session configuration (`.aideos_session.json`).
-* `setAgentSession(info)`: Registers or updates active agent session metadata.
-* `buildDirectingPrompt(opts)`: Builds structured directing instruction prompts for AI coding agents from Studio events.
-* `dispatchPromptToAgent(prompt, opts)`: Dispatches prompts directly into active tmux agent panes or writes to `.aideos_task.md`.
+### `backend/agentBridge/` (Connected Agent Bridge Hub & Multi-Channel Dispatcher)
+* `dispatchTask(opts)`: Dispatches rich task context across all active channels (Firstmate steering inbox, MCP task queue, local file/tmux) with automatic hybrid timeout fallback.
+* `buildTaskContext(opts, rootDir)`: Assembles full working context payload (script, film manifest, audio spine, word timings, director guide ref, design invariants).
+* `buildDirectingPrompt(opts, context)`: Formats structured directing prompts for connected coding agents from Studio events.
+* `taskQueue`: Global in-memory lifecycle manager for agent tasks (`createTask`, `claimTask`, `completeTask`, `failTask`, `timeoutTask`, `listPendingTasks`, `listAllTasks`, `addListener`).
+* `writeFirstmateInboxMessage(task, targetInboxDir)`: Writes sequential steering message file (`001.msg`, `002.msg`, ...) to Firstmate agent inbox.
+* `dispatchLocalAndTmux(prompt, opts)`: Writes `.aideos_task.md` and pastes prompt into active tmux agent pane.
+* `cancelFallbackTimer(taskId)`, `clearAllFallbackTimers()`: Manages and clears active fallback timer callbacks.
+* `getAgentSession()`, `setAgentSession(info)`: Reads and persists active agent session metadata (`.aideos_session.json`).
+
+### `backend/agentPrompter.ts` (Auto-Prompter Facade)
+* Delegates backwards-compatible prompter APIs (`getAgentSession`, `setAgentSession`, `buildDirectingPrompt`, `dispatchPromptToAgent`) directly to `backend/agentBridge/`.
 
 ### `backend/jev.ts` (TypeSafe Jev Decision Model & Primitive Selection)
 * `selectPrimitive(state, options)`: Selects the most appropriate animated primitive from the 7 design system primitives (`TextReveal`, `StatCounter`, `CodeBlock`, `Card`, `Divider`, `IconLabel`, `ProgressBar`) using TypeSafe Jev decision model evaluation with confidence gating, safe-generic fallback (`TextReveal` or `Card`), and fast deterministic heuristic fallback.

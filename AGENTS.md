@@ -211,7 +211,11 @@ File Description: This file defines the core guidelines, coding principles, and 
 - `backend/editPlanner/interpreter.ts`'s `applyEditProgram(film, ops, context)` is a pure transactional interpreter mapping `EditOp[]` to timeline and voiceover engine operations with atomic rollback on failure.
 - `backend/editPlanner/planner.ts`'s `planEdits(request, context, llmCaller)` uses a 3-attempt validate-then-repair loop feeding validation errors back to the model, returning `{ plan, ops }`.
 - `editor/src/components/OnCanvasAiEditor.tsx` renders the model-driven AI edit panel with dry-run-then-apply UX, folding committed edits through `convertLayeredFilmToFilm` for a single undo step.
-- `backend/mcp/server.ts` exposes `aideos_edit_film` so connected coding agents can drive edits or serve as the planning brain.
+## Connected Agent Bridge Hub (Phase 2)
+- `backend/agentBridge/` is the single authoritative hub for multi-channel outbound dispatch to connected AI coding agents.
+- `backend/agentBridge/dispatcher.ts`'s `dispatchTask` sends rich context payloads (script, audio timings, film manifest, director invariants) across Channel A (Firstmate steering inbox `FIRSTMATE_STEERING_INBOX` / `AIDEOS_AGENT_INBOX`), Channel B (MCP pull queue `aideos_get_pending_tasks`), and Channel C (tmux / local task file `.aideos_task.md`).
+- Hybrid Fallback (Decision 1): Unclaimed pending tasks trigger in-process fallback execution after `DEFAULT_AGENT_TIMEOUT_MS` (15s) timeout, defused when an agent claims the task via `aideos_claim_task` or `taskQueue.claimTask`.
+- MCP tools: `aideos_get_pending_tasks`, `aideos_claim_task`, and `aideos_complete_task` in `backend/mcp/server.ts` let external agents pull, claim, and complete studio tasks over stdio.
 
 ## Maintaining this file
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.

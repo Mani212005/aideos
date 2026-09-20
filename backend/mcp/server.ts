@@ -21,6 +21,7 @@ import { detectFillers } from "../editContext/detectFillers";
 import { detectSilences } from "../editContext/detectSilences";
 import { planEdits, applyEditProgram } from "../editPlanner";
 import type { TranscribedWord } from "../transcribe";
+import { taskQueue } from "../agentBridge";
 
 /** Everything known about one background production run. */
 interface RunRecord {
@@ -385,6 +386,69 @@ export function createMcpServer(): McpServer {
           durationSec: Number(savedFilm.shots.reduce((sum, s) => sum + s.dur, 0).toFixed(2)),
         },
       });
+    },
+  );
+
+  server.registerTool(
+    "aideos_get_pending_tasks",
+    {
+      title: "Get pending agent tasks",
+      description:
+        "Fetch pending directing, voiceover, screenplay, and editing tasks dispatched from Aideos Studio. " +
+        "Filter by film slug if provided.",
+      inputSchema: {
+        filmId: z.string().optional().describe("Optional package slug under videos/ to filter pending tasks."),
+      },
+    },
+    async ({ filmId }) => {
+      const tasks = taskQueue.listPendingTasks(filmId);
+      return jsonResult({
+        count: tasks.length,
+        tasks,
+      });
+    },
+  );
+
+  server.registerTool(
+    "aideos_claim_task",
+    {
+      title: "Claim an agent task",
+      description:
+        "Claim a pending task to begin autonomous execution and prevent hybrid timeout fallback.",
+      inputSchema: {
+        taskId: z.string().describe("The unique task ID to claim."),
+        agentId: z.string().optional().describe("Identifier of the agent claiming the task. Defaults to 'agent'."),
+      },
+    },
+    async ({ taskId, agentId }) => {
+      try {
+        const task = taskQueue.claimTask(taskId, agentId);
+        return jsonResult({ ok: true, task });
+      } catch (err: any) {
+        return jsonResult({ ok: false, error: err?.message || String(err) });
+      }
+    },
+  );
+
+  server.registerTool(
+    "aideos_complete_task",
+    {
+      title: "Complete an agent task",
+      description:
+        "Mark a claimed agent task as completed with summary and optional execution results.",
+      inputSchema: {
+        taskId: z.string().describe("The unique task ID being completed."),
+        summary: z.string().optional().describe("Brief description of actions taken and files modified."),
+        result: z.record(z.string(), z.any()).optional().describe("Optional JSON data or modified artifact metadata."),
+      },
+    },
+    async ({ taskId, summary, result }) => {
+      try {
+        const task = taskQueue.completeTask(taskId, { summary, ...(result || {}) });
+        return jsonResult({ ok: true, task });
+      } catch (err: any) {
+        return jsonResult({ ok: false, error: err?.message || String(err) });
+      }
     },
   );
 
