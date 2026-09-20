@@ -82,6 +82,56 @@ export interface DraftedScreenplay {
   attempts: number;
 }
 
+/** Assembles the system instruction for transforming raw prose into a structured Claude screenplay with visual and narration beats. */
+export function buildProseTransformSystemInstruction(): string {
+  return `${readDirectorGuide()}\n\n${SCREENPLAY_FORMAT_SPEC}\n\nTransformation goal: Transform the provided raw prose into structured scenes, visual directions, on-screen text, and narration beats without losing any spoken content.`;
+}
+
+/** The default generator for transforming prose into a screenplay via the LLM. */
+async function defaultGenerateScreenplayFromProse(prose: string, rejectionReason?: string): Promise<string> {
+  const userPrompt = rejectionReason
+    ? `Transform this prose into a Claude screenplay:\n\n${prose}\n\nYour previous draft was rejected: ${rejectionReason}\nWrite a corrected screenplay from scratch, not a patch.`
+    : `Transform this prose into a Claude screenplay:\n\n${prose}`;
+  return generateText(userPrompt, { systemInstruction: buildProseTransformSystemInstruction(), temperature: 0.5 });
+}
+
+/** Strips surrounding markdown code block fences if present on model-generated text. */
+function stripCodeFence(text: string): string {
+  const cleaned = text.trim();
+  const fenced = cleaned.match(/^```(?:markdown|md)?\s*\n?([\s\S]*?)\n?```$/i);
+  if (fenced) return fenced[1].trim();
+  if (cleaned.startsWith("```")) {
+    return cleaned.replace(/^```[a-zA-Z]*\s*/, "").replace(/\s*```$/, "").trim();
+  }
+  return cleaned;
+}
+
+/**
+ * Automatically transforms raw untagged prose into a structured Claude screenplay with visual and narration beats.
+ */
+export async function transformProseToScreenplay(
+  prose: string,
+  options?: DraftScreenplayOptions & { filmTitle?: string },
+): Promise<DraftedScreenplay> {
+  if (!prose.trim()) throw new Error("prose input cannot be empty");
+
+  const generate = options?.generateScreenplay ?? defaultGenerateScreenplayFromProse;
+  const maxAttempts = Math.max(1, options?.maxAttempts ?? 3);
+
+  let rejectionReason: string | undefined;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const rawOutput = await generate(prose, rejectionReason);
+    const screenplay = stripCodeFence(rawOutput);
+    const issue = screenplayIssue(screenplay);
+    if (!issue) return { screenplay, title: titleFromScreenplay(screenplay, options?.filmTitle || prose), attempts: attempt };
+    rejectionReason = issue;
+  }
+
+  throw new Error(
+    `the director could not transform prose into a usable screenplay after ${maxAttempts} attempt(s): ${rejectionReason}`,
+  );
+}
+
 /**
  * Drafts a screenplay from a raw prompt, retrying with the specific rejection reason fed back to
  * the model until a usable draft appears or maxAttempts is exhausted.
@@ -97,7 +147,8 @@ export async function draftScreenplay(
 
   let rejectionReason: string | undefined;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const screenplay = (await generate(prompt, rejectionReason)).trim();
+    const rawOutput = await generate(prompt, rejectionReason);
+    const screenplay = stripCodeFence(rawOutput);
     const issue = screenplayIssue(screenplay);
     if (!issue) return { screenplay, title: titleFromScreenplay(screenplay, prompt), attempts: attempt };
     rejectionReason = issue;

@@ -1,0 +1,538 @@
+<!--
+File Description: Interactive Lavish Architecture & Implementation Plan for the Aideos Connected Agent Bridge, Real-Time Trace Telemetry, and Screenplay Auto-Structuring.
+-->
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aideos Connected Agent Bridge - Architecture & Implementation Plan (Approved)</title>
+
+  <!-- Tailwind CSS v4 & DaisyUI v5 -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+
+  <!-- Fonts: Geist & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Mermaid.js for Interactive Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'neutral',
+      fontFamily: 'JetBrains Mono',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+      sequence: { useMaxWidth: true, showSequenceNumbers: true }
+    });
+  </script>
+
+  <style>
+    :root {
+      --nb-paper: #ede9de;
+      --nb-paper-2: #f7f4ec;
+      --nb-paper-3: #ffffff;
+      --nb-sunken: #dfd9c9;
+      --nb-sunken-2: #d2cbb8;
+      --nb-matte: #0e0e12;
+      --nb-ink: #14140f;
+      --nb-ink-soft: #55524a;
+      --nb-ink-mute: #63604f;
+      --nb-primary: #ffd23f;
+      --nb-select: #5b4bff;
+      --nb-success: #35c08a;
+      --nb-danger: #ff4d4d;
+      --nb-warn: #ff8a00;
+      --nb-info: #3bb3e8;
+    }
+    body {
+      background-color: var(--nb-paper);
+      color: var(--nb-ink);
+      font-family: 'Geist', system-ui, -apple-system, sans-serif;
+    }
+    code, pre, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .nb-box {
+      background-color: var(--nb-paper-2);
+      border: 2px solid var(--nb-ink);
+      box-shadow: 4px 4px 0px var(--nb-ink);
+    }
+    .nb-box-white {
+      background-color: var(--nb-paper-3);
+      border: 2px solid var(--nb-ink);
+      box-shadow: 3px 3px 0px var(--nb-ink);
+    }
+    .nb-box-sunken {
+      background-color: var(--nb-sunken);
+      border: 2px solid var(--nb-ink);
+    }
+    .nb-button {
+      background-color: var(--nb-paper-3);
+      border: 2px solid var(--nb-ink);
+      box-shadow: 3px 3px 0px var(--nb-ink);
+      font-weight: 700;
+      transition: all 80ms ease-out;
+    }
+    .nb-button:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 4px 4px 0px var(--nb-ink);
+      background-color: var(--nb-paper-2);
+    }
+    .nb-button:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0px var(--nb-ink);
+    }
+    .nb-badge {
+      border: 1.5px solid var(--nb-ink);
+      box-shadow: 2px 2px 0px var(--nb-ink);
+      font-weight: 700;
+      font-size: 0.75rem;
+      padding: 0.15rem 0.5rem;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+  <div class="max-w-6xl mx-auto space-y-8">
+
+    <!-- Header Banner -->
+    <header class="nb-box p-6 space-y-4 bg-[#ffd23f]">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="nb-badge bg-black text-white font-mono">SCOUT ARCHITECTURE PLAN</span>
+            <span class="nb-badge bg-[#5b4bff] text-white font-mono">AIDEOS STUDIO</span>
+            <span class="nb-badge bg-[#35c08a] text-black font-mono">CAPTAIN APPROVED</span>
+          </div>
+          <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-black">
+            Active Connected Agent Bridge & Live Studio Execution
+          </h1>
+          <p class="text-sm md:text-base font-medium text-black/80">
+            Fixing the "0 scenes" parse failure, establishing bidirectional outbound context push, and streaming real agent execution to the Aideos UI.
+          </p>
+        </div>
+        <div class="nb-box-white p-3 text-right">
+          <div class="text-xs font-mono font-bold text-gray-500">AUTHORITATIVE COMMIT</div>
+          <div class="text-sm font-mono font-bold">87cbc6e (origin/main)</div>
+          <div class="text-xs font-mono text-[#35c08a] font-bold">Decisions Recorded & Locked</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Captain Decisions Locked Banner -->
+    <div class="nb-box p-4 bg-[#e8f8f0] border-2 border-black space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="font-mono font-bold text-xs text-[#248259] flex items-center gap-1.5">
+          <span class="w-3 h-3 bg-[#35c08a] border border-black inline-block"></span>
+          CAPTAIN DECISIONS RECORDED & APPROVED
+        </span>
+        <span class="nb-badge bg-[#35c08a] text-black font-mono">READY TO SHIP</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
+        <div class="p-2 bg-white border border-black">
+          <div class="font-bold text-gray-500">1. DISPATCH CHANNEL:</div>
+          <div class="text-[#5b4bff] font-bold">Hybrid Multi-Channel (Option A)</div>
+          <div class="text-[10px] text-gray-600 font-sans mt-0.5">Firstmate Inbox + MCP Queue + In-Process Fallback</div>
+        </div>
+        <div class="p-2 bg-white border border-black">
+          <div class="font-bold text-gray-500">2. PROSE PARSING:</div>
+          <div class="text-[#5b4bff] font-bold">Auto-Invoke Director LLM (Option B)</div>
+          <div class="text-[10px] text-gray-600 font-sans mt-0.5">Transforms raw prose to full screenplay automatically</div>
+        </div>
+        <div class="p-2 bg-white border border-black">
+          <div class="font-bold text-gray-500">3. TRACE SCOPE:</div>
+          <div class="text-[#5b4bff] font-bold">Unified Pipeline & Agent (Option A)</div>
+          <div class="text-[10px] text-gray-600 font-sans mt-0.5">Coding agent, AI edits, TTS, and invariants in one feed</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Navigation Bar -->
+    <nav class="nb-box p-3 bg-white flex flex-wrap items-center gap-2 text-xs font-mono font-bold">
+      <span class="text-gray-500 mr-2">SECTIONS:</span>
+      <a href="#summary" class="px-3 py-1.5 bg-gray-100 hover:bg-[#ffd23f] border border-black transition-colors">1. Executive Summary</a>
+      <a href="#findings" class="px-3 py-1.5 bg-gray-100 hover:bg-[#ffd23f] border border-black transition-colors">2. Code Verification & Bug Root Causes</a>
+      <a href="#architecture" class="px-3 py-1.5 bg-gray-100 hover:bg-[#ffd23f] border border-black transition-colors">3. Agent Bridge Architecture</a>
+      <a href="#flow" class="px-3 py-1.5 bg-gray-100 hover:bg-[#ffd23f] border border-black transition-colors">4. Interactive Sequence Flow</a>
+      <a href="#trace" class="px-3 py-1.5 bg-gray-100 hover:bg-[#ffd23f] border border-black transition-colors">5. Live Agent Trace Telemetry</a>
+      <a href="#phases" class="px-3 py-1.5 bg-gray-100 hover:bg-[#ffd23f] border border-black transition-colors">6. Implementation Roadmap</a>
+    </nav>
+
+    <!-- SECTION 1: EXECUTIVE SUMMARY -->
+    <section id="summary" class="nb-box p-6 space-y-6 bg-white">
+      <div class="flex items-center justify-between border-b-2 border-black pb-3">
+        <h2 class="text-2xl font-bold flex items-center gap-2">
+          <span>1. Executive Summary: What Works vs What is Missing/Mocked</span>
+        </h2>
+        <span class="nb-badge bg-[#5b4bff] text-white">SYSTEM AUDIT</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- What Actually Works Today -->
+        <div class="nb-box-sunken p-4 space-y-3 bg-[#e8f8f0] border-2 border-black">
+          <div class="flex items-center gap-2 text-[#248259] font-bold text-sm font-mono">
+            <span class="w-3 h-3 bg-[#35c08a] border border-black inline-block"></span>
+            WHAT ACTUALLY WORKS TODAY
+          </div>
+          <ul class="space-y-2 text-xs leading-relaxed">
+            <li class="flex items-start gap-1.5">
+              <span class="text-green-700 font-bold">✓</span>
+              <span><strong>Tagged Screenplay Parsing:</strong> When script has strict <code>[VISUAL]</code> / <code>[NARRATION]</code> / <code>[ON SCREEN]</code> tags, <code>backend/scriptIntake.ts</code> generates valid Remotion shots, canvas nodes, and TextReveal blocks.</span>
+            </li>
+            <li class="flex items-start gap-1.5">
+              <span class="text-green-700 font-bold">✓</span>
+              <span><strong>Neural Speech Synthesis:</strong> Voiceover generation via Kokoro / Google Cloud TTS creates accurate word timings (<code>voiceover_words.json</code>) and locks timeline duration.</span>
+            </li>
+            <li class="flex items-start gap-1.5">
+              <span class="text-green-700 font-bold">✓</span>
+              <span><strong>MCP Tools Registry:</strong> <code>backend/mcp/server.ts</code> exposes 6 tools (<code>aideos_produce_film</code>, <code>aideos_edit_film</code>, <code>aideos_run_status</code>, etc.) over stdio for external agents to pull.</span>
+            </li>
+            <li class="flex items-start gap-1.5">
+              <span class="text-green-700 font-bold">✓</span>
+              <span><strong>In-App AI Edit Planner:</strong> <code>OnCanvasAiEditor.tsx</code> successfully dry-runs and applies transactional <code>EditOp</code> programs using server-side Gemini.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- What Is Broken, Missing or Mocked -->
+        <div class="nb-box-sunken p-4 space-y-3 bg-[#fdf0ed] border-2 border-black">
+          <div class="flex items-center gap-2 text-[#c42b2b] font-bold text-sm font-mono">
+            <span class="w-3 h-3 bg-[#ff4d4d] border border-black inline-block"></span>
+            WHAT IS BROKEN, MISSING OR MOCKED
+          </div>
+          <ul class="space-y-2 text-xs leading-relaxed">
+            <li class="flex items-start gap-1.5">
+              <span class="text-red-600 font-bold">✗</span>
+              <span><strong>Plain Prose Auto-Build Bug:</strong> Plain untagged text produces 0 segments in <code>parseClaudeScript</code>; UI falsely claims "Successfully built 0 scenes!" and silently keeps old shots.</span>
+            </li>
+            <li class="flex items-start gap-1.5">
+              <span class="text-red-600 font-bold">✗</span>
+              <span><strong>No Active Outbound Agent Push:</strong> MCP is strictly agent-pull. <code>backend/agentPrompter.ts</code> only tries a hardcoded tmux session named "aideos" or drops <code>.aideos_task.md</code> that no running agent reads.</span>
+            </li>
+            <li class="flex items-start gap-1.5">
+              <span class="text-red-600 font-bold">✗</span>
+              <span><strong>Agent Trace is 100% Mock Data:</strong> <code>AgentActivityInspector.tsx</code> renders a static hardcoded array (<code>defaultSteps</code>) with fake timestamps ("10:48:02 AM") and no live connection.</span>
+            </li>
+            <li class="flex items-start gap-1.5">
+              <span class="text-red-600 font-bold">✗</span>
+              <span><strong>No Visible Multi-Turn Feedback Loop:</strong> The captain cannot see the coding agent actively receiving the prompt, understanding the state, or reporting back tool steps in real-time.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: CODE VERIFICATION & ROOT CAUSE ANALYSIS -->
+    <section id="findings" class="nb-box p-6 space-y-6 bg-white">
+      <div class="flex items-center justify-between border-b-2 border-black pb-3">
+        <h2 class="text-2xl font-bold flex items-center gap-2">
+          <span>2. Code Verification & Root Cause Characterization</span>
+        </h2>
+        <span class="nb-badge bg-[#ffd23f] text-black font-mono">CODE EVIDENCE</span>
+      </div>
+
+      <div class="space-y-4">
+        <h3 class="text-lg font-bold">2.1 The "Successfully built 0 video scenes" Bug</h3>
+        <p class="text-sm text-gray-700 leading-relaxed">
+          When the user inputs plain prose (such as the <code>what-is-jepa</code> script) and clicks <strong>"Auto-Build Scenes from Script"</strong>:
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+          <div class="nb-box-white p-4 space-y-2">
+            <div class="font-bold text-[#c42b2b]">1. Parser Discards Untagged Lines</div>
+            <p class="text-gray-600 font-sans">
+              In <code>backend/scriptIntake.ts</code> (lines 268-368), <code>parseClaudeScript()</code> checks lines for <code>[VISUAL]</code> or <code>[NARRATION]</code> tags.
+              When none exist, <code>currentBeatType</code> is <code>null</code>, and body lines are completely ignored (line 361).
+              <code>segments</code> evaluates to <code>[]</code> (0 segments, 0 shots, 0 nodes).
+            </p>
+            <pre class="bg-gray-100 p-2 border border-black overflow-x-auto text-[11px]">
+// backend/scriptIntake.ts:361
+if (currentBeatType && line) {
+  bodyLines.push(line); // Skipped if untagged!
+}</pre>
+          </div>
+
+          <div class="nb-box-white p-4 space-y-2">
+            <div class="font-bold text-[#c42b2b]">2. UI Reports Fake Success & Masks State</div>
+            <p class="text-gray-600 font-sans">
+              In <code>editor/src/components/ScriptEditor.tsx</code> (lines 450-490), the frontend receives <code>shots: []</code> with HTTP 200.
+              It falls back to keeping the previous film shots (<code>data.shots.length > 0 ? data.shots : film.shots</code>), and triggers a green success toast:
+            </p>
+            <pre class="bg-gray-100 p-2 border border-black overflow-x-auto text-[11px]">
+// ScriptEditor.tsx:486
+setStatusMsg({
+  type: "success",
+  text: `Successfully built ${data.shots.length} video scenes...`
+}); // Prints: "Successfully built 0 video scenes..."</pre>
+          </div>
+        </div>
+
+        <h3 class="text-lg font-bold pt-4">2.2 The Connected Agent & Telemetry Gap</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="nb-box-sunken p-4 space-y-2 bg-[#f4f2eb]">
+            <div class="font-bold font-mono text-[#5b4bff]">MCP IS STRICT AGENT-PULL</div>
+            <p class="text-gray-700">
+              <code>backend/mcp/server.ts</code> operates over stdio. The agent must pull tools. The server cannot initiate a push or wake up the external agent process when a user clicks a button in the browser.
+            </p>
+          </div>
+          <div class="nb-box-sunken p-4 space-y-2 bg-[#f4f2eb]">
+            <div class="font-bold font-mono text-[#5b4bff]">TMUX DISPATCH FAILS SILENTLY</div>
+            <p class="text-gray-700">
+              <code>backend/agentPrompter.ts</code> checks for <code>tmux has-session -t aideos</code>. Since modern coding agents (Firstmate crewmate, Antigravity, Claude Code) do not run in this tmux session, it writes to <code>.aideos_task.md</code> which no agent monitors.
+            </p>
+          </div>
+          <div class="nb-box-sunken p-4 space-y-2 bg-[#f4f2eb]">
+            <div class="font-bold font-mono text-[#5b4bff]">AGENT TRACE IS MOCKED</div>
+            <p class="text-gray-700">
+              <code>AgentActivityInspector.tsx</code> renders <code>defaultSteps</code>: a static array mentioning "FlashAttention-3" and "10:48:02 AM". It has zero props, zero websocket/SSE, and no connection to real tool execution.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: AGENT BRIDGE ARCHITECTURE -->
+    <section id="architecture" class="nb-box p-6 space-y-6 bg-white">
+      <div class="flex items-center justify-between border-b-2 border-black pb-3">
+        <h2 class="text-2xl font-bold flex items-center gap-2">
+          <span>3. Target Architecture: Unified Agent Bridge Hub</span>
+        </h2>
+        <span class="nb-badge bg-[#35c08a] text-black font-mono">APPROVED ARCHITECTURE</span>
+      </div>
+
+      <p class="text-sm text-gray-700 leading-relaxed">
+        With the Captain's approval of the <strong>Hybrid Multi-Channel Dispatcher</strong> and <strong>Automatic Director LLM Prose Transformation</strong>, the Aideos Agent Bridge is architected as follows:
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Pillar 1 -->
+        <div class="nb-box-white p-5 space-y-3">
+          <div class="flex items-center gap-2 font-mono font-bold text-sm text-[#5b4bff]">
+            <span class="w-6 h-6 bg-[#5b4bff] text-white flex items-center justify-center text-xs">1</span>
+            HYBRID OUTBOUND DISPATCH
+          </div>
+          <p class="text-xs text-gray-700 leading-relaxed">
+            When a user triggers an action (e.g. "Auto-Build", "Voiceover Ready", "AI Edit Request"):
+          </p>
+          <ul class="text-xs space-y-1.5 list-disc pl-4 text-gray-600">
+            <li><strong>Firstmate Inbox:</strong> Writes mission message (<code>.msg</code>) to steering inbox for instant worker wakeup.</li>
+            <li><strong>MCP Job Queue:</strong> Enqueues task for connected MCP agents (<code>aideos_get_pending_tasks</code>).</li>
+            <li><strong>In-Process Fallback:</strong> Executes in-process Gemini model call if no external agent claims the task within 10s.</li>
+          </ul>
+        </div>
+
+        <!-- Pillar 2 -->
+        <div class="nb-box-white p-5 space-y-3">
+          <div class="flex items-center gap-2 font-mono font-bold text-sm text-[#35c08a]">
+            <span class="w-6 h-6 bg-[#35c08a] text-black flex items-center justify-center text-xs">2</span>
+            DIRECTOR LLM PROSE AUTO-TRANSFORM
+          </div>
+          <p class="text-xs text-gray-700 leading-relaxed">
+            When untagged prose is passed to Auto-Build:
+          </p>
+          <ul class="text-xs space-y-1.5 list-disc pl-4 text-gray-600">
+            <li><strong>Director LLM Pipeline:</strong> Automatically structures raw prose into Claude screenplay segments with timestamps, <code>[VISUAL]</code>, and <code>[NARRATION]</code> beats.</li>
+            <li><strong>Metaphor & Primitive Binding:</strong> Selects appropriate visual primitives (MatrixGrid, TokenStrip, StatCounter).</li>
+            <li><strong>Zero-Leakage Narration:</strong> Produces clean dialogue blocks for speech synthesis.</li>
+          </ul>
+        </div>
+
+        <!-- Pillar 3 -->
+        <div class="nb-box-white p-5 space-y-3">
+          <div class="flex items-center gap-2 font-mono font-bold text-sm text-[#ff8a00]">
+            <span class="w-6 h-6 bg-[#ff8a00] text-black flex items-center justify-center text-xs">3</span>
+            UNIFIED LIVE SSE TRACE BUS
+          </div>
+          <p class="text-xs text-gray-700 leading-relaxed">
+            Real-time telemetry streamed directly to the top-bar Agent Trace panel:
+          </p>
+          <ul class="text-xs space-y-1.5 list-disc pl-4 text-gray-600">
+            <li><strong>SSE Stream:</strong> <code>GET /api/agent/trace</code> broadcasts real tool executions and reasoning steps.</li>
+            <li><strong>Unified Visibility:</strong> Streams both external agent tool calls and background pipeline jobs (TTS, B-roll, Remotion).</li>
+            <li><strong>Dynamic Inspector:</strong> Replaces the mock component with live timers and status indicators.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: INTERACTIVE SEQUENCE FLOW -->
+    <section id="flow" class="nb-box p-6 space-y-6 bg-white">
+      <div class="flex items-center justify-between border-b-2 border-black pb-3">
+        <h2 class="text-2xl font-bold flex items-center gap-2">
+          <span>4. End-to-End Interaction & Telemetry Flow</span>
+        </h2>
+        <span class="nb-badge bg-[#5b4bff] text-white font-mono">MERMAID SEQUENCE</span>
+      </div>
+
+      <div class="nb-box-white p-4 overflow-x-auto bg-[#faf9f5]">
+        <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Captain as Captain (Aideos Studio)
+    participant UI as ScriptEditor / UI
+    participant Server as Aideos Server (Vite / Backend)
+    participant Bridge as Agent Bridge & Queue
+    participant Agent as Connected Coding Agent
+    participant Trace as Agent Activity Inspector
+
+    Captain->>UI: Types prose script & clicks "Auto-Build Scenes"
+    UI->>Server: POST /api/parse-script-scenes { script, filmId }
+    Server->>Server: 1. Director LLM structures prose into Claude screenplay
+    Server->>Server: 2. Compiles Remotion shots & canvas nodes
+    Server->>Bridge: 3. Dispatch Directive { filmId, script, audio, prompt }
+
+    par Dispatch to Agent
+        Bridge-->>Agent: Push via Firstmate Inbox / Webhook / MCP Queue
+        Agent->>Agent: Receives full context & starts turn loop
+    and Stream to UI
+        Bridge-->>Server: Register active job #101
+        Server-->>UI: 200 OK { shots, nodes, jobId: 101 }
+    end
+
+    Trace->>Server: SSE Subscribe /api/agent/trace
+    UI->>Captain: Displays generated scenes on Timeline & MindMap
+
+    loop Agent Autonomous Execution
+        Agent->>Server: aideos_report_step("Analyzing visual metaphors for JEPA")
+        Server-->>Trace: SSE Event { phase: "reasoning", text: "..." }
+        Agent->>Server: aideos_edit_film(slug, request: "Add TokenStrip & MatrixGrid")
+        Server-->>Trace: SSE Event { phase: "tool_call", tool: "aideos_edit_film" }
+        Server-->>UI: Hot-reloads updated film.json
+    end
+
+    Agent->>Server: aideos_report_step("Completed scene architecture with 0 invariant errors", status="done")
+    Server-->>Trace: SSE Event { phase: "complete", status: "done" }
+    Trace-->>Captain: Shows green "AGENT READY" with verified tool steps
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: LIVE AGENT TRACE TELEMETRY -->
+    <section id="trace" class="nb-box p-6 space-y-6 bg-white">
+      <div class="flex items-center justify-between border-b-2 border-black pb-3">
+        <h2 class="text-2xl font-bold flex items-center gap-2">
+          <span>5. Replacing the Mock with Real Agent Trace Telemetry</span>
+        </h2>
+        <span class="nb-badge bg-[#ffd23f] text-black font-mono">UI COMPONENT DESIGN</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-4">
+          <h3 class="text-base font-bold font-mono text-[#c42b2b]">BEFORE: HARDCODED STATIC MOCK</h3>
+          <div class="nb-box-sunken p-4 space-y-2 bg-[#fdf5f5] text-xs font-mono">
+            <div class="text-red-700 font-bold">editor/src/components/AgentActivityInspector.tsx:26</div>
+            <pre class="bg-white p-2 border border-black overflow-x-auto text-[11px] text-gray-700">
+const defaultSteps: AgentTraceStep[] = [
+  {
+    id: "step-1",
+    phase: "grounding",
+    title: "1. Factual Research & Grounding",
+    description: "Queried live web corpora...",
+    timestamp: "10:48:02 AM", // FAKE STATIC TIME!
+    status: "done",
+    details: ["parallel.beta.search(...)"]
+  }, ...
+];</pre>
+            <p class="text-xs text-gray-600 font-sans">
+              No API calls, no props, no updates. Opens the exact same static text regardless of which film is open or what the user clicks.
+            </p>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <h3 class="text-base font-bold font-mono text-[#248259]">AFTER: LIVE SSE STREAMING COMPONENT</h3>
+          <div class="nb-box-sunken p-4 space-y-2 bg-[#f0fbf5] text-xs font-mono">
+            <div class="text-green-700 font-bold">Real-time telemetry architecture</div>
+            <pre class="bg-white p-2 border border-black overflow-x-auto text-[11px] text-gray-700">
+// SSE Hook in AgentActivityInspector.tsx
+const { steps, activeAgent, connectionState } = useAgentTrace();
+
+// Backend Trace Bus
+export class AgentTraceBus extends EventEmitter {
+  emitStep(step: AgentTraceStep) {
+    this.broadcast({ type: "step", step });
+  }
+}</pre>
+            <p class="text-xs text-gray-600 font-sans">
+              Connects to <code>/api/agent/trace</code> via Server-Sent Events. Shows live connection badge ("Firstmate Crewmate Active" / "Gemini Server Fallback"), real-time elapsed timers, and exact tool invocations.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 6: IMPLEMENTATION ROADMAP -->
+    <section id="phases" class="nb-box p-6 space-y-6 bg-white">
+      <div class="flex items-center justify-between border-b-2 border-black pb-3">
+        <h2 class="text-2xl font-bold flex items-center gap-2">
+          <span>6. Shippable Phase Breakdown (Locked for Ship)</span>
+        </h2>
+        <span class="nb-badge bg-[#35c08a] text-black font-mono">APPROVED SCOPE</span>
+      </div>
+
+      <div class="space-y-4">
+        <!-- Phase 1 -->
+        <div class="nb-box-white p-4 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-sm text-black">Phase 1: Honest UI Validation & Director LLM Prose Auto-Transformation</span>
+            <span class="nb-badge bg-blue-100 text-blue-800 font-mono">PHASE 1</span>
+          </div>
+          <p class="text-xs text-gray-600">
+            • Extend <code>backend/scriptIntake.ts</code> and <code>backend/pipeline/director.ts</code> to automatically structure plain prose into full Claude screenplay format on Auto-Build.<br />
+            • Fix <code>editor/src/components/ScriptEditor.tsx</code>: eliminate fake success toasts on 0 shots, render honest error badges and recovery actions.<br />
+            • Unit test suite for plain prose script auto-structuring in <code>backend/script_intake_prose.test.ts</code>.
+          </p>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="nb-box-white p-4 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-sm text-black">Phase 2: Agent Bridge Hub & Multi-Channel Outbound Dispatch</span>
+            <span class="nb-badge bg-purple-100 text-purple-800 font-mono">PHASE 2</span>
+          </div>
+          <p class="text-xs text-gray-600">
+            • Create <code>backend/agentBridge/index.ts</code>, <code>dispatcher.ts</code>, and <code>taskQueue.ts</code>.<br />
+            • Support Firstmate inbox dispatch (<code>.inbox/*.msg</code>), MCP task queue (<code>aideos_get_pending_tasks</code>), and in-process Gemini fallback.<br />
+            • Wire full video package context (script, audio timings, film manifest, directing rules) into every dispatch payload.
+          </p>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="nb-box-white p-4 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-sm text-black">Phase 3: Live Real-Time Agent Trace Telemetry (SSE & Inspector UI)</span>
+            <span class="nb-badge bg-green-100 text-green-800 font-mono">PHASE 3</span>
+          </div>
+          <p class="text-xs text-gray-600">
+            • Implement <code>backend/agentBridge/traceBus.ts</code> and SSE endpoint <code>GET /api/agent/trace</code>.<br />
+            • Expose <code>aideos_report_step</code> MCP tool for agents to stream real reasoning, tool calls, and step results.<br />
+            • Replace mock <code>defaultSteps</code> in <code>AgentActivityInspector.tsx</code> with live SSE feed and connection indicators.
+          </p>
+        </div>
+
+        <!-- Phase 4 -->
+        <div class="nb-box-white p-4 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-sm text-black">Phase 4: Bi-Directional Interactive Canvas & Editing Loop</span>
+            <span class="nb-badge bg-yellow-100 text-yellow-800 font-mono">PHASE 4</span>
+          </div>
+          <p class="text-xs text-gray-600">
+            • Wire Canvas node additions, AI Editor directives, and Review Critique Studio into the Agent Bridge.<br />
+            • Enable bi-directional hot-reload so agent edits in <code>film.json</code> immediately update the Remotion Player with visual change animations.<br />
+            • End-to-end integration tests verifying user clicks trigger agent prompts and stream visible trace steps.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="nb-box p-4 bg-white flex flex-wrap items-center justify-between text-xs text-gray-600">
+      <div>Aideos Connected Agent Bridge Architecture Plan &bull; Antigravity Scout</div>
+      <div class="font-mono text-green-700 font-bold">Captain Decisions Recorded & Active Review Loop Live</div>
+    </footer>
+
+  </div>
+</body>
+</html>

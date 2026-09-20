@@ -27,6 +27,7 @@ import {
   generateAgentPrompt,
   generateDirectorTaskDocument,
 } from '../backend/scriptIntake.ts'
+import { transformProseToScreenplay } from '../backend/pipeline/director.ts'
 import {
   dispatchPromptToAgent,
   buildDirectingPrompt,
@@ -659,20 +660,48 @@ function filmApiPlugin(): Plugin {
 
         // Handle /api/parse-script-scenes (Intelligently construct shots, visual directions & nodes from screenplay)
         if (url === '/api/parse-script-scenes' && req.method === 'POST') {
-          void readBody(req).then((body: any) => {
+          void readBody(req).then(async (body: any) => {
             const { script, filmTitle = "Film", targetDurationSec, projectId = "kvcache" } = body || {};
-            if (!script) {
+            if (!script || !script.trim()) {
               sendJson(res, 400, { error: 'Script text is required' });
               return;
             }
 
-            const { shots, nodes, edges, spokenText, wordCount, durationSec } = buildFilmPartsFromScript(script, targetDurationSec);
+            let scriptToBuild = script;
+            let transformed = false;
+
+            // If input is untagged prose, auto-invoke the Director LLM to transform into screenplay
+            if (!hasScreenplayTags(script)) {
+              try {
+                const drafted = await transformProseToScreenplay(script, { filmTitle });
+                if (drafted.screenplay && hasScreenplayTags(drafted.screenplay)) {
+                  scriptToBuild = drafted.screenplay;
+                  transformed = true;
+                }
+              } catch (err) {
+                // If model call fails, deterministic structureUntaggedProseToScript will handle it in buildFilmPartsFromScript
+                console.warn('[parse-script-scenes] Director LLM prose transform fell back to heuristic:', err);
+              }
+            }
+
+            const { shots, nodes, edges, spokenText, wordCount, durationSec } = buildFilmPartsFromScript(scriptToBuild, targetDurationSec);
+
+            if (shots.length === 0) {
+              sendJson(res, 422, {
+                ok: false,
+                error: 'No video scenes could be created from the provided script text.',
+                shots: [],
+                nodes: [],
+                edges: [],
+              });
+              return;
+            }
 
             const pkgDir = path.join(videosDir, projectId);
             if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
 
             // Persist screenplay doc
-            fs.writeFileSync(path.join(pkgDir, 'script.md'), script, 'utf8');
+            fs.writeFileSync(path.join(pkgDir, 'script.md'), scriptToBuild, 'utf8');
 
             // Generate Creative Director directive & prompt for terminal coding agent
             const taskOpts = {
@@ -695,7 +724,7 @@ function filmApiPlugin(): Plugin {
               event: "auto_build_scenes",
               filmId: projectId,
               filmTitle,
-              scriptText: script,
+              scriptText: scriptToBuild,
               durationSec,
               shotCount: shots.length,
             });
@@ -709,6 +738,8 @@ function filmApiPlugin(): Plugin {
               spokenText,
               wordCount,
               durationSec,
+              script: transformed ? scriptToBuild : undefined,
+              transformed,
               agentPrompt,
               taskFile: `videos/${projectId}/director_task.md`,
               dispatch,
