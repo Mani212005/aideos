@@ -128,6 +128,7 @@ Tools:
 | `aideos_get_pending_tasks`| Fetch pending directing, voiceover, screenplay, and editing tasks.         |
 | `aideos_claim_task`      | Claim a pending task to begin execution and prevent hybrid fallback.       |
 | `aideos_complete_task`   | Mark a claimed agent task as completed with summary and execution results. |
+| `aideos_report_step`     | Report execution step, tool call, or validation check to live Agent Trace. |
 
 A full render takes tens of minutes, so `aideos_produce_film` never blocks: it starts the run in
 the background and hands back a `runId` for the caller to poll. Run records live in the server
