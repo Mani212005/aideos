@@ -27,6 +27,7 @@ export interface EditContextClipSummary {
   position: number;
   start: number;
   end: number;
+  linkedClipId?: string | null;
 }
 
 export interface EditContextMeta {
@@ -74,6 +75,7 @@ export function buildEditContext(
     position: clip.position,
     start: clip.start,
     end: clip.end,
+    ...(clip.linkedClipId ? { linkedClipId: clip.linkedClipId } : {}),
   }));
 
   return { transcript, fillers, silences, lanes, clips, meta };

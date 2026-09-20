@@ -14,7 +14,7 @@
 import { execFileSync, execSync } from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { Film, parseFilm } from "../src/dl/schema";
+import { type Film, parseFilm } from "../src/dl/schema";
 import { getRetimedAudioFilename } from "../src/dl/audio/retime";
 import { extractSpokenBlocks, hasScreenplayTags } from "./scriptIntake";
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";

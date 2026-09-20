@@ -13,8 +13,14 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { runProduction } from "../pipeline/run";
-import { FILM_ID, readFilm, ROOT, VIDEOS_DIR } from "../pipeline/filmStore";
+import { FILM_ID, readFilm, writeFilm, ROOT, VIDEOS_DIR } from "../pipeline/filmStore";
 import { PRODUCTION_STAGES, type ProductionProgress, type ProductionRequest, type ProductionResult } from "../pipeline/types";
+import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
+import { buildEditContext } from "../editContext/buildEditContext";
+import { detectFillers } from "../editContext/detectFillers";
+import { detectSilences } from "../editContext/detectSilences";
+import { planEdits, applyEditProgram } from "../editPlanner";
+import type { TranscribedWord } from "../transcribe";
 
 /** Everything known about one background production run. */
 interface RunRecord {
@@ -276,6 +282,109 @@ export function createMcpServer(): McpServer {
       const film = FILM_ID.test(slug) ? readFilm(slug) : null;
       if (!film) return jsonResult({ error: `no film found for "${slug}"`, videosDir: path.relative(ROOT, VIDEOS_DIR) });
       return jsonResult(film);
+    },
+  );
+
+  server.registerTool(
+    "aideos_edit_film",
+    {
+      title: "Edit an Aideos film",
+      description:
+        "Edit an Aideos film using natural language instructions. Plans and executes editing operations " +
+        "(text overlays, filler removal, dead air trimming, range trimming, volume/mute/hide, accent/theme) " +
+        "with atomic rollback guarantees and saves the updated film.",
+      inputSchema: {
+        slug: z.string().regex(/^[a-z0-9-]+$/).describe("The package slug under videos/."),
+        request: z.string().min(1).describe("Natural language edit request (e.g. 'remove filler words and add a title card')."),
+        hints: z.string().optional().describe("Optional context, project knowledge, or instruction hints from the coding agent."),
+        dryRun: z.boolean().optional().describe("When true, only plans the edits without writing changes to disk. Defaults to false."),
+      },
+    },
+    async ({ slug, request, hints, dryRun }) => {
+      const film = FILM_ID.test(slug) ? readFilm(slug) : null;
+      if (!film) {
+        return jsonResult({ error: `no film found for "${slug}"`, videosDir: path.relative(ROOT, VIDEOS_DIR) });
+      }
+
+      const layered = convertFilmToLayeredFilm(film);
+
+      // Load transcript if available
+      let transcript: TranscribedWord[] = [];
+      const importWordsPath = path.join(VIDEOS_DIR, slug, "import_words.json");
+      const voWordsPath = path.join(VIDEOS_DIR, slug, "voiceover_words.json");
+      if (fs.existsSync(importWordsPath)) {
+        try {
+          const raw = JSON.parse(fs.readFileSync(importWordsPath, "utf8"));
+          transcript = raw.words || [];
+        } catch {}
+      } else if (fs.existsSync(voWordsPath)) {
+        try {
+          const raw = JSON.parse(fs.readFileSync(voWordsPath, "utf8"));
+          transcript = raw.words || [];
+        } catch {}
+      }
+
+      const fillers = detectFillers(transcript);
+      const silences = detectSilences(transcript);
+      const clipsDuration = layered.clips.reduce(
+        (max: number, c: any) => Math.max(max, c.position + (c.end - c.start)),
+        0,
+      );
+      const shotsDuration = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
+      const durationSec = clipsDuration > 0 ? clipsDuration : shotsDuration > 0 ? shotsDuration : 30;
+
+      const context = buildEditContext(layered, transcript, fillers, silences, {
+        fps: film.fps,
+        durationSec,
+        accent: film.accent,
+        theme: film.theme,
+      });
+
+      const planResult = await planEdits(request, context, undefined, { agentHints: hints });
+
+      if (dryRun) {
+        return jsonResult({
+          slug,
+          applied: false,
+          dryRun: true,
+          plan: planResult.plan,
+          ops: planResult.ops,
+          attempts: planResult.attempts,
+          warnings: planResult.warnings,
+        });
+      }
+
+      const appliedResult = applyEditProgram(layered, planResult.ops, context);
+      if (appliedResult.rejected.length > 0) {
+        return jsonResult({
+          slug,
+          applied: false,
+          error: "Failed to apply planned operations",
+          rejected: appliedResult.rejected,
+          plan: planResult.plan,
+          ops: planResult.ops,
+        });
+      }
+
+      const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
+      const savedFilm = writeFilm(slug, updatedFilm);
+
+      return jsonResult({
+        slug,
+        applied: true,
+        dryRun: false,
+        plan: planResult.plan,
+        ops: planResult.ops,
+        attempts: planResult.attempts,
+        warnings: planResult.warnings,
+        filmSummary: {
+          id: savedFilm.id,
+          title: savedFilm.title,
+          shots: savedFilm.shots.length,
+          accent: savedFilm.accent,
+          durationSec: Number(savedFilm.shots.reduce((sum, s) => sum + s.dur, 0).toFixed(2)),
+        },
+      });
     },
   );
 
