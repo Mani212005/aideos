@@ -204,10 +204,20 @@ File Description: This file defines the core guidelines, coding principles, and 
   until it is removed from the list. Subtrees with their own enforcement (`films/`, `scene/`,
   `tokens.ts`) are excluded and say why in the file.
 
+## AI Video Editing Core (Phase 2)
+
+- `backend/editPlanner/schema.ts` defines the closed Zod discriminated union `EditOp` representing the entire editing vocabulary (text overlays, slides, caption track, filler word removal, dead air removal, range trim, splitting, moving clips, clip speed, volume, mute/hide lanes, accent, theme, reordering). Unknown op kinds are rejected.
+- `backend/editPlanner/validator.ts`'s `validateEditProgram(ops, context)` enforces semantic timeline bounds, entity references, and runs a dry-run simulation against `validateLayeredFilm`.
+- `backend/editPlanner/interpreter.ts`'s `applyEditProgram(film, ops, context)` is a pure transactional interpreter mapping `EditOp[]` to timeline and voiceover engine operations with atomic rollback on failure.
+- `backend/editPlanner/planner.ts`'s `planEdits(request, context, llmCaller)` uses a 3-attempt validate-then-repair loop feeding validation errors back to the model, returning `{ plan, ops }`.
+- `editor/src/components/OnCanvasAiEditor.tsx` renders the model-driven AI edit panel with dry-run-then-apply UX, folding committed edits through `convertLayeredFilmToFilm` for a single undo step.
+- `backend/mcp/server.ts` exposes `aideos_edit_film` so connected coding agents can drive edits or serve as the planning brain.
+
 ## Maintaining this file
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.
 - Keep it concise. Prefer pointers to authoritative files over copying details.
 - When updating, check if this section exists and add it if missing.
+
 
 
 

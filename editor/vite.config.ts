@@ -16,6 +16,9 @@ import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
 import { transcribe, writeImportWords } from '../backend/transcribe.ts'
 import { detectFillers } from '../backend/editContext/detectFillers.ts'
 import { detectSilences } from '../backend/editContext/detectSilences.ts'
+import { buildEditContext } from '../backend/editContext/buildEditContext.ts'
+import { planEdits, applyEditProgram } from '../backend/editPlanner/index.ts'
+import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from '../src/dl/convertFilm.ts'
 import { executeCritique } from '../backend/critique/engine.ts'
 import {
   extractSpokenBlocks as extractSpokenVoiceoverBlocks,
@@ -1004,6 +1007,96 @@ function filmApiPlugin(): Plugin {
             } catch (err: any) {
               console.error('[transcribe] Error transcribing source:', err);
               sendJson(res, 500, { error: err?.message || 'Failed to transcribe source' });
+            }
+          }).catch((err) => sendJson(res, 500, { error: String(err) }));
+          return;
+        }
+
+        // Handle /api/ai-edit (Model-driven AI editing core, planning and executing EditOp programs)
+        if (url === '/api/ai-edit' && req.method === 'POST') {
+          void readBody(req).then(async (body: any) => {
+            const { film, request, agentHints, transcript: providedTranscript, dryRun = true } = body || {};
+            if (!film || !request) {
+              sendJson(res, 400, { error: 'film and request are required' });
+              return;
+            }
+
+            try {
+              // Convert Film to LayeredFilm if necessary
+              const layered = film.layers && film.clips ? film : convertFilmToLayeredFilm(film);
+              const filmId = film.id || 'film';
+
+              // Load or use provided transcript
+              let transcript = Array.isArray(providedTranscript) ? providedTranscript : [];
+              if (transcript.length === 0) {
+                const importWordsPath = path.join(videosDir, filmId, 'import_words.json');
+                const voWordsPath = path.join(videosDir, filmId, 'voiceover_words.json');
+                if (fs.existsSync(importWordsPath)) {
+                  try {
+                    const raw = JSON.parse(fs.readFileSync(importWordsPath, 'utf8'));
+                    transcript = raw.words || [];
+                  } catch {}
+                } else if (fs.existsSync(voWordsPath)) {
+                  try {
+                    const raw = JSON.parse(fs.readFileSync(voWordsPath, 'utf8'));
+                    transcript = raw.words || [];
+                  } catch {}
+                }
+              }
+
+              const fillers = detectFillers(transcript);
+              const silences = detectSilences(transcript);
+              const durationSec = layered.clips.reduce((max: number, c: any) => Math.max(max, c.position + (c.end - c.start)), 0) || 30;
+
+              const context = buildEditContext(layered, transcript, fillers, silences, {
+                fps: layered.fps || 30,
+                durationSec,
+                accent: layered.accent,
+                theme: layered.theme,
+              });
+
+              const planResult = await planEdits(request, context, undefined, { agentHints });
+
+              // If dryRun, return plan and ops for client preview/approval
+              if (dryRun) {
+                sendJson(res, 200, {
+                  ok: true,
+                  dryRun: true,
+                  plan: planResult.plan,
+                  ops: planResult.ops,
+                  attempts: planResult.attempts,
+                  warnings: planResult.warnings,
+                });
+                return;
+              }
+
+              // Apply the edit program
+              const appliedResult = applyEditProgram(layered, planResult.ops, context);
+              if (appliedResult.rejected.length > 0) {
+                sendJson(res, 422, {
+                  ok: false,
+                  error: 'Failed to apply planned operations',
+                  rejected: appliedResult.rejected,
+                  plan: planResult.plan,
+                  ops: planResult.ops,
+                });
+                return;
+              }
+
+              const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
+
+              sendJson(res, 200, {
+                ok: true,
+                dryRun: false,
+                plan: planResult.plan,
+                ops: planResult.ops,
+                attempts: planResult.attempts,
+                warnings: planResult.warnings,
+                film: updatedFilm,
+              });
+            } catch (err: any) {
+              console.error('[ai-edit] Error planning/applying edit:', err);
+              sendJson(res, 500, { error: err?.message || 'Failed to process AI edit request' });
             }
           }).catch((err) => sendJson(res, 500, { error: String(err) }));
           return;

@@ -1,24 +1,17 @@
 /**
- * File Description: Google Stitch-style On-Canvas "Edit with AI" & Element Inspector Component.
- * Enables direct on-canvas element selection (Headlines, Counters, Characters, Metaphors)
- * and natural-language prompt editing or 1-click inline text correction.
+ * File Description: Model-Driven AI Video Editor Panel Component (Phase 2).
+ * Replaces hardcoded regex heuristics with a model-driven planning and execution workflow.
+ * Allows users to request edits in natural language, reviews the generated natural-language
+ * plan and discrete EditOp checklist (dry-run-then-apply), and commits changes as a single undo step.
  */
 
 import React, { useState, useMemo } from "react";
-import { Sparkles, Edit2, Check, X, Crosshair, Loader2 } from "lucide-react";
+import { Sparkles, Check, X, Loader2, ArrowRight, Wand2 } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import type { TimedShot } from "../../../src/dl/camera";
-import { activeShotAt } from "../../../src/dl/camera";
-import { executeCritique } from "../../../backend/critique/engine";
-
-export interface SelectedTarget {
-  shotId: string;
-  shotIndex: number;
-  blockIndex: number;
-  blockType: string;
-  label: string;
-  currentValue?: string | number;
-}
+import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../../src/dl/convertFilm";
+import { applyEditProgram } from "../../../backend/editPlanner/interpreter";
+import type { EditOp } from "../../../backend/editPlanner/schema";
 
 interface OnCanvasAiEditorProps {
   film: Film;
@@ -28,445 +21,315 @@ interface OnCanvasAiEditorProps {
   accent?: string;
 }
 
+interface PlannedState {
+  plan: string;
+  ops: EditOp[];
+  warnings: string[];
+}
+
+/** Formats an EditOp into a readable summary for the operations checklist. */
+function describeEditOp(op: EditOp): string {
+  switch (op.op) {
+    case "add_text_overlay":
+      return `Text Overlay: "${op.text}" at ${op.startSec.toFixed(1)}s - ${op.endSec.toFixed(1)}s (${op.position || "bottom"})`;
+    case "add_slide":
+      return `Slide: ${op.visualDirection || "Visual graphic"} at ${op.startSec.toFixed(1)}s - ${op.endSec.toFixed(1)}s`;
+    case "add_caption_track":
+      return `Caption Track: ${op.style || "kinetic"} style${op.fromSec !== undefined ? ` from ${op.fromSec}s` : ""}`;
+    case "remove_fillers":
+      return `Remove Fillers: scope=${typeof op.scope === "object" ? "custom range" : op.scope || "all"}`;
+    case "remove_dead_air":
+      return `Remove Dead Air: minSilence=${op.minSilenceSec ?? 0.6}s, gap=${op.targetGapSec ?? 0.1}s`;
+    case "trim_range":
+      return `Trim Range: ${op.fromSec.toFixed(1)}s - ${op.toSec.toFixed(1)}s`;
+    case "split_at":
+      return `Split: at ${op.atSec.toFixed(1)}s${op.clipId ? ` on ${op.clipId}` : ""}`;
+    case "move_clip":
+      return `Move Clip: "${op.clipId}" to ${op.toSec.toFixed(1)}s`;
+    case "set_clip_speed":
+      return `Set Speed: "${op.clipId}" factor=${op.factor}x`;
+    case "set_volume":
+      return `Set Volume: ${op.clipId ? `clip "${op.clipId}"` : `lane "${op.laneId}"`} = ${(op.volume * 100).toFixed(0)}%`;
+    case "mute_lane":
+      return `${op.muted !== false ? "Mute" : "Unmute"} Lane: "${op.laneId}"`;
+    case "hide_lane":
+      return `${op.hidden !== false ? "Hide" : "Show"} Lane: "${op.laneId}"`;
+    case "set_accent":
+      return `Set Accent Color: ${op.hex}`;
+    case "set_theme":
+      return `Update Theme Configuration`;
+    case "reorder_segments":
+      return `Reorder Segments: ${op.order.length} clips`;
+    default:
+      return (op as any).op;
+  }
+}
+
 export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
   film,
-  timeline,
-  currentFrame,
   onUpdateFilm,
+  accent,
 }) => {
-  const [isInspectMode, setIsInspectMode] = useState<boolean>(true);
-  const [selectedTarget, setSelectedTarget] = useState<SelectedTarget | null>(
-    null,
-  );
   const [promptInput, setPromptInput] = useState<string>("");
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [statusMessage, setStatusMessage] = useState<{
-    text: string;
-    isError?: boolean;
-  } | null>(null);
-  const [inlineEditText, setInlineEditText] = useState<string>("");
-  const [isInlineEditing, setIsInlineEditing] = useState<boolean>(false);
+  const [isPlanning, setIsPlanning] = useState<boolean>(false);
+  const [isApplying, setIsApplying] = useState<boolean>(false);
+  const [plannedState, setPlannedState] = useState<PlannedState | null>(null);
+  const [statusMessage, setStatusMessage] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
-  // Active shot at the current playhead frame
-  const activeTimedShot = useMemo(() => {
-    return activeShotAt(timeline, currentFrame);
-  }, [timeline, currentFrame]);
+  // Suggested prompt chips for quick actions
+  const suggestionChips = useMemo(() => [
+    "Remove filler words",
+    "Trim dead air",
+    "Add title overlay at start",
+    "Mute footage audio",
+  ], []);
 
-  const activeShot = activeTimedShot?.shot;
-  const activeShotIndex = activeTimedShot?.index ?? -1;
+  /** Requests an edit plan from the server endpoint /api/ai-edit. */
+  const handlePlanEdits = async (requestText?: string) => {
+    const query = (requestText || promptInput).trim();
+    if (!query || isPlanning) return;
 
-  // Inspectable elements in the current shot
-  const inspectableBlocks = useMemo(() => {
-    if (!activeShot || !activeShot.blocks) return [];
-    return activeShot.blocks.map((b, idx) => {
-      let label: string = b.c;
-      let val: string | number | undefined;
-
-      if (b.c === "TextReveal" || b.c === "Kicker" || b.c === "Body") {
-        label = `${b.c}: "${(b as any).text?.slice(0, 32)}..."`;
-        val = (b as any).text;
-      } else if (b.c === "StatCounter") {
-        label = `Counter: ${(b as any).to} (${(b as any).label})`;
-        val = (b as any).to;
-      } else if (b.c === "CharacterBeat") {
-        label = `Actor: ${(b as any).characterId || "developer"}`;
-        val = (b as any).characterId;
-      } else if (b.c === "MetaphorViewer") {
-        label = `Metaphor: ${(b as any).content?.kind || (b as any).metaphorType || "visual"}`;
-        val = (b as any).content?.kind || (b as any).metaphorType;
-      }
-
-      return {
-        blockIndex: idx,
-        blockType: b.c,
-        label,
-        currentValue: val,
-        block: b,
-      };
-    });
-  }, [activeShot]);
-
-  // Handle natural-language AI edit submission
-  const handleAiSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const prompt = promptInput.trim();
-    if (!prompt) return;
-
-    setIsProcessing(true);
+    setIsPlanning(true);
     setStatusMessage(null);
+    setPlannedState(null);
 
     try {
-      // 1. Direct targeted text/number replacement heuristic for high precision
-      if (selectedTarget && activeShot) {
-        const lowerPrompt = prompt.toLowerCase();
-        const block = activeShot.blocks[selectedTarget.blockIndex] as any;
-
-        // Check for "change X to Y" or "replace X with Y"
-        const changeFromToMatch = prompt.match(
-          /(?:change|replace|fix|correct|rename|update|set)\s+(?:the\s+)?(?:text\s+)?(?:from\s+)?["'“]?([^"”'\n]+?)["'”]?\s+(?:to|with|into|as)\s+["'“]?([^"”'\n]+?)["'”]?$/i,
-        );
-
-        if (changeFromToMatch && block) {
-          const oldT = changeFromToMatch[1].trim();
-          const newT = changeFromToMatch[2].trim();
-          const updatedShots = [...film.shots];
-          let updatedBlock = { ...block };
-
-          if (
-            block.c === "TextReveal" ||
-            block.c === "Body" ||
-            block.c === "Kicker"
-          ) {
-            const escaped = oldT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            updatedBlock.text = block.text
-              ? block.text.replace(new RegExp(escaped, "gi"), newT)
-              : newT;
-          } else if (block.c === "StatCounter") {
-            const escaped = oldT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            if (
-              block.label &&
-              block.label.toLowerCase().includes(oldT.toLowerCase())
-            ) {
-              updatedBlock.label = block.label.replace(
-                new RegExp(escaped, "gi"),
-                newT,
-              );
-            }
-            const oldNum = parseFloat(oldT.replace(/[^0-9.]/g, ""));
-            const newNum = parseFloat(newT.replace(/[^0-9.]/g, ""));
-            if (!isNaN(newNum) && (!isNaN(oldNum) || block.to === oldNum)) {
-              updatedBlock.to = newNum;
-              updatedBlock.format = "plain";
-            }
-          }
-
-          const newBlocks = [...activeShot.blocks];
-          newBlocks[selectedTarget.blockIndex] = updatedBlock;
-          updatedShots[activeShotIndex] = { ...activeShot, blocks: newBlocks };
-
-          onUpdateFilm({ ...film, shots: updatedShots });
-          setStatusMessage({ text: `Replaced "${oldT}" with "${newT}"` });
-          setPromptInput("");
-          setIsProcessing(false);
-          return;
-        }
-
-        // "Change text to X" or "Set headline to X" or "2018 without comma"
-        const changeToMatch = prompt.match(
-          /(?:change|set|replace|make|rename|update)\s+(?:the\s+)?(?:text|headline|label|title|to|value)?\s*(?:to|as|into|with|is)?\s*["']?([^"']+)["']?/i,
-        );
-        const withoutCommaMatch =
-          lowerPrompt.includes("without") && lowerPrompt.includes("comma");
-
-        if (withoutCommaMatch && block?.c === "StatCounter") {
-          const updatedShots = [...film.shots];
-          const updatedBlock = { ...block, format: "plain" };
-          const newBlocks = [...activeShot.blocks];
-          newBlocks[selectedTarget.blockIndex] = updatedBlock;
-          updatedShots[activeShotIndex] = { ...activeShot, blocks: newBlocks };
-
-          onUpdateFilm({ ...film, shots: updatedShots });
-          setStatusMessage({ text: "Formatted StatCounter without commas" });
-          setPromptInput("");
-          setIsProcessing(false);
-          return;
-        }
-
-        if (
-          changeToMatch &&
-          changeToMatch[1] &&
-          (block?.c === "TextReveal" ||
-            block?.c === "Body" ||
-            block?.c === "Kicker")
-        ) {
-          const newText = changeToMatch[1].trim();
-          const updatedShots = [...film.shots];
-          const updatedBlock = { ...block, text: newText };
-          const newBlocks = [...activeShot.blocks];
-          newBlocks[selectedTarget.blockIndex] = updatedBlock;
-          updatedShots[activeShotIndex] = { ...activeShot, blocks: newBlocks };
-
-          onUpdateFilm({ ...film, shots: updatedShots });
-          setStatusMessage({ text: `Updated text to "${newText}"` });
-          setPromptInput("");
-          setIsProcessing(false);
-          return;
-        }
-
-        if (changeToMatch && changeToMatch[1] && block?.c === "StatCounter") {
-          const numVal = parseFloat(changeToMatch[1].replace(/[^0-9.]/g, ""));
-          if (!isNaN(numVal)) {
-            const updatedShots = [...film.shots];
-            const updatedBlock = { ...block, to: numVal, format: "plain" };
-            const newBlocks = [...activeShot.blocks];
-            newBlocks[selectedTarget.blockIndex] = updatedBlock;
-            updatedShots[activeShotIndex] = {
-              ...activeShot,
-              blocks: newBlocks,
-            };
-
-            onUpdateFilm({ ...film, shots: updatedShots });
-            setStatusMessage({ text: `Updated counter value to ${numVal}` });
-            setPromptInput("");
-            setIsProcessing(false);
-            return;
-          }
-        }
-      }
-
-      // 2. Fall back to standard AI Critique engine
-      const res = executeCritique({
-        critique: prompt,
-        film,
+      const res = await fetch("/api/ai-edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          film,
+          request: query,
+          dryRun: true,
+        }),
       });
 
-      if (res.ok && res.updatedFilm) {
-        onUpdateFilm(res.updatedFilm);
-        setStatusMessage({ text: res.explanation });
-        setPromptInput("");
-      } else {
-        setStatusMessage({
-          text:
-            res.error || res.explanation || "Could not apply requested change.",
-          isError: true,
-        });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Failed to plan edits");
       }
-    } catch (err: any) {
+
+      setPlannedState({
+        plan: data.plan,
+        ops: data.ops || [],
+        warnings: data.warnings || [],
+      });
+    } catch (err: unknown) {
       setStatusMessage({
-        text: err.message || "Failed to process critique",
+        text: err instanceof Error ? err.message : String(err),
         isError: true,
       });
     } finally {
-      setIsProcessing(false);
+      setIsPlanning(false);
     }
   };
 
-  // Direct manual inline text save
-  const handleSaveInlineText = () => {
-    if (!selectedTarget || !activeShot) return;
-    const block = activeShot.blocks[selectedTarget.blockIndex] as any;
-    if (!block) return;
+  /** Applies the approved edit plan via the pure interpreter and commits a single undo step. */
+  const handleApplyPlan = () => {
+    if (!plannedState || isApplying) return;
 
-    const updatedShots = [...film.shots];
-    let updatedBlock = { ...block };
+    setIsApplying(true);
+    setStatusMessage(null);
 
-    if (
-      block.c === "TextReveal" ||
-      block.c === "Body" ||
-      block.c === "Kicker"
-    ) {
-      updatedBlock = { ...block, text: inlineEditText };
-    } else if (block.c === "StatCounter") {
-      const num =
-        parseFloat(inlineEditText.replace(/[^0-9.]/g, "")) || block.to;
-      updatedBlock = { ...block, to: num, format: "plain" };
+    try {
+      const layered = convertFilmToLayeredFilm(film);
+      const result = applyEditProgram(layered, plannedState.ops);
+
+      if (result.rejected.length > 0) {
+        const firstRej = result.rejected[0];
+        setStatusMessage({
+          text: `Application rejected: ${firstRej.reason}`,
+          isError: true,
+        });
+        setIsApplying(false);
+        return;
+      }
+
+      const updatedFilm = convertLayeredFilmToFilm(result.film, film);
+      onUpdateFilm(updatedFilm);
+
+      setStatusMessage({
+        text: "Applied AI edit successfully!",
+        isError: false,
+      });
+      setPlannedState(null);
+      setPromptInput("");
+    } catch (err: unknown) {
+      setStatusMessage({
+        text: err instanceof Error ? err.message : String(err),
+        isError: true,
+      });
+    } finally {
+      setIsApplying(false);
     }
-
-    const newBlocks = [...activeShot.blocks];
-    newBlocks[selectedTarget.blockIndex] = updatedBlock;
-    updatedShots[activeShotIndex] = { ...activeShot, blocks: newBlocks };
-
-    onUpdateFilm({ ...film, shots: updatedShots });
-    setIsInlineEditing(false);
-    setStatusMessage({ text: "Saved text changes" });
   };
 
-  if (!activeShot) return null;
+  /** Cancels and discards the current planned edit state. */
+  const handleDiscardPlan = () => {
+    setPlannedState(null);
+    setStatusMessage(null);
+  };
 
   return (
-    // The bottom padding clears the preview player's own transport controls so the AI prompt bar
-    // never sits on top of them.
-    <div className="absolute inset-0 pointer-events-none z-30 flex flex-col justify-between p-3 pb-16 select-none font-sans">
-      {/* TOP BAR: Inspect Mode Toggle & Target Badge */}
-      <div className="flex items-center justify-between gap-2 pointer-events-auto">
-        <div className="flex items-center gap-2 bg-paper-3/90 px-3 py-1.5 border-2 border-ink shadow-nb-sm text-xs">
+    <div className="absolute bottom-4 right-4 z-40 max-w-lg w-full flex flex-col font-sans">
+      {/* Container Box */}
+      <div className="bg-paper-2 border-2 border-ink shadow-[4px_4px_0px_#14140f] rounded-lg overflow-hidden flex flex-col">
+        {/* Header Bar */}
+        <div className="flex items-center justify-between px-3 py-2 bg-sunken border-b-2 border-ink">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-ink" style={{ color: accent || "#5b4bff" }} />
+            <span className="font-mono text-xs font-bold text-ink tracking-tight uppercase">
+              AI Video Editor
+            </span>
+          </div>
           <button
             type="button"
-            onClick={() => {
-              setIsInspectMode(!isInspectMode);
-              if (isInspectMode) setSelectedTarget(null);
-            }}
-            className={`px-2.5 py-1 font-bold flex items-center gap-1.5 transition-all text-xs cursor-pointer ${
-              isInspectMode
-                ? "bg-select text-select-ink shadow-nb-sm"
-                : "bg-sunken text-ink-soft hover:text-ink"
-            }`}
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="font-mono text-xs text-ink hover:underline font-bold"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{isInspectMode ? "Inspect Active" : "Inspect"}</span>
+            {isExpanded ? "Minimize" : "Expand"}
           </button>
+        </div>
 
-          {/* Quick Selectable Element Chips on Canvas */}
-          {isInspectMode && (
-            <div className="flex items-center gap-1 overflow-x-auto max-w-md">
-              {inspectableBlocks.map((b) => {
-                const isSelected =
-                  selectedTarget?.blockIndex === b.blockIndex &&
-                  selectedTarget?.shotId === activeShot.id;
-                return (
+        {isExpanded && (
+          <div className="p-3 flex flex-col gap-3 bg-paper-2">
+            {/* Suggestion Chips */}
+            {!plannedState && (
+              <div className="flex flex-wrap gap-1.5">
+                {suggestionChips.map((chip) => (
                   <button
-                    key={b.blockIndex}
+                    key={chip}
                     type="button"
                     onClick={() => {
-                      setSelectedTarget({
-                        shotId: activeShot.id,
-                        shotIndex: activeShotIndex,
-                        blockIndex: b.blockIndex,
-                        blockType: b.blockType,
-                        label: b.label,
-                        currentValue: b.currentValue,
-                      });
-                      setInlineEditText(String(b.currentValue || ""));
+                      setPromptInput(chip);
+                      void handlePlanEdits(chip);
                     }}
-                    className={`px-2 py-0.5 text-[10px] font-mono transition-all truncate max-w-[140px] cursor-pointer border ${
-                      isSelected
-                        ? "bg-primary text-ink font-bold border-2 border-ink shadow"
-                        : "bg-paper-3 text-ink border-2 border-ink hover:border-ink/70"
-                    }`}
-                    title={`Select: ${b.label}`}
+                    disabled={isPlanning}
+                    className="text-xs font-mono px-2 py-1 bg-paper border border-ink rounded hover:bg-sunken text-ink transition-colors disabled:opacity-50"
                   >
-                    {b.label}
+                    + {chip}
                   </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
 
-        {/* Status Toast */}
-        {statusMessage && (
-          <div
-            className={`px-3 py-1.5 border text-xs font-mono shadow-nb-sm flex items-center gap-2 animate-fade-in ${
-              statusMessage.isError
-                ? "bg-danger/25 border-2 border-ink text-ink"
-                : "bg-success/25 border-2 border-ink text-ink"
-            }`}
-          >
-            <span>{statusMessage.text}</span>
-            <button
-              onClick={() => setStatusMessage(null)}
-              className="text-ink-soft hover:text-ink text-xs font-bold cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+            {/* Prompt Input Form */}
+            {!plannedState && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void handlePlanEdits();
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  type="text"
+                  value={promptInput}
+                  onChange={(e) => setPromptInput(e.target.value)}
+                  placeholder="Ask AI to edit (e.g. 'remove filler words and trim dead air')..."
+                  disabled={isPlanning}
+                  className="flex-1 px-3 py-1.5 bg-paper-3 border-2 border-ink rounded font-mono text-xs text-ink placeholder:text-ink-mute focus:outline-none focus:ring-2 focus:ring-select"
+                />
+                <button
+                  type="submit"
+                  disabled={isPlanning || !promptInput.trim()}
+                  className="px-3 py-1.5 bg-select text-paper-3 border-2 border-ink rounded font-mono text-xs font-bold flex items-center gap-1.5 hover:opacity-90 disabled:opacity-50 transition-opacity"
+                  style={{ backgroundColor: accent || "#5b4bff" }}
+                >
+                  {isPlanning ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      Plan <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+
+            {/* Generated Plan Review Surface (Dry-run-then-apply) */}
+            {plannedState && (
+              <div className="flex flex-col gap-2.5 p-3 bg-paper border-2 border-ink rounded">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold uppercase text-ink flex items-center gap-1.5">
+                    <Wand2 className="w-3.5 h-3.5" /> Planned Changes ({plannedState.ops.length} ops)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleDiscardPlan}
+                    className="p-1 text-ink hover:bg-sunken rounded"
+                    title="Discard Plan"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Natural language summary paragraph */}
+                <p className="text-xs text-ink font-sans leading-relaxed bg-paper-2 p-2 border border-ink rounded">
+                  {plannedState.plan}
+                </p>
+
+                {/* Checklist of operations */}
+                <div className="max-h-36 overflow-y-auto flex flex-col gap-1 pr-1">
+                  {plannedState.ops.map((op, idx) => (
+                    <div
+                      key={idx}
+                      className="text-xs font-mono px-2 py-1 bg-paper-3 border border-ink/40 rounded flex items-center gap-2 text-ink"
+                    >
+                      <Check className="w-3 h-3 text-success shrink-0" />
+                      <span className="truncate">{describeEditOp(op)}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Action Controls */}
+                <div className="flex items-center justify-end gap-2 pt-1 border-t border-ink/20">
+                  <button
+                    type="button"
+                    onClick={handleDiscardPlan}
+                    disabled={isApplying}
+                    className="px-3 py-1 bg-paper border-2 border-ink rounded font-mono text-xs font-bold text-ink hover:bg-sunken"
+                  >
+                    Discard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApplyPlan}
+                    disabled={isApplying}
+                    className="px-3 py-1 bg-success text-ink border-2 border-ink rounded font-mono text-xs font-bold flex items-center gap-1.5 hover:opacity-90 disabled:opacity-50"
+                  >
+                    {isApplying ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" /> Apply Edits
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Status Message Notification */}
+            {statusMessage && (
+              <div
+                className={`text-xs font-mono px-2.5 py-1.5 border-2 border-ink rounded flex items-center justify-between ${
+                  statusMessage.isError ? "bg-danger text-paper-3" : "bg-success text-ink"
+                }`}
+              >
+                <span>{statusMessage.text}</span>
+                <button
+                  type="button"
+                  onClick={() => setStatusMessage(null)}
+                  className="ml-2 hover:opacity-75 font-bold"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
         )}
-      </div>
-
-      {/* DIRECT INLINE TEXT EDIT POPOVER MODAL */}
-      {isInlineEditing && selectedTarget && (
-        <div className="self-center pointer-events-auto bg-paper-3/95 border-2 border-ink p-4 shadow-nb-sm flex flex-col gap-3 w-96 font-mono text-xs">
-          <div className="flex items-center justify-between pb-1.5 border-b-2 border-ink">
-            <span className="text-ink font-bold flex items-center gap-1.5">
-              <Edit2 className="w-3.5 h-3.5" />
-              <span>Edit Element</span>
-            </span>
-            <button
-              onClick={() => setIsInlineEditing(false)}
-              className="text-ink-soft hover:text-ink cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] text-ink-soft font-bold uppercase">
-              {selectedTarget.blockType} Value
-            </label>
-            <textarea
-              rows={3}
-              value={inlineEditText}
-              onChange={(e) => setInlineEditText(e.target.value)}
-              className="w-full bg-sunken border-2 border-ink p-2 text-ink outline-none focus:border-2 border-ink font-sans text-xs shadow-nb-sm"
-              autoFocus
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => setIsInlineEditing(false)}
-              className="px-3 py-1.5 bg-sunken text-ink hover:text-ink text-xs cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveInlineText}
-              className="px-3 py-1.5 bg-primary text-ink font-bold hover:bg-primary text-xs shadow flex items-center gap-1.5 cursor-pointer"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Save</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* BOTTOM GOOGLE STITCH-STYLE FLOATING AI PROMPT BAR */}
-      <div className="self-center w-full max-w-2xl pointer-events-auto mb-2">
-        <form
-          onSubmit={handleAiSubmit}
-          className="bg-paper-3/95 border-2 border-ink hover:border-select/80 focus-within:border-select focus-within:ring-2 focus-within:ring-select/30 p-2 shadow-nb-sm flex items-center gap-2 transition-all"
-        >
-          {/* Target Chip */}
-          {selectedTarget ? (
-            <div className="flex items-center gap-1.5 bg-primary/10 border-2 border-ink/40 text-ink px-2.5 py-1 text-xs font-mono shrink-0 shadow-nb-sm">
-              <Crosshair className="w-3 h-3 text-ink" />
-              <span className="font-bold truncate max-w-[150px]">
-                {selectedTarget.label}
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsInlineEditing(true)}
-                className="ml-1 text-[10px] bg-primary text-ink px-1.5 py-0.5 font-bold hover:bg-primary transition-colors flex items-center gap-1 cursor-pointer"
-                title="Edit text directly"
-              >
-                <Edit2 className="w-2.5 h-2.5" />
-                <span>Edit</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedTarget(null)}
-                className="text-ink hover:text-ink text-xs ml-0.5 font-bold cursor-pointer"
-                title="Clear target"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 text-ink-soft text-xs font-mono px-2 shrink-0">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span className="text-[11px]">AI Edit</span>
-            </div>
-          )}
-
-          {/* Natural Language Prompt Input */}
-          <input
-            type="text"
-            value={promptInput}
-            onChange={(e) => setPromptInput(e.target.value)}
-            placeholder={
-              selectedTarget
-                ? `Prompt AI (e.g. "Change 2,018 to 2018", "Make text bolder")...`
-                : `Prompt AI (e.g. "Fix year to 2018 in shot 2", "Switch theme to blueprint")...`
-            }
-            className="flex-1 bg-transparent text-xs text-ink placeholder:text-ink-mute outline-none font-sans px-2 min-w-0"
-          />
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isProcessing || !promptInput.trim()}
-            className="px-3.5 py-1.5 bg-select hover:bg-select text-select-ink font-bold text-xs shadow-nb-sm flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shrink-0"
-          >
-            {isProcessing ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="w-3.5 h-3.5" />
-            )}
-            <span>{isProcessing ? "Applying..." : "Apply"}</span>
-          </button>
-        </form>
       </div>
     </div>
   );
