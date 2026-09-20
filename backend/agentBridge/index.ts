@@ -8,7 +8,6 @@ export * from "./contextBuilder";
 export * from "./dispatcher";
 
 import { dispatchLocalAndTmux } from "./dispatcher";
-import type { DispatchResult } from "./types";
 
 /** Backwards-compatible prompt dispatcher targeting tmux or local task files. */
 export function dispatchPromptToAgent(

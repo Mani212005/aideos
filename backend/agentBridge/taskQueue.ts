@@ -2,7 +2,7 @@
  * File Description: Pending task queue and lifecycle manager for the Aideos Agent Bridge.
  */
 
-import type { AgentEventType, AgentTask, AgentTaskContext, AgentTaskStatus, DispatchChannel } from "./types";
+import type { AgentEventType, AgentTask, AgentTaskContext, DispatchChannel } from "./types";
 
 /** Generates a unique, sortable task identifier. */
 function generateTaskId(): string {

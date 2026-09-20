@@ -4,7 +4,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { FILM_ID, readFilm, ROOT, VIDEOS_DIR } from "../pipeline/filmStore";
+import { FILM_ID, readFilm, ROOT } from "../pipeline/filmStore";
 import type { AgentTaskContext, DispatchOptions } from "./types";
 
 /** Core design invariants enforced across the Aideos explainer video standard. */

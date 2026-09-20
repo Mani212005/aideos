@@ -10,7 +10,6 @@ import {
   dispatchLocalAndTmux,
   getAgentSession as bridgeGetAgentSession,
   setAgentSession as bridgeSetAgentSession,
-  dispatchTask as bridgeDispatchTask,
 } from "./agentBridge";
 import type { AgentEventType } from "./agentBridge";
 

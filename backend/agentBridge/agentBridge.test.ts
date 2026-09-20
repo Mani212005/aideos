@@ -16,9 +16,7 @@ import {
   writeFirstmateInboxMessage,
   dispatchTask,
   clearAllFallbackTimers,
-  cancelFallbackTimer,
-  DEFAULT_AGENT_TIMEOUT_MS,
-  DESIGN_INVARIANTS,
+  type AgentTask,
 } from "./index";
 import { createMcpServer } from "../mcp/server";
 
@@ -65,7 +63,7 @@ test("TaskQueue lists pending tasks with optional slug filtering", () => {
     dispatchedChannels: ["mcp_queue"],
     timeoutMs: 10000,
   });
-  const t2 = queue.createTask({
+  queue.createTask({
     eventType: "voiceover_ready",
     filmId: "film-b",
     filmTitle: "Film B",
@@ -238,17 +236,17 @@ test("writeFirstmateInboxMessage degrades cleanly when no inbox directory is con
   delete process.env.AIDEOS_AGENT_INBOX;
 
   try {
-    const fakeTask = {
+    const fakeTask: AgentTask = {
       id: "task-test-degrade",
-      eventType: "voiceover_ready" as const,
+      eventType: "voiceover_ready",
       filmId: "test-slug",
       filmTitle: "Test Film",
       prompt: "Prompt",
       context: { filmId: "test-slug", filmTitle: "Test Film" },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      status: "pending" as const,
-      dispatchedChannels: [] as const,
+      status: "pending",
+      dispatchedChannels: [],
       timeoutMs: 15000,
     };
 
