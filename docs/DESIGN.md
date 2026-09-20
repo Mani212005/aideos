@@ -92,6 +92,7 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
   - **Magnetic Snapping (`backend/timeline/snap.ts`)**: Snaps clip boundaries to playhead, markers, and other clips with self-ignore and zoom-adaptive thresholds.
   - **Audio Waveforms (`src/components/timeline/useAudioPeaks.ts`)**: Server pre-computed peak fetching (`/api/audio/peaks`) with Web Audio API fallback rendered directly on clip bodies.
   - **Inspector Panel**: Unified sidebar for shot editing, transition selection (`TransitionEditor.tsx`), clip adjustments, and asset bin management.
+  - **Model-Driven AI Editor Panel (`OnCanvasAiEditor.tsx`)**: Interprets natural-language editing instructions into discrete, validated `EditOp` sequences with dry-run preview and atomic rollback.
 
 ### 6. Captions Stage (`CaptionsStage.tsx` / `KineticCaptionEditor.tsx`)
 - **Purpose**: Word-level kinetic subtitle editor powered by `@chenglou/pretext`.

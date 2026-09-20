@@ -124,6 +124,7 @@ Tools:
 | `aideos_list_runs`    | Every run this server process has started.                                 |
 | `aideos_list_films`   | Video packages on disk, with shot count, duration and B-roll status.       |
 | `aideos_get_film`     | The validated film manifest for one package.                              |
+| `aideos_edit_film`    | Plan and execute natural-language edits on a video package with rollback.  |
 
 A full render takes tens of minutes, so `aideos_produce_film` never blocks: it starts the run in
 the background and hands back a `runId` for the caller to poll. Run records live in the server

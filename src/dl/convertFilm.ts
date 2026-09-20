@@ -313,31 +313,34 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
     });
   }
 
-  // 3. Subtitle clips derived from the parsed caption cues.
-  const captionWords = generateWordsFromFilm(film as unknown as Record<string, unknown>);
-  for (let i = 0; i < captionWords.length; i++) {
-    const cw = captionWords[i];
-    const wStartSec = Number((cw.startFrame / fps).toFixed(3));
-    const nextStartSec =
-      i < captionWords.length - 1
-        ? Number((captionWords[i + 1].startFrame / fps).toFixed(3))
-        : Number((cw.endFrame / fps).toFixed(3));
-    const cueDur = Math.max(
-      0.01,
-      Number(Math.min(cw.endFrame / fps - wStartSec, nextStartSec - wStartSec).toFixed(3)),
-    );
+  // 3. Subtitle clips derived from the parsed caption cues (when no explicit overlay subtitles exist).
+  const hasExplicitSubtitles = Boolean(film.overlayClips?.some((oc) => oc.kind === "subtitle"));
+  if (!hasExplicitSubtitles) {
+    const captionWords = generateWordsFromFilm(film as unknown as Record<string, unknown>);
+    for (let i = 0; i < captionWords.length; i++) {
+      const cw = captionWords[i];
+      const wStartSec = Number((cw.startFrame / fps).toFixed(3));
+      const nextStartSec =
+        i < captionWords.length - 1
+          ? Number((captionWords[i + 1].startFrame / fps).toFixed(3))
+          : Number((cw.endFrame / fps).toFixed(3));
+      const cueDur = Math.max(
+        0.01,
+        Number(Math.min(cw.endFrame / fps - wStartSec, nextStartSec - wStartSec).toFixed(3)),
+      );
 
-    clips.push({
-      id: `clip-sub-${i}-${cw.text.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
-      layerId: ensureLayer(CONVERTED_LAYER_IDS.subtitles),
-      position: wStartSec,
-      start: 0,
-      end: cueDur,
-      kind: "subtitle",
-      payload: { text: cw.text, startFrame: cw.startFrame, endFrame: cw.endFrame },
-      opacity: 1,
-      volume: 1,
-    });
+      clips.push({
+        id: `clip-sub-${i}-${cw.text.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+        layerId: ensureLayer(CONVERTED_LAYER_IDS.subtitles),
+        position: wStartSec,
+        start: 0,
+        end: cueDur,
+        kind: "subtitle",
+        payload: { text: cw.text, startFrame: cw.startFrame, endFrame: cw.endFrame },
+        opacity: 1,
+        volume: 1,
+      });
+    }
   }
 
   return {

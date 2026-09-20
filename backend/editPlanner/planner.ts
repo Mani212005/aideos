@@ -91,7 +91,7 @@ export function buildPlannerPrompt(
     .join("\n");
 
   const clipsSummary = context.clips
-    .map((c) => `- Clip "${c.id}" (${c.kind}) on lane "${c.layerId}": [${c.position.toFixed(2)}s - ${(c.position + (c.end - c.start)).toFixed(2)}s]`)
+    .map((c) => `- Clip "${c.id}" (${c.kind}) on lane "${c.layerId}": [${(c.position ?? 0).toFixed(2)}s - ${((c.position ?? 0) + ((c.end ?? 0) - (c.start ?? 0))).toFixed(2)}s]`)
     .slice(0, 40)
     .join("\n");
 
