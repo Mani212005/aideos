@@ -49,6 +49,7 @@
     "typescript": "5.9.3"
   },
   "scripts": {
+    "postinstall": "npm --prefix editor ci",
     "backend": "tsx backend/cli.ts",
     "studio": "remotion studio",
     "editor": "cd editor && npm run dev",
