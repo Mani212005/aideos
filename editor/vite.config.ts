@@ -29,11 +29,12 @@ import {
 } from '../backend/scriptIntake.ts'
 import { transformProseToScreenplay } from '../backend/pipeline/director.ts'
 import {
+  dispatchTask,
   dispatchPromptToAgent,
   buildDirectingPrompt,
   getAgentSession,
   setAgentSession,
-} from '../backend/agentPrompter.ts'
+} from '../backend/agentBridge/index.ts'
 import dotenv from 'dotenv'
 dotenv.config({ path: path.resolve(__dirname, '../.env'), quiet: true })
 import { createEngine } from '../backend/engine/index.ts'
@@ -719,16 +720,15 @@ function filmApiPlugin(): Plugin {
             const rootTaskPath = path.resolve(__dirname, '../.aideos_task.md');
             fs.writeFileSync(rootTaskPath, taskDoc, 'utf8');
 
-            // Automatically prompt the active coding agent in tmux session
-            const directingPrompt = buildDirectingPrompt({
-              event: "auto_build_scenes",
+            // Automatically prompt and dispatch to connected coding agent across channels
+            const dispatch = await dispatchTask({
+              eventType: "auto_build_scenes",
               filmId: projectId,
               filmTitle,
               scriptText: scriptToBuild,
               durationSec,
               shotCount: shots.length,
             });
-            const dispatch = dispatchPromptToAgent(directingPrompt);
 
             sendJson(res, 200, {
               ok: true,
@@ -750,17 +750,16 @@ function filmApiPlugin(): Plugin {
 
         // Handle /api/prompt-agent (Directly auto-prompts active terminal agent)
         if (url === '/api/prompt-agent' && req.method === 'POST') {
-          void readBody(req).then((body: any) => {
+          void readBody(req).then(async (body: any) => {
             const { filmId = "kvcache", filmTitle = "Film", event = "custom_directive", customInstruction, script } = body || {};
-            const prompt = buildDirectingPrompt({
-              event,
+            const dispatch = await dispatchTask({
+              eventType: event as any || "custom_directive",
               filmId,
               filmTitle,
               customInstruction,
               scriptText: script,
             });
-            const dispatch = dispatchPromptToAgent(prompt);
-            sendJson(res, 200, { ok: true, dispatch, prompt });
+            sendJson(res, 200, { ok: true, dispatch, prompt: dispatch.prompt });
           }).catch(err => sendJson(res, 500, { error: String(err) }));
           return;
         }
@@ -1382,16 +1381,15 @@ function filmApiPlugin(): Plugin {
               fs.writeFileSync(path.join(pkgDir, 'director_task.md'), taskDoc, 'utf8');
               fs.writeFileSync(path.resolve(__dirname, '../.aideos_task.md'), taskDoc, 'utf8');
 
-              // Automatically prompt the active coding agent in tmux session
-              const directingPrompt = buildDirectingPrompt({
-                event: "voiceover_ready",
+              // Automatically prompt and dispatch to connected coding agent across channels
+              const dispatch = await dispatchTask({
+                eventType: "voiceover_ready",
                 filmId: projectId,
                 filmTitle: taskOpts.filmTitle,
                 voiceoverFile: `videos/${projectId}/${outFilename}`,
                 durationSec: measuredDuration,
                 shotCount: taskOpts.shotCount,
               });
-              const dispatch = dispatchPromptToAgent(directingPrompt);
 
               sendJson(res, 200, {
                 ok: true,
