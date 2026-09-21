@@ -11,6 +11,7 @@ import fs from "fs";
 import path from "path";
 import type { Block, Film } from "../../src/dl/schema";
 import { parseFilm } from "../../src/dl/schema";
+import { traceBus } from "../agentBridge/traceBus";
 
 /** Repo root, resolved from this module so the pipeline works from any cwd. */
 export const ROOT = path.resolve(__dirname, "../..");
@@ -81,6 +82,7 @@ export function writeFilm(slug: string, film: Film): Film {
 
   fs.mkdirSync(FILMS_DIR, { recursive: true });
   fs.writeFileSync(path.join(FILMS_DIR, `${slug}.ts`), filmModule(validated), "utf8");
+  traceBus.notifyFilmUpdated(slug, validated);
   return validated;
 }
 

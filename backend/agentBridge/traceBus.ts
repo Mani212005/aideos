@@ -4,6 +4,8 @@
  * and in-process pipeline stages into a single unified timeline streamed to subscribers.
  */
 
+import type { Film } from "../../src/dl/schema";
+
 export type TracePhase =
   | "grounding"
   | "synthesis"
@@ -67,6 +69,14 @@ export interface GetStepsFilter {
 
 export type TraceStepListener = (step: TraceStep) => void;
 
+export interface FilmUpdateEvent {
+  filmId: string;
+  film: Film;
+  timestamp: string;
+}
+
+export type FilmUpdateListener = (event: FilmUpdateEvent) => void;
+
 /** Formats a Date object into a readable time string (e.g. 10:48:02 AM). */
 export function formatStepTimestamp(date: Date = new Date()): string {
   return date.toLocaleTimeString("en-US", {
@@ -89,6 +99,7 @@ export class TraceBus {
   private steps: TraceStep[] = [];
   private maxSteps: number;
   private listeners: Set<TraceStepListener> = new Set();
+  private filmListeners: Set<FilmUpdateListener> = new Set();
 
   /** Initializes the trace bus with an optional max history buffer size. */
   constructor(maxSteps: number = 200) {
@@ -186,6 +197,47 @@ export class TraceBus {
     }
 
     return filtered;
+  }
+
+  /** Subscribes a listener to receive film modification events in real time. */
+  onFilmUpdate(listener: FilmUpdateListener): () => void {
+    this.filmListeners.add(listener);
+    return () => {
+      this.filmListeners.delete(listener);
+    };
+  }
+
+  /** Notifies all registered subscribers of a film change and records an authoring trace step. */
+  notifyFilmUpdated(filmId: string, film: Film): void {
+    const timestamp = new Date().toISOString();
+    const event: FilmUpdateEvent = { filmId, film, timestamp };
+    for (const listener of this.filmListeners) {
+      try {
+        listener(event);
+      } catch (err) {
+        console.error("[TraceBus] Error notifying film update listener:", err);
+      }
+    }
+
+    this.recordStep({
+      phase: "authoring",
+      source: "agent",
+      filmId,
+      title: "Studio Film Updated",
+      description: `Live update for "${film.title || filmId}" (${film.shots?.length || 0} shots, ${film.canvas?.nodes?.length || 0} nodes)`,
+      status: "done",
+      details: [
+        `Film ID: ${filmId}`,
+        `Shots: ${film.shots?.length || 0}`,
+        `Nodes: ${film.canvas?.nodes?.length || 0}`,
+        `Edges: ${film.canvas?.edges?.length || 0}`,
+      ],
+    });
+  }
+
+  /** Returns the current count of active film update subscribers. */
+  filmSubscriberCount(): number {
+    return this.filmListeners.size;
   }
 
   /** Clears all recorded trace steps and resets the event bus history. */

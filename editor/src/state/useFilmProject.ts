@@ -94,6 +94,8 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
   const toastSeq = useRef(1);
 
   const film = history[historyIndex]?.film ?? initialFilm;
+  const filmRef = useRef(film);
+  filmRef.current = film;
 
   /** Queue a non-blocking status message and return its id so it can be updated later. */
   const notify = useCallback(
@@ -287,6 +289,58 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
     }, 900);
     return () => window.clearTimeout(timer);
   }, [film, isDirty]);
+
+  // Live studio hot-reload: subscribe to film_updated events over the SSE trace transport
+  useEffect(() => {
+    if (typeof window === "undefined" || !("EventSource" in window)) return;
+    const activeId = film.id;
+    if (!activeId) return;
+
+    let eventSource: EventSource | null = null;
+    let reconnectTimer: any = null;
+    let isMounted = true;
+
+    /** Connect to the SSE endpoint to stream live film updates. */
+    const connect = () => {
+      if (!isMounted) return;
+      try {
+        const es = new EventSource(`/api/agent/trace?filmId=${encodeURIComponent(activeId)}`);
+        eventSource = es;
+
+        es.addEventListener("film_updated", (event) => {
+          if (!isMounted) return;
+          try {
+            const data = JSON.parse(event.data);
+            if (data.filmId === activeId && data.film) {
+              const incomingFilm = data.film as Film;
+              if (JSON.stringify(incomingFilm) !== JSON.stringify(filmRef.current)) {
+                replaceFilm(incomingFilm);
+                notify("info", `⚡ Live update: ${incomingFilm.title || activeId} updated`);
+              }
+            }
+          } catch (err) {
+            console.warn("[useFilmProject] Error parsing live film update:", err);
+          }
+        });
+
+        es.onerror = () => {
+          if (!isMounted) return;
+          es.close();
+          reconnectTimer = setTimeout(connect, 4000);
+        };
+      } catch {
+        reconnectTimer = setTimeout(connect, 4000);
+      }
+    };
+
+    connect();
+
+    return () => {
+      isMounted = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (eventSource) eventSource.close();
+    };
+  }, [film.id, notify, replaceFilm]);
 
   const timeline = useMemo(() => {
     try {

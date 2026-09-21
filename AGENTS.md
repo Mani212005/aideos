@@ -221,6 +221,11 @@ File Description: This file defines the core guidelines, coding principles, and 
 - MCP tool `aideos_report_step` in `backend/mcp/server.ts` enables connected coding agents to report reasoning, tool calls, and invariant checks into the unified trace timeline.
 - `editor/src/components/AgentActivityInspector.tsx` renders live SSE telemetry with real-time status indicators (LIVE/CONNECTING/OFFLINE), phase filtering, and an honest empty state when idle.
 
+## Bi-Directional Canvas & Edit Loop (Phase 4)
+- User actions across the three canvas surfaces (Canvas node additions in `editor/src/screens/StoryStage.tsx`, On-Canvas AI-edit requests in `editor/src/components/OnCanvasAiEditor.tsx`, and Review Critique Studio in `editor/src/components/CritiqueStudio.tsx`) dispatch tasks with rich video context to the connected coding agent via `backend/agentBridge/dispatcher.ts` and emit live telemetry steps to `traceBus`.
+- Instant studio hot-reload: When `videos/<slug>/film.json` is modified on disk by an agent or written via `backend/pipeline/filmStore.ts` / `writeFilm`, `traceBus.notifyFilmUpdated` broadcasts `event: film_updated` over the SSE `/api/agent/trace` stream. `editor/src/state/useFilmProject.ts` receives the event and updates the open film live without a manual refresh.
+- `backend/agentBridge/canvasLoop.test.ts` covers the complete bi-directional loop, fallback handling, and instant studio update path.
+
 ## Maintaining this file
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.
 - Keep it concise. Prefer pointers to authoritative files over copying details.

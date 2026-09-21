@@ -152,6 +152,12 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
       const updatedFilm = convertLayeredFilmToFilm(result.film, film);
       onUpdateFilm(updatedFilm);
 
+      void fetch(`/api/films/${film.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ film: updatedFilm }),
+      }).catch(() => undefined);
+
       setStatusMessage({
         text: "Applied AI edit successfully!",
         isError: false,

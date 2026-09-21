@@ -72,7 +72,7 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 
 ### 2. Story Stage (`StoryStage.tsx` / `MindMap.tsx` / `NodeEditor.tsx`)
 - **Purpose**: Interactive 2D spatial canvas rendering the underlying graph topology (`CanvasNode` and `CanvasEdge`).
-- **Features**: Allows creators to drag spatial anchors in 2D space, connect directed edges, edit concept card properties, and preview camera pan/zoom trajectories.
+- **Features**: Allows creators to drag spatial anchors in 2D space, connect directed edges, edit concept card properties, preview camera pan/zoom trajectories, and automatically dispatches spatial actions (`add_node`, `add_edge`, `add_shot`) to connected coding agents via `/api/canvas/event`.
 
 ### 3. Look Stage (`LookStage.tsx` / `Styleboard.tsx` / `CustomizationEditor.tsx`)
 - **Purpose**: Visual styling and storyboard gallery combining theme customization with keyframe inspection.
@@ -92,7 +92,7 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
   - **Magnetic Snapping (`backend/timeline/snap.ts`)**: Snaps clip boundaries to playhead, markers, and other clips with self-ignore and zoom-adaptive thresholds.
   - **Audio Waveforms (`src/components/timeline/useAudioPeaks.ts`)**: Server pre-computed peak fetching (`/api/audio/peaks`) with Web Audio API fallback rendered directly on clip bodies.
   - **Inspector Panel**: Unified sidebar for shot editing, transition selection (`TransitionEditor.tsx`), clip adjustments, and asset bin management.
-  - **Model-Driven AI Editor Panel (`OnCanvasAiEditor.tsx`)**: Interprets natural-language editing instructions into discrete, validated `EditOp` sequences with dry-run preview and atomic rollback.
+  - **Model-Driven AI Editor Panel (`OnCanvasAiEditor.tsx`)**: Interprets natural-language editing instructions into discrete, validated `EditOp` sequences with dry-run preview, atomic rollback, and automatic dispatch across Agent Bridge channels.
 
 ### 6. Captions Stage (`CaptionsStage.tsx` / `KineticCaptionEditor.tsx`)
 - **Purpose**: Word-level kinetic subtitle editor powered by `@chenglou/pretext`.
@@ -102,7 +102,7 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 - **Purpose**: Final quality assurance, pacing inspection, AI critique drawer, and video export.
 - **Features**:
   - **Data Visualizations (`src/components/ui/Charts.tsx`)**: Renders script-to-timeline coverage maps, shot duration distribution, narration vs silence density, and pacing health metrics in pure SVG.
-  - **AI Critique Drawer**: Interactive assistant for applying natural-language feedback and generating atomic film patches via `/api/critique`.
+  - **AI Critique Drawer**: Interactive assistant for applying natural-language feedback and generating atomic film patches via `/api/critique`, with full task dispatch to connected coding agents.
   - **Export Modal**: Headless Remotion CLI rendering with live progress bars and automatic MP4 download triggers.
 
 ---

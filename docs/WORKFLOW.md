@@ -125,13 +125,13 @@ Aideos is engineered around 4 strict architectural invariants:
 The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run editor` or the global terminal command `aideos`), presenting a 7-stage Neobrutalism editing interface:
 
 1. **Stage 1: Script (`ScriptStage.tsx`)**: Write and edit screenplay narration text in Full Screenplay markdown, interactive Visual Studio beat cards, or Spoken Text view, with automatic Remotion sub-shot compilation and instant Kokoro TTS voiceover generation.
-2. **Stage 2: Story (`StoryStage.tsx`)**: Drag and drop nodes across the 2D infinite spatial canvas, edit card labels, route directed edges, and solve camera zoom anchors.
+2. **Stage 2: Story (`StoryStage.tsx`)**: Drag and drop nodes across the 2D infinite spatial canvas, edit card labels, route directed edges, and solve camera zoom anchors, automatically streaming canvas actions to connected coding agents.
 3. **Stage 3: Look (`LookStage.tsx`)**: Storyboard gallery with 1-click character gesture posing (`Wave`, `Point`, `Think`, `Celebrate`), paper texture presets (Blueprint, Archival White, Charcoal), typography controls, and accent color pickers.
 4. **Stage 4: Motion (`MotionStage.tsx`)**: Custom SVG movie animation authoring studio with element-level timeline keyframing, motion templates (staged entry, pulse, draw-on strokes), and frame-synchronized preview.
-5. **Stage 5: Edit (`EditStage.tsx`)**: Non-linear multi-track timeline displaying audio waveforms, track controls (lock, mute, hide), clip dragging with sticky snapping, transition selectors, unified clip/shot inspector, and model-driven AI edit panel.
+5. **Stage 5: Edit (`EditStage.tsx`)**: Non-linear multi-track timeline displaying audio waveforms, track controls (lock, mute, hide), clip dragging with sticky snapping, transition selectors, unified clip/shot inspector, and model-driven AI edit panel connected to Agent Bridge.
 6. **Stage 6: Captions (`CaptionsStage.tsx`)**: Word-level subtitle karaoke editor powered by `@chenglou/pretext` for phrase locks and keyword highlight timing.
-7. **Stage 7: Review (`ReviewStage.tsx`)**: AI Critique Studio drawer for natural-language feedback, SVG data visualization charts (coverage map, duration distribution, pacing metrics), and headless Remotion MP4 export.
-8. **Persistent Preview & Controls**: 60 FPS Remotion preview player with 16:9 Long and 9:16 Vertical Reel aspect ratio toggling, transport controls, and global AI feedback assistant.
+7. **Stage 7: Review (`ReviewStage.tsx`)**: AI Critique Studio drawer for natural-language feedback with Agent Bridge dispatch, SVG data visualization charts (coverage map, duration distribution, pacing metrics), and headless Remotion MP4 export.
+8. **Persistent Preview & Controls**: 60 FPS Remotion preview player with 16:9 Long and 9:16 Vertical Reel aspect ratio toggling, transport controls, and live studio hot-reload reflecting agent updates in real time.
 
 ---
 
