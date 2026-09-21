@@ -6,6 +6,7 @@ export * from "./types";
 export * from "./taskQueue";
 export * from "./contextBuilder";
 export * from "./dispatcher";
+export * from "./traceBus";
 
 import { dispatchLocalAndTmux } from "./dispatcher";
 

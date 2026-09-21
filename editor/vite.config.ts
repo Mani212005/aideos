@@ -30,10 +30,9 @@ import {
 import { transformProseToScreenplay } from '../backend/pipeline/director.ts'
 import {
   dispatchTask,
-  dispatchPromptToAgent,
-  buildDirectingPrompt,
   getAgentSession,
   setAgentSession,
+  traceBus,
 } from '../backend/agentBridge/index.ts'
 import dotenv from 'dotenv'
 dotenv.config({ path: path.resolve(__dirname, '../.env'), quiet: true })
@@ -281,6 +280,15 @@ async function startBrollJob(filmId: string, shotId: string, promptText: string,
           // sync too since it's what Remotion's CLI render/activeFilm bundle reads.
           try {
             wireFootageIntoFilm(filmId, shotId, relPath, promptText);
+            traceBus.recordStep({
+              phase: "broll",
+              source: "broll",
+              filmId,
+              title: `GPU B-Roll: Shot ${shotId}`,
+              description: `Rendered and auto-wired GPU footage into shot [${shotId}]`,
+              status: "done",
+              details: [`Footage: ${relPath}`, `Prompt: ${(promptText || "GPU B-Roll").slice(0, 100)}`],
+            });
           } catch (e) {
             console.error(`[broll] Failed to auto-wire footage into film file:`, e);
           }
@@ -730,6 +738,21 @@ function filmApiPlugin(): Plugin {
               shotCount: shots.length,
             });
 
+            traceBus.recordStep({
+              phase: "authoring",
+              source: "pipeline",
+              filmId: projectId,
+              title: "Auto-Build: Scenes & Graph Built",
+              description: `Constructed ${shots.length} shots and ${nodes.length} canvas nodes (${durationSec}s total duration)`,
+              status: "done",
+              details: [
+                `Spoken Words: ${wordCount}`,
+                `Shots: ${shots.length}`,
+                `Canvas Nodes: ${nodes.length}`,
+                `Screenplay Transformed: ${transformed ? "yes (Director LLM)" : "no (already tagged)"}`,
+              ],
+            });
+
             sendJson(res, 200, {
               ok: true,
               shots,
@@ -778,6 +801,98 @@ function filmApiPlugin(): Plugin {
           return;
         }
 
+        // Handle /api/agent/trace (SSE stream for live Agent Trace telemetry)
+        if (url === '/api/agent/trace' && req.method === 'GET') {
+          const parsedUrl = new URL(req.url ?? '', 'http://localhost');
+          const filmId = parsedUrl.searchParams.get('filmId') || undefined;
+
+          res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache, no-transform',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*',
+          });
+
+          // Handshake connected event
+          res.write(`event: connected\ndata: ${JSON.stringify({ ok: true, timestamp: new Date().toISOString() })}\n\n`);
+
+          // Send recent steps history so the subscriber has recent context immediately
+          const history = traceBus.getRecentSteps({ filmId });
+          for (const step of history) {
+            res.write(`event: step\ndata: ${JSON.stringify(step)}\n\n`);
+          }
+
+          // Subscribe to live steps on the trace bus
+          const unsubscribe = traceBus.subscribe((step) => {
+            if (!filmId || !step.filmId || step.filmId === filmId) {
+              try {
+                res.write(`event: step\ndata: ${JSON.stringify(step)}\n\n`);
+              } catch {
+                // Connection may have dropped
+              }
+            }
+          });
+
+          // Keep connection alive with periodic heartbeat
+          const heartbeat = setInterval(() => {
+            try {
+              res.write(': heartbeat\n\n');
+            } catch {
+              // Heartbeat write failure
+            }
+          }, 15000);
+
+          req.on('close', () => {
+            clearInterval(heartbeat);
+            unsubscribe();
+          });
+          return;
+        }
+
+        // Handle /api/agent/trace/step (Report trace step from server stages or HTTP clients)
+        if (url === '/api/agent/trace/step' && req.method === 'POST') {
+          void readBody(req).then((body: any) => {
+            const { title, description, phase, status, details, source, filmId, durationMs, error } = body || {};
+            if (!title || typeof title !== 'string') {
+              sendJson(res, 400, { error: 'title is required and must be a string' });
+              return;
+            }
+            const step = traceBus.recordStep({
+              title,
+              description,
+              phase,
+              status,
+              details,
+              source: source || 'pipeline',
+              filmId,
+              durationMs,
+              error,
+            });
+            sendJson(res, 200, { ok: true, step });
+          }).catch(err => sendJson(res, 500, { error: String(err) }));
+          return;
+        }
+
+        // Handle /api/agent/trace/history (Read recent trace history snapshot)
+        if (url === '/api/agent/trace/history' && req.method === 'GET') {
+          const parsedUrl = new URL(req.url ?? '', 'http://localhost');
+          const filmId = parsedUrl.searchParams.get('filmId') || undefined;
+          const phase = parsedUrl.searchParams.get('phase') || undefined;
+          const source = parsedUrl.searchParams.get('source') || undefined;
+          const limitStr = parsedUrl.searchParams.get('limit');
+          const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+          const steps = traceBus.getRecentSteps({ filmId, phase, source, limit });
+          sendJson(res, 200, { ok: true, steps });
+          return;
+        }
+
+        // Handle DELETE /api/agent/trace (Reset trace history)
+        if (url === '/api/agent/trace' && req.method === 'DELETE') {
+          traceBus.clear();
+          sendJson(res, 200, { ok: true, message: 'Trace history cleared' });
+          return;
+        }
+
         // Handle /api/voiceover (Google Cloud TTS / Neural Voiceover Synthesis & Shot Duration Alignment)
         if (url === '/api/voiceover' && req.method === 'POST') {
           void readBody(req).then(async (body: any) => {
@@ -817,6 +932,20 @@ function filmApiPlugin(): Plugin {
               }))
             );
             fs.writeFileSync(path.join(pkgDir, 'voiceover_words.json'), JSON.stringify({ words: flatWords }, null, 2), 'utf8');
+
+            traceBus.recordStep({
+              phase: "synthesis",
+              source: "tts",
+              filmId: film.id,
+              title: "Neural Voiceover Synthesized",
+              description: `Generated narration audio (${audioResult.totalAudioDuration.toFixed(2)}s) with phonetic word timings`,
+              status: "done",
+              details: [
+                `Segments: ${audioResult.segments.length}`,
+                `Total Words: ${flatWords.length}`,
+                `Duration: ${audioResult.totalAudioDuration.toFixed(2)}s`,
+              ],
+            });
 
             sendJson(res, 200, { ok: true, film: updatedFilm, audioResult });
           }).catch(err => {

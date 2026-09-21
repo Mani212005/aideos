@@ -282,9 +282,11 @@ An individual vector path inside a limb:
 * `buildProseTransformSystemInstruction()` (`backend/pipeline/director.ts`): Assembles the system instruction for transforming raw prose into structured scenes, visual directions, on-screen text, and narration beats.
 * `compileScreenplayToFilm(screenplay, spine, options)` (`backend/pipeline/design.ts`): Compiles screenplay and narration spine into validated `Film`.
 * `renderFormat(slug, format, options)` (`backend/pipeline/render.ts`): Drives Remotion render with headless verification and contact sheet generation.
-* `startMcpServer()` (`backend/mcp/server.ts`): Exposes the production pipeline and agent bridge as an MCP stdio server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`, `aideos_edit_film`, `aideos_get_pending_tasks`, `aideos_claim_task`, and `aideos_complete_task`.
+* `startMcpServer()` (`backend/mcp/server.ts`): Exposes the production pipeline and agent bridge as an MCP stdio server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`, `aideos_edit_film`, `aideos_get_pending_tasks`, `aideos_claim_task`, `aideos_complete_task`, and `aideos_report_step`.
 
 ### `backend/agentBridge/` (Connected Agent Bridge Hub & Multi-Channel Dispatcher)
+* `traceBus` (`backend/agentBridge/traceBus.ts`): Global singleton in-process telemetry event bus (`TraceBus`) collecting and streaming execution steps (`recordStep`, `updateStep`, `getRecentSteps`, `subscribe`, `clear`) across coding agents, AI edit planning, neural TTS synthesis, GPU B-roll rendering, and invariant validation.
+* `formatStepTimestamp(date)`, `generateStepId()` (`backend/agentBridge/traceBus.ts`): Formatting and identifier helpers for trace steps.
 * `dispatchTask(opts)`: Dispatches rich task context across all active channels (Firstmate steering inbox, MCP task queue, local file/tmux) with automatic hybrid timeout fallback.
 * `buildTaskContext(opts, rootDir)`: Assembles full working context payload (script, film manifest, audio spine, word timings, director guide ref, design invariants).
 * `buildDirectingPrompt(opts, context)`: Formats structured directing prompts for connected coding agents from Studio events.
@@ -393,6 +395,9 @@ An individual vector path inside a limb:
 ### State & Integration Layer (`editor/src/state/`)
 * **`useFilmProject.ts`**: Owns the active `Film` document, autosave debounce, and single labelled undo/redo transaction stack.
 * **`useLayeredTimeline.ts`**: Derives `LayeredFilm`, executes layer engine mutations (`moveClip`, `trimClip`, `rippleTrimClip`, `splitClip`, `removeClip`, `rippleRemoveClip`), folds changes back losslessly via `convertLayeredFilmToFilm`, and computes `renderFilm` for preview and export.
+
+### Studio Inspector & Telemetry Components (`editor/src/components/`)
+* **`AgentActivityInspector.tsx`**: Live real-time agent telemetry timeline subscribing to SSE stream (`/api/agent/trace`) with filterable execution steps, live status pills (LIVE / CONNECTING / OFFLINE), and empty state.
 
 ### Handcrafted Neobrutalism UI Primitives (`editor/src/components/ui/`)
 * **`Badge.tsx`**: Status indicators and token chips.
