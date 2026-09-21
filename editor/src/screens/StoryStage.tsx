@@ -17,15 +17,39 @@ export interface StoryStageProps {
   onSelectNode: (id: string | null) => void;
 }
 
+/** Asynchronously notifies the Agent Bridge Hub of canvas user interactions. */
+function dispatchCanvasAction(film: Film, action: string, description: string, details?: string[]): void {
+  void fetch("/api/canvas/event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      film,
+      action,
+      description,
+      details,
+    }),
+  }).catch((err) => {
+    console.warn("[StoryStage] Failed to dispatch canvas action to bridge:", err);
+  });
+}
+
 /** Spatial canvas: the nodes and edges the camera moves between. */
 export function StoryStage({ film, commit, selectedNodeId, onSelectNode }: StoryStageProps) {
   /** Add a fresh node near the middle of the canvas. */
   const addNode = () => {
+    const nodeId = `node-${Date.now()}`;
     const nodes = [
       ...film.canvas.nodes,
-      { id: `node-${Date.now()}`, label: "new node", x: 120, y: 120, w: 190, h: 62 },
+      { id: nodeId, label: "new node", x: 120, y: 120, w: 190, h: 62 },
     ];
-    commit({ ...film, canvas: { ...film.canvas, nodes } }, "Add canvas node");
+    const nextFilm = { ...film, canvas: { ...film.canvas, nodes } };
+    commit(nextFilm, "Add canvas node");
+    dispatchCanvasAction(
+      nextFilm,
+      "add_node",
+      `User added canvas node "${nodeId}" at (120, 120)`,
+      [`Node ID: ${nodeId}`, `Total Nodes: ${nodes.length}`],
+    );
   };
 
   /** Connect the first two nodes that are not already connected. */
@@ -33,14 +57,22 @@ export function StoryStage({ film, commit, selectedNodeId, onSelectNode }: Story
     const [from, to] = film.canvas.nodes;
     if (!from || !to) return;
     const edges: CanvasEdge[] = [...film.canvas.edges, { from: from.id, to: to.id, dashed: false }];
-    commit({ ...film, canvas: { ...film.canvas, edges } }, "Add canvas edge");
+    const nextFilm = { ...film, canvas: { ...film.canvas, edges } };
+    commit(nextFilm, "Add canvas edge");
+    dispatchCanvasAction(
+      nextFilm,
+      "add_edge",
+      `User connected canvas nodes "${from.id}" -> "${to.id}"`,
+      [`From: ${from.id}`, `To: ${to.id}`, `Total Edges: ${edges.length}`],
+    );
   };
 
   /** Append a new shot that looks at the first node. */
   const addShot = () => {
     const look = film.canvas.nodes[0]?.id || "all";
+    const shotId = `shot-${Date.now()}`;
     const shot = {
-      id: `shot-${Date.now()}`,
+      id: shotId,
       dur: 6,
       look,
       move: "hold",
@@ -49,7 +81,14 @@ export function StoryStage({ film, commit, selectedNodeId, onSelectNode }: Story
       drift: false,
       blocks: [{ c: "Body", text: "New shot narrative and scene description." }],
     } as Shot;
-    commit({ ...film, shots: [...film.shots, shot] }, "Add shot");
+    const nextFilm = { ...film, shots: [...film.shots, shot] };
+    commit(nextFilm, "Add shot");
+    dispatchCanvasAction(
+      nextFilm,
+      "add_shot",
+      `User added shot "${shotId}" targeting station "${look}"`,
+      [`Shot ID: ${shotId}`, `Look Target: ${look}`, `Total Shots: ${nextFilm.shots.length}`],
+    );
   };
 
   return (

@@ -10,7 +10,9 @@ export type AgentEventType =
   | "script_updated"
   | "ai_edit"
   | "custom_directive"
-  | "produce_film";
+  | "produce_film"
+  | "canvas_updated"
+  | "critique";
 
 export type AgentTaskStatus =
   | "pending"

@@ -85,6 +85,7 @@ function writeFilm(filmId: string, film: Film): void {
   if (fs.existsSync(filmPath)) {
     fs.writeFileSync(filmPath, filmModule(film), 'utf8');
   }
+  traceBus.notifyFilmUpdated(filmId, film);
 }
 
 // Wires a finished B-roll clip into a shot's blocks as an AnalogyInset, replacing any
@@ -315,11 +316,62 @@ async function startBrollJob(filmId: string, shotId: string, promptText: string,
   return record;
 }
 
+let filmWatcher: fs.FSWatcher | null = null;
+const debounceTimers = new Map<string, NodeJS.Timeout>();
+
+// Watches the videos directory for external modifications to film.json and broadcasts updates
+function startFilmWatcher(): void {
+  if (filmWatcher) return;
+  if (!fs.existsSync(videosDir)) {
+    try {
+      fs.mkdirSync(videosDir, { recursive: true });
+    } catch (_) {
+      return;
+    }
+  }
+
+  try {
+    filmWatcher = fs.watch(videosDir, { recursive: true }, (_eventType, filename) => {
+      if (!filename || !filename.endsWith('film.json')) return;
+      const parts = filename.split(/[/\\]/);
+      const slug = parts.length > 1 ? parts[0] : null;
+      if (!slug || !FILM_ID.test(slug)) return;
+
+      const existingTimer = debounceTimers.get(slug);
+      if (existingTimer) clearTimeout(existingTimer);
+
+      const timer = setTimeout(() => {
+        debounceTimers.delete(slug);
+        const filmPath = path.join(videosDir, slug, 'film.json');
+        if (!fs.existsSync(filmPath)) return;
+        try {
+          const raw = fs.readFileSync(filmPath, 'utf8');
+          const parsedJson = JSON.parse(raw);
+          const parsed = filmSchema.safeParse(parsedJson);
+          if (parsed.success) {
+            traceBus.notifyFilmUpdated(slug, parsed.data);
+          }
+        } catch (_) {}
+      }, 100);
+
+      if (typeof timer.unref === 'function') timer.unref();
+      debounceTimers.set(slug, timer);
+    });
+
+    if (filmWatcher && typeof filmWatcher.unref === 'function') {
+      filmWatcher.unref();
+    }
+  } catch (err) {
+    console.warn('[filmWatcher] Could not attach watcher on videos directory:', err);
+  }
+}
+
 // Vite plugin to provide simple read/write API for films and video rendering
 function filmApiPlugin(): Plugin {
   return {
     name: 'film-api',
     configureServer(server) {
+      startFilmWatcher();
       server.middlewares.use((req, res, next) => {
         const url = (req.url ?? '').split('?')[0];
 
@@ -787,6 +839,46 @@ function filmApiPlugin(): Plugin {
           return;
         }
 
+        // Handle /api/canvas/event (Dispatches canvas node/edge/shot additions and spatial map updates to Agent Bridge)
+        if (url === '/api/canvas/event' && req.method === 'POST') {
+          void readBody(req).then(async (body: any) => {
+            const { film, action, description, details, nodeId, shotId } = body || {};
+            if (!film || !action) {
+              sendJson(res, 400, { error: 'film and action are required' });
+              return;
+            }
+
+            const filmId = film.id || 'film';
+            const actionText = description || `Canvas action: ${action}`;
+
+            const dispatch = await dispatchTask({
+              eventType: "canvas_updated",
+              filmId,
+              filmTitle: film.title || filmId,
+              customInstruction: actionText,
+              shotCount: film.shots?.length || 0,
+              metadata: { action, nodeId, shotId, details },
+            });
+
+            traceBus.recordStep({
+              phase: "authoring",
+              source: "canvas",
+              filmId,
+              title: `Canvas: ${String(action).replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}`,
+              description: actionText,
+              status: "done",
+              details: Array.isArray(details) ? details : [
+                `Nodes: ${film.canvas?.nodes?.length || 0}`,
+                `Edges: ${film.canvas?.edges?.length || 0}`,
+                `Shots: ${film.shots?.length || 0}`,
+              ],
+            });
+
+            sendJson(res, 200, { ok: true, dispatch });
+          }).catch((err) => sendJson(res, 500, { error: String(err) }));
+          return;
+        }
+
         // Handle /api/agent-session (Read/Update active agent session metadata)
         if (url === '/api/agent-session' && req.method === 'GET') {
           const session = getAgentSession();
@@ -833,6 +925,17 @@ function filmApiPlugin(): Plugin {
             }
           });
 
+          // Subscribe to live film updates on the trace bus
+          const unsubscribeFilm = traceBus.onFilmUpdate((update) => {
+            if (!filmId || update.filmId === filmId) {
+              try {
+                res.write(`event: film_updated\ndata: ${JSON.stringify(update)}\n\n`);
+              } catch {
+                // Connection may have dropped
+              }
+            }
+          });
+
           // Keep connection alive with periodic heartbeat
           const heartbeat = setInterval(() => {
             try {
@@ -845,6 +948,7 @@ function filmApiPlugin(): Plugin {
           req.on('close', () => {
             clearInterval(heartbeat);
             unsubscribe();
+            unsubscribeFilm();
           });
           return;
         }
@@ -1214,7 +1318,42 @@ function filmApiPlugin(): Plugin {
                 theme: layered.theme,
               });
 
+              // Automatically prompt and dispatch to connected coding agent across channels
+              const dispatch = await dispatchTask({
+                eventType: "ai_edit",
+                filmId,
+                filmTitle: film.title || filmId,
+                customInstruction: request,
+                durationSec,
+                shotCount: film.shots?.length || 0,
+                metadata: { editRequest: request, dryRun },
+              });
+
+              traceBus.recordStep({
+                phase: "ai_edit",
+                source: "pipeline",
+                filmId,
+                title: `AI Edit Request: "${request.slice(0, 60)}"`,
+                description: `Planning video edit program for ${film.title || filmId}`,
+                status: "running",
+                details: [
+                  `Request: ${request}`,
+                  `Clips: ${layered.clips.length}`,
+                  `Duration: ${durationSec.toFixed(1)}s`,
+                ],
+              });
+
               const planResult = await planEdits(request, context, undefined, { agentHints });
+
+              traceBus.recordStep({
+                phase: "ai_edit",
+                source: "pipeline",
+                filmId,
+                title: `AI Edit Planned: ${planResult.ops.length} op(s)`,
+                description: planResult.plan.slice(0, 100),
+                status: "done",
+                details: planResult.ops.map((o: any) => `${o.op}`),
+              });
 
               // If dryRun, return plan and ops for client preview/approval
               if (dryRun) {
@@ -1226,6 +1365,7 @@ function filmApiPlugin(): Plugin {
                   attempts: planResult.attempts,
                   warnings: planResult.warnings,
                   context,
+                  dispatch,
                 });
                 return;
               }
@@ -1239,11 +1379,22 @@ function filmApiPlugin(): Plugin {
                   rejected: appliedResult.rejected,
                   plan: planResult.plan,
                   ops: planResult.ops,
+                  dispatch,
                 });
                 return;
               }
 
               const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
+              writeFilm(updatedFilm.id, updatedFilm);
+
+              traceBus.recordStep({
+                phase: "ai_edit",
+                source: "pipeline",
+                filmId,
+                title: `AI Edit Applied: ${planResult.ops.length} op(s)`,
+                description: `Successfully applied and saved edit program to ${updatedFilm.id}`,
+                status: "done",
+              });
 
               sendJson(res, 200, {
                 ok: true,
@@ -1253,6 +1404,7 @@ function filmApiPlugin(): Plugin {
                 attempts: planResult.attempts,
                 warnings: planResult.warnings,
                 film: updatedFilm,
+                dispatch,
               });
             } catch (err: any) {
               console.error('[ai-edit] Error planning/applying edit:', err);
@@ -1543,14 +1695,37 @@ function filmApiPlugin(): Plugin {
 
         // Handle /api/critique (Natural-Language Critique & Film Patching Engine)
         if (url === '/api/critique' && req.method === 'POST') {
-          void readBody(req).then((body: any) => {
+          void readBody(req).then(async (body: any) => {
             const { critique, film, scene } = body || {};
             if (!critique || !film) {
               sendJson(res, 400, { error: 'critique and film are required' });
               return;
             }
 
+            const dispatch = await dispatchTask({
+              eventType: "critique",
+              filmId: film.id,
+              filmTitle: film.title || film.id,
+              customInstruction: critique,
+              shotCount: film.shots?.length || 0,
+              metadata: { critique, scene },
+            });
+
             const result = executeCritique({ critique, film, scene });
+
+            traceBus.recordStep({
+              phase: "validation",
+              source: "pipeline",
+              filmId: film.id,
+              title: `Critique: "${critique.slice(0, 60)}"`,
+              description: result.explanation || "Executing natural-language film patch",
+              status: result.ok ? "done" : "failed",
+              details: [
+                `Target: ${result.target}`,
+                `Patch Ops: ${result.patchOps?.length ?? 0}`,
+                `Outcome: ${result.explanation}`,
+              ],
+            });
 
             // Persist conversation history to disk for full assistant & developer context
             try {
@@ -1579,7 +1754,7 @@ function filmApiPlugin(): Plugin {
             if (result.ok && result.updatedFilm && result.patchOps && result.patchOps.length > 0) {
               writeFilm(result.updatedFilm.id, result.updatedFilm);
             }
-            sendJson(res, 200, result);
+            sendJson(res, 200, { ...result, dispatch });
           }).catch((err) => sendJson(res, 500, { error: String(err) }));
           return;
         }

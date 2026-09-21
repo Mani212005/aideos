@@ -288,6 +288,57 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
     return () => window.clearTimeout(timer);
   }, [film, isDirty]);
 
+  // Live studio hot-reload: subscribe to film_updated events over the SSE trace transport
+  useEffect(() => {
+    if (typeof window === "undefined" || !("EventSource" in window)) return;
+    const activeId = film.id;
+    if (!activeId) return;
+
+    let eventSource: EventSource | null = null;
+    let reconnectTimer: any = null;
+    let isMounted = true;
+
+    const connect = () => {
+      if (!isMounted) return;
+      try {
+        const es = new EventSource(`/api/agent/trace?filmId=${encodeURIComponent(activeId)}`);
+        eventSource = es;
+
+        es.addEventListener("film_updated", (event) => {
+          if (!isMounted) return;
+          try {
+            const data = JSON.parse(event.data);
+            if (data.filmId === activeId && data.film) {
+              const incomingFilm = data.film as Film;
+              if (JSON.stringify(incomingFilm) !== JSON.stringify(film)) {
+                replaceFilm(incomingFilm);
+                notify("info", `⚡ Live update: ${incomingFilm.title || activeId} updated`);
+              }
+            }
+          } catch (err) {
+            console.warn("[useFilmProject] Error parsing live film update:", err);
+          }
+        });
+
+        es.onerror = () => {
+          if (!isMounted) return;
+          es.close();
+          reconnectTimer = setTimeout(connect, 4000);
+        };
+      } catch {
+        reconnectTimer = setTimeout(connect, 4000);
+      }
+    };
+
+    connect();
+
+    return () => {
+      isMounted = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (eventSource) eventSource.close();
+    };
+  }, [film.id, film, notify, replaceFilm]);
+
   const timeline = useMemo(() => {
     try {
       return buildTimeline(film, film.voiceover?.durationSec);

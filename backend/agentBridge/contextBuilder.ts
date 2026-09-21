@@ -117,8 +117,12 @@ export function buildDirectingPrompt(opts: DispatchOptions, context?: AgentTaskC
     eventHeadline = `Voiceover audio synthesized (${durationText})`;
   } else if (opts.eventType === "script_updated") {
     eventHeadline = "Screenplay updated in Studio";
+  } else if (opts.eventType === "canvas_updated") {
+    eventHeadline = opts.customInstruction || "Studio canvas nodes or spatial map updated";
+  } else if (opts.eventType === "critique") {
+    eventHeadline = opts.customInstruction ? `Review critique: "${opts.customInstruction}"` : "Review Critique submitted in Studio";
   } else if (opts.eventType === "ai_edit") {
-    eventHeadline = "AI video editing program requested";
+    eventHeadline = opts.customInstruction ? `AI Edit requested: "${opts.customInstruction}"` : "AI video editing program requested";
   } else if (opts.eventType === "produce_film") {
     eventHeadline = "Film production pipeline triggered";
   } else if (opts.eventType === "custom_directive") {
