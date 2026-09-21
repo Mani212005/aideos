@@ -49,5 +49,5 @@ RUN cd editor && npm ci && npm run build
 # 5. Expose Cloud Run default port
 EXPOSE 8080
 
-# 6. Start server with host 0.0.0.0 and port 8080
-CMD ["npm", "run", "editor", "--", "--host", "0.0.0.0", "--port", "8080"]
+# 6. Start server with host 0.0.0.0
+CMD ["npm", "run", "editor", "--", "--host", "0.0.0.0"]
