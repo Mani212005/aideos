@@ -371,9 +371,40 @@ function filmApiPlugin(): Plugin {
   return {
     name: 'film-api',
     configureServer(server) {
-      startFilmWatcher();
-      server.middlewares.use((req, res, next) => {
-        const url = (req.url ?? '').split('?')[0];
+      setupApiMiddlewares(server);
+    },
+    configurePreviewServer(server) {
+      setupApiMiddlewares(server);
+    },
+  };
+}
+
+// Registers all API routes, static video package streaming, audio retiming, and CORS middlewares.
+function setupApiMiddlewares(server: { middlewares: any }): void {
+  startFilmWatcher();
+  server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
+    const url = (req.url ?? '').split('?')[0];
+
+    // Ensure permissive CORS headers for all incoming API and asset requests
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Range, Authorization, Accept, X-Requested-With');
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+
+    // Handle /api/health (Service health check for Render and cloud hosting deployments)
+    if (url === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')) {
+      sendJson(res, 200, {
+        status: 'ok',
+        service: 'aideos-backend',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
 
         // Enable byte-range streaming and caching for audio media to prevent playback stutter
         if (url.endsWith('.wav')) {
@@ -569,6 +600,23 @@ function filmApiPlugin(): Plugin {
             .catch((err) => {
               sendJson(res, 500, { error: String(err) });
             });
+          return;
+        }
+
+        // Handle /api/downloads/:filename (Serve rendered video exports from out/)
+        if (url.startsWith('/api/downloads/') && (req.method === 'GET' || req.method === 'HEAD')) {
+          const filename = decodeURIComponent(url.slice('/api/downloads/'.length));
+          if (!filename || filename.includes('..')) {
+            sendJson(res, 400, { error: 'Invalid filename' });
+            return;
+          }
+          const outDir = path.resolve(__dirname, '../out');
+          const filePath = path.join(outDir, filename);
+          if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+            serveFileWithRange(req, res, filePath);
+            return;
+          }
+          sendJson(res, 404, { error: 'File not found' });
           return;
         }
 
@@ -2181,17 +2229,16 @@ function filmApiPlugin(): Plugin {
           .catch((e: unknown) => {
             sendJson(res, 400, { error: e instanceof Error ? e.message : String(e) });
           });
-      })
-    }
-  }
+      });
 }
 
 export default defineConfig({
   plugins: [react(), filmApiPlugin()],
   publicDir: path.resolve(__dirname, '../public'),
   server: {
-    port: 3001,
-    strictPort: true,
+    port: Number(process.env.PORT) || 3001,
+    host: process.env.HOST || '0.0.0.0',
+    strictPort: false,
     fs: {
       allow: ['..']
     },
@@ -2206,6 +2253,10 @@ export default defineConfig({
         path.resolve(__dirname, '../out/**'),
       ]
     }
+  },
+  preview: {
+    port: Number(process.env.PORT) || 3001,
+    host: process.env.HOST || '0.0.0.0',
   },
   resolve: {
     alias: {

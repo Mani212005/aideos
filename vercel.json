@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd editor && npm run build",
+  "outputDirectory": "editor/dist",
+  "installCommand": "npm --prefix editor ci",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://aideos-backend.onrender.com/api/:path*"
+    },
+    {
+      "source": "/videos/:path*",
+      "destination": "https://aideos-backend.onrender.com/videos/:path*"
+    },
+    {
+      "source": "/.tmp_audio/:path*",
+      "destination": "https://aideos-backend.onrender.com/.tmp_audio/:path*"
+    },
+    {
+      "source": "/((?!assets/|favicon.ico|robots.txt).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

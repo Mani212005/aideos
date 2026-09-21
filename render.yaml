@@ -1,0 +1,32 @@
+# File Description: Render Blueprint configuration for deploying the Aideos backend and video rendering container.
+# Purpose: Declares the Docker web service, health checks, ports, and environment variables on Render.
+
+services:
+  - type: web
+    name: aideos-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: PARALLEL_API_KEY
+        sync: false
+      - key: AIDEOS_GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: WAN_GPU_HOST
+        sync: false
+      - key: WAN_GPU_USER
+        sync: false
+      - key: WAN_GPU_PASSWORD
+        sync: false
