@@ -8,6 +8,7 @@ import { Sequence, staticFile } from "remotion";
 import { FilmView } from "./Film";
 import { TOTAL_FRAMES, FILM, TIMELINE, FPS, type FilmProps } from "./runtime";
 import { calculateDuckingVolume, type SpeechInterval } from "./audio/ducking";
+import { getRetimedAudioRelPath } from "./audio/retime";
 import { generateWordsFromFilm } from "./captionsParser";
 
 /**
@@ -74,31 +75,44 @@ export const Video: React.FC<FilmProps> = ({
       {FILM.audioClips && FILM.audioClips.length > 0 ? (
         FILM.audioClips.map((ac) => {
           const speed = ac.speed ?? 1.0;
+          const isRetimed = Math.abs(speed - 1.0) > 0.001;
           const startFrame = Math.round(ac.position * FPS);
-          const startFrom = Math.round((ac.start ?? 0) * FPS);
-          const endAt = Math.round(ac.end * FPS);
-          const rawDurFrames = Math.max(1, endAt - startFrom);
+          const rawDurFrames = Math.max(1, Math.round(ac.end * FPS) - Math.round((ac.start ?? 0) * FPS));
           const effectiveDurFrames = Math.max(1, Math.round(rawDurFrames / speed));
+          const startFrom = isRetimed ? Math.round(((ac.start ?? 0) / speed) * FPS) : Math.round((ac.start ?? 0) * FPS);
           const clipLevel = (ac.volume ?? 1) * effectiveVoiceoverVolume;
+          const audioSrc = isRetimed
+            ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
+            : staticFile(ac.src);
 
           return (
             <Sequence key={ac.id} from={startFrame} durationInFrames={effectiveDurFrames}>
               <Audio
-                src={staticFile(ac.src)}
+                src={audioSrc}
                 trimBefore={startFrom}
-                playbackRate={speed}
+                playbackRate={1.0}
                 volume={(f) => voiceLevel(f, clipLevel)}
               />
             </Sequence>
           );
         })
       ) : effectiveVoiceoverSrc.trim().length > 0 ? (
-        <Audio
-          key={`aideos-voiceover-${FILM.id}`}
-          src={staticFile(effectiveVoiceoverSrc)}
-          playbackRate={FILM.voiceover?.speed ?? 1.0}
-          volume={(f) => voiceLevel(f, effectiveVoiceoverVolume)}
-        />
+        (() => {
+          const speed = FILM.voiceover?.speed ?? 1.0;
+          const isRetimed = Math.abs(speed - 1.0) > 0.001;
+          const audioSrc = isRetimed
+            ? staticFile(FILM.voiceover?.retimedSrc || getRetimedAudioRelPath(effectiveVoiceoverSrc, speed))
+            : staticFile(effectiveVoiceoverSrc);
+
+          return (
+            <Audio
+              key={`aideos-voiceover-${FILM.id}-${speed}`}
+              src={audioSrc}
+              playbackRate={1.0}
+              volume={(f) => voiceLevel(f, effectiveVoiceoverVolume)}
+            />
+          );
+        })()
       ) : null}
 
       {/* 3. Transition Sound Effects (SFX) Track */}

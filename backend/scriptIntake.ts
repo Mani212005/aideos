@@ -6,6 +6,62 @@
  * TextReveal overlays. Contains no Node-only imports so it can be bundled for the browser as-is.
  */
 
+import {
+  ANIMATED_PRIMITIVES,
+  type AnimatedPrimitive,
+  SAFE_GENERIC_PRIMITIVES,
+  COMPLEX_PRIMITIVES,
+  DEFAULT_COMPLEX_CONFIDENCE_THRESHOLD,
+  DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+  DEFAULT_JEV_TIMEOUT_MS,
+  DEFAULT_JEV_MODEL,
+  PRIMITIVE_CRITERIA,
+  type JevDecisionState,
+  type JevDecisionOptions,
+  type JevChoiceAnswer,
+  type PrimitiveSelectionResult,
+  getJevApiKey,
+  getJevEndpoint,
+  getJevModel,
+  buildDecisionRequest,
+  parseDecisionResponse,
+  heuristicPrimitiveSelection,
+  applyConfidenceGating,
+  decidePrimitiveWithModel,
+  selectPrimitive,
+  setMockJevHandler,
+  getMockJevHandler,
+  clearMockJevHandler,
+} from "./jev";
+
+export {
+  ANIMATED_PRIMITIVES,
+  type AnimatedPrimitive,
+  SAFE_GENERIC_PRIMITIVES,
+  COMPLEX_PRIMITIVES,
+  DEFAULT_COMPLEX_CONFIDENCE_THRESHOLD,
+  DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+  DEFAULT_JEV_TIMEOUT_MS,
+  DEFAULT_JEV_MODEL,
+  PRIMITIVE_CRITERIA,
+  type JevDecisionState,
+  type JevDecisionOptions,
+  type JevChoiceAnswer,
+  type PrimitiveSelectionResult,
+  getJevApiKey,
+  getJevEndpoint,
+  getJevModel,
+  buildDecisionRequest,
+  parseDecisionResponse,
+  heuristicPrimitiveSelection,
+  applyConfidenceGating,
+  decidePrimitiveWithModel,
+  selectPrimitive,
+  setMockJevHandler,
+  getMockJevHandler,
+  clearMockJevHandler,
+};
+
 /** The three beat kinds a Claude screenplay segment can repeat in any order. */
 export type BeatType = "visual" | "narration" | "onscreen";
 
@@ -25,17 +81,33 @@ export interface ScriptSegment {
 }
 
 /** A single narration-anchored micro-shot grouped out of a segment's beats. */
-interface BeatGroup {
+export interface BeatGroup {
   visual?: string;
   narration?: string;
   onscreen: string[];
 }
 
-/** A Remotion-ready text/body block generated from on-screen or visual beats. */
+/** The block type discriminator for generated shots. */
+export type GeneratedBlockType = AnimatedPrimitive | "Body";
+
+/** A Remotion-ready text/body/primitive block generated from on-screen or visual beats. */
 export interface GeneratedBlock {
-  c: "TextReveal" | "Body";
-  text: string;
+  c: GeneratedBlockType;
+  text?: string;
   size?: "display" | "headline" | "subhead";
+  accentWord?: string;
+  to?: number;
+  label?: string;
+  format?: "plain" | "compact";
+  suffix?: string;
+  value?: number;
+  chapters?: number;
+  code?: string;
+  language?: string;
+  caption?: string;
+  title?: string;
+  body?: string;
+  state?: "idle" | "active";
 }
 
 /** A Remotion-ready shot (possibly a sub-shot split out of a multi-beat segment). */
@@ -255,7 +327,7 @@ export function parseClaudeScript(raw: string): ScriptSegment[] {
       continue;
     }
 
-    if (line === "---" || line === "***") {
+    if (line === "---" || line === "***" || line.startsWith("```")) {
       flushBeat();
       continue;
     }
@@ -346,6 +418,64 @@ function legacyExtractSpokenBlocks(raw: string): string[] {
   return cleaned.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
 }
 
+/** Extracts a short, punchy summary headline for a paragraph (2-8 words). */
+function deriveHeadlineFromText(text: string, maxLength = 40): string {
+  const clean = text
+    .replace(/^#+\s*/, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/["“”`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const firstSentence = clean.split(/[.?!]\s+/)[0] || clean;
+  if (firstSentence.length <= maxLength) return firstSentence;
+
+  const words = firstSentence.split(/\s+/);
+  let result = "";
+  for (const w of words) {
+    if ((result + " " + w).trim().length > maxLength) break;
+    result = (result + " " + w).trim();
+  }
+  return result || words.slice(0, 5).join(" ");
+}
+
+/** Deterministically structures untagged prose paragraphs into Claude screenplay segments. */
+export function structureUntaggedProseToScript(raw: string): ScriptSegment[] {
+  const paragraphs = legacyExtractSpokenBlocks(raw);
+  if (paragraphs.length === 0) return [];
+
+  const segments: ScriptSegment[] = [];
+  const usedIds = new Set<string>();
+
+  paragraphs.forEach((para, idx) => {
+    const headline = deriveHeadlineFromText(para, 36) || `Scene ${idx + 1}`;
+    let base = slugify(headline) || `scene-${idx + 1}`;
+    let id = base;
+    let n = 2;
+    while (usedIds.has(id)) {
+      id = `${base}-${n}`;
+      n++;
+    }
+    usedIds.add(id);
+
+    const onScreen = deriveHeadlineFromText(para, 44) || headline;
+    const visual = `Conceptual diagram and typographic presentation for ${headline.toLowerCase()}.`;
+
+    segments.push({
+      id,
+      title: `Scene ${idx + 1}: ${headline}`,
+      beats: [
+        { type: "visual", text: visual },
+        { type: "onscreen", text: onScreen },
+        { type: "narration", text: para },
+      ],
+    });
+  });
+
+  return segments;
+}
+
 /** True when the raw text contains at least one recognizable VISUAL/NARRATION/ON SCREEN beat. */
 export function hasScreenplayTags(raw: string): boolean {
   return parseClaudeScript(raw).some((seg) => seg.beats.length > 0);
@@ -408,6 +538,142 @@ function estimateShotDuration(narrationText?: string): number {
   return Math.max(0.5, Math.min(90, Number((spokenSec + breathingBuffer).toFixed(2))));
 }
 
+// Builds conforming GeneratedBlock structures for a given animated primitive and beat group.
+export function buildBlocksForPrimitive(
+  primitive: AnimatedPrimitive,
+  group: BeatGroup,
+  fallbackTitle?: string,
+): GeneratedBlock[] {
+  const primaryText = (group.onscreen[0] || fallbackTitle || "Key concept").slice(0, 180);
+  const secondaryText = group.onscreen.slice(1).join(" ") || group.visual;
+
+  switch (primitive) {
+    case "TextReveal": {
+      const blocks: GeneratedBlock[] = [];
+      if (group.onscreen.length > 0) {
+        group.onscreen.forEach((text) => {
+          blocks.push({ c: "TextReveal", text: text.slice(0, 180), size: "headline" });
+        });
+      } else {
+        blocks.push({ c: "TextReveal", text: primaryText, size: "headline" });
+      }
+      return blocks;
+    }
+    case "StatCounter": {
+      const searchTarget = `${group.narration || ""} ${group.onscreen.join(" ")}`;
+      const match = searchTarget.match(
+        /\b(\d+(?:\.\d+)?)\s*(%|percent\b|x\b|times\b|ms\b|fps\b|gb\b|mb\b|tb\b|k\b|m\b|b\b|billion\b|million\b|trillion\b)?/i,
+      );
+      const val = match && match[1] ? parseFloat(match[1]) : 100;
+      const rawSuffix = match?.[2] ? (match[2].toLowerCase() === "times" ? "x" : match[2]) : undefined;
+      const label = (group.onscreen[0] || fallbackTitle || "Key Metric").slice(0, 44);
+      return [
+        {
+          c: "StatCounter",
+          text: label,
+          to: val,
+          label,
+          format: val >= 1000 ? "compact" : "plain",
+          ...(rawSuffix ? { suffix: rawSuffix } : {}),
+        },
+      ];
+    }
+    case "CodeBlock": {
+      const fullText = `${group.onscreen.join("\n")}\n${group.visual || ""}`;
+      const codeMatch = fullText.match(/`([^`]+)`/);
+      const code = (codeMatch ? codeMatch[1] : group.onscreen[0] || group.visual || "console.log('ready');").slice(0, 300);
+      const caption = (group.onscreen[0] || fallbackTitle || "Snippet").slice(0, 60);
+      return [
+        {
+          c: "CodeBlock",
+          text: code,
+          code,
+          language: "typescript",
+          caption,
+        },
+      ];
+    }
+    case "Card": {
+      const title = (group.onscreen[0] || fallbackTitle || "Overview").slice(0, 30);
+      const body = secondaryText ? secondaryText.slice(0, 80) : undefined;
+      return [
+        {
+          c: "Card",
+          text: title,
+          title,
+          ...(body ? { body } : {}),
+          state: "idle",
+        },
+      ];
+    }
+    case "Divider": {
+      const blocks: GeneratedBlock[] = [{ c: "Divider", text: "" }];
+      if (primaryText) {
+        blocks.push({ c: "TextReveal", text: primaryText, size: "headline" });
+      }
+      return blocks;
+    }
+    case "IconLabel": {
+      const text = (group.onscreen[0] || fallbackTitle || "Status").slice(0, 60);
+      return [
+        {
+          c: "IconLabel",
+          text,
+        },
+      ];
+    }
+    case "ProgressBar": {
+      const label = (group.onscreen[0] || fallbackTitle || "Progress").slice(0, 44);
+      return [
+        {
+          c: "ProgressBar",
+          text: label,
+          value: 0.75,
+          label,
+        },
+      ];
+    }
+  }
+}
+
+// Selects animated primitives for all beat groups across segments using Jev with state tracking.
+export async function selectScenePrimitives(
+  segments: ScriptSegment[],
+  options?: JevDecisionOptions,
+): Promise<Map<string, PrimitiveSelectionResult>> {
+  const results = new Map<string, PrimitiveSelectionResult>();
+  const activeComponents: string[] = [];
+
+  for (let segIdx = 0; segIdx < segments.length; segIdx++) {
+    const seg = segments[segIdx];
+    const groups = groupSegmentBeats(seg.beats);
+    const split = groups.length > 1;
+
+    for (let gi = 0; gi < groups.length; gi++) {
+      const group = groups[gi];
+      const shotId = split ? `${seg.id}-${gi + 1}` : seg.id;
+
+      const state: JevDecisionState = {
+        visual: group.visual,
+        narration: group.narration,
+        onscreen: group.onscreen,
+        activeComponents: [...activeComponents],
+        sceneTitle: seg.title,
+      };
+
+      const decision = await selectPrimitive(state, options);
+      results.set(shotId, decision);
+
+      activeComponents.push(decision.primitive);
+      if (activeComponents.length > 8) {
+        activeComponents.shift();
+      }
+    }
+  }
+
+  return results;
+}
+
 /**
  * Compiles a raw Claude screenplay directly into Remotion-ready sub-shots, canvas nodes/edges,
  * and on-screen TextReveal overlays, splitting any multi-beat segment into alternating-move
@@ -416,6 +682,7 @@ function estimateShotDuration(narrationText?: string): number {
 export function buildFilmPartsFromScript(
   raw: string,
   targetDurationSec?: number,
+  options?: { usePrimitives?: boolean },
 ): {
   shots: GeneratedShot[];
   nodes: GeneratedNode[];
@@ -424,7 +691,10 @@ export function buildFilmPartsFromScript(
   wordCount: number;
   durationSec: number;
 } {
-  const segments = parseClaudeScript(raw);
+  let segments = parseClaudeScript(raw);
+  if (segments.length === 0 && raw && raw.trim()) {
+    segments = structureUntaggedProseToScript(raw);
+  }
   const shots: GeneratedShot[] = [];
   const nodes: GeneratedNode[] = [];
 
@@ -448,17 +718,28 @@ export function buildFilmPartsFromScript(
       const isVeryFirstShot = shots.length === 0;
       const move: GeneratedShot["move"] = isVeryFirstShot ? "cut" : gi % 2 === 0 ? "pan" : "zoom-out";
 
-      const blocks: GeneratedBlock[] = [];
-      group.onscreen.forEach((text) => {
-        blocks.push({ c: "TextReveal", text: text.slice(0, 180), size: "headline" });
-      });
-      if (blocks.length === 0) {
-        blocks.push({ c: "TextReveal", text: (seg.title || shotId).slice(0, 180), size: "headline" });
+      let blocks: GeneratedBlock[];
+      if (options?.usePrimitives) {
+        const state: JevDecisionState = {
+          visual: group.visual,
+          narration: group.narration,
+          onscreen: group.onscreen,
+          sceneTitle: seg.title,
+        };
+        const primitive = heuristicPrimitiveSelection(state);
+        blocks = buildBlocksForPrimitive(primitive, group, seg.title || shotId);
+      } else {
+        blocks = [];
+        group.onscreen.forEach((text) => {
+          blocks.push({ c: "TextReveal", text: text.slice(0, 180), size: "headline" });
+        });
+        if (blocks.length === 0) {
+          blocks.push({ c: "TextReveal", text: (seg.title || shotId).slice(0, 180), size: "headline" });
+        }
       }
-      // A [VISUAL] beat is a direction to the renderer, not copy for the viewer. It used to be
-      // pushed on as a Body block, which printed "Slow push in as the node dims" on screen in
-      // the finished film. It travels on the shot's visualDirection field instead.
 
+      // A [VISUAL] beat is a direction to the renderer, not copy for the viewer. It travels
+      // on the shot's visualDirection field instead.
       shots.push({
         id: shotId,
         dur: estimateShotDuration(group.narration),
@@ -501,3 +782,156 @@ export function buildFilmPartsFromScript(
 
   return { shots, nodes, edges, spokenText, wordCount, durationSec };
 }
+
+// Compiles a raw Claude screenplay directly into Remotion-ready parts asynchronously using Jev for intelligent primitive selection.
+export async function buildFilmPartsFromScriptAsync(
+  raw: string,
+  targetDurationSec?: number,
+  options?: JevDecisionOptions,
+): Promise<{
+  shots: GeneratedShot[];
+  nodes: GeneratedNode[];
+  edges: GeneratedEdge[];
+  spokenText: string;
+  wordCount: number;
+  durationSec: number;
+  decisions: Map<string, PrimitiveSelectionResult>;
+}> {
+  let segments = parseClaudeScript(raw);
+  if (segments.length === 0 && raw && raw.trim()) {
+    segments = structureUntaggedProseToScript(raw);
+  }
+  const decisions = await selectScenePrimitives(segments, options);
+  const shots: GeneratedShot[] = [];
+  const nodes: GeneratedNode[] = [];
+
+  segments.forEach((seg, segIdx) => {
+    const groups = groupSegmentBeats(seg.beats);
+    if (groups.length === 0) return;
+
+    nodes.push({
+      id: seg.id,
+      label: seg.title.slice(0, 24) || seg.id,
+      sub: (groups[0].onscreen[0] || groups[0].visual || "Key concept").slice(0, 32),
+      x: -200 + (segIdx % 3) * 260,
+      y: -100 + Math.floor(segIdx / 3) * 180,
+      w: 230,
+      h: 68,
+    });
+
+    const split = groups.length > 1;
+    groups.forEach((group, gi) => {
+      const shotId = split ? `${seg.id}-${gi + 1}` : seg.id;
+      const isVeryFirstShot = shots.length === 0;
+      const move: GeneratedShot["move"] = isVeryFirstShot ? "cut" : gi % 2 === 0 ? "pan" : "zoom-out";
+
+      const decision = decisions.get(shotId);
+      const primitive = decision ? decision.primitive : "TextReveal";
+      const blocks = buildBlocksForPrimitive(primitive, group, seg.title || shotId);
+
+      shots.push({
+        id: shotId,
+        dur: estimateShotDuration(group.narration),
+        look: seg.id,
+        move,
+        stage: gi === 0 ? (segIdx % 2 === 1 ? "none" : "frame") : "anchor",
+        zoom: 1,
+        drift: true,
+        visualDirection: group.visual || undefined,
+        scriptText: group.narration || undefined,
+        blocks: blocks.slice(0, 12),
+      });
+    });
+  });
+
+  if (targetDurationSec && targetDurationSec > 0 && shots.length > 0) {
+    const rawTotal = shots.reduce((sum, s) => sum + s.dur, 0);
+    if (rawTotal > 0) {
+      const scale = targetDurationSec / rawTotal;
+      shots.forEach((s) => {
+        s.dur = Number((s.dur * scale).toFixed(2));
+      });
+      const newTotal = shots.reduce((sum, s) => sum + s.dur, 0);
+      const diff = Number((targetDurationSec - newTotal).toFixed(2));
+      if (Math.abs(diff) >= 0.01) {
+        shots[shots.length - 1].dur = Number((shots[shots.length - 1].dur + diff).toFixed(2));
+      }
+    }
+  }
+
+  const edges: GeneratedEdge[] = [];
+  for (let i = 0; i < nodes.length - 1; i++) {
+    edges.push({ from: nodes[i].id, to: nodes[i + 1].id, dashed: false });
+  }
+
+  const spokenBlocks = extractSpokenBlocks(raw);
+  const spokenText = spokenBlocks.join("\n\n");
+  const wordCount = spokenText.split(/\s+/).filter(Boolean).length;
+  const durationSec =
+    targetDurationSec && targetDurationSec > 0 ? targetDurationSec : Math.round((wordCount / 150) * 60);
+
+  return { shots, nodes, edges, spokenText, wordCount, durationSec, decisions };
+}
+
+export interface DirectorTaskOptions {
+  projectId: string;
+  filmTitle?: string;
+  shotCount?: number;
+  durationSec?: number;
+  spokenWordCount?: number;
+}
+
+/** Generates a copy-pasteable directing prompt for terminal coding agents (Claude Code, AGY, Pi, Codex). */
+export function generateAgentPrompt(opts: DirectorTaskOptions): string {
+  const title = opts.filmTitle || opts.projectId;
+  return `Direct the explainer video for "${title}" (${opts.projectId}):
+1. Review docs/DIRECTOR_GUIDE.md for creative direction and visual invariants.
+2. Inspect videos/${opts.projectId}/film.json and videos/${opts.projectId}/script.md.
+3. Refine scene layouts, camera moves, and visual devices (TokenStrip, MatrixGrid, LayerStack, Plot, ScaleBar, custom SVGs, or B-roll).
+4. Run \`npm run validate:film videos/${opts.projectId}/film.json\` to verify with 0 errors.`;
+}
+
+/** Formats a full markdown directive task document to be written to videos/<id>/director_task.md and root .aideos_task.md */
+export function generateDirectorTaskDocument(opts: DirectorTaskOptions): string {
+  const title = opts.filmTitle || opts.projectId;
+  const shots = opts.shotCount ?? 0;
+  const duration = opts.durationSec ? `${opts.durationSec.toFixed(1)}s` : "measured";
+  const words = opts.spokenWordCount ?? 0;
+
+  return `# 🎬 Aideos Creative Director Directive: ${title}
+
+The screenplay narration spine for **${title}** has been compiled (${shots} shots, ${duration} runtime, ${words} spoken words).
+As the Creative Director, your mission is to transform this structure into a captivating, visually stunning explainer video.
+
+---
+
+## 📋 Key Files & References:
+- **Director Guide**: [\`docs/DIRECTOR_GUIDE.md\`](docs/DIRECTOR_GUIDE.md) (Directing principles, visual rhythm, and pacing invariants)
+- **Active Film JSON**: [\`videos/${opts.projectId}/film.json\`](videos/${opts.projectId}/film.json)
+- **Screenplay / Narration**: [\`videos/${opts.projectId}/script.md\`](videos/${opts.projectId}/script.md)
+
+---
+
+## 🎯 Directing Objectives:
+1. **Visual Metaphors & Show Don't Tell**:
+   - Replace generic text with evocative visual devices: \`TokenStrip\`, \`MatrixGrid\`, \`LayerStack\`, \`Plot\`, \`ScaleBar\`, \`Distribution\`, or \`AnalogyInset\` (B-roll footage).
+   - Author custom animated SVGs under \`videos/${opts.projectId}/visuals/\` if needed.
+2. **Camera Rhythm & Spatial Flow**:
+   - Ensure dynamic camera movement (\`cut\`, \`pan\`, \`zoom-in\`, \`zoom-out\`) between 2D canvas stations.
+   - Return to canvas spine (\`stage: "none"\`) or frame milestones (\`stage: "frame"\`) every 60-90s.
+3. **Pacing Invariants**:
+   - Never hold a visual device past 25s; rotate devices so no visual repeats back-to-back.
+   - Maintain audio sync (shot durations lock to narration audio).
+
+---
+
+## 🧪 Validation & Live Studio:
+- **Instant Validation**:
+  \`\`\`bash
+  npm run validate:film videos/${opts.projectId}/film.json
+  \`\`\`
+- **Live Studio Preview**:
+  Check hot-reloaded canvas and timeline on \`http://localhost:3001\`
+`;
+}
+

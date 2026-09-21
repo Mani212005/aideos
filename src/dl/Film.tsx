@@ -3,8 +3,9 @@
  */
 
 import React from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
-import { accentAt, PALETTE, rule, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext } from "./tokens";
+import { AbsoluteFill, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
+import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext } from "./tokens";
+import { getFullScreenHeroLayout, heroScrimGradient } from "./fullScreenHeroLayout";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext } from "./accent";
 import { BlockView } from "./Block";
@@ -12,6 +13,8 @@ import { CanvasGraph } from "./CanvasGraph";
 import { SceneStage } from "./SceneStage";
 import { PaperRip } from "./PaperRip";
 import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
+import { getRetimedAudioRelPath } from "./audio/retime";
+import { Kicker, TextReveal, Body } from "./primitives";
 import {
   buildTimeline,
   camAt,
@@ -22,7 +25,7 @@ import {
   totalFrames,
   type TimedShot,
 } from "./camera";
-import type { Film, Block } from "./schema";
+import type { Film, Block, TextPayload, ImagePayload, SubtitlePayload } from "./schema";
 
 /**
  * ---------------------------------------------------------------------------
@@ -41,6 +44,122 @@ import type { Film, Block } from "./schema";
 
 /** How long the panel takes to shrink back into its node. Exit beats entrance. */
 const CLOSE_MS = 420;
+
+/**
+ * The imported-footage base plate. Mirrors how `audioClips` already map straight to
+ * `<Sequence>`s: each `film.videoClips` entry becomes one time-sequenced, full-bleed
+ * `<OffthreadVideo>`, painted first so it sits behind the canvas/shot content and any overlays.
+ */
+const ImportedVideoLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }) => {
+  if (!film.videoClips || film.videoClips.length === 0) return null;
+  return (
+    <>
+      {film.videoClips.map((vc) => (
+        <Sequence
+          key={vc.id}
+          from={Math.round(vc.position * fps)}
+          durationInFrames={Math.max(1, Math.round((vc.end - vc.start) * fps))}
+        >
+          <AbsoluteFill style={{ opacity: vc.opacity ?? 1 }}>
+            <OffthreadVideo
+              src={staticFile(vc.src)}
+              trimBefore={Math.round(vc.start * fps)}
+              volume={vc.muted ? 0 : (vc.volume ?? 1)}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          </AbsoluteFill>
+        </Sequence>
+      ))}
+    </>
+  );
+};
+
+/** One text overlay clip, sized and worded per its payload's `size`. */
+const OverlayText: React.FC<{ payload: TextPayload; durationInFrames: number }> = ({ payload, durationInFrames }) => {
+  const layout = useLayout();
+  const palette = useTokens();
+  if (payload.size === "kicker") {
+    return <Kicker text={payload.text} start={0} index={0} durationInFrames={durationInFrames} />;
+  }
+  if (payload.size === "body") {
+    return <Body text={payload.text} start={0} index={0} durationInFrames={durationInFrames} />;
+  }
+  if (payload.size === "caption") {
+    return <div style={{ ...layout.label(), color: palette.inkAt(0.8) }}>{payload.text}</div>;
+  }
+  return (
+    <TextReveal
+      text={payload.text}
+      size="headline"
+      accentWord={payload.accentWord}
+      start={0}
+      index={0}
+      durationInFrames={durationInFrames}
+    />
+  );
+};
+
+/**
+ * Standalone text/image/subtitle overlays the shot list cannot represent: what an AI edit (or a
+ * user) adds directly on top of the imported footage or the canvas, such as a title card. Absent
+ * `x`/`y` centers the overlay in a lower-third band; present, they are fractional (0..1) frame
+ * coordinates.
+ */
+const OverlayLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }) => {
+  if (!film.overlayClips || film.overlayClips.length === 0) return null;
+
+  return (
+    <>
+      {film.overlayClips.map((oc) => {
+        const durationInFrames = Math.max(1, Math.round((oc.end - oc.start) * fps));
+        const hasPosition = oc.payload && "x" in oc.payload && oc.payload.x !== undefined;
+        const positionStyle: React.CSSProperties = hasPosition
+          ? {
+              left: `${((oc.payload as { x?: number }).x ?? 0.5) * 100}%`,
+              top: `${((oc.payload as { y?: number }).y ?? 0.5) * 100}%`,
+              transform: "translate(-50%, -50%)",
+              alignItems: "center",
+              justifyContent: "center",
+            }
+          : { left: 0, right: 0, bottom: "10%", alignItems: "center", justifyContent: "center" };
+
+        return (
+          <Sequence key={oc.id} from={Math.round(oc.position * fps)} durationInFrames={durationInFrames}>
+            <div
+              style={{
+                position: "absolute",
+                display: "flex",
+                padding: "0 6%",
+                opacity: oc.opacity ?? 1,
+                pointerEvents: "none",
+                ...positionStyle,
+              }}
+            >
+              {oc.kind === "text" ? (
+                <OverlayText payload={oc.payload as TextPayload} durationInFrames={durationInFrames} />
+              ) : oc.kind === "image" ? (
+                <Img
+                  src={staticFile((oc.payload as ImagePayload).src)}
+                  style={{
+                    maxWidth: "60vw",
+                    maxHeight: "60vh",
+                    transform: `scale(${(oc.payload as ImagePayload).scale ?? 1})`,
+                    objectFit: "contain",
+                  }}
+                />
+              ) : (
+                <OverlayText
+                  payload={{ text: (oc.payload as SubtitlePayload).text, size: "caption" }}
+                  durationInFrames={durationInFrames}
+                />
+              )}
+            </div>
+          </Sequence>
+        );
+      })}
+    </>
+  );
+};
 
 const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline }) => {
   const frame = useCurrentFrame();
@@ -64,14 +183,14 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
   const open = isCut ? 1 : easeExpo((frame - current.from) / openFrames);
   const close = isCut ? 0 : easeExpo((frame - (current.to - closeFrames)) / closeFrames);
 
-  // A shot whose only block is a full-screen hero plate has no panel to speak of: the plate
+  // A shot containing a full-screen hero plate has no panel to speak of: the plate
   // is the station. Keeping the usual margins around it framed the footage as a small
   // letterboxed rectangle floating on black, which is what a stock-footage slideshow looks
   // like. It runs to the frame edge instead.
-  const heroOnly =
-    shot.blocks.length === 1 && shot.blocks[0].c === "AnalogyInset" && Boolean(shot.blocks[0].fullScreenHero);
+  const hasHero =
+    shot.blocks.some((b: Block) => b.c === "AnalogyInset" && Boolean(b.fullScreenHero));
 
-  const target = heroOnly
+  const target = hasHero
     ? { x: 0, y: 0, w: width, h: height }
     : {
         x: layout.margin.left,
@@ -99,7 +218,7 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
     };
   }
 
-  const contentIn = isCut
+  const contentIn = isCut || hasHero
     ? 1
     : interpolate(
         frame,
@@ -107,7 +226,7 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
         [0, 1],
         { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
       );
-  const contentStart = isCut ? current.from : current.from + Math.round(openFrames * 0.55);
+  const contentStart = isCut || hasHero ? current.from : current.from + Math.round(openFrames * 0.55);
 
   return (
     <div
@@ -117,11 +236,11 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
         top: rect.y,
         width: rect.w,
         height: rect.h,
-        border: heroOnly ? "none" : `1px solid ${rule(shot.stage === "frame" ? 0 : 1)}`,
-        borderRadius: heroOnly ? 0 : layout.radius.card,
+        border: hasHero || shot.stage === "frame" ? "none" : `1px solid ${bgTheme.hairline}`,
+        borderRadius: hasHero ? 0 : layout.radius.card,
         background:
-          shot.stage === "frame" || heroOnly ? "transparent" : bgTheme.surface,
-        boxShadow: shot.stage === "frame" || heroOnly ? "none" : "0 16px 40px rgba(0, 0, 0, 0.35)",
+          shot.stage === "frame" || hasHero ? "transparent" : bgTheme.surface,
+        boxShadow: shot.stage === "frame" || hasHero ? "none" : "0 16px 40px rgba(0, 0, 0, 0.35)",
         opacity,
         overflow: "hidden",
         display: "flex",
@@ -149,7 +268,7 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
         style={{
           flex: 1,
           position: "relative",
-          padding: shot.stage === "frame" || heroOnly ? 0 : layout.grid * 5,
+          padding: shot.stage === "frame" || hasHero ? 0 : layout.grid * 5,
           display: "flex",
           flexDirection: "column",
           // Centred, always. Spreading two blocks to the top and bottom of a full-frame
@@ -201,6 +320,9 @@ const Rail: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline 
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const layout = useLayout();
+  // The rail's unfilled track has to come from the rendering theme. The module-level
+  // rule() is paper-white ink, which is invisible on a dark canvas and leaves the rail
+  // showing only its filled half, so the film stops saying where you are in it.
   const palette = useTokens();
   const current = shotAt(timeline, frame);
   const total = totalFrames(timeline);
@@ -258,14 +380,14 @@ const Rail: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline 
               style={{
                 flex: 1,
                 height: layout.px(2),
-                background: i <= chapterIndex ? "currentColor" : rule(),
+                background: i <= chapterIndex ? "currentColor" : palette.rule(),
                 color: i <= chapterIndex ? undefined : "transparent",
               }}
             />
           ))}
         </div>
       ) : (
-        <div style={{ height: layout.px(3), background: rule(), borderRadius: layout.px(2) }}>
+        <div style={{ height: layout.px(3), background: palette.rule(), borderRadius: layout.px(2) }}>
           <div
             style={{
               height: "100%",
@@ -292,7 +414,20 @@ export type FilmViewProps = {
   includeAudio?: boolean;
 };
 
+/**
+ * The PNG-sequence variant of a `fullScreenHero` block. It shares
+ * `getFullScreenHeroLayout` with `AnalogyInset` so both hero paths fill the frame
+ * and place their caption in the same safe area on either canvas.
+ */
 const Dynamic3DHeroOverlay: React.FC<{ frame: number; timeline: ReturnType<typeof buildTimeline> }> = ({ frame, timeline }) => {
+  const layout = useLayout();
+  const palette = useTokens();
+  const labelStyle = layout.label(14);
+  const heroLayout = getFullScreenHeroLayout({
+    ...layout,
+    labelHeight: Number(labelStyle.fontSize) * 1.6,
+  });
+
   for (const t of timeline) {
     const shot = t.shot;
     const heroBlock = shot.blocks.find(
@@ -322,40 +457,30 @@ const Dynamic3DHeroOverlay: React.FC<{ frame: number; timeline: ReturnType<typeo
           style={{
             zIndex: 100,
             opacity,
-            background: "radial-gradient(ellipse at 50% 45%, rgba(13, 17, 23, 0.96) 0%, rgba(6, 8, 12, 0.99) 100%)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 40,
+            background: palette.canvas,
+            overflow: "hidden",
           }}
         >
-          <Img
-            src={staticFile(imgSrc)}
-            alt={heroBlock.caption || "3D Kinematic Sequence"}
+          <Img src={staticFile(imgSrc)} alt={heroBlock.caption || ""} style={heroLayout.media} />
+          <AbsoluteFill
             style={{
-              maxWidth: "88%",
-              maxHeight: "80%",
-              objectFit: "contain",
-              filter: "drop-shadow(0 30px 60px rgba(0,0,0,0.9)) drop-shadow(0 0 50px rgba(0,240,255,0.22))",
+              pointerEvents: "none",
+              background: heroScrimGradient(heroLayout.scrimStops, (alpha) => accentAt(palette.canvas, alpha)),
             }}
           />
-          <div
-            style={{
-              marginTop: 20,
-              fontSize: 13,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              color: "rgba(240, 237, 230, 0.8)",
-              fontFamily: "monospace",
-              background: "rgba(255, 255, 255, 0.06)",
-              padding: "6px 16px",
-              borderRadius: 6,
-              border: "1px solid rgba(255, 255, 255, 0.12)",
-            }}
-          >
-            {heroBlock.caption || "AIDEOS KINEMATIC SIMULATION · CONTACT DYNAMICS"}
-          </div>
+          {heroBlock.caption ? (
+            <div
+              style={{
+                ...labelStyle,
+                position: "absolute",
+                ...heroLayout.caption,
+                color: palette.inkAt(0.72),
+                textShadow: `0 ${layout.px(2)}px ${layout.px(12)}px ${accentAt(palette.canvas, 0.9)}`,
+              }}
+            >
+              {heroBlock.caption}
+            </div>
+          ) : null}
         </AbsoluteFill>
       );
     }
@@ -415,18 +540,27 @@ export const FilmView: React.FC<FilmViewProps> = ({
   const fontFamily = resolveFont(film.theme?.fontFamily);
   const activeTransition = current.shot.transition || transitionType || "paper-rip";
 
+  // An imported video is the base plate: the canvas/shot panel composites on top of it with a
+  // transparent background instead of the usual opaque paper/dark fill, so the footage stays
+  // visible underneath whatever the film draws (or nothing, when there is nothing to draw). A
+  // film with no videoClips renders exactly as it always has.
+  const hasVideoBase = Boolean(film.videoClips && film.videoClips.length > 0);
+
   return (
     <ThemeContext.Provider value={bgTheme}>
       <AccentContext.Provider value={accent}>
+        <ImportedVideoLayer film={film} fps={fps} />
         <AbsoluteFill
           style={{
-            backgroundColor: bgTheme.canvas,
+            backgroundColor: hasVideoBase ? "transparent" : bgTheme.canvas,
             color: bgTheme.ink,
             fontFamily,
           }}
         >
-        {/* Paper & Texture Library Filter Shaders */}
-        {bgTheme.gridType === "paper-fibers" && (
+        {/* Paper & Texture Library Filter Shaders. Skipped over an imported video: a paper grain
+            or blueprint grid is a treatment for the generated canvas look, not something that
+            belongs printed over someone's real footage. */}
+        {!hasVideoBase && bgTheme.gridType === "paper-fibers" && (
           <AbsoluteFill style={{ opacity: 0.28, pointerEvents: "none" }}>
             <svg width="100%" height="100%">
               <filter id="paper-grain">
@@ -441,7 +575,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
           </AbsoluteFill>
         )}
 
-        {bgTheme.gridType === "blueprint-grid" && (
+        {!hasVideoBase && bgTheme.gridType === "blueprint-grid" && (
           <AbsoluteFill style={{ opacity: 0.45, pointerEvents: "none" }}>
             <svg width="100%" height="100%">
               <defs>
@@ -458,7 +592,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
           </AbsoluteFill>
         )}
 
-        {bgTheme.gridType === "subtle-dots" && (
+        {!hasVideoBase && bgTheme.gridType === "subtle-dots" && (
           <AbsoluteFill style={{ opacity: 0.35, pointerEvents: "none" }}>
             <svg width="100%" height="100%">
               <defs>
@@ -487,6 +621,9 @@ export const FilmView: React.FC<FilmViewProps> = ({
           <Stage film={film} timeline={timeline} />
         </AbsoluteFill>
 
+        {/* Standalone text/image/subtitle overlays an AI edit or a user placed directly on top. */}
+        <OverlayLayer film={film} fps={fps} />
+
         {/* Full-Screen Dynamic 3D Hero Spotlight Overlay */}
         <Dynamic3DHeroOverlay frame={frame} timeline={timeline} />
         {activeTransition === "paper-rip" && (
@@ -513,18 +650,23 @@ export const FilmView: React.FC<FilmViewProps> = ({
             {film.audioClips && film.audioClips.length > 0 ? (
               film.audioClips.map((ac) => {
                 const speed = ac.speed ?? 1.0;
+                const isRetimed = Math.abs(speed - 1.0) > 0.001;
                 const startFrame = Math.round(ac.position * fps);
-                const startFrom = Math.round((ac.start ?? 0) * fps);
-                const endAt = Math.round(ac.end * fps);
-                const rawDurFrames = Math.max(1, endAt - startFrom);
+                const rawDurFrames = Math.max(1, Math.round(ac.end * fps) - Math.round((ac.start ?? 0) * fps));
                 const effectiveDurFrames = Math.max(1, Math.round(rawDurFrames / speed));
+                const startFrom = isRetimed ? Math.round(((ac.start ?? 0) / speed) * fps) : Math.round((ac.start ?? 0) * fps);
+                const endAt = isRetimed ? Math.round((ac.end / speed) * fps) : Math.round(ac.end * fps);
+                const audioSrc = isRetimed
+                  ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
+                  : staticFile(ac.src);
+
                 return (
                   <Sequence key={ac.id} from={startFrame} durationInFrames={effectiveDurFrames}>
                     <Audio
-                      src={staticFile(ac.src)}
+                      src={audioSrc}
                       startFrom={startFrom}
                       endAt={endAt}
-                      playbackRate={speed}
+                      playbackRate={1.0}
                       volume={() => ac.volume ?? 1}
                     />
                   </Sequence>
@@ -532,12 +674,22 @@ export const FilmView: React.FC<FilmViewProps> = ({
               })
             ) : (
               film.voiceover?.src && (
-                <Audio
-                  key={`vo-${film.voiceover.src}`}
-                  src={staticFile(film.voiceover.src)}
-                  playbackRate={film.voiceover?.speed ?? 1.0}
-                  volume={() => film.voiceover?.volume ?? 1}
-                />
+                (() => {
+                  const speed = film.voiceover.speed ?? 1.0;
+                  const isRetimed = Math.abs(speed - 1.0) > 0.001;
+                  const audioSrc = isRetimed
+                    ? staticFile(film.voiceover.retimedSrc || getRetimedAudioRelPath(film.voiceover.src, speed))
+                    : staticFile(film.voiceover.src);
+
+                  return (
+                    <Audio
+                      key={`vo-${film.voiceover.src}-${speed}`}
+                      src={audioSrc}
+                      playbackRate={1.0}
+                      volume={() => film.voiceover?.volume ?? 1}
+                    />
+                  );
+                })()
               )
             )}
 

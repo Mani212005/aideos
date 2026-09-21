@@ -18,9 +18,69 @@ The root data contract defining a complete video composition (stored in `src/dl/
 * `chapters: string[]` (Ordered list of chapter titles for the progress rail)
 * `canvas: { nodes: CanvasNode[], edges: CanvasEdge[] }` (The continuous 2D spatial graph)
 * `shots: Shot[]` (Ordered chronological sequence of camera shots and visual blocks)
-* `voiceover?: { src: string, volume?: number, speed?: number }` (Master audio track source file)
+* `voiceover?: { src: string, volume?: number, speed?: number, retimedSrc?: string }` (Master audio track source file)
 * `layers?: LayerDefinition[]` (Persisted non-linear track definitions and settings)
 * `audioClips?: AudioClip[]` (Persisted multi-track audio clips)
+* `videoClips?: VideoClip[]` (Persisted imported footage picture clips)
+* `overlayClips?: OverlayClip[]` (Persisted standalone text/image/subtitle overlay clips)
+
+### `AudioClip`
+A discrete audio track entry on the multi-track timeline.
+* `id: string` (Unique audio clip identifier)
+* `src: string` (Source audio asset file path or URL)
+* `position: number` (Timeline start timestamp in seconds)
+* `start?: number` (In-point offset into source media in seconds, default 0)
+* `end: number` (Out-point offset into source media in seconds)
+* `volume?: number` (Audio level multiplier, 0.0 to 2.0, default 1.0)
+* `speed?: number` (Playback rate multiplier, 0.25 to 4.0, default 1.0)
+* `retimedSrc?: string` (Cached path to pitch-corrected WSOLA time-stretched WAV file)
+* `channel?: "voiceover" | "music" | "sfx" | "external"` (Audio routing channel)
+* `layerId?: string` (Assigned timeline layer ID)
+* `linkedClipId?: string` (Id of the linked `videoClips` entry, kept symmetric on both sides)
+
+### `VideoClip`
+An imported footage picture clip entry on the multi-track timeline (`src/dl/schema.ts`).
+* `id: string` (Unique video clip identifier)
+* `src: string` (Source video asset file path or URL)
+* `position: number` (Timeline start timestamp in seconds)
+* `start?: number` (In-point offset into source media in seconds, default 0)
+* `end: number` (Out-point offset into source media in seconds)
+* `sourceDuration?: number` (Total length of the source file, when known)
+* `width?: number, height?: number` (Source video dimensions in pixels)
+* `opacity?: number` (Visual opacity, 0.0 to 1.0, default 1.0)
+* `volume?: number` (Embedded audio level multiplier, 0.0 to 2.0, default 1.0)
+* `muted?: boolean` (True to mute embedded audio track)
+* `layerId?: string` (Assigned timeline layer ID)
+* `linkedClipId?: string` (Id of the linked `audioClips` entry, kept symmetric on both sides)
+
+### `OverlayClip`
+A standalone text, image, or subtitle overlay clip not tied to the shot list (`src/dl/schema.ts`).
+* `id: string` (Unique overlay clip identifier)
+* `kind: "text" | "image" | "subtitle"` (Discriminator for overlay type)
+* `position: number` (Timeline start timestamp in seconds)
+* `start?: number` (In-point offset in seconds, default 0)
+* `end: number` (Out-point offset in seconds)
+* `opacity?: number` (Visual opacity, 0.0 to 1.0, default 1.0)
+* `layerId?: string` (Assigned timeline layer ID)
+* `payload: TextPayload | ImagePayload | SubtitlePayload` (Type-specific overlay content)
+
+### `TextPayload`
+Typography overlay payload for standalone text overlays and layered text clips.
+* `text: string` (Text content)
+* `size?: "kicker" | "headline" | "body" | "caption"` (Visual sizing hierarchy, default "headline")
+* `accentWord?: string` (Word to highlight in accent token color)
+* `x?: number, y?: number` (Optional fractional 0..1 viewport coordinates)
+
+### `ImagePayload`
+Static image overlay payload for standalone image overlays and layered image clips.
+* `src: string` (Source image file path or URL)
+* `scale?: number` (Display scale multiplier, default 1.0)
+* `x?: number, y?: number` (Optional fractional 0..1 viewport coordinates)
+
+### `SubtitlePayload`
+Standalone caption cue payload for standalone subtitle overlays.
+* `text: string` (Caption text content)
+* `startFrame?: number, endFrame?: number` (Optional frame-level timing bounds)
 
 ### `Shot`
 A single continuous camera view and duration window on the timeline.
@@ -71,15 +131,18 @@ Interactive, complex visual containers that spend 1 accent token:
 * **`VectorSpace`**: 2D embedding space with vector points and arrows (`points`, `arrow`, `xLabel`, `yLabel`).
 * **`AnalogyInset`**: Full-bleed cinematic video b-roll overlay (`caption`, `framesDir`, `totalFrames`).
 
-### B. Text Beats (`TEXT_BEATS`)
-Typography and metric cards that spend 0 accent tokens:
+### B. Text Beats & Animated Primitives (`TEXT_BEATS`, `src/dl/primitives.tsx`)
+Typography, code, metrics, and cards that spend 0 accent tokens (including the 7 design system animated primitives: `TextReveal`, `StatCounter`, `CodeBlock`, `Card`, `Divider`, `IconLabel`, `ProgressBar`):
 * **`TextReveal`**: Staggered word-by-word kinetic headline typography (`text`, `size`, `accentWord`).
 * **`StatCounter`**: High-impact numeric stat with animated counter (`to`, `label`, `suffix`, `format`).
+* **`CodeBlock`**: Monospace animated code block for terminal commands and code snippets (`code`, `language`, `caption`).
+* **`Card`**: High-clarity glassmorphic card grouping metadata or concepts (`title`, `body`, `state`).
+* **`Divider`**: Hairline separation rule for section breaks and topic transitions.
+* **`IconLabel`**: Icon with text label or status tag (`text`).
+* **`ProgressBar`**: Chapter or multi-step progress indicator (`value`, `label`).
 * **`Body`**: Multi-line narrative description text (`text`).
 * **`Kicker`**: Small uppercase tracking eyebrow tag above headlines (`text`).
 * **`MathLine`**: Mathematical formula rendered in Source Serif italic (`text`).
-* **`ProgressBar`**: Chapter progress indicator (`value`, `label`).
-* **`IconLabel`**: Icon with text label (`text`).
 
 ---
 
@@ -186,6 +249,16 @@ An individual vector path inside a limb:
 * `buildCaptionsVtt(words)`: Builds phrase-grouped WebVTT caption tracks from absolute word timings.
 * `buildFilmFromAudioResult(title, audioResult, options)`: Compiles verified audio durations into a structured `Film` object.
 * `processAudioForFilm(film, outDir)`: Generates audio for a film using the narration pipeline and rebuilds the film around it.
+* `buildAtempoFilter(speed)`: Builds a cascaded FFmpeg atempo filter chain for arbitrary playback speed factors.
+* `resolveAudioSourcePath(src)`: Resolves an audio URL or relative path to an absolute path on disk.
+* `retimeAudioSync(src, speed, options)`: Synchronously retimes audio via FFmpeg WSOLA atempo filter and caches the resulting pitch-corrected WAV.
+* `retimeAudio(src, speed, options)`: Asynchronously retimes audio via WSOLA atempo filter and caches the result.
+* `ensureRetimedAudio(film)`: Pre-renders all retimed audio tracks for a film to ensure static availability for Remotion CLI renders.
+
+### `src/dl/audio/retime.ts` (Deterministic Retimed Audio Paths)
+* `sanitizeAudioName(src)`: Converts audio source path into a filesystem-safe identifier.
+* `getRetimedAudioFilename(src, speed)`: Computes deterministic filename for a retimed audio track.
+* `getRetimedAudioRelPath(src, speed)`: Computes relative public path (`.tmp_audio/...`) for a retimed audio track.
 
 ### `backend/pcm.ts`
 * `trimSilence(samples, threshold)`: Trims leading and trailing silence samples from Float32Array audio.
@@ -200,19 +273,58 @@ An individual vector path inside a limb:
 * `createTtsBackend(options)`: Instantiates pluggable TTS engine (`kokoro` via worker process, `google`, `say`, `tone`).
 * `KokoroTtsBackend`: Local offline ONNX synthesizer using Kokoro-82M (default).
 
-### Production Pipeline & MCP Server (`backend/pipeline/`, `backend/mcp/`)
-* Deep reference documentation in [`docs/PRODUCTION_PIPELINE.md`](PRODUCTION_PIPELINE.md).
+### Production Pipeline, Auto-Prompt Director & MCP Server (`backend/pipeline/`, `backend/mcp/`)
+* Deep reference documentation in [`docs/PRODUCTION_PIPELINE.md`](PRODUCTION_PIPELINE.md) and [`docs/DIRECTOR_GUIDE.md`](DIRECTOR_GUIDE.md).
 * `runProduction(request, onProgress)` (`backend/pipeline/run.ts`): Single typed programmatic entry point driving `intake`, `narrate`, `design`, `broll`, `assemble`, `render`, `verify`.
+* `runDirector(request, onProgress)` (`backend/pipeline/director.ts`): Auto-prompt entry point above `runProduction` that drafts a Claude screenplay from a raw prompt with an LLM and produces it end to end.
+* `draftScreenplay(prompt, options)` (`backend/pipeline/director.ts`): Drafts and validates a Claude screenplay from a natural language prompt, retrying rejected drafts with feedback.
+* `transformProseToScreenplay(prose, options)` (`backend/pipeline/director.ts`): Automatically transforms raw untagged prose into a structured Claude screenplay with visual and narration beats via LLM with validation retries and code fence stripping.
+* `buildProseTransformSystemInstruction()` (`backend/pipeline/director.ts`): Assembles the system instruction for transforming raw prose into structured scenes, visual directions, on-screen text, and narration beats.
 * `compileScreenplayToFilm(screenplay, spine, options)` (`backend/pipeline/design.ts`): Compiles screenplay and narration spine into validated `Film`.
 * `renderFormat(slug, format, options)` (`backend/pipeline/render.ts`): Drives Remotion render with headless verification and contact sheet generation.
-* `startMcpServer()` (`backend/mcp/server.ts`): Exposes the production pipeline as an MCP stdio server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`.
+* `startMcpServer()` (`backend/mcp/server.ts`): Exposes the production pipeline and agent bridge as an MCP stdio server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`, `aideos_edit_film`, `aideos_get_pending_tasks`, `aideos_claim_task`, `aideos_complete_task`, and `aideos_report_step`.
+
+### `backend/pipeline/filmStore.ts`
+* `ROOT`: Absolute path to project root directory.
+* `readFilm(slug)`: Reads and parses `videos/<slug>/film.json` as authoritative `Film`.
+* `writeFilm(slug, film)`: Validates and persists `Film` to both `videos/<slug>/film.json` and its shadow `src/dl/films/<slug>.ts` module simultaneously, and broadcasts `traceBus.notifyFilmUpdated` for live Studio synchronization.
+* `setActiveFilm(slug)`: Points `src/dl/activeFilm.ts` at the target film package.
+* `wireFootageIntoFilm(slug, shotId, relPath, promptText)`: Wires rendered B-roll video clip into a shot as an `AnalogyInset` block and saves to both storage targets.
+
+### `backend/agentBridge/` (Connected Agent Bridge Hub & Multi-Channel Dispatcher)
+* `traceBus` (`backend/agentBridge/traceBus.ts`): Global singleton in-process telemetry and live film update bus (`TraceBus`) collecting and streaming execution steps (`recordStep`, `updateStep`, `getRecentSteps`, `subscribe`, `clear`) and broadcasting real-time film change notifications (`onFilmUpdate`, `notifyFilmUpdated`, `filmSubscriberCount`) across coding agents, Studio clients, AI edit planning, neural TTS synthesis, GPU B-roll rendering, and invariant validation.
+* `formatStepTimestamp(date)`, `generateStepId()` (`backend/agentBridge/traceBus.ts`): Formatting and identifier helpers for trace steps.
+* `dispatchTask(opts)`: Dispatches rich task context across all active channels (Firstmate steering inbox, MCP task queue, local file/tmux) with automatic hybrid timeout fallback.
+* `buildTaskContext(opts, rootDir)`: Assembles full working context payload (script, film manifest, audio spine, word timings, director guide ref, design invariants).
+* `buildDirectingPrompt(opts, context)`: Formats structured directing prompts for connected coding agents from Studio events (`canvas_updated`, `critique`, `ai_edit`, `narrate_audio`, `script_updated`, `produce_film`, `custom_directive`).
+* `taskQueue`: Global in-memory lifecycle manager for agent tasks (`createTask`, `claimTask`, `completeTask`, `failTask`, `timeoutTask`, `listPendingTasks`, `listAllTasks`, `addListener`).
+* `writeFirstmateInboxMessage(task, targetInboxDir)`: Writes sequential steering message file (`001.msg`, `002.msg`, ...) to Firstmate agent inbox.
+* `dispatchLocalAndTmux(prompt, opts)`: Writes `.aideos_task.md` and pastes prompt into active tmux agent pane.
+* `cancelFallbackTimer(taskId)`, `clearAllFallbackTimers()`: Manages and clears active fallback timer callbacks.
+* `getAgentSession()`, `setAgentSession(info)`: Reads and persists active agent session metadata (`.aideos_session.json`).
+
+### `backend/agentPrompter.ts` (Auto-Prompter Facade)
+* Delegates backwards-compatible prompter APIs (`getAgentSession`, `setAgentSession`, `buildDirectingPrompt`, `dispatchPromptToAgent`) directly to `backend/agentBridge/`.
+
+### `backend/jev.ts` (TypeSafe Jev Decision Model & Primitive Selection)
+* `selectPrimitive(state, options)`: Selects the most appropriate animated primitive from the 7 design system primitives (`TextReveal`, `StatCounter`, `CodeBlock`, `Card`, `Divider`, `IconLabel`, `ProgressBar`) using TypeSafe Jev decision model evaluation with confidence gating, safe-generic fallback (`TextReveal` or `Card`), and fast deterministic heuristic fallback.
+* `decidePrimitiveWithModel(state, options)`: Sends structured choice question to TypeSafe System One (`/v1/systemone`) or OpenRouter alpha decisions endpoint with timeout handling.
+* `applyConfidenceGating(answer, state, options)`: Evaluates model choice against confidence thresholds (default 0.65 for complex primitives, 0.40 overall minimum), falling back to safe generic primitives or heuristics.
+* `heuristicPrimitiveSelection(state)`: Fast deterministic offline rule-based primitive selector for code, statistics, progress, cards, dividers, and icon labels.
+* `buildDecisionRequest(state, model)`: Constructs payload for TypeSafe and OpenRouter decisions API.
+* `parseDecisionResponse(val)`: Validates and parses decision response from Jev endpoint into typed `JevChoiceAnswer`.
+* `setMockJevHandler(handler)`, `getMockJevHandler()`, `clearMockJevHandler()`: Test hooks for injecting mock Jev decisions without live network calls.
 
 ### `backend/scriptIntake.ts`
 * `parseClaudeScript(raw)`: Parses a raw Claude or legacy screenplay into structured `ScriptSegment` items containing ordered visual, narration, and on-screen beats.
 * `serializeSegmentsToScript(segments)`: Serializes structured segments back into canonical markdown with timestamp headers and bracket tags.
 * `hasScreenplayTags(raw)`: Returns true when raw script text contains at least one recognizable screenplay tag beat.
+* `structureUntaggedProseToScript(raw)`: Deterministically structures untagged prose paragraphs into Claude screenplay segments with slug IDs, headlines, visual descriptions, and narration beats.
 * `extractSpokenBlocks(raw)`: Extracts strictly the spoken narration dialogue with zero visual or on-screen tag leakage.
-* `buildFilmPartsFromScript(raw)`: Compiles a Claude screenplay into Remotion-ready sub-shots, canvas nodes and edges, and on-screen `TextReveal` blocks.
+* `buildBlocksForPrimitive(primitive, group, fallbackTitle)`: Builds conforming `GeneratedBlock` structures for any of the 7 animated primitives.
+* `selectScenePrimitives(segments, options)`: Maps screenplay segments to animated primitives with active components history tracking via Jev.
+* `buildFilmPartsFromScript(raw, targetDurationSec, options)`: Compiles a Claude screenplay (falling back to `structureUntaggedProseToScript` for untagged prose) into Remotion-ready sub-shots, canvas nodes and edges, supporting optional heuristic primitive mapping (`usePrimitives`).
+* `buildFilmPartsFromScriptAsync(raw, targetDurationSec, options)`: Compiles a Claude screenplay (falling back to `structureUntaggedProseToScript` for untagged prose) into Remotion-ready parts asynchronously using Jev for intelligent primitive selection across the 7 animated primitives.
 
 ### `backend/sync.ts`
 * `runSemanticVisualSync(film, captions)`: Evaluates spoken words against visual device blocks.
@@ -254,20 +366,23 @@ An individual vector path inside a limb:
 * `validateScene.ts`: Phase 1 semantic and physical integrity validator (`validateScene`) including Rule 20 timeline consistency.
 * `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`, `collectSceneAssetElementIds`).
 
-### `src/dl/validateFilm.ts`
+### `src/dl/validateFilm.ts` & `scripts/validate_film.ts`
 * `validateFilm(film)`: Runs Zod schema parsing and structural integrity assertions.
 * `validatePacingInvariants(film)`: Enforces max 25s hold, no consecutive device repeats, and text breathers every 60-90s.
 * `validateFilmAudioAndAssets(film, projectDir)`: Enforces duration sum invariant ($\sum \text{Shots} = \text{Audio} \pm 50\text{ms}$) and confirms audio asset presence.
+* `scripts/validate_film.ts`: Standalone CLI validator (`npm run validate:film <path/to/film.json>`) validating arbitrary `film.json` files against all 19 cinematic invariants and printing a runsheet.
 
 ---
 
-## 7. Non-Linear Layer Engine & Timeline Tools (`backend/timeline/`)
+## 7. Non-Linear Layer Engine & Timeline Tools (`backend/timeline/`, `src/dl/convertFilm.ts`)
 
-* **`layer_engine.ts`**: Pure functional engine operating over `LayeredFilm`. Provides `buildLayerModelFromFilm`, `convertLayeredFilmToFilm` (lossless round-trip with base film), `moveClip`, `trimClip`, `splitClip`, `deleteClip`, and deterministic left-to-right sweep `resolveTrackCollisions`.
+* **`convertFilm.ts` (`src/dl/convertFilm.ts`)**: Lossless bidirectional converter between `Film` and `LayeredFilm` (`convertFilmToLayeredFilm`, `convertLayeredFilmToFilm`, `defaultTimelineLayers`, `CONVERTED_LAYER_IDS`), preserving multi-track `audioClips`, `videoClips`, and `overlayClips` with symmetric clip linking and on-demand lane resolution.
+* **`layer_engine.ts` (`backend/timeline/layer_engine.ts`)**: Pure functional engine operating over `LayeredFilm`. Provides `importMediaAssetToLayeredFilm`, `unlinkClips`, `moveLayerClip`, `moveMultipleLayerClips`, `trimLayerClipEdge`, `rippleTrimLayerClipEdge`, `splitLayerClipAtTime`, `deleteLayerClip`, `rippleDeleteLayerClip`, and deterministic left-to-right sweep `resolveLayerCollisions`.
+* **`timeline.ts`**: Pure functional operations on `Film` shots and associated audio clips (`moveShot`, `moveMultipleShots`, `trimShotEdge`, `rippleTrimShotEdge`, `splitShotAtTime`, `deleteShot`, `rippleDeleteShot`).
 * **`layer_manager.ts`**: Track management functions (`addLayer`, `removeLayer`, `reorderLayers`, `setLayerVisibility`, `setLayerMuted`, `setLayerLocked`).
 * **`drag_machine.ts`**: Pure pointer-drag state machine managing `move`, `trim-start`, `trim-end`, `scrub`, and `marquee` gestures with `DRAG_THRESHOLD_PX`, Escape cancellation, and zero sticky states.
 * **`snap.ts`**: Magnetic snapping engine (`computeSnapPoints`, `snapTimeToTargets`) with zoom-adaptive thresholds and self-ignore boundaries.
-* **`waveform.ts`**: Node-side FFmpeg audio peak extraction (`extractWaveformPeaks`) producing normalized amplitude vectors.
+* **`waveform.ts`**: Node-side FFmpeg audio peak extraction (`extractWaveformPeaks`, `extractAudioPeaks`) producing normalized amplitude vectors.
 * **`voiceover_engine.ts`**: Browser-safe voiceover gap analysis, cue retiming, and drift calculation (`calculateNarrationDrift`).
 * **`subtitle_engine.ts`**: VTT subtitle cue splitting, merging, retiming, and validation.
 
@@ -277,16 +392,19 @@ An individual vector path inside a limb:
 
 ### 7 Sequential Editing Stages (`editor/src/screens/`)
 * **`ScriptStage.tsx` (`ScriptEditor.tsx`)**: Screenplay markdown editor with tag parsing, Visual Studio segment cards, and Kokoro ONNX TTS voiceover synthesis.
-* **`StoryStage.tsx` (`MindMap.tsx`, `NodeEditor.tsx`)**: 2D infinite spatial canvas for dragging nodes, editing labels, and connecting directed edges.
+* **`StoryStage.tsx` (`MindMap.tsx`, `NodeEditor.tsx`)**: 2D infinite spatial canvas for dragging nodes, editing labels, and connecting directed edges; dispatches spatial actions (`add_node`, `add_edge`, `add_shot`) to the Agent Bridge Hub via `/api/canvas/event`.
 * **`LookStage.tsx` (`Styleboard.tsx`, `CustomizationEditor.tsx`)**: Storyboard keyframe gallery, 1-click character gesture posing, canvas texture selection, and typography styling.
 * **`MotionStage.tsx` (`motionTemplates.ts`)**: Custom SVG animation authoring studio with element-level timeline keyframing, motion templates, and live scrubbing.
-* **`EditStage.tsx` (`TimelineEditor.tsx`, `InspectorPanel.tsx`, `AssetBin.tsx`)**: Non-linear multi-track timeline with clip dragging, sticky snapping, waveform preview, track mute/hide/lock, and clip/shot inspector.
+* **`EditStage.tsx` (`TimelineEditor.tsx`, `InspectorPanel.tsx`, `AssetBin.tsx`, `OnCanvasAiEditor.tsx`)**: Non-linear multi-track timeline with clip dragging, sticky snapping, magnetic ripple editing (R), linked audio-video trimming, waveform preview, track mute/hide/lock, clip/shot inspector, and model-driven AI edit panel (`OnCanvasAiEditor.tsx`) dispatching validated edit programs to Agent Bridge with live trace telemetry.
 * **`CaptionsStage.tsx` (`KineticCaptionEditor.tsx`)**: Word-level subtitle karaoke editor powered by `@chenglou/pretext`.
-* **`ReviewStage.tsx` (`CritiqueStudio.tsx`, `ExportProgressModal.tsx`)**: AI critique drawer, pacing and coverage health charts (`Charts.tsx`), and headless MP4 export progress.
+* **`ReviewStage.tsx` (`CritiqueStudio.tsx`, `ExportProgressModal.tsx`)**: AI critique drawer executing natural-language feedback and patches via `/api/critique`, dispatching review critiques to connected agents, pacing and coverage health charts (`Charts.tsx`), and headless MP4 export progress.
 
 ### State & Integration Layer (`editor/src/state/`)
-* **`useFilmProject.ts`**: Owns the active `Film` document, autosave debounce, and single labelled undo/redo transaction stack.
-* **`useLayeredTimeline.ts`**: Derives `LayeredFilm`, executes layer engine mutations, folds changes back losslessly via `convertLayeredFilmToFilm`, and computes `renderFilm` for preview and export.
+* **`useFilmProject.ts`**: Owns the active `Film` document, autosave debounce, single labelled undo/redo transaction stack, and live studio hot-reload subscribing to `film_updated` SSE events from `/api/agent/trace` to reflect external agent modifications instantly without manual refresh.
+* **`useLayeredTimeline.ts`**: Derives `LayeredFilm`, executes layer engine mutations (`moveClip`, `trimClip`, `rippleTrimClip`, `splitClip`, `removeClip`, `rippleRemoveClip`), folds changes back losslessly via `convertLayeredFilmToFilm`, and computes `renderFilm` for preview and export.
+
+### Studio Inspector & Telemetry Components (`editor/src/components/`)
+* **`AgentActivityInspector.tsx`**: Live real-time agent telemetry timeline subscribing to SSE stream (`/api/agent/trace`) with filterable execution steps, live status pills (LIVE / CONNECTING / OFFLINE), and empty state.
 
 ### Handcrafted Neobrutalism UI Primitives (`editor/src/components/ui/`)
 * **`Badge.tsx`**: Status indicators and token chips.

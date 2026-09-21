@@ -62,6 +62,21 @@ while reusing the rest.
 `stopAfter` ends a run cleanly after a named stage, which is how you inspect the film design before
 paying for GPU time or a render.
 
+## Auto-prompt: producing from a raw prompt
+
+`backend/pipeline/director.ts`'s `runDirector` is the entry point above `runProduction` for when
+there is no screenplay yet, only an idea. It drafts one with an LLM briefed on
+[`docs/DIRECTOR_GUIDE.md`](DIRECTOR_GUIDE.md), validates the draft against the same grammar
+`backend/scriptIntake.ts` parses, retries a rejected draft with the specific reason fed back to the
+model, and hands a passing draft to `runProduction` unchanged:
+
+```bash
+npm run backend -- direct "Why attention scales quadratically" --broll --formats long,reel
+```
+
+`aideos direct "<prompt>"` does the same from the CLI launcher. See docs/DIRECTOR_GUIDE.md section 4
+for the details; the plan is always model-driven, so there is no canned screenplay in the path.
+
 ## Narration
 
 `backend/audio.ts` synthesizes each shot's narration, assembles the pieces in the sample domain,
@@ -102,13 +117,18 @@ npm run backend -- mcp        # stdio transport
 
 Tools:
 
-| Tool                  | Purpose                                                                   |
-| --------------------- | ------------------------------------------------------------------------- |
-| `aideos_produce_film` | Start a run. Returns a `runId` immediately.                                |
-| `aideos_run_status`   | Poll a run: current stage, progress, recent messages, and the final result. |
-| `aideos_list_runs`    | Every run this server process has started.                                 |
-| `aideos_list_films`   | Video packages on disk, with shot count, duration and B-roll status.       |
-| `aideos_get_film`     | The validated film manifest for one package.                              |
+| Tool                     | Purpose                                                                    |
+| ------------------------ | -------------------------------------------------------------------------- |
+| `aideos_produce_film`    | Start a run. Returns a `runId` immediately.                                 |
+| `aideos_run_status`      | Poll a run: current stage, progress, recent messages, and the final result.  |
+| `aideos_list_runs`       | Every run this server process has started.                                  |
+| `aideos_list_films`      | Video packages on disk, with shot count, duration and B-roll status.        |
+| `aideos_get_film`        | The validated film manifest for one package.                               |
+| `aideos_edit_film`       | Plan and execute natural-language edits on a video package with rollback.   |
+| `aideos_get_pending_tasks`| Fetch pending directing, voiceover, screenplay, and editing tasks.         |
+| `aideos_claim_task`      | Claim a pending task to begin execution and prevent hybrid fallback.       |
+| `aideos_complete_task`   | Mark a claimed agent task as completed with summary and execution results. |
+| `aideos_report_step`     | Report execution step, tool call, or validation check to live Agent Trace. |
 
 A full render takes tens of minutes, so `aideos_produce_film` never blocks: it starts the run in
 the background and hands back a `runId` for the caller to poll. Run records live in the server

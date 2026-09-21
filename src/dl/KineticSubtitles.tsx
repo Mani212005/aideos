@@ -9,6 +9,7 @@
 
 import React, { useMemo } from "react";
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { SUBTITLE_BAND_TOP_RATIO } from "./fullScreenHeroLayout";
 
 export interface CaptionWord {
   text: string;
@@ -112,8 +113,15 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   });
   const opacity = phraseIn * phraseOut;
 
+  // The "bottom" band is shared with src/dl/fullScreenHeroLayout.ts so hero captions
+  // and this card are laid out against one number instead of two guesses.
   const positionStyles: React.CSSProperties = {
-    top: position === "top" ? "10%" : position === "center" ? "45%" : "82%",
+    top:
+      position === "top"
+        ? "10%"
+        : position === "center"
+          ? "45%"
+          : `${SUBTITLE_BAND_TOP_RATIO * 100}%`,
   };
 
   return (

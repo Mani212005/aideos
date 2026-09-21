@@ -55,18 +55,29 @@ export function CritiqueStudio({
     Array<{ critique: string; outcome: string; time: string }>
   >([]);
 
-  const handleSubmit = (promptText?: string) => {
+  const handleSubmit = async (promptText?: string) => {
     const text = (promptText || critiqueInput).trim();
-    if (!text) return;
+    if (!text || isProcessing) return;
 
     setIsProcessing(true);
     setPendingResponse(null);
 
     try {
-      const response = executeCritique({
-        critique: text,
-        film,
-      });
+      let response: CritiqueResponse;
+      try {
+        const res = await fetch("/api/critique", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ critique: text, film }),
+        });
+        if (res.ok) {
+          response = await res.json();
+        } else {
+          response = executeCritique({ critique: text, film });
+        }
+      } catch {
+        response = executeCritique({ critique: text, film });
+      }
 
       setPendingResponse(response);
 

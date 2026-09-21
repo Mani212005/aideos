@@ -44,6 +44,20 @@ function extractPeaks(buffer: AudioBuffer, buckets: number): number[] {
 async function loadPeaks(src: string): Promise<void> {
   peakCache.set(src, "pending");
   try {
+    // First attempt to fetch pre-computed peaks from server API
+    try {
+      const peaksRes = await fetch(`/api/audio/peaks?src=${encodeURIComponent(src)}&points=${PEAK_BUCKETS}`);
+      if (peaksRes.ok) {
+        const data = await peaksRes.json();
+        if (Array.isArray(data.peaks) && data.peaks.length > 0) {
+          peakCache.set(src, { peaks: data.peaks, durationSec: data.durationSec ?? 0 });
+          return;
+        }
+      }
+    } catch {
+      // Fall through to in-browser Web Audio decoding
+    }
+
     const res = await fetch(src);
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     const bytes = await res.arrayBuffer();
@@ -120,3 +134,7 @@ export function slicePeaks(peaks: number[], durationSec: number, startSec: numbe
   }
   return out;
 }
+
+/** Lightweight audio waveform generator hook alias for timeline audio tracks. */
+export const useAudioWaveform = useAudioPeaks;
+

@@ -42,8 +42,35 @@ File Description: This file defines the core guidelines, coding principles, and 
    - **Precise Cue Syncing**: Align visual triggers, highlight effects, and component additions directly with the voiceover audio timestamps.
 
 ## Claude Screenplay Intake
-- `backend/scriptIntake.ts` is the single source of truth for parsing/serializing Claude-style screenplays (`## timestamp - Title` headers, `[VISUAL]`/`[NARRATION]`/`[ON SCREEN]` tag blocks, plus legacy `VO:`/`Voiceover:`/`Narrator:` conventions), extracting zero-leakage spoken narration, and compiling sub-shots/on-screen `TextReveal` blocks for Remotion.
+- `backend/scriptIntake.ts` is the single source of truth for parsing/serializing Claude-style screenplays (`## timestamp - Title` headers, `[VISUAL]`/`[NARRATION]`/`[ON SCREEN]` tag blocks, plus legacy `VO:`/`Voiceover:`/`Narrator:` conventions), extracting zero-leakage spoken narration, deterministically structuring untagged prose via `structureUntaggedProseToScript`, and compiling sub-shots and animated primitive blocks (`TextReveal`, `StatCounter`, `CodeBlock`, `Card`, `Divider`, `IconLabel`, `ProgressBar`) for Remotion using TypeSafe Jev (`backend/jev.ts`) for semantic primitive selection with confidence gating and deterministic fallback.
 - It has no Node-only imports, so `editor/src/components/ScriptEditor.tsx` (browser bundle), `editor/vite.config.ts` (dev server), and `backend/audio.ts` all import it directly instead of re-implementing screenplay parsing. Extend this module rather than adding another parser copy.
+
+## Transcription and edit context (Phase 1)
+
+- `backend/transcribe.ts`'s `transcribe(src, opts, deps)` transcribes a video/audio source into
+  word-level timings: Deepgram's prerecorded `listen` API (`smart_format`, `punctuate`,
+  `filler_words`, `utterances` all on) when a key is configured, else a local Whisper CLI
+  fallback. Both paths return the same `TranscribedWord[]` shape (the existing `WordInfo` plus a
+  per-word `confidence`), so downstream code never needs to know which backend ran. The network
+  fetch, the ffmpeg extraction and the Whisper subprocess are all injectable via `deps`, mirroring
+  the `llmCaller` injection convention elsewhere, so tests exercise real routing/parsing logic
+  without ever touching the network or a real ASR process. `writeImportWords` persists the result
+  to `videos/<slug>/import_words.json` (`{words: TranscribedWord[]}`, each carrying a `filler`
+  flag once a detection pass has run) plus `import_captions.vtt` via `audio.ts`'s `buildCaptionsVtt`.
+- `backend/editContext/` holds the pure signal-detection and context-assembly modules
+  `detectFillers`, `detectSilences` and `buildEditContext`, each taking plain data and a
+  `TranscribedWord[]`/`LayeredFilm` and returning a typed result with no I/O. `detectFillers`
+  always flags a fixed strong-filler lexicon ("um", "uh", ...) and only flags a context-dependent
+  word or phrase ("like", "you know") when the ASR backend's own confidence for every word in the
+  span falls below a threshold, so a clearly-spoken "I like this" is never touched.
+- `backend/audio.ts`'s `resolveAudioSourcePath` resolves candidates against both `process.cwd()`
+  and a `REPO_ROOT` computed from `__dirname`. The editor dev server is launched with
+  `cd editor && npm run dev`, so its `process.cwd()` is `editor/`, not the repo root every other
+  caller (the pipeline CLI, `npm test`) runs from; a cwd-only lookup silently failed to find any
+  asset resolved from inside the editor (media upload playback, footage audio peaks, and now
+  transcription) whenever the source was a relative path like `media/<file>`. Any new code that
+  resolves a repo-relative asset path from within `editor/vite.config.ts` should reuse this helper
+  rather than building its own `process.cwd()`-relative lookup.
 
 ## Per-Video Package Layout
 - Every video is a self-contained package under `videos/<slug>/`: `film.json` (authoritative manifest; see `src/dl/videoPackageLoader.ts`), `script.md`, `voiceover.wav` + `voiceover_words.json`, `footage/<shotId>.mp4` (GPU B-roll), and `visuals/`. `script.md`, `voiceover.wav`, and `footage/` are gitignored build artifacts (see `.gitignore`), like the media exclusions they replaced.
@@ -53,8 +80,9 @@ File Description: This file defines the core guidelines, coding principles, and 
 
 ## Production Pipeline
 - `backend/pipeline/run.ts`'s `runProduction` is the one programmatic entry point from a script to finished mp4s (intake, narrate, design, b-roll, assemble, render, verify), with typed progress, per-stage resume via `videos/<slug>/run-state.json`, and stage-tagged errors. `backend/mcp/server.ts` exposes the same thing as MCP tools over stdio. Both are documented in [docs/PRODUCTION_PIPELINE.md](docs/PRODUCTION_PIPELINE.md); drive a film through `runProduction` rather than chaining the older staged commands by hand.
+- `backend/pipeline/director.ts`'s `runDirector` is the auto-prompt entry point above `runProduction`: it drafts a screenplay from a raw prompt with an LLM briefed on [docs/DIRECTOR_GUIDE.md](docs/DIRECTOR_GUIDE.md), validates the draft with `backend/scriptIntake.ts`'s own parser (retrying a rejected draft with the specific reason fed back), then hands a passing draft to `runProduction` unchanged. `transformProseToScreenplay` transforms raw untagged prose into a structured Claude screenplay with visual and narration beats via LLM with validation retry and code fence stripping. `generateScreenplay` is the injection point tests use instead of a real model call; the real path always calls the model, so the plan is never a canned or templated screenplay. Reachable via `npm run backend -- direct "<prompt>"` or `aideos direct "<prompt>"`.
 - Narration is assembled in the sample domain (`backend/pcm.ts`), never by concatenating encoded files: trim, boundary fade, exact gap insertion and peak normalization on Float32 samples. That is what keeps segment offsets exact and boundaries click-free, and `backend/voiceover_stutter.test.ts` holds each defect class closed. Speech synthesis backends live in `backend/tts.ts`; Kokoro is the offline default and runs in a separate process (`backend/kokoroWorker.mjs`) because its voice-file resolution and ONNX thread pool both break under the TypeScript loader.
-- Components must read colour through `useTokens()` from `src/dl/tokens.ts`, not the module-level `PALETTE`/`rule()`/`FAINT`/`SUNKEN` constants: those are derived from the paper-white theme and paint near-black text on the dark canvases every film actually uses.
+- Components must read colour through `useTokens()` from `src/dl/tokens.ts`, not the module-level `PALETTE`/`rule()`/`FAINT`/`SUNKEN` constants: those are derived from the paper-white theme and paint near-black text on the dark canvases every film actually uses. `useLayout().label()` now resolves its muted colour from the rendering theme too, so mono labels are correct without each call site overriding `color`.
 - `src/dl/camera.ts` rounds cumulative timeline position, not individual shot durations, and `CanvasGraph`'s camera transform needs `transform-origin: 0 0` to agree with `solveCam`/`projectBox`. Both are load-bearing for audio-visual sync and framing; see the comments at each site before changing them.
 - `produceAudioPipeline` (`backend/audio.ts`) copies its voiceover and captions into `public/` for the editor's live preview whenever its output directory differs from `public/` itself, so Remotion's `staticFile()` can reach them. A test that calls it (directly, or through `runProduction`) with a throwaway package directory triggers that same copy and overwrites the real, currently-active film's `public/captions.vtt`/`public/voiceover.wav` with the test's fixture script. Pass `{ syncToPreview: false }` (threaded onto `ProductionRequest` too) from any new test that exercises this path; the default stays `true` so real callers are unaffected.
 
@@ -121,6 +149,29 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Screens live in `editor/src/screens/` (one per stage in the left rail) and compose the components
   in `editor/src/components/`. `editor/src/App.tsx` owns navigation, playback and selection only.
 
+## Imported video and standalone overlay clips
+
+- `Film` carries `videoClips`/`overlayClips` arrays (`src/dl/schema.ts`), mirroring the `audioClips`
+  pattern: they are the authority for `video`/`image`/`text`/non-derived-`subtitle` layer clips once
+  any exist, written out by `convertLayeredFilmToFilm` and read back by `convertFilmToLayeredFilm`
+  (`src/dl/convertFilm.ts`) with `linkedClipId` kept symmetric between a video clip and its footage
+  audio counterpart in `audioClips`. A derived subtitle clip (from the voiceover words) is recognized
+  by its synthesized id (`clip-sub-<n>-...`) and never written out; only a standalone caption cue is.
+- `src/dl/Film.tsx`'s `FilmView` renders `film.videoClips` as full-bleed `<Sequence>`/`<OffthreadVideo>`
+  layers *behind* everything else, making the enclosing canvas background transparent (and skipping
+  the paper-grain/blueprint-grid/dot textures) whenever any exist, so the existing canvas/shot content
+  composites on top of the user's own footage instead of hiding it. `film.overlayClips` render above
+  that as simple text/image cards. Both are no-ops on a film with neither array, so every pre-existing
+  film renders unchanged. This is the one render tree both the editor's `<Player>` preview and the
+  Remotion CLI export (`Video.tsx` wraps `FilmView`) share, so a compositor change here reaches both.
+- `backend/timeline/layer_engine.ts`'s `importMediaAssetToLayeredFilm` always creates/uses a dedicated
+  `layer-audio-footage` lane for imported footage audio; it must never fall back to matching
+  `layer-audio-spine`, or the collision resolver ripples the import behind an existing voiceover clip.
+- `/api/media/upload` (`editor/vite.config.ts`) probes width/height/fps for a video via a second
+  `ffprobe` call and returns them alongside `duration`; `AssetBin`'s `MediaAsset` and `EditStage`'s
+  `insertAsset` thread `width`/`height` through to `importMediaAssetToLayeredFilm` so an imported
+  video's dimensions are known without re-probing.
+
 ## Editor state and the timeline layer model
 
 - `editor/src/state/useFilmProject.ts` owns the open film, the single labelled undo history and
@@ -143,14 +194,53 @@ File Description: This file defines the core guidelines, coding principles, and 
   them (and `videos/**`) under `server.watch.ignored` for the same reason.
 - `backend/timeline/voiceover_engine.ts` is imported by the browser bundle and must stay free of Node
   built-ins. ffmpeg-based waveform extraction lives in `backend/timeline/waveform.ts`; the editor
-  decodes waveforms in the browser instead (`editor/src/components/timeline/useAudioPeaks.ts`).
+  fetches peaks via `/api/audio/peaks` and falls back to in-browser decoding (`editor/src/components/timeline/useAudioPeaks.ts`).
 - Every `backend/timeline/*.test.ts` file is wired into the root `npm test` script. Keep it that way:
   suites that are not listed there silently rot.
+
+## Frame safe areas and the palette guard
+
+- `src/dl/fullScreenHeroLayout.ts` owns all `fullScreenHero` geometry and is the single
+  definition of `SUBTITLE_BAND_TOP_RATIO`, the top of the reel's burned-in caption card. Both
+  hero paths use it (`AnalogyInset` in `src/dl/devices.tsx` and `Dynamic3DHeroOverlay` in
+  `src/dl/Film.tsx`) and `KineticSubtitles` derives its "bottom" position from it, so caption
+  placement and the thing it must avoid come from one number. Put new frame-safe-area geometry
+  there rather than re-deriving it in a component: it is a plain module with no Remotion
+  imports, which is what makes it unit testable in `backend/fullScreenHeroLayout.test.ts`.
+- `backend/design_language_palette.test.ts` walks `src/dl/**` and fails on colour literals
+  outside the locked palette (6-digit hex, 3-digit hex and `rgb()`/`rgba()` alike) or on
+  typefaces other than Geist and JetBrains Mono. Files that predate the guard are listed in its
+  `KNOWN_DRIFT` ledger, which is shrink-only: a listed file that becomes clean fails the test
+  until it is removed from the list. Subtrees with their own enforcement (`films/`, `scene/`,
+  `tokens.ts`) are excluded and say why in the file.
+
+## AI Video Editing Core (Phase 2)
+
+- `backend/editPlanner/schema.ts` defines the closed Zod discriminated union `EditOp` representing the entire editing vocabulary (text overlays, slides, caption track, filler word removal, dead air removal, range trim, splitting, moving clips, clip speed, volume, mute/hide lanes, accent, theme, reordering). Unknown op kinds are rejected.
+- `backend/editPlanner/validator.ts`'s `validateEditProgram(ops, context)` enforces semantic timeline bounds, entity references, and runs a dry-run simulation against `validateLayeredFilm`.
+- `backend/editPlanner/interpreter.ts`'s `applyEditProgram(film, ops, context)` is a pure transactional interpreter mapping `EditOp[]` to timeline and voiceover engine operations with atomic rollback on failure.
+- `backend/editPlanner/planner.ts`'s `planEdits(request, context, llmCaller)` uses a 3-attempt validate-then-repair loop feeding validation errors back to the model, returning `{ plan, ops }`.
+- `editor/src/components/OnCanvasAiEditor.tsx` renders the model-driven AI edit panel with dry-run-then-apply UX, folding committed edits through `convertLayeredFilmToFilm` for a single undo step.
+## Connected Agent Bridge Hub (Phase 2)
+- `backend/agentBridge/` is the single authoritative hub for multi-channel outbound dispatch to connected AI coding agents.
+- `backend/agentBridge/dispatcher.ts`'s `dispatchTask` sends rich context payloads (script, audio timings, film manifest, director invariants) across Channel A (Firstmate steering inbox `FIRSTMATE_STEERING_INBOX` / `AIDEOS_AGENT_INBOX`), Channel B (MCP pull queue `aideos_get_pending_tasks`), and Channel C (tmux / local task file `.aideos_task.md`).
+- Hybrid Fallback (Decision 1): Unclaimed pending tasks trigger in-process fallback execution after `DEFAULT_AGENT_TIMEOUT_MS` (15s) timeout, defused when an agent claims the task via `aideos_claim_task` or `taskQueue.claimTask`.
+## Live Real-Time Agent Trace Telemetry (Phase 3)
+- `backend/agentBridge/traceBus.ts` is the in-process event bus collecting trace steps from external coding agents, the bridge dispatcher, and in-process pipeline stages (AI-edit planner, neural TTS, GPU B-roll, invariant validation).
+- Server endpoints in `editor/vite.config.ts`: `GET /api/agent/trace` streams live trace steps to the studio via Server-Sent Events (SSE), and `POST /api/agent/trace/step` records server-side pipeline steps.
+- MCP tool `aideos_report_step` in `backend/mcp/server.ts` enables connected coding agents to report reasoning, tool calls, and invariant checks into the unified trace timeline.
+- `editor/src/components/AgentActivityInspector.tsx` renders live SSE telemetry with real-time status indicators (LIVE/CONNECTING/OFFLINE), phase filtering, and an honest empty state when idle.
+
+## Bi-Directional Canvas & Edit Loop (Phase 4)
+- User actions across the three canvas surfaces (Canvas node additions in `editor/src/screens/StoryStage.tsx`, On-Canvas AI-edit requests in `editor/src/components/OnCanvasAiEditor.tsx`, and Review Critique Studio in `editor/src/components/CritiqueStudio.tsx`) dispatch tasks with rich video context to the connected coding agent via `backend/agentBridge/dispatcher.ts` and emit live telemetry steps to `traceBus`.
+- Instant studio hot-reload: When `videos/<slug>/film.json` is modified on disk by an agent or written via `backend/pipeline/filmStore.ts` / `writeFilm`, `traceBus.notifyFilmUpdated` broadcasts `event: film_updated` over the SSE `/api/agent/trace` stream. `editor/src/state/useFilmProject.ts` receives the event and updates the open film live without a manual refresh.
+- `backend/agentBridge/canvasLoop.test.ts` covers the complete bi-directional loop, fallback handling, and instant studio update path.
 
 ## Maintaining this file
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.
 - Keep it concise. Prefer pointers to authoritative files over copying details.
 - When updating, check if this section exists and add it if missing.
+
 
 
 

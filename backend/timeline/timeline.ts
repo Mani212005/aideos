@@ -442,3 +442,233 @@ export function deleteShot(
     transactionId: txId,
   };
 }
+
+/** Trims a shot's edge and shifts subsequent clips by the duration delta, preventing dead gaps. */
+export function rippleTrimShotEdge(
+  film: Film,
+  shotIndex: number,
+  edge: "left" | "right",
+  deltaSec: number
+): { film: Film; actions: UpdateAction[]; transactionId: string } {
+  if (shotIndex < 0 || shotIndex >= film.shots.length) {
+    throw new Error(`Invalid shotIndex ${shotIndex}`);
+  }
+
+  const newShots = JSON.parse(JSON.stringify(film.shots)) as Shot[];
+  const shot = newShots[shotIndex];
+  const fps = film.fps || 30;
+  const frameDelta = Math.round(deltaSec * fps) / fps;
+  const MIN_DUR = 0.5; // 0.5s schema minimum duration
+
+  const currentStarts = computeShotStartTimes(film.shots);
+  const currentPos = shot.position ?? shot.startSec ?? currentStarts[shotIndex];
+  const currentIn = shot.start ?? shot.inSec ?? 0;
+  const currentDur = getShotDuration(shot);
+  const currentOut = shot.end ?? (currentIn + currentDur);
+
+  const txId = generateUUID();
+  const actions: UpdateAction[] = [];
+  let durationDelta = 0;
+
+  if (edge === "right") {
+    const proposedOut = currentOut + frameDelta;
+    const proposedDur = proposedOut - currentIn;
+    if (proposedDur < MIN_DUR) {
+      throw new Error(`Trim rejected: shot duration cannot fall below minimum (${MIN_DUR.toFixed(3)}s)`);
+    }
+
+    shot.start = currentIn;
+    shot.end = Number(proposedOut.toFixed(3));
+    shot.dur = Number(proposedDur.toFixed(3));
+    shot.position = currentPos;
+    shot.startSec = currentPos;
+    durationDelta = Number((proposedDur - currentDur).toFixed(3));
+
+    actions.push({
+      type: "update",
+      path: ["shots", shotIndex, "end"],
+      oldValue: currentOut,
+      newValue: shot.end,
+      transactionId: txId,
+      label: `Ripple trim ${shot.id} right edge to ${shot.end.toFixed(2)}s`,
+      timestamp: Date.now(),
+    });
+  } else {
+    // Left edge trim: in ripple mode, advances the in-point and shifts downstream clips by the duration delta
+    const proposedIn = currentIn + frameDelta;
+    const proposedDur = currentOut - proposedIn;
+
+    if (proposedIn < 0) {
+      throw new Error("Trim rejected: in-point cannot be negative");
+    }
+    if (proposedDur < MIN_DUR) {
+      throw new Error(`Trim rejected: shot duration cannot fall below minimum (${MIN_DUR.toFixed(3)}s)`);
+    }
+
+    shot.start = Number(proposedIn.toFixed(3));
+    shot.end = currentOut;
+    shot.position = currentPos;
+    shot.startSec = currentPos;
+    shot.dur = Number(proposedDur.toFixed(3));
+    durationDelta = Number((proposedDur - currentDur).toFixed(3));
+
+    actions.push({
+      type: "update",
+      path: ["shots", shotIndex, "start"],
+      oldValue: currentIn,
+      newValue: shot.start,
+      transactionId: txId,
+      label: `Ripple trim ${shot.id} left edge to start at ${shot.start.toFixed(2)}s`,
+      timestamp: Date.now(),
+    });
+  }
+
+  // Ripple shift all subsequent shots by durationDelta
+  for (let i = shotIndex + 1; i < newShots.length; i++) {
+    const target = newShots[i];
+    const origStart = target.position ?? target.startSec ?? currentStarts[i];
+    const newStart = Math.max(0, Number((origStart + durationDelta).toFixed(3)));
+    const oldVal = target.position ?? target.startSec;
+
+    target.position = newStart;
+    target.startSec = newStart;
+
+    actions.push({
+      type: "update",
+      path: ["shots", i, "position"],
+      oldValue: oldVal,
+      newValue: newStart,
+      transactionId: txId,
+      label: `Ripple shift ${target.id} by ${durationDelta > 0 ? "+" : ""}${durationDelta.toFixed(2)}s`,
+      timestamp: Date.now(),
+    });
+  }
+
+  // Synchronize audio clips if present
+  let newAudioClips: Film["audioClips"] = undefined;
+  if (film.audioClips && film.audioClips.length > 0) {
+    newAudioClips = JSON.parse(JSON.stringify(film.audioClips));
+    const linkedAudioIdx = newAudioClips!.findIndex(
+      (ac) =>
+        ac.id === shot.id ||
+        ac.id === `clip-audio-${shot.id}` ||
+        ac.id === `ac-${shot.id}`
+    );
+
+    if (linkedAudioIdx !== -1) {
+      const ac = newAudioClips![linkedAudioIdx];
+      const audioSpeed = ac.speed ?? 1.0;
+      if (edge === "right") {
+        ac.end = Number((ac.end + frameDelta * audioSpeed).toFixed(3));
+      } else {
+        ac.start = Number((ac.start + frameDelta * audioSpeed).toFixed(3));
+      }
+    }
+
+    // Ripple shift subsequent audio clips
+    for (let j = 0; j < newAudioClips!.length; j++) {
+      if (j === linkedAudioIdx) continue;
+      const ac = newAudioClips![j];
+      if (ac.position >= currentPos + currentDur - 0.05) {
+        ac.position = Math.max(0, Number((ac.position + durationDelta).toFixed(3)));
+      }
+    }
+  }
+
+  return {
+    film: {
+      ...film,
+      shots: newShots,
+      ...(newAudioClips ? { audioClips: newAudioClips } : {}),
+    },
+    actions,
+    transactionId: txId,
+  };
+}
+
+/** Deletes a shot and shifts subsequent clips leftward by the deleted duration to close the gap. */
+export function rippleDeleteShot(
+  film: Film,
+  shotIndex: number
+): { film: Film; actions: UpdateAction[]; transactionId: string } {
+  if (film.shots.length <= 1) {
+    throw new Error("Cannot delete the only remaining shot in film");
+  }
+  if (shotIndex < 0 || shotIndex >= film.shots.length) {
+    throw new Error(`Invalid shotIndex ${shotIndex}`);
+  }
+
+  const deletedShot = film.shots[shotIndex];
+  const deletedDur = getShotDuration(deletedShot);
+  const currentStarts = computeShotStartTimes(film.shots);
+  const deletedPos = deletedShot.position ?? deletedShot.startSec ?? currentStarts[shotIndex];
+  const txId = generateUUID();
+  const actions: UpdateAction[] = [
+    {
+      type: "delete",
+      path: ["shots", shotIndex],
+      oldValue: deletedShot,
+      newValue: null,
+      transactionId: txId,
+      label: `Ripple delete ${deletedShot.id}`,
+      timestamp: Date.now(),
+    },
+  ];
+
+  const newShots = film.shots
+    .filter((_, idx) => idx !== shotIndex)
+    .map((s, newIdx) => {
+      if (newIdx < shotIndex) {
+        return JSON.parse(JSON.stringify(s)) as Shot;
+      }
+      const origIdx = newIdx + 1;
+      const origStart = s.position ?? s.startSec ?? currentStarts[origIdx];
+      const newStart = Math.max(0, Number((origStart - deletedDur).toFixed(3)));
+      const cloned = JSON.parse(JSON.stringify(s)) as Shot;
+      const oldVal = cloned.position ?? cloned.startSec;
+      cloned.position = newStart;
+      cloned.startSec = newStart;
+
+      actions.push({
+        type: "update",
+        path: ["shots", newIdx, "position"],
+        oldValue: oldVal,
+        newValue: newStart,
+        transactionId: txId,
+        label: `Ripple shift ${cloned.id} left by ${deletedDur.toFixed(2)}s`,
+        timestamp: Date.now(),
+      });
+      return cloned;
+    });
+
+  // Synchronize audio clips if present
+  let newAudioClips: Film["audioClips"] = undefined;
+  if (film.audioClips && film.audioClips.length > 0) {
+    newAudioClips = (JSON.parse(JSON.stringify(film.audioClips)) as Film["audioClips"])!
+      .filter(
+        (ac) =>
+          !(
+            ac.id === deletedShot.id ||
+            ac.id === `clip-audio-${deletedShot.id}` ||
+            ac.id === `ac-${deletedShot.id}`
+          )
+      )
+      .map((ac) => {
+        if (ac.position >= deletedPos + deletedDur - 0.05) {
+          ac.position = Math.max(0, Number((ac.position - deletedDur).toFixed(3)));
+        }
+        return ac;
+      });
+  }
+
+  return {
+    film: {
+      ...film,
+      shots: newShots,
+      ...(newAudioClips ? { audioClips: newAudioClips } : {}),
+    },
+    actions,
+    transactionId: txId,
+  };
+}
+

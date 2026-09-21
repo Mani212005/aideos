@@ -160,42 +160,38 @@ function chooseDevice(narration: string, onscreen: string[], lastDeviceKind: str
   // empty station, so a beat with no on-screen copy stays on the canvas instead.
   if (onscreen.length === 0) return null;
 
+  const candidates: DeviceChoice[] = [];
+
   const quantity = readQuantity(narration);
-  if (quantity && lastDeviceKind !== "StatCounter") {
-    return {
+  if (quantity) {
+    candidates.push({
       kind: "StatCounter",
       block: {
         c: "StatCounter",
         to: quantity.value,
-        // The headline already says the thing; the counter's label names what is being
-        // counted, so the two read as one statement rather than the same words twice.
         label: fitText(quantity.label, 44),
         format: quantity.value >= 1000 ? "compact" : "plain",
         ...(quantity.suffix ? { suffix: quantity.suffix } : {}),
       },
-    };
+    });
   }
 
-  // A run of drafted tokens being checked together is the one idea in this class of script
-  // that is genuinely a sequence of discrete units, which is what TokenStrip draws.
-  const parallelCheck = /\b(in parallel|at once|all five|batch of them|single forward pass)\b/.test(lower);
-  if (parallelCheck && lastDeviceKind !== "TokenStrip") {
-    return {
+  const parallelCheck = /\b(in parallel|at once|all five|batch of them|single forward pass|tokens?|sequence|stream)\b/.test(lower);
+  if (parallelCheck) {
+    candidates.push({
       kind: "TokenStrip",
       block: {
         c: "TokenStrip",
-        // Positions in the drafted run rather than a repeated word: the point of the
-        // strip is which of the five are accepted, not what they happen to spell.
         tokens: ["t+1", "t+2", "t+3", "t+4", "t+5"],
         lit: [0, 1, 2],
-        caption: "Accepted to the first mismatch",
+        caption: "Accepted token sequence",
       },
-    };
+    });
   }
 
-  const growthTalk = /\b(scales?|scaling|grows?|throughput|linear|quadratic)\b/.test(lower);
-  if (growthTalk && lastDeviceKind !== "Plot") {
-    return {
+  const growthTalk = /\b(scales?|scaling|grows?|throughput|linear|quadratic|loss|accuracy|curve)\b/.test(lower);
+  if (growthTalk) {
+    candidates.push({
       kind: "Plot",
       block: {
         c: "Plot",
@@ -210,10 +206,69 @@ function chooseDevice(narration: string, onscreen: string[], lastDeviceKind: str
         yLabel: "throughput",
         endLabel: "accepted",
       },
-    };
+    });
   }
 
-  return null;
+  const matrixTalk = /\b(matrix|weights?|tensor|grid|attention map|embedding space|heat\s*map|table)\b/.test(lower);
+  if (matrixTalk) {
+    candidates.push({
+      kind: "MatrixGrid",
+      block: {
+        c: "MatrixGrid",
+        sweep: "cell",
+        rowLabel: "tokens",
+        colLabel: "heads",
+        values: [
+          [0.9, 0.2, 0.1, 0.4],
+          [0.1, 0.85, 0.3, 0.2],
+          [0.3, 0.1, 0.95, 0.1],
+          [0.2, 0.4, 0.1, 0.88],
+        ],
+      },
+    });
+  }
+
+  const distributionTalk = /\b(distribution|probability|proportions?|breakdown|fraction|shares?|split|weights?)\b/.test(lower);
+  if (distributionTalk) {
+    candidates.push({
+      kind: "Distribution",
+      block: {
+        c: "Distribution",
+        items: [
+          { label: "Direct Path", p: 0.62 },
+          { label: "Fallback", p: 0.28 },
+          { label: "Residual", p: 0.1 },
+        ],
+      },
+    });
+  }
+
+  const layerTalk = /\b(layers?|stack|tier|hierarchy|pipeline|stages?|deep network|blocks?)\b/.test(lower);
+  if (layerTalk) {
+    candidates.push({
+      kind: "LayerStack",
+      block: {
+        c: "LayerStack",
+        layers: ["Input Layer", "Processing Block x12", "Output Projection"],
+      },
+    });
+  }
+
+  const scaleTalk = /\b(threshold|trade-off|spectrum|slider|range|bounds?|limits?|temperature)\b/.test(lower);
+  if (scaleTalk) {
+    candidates.push({
+      kind: "ScaleBar",
+      block: {
+        c: "ScaleBar",
+        ticks: ["Min", "Balanced", "Peak"],
+        value: 0.72,
+        label: "Optimal threshold",
+      },
+    });
+  }
+
+  const eligible = candidates.filter((c) => c.kind !== lastDeviceKind);
+  return eligible.length > 0 ? eligible[0] : null;
 }
 
 /** Builds the blocks a text beat shows: a headline, and a supporting line when one was written. */
@@ -279,14 +334,21 @@ function chooseFootageBeats(
     .filter(({ dur }) => dur > 2 && dur + FOOTAGE_HEADROOM_SEC <= maxFootageSec);
 
   const requested = eligible.filter(({ beat }) => beat.wantsFootage).map(({ i }) => i);
-  if (requested.length >= maxFootageShots) return requested.slice(0, maxFootageShots).sort((a, b) => a - b);
+  const filteredRequested: number[] = [];
+  for (const i of requested) {
+    if (filteredRequested.length === 0 || i - filteredRequested[filteredRequested.length - 1] > 1) {
+      filteredRequested.push(i);
+    }
+  }
 
-  const chosen = new Set(requested);
-  const spacing = Math.max(1, Math.floor(beats.length / Math.max(1, maxFootageShots)));
+  if (filteredRequested.length >= maxFootageShots) return filteredRequested.slice(0, maxFootageShots).sort((a, b) => a - b);
+
+  const chosen = new Set(filteredRequested);
+  const spacing = Math.max(2, Math.floor(beats.length / Math.max(1, maxFootageShots)));
   for (const { i } of eligible) {
     if (chosen.size >= maxFootageShots) break;
     if (chosen.has(i)) continue;
-    // Keep footage beats apart so the film does not turn into back-to-back video clips.
+    // Keep footage beats apart so the film does not turn into back-to-back video clips or back-to-back AnalogyInsets.
     if ([...chosen].some((other) => Math.abs(other - i) < spacing)) continue;
     chosen.add(i);
   }
@@ -306,8 +368,7 @@ function layoutCanvas(concepts: ConceptEntity[]): { nodes: CanvasNode[]; edges: 
 
   const columns = concepts.length <= 4 ? 2 : 3;
   // Sized for what a node actually holds: a category tag, a title that may wrap to two
-  // lines at this width, and a sub-label under it. The previous 70px height clipped the
-  // sub-label outside the card border on every node whose title wrapped.
+  // lines at this width, and a sub-label under it.
   const nodeWidth = 280;
   const nodeHeight = 124;
   const gapX = 150;
@@ -334,16 +395,6 @@ function layoutCanvas(concepts: ConceptEntity[]): { nodes: CanvasNode[]; edges: 
 
 /**
  * The group of nodes a spine shot pulls back to take in.
- *
- * The obvious choice - the node before, the node itself and the node after - lands on three
- * nodes of the same serpentine row, a box six times wider than it is tall. Framing that fills a
- * 16:9 frame and shrinks to an unreadable strip in 9:16. Reaching for a node on the next row as
- * well gives the group two rows of height, which reads in both formats from the one camera solve
- * that section 06 allows.
- *
- * `reach` widens the window. Two spine beats in a row would otherwise solve to the same framing
- * and hold a completely still frame across both; widening the second one turns the pair into a
- * continuous pull-back instead.
  */
 function spineLook(nodes: CanvasNode[], index: number, reach: number): string[] {
   const picked: CanvasNode[] = [];
@@ -388,23 +439,89 @@ export function compileFilmFromScreenplay(
   const maxFootageSec = options.maxFootageSec ?? 8;
   const maxFootageShots = options.maxFootageShots ?? 4;
 
-  // One node per screenplay section: the canvas is the argument's map, not its shot list.
+  const MAX_CHAPTERS = 12;
+  const MAX_NODES = 24;
+
   const usedSections = [...new Set(beats.map((b) => b.sectionIndex))].sort((a, b) => a - b);
-  const concepts: ConceptEntity[] = usedSections.map((sectionIndex, i) => {
-    const section = sections[sectionIndex];
-    const firstBeat = beats.find((b) => b.sectionIndex === sectionIndex);
-    return {
-      id: section.id || `section-${i + 1}`,
-      label: fitText(section.title || `Part ${i + 1}`, 28),
-      sub: firstBeat?.onscreen[0] ? fitText(firstBeat.onscreen[0], 34) : undefined,
-      chapterIndex: i,
-      relationship: "sequential" as const,
-    };
+
+  // Chapter clustering to guarantee chapters <= 12
+  let chapterNames: string[];
+  const chapterIndexBySection = new Map<number, number>();
+
+  if (usedSections.length <= MAX_CHAPTERS) {
+    chapterNames = usedSections.map((sIdx, i) => fitText(sections[sIdx]?.title || `Chapter ${i + 1}`, 30));
+    usedSections.forEach((sIdx, i) => chapterIndexBySection.set(sIdx, i));
+  } else {
+    chapterNames = [];
+    for (let c = 0; c < MAX_CHAPTERS; c++) {
+      const startIdx = Math.floor((c * usedSections.length) / MAX_CHAPTERS);
+      const sIdx = usedSections[startIdx];
+      chapterNames.push(fitText(sections[sIdx]?.title || `Part ${c + 1}`, 30));
+    }
+    usedSections.forEach((sIdx, i) => {
+      const cIdx = Math.min(MAX_CHAPTERS - 1, Math.floor((i * MAX_CHAPTERS) / usedSections.length));
+      chapterIndexBySection.set(sIdx, cIdx);
+    });
+  }
+
+  // Ensure unique chapter strings
+  const uniqueChapters: string[] = [];
+  chapterNames.forEach((name, i) => {
+    let clean = name || `Chapter ${i + 1}`;
+    if (uniqueChapters.includes(clean)) {
+      clean = `${clean.slice(0, 26)} ${i + 1}`;
+    }
+    uniqueChapters.push(clean.slice(0, 30));
   });
 
+  // Canvas nodes clustering to guarantee 2 <= nodes <= 24
+  let concepts: ConceptEntity[];
+  const nodeIdBySection = new Map<number, string>();
+
+  if (usedSections.length <= MAX_NODES) {
+    concepts = usedSections.map((sectionIndex, i) => {
+      const section = sections[sectionIndex];
+      const firstBeat = beats.find((b) => b.sectionIndex === sectionIndex);
+      return {
+        id: section.id || `section-${i + 1}`,
+        label: fitText(section.title || `Part ${i + 1}`, 28),
+        sub: firstBeat?.onscreen[0] ? fitText(firstBeat.onscreen[0], 34) : undefined,
+        chapterIndex: chapterIndexBySection.get(sectionIndex) ?? 0,
+        relationship: "sequential" as const,
+      };
+    });
+    if (concepts.length === 1) {
+      concepts.push({
+        id: "summary-node",
+        label: "Summary",
+        sub: "Key Takeaways",
+        chapterIndex: 0,
+        relationship: "sequential" as const,
+      });
+    }
+    usedSections.forEach((sIdx, i) => nodeIdBySection.set(sIdx, concepts[i].id));
+  } else {
+    concepts = [];
+    for (let n = 0; n < MAX_NODES; n++) {
+      const startIdx = Math.floor((n * usedSections.length) / MAX_NODES);
+      const sIdx = usedSections[startIdx];
+      const section = sections[sIdx];
+      const firstBeat = beats.find((b) => b.sectionIndex === sIdx);
+      concepts.push({
+        id: `node-${n + 1}`,
+        label: fitText(section?.title || `Node ${n + 1}`, 28),
+        sub: firstBeat?.onscreen[0] ? fitText(firstBeat.onscreen[0], 34) : undefined,
+        chapterIndex: chapterIndexBySection.get(sIdx) ?? 0,
+        relationship: "sequential" as const,
+      });
+    }
+    usedSections.forEach((sIdx, i) => {
+      const nIdx = Math.min(MAX_NODES - 1, Math.floor((i * MAX_NODES) / usedSections.length));
+      nodeIdBySection.set(sIdx, concepts[nIdx].id);
+    });
+  }
+
   const { nodes, edges } = layoutCanvas(concepts);
-  const chapters = concepts.map((c) => c.label);
-  const nodeIdBySection = new Map(usedSections.map((sectionIndex, i) => [sectionIndex, nodes[i].id]));
   const nodeIds = nodes.map((n) => n.id);
 
   const footageIndices = new Set(
@@ -415,46 +532,52 @@ export function compileFilmFromScreenplay(
   const footage: FootageRequest[] = [];
   let sinceTextBeat = 0;
   let sinceCanvas = 0;
-  let lastSectionIndex = -1;
+  let lastChapterIdx = -1;
   let lastDeviceKind: string | null = null;
   let consecutiveSpine = 0;
   let devicesUsed = 0;
-  const maxDevices = Math.max(2, Math.round(beats.length / 5));
+  const maxDevices = Math.max(2, Math.round(beats.length / 4));
 
   beats.forEach((beat, i) => {
     const dur = shotDurations[i];
-    const isSectionStart = beat.sectionIndex !== lastSectionIndex;
-    const nodeId = nodeIdBySection.get(beat.sectionIndex) as string;
-    const nodeIndex = nodeIds.indexOf(nodeId);
-    lastSectionIndex = beat.sectionIndex;
+    const chapterIdx = chapterIndexBySection.get(beat.sectionIndex) ?? 0;
+    const isChapterStart = chapterIdx !== lastChapterIdx;
+    lastChapterIdx = chapterIdx;
+
+    const nodeId = nodeIdBySection.get(beat.sectionIndex) ?? nodeIds[0];
+    const nodeIndex = Math.max(0, nodeIds.indexOf(nodeId));
 
     const textBlocks = buildTextBlocks(beat.onscreen);
     const wantsFootage = footageIndices.has(i);
 
-    // The runsheet's two deadlines, checked against the clock they are written against. Nine
-    // tenths of the allowance leaves room for the shot about to be placed.
-    const textBeatDue = sinceTextBeat + dur > 81;
-    const canvasDue = sinceCanvas + dur > 81;
+    // Runsheet timing boundaries: 70s threshold leaves room before the 90s schema limit.
+    const textBeatDue = sinceTextBeat + dur > 70;
+    const canvasDue = sinceCanvas + dur > 70;
 
     const device =
-      !wantsFootage && dur >= 5 && devicesUsed < maxDevices && !canvasDue
+      !wantsFootage && dur >= 4 && dur <= 25 && devicesUsed < maxDevices && !canvasDue
         ? chooseDevice(beat.narration, beat.onscreen, lastDeviceKind)
         : null;
 
     let stage: Shot["stage"];
     let blocks: Block[];
+
     if (wantsFootage) {
-      // Footage takes the frame; the panel behind it is what the inset grows into.
       stage = "frame";
-      blocks = [];
+      blocks = [
+        {
+          c: "AnalogyInset",
+          caption: fitText(beat.onscreen[0] || beat.sectionTitle, 80) || "B-roll",
+          fullScreenHero: true,
+        },
+      ];
+      lastDeviceKind = "AnalogyInset";
     } else if (device) {
-      // A device grows out of the node it belongs to: never somewhere else, always inside
-      // something the viewer has already been shown on the map.
       stage = "anchor";
       blocks = [...textBlocks.slice(0, 1), device.block];
       lastDeviceKind = device.kind;
       devicesUsed += 1;
-    } else if (textBlocks.length > 0 && (isSectionStart || textBeatDue || !canvasDue)) {
+    } else if (textBlocks.length > 0 && (isChapterStart || textBeatDue || !canvasDue)) {
       stage = "frame";
       blocks = textBlocks;
       lastDeviceKind = null;
@@ -464,33 +587,16 @@ export function compileFilmFromScreenplay(
       lastDeviceKind = null;
     }
 
-    if (wantsFootage) {
-      // The inset the B-roll stage wires in becomes this shot's only block; until then a
-      // caption-bearing placeholder keeps the film valid and renders as a drawn frame.
-      blocks = [
-        {
-          c: "AnalogyInset",
-          caption: fitText(beat.onscreen[0] || beat.sectionTitle, 80) || "B-roll",
-          fullScreenHero: true,
-        },
-      ];
-      lastDeviceKind = "AnalogyInset";
-    }
-
-    // The spine shot is the film's breath: it pulls back to take in the node just left behind
-    // together with the one being approached, so the canvas visibly accumulates instead of
-    // holding the same framing with nothing moving in it.
     consecutiveSpine = stage === "none" ? consecutiveSpine + 1 : 0;
     const look: Shot["look"] =
       stage === "none" ? spineLook(nodes, nodeIndex, Math.min(3, consecutiveSpine)) : nodeId;
-    // Each further spine beat in a run pulls back a little more, so the camera keeps moving.
     const zoom =
       stage === "none" ? Math.max(0.6, 1 - 0.1 * consecutiveSpine) : stage === "anchor" ? 1.05 : 1;
-    const move: Shot["move"] = i === 0 || isSectionStart ? "cut" : stage === "none" ? "zoom-out" : "pan";
+    const move: Shot["move"] = i === 0 || isChapterStart ? "cut" : stage === "none" ? "zoom-out" : "pan";
 
     shots.push({
       id: `beat-${String(i + 1).padStart(2, "0")}`,
-      ch: chapters[usedSections.indexOf(beat.sectionIndex)],
+      ch: uniqueChapters[chapterIdx],
       dur: Number(dur.toFixed(3)),
       stage,
       look,
@@ -520,11 +626,9 @@ export function compileFilmFromScreenplay(
     id: slug,
     title: options.title,
     fps,
-    // The one colour, per the design language's six-value palette. Setting it on the film
-    // rather than in the shared tokens keeps every other film's accent exactly as authored.
     accent: "#635BFF",
     theme: { background: "smooth-dark", fontFamily: "geist", accent: "#635BFF" },
-    chapters,
+    chapters: uniqueChapters,
     canvas: { nodes, edges },
     shots,
     voiceover: { src: `videos/${slug}/voiceover.wav`, volume: 1, durationSec: totalSec },

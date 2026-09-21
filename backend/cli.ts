@@ -17,6 +17,7 @@ import { compileFilm, extractJobSpecs } from "./ideation/compile";
 import type { Treatment } from "./ideation/schemas";
 import { generateStructuredJson, isGoogleAiConfigured } from "./modelClient";
 import { runProduction } from "./pipeline/run";
+import { runDirector } from "./pipeline/director";
 import type { ProductionFormat, ProductionProgress, ProductionStage } from "./pipeline/types";
 import type { TtsBackendName } from "./tts";
 
@@ -129,7 +130,10 @@ program
   )
   .action(async (prompt: string, options: { format: "long" | "reel" | "both" }) => {
     if (!isGoogleAiConfigured()) {
-      throw new Error("GEMINI_API_KEY or GOOGLE_API_KEY is not set. Put it in .env or the environment.");
+      throw new Error(
+        "GEMINI_API_KEY or GOOGLE_API_KEY is not set. To generate directly with Gemini, set it in .env; " +
+          "or use the Agent Director workflow (docs/DIRECTOR_GUIDE.md) to direct films with your coding agent.",
+      );
     }
 
     console.log(`Generating film for prompt: "${prompt}" via Gemini...`);
@@ -526,6 +530,101 @@ program
 
       console.log(`\n${result.title} (${result.slug})`);
       console.log(`  ${result.shotCount} shots · ${result.durationSec.toFixed(2)}s · narrated by ${result.ttsBackend}`);
+      console.log(`  film manifest: ${path.relative(ROOT, result.filmPath)}`);
+      for (const clip of result.brollClips) {
+        console.log(`  b-roll ${clip.shotId}: ${path.relative(ROOT, clip.path)} (${clip.durationSec.toFixed(2)}s)`);
+      }
+      for (const output of result.outputs) {
+        console.log(
+          `  ${output.format}: ${path.relative(ROOT, output.path)} ` +
+            `(${output.width}x${output.height}, ${output.durationSec.toFixed(2)}s, ` +
+            `${(output.sizeBytes / 1024 / 1024).toFixed(1)} MB)`,
+        );
+      }
+      if (result.warnings.length > 0) {
+        console.log(`\n  ${result.warnings.length} warning(s):`);
+        for (const warning of result.warnings) console.log(`    - ${warning}`);
+      }
+      if (result.stoppedAfter) console.log(`\n  stopped after the ${result.stoppedAfter} stage, as requested`);
+    },
+  );
+
+program
+  .command("direct")
+  .description(
+    "Auto-prompt: an LLM director drafts a screenplay from your prompt, then produces it end to end",
+  )
+  .argument("<prompt>", "what the film should explain, as plain language")
+  .option("--title <title>", "film title; overrides the one the director drafts for itself")
+  .option("--slug <slug>", "package slug under videos/ (lowercase letters, digits, dashes)")
+  .option("--formats <list>", "comma-separated formats to render", "long,reel")
+  .option("--out <dir>", "where the finished mp4s land", "out")
+  .option("--broll", "generate b-roll footage on the GPU and wire it into the film")
+  .option("--broll-engine <name>", "which VideoEngine renders b-roll", "ssh-wangp")
+  .option("--broll-clips <n>", "maximum number of b-roll clips", "4")
+  .option("--broll-seconds <n>", "length of each b-roll clip in seconds", "8")
+  .option("--tts <backend>", "pin the speech synthesizer (kokoro, google, say, tone)")
+  .option("--voice <voice>", "voice id for the chosen synthesizer")
+  .option("--speed <n>", "narration pace multiplier; below 1 slows delivery", "1")
+  .option("--music <src>", "background music filename inside public/")
+  .option("--max-attempts <n>", "how many screenplay drafts the director may attempt", "3")
+  .option("--no-resume", "ignore cached stage results and run everything again")
+  .option("--force <stages>", "comma-separated stages to re-run even when resuming")
+  .option("--stop-after <stage>", "stop cleanly after this stage")
+  .option("--skip-verify", "skip the closing frame and audio inspection pass")
+  .action(
+    async (
+      prompt: string,
+      options: {
+        title?: string;
+        slug?: string;
+        formats: string;
+        out: string;
+        broll?: boolean;
+        brollEngine: string;
+        brollClips: string;
+        brollSeconds: string;
+        tts?: TtsBackendName;
+        voice?: string;
+        speed: string;
+        music?: string;
+        maxAttempts: string;
+        resume: boolean;
+        force?: string;
+        stopAfter?: ProductionStage;
+        skipVerify?: boolean;
+      },
+    ) => {
+      const result = await runDirector(
+        {
+          prompt,
+          title: options.title,
+          slug: options.slug,
+          formats: options.formats.split(",").map((f) => f.trim()).filter(Boolean) as ProductionFormat[],
+          outDir: options.out,
+          broll: Boolean(options.broll),
+          brollEngine: options.brollEngine,
+          brollMaxClips: Number(options.brollClips),
+          brollSeconds: Number(options.brollSeconds),
+          ttsBackend: options.tts,
+          voice: options.voice,
+          speed: Number(options.speed),
+          music: options.music,
+          maxAttempts: Number(options.maxAttempts),
+          resume: options.resume,
+          force: options.force?.split(",").map((s) => s.trim()) as ProductionStage[] | undefined,
+          stopAfter: options.stopAfter,
+          skipVerify: options.skipVerify,
+        },
+        (event) => console.log(formatProgress(event)),
+      );
+
+      console.log(`\n${result.title} (${result.slug})`);
+      console.log(
+        `  drafted in ${result.draftAttempts} attempt(s) · ${result.shotCount} shots · ` +
+          `${result.durationSec.toFixed(2)}s · narrated by ${result.ttsBackend}`,
+      );
+      console.log(`  screenplay: ${path.relative(ROOT, result.scriptPath)}`);
       console.log(`  film manifest: ${path.relative(ROOT, result.filmPath)}`);
       for (const clip of result.brollClips) {
         console.log(`  b-roll ${clip.shotId}: ${path.relative(ROOT, clip.path)} (${clip.durationSec.toFixed(2)}s)`);

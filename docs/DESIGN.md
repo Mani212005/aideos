@@ -67,12 +67,12 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 
 ### 1. Script Stage (`ScriptStage.tsx` / `ScriptEditor.tsx`)
 - **Purpose**: Narrative authoring studio where creators write spoken scripts, structure explanation blocks, and define visual direction cues per shot using raw screenplay markdown or interactive Visual Studio cards.
-- **Claude Intake & Sub-Shots**: Parses timestamped sections, `[VISUAL]`, `[NARRATION]`, and `[ON SCREEN]` tag blocks with zero tag leakage into spoken dialogue, two-way sync, and automatic sub-shot compilation via `backend/scriptIntake.ts`.
+- **Claude Intake & Sub-Shots**: Parses timestamped sections, `[VISUAL]`, `[NARRATION]`, and `[ON SCREEN]` tag blocks with zero tag leakage into spoken dialogue, two-way sync, and automatic sub-shot compilation via `backend/scriptIntake.ts`. Untagged plain prose is automatically structured into scenes with visual directions via Director LLM transformation with deterministic heuristic fallback (`structureUntaggedProseToScript`), preventing zero-shot parse failures.
 - **Audio Synthesis**: Triggers Kokoro ONNX TTS voiceover generation and locks timeline duration boundaries.
 
 ### 2. Story Stage (`StoryStage.tsx` / `MindMap.tsx` / `NodeEditor.tsx`)
 - **Purpose**: Interactive 2D spatial canvas rendering the underlying graph topology (`CanvasNode` and `CanvasEdge`).
-- **Features**: Allows creators to drag spatial anchors in 2D space, connect directed edges, edit concept card properties, and preview camera pan/zoom trajectories.
+- **Features**: Allows creators to drag spatial anchors in 2D space, connect directed edges, edit concept card properties, preview camera pan/zoom trajectories, and automatically dispatches spatial actions (`add_node`, `add_edge`, `add_shot`) to connected coding agents via `/api/canvas/event`.
 
 ### 3. Look Stage (`LookStage.tsx` / `Styleboard.tsx` / `CustomizationEditor.tsx`)
 - **Purpose**: Visual styling and storyboard gallery combining theme customization with keyframe inspection.
@@ -86,10 +86,13 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 - **Purpose**: Non-linear multi-track timeline editor with direct manipulation, track controls, and clip inspection.
 - **Features**:
   - **Pure Pointer-Drag Machine (`backend/timeline/drag_machine.ts`)**: Manages `move`, `trim-start`, `trim-end`, `scrub`, and `marquee` gestures with pixel-based thresholds and Escape-key cancellation.
+  - **Magnetic Ripple Editing**: Auto-shifts downstream clips when trimming or deleting to close or prevent dead gaps (toggle via toolbar or `R` shortcut).
+  - **Linked Audio-Video Trimming**: Automatically trims and shifts associated audio and video clips in lockstep.
   - **Track Controls**: Independent layer locking, muting, hiding, reordering, and track addition.
   - **Magnetic Snapping (`backend/timeline/snap.ts`)**: Snaps clip boundaries to playhead, markers, and other clips with self-ignore and zoom-adaptive thresholds.
-  - **Audio Waveforms (`src/components/timeline/useAudioPeaks.ts`)**: Browser-side Web Audio peak extraction rendered directly on clip bodies.
+  - **Audio Waveforms (`src/components/timeline/useAudioPeaks.ts`)**: Server pre-computed peak fetching (`/api/audio/peaks`) with Web Audio API fallback rendered directly on clip bodies.
   - **Inspector Panel**: Unified sidebar for shot editing, transition selection (`TransitionEditor.tsx`), clip adjustments, and asset bin management.
+  - **Model-Driven AI Editor Panel (`OnCanvasAiEditor.tsx`)**: Interprets natural-language editing instructions into discrete, validated `EditOp` sequences with dry-run preview, atomic rollback, and automatic dispatch across Agent Bridge channels.
 
 ### 6. Captions Stage (`CaptionsStage.tsx` / `KineticCaptionEditor.tsx`)
 - **Purpose**: Word-level kinetic subtitle editor powered by `@chenglou/pretext`.
@@ -99,7 +102,7 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 - **Purpose**: Final quality assurance, pacing inspection, AI critique drawer, and video export.
 - **Features**:
   - **Data Visualizations (`src/components/ui/Charts.tsx`)**: Renders script-to-timeline coverage maps, shot duration distribution, narration vs silence density, and pacing health metrics in pure SVG.
-  - **AI Critique Drawer**: Interactive assistant for applying natural-language feedback and generating atomic film patches via `/api/critique`.
+  - **AI Critique Drawer**: Interactive assistant for applying natural-language feedback and generating atomic film patches via `/api/critique`, with full task dispatch to connected coding agents.
   - **Export Modal**: Headless Remotion CLI rendering with live progress bars and automatic MP4 download triggers.
 
 ---

@@ -1,0 +1,8122 @@
+{
+  "id": "what-are-those-steps-in-gemini",
+  "title": "What Are Those “Steps” in Gemini?",
+  "fps": 30,
+  "accent": "#10B981",
+  "theme": {
+    "background": "subtle-dots",
+    "fontFamily": "geist",
+    "storyStyle": "script-metaphor",
+    "cameraAngle": "isometric",
+    "accent": "#10B981"
+  },
+  "chapters": [
+    "If you’ve ever used an A",
+    "5,418 steps",
+    "And that immediately rai",
+    "What exactly is a “step”",
+    "Is the model thinking 5,",
+    "Is it generating 5,418 p",
+    "Or is something complete",
+    "To understand this, we n",
+    "A modern coding agent is",
+    "You give it a goal",
+    "The model thinks about w",
+    "It might decide to read ",
+    "So the system executes a",
+    "The result of that tool ",
+    "Now the model sees the n",
+    "Maybe it searches anothe",
+    "Maybe it edits some code",
+    "Maybe it runs a command",
+    "Maybe the command fails,",
+    "And this continues over ",
+    "So the basic architectur",
+    "User request → model rea",
+    "And that loop is the imp",
+    "Because a “step” usually",
+    "It does NOT necessarily ",
+    "And it definitely does n",
+    "For example, imagine I a",
+    "“Fix the authentication ",
+    "The agent might first in",
+    "That could be one step",
+    "Then it reads the authen",
+    "Another step",
+    "Then it searches for whe",
+    "Another step",
+    "Then it modifies the cod",
+    "Another step",
+    "Then it runs the tests",
+    "Another step",
+    "The tests fail",
+    "That result becomes new ",
+    "The model analyzes the e",
+    "Then it modifies the cod",
+    "Runs the tests again",
+    "Maybe they fail again",
+    "And the loop continues",
+    "So if an interface tells",
+    "“The model thought 5,418",
+    "It means that the agent ",
+    "The exact meaning of “st",
+    "And this distinction bec",
+    "Google's Gemini systems ",
+    "A Gemini interaction can",
+    "Those steps can include ",
+    "A thought step represent",
+    "But even here, Google do",
+    "Instead, Gemini can prov",
+    "And there is another int",
+    "The signature is essenti",
+    "So you can think of the",
+    "There is the model's int",
+    "And then there is the ex",
+    "Those are not the same t",
+    "And this is where I thin",
+    "A step is really a unit",
+    "Not necessarily a unit o",
+    "Think about a human soft",
+    "Suppose I ask you to fix",
+    "You might spend five min",
+    "Internally, you've been ",
+    "But externally, I might ",
+    "Open file",
+    "Read function",
+    "Change code",
+    "Run test",
+    "Fix error",
+    "Run test again",
+    "The number of visible ac",
+    "AI agents work in a simi",
+    "And this leads to a much",
+    "Modern AI systems are st",
+    "Reasoning",
+    "Actions",
+    "And context",
+    "Reasoning is what the mo",
+    "Actions are things like ",
+    "And context is all the i",
+    "The agent continuously m",
+    "It reasons",
+    "It acts",
+    "It receives new context",
+    "It reasons again",
+    "It acts again",
+    "And this is basically wh",
+    "A chatbot might look lik",
+    "Prompt → Response",
+    "An agent looks more like",
+    "Goal → Reason → Act →",
+    "Now here's where the dif",
+    "Google isn't the only co",
+    "Anthropic's Claude model",
+    "OpenAI's reasoning model",
+    "So the interesting diffe",
+    "The deeper difference is",
+    "For example, Google expo",
+    "That gives the system a ",
+    "More thinking can potent",
+    "Anthropic has taken a si",
+    "OpenAI exposes reasoning",
+    "So underneath all of the",
+    "The question is no longe",
+    "“How large is the model?",
+    "The question is also",
+    "“How much computation sh",
+    "And that is a huge chang",
+    "Imagine asking an AI",
+    "“What is 2 plus 2?”",
+    "You don't need a massive",
+    "But now imagine asking",
+    "“Find the bug in this 10",
+    "That problem might requi",
+    "The model needs to inspe",
+    "Make decisions",
+    "Use tools",
+    "Look at results",
+    "Change its plan",
+    "And continue",
+    "This is why agent system",
+    "But there's another prob",
+    "Context",
+    "Every time the agent rea",
+    "Eventually, the context ",
+    "And that creates a bottl",
+    "Because even if a model ",
+    "The model has to process",
+    "So modern agent architec",
+    "This is where things lik",
+    "Compaction is not the sa",
+    "Reasoning is about spend",
+    "Compaction is about mana",
+    "Imagine an agent has gon",
+    "It doesn't necessarily n",
+    "It might instead preserv",
+    "what files were changed",
+    "what decisions were made",
+    "what errors were encount",
+    "what remains to be done",
+    "and what the current sta",
+    "The system can then cont",
+    "So now we have another l",
+    "Reason → Act → Observe →",
+    "And this is why I think",
+    "That number is showing u",
+    "We're no longer dealing ",
+    "We're dealing with a sys",
+    "It can decide what infor",
+    "It can interact with ext",
+    "It can observe the conse",
+    "It can update its plan",
+    "And it can manage its ow",
+    "Google's decision to exp",
+    "But the underlying idea ",
+    "Claude, OpenAI, and othe",
+    "The interesting competit",
+    "“Which model thinks bett",
+    "It's increasingly",
+    "“How should an AI system",
+    "“When should it think?”",
+    "“When should it use a to",
+    "“What information should",
+    "“What information can it",
+    "“When should it stop?”",
+    "And how can the entire p",
+    "So the next time you see",
+    "Think of it as a trace",
+    "The model is repeatedly ",
+    "And that architecture is",
+    "Because the future of AI",
+    "It may be about building"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "label": "If you’ve ever used an A",
+        "x": -360,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-2",
+        "label": "5,418 steps",
+        "x": -120,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-3",
+        "label": "And that immediately rai",
+        "x": 120,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-4",
+        "label": "What exactly is a “step”",
+        "x": 360,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-5",
+        "label": "Is the model thinking 5,",
+        "x": 600,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-6",
+        "label": "Is it generating 5,418 p",
+        "x": 840,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-7",
+        "label": "Or is something complete",
+        "x": 1080,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-8",
+        "label": "To understand this, we n",
+        "x": 1320,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-9",
+        "label": "A modern coding agent is",
+        "x": 1560,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-10",
+        "label": "You give it a goal",
+        "x": 1800,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-11",
+        "label": "The model thinks about w",
+        "x": 2040,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-12",
+        "label": "It might decide to read ",
+        "x": 2280,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-13",
+        "label": "So the system executes a",
+        "x": 2520,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-14",
+        "label": "The result of that tool ",
+        "x": 2760,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-15",
+        "label": "Now the model sees the n",
+        "x": 3000,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-16",
+        "label": "Maybe it searches anothe",
+        "x": 3240,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-17",
+        "label": "Maybe it edits some code",
+        "x": 3480,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-18",
+        "label": "Maybe it runs a command",
+        "x": 3720,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-19",
+        "label": "Maybe the command fails,",
+        "x": 3960,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-20",
+        "label": "And this continues over ",
+        "x": 4200,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-21",
+        "label": "So the basic architectur",
+        "x": 4440,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-22",
+        "label": "User request → model rea",
+        "x": 4680,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-23",
+        "label": "And that loop is the imp",
+        "x": 4920,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-24",
+        "label": "Because a “step” usually",
+        "x": 5160,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-25",
+        "label": "It does NOT necessarily ",
+        "x": 5400,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-26",
+        "label": "And it definitely does n",
+        "x": 5640,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-27",
+        "label": "For example, imagine I a",
+        "x": 5880,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-28",
+        "label": "“Fix the authentication ",
+        "x": 6120,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-29",
+        "label": "The agent might first in",
+        "x": 6360,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-30",
+        "label": "That could be one step",
+        "x": 6600,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-31",
+        "label": "Then it reads the authen",
+        "x": 6840,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-32",
+        "label": "Another step",
+        "x": 7080,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-33",
+        "label": "Then it searches for whe",
+        "x": 7320,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-34",
+        "label": "Another step",
+        "x": 7560,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-35",
+        "label": "Then it modifies the cod",
+        "x": 7800,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-36",
+        "label": "Another step",
+        "x": 8040,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-37",
+        "label": "Then it runs the tests",
+        "x": 8280,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-38",
+        "label": "Another step",
+        "x": 8520,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-39",
+        "label": "The tests fail",
+        "x": 8760,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-40",
+        "label": "That result becomes new ",
+        "x": 9000,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-41",
+        "label": "The model analyzes the e",
+        "x": 9240,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-42",
+        "label": "Then it modifies the cod",
+        "x": 9480,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-43",
+        "label": "Runs the tests again",
+        "x": 9720,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-44",
+        "label": "Maybe they fail again",
+        "x": 9960,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-45",
+        "label": "And the loop continues",
+        "x": 10200,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-46",
+        "label": "So if an interface tells",
+        "x": 10440,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-47",
+        "label": "“The model thought 5,418",
+        "x": 10680,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-48",
+        "label": "It means that the agent ",
+        "x": 10920,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-49",
+        "label": "The exact meaning of “st",
+        "x": 11160,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-50",
+        "label": "And this distinction bec",
+        "x": 11400,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-51",
+        "label": "Google's Gemini systems ",
+        "x": 11640,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-52",
+        "label": "A Gemini interaction can",
+        "x": 11880,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-53",
+        "label": "Those steps can include ",
+        "x": 12120,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-54",
+        "label": "A thought step represent",
+        "x": 12360,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-55",
+        "label": "But even here, Google do",
+        "x": 12600,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-56",
+        "label": "Instead, Gemini can prov",
+        "x": 12840,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-57",
+        "label": "And there is another int",
+        "x": 13080,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-58",
+        "label": "The signature is essenti",
+        "x": 13320,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-59",
+        "label": "So you can think of the",
+        "x": 13560,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-60",
+        "label": "There is the model's int",
+        "x": 13800,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-61",
+        "label": "And then there is the ex",
+        "x": 14040,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-62",
+        "label": "Those are not the same t",
+        "x": 14280,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-63",
+        "label": "And this is where I thin",
+        "x": 14520,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-64",
+        "label": "A step is really a unit",
+        "x": 14760,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-65",
+        "label": "Not necessarily a unit o",
+        "x": 15000,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-66",
+        "label": "Think about a human soft",
+        "x": 15240,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-67",
+        "label": "Suppose I ask you to fix",
+        "x": 15480,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-68",
+        "label": "You might spend five min",
+        "x": 15720,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-69",
+        "label": "Internally, you've been ",
+        "x": 15960,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-70",
+        "label": "But externally, I might ",
+        "x": 16200,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-71",
+        "label": "Open file",
+        "x": 16440,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-72",
+        "label": "Read function",
+        "x": 16680,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-73",
+        "label": "Change code",
+        "x": 16920,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-74",
+        "label": "Run test",
+        "x": 17160,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-75",
+        "label": "Fix error",
+        "x": 17400,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-76",
+        "label": "Run test again",
+        "x": 17640,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-77",
+        "label": "The number of visible ac",
+        "x": 17880,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-78",
+        "label": "AI agents work in a simi",
+        "x": 18120,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-79",
+        "label": "And this leads to a much",
+        "x": 18360,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-80",
+        "label": "Modern AI systems are st",
+        "x": 18600,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-81",
+        "label": "Reasoning",
+        "x": 18840,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-82",
+        "label": "Actions",
+        "x": 19080,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-83",
+        "label": "And context",
+        "x": 19320,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-84",
+        "label": "Reasoning is what the mo",
+        "x": 19560,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-85",
+        "label": "Actions are things like ",
+        "x": 19800,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-86",
+        "label": "And context is all the i",
+        "x": 20040,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-87",
+        "label": "The agent continuously m",
+        "x": 20280,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-88",
+        "label": "It reasons",
+        "x": 20520,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-89",
+        "label": "It acts",
+        "x": 20760,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-90",
+        "label": "It receives new context",
+        "x": 21000,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-91",
+        "label": "It reasons again",
+        "x": 21240,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-92",
+        "label": "It acts again",
+        "x": 21480,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-93",
+        "label": "And this is basically wh",
+        "x": 21720,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-94",
+        "label": "A chatbot might look lik",
+        "x": 21960,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-95",
+        "label": "Prompt → Response",
+        "x": 22200,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-96",
+        "label": "An agent looks more like",
+        "x": 22440,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-97",
+        "label": "Goal → Reason → Act →",
+        "x": 22680,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-98",
+        "label": "Now here's where the dif",
+        "x": 22920,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-99",
+        "label": "Google isn't the only co",
+        "x": 23160,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-100",
+        "label": "Anthropic's Claude model",
+        "x": 23400,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-101",
+        "label": "OpenAI's reasoning model",
+        "x": 23640,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-102",
+        "label": "So the interesting diffe",
+        "x": 23880,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-103",
+        "label": "The deeper difference is",
+        "x": 24120,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-104",
+        "label": "For example, Google expo",
+        "x": 24360,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-105",
+        "label": "That gives the system a ",
+        "x": 24600,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-106",
+        "label": "More thinking can potent",
+        "x": 24840,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-107",
+        "label": "Anthropic has taken a si",
+        "x": 25080,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-108",
+        "label": "OpenAI exposes reasoning",
+        "x": 25320,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-109",
+        "label": "So underneath all of the",
+        "x": 25560,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-110",
+        "label": "The question is no longe",
+        "x": 25800,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-111",
+        "label": "“How large is the model?",
+        "x": 26040,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-112",
+        "label": "The question is also",
+        "x": 26280,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-113",
+        "label": "“How much computation sh",
+        "x": 26520,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-114",
+        "label": "And that is a huge chang",
+        "x": 26760,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-115",
+        "label": "Imagine asking an AI",
+        "x": 27000,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-116",
+        "label": "“What is 2 plus 2?”",
+        "x": 27240,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-117",
+        "label": "You don't need a massive",
+        "x": 27480,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-118",
+        "label": "But now imagine asking",
+        "x": 27720,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-119",
+        "label": "“Find the bug in this 10",
+        "x": 27960,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-120",
+        "label": "That problem might requi",
+        "x": 28200,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-121",
+        "label": "The model needs to inspe",
+        "x": 28440,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-122",
+        "label": "Make decisions",
+        "x": 28680,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-123",
+        "label": "Use tools",
+        "x": 28920,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-124",
+        "label": "Look at results",
+        "x": 29160,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-125",
+        "label": "Change its plan",
+        "x": 29400,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-126",
+        "label": "And continue",
+        "x": 29640,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-127",
+        "label": "This is why agent system",
+        "x": 29880,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-128",
+        "label": "But there's another prob",
+        "x": 30120,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-129",
+        "label": "Context",
+        "x": 30360,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-130",
+        "label": "Every time the agent rea",
+        "x": 30600,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-131",
+        "label": "Eventually, the context ",
+        "x": 30840,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-132",
+        "label": "And that creates a bottl",
+        "x": 31080,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-133",
+        "label": "Because even if a model ",
+        "x": 31320,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-134",
+        "label": "The model has to process",
+        "x": 31560,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-135",
+        "label": "So modern agent architec",
+        "x": 31800,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-136",
+        "label": "This is where things lik",
+        "x": 32040,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-137",
+        "label": "Compaction is not the sa",
+        "x": 32280,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-138",
+        "label": "Reasoning is about spend",
+        "x": 32520,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-139",
+        "label": "Compaction is about mana",
+        "x": 32760,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-140",
+        "label": "Imagine an agent has gon",
+        "x": 33000,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-141",
+        "label": "It doesn't necessarily n",
+        "x": 33240,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-142",
+        "label": "It might instead preserv",
+        "x": 33480,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-143",
+        "label": "what files were changed",
+        "x": 33720,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-144",
+        "label": "what decisions were made",
+        "x": 33960,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-145",
+        "label": "what errors were encount",
+        "x": 34200,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-146",
+        "label": "what remains to be done",
+        "x": 34440,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-147",
+        "label": "and what the current sta",
+        "x": 34680,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-148",
+        "label": "The system can then cont",
+        "x": 34920,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-149",
+        "label": "So now we have another l",
+        "x": 35160,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-150",
+        "label": "Reason → Act → Observe →",
+        "x": 35400,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-151",
+        "label": "And this is why I think",
+        "x": 35640,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-152",
+        "label": "That number is showing u",
+        "x": 35880,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-153",
+        "label": "We're no longer dealing ",
+        "x": 36120,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-154",
+        "label": "We're dealing with a sys",
+        "x": 36360,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-155",
+        "label": "It can decide what infor",
+        "x": 36600,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-156",
+        "label": "It can interact with ext",
+        "x": 36840,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-157",
+        "label": "It can observe the conse",
+        "x": 37080,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-158",
+        "label": "It can update its plan",
+        "x": 37320,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-159",
+        "label": "And it can manage its ow",
+        "x": 37560,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-160",
+        "label": "Google's decision to exp",
+        "x": 37800,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-161",
+        "label": "But the underlying idea ",
+        "x": 38040,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-162",
+        "label": "Claude, OpenAI, and othe",
+        "x": 38280,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-163",
+        "label": "The interesting competit",
+        "x": 38520,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-164",
+        "label": "“Which model thinks bett",
+        "x": 38760,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-165",
+        "label": "It's increasingly",
+        "x": 39000,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-166",
+        "label": "“How should an AI system",
+        "x": 39240,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-167",
+        "label": "“When should it think?”",
+        "x": 39480,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-168",
+        "label": "“When should it use a to",
+        "x": 39720,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-169",
+        "label": "“What information should",
+        "x": 39960,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-170",
+        "label": "“What information can it",
+        "x": 40200,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-171",
+        "label": "“When should it stop?”",
+        "x": 40440,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-172",
+        "label": "And how can the entire p",
+        "x": 40680,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-173",
+        "label": "So the next time you see",
+        "x": 40920,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-174",
+        "label": "Think of it as a trace",
+        "x": 41160,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-175",
+        "label": "The model is repeatedly ",
+        "x": 41400,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-176",
+        "label": "And that architecture is",
+        "x": 41640,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-177",
+        "label": "Because the future of AI",
+        "x": 41880,
+        "y": -120,
+        "w": 240,
+        "h": 80
+      },
+      {
+        "id": "node-178",
+        "label": "It may be about building",
+        "x": 42120,
+        "y": 120,
+        "w": 240,
+        "h": 80
+      }
+    ],
+    "edges": [
+      {
+        "from": "node-1",
+        "to": "node-2",
+        "dashed": false
+      },
+      {
+        "from": "node-2",
+        "to": "node-3",
+        "dashed": false
+      },
+      {
+        "from": "node-3",
+        "to": "node-4",
+        "dashed": false
+      },
+      {
+        "from": "node-4",
+        "to": "node-5",
+        "dashed": false
+      },
+      {
+        "from": "node-5",
+        "to": "node-6",
+        "dashed": false
+      },
+      {
+        "from": "node-6",
+        "to": "node-7",
+        "dashed": false
+      },
+      {
+        "from": "node-7",
+        "to": "node-8",
+        "dashed": false
+      },
+      {
+        "from": "node-8",
+        "to": "node-9",
+        "dashed": false
+      },
+      {
+        "from": "node-9",
+        "to": "node-10",
+        "dashed": false
+      },
+      {
+        "from": "node-10",
+        "to": "node-11",
+        "dashed": false
+      },
+      {
+        "from": "node-11",
+        "to": "node-12",
+        "dashed": false
+      },
+      {
+        "from": "node-12",
+        "to": "node-13",
+        "dashed": false
+      },
+      {
+        "from": "node-13",
+        "to": "node-14",
+        "dashed": false
+      },
+      {
+        "from": "node-14",
+        "to": "node-15",
+        "dashed": false
+      },
+      {
+        "from": "node-15",
+        "to": "node-16",
+        "dashed": false
+      },
+      {
+        "from": "node-16",
+        "to": "node-17",
+        "dashed": false
+      },
+      {
+        "from": "node-17",
+        "to": "node-18",
+        "dashed": false
+      },
+      {
+        "from": "node-18",
+        "to": "node-19",
+        "dashed": false
+      },
+      {
+        "from": "node-19",
+        "to": "node-20",
+        "dashed": false
+      },
+      {
+        "from": "node-20",
+        "to": "node-21",
+        "dashed": false
+      },
+      {
+        "from": "node-21",
+        "to": "node-22",
+        "dashed": false
+      },
+      {
+        "from": "node-22",
+        "to": "node-23",
+        "dashed": false
+      },
+      {
+        "from": "node-23",
+        "to": "node-24",
+        "dashed": false
+      },
+      {
+        "from": "node-24",
+        "to": "node-25",
+        "dashed": false
+      },
+      {
+        "from": "node-25",
+        "to": "node-26",
+        "dashed": false
+      },
+      {
+        "from": "node-26",
+        "to": "node-27",
+        "dashed": false
+      },
+      {
+        "from": "node-27",
+        "to": "node-28",
+        "dashed": false
+      },
+      {
+        "from": "node-28",
+        "to": "node-29",
+        "dashed": false
+      },
+      {
+        "from": "node-29",
+        "to": "node-30",
+        "dashed": false
+      },
+      {
+        "from": "node-30",
+        "to": "node-31",
+        "dashed": false
+      },
+      {
+        "from": "node-31",
+        "to": "node-32",
+        "dashed": false
+      },
+      {
+        "from": "node-32",
+        "to": "node-33",
+        "dashed": false
+      },
+      {
+        "from": "node-33",
+        "to": "node-34",
+        "dashed": false
+      },
+      {
+        "from": "node-34",
+        "to": "node-35",
+        "dashed": false
+      },
+      {
+        "from": "node-35",
+        "to": "node-36",
+        "dashed": false
+      },
+      {
+        "from": "node-36",
+        "to": "node-37",
+        "dashed": false
+      },
+      {
+        "from": "node-37",
+        "to": "node-38",
+        "dashed": false
+      },
+      {
+        "from": "node-38",
+        "to": "node-39",
+        "dashed": false
+      },
+      {
+        "from": "node-39",
+        "to": "node-40",
+        "dashed": false
+      },
+      {
+        "from": "node-40",
+        "to": "node-41",
+        "dashed": false
+      },
+      {
+        "from": "node-41",
+        "to": "node-42",
+        "dashed": false
+      },
+      {
+        "from": "node-42",
+        "to": "node-43",
+        "dashed": false
+      },
+      {
+        "from": "node-43",
+        "to": "node-44",
+        "dashed": false
+      },
+      {
+        "from": "node-44",
+        "to": "node-45",
+        "dashed": false
+      },
+      {
+        "from": "node-45",
+        "to": "node-46",
+        "dashed": false
+      },
+      {
+        "from": "node-46",
+        "to": "node-47",
+        "dashed": false
+      },
+      {
+        "from": "node-47",
+        "to": "node-48",
+        "dashed": false
+      },
+      {
+        "from": "node-48",
+        "to": "node-49",
+        "dashed": false
+      },
+      {
+        "from": "node-49",
+        "to": "node-50",
+        "dashed": false
+      },
+      {
+        "from": "node-50",
+        "to": "node-51",
+        "dashed": false
+      },
+      {
+        "from": "node-51",
+        "to": "node-52",
+        "dashed": false
+      },
+      {
+        "from": "node-52",
+        "to": "node-53",
+        "dashed": false
+      },
+      {
+        "from": "node-53",
+        "to": "node-54",
+        "dashed": false
+      },
+      {
+        "from": "node-54",
+        "to": "node-55",
+        "dashed": false
+      },
+      {
+        "from": "node-55",
+        "to": "node-56",
+        "dashed": false
+      },
+      {
+        "from": "node-56",
+        "to": "node-57",
+        "dashed": false
+      },
+      {
+        "from": "node-57",
+        "to": "node-58",
+        "dashed": false
+      },
+      {
+        "from": "node-58",
+        "to": "node-59",
+        "dashed": false
+      },
+      {
+        "from": "node-59",
+        "to": "node-60",
+        "dashed": false
+      },
+      {
+        "from": "node-60",
+        "to": "node-61",
+        "dashed": false
+      },
+      {
+        "from": "node-61",
+        "to": "node-62",
+        "dashed": false
+      },
+      {
+        "from": "node-62",
+        "to": "node-63",
+        "dashed": false
+      },
+      {
+        "from": "node-63",
+        "to": "node-64",
+        "dashed": false
+      },
+      {
+        "from": "node-64",
+        "to": "node-65",
+        "dashed": false
+      },
+      {
+        "from": "node-65",
+        "to": "node-66",
+        "dashed": false
+      },
+      {
+        "from": "node-66",
+        "to": "node-67",
+        "dashed": false
+      },
+      {
+        "from": "node-67",
+        "to": "node-68",
+        "dashed": false
+      },
+      {
+        "from": "node-68",
+        "to": "node-69",
+        "dashed": false
+      },
+      {
+        "from": "node-69",
+        "to": "node-70",
+        "dashed": false
+      },
+      {
+        "from": "node-70",
+        "to": "node-71",
+        "dashed": false
+      },
+      {
+        "from": "node-71",
+        "to": "node-72",
+        "dashed": false
+      },
+      {
+        "from": "node-72",
+        "to": "node-73",
+        "dashed": false
+      },
+      {
+        "from": "node-73",
+        "to": "node-74",
+        "dashed": false
+      },
+      {
+        "from": "node-74",
+        "to": "node-75",
+        "dashed": false
+      },
+      {
+        "from": "node-75",
+        "to": "node-76",
+        "dashed": false
+      },
+      {
+        "from": "node-76",
+        "to": "node-77",
+        "dashed": false
+      },
+      {
+        "from": "node-77",
+        "to": "node-78",
+        "dashed": false
+      },
+      {
+        "from": "node-78",
+        "to": "node-79",
+        "dashed": false
+      },
+      {
+        "from": "node-79",
+        "to": "node-80",
+        "dashed": false
+      },
+      {
+        "from": "node-80",
+        "to": "node-81",
+        "dashed": false
+      },
+      {
+        "from": "node-81",
+        "to": "node-82",
+        "dashed": false
+      },
+      {
+        "from": "node-82",
+        "to": "node-83",
+        "dashed": false
+      },
+      {
+        "from": "node-83",
+        "to": "node-84",
+        "dashed": false
+      },
+      {
+        "from": "node-84",
+        "to": "node-85",
+        "dashed": false
+      },
+      {
+        "from": "node-85",
+        "to": "node-86",
+        "dashed": false
+      },
+      {
+        "from": "node-86",
+        "to": "node-87",
+        "dashed": false
+      },
+      {
+        "from": "node-87",
+        "to": "node-88",
+        "dashed": false
+      },
+      {
+        "from": "node-88",
+        "to": "node-89",
+        "dashed": false
+      },
+      {
+        "from": "node-89",
+        "to": "node-90",
+        "dashed": false
+      },
+      {
+        "from": "node-90",
+        "to": "node-91",
+        "dashed": false
+      },
+      {
+        "from": "node-91",
+        "to": "node-92",
+        "dashed": false
+      },
+      {
+        "from": "node-92",
+        "to": "node-93",
+        "dashed": false
+      },
+      {
+        "from": "node-93",
+        "to": "node-94",
+        "dashed": false
+      },
+      {
+        "from": "node-94",
+        "to": "node-95",
+        "dashed": false
+      },
+      {
+        "from": "node-95",
+        "to": "node-96",
+        "dashed": false
+      },
+      {
+        "from": "node-96",
+        "to": "node-97",
+        "dashed": false
+      },
+      {
+        "from": "node-97",
+        "to": "node-98",
+        "dashed": false
+      },
+      {
+        "from": "node-98",
+        "to": "node-99",
+        "dashed": false
+      },
+      {
+        "from": "node-99",
+        "to": "node-100",
+        "dashed": false
+      },
+      {
+        "from": "node-100",
+        "to": "node-101",
+        "dashed": false
+      },
+      {
+        "from": "node-101",
+        "to": "node-102",
+        "dashed": false
+      },
+      {
+        "from": "node-102",
+        "to": "node-103",
+        "dashed": false
+      },
+      {
+        "from": "node-103",
+        "to": "node-104",
+        "dashed": false
+      },
+      {
+        "from": "node-104",
+        "to": "node-105",
+        "dashed": false
+      },
+      {
+        "from": "node-105",
+        "to": "node-106",
+        "dashed": false
+      },
+      {
+        "from": "node-106",
+        "to": "node-107",
+        "dashed": false
+      },
+      {
+        "from": "node-107",
+        "to": "node-108",
+        "dashed": false
+      },
+      {
+        "from": "node-108",
+        "to": "node-109",
+        "dashed": false
+      },
+      {
+        "from": "node-109",
+        "to": "node-110",
+        "dashed": false
+      },
+      {
+        "from": "node-110",
+        "to": "node-111",
+        "dashed": false
+      },
+      {
+        "from": "node-111",
+        "to": "node-112",
+        "dashed": false
+      },
+      {
+        "from": "node-112",
+        "to": "node-113",
+        "dashed": false
+      },
+      {
+        "from": "node-113",
+        "to": "node-114",
+        "dashed": false
+      },
+      {
+        "from": "node-114",
+        "to": "node-115",
+        "dashed": false
+      },
+      {
+        "from": "node-115",
+        "to": "node-116",
+        "dashed": false
+      },
+      {
+        "from": "node-116",
+        "to": "node-117",
+        "dashed": false
+      },
+      {
+        "from": "node-117",
+        "to": "node-118",
+        "dashed": false
+      },
+      {
+        "from": "node-118",
+        "to": "node-119",
+        "dashed": false
+      },
+      {
+        "from": "node-119",
+        "to": "node-120",
+        "dashed": false
+      },
+      {
+        "from": "node-120",
+        "to": "node-121",
+        "dashed": false
+      },
+      {
+        "from": "node-121",
+        "to": "node-122",
+        "dashed": false
+      },
+      {
+        "from": "node-122",
+        "to": "node-123",
+        "dashed": false
+      },
+      {
+        "from": "node-123",
+        "to": "node-124",
+        "dashed": false
+      },
+      {
+        "from": "node-124",
+        "to": "node-125",
+        "dashed": false
+      },
+      {
+        "from": "node-125",
+        "to": "node-126",
+        "dashed": false
+      },
+      {
+        "from": "node-126",
+        "to": "node-127",
+        "dashed": false
+      },
+      {
+        "from": "node-127",
+        "to": "node-128",
+        "dashed": false
+      },
+      {
+        "from": "node-128",
+        "to": "node-129",
+        "dashed": false
+      },
+      {
+        "from": "node-129",
+        "to": "node-130",
+        "dashed": false
+      },
+      {
+        "from": "node-130",
+        "to": "node-131",
+        "dashed": false
+      },
+      {
+        "from": "node-131",
+        "to": "node-132",
+        "dashed": false
+      },
+      {
+        "from": "node-132",
+        "to": "node-133",
+        "dashed": false
+      },
+      {
+        "from": "node-133",
+        "to": "node-134",
+        "dashed": false
+      },
+      {
+        "from": "node-134",
+        "to": "node-135",
+        "dashed": false
+      },
+      {
+        "from": "node-135",
+        "to": "node-136",
+        "dashed": false
+      },
+      {
+        "from": "node-136",
+        "to": "node-137",
+        "dashed": false
+      },
+      {
+        "from": "node-137",
+        "to": "node-138",
+        "dashed": false
+      },
+      {
+        "from": "node-138",
+        "to": "node-139",
+        "dashed": false
+      },
+      {
+        "from": "node-139",
+        "to": "node-140",
+        "dashed": false
+      },
+      {
+        "from": "node-140",
+        "to": "node-141",
+        "dashed": false
+      },
+      {
+        "from": "node-141",
+        "to": "node-142",
+        "dashed": false
+      },
+      {
+        "from": "node-142",
+        "to": "node-143",
+        "dashed": false
+      },
+      {
+        "from": "node-143",
+        "to": "node-144",
+        "dashed": false
+      },
+      {
+        "from": "node-144",
+        "to": "node-145",
+        "dashed": false
+      },
+      {
+        "from": "node-145",
+        "to": "node-146",
+        "dashed": false
+      },
+      {
+        "from": "node-146",
+        "to": "node-147",
+        "dashed": false
+      },
+      {
+        "from": "node-147",
+        "to": "node-148",
+        "dashed": false
+      },
+      {
+        "from": "node-148",
+        "to": "node-149",
+        "dashed": false
+      },
+      {
+        "from": "node-149",
+        "to": "node-150",
+        "dashed": false
+      },
+      {
+        "from": "node-150",
+        "to": "node-151",
+        "dashed": false
+      },
+      {
+        "from": "node-151",
+        "to": "node-152",
+        "dashed": false
+      },
+      {
+        "from": "node-152",
+        "to": "node-153",
+        "dashed": false
+      },
+      {
+        "from": "node-153",
+        "to": "node-154",
+        "dashed": false
+      },
+      {
+        "from": "node-154",
+        "to": "node-155",
+        "dashed": false
+      },
+      {
+        "from": "node-155",
+        "to": "node-156",
+        "dashed": false
+      },
+      {
+        "from": "node-156",
+        "to": "node-157",
+        "dashed": false
+      },
+      {
+        "from": "node-157",
+        "to": "node-158",
+        "dashed": false
+      },
+      {
+        "from": "node-158",
+        "to": "node-159",
+        "dashed": false
+      },
+      {
+        "from": "node-159",
+        "to": "node-160",
+        "dashed": false
+      },
+      {
+        "from": "node-160",
+        "to": "node-161",
+        "dashed": false
+      },
+      {
+        "from": "node-161",
+        "to": "node-162",
+        "dashed": false
+      },
+      {
+        "from": "node-162",
+        "to": "node-163",
+        "dashed": false
+      },
+      {
+        "from": "node-163",
+        "to": "node-164",
+        "dashed": false
+      },
+      {
+        "from": "node-164",
+        "to": "node-165",
+        "dashed": false
+      },
+      {
+        "from": "node-165",
+        "to": "node-166",
+        "dashed": false
+      },
+      {
+        "from": "node-166",
+        "to": "node-167",
+        "dashed": false
+      },
+      {
+        "from": "node-167",
+        "to": "node-168",
+        "dashed": false
+      },
+      {
+        "from": "node-168",
+        "to": "node-169",
+        "dashed": false
+      },
+      {
+        "from": "node-169",
+        "to": "node-170",
+        "dashed": false
+      },
+      {
+        "from": "node-170",
+        "to": "node-171",
+        "dashed": false
+      },
+      {
+        "from": "node-171",
+        "to": "node-172",
+        "dashed": false
+      },
+      {
+        "from": "node-172",
+        "to": "node-173",
+        "dashed": false
+      },
+      {
+        "from": "node-173",
+        "to": "node-174",
+        "dashed": false
+      },
+      {
+        "from": "node-174",
+        "to": "node-175",
+        "dashed": false
+      },
+      {
+        "from": "node-175",
+        "to": "node-176",
+        "dashed": false
+      },
+      {
+        "from": "node-176",
+        "to": "node-177",
+        "dashed": false
+      },
+      {
+        "from": "node-177",
+        "to": "node-178",
+        "dashed": true
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "shot-1",
+      "dur": 3.9,
+      "look": "node-1",
+      "move": "cut",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing If you’ve ever used an AI",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "If you’ve ever used an AI",
+          "size": "headline",
+          "accentWord": "If"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "mascot",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": -20
+                },
+                "leftArm": {
+                  "rotate": 20
+                }
+              }
+            },
+            {
+              "t": 0.4,
+              "groups": {
+                "torso": {
+                  "rotate": 3
+                },
+                "rightArm": {
+                  "rotate": -65
+                },
+                "leftArm": {
+                  "rotate": -10
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shot-2",
+      "dur": 2.93,
+      "look": "node-2",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing 5,418 steps",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "5,418 steps",
+          "size": "headline",
+          "accentWord": "5,418"
+        },
+        {
+          "c": "ScaleBar",
+          "ticks": [
+            "10%",
+            "30%",
+            "60%",
+            "100%"
+          ],
+          "value": 0.75,
+          "label": "Efficiency Scaling"
+        }
+      ]
+    },
+    {
+      "id": "shot-3",
+      "dur": 2.93,
+      "look": "node-3",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And that immediately raises a pretty",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And that immediately raises a pretty",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "LayerStack",
+          "count": 8,
+          "bottomLabel": "Input Baseline",
+          "topLabel": "Optimized Output"
+        }
+      ]
+    },
+    {
+      "id": "shot-4",
+      "dur": 2.93,
+      "look": "node-4",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing What exactly is a “step”",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "What exactly is a “step”",
+          "size": "headline",
+          "accentWord": "What"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-5",
+      "dur": 2.93,
+      "look": "node-5",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Is the model thinking 5,418 times",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Is the model thinking 5,418 times",
+          "size": "headline",
+          "accentWord": "Is"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-6",
+      "dur": 2.93,
+      "look": "node-6",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Is it generating 5,418 pieces of",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Is it generating 5,418 pieces of",
+          "size": "headline",
+          "accentWord": "Is"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-7",
+      "dur": 2.93,
+      "look": "node-7",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Or is something completely different happening",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Or is something completely different happening",
+          "size": "headline",
+          "accentWord": "Or"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-8",
+      "dur": 6.51,
+      "look": "node-8",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing To understand this, we need to",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "To understand this, we need to",
+          "size": "headline",
+          "accentWord": "To"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-9",
+      "dur": 2.93,
+      "look": "node-9",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing A modern coding agent is much",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "A modern coding agent is much",
+          "size": "headline",
+          "accentWord": "A"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-10",
+      "dur": 2.93,
+      "look": "node-10",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing You give it a goal",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "You give it a goal",
+          "size": "headline",
+          "accentWord": "You"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-11",
+      "dur": 2.93,
+      "look": "node-11",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The model thinks about what it",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The model thinks about what it",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-12",
+      "dur": 2.93,
+      "look": "node-12",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It might decide to read a",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It might decide to read a",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-13",
+      "dur": 2.93,
+      "look": "node-13",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So the system executes a tool",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So the system executes a tool",
+          "size": "headline",
+          "accentWord": "So"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-14",
+      "dur": 3.25,
+      "look": "node-14",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The result of that tool call",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The result of that tool call",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-15",
+      "dur": 3.25,
+      "look": "node-15",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Now the model sees the new",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Now the model sees the new",
+          "size": "headline",
+          "accentWord": "Now"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-16",
+      "dur": 2.93,
+      "look": "node-16",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Maybe it searches another file",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Maybe it searches another file",
+          "size": "headline",
+          "accentWord": "Maybe"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-17",
+      "dur": 2.93,
+      "look": "node-17",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Maybe it edits some code",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Maybe it edits some code",
+          "size": "headline",
+          "accentWord": "Maybe"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-18",
+      "dur": 2.93,
+      "look": "node-18",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Maybe it runs a command",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Maybe it runs a command",
+          "size": "headline",
+          "accentWord": "Maybe"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-19",
+      "dur": 3.9,
+      "look": "node-19",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Maybe the command fails, so it",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Maybe the command fails, so it",
+          "size": "headline",
+          "accentWord": "Maybe"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-20",
+      "dur": 3.9,
+      "look": "node-20",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And this continues over and over",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And this continues over and over",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-21",
+      "dur": 2.93,
+      "look": "node-21",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So the basic architecture looks something",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So the basic architecture looks something",
+          "size": "headline",
+          "accentWord": "So"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-22",
+      "dur": 6.51,
+      "look": "node-22",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing User request → model reasoning →",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "User request → model reasoning →",
+          "size": "headline",
+          "accentWord": "User"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-23",
+      "dur": 2.93,
+      "look": "node-23",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And that loop is the important",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And that loop is the important",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-24",
+      "dur": 3.9,
+      "look": "node-24",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Because a “step” usually refers to",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Because a “step” usually refers to",
+          "size": "headline",
+          "accentWord": "Because"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-25",
+      "dur": 2.93,
+      "look": "node-25",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It does NOT necessarily mean one",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It does NOT necessarily mean one",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-26",
+      "dur": 2.93,
+      "look": "node-26",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And it definitely does not necessarily",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And it definitely does not necessarily",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-27",
+      "dur": 2.93,
+      "look": "node-27",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing For example, imagine I ask an",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "For example, imagine I ask an",
+          "size": "headline",
+          "accentWord": "For"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-28",
+      "dur": 2.93,
+      "look": "node-28",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “Fix the authentication bug in this",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“Fix the authentication bug in this",
+          "size": "headline",
+          "accentWord": "“Fix"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-29",
+      "dur": 2.93,
+      "look": "node-29",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The agent might first inspect the",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The agent might first inspect the",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-30",
+      "dur": 2.93,
+      "look": "node-30",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing That could be one step",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "That could be one step",
+          "size": "headline",
+          "accentWord": "That"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-31",
+      "dur": 2.93,
+      "look": "node-31",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Then it reads the authentication file",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Then it reads the authentication file",
+          "size": "headline",
+          "accentWord": "Then"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-32",
+      "dur": 2.93,
+      "look": "node-32",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Another step",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Another step",
+          "size": "headline",
+          "accentWord": "Another"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-33",
+      "dur": 2.93,
+      "look": "node-33",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Then it searches for where the",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Then it searches for where the",
+          "size": "headline",
+          "accentWord": "Then"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-34",
+      "dur": 2.93,
+      "look": "node-34",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Another step",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Another step",
+          "size": "headline",
+          "accentWord": "Another"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-35",
+      "dur": 2.93,
+      "look": "node-35",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Then it modifies the code",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Then it modifies the code",
+          "size": "headline",
+          "accentWord": "Then"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-36",
+      "dur": 2.93,
+      "look": "node-36",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Another step",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Another step",
+          "size": "headline",
+          "accentWord": "Another"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-37",
+      "dur": 2.93,
+      "look": "node-37",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Then it runs the tests",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Then it runs the tests",
+          "size": "headline",
+          "accentWord": "Then"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-38",
+      "dur": 2.93,
+      "look": "node-38",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Another step",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Another step",
+          "size": "headline",
+          "accentWord": "Another"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-39",
+      "dur": 2.93,
+      "look": "node-39",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The tests fail",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The tests fail",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-40",
+      "dur": 2.93,
+      "look": "node-40",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing That result becomes new information for",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "That result becomes new information for",
+          "size": "headline",
+          "accentWord": "That"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-41",
+      "dur": 2.93,
+      "look": "node-41",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The model analyzes the error",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The model analyzes the error",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-42",
+      "dur": 2.93,
+      "look": "node-42",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Then it modifies the code again",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Then it modifies the code again",
+          "size": "headline",
+          "accentWord": "Then"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-43",
+      "dur": 2.93,
+      "look": "node-43",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Runs the tests again",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Runs the tests again",
+          "size": "headline",
+          "accentWord": "Runs"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-44",
+      "dur": 2.93,
+      "look": "node-44",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Maybe they fail again",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Maybe they fail again",
+          "size": "headline",
+          "accentWord": "Maybe"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-45",
+      "dur": 2.93,
+      "look": "node-45",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And the loop continues",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And the loop continues",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-46",
+      "dur": 4.56,
+      "look": "node-46",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So if an interface tells you",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So if an interface tells you",
+          "size": "headline",
+          "accentWord": "So"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-47",
+      "dur": 2.93,
+      "look": "node-47",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “The model thought 5,418 thoughts.”",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“The model thought 5,418 thoughts.”",
+          "size": "headline",
+          "accentWord": "“The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-48",
+      "dur": 4.56,
+      "look": "node-48",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It means that the agent went",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It means that the agent went",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-49",
+      "dur": 2.93,
+      "look": "node-49",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The exact meaning of “step” depends",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The exact meaning of “step” depends",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-50",
+      "dur": 3.25,
+      "look": "node-50",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And this distinction becomes especially interesting",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And this distinction becomes especially interesting",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-51",
+      "dur": 2.93,
+      "look": "node-51",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Google's Gemini systems have increasingly exposed",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Google's Gemini systems have increasingly exposed",
+          "size": "headline",
+          "accentWord": "Google's"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-52",
+      "dur": 2.93,
+      "look": "node-52",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing A Gemini interaction can contain a",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "A Gemini interaction can contain a",
+          "size": "headline",
+          "accentWord": "A"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-53",
+      "dur": 3.9,
+      "look": "node-53",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Those steps can include things like",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Those steps can include things like",
+          "size": "headline",
+          "accentWord": "Those"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-54",
+      "dur": 2.93,
+      "look": "node-54",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing A thought step represents part of",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "A thought step represents part of",
+          "size": "headline",
+          "accentWord": "A"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-55",
+      "dur": 3.9,
+      "look": "node-55",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing But even here, Google doesn't simply",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "But even here, Google doesn't simply",
+          "size": "headline",
+          "accentWord": "But"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-56",
+      "dur": 2.93,
+      "look": "node-56",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Instead, Gemini can provide thought summaries",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Instead, Gemini can provide thought summaries",
+          "size": "headline",
+          "accentWord": "Instead,"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-57",
+      "dur": 3.25,
+      "look": "node-57",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And there is another interesting mechanism",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And there is another interesting mechanism",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-58",
+      "dur": 6.51,
+      "look": "node-58",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The signature is essentially an encoded",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The signature is essentially an encoded",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-59",
+      "dur": 3.25,
+      "look": "node-59",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So you can think of the",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So you can think of the",
+          "size": "headline",
+          "accentWord": "So"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-60",
+      "dur": 2.93,
+      "look": "node-60",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing There is the model's internal reasoning",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "There is the model's internal reasoning",
+          "size": "headline",
+          "accentWord": "There"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-61",
+      "dur": 3.25,
+      "look": "node-61",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And then there is the external",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And then there is the external",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-62",
+      "dur": 2.93,
+      "look": "node-62",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Those are not the same thing",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Those are not the same thing",
+          "size": "headline",
+          "accentWord": "Those"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-63",
+      "dur": 3.25,
+      "look": "node-63",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And this is where I think",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And this is where I think",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-64",
+      "dur": 3.25,
+      "look": "node-64",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing A step is really a unit",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "A step is really a unit",
+          "size": "headline",
+          "accentWord": "A"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-65",
+      "dur": 2.93,
+      "look": "node-65",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Not necessarily a unit of intelligence",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Not necessarily a unit of intelligence",
+          "size": "headline",
+          "accentWord": "Not"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-66",
+      "dur": 2.93,
+      "look": "node-66",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Think about a human software engineer",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Think about a human software engineer",
+          "size": "headline",
+          "accentWord": "Think"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-67",
+      "dur": 2.93,
+      "look": "node-67",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Suppose I ask you to fix",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Suppose I ask you to fix",
+          "size": "headline",
+          "accentWord": "Suppose"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-68",
+      "dur": 3.25,
+      "look": "node-68",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing You might spend five minutes staring",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "You might spend five minutes staring",
+          "size": "headline",
+          "accentWord": "You"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-69",
+      "dur": 2.93,
+      "look": "node-69",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Internally, you've been thinking the entire",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Internally, you've been thinking the entire",
+          "size": "headline",
+          "accentWord": "Internally,"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-70",
+      "dur": 2.93,
+      "look": "node-70",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing But externally, I might only see",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "But externally, I might only see",
+          "size": "headline",
+          "accentWord": "But"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-71",
+      "dur": 2.93,
+      "look": "node-71",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Open file",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Open file",
+          "size": "headline",
+          "accentWord": "Open"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-72",
+      "dur": 2.93,
+      "look": "node-72",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Read function",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Read function",
+          "size": "headline",
+          "accentWord": "Read"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-73",
+      "dur": 2.93,
+      "look": "node-73",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Change code",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Change code",
+          "size": "headline",
+          "accentWord": "Change"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-74",
+      "dur": 2.93,
+      "look": "node-74",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Run test",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Run test",
+          "size": "headline",
+          "accentWord": "Run"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-75",
+      "dur": 2.93,
+      "look": "node-75",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Fix error",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Fix error",
+          "size": "headline",
+          "accentWord": "Fix"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-76",
+      "dur": 2.93,
+      "look": "node-76",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Run test again",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Run test again",
+          "size": "headline",
+          "accentWord": "Run"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-77",
+      "dur": 5.21,
+      "look": "node-77",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The number of visible actions is",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The number of visible actions is",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-78",
+      "dur": 2.93,
+      "look": "node-78",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing AI agents work in a similar",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "AI agents work in a similar",
+          "size": "headline",
+          "accentWord": "AI"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-79",
+      "dur": 2.93,
+      "look": "node-79",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And this leads to a much",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And this leads to a much",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-80",
+      "dur": 2.93,
+      "look": "node-80",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Modern AI systems are starting to",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Modern AI systems are starting to",
+          "size": "headline",
+          "accentWord": "Modern"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-81",
+      "dur": 3.9,
+      "look": "node-81",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Reasoning",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Reasoning",
+          "size": "headline",
+          "accentWord": "Reasoning"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-82",
+      "dur": 3.9,
+      "look": "node-82",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Actions",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Actions",
+          "size": "headline",
+          "accentWord": "Actions"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-83",
+      "dur": 2.93,
+      "look": "node-83",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And context",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And context",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-84",
+      "dur": 3.25,
+      "look": "node-84",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Reasoning is what the model does",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Reasoning is what the model does",
+          "size": "headline",
+          "accentWord": "Reasoning"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-85",
+      "dur": 4.56,
+      "look": "node-85",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Actions are things like reading files",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Actions are things like reading files",
+          "size": "headline",
+          "accentWord": "Actions"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-86",
+      "dur": 3.9,
+      "look": "node-86",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And context is all the information",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And context is all the information",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-87",
+      "dur": 2.93,
+      "look": "node-87",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The agent continuously moves between these",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The agent continuously moves between these",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-88",
+      "dur": 2.93,
+      "look": "node-88",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It reasons",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It reasons",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-89",
+      "dur": 2.93,
+      "look": "node-89",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It acts",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It acts",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-90",
+      "dur": 2.93,
+      "look": "node-90",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It receives new context",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It receives new context",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-91",
+      "dur": 2.93,
+      "look": "node-91",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It reasons again",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It reasons again",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-92",
+      "dur": 2.93,
+      "look": "node-92",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It acts again",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It acts again",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-93",
+      "dur": 3.9,
+      "look": "node-93",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And this is basically what makes",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And this is basically what makes",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-94",
+      "dur": 2.93,
+      "look": "node-94",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing A chatbot might look like",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "A chatbot might look like",
+          "size": "headline",
+          "accentWord": "A"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-95",
+      "dur": 2.93,
+      "look": "node-95",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Prompt → Response",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Prompt → Response",
+          "size": "headline",
+          "accentWord": "Prompt"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-96",
+      "dur": 2.93,
+      "look": "node-96",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing An agent looks more like",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "An agent looks more like",
+          "size": "headline",
+          "accentWord": "An"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-97",
+      "dur": 3.9,
+      "look": "node-97",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Goal → Reason → Act →",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Goal → Reason → Act →",
+          "size": "headline",
+          "accentWord": "Goal"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-98",
+      "dur": 2.93,
+      "look": "node-98",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Now here's where the different AI",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Now here's where the different AI",
+          "size": "headline",
+          "accentWord": "Now"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-99",
+      "dur": 2.93,
+      "look": "node-99",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Google isn't the only company doing",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Google isn't the only company doing",
+          "size": "headline",
+          "accentWord": "Google"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-100",
+      "dur": 2.93,
+      "look": "node-100",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Anthropic's Claude models also have extended",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Anthropic's Claude models also have extended",
+          "size": "headline",
+          "accentWord": "Anthropic's"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-101",
+      "dur": 3.9,
+      "look": "node-101",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing OpenAI's reasoning models also have explicit",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "OpenAI's reasoning models also have explicit",
+          "size": "headline",
+          "accentWord": "OpenAI's"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-102",
+      "dur": 4.56,
+      "look": "node-102",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So the interesting difference isn't that",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So the interesting difference isn't that",
+          "size": "headline",
+          "accentWord": "So"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-103",
+      "dur": 4.56,
+      "look": "node-103",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The deeper difference is how these",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The deeper difference is how these",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-104",
+      "dur": 2.93,
+      "look": "node-104",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing For example, Google exposes concepts like",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "For example, Google exposes concepts like",
+          "size": "headline",
+          "accentWord": "For"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-105",
+      "dur": 5.21,
+      "look": "node-105",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing That gives the system a way",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "That gives the system a way",
+          "size": "headline",
+          "accentWord": "That"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-106",
+      "dur": 5.21,
+      "look": "node-106",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing More thinking can potentially improve performance",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "More thinking can potentially improve performance",
+          "size": "headline",
+          "accentWord": "More"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-107",
+      "dur": 6.51,
+      "look": "node-107",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Anthropic has taken a similar general",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Anthropic has taken a similar general",
+          "size": "headline",
+          "accentWord": "Anthropic"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-108",
+      "dur": 2.93,
+      "look": "node-108",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing OpenAI exposes reasoning effort as well",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "OpenAI exposes reasoning effort as well",
+          "size": "headline",
+          "accentWord": "OpenAI"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-109",
+      "dur": 3.25,
+      "look": "node-109",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So underneath all of these systems",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So underneath all of these systems",
+          "size": "headline",
+          "accentWord": "So"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-110",
+      "dur": 2.93,
+      "look": "node-110",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The question is no longer simply",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The question is no longer simply",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-111",
+      "dur": 2.93,
+      "look": "node-111",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “How large is the model?”",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“How large is the model?”",
+          "size": "headline",
+          "accentWord": "“How"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-112",
+      "dur": 2.93,
+      "look": "node-112",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The question is also",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The question is also",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-113",
+      "dur": 3.25,
+      "look": "node-113",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “How much computation should the model",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“How much computation should the model",
+          "size": "headline",
+          "accentWord": "“How"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-114",
+      "dur": 2.93,
+      "look": "node-114",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And that is a huge change",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And that is a huge change",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-115",
+      "dur": 2.93,
+      "look": "node-115",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Imagine asking an AI",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Imagine asking an AI",
+          "size": "headline",
+          "accentWord": "Imagine"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-116",
+      "dur": 2.93,
+      "look": "node-116",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “What is 2 plus 2?”",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“What is 2 plus 2?”",
+          "size": "headline",
+          "accentWord": "“What"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-117",
+      "dur": 2.93,
+      "look": "node-117",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing You don't need a massive reasoning",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "You don't need a massive reasoning",
+          "size": "headline",
+          "accentWord": "You"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-118",
+      "dur": 2.93,
+      "look": "node-118",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing But now imagine asking",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "But now imagine asking",
+          "size": "headline",
+          "accentWord": "But"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-119",
+      "dur": 6.51,
+      "look": "node-119",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “Find the bug in this 100,000-line",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“Find the bug in this 100,000-line",
+          "size": "headline",
+          "accentWord": "“Find"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-120",
+      "dur": 2.93,
+      "look": "node-120",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing That problem might require hundreds or",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "That problem might require hundreds or",
+          "size": "headline",
+          "accentWord": "That"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-121",
+      "dur": 2.93,
+      "look": "node-121",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The model needs to inspect information",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The model needs to inspect information",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-122",
+      "dur": 2.93,
+      "look": "node-122",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Make decisions",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Make decisions",
+          "size": "headline",
+          "accentWord": "Make"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-123",
+      "dur": 2.93,
+      "look": "node-123",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Use tools",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Use tools",
+          "size": "headline",
+          "accentWord": "Use"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-124",
+      "dur": 2.93,
+      "look": "node-124",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Look at results",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Look at results",
+          "size": "headline",
+          "accentWord": "Look"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-125",
+      "dur": 2.93,
+      "look": "node-125",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Change its plan",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Change its plan",
+          "size": "headline",
+          "accentWord": "Change"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-126",
+      "dur": 2.93,
+      "look": "node-126",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And continue",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And continue",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-127",
+      "dur": 3.25,
+      "look": "node-127",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing This is why agent systems can",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "This is why agent systems can",
+          "size": "headline",
+          "accentWord": "This"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-128",
+      "dur": 2.93,
+      "look": "node-128",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing But there's another problem",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "But there's another problem",
+          "size": "headline",
+          "accentWord": "But"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-129",
+      "dur": 3.9,
+      "look": "node-129",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Context",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Context",
+          "size": "headline",
+          "accentWord": "Context"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-130",
+      "dur": 7.16,
+      "look": "node-130",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Every time the agent reads a",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Every time the agent reads a",
+          "size": "headline",
+          "accentWord": "Every"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-131",
+      "dur": 2.93,
+      "look": "node-131",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Eventually, the context can become enormous",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Eventually, the context can become enormous",
+          "size": "headline",
+          "accentWord": "Eventually,"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-132",
+      "dur": 2.93,
+      "look": "node-132",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And that creates a bottleneck",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And that creates a bottleneck",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-133",
+      "dur": 5.86,
+      "look": "node-133",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Because even if a model supports",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Because even if a model supports",
+          "size": "headline",
+          "accentWord": "Because"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-134",
+      "dur": 3.9,
+      "look": "node-134",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The model has to process all",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The model has to process all",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-135",
+      "dur": 2.93,
+      "look": "node-135",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So modern agent architectures also need",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So modern agent architectures also need",
+          "size": "headline",
+          "accentWord": "So"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-136",
+      "dur": 2.93,
+      "look": "node-136",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing This is where things like compaction",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "This is where things like compaction",
+          "size": "headline",
+          "accentWord": "This"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-137",
+      "dur": 2.93,
+      "look": "node-137",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Compaction is not the same thing",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Compaction is not the same thing",
+          "size": "headline",
+          "accentWord": "Compaction"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-138",
+      "dur": 2.93,
+      "look": "node-138",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Reasoning is about spending computation to",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Reasoning is about spending computation to",
+          "size": "headline",
+          "accentWord": "Reasoning"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-139",
+      "dur": 3.9,
+      "look": "node-139",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Compaction is about managing the information",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Compaction is about managing the information",
+          "size": "headline",
+          "accentWord": "Compaction"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-140",
+      "dur": 2.93,
+      "look": "node-140",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Imagine an agent has gone through",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Imagine an agent has gone through",
+          "size": "headline",
+          "accentWord": "Imagine"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-141",
+      "dur": 3.25,
+      "look": "node-141",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It doesn't necessarily need every single",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It doesn't necessarily need every single",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-142",
+      "dur": 2.93,
+      "look": "node-142",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It might instead preserve the important",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It might instead preserve the important",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-143",
+      "dur": 2.93,
+      "look": "node-143",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing what files were changed",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "what files were changed",
+          "size": "headline",
+          "accentWord": "what"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-144",
+      "dur": 2.93,
+      "look": "node-144",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing what decisions were made",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "what decisions were made",
+          "size": "headline",
+          "accentWord": "what"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-145",
+      "dur": 2.93,
+      "look": "node-145",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing what errors were encountered",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "what errors were encountered",
+          "size": "headline",
+          "accentWord": "what"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-146",
+      "dur": 2.93,
+      "look": "node-146",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing what remains to be done",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "what remains to be done",
+          "size": "headline",
+          "accentWord": "what"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-147",
+      "dur": 2.93,
+      "look": "node-147",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing and what the current state of",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "and what the current state of",
+          "size": "headline",
+          "accentWord": "and"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-148",
+      "dur": 3.25,
+      "look": "node-148",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The system can then continue with",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The system can then continue with",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-149",
+      "dur": 2.93,
+      "look": "node-149",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So now we have another loop",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So now we have another loop",
+          "size": "headline",
+          "accentWord": "So"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-150",
+      "dur": 4.56,
+      "look": "node-150",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Reason → Act → Observe →",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Reason → Act → Observe →",
+          "size": "headline",
+          "accentWord": "Reason"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-151",
+      "dur": 5.86,
+      "look": "node-151",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And this is why I think",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And this is why I think",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-152",
+      "dur": 3.25,
+      "look": "node-152",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing That number is showing us something",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "That number is showing us something",
+          "size": "headline",
+          "accentWord": "That"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-153",
+      "dur": 2.93,
+      "look": "node-153",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing We're no longer dealing with a",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "We're no longer dealing with a",
+          "size": "headline",
+          "accentWord": "We're"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-154",
+      "dur": 3.25,
+      "look": "node-154",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing We're dealing with a system that",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "We're dealing with a system that",
+          "size": "headline",
+          "accentWord": "We're"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-155",
+      "dur": 2.93,
+      "look": "node-155",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It can decide what information it",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It can decide what information it",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-156",
+      "dur": 2.93,
+      "look": "node-156",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It can interact with external tools",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It can interact with external tools",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-157",
+      "dur": 2.93,
+      "look": "node-157",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It can observe the consequences of",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It can observe the consequences of",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-158",
+      "dur": 2.93,
+      "look": "node-158",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It can update its plan",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It can update its plan",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-159",
+      "dur": 2.93,
+      "look": "node-159",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And it can manage its own",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And it can manage its own",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-160",
+      "dur": 4.56,
+      "look": "node-160",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Google's decision to expose thought steps",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Google's decision to expose thought steps",
+          "size": "headline",
+          "accentWord": "Google's"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-161",
+      "dur": 2.93,
+      "look": "node-161",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing But the underlying idea isn't exclusive",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "But the underlying idea isn't exclusive",
+          "size": "headline",
+          "accentWord": "But"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-162",
+      "dur": 4.56,
+      "look": "node-162",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Claude, OpenAI, and other modern agent",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Claude, OpenAI, and other modern agent",
+          "size": "headline",
+          "accentWord": "Claude,"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-163",
+      "dur": 2.93,
+      "look": "node-163",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The interesting competition isn't simply",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The interesting competition isn't simply",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-164",
+      "dur": 2.93,
+      "look": "node-164",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “Which model thinks better?”",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“Which model thinks better?”",
+          "size": "headline",
+          "accentWord": "“Which"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-165",
+      "dur": 2.93,
+      "look": "node-165",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It's increasingly",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It's increasingly",
+          "size": "headline",
+          "accentWord": "It's"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-166",
+      "dur": 2.93,
+      "look": "node-166",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “How should an AI system allocate",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“How should an AI system allocate",
+          "size": "headline",
+          "accentWord": "“How"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-167",
+      "dur": 2.93,
+      "look": "node-167",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “When should it think?”",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“When should it think?”",
+          "size": "headline",
+          "accentWord": "“When"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-168",
+      "dur": 2.93,
+      "look": "node-168",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “When should it use a tool?”",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“When should it use a tool?”",
+          "size": "headline",
+          "accentWord": "“When"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-169",
+      "dur": 2.93,
+      "look": "node-169",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “What information should it remember?”",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“What information should it remember?”",
+          "size": "headline",
+          "accentWord": "“What"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-170",
+      "dur": 2.93,
+      "look": "node-170",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “What information can it throw away?”",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“What information can it throw away?”",
+          "size": "headline",
+          "accentWord": "“What"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-171",
+      "dur": 2.93,
+      "look": "node-171",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing “When should it stop?”",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "“When should it stop?”",
+          "size": "headline",
+          "accentWord": "“When"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-172",
+      "dur": 4.56,
+      "look": "node-172",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And how can the entire process",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And how can the entire process",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-173",
+      "dur": 5.86,
+      "look": "node-173",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing So the next time you see",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "So the next time you see",
+          "size": "headline",
+          "accentWord": "So"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-174",
+      "dur": 3.25,
+      "look": "node-174",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Think of it as a trace",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Think of it as a trace",
+          "size": "headline",
+          "accentWord": "Think"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-175",
+      "dur": 3.25,
+      "look": "node-175",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing The model is repeatedly reasoning, acting",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "The model is repeatedly reasoning, acting",
+          "size": "headline",
+          "accentWord": "The"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-176",
+      "dur": 3.9,
+      "look": "node-176",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing And that architecture is one of",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "And that architecture is one of",
+          "size": "headline",
+          "accentWord": "And"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-177",
+      "dur": 4.56,
+      "look": "node-177",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing Because the future of AI may",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Because the future of AI may",
+          "size": "headline",
+          "accentWord": "Because"
+        },
+        {
+          "c": "TokenStrip",
+          "tokens": [
+            "Step 1",
+            "Step 2",
+            "Step 3",
+            "Complete"
+          ],
+          "lit": [
+            0
+          ],
+          "caption": "Sequential Execution Flow"
+        }
+      ]
+    },
+    {
+      "id": "shot-178",
+      "dur": 4.47,
+      "look": "node-178",
+      "move": "pan",
+      "stage": "frame",
+      "drift": false,
+      "zoom": 1,
+      "visualDirection": "Visualizing It may be about building systems",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "It may be about building systems",
+          "size": "headline",
+          "accentWord": "It"
+        },
+        {
+          "c": "CharacterBeat",
+          "characterId": "mascot",
+          "poses": [
+            {
+              "t": 0,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                }
+              }
+            },
+            {
+              "t": 0.25,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": -4
+                },
+                "leftArm": {
+                  "rotate": 110
+                },
+                "rightArm": {
+                  "rotate": -110
+                }
+              }
+            },
+            {
+              "t": 0.85,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": -4
+                },
+                "leftArm": {
+                  "rotate": 110
+                },
+                "rightArm": {
+                  "rotate": -110
+                }
+              }
+            },
+            {
+              "t": 1,
+              "groups": {
+                "torso": {
+                  "rotate": 0
+                },
+                "head": {
+                  "rotate": 0
+                },
+                "leftArm": {
+                  "rotate": 0
+                },
+                "rightArm": {
+                  "rotate": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "voiceover": {
+    "src": "videos/what-are-those-steps-in-gemini/voiceover.wav",
+    "volume": 1,
+    "speed": 1,
+    "version": "1789675072743",
+    "durationSec": 598.737
+  }
+}

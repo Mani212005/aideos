@@ -1,15 +1,15 @@
+/**
+ * File Description: Core animated primitives for the video design system including TextReveal, StatCounter, CodeBlock, and Card components.
+ */
+
 import React from "react";
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import {
   accentAt,
   useTokens,
-  ink,
   MONO,
-  PALETTE,
-  rule,
   SERIF,
   useLayout,
-  type DLLayout,
 } from "./tokens";
 import { EXPO, frames, MS, useEntrance, useProgress } from "./motion";
 import { useAccent } from "./accent";
@@ -387,6 +387,58 @@ export const IconLabel: React.FC<BlockProps & { text: string }> = ({ text, start
   );
 };
 
+/** Monospace animated code block for terminal commands and code snippets */
+export const CodeBlock: React.FC<
+  BlockProps & { code: string; language?: string; caption?: string }
+> = ({ code, language, caption, start, index }) => {
+  const layout = useLayout();
+  const tokens = useTokens();
+  const accent = useAccent();
+  const enter = useEntrance(start, index, layout.px(12));
+
+  return (
+    <div
+      style={{
+        ...enter,
+        border: "1px solid rgba(245, 245, 245, 0.10)",
+        borderRadius: layout.radius.inner + 4,
+        background: tokens.surface,
+        padding: `${layout.grid * 1.5}px ${layout.grid * 2}px`,
+        display: "flex",
+        flexDirection: "column",
+        gap: layout.grid,
+      }}
+    >
+      {(caption || language) && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {caption && (
+            <span style={{ fontFamily: MONO, fontSize: layout.type("caption").fontSize, color: tokens.muted }}>
+              {caption}
+            </span>
+          )}
+          {language && (
+            <span style={{ fontFamily: MONO, fontSize: 10, color: accent, textTransform: "uppercase" }}>
+              {language}
+            </span>
+          )}
+        </div>
+      )}
+      <pre
+        style={{
+          fontFamily: MONO,
+          fontSize: layout.type("caption").fontSize,
+          color: tokens.ink,
+          margin: 0,
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+        }}
+      >
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+};
+
 /** High-clarity glassmorphic card with luminous accents */
 export const Card: React.FC<
   BlockProps & { title: string; body?: string; state: "idle" | "active" }
@@ -649,11 +701,3 @@ export const useJoin = (
     },
   };
 };
-
-export const hairlineFrame = (layout: DLLayout): React.CSSProperties => ({
-  border: `1px solid ${rule()}`,
-  borderRadius: layout.radius.card,
-  background: PALETTE.canvas,
-});
-
-export const scrim = ink(0.02);

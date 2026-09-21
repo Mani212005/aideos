@@ -10,7 +10,7 @@
 import React from "react";
 import type { CompiledFrame, CompiledEntity } from "./compile";
 import { getCharacterRigById } from "../characters";
-import { PALETTE } from "../tokens";
+import { PALETTE, useTokens } from "../tokens";
 import { useAccent } from "../accent";
 import { parseSvgDocument, type SvgDocument } from "./svgDocument";
 import { renderSvgNodes } from "./svgReact";
@@ -38,20 +38,20 @@ export interface SceneViewProps {
 }
 
 // Maps semantic token to active hex color
-const resolveSemanticColor = (token: string | undefined, accentColor: string): string => {
+const resolveSemanticColor = (token: string | undefined, accentColor: string, palette: ReturnType<typeof useTokens>): string => {
   switch (token) {
     case "surface":
-      return PALETTE.surface;
+      return palette.surface;
     case "ink":
-      return PALETTE.ink;
+      return palette.ink;
     case "muted":
-      return PALETTE.muted;
+      return palette.muted;
     case "hairline":
-      return PALETTE.hairline;
+      return palette.hairline;
     case "accent":
       return accentColor;
     case "canvas":
-      return PALETTE.canvas;
+      return palette.canvas;
     case "none":
     default:
       return "none";
@@ -87,6 +87,7 @@ export const SceneView: React.FC<SceneViewProps> = ({
   svgSources,
   onMountEntityRef,
 }) => {
+  const palette = useTokens();
   let accentColor = accent || PALETTE.accent;
   try {
     const ctxAccent = useAccent();
@@ -161,8 +162,8 @@ export const SceneView: React.FC<SceneViewProps> = ({
         transform={transform}
         opacity={tr.opacity}
       >
-        <rect x="-4" y="-180" width="8" height="180" fill={PALETTE.muted} />
-        <circle cx="0" cy="0" r="35" fill={PALETTE.surface} stroke={PALETTE.ink} strokeWidth="4" />
+        <rect x="-4" y="-180" width="8" height="180" fill={palette.muted} />
+        <circle cx="0" cy="0" r="35" fill={palette.surface} stroke={palette.ink} strokeWidth="4" />
         <circle cx="0" cy="0" r="14" fill={accentColor} />
 
         {entity.subGroupRotations?.map((sg) => (
@@ -171,9 +172,9 @@ export const SceneView: React.FC<SceneViewProps> = ({
             id={`subgroup-${entity.entityId}-${sg.elementId}`}
             transform={`rotate(${sg.degrees})`}
           >
-            <path d="M0 -15 L15 -70 Q0 -90 -15 -70 Z" fill={accentColor} stroke={PALETTE.ink} strokeWidth="2" />
-            <path d="M0 -15 L15 -70 Q0 -90 -15 -70 Z" transform="rotate(120)" fill={accentColor} stroke={PALETTE.ink} strokeWidth="2" />
-            <path d="M0 -15 L15 -70 Q0 -90 -15 -70 Z" transform="rotate(240)" fill={accentColor} stroke={PALETTE.ink} strokeWidth="2" />
+            <path d="M0 -15 L15 -70 Q0 -90 -15 -70 Z" fill={accentColor} stroke={palette.ink} strokeWidth="2" />
+            <path d="M0 -15 L15 -70 Q0 -90 -15 -70 Z" transform="rotate(120)" fill={accentColor} stroke={palette.ink} strokeWidth="2" />
+            <path d="M0 -15 L15 -70 Q0 -90 -15 -70 Z" transform="rotate(240)" fill={accentColor} stroke={palette.ink} strokeWidth="2" />
           </g>
         ))}
       </g>
@@ -209,8 +210,8 @@ export const SceneView: React.FC<SceneViewProps> = ({
           transform={`translate(${pivot.x}, ${pivot.y}) rotate(${rot}) translate(${-pivot.x}, ${-pivot.y})`}
         >
           {group.paths.map((p, idx) => {
-            const fill = resolveSemanticColor(p.fill, accentColor);
-            const stroke = resolveSemanticColor(p.stroke, accentColor);
+            const fill = resolveSemanticColor(p.fill, accentColor, palette);
+            const stroke = resolveSemanticColor(p.stroke, accentColor, palette);
             return (
               <path
                 key={idx}
@@ -251,12 +252,12 @@ export const SceneView: React.FC<SceneViewProps> = ({
       width={width}
       height={height}
       style={{
-        backgroundColor: PALETTE.canvas,
+        backgroundColor: palette.canvas,
         overflow: "hidden",
       }}
     >
       {/* Background canvas fill */}
-      <rect width="100%" height="100%" fill={PALETTE.canvas} />
+      <rect width="100%" height="100%" fill={palette.canvas} />
 
       {/* Render all entities strictly in ascending resolvedLayer order */}
       {frame.entities.map((entity) =>

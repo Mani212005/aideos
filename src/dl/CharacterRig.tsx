@@ -7,7 +7,7 @@
 import React from "react";
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { EXPO } from "./motion";
-import { PALETTE } from "./tokens";
+import { MONO, PALETTE, useTokens } from "./tokens";
 import { useAccent } from "./accent";
 import type { CharacterRig, PoseKeyframe, PoseTransform, SemanticToken } from "./characters/types";
 import { getCharacterRigById } from "./characters";
@@ -41,20 +41,20 @@ function useSafeVideoConfig(): { durationInFrames: number; fps: number; width: n
 }
 
 // Maps semantic design tokens to active theme color values.
-const resolveSemanticColor = (token: SemanticToken | undefined, accentColor: string): string => {
+const resolveSemanticColor = (token: SemanticToken | undefined, accentColor: string, palette: ReturnType<typeof useTokens>): string => {
   switch (token) {
     case "surface":
-      return PALETTE.surface;
+      return palette.surface;
     case "ink":
-      return PALETTE.ink;
+      return palette.ink;
     case "muted":
-      return PALETTE.muted;
+      return palette.muted;
     case "hairline":
-      return PALETTE.hairline;
+      return palette.hairline;
     case "accent":
       return accentColor;
     case "canvas":
-      return PALETTE.canvas;
+      return palette.canvas;
     case "none":
     default:
       return "none";
@@ -152,6 +152,7 @@ export const CharacterRigView: React.FC<CharacterBeatProps> = ({
 }) => {
   const frame = useSafeCurrentFrame();
   const videoConfig = useSafeVideoConfig();
+  const palette = useTokens();
 
   let accentColor = accent || PALETTE.accent;
   try {
@@ -164,7 +165,7 @@ export const CharacterRigView: React.FC<CharacterBeatProps> = ({
   const rig: CharacterRig | null = getCharacterRigById(characterId);
   if (!rig) {
     return (
-      <div style={{ color: PALETTE.muted, fontFamily: "sans-serif" }}>
+      <div style={{ color: palette.muted, fontFamily: MONO }}>
         Character &quot;{characterId}&quot; not found
       </div>
     );
@@ -218,8 +219,8 @@ export const CharacterRigView: React.FC<CharacterBeatProps> = ({
         transform={`translate(${pivot.x + tx}, ${pivot.y + ty}) rotate(${rot}) scale(${sx}, ${sy}) translate(${-pivot.x}, ${-pivot.y})`}
       >
         {group.paths.map((p, idx) => {
-          const fill = resolveSemanticColor(p.fill, accentColor);
-          const stroke = resolveSemanticColor(p.stroke, accentColor);
+          const fill = resolveSemanticColor(p.fill, accentColor, palette);
+          const stroke = resolveSemanticColor(p.stroke, accentColor, palette);
           return (
             <path
               key={idx}

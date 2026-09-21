@@ -13,8 +13,15 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { runProduction } from "../pipeline/run";
-import { FILM_ID, readFilm, ROOT, VIDEOS_DIR } from "../pipeline/filmStore";
+import { FILM_ID, readFilm, writeFilm, ROOT, VIDEOS_DIR } from "../pipeline/filmStore";
 import { PRODUCTION_STAGES, type ProductionProgress, type ProductionRequest, type ProductionResult } from "../pipeline/types";
+import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
+import { buildEditContext } from "../editContext/buildEditContext";
+import { detectFillers } from "../editContext/detectFillers";
+import { detectSilences } from "../editContext/detectSilences";
+import { planEdits, applyEditProgram } from "../editPlanner";
+import type { TranscribedWord } from "../transcribe";
+import { taskQueue, traceBus } from "../agentBridge";
 
 /** Everything known about one background production run. */
 interface RunRecord {
@@ -276,6 +283,232 @@ export function createMcpServer(): McpServer {
       const film = FILM_ID.test(slug) ? readFilm(slug) : null;
       if (!film) return jsonResult({ error: `no film found for "${slug}"`, videosDir: path.relative(ROOT, VIDEOS_DIR) });
       return jsonResult(film);
+    },
+  );
+
+  server.registerTool(
+    "aideos_edit_film",
+    {
+      title: "Edit an Aideos film",
+      description:
+        "Edit an Aideos film using natural language instructions. Plans and executes editing operations " +
+        "(text overlays, filler removal, dead air trimming, range trimming, volume/mute/hide, accent/theme) " +
+        "with atomic rollback guarantees and saves the updated film.",
+      inputSchema: {
+        slug: z.string().regex(/^[a-z0-9-]+$/).describe("The package slug under videos/."),
+        request: z.string().min(1).describe("Natural language edit request (e.g. 'remove filler words and add a title card')."),
+        hints: z.string().optional().describe("Optional context, project knowledge, or instruction hints from the coding agent."),
+        dryRun: z.boolean().optional().describe("When true, only plans the edits without writing changes to disk. Defaults to false."),
+      },
+    },
+    async ({ slug, request, hints, dryRun }) => {
+      const film = FILM_ID.test(slug) ? readFilm(slug) : null;
+      if (!film) {
+        return jsonResult({ error: `no film found for "${slug}"`, videosDir: path.relative(ROOT, VIDEOS_DIR) });
+      }
+
+      const layered = convertFilmToLayeredFilm(film);
+
+      // Load transcript if available
+      let transcript: TranscribedWord[] = [];
+      const importWordsPath = path.join(VIDEOS_DIR, slug, "import_words.json");
+      const voWordsPath = path.join(VIDEOS_DIR, slug, "voiceover_words.json");
+      if (fs.existsSync(importWordsPath)) {
+        try {
+          const raw = JSON.parse(fs.readFileSync(importWordsPath, "utf8"));
+          transcript = raw.words || [];
+        } catch {}
+      } else if (fs.existsSync(voWordsPath)) {
+        try {
+          const raw = JSON.parse(fs.readFileSync(voWordsPath, "utf8"));
+          transcript = raw.words || [];
+        } catch {}
+      }
+
+      const fillers = detectFillers(transcript);
+      const silences = detectSilences(transcript);
+      const clipsDuration = layered.clips.reduce(
+        (max: number, c: any) => Math.max(max, c.position + (c.end - c.start)),
+        0,
+      );
+      const shotsDuration = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
+      const durationSec = clipsDuration > 0 ? clipsDuration : shotsDuration > 0 ? shotsDuration : 30;
+
+      const context = buildEditContext(layered, transcript, fillers, silences, {
+        fps: film.fps,
+        durationSec,
+        accent: film.accent,
+        theme: film.theme,
+      });
+
+      const planResult = await planEdits(request, context, undefined, { agentHints: hints });
+
+      if (dryRun) {
+        return jsonResult({
+          slug,
+          applied: false,
+          dryRun: true,
+          plan: planResult.plan,
+          ops: planResult.ops,
+          attempts: planResult.attempts,
+          warnings: planResult.warnings,
+        });
+      }
+
+      const appliedResult = applyEditProgram(layered, planResult.ops, context);
+      if (appliedResult.rejected.length > 0) {
+        return jsonResult({
+          slug,
+          applied: false,
+          error: "Failed to apply planned operations",
+          rejected: appliedResult.rejected,
+          plan: planResult.plan,
+          ops: planResult.ops,
+        });
+      }
+
+      const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
+      const savedFilm = writeFilm(slug, updatedFilm);
+
+      return jsonResult({
+        slug,
+        applied: true,
+        dryRun: false,
+        plan: planResult.plan,
+        ops: planResult.ops,
+        attempts: planResult.attempts,
+        warnings: planResult.warnings,
+        filmSummary: {
+          id: savedFilm.id,
+          title: savedFilm.title,
+          shots: savedFilm.shots.length,
+          accent: savedFilm.accent,
+          durationSec: Number(savedFilm.shots.reduce((sum, s) => sum + s.dur, 0).toFixed(2)),
+        },
+      });
+    },
+  );
+
+  server.registerTool(
+    "aideos_get_pending_tasks",
+    {
+      title: "Get pending agent tasks",
+      description:
+        "Fetch pending directing, voiceover, screenplay, and editing tasks dispatched from Aideos Studio. " +
+        "Filter by film slug if provided.",
+      inputSchema: {
+        filmId: z.string().optional().describe("Optional package slug under videos/ to filter pending tasks."),
+      },
+    },
+    async ({ filmId }) => {
+      const tasks = taskQueue.listPendingTasks(filmId);
+      return jsonResult({
+        count: tasks.length,
+        tasks,
+      });
+    },
+  );
+
+  server.registerTool(
+    "aideos_claim_task",
+    {
+      title: "Claim an agent task",
+      description:
+        "Claim a pending task to begin autonomous execution and prevent hybrid timeout fallback.",
+      inputSchema: {
+        taskId: z.string().describe("The unique task ID to claim."),
+        agentId: z.string().optional().describe("Identifier of the agent claiming the task. Defaults to 'agent'."),
+      },
+    },
+    async ({ taskId, agentId }) => {
+      try {
+        const task = taskQueue.claimTask(taskId, agentId);
+        return jsonResult({ ok: true, task });
+      } catch (err: any) {
+        return jsonResult({ ok: false, error: err?.message || String(err) });
+      }
+    },
+  );
+
+  server.registerTool(
+    "aideos_complete_task",
+    {
+      title: "Complete an agent task",
+      description:
+        "Mark a claimed agent task as completed with summary and optional execution results.",
+      inputSchema: {
+        taskId: z.string().describe("The unique task ID being completed."),
+        summary: z.string().optional().describe("Brief description of actions taken and files modified."),
+        result: z.record(z.string(), z.any()).optional().describe("Optional JSON data or modified artifact metadata."),
+      },
+    },
+    async ({ taskId, summary, result }) => {
+      try {
+        const task = taskQueue.completeTask(taskId, { summary, ...(result || {}) });
+        return jsonResult({ ok: true, task });
+      } catch (err: any) {
+        return jsonResult({ ok: false, error: err?.message || String(err) });
+      }
+    },
+  );
+
+  server.registerTool(
+    "aideos_report_step",
+    {
+      title: "Report execution step to live Agent Trace",
+      description:
+        "Report an autonomous tool call, reasoning step, research discovery, or invariant verification " +
+        "to the Aideos Studio live Agent Trace timeline streamed to the user via SSE.",
+      inputSchema: {
+        title: z.string().min(1).describe("Short title of the step or action taken."),
+        description: z.string().optional().describe("Detailed explanation of what was done or discovered."),
+        phase: z
+          .enum([
+            "grounding",
+            "synthesis",
+            "authoring",
+            "validation",
+            "ai_edit",
+            "broll",
+            "dispatch",
+            "complete",
+          ])
+          .optional()
+          .describe("Phase category for this step. Defaults to 'authoring'."),
+        status: z
+          .enum(["pending", "running", "done", "corrected", "failed"])
+          .optional()
+          .describe("Current execution status. Defaults to 'done'."),
+        details: z
+          .array(z.string())
+          .optional()
+          .describe("Optional list of technical sub-steps, code snippets, or rule verification checks."),
+        source: z
+          .string()
+          .optional()
+          .describe("Originating entity, defaults to 'agent'."),
+        filmId: z
+          .string()
+          .optional()
+          .describe("Optional film slug this step relates to."),
+        durationMs: z
+          .number()
+          .optional()
+          .describe("Optional execution duration in milliseconds."),
+      },
+    },
+    async (input) => {
+      const step = traceBus.recordStep({
+        title: input.title,
+        description: input.description || "",
+        phase: input.phase || "authoring",
+        status: input.status || "done",
+        details: input.details,
+        source: input.source || "agent",
+        filmId: input.filmId,
+        durationMs: input.durationMs,
+      });
+      return jsonResult({ ok: true, stepId: step.id, step });
     },
   );
 

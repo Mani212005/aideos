@@ -1,9 +1,14 @@
+/**
+ * File Description: Remotion visual-device library, including deterministic full-screen B-roll heroes.
+ */
+
 import React from "react";
-import { Img, OffthreadVideo, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { Img, OffthreadVideo, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { accentAt, MONO, SERIF, useLayout, useTokens } from "./tokens";
 import { EXPO, frames, MS, useEntrance, useProgress } from "./motion";
 import { useAccent } from "./accent";
 import { AlignContext } from "./align";
+import { getFullScreenHeroLayout, heroScrimGradient } from "./fullScreenHeroLayout";
 import type { BlockProps } from "./primitives";
 
 /**
@@ -632,6 +637,7 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
   fullScreenHero = false,
   start,
   index,
+  durationInFrames,
 }) => {
   const frame = useCurrentFrame();
   const layout = useLayout();
@@ -650,15 +656,11 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
   const isVideo = Boolean(resolvedSrc?.match(/\.(mp4|webm|mov)$/i));
 
   if (fullScreenHero && isVisible && resolvedSrc) {
-    // A hero plate owns the frame. In a 16:9 frame a 16:9 clip covers it with a crop of a
-    // couple of percent, so it runs edge to edge; in 9:16 covering would throw away two
-    // thirds of the shot, so it sits as a full-width band with the canvas above and below.
-    const heroMedia: React.CSSProperties = {
-      width: "100%",
-      height: layout.format === "long" ? "100%" : "auto",
-      maxHeight: "100%",
-      objectFit: layout.format === "long" ? "cover" : "contain",
-    };
+    const labelStyle = layout.label(14);
+    const heroLayout = getFullScreenHeroLayout({
+      ...layout,
+      labelHeight: Number(labelStyle.fontSize) * 1.6,
+    });
     return (
       <div
         style={{
@@ -677,19 +679,29 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
         }}
       >
         {isVideo ? (
-          <OffthreadVideo src={staticFile(resolvedSrc)} style={heroMedia} />
+          <Sequence from={start + delayFrames} durationInFrames={durationInFrames ? Math.max(1, durationInFrames - delayFrames) : undefined} layout="none">
+            <OffthreadVideo src={staticFile(resolvedSrc)} style={heroLayout.media} />
+          </Sequence>
         ) : (
-          <Img src={staticFile(resolvedSrc)} style={heroMedia} />
+          <Img src={staticFile(resolvedSrc)} style={heroLayout.media} />
         )}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background: heroScrimGradient(heroLayout.scrimStops, (alpha) => accentAt(palette.canvas, alpha)),
+          }}
+        />
         {caption ? (
           <div
             style={{
-              ...layout.label(14),
+              ...labelStyle,
               position: "absolute",
-              left: layout.margin.left,
-              bottom: layout.margin.bottom,
-              color: "rgba(245, 245, 245, 0.72)",
-              textShadow: "0 2px 12px rgba(0, 0, 0, 0.9)",
+              ...heroLayout.caption,
+              zIndex: 1,
+              color: palette.inkAt(0.72),
+              textShadow: `0 ${layout.px(2)}px ${layout.px(12)}px ${accentAt(palette.canvas, 0.9)}`,
             }}
           >
             {caption}
@@ -719,10 +731,12 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
     >
       {resolvedSrc ? (
         isVideo ? (
-          <OffthreadVideo
-            src={staticFile(resolvedSrc)}
-            style={{ maxWidth: "100%", maxHeight: layout.px(260), objectFit: "contain", borderRadius: layout.radius.chip }}
-          />
+          <Sequence from={start + delayFrames} durationInFrames={durationInFrames ? Math.max(1, durationInFrames - delayFrames) : undefined} layout="none">
+            <OffthreadVideo
+              src={staticFile(resolvedSrc)}
+              style={{ maxWidth: "100%", maxHeight: layout.px(260), objectFit: "contain", borderRadius: layout.radius.chip }}
+            />
+          </Sequence>
         ) : (
           <Img
             src={staticFile(resolvedSrc)}

@@ -61,3 +61,10 @@ videos/*/script.md
 videos/*/run-state.json
 videos/*/narration.json
 
+# Local Agent Director session and dispatch state backend/agentPrompter.ts writes to the
+# repo root: which coding agent/tmux pane is connected, and the log of prompts dispatched
+# to it. Regenerated per machine; never something to commit.
+/.aideos_session.json
+/.aideos_task.md
+/state/agent_events.jsonl
+
