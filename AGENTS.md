@@ -56,6 +56,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Narration is assembled in the sample domain (`backend/pcm.ts`), never by concatenating encoded files: trim, boundary fade, exact gap insertion and peak normalization on Float32 samples. That is what keeps segment offsets exact and boundaries click-free, and `backend/voiceover_stutter.test.ts` holds each defect class closed. Speech synthesis backends live in `backend/tts.ts`; Kokoro is the offline default and runs in a separate process (`backend/kokoroWorker.mjs`) because its voice-file resolution and ONNX thread pool both break under the TypeScript loader.
 - Components must read colour through `useTokens()` from `src/dl/tokens.ts`, not the module-level `PALETTE`/`rule()`/`FAINT`/`SUNKEN` constants: those are derived from the paper-white theme and paint near-black text on the dark canvases every film actually uses.
 - `src/dl/camera.ts` rounds cumulative timeline position, not individual shot durations, and `CanvasGraph`'s camera transform needs `transform-origin: 0 0` to agree with `solveCam`/`projectBox`. Both are load-bearing for audio-visual sync and framing; see the comments at each site before changing them.
+- `produceAudioPipeline` (`backend/audio.ts`) copies its voiceover and captions into `public/` for the editor's live preview whenever its output directory differs from `public/` itself, so Remotion's `staticFile()` can reach them. A test that calls it (directly, or through `runProduction`) with a throwaway package directory triggers that same copy and overwrites the real, currently-active film's `public/captions.vtt`/`public/voiceover.wav` with the test's fixture script. Pass `{ syncToPreview: false }` (threaded onto `ProductionRequest` too) from any new test that exercises this path; the default stays `true` so real callers are unaffected.
 
 ## Rule 3 (No Long Dashes) and screenplay parsing
 - `backend/scriptIntake.ts` legitimately matches literal em/en dash characters as part of normalizing user-authored screenplay input (e.g. bare timestamp headers like "0:00" through "0:20" followed by a dash-separated title). To keep the module free of literal dash bytes while preserving that behavior, it and its test (`backend/claude_script_intake.test.ts`) use `\u2014`/`\u2013` escapes inside regex and template-literal fixtures instead of the raw characters. Follow the same pattern (escape sequence, not raw character) whenever dash-handling code or its test fixtures genuinely need to represent an em/en dash.
@@ -96,6 +97,15 @@ File Description: This file defines the core guidelines, coding principles, and 
   opacity both want the same attribute. The compiled state wins only when a clip actually drives
   it (`SvgElementState.opacityDriven`), so an element authored `opacity="0"` can be faded fully in,
   and an element authored faint can be translated without being forced opaque.
+- An asset meant to live in one format's exclusive band (the reel's top/bottom, or the wide cut's
+  left/right wings) has to fit its whole bounding box, not just its placement anchor, inside that
+  band. `SceneStage` covers with a single fixed window per format, so anchoring an element at the
+  band's edge is not enough if the artwork's own extent (control points, stroke half-width) reaches
+  back across the 1500-world-unit line into the shared safe square: it leaks a truncated fragment
+  into the other format. Compute the local bounding box (not just the authored viewBox, which can
+  be smaller than what a curve's control points actually draw) and choose `position`/`scale` so
+  the whole thing clears the line with margin, the way `backend/stillTalking/scene.ts`'s
+  `trajectory` asset does.
 
 ## Editor design system (editor/**)
 
