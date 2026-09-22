@@ -381,8 +381,7 @@ export async function runProduction(
           "design",
           "running",
           `${compiled.film.shots.length} shots, ${compiled.film.canvas.nodes.length} nodes, ` +
-            `${compiled.footage.length} shot(s) flagged for footage, ` +
-            `${compiled.svgAssets.length} shot(s) routed to SVG assets`,
+            `${compiled.footage.length} shot(s) flagged for footage`,
         );
         return compiled;
       },

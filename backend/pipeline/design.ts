@@ -9,7 +9,7 @@
  * shot's screen time can be its narration's measured duration, which is what keeps picture and
  * voice locked together instead of merely close.
  *
- * The async compile path selects each beat's visual strategy and SVG route through the shared
+ * The async compile path selects each beat's visual strategy through the shared
  * Jev decision client (backend/jev.ts), then authors blocks validated against the film schema.
  */
 
@@ -21,11 +21,9 @@ import type { SegmentAudioInfo } from "../audio";
 import { slugify } from "./filmStore";
 import {
   selectShotVisual,
-  selectSvgRoute,
   type JevDecisionOptions,
   type ShotVisual,
   type ShotVisualResult,
-  type SvgRouteResult,
 } from "../jev";
 
 /** One narration beat with the visual and on-screen directions that surround it. */
@@ -324,23 +322,11 @@ export interface FootageRequest {
 export interface DesignResult {
   film: Film;
   footage: FootageRequest[];
-  /** Beats routed to bespoke SVG asset synthesis (Phase 2). Absent on the sync path. */
-  svgAssets?: SvgAssetRequest[];
-}
-
-/** One beat routed to bespoke SVG asset synthesis with its clip-track target. */
-export interface SvgAssetRequest {
-  shotId: string;
-  assetName: string;
-  visualDirection: string;
-  narration?: string;
 }
 
 /** What the async Jev-driven compile produces beyond the sync film and footage. */
 export interface AsyncDesignResult extends DesignResult {
-  svgAssets: SvgAssetRequest[];
   shotVisuals: Map<string, ShotVisualResult>;
-  svgRoutes: Map<string, SvgRouteResult>;
 }
 
 /**
@@ -790,13 +776,7 @@ function chooseDeviceForVisual(visual: ShotVisual, narration: string, onscreen: 
   }
 }
 
-// Derives a filesystem-safe SVG asset name for one shot.
-function svgAssetNameForShot(shotId: string): string {
-  const clean = shotId.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  return clean ? `${clean}-scene` : "scene-asset";
-}
-
-// Compiles a screenplay plus narration spine into a film using Jev shot-visual and SVG-route choice.
+// Compiles a screenplay plus narration spine into a film using Jev shot-visual choice.
 export async function compileFilmFromScreenplayAsync(
   script: string,
   narration: SegmentAudioInfo[],
@@ -893,9 +873,7 @@ export async function compileFilmFromScreenplayAsync(
   const footageIndices = new Set(chooseFootageBeats(beats, shotDurations, maxFootageSec, maxFootageShots));
   const shots: Shot[] = [];
   const footage: FootageRequest[] = [];
-  const svgAssets: SvgAssetRequest[] = [];
   const shotVisuals = new Map<string, ShotVisualResult>();
-  const svgRoutes = new Map<string, SvgRouteResult>();
   let sinceTextBeat = 0;
   let sinceCanvas = 0;
   let lastChapterIdx = -1;
@@ -926,23 +904,10 @@ export async function compileFilmFromScreenplayAsync(
       durationSec: dur,
       wantsFootage,
     };
-    const routeState = {
-      visual: beat.visual,
-      narration: beat.narration,
-      onscreen: beat.onscreen,
-      sceneTitle: beat.sectionTitle,
-      durationSec: dur,
-      wantsFootage,
-    };
-    const [visualDecision, routeDecision] = await Promise.all([
-      selectShotVisual(visualState, jevOptions),
-      selectSvgRoute(routeState, jevOptions),
-    ]);
+    const visualDecision = await selectShotVisual(visualState, jevOptions);
     shotVisuals.set(shotId, visualDecision);
-    svgRoutes.set(shotId, routeDecision);
     let stage: Shot["stage"];
     let blocks: Block[];
-    let metaphor: Shot["metaphor"] | undefined;
     if (wantsFootage) {
       stage = "frame";
       blocks = [
@@ -952,17 +917,6 @@ export async function compileFilmFromScreenplayAsync(
           fullScreenHero: true,
         },
       ];
-    } else if (!wantsFootage && routeDecision.route === "svg-asset" && beat.visual) {
-      stage = "anchor";
-      blocks = textBlocks.length > 0 ? textBlocks.slice(0, 1) : [{ c: "TextReveal", text: fitText(beat.sectionTitle, 90), size: "headline" as const }];
-      metaphor = "custom";
-      svgAssets.push({
-        shotId,
-        assetName: svgAssetNameForShot(shotId),
-        visualDirection: beat.visual,
-        narration: beat.narration,
-      });
-      activeVisuals.push("SvgAsset");
     } else {
       const choice = visualDecision.visual;
       const deviceEligible =
@@ -984,7 +938,7 @@ export async function compileFilmFromScreenplayAsync(
       }
     }
     // Mirror the schema's device rotation: only a DEVICE_BLOCKS entry sets it, a frame or spine
-    // shot resets it, and an anchor shot without one (StatCounter, SVG-routed) leaves it alone.
+    // shot resets it, and an anchor shot without one (StatCounter) leaves it alone.
     // A footage AnalogyInset may follow any beat, so a device-less anchor right after one is
     // staged as a frame to reset the rotation instead of chaining AnalogyInset into itself.
     const schemaDevice = blocks.find((b) => (DEVICE_BLOCKS as readonly string[]).includes(b.c))?.c ?? null;
@@ -1009,7 +963,6 @@ export async function compileFilmFromScreenplayAsync(
       scriptText: beat.narration,
       ...(beat.visual ? { visualDirection: beat.visual } : {}),
       ...(wantsFootage ? { needsFootage: true } : {}),
-      ...(metaphor ? { metaphor } : {}),
       blocks,
     });
     if (wantsFootage) {
@@ -1036,5 +989,5 @@ export async function compileFilmFromScreenplayAsync(
     captions: `videos/${slug}/captions.vtt`,
     ...(options.music ? { music: options.music } : {}),
   });
-  return { film, footage, svgAssets, shotVisuals, svgRoutes };
+  return { film, footage, shotVisuals };
 }

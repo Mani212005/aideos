@@ -1,7 +1,7 @@
 /**
  * File Description: Tests for the Jev-driven async design compile path.
- * Verifies schema-valid block authoring for every shot visual, SVG routing for concrete visuals,
- * footage precedence, narration locking, and deterministic heuristic fallback with no network.
+ * Verifies schema-valid block authoring for every shot visual, standard blocks for concrete
+ * visuals with no footage, footage precedence, narration locking, and deterministic heuristic fallback with no network.
  */
 
 import assert from "node:assert/strict";
@@ -15,9 +15,7 @@ import {
 import { parseClaudeScript } from "../scriptIntake";
 import {
   clearMockShotVisualHandler,
-  clearMockSvgRouteHandler,
   setMockShotVisualHandler,
-  setMockSvgRouteHandler,
   SHOT_VISUALS,
 } from "../jev";
 import type { SegmentAudioInfo } from "../audio";
@@ -64,7 +62,6 @@ test("DesignJev: buildBlocksForShotVisual authors schema-valid blocks for every 
 
 test("DesignJev: async compile produces a schema-valid film locked to the narration spine", async () => {
   clearMockShotVisualHandler();
-  clearMockSvgRouteHandler();
   const { segments, shotDurations } = spine([6, 8, 7]);
   const result = await compileFilmFromScreenplayAsync(
     SCRIPT,
@@ -83,16 +80,9 @@ test("DesignJev: async compile produces a schema-valid film locked to the narrat
     assert.equal(shot.scriptText, beats[i].narration);
   });
   assert.equal(result.shotVisuals.size, 3);
-  assert.equal(result.svgRoutes.size, 3);
 });
 
-test("DesignJev: async compile routes concrete visuals to SVG assets with metaphor custom", async () => {
-  setMockSvgRouteHandler(async (state): Promise<{ choice: "svg-asset" | "standard-blocks"; confidence: number; probabilities: Record<string, number> } | null> => {
-    if ((state.visual || "").includes("rat") && (state.onscreen || []).some((t) => t.includes("Maze Runner"))) {
-      return { choice: "svg-asset", confidence: 0.92, probabilities: { "svg-asset": 0.92 } };
-    }
-    return { choice: "standard-blocks", confidence: 0.9, probabilities: { "standard-blocks": 0.9 } };
-  });
+test("DesignJev: async compile renders a concrete no-footage visual with standard blocks", async () => {
   setMockShotVisualHandler(async () => ({ choice: "Text", confidence: 0.9, probabilities: { Text: 0.9 } }));
   try {
     const { segments, shotDurations } = spine([6, 8, 7]);
@@ -103,20 +93,20 @@ test("DesignJev: async compile routes concrete visuals to SVG assets with metaph
       { title: "Probe Jev Film", maxFootageShots: 0 },
       { apiKey: "test-key" },
     );
-    assert.equal(result.svgAssets.length, 1);
-    assert.equal(result.svgAssets[0].shotId, "beat-01");
-    assert.ok(result.svgAssets[0].visualDirection.includes("rat"));
     const firstShot = result.film.shots[0];
-    assert.equal(firstShot.metaphor, "custom");
+    assert.equal(firstShot.metaphor, undefined, "no half-wired custom SVG metaphor");
+    assert.deepEqual(
+      firstShot.blocks.map((b) => b.c),
+      ["TextReveal"],
+      "a rat visual with no footage must still render its on-screen copy",
+    );
   } finally {
-    clearMockSvgRouteHandler();
     clearMockShotVisualHandler();
   }
 });
 
 test("DesignJev: async compile uses model shot-visual choice for device blocks", async () => {
   setMockShotVisualHandler(async () => ({ choice: "Plot", confidence: 0.9, probabilities: { Plot: 0.9 } }));
-  setMockSvgRouteHandler(async () => ({ choice: "standard-blocks", confidence: 0.9, probabilities: { "standard-blocks": 0.9 } }));
   try {
     const { segments, shotDurations } = spine([6, 8, 7]);
     const result = await compileFilmFromScreenplayAsync(
@@ -130,13 +120,11 @@ test("DesignJev: async compile uses model shot-visual choice for device blocks",
     assert.ok(withPlot.length > 0, "model Plot choice must author Plot blocks");
   } finally {
     clearMockShotVisualHandler();
-    clearMockSvgRouteHandler();
   }
 });
 
 test("DesignJev: async compile keeps visual directions off screen copy", async () => {
   clearMockShotVisualHandler();
-  clearMockSvgRouteHandler();
   const { segments, shotDurations } = spine([6, 8, 7]);
   const result = await compileFilmFromScreenplayAsync(
     SCRIPT,
@@ -174,21 +162,12 @@ const FOOTAGE_SCRIPT = `## 0:00 - The Rat
 [NARRATION] It reads text as a strip of tokens.
 `;
 
-test("DesignJev: async compile keeps footage beats around a StatCounter or SVG beat schema-valid", async () => {
+test("DesignJev: async compile keeps footage beats around a StatCounter or Text beat schema-valid", async () => {
   const { segments, shotDurations } = spine([4, 4, 4]);
   const between: Array<() => void> = [
-    () => {
-      clearMockShotVisualHandler();
-      clearMockSvgRouteHandler();
-    },
-    () => {
-      setMockShotVisualHandler(async () => ({ choice: "StatCounter", confidence: 0.9, probabilities: { StatCounter: 0.9 } }));
-      setMockSvgRouteHandler(async () => ({ choice: "standard-blocks", confidence: 0.9, probabilities: { "standard-blocks": 0.9 } }));
-    },
-    () => {
-      setMockShotVisualHandler(async () => ({ choice: "Text", confidence: 0.9, probabilities: { Text: 0.9 } }));
-      setMockSvgRouteHandler(async () => ({ choice: "svg-asset", confidence: 0.9, probabilities: { "svg-asset": 0.9 } }));
-    },
+    () => clearMockShotVisualHandler(),
+    () => setMockShotVisualHandler(async () => ({ choice: "StatCounter", confidence: 0.9, probabilities: { StatCounter: 0.9 } })),
+    () => setMockShotVisualHandler(async () => ({ choice: "Text", confidence: 0.9, probabilities: { Text: 0.9 } })),
   ];
   try {
     for (const [i, arrange] of between.entries()) {
@@ -206,6 +185,5 @@ test("DesignJev: async compile keeps footage beats around a StatCounter or SVG b
     }
   } finally {
     clearMockShotVisualHandler();
-    clearMockSvgRouteHandler();
   }
 });
