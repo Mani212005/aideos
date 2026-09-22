@@ -1,7 +1,8 @@
 /**
- * File Description: TypeSafe Jev decision model client for screenplay primitive selection.
- * Implements the CHOICE primitive over the 7 animated primitives with confidence gating,
- * safe-primitive fallback, and fast deterministic heuristic fallback.
+ * File Description: TypeSafe Jev decision model client for screenplay visual selection.
+ * Implements CHOICE over the 7 animated primitives, shot-level visual strategies, SVG-route
+ * decisions, and vision-judge verdicts, each with confidence gating, safe fallback, and fast
+ * deterministic heuristic fallback over one shared decision client.
  */
 
 /** The 7 animated primitives in the design system closed set. */
@@ -490,6 +491,808 @@ export async function selectPrimitive(
     const fallback = heuristicPrimitiveSelection(state);
     return {
       primitive: fallback,
+      source: "heuristic-fallback",
+      fallbackReason: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/** Closed set of shot-level visual strategies the compile path can render as schema-valid blocks. */
+export const SHOT_VISUALS = [
+  "Text",
+  "StatCounter",
+  "TokenStrip",
+  "Plot",
+  "MatrixGrid",
+  "Distribution",
+  "LayerStack",
+  "ScaleBar",
+] as const;
+
+export type ShotVisual = (typeof SHOT_VISUALS)[number];
+
+/** Device visuals that demand higher confidence because they assert data the narration must carry. */
+export const SHOT_COMPLEX_VISUALS: readonly ShotVisual[] = [
+  "StatCounter",
+  "TokenStrip",
+  "Plot",
+  "MatrixGrid",
+  "Distribution",
+  "LayerStack",
+  "ScaleBar",
+] as const;
+
+/** Closed set for SVG routing: standard blocks or a synthesized SVG asset with clip tracks. */
+export const SVG_ROUTES = ["standard-blocks", "svg-asset"] as const;
+
+export type SvgRoute = (typeof SVG_ROUTES)[number];
+
+/** Closed verdict set for the vision judge over a rendered still. */
+export const VISION_VERDICTS = ["pass", "fail"] as const;
+
+export type VisionVerdict = (typeof VISION_VERDICTS)[number];
+
+/** Rubric criteria for each shot-level visual strategy passed to the Jev CHOICE question. */
+export const SHOT_VISUAL_CRITERIA: Record<ShotVisual, string> = {
+  Text: "Headline plus supporting body copy for narrative beats with no chartable data.",
+  StatCounter: "Large animated number for metrics, percentages, multipliers, or benchmark gains.",
+  TokenStrip: "Token sequence strip for parallel decoding, batches, streams, or sequences.",
+  Plot: "Single-line growth curve for scaling, throughput, loss, accuracy, or curves.",
+  MatrixGrid: "Grid heatmap for matrices, weights, tensors, attention maps, or tables.",
+  Distribution: "Probability breakdown for distributions, proportions, splits, or shares.",
+  LayerStack: "Layered stack for layers, hierarchies, pipelines, stages, or deep networks.",
+  ScaleBar: "Threshold slider for trade-offs, spectrums, ranges, bounds, or temperature.",
+};
+
+/** Rubric criteria for the SVG-route decision passed to the Jev CHOICE question. */
+export const SVG_ROUTE_CRITERIA: Record<SvgRoute, string> = {
+  "standard-blocks": "Standard TextReveal/Body/device blocks already cover the beat.",
+  "svg-asset": "A bespoke SVG scene asset is needed: the visual direction names a concrete object, character, animal, diagram, or spatial arrangement no standard block can draw.",
+};
+
+/** State evaluated by Jev for shot-level visual choice. */
+export interface ShotVisualState {
+  visual?: string;
+  narration?: string;
+  onscreen?: string[];
+  activeVisuals?: string[];
+  sceneTitle?: string;
+  durationSec?: number;
+  wantsFootage?: boolean;
+}
+
+/** State evaluated by Jev for SVG-route choice. */
+export interface SvgRouteState {
+  visual?: string;
+  narration?: string;
+  onscreen?: string[];
+  sceneTitle?: string;
+  durationSec?: number;
+  wantsFootage?: boolean;
+}
+
+/** Input to the vision judge: a rendered still plus the intent it must match. */
+export interface VisionJudgeInput {
+  pngBase64: string;
+  intent: string;
+  shotId?: string;
+  clipIds?: string[];
+  assetIds?: string[];
+}
+
+/** Parsed shot-visual choice answer from the Jev decision evaluation. */
+export interface ShotVisualAnswer {
+  choice: ShotVisual;
+  confidence: number;
+  probabilities: Record<string, number>;
+}
+
+/** Parsed SVG-route choice answer from the Jev decision evaluation. */
+export interface SvgRouteAnswer {
+  choice: SvgRoute;
+  confidence: number;
+  probabilities: Record<string, number>;
+}
+
+/** Final shot-visual selection result with provenance and fallback tracking. */
+export interface ShotVisualResult {
+  visual: ShotVisual;
+  source: "jev" | "confidence-fallback" | "heuristic-fallback";
+  confidence?: number;
+  probabilities?: Record<string, number>;
+  rawChoice?: string;
+  fallbackReason?: string;
+}
+
+/** Final SVG-route selection result with provenance and fallback tracking. */
+export interface SvgRouteResult {
+  route: SvgRoute;
+  source: "jev" | "confidence-fallback" | "heuristic-fallback";
+  confidence?: number;
+  probabilities?: Record<string, number>;
+  rawChoice?: string;
+  fallbackReason?: string;
+}
+
+/** Vision judge outcome: a look-alike score plus failure reasons fed back to repair. */
+export interface VisionJudgeResult {
+  score: number;
+  pass: boolean;
+  reasons: string[];
+  source: "jev" | "heuristic-fallback";
+  confidence?: number;
+  fallbackReason?: string;
+}
+
+// Global injectable mock handlers for shot-visual, SVG-route, and vision decisions in tests.
+let activeShotVisualMockHandler:
+  | ((state: ShotVisualState) => Promise<ShotVisualAnswer | null> | ShotVisualAnswer | null)
+  | null = null;
+let activeSvgRouteMockHandler:
+  | ((state: SvgRouteState) => Promise<SvgRouteAnswer | null> | SvgRouteAnswer | null)
+  | null = null;
+let activeVisionMockHandler:
+  | ((input: VisionJudgeInput) => Promise<VisionJudgeResult | null> | VisionJudgeResult | null)
+  | null = null;
+
+// Sets a mock handler for shot-visual decisions in tests.
+export function setMockShotVisualHandler(handler: typeof activeShotVisualMockHandler): void {
+  activeShotVisualMockHandler = handler;
+}
+
+// Gets the active mock handler for shot-visual decisions.
+export function getMockShotVisualHandler(): typeof activeShotVisualMockHandler {
+  return activeShotVisualMockHandler;
+}
+
+// Clears the active mock handler for shot-visual decisions.
+export function clearMockShotVisualHandler(): void {
+  activeShotVisualMockHandler = null;
+}
+
+// Sets a mock handler for SVG-route decisions in tests.
+export function setMockSvgRouteHandler(handler: typeof activeSvgRouteMockHandler): void {
+  activeSvgRouteMockHandler = handler;
+}
+
+// Gets the active mock handler for SVG-route decisions.
+export function getMockSvgRouteHandler(): typeof activeSvgRouteMockHandler {
+  return activeSvgRouteMockHandler;
+}
+
+// Clears the active mock handler for SVG-route decisions.
+export function clearMockSvgRouteHandler(): void {
+  activeSvgRouteMockHandler = null;
+}
+
+// Sets a mock handler for vision-judge decisions in tests.
+export function setMockVisionHandler(handler: typeof activeVisionMockHandler): void {
+  activeVisionMockHandler = handler;
+}
+
+// Gets the active mock handler for vision-judge decisions.
+export function getMockVisionHandler(): typeof activeVisionMockHandler {
+  return activeVisionMockHandler;
+}
+
+// Clears the active mock handler for vision-judge decisions.
+export function clearMockVisionHandler(): void {
+  activeVisionMockHandler = null;
+}
+
+// Posts one decision payload to the Jev endpoint with timeout handling (single shared client).
+async function postJevRequest(
+  payload: Record<string, unknown>,
+  options?: JevDecisionOptions,
+): Promise<unknown> {
+  const apiKey = options?.apiKey ?? getJevApiKey();
+  if (!apiKey) {
+    throw new Error("No Jev API key provided or found in environment");
+  }
+  const endpoint = options?.endpoint ?? getJevEndpoint(apiKey);
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_JEV_TIMEOUT_MS;
+  const fetcher = options?.fetchFn ?? fetch;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetcher(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      throw new Error(`Jev decision endpoint returned HTTP ${response.status}: ${errText}`);
+    }
+    return (await response.json()) as unknown;
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Jev decision timed out after ${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Builds the request payload for a shot-level visual strategy CHOICE question.
+export function buildShotVisualRequest(
+  state: ShotVisualState,
+  model: string = DEFAULT_JEV_MODEL,
+): Record<string, unknown> {
+  return {
+    model,
+    state: {
+      visual: state.visual || "",
+      narration: state.narration || "",
+      onscreen: state.onscreen || [],
+      activeVisuals: state.activeVisuals || [],
+      ...(state.sceneTitle ? { sceneTitle: state.sceneTitle } : {}),
+      ...(typeof state.durationSec === "number" ? { durationSec: state.durationSec } : {}),
+      ...(typeof state.wantsFootage === "boolean" ? { wantsFootage: state.wantsFootage } : {}),
+    },
+    questions: {
+      shotVisual: {
+        type: "choice",
+        instructions:
+          "Select the single shot-level visual strategy whose blocks can be authored against the film schema for this beat. Prefer Text when the narration carries no chartable data.",
+        criteria: SHOT_VISUAL_CRITERIA,
+      },
+    },
+  };
+}
+
+// Builds the request payload for an SVG-route CHOICE question.
+export function buildSvgRouteRequest(
+  state: SvgRouteState,
+  model: string = DEFAULT_JEV_MODEL,
+): Record<string, unknown> {
+  return {
+    model,
+    state: {
+      visual: state.visual || "",
+      narration: state.narration || "",
+      onscreen: state.onscreen || [],
+      ...(state.sceneTitle ? { sceneTitle: state.sceneTitle } : {}),
+      ...(typeof state.durationSec === "number" ? { durationSec: state.durationSec } : {}),
+      ...(typeof state.wantsFootage === "boolean" ? { wantsFootage: state.wantsFootage } : {}),
+    },
+    questions: {
+      svgRoute: {
+        type: "choice",
+        instructions:
+          "Decide whether this beat needs a bespoke SVG scene asset. Choose svg-asset only when the visual direction names a concrete object, character, animal, diagram, or spatial arrangement that standard blocks cannot draw and no footage covers it.",
+        criteria: SVG_ROUTE_CRITERIA,
+      },
+    },
+  };
+}
+
+// Builds the request payload for a vision-judge verdict over a rendered still.
+export function buildVisionJudgeRequest(
+  input: VisionJudgeInput,
+  model: string = DEFAULT_JEV_MODEL,
+): Record<string, unknown> {
+  return {
+    model,
+    state: {
+      intent: input.intent,
+      ...(input.shotId ? { shotId: input.shotId } : {}),
+      clipIds: input.clipIds || [],
+      assetIds: input.assetIds || [],
+      imageBase64: input.pngBase64.slice(0, 4000),
+      imageTruncated: input.pngBase64.length > 4000,
+    },
+    questions: {
+      verdict: {
+        type: "choice",
+        instructions:
+          "Judge whether the rendered still matches the intent description. Choose pass only when the depicted subject, arrangement, and key elements match the intent. Return confidence as the look-alike score from 0 to 1.",
+        criteria: {
+          pass: "The still depicts the intent: subject, arrangement, and key elements match.",
+          fail: "The still does not depict the intent: wrong subject, missing elements, or unreadable layout.",
+        },
+      },
+    },
+    attachments: [
+      {
+        kind: "rendered-still-png-base64",
+        mediaType: "image/png",
+        dataBase64: input.pngBase64,
+      },
+    ],
+  };
+}
+
+// Normalizes a raw string candidate to a canonical ShotVisual if valid.
+function normalizeShotVisualName(raw: string): ShotVisual | null {
+  const clean = raw.trim().toLowerCase().replace(/[^a-z]/g, "");
+  for (const v of SHOT_VISUALS) {
+    if (v.toLowerCase() === clean) {
+      return v;
+    }
+  }
+  return null;
+}
+
+// Normalizes a raw string candidate to a canonical SvgRoute if valid.
+function normalizeSvgRouteName(raw: string): SvgRoute | null {
+  const clean = raw.trim().toLowerCase().replace(/[^a-z]/g, "");
+  if (clean === "standardblocks") return "standard-blocks";
+  if (clean === "svgasset") return "svg-asset";
+  for (const r of SVG_ROUTES) {
+    if (r.replace(/[^a-z]/g, "") === clean) {
+      return r;
+    }
+  }
+  return null;
+}
+
+// Normalizes a raw string candidate to a canonical VisionVerdict if valid.
+function normalizeVisionVerdict(raw: string): VisionVerdict | null {
+  const clean = raw.trim().toLowerCase();
+  if (clean === "pass") return "pass";
+  if (clean === "fail") return "fail";
+  return null;
+}
+
+// Extracts a generic CHOICE answer (choice + confidence + probabilities) for one question key.
+function parseChoiceAnswer(val: unknown, questionKey: string, normalize: (raw: string) => string | null): { choice: string; confidence: number; probabilities: Record<string, number> } {
+  if (!val || typeof val !== "object") {
+    throw new Error("Invalid Jev response: expected JSON object");
+  }
+  const obj = val as Record<string, unknown>;
+  if (obj.error && typeof obj.error === "object") {
+    const errObj = obj.error as Record<string, unknown>;
+    const msg = typeof errObj.message === "string" ? errObj.message : JSON.stringify(errObj);
+    throw new Error(`Jev API error: ${msg}`);
+  }
+  const answersContainer =
+    (obj.answers && typeof obj.answers === "object" ? (obj.answers as Record<string, unknown>) : null) ||
+    (obj.decisions && typeof obj.decisions === "object" ? (obj.decisions as Record<string, unknown>) : null) ||
+    obj;
+  const data = answersContainer[questionKey];
+  if (!data) {
+    throw new Error(`Jev response missing '${questionKey}' question in answers`);
+  }
+  let rawChoice = "";
+  let confidence = 0.5;
+  const probabilities: Record<string, number> = {};
+  if (typeof data === "string") {
+    rawChoice = data;
+  } else if (typeof data === "object" && data !== null) {
+    const pObj = data as Record<string, unknown>;
+    if (typeof pObj.choice === "string") {
+      rawChoice = pObj.choice;
+    } else if (typeof pObj.value === "string") {
+      rawChoice = pObj.value;
+    } else if (typeof pObj.verdict === "string") {
+      rawChoice = pObj.verdict;
+    }
+    if (typeof pObj.confidence === "number" && !Number.isNaN(pObj.confidence)) {
+      confidence = Math.max(0, Math.min(1, pObj.confidence));
+    } else if (typeof pObj.score === "number" && !Number.isNaN(pObj.score)) {
+      confidence = Math.max(0, Math.min(1, pObj.score));
+    }
+    if (pObj.probabilities && typeof pObj.probabilities === "object") {
+      const probMap = pObj.probabilities as Record<string, unknown>;
+      for (const [k, v] of Object.entries(probMap)) {
+        if (typeof v === "number" && !Number.isNaN(v)) {
+          probabilities[k] = v;
+        }
+      }
+    }
+  }
+  const canonical = normalize(rawChoice);
+  if (!canonical) {
+    throw new Error(`Jev returned unknown ${questionKey} choice: "${rawChoice}"`);
+  }
+  if (Object.keys(probabilities).length === 0) {
+    probabilities[canonical] = confidence;
+  }
+  return { choice: canonical, confidence, probabilities };
+}
+
+// Parses the JSON response for a shot-visual CHOICE into a typed answer.
+export function parseShotVisualResponse(val: unknown): ShotVisualAnswer {
+  const parsed = parseChoiceAnswer(val, "shotVisual", (raw) => normalizeShotVisualName(raw));
+  const choice = normalizeShotVisualName(parsed.choice);
+  if (!choice) {
+    throw new Error(`Jev returned unknown shotVisual choice: "${parsed.choice}"`);
+  }
+  return { choice, confidence: parsed.confidence, probabilities: parsed.probabilities };
+}
+
+// Parses the JSON response for an SVG-route CHOICE into a typed answer.
+export function parseSvgRouteResponse(val: unknown): SvgRouteAnswer {
+  const parsed = parseChoiceAnswer(val, "svgRoute", (raw) => normalizeSvgRouteName(raw));
+  const choice = normalizeSvgRouteName(parsed.choice);
+  if (!choice) {
+    throw new Error(`Jev returned unknown svgRoute choice: "${parsed.choice}"`);
+  }
+  return { choice, confidence: parsed.confidence, probabilities: parsed.probabilities };
+}
+
+// Parses the JSON response for a vision-judge verdict into a score plus failure reasons.
+export function parseVisionJudgeResponse(val: unknown, fallbackIntent?: string): VisionJudgeResult {
+  if (!val || typeof val !== "object") {
+    throw new Error("Invalid Jev response: expected JSON object");
+  }
+  const obj = val as Record<string, unknown>;
+  if (obj.error && typeof obj.error === "object") {
+    const errObj = obj.error as Record<string, unknown>;
+    const msg = typeof errObj.message === "string" ? errObj.message : JSON.stringify(errObj);
+    throw new Error(`Jev API error: ${msg}`);
+  }
+  const answersContainer =
+    (obj.answers && typeof obj.answers === "object" ? (obj.answers as Record<string, unknown>) : null) ||
+    (obj.decisions && typeof obj.decisions === "object" ? (obj.decisions as Record<string, unknown>) : null) ||
+    obj;
+  const data = answersContainer.verdict ?? answersContainer.likeness ?? answersContainer.judge;
+  if (!data) {
+    throw new Error("Jev response missing 'verdict' question in answers");
+  }
+  let rawVerdict = "";
+  let score = 0.5;
+  let reasons: string[] = [];
+  let probabilities: Record<string, number> | undefined;
+  if (typeof data === "string") {
+    rawVerdict = data;
+  } else if (typeof data === "object" && data !== null) {
+    const pObj = data as Record<string, unknown>;
+    if (typeof pObj.choice === "string") rawVerdict = pObj.choice;
+    else if (typeof pObj.value === "string") rawVerdict = pObj.value;
+    else if (typeof pObj.verdict === "string") rawVerdict = pObj.verdict;
+    if (typeof pObj.score === "number" && !Number.isNaN(pObj.score)) {
+      score = Math.max(0, Math.min(1, pObj.score));
+    } else if (typeof pObj.confidence === "number" && !Number.isNaN(pObj.confidence)) {
+      score = Math.max(0, Math.min(1, pObj.confidence));
+    }
+    if (Array.isArray(pObj.reasons)) {
+      reasons = pObj.reasons.filter((r): r is string => typeof r === "string").slice(0, 8);
+    } else if (Array.isArray(pObj.failures)) {
+      reasons = pObj.failures.filter((r): r is string => typeof r === "string").slice(0, 8);
+    } else if (typeof pObj.reason === "string") {
+      reasons = [pObj.reason];
+    }
+    if (pObj.probabilities && typeof pObj.probabilities === "object") {
+      probabilities = {};
+      for (const [k, v] of Object.entries(pObj.probabilities as Record<string, unknown>)) {
+        if (typeof v === "number" && !Number.isNaN(v)) probabilities[k] = v;
+      }
+    }
+  }
+  const verdict = normalizeVisionVerdict(rawVerdict);
+  if (!verdict) {
+    throw new Error(`Jev returned unknown verdict choice: "${rawVerdict}"`);
+  }
+  const pass = verdict === "pass";
+  if (reasons.length === 0 && !pass) {
+    reasons = [`Still does not match intent${fallbackIntent ? `: ${fallbackIntent.slice(0, 120)}` : ""}`];
+  }
+  return { score, pass, reasons, source: "jev", confidence: score, ...(probabilities ? {} : {}) };
+}
+
+// Selects a shot-level visual deterministically using fast heuristic rules.
+export function heuristicShotVisualSelection(state: ShotVisualState): ShotVisual {
+  const parts: string[] = [];
+  if (state.visual) parts.push(state.visual);
+  if (state.narration) parts.push(state.narration);
+  if (state.onscreen && state.onscreen.length > 0) parts.push(...state.onscreen);
+  const combined = parts.join(" ").toLowerCase();
+  const lowerNarration = (state.narration || "").toLowerCase();
+  const last = (state.activeVisuals || []).slice(-1)[0];
+  const candidates: ShotVisual[] = [];
+  const quantityLike =
+    /\b\d+(?:\.\d+)?\s*(?:%|percent\b|x\b|times\b|ms\b|fps\b|gb\b|mb\b|tb\b|k\b|m\b|b\b|billion\b|million\b|trillion\b)/i.test(combined) ||
+    /\b(two|three|four|five|ten|twenty|fifty|hundred)\s*(?:to\s+\w+\s*)?times\b/i.test(combined);
+  if (quantityLike) candidates.push("StatCounter");
+  if (/\b(in parallel|at once|all five|batch of them|single forward pass|tokens?|sequence|stream)\b/.test(lowerNarration)) {
+    candidates.push("TokenStrip");
+  }
+  if (/\b(scales?|scaling|grows?|throughput|linear|quadratic|loss|accuracy|curve)\b/.test(lowerNarration)) {
+    candidates.push("Plot");
+  }
+  if (/\b(matrix|weights?|tensor|grid|attention map|embedding space|heat\s*map|table)\b/.test(lowerNarration)) {
+    candidates.push("MatrixGrid");
+  }
+  if (/\b(distribution|probability|proportions?|breakdown|fraction|shares?|split)\b/.test(lowerNarration)) {
+    candidates.push("Distribution");
+  }
+  if (/\b(layers?|stack|tier|hierarchy|pipeline|stages?|deep network|blocks?)\b/.test(lowerNarration)) {
+    candidates.push("LayerStack");
+  }
+  if (/\b(threshold|trade-off|tradeoff|spectrum|slider|range|bounds?|limits?|temperature)\b/.test(lowerNarration)) {
+    candidates.push("ScaleBar");
+  }
+  if ((state.onscreen || []).length === 0 && candidates.length === 0) return "Text";
+  const eligible = candidates.filter((c) => c !== last);
+  if (eligible.length > 0) return eligible[0];
+  if (candidates.length > 0 && candidates[0] !== last) return candidates[0];
+  return "Text";
+}
+
+// Selects an SVG route deterministically: concrete visual scenes with no footage go to SVG.
+export function heuristicSvgRouteSelection(state: SvgRouteState): SvgRoute {
+  if (state.wantsFootage) return "standard-blocks";
+  const visual = (state.visual || "").toLowerCase();
+  if (!visual) return "standard-blocks";
+  if (/\b(b-?roll|footage|live action|generated video|cinematic plate)\b/i.test(visual)) {
+    return "standard-blocks";
+  }
+  const concrete =
+    /\b(diagram|illustration|character|animal|rat|mouse|robot|astronaut|map|network|graph|object|device|machine|room|city|landscape|scene|depict|show|arrangement|spatial|cluster|orbit|planet|star)\b/i.test(visual);
+  if (concrete && visual.length >= 24) return "svg-asset";
+  return "standard-blocks";
+}
+
+// Heuristic vision judgement used when the judge is unavailable: pass through without blocking.
+export function heuristicVisionJudgement(input: VisionJudgeInput): VisionJudgeResult {
+  void input;
+  return {
+    score: 0.5,
+    pass: true,
+    reasons: [],
+    source: "heuristic-fallback",
+    fallbackReason: "No Jev API key configured for vision judge; passing through",
+  };
+}
+
+// Evaluates a shot-visual choice against confidence thresholds and falls back safely.
+export function applyShotVisualGating(
+  answer: ShotVisualAnswer,
+  state: ShotVisualState,
+  options?: { complexThreshold?: number; minThreshold?: number },
+): ShotVisualResult {
+  const complexThreshold = options?.complexThreshold ?? DEFAULT_COMPLEX_CONFIDENCE_THRESHOLD;
+  const minThreshold = options?.minThreshold ?? DEFAULT_MIN_CONFIDENCE_THRESHOLD;
+  const isComplex = (SHOT_COMPLEX_VISUALS as readonly string[]).includes(answer.choice);
+  if (isComplex && answer.confidence < complexThreshold) {
+    return {
+      visual: "Text",
+      source: "confidence-fallback",
+      confidence: answer.confidence,
+      probabilities: answer.probabilities,
+      rawChoice: answer.choice,
+      fallbackReason: `Low confidence (${answer.confidence.toFixed(2)} < ${complexThreshold}) for device visual ${answer.choice}; safely fell back to Text`,
+    };
+  }
+  if (answer.confidence < minThreshold) {
+    const heuristicChoice = heuristicShotVisualSelection(state);
+    return {
+      visual: heuristicChoice,
+      source: "confidence-fallback",
+      confidence: answer.confidence,
+      probabilities: answer.probabilities,
+      rawChoice: answer.choice,
+      fallbackReason: `Confidence (${answer.confidence.toFixed(2)} < ${minThreshold}) below minimum threshold; fell back to heuristic`,
+    };
+  }
+  return {
+    visual: answer.choice,
+    source: "jev",
+    confidence: answer.confidence,
+    probabilities: answer.probabilities,
+    rawChoice: answer.choice,
+  };
+}
+
+// Evaluates an SVG-route choice against confidence thresholds and falls back safely.
+export function applySvgRouteGating(
+  answer: SvgRouteAnswer,
+  state: SvgRouteState,
+  options?: { complexThreshold?: number; minThreshold?: number },
+): SvgRouteResult {
+  const complexThreshold = options?.complexThreshold ?? DEFAULT_COMPLEX_CONFIDENCE_THRESHOLD;
+  const minThreshold = options?.minThreshold ?? DEFAULT_MIN_CONFIDENCE_THRESHOLD;
+  if (answer.choice === "svg-asset" && answer.confidence < complexThreshold) {
+    return {
+      route: "standard-blocks",
+      source: "confidence-fallback",
+      confidence: answer.confidence,
+      probabilities: answer.probabilities,
+      rawChoice: answer.choice,
+      fallbackReason: `Low confidence (${answer.confidence.toFixed(2)} < ${complexThreshold}) for svg-asset; safely fell back to standard-blocks`,
+    };
+  }
+  if (answer.confidence < minThreshold) {
+    const heuristicChoice = heuristicSvgRouteSelection(state);
+    return {
+      route: heuristicChoice,
+      source: "confidence-fallback",
+      confidence: answer.confidence,
+      probabilities: answer.probabilities,
+      rawChoice: answer.choice,
+      fallbackReason: `Confidence (${answer.confidence.toFixed(2)} < ${minThreshold}) below minimum threshold; fell back to heuristic`,
+    };
+  }
+  return {
+    route: answer.choice,
+    source: "jev",
+    confidence: answer.confidence,
+    probabilities: answer.probabilities,
+    rawChoice: answer.choice,
+  };
+}
+
+// Evaluates a vision verdict against the minimum threshold, passing through when unsure.
+export function applyVisionGating(
+  result: VisionJudgeResult,
+  input: VisionJudgeInput,
+  options?: { minThreshold?: number },
+): VisionJudgeResult {
+  const minThreshold = options?.minThreshold ?? DEFAULT_MIN_CONFIDENCE_THRESHOLD;
+  const confidence = result.confidence ?? result.score;
+  if (confidence < minThreshold) {
+    const heuristic = heuristicVisionJudgement(input);
+    return {
+      ...heuristic,
+      fallbackReason: `Vision confidence (${confidence.toFixed(2)} < ${minThreshold}) below minimum; passing through`,
+    };
+  }
+  return result;
+}
+
+// Executes one shared-client call for a shot-visual CHOICE question.
+export async function decideShotVisualWithModel(
+  state: ShotVisualState,
+  options?: JevDecisionOptions,
+): Promise<ShotVisualAnswer> {
+  const model = options?.model ?? getJevModel(options?.endpoint ?? getJevEndpoint(options?.apiKey));
+  const payload = buildShotVisualRequest(state, model);
+  const json = await postJevRequest(payload, options);
+  return parseShotVisualResponse(json);
+}
+
+// Executes one shared-client call for an SVG-route CHOICE question.
+export async function decideSvgRouteWithModel(
+  state: SvgRouteState,
+  options?: JevDecisionOptions,
+): Promise<SvgRouteAnswer> {
+  const model = options?.model ?? getJevModel(options?.endpoint ?? getJevEndpoint(options?.apiKey));
+  const payload = buildSvgRouteRequest(state, model);
+  const json = await postJevRequest(payload, options);
+  return parseSvgRouteResponse(json);
+}
+
+// Executes one shared-client call for a vision-judge verdict over a rendered still.
+export async function judgeVisionWithModel(
+  input: VisionJudgeInput,
+  options?: JevDecisionOptions,
+): Promise<VisionJudgeResult> {
+  if (!input.pngBase64 || input.pngBase64.length < 16) {
+    throw new Error("Vision judge needs a rendered PNG base64 still, not empty input");
+  }
+  if (!input.intent || !input.intent.trim()) {
+    throw new Error("Vision judge needs an intent description to judge the still against");
+  }
+  const model = options?.model ?? getJevModel(options?.endpoint ?? getJevEndpoint(options?.apiKey));
+  const payload = buildVisionJudgeRequest(input, model);
+  const json = await postJevRequest(payload, options);
+  const parsed = parseVisionJudgeResponse(json, input.intent);
+  return applyVisionGating(parsed, input, options);
+}
+
+// Top-level entry point that selects the shot-level visual strategy for one beat.
+export async function selectShotVisual(
+  state: ShotVisualState,
+  options?: JevDecisionOptions,
+): Promise<ShotVisualResult> {
+  if (activeShotVisualMockHandler) {
+    try {
+      const mockAnswer = await activeShotVisualMockHandler(state);
+      if (mockAnswer) {
+        return applyShotVisualGating(mockAnswer, state, options);
+      }
+    } catch (mockErr: unknown) {
+      const fallback = heuristicShotVisualSelection(state);
+      return {
+        visual: fallback,
+        source: "heuristic-fallback",
+        fallbackReason: `Mock handler error: ${mockErr instanceof Error ? mockErr.message : String(mockErr)}`,
+      };
+    }
+  }
+  const apiKey = options?.apiKey ?? getJevApiKey();
+  if (!apiKey) {
+    const fallback = heuristicShotVisualSelection(state);
+    return {
+      visual: fallback,
+      source: "heuristic-fallback",
+      fallbackReason: "No Jev API key configured in environment",
+    };
+  }
+  try {
+    const answer = await decideShotVisualWithModel(state, options);
+    return applyShotVisualGating(answer, state, options);
+  } catch (err: unknown) {
+    const fallback = heuristicShotVisualSelection(state);
+    return {
+      visual: fallback,
+      source: "heuristic-fallback",
+      fallbackReason: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+// Top-level entry point that decides whether one beat routes to SVG asset synthesis.
+export async function selectSvgRoute(
+  state: SvgRouteState,
+  options?: JevDecisionOptions,
+): Promise<SvgRouteResult> {
+  if (activeSvgRouteMockHandler) {
+    try {
+      const mockAnswer = await activeSvgRouteMockHandler(state);
+      if (mockAnswer) {
+        return applySvgRouteGating(mockAnswer, state, options);
+      }
+    } catch (mockErr: unknown) {
+      const fallback = heuristicSvgRouteSelection(state);
+      return {
+        route: fallback,
+        source: "heuristic-fallback",
+        fallbackReason: `Mock handler error: ${mockErr instanceof Error ? mockErr.message : String(mockErr)}`,
+      };
+    }
+  }
+  const apiKey = options?.apiKey ?? getJevApiKey();
+  if (!apiKey) {
+    const fallback = heuristicSvgRouteSelection(state);
+    return {
+      route: fallback,
+      source: "heuristic-fallback",
+      fallbackReason: "No Jev API key configured in environment",
+    };
+  }
+  try {
+    const answer = await decideSvgRouteWithModel(state, options);
+    return applySvgRouteGating(answer, state, options);
+  } catch (err: unknown) {
+    const fallback = heuristicSvgRouteSelection(state);
+    return {
+      route: fallback,
+      source: "heuristic-fallback",
+      fallbackReason: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+// Top-level entry point that judges a rendered still against its intent description.
+export async function judgeVisionStill(
+  input: VisionJudgeInput,
+  options?: JevDecisionOptions,
+): Promise<VisionJudgeResult> {
+  if (activeVisionMockHandler) {
+    try {
+      const mocked = await activeVisionMockHandler(input);
+      if (mocked) {
+        return applyVisionGating(mocked, input, options);
+      }
+    } catch (mockErr: unknown) {
+      return {
+        score: 0.5,
+        pass: true,
+        reasons: [],
+        source: "heuristic-fallback",
+        fallbackReason: `Mock handler error: ${mockErr instanceof Error ? mockErr.message : String(mockErr)}`,
+      };
+    }
+  }
+  const apiKey = options?.apiKey ?? getJevApiKey();
+  if (!apiKey) {
+    return heuristicVisionJudgement(input);
+  }
+  try {
+    return await judgeVisionWithModel(input, options);
+  } catch (err: unknown) {
+    return {
+      score: 0.5,
+      pass: true,
+      reasons: [],
       source: "heuristic-fallback",
       fallbackReason: err instanceof Error ? err.message : String(err),
     };

@@ -8,14 +8,25 @@
  * Shots map one-to-one onto narration beats on purpose: that is the only mapping under which a
  * shot's screen time can be its narration's measured duration, which is what keeps picture and
  * voice locked together instead of merely close.
+ *
+ * The async compile path selects each beat's visual strategy and SVG route through the shared
+ * Jev decision client (backend/jev.ts), then authors blocks validated against the film schema.
  */
 
 import type { Block, CanvasEdge, CanvasNode, Film, Shot } from "../../src/dl/schema";
-import { parseFilm } from "../../src/dl/schema";
+import { blockSchema, parseFilm } from "../../src/dl/schema";
 import { parseClaudeScript, type ScriptSegment } from "../scriptIntake";
 import { generateRelationshipAwareCanvas, type ConceptEntity } from "../ideation/graphLayout";
 import type { SegmentAudioInfo } from "../audio";
 import { slugify } from "./filmStore";
+import {
+  selectShotVisual,
+  selectSvgRoute,
+  type JevDecisionOptions,
+  type ShotVisual,
+  type ShotVisualResult,
+  type SvgRouteResult,
+} from "../jev";
 
 /** One narration beat with the visual and on-screen directions that surround it. */
 export interface NarrationBeat {
@@ -313,6 +324,23 @@ export interface FootageRequest {
 export interface DesignResult {
   film: Film;
   footage: FootageRequest[];
+  /** Beats routed to bespoke SVG asset synthesis (Phase 2). Absent on the sync path. */
+  svgAssets?: SvgAssetRequest[];
+}
+
+/** One beat routed to bespoke SVG asset synthesis with its clip-track target. */
+export interface SvgAssetRequest {
+  shotId: string;
+  assetName: string;
+  visualDirection: string;
+  narration?: string;
+}
+
+/** What the async Jev-driven compile produces beyond the sync film and footage. */
+export interface AsyncDesignResult extends DesignResult {
+  svgAssets: SvgAssetRequest[];
+  shotVisuals: Map<string, ShotVisualResult>;
+  svgRoutes: Map<string, SvgRouteResult>;
 }
 
 /**
@@ -637,4 +665,376 @@ export function compileFilmFromScreenplay(
   });
 
   return { film, footage };
+}
+
+// Builds schema-valid blocks for one Jev-chosen shot visual strategy.
+export function buildBlocksForShotVisual(
+  visual: ShotVisual,
+  narration: string,
+  onscreen: string[],
+): Block[] {
+  const candidates: Block[] = [];
+  if (visual === "Text") {
+    return buildTextBlocks(onscreen);
+  }
+  const headline = onscreen[0] ? fitText(onscreen[0], 90) : "";
+  if (headline) {
+    const accentWord = pickAccentWord(headline);
+    candidates.push({
+      c: "TextReveal",
+      text: headline,
+      size: headline.length <= 34 ? "display" : "headline",
+      ...(accentWord ? { accentWord } : {}),
+    });
+  }
+  const device = chooseDevice(narration, onscreen, null);
+  let chosen: Block | null = null;
+  if (device && device.kind.toLowerCase() === visual.toLowerCase()) {
+    chosen = device.block;
+  } else {
+    const byKind = chooseDeviceForVisual(visual, narration, onscreen);
+    if (byKind) chosen = byKind;
+  }
+  if (chosen) candidates.push(chosen);
+  if (candidates.length === 0) {
+    return buildTextBlocks(onscreen);
+  }
+  const valid: Block[] = [];
+  for (const block of candidates.slice(0, 2)) {
+    const parsed = blockSchema.safeParse(block);
+    if (parsed.success) valid.push(parsed.data);
+  }
+  if (valid.length === 0) {
+    return buildTextBlocks(onscreen);
+  }
+  return valid;
+}
+
+// Builds one device block for an explicit visual strategy without regex re-matching.
+function chooseDeviceForVisual(visual: ShotVisual, narration: string, onscreen: string[]): Block | null {
+  const quantity = readQuantity(narration);
+  switch (visual) {
+    case "StatCounter":
+      if (quantity) {
+        return {
+          c: "StatCounter",
+          to: quantity.value,
+          label: fitText(quantity.label, 44),
+          format: quantity.value >= 1000 ? "compact" : "plain",
+          ...(quantity.suffix ? { suffix: quantity.suffix } : {}),
+        };
+      }
+      return {
+        c: "StatCounter",
+        to: 100,
+        label: fitText(onscreen[0] || "Key Metric", 44),
+        format: "plain",
+      };
+    case "TokenStrip":
+      return {
+        c: "TokenStrip",
+        tokens: ["t+1", "t+2", "t+3", "t+4", "t+5"],
+        lit: [0, 1, 2],
+        caption: "Accepted token sequence",
+      };
+    case "Plot":
+      return {
+        c: "Plot",
+        points: [
+          [0, 0.08],
+          [0.25, 0.2],
+          [0.5, 0.38],
+          [0.75, 0.62],
+          [1, 0.92],
+        ],
+        xLabel: "draft length",
+        yLabel: "throughput",
+        endLabel: "accepted",
+      };
+    case "MatrixGrid":
+      return {
+        c: "MatrixGrid",
+        sweep: "cell",
+        rowLabel: "tokens",
+        colLabel: "heads",
+        values: [
+          [0.9, 0.2, 0.1, 0.4],
+          [0.1, 0.85, 0.3, 0.2],
+          [0.3, 0.1, 0.95, 0.1],
+          [0.2, 0.4, 0.1, 0.88],
+        ],
+      };
+    case "Distribution":
+      return {
+        c: "Distribution",
+        items: [
+          { label: "Direct Path", p: 0.62 },
+          { label: "Fallback", p: 0.28 },
+          { label: "Residual", p: 0.1 },
+        ],
+      };
+    case "LayerStack":
+      return {
+        c: "LayerStack",
+        layers: ["Input Layer", "Processing Block x12", "Output Projection"],
+      };
+    case "ScaleBar":
+      return {
+        c: "ScaleBar",
+        ticks: ["Min", "Balanced", "Peak"],
+        value: 0.72,
+        label: "Optimal threshold",
+      };
+    default:
+      return null;
+  }
+}
+
+// Derives a filesystem-safe SVG asset name for one shot.
+function svgAssetNameForShot(shotId: string): string {
+  const clean = shotId.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return clean ? `${clean}-scene` : "scene-asset";
+}
+
+// Compiles a screenplay plus narration spine into a film using Jev shot-visual and SVG-route choice.
+export async function compileFilmFromScreenplayAsync(
+  script: string,
+  narration: SegmentAudioInfo[],
+  shotDurations: number[],
+  options: DesignOptions,
+  jevOptions?: JevDecisionOptions,
+): Promise<AsyncDesignResult> {
+  const sections = parseClaudeScript(script);
+  const beats = flattenScreenplay(sections);
+  if (beats.length !== narration.length) {
+    throw new Error(
+      `screenplay has ${beats.length} narration beat(s) but ${narration.length} were synthesized; ` +
+        "the design stage cannot map shots onto audio that does not correspond to it",
+    );
+  }
+  const slug = options.slug ?? slugify(options.title);
+  const fps = options.fps ?? 30;
+  const maxFootageSec = options.maxFootageSec ?? 8;
+  const maxFootageShots = options.maxFootageShots ?? 4;
+  const MAX_CHAPTERS = 12;
+  const MAX_NODES = 24;
+  const usedSections = [...new Set(beats.map((b) => b.sectionIndex))].sort((a, b) => a - b);
+  let chapterNames: string[];
+  const chapterIndexBySection = new Map<number, number>();
+  if (usedSections.length <= MAX_CHAPTERS) {
+    chapterNames = usedSections.map((sIdx, i) => fitText(sections[sIdx]?.title || `Chapter ${i + 1}`, 30));
+    usedSections.forEach((sIdx, i) => chapterIndexBySection.set(sIdx, i));
+  } else {
+    chapterNames = [];
+    for (let c = 0; c < MAX_CHAPTERS; c++) {
+      const startIdx = Math.floor((c * usedSections.length) / MAX_CHAPTERS);
+      const sIdx = usedSections[startIdx];
+      chapterNames.push(fitText(sections[sIdx]?.title || `Part ${c + 1}`, 30));
+    }
+    usedSections.forEach((sIdx, i) => {
+      const cIdx = Math.min(MAX_CHAPTERS - 1, Math.floor((i * MAX_CHAPTERS) / usedSections.length));
+      chapterIndexBySection.set(sIdx, cIdx);
+    });
+  }
+  const uniqueChapters: string[] = [];
+  chapterNames.forEach((name, i) => {
+    let clean = name || `Chapter ${i + 1}`;
+    if (uniqueChapters.includes(clean)) {
+      clean = `${clean.slice(0, 26)} ${i + 1}`;
+    }
+    uniqueChapters.push(clean.slice(0, 30));
+  });
+  let concepts: ConceptEntity[];
+  const nodeIdBySection = new Map<number, string>();
+  if (usedSections.length <= MAX_NODES) {
+    concepts = usedSections.map((sectionIndex, i) => {
+      const section = sections[sectionIndex];
+      const firstBeat = beats.find((b) => b.sectionIndex === sectionIndex);
+      return {
+        id: section.id || `section-${i + 1}`,
+        label: fitText(section.title || `Part ${i + 1}`, 28),
+        sub: firstBeat?.onscreen[0] ? fitText(firstBeat.onscreen[0], 34) : undefined,
+        chapterIndex: chapterIndexBySection.get(sectionIndex) ?? 0,
+        relationship: "sequential" as const,
+      };
+    });
+    if (concepts.length === 1) {
+      concepts.push({
+        id: "summary-node",
+        label: "Summary",
+        sub: "Key Takeaways",
+        chapterIndex: 0,
+        relationship: "sequential" as const,
+      });
+    }
+    usedSections.forEach((sIdx, i) => nodeIdBySection.set(sIdx, concepts[i].id));
+  } else {
+    concepts = [];
+    for (let n = 0; n < MAX_NODES; n++) {
+      const startIdx = Math.floor((n * usedSections.length) / MAX_NODES);
+      const sIdx = usedSections[startIdx];
+      const section = sections[sIdx];
+      const firstBeat = beats.find((b) => b.sectionIndex === sIdx);
+      concepts.push({
+        id: `node-${n + 1}`,
+        label: fitText(section?.title || `Node ${n + 1}`, 28),
+        sub: firstBeat?.onscreen[0] ? fitText(firstBeat.onscreen[0], 34) : undefined,
+        chapterIndex: chapterIndexBySection.get(sIdx) ?? 0,
+        relationship: "sequential" as const,
+      });
+    }
+    usedSections.forEach((sIdx, i) => {
+      const nIdx = Math.min(MAX_NODES - 1, Math.floor((i * MAX_NODES) / usedSections.length));
+      nodeIdBySection.set(sIdx, concepts[nIdx].id);
+    });
+  }
+  const { nodes, edges } = layoutCanvas(concepts);
+  const nodeIds = nodes.map((n) => n.id);
+  const footageIndices = new Set(chooseFootageBeats(beats, shotDurations, maxFootageSec, maxFootageShots));
+  const shots: Shot[] = [];
+  const footage: FootageRequest[] = [];
+  const svgAssets: SvgAssetRequest[] = [];
+  const shotVisuals = new Map<string, ShotVisualResult>();
+  const svgRoutes = new Map<string, SvgRouteResult>();
+  let sinceTextBeat = 0;
+  let sinceCanvas = 0;
+  let lastChapterIdx = -1;
+  let lastDeviceKind: string | null = null;
+  let consecutiveSpine = 0;
+  let devicesUsed = 0;
+  const maxDevices = Math.max(2, Math.round(beats.length / 4));
+  const activeVisuals: string[] = [];
+  for (let i = 0; i < beats.length; i++) {
+    const beat = beats[i];
+    const dur = shotDurations[i];
+    const chapterIdx = chapterIndexBySection.get(beat.sectionIndex) ?? 0;
+    const isChapterStart = chapterIdx !== lastChapterIdx;
+    lastChapterIdx = chapterIdx;
+    const nodeId = nodeIdBySection.get(beat.sectionIndex) ?? nodeIds[0];
+    const nodeIndex = Math.max(0, nodeIds.indexOf(nodeId));
+    const textBlocks = buildTextBlocks(beat.onscreen);
+    const wantsFootage = footageIndices.has(i);
+    const textBeatDue = sinceTextBeat + dur > 70;
+    const canvasDue = sinceCanvas + dur > 70;
+    const shotId = `beat-${String(i + 1).padStart(2, "0")}`;
+    const visualState = {
+      visual: beat.visual,
+      narration: beat.narration,
+      onscreen: beat.onscreen,
+      activeVisuals: [...activeVisuals],
+      sceneTitle: beat.sectionTitle,
+      durationSec: dur,
+      wantsFootage,
+    };
+    const routeState = {
+      visual: beat.visual,
+      narration: beat.narration,
+      onscreen: beat.onscreen,
+      sceneTitle: beat.sectionTitle,
+      durationSec: dur,
+      wantsFootage,
+    };
+    const [visualDecision, routeDecision] = await Promise.all([
+      selectShotVisual(visualState, jevOptions),
+      selectSvgRoute(routeState, jevOptions),
+    ]);
+    shotVisuals.set(shotId, visualDecision);
+    svgRoutes.set(shotId, routeDecision);
+    let stage: Shot["stage"];
+    let blocks: Block[];
+    let metaphor: Shot["metaphor"] | undefined;
+    if (wantsFootage) {
+      stage = "frame";
+      blocks = [
+        {
+          c: "AnalogyInset",
+          caption: fitText(beat.onscreen[0] || beat.sectionTitle, 80) || "B-roll",
+          fullScreenHero: true,
+        },
+      ];
+      lastDeviceKind = "AnalogyInset";
+    } else if (!wantsFootage && routeDecision.route === "svg-asset" && beat.visual) {
+      stage = "anchor";
+      blocks = textBlocks.length > 0 ? textBlocks.slice(0, 1) : [{ c: "TextReveal", text: fitText(beat.sectionTitle, 90), size: "headline" as const }];
+      metaphor = "custom";
+      svgAssets.push({
+        shotId,
+        assetName: svgAssetNameForShot(shotId),
+        visualDirection: beat.visual,
+        narration: beat.narration,
+      });
+      lastDeviceKind = "SvgAsset";
+      activeVisuals.push("SvgAsset");
+    } else {
+      const choice = visualDecision.visual;
+      const deviceEligible =
+        dur >= 4 && dur <= 25 && devicesUsed < maxDevices && !canvasDue && choice !== "Text";
+      const repeatsLast = lastDeviceKind !== null && choice.toLowerCase() === lastDeviceKind.toLowerCase();
+      if (deviceEligible && !repeatsLast) {
+        stage = "anchor";
+        blocks = buildBlocksForShotVisual(choice, beat.narration, beat.onscreen);
+        if (blocks.some((b) => (["StatCounter", "TokenStrip", "Plot", "MatrixGrid", "Distribution", "LayerStack", "ScaleBar"] as string[]).includes(b.c))) {
+          lastDeviceKind = choice;
+          devicesUsed += 1;
+          activeVisuals.push(choice);
+        } else {
+          lastDeviceKind = null;
+        }
+      } else if (textBlocks.length > 0 && (isChapterStart || textBeatDue || !canvasDue)) {
+        stage = "frame";
+        blocks = textBlocks;
+        lastDeviceKind = null;
+      } else {
+        stage = "none";
+        blocks = [];
+        lastDeviceKind = null;
+      }
+    }
+    if (activeVisuals.length > 8) activeVisuals.shift();
+    consecutiveSpine = stage === "none" ? consecutiveSpine + 1 : 0;
+    const look: Shot["look"] =
+      stage === "none" ? spineLook(nodes, nodeIndex, Math.min(3, consecutiveSpine)) : nodeId;
+    const zoom =
+      stage === "none" ? Math.max(0.6, 1 - 0.1 * consecutiveSpine) : stage === "anchor" ? 1.05 : 1;
+    const move: Shot["move"] = i === 0 || isChapterStart ? "cut" : stage === "none" ? "zoom-out" : "pan";
+    shots.push({
+      id: shotId,
+      ch: uniqueChapters[chapterIdx],
+      dur: Number(dur.toFixed(3)),
+      stage,
+      look,
+      move,
+      drift: true,
+      zoom,
+      scriptText: beat.narration,
+      ...(beat.visual ? { visualDirection: beat.visual } : {}),
+      ...(wantsFootage ? { needsFootage: true } : {}),
+      ...(metaphor ? { metaphor } : {}),
+      blocks,
+    });
+    if (wantsFootage) {
+      footage.push({
+        shotId,
+        prompt: beat.visual || beat.narration,
+        seconds: Math.min(maxFootageSec, Math.max(3, dur + FOOTAGE_HEADROOM_SEC)),
+      });
+    }
+    sinceTextBeat = stage === "frame" ? 0 : sinceTextBeat + dur;
+    sinceCanvas = stage === "none" ? 0 : sinceCanvas + dur;
+  }
+  const totalSec = shotDurations.reduce((a, b) => a + b, 0);
+  const film = parseFilm({
+    id: slug,
+    title: options.title,
+    fps,
+    accent: "#635BFF",
+    theme: { background: "smooth-dark", fontFamily: "geist", accent: "#635BFF" },
+    chapters: uniqueChapters,
+    canvas: { nodes, edges },
+    shots,
+    voiceover: { src: `videos/${slug}/voiceover.wav`, volume: 1, durationSec: totalSec },
+    captions: `videos/${slug}/captions.vtt`,
+    ...(options.music ? { music: options.music } : {}),
+  });
+  return { film, footage, svgAssets, shotVisuals, svgRoutes };
 }
