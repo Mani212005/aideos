@@ -280,7 +280,7 @@ An individual vector path inside a limb:
 * `draftScreenplay(prompt, options)` (`backend/pipeline/director.ts`): Drafts and validates a Claude screenplay from a natural language prompt, retrying rejected drafts with feedback.
 * `transformProseToScreenplay(prose, options)` (`backend/pipeline/director.ts`): Automatically transforms raw untagged prose into a structured Claude screenplay with visual and narration beats via LLM with validation retries and code fence stripping.
 * `buildProseTransformSystemInstruction()` (`backend/pipeline/director.ts`): Assembles the system instruction for transforming raw prose into structured scenes, visual directions, on-screen text, and narration beats.
-* `compileScreenplayToFilm(screenplay, spine, options)` (`backend/pipeline/design.ts`): Compiles screenplay and narration spine into validated `Film`.
+* `compileFilmFromScreenplayAsync(script, narration, shotDurations, options, jevOptions)` (`backend/pipeline/design.ts`): The design stage's compile path. Compiles screenplay and narration spine into a validated `Film`, choosing each non-footage shot's visual via Jev `selectShotVisual` (see `backend/jev.ts`); `compileFilmFromScreenplay` is the synchronous regex-based variant.
 * `renderFormat(slug, format, options)` (`backend/pipeline/render.ts`): Drives Remotion render with headless verification and contact sheet generation.
 * `startMcpServer()` (`backend/mcp/server.ts`): Exposes the production pipeline and agent bridge as an MCP stdio server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`, `aideos_edit_film`, `aideos_get_pending_tasks`, `aideos_claim_task`, `aideos_complete_task`, and `aideos_report_step`.
 
@@ -314,6 +314,7 @@ An individual vector path inside a limb:
 * `buildDecisionRequest(state, model)`: Constructs payload for TypeSafe and OpenRouter decisions API.
 * `parseDecisionResponse(val)`: Validates and parses decision response from Jev endpoint into typed `JevChoiceAnswer`.
 * `setMockJevHandler(handler)`, `getMockJevHandler()`, `clearMockJevHandler()`: Test hooks for injecting mock Jev decisions without live network calls.
+* `selectShotVisual(state, options)`: Chooses a shot-level visual (`Text`, `StatCounter`, `TokenStrip`, `Plot`, `MatrixGrid`, `Distribution`, `LayerStack`, `ScaleBar`) with the same confidence gating and heuristic fallback; `setMockShotVisualHandler`/`clearMockShotVisualHandler` are its test hooks.
 
 ### `backend/scriptIntake.ts`
 * `parseClaudeScript(raw)`: Parses a raw Claude or legacy screenplay into structured `ScriptSegment` items containing ordered visual, narration, and on-screen beats.
