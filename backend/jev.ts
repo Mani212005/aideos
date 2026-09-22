@@ -42,8 +42,11 @@ export const DEFAULT_MIN_CONFIDENCE_THRESHOLD = 0.40;
 /** Default timeout in milliseconds for fast Jev decision calls. */
 export const DEFAULT_JEV_TIMEOUT_MS = 1500;
 
-/** Default model identifier for Jev decision requests. */
-export const DEFAULT_JEV_MODEL = "typesafe/jev-1.13";
+/** Default model identifier for Jev decision requests against the direct TypeSafe endpoint. */
+export const DEFAULT_JEV_MODEL = "jev-latest";
+
+/** Model identifier for Jev decision requests routed through the OpenRouter alpha decisions API. */
+export const OPENROUTER_JEV_MODEL = "typesafe/jev-1.13";
 
 /** Official TypeSafe System One evaluation endpoint. */
 export const TYPESAFE_ENDPOINT = "https://api.typesafe.ai/v1/systemone";
@@ -125,6 +128,12 @@ function readEnv(key: string): string | undefined {
   return undefined;
 }
 
+// Logs a non-silent warning when a live Jev API call fails before falling back to the heuristic.
+function warnJevCallFailure(context: string, err: unknown): void {
+  const message = err instanceof Error ? err.message : String(err);
+  console.warn(`[jev] ${context} call failed, falling back to heuristic: ${message}`);
+}
+
 // Resolves the configured Jev API key from environment variables.
 export function getJevApiKey(): string | undefined {
   return (
@@ -161,7 +170,7 @@ export function getJevModel(endpoint?: string): string {
 
   const targetEndpoint = endpoint ?? getJevEndpoint();
   if (targetEndpoint.includes("openrouter.ai")) {
-    return "typesafe/jev-1.13";
+    return OPENROUTER_JEV_MODEL;
   }
 
   return DEFAULT_JEV_MODEL;
@@ -488,6 +497,7 @@ export async function selectPrimitive(
     const answer = await decidePrimitiveWithModel(state, options);
     return applyConfidenceGating(answer, state, options);
   } catch (err: unknown) {
+    warnJevCallFailure("selectPrimitive", err);
     const fallback = heuristicPrimitiveSelection(state);
     return {
       primitive: fallback,
@@ -1210,6 +1220,7 @@ export async function selectShotVisual(
     const answer = await decideShotVisualWithModel(state, options);
     return applyShotVisualGating(answer, state, options);
   } catch (err: unknown) {
+    warnJevCallFailure("selectShotVisual", err);
     const fallback = heuristicShotVisualSelection(state);
     return {
       visual: fallback,
@@ -1252,6 +1263,7 @@ export async function selectSvgRoute(
     const answer = await decideSvgRouteWithModel(state, options);
     return applySvgRouteGating(answer, state, options);
   } catch (err: unknown) {
+    warnJevCallFailure("selectSvgRoute", err);
     const fallback = heuristicSvgRouteSelection(state);
     return {
       route: fallback,
@@ -1289,6 +1301,7 @@ export async function judgeVisionStill(
   try {
     return await judgeVisionWithModel(input, options);
   } catch (err: unknown) {
+    warnJevCallFailure("judgeVisionStill", err);
     return {
       score: 0.5,
       pass: true,
