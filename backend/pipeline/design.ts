@@ -14,7 +14,7 @@
  */
 
 import type { Block, CanvasEdge, CanvasNode, Film, Shot } from "../../src/dl/schema";
-import { blockSchema, parseFilm } from "../../src/dl/schema";
+import { blockSchema, DEVICE_BLOCKS, parseFilm } from "../../src/dl/schema";
 import { parseClaudeScript, type ScriptSegment } from "../scriptIntake";
 import { generateRelationshipAwareCanvas, type ConceptEntity } from "../ideation/graphLayout";
 import type { SegmentAudioInfo } from "../audio";
@@ -952,7 +952,6 @@ export async function compileFilmFromScreenplayAsync(
           fullScreenHero: true,
         },
       ];
-      lastDeviceKind = "AnalogyInset";
     } else if (!wantsFootage && routeDecision.route === "svg-asset" && beat.visual) {
       stage = "anchor";
       blocks = textBlocks.length > 0 ? textBlocks.slice(0, 1) : [{ c: "TextReveal", text: fitText(beat.sectionTitle, 90), size: "headline" as const }];
@@ -963,7 +962,6 @@ export async function compileFilmFromScreenplayAsync(
         visualDirection: beat.visual,
         narration: beat.narration,
       });
-      lastDeviceKind = "SvgAsset";
       activeVisuals.push("SvgAsset");
     } else {
       const choice = visualDecision.visual;
@@ -974,22 +972,24 @@ export async function compileFilmFromScreenplayAsync(
         stage = "anchor";
         blocks = buildBlocksForShotVisual(choice, beat.narration, beat.onscreen);
         if (blocks.some((b) => (["StatCounter", "TokenStrip", "Plot", "MatrixGrid", "Distribution", "LayerStack", "ScaleBar"] as string[]).includes(b.c))) {
-          lastDeviceKind = choice;
           devicesUsed += 1;
           activeVisuals.push(choice);
-        } else {
-          lastDeviceKind = null;
         }
       } else if (textBlocks.length > 0 && (isChapterStart || textBeatDue || !canvasDue)) {
         stage = "frame";
         blocks = textBlocks;
-        lastDeviceKind = null;
       } else {
         stage = "none";
         blocks = [];
-        lastDeviceKind = null;
       }
     }
+    // Mirror the schema's device rotation: only a DEVICE_BLOCKS entry sets it, a frame or spine
+    // shot resets it, and an anchor shot without one (StatCounter, SVG-routed) leaves it alone.
+    // A footage AnalogyInset may follow any beat, so a device-less anchor right after one is
+    // staged as a frame to reset the rotation instead of chaining AnalogyInset into itself.
+    const schemaDevice = blocks.find((b) => (DEVICE_BLOCKS as readonly string[]).includes(b.c))?.c ?? null;
+    if (!schemaDevice && stage === "anchor" && lastDeviceKind === "AnalogyInset") stage = "frame";
+    lastDeviceKind = schemaDevice ?? (stage === "anchor" ? lastDeviceKind : null);
     if (activeVisuals.length > 8) activeVisuals.shift();
     consecutiveSpine = stage === "none" ? consecutiveSpine + 1 : 0;
     const look: Shot["look"] =

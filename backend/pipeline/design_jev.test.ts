@@ -160,3 +160,52 @@ test("DesignJev: async compile refuses a mismatched narration spine", async () =
     /narration beat/,
   );
 });
+
+const FOOTAGE_SCRIPT = `## 0:00 - The Rat
+[VISUAL] A grey cartoon rat sniffing a wedge of cheese
+[NARRATION] Think of a language model like a curious rat.
+
+## 0:05 - Scale
+[VISUAL] A big counter climbs to 70 billion
+[NARRATION] This one has seventy billion parameters.
+
+## 0:10 - Tokens
+[VISUAL] The sentence splits into token chips, one per token
+[NARRATION] It reads text as a strip of tokens.
+`;
+
+test("DesignJev: async compile keeps footage beats around a StatCounter or SVG beat schema-valid", async () => {
+  const { segments, shotDurations } = spine([4, 4, 4]);
+  const between: Array<() => void> = [
+    () => {
+      clearMockShotVisualHandler();
+      clearMockSvgRouteHandler();
+    },
+    () => {
+      setMockShotVisualHandler(async () => ({ choice: "StatCounter", confidence: 0.9, probabilities: { StatCounter: 0.9 } }));
+      setMockSvgRouteHandler(async () => ({ choice: "standard-blocks", confidence: 0.9, probabilities: { "standard-blocks": 0.9 } }));
+    },
+    () => {
+      setMockShotVisualHandler(async () => ({ choice: "Text", confidence: 0.9, probabilities: { Text: 0.9 } }));
+      setMockSvgRouteHandler(async () => ({ choice: "svg-asset", confidence: 0.9, probabilities: { "svg-asset": 0.9 } }));
+    },
+  ];
+  try {
+    for (const [i, arrange] of between.entries()) {
+      arrange();
+      const result = await compileFilmFromScreenplayAsync(
+        FOOTAGE_SCRIPT,
+        segments,
+        shotDurations,
+        { title: "Footage Probe", maxFootageShots: 2 },
+        { apiKey: i === 0 ? "" : "test-key" },
+      );
+      const firsts = result.film.shots.map((s) => s.blocks[0]?.c);
+      assert.equal(firsts[0], "AnalogyInset", `case ${i}: beat 1 must be footage`);
+      assert.equal(firsts[2], "AnalogyInset", `case ${i}: beat 3 must be footage`);
+    }
+  } finally {
+    clearMockShotVisualHandler();
+    clearMockSvgRouteHandler();
+  }
+});
