@@ -8,6 +8,7 @@
  * made-up data - there are no canned stand-ins.
  */
 
+import { generateText, isGoogleAiConfigured } from "../modelClient";
 import { blockSchema, type Block } from "../../src/dl/schema";
 import { SHOT_COMPLEX_VISUALS, type ShotVisual } from "../jev";
 import { numbersIn } from "../shotVisualCues";
@@ -196,7 +197,6 @@ export async function authorDeviceData(requests: DeviceRequest[], caller: Device
 
 // Uses Gemini to author chart data when it is configured, or nothing (beats keep their text cards).
 export async function defaultDeviceCaller(): Promise<DeviceLlmCaller | null> {
-  const { generateText, isGoogleAiConfigured } = await import("../modelClient");
   if (!isGoogleAiConfigured()) return null;
   return (prompt, systemInstruction) => generateText(prompt, { systemInstruction, temperature: 0.2 });
 }

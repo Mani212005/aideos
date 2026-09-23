@@ -50,10 +50,15 @@ export class Timeline {
   private lastValue = new Map<string, { clipId: string; value: number }>();
   private origins = new Map<string, { clipId: string; origin: Vec2 }>();
 
-  constructor(
-    private readonly timelineId: string,
-    private readonly durationFrames: number,
-  ) {}
+  private readonly timelineId: string;
+  private readonly durationFrames: number;
+
+  // Plain fields rather than constructor parameter properties: the editor build (which type-checks
+  // backend modules the dev server reaches) only allows erasable TypeScript syntax.
+  constructor(timelineId: string, durationFrames: number) {
+    this.timelineId = timelineId;
+    this.durationFrames = durationFrames;
+  }
 
   /** Adds one clip, failing loudly on a discontinuity, a clashing origin or an overrun. */
   add(spec: ClipSpec): this {

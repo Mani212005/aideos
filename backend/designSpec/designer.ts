@@ -8,6 +8,7 @@
  * Every path passes the same design check; nothing reaches the film without it.
  */
 
+import { generateText, isGoogleAiConfigured } from "../modelClient";
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm } from "../../src/dl/schema";
@@ -183,7 +184,6 @@ export async function designFilm(filmId: string, opts: DesignFilmOptions = {}): 
 
 // Uses Gemini for the server fallback when it is configured, or nothing.
 async function defaultCaller(): Promise<DesignLlmCaller | null> {
-  const { generateText, isGoogleAiConfigured } = await import("../modelClient");
   if (!isGoogleAiConfigured()) return null;
   return (prompt, systemInstruction) => generateText(prompt, { systemInstruction, temperature: 0.4 });
 }
