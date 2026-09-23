@@ -8,6 +8,8 @@ import { spawnSync } from "node:child_process";
 import { ROOT } from "../pipeline/filmStore";
 import { buildDirectingPrompt, buildTaskContext } from "./contextBuilder";
 import { taskQueue } from "./taskQueue";
+import { agentLink } from "../agentLink/store";
+import { remoteTaskPrompt } from "../agentLink/prompt";
 import type { AgentSessionInfo, AgentTask, DispatchChannel, DispatchOptions, DispatchResult } from "./types";
 
 /** Default timeout in milliseconds before falling back to in-process server-side execution. */
@@ -208,6 +210,27 @@ export async function dispatchTask(opts: DispatchOptions): Promise<DispatchResul
     dispatchedChannels: channels,
     timeoutMs,
   });
+
+  // 1b. The owner's connected agent (aideos connect). When it takes the task, the local channels
+  // are skipped so a machine with both a connector and a tmux session never runs a task twice.
+  const linked =
+    opts.ownerKey !== undefined &&
+    agentLink().enqueue(opts.ownerKey, { id: task.id, eventType: opts.eventType, filmId: opts.filmId, prompt: remoteTaskPrompt(task.id, prompt) });
+  if (linked) {
+    channels.splice(channels.indexOf("file_inbox"), 1);
+    channels.push("agent_link");
+    task.dispatchedChannels = [...channels];
+    return {
+      ok: true,
+      taskId: task.id,
+      task,
+      channels,
+      prompt,
+      fallbackScheduled: false,
+      fallbackTimeoutMs: timeoutMs,
+      message: `Sent task ${task.id} to your connected agent`,
+    };
+  }
 
   // 2. Channel A: Firstmate Steering Inbox
   const inboxResult = writeFirstmateInboxMessage(task, opts.inboxDir);

@@ -27,9 +27,17 @@ export interface LoadedSceneAssets {
   problems: Array<{ assetId: string; svgSource: string; message: string }>;
 }
 
-/** Resolves an asset svgSource, which may be absolute or relative to the working directory. */
+/** The repo root: asset svgSource paths ("videos/<id>/visuals/x.svg") are relative to it. */
+const REPO_ROOT = path.resolve(__dirname, "../..");
+
+/**
+ * Resolves an asset svgSource: absolute, relative to the working directory, or relative to the
+ * repo root. The editor dev server runs from editor/, so a cwd-only lookup missed every asset.
+ */
 function resolveAssetPath(svgSource: string): string {
-  return path.isAbsolute(svgSource) ? svgSource : path.resolve(process.cwd(), svgSource);
+  if (path.isAbsolute(svgSource)) return svgSource;
+  const fromCwd = path.resolve(process.cwd(), svgSource);
+  return fs.existsSync(fromCwd) ? fromCwd : path.resolve(REPO_ROOT, svgSource);
 }
 
 /** Reads every environment asset of a scene into the source map and id index SceneView needs. */

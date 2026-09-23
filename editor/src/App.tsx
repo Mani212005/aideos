@@ -43,6 +43,7 @@ import { ExportProgressModal } from "./components/ExportProgressModal";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
 import { AgentActivityInspector } from "./components/AgentActivityInspector";
+import { AgentConnect } from "./components/AgentConnect";
 
 /** How the header names who made the open film's design; "templates" is flagged as a fallback. */
 const DESIGN_SOURCE_LABEL = {
@@ -305,6 +306,8 @@ export default function App() {
               {DESIGN_SOURCE_LABEL[project.film.design.source]}
             </Badge>
           )}
+
+          <AgentConnect />
 
           <AgentActivityInspector />
 

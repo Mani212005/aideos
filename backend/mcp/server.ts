@@ -22,6 +22,7 @@ import { detectSilences } from "../editContext/detectSilences";
 import { planEdits, applyEditProgram } from "../editPlanner";
 import type { TranscribedWord } from "../transcribe";
 import { taskQueue, traceBus } from "../agentBridge";
+import { registerDesignTools } from "./designTools";
 
 /** Everything known about one background production run. */
 interface RunRecord {
@@ -126,17 +127,41 @@ function describeRun(record: RunRecord, eventLimit: number) {
   };
 }
 
+/** The few task fields an agent needs back after claiming or completing (the full context is large). */
+function taskSummary(task: { id: string; status: string; eventType: string; filmId: string; claimedAt?: string; completedAt?: string } | null | undefined) {
+  if (!task) return task;
+  return { id: task.id, status: task.status, eventType: task.eventType, filmId: task.filmId, claimedAt: task.claimedAt, completedAt: task.completedAt };
+}
+
 /** Wraps a JSON payload in the content shape MCP tool results use. */
 function jsonResult(payload: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }] };
 }
 
+/** Options for building the server. */
+export interface McpServerOptions {
+  /**
+   * The toolset served over HTTP to an agent connected through `aideos connect`: it leaves out the
+   * production-run tools (a full render is the studio owner's call, not a remote agent's) and
+   * keeps film reading, editing, design and task tools.
+   */
+  remote?: boolean;
+}
+
+/** Instructions a remote agent reads: it has no shell, only these tools. */
+const REMOTE_INSTRUCTIONS =
+  "You are connected to an Aideos studio through `aideos connect`. You have no shell and no checkout of the studio: " +
+  "work only through these tools. To design a film: aideos_design_brief, then aideos_write_file for design/design.json " +
+  "and visuals/<name>.svg, then aideos_design_build until it prints PASS, and aideos_design_check to review. " +
+  "Report progress with aideos_report_step and finish the task you were given with aideos_complete_task.";
+
 /** Builds the server and registers every tool on it. */
-export function createMcpServer(): McpServer {
+export function createMcpServer(options: McpServerOptions = {}): McpServer {
+  const remote = options.remote === true;
   const server = new McpServer(
     { name: "aideos", version: "1.0.0" },
     {
-      instructions:
+      instructions: remote ? REMOTE_INSTRUCTIONS :
         "Aideos turns a narration script into a finished explainer film in two aspect ratios. " +
         "Call aideos_produce_film with a script to start a run; it returns a runId immediately " +
         "because a full render takes tens of minutes. Poll aideos_run_status with that runId " +
@@ -146,6 +171,8 @@ export function createMcpServer(): McpServer {
     },
   );
 
+  // Production runs are left out of the remote toolset (see McpServerOptions.remote).
+  if (!remote) {
   server.registerTool(
     "aideos_produce_film",
     {
@@ -238,6 +265,7 @@ export function createMcpServer(): McpServer {
           .map((r) => ({ runId: r.runId, slug: r.slug, title: r.title, state: r.state, startedAt: r.startedAt })),
       ),
   );
+  }
 
   server.registerTool(
     "aideos_list_films",
@@ -423,7 +451,7 @@ export function createMcpServer(): McpServer {
     async ({ taskId, agentId }) => {
       try {
         const task = taskQueue.claimTask(taskId, agentId);
-        return jsonResult({ ok: true, task });
+        return jsonResult({ ok: true, task: taskSummary(task) });
       } catch (err: any) {
         return jsonResult({ ok: false, error: err?.message || String(err) });
       }
@@ -445,7 +473,7 @@ export function createMcpServer(): McpServer {
     async ({ taskId, summary, result }) => {
       try {
         const task = taskQueue.completeTask(taskId, { summary, ...(result || {}) });
-        return jsonResult({ ok: true, task });
+        return jsonResult({ ok: true, task: taskSummary(task) });
       } catch (err: any) {
         return jsonResult({ ok: false, error: err?.message || String(err) });
       }
@@ -511,6 +539,8 @@ export function createMcpServer(): McpServer {
       return jsonResult({ ok: true, stepId: step.id, step });
     },
   );
+
+  registerDesignTools(server);
 
   return server;
 }

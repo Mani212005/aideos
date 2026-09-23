@@ -77,6 +77,8 @@ export interface ProductionRequest {
   designLlmCaller?: import("../designSpec/designer").DesignLlmCaller | null;
   /** Writes chart contents from the narration; defaults to Gemini when configured, null for none. */
   deviceCaller?: import("./deviceData").DeviceLlmCaller | null;
+  /** Studio owner key: the bespoke design task goes to the owner's agent connected through `aideos connect`. */
+  ownerKey?: string;
 }
 
 

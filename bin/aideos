@@ -48,6 +48,12 @@ if [ "$#" -gt 0 ]; then
       cd "$AIDEOS_DIR" && npm run validate "$@"
       exit 0
       ;;
+    connect)
+      # aideos connect <PAIRING-CODE> --agent claude|agy|codex|opencode [--url <studio api url>]
+      # Links a studio to the agent in this terminal (defaults to the local studio).
+      case " $* " in *" --url "*) exec node "$AIDEOS_DIR/scripts/aideos-connect.mjs" "$@" ;; esac
+      exec node "$AIDEOS_DIR/scripts/aideos-connect.mjs" "$@" --url "http://localhost:3001"
+      ;;
     design)
       # aideos design check|brief|build <film>
       SUB="${1:-}"

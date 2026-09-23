@@ -122,7 +122,12 @@ export async function swapShotVisual(film: Film, shotId: string, visual: string,
 
 // Sends the connected agent a design task focused on one shot. Refreshes the brief first so the
 // agent reads the film as it is now.
-export async function requestShotRedesign(film: Film, shotId: string, note: string, inboxDir?: string) {
+export async function requestShotRedesign(
+  film: Film,
+  shotId: string,
+  note: string,
+  options: { inboxDir?: string; ownerKey?: string } = {},
+) {
   const shot = film.shots.find((s) => s.id === shotId);
   if (!shot) throw new Error(`the film has no shot "${shotId}"`);
   writeDesignBrief(film.id);
@@ -133,12 +138,13 @@ export async function requestShotRedesign(film: Film, shotId: string, note: stri
     customInstruction: note.trim() || undefined,
     metadata: { shotId, says: shot.scriptText ?? "" },
     enableFallback: false,
-    ...(inboxDir ? { inboxDir } : {}),
+    ...(options.inboxDir ? { inboxDir: options.inboxDir } : {}),
+    ...(options.ownerKey ? { ownerKey: options.ownerKey } : {}),
   });
 }
 
 // Sends the connected agent a design task for the whole film (a film still on the template design).
-export async function requestFilmDesign(film: Film) {
+export async function requestFilmDesign(film: Film, ownerKey?: string) {
   writeDesignBrief(film.id);
-  return dispatchTask({ eventType: "design_film", filmId: film.id, filmTitle: film.title, enableFallback: false });
+  return dispatchTask({ eventType: "design_film", filmId: film.id, filmTitle: film.title, enableFallback: false, ...(ownerKey ? { ownerKey } : {}) });
 }

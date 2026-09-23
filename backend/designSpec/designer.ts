@@ -42,6 +42,8 @@ export interface DesignFilmOptions {
   maxServerAttempts?: number;
   /** Progress messages for the pipeline's log. */
   onProgress?: (message: string) => void;
+  /** Studio owner key, so the task reaches the owner's agent connected through `aideos connect`. */
+  ownerKey?: string;
 }
 
 // Sends the design task to the connected agent and waits for a passing build or the timeout.
@@ -53,10 +55,11 @@ async function tryAgent(filmId: string, opts: DesignFilmOptions): Promise<Design
     filmId,
     filmTitle: film?.title,
     enableFallback: false,
+    ...(opts.ownerKey ? { ownerKey: opts.ownerKey } : {}),
   });
-  // The prompt only reaches an agent through tmux or a steering inbox; the queue and the task
-  // file are written regardless, so on their own they mean nobody is listening.
-  const delivered = dispatch.channels.some((c) => c === "tmux" || c === "firstmate_inbox");
+  // The prompt only reaches an agent through a connector, tmux or a steering inbox; the queue and
+  // the task file are written regardless, so on their own they mean nobody is listening.
+  const delivered = dispatch.channels.some((c) => c === "agent_link" || c === "tmux" || c === "firstmate_inbox");
   if (!delivered) {
     opts.onProgress?.("no coding agent is connected; skipping to the server model");
     return null;
