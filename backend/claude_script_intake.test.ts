@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import {
   parseClaudeScript,
   serializeSegmentsToScript,
+  screenplayFromFilmShots,
   extractSpokenBlocks,
   buildFilmPartsFromScript,
   hasScreenplayTags,
@@ -418,3 +419,20 @@ test("generateDirectorTaskDocument generates markdown task doc referencing guide
   assert.ok(doc.includes("npm run validate:film videos/kv-cache/film.json"));
 });
 
+
+test("screenplayFromFilmShots: rebuilds a parseable screenplay from a film with no script.md", () => {
+  const shots = [
+    { ch: "departure", dur: 10, scriptText: "It was bolted to a rocket.", visualDirection: "Wide starfield." },
+    { ch: "departure", dur: 5, scriptText: "It had one job." },
+    { ch: "the edge", dur: 8, scriptText: "It is still talking." },
+    { ch: "the edge", dur: 2 },
+  ];
+  const script = screenplayFromFilmShots(shots);
+  const segments = parseClaudeScript(script);
+  assert.deepEqual(segments.map((s) => s.title), ["departure", "the edge"]);
+  assert.equal(segments[0].timeStart, "0:00");
+  assert.equal(segments[1].timeStart, "0:15");
+  const narration = segments.flatMap((s) => s.beats.filter((b) => b.type === "narration").map((b) => b.text));
+  assert.deepEqual(narration, ["It was bolted to a rocket.", "It had one job.", "It is still talking."]);
+  assert.equal(screenplayFromFilmShots([{ ch: "x", dur: 3 }]), "", "no narration means no script");
+});

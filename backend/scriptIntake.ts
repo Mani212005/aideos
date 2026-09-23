@@ -369,6 +369,41 @@ export function parseClaudeScript(raw: string): ScriptSegment[] {
   return segments;
 }
 
+/** The per-shot fields a film manifest carries that a screenplay can be rebuilt from. */
+export interface ScreenplayShotSource {
+  ch?: string;
+  dur?: number;
+  scriptText?: string;
+  visualDirection?: string;
+}
+
+// Formats seconds as a screenplay timestamp ("m:ss").
+function formatScriptTime(totalSec: number): string {
+  const sec = Math.max(0, Math.round(totalSec));
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+}
+
+// Rebuilds a screenplay from a film's shots (one segment per chapter) for a package with no script.md.
+export function screenplayFromFilmShots(shots: ScreenplayShotSource[]): string {
+  const segments: ScriptSegment[] = [];
+  let clock = 0;
+  for (const shot of shots) {
+    const start = clock;
+    clock += shot.dur ?? 0;
+    if (!shot.scriptText?.trim()) continue;
+    const title = shot.ch?.trim() || "Untitled";
+    let seg = segments[segments.length - 1];
+    if (!seg || seg.title !== title) {
+      seg = { id: slugify(title) || `segment-${segments.length + 1}`, title, timeStart: formatScriptTime(start), beats: [] };
+      segments.push(seg);
+    }
+    seg.timeEnd = formatScriptTime(clock);
+    if (shot.visualDirection?.trim()) seg.beats.push({ type: "visual", text: shot.visualDirection.trim() });
+    seg.beats.push({ type: "narration", text: shot.scriptText.trim() });
+  }
+  return segments.length ? serializeSegmentsToScript(segments) : "";
+}
+
 /** Serializes structured segments back into canonical `[VISUAL]`/`[NARRATION]`/`[ON SCREEN]` markdown. */
 export function serializeSegmentsToScript(segments: ScriptSegment[]): string {
   const lines: string[] = [];
