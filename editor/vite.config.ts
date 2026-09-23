@@ -26,6 +26,7 @@ import {
   hasScreenplayTags,
   generateAgentPrompt,
   generateDirectorTaskDocument,
+  screenplayFromFilmShots,
 } from '../backend/scriptIntake.ts'
 import { transformProseToScreenplay } from '../backend/pipeline/director.ts'
 import {
@@ -743,7 +744,17 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             if (fs.existsSync(scriptFile)) {
               foundScript = fs.readFileSync(scriptFile, 'utf8');
             } else if (fs.existsSync(path.join(filmsDir, `${scriptId}.ts`)) || fs.existsSync(path.join(pkgDir, 'film.json'))) {
-              // Draft placeholder for an existing project that has no script yet
+              // script.md is a gitignored build artefact, so a fresh clone or a hosted deploy has none:
+              // rebuild the screenplay from the film's own narration before offering a blank draft.
+              try {
+                const film = JSON.parse(fs.readFileSync(path.join(pkgDir, 'film.json'), 'utf8'));
+                foundScript = screenplayFromFilmShots(Array.isArray(film?.shots) ? film.shots : []);
+              } catch {
+                foundScript = '';
+              }
+            }
+            if (!foundScript && (fs.existsSync(path.join(filmsDir, `${scriptId}.ts`)) || fs.existsSync(path.join(pkgDir, 'film.json')))) {
+              // Draft placeholder for an existing project that has no script and no narrated shots yet
               foundScript = `# ${scriptId}\n\nPaste your narration script here. Each paragraph will sync with your video scenes and visual metaphors.\n\nClick "Generate Voiceover (.wav)" to generate studio audio.`;
             }
             sendJson(res, 200, { ok: true, script: foundScript });
