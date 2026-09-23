@@ -49,14 +49,20 @@ if [ "$#" -gt 0 ]; then
       exit 0
       ;;
     design)
-      # aideos design check <film...> [--all] [--stills] [--json]
+      # aideos design check|brief|build <film>
       SUB="${1:-}"
       shift || true
-      if [ "$SUB" != "check" ]; then
-        echo "Usage: aideos design check <film...> [--all] [--stills] [--json]" >&2
-        exit 1
-      fi
-      cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts design-check "$@"
+      case "$SUB" in
+        check|build|brief)
+          cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts "design-$SUB" "$@"
+          ;;
+        *)
+          echo "Usage: aideos design check <film...> [--all] [--stills] [--json]" >&2
+          echo "       aideos design brief <film>" >&2
+          echo "       aideos design build <film> [--source agent|server-model|hand-built]" >&2
+          exit 1
+          ;;
+      esac
       ;;
     render)
       cd "$AIDEOS_DIR" && npm run render "$@"

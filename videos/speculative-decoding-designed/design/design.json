@@ -1,0 +1,588 @@
+{
+  "brief": {
+    "concept": "The wait was never the arithmetic, it was the walk to memory. A memory bank and the accelerator sit on one road; every word costs a trip, and the fix is making each trip carry five.",
+    "throughLine": "The road between memory and the chip, and the cargo that travels it on every beat.",
+    "motifs": [
+      "the road",
+      "cargo packets",
+      "drafted token tiles"
+    ]
+  },
+  "accent": "#635BFF",
+  "assets": [
+    {
+      "id": "memory",
+      "file": "visuals/memory.svg",
+      "position": [
+        600,
+        1215
+      ],
+      "scale": 0.9,
+      "layer": 2
+    },
+    {
+      "id": "chip",
+      "file": "visuals/chip.svg",
+      "position": [
+        1320,
+        1215
+      ],
+      "scale": 0.9,
+      "layer": 2
+    },
+    {
+      "id": "road",
+      "file": "visuals/road.svg",
+      "position": [
+        960,
+        1215
+      ],
+      "scale": 0.9,
+      "layer": 1
+    },
+    {
+      "id": "tokens",
+      "file": "visuals/tokens.svg",
+      "position": [
+        960,
+        640
+      ],
+      "scale": 1.3,
+      "layer": 3
+    },
+    {
+      "id": "draft",
+      "file": "visuals/draft.svg",
+      "position": [
+        960,
+        1120
+      ],
+      "scale": 0.8,
+      "layer": 3
+    }
+  ],
+  "clips": [
+    {
+      "id": "memory-in",
+      "asset": "memory",
+      "targets": [
+        "memory"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": 0,
+      "end": "beat-01@0.25",
+      "easing": "expoOut"
+    },
+    {
+      "id": "chip-in",
+      "asset": "chip",
+      "targets": [
+        "chip"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": 0,
+      "end": "beat-01@0.35",
+      "easing": "expoOut"
+    },
+    {
+      "id": "road-draw",
+      "asset": "road",
+      "targets": [
+        "road"
+      ],
+      "property": "drawOn",
+      "from": 0,
+      "to": 1,
+      "start": "beat-01@0.2",
+      "end": "beat-01@0.6",
+      "easing": "expoOut"
+    },
+    {
+      "id": "glow-hidden",
+      "asset": "road",
+      "targets": [
+        "road-glow"
+      ],
+      "property": "drawOn",
+      "from": 0,
+      "to": 0,
+      "start": 0,
+      "end": 1,
+      "easing": "hold"
+    },
+    {
+      "id": "five-hidden",
+      "asset": "road",
+      "targets": [
+        "cargo-five"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 0,
+      "start": 0,
+      "end": 1,
+      "easing": "hold"
+    },
+    {
+      "id": "draft-hidden",
+      "asset": "draft",
+      "targets": [
+        "draft"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 0,
+      "start": 0,
+      "end": 1,
+      "easing": "hold"
+    },
+    {
+      "id": "tokens-hidden",
+      "asset": "tokens",
+      "targets": [
+        "tok-1",
+        "tok-2",
+        "tok-3",
+        "tok-4",
+        "tok-5",
+        "ok-1",
+        "ok-2",
+        "ok-3",
+        "no-4",
+        "fix-4",
+        "tokens-label"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 0,
+      "start": 0,
+      "end": 1,
+      "easing": "hold"
+    },
+    {
+      "id": "trickle",
+      "asset": "tokens",
+      "targets": [
+        "tok-1",
+        "tok-2",
+        "tok-3"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": "beat-02:\"One word\"",
+      "end": "beat-02:\"One word\"@end+8",
+      "stagger": 40,
+      "easing": "expoOut"
+    },
+    {
+      "id": "trip-1",
+      "asset": "road",
+      "targets": [
+        "cargo"
+      ],
+      "property": "translateX",
+      "from": 0,
+      "to": 480,
+      "start": "beat-04:\"out of memory\"",
+      "end": "beat-04:\"for one word\"@end",
+      "easing": "expoInOut"
+    },
+    {
+      "id": "scan-1",
+      "asset": "memory",
+      "targets": [
+        "read-scan"
+      ],
+      "property": "translateY",
+      "from": 0,
+      "to": 210,
+      "start": "beat-04:\"read every one\"",
+      "end": "beat-04:\"out of memory\"@end",
+      "easing": "linear"
+    },
+    {
+      "id": "busy",
+      "asset": "chip",
+      "targets": [
+        "chip-busy"
+      ],
+      "property": "drawOn",
+      "from": 0,
+      "to": 1,
+      "start": "beat-05:\"finishes the math\"",
+      "end": "beat-05:\"finishes the math\"@end+6",
+      "easing": "expoOut"
+    },
+    {
+      "id": "idle",
+      "asset": "chip",
+      "targets": [
+        "chip-lamp"
+      ],
+      "property": "opacity",
+      "from": 1,
+      "to": 0.25,
+      "start": "beat-05:\"then it waits\"",
+      "end": "beat-05:\"then it waits\"@end+10",
+      "easing": "expoOut"
+    },
+    {
+      "id": "cargo-hide-1",
+      "asset": "road",
+      "targets": [
+        "cargo"
+      ],
+      "property": "opacity",
+      "from": 1,
+      "to": 0,
+      "start": "beat-05:\"waits again\"",
+      "end": "beat-05:\"waits again\"+6"
+    },
+    {
+      "id": "cargo-back-1",
+      "asset": "road",
+      "targets": [
+        "cargo"
+      ],
+      "property": "translateX",
+      "from": 0,
+      "to": 0,
+      "start": "beat-05:\"waits again\"+6",
+      "end": "beat-05:\"waits again\"+7",
+      "allowJump": true,
+      "easing": "hold"
+    },
+    {
+      "id": "cargo-show-1",
+      "asset": "road",
+      "targets": [
+        "cargo"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": "beat-05:\"waits again\"+8",
+      "end": "beat-05:\"waits again\"+14"
+    },
+    {
+      "id": "trip-2",
+      "asset": "road",
+      "targets": [
+        "cargo"
+      ],
+      "property": "translateX",
+      "from": 0,
+      "to": 480,
+      "start": "beat-05:\"the next word\"",
+      "end": "beat-05@end",
+      "easing": "expoInOut"
+    },
+    {
+      "id": "scan-back",
+      "asset": "memory",
+      "targets": [
+        "read-scan"
+      ],
+      "property": "translateY",
+      "from": 210,
+      "to": 0,
+      "start": "beat-05:\"the next word\"",
+      "end": "beat-05@end",
+      "easing": "linear"
+    },
+    {
+      "id": "the-trip",
+      "asset": "road",
+      "targets": [
+        "road-glow"
+      ],
+      "property": "drawOn",
+      "from": 0,
+      "to": 1,
+      "start": "beat-06:\"the trip\"",
+      "end": "beat-06:\"not the cargo\"@end",
+      "easing": "expoOut"
+    },
+    {
+      "id": "tokens-clear",
+      "asset": "tokens",
+      "targets": [
+        "tok-1",
+        "tok-2",
+        "tok-3"
+      ],
+      "property": "opacity",
+      "from": 1,
+      "to": 0,
+      "start": "beat-09:\"here is the move\"",
+      "end": "beat-09:\"here is the move\"@end+10"
+    },
+    {
+      "id": "draft-in",
+      "asset": "draft",
+      "targets": [
+        "draft"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": "beat-10:\"a small one\"",
+      "end": "beat-10:\"a small one\"@end+10",
+      "easing": "expoOut"
+    },
+    {
+      "id": "draft-writes",
+      "asset": "tokens",
+      "targets": [
+        "tok-1",
+        "tok-2",
+        "tok-3",
+        "tok-4",
+        "tok-5"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": "beat-12:\"drafts the next handful\"",
+      "end": "beat-12:\"drafts the next handful\"@end",
+      "stagger": 8,
+      "easing": "expoOut"
+    },
+    {
+      "id": "label-in",
+      "asset": "tokens",
+      "targets": [
+        "tokens-label"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": "beat-12:\"Five words\"",
+      "end": "beat-12:\"Five words\"@end+8"
+    },
+    {
+      "id": "cargo-out",
+      "asset": "road",
+      "targets": [
+        "cargo"
+      ],
+      "property": "opacity",
+      "from": 1,
+      "to": 0,
+      "start": "beat-13",
+      "end": "beat-13+8"
+    },
+    {
+      "id": "five-in",
+      "asset": "road",
+      "targets": [
+        "cargo-five"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": "beat-13+8",
+      "end": "beat-13+16"
+    },
+    {
+      "id": "one-pass",
+      "asset": "road",
+      "targets": [
+        "cargo-five"
+      ],
+      "property": "translateX",
+      "from": 0,
+      "to": 500,
+      "start": "beat-13:\"single forward pass\"",
+      "end": "beat-13:\"one set of weights loaded\"@end",
+      "easing": "expoInOut"
+    },
+    {
+      "id": "lamp-back",
+      "asset": "chip",
+      "targets": [
+        "chip-lamp"
+      ],
+      "property": "opacity",
+      "from": 0.25,
+      "to": 1,
+      "start": "beat-13:\"checked in parallel\"",
+      "end": "beat-13:\"checked in parallel\"@end+8"
+    },
+    {
+      "id": "accepted",
+      "asset": "tokens",
+      "targets": [
+        "ok-1",
+        "ok-2",
+        "ok-3"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": "beat-15:\"accepted and kept\"",
+      "end": "beat-15:\"accepted and kept\"@end",
+      "stagger": 6,
+      "easing": "expoOut"
+    },
+    {
+      "id": "disagree",
+      "asset": "tokens",
+      "targets": [
+        "no-4"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": "beat-15:\"first disagreement\"",
+      "end": "beat-15:\"first disagreement\"@end+6"
+    },
+    {
+      "id": "correct",
+      "asset": "tokens",
+      "targets": [
+        "fix-4"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": "beat-16:\"supplies the correct token\"",
+      "end": "beat-16:\"supplies the correct token\"@end+8",
+      "easing": "expoOut"
+    },
+    {
+      "id": "drop-rest",
+      "asset": "tokens",
+      "targets": [
+        "tok-4",
+        "tok-5"
+      ],
+      "property": "opacity",
+      "from": 1,
+      "to": 0.25,
+      "start": "beat-16:\"supplies the correct token\"",
+      "end": "beat-16:\"supplies the correct token\"@end+8"
+    },
+    {
+      "id": "five-hide",
+      "asset": "road",
+      "targets": [
+        "cargo-five"
+      ],
+      "property": "opacity",
+      "from": 1,
+      "to": 0,
+      "start": "beat-21:\"the walk to memory\"",
+      "end": "beat-21:\"the walk to memory\"+6"
+    },
+    {
+      "id": "five-back",
+      "asset": "road",
+      "targets": [
+        "cargo-five"
+      ],
+      "property": "translateX",
+      "from": 0,
+      "to": 0,
+      "start": "beat-21:\"the walk to memory\"+6",
+      "end": "beat-21:\"the walk to memory\"+7",
+      "allowJump": true,
+      "easing": "hold"
+    },
+    {
+      "id": "five-show",
+      "asset": "road",
+      "targets": [
+        "cargo-five"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": "beat-21:\"the walk to memory\"+8",
+      "end": "beat-21:\"the walk to memory\"+14"
+    },
+    {
+      "id": "carry-more",
+      "asset": "road",
+      "targets": [
+        "cargo-five"
+      ],
+      "property": "translateX",
+      "from": 0,
+      "to": 500,
+      "start": "beat-21:\"make every walk carry more\"",
+      "end": "end",
+      "easing": "expoOut"
+    }
+  ],
+  "shots": {
+    "beat-01": {
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "One token at a time",
+          "size": "headline"
+        }
+      ]
+    },
+    "beat-10": {
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "A small model writes ahead",
+          "size": "headline"
+        }
+      ]
+    },
+    "beat-14": {
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "One pass, many checks",
+          "size": "headline"
+        }
+      ]
+    },
+    "beat-17": {
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Exactly the same answer",
+          "size": "headline"
+        }
+      ]
+    },
+    "beat-04": {
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Memory bound, not compute bound",
+          "size": "headline"
+        }
+      ]
+    },
+    "beat-13": {
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Verify all five at once",
+          "size": "headline"
+        }
+      ]
+    },
+    "beat-19": {
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Two to three times faster",
+          "size": "headline"
+        }
+      ]
+    }
+  }
+}

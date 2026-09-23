@@ -624,6 +624,24 @@ export const filmBaseSchema = z.object({
    * node-graph film. See scene/README.md.
    */
   scene: sceneSchema.optional(),
+  /**
+   * Who made this film's design. "agent" and "server-model" are bespoke designs built from
+   * videos/<id>/design/design.json and passed by the design check; "templates" means both bespoke
+   * paths failed and the studio flags the film as a template fallback. Absent on older films.
+   */
+  design: z
+    .object({
+      source: z.enum(["agent", "server-model", "hand-built", "templates"]),
+      note: z.string().max(500).optional(),
+      brief: z
+        .object({
+          concept: z.string().min(1).max(600),
+          throughLine: z.string().max(300).optional(),
+          motifs: z.array(z.string().max(80)).max(12).optional(),
+        })
+        .optional(),
+    })
+    .optional(),
   shots: z.array(shotSchema).min(1),
   audio: z.object({ src: z.string().min(1), trimBefore: z.number().min(0).default(0) }).optional(),
   voiceover: z
