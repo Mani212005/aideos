@@ -691,6 +691,31 @@ program
     },
   );
 
+program
+  .command("design-check")
+  .description("Check films against the design standard layer (schema, scene, art, palette, continuity, audio lock, honest data)")
+  .argument("[films...]", "film ids under videos/; omit with --all to check every film")
+  .option("--all", "check every film under videos/")
+  .option("--stills", "also render review stills of each passing film into .frames/<id>/")
+  .option("--json", "print the reports as JSON for an agent to consume")
+  .action(async (films: string[], options: { all?: boolean; stills?: boolean; json?: boolean }) => {
+    const { checkFilmDesignById, formatDesignReport } = await import("./designCheck/designCheck");
+    const { readdirSync, existsSync } = await import("node:fs");
+    const videosDir = path.join(__dirname, "../videos");
+    const ids = options.all ? readdirSync(videosDir).filter((d) => existsSync(path.join(videosDir, d, "film.json"))) : films;
+    if (ids.length === 0) throw new Error("name at least one film id, or pass --all");
+    const reports = ids.map((id) => checkFilmDesignById(id));
+    if (options.json) console.log(JSON.stringify(reports, null, 2));
+    else for (const r of reports) console.log(formatDesignReport(r));
+    if (options.stills) {
+      const { renderFilmReviewStills } = await import("./designCheck/stills");
+      for (const r of reports.filter((rep) => rep.ok)) {
+        console.log(`[design-check] review stills for ${r.filmId}: ${await renderFilmReviewStills(r.filmId)}`);
+      }
+    }
+    if (reports.some((r) => !r.ok)) process.exitCode = 1;
+  });
+
 // parseAsync, so a rejected action surfaces as a one-line CLI error rather than
 // an unhandled rejection with a raw stack trace, and exits non-zero.
 program.parseAsync().catch((err: unknown) => {
