@@ -692,6 +692,29 @@ program
   );
 
 program
+  .command("design-brief")
+  .description("Write videos/<film>/design/BRIEF.md: everything a designer needs to design the film")
+  .argument("<film>", "film id under videos/")
+  .action(async (film: string) => {
+    const { writeDesignBrief } = await import("./designSpec/brief");
+    console.log(writeDesignBrief(film));
+  });
+
+program
+  .command("design-build")
+  .description("Compile videos/<film>/design/design.json into the film; writes it only when the design check passes")
+  .argument("<film>", "film id under videos/")
+  .option("--source <who>", "who made the design: agent, server-model or hand-built", "agent")
+  .action(async (film: string, options: { source: string }) => {
+    const { buildDesign, formatBuildStatus } = await import("./designSpec/build");
+    const source = options.source as "agent" | "server-model" | "hand-built";
+    if (!["agent", "server-model", "hand-built"].includes(source)) throw new Error(`unknown --source "${options.source}"`);
+    const status = buildDesign(film, source);
+    console.log(formatBuildStatus(film, status));
+    if (status.state !== "passed") process.exitCode = 1;
+  });
+
+program
   .command("design-check")
   .description("Check films against the design standard layer (schema, scene, art, palette, continuity, audio lock, honest data)")
   .argument("[films...]", "film ids under videos/; omit with --all to check every film")

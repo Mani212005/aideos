@@ -68,3 +68,7 @@ videos/*/narration.json
 /.aideos_task.md
 /state/agent_events.jsonl
 
+
+# Design build results are per machine; design.json, base-film.json and the artwork are committed.
+videos/*/design/status.json
+videos/*/design/BRIEF.md

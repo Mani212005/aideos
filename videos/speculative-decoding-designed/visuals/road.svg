@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
+<g id="route">
+<path id="road" d="M -240 0 L 240 0" stroke="rgba(245,245,245,0.35)" stroke-width="3" fill="none" pathLength="1"/>
+<path id="road-glow" d="M -240 0 L 240 0" stroke="#635BFF" stroke-width="4" fill="none" pathLength="1"/>
+<g id="cargo"><rect x="-252" y="-14" width="24" height="28" rx="4" fill="#F5F5F5"/></g>
+<g id="cargo-five">
+<rect x="-300" y="-14" width="16" height="28" rx="3" fill="#635BFF"/><rect x="-280" y="-14" width="16" height="28" rx="3" fill="#635BFF"/>
+<rect x="-260" y="-14" width="16" height="28" rx="3" fill="#635BFF"/><rect x="-240" y="-14" width="16" height="28" rx="3" fill="#635BFF"/>
+<rect x="-220" y="-14" width="16" height="28" rx="3" fill="#635BFF"/>
+</g>
+<text id="road-label" x="0" y="48" font-family="JetBrains Mono" font-size="14" font-weight="500" fill="#8A8A8E" text-anchor="middle">ONE TRIP PER WORD</text>
+</g>
+</svg>
