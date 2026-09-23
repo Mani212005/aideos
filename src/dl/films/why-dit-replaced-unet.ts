@@ -449,12 +449,6 @@ export const whyDitReplacedUnetFilm: Film = {
           "c": "TextReveal",
           "text": "The block starts as pure identity, then learns exactly how much to speak.",
           "size": "headline"
-        },
-        {
-          "c": "StatCounter",
-          "to": 2,
-          "label": "Conditioning Inputs: t + c",
-          "format": "plain"
         }
       ]
     },

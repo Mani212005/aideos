@@ -227,9 +227,20 @@ function checkAudioLock(film: Film, findings: DesignFinding[]): void {
   if (scene && Math.abs(scene.durationFrames - shotFrames) > 2) {
     findings.push({ rule: "audio-lock", severity: "error", where: "scene", message: `scene runs ${scene.durationFrames} frames but the shots add up to ${shotFrames}; derive both from the measured narration.` });
   }
+  // Unnarrated shots at the very end (an editor's closing footage) play after the voice has
+  // finished, so they do not unlock anything: the narration is compared with the shots before them.
+  let tail = film.shots.length;
+  while (tail > 0 && !film.shots[tail - 1].scriptText?.trim()) tail -= 1;
+  // A film that records no narration text on any shot has no tail to tell apart.
+  if (tail === 0) tail = film.shots.length;
+  const tailFrames = Math.round(film.shots.slice(tail).reduce((sum, s) => sum + s.dur, 0) * fps);
+  const narratedFrames = shotFrames - tailFrames;
   const vo = film.voiceover?.durationSec;
-  if (vo && Math.abs(vo * fps - shotFrames) > fps) {
-    findings.push({ rule: "audio-lock", severity: "error", where: "voiceover", message: `voiceover is ${vo.toFixed(2)}s but the shots last ${(shotFrames / fps).toFixed(2)}s.` });
+  if (vo && Math.abs(vo * fps - narratedFrames) > fps) {
+    findings.push({ rule: "audio-lock", severity: "error", where: "voiceover", message: `voiceover is ${vo.toFixed(2)}s but the narrated shots last ${(narratedFrames / fps).toFixed(2)}s.` });
+  }
+  if (vo && tailFrames > 0) {
+    findings.push({ rule: "audio-lock", severity: "warning", where: "voiceover", message: `${(tailFrames / fps).toFixed(1)}s of unnarrated shots play after the voiceover ends (${film.shots.slice(tail).map((s) => s.id).join(", ")}).` });
   }
   if (!film.voiceover) {
     findings.push({ rule: "audio-lock", severity: "warning", where: "voiceover", message: "the film has no voiceover yet, so nothing is audio-locked." });
