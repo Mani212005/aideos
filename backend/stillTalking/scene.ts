@@ -8,14 +8,13 @@
  * element may only ever be scaled or rotated about a single origin.
  */
 
-import type { Scene, EnvironmentAsset, Vec2 } from "../../src/dl/scene/types";
-import type { SvgAnimationClip, SvgAnimatableProperty, SvgEasing } from "../../src/dl/scene/svgAnimation";
+import type { Scene, EnvironmentAsset } from "../../src/dl/scene/types";
+import type { SvgEasing } from "../../src/dl/scene/svgAnimation";
 import type { VoiceoverTiming } from "./produceVoiceover";
+import { FPS, SCENE_SIZE, Timeline, createCues, shotFrames } from "../sceneKit";
 
-export const FPS = 30;
-
-/** Scene coordinate space. Square, so the wide cut and the reel each take a strip through it. */
-export const SCENE_SIZE = { w: 1920, h: 1920 };
+export { FPS, SCENE_SIZE, shotFrames };
+export type { ShotFrames } from "../sceneKit";
 
 /**
  * Where each asset sits in scene space. The film is composed in two bands: inserts (the planets,
@@ -40,169 +39,9 @@ const PLACEMENT = {
   centre: { x: 960, y: 960 },
 };
 
-/** Arguments for one authored clip, with an end frame instead of a duration. */
-interface ClipSpec {
-  id: string;
-  targets: string[];
-  property: SvgAnimatableProperty;
-  from: number;
-  to: number;
-  start: number;
-  end: number;
-  easing?: SvgEasing;
-  stagger?: number;
-  origin?: Vec2;
-  /**
-   * Allows this clip to start from a value the previous clip did not end on.
-   * Only the signal pulses use it: they are meant to jump back to the dish, and they do it while
-   * their own opacity is zero so the jump is never on screen.
-   */
-  allowJump?: boolean;
-}
-
-/** The state slots a property writes, which is the granularity continuity is checked at. */
-function slotsFor(property: SvgAnimatableProperty): string[] {
-  return property === "scale" ? ["scaleX", "scaleY"] : [property];
-}
-
-/** The value an element holds before anything touches it, per property. */
-function restValue(property: SvgAnimatableProperty): number {
-  if (property === "scale" || property === "scaleX" || property === "scaleY") return 1;
-  if (property === "opacity" || property === "drawOn") return 1;
-  return 0;
-}
-
-/**
- * Collects clips for one asset while holding the rules that keep motion continuous.
- * Every clip is checked against the last clip on the same element and property, so a value can
- * never snap; and an element may declare only one transform origin, because the compiler applies
- * the last origin it sees to every frame of that element.
- */
-class Timeline {
-  private clips: SvgAnimationClip[] = [];
-  private lastValue = new Map<string, { clipId: string; value: number }>();
-  private origins = new Map<string, { clipId: string; origin: Vec2 }>();
-
-  constructor(
-    private readonly timelineId: string,
-    private readonly durationFrames: number,
-  ) {}
-
-  /** Adds one clip, failing loudly on a discontinuity, a clashing origin or an overrun. */
-  add(spec: ClipSpec): this {
-    const duration = spec.end - spec.start;
-    if (duration <= 0) {
-      throw new Error(`[${this.timelineId}/${spec.id}] end ${spec.end} is not after start ${spec.start}.`);
-    }
-    const stagger = spec.stagger ?? 0;
-    const lastEnd = spec.end + stagger * (spec.targets.length - 1);
-    if (lastEnd > this.durationFrames) {
-      throw new Error(
-        `[${this.timelineId}/${spec.id}] ends at frame ${lastEnd}, past the film's ${this.durationFrames}.`,
-      );
-    }
-
-    for (const target of spec.targets) {
-      if (spec.origin) {
-        const existing = this.origins.get(target);
-        if (existing && (existing.origin.x !== spec.origin.x || existing.origin.y !== spec.origin.y)) {
-          throw new Error(
-            `[${this.timelineId}/${spec.id}] gives "${target}" origin (${spec.origin.x}, ${spec.origin.y}) ` +
-              `but "${existing.clipId}" already gave it (${existing.origin.x}, ${existing.origin.y}). ` +
-              "One element, one origin: the compiler applies the last origin it sees to every frame.",
-          );
-        }
-        this.origins.set(target, { clipId: spec.id, origin: spec.origin });
-      }
-
-      for (const slot of slotsFor(spec.property)) {
-        const key = `${target}::${slot}`;
-        const previous = this.lastValue.get(key);
-        const expected = previous ? previous.value : restValue(spec.property);
-        if (!spec.allowJump && previous && Math.abs(expected - spec.from) > 1e-6) {
-          throw new Error(
-            `[${this.timelineId}/${spec.id}] starts "${target}" ${slot} at ${spec.from} but ` +
-              `"${previous.clipId}" left it at ${expected}. A gap here is a visible snap on screen.`,
-          );
-        }
-        this.lastValue.set(key, { clipId: spec.id, value: spec.to });
-      }
-    }
-
-    this.clips.push({
-      clipId: spec.id,
-      targets: spec.targets,
-      property: spec.property,
-      from: spec.from,
-      to: spec.to,
-      startFrame: spec.start,
-      durationFrames: duration,
-      ...(spec.easing ? { easing: spec.easing } : {}),
-      ...(stagger ? { staggerFrames: stagger } : {}),
-      ...(spec.origin ? { origin: spec.origin } : {}),
-    });
-    return this;
-  }
-
-  /** Hands back the finished timeline for attaching to its asset. */
-  build() {
-    return { timelineId: this.timelineId, clips: this.clips };
-  }
-}
-
-/** Frame spans of every shot, derived from the measured narration and nothing else. */
-export interface ShotFrames {
-  spans: Map<string, { from: number; to: number }>;
-  durationFrames: number;
-}
-
-/** Turns measured narration offsets into contiguous, gap-free shot frame spans. */
-export function shotFrames(timing: VoiceoverTiming): ShotFrames {
-  const spans = new Map<string, { from: number; to: number }>();
-  let cursor = 0;
-  for (const segment of timing.segments) {
-    const to = Math.round((segment.startSec + segment.durationSec) * FPS);
-    spans.set(segment.shotId, { from: cursor, to });
-    cursor = to;
-  }
-  return { spans, durationFrames: cursor };
-}
-
 /** Builds the whole film's scene: every asset, placed, layered and animated. */
 export function buildScene(timing: VoiceoverTiming): Scene {
-  const { spans, durationFrames } = shotFrames(timing);
-
-  /** Frame at a fraction through a named shot, which is how beats are aimed at words. */
-  const at = (shotId: string, fraction = 0): number => {
-    const span = spans.get(shotId);
-    if (!span) throw new Error(`No shot "${shotId}" in the measured narration.`);
-    return Math.round(span.from + (span.to - span.from) * fraction);
-  };
-  /** First frame of a named shot. */
-  const from = (shotId: string): number => at(shotId, 0);
-  /** Frame one past the last frame of a named shot. */
-  const to = (shotId: string): number => at(shotId, 1);
-
-  const bySegment = new Map(timing.segments.map((segment) => [segment.shotId, segment]));
-  /**
-   * Frame a given phrase is spoken at, from the narration's own word offsets.
-   * Aiming a beat at a word rather than at a fraction of the shot is what keeps a cue on the
-   * thing being said: the payoff word of a sentence is usually near its end, not its middle.
-   * Throws when the phrase is not in that shot, so re-writing a line cannot silently mis-time it.
-   */
-  const word = (shotId: string, phrase: string, edge: "start" | "end" = "start"): number => {
-    const segment = bySegment.get(shotId);
-    if (!segment) throw new Error(`No shot "${shotId}" in the measured narration.`);
-    const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const wanted = phrase.split(/\s+/).map(normalize).filter(Boolean);
-    for (let i = 0; i + wanted.length <= segment.words.length; i++) {
-      if (wanted.every((w, k) => normalize(segment.words[i + k].word) === w)) {
-        const hit = edge === "start" ? segment.words[i] : segment.words[i + wanted.length - 1];
-        return Math.round((edge === "start" ? hit.startSec : hit.endSec) * FPS);
-      }
-    }
-    throw new Error(`"${phrase}" is not spoken in shot "${shotId}": ${segment.text}`);
-  };
+  const { at, from, to, word, durationFrames } = createCues(timing);
 
   // ---------------------------------------------------------------- backdrop
   const space: EnvironmentAsset = {
