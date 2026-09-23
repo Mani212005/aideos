@@ -12,7 +12,8 @@ export type AgentEventType =
   | "custom_directive"
   | "produce_film"
   | "canvas_updated"
-  | "critique";
+  | "critique"
+  | "design_film";
 
 export type AgentTaskStatus =
   | "pending"

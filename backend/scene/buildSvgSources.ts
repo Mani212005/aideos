@@ -65,7 +65,9 @@ export function buildSvgSources(): number {
   return Object.keys(sources).length;
 }
 
-if (require.main === module) {
+// Guarded with typeof so this module can also be bundled as ESM (the editor dev server's config
+// reaches it through the design build), where `require` and `module` do not exist.
+if (typeof require !== "undefined" && typeof module !== "undefined" && require.main === module) {
   const count = buildSvgSources();
   console.log(`[svg-sources] bundled ${count} assets into ${path.relative(projectRoot(), generatedModulePath())}`);
 }

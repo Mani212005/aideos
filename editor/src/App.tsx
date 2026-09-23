@@ -22,6 +22,7 @@ import {
   Plus,
   Save,
   Shapes,
+  Sparkles,
   Subtitles,
   TriangleAlert,
 } from "lucide-react";
@@ -42,6 +43,14 @@ import { ExportProgressModal } from "./components/ExportProgressModal";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
 import { AgentActivityInspector } from "./components/AgentActivityInspector";
+
+/** How the header names who made the open film's design; "templates" is flagged as a fallback. */
+const DESIGN_SOURCE_LABEL = {
+  agent: "Designed by agent",
+  "server-model": "Designed by model",
+  "hand-built": "Hand-built design",
+  templates: "Template fallback",
+} as const;
 
 /**
  * The project list comes from the dev server at runtime. The editor deliberately does not import
@@ -285,6 +294,17 @@ export default function App() {
           >
             {project.validation.ok ? "Valid" : "Check"}
           </Badge>
+
+          {project.film.design && (
+            <Badge
+              tone={project.film.design.source === "templates" ? "warn" : "select"}
+              icon={project.film.design.source === "templates" ? <TriangleAlert className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
+              title={project.film.design.brief?.concept ?? project.film.design.note ?? ""}
+              className="hidden lg:inline-flex"
+            >
+              {DESIGN_SOURCE_LABEL[project.film.design.source]}
+            </Badge>
+          )}
 
           <AgentActivityInspector />
 

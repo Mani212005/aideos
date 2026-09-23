@@ -9,7 +9,8 @@ import path from "node:path";
 import fs from "node:fs";
 import { parseFilm } from "../../src/dl/schema";
 import { readActiveFilmSource, restoreActiveFilmSource, setActiveFilm } from "../pipeline/filmStore";
-import { midShotPicks, renderReviewStills, FPS, type StillPick } from "../sceneKit";
+import { FPS } from "../sceneKit";
+import { midShotPicks, renderReviewStills, type StillPick } from "../sceneKit/reviewStills";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 
