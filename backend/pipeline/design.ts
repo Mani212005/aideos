@@ -10,8 +10,10 @@
  * voice locked together instead of merely close.
  *
  * Each device-eligible beat's visual strategy is chosen through the shared Jev decision client
- * (backend/jev.ts), then authored as blocks validated against the film schema and grounded in the
- * narration through backend/shotVisualCues.ts.
+ * (backend/jev.ts). A StatCounter is read straight from the narration (backend/shotVisualCues.ts);
+ * every other chart's contents are written by a text model from the beat's own words and checked
+ * for honesty (backend/pipeline/deviceData.ts). A chart with no checked data is never drawn: the
+ * beat keeps its text card rather than showing stand-in numbers.
  */
 
 import type { Block, CanvasEdge, CanvasNode, Film, Shot } from "../../src/dl/schema";
@@ -31,6 +33,7 @@ import {
   type ShotVisualState,
 } from "../jev";
 import { narrationSupportsVisual, readQuantity } from "../shotVisualCues";
+import { authorDeviceData, AUTHORED_DEVICES, type AuthoredDevices, type DeviceLlmCaller, type DeviceReport } from "./deviceData";
 
 /** One narration beat with the visual and on-screen directions that surround it. */
 export interface NarrationBeat {
@@ -157,6 +160,8 @@ export interface DesignOptions {
   /** Upper bound on how many beats get flagged for footage. */
   maxFootageShots?: number;
   music?: { src: string; volume?: number; duckUnderVoiceover?: boolean };
+  /** Writes chart contents from the narration. Without one, only a StatCounter can be drawn. */
+  deviceCaller?: DeviceLlmCaller | null;
 }
 
 /** Beats flagged for footage, in the order the B-roll stage should render them. */
@@ -175,6 +180,8 @@ export interface DesignResult {
 /** What the Jev-driven compile produces: the film, its footage jobs, and each Jev decision it asked for. */
 export interface AsyncDesignResult extends DesignResult {
   shotVisuals: Map<string, ShotVisualResult>;
+  /** For every beat Jev gave a chart, whether its data was authored or why it was refused. */
+  deviceReports: Map<string, DeviceReport>;
 }
 
 /**
@@ -275,78 +282,21 @@ function spineLook(nodes: CanvasNode[], index: number, reach: number): string[] 
 
 
 // Builds one device block for a shot visual, or null when the narration does not carry its data.
-function chooseDeviceForVisual(visual: ShotVisual, narration: string): Block | null {
+// A StatCounter is read from the narration; any other chart must come with authored, checked data.
+function chooseDeviceForVisual(visual: ShotVisual, narration: string, authored?: Block): Block | null {
   if (!narrationSupportsVisual(visual, narration)) return null;
-  switch (visual) {
-    case "StatCounter": {
-      const quantity = readQuantity(narration);
-      if (!quantity) return null;
-      return {
-        c: "StatCounter",
-        to: quantity.value,
-        label: fitText(quantity.label, 44),
-        format: quantity.value >= 1000 ? "compact" : "plain",
-        ...(quantity.suffix ? { suffix: quantity.suffix } : {}),
-      };
-    }
-    case "TokenStrip":
-      return {
-        c: "TokenStrip",
-        tokens: ["t+1", "t+2", "t+3", "t+4", "t+5"],
-        lit: [0, 1, 2],
-        caption: "Accepted token sequence",
-      };
-    case "Plot":
-      return {
-        c: "Plot",
-        points: [
-          [0, 0.08],
-          [0.25, 0.2],
-          [0.5, 0.38],
-          [0.75, 0.62],
-          [1, 0.92],
-        ],
-        xLabel: "draft length",
-        yLabel: "throughput",
-        endLabel: "accepted",
-      };
-    case "MatrixGrid":
-      return {
-        c: "MatrixGrid",
-        sweep: "cell",
-        rowLabel: "tokens",
-        colLabel: "heads",
-        values: [
-          [0.9, 0.2, 0.1, 0.4],
-          [0.1, 0.85, 0.3, 0.2],
-          [0.3, 0.1, 0.95, 0.1],
-          [0.2, 0.4, 0.1, 0.88],
-        ],
-      };
-    case "Distribution":
-      return {
-        c: "Distribution",
-        items: [
-          { label: "Direct Path", p: 0.62 },
-          { label: "Fallback", p: 0.28 },
-          { label: "Residual", p: 0.1 },
-        ],
-      };
-    case "LayerStack":
-      return {
-        c: "LayerStack",
-        layers: ["Input Layer", "Processing Block x12", "Output Projection"],
-      };
-    case "ScaleBar":
-      return {
-        c: "ScaleBar",
-        ticks: ["Min", "Balanced", "Peak"],
-        value: 0.72,
-        label: "Optimal threshold",
-      };
-    default:
-      return null;
+  if (visual === "StatCounter") {
+    const quantity = readQuantity(narration);
+    if (!quantity) return null;
+    return {
+      c: "StatCounter",
+      to: quantity.value,
+      label: fitText(quantity.label, 44),
+      format: quantity.value >= 1000 ? "compact" : "plain",
+      ...(quantity.suffix ? { suffix: quantity.suffix } : {}),
+    };
   }
+  return authored?.c === visual ? authored : null;
 }
 
 /**
@@ -355,12 +305,13 @@ function chooseDeviceForVisual(visual: ShotVisual, narration: string): Block | n
  * A device is the second half of a composed frame, not the whole of one. Without a headline to
  * sit under, a single small device floats alone in a full-frame panel and reads as an empty
  * station, so a beat with no on-screen copy never carries one. A device the narration does not
- * ground is refused the same way, so a visual never puts data on screen the voice never said.
+ * ground, or a chart with no authored data, is refused the same way, so a visual never puts data
+ * on screen the voice never said.
  */
-export function buildBlocksForShotVisual(visual: ShotVisual, narration: string, onscreen: string[]): Block[] {
+export function buildBlocksForShotVisual(visual: ShotVisual, narration: string, onscreen: string[], authored?: Block): Block[] {
   const textBlocks = buildTextBlocks(onscreen);
   if (visual === "Text" || textBlocks.length === 0) return textBlocks;
-  const device = chooseDeviceForVisual(visual, narration);
+  const device = chooseDeviceForVisual(visual, narration, authored);
   const parsed = device ? blockSchema.safeParse(device) : null;
   return parsed?.success ? [textBlocks[0], parsed.data] : textBlocks;
 }
@@ -517,6 +468,24 @@ export async function compileFilmFromScreenplayAsync(
     jevOptions,
   );
 
+  // Chart contents for the same candidates, also in one request: every chart kind the beat's
+  // narration could support, since the final pick depends on the running rotation below.
+  const beatShotId = (i: number) => `beat-${String(i + 1).padStart(2, "0")}`;
+  const deviceRequests = candidateOrder
+    .map((i) => ({
+      key: beatShotId(i),
+      narration: beats[i].narration,
+      onscreen: beats[i].onscreen,
+      sceneTitle: beats[i].sectionTitle,
+      kinds: AUTHORED_DEVICES.filter((v) => narrationSupportsVisual(v, beats[i].narration)),
+    }))
+    .filter((r) => r.kinds.length > 0);
+  const authoredDevices: AuthoredDevices =
+    options.deviceCaller && deviceRequests.length
+      ? await authorDeviceData(deviceRequests, options.deviceCaller)
+      : { blocks: new Map(), refusals: new Map() };
+  const deviceReports = new Map<string, DeviceReport>();
+
   for (let i = 0; i < beats.length; i++) {
     const beat = beats[i];
     const dur = shotDurations[i];
@@ -529,7 +498,7 @@ export async function compileFilmFromScreenplayAsync(
 
     const textBlocks = buildTextBlocks(beat.onscreen);
     const wantsFootage = footageIndices.has(i);
-    const shotId = `beat-${String(i + 1).padStart(2, "0")}`;
+    const shotId = beatShotId(i);
 
     // Runsheet timing boundaries: 70s threshold leaves room before the 90s schema limit.
     const textBeatDue = sinceTextBeat + dur > 70;
@@ -557,7 +526,18 @@ export async function compileFilmFromScreenplayAsync(
       shotVisuals.set(shotId, decision);
       const choice = decision.visual;
       const repeatsLast = lastDeviceKind !== null && choice.toLowerCase() === lastDeviceKind.toLowerCase();
-      const authored = repeatsLast ? [] : buildBlocksForShotVisual(choice, beat.narration, beat.onscreen);
+      const data = authoredDevices.blocks.get(`${shotId}:${choice}`);
+      const authored = repeatsLast ? [] : buildBlocksForShotVisual(choice, beat.narration, beat.onscreen, data);
+      if (AUTHORED_DEVICES.includes(choice)) {
+        const refusal = authoredDevices.refusals.get(`${shotId}:${choice}`);
+        deviceReports.set(shotId, repeatsLast
+          ? { kind: choice, state: "refused", reason: "same chart kind as the shot before" }
+          : data
+          ? { kind: choice, state: "authored" }
+          : refusal
+            ? { kind: choice, state: "refused", reason: refusal }
+            : { kind: choice, state: "not-authored", reason: options.deviceCaller ? "the narration has no cue for this chart" : "no chart data model is configured" });
+      }
       if (authored.some((b) => (SHOT_COMPLEX_VISUALS as readonly string[]).includes(b.c))) {
         deviceBlocks = authored;
         devicesUsed += 1;
@@ -646,5 +626,5 @@ export async function compileFilmFromScreenplayAsync(
     ...(options.music ? { music: options.music } : {}),
   });
 
-  return { film, footage, shotVisuals };
+  return { film, footage, shotVisuals, deviceReports };
 }

@@ -51,14 +51,18 @@ function spine(durations: number[]): { segments: SegmentAudioInfo[]; shotDuratio
   return { segments, shotDurations };
 }
 
-test("DesignJev: buildBlocksForShotVisual authors schema-valid blocks for every visual", () => {
+test("DesignJev: buildBlocksForShotVisual draws a chart only from authored data, never a stand-in", () => {
+  const narration = "Throughput scales with seventy billion parameters.";
   for (const visual of SHOT_VISUALS) {
-    const blocks = buildBlocksForShotVisual(visual, "Throughput scales with seventy billion parameters.", ["Headline", "Support line"]);
+    const blocks = buildBlocksForShotVisual(visual, narration, ["Headline", "Support line"]);
     assert.ok(blocks.length > 0, `${visual} must produce blocks`);
-    for (const block of blocks) {
-      assert.doesNotThrow(() => blockSchema.parse(block), `${visual} block failed schema`);
+    for (const block of blocks) assert.doesNotThrow(() => blockSchema.parse(block), `${visual} block failed schema`);
+    if (visual !== "StatCounter") {
+      assert.ok(!blocks.some((b) => b.c === visual), `${visual} must not be drawn without authored data`);
     }
   }
+  const authored = blockSchema.parse({ c: "Plot", points: [[0, 0.1], [1, 0.9]], xLabel: "Parameters", yLabel: "Throughput" });
+  assert.deepEqual(buildBlocksForShotVisual("Plot", narration, ["Headline"], authored).map((b) => b.c), ["TextReveal", "Plot"]);
 });
 
 test("DesignJev: async compile produces a schema-valid film locked to the narration spine", async () => {
@@ -108,17 +112,28 @@ test("DesignJev: async compile renders a concrete no-footage visual with standar
 
 test("DesignJev: async compile uses model shot-visual choice for device blocks", async () => {
   setMockShotVisualHandler(async () => ({ choice: "Plot", confidence: 0.9, probabilities: { Plot: 0.9 } }));
+  const prompts: string[] = [];
+  const deviceCaller = async (prompt: string) => {
+    prompts.push(prompt);
+    return JSON.stringify({
+      "beat-03": { Plot: { points: [[0, 0.1], [0.5, 0.5], [1, 0.9]], xLabel: "Draft length", yLabel: "Throughput" } },
+    });
+  };
   try {
     const { segments, shotDurations } = spine([6, 8, 7]);
     const result = await compileFilmFromScreenplayAsync(
       SCRIPT,
       segments,
       shotDurations,
-      { title: "Probe Jev Film", maxFootageShots: 0 },
+      { title: "Probe Jev Film", maxFootageShots: 0, deviceCaller },
       { apiKey: "test-key" },
     );
     const withPlot = result.film.shots.filter((s) => s.blocks.some((b) => b.c === "Plot"));
     assert.ok(withPlot.length > 0, "model Plot choice must author Plot blocks");
+    assert.equal(prompts.length, 1, "chart data is authored in one request per film");
+    const plot = withPlot[0].blocks.find((b) => b.c === "Plot") as { xLabel?: string };
+    assert.equal(plot.xLabel, "Draft length", "the authored data is what is drawn");
+    assert.equal(result.deviceReports.get("beat-03")?.state, "authored");
   } finally {
     clearMockShotVisualHandler();
   }

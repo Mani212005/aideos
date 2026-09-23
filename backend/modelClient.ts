@@ -6,7 +6,8 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const DEFAULT_GEMINI_MODEL = process.env.AIDEOS_GEMINI_MODEL || "gemini-2.0-flash";
+// Google retires pinned versions (gemini-2.0-flash now 404s), so keep this current; override with AIDEOS_GEMINI_MODEL.
+const DEFAULT_GEMINI_MODEL = process.env.AIDEOS_GEMINI_MODEL || "gemini-3.5-flash";
 
 /** Builds and returns the authenticated Google Gen AI client. */
 export function getGoogleAiClient(): GoogleGenAI {
@@ -82,14 +83,29 @@ export async function generateText(
   const ai = getGoogleAiClient();
   const modelName = options?.model || DEFAULT_GEMINI_MODEL;
 
-  const response = await ai.models.generateContent({
-    model: modelName,
-    contents: prompt,
-    config: {
-      systemInstruction: options?.systemInstruction,
-      temperature: options?.temperature ?? 0.7,
-    },
-  });
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+          systemInstruction: options?.systemInstruction,
+          temperature: options?.temperature ?? 0.7,
+        },
+      });
+      return (response.text || "").trim();
+    } catch (err) {
+      if (attempt >= TRANSIENT_ATTEMPTS || !isTransientModelError(err)) throw err;
+      await new Promise((resolve) => setTimeout(resolve, TRANSIENT_BACKOFF_MS * 2 ** (attempt - 1)));
+    }
+  }
+}
 
-  return (response.text || "").trim();
+const TRANSIENT_ATTEMPTS = 4;
+const TRANSIENT_BACKOFF_MS = 1500;
+
+/** True for errors worth retrying: rate limits and temporary overload (429, 500, 503, 504). */
+export function isTransientModelError(err: unknown): boolean {
+  const text = err instanceof Error ? err.message : String(err);
+  return /"code":\s*(429|500|503|504)\b|\b(UNAVAILABLE|RESOURCE_EXHAUSTED|DEADLINE_EXCEEDED)\b/.test(text);
 }
