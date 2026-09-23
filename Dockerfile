@@ -36,18 +36,16 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 
 WORKDIR /app
 
-# 2. Install backend and root dependencies
-COPY package*.json ./
+# 2. Copy project source code and install root and editor dependencies (the root postinstall
+#    installs editor/ too, so this needs the source present first)
+COPY . .
 RUN npm ci --include=dev
 
-# 3. Copy project source code
-COPY . .
-
-# 4. Build Vite frontend bundle
-RUN cd editor && npm ci && npm run build
-
-# 5. Expose Cloud Run default port
+# 3. Expose the service port
 EXPOSE 8080
 
-# 6. Start server with host 0.0.0.0
-CMD ["npm", "run", "editor", "--", "--host", "0.0.0.0"]
+# 4. Start the studio server. The API lives in the editor dev server's middleware, so that is what
+#    runs here; exec vite directly rather than through npm, which adds two npm processes (~60 MB)
+#    on a 512 MB instance.
+WORKDIR /app/editor
+CMD ["./node_modules/.bin/vite", "--host", "0.0.0.0"]
