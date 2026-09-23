@@ -20,7 +20,7 @@ import {
 } from "../timeline/layer_manager";
 import { closeAudioGapWithDependencies } from "../timeline/voiceover_engine";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
-import { traceBus } from "../agentBridge";
+import { traceBus } from "../agentBridge/traceBus";
 
 export interface EditProgramResult {
   film: LayeredFilm;
