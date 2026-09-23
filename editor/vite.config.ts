@@ -2138,6 +2138,54 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           }
         }
 
+        // Handle /api/design/:id[/shots/:shotId/(visual|redesign)] (the Look stage's design view,
+        // "why this visual" swaps and per-shot redesign requests to the connected agent)
+        const designRoute = url.match(/^\/api\/design\/([a-z0-9-]+)(?:\/shots\/([A-Za-z0-9_-]+)\/(visual|redesign))?$/);
+        if (designRoute) {
+          const [, filmId, shotId, action] = designRoute;
+          const loadFilm = (posted: unknown): Film | null => {
+            const parsed = posted ? filmSchema.safeParse(posted) : null;
+            if (parsed?.success) return parsed.data;
+            const file = path.join(videosDir, filmId, 'film.json');
+            return fs.existsSync(file) ? filmSchema.parse(JSON.parse(fs.readFileSync(file, 'utf8'))) : null;
+          };
+          if (!action && req.method === 'GET') {
+            void import('../backend/designSpec/shotTools.ts').then(({ designOverview }) => {
+              const film = loadFilm(null);
+              if (!film) return sendJson(res, 404, { error: `Film "${filmId}" not found` });
+              sendJson(res, 200, { ok: true, overview: designOverview(film) });
+            }).catch(err => sendJson(res, 500, { error: String(err) }));
+            return;
+          }
+          if (action && req.method === 'POST') {
+            void readBody(req).then(async (body: any) => {
+              const film = loadFilm(body?.film);
+              if (!film) return sendJson(res, 404, { error: `Film "${filmId}" not found` });
+              const tools = await import('../backend/designSpec/shotTools.ts');
+              if (action === 'visual') {
+                const { defaultDeviceCaller } = await import('../backend/pipeline/deviceData.ts');
+                const swap = await tools.swapShotVisual(film, shotId, String(body?.visual ?? ''), await defaultDeviceCaller());
+                return sendJson(res, swap.ok ? 200 : 422, swap);
+              }
+              const dispatch = await tools.requestShotRedesign(film, shotId, String(body?.note ?? ''));
+              sendJson(res, 200, { ok: true, channels: dispatch.channels, taskId: dispatch.taskId, message: dispatch.message });
+            }).catch(err => sendJson(res, 500, { error: String(err) }));
+            return;
+          }
+          if (!action && req.method === 'POST') {
+            void readBody(req).then(async (body: any) => {
+              const film = loadFilm(body?.film);
+              if (!film) return sendJson(res, 404, { error: `Film "${filmId}" not found` });
+              const { requestFilmDesign } = await import('../backend/designSpec/shotTools.ts');
+              const dispatch = await requestFilmDesign(film);
+              sendJson(res, 200, { ok: true, channels: dispatch.channels, taskId: dispatch.taskId, message: dispatch.message });
+            }).catch(err => sendJson(res, 500, { error: String(err) }));
+            return;
+          }
+          sendJson(res, 405, { error: `${req.method} ${url} is not allowed` });
+          return;
+        }
+
         if (url !== '/api/films' && !url.startsWith('/api/films/')) return next();
 
         if (url === '/api/films' && req.method === 'GET') {
