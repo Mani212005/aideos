@@ -56,6 +56,17 @@ test("DesignCheck: the scene must run exactly as long as the narrated shots", ()
   assert.ok(errorRules(film).includes("audio-lock"));
 });
 
+test("DesignCheck: closing footage after the voice is a warning, a voiceover that disagrees is an error", () => {
+  const film = JSON.parse(fs.readFileSync(path.join(ROOT, "videos/speculative-decoding/film.json"), "utf8"));
+  const last = film.shots[film.shots.length - 1];
+  film.shots.push({ ...last, id: "closing-footage", dur: 5, scriptText: undefined });
+  const report = checkFilmDesign(film);
+  assert.ok(!report.findings.some((f) => f.severity === "error" && f.rule === "audio-lock"), JSON.stringify(report.findings));
+  assert.ok(report.findings.some((f) => f.severity === "warning" && /closing-footage/.test(f.message)));
+  film.voiceover.durationSec -= 10;
+  assert.ok(errorRules(film).includes("audio-lock"));
+});
+
 test("DesignCheck: artwork must be static, self-contained, on palette and in the house typefaces", () => {
   fs.mkdirSync(TMP, { recursive: true });
   const file = path.join(TMP, "bad.svg");
