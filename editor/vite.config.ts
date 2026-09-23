@@ -2250,6 +2250,10 @@ export default defineConfig({
     port: Number(process.env.PORT) || 3001,
     host: process.env.HOST || '0.0.0.0',
     strictPort: false,
+    // The hosted backend is this dev server (the API lives in its middleware), reached as
+    // aideos-backend.onrender.com directly and through Vercel's /api rewrite. Vite rejects any
+    // Host it does not know with a 403, so name the hosting domains; AIDEOS_ALLOWED_HOSTS adds more.
+    allowedHosts: ['.onrender.com', ...(process.env.AIDEOS_ALLOWED_HOSTS || '').split(',').map((h) => h.trim()).filter(Boolean)],
     fs: {
       allow: ['..']
     },
