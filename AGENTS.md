@@ -43,6 +43,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 
 ## Claude Screenplay Intake
 - `backend/scriptIntake.ts` is the single source of truth for parsing/serializing Claude-style screenplays (`## timestamp - Title` headers, `[VISUAL]`/`[NARRATION]`/`[ON SCREEN]` tag blocks, plus legacy `VO:`/`Voiceover:`/`Narrator:` conventions), extracting zero-leakage spoken narration, deterministically structuring untagged prose via `structureUntaggedProseToScript`, and compiling sub-shots and animated primitive blocks (`TextReveal`, `StatCounter`, `CodeBlock`, `Card`, `Divider`, `IconLabel`, `ProgressBar`) for Remotion using TypeSafe Jev (`backend/jev.ts`) for semantic primitive selection with confidence gating and deterministic fallback.
+- Jev is asked once per film, not once per beat: `backend/jev.ts`'s `prefetchShotVisualAnswers`/`prefetchPrimitiveAnswers` send every beat in one batched request and `resolveShotVisual`/`resolvePrimitive` gate each answer against the beat's live state. Never call `selectShotVisual`/`selectPrimitive` in a per-beat loop; they remain the path for a single decision and for test mocks.
 - It has no Node-only imports, so `editor/src/components/ScriptEditor.tsx` (browser bundle), `editor/vite.config.ts` (dev server), and `backend/audio.ts` all import it directly instead of re-implementing screenplay parsing. Extend this module rather than adding another parser copy.
 
 ## Transcription and edit context (Phase 1)

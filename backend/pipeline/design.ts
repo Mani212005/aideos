@@ -22,10 +22,13 @@ import type { SegmentAudioInfo } from "../audio";
 import { slugify } from "./filmStore";
 import {
   selectShotVisual,
+  prefetchShotVisualAnswers,
+  resolveShotVisual,
   SHOT_COMPLEX_VISUALS,
   type JevDecisionOptions,
   type ShotVisual,
   type ShotVisualResult,
+  type ShotVisualState,
 } from "../jev";
 import { narrationSupportsVisual, readQuantity } from "../shotVisualCues";
 
@@ -492,6 +495,28 @@ export async function compileFilmFromScreenplayAsync(
   const maxDevices = Math.max(2, Math.round(beats.length / 4));
   const activeVisuals: string[] = [];
 
+  // Every beat that could hold a device is asked about up front in one batched Jev request.
+  // Whether a candidate is finally used still depends on the running device budget below, so a
+  // few answers may go unused; that is cheaper than one round-trip per beat.
+  const candidateStates = new Map<number, ShotVisualState>();
+  beats.forEach((beat, i) => {
+    const dur = shotDurations[i];
+    if (footageIndices.has(i) || buildTextBlocks(beat.onscreen).length === 0 || dur < 4 || dur > 25) return;
+    candidateStates.set(i, {
+      visual: beat.visual,
+      narration: beat.narration,
+      onscreen: beat.onscreen,
+      sceneTitle: beat.sectionTitle,
+      durationSec: dur,
+      wantsFootage: false,
+    });
+  });
+  const candidateOrder = [...candidateStates.keys()];
+  const prefetched = await prefetchShotVisualAnswers(
+    candidateOrder.map((i) => candidateStates.get(i)!),
+    jevOptions,
+  );
+
   for (let i = 0; i < beats.length; i++) {
     const beat = beats[i];
     const dur = shotDurations[i];
@@ -515,18 +540,20 @@ export async function compileFilmFromScreenplayAsync(
 
     let deviceBlocks: Block[] | null = null;
     if (deviceEligible) {
-      const decision = await selectShotVisual(
-        {
-          visual: beat.visual,
-          narration: beat.narration,
-          onscreen: beat.onscreen,
-          activeVisuals: [...activeVisuals],
-          sceneTitle: beat.sectionTitle,
-          durationSec: dur,
-          wantsFootage,
-        },
-        jevOptions,
-      );
+      const state: ShotVisualState = {
+        visual: beat.visual,
+        narration: beat.narration,
+        onscreen: beat.onscreen,
+        activeVisuals: [...activeVisuals],
+        sceneTitle: beat.sectionTitle,
+        durationSec: dur,
+        wantsFootage,
+      };
+      const slot = prefetched ? candidateOrder.indexOf(i) : -1;
+      const decision =
+        prefetched && slot >= 0
+          ? resolveShotVisual(prefetched[slot], state, jevOptions)
+          : await selectShotVisual(state, jevOptions);
       shotVisuals.set(shotId, decision);
       const choice = decision.visual;
       const repeatsLast = lastDeviceKind !== null && choice.toLowerCase() === lastDeviceKind.toLowerCase();
