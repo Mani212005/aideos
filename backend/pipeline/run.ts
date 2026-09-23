@@ -538,6 +538,9 @@ export async function runProduction(
 
         const produced: RenderedOutput[] = [];
         for (const format of formats) {
+          if (!FORMAT_SPECS[format]) {
+            throw new Error(`Invalid format "${format}". Supported formats are: ${Object.keys(FORMAT_SPECS).join(", ")}`);
+          }
           const outPath = path.join(outDir, `${slug}-${format}.mp4`);
           emit("render", "running", `rendering ${format} (${FORMAT_SPECS[format].width}x${FORMAT_SPECS[format].height})`);
           const output = await renderFormat(format, outPath, {

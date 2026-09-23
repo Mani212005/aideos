@@ -262,6 +262,7 @@ export const blockSchema = z.discriminatedUnion("c", [
     c: z.literal("Card"),
     title: z.string().min(1).max(30),
     body: z.string().max(80).optional(),
+    tag: z.string().max(30).optional(),
     state: z.enum(["idle", "active"]).default("idle"),
   }),
   z.object({ c: z.literal("Divider") }),

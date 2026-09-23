@@ -9,7 +9,8 @@
 import * as esbuild from "esbuild";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
+import fs from "node:fs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -28,7 +29,6 @@ const load = async (rel, name) => {
   return import(`file://${tmp}?t=${Date.now()}`);
 };
 
-const { ACTIVE_FILM } = await load("src/dl/activeFilm.ts", "dl-film.mjs");
 const { parseFilm, DEVICE_BLOCKS } = await load("src/dl/schema.ts", "dl-schema.mjs");
 const { validateFilmAudioAndAssets } = await load("src/dl/validateFilm.ts", "dl-validate.mjs");
 const { buildTimeline, totalFrames } = await load("src/dl/camera.ts", "dl-camera.mjs");
@@ -44,7 +44,29 @@ if (!lintResult.clean) {
   process.exit(1);
 }
 
-const film = validateFilmAudioAndAssets(ACTIVE_FILM);
+// Resolves target film either from CLI argument or from activeFilm.ts default.
+const resolveTargetFilm = async () => {
+  const arg = process.argv[2];
+  if (arg) {
+    const targetPath = path.resolve(process.cwd(), arg);
+    if (!fs.existsSync(targetPath)) {
+      throw new Error(`Film file not found: ${targetPath}`);
+    }
+    if (targetPath.endsWith(".json")) {
+      const raw = JSON.parse(await readFile(targetPath, "utf8"));
+      return parseFilm(raw);
+    }
+    const loaded = await load(path.relative(ROOT, targetPath), "cli-target-film.mjs");
+    const filmObj = Object.values(loaded).find((v) => v && typeof v === "object" && "id" in v && "shots" in v);
+    if (filmObj) return filmObj;
+    throw new Error(`No film export found in module: ${targetPath}`);
+  }
+  const { ACTIVE_FILM } = await load("src/dl/activeFilm.ts", "dl-film.mjs");
+  return ACTIVE_FILM;
+};
+
+const rawFilm = await resolveTargetFilm();
+const film = validateFilmAudioAndAssets(rawFilm);
 const timeline = buildTimeline(film);
 const frames = totalFrames(timeline);
 const seconds = frames / film.fps;

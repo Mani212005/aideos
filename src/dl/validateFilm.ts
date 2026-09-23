@@ -217,6 +217,7 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
           "liquid-bucket",
           "balance-scale",
           "clock-gears",
+          "rocket-launch",
           "character-throw",
           "typing-cursor-quote",
           "glowing-cluster",

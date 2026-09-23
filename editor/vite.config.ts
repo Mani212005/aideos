@@ -48,8 +48,11 @@ const videosDir = path.resolve(__dirname, '../videos');
 const FILM_ID = /^[a-z0-9-]+$/;
 
 // `kv-cache` → `kvCacheFilm`. Film ids may contain dashes; identifiers may not.
-const exportName = (id: string) =>
-  `${id.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase())}Film`;
+// Must match backend/pipeline/filmStore.ts: a leading digit is not a valid identifier start.
+const exportName = (id: string) => {
+  const identifier = `${id.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase())}Film`;
+  return /^[0-9]/.test(identifier) ? `_${identifier}` : identifier;
+};
 
 // Films are pure data with a type-only import - see src/dl/films/kvcache.ts.
 const filmModule = (film: Film) =>
@@ -622,8 +625,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           void readBody(req)
             .then(async (body) => {
               const { film, format } = (body as { film: Film; format?: string }) || {};
-              if (!film) {
-                sendJson(res, 400, { error: 'film is required' });
+              if (!film || !film.id || !FILM_ID.test(film.id)) {
+                sendJson(res, 400, { error: 'Valid film with a valid film.id is required' });
                 return;
               }
 
@@ -836,6 +839,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
         // Handle /api/scripts/:id (Read and Save scripts, self-contained under videos/<id>/)
         if (url.startsWith('/api/scripts/')) {
           const scriptId = url.slice('/api/scripts/'.length);
+          if (!scriptId || !FILM_ID.test(scriptId)) {
+            sendJson(res, 400, { error: `Invalid script ID: "${scriptId}"` });
+            return;
+          }
           const pkgDir = path.join(videosDir, scriptId);
 
           if (req.method === 'GET') {
@@ -882,6 +889,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
         if (url === '/api/parse-script-scenes' && req.method === 'POST') {
           void readBody(req).then(async (body: any) => {
             const { script, filmTitle = "Film", targetDurationSec, projectId = "kvcache" } = body || {};
+            if (!projectId || !FILM_ID.test(projectId)) {
+              sendJson(res, 400, { error: `Invalid project ID: "${projectId}"` });
+              return;
+            }
             if (!script || !script.trim()) {
               sendJson(res, 400, { error: 'Script text is required' });
               return;
@@ -1163,8 +1174,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
         if (url === '/api/voiceover' && req.method === 'POST') {
           void readBody(req).then(async (body: any) => {
             const { film, scriptText } = body || {};
-            if (!film) {
-              sendJson(res, 400, { error: 'film is required' });
+            if (!film || !film.id || !FILM_ID.test(film.id)) {
+              sendJson(res, 400, { error: 'Valid film with a valid film.id is required' });
               return;
             }
             const shotTexts: string[] = film.shots?.map((s: any) => (s.scriptText || s.id || '').trim()).filter(Boolean) || [];
@@ -1581,6 +1592,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
         if (url === '/api/generate-voiceover' && req.method === 'POST') {
           void readBody(req).then(async (body: any) => {
             const { script, voice = 'aura-helios-en', projectId = 'kvcache', spokenTextOverride } = body || {};
+            if (!projectId || !FILM_ID.test(projectId)) {
+              sendJson(res, 400, { error: `Invalid project ID: "${projectId}"` });
+              return;
+            }
             if ((!script || !script.trim()) && (!spokenTextOverride || !spokenTextOverride.trim())) {
               sendJson(res, 400, { error: 'Script text or spoken words are required to generate voiceover.' });
               return;
@@ -1916,9 +1931,6 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               fs.writeFileSync(logFile, JSON.stringify(history.slice(-100), null, 2), 'utf8');
             } catch (_) {}
 
-            if (result.ok && result.updatedFilm && result.patchOps && result.patchOps.length > 0) {
-              writeFilm(result.updatedFilm.id, result.updatedFilm);
-            }
             sendJson(res, 200, { ...result, dispatch });
           }).catch((err) => sendJson(res, 500, { error: String(err) }));
           return;

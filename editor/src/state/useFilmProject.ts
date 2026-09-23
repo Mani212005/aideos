@@ -283,12 +283,16 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
       void persistFilm(film).then((res) => {
         if (res.ok) {
           setLastSavedAt(Date.now());
-          setIsDirty(false);
+          if (filmRef.current === film) {
+            setIsDirty(false);
+          }
+        } else {
+          notify("danger", `Autosave failed: ${res.error ?? "Unknown error"}`);
         }
       });
     }, 900);
     return () => window.clearTimeout(timer);
-  }, [film, isDirty]);
+  }, [film, isDirty, notify]);
 
   // Live studio hot-reload: subscribe to film_updated events over the SSE trace transport
   useEffect(() => {
@@ -314,7 +318,7 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
             if (data.filmId === activeId && data.film) {
               const incomingFilm = data.film as Film;
               if (JSON.stringify(incomingFilm) !== JSON.stringify(filmRef.current)) {
-                replaceFilm(incomingFilm);
+                commit(incomingFilm, "Live sync update");
                 notify("info", `⚡ Live update: ${incomingFilm.title || activeId} updated`);
               }
             }
@@ -340,7 +344,7 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (eventSource) eventSource.close();
     };
-  }, [film.id, notify, replaceFilm]);
+  }, [commit, film.id, notify]);
 
   const timeline = useMemo(() => {
     try {

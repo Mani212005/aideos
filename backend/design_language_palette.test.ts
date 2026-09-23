@@ -40,7 +40,6 @@ const NOT_GOVERNED_HERE = [
 const KNOWN_DRIFT = [
   "src/dl/CanvasGraph.tsx",
   "src/dl/KineticSubtitles.tsx",
-  "src/dl/primitives.tsx",
   "src/dl/metaphors/GlowingClusterMetaphor.tsx",
   "src/dl/metaphors/MetaphorViewer.tsx",
 ];

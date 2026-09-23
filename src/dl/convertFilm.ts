@@ -202,7 +202,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
       sourceDuration: film.voiceover.durationSec,
       kind: "audio",
       payload: { src: film.voiceover.src, channel: "voiceover" },
-      volume: Math.min(1, film.voiceover.volume ?? 1),
+      volume: Math.min(2, Math.max(0, film.voiceover.volume ?? 1)),
       opacity: 1,
     });
   }
@@ -221,7 +221,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
         channel: "music",
         duckUnderVoiceover: film.music.duckUnderVoiceover ?? true,
       },
-      volume: Math.min(1, film.music.volume ?? 1),
+      volume: Math.min(2, Math.max(0, film.music.volume ?? 1)),
       opacity: 1,
     });
   }
@@ -236,7 +236,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
         end: SFX_CLIP_DURATION,
         kind: "audio",
         payload: { src: sfx.src, channel: "sfx" },
-        volume: Math.min(1, sfx.volume ?? 1),
+        volume: Math.min(2, Math.max(0, sfx.volume ?? 1)),
         opacity: 1,
       });
     });
@@ -256,7 +256,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
         kind: "video",
         payload: { src: vc.src, width: vc.width, height: vc.height },
         linkedClipId: vc.linkedClipId ?? null,
-        volume: vc.muted ? 0 : Math.min(1, vc.volume ?? 1),
+        volume: vc.muted ? 0 : Math.min(2, Math.max(0, vc.volume ?? 1)),
         opacity: vc.opacity ?? 1,
       });
     }
@@ -347,7 +347,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
     id: film.id,
     title: film.title,
     fps: film.fps,
-    accent: film.accent || "#FF6B00",
+    accent: film.accent ?? (typeof film.theme === "object" ? film.theme?.accent : undefined) ?? "#635BFF",
     theme: film.theme,
     canvas: film.canvas,
     chapters: film.chapters,
@@ -360,12 +360,14 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
 function isPlainSpine(clip: Clip): boolean {
   const p = clip.payload as AudioPayload | undefined;
   const isDefaultSpeed = !p?.speed || Math.abs(p.speed - 1) < 0.001;
-  return clip.id === SPINE_CLIP_ID && clip.position === 0 && clip.start === 0 && isDefaultSpeed;
+  const isDefaultEnd = clip.sourceDuration === undefined || Math.abs(clip.end - clip.sourceDuration) < 0.001;
+  return clip.id === SPINE_CLIP_ID && clip.position === 0 && clip.start === 0 && isDefaultSpeed && isDefaultEnd;
 }
 
 /** True when an audio clip is exactly what forward conversion would synthesize from `music`. */
 function isPlainMusic(clip: Clip): boolean {
-  return clip.id === MUSIC_CLIP_ID && clip.position === 0 && clip.start === 0;
+  const isDefaultEnd = clip.sourceDuration === undefined || Math.abs(clip.end - clip.sourceDuration) < 0.001;
+  return clip.id === MUSIC_CLIP_ID && clip.position === 0 && clip.start === 0 && isDefaultEnd;
 }
 
 /** True when an audio clip is exactly what forward conversion would synthesize from `sfx`. */

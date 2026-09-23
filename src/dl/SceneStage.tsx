@@ -27,6 +27,8 @@ export interface SceneStageProps {
   accent?: string;
 }
 
+const PINNED_COMPILE_OPTIONS = { clockMs: 0 };
+
 /** Draws the scene square centred in the frame, clipped to whatever the format can show of it. */
 export const SceneStage: React.FC<SceneStageProps> = ({ scene, width, height, accent }) => {
   // Cover, never contain: the scene is drawn large enough that the frame is always full, and the
@@ -53,7 +55,7 @@ export const SceneStage: React.FC<SceneStageProps> = ({ scene, width, height, ac
           width={drawnWidth}
           height={drawnHeight}
           accent={accent}
-          compileOptions={{ clockMs: 0 }}
+          compileOptions={PINNED_COMPILE_OPTIONS}
         />
       </div>
     </AbsoluteFill>

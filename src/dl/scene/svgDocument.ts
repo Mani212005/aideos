@@ -195,7 +195,7 @@ export function parseSvgDocument(source: string): SvgDocument {
       stack[stack.length - 1].children.push(node);
     }
 
-    if (!selfClosing && !VOID_TAGS.has(tagName)) {
+    if (!selfClosing) {
       stack.push(node);
     }
   }

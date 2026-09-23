@@ -33,10 +33,13 @@ export function audioSyncDriftMs(scene: Scene): number {
  * Rounding keeps every frame value an integer, and a clip never collapses to zero length.
  */
 function retimeClip(clip: SvgAnimationClip, scale: number): SvgAnimationClip {
+  const startFrame = Math.max(0, Math.round(clip.startFrame * scale));
+  const endFrame = Math.round((clip.startFrame + clip.durationFrames) * scale);
+  const durationFrames = Math.max(1, endFrame - startFrame);
   const retimed: SvgAnimationClip = {
     ...clip,
-    startFrame: Math.max(0, Math.round(clip.startFrame * scale)),
-    durationFrames: Math.max(1, Math.round(clip.durationFrames * scale)),
+    startFrame,
+    durationFrames,
   };
   if (clip.staggerFrames !== undefined) {
     retimed.staggerFrames = Math.max(0, Math.round(clip.staggerFrames * scale));

@@ -41,10 +41,12 @@ export const Video: React.FC<FilmProps> = ({
   // Extract speech intervals from audio clips or timeline shots with narration
   const speechIntervals: SpeechInterval[] =
     FILM.audioClips && FILM.audioClips.length > 0
-      ? FILM.audioClips.map((ac) => ({
-          startSec: ac.position,
-          endSec: ac.position + (ac.end - (ac.start ?? 0)) / (ac.speed ?? 1.0),
-        }))
+      ? FILM.audioClips
+          .filter((ac) => (ac.channel ?? "voiceover") === "voiceover")
+          .map((ac) => ({
+            startSec: ac.position,
+            endSec: ac.position + (ac.end - (ac.start ?? 0)) / (ac.speed ?? 1.0),
+          }))
       : TIMELINE.filter((t) => Boolean(t.shot.scriptText)).map((t) => ({
           startSec: t.from / FPS,
           endSec: t.to / FPS,
@@ -73,29 +75,31 @@ export const Video: React.FC<FilmProps> = ({
 
       {/* 2. Voiceover & Multi-Clip Audio Track */}
       {FILM.audioClips && FILM.audioClips.length > 0 ? (
-        FILM.audioClips.map((ac) => {
-          const speed = ac.speed ?? 1.0;
-          const isRetimed = Math.abs(speed - 1.0) > 0.001;
-          const startFrame = Math.round(ac.position * FPS);
-          const rawDurFrames = Math.max(1, Math.round(ac.end * FPS) - Math.round((ac.start ?? 0) * FPS));
-          const effectiveDurFrames = Math.max(1, Math.round(rawDurFrames / speed));
-          const startFrom = isRetimed ? Math.round(((ac.start ?? 0) / speed) * FPS) : Math.round((ac.start ?? 0) * FPS);
-          const clipLevel = (ac.volume ?? 1) * effectiveVoiceoverVolume;
-          const audioSrc = isRetimed
-            ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
-            : staticFile(ac.src);
+        FILM.audioClips
+          .filter((ac) => ac.channel !== "music" || !effectiveMusicSrc)
+          .map((ac) => {
+            const speed = ac.speed ?? 1.0;
+            const isRetimed = Math.abs(speed - 1.0) > 0.001;
+            const startFrame = Math.round(ac.position * FPS);
+            const rawDurFrames = Math.max(1, Math.round(ac.end * FPS) - Math.round((ac.start ?? 0) * FPS));
+            const effectiveDurFrames = Math.max(1, Math.round(rawDurFrames / speed));
+            const startFrom = isRetimed ? Math.round(((ac.start ?? 0) / speed) * FPS) : Math.round((ac.start ?? 0) * FPS);
+            const clipLevel = (ac.volume ?? 1) * effectiveVoiceoverVolume;
+            const audioSrc = isRetimed
+              ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
+              : staticFile(ac.src);
 
-          return (
-            <Sequence key={ac.id} from={startFrame} durationInFrames={effectiveDurFrames}>
-              <Audio
-                src={audioSrc}
-                trimBefore={startFrom}
-                playbackRate={1.0}
-                volume={(f) => voiceLevel(f, clipLevel)}
-              />
-            </Sequence>
-          );
-        })
+            return (
+              <Sequence key={ac.id} from={startFrame} durationInFrames={effectiveDurFrames}>
+                <Audio
+                  src={audioSrc}
+                  trimBefore={startFrom}
+                  playbackRate={1.0}
+                  volume={(f) => voiceLevel(f + startFrame, clipLevel)}
+                />
+              </Sequence>
+            );
+          })
       ) : effectiveVoiceoverSrc.trim().length > 0 ? (
         (() => {
           const speed = FILM.voiceover?.speed ?? 1.0;
