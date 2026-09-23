@@ -48,6 +48,16 @@ if [ "$#" -gt 0 ]; then
       cd "$AIDEOS_DIR" && npm run validate "$@"
       exit 0
       ;;
+    design)
+      # aideos design check <film...> [--all] [--stills] [--json]
+      SUB="${1:-}"
+      shift || true
+      if [ "$SUB" != "check" ]; then
+        echo "Usage: aideos design check <film...> [--all] [--stills] [--json]" >&2
+        exit 1
+      fi
+      cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts design-check "$@"
+      ;;
     render)
       cd "$AIDEOS_DIR" && npm run render "$@"
       exit 0

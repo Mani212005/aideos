@@ -61,6 +61,16 @@ function parseNumber(raw: string): number {
   return ones ? base + (NUMBER_WORDS[ones] ?? NaN) : base;
 }
 
+// Lists every number spoken or written in a piece of narration ("two to three times" -> [2, 3]).
+export function numbersIn(text: string): number[] {
+  const out: number[] = [];
+  for (const m of text.matchAll(new RegExp(`(?:^|[^\\w.])${NUMBER}(?![\\w])`, "gi"))) {
+    const value = parseNumber(m[1]);
+    if (Number.isFinite(value)) out.push(value);
+  }
+  return out;
+}
+
 // Builds a short title-case label from the words right after a quantity ("of the signal is lost" -> "Signal").
 function labelFrom(rest: string): string | null {
   const words = rest.replace(/[^A-Za-z\s-]/g, " ").split(/\s+/).filter(Boolean);
