@@ -191,7 +191,7 @@ test("DesignJev: async compile keeps footage beats around a StatCounter or Text 
 
 test("DesignJev: a device the narration does not carry falls back to the on-screen copy", () => {
   const cases: Array<[ShotVisual, string]> = [
-    ["StatCounter", "It cuts latency by 40%."],
+    ["StatCounter", "It launched in 1977 and never came back."],
     ["TokenStrip", "The core principle is fault tolerance."],
     ["Plot", "The core principle is fault tolerance."],
     ["MatrixGrid", "The core principle is fault tolerance."],
@@ -208,7 +208,7 @@ test("DesignJev: a device the narration does not carry falls back to the on-scre
   }
 });
 
-test("DesignJev: a confident model StatCounter for an unreadable number never renders a counter", async () => {
+test("DesignJev: a confident model StatCounter shows exactly the narrated number, never another", async () => {
   setMockShotVisualHandler(async () => ({ choice: "StatCounter", confidence: 0.95, probabilities: { StatCounter: 0.95 } }));
   try {
     const script = `## 0:00 - Speed (speed)
@@ -216,15 +216,18 @@ test("DesignJev: a confident model StatCounter for an unreadable number never re
 [ON SCREEN] Latency
 [NARRATION] The new cache cuts latency by 40% on every request we measured.
 
-[ON SCREEN] Why it holds
-[NARRATION] The reason is simple once you see where the time used to go.
+[ON SCREEN] Launch
+[NARRATION] It launched in 1977 and it has never once come back home.
 `;
     const { segments, shotDurations } = spine([6, 6]);
     const result = await compileFilmFromScreenplayAsync(script, segments, shotDurations, { title: "Latency", maxFootageShots: 0 }, { apiKey: "test-key" });
-    const kinds = result.film.shots[0].blocks.map((b) => b.c);
-    assert.ok(!kinds.includes("StatCounter"), `no fabricated counter, got ${kinds.join(", ")}`);
-    assert.deepEqual(kinds, ["TextReveal"]);
-    assert.equal(result.film.shots[0].stage, "frame");
+    const counter = result.film.shots[0].blocks.find((b) => b.c === "StatCounter") as { to: number; suffix?: string; label: string } | undefined;
+    assert.ok(counter, "a readable percentage becomes a counter");
+    assert.equal(counter.to, 40);
+    assert.equal(counter.suffix, "%");
+    assert.equal(counter.label, "Cuts latency");
+    const kinds = result.film.shots[1].blocks.map((b) => b.c);
+    assert.ok(!kinds.includes("StatCounter"), `a bare year is not a statistic, got ${kinds.join(", ")}`);
   } finally {
     clearMockShotVisualHandler();
   }

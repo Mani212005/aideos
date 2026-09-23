@@ -29,6 +29,8 @@ import {
   applyConfidenceGating,
   decidePrimitiveWithModel,
   selectPrimitive,
+  prefetchPrimitiveAnswers,
+  resolvePrimitive,
   setMockJevHandler,
   getMockJevHandler,
   clearMockJevHandler,
@@ -644,9 +646,23 @@ export async function selectScenePrimitives(
   const results = new Map<string, PrimitiveSelectionResult>();
   const activeComponents: string[] = [];
 
+  // Every group is asked about in one batched Jev request; each answer is then gated against
+  // the group's live state (including the components already on screen) in order.
+  const groupsBySegment = segments.map((seg) => groupSegmentBeats(seg.beats));
+  const flatStates: JevDecisionState[] = segments.flatMap((seg, segIdx) =>
+    groupsBySegment[segIdx].map((group) => ({
+      visual: group.visual,
+      narration: group.narration,
+      onscreen: group.onscreen,
+      sceneTitle: seg.title,
+    })),
+  );
+  const prefetched = await prefetchPrimitiveAnswers(flatStates, options);
+  let flatIndex = 0;
+
   for (let segIdx = 0; segIdx < segments.length; segIdx++) {
     const seg = segments[segIdx];
-    const groups = groupSegmentBeats(seg.beats);
+    const groups = groupsBySegment[segIdx];
     const split = groups.length > 1;
 
     for (let gi = 0; gi < groups.length; gi++) {
@@ -661,7 +677,10 @@ export async function selectScenePrimitives(
         sceneTitle: seg.title,
       };
 
-      const decision = await selectPrimitive(state, options);
+      const decision = prefetched
+        ? resolvePrimitive(prefetched[flatIndex], state, options)
+        : await selectPrimitive(state, options);
+      flatIndex += 1;
       results.set(shotId, decision);
 
       activeComponents.push(decision.primitive);

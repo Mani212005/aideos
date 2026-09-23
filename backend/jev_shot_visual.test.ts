@@ -86,8 +86,11 @@ test("ShotVisual: heuristic maps device cues and falls back to Text", () => {
   assert.equal(heuristicShotVisualSelection({ narration: "Plain talk.", onscreen: [] }), "Text");
 });
 
-test("ShotVisual: heuristic never picks StatCounter for a number the design stage cannot read", () => {
+test("ShotVisual: heuristic picks StatCounter only for a number the design stage can read", () => {
   for (const narration of ["It cuts latency by 40%.", "Recall improved 4x.", "Replies land in 200 ms.", "It needs 8 GB."]) {
+    assert.equal(heuristicShotVisualSelection({ narration, onscreen: ["Metric"] }), "StatCounter", narration);
+  }
+  for (const narration of ["Launched in 1977, it never came back.", "Box 3 is where it ends."]) {
     assert.notEqual(heuristicShotVisualSelection({ narration, onscreen: ["Metric"] }), "StatCounter", narration);
   }
 });

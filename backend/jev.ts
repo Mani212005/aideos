@@ -2,7 +2,8 @@
  * File Description: TypeSafe Jev decision model client for screenplay visual selection.
  * Implements CHOICE over the 7 animated primitives and shot-level visual strategies, each with
  * confidence gating, safe fallback, and fast deterministic heuristic fallback over one shared
- * decision client.
+ * decision client. The prefetch functions batch every beat of a film into one request (split only
+ * past MAX_BATCH_QUESTIONS), so a build costs one round-trip instead of one per beat.
  */
 
 import { narrationSupportsVisual } from "./shotVisualCues";
@@ -834,4 +835,128 @@ export async function selectShotVisual(
       fallbackReason: err instanceof Error ? err.message : String(err),
     };
   }
+}
+
+/** Most questions sent in one batched Jev request; larger batches are split and sent in parallel. */
+export const MAX_BATCH_QUESTIONS = 24;
+
+/** Default timeout for one batched request, which carries many questions instead of one. */
+export const DEFAULT_JEV_BATCH_TIMEOUT_MS = 6000;
+
+/** A prefetched Jev answer for one item, or the reason it could not be answered. */
+export type PrefetchedAnswer<A> = { answer: A } | { error: string };
+
+// Asks one CHOICE question per item in as few Jev requests as possible and returns one result per item.
+async function askChoiceBatch<A>(
+  items: Record<string, unknown>[],
+  instructions: string,
+  criteria: Record<string, string>,
+  parse: (val: unknown, questionKey: string) => A,
+  options: JevDecisionOptions | undefined,
+  context: string,
+): Promise<PrefetchedAnswer<A>[]> {
+  const model = options?.model ?? getJevModel(options?.endpoint ?? getJevEndpoint(options?.apiKey));
+  const requestOptions = { ...options, timeoutMs: options?.timeoutMs ?? DEFAULT_JEV_BATCH_TIMEOUT_MS };
+  const chunks: number[][] = [];
+  for (let start = 0; start < items.length; start += MAX_BATCH_QUESTIONS) {
+    chunks.push(items.slice(start, start + MAX_BATCH_QUESTIONS).map((_, k) => start + k));
+  }
+  const results: PrefetchedAnswer<A>[] = new Array(items.length);
+  await Promise.all(
+    chunks.map(async (indices) => {
+      const questions: Record<string, unknown> = {};
+      indices.forEach((_, k) => {
+        questions[`q${k}`] = { type: "choice", instructions: `For \`beats[${k}]\`: ${instructions}`, criteria };
+      });
+      const payload = { model, state: { beats: indices.map((i) => items[i]) }, questions };
+      try {
+        const json = await postJevRequest(payload, requestOptions);
+        indices.forEach((itemIndex, k) => {
+          try {
+            results[itemIndex] = { answer: parse(json, `q${k}`) };
+          } catch (err: unknown) {
+            results[itemIndex] = { error: err instanceof Error ? err.message : String(err) };
+          }
+        });
+      } catch (err: unknown) {
+        warnJevCallFailure(context, err);
+        const error = err instanceof Error ? err.message : String(err);
+        for (const itemIndex of indices) results[itemIndex] = { error };
+      }
+    }),
+  );
+  return results;
+}
+
+// Asks Jev for every beat's shot visual in one batched request, or returns null when the
+// per-beat path must run instead (a test mock is active or no API key is configured).
+export async function prefetchShotVisualAnswers(
+  states: ShotVisualState[],
+  options?: JevDecisionOptions,
+): Promise<PrefetchedAnswer<ShotVisualAnswer>[] | null> {
+  if (activeShotVisualMockHandler || !(options?.apiKey ?? getJevApiKey()) || states.length === 0) return null;
+  const items = states.map((s) => ({
+    visual: s.visual || "",
+    narration: s.narration || "",
+    onscreen: s.onscreen || [],
+    ...(s.sceneTitle ? { sceneTitle: s.sceneTitle } : {}),
+    ...(typeof s.durationSec === "number" ? { durationSec: s.durationSec } : {}),
+  }));
+  return askChoiceBatch(
+    items,
+    "select the single shot-level visual strategy whose blocks can be authored against the film schema for this beat. Prefer Text when the narration carries no chartable data. Neighbouring beats are context only.",
+    SHOT_VISUAL_CRITERIA,
+    (val, key) => {
+      const parsed = parseChoiceAnswer(val, key, (raw) => normalizeShotVisualName(raw));
+      return { choice: parsed.choice as ShotVisual, confidence: parsed.confidence, probabilities: parsed.probabilities };
+    },
+    options,
+    "prefetchShotVisualAnswers",
+  );
+}
+
+// Turns one prefetched shot-visual answer into a gated result against the beat's live state.
+export function resolveShotVisual(
+  prefetched: PrefetchedAnswer<ShotVisualAnswer>,
+  state: ShotVisualState,
+  options?: JevDecisionOptions,
+): ShotVisualResult {
+  if ("answer" in prefetched) return applyShotVisualGating(prefetched.answer, state, options);
+  return { visual: heuristicShotVisualSelection(state), source: "heuristic-fallback", fallbackReason: prefetched.error };
+}
+
+// Asks Jev for every beat group's animated primitive in one batched request, or returns null
+// when the per-group path must run instead (a test mock is active or no API key is configured).
+export async function prefetchPrimitiveAnswers(
+  states: JevDecisionState[],
+  options?: JevDecisionOptions,
+): Promise<PrefetchedAnswer<JevChoiceAnswer>[] | null> {
+  if (activeMockHandler || !(options?.apiKey ?? getJevApiKey()) || states.length === 0) return null;
+  const items = states.map((s) => ({
+    visual: s.visual || "",
+    narration: s.narration || "",
+    onscreen: s.onscreen || [],
+    ...(s.sceneTitle ? { sceneTitle: s.sceneTitle } : {}),
+  }));
+  return askChoiceBatch(
+    items,
+    "select the single most appropriate animated visual primitive from the 7 design system primitives for this scene. Neighbouring beats are context only.",
+    PRIMITIVE_CRITERIA,
+    (val, key) => {
+      const parsed = parseChoiceAnswer(val, key, (raw) => normalizePrimitiveName(raw));
+      return { choice: parsed.choice as AnimatedPrimitive, confidence: parsed.confidence, probabilities: parsed.probabilities };
+    },
+    options,
+    "prefetchPrimitiveAnswers",
+  );
+}
+
+// Turns one prefetched primitive answer into a gated result against the group's live state.
+export function resolvePrimitive(
+  prefetched: PrefetchedAnswer<JevChoiceAnswer>,
+  state: JevDecisionState,
+  options?: JevDecisionOptions,
+): PrimitiveSelectionResult {
+  if ("answer" in prefetched) return applyConfidenceGating(prefetched.answer, state, options);
+  return { primitive: heuristicPrimitiveSelection(state), source: "heuristic-fallback", fallbackReason: prefetched.error };
 }
