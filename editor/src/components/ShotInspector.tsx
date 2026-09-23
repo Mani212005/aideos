@@ -21,6 +21,7 @@ import type { Film, Shot, Block } from "../../../src/dl/schema";
 import { getShotDuration } from "../../../backend/timeline/timeline";
 import { POSE_PRESETS, getAllCharacterRigs } from "../../../src/dl/characters";
 import { TransitionEditor } from "./TransitionEditor";
+import { ShotDesignPanel } from "./ShotDesignPanel";
 import { TRANSITION_PRESETS, type TransitionType } from "../transitions";
 
 interface ShotInspectorProps {
@@ -282,6 +283,8 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
       {/* TAB 1: VISUALS */}
       {activeTab === "visuals" && (
         <div className="flex flex-col gap-3">
+          <ShotDesignPanel key={shot.id} film={film} shot={shot} onApply={(update, label) => onUpdateShot(shotIndex, update, label)} />
+
           {/* Render Mode Selector Cards */}
           <div className="flex flex-col gap-1.5 bg-paper-3 p-2.5 border-2 border-ink shadow-nb-sm">
             <label className="text-[10px] font-mono text-ink-soft font-bold uppercase tracking-wider">

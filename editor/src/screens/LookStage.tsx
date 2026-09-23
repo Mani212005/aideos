@@ -1,19 +1,20 @@
 /**
  * File Description: Look stage for Aideos Studio.
- * Merges the two screens that both answered "how does this film look": the project-wide theme
+ * Brings together what answers "how does this film look": the film's own design, the project-wide theme
  * (palette, typography, video type, camera) and the per-shot styleboard. They are sub-views of one
  * stage because a user thinking about look moves between them constantly, and keeping them apart
  * made the old top navigation disagree with the side rail.
  */
 
 import { useState } from "react";
-import { LayoutGrid, Palette } from "lucide-react";
+import { LayoutGrid, Palette, Sparkles } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import { SegmentedTabs, Toolbar, ToolbarGroup, ToolbarLabel } from "../components/ui";
 import { CustomizationEditor } from "../components/CustomizationEditor";
 import { Styleboard } from "../components/Styleboard";
+import { DesignView } from "../components/DesignView";
 
-type LookView = "theme" | "styleboard";
+type LookView = "design" | "theme" | "styleboard";
 
 export interface LookStageProps {
   film: Film;
@@ -25,7 +26,8 @@ export interface LookStageProps {
 
 /** Project theme and per-shot styleboard, as two views of one stage. */
 export function LookStage({ film, commit, accent, onAccentChange, onSelectShot }: LookStageProps) {
-  const [view, setView] = useState<LookView>("theme");
+  // A film with its own design opens on it; a template film opens on the shared theme.
+  const [view, setView] = useState<LookView>(film.design && film.design.source !== "templates" ? "design" : "theme");
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -37,20 +39,25 @@ export function LookStage({ film, commit, accent, onAccentChange, onSelectShot }
             value={view}
             onChange={setView}
             items={[
+              { value: "design", label: "Design", icon: <Sparkles className="h-3.5 w-3.5" /> },
               { value: "theme", label: "Theme", icon: <Palette className="h-3.5 w-3.5" /> },
               { value: "styleboard", label: "Styleboard", icon: <LayoutGrid className="h-3.5 w-3.5" />, suffix: String(film.shots.length) },
             ]}
           />
         </ToolbarGroup>
         <span className="ml-auto font-sans text-[10px] text-ink-mute">
-          {view === "theme"
+          {view === "design"
+            ? "This film's own design: the idea, its artwork, and why each shot shows what it shows."
+            : view === "theme"
             ? "Theme choices apply to the whole film and are written into its manifest."
             : "Each card is one shot. Click a card to inspect it on the right."}
         </span>
       </Toolbar>
 
       <div className="min-h-0 flex-1 overflow-hidden">
-        {view === "theme" ? (
+        {view === "design" ? (
+          <DesignView film={film} onSelectShot={onSelectShot} />
+        ) : view === "theme" ? (
           <CustomizationEditor
             film={film}
             onUpdateFilm={(next) => commit(next, "Update theme")}

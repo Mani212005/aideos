@@ -110,6 +110,18 @@ export function buildDirectingPrompt(opts: DispatchOptions, context?: AgentTaskC
   const title = ctx.filmTitle || ctx.filmId;
   if (opts.eventType === "design_film") {
     // The brief is the whole contract; the prompt only points at it and at the one gate.
+    const shotId = typeof opts.metadata?.shotId === "string" ? opts.metadata.shotId : null;
+    if (shotId) {
+      return `🎬 [Aideos Studio] Redesign shot ${shotId} of "${title}" (${ctx.filmId})
+
+The human asked for a new design for this one shot${opts.customInstruction ? `: "${opts.customInstruction}"` : "."}
+${opts.metadata?.says ? `It says: ${opts.metadata.says}\n` : ""}
+1. Read videos/${ctx.filmId}/design/BRIEF.md (refreshed just now) for the standard layer, the format and the commands.
+2. If videos/${ctx.filmId}/design/design.json exists, change only what ${shotId} shows: its clips (cued to its words) and, if needed, its \`shots.${shotId}\` cards. Keep every other shot as it is.
+   If there is no design.json yet, design the whole film as the brief describes, giving ${shotId} particular care.
+3. Run \`aideos design build ${ctx.filmId}\` until it prints PASS, then \`aideos design check ${ctx.filmId} --stills\` and look at ${shotId}'s still.
+The studio reloads the film on its own once a build passes.`;
+    }
     return `🎬 [Aideos Studio] Design the picture for "${title}" (${ctx.filmId})
 
 This film gets a bespoke design, unique to it. Everything you need is in videos/${ctx.filmId}/design/BRIEF.md:
