@@ -8,14 +8,26 @@
  * Shots map one-to-one onto narration beats on purpose: that is the only mapping under which a
  * shot's screen time can be its narration's measured duration, which is what keeps picture and
  * voice locked together instead of merely close.
+ *
+ * Each device-eligible beat's visual strategy is chosen through the shared Jev decision client
+ * (backend/jev.ts), then authored as blocks validated against the film schema and grounded in the
+ * narration through backend/shotVisualCues.ts.
  */
 
 import type { Block, CanvasEdge, CanvasNode, Film, Shot } from "../../src/dl/schema";
-import { parseFilm } from "../../src/dl/schema";
+import { blockSchema, DEVICE_BLOCKS, parseFilm } from "../../src/dl/schema";
 import { parseClaudeScript, type ScriptSegment } from "../scriptIntake";
 import { generateRelationshipAwareCanvas, type ConceptEntity } from "../ideation/graphLayout";
 import type { SegmentAudioInfo } from "../audio";
 import { slugify } from "./filmStore";
+import {
+  selectShotVisual,
+  SHOT_COMPLEX_VISUALS,
+  type JevDecisionOptions,
+  type ShotVisual,
+  type ShotVisualResult,
+} from "../jev";
+import { narrationSupportsVisual, readQuantity } from "../shotVisualCues";
 
 /** One narration beat with the visual and on-screen directions that surround it. */
 export interface NarrationBeat {
@@ -113,164 +125,6 @@ function pickAccentWord(text: string): string | undefined {
   return words.reduce((best, w) => (w.length > best.length ? w : best));
 }
 
-/** A device block the pipeline decided a beat should carry, and what kind it is. */
-interface DeviceChoice {
-  block: Block;
-  kind: string;
-}
-
-/** Reads the first number in a piece of narration together with the unit that follows it. */
-function readQuantity(text: string): { value: number; suffix?: string; label: string } | null {
-  const multiplier = text.match(/\b(two|three|four|five|ten|twenty|fifty|hundred|\d+(?:\.\d+)?)\s*(?:to\s+\w+\s*)?times\b/i);
-  const words: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, ten: 10, twenty: 20, fifty: 50, hundred: 100 };
-  if (multiplier) {
-    const raw = multiplier[1].toLowerCase();
-    const value = words[raw] ?? Number(raw);
-    if (Number.isFinite(value)) return { value, suffix: "x", label: "Throughput gain" };
-  }
-
-  const scaled = text.match(/\b(\d+(?:\.\d+)?|seventy|eighty|ninety|sixty|fifty|forty|thirty|twenty|ten)\s+(billion|million|trillion|gigabytes|percent)\b/i);
-  if (scaled) {
-    const raw = scaled[1].toLowerCase();
-    const numberWords: Record<string, number> = {
-      ten: 10, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
-    };
-    const value = numberWords[raw] ?? Number(raw);
-    const unit = scaled[2].toLowerCase();
-    if (Number.isFinite(value)) {
-      const suffix = unit === "percent" ? "%" : unit === "gigabytes" ? " GB" : unit.charAt(0).toUpperCase();
-      return { value, suffix, label: unit === "gigabytes" ? "Moved per token" : "Parameters" };
-    }
-  }
-  return null;
-}
-
-/**
- * Decides whether a beat earns a device, and which one.
- *
- * The design language treats a device as an argument the frame is making, not decoration, so the
- * rules only fire where the narration actually carries the data the device would show. The
- * runsheet's "never the same device twice running" rule is enforced here rather than discovered
- * at validation time.
- */
-function chooseDevice(narration: string, onscreen: string[], lastDeviceKind: string | null): DeviceChoice | null {
-  const lower = narration.toLowerCase();
-  // A device is the second half of a composed frame, not the whole of one. Without a headline
-  // to sit under, a single small device floats alone in a full-frame panel and reads as an
-  // empty station, so a beat with no on-screen copy stays on the canvas instead.
-  if (onscreen.length === 0) return null;
-
-  const candidates: DeviceChoice[] = [];
-
-  const quantity = readQuantity(narration);
-  if (quantity) {
-    candidates.push({
-      kind: "StatCounter",
-      block: {
-        c: "StatCounter",
-        to: quantity.value,
-        label: fitText(quantity.label, 44),
-        format: quantity.value >= 1000 ? "compact" : "plain",
-        ...(quantity.suffix ? { suffix: quantity.suffix } : {}),
-      },
-    });
-  }
-
-  const parallelCheck = /\b(in parallel|at once|all five|batch of them|single forward pass|tokens?|sequence|stream)\b/.test(lower);
-  if (parallelCheck) {
-    candidates.push({
-      kind: "TokenStrip",
-      block: {
-        c: "TokenStrip",
-        tokens: ["t+1", "t+2", "t+3", "t+4", "t+5"],
-        lit: [0, 1, 2],
-        caption: "Accepted token sequence",
-      },
-    });
-  }
-
-  const growthTalk = /\b(scales?|scaling|grows?|throughput|linear|quadratic|loss|accuracy|curve)\b/.test(lower);
-  if (growthTalk) {
-    candidates.push({
-      kind: "Plot",
-      block: {
-        c: "Plot",
-        points: [
-          [0, 0.08],
-          [0.25, 0.2],
-          [0.5, 0.38],
-          [0.75, 0.62],
-          [1, 0.92],
-        ],
-        xLabel: "draft length",
-        yLabel: "throughput",
-        endLabel: "accepted",
-      },
-    });
-  }
-
-  const matrixTalk = /\b(matrix|weights?|tensor|grid|attention map|embedding space|heat\s*map|table)\b/.test(lower);
-  if (matrixTalk) {
-    candidates.push({
-      kind: "MatrixGrid",
-      block: {
-        c: "MatrixGrid",
-        sweep: "cell",
-        rowLabel: "tokens",
-        colLabel: "heads",
-        values: [
-          [0.9, 0.2, 0.1, 0.4],
-          [0.1, 0.85, 0.3, 0.2],
-          [0.3, 0.1, 0.95, 0.1],
-          [0.2, 0.4, 0.1, 0.88],
-        ],
-      },
-    });
-  }
-
-  const distributionTalk = /\b(distribution|probability|proportions?|breakdown|fraction|shares?|split|weights?)\b/.test(lower);
-  if (distributionTalk) {
-    candidates.push({
-      kind: "Distribution",
-      block: {
-        c: "Distribution",
-        items: [
-          { label: "Direct Path", p: 0.62 },
-          { label: "Fallback", p: 0.28 },
-          { label: "Residual", p: 0.1 },
-        ],
-      },
-    });
-  }
-
-  const layerTalk = /\b(layers?|stack|tier|hierarchy|pipeline|stages?|deep network|blocks?)\b/.test(lower);
-  if (layerTalk) {
-    candidates.push({
-      kind: "LayerStack",
-      block: {
-        c: "LayerStack",
-        layers: ["Input Layer", "Processing Block x12", "Output Projection"],
-      },
-    });
-  }
-
-  const scaleTalk = /\b(threshold|trade-off|spectrum|slider|range|bounds?|limits?|temperature)\b/.test(lower);
-  if (scaleTalk) {
-    candidates.push({
-      kind: "ScaleBar",
-      block: {
-        c: "ScaleBar",
-        ticks: ["Min", "Balanced", "Peak"],
-        value: 0.72,
-        label: "Optimal threshold",
-      },
-    });
-  }
-
-  const eligible = candidates.filter((c) => c.kind !== lastDeviceKind);
-  return eligible.length > 0 ? eligible[0] : null;
-}
-
 /** Builds the blocks a text beat shows: a headline, and a supporting line when one was written. */
 function buildTextBlocks(onscreen: string[]): Block[] {
   const blocks: Block[] = [];
@@ -313,6 +167,11 @@ export interface FootageRequest {
 export interface DesignResult {
   film: Film;
   footage: FootageRequest[];
+}
+
+/** What the Jev-driven compile produces: the film, its footage jobs, and each Jev decision it asked for. */
+export interface AsyncDesignResult extends DesignResult {
+  shotVisuals: Map<string, ShotVisualResult>;
 }
 
 /**
@@ -411,19 +270,114 @@ function spineLook(nodes: CanvasNode[], index: number, reach: number): string[] 
   return [...new Set(picked.map((n) => n.id))];
 }
 
+
+// Builds one device block for a shot visual, or null when the narration does not carry its data.
+function chooseDeviceForVisual(visual: ShotVisual, narration: string): Block | null {
+  if (!narrationSupportsVisual(visual, narration)) return null;
+  switch (visual) {
+    case "StatCounter": {
+      const quantity = readQuantity(narration);
+      if (!quantity) return null;
+      return {
+        c: "StatCounter",
+        to: quantity.value,
+        label: fitText(quantity.label, 44),
+        format: quantity.value >= 1000 ? "compact" : "plain",
+        ...(quantity.suffix ? { suffix: quantity.suffix } : {}),
+      };
+    }
+    case "TokenStrip":
+      return {
+        c: "TokenStrip",
+        tokens: ["t+1", "t+2", "t+3", "t+4", "t+5"],
+        lit: [0, 1, 2],
+        caption: "Accepted token sequence",
+      };
+    case "Plot":
+      return {
+        c: "Plot",
+        points: [
+          [0, 0.08],
+          [0.25, 0.2],
+          [0.5, 0.38],
+          [0.75, 0.62],
+          [1, 0.92],
+        ],
+        xLabel: "draft length",
+        yLabel: "throughput",
+        endLabel: "accepted",
+      };
+    case "MatrixGrid":
+      return {
+        c: "MatrixGrid",
+        sweep: "cell",
+        rowLabel: "tokens",
+        colLabel: "heads",
+        values: [
+          [0.9, 0.2, 0.1, 0.4],
+          [0.1, 0.85, 0.3, 0.2],
+          [0.3, 0.1, 0.95, 0.1],
+          [0.2, 0.4, 0.1, 0.88],
+        ],
+      };
+    case "Distribution":
+      return {
+        c: "Distribution",
+        items: [
+          { label: "Direct Path", p: 0.62 },
+          { label: "Fallback", p: 0.28 },
+          { label: "Residual", p: 0.1 },
+        ],
+      };
+    case "LayerStack":
+      return {
+        c: "LayerStack",
+        layers: ["Input Layer", "Processing Block x12", "Output Projection"],
+      };
+    case "ScaleBar":
+      return {
+        c: "ScaleBar",
+        ticks: ["Min", "Balanced", "Peak"],
+        value: 0.72,
+        label: "Optimal threshold",
+      };
+    default:
+      return null;
+  }
+}
+
+/**
+ * Builds schema-valid blocks for one shot visual: a headline plus the device, or text alone.
+ *
+ * A device is the second half of a composed frame, not the whole of one. Without a headline to
+ * sit under, a single small device floats alone in a full-frame panel and reads as an empty
+ * station, so a beat with no on-screen copy never carries one. A device the narration does not
+ * ground is refused the same way, so a visual never puts data on screen the voice never said.
+ */
+export function buildBlocksForShotVisual(visual: ShotVisual, narration: string, onscreen: string[]): Block[] {
+  const textBlocks = buildTextBlocks(onscreen);
+  if (visual === "Text" || textBlocks.length === 0) return textBlocks;
+  const device = chooseDeviceForVisual(visual, narration);
+  const parsed = device ? blockSchema.safeParse(device) : null;
+  return parsed?.success ? [textBlocks[0], parsed.data] : textBlocks;
+}
+
 /**
  * Compiles a screenplay and its measured narration into a validated film.
  *
  * The runsheet rules are satisfied by construction rather than by retrying against the validator:
  * the stage of each shot is chosen while walking the timeline with the clock the rules are written
  * against, so a text beat and a canvas return are placed before either deadline can be missed.
+ * Jev is asked for a beat's visual only when that beat could actually take a device, so footage
+ * beats and beats the runsheet keeps off a device never cost a model call.
  */
-export function compileFilmFromScreenplay(
+export async function compileFilmFromScreenplayAsync(
   script: string,
   narration: SegmentAudioInfo[],
   shotDurations: number[],
   options: DesignOptions,
-): DesignResult {
+  jevOptions?: JevDecisionOptions,
+): Promise<AsyncDesignResult> {
   const sections = parseClaudeScript(script);
   const beats = flattenScreenplay(sections);
 
@@ -524,12 +478,11 @@ export function compileFilmFromScreenplay(
   const { nodes, edges } = layoutCanvas(concepts);
   const nodeIds = nodes.map((n) => n.id);
 
-  const footageIndices = new Set(
-    chooseFootageBeats(beats, shotDurations, maxFootageSec, maxFootageShots),
-  );
+  const footageIndices = new Set(chooseFootageBeats(beats, shotDurations, maxFootageSec, maxFootageShots));
 
   const shots: Shot[] = [];
   const footage: FootageRequest[] = [];
+  const shotVisuals = new Map<string, ShotVisualResult>();
   let sinceTextBeat = 0;
   let sinceCanvas = 0;
   let lastChapterIdx = -1;
@@ -537,8 +490,10 @@ export function compileFilmFromScreenplay(
   let consecutiveSpine = 0;
   let devicesUsed = 0;
   const maxDevices = Math.max(2, Math.round(beats.length / 4));
+  const activeVisuals: string[] = [];
 
-  beats.forEach((beat, i) => {
+  for (let i = 0; i < beats.length; i++) {
+    const beat = beats[i];
     const dur = shotDurations[i];
     const chapterIdx = chapterIndexBySection.get(beat.sectionIndex) ?? 0;
     const isChapterStart = chapterIdx !== lastChapterIdx;
@@ -549,15 +504,40 @@ export function compileFilmFromScreenplay(
 
     const textBlocks = buildTextBlocks(beat.onscreen);
     const wantsFootage = footageIndices.has(i);
+    const shotId = `beat-${String(i + 1).padStart(2, "0")}`;
 
     // Runsheet timing boundaries: 70s threshold leaves room before the 90s schema limit.
     const textBeatDue = sinceTextBeat + dur > 70;
     const canvasDue = sinceCanvas + dur > 70;
 
-    const device =
-      !wantsFootage && dur >= 4 && dur <= 25 && devicesUsed < maxDevices && !canvasDue
-        ? chooseDevice(beat.narration, beat.onscreen, lastDeviceKind)
-        : null;
+    const deviceEligible =
+      !wantsFootage && textBlocks.length > 0 && dur >= 4 && dur <= 25 && devicesUsed < maxDevices && !canvasDue;
+
+    let deviceBlocks: Block[] | null = null;
+    if (deviceEligible) {
+      const decision = await selectShotVisual(
+        {
+          visual: beat.visual,
+          narration: beat.narration,
+          onscreen: beat.onscreen,
+          activeVisuals: [...activeVisuals],
+          sceneTitle: beat.sectionTitle,
+          durationSec: dur,
+          wantsFootage,
+        },
+        jevOptions,
+      );
+      shotVisuals.set(shotId, decision);
+      const choice = decision.visual;
+      const repeatsLast = lastDeviceKind !== null && choice.toLowerCase() === lastDeviceKind.toLowerCase();
+      const authored = repeatsLast ? [] : buildBlocksForShotVisual(choice, beat.narration, beat.onscreen);
+      if (authored.some((b) => (SHOT_COMPLEX_VISUALS as readonly string[]).includes(b.c))) {
+        deviceBlocks = authored;
+        devicesUsed += 1;
+        activeVisuals.push(choice);
+        if (activeVisuals.length > 8) activeVisuals.shift();
+      }
+    }
 
     let stage: Shot["stage"];
     let blocks: Block[];
@@ -571,21 +551,24 @@ export function compileFilmFromScreenplay(
           fullScreenHero: true,
         },
       ];
-      lastDeviceKind = "AnalogyInset";
-    } else if (device) {
+    } else if (deviceBlocks) {
       stage = "anchor";
-      blocks = [...textBlocks.slice(0, 1), device.block];
-      lastDeviceKind = device.kind;
-      devicesUsed += 1;
+      blocks = deviceBlocks;
     } else if (textBlocks.length > 0 && (isChapterStart || textBeatDue || !canvasDue)) {
       stage = "frame";
       blocks = textBlocks;
-      lastDeviceKind = null;
     } else {
       stage = "none";
       blocks = [];
-      lastDeviceKind = null;
     }
+
+    // Mirror the schema's device rotation: only a DEVICE_BLOCKS entry sets it, a frame or spine
+    // shot resets it, and an anchor shot without one (StatCounter) leaves it alone.
+    // A footage AnalogyInset may follow any beat, so a device-less anchor right after one is
+    // staged as a frame to reset the rotation instead of chaining AnalogyInset into itself.
+    const schemaDevice = blocks.find((b) => (DEVICE_BLOCKS as readonly string[]).includes(b.c))?.c ?? null;
+    if (!schemaDevice && stage === "anchor" && lastDeviceKind === "AnalogyInset") stage = "frame";
+    lastDeviceKind = schemaDevice ?? (stage === "anchor" ? lastDeviceKind : null);
 
     consecutiveSpine = stage === "none" ? consecutiveSpine + 1 : 0;
     const look: Shot["look"] =
@@ -595,7 +578,7 @@ export function compileFilmFromScreenplay(
     const move: Shot["move"] = i === 0 || isChapterStart ? "cut" : stage === "none" ? "zoom-out" : "pan";
 
     shots.push({
-      id: `beat-${String(i + 1).padStart(2, "0")}`,
+      id: shotId,
       ch: uniqueChapters[chapterIdx],
       dur: Number(dur.toFixed(3)),
       stage,
@@ -611,7 +594,7 @@ export function compileFilmFromScreenplay(
 
     if (wantsFootage) {
       footage.push({
-        shotId: shots[shots.length - 1].id,
+        shotId,
         prompt: beat.visual || beat.narration,
         seconds: Math.min(maxFootageSec, Math.max(3, dur + FOOTAGE_HEADROOM_SEC)),
       });
@@ -619,7 +602,7 @@ export function compileFilmFromScreenplay(
 
     sinceTextBeat = stage === "frame" ? 0 : sinceTextBeat + dur;
     sinceCanvas = stage === "none" ? 0 : sinceCanvas + dur;
-  });
+  }
 
   const totalSec = shotDurations.reduce((a, b) => a + b, 0);
   const film = parseFilm({
@@ -636,5 +619,5 @@ export function compileFilmFromScreenplay(
     ...(options.music ? { music: options.music } : {}),
   });
 
-  return { film, footage };
+  return { film, footage, shotVisuals };
 }

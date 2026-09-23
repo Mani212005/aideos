@@ -7,13 +7,13 @@
  * that would fail validation only after a render had already been paid for.
  */
 
-import test from "node:test";
+import test, { after, before } from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import { parseClaudeScript } from "../scriptIntake";
-import { compileFilmFromScreenplay, flattenScreenplay } from "./design";
+import { compileFilmFromScreenplayAsync, flattenScreenplay } from "./design";
 import { buildFootagePrompt, runProduction } from "./run";
 import {
   slugify,
@@ -27,6 +27,7 @@ import {
 } from "./filmStore";
 import { buildTimeline, totalFrames } from "../../src/dl/camera";
 import type { SegmentAudioInfo } from "../audio";
+import { clearMockShotVisualHandler, heuristicShotVisualSelection, setMockShotVisualHandler } from "../jev";
 import type { ProductionProgress } from "./types";
 
 const SCRIPT = `# Probe Film
@@ -70,6 +71,13 @@ function spine(durations: number[], gapSec = 0.2): { segments: SegmentAudioInfo[
   return { segments, shotDurations };
 }
 
+// Every design-stage call in this file, including the ones runProduction makes, gets the
+// deterministic heuristic instead of a live Jev request, whatever keys the environment holds.
+before(() => {
+  setMockShotVisualHandler((state) => ({ choice: heuristicShotVisualSelection(state), confidence: 1, probabilities: {} }));
+});
+after(() => clearMockShotVisualHandler());
+
 test("flattenScreenplay: yields one beat per narration line, in document order", () => {
   const beats = flattenScreenplay(parseClaudeScript(SCRIPT));
   assert.equal(beats.length, 6);
@@ -88,9 +96,9 @@ test("flattenScreenplay: a footage direction covers only the beat it introduces"
   );
 });
 
-test("compileFilmFromScreenplay: shot durations reproduce the narration spine exactly", () => {
+test("compileFilmFromScreenplayAsync: shot durations reproduce the narration spine exactly", async () => {
   const { segments, shotDurations } = spine([6, 8, 9, 7, 8, 10]);
-  const { film } = compileFilmFromScreenplay(SCRIPT, segments, shotDurations, { title: "Probe Film" });
+  const { film } = await compileFilmFromScreenplayAsync(SCRIPT, segments, shotDurations, { title: "Probe Film" });
 
   assert.equal(film.shots.length, shotDurations.length);
   film.shots.forEach((shot, i) => {
@@ -105,9 +113,9 @@ test("compileFilmFromScreenplay: shot durations reproduce the narration spine ex
   );
 });
 
-test("compileFilmFromScreenplay: narration goes to scriptText and visual direction never becomes on-screen copy", () => {
+test("compileFilmFromScreenplayAsync: narration goes to scriptText and visual direction never becomes on-screen copy", async () => {
   const { segments, shotDurations } = spine([6, 8, 9, 7, 8, 10]);
-  const { film } = compileFilmFromScreenplay(SCRIPT, segments, shotDurations, { title: "Probe Film" });
+  const { film } = await compileFilmFromScreenplayAsync(SCRIPT, segments, shotDurations, { title: "Probe Film" });
   const beats = flattenScreenplay(parseClaudeScript(SCRIPT));
 
   film.shots.forEach((shot, i) => {
@@ -125,26 +133,26 @@ test("compileFilmFromScreenplay: narration goes to scriptText and visual directi
   }
 });
 
-test("compileFilmFromScreenplay: refuses a narration spine that does not match the screenplay", () => {
+test("compileFilmFromScreenplayAsync: refuses a narration spine that does not match the screenplay", async () => {
   const { segments, shotDurations } = spine([6, 8]);
-  assert.throws(
-    () => compileFilmFromScreenplay(SCRIPT, segments, shotDurations, { title: "Probe Film" }),
+  await assert.rejects(
+    () => compileFilmFromScreenplayAsync(SCRIPT, segments, shotDurations, { title: "Probe Film" }),
     /narration beat/,
   );
 });
 
-test("compileFilmFromScreenplay: only flags footage for beats a clip can cover end to end", () => {
+test("compileFilmFromScreenplayAsync: only flags footage for beats a clip can cover end to end", async () => {
   // Every beat runs longer than the clip budget, so nothing may be flagged: a clip that
   // runs out mid-shot leaves the frame black for the remainder.
   const { segments, shotDurations } = spine([20, 20, 20, 20, 20, 20]);
-  const { footage } = compileFilmFromScreenplay(SCRIPT, segments, shotDurations, {
+  const { footage } = await compileFilmFromScreenplayAsync(SCRIPT, segments, shotDurations, {
     title: "Probe Film",
     maxFootageSec: 8,
   });
   assert.equal(footage.length, 0);
 
   const short = spine([6, 6, 6, 6, 6, 6]);
-  const result = compileFilmFromScreenplay(SCRIPT, short.segments, short.shotDurations, {
+  const result = await compileFilmFromScreenplayAsync(SCRIPT, short.segments, short.shotDurations, {
     title: "Probe Film",
     maxFootageSec: 8,
     maxFootageShots: 2,
@@ -157,9 +165,9 @@ test("compileFilmFromScreenplay: only flags footage for beats a clip can cover e
   }
 });
 
-test("compileFilmFromScreenplay: honours maxFootageShots of zero", () => {
+test("compileFilmFromScreenplayAsync: honours maxFootageShots of zero", async () => {
   const { segments, shotDurations } = spine([6, 6, 6, 6, 6, 6]);
-  const { film, footage } = compileFilmFromScreenplay(SCRIPT, segments, shotDurations, {
+  const { film, footage } = await compileFilmFromScreenplayAsync(SCRIPT, segments, shotDurations, {
     title: "Probe Film",
     maxFootageShots: 0,
   });
@@ -167,16 +175,16 @@ test("compileFilmFromScreenplay: honours maxFootageShots of zero", () => {
   assert.equal(film.shots.filter((s) => s.needsFootage).length, 0);
 });
 
-test("compileFilmFromScreenplay: sets the design language's accent on the film", () => {
+test("compileFilmFromScreenplayAsync: sets the design language's accent on the film", async () => {
   const { segments, shotDurations } = spine([6, 8, 9, 7, 8, 10]);
-  const { film } = compileFilmFromScreenplay(SCRIPT, segments, shotDurations, { title: "Probe Film" });
+  const { film } = await compileFilmFromScreenplayAsync(SCRIPT, segments, shotDurations, { title: "Probe Film" });
   assert.equal(film.accent, "#635BFF");
   assert.equal(film.theme?.background, "smooth-dark");
 });
 
-test("compileFilmFromScreenplay: one chapter per section, and a cut opening each one", () => {
+test("compileFilmFromScreenplayAsync: one chapter per section, and a cut opening each one", async () => {
   const { segments, shotDurations } = spine([6, 8, 9, 7, 8, 10]);
-  const { film } = compileFilmFromScreenplay(SCRIPT, segments, shotDurations, { title: "Probe Film" });
+  const { film } = await compileFilmFromScreenplayAsync(SCRIPT, segments, shotDurations, { title: "Probe Film" });
 
   assert.equal(film.chapters.length, 3);
   assert.equal(film.canvas.nodes.length, 3);
@@ -188,9 +196,9 @@ test("compileFilmFromScreenplay: one chapter per section, and a cut opening each
   assert.equal(film.shots[0].move, "cut");
 });
 
-test("compileFilmFromScreenplay: canvas nodes are tall enough for a wrapping title plus its sub-label", () => {
+test("compileFilmFromScreenplayAsync: canvas nodes are tall enough for a wrapping title plus its sub-label", async () => {
   const { segments, shotDurations } = spine([6, 8, 9, 7, 8, 10]);
-  const { film } = compileFilmFromScreenplay(SCRIPT, segments, shotDurations, { title: "Probe Film" });
+  const { film } = await compileFilmFromScreenplayAsync(SCRIPT, segments, shotDurations, { title: "Probe Film" });
   for (const node of film.canvas.nodes) {
     assert.ok(node.h >= 110, `node "${node.id}" is ${node.h}px tall; its sub-label would clip outside the card`);
     assert.ok(node.w >= 240, `node "${node.id}" is ${node.w}px wide; its title would wrap to three lines`);
@@ -204,10 +212,10 @@ test("buildFootagePrompt: strips the marker and bans hallucinated on-screen text
   assert.ok(prompt.includes("no text"), "the frame already carries typography; the plate must not");
 });
 
-test("writeFilm keeps the package manifest and its generated shadow in sync", () => {
+test("writeFilm keeps the package manifest and its generated shadow in sync", async () => {
   const slug = `probe-${Date.now().toString(36)}`;
   const { segments, shotDurations } = spine([6, 8, 9, 7, 8, 10]);
-  const { film } = compileFilmFromScreenplay(SCRIPT, segments, shotDurations, { title: "Probe Film", slug });
+  const { film } = await compileFilmFromScreenplayAsync(SCRIPT, segments, shotDurations, { title: "Probe Film", slug });
 
   try {
     writeFilm(slug, film);

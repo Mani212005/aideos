@@ -15,7 +15,7 @@ import { ensureRetimedAudio, produceAudioPipeline, type ProduceAudioResult } fro
 import { hasScreenplayTags, parseClaudeScript } from "../scriptIntake";
 import { createEngine } from "../engine";
 import { traceBus } from "../agentBridge";
-import { compileFilmFromScreenplay, FOOTAGE_HEADROOM_SEC, type FootageRequest } from "./design";
+import { compileFilmFromScreenplayAsync, FOOTAGE_HEADROOM_SEC, type FootageRequest } from "./design";
 import {
   PUBLIC_DIR,
   ROOT,
@@ -369,7 +369,7 @@ export async function runProduction(
         return film ? { film, footage: [] as FootageRequest[] } : null;
       },
       async () => {
-        const compiled = compileFilmFromScreenplay(script, narration.segments, narration.shotDurations, {
+        const compiled = await compileFilmFromScreenplayAsync(script, narration.segments, narration.shotDurations, {
           title,
           slug,
           maxFootageShots: wantsBroll ? (request.brollMaxClips ?? 4) : 0,

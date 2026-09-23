@@ -9,9 +9,13 @@ import test from "node:test";
 import {
   ANIMATED_PRIMITIVES,
   DEFAULT_JEV_MODEL,
+  OPENROUTER_JEV_MODEL,
+  OPENROUTER_DECISIONS_ENDPOINT,
+  TYPESAFE_ENDPOINT,
   applyConfidenceGating,
   buildDecisionRequest,
   clearMockJevHandler,
+  getJevModel,
   heuristicPrimitiveSelection,
   parseDecisionResponse,
   selectPrimitive,
@@ -457,4 +461,58 @@ Throughput increased by 10x in tests.
 
   assert.doesNotThrow(() => shotSchema.parse(shot), "Shot must conform to shotSchema");
   assert.ok(shot.blocks.some((b) => b.c === "StatCounter"));
+});
+
+test("Jev: getJevModel resolves jev-latest for the direct TypeSafe endpoint", () => {
+  assert.equal(DEFAULT_JEV_MODEL, "jev-latest");
+  assert.equal(getJevModel(TYPESAFE_ENDPOINT), "jev-latest");
+});
+
+test("Jev: getJevModel resolves typesafe/jev-1.13 only for the OpenRouter endpoint", () => {
+  assert.equal(OPENROUTER_JEV_MODEL, "typesafe/jev-1.13");
+  assert.equal(getJevModel(OPENROUTER_DECISIONS_ENDPOINT), "typesafe/jev-1.13");
+});
+
+test("Jev: getJevModel honors an explicit JEV_MODEL / TYPESAFE_MODEL env override on either endpoint", () => {
+  const originalJevModel = process.env.JEV_MODEL;
+  process.env.JEV_MODEL = "jev-custom";
+  try {
+    assert.equal(getJevModel(TYPESAFE_ENDPOINT), "jev-custom");
+    assert.equal(getJevModel(OPENROUTER_DECISIONS_ENDPOINT), "jev-custom");
+  } finally {
+    if (originalJevModel === undefined) delete process.env.JEV_MODEL;
+    else process.env.JEV_MODEL = originalJevModel;
+  }
+});
+
+test("Jev: selectPrimitive logs a non-silent warning and still falls back when a live call fails", async () => {
+  const originalKey = process.env.TYPESAFE_API_KEY;
+  process.env.TYPESAFE_API_KEY = "test-key";
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+  console.warn = (msg: string) => {
+    warnings.push(msg);
+  };
+
+  try {
+    const result = await selectPrimitive(
+      { visual: "A rat in a maze", narration: "The rat explores." },
+      {
+        fetchFn: (async () =>
+          new Response(JSON.stringify({ error: { message: "Unknown model: bad-model" } }), {
+            status: 400,
+          })) as unknown as typeof fetch,
+      },
+    );
+
+    assert.equal(result.source, "heuristic-fallback");
+    assert.ok(
+      warnings.some((w) => w.includes("selectPrimitive") && w.includes("falling back to heuristic")),
+      "A failed live Jev call must log a warning, not fail silently",
+    );
+  } finally {
+    console.warn = originalWarn;
+    if (originalKey === undefined) delete process.env.TYPESAFE_API_KEY;
+    else process.env.TYPESAFE_API_KEY = originalKey;
+  }
 });

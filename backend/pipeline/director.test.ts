@@ -6,12 +6,20 @@
  * falling back to a stub, and a passing draft is produced through the real pipeline end to end.
  */
 
-import test from "node:test";
+import test, { after, before } from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
 import { draftScreenplay, runDirector, type GenerateScreenplayFn } from "./director";
 import { readFilm, slugify, VIDEOS_DIR, FILMS_DIR } from "./filmStore";
+import { clearMockShotVisualHandler, heuristicShotVisualSelection, setMockShotVisualHandler } from "../jev";
+
+// The end-to-end runs reach the design stage, so pin its shot-visual choice to the deterministic
+// heuristic rather than a live Jev request, whatever keys the environment holds.
+before(() => {
+  setMockShotVisualHandler((state) => ({ choice: heuristicShotVisualSelection(state), confidence: 1, probabilities: {} }));
+});
+after(() => clearMockShotVisualHandler());
 
 /** A screenplay that always parses: one section, one narration beat, naming the topic in the title. */
 function screenplayFor(topic: string): string {
@@ -129,7 +137,7 @@ test("draftScreenplay: with no generator injected and no cloud key configured, f
 // End-to-end: a prompt drafted by an injected director produces a real, verified package through
 // the same pipeline a hand-written screenplay goes through - the guarantee docs/DIRECTOR_GUIDE.md
 // and the agent director invariants test assert, exercised here for the auto-prompt entry point
-// specifically rather than only for compileFilmFromScreenplay in isolation.
+// specifically rather than only for compileFilmFromScreenplayAsync in isolation.
 test("runDirector: a prompt is drafted and produced through the real pipeline end to end", async () => {
   const prompt = "Why Attention Scales Quadratically";
   const slug = slugify(`director-${prompt}-${Date.now().toString(36)}`);
@@ -141,6 +149,7 @@ test("runDirector: a prompt is drafted and produced through the real pipeline en
         slug,
         generateScreenplay: fakeGenerator(),
         ttsBackend: "tone",
+        syncToPreview: false,
         broll: false,
         stopAfter: "design",
         resume: false,
@@ -181,6 +190,7 @@ test("runDirector: an explicit title overrides the one the screenplay drafts for
         title: "The Overridden Title",
         generateScreenplay: fakeGenerator(),
         ttsBackend: "tone",
+        syncToPreview: false,
         broll: false,
         stopAfter: "design",
         resume: false,

@@ -1,8 +1,11 @@
 /**
- * File Description: TypeSafe Jev decision model client for screenplay primitive selection.
- * Implements the CHOICE primitive over the 7 animated primitives with confidence gating,
- * safe-primitive fallback, and fast deterministic heuristic fallback.
+ * File Description: TypeSafe Jev decision model client for screenplay visual selection.
+ * Implements CHOICE over the 7 animated primitives and shot-level visual strategies, each with
+ * confidence gating, safe fallback, and fast deterministic heuristic fallback over one shared
+ * decision client.
  */
+
+import { narrationSupportsVisual } from "./shotVisualCues";
 
 /** The 7 animated primitives in the design system closed set. */
 export const ANIMATED_PRIMITIVES = [
@@ -41,8 +44,11 @@ export const DEFAULT_MIN_CONFIDENCE_THRESHOLD = 0.40;
 /** Default timeout in milliseconds for fast Jev decision calls. */
 export const DEFAULT_JEV_TIMEOUT_MS = 1500;
 
-/** Default model identifier for Jev decision requests. */
-export const DEFAULT_JEV_MODEL = "typesafe/jev-1.13";
+/** Default model identifier for Jev decision requests against the direct TypeSafe endpoint. */
+export const DEFAULT_JEV_MODEL = "jev-latest";
+
+/** Model identifier for Jev decision requests routed through the OpenRouter alpha decisions API. */
+export const OPENROUTER_JEV_MODEL = "typesafe/jev-1.13";
 
 /** Official TypeSafe System One evaluation endpoint. */
 export const TYPESAFE_ENDPOINT = "https://api.typesafe.ai/v1/systemone";
@@ -124,6 +130,12 @@ function readEnv(key: string): string | undefined {
   return undefined;
 }
 
+// Logs a non-silent warning when a live Jev API call fails before falling back to the heuristic.
+function warnJevCallFailure(context: string, err: unknown): void {
+  const message = err instanceof Error ? err.message : String(err);
+  console.warn(`[jev] ${context} call failed, falling back to heuristic: ${message}`);
+}
+
 // Resolves the configured Jev API key from environment variables.
 export function getJevApiKey(): string | undefined {
   return (
@@ -160,7 +172,7 @@ export function getJevModel(endpoint?: string): string {
 
   const targetEndpoint = endpoint ?? getJevEndpoint();
   if (targetEndpoint.includes("openrouter.ai")) {
-    return "typesafe/jev-1.13";
+    return OPENROUTER_JEV_MODEL;
   }
 
   return DEFAULT_JEV_MODEL;
@@ -487,9 +499,337 @@ export async function selectPrimitive(
     const answer = await decidePrimitiveWithModel(state, options);
     return applyConfidenceGating(answer, state, options);
   } catch (err: unknown) {
+    warnJevCallFailure("selectPrimitive", err);
     const fallback = heuristicPrimitiveSelection(state);
     return {
       primitive: fallback,
+      source: "heuristic-fallback",
+      fallbackReason: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/** Closed set of shot-level visual strategies the compile path can render as schema-valid blocks. */
+export const SHOT_VISUALS = [
+  "Text",
+  "StatCounter",
+  "TokenStrip",
+  "Plot",
+  "MatrixGrid",
+  "Distribution",
+  "LayerStack",
+  "ScaleBar",
+] as const;
+
+export type ShotVisual = (typeof SHOT_VISUALS)[number];
+
+/** Device visuals that demand higher confidence because they assert data the narration must carry. */
+export const SHOT_COMPLEX_VISUALS: readonly ShotVisual[] = [
+  "StatCounter",
+  "TokenStrip",
+  "Plot",
+  "MatrixGrid",
+  "Distribution",
+  "LayerStack",
+  "ScaleBar",
+] as const;
+
+/** Rubric criteria for each shot-level visual strategy passed to the Jev CHOICE question. */
+export const SHOT_VISUAL_CRITERIA: Record<ShotVisual, string> = {
+  Text: "Headline plus supporting body copy for narrative beats with no chartable data.",
+  StatCounter: "Large animated number for metrics, percentages, multipliers, or benchmark gains.",
+  TokenStrip: "Token sequence strip for parallel decoding, batches, streams, or sequences.",
+  Plot: "Single-line growth curve for scaling, throughput, loss, accuracy, or curves.",
+  MatrixGrid: "Grid heatmap for matrices, weights, tensors, attention maps, or tables.",
+  Distribution: "Probability breakdown for distributions, proportions, splits, or shares.",
+  LayerStack: "Layered stack for layers, hierarchies, pipelines, stages, or deep networks.",
+  ScaleBar: "Threshold slider for trade-offs, spectrums, ranges, bounds, or temperature.",
+};
+
+/** State evaluated by Jev for shot-level visual choice. */
+export interface ShotVisualState {
+  visual?: string;
+  narration?: string;
+  onscreen?: string[];
+  activeVisuals?: string[];
+  sceneTitle?: string;
+  durationSec?: number;
+  wantsFootage?: boolean;
+}
+
+/** Parsed shot-visual choice answer from the Jev decision evaluation. */
+export interface ShotVisualAnswer {
+  choice: ShotVisual;
+  confidence: number;
+  probabilities: Record<string, number>;
+}
+
+/** Final shot-visual selection result with provenance and fallback tracking. */
+export interface ShotVisualResult {
+  visual: ShotVisual;
+  source: "jev" | "confidence-fallback" | "heuristic-fallback";
+  confidence?: number;
+  probabilities?: Record<string, number>;
+  rawChoice?: string;
+  fallbackReason?: string;
+}
+
+// Global injectable mock handler for shot-visual decisions in tests.
+let activeShotVisualMockHandler:
+  | ((state: ShotVisualState) => Promise<ShotVisualAnswer | null> | ShotVisualAnswer | null)
+  | null = null;
+
+// Sets a mock handler for shot-visual decisions in tests.
+export function setMockShotVisualHandler(handler: typeof activeShotVisualMockHandler): void {
+  activeShotVisualMockHandler = handler;
+}
+
+// Gets the active mock handler for shot-visual decisions.
+export function getMockShotVisualHandler(): typeof activeShotVisualMockHandler {
+  return activeShotVisualMockHandler;
+}
+
+// Clears the active mock handler for shot-visual decisions.
+export function clearMockShotVisualHandler(): void {
+  activeShotVisualMockHandler = null;
+}
+
+// Posts one decision payload to the Jev endpoint with timeout handling (single shared client).
+async function postJevRequest(
+  payload: Record<string, unknown>,
+  options?: JevDecisionOptions,
+): Promise<unknown> {
+  const apiKey = options?.apiKey ?? getJevApiKey();
+  if (!apiKey) {
+    throw new Error("No Jev API key provided or found in environment");
+  }
+  const endpoint = options?.endpoint ?? getJevEndpoint(apiKey);
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_JEV_TIMEOUT_MS;
+  const fetcher = options?.fetchFn ?? fetch;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetcher(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      throw new Error(`Jev decision endpoint returned HTTP ${response.status}: ${errText}`);
+    }
+    return (await response.json()) as unknown;
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Jev decision timed out after ${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Builds the request payload for a shot-level visual strategy CHOICE question.
+export function buildShotVisualRequest(
+  state: ShotVisualState,
+  model: string = DEFAULT_JEV_MODEL,
+): Record<string, unknown> {
+  return {
+    model,
+    state: {
+      visual: state.visual || "",
+      narration: state.narration || "",
+      onscreen: state.onscreen || [],
+      activeVisuals: state.activeVisuals || [],
+      ...(state.sceneTitle ? { sceneTitle: state.sceneTitle } : {}),
+      ...(typeof state.durationSec === "number" ? { durationSec: state.durationSec } : {}),
+      ...(typeof state.wantsFootage === "boolean" ? { wantsFootage: state.wantsFootage } : {}),
+    },
+    questions: {
+      shotVisual: {
+        type: "choice",
+        instructions:
+          "Select the single shot-level visual strategy whose blocks can be authored against the film schema for this beat. Prefer Text when the narration carries no chartable data.",
+        criteria: SHOT_VISUAL_CRITERIA,
+      },
+    },
+  };
+}
+
+// Normalizes a raw string candidate to a canonical ShotVisual if valid.
+function normalizeShotVisualName(raw: string): ShotVisual | null {
+  const clean = raw.trim().toLowerCase().replace(/[^a-z]/g, "");
+  for (const v of SHOT_VISUALS) {
+    if (v.toLowerCase() === clean) {
+      return v;
+    }
+  }
+  return null;
+}
+
+// Extracts a generic CHOICE answer (choice + confidence + probabilities) for one question key.
+function parseChoiceAnswer(val: unknown, questionKey: string, normalize: (raw: string) => string | null): { choice: string; confidence: number; probabilities: Record<string, number> } {
+  if (!val || typeof val !== "object") {
+    throw new Error("Invalid Jev response: expected JSON object");
+  }
+  const obj = val as Record<string, unknown>;
+  if (obj.error && typeof obj.error === "object") {
+    const errObj = obj.error as Record<string, unknown>;
+    const msg = typeof errObj.message === "string" ? errObj.message : JSON.stringify(errObj);
+    throw new Error(`Jev API error: ${msg}`);
+  }
+  const answersContainer =
+    (obj.answers && typeof obj.answers === "object" ? (obj.answers as Record<string, unknown>) : null) ||
+    (obj.decisions && typeof obj.decisions === "object" ? (obj.decisions as Record<string, unknown>) : null) ||
+    obj;
+  const data = answersContainer[questionKey];
+  if (!data) {
+    throw new Error(`Jev response missing '${questionKey}' question in answers`);
+  }
+  let rawChoice = "";
+  let confidence = 0.5;
+  const probabilities: Record<string, number> = {};
+  if (typeof data === "string") {
+    rawChoice = data;
+  } else if (typeof data === "object" && data !== null) {
+    const pObj = data as Record<string, unknown>;
+    if (typeof pObj.choice === "string") {
+      rawChoice = pObj.choice;
+    } else if (typeof pObj.value === "string") {
+      rawChoice = pObj.value;
+    }
+    if (typeof pObj.confidence === "number" && !Number.isNaN(pObj.confidence)) {
+      confidence = Math.max(0, Math.min(1, pObj.confidence));
+    }
+    if (pObj.probabilities && typeof pObj.probabilities === "object") {
+      const probMap = pObj.probabilities as Record<string, unknown>;
+      for (const [k, v] of Object.entries(probMap)) {
+        if (typeof v === "number" && !Number.isNaN(v)) {
+          probabilities[k] = v;
+        }
+      }
+    }
+  }
+  const canonical = normalize(rawChoice);
+  if (!canonical) {
+    throw new Error(`Jev returned unknown ${questionKey} choice: "${rawChoice}"`);
+  }
+  if (Object.keys(probabilities).length === 0) {
+    probabilities[canonical] = confidence;
+  }
+  return { choice: canonical, confidence, probabilities };
+}
+
+// Parses the JSON response for a shot-visual CHOICE into a typed answer.
+export function parseShotVisualResponse(val: unknown): ShotVisualAnswer {
+  const parsed = parseChoiceAnswer(val, "shotVisual", (raw) => normalizeShotVisualName(raw));
+  const choice = normalizeShotVisualName(parsed.choice);
+  if (!choice) {
+    throw new Error(`Jev returned unknown shotVisual choice: "${parsed.choice}"`);
+  }
+  return { choice, confidence: parsed.confidence, probabilities: parsed.probabilities };
+}
+
+// Selects a shot-level visual deterministically using fast heuristic rules.
+export function heuristicShotVisualSelection(state: ShotVisualState): ShotVisual {
+  const narration = state.narration || "";
+  const last = (state.activeVisuals || []).slice(-1)[0];
+  return (
+    SHOT_COMPLEX_VISUALS.find((v) => v !== last && narrationSupportsVisual(v, narration)) ?? "Text"
+  );
+}
+
+// Evaluates a shot-visual choice against confidence thresholds and falls back safely.
+export function applyShotVisualGating(
+  answer: ShotVisualAnswer,
+  state: ShotVisualState,
+  options?: { complexThreshold?: number; minThreshold?: number },
+): ShotVisualResult {
+  const complexThreshold = options?.complexThreshold ?? DEFAULT_COMPLEX_CONFIDENCE_THRESHOLD;
+  const minThreshold = options?.minThreshold ?? DEFAULT_MIN_CONFIDENCE_THRESHOLD;
+  const isComplex = (SHOT_COMPLEX_VISUALS as readonly string[]).includes(answer.choice);
+  if (isComplex && answer.confidence < complexThreshold) {
+    return {
+      visual: "Text",
+      source: "confidence-fallback",
+      confidence: answer.confidence,
+      probabilities: answer.probabilities,
+      rawChoice: answer.choice,
+      fallbackReason: `Low confidence (${answer.confidence.toFixed(2)} < ${complexThreshold}) for device visual ${answer.choice}; safely fell back to Text`,
+    };
+  }
+  if (answer.confidence < minThreshold) {
+    const heuristicChoice = heuristicShotVisualSelection(state);
+    return {
+      visual: heuristicChoice,
+      source: "confidence-fallback",
+      confidence: answer.confidence,
+      probabilities: answer.probabilities,
+      rawChoice: answer.choice,
+      fallbackReason: `Confidence (${answer.confidence.toFixed(2)} < ${minThreshold}) below minimum threshold; fell back to heuristic`,
+    };
+  }
+  return {
+    visual: answer.choice,
+    source: "jev",
+    confidence: answer.confidence,
+    probabilities: answer.probabilities,
+    rawChoice: answer.choice,
+  };
+}
+
+// Executes one shared-client call for a shot-visual CHOICE question.
+export async function decideShotVisualWithModel(
+  state: ShotVisualState,
+  options?: JevDecisionOptions,
+): Promise<ShotVisualAnswer> {
+  const model = options?.model ?? getJevModel(options?.endpoint ?? getJevEndpoint(options?.apiKey));
+  const payload = buildShotVisualRequest(state, model);
+  const json = await postJevRequest(payload, options);
+  return parseShotVisualResponse(json);
+}
+
+// Top-level entry point that selects the shot-level visual strategy for one beat.
+export async function selectShotVisual(
+  state: ShotVisualState,
+  options?: JevDecisionOptions,
+): Promise<ShotVisualResult> {
+  if (activeShotVisualMockHandler) {
+    try {
+      const mockAnswer = await activeShotVisualMockHandler(state);
+      if (mockAnswer) {
+        return applyShotVisualGating(mockAnswer, state, options);
+      }
+    } catch (mockErr: unknown) {
+      const fallback = heuristicShotVisualSelection(state);
+      return {
+        visual: fallback,
+        source: "heuristic-fallback",
+        fallbackReason: `Mock handler error: ${mockErr instanceof Error ? mockErr.message : String(mockErr)}`,
+      };
+    }
+  }
+  const apiKey = options?.apiKey ?? getJevApiKey();
+  if (!apiKey) {
+    const fallback = heuristicShotVisualSelection(state);
+    return {
+      visual: fallback,
+      source: "heuristic-fallback",
+      fallbackReason: "No Jev API key configured in environment",
+    };
+  }
+  try {
+    const answer = await decideShotVisualWithModel(state, options);
+    return applyShotVisualGating(answer, state, options);
+  } catch (err: unknown) {
+    warnJevCallFailure("selectShotVisual", err);
+    const fallback = heuristicShotVisualSelection(state);
+    return {
+      visual: fallback,
       source: "heuristic-fallback",
       fallbackReason: err instanceof Error ? err.message : String(err),
     };
