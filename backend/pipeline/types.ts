@@ -75,6 +75,8 @@ export interface ProductionRequest {
   designAgentTimeoutMs?: number;
   /** Model for the server-model design fallback; null disables it. Omit to use Gemini when configured. */
   designLlmCaller?: import("../designSpec/designer").DesignLlmCaller | null;
+  /** Writes chart contents from the narration; defaults to Gemini when configured, null for none. */
+  deviceCaller?: import("./deviceData").DeviceLlmCaller | null;
 }
 
 

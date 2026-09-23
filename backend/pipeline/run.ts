@@ -17,6 +17,8 @@ import { hasScreenplayTags, parseClaudeScript } from "../scriptIntake";
 import { createEngine } from "../engine";
 import { traceBus } from "../agentBridge";
 import { compileFilmFromScreenplayAsync, FOOTAGE_HEADROOM_SEC, type FootageRequest } from "./design";
+import { defaultDeviceCaller } from "./deviceData";
+import { writeVisualChoices } from "./visualChoices";
 import {
   PUBLIC_DIR,
   ROOT,
@@ -378,8 +380,15 @@ export async function runProduction(
           maxFootageShots: wantsBroll ? (request.brollMaxClips ?? 4) : 0,
           maxFootageSec: request.brollSeconds ?? 8,
           ...(request.music ? { music: { src: request.music, volume: 0.5, duckUnderVoiceover: true } } : {}),
+          deviceCaller:
+            request.deviceCaller !== undefined
+              ? request.deviceCaller
+              : process.env.NODE_TEST_CONTEXT
+                ? null
+                : await defaultDeviceCaller(),
         });
         writeFilm(slug, compiled.film);
+        writeVisualChoices(slug, compiled.film, compiled.shotVisuals, compiled.deviceReports);
         emit(
           "design",
           "running",
