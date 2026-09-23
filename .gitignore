@@ -51,6 +51,8 @@ scripts/*.txt
 scripts/*.json
 scripts/*.py
 scripts/*.mjs
+# The agent connector is served to users at /api/agent-link/connect.mjs, so it must ship.
+!scripts/aideos-connect.mjs
 
 # Per-video screenplay markdown, same treatment as the old global scripts/*.md.
 videos/*/script.md
