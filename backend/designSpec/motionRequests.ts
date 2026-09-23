@@ -16,7 +16,7 @@ import { taskQueue } from "../agentBridge/taskQueue";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { buildDesign, designDir, readDesignStatus } from "./build";
 import { writeDesignBrief } from "./brief";
-import type { DesignLlmCaller } from "./designer";
+import { designWithServerModel, type DesignLlmCaller } from "./designer";
 import type { DesignSource } from "./compile";
 
 /** One described motion and what came of it. */
@@ -181,7 +181,6 @@ export async function requestMotion(film: Film, shotId: string, prompt: string, 
   const run =
     options.runServerModel ??
     (async (filmId: string, instruction: string, c: DesignLlmCaller) => {
-      const { designWithServerModel } = await import("./designer");
       return designWithServerModel(filmId, instruction, c);
     });
   const instruction = `In shot ${shotId} (it says: "${shot.scriptText ?? ""}"): ${request.prompt}. Change only what that shot shows.`;

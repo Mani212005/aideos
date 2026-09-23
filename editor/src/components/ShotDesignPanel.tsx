@@ -28,7 +28,7 @@ export function ShotDesignPanel({ film, shot, onApply }: ShotDesignPanelProps) {
   const [message, setMessage] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
   const [note, setNote] = useState("");
   const choice = overview?.shots.find((s) => s.id === shot.id)?.choice;
-  const current = shot.blocks.find((b) => SWAPPABLE.includes(b.c) && b.c !== "Text")?.c ?? "Text";
+  const current = shot.blocks.find((b) => SWAPPABLE.includes(b.c))?.c ?? "Text";
 
   // Jev's runner-ups that it gave any real weight, plus plain text, never the one already shown.
   // Without a recorded choice every kind is offered, since nothing ranks them.

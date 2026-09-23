@@ -103,7 +103,13 @@ export class AgentLinkStore {
   private waiters = new Map<string, Array<(task: LinkTask | null) => void>>();
   private results = new Map<string, LinkTaskResult>();
 
-  constructor(private readonly file: string, private readonly now: () => number = Date.now) {
+  private readonly file: string;
+  private readonly now: () => number;
+
+  // Plain fields rather than parameter properties: the editor build allows only erasable syntax.
+  constructor(file: string, now: () => number = Date.now) {
+    this.file = file;
+    this.now = now;
     this.state = this.load();
   }
 
