@@ -6,11 +6,11 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { compileFilmFromScreenplay } from "./design";
+import { compileFilmFromScreenplayAsync } from "./design";
 import type { SegmentAudioInfo } from "../audio";
 import { parseFilm } from "../../src/dl/schema";
 
-test("Agent Director: compiles 67-beat script across 16 sections without invariant violations", () => {
+test("Agent Director: compiles 67-beat script across 16 sections without invariant violations", async () => {
   // Generate a realistic 67-beat script spanning 16 sections (13*4 + 3*5 = 67)
   const numSections = 16;
   const beatsPerSection = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5];
@@ -98,11 +98,11 @@ test("Agent Director: compiles 67-beat script across 16 sections without invaria
 
   let result;
   try {
-    result = compileFilmFromScreenplay(scriptText, narration, shotDurations, {
+    result = await compileFilmFromScreenplayAsync(scriptText, narration, shotDurations, {
       title: "Distributed Consensus Deep Dive",
       slug: "distributed-consensus",
       fps: 30,
-    });
+    }, { apiKey: "" });
   } finally {
     if (origKey) process.env.GEMINI_API_KEY = origKey;
   }
@@ -205,7 +205,7 @@ test("Agent Director: compiles 67-beat script across 16 sections without invaria
   });
 });
 
-test("Agent Director: handles boundary case of 1 section (satisfying min 2 nodes schema invariant)", () => {
+test("Agent Director: handles boundary case of 1 section (satisfying min 2 nodes schema invariant)", async () => {
   const scriptText = `
 ## [intro] Single Concept Video
 [VISUAL: overview diagram]
@@ -223,10 +223,10 @@ test("Agent Director: handles boundary case of 1 section (satisfying min 2 nodes
     startOffset: durations.slice(0, i).reduce((a, b) => a + b, 0),
   }));
 
-  const { film } = compileFilmFromScreenplay(scriptText, narration, durations, {
+  const { film } = await compileFilmFromScreenplayAsync(scriptText, narration, durations, {
     title: "Single Focus Film",
     slug: "single-focus",
-  });
+  }, { apiKey: "" });
 
   const validated = parseFilm(film);
   assert.ok(validated);
@@ -234,7 +234,7 @@ test("Agent Director: handles boundary case of 1 section (satisfying min 2 nodes
   assert.equal(film.chapters.length, 1);
 });
 
-test("Agent Director: handles boundary case of 32 sections (capping nodes to 24 and chapters to 12)", () => {
+test("Agent Director: handles boundary case of 32 sections (capping nodes to 24 and chapters to 12)", async () => {
   const lines: string[] = [];
   const durations: number[] = [];
   const narration: SegmentAudioInfo[] = [];
@@ -254,10 +254,10 @@ test("Agent Director: handles boundary case of 32 sections (capping nodes to 24 
     });
   }
 
-  const { film } = compileFilmFromScreenplay(lines.join("\n"), narration, durations, {
+  const { film } = await compileFilmFromScreenplayAsync(lines.join("\n"), narration, durations, {
     title: "Large Scale Multi-Section Film",
     slug: "large-scale",
-  });
+  }, { apiKey: "" });
 
   const validated = parseFilm(film);
   assert.ok(validated);

@@ -5,6 +5,8 @@
  * decision client.
  */
 
+import { narrationSupportsVisual } from "./shotVisualCues";
+
 /** The 7 animated primitives in the design system closed set. */
 export const ANIMATED_PRIMITIVES = [
   "TextReveal",
@@ -734,41 +736,11 @@ export function parseShotVisualResponse(val: unknown): ShotVisualAnswer {
 
 // Selects a shot-level visual deterministically using fast heuristic rules.
 export function heuristicShotVisualSelection(state: ShotVisualState): ShotVisual {
-  const parts: string[] = [];
-  if (state.visual) parts.push(state.visual);
-  if (state.narration) parts.push(state.narration);
-  if (state.onscreen && state.onscreen.length > 0) parts.push(...state.onscreen);
-  const combined = parts.join(" ").toLowerCase();
-  const lowerNarration = (state.narration || "").toLowerCase();
+  const narration = state.narration || "";
   const last = (state.activeVisuals || []).slice(-1)[0];
-  const candidates: ShotVisual[] = [];
-  const quantityLike =
-    /\b\d+(?:\.\d+)?\s*(?:%|percent\b|x\b|times\b|ms\b|fps\b|gb\b|mb\b|tb\b|k\b|m\b|b\b|billion\b|million\b|trillion\b)/i.test(combined) ||
-    /\b(two|three|four|five|ten|twenty|fifty|hundred)\s*(?:to\s+\w+\s*)?times\b/i.test(combined);
-  if (quantityLike) candidates.push("StatCounter");
-  if (/\b(in parallel|at once|all five|batch of them|single forward pass|tokens?|sequence|stream)\b/.test(lowerNarration)) {
-    candidates.push("TokenStrip");
-  }
-  if (/\b(scales?|scaling|grows?|throughput|linear|quadratic|loss|accuracy|curve)\b/.test(lowerNarration)) {
-    candidates.push("Plot");
-  }
-  if (/\b(matrix|weights?|tensor|grid|attention map|embedding space|heat\s*map|table)\b/.test(lowerNarration)) {
-    candidates.push("MatrixGrid");
-  }
-  if (/\b(distribution|probability|proportions?|breakdown|fraction|shares?|split)\b/.test(lowerNarration)) {
-    candidates.push("Distribution");
-  }
-  if (/\b(layers?|stack|tier|hierarchy|pipeline|stages?|deep network|blocks?)\b/.test(lowerNarration)) {
-    candidates.push("LayerStack");
-  }
-  if (/\b(threshold|trade-off|tradeoff|spectrum|slider|range|bounds?|limits?|temperature)\b/.test(lowerNarration)) {
-    candidates.push("ScaleBar");
-  }
-  if ((state.onscreen || []).length === 0 && candidates.length === 0) return "Text";
-  const eligible = candidates.filter((c) => c !== last);
-  if (eligible.length > 0) return eligible[0];
-  if (candidates.length > 0 && candidates[0] !== last) return candidates[0];
-  return "Text";
+  return (
+    SHOT_COMPLEX_VISUALS.find((v) => v !== last && narrationSupportsVisual(v, narration)) ?? "Text"
+  );
 }
 
 // Evaluates a shot-visual choice against confidence thresholds and falls back safely.

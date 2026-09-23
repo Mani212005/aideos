@@ -64,7 +64,7 @@ test("ShotVisual: parseShotVisualResponse rejects unknown choice and surfaces AP
 
 test("ShotVisual: heuristic maps device cues and falls back to Text", () => {
   assert.equal(
-    heuristicShotVisualSelection({ narration: "Throughput jumped by 4.5x.", onscreen: ["4.5x"] }),
+    heuristicShotVisualSelection({ narration: "Throughput jumped by four times.", onscreen: ["4x"] }),
     "StatCounter",
   );
   assert.equal(
@@ -84,6 +84,12 @@ test("ShotVisual: heuristic maps device cues and falls back to Text", () => {
     "Text",
   );
   assert.equal(heuristicShotVisualSelection({ narration: "Plain talk.", onscreen: [] }), "Text");
+});
+
+test("ShotVisual: heuristic never picks StatCounter for a number the design stage cannot read", () => {
+  for (const narration of ["It cuts latency by 40%.", "Recall improved 4x.", "Replies land in 200 ms.", "It needs 8 GB."]) {
+    assert.notEqual(heuristicShotVisualSelection({ narration, onscreen: ["Metric"] }), "StatCounter", narration);
+  }
 });
 
 test("ShotVisual: heuristic avoids repeating the last visual when alternatives exist", () => {
@@ -120,7 +126,7 @@ test("ShotVisual: selectShotVisual uses mock handler without network", async () 
 test("ShotVisual: selectShotVisual falls back deterministically with no API key", async () => {
   clearMockShotVisualHandler();
   const res = await selectShotVisual(
-    { narration: "A 95% reduction was recorded.", onscreen: ["95%"] },
+    { narration: "A 95 percent reduction was recorded.", onscreen: ["95%"] },
     { apiKey: "" },
   );
   assert.equal(res.visual, "StatCounter");
