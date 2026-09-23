@@ -118,12 +118,12 @@ File Description: This file defines the core guidelines, coding principles, and 
   strip through the centre, so the shared safe area is the centre 1080 square; the wide cut also
   sees the left and right wings, and the reel also sees the top and bottom bands. `SceneStage`
   covers rather than contains, so a scene of any other aspect would be cropped, not letterboxed.
-- Two rules the engine cannot check, both enforced by the `Timeline` builder in
-  `backend/stillTalking/scene.ts`: a clip must start from the value the previous clip on that
+- Two rules the engine cannot check, both enforced by the `Timeline` builder in the scene-film kit
+  (`backend/sceneKit/`, which every scene film builds on): a clip must start from the value the previous clip on that
   property left behind (otherwise the value snaps on screen), and one element may only ever be
   given one transform `origin` (the compiler applies the last origin it sees to every frame).
 - Aim a cue at a spoken word, not at a fraction of its shot: the payoff word of a sentence is
-  usually near its end. `buildScene`'s `word()` helper reads the narration's own offsets and throws
+  usually near its end. The kit's `createCues(timing).word()` reads the narration's own offsets and throws
   when the phrase is no longer in that shot, so rewriting a line cannot silently mis-time the film.
 - Chrome drawn over a scene needs its own ground. A node graph leaves the bottom of the frame
   empty, but a star field will put a dot straight through a glyph of the chapter rail, so `Rail`
