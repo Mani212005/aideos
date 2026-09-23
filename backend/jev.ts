@@ -535,6 +535,15 @@ export const SHOT_COMPLEX_VISUALS: readonly ShotVisual[] = [
   "ScaleBar",
 ] as const;
 
+/**
+ * Confidence a device shot visual needs before it is used. Lower than the primitive threshold
+ * because the design stage separately refuses any device whose data the narration does not carry,
+ * so this gate only has to catch a wrong kind of chart, not invented data. Calibrated with
+ * `npm run eval:visuals -- --jev`: at 0.65 correct picks such as LayerStack 0.52 and ScaleBar 0.53
+ * were discarded and shipped accuracy (81%) fell below the heuristic alone (88%); at 0.45 it is 94%.
+ */
+export const DEFAULT_SHOT_COMPLEX_CONFIDENCE_THRESHOLD = 0.45;
+
 /** Rubric criteria for each shot-level visual strategy passed to the Jev CHOICE question. */
 export const SHOT_VISUAL_CRITERIA: Record<ShotVisual, string> = {
   Text: "Headline plus supporting body copy for narrative beats with no chartable data.",
@@ -750,7 +759,7 @@ export function applyShotVisualGating(
   state: ShotVisualState,
   options?: { complexThreshold?: number; minThreshold?: number },
 ): ShotVisualResult {
-  const complexThreshold = options?.complexThreshold ?? DEFAULT_COMPLEX_CONFIDENCE_THRESHOLD;
+  const complexThreshold = options?.complexThreshold ?? DEFAULT_SHOT_COMPLEX_CONFIDENCE_THRESHOLD;
   const minThreshold = options?.minThreshold ?? DEFAULT_MIN_CONFIDENCE_THRESHOLD;
   const isComplex = (SHOT_COMPLEX_VISUALS as readonly string[]).includes(answer.choice);
   if (isComplex && answer.confidence < complexThreshold) {

@@ -105,7 +105,7 @@ test("ShotVisual: heuristic avoids repeating the last visual when alternatives e
 });
 
 test("ShotVisual: gating falls back to Text on low confidence for device visuals", () => {
-  const answer: ShotVisualAnswer = { choice: "Plot", confidence: 0.5, probabilities: { Plot: 0.5 } };
+  const answer: ShotVisualAnswer = { choice: "Plot", confidence: 0.42, probabilities: { Plot: 0.42 } };
   const result = applyShotVisualGating(answer, { narration: "Scaling talk.", onscreen: ["Scaling"] });
   assert.equal(result.visual, "Text");
   assert.equal(result.source, "confidence-fallback");
