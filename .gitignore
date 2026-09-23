@@ -71,6 +71,8 @@ videos/*/narration.json
 
 # Design build results are per machine; design.json, base-film.json and the artwork are committed.
 videos/*/design/status.json
+videos/*/design/motion-requests.json
+videos/*/design/history/
 videos/*/design/BRIEF.md
 
 # Agent link pairings (hashed secrets) for aideos connect.

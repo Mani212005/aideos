@@ -2246,6 +2246,27 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
         // Handle /api/design/:id[/shots/:shotId/(visual|redesign)] (the Look stage's design view,
         // "why this visual" swaps and per-shot redesign requests to the connected agent)
+        // Handle /api/design/:id/motion (the Motion stage: described motions, their outcomes, revert)
+        const motionRoute = url.match(/^\/api\/design\/([a-z0-9-]+)\/(?:motion(?:\/([A-Za-z0-9-]+)\/revert)?|shots\/([A-Za-z0-9_-]+)\/motion)$/);
+        if (motionRoute) {
+          const [, filmId, revertId, shotId] = motionRoute;
+          void (async () => {
+            const motion = await import('../backend/designSpec/motionRequests.ts');
+            if (req.method === 'GET' && !revertId && !shotId) return sendJson(res, 200, { ok: true, requests: motion.listMotionRequests(filmId) });
+            if (req.method !== 'POST') return sendJson(res, 405, { error: `${req.method} ${url} is not allowed` });
+            if (revertId) return sendJson(res, 200, { ok: true, request: motion.revertMotion(filmId, revertId) });
+            const body = (await readBody(req)) as { prompt?: string; film?: unknown };
+            const posted = body?.film ? filmSchema.safeParse(body.film) : null;
+            const file = path.join(videosDir, filmId, 'film.json');
+            const film = posted?.success ? posted.data : fs.existsSync(file) ? filmSchema.parse(JSON.parse(fs.readFileSync(file, 'utf8'))) : null;
+            if (!film) return sendJson(res, 404, { error: `Film "${filmId}" not found` });
+            const { serverDesignCaller } = await import('../backend/designSpec/designer.ts');
+            const request = await motion.requestMotion(film, shotId, String(body?.prompt ?? ''), { ownerKey: ownerOf(req), llmCaller: await serverDesignCaller() });
+            sendJson(res, 200, { ok: true, request });
+          })().catch((err) => sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) }));
+          return;
+        }
+
         const designRoute = url.match(/^\/api\/design\/([a-z0-9-]+)(?:\/shots\/([A-Za-z0-9_-]+)\/(visual|redesign))?$/);
         if (designRoute) {
           const [, filmId, shotId, action] = designRoute;

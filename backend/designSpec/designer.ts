@@ -94,12 +94,22 @@ function parseReply(text: string): ServerDesignReply {
 }
 
 // Asks the server model for a design and repairs it with the build's own errors.
-async function tryServerModel(filmId: string, caller: DesignLlmCaller, opts: DesignFilmOptions): Promise<DesignBuildStatus | null> {
+async function tryServerModel(
+  filmId: string,
+  caller: DesignLlmCaller,
+  opts: DesignFilmOptions,
+  instruction?: string,
+): Promise<DesignBuildStatus | null> {
   const film = parseFilm(JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "videos", filmId, "film.json"), "utf8")));
   const system =
     renderDesignBrief(film) +
     `\n## Reply format\n\nReply with one JSON object and nothing else: {"design": <the design.json object>, "svgs": {"visuals/<name>.svg": "<complete svg document>", ...}}. Every file named in design.json must be in svgs.\n`;
-  let prompt = `Design "${film.title}". Return the JSON object.`;
+  // A change to an existing design edits it rather than starting over.
+  const specFile = path.join(designDir(filmId), "design.json");
+  const current = instruction && fs.existsSync(specFile) ? fs.readFileSync(specFile, "utf8") : null;
+  let prompt = instruction
+    ? `${current ? `The current design.json is:\n${current}\n\nKeep everything it does, and make this change: ` : `Design "${film.title}", and make sure of this: `}${instruction}\nReturn the whole JSON object${current ? " (every svg it names, including unchanged ones)" : ""}.`
+    : `Design "${film.title}". Return the JSON object.`;
   const attempts = opts.maxServerAttempts ?? 3;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     opts.onProgress?.(`server model design attempt ${attempt}/${attempts}`);
@@ -124,6 +134,24 @@ async function tryServerModel(filmId: string, caller: DesignLlmCaller, opts: Des
     prompt = `The build failed. Fix these problems and return the whole corrected JSON object:\n${formatBuildStatus(filmId, status)}`;
   }
   return null;
+}
+
+/**
+ * Applies one design change with the server model (the fallback when no coding agent is connected).
+ * Returns the passing build, or null when the model could not produce one.
+ */
+export async function designWithServerModel(
+  filmId: string,
+  instruction: string,
+  caller: DesignLlmCaller,
+  onProgress?: (message: string) => void,
+): Promise<DesignBuildStatus | null> {
+  return tryServerModel(filmId, caller, { onProgress }, instruction);
+}
+
+/** The server model the design fallback uses (Gemini when configured), or null. */
+export async function serverDesignCaller(): Promise<DesignLlmCaller | null> {
+  return defaultCaller();
 }
 
 // Marks a film as keeping its template design so the studio can flag it.

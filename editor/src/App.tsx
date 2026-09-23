@@ -91,7 +91,16 @@ export default function App() {
   const project = useFilmProject(whatIsJepaFilm || kvcacheFilm, bundledFilmIds);
   const { film, commit, notify } = project;
 
-  const [stage, setStage] = useState<Stage>("script");
+  // The stage lives in the URL hash, so a reload (Vite hot-reloads the page when an agent's design
+  // build adds artwork) keeps the user where they were, and a stage can be linked to directly.
+  const [stage, setStageState] = useState<Stage>(() => {
+    const fromHash = window.location.hash.replace(/^#/, "");
+    return (STAGES.some((s) => s.id === fromHash) ? fromHash : "script") as Stage;
+  });
+  const setStage = useCallback((next: Stage) => {
+    setStageState(next);
+    window.history.replaceState(null, "", `#${next}`);
+  }, []);
   const [selection, setSelection] = useState<SelectionTarget>(null);
   const [format, setFormat] = useState<Format>("long");
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);

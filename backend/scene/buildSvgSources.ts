@@ -61,7 +61,10 @@ export function buildSvgSources(): number {
   const sources = collectSvgSources();
   const target = generatedModulePath();
   fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.writeFileSync(target, renderModule(sources), "utf8");
+  // Rewriting an identical module would still make Vite reload the open studio (the editor imports
+  // it), so it is only written when the artwork actually changed.
+  const next = renderModule(sources);
+  if (!fs.existsSync(target) || fs.readFileSync(target, "utf8") !== next) fs.writeFileSync(target, next, "utf8");
   return Object.keys(sources).length;
 }
 
