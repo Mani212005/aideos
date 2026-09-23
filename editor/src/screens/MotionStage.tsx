@@ -1,6 +1,8 @@
 /**
- * File Description: Motion stage for Aideos Studio: the SVG animation authoring surface.
- * A human writes animated SVG here, scrubs it frame by frame against a real clock, saves it into
+ * File Description: Motion stage for Aideos Studio.
+ * Its default view is Motion you describe (components/DescribeMotion.tsx): say what should move in
+ * a shot and the connected coding agent writes it into the film's design. The hand-editing surface
+ * below stays for power users under "Hand-edit SVG": a human writes animated SVG here, scrubs it frame by frame against a real clock, saves it into
  * the film's video package, and drops it onto the timeline as a clip. Scrubbing is exact rather
  * than approximate: SMIL animation is driven through the SVG element's own `setCurrentTime`, and
  * CSS animation is seeked with a negative delay while paused, so the frame shown is the frame that
@@ -20,7 +22,9 @@ import {
   SquareDashedBottomCode,
   Trash2,
   TriangleAlert,
+  Wand2,
 } from "lucide-react";
+import { DescribeMotion } from "../components/DescribeMotion";
 import type { Film } from "../../../src/dl/schema";
 import {
   Badge,
@@ -116,8 +120,37 @@ function SvgScrubStage({ markup, timeSec, playing }: { markup: string; timeSec: 
   return <div ref={hostRef} className="h-full w-full" aria-label="SVG animation preview" />;
 }
 
-/** Author, scrub, save and place custom SVG animations. */
-export function MotionStage({ film, commit, notify }: MotionStageProps) {
+/** The Motion stage: describe a motion (default) or hand-edit SVG. */
+export function MotionStage(props: MotionStageProps) {
+  const [mode, setMode] = useState<"describe" | "hand">("describe");
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <Toolbar seam="bottom">
+        <ToolbarGroup>
+          <ToolbarLabel>Mode</ToolbarLabel>
+          <SegmentedTabs
+            ariaLabel="Motion mode"
+            value={mode}
+            onChange={setMode}
+            items={[
+              { value: "describe", label: "Describe", icon: <Wand2 className="h-3.5 w-3.5" /> },
+              { value: "hand", label: "Hand-edit SVG", icon: <SquareDashedBottomCode className="h-3.5 w-3.5" /> },
+            ]}
+          />
+        </ToolbarGroup>
+        <span className="ml-auto font-sans text-[10px] text-ink-mute">
+          {mode === "describe"
+            ? "Say what should move; your agent writes it into this film's design."
+            : "Advanced: write self-animating SVG by hand. Scene films take static artwork plus clips, so prefer Describe."}
+        </span>
+      </Toolbar>
+      {mode === "describe" ? <DescribeMotion film={props.film} notify={props.notify} /> : <HandEditor {...props} />}
+    </div>
+  );
+}
+
+/** Author, scrub, save and place custom SVG animations by hand. */
+function HandEditor({ film, commit, notify }: MotionStageProps) {
   const fps = film.fps || 30;
   const [name, setName] = useState("my-animation");
   const [markup, setMarkup] = useState<string>(MOTION_TEMPLATES[0].svg);
