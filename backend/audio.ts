@@ -337,7 +337,7 @@ export async function produceAudioPipeline(
   await fs.mkdir(outDir, { recursive: true });
 
   const backend = await createTtsBackend({ backend: options?.backend, voice: options?.voice, speed: options?.speed });
-  console.log(`[narration] synthesizing ${segmentTexts.length} segment(s) with ${backend.name}`);
+  console.error(`[narration] synthesizing ${segmentTexts.length} segment(s) with ${backend.name}`);
 
   let segmentChunks: PcmChunk[][];
   try {
@@ -357,7 +357,7 @@ export async function produceAudioPipeline(
   for (;;) {
     const merged = mergeShortSegments(segmentChunks, assembled.segments.map((s) => s.durationSec));
     if (!merged) break;
-    console.log(`[narration] a segment fell under ${SCHEMA_MIN_DUR}s; merging it into its neighbour`);
+    console.error(`[narration] a segment fell under ${SCHEMA_MIN_DUR}s; merging it into its neighbour`);
     segmentChunks = merged;
     assembled = assembleSegments(segmentChunks, assembleOptions);
   }

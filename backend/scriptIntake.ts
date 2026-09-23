@@ -169,12 +169,13 @@ function cleanBeatText(text: string): string {
 
 /** Detects a notes or fact-check section header that ends screenplay parsing. */
 function isProductionNotesHeader(line: string): boolean {
-  return /^#{0,4}\s*(production notes?|notes?|fact check|source notes?|sources?|references?)\b/i.test(line);
+  return /^#{1,4}\s+(production notes?|notes?|fact check|source notes?|sources?|references?)\b/i.test(line) ||
+    /^\*\*(production notes?|notes?|fact check|source notes?|sources?|references?)\*\*/i.test(line);
 }
 
 /** Detects a standalone closing word-count note, e.g. "*(Narration word count: ~450 words)*". */
 function isWordCountNote(line: string): boolean {
-  return /^\*{0,2}[\(\[](?:Narration\s*)?word count.*[\)\]]\*{0,2}$/i.test(line);
+  return /^\*{0,2}[([\\(]?(?:Narration\s*)?word count.*[)\\]]?\*{0,2}$/i.test(line);
 }
 
 /** Parsed pieces of a `## [timestamp] - Title (id)` style segment header line. */
@@ -293,7 +294,7 @@ export function parseClaudeScript(raw: string): ScriptSegment[] {
 
   const openSegment = (header: SegmentHeaderInfo) => {
     flushSegment();
-    let base = header.explicitId || slugify(header.title) || `segment-${segments.length + 1}`;
+    const base = header.explicitId || slugify(header.title) || `segment-${segments.length + 1}`;
     let id = base;
     let n = 2;
     while (usedIds.has(id)) {
@@ -487,7 +488,7 @@ export function structureUntaggedProseToScript(raw: string): ScriptSegment[] {
 
   paragraphs.forEach((para, idx) => {
     const headline = deriveHeadlineFromText(para, 36) || `Scene ${idx + 1}`;
-    let base = slugify(headline) || `scene-${idx + 1}`;
+    const base = slugify(headline) || `scene-${idx + 1}`;
     let id = base;
     let n = 2;
     while (usedIds.has(id)) {

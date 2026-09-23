@@ -166,7 +166,7 @@ export const PALETTE = {
   ink: BACKGROUND_THEMES["paper-white"].ink,
   muted: BACKGROUND_THEMES["paper-white"].muted,
   hairline: BACKGROUND_THEMES["paper-white"].hairline,
-  accent: "#FF6B00",
+  accent: "#635BFF",
 } as const;
 
 /** Deep slate archival ink at an arbitrary alpha. Hairlines, scrims, grid lines. */
@@ -216,8 +216,8 @@ export const useTokens = (): ThemeTokens => {
     hairline: theme.hairline,
     inkAt,
     rule: (strength = 1) => inkAt(0.12 * strength),
-    faint: theme.muted,
-    sunken: theme.surface,
+    faint: inkAt(0.45),
+    sunken: theme.canvas === theme.surface ? inkAt(0.06) : theme.surface,
   };
 };
 

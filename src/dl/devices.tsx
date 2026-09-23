@@ -143,8 +143,9 @@ export const AttentionArcs: React.FC<
               stroke={i === 0 ? accent : palette.rule(2.2)}
               strokeWidth={i === 0 ? 2 : 1.2}
               opacity={weight}
-              strokeDasharray={400}
-              strokeDashoffset={400 * (1 - EXPO(p))}
+              pathLength={1}
+              strokeDasharray={1}
+              strokeDashoffset={1 - EXPO(p)}
             />
           );
         })}
@@ -222,8 +223,9 @@ export const VectorSpace: React.FC<
               d={`M${px(a.x)} ${py(a.y)} L${px(b.x)} ${py(b.y)}`}
               stroke={accent}
               strokeWidth={2}
-              strokeDasharray={400}
-              strokeDashoffset={400 * (1 - p)}
+              pathLength={1}
+              strokeDasharray={1}
+              strokeDashoffset={1 - p}
             />
             <circle cx={px(b.x)} cy={py(b.y)} r={4.5} fill={accent} opacity={p > 0.85 ? 1 : 0} />
             <text
@@ -330,8 +332,8 @@ export const MatrixGrid: React.FC<
                   background: lit
                     ? hot
                       ? accentAt(accent, 0.1 + v * 0.28)
-                      : `rgba(245,245,245,${0.02 + v * 0.1})`
-                    : `rgba(245,245,245,0.02)`,
+                      : palette.inkAt(0.02 + v * 0.1)
+                    : palette.inkAt(0.02),
                   color: lit ? (hot ? accent : palette.faint) : palette.rule(3),
                 }}
               >
@@ -421,7 +423,7 @@ export const Distribution: React.FC<
               style={{
                 flex: 1,
                 height: layout.px(18),
-                background: `rgba(245,245,245,0.05)`,
+                background: palette.inkAt(0.05),
                 borderRadius: layout.px(2),
                 overflow: "hidden",
               }}
@@ -532,7 +534,7 @@ export const LayerStack: React.FC<
               minHeight: layout.px(3),
               borderRadius: layout.px(2),
               border: `1px solid ${i === lit ? accent : palette.rule()}`,
-              background: i === lit ? accentAt(accent, 0.3) : `rgba(245,245,245,0.03)`,
+              background: i === lit ? accentAt(accent, 0.3) : palette.inkAt(0.03),
             }}
           />
         ))}

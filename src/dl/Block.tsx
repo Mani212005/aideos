@@ -3,6 +3,7 @@
  */
 
 import React from "react";
+import { useCurrentFrame } from "remotion";
 import type { Block } from "./schema";
 import {
   Body,
@@ -35,6 +36,14 @@ import { useAccent } from "./accent";
 // Renders the specific UI primitive, interactive device, or visual metaphor for a given film block.
 export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...timing }) => {
   const accent = useAccent();
+  // Read unconditionally (a hook inside one switch branch breaks when a block changes type);
+  // outside a Remotion composition, as in unit tests, there is no frame and 0 is used.
+  let frame = 0;
+  try {
+    frame = useCurrentFrame();
+  } catch {
+    frame = 0;
+  }
   switch (block.c) {
     case "CharacterBeat":
       return (
@@ -132,7 +141,7 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
     case "AnalogyInset":
       return <AnalogyInset {...timing} caption={block.caption} src={block.src} framesDir={block.framesDir} totalFrames={block.totalFrames} delayFrames={block.delayFrames} fullScreenHero={block.fullScreenHero} />;
     case "Card":
-      return <Card {...timing} title={block.title} body={block.body} state={block.state} />;
+      return <Card {...timing} title={block.title} body={block.body} state={block.state} tag={block.tag} />;
     case "Divider":
       return <Divider {...timing} />;
     case "IconLabel":
@@ -141,12 +150,13 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
       return <CodeBlock {...timing} code={block.code} language={block.language} caption={block.caption} />;
     case "MetaphorViewer": {
       const metaphorType = block.content?.kind ?? block.metaphorType ?? "balance-scale";
+      const frameOffset = Math.max(0, frame - timing.start);
       return (
         <div style={{ width: "100%", height: "100%", maxHeight: "100%", flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <MetaphorViewer
             type={metaphorType}
             content={block.content}
-            frame={timing.start}
+            frame={frameOffset}
             accent={accent}
           />
         </div>

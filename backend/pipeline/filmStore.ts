@@ -35,7 +35,9 @@ export function slugify(text: string): string {
 
 /** `kv-cache` becomes `kvCacheFilm`: film ids may contain dashes, identifiers may not. */
 function exportName(id: string): string {
-  return `${id.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase())}Film`;
+  const camel = id.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase());
+  const identifier = `${camel}Film`;
+  return /^[0-9]/.test(identifier) ? `_${identifier}` : identifier;
 }
 
 /** The generated shadow module: pure data behind a type-only import. */

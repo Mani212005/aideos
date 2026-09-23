@@ -96,9 +96,15 @@ async function createKokoroBackend(voice: string, speed: number): Promise<TtsBac
     stderrTail = (stderrTail + d.toString()).slice(-2000);
   });
 
+  let rejectReady: ((err: Error) => void) | null = null;
+
   /** Fails every in-flight request when the worker dies, so no caller hangs forever. */
   const failAll = (err: Error) => {
     fatal = err;
+    if (!ready && rejectReady) {
+      rejectReady(err);
+      rejectReady = null;
+    }
     for (const [, p] of pending) p.reject(err);
     pending.clear();
   };
@@ -111,6 +117,7 @@ async function createKokoroBackend(voice: string, speed: number): Promise<TtsBac
   });
 
   const readyPromise = new Promise<{ voices: string[] }>((resolve, reject) => {
+    rejectReady = reject;
     let buffer = "";
     child.stdout.on("data", (d: Buffer) => {
       buffer += d.toString();
@@ -281,8 +288,8 @@ export async function createTtsBackend(options?: {
     const say = createSayBackend("Samantha");
     await say.synthesize("test");
     return say;
-  } catch {
-    console.warn("[tts] No speech synthesizer available; using the silent tone placeholder.");
-    return createToneBackend();
+  } catch (sayErr) {
+    if (requested === "tone") return createToneBackend();
+    throw new Error(`[tts] No speech synthesizer available (Kokoro and macOS say failed: ${(sayErr as Error).message}); pass --voice tone if placeholder audio is intended.`);
   }
 }

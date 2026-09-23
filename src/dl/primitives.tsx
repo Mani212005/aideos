@@ -439,33 +439,33 @@ export const CodeBlock: React.FC<
   );
 };
 
-/** High-clarity glassmorphic card with luminous accents */
+/** High-clarity card with theme-aware background, surface and accents */
 export const Card: React.FC<
-  BlockProps & { title: string; body?: string; state: "idle" | "active" }
-> = ({ title, body, state, start, index }) => {
+  BlockProps & { title: string; body?: string; tag?: string; state: "idle" | "active" }
+> = ({ title, body, tag, state, start, index }) => {
   const layout = useLayout();
+  const palette = useTokens();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const active = state === "active";
+
+  const defaultTag = active ? "⚡ ACTIVE SPEC" : "◈ SYSTEM SPEC";
+  const displayTag = tag || defaultTag;
 
   return (
     <div
       style={{
         ...enter,
-        border: `1.5px solid ${active ? accent : "rgba(255, 255, 255, 0.12)"}`,
+        border: `1.5px solid ${active ? accent : palette.rule(1.5)}`,
         borderRadius: layout.radius.inner + 4,
-        background: active
-          ? "linear-gradient(135deg, rgba(16, 36, 52, 0.94) 0%, rgba(8, 20, 30, 0.98) 100%)"
-          : "linear-gradient(135deg, rgba(22, 26, 36, 0.88) 0%, rgba(12, 14, 20, 0.96) 100%)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
+        background: active ? accentAt(accent, 0.12) : palette.surface,
         padding: `${layout.grid * 2}px ${layout.grid * 2.5}px`,
         display: "flex",
         flexDirection: "column",
         gap: layout.grid * 1.2,
         boxShadow: active
-          ? `0 16px 36px rgba(0, 0, 0, 0.5), 0 0 24px ${accentAt(accent, 0.25)}, inset 0 1px 1px rgba(255, 255, 255, 0.3)`
-          : "0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.06)",
+          ? `0 16px 36px rgba(0, 0, 0, 0.25), 0 0 24px ${accentAt(accent, 0.25)}`
+          : "0 8px 24px rgba(0, 0, 0, 0.15)",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -476,19 +476,19 @@ export const Card: React.FC<
             letterSpacing: "0.12em",
             fontWeight: 700,
             textTransform: "uppercase",
-            color: active ? accent : "rgba(255, 255, 255, 0.5)",
-            background: active ? accentAt(accent, 0.16) : "rgba(255, 255, 255, 0.06)",
+            color: active ? accent : palette.muted,
+            background: active ? accentAt(accent, 0.16) : palette.sunken,
             padding: "2px 8px",
             borderRadius: 6,
-            border: `1px solid ${active ? accentAt(accent, 0.3) : "rgba(255, 255, 255, 0.08)"}`,
+            border: `1px solid ${active ? accentAt(accent, 0.3) : palette.rule()}`,
           }}
         >
-          {active ? "⚡ ACTIVE SPEC" : "◈ SYSTEM SPEC"}
+          {displayTag}
         </span>
       </div>
-      <span style={{ ...layout.type("body"), color: "#FFFFFF", fontWeight: 600 }}>{title}</span>
+      <span style={{ ...layout.type("body"), color: palette.ink, fontWeight: 600 }}>{title}</span>
       {body ? (
-        <span style={{ ...layout.type("caption"), color: "rgba(255, 255, 255, 0.85)", lineHeight: 1.45 }}>
+        <span style={{ ...layout.type("caption"), color: palette.muted, lineHeight: 1.45 }}>
           {body}
         </span>
       ) : null}

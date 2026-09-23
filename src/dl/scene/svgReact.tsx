@@ -92,7 +92,8 @@ function buildProps(
       continue;
     }
     if (name === "style") {
-      props.style = parseStyleAttribute(rawValue);
+      const namespacedStyle = namespaceReferences(name, rawValue, options.instanceId);
+      props.style = parseStyleAttribute(namespacedStyle);
       continue;
     }
     props[toReactAttrName(name)] = namespaceReferences(name, rawValue, options.instanceId);

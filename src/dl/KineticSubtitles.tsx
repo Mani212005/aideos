@@ -10,6 +10,8 @@
 import React, { useMemo } from "react";
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { SUBTITLE_BAND_TOP_RATIO } from "./fullScreenHeroLayout";
+import { SANS } from "./tokens";
+import { frames } from "./motion";
 
 export interface CaptionWord {
   text: string;
@@ -32,9 +34,9 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   words,
   maxWidth = 1000,
   fontSize = 32,
-  fontFamily = "system-ui, -apple-system, sans-serif",
+  fontFamily = SANS,
   primaryColor = "#FFFFFF",
-  highlightColor = "#FF6B00",
+  highlightColor = "#635BFF",
   backgroundColor = "rgba(10, 15, 29, 0.88)",
   position = "bottom",
 }) => {
@@ -103,11 +105,12 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   }
 
   // Fade in / out smoothly at phrase boundaries
-  const phraseIn = interpolate(frame, [activePhrase.startFrame, activePhrase.startFrame + 4], [0, 1], {
+  const fadeSpan = frames(133, fps);
+  const phraseIn = interpolate(frame, [activePhrase.startFrame, activePhrase.startFrame + fadeSpan], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const phraseOut = interpolate(frame, [activePhrase.endFrame - 4, activePhrase.endFrame], [1, 0], {
+  const phraseOut = interpolate(frame, [activePhrase.endFrame - fadeSpan, activePhrase.endFrame], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });

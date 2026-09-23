@@ -136,7 +136,7 @@ export function generateWordsFromFilm(film: Record<string, unknown>): CaptionWor
     return words;
   }
 
-  return DEFAULT_GIRAFFE_CAPTION_WORDS;
+  return [];
 }
 
 export const DEFAULT_GIRAFFE_CAPTION_WORDS: CaptionWord[] = [

@@ -106,6 +106,8 @@ const OverlayText: React.FC<{ payload: TextPayload; durationInFrames: number }> 
  * coordinates.
  */
 const OverlayLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }) => {
+  const { width: compWidth, height: compHeight } = useVideoConfig();
+
   if (!film.overlayClips || film.overlayClips.length === 0) return null;
 
   return (
@@ -141,8 +143,8 @@ const OverlayLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }) => {
                 <Img
                   src={staticFile((oc.payload as ImagePayload).src)}
                   style={{
-                    maxWidth: "60vw",
-                    maxHeight: "60vh",
+                    maxWidth: `${compWidth * 0.6}px`,
+                    maxHeight: `${compHeight * 0.6}px`,
                     transform: `scale(${(oc.payload as ImagePayload).scale ?? 1})`,
                     objectFit: "contain",
                   }}
@@ -634,16 +636,6 @@ export const FilmView: React.FC<FilmViewProps> = ({
             long-form platform draws its own from the sidecar track - but a vertical frame
             already reserves its bottom fifth for platform chrome, and social video is
             watched muted, so there the caption has somewhere to live and a job to do. */}
-        {isReel && captionWords && captionWords.length > 0 ? (
-          <KineticSubtitles
-            words={captionWords}
-            maxWidth={width * 0.86}
-            fontSize={Math.round(width * 0.042)}
-            highlightColor={accent}
-            position="bottom"
-          />
-        ) : null}
-
         {/* Master Audio Track & Multi-Clip Voiceover Spine */}
         {includeAudio && (
           <>
@@ -712,6 +704,17 @@ export const FilmView: React.FC<FilmViewProps> = ({
 
         {/* Chapter Rail */}
         {showRail ? <Rail film={film} timeline={timeline} /> : null}
+
+        {/* Burned-in subtitles are a reel-only treatment rendered after Rail */}
+        {isReel && captionWords && captionWords.length > 0 ? (
+          <KineticSubtitles
+            words={captionWords}
+            maxWidth={width * 0.86}
+            fontSize={Math.round(width * 0.042)}
+            highlightColor={accent}
+            position="bottom"
+          />
+        ) : null}
 
         {/* A single hairline vignette at the very edge */}
         <AbsoluteFill
