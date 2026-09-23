@@ -124,6 +124,26 @@ const sendJson = (res: ServerResponse, status: number, body: unknown) => {
   res.end(JSON.stringify(body));
 };
 
+// Reads the studio owner key a browser sends with every request once it has paired an agent.
+const ownerOf = (req: IncomingMessage): string | undefined => {
+  const v = req.headers['x-aideos-owner'];
+  return typeof v === 'string' && v.length >= 32 ? v : undefined;
+};
+
+// Reads a connector's bearer token.
+const bearerOf = (req: IncomingMessage): string | undefined => {
+  const m = /^Bearer (.+)$/.exec(String(req.headers.authorization ?? ''));
+  return m ? m[1] : undefined;
+};
+
+// The URL a connector should dial: the configured public API URL, else the one this request reached.
+const publicApiUrl = (req: IncomingMessage): string => {
+  if (process.env.AIDEOS_PUBLIC_API_URL) return process.env.AIDEOS_PUBLIC_API_URL.replace(/\/$/, '');
+  const proto = String(req.headers['x-forwarded-proto'] ?? 'http').split(',')[0];
+  const host = String(req.headers['x-forwarded-host'] ?? req.headers.host ?? 'localhost:3001').split(',')[0];
+  return `${proto}://${host}`;
+};
+
 const readBody = (req: IncomingMessage) =>
   new Promise<unknown>((resolve, reject) => {
     let raw = '';
@@ -380,6 +400,77 @@ function filmApiPlugin(): Plugin {
   };
 }
 
+// Serves the agent link: pairing, the connector's task poll and results, status, and the remote MCP tools.
+async function handleAgentLink(req: IncomingMessage, res: ServerResponse, url: string): Promise<void> {
+  const { agentLink, LINK_AGENTS } = await import('../backend/agentLink/store.ts');
+  const link = agentLink();
+
+  if (url === '/api/agent-link/connect.mjs' && req.method === 'GET') {
+    res.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+    res.end(fs.readFileSync(path.resolve(__dirname, '../scripts/aideos-connect.mjs'), 'utf8'));
+    return;
+  }
+  if (url === '/api/agent-link/pair' && req.method === 'POST') {
+    const body = (await readBody(req).catch(() => ({}))) as { agent?: string };
+    const agent = LINK_AGENTS.includes(body?.agent as never) ? body.agent : 'claude';
+    const pairing = link.startPairing(ownerOf(req));
+    const apiUrl = publicApiUrl(req);
+    return sendJson(res, 200, {
+      ...pairing,
+      apiUrl,
+      command: `curl -fsSL ${apiUrl}/api/agent-link/connect.mjs -o aideos-connect.mjs && node aideos-connect.mjs ${pairing.code} --agent ${agent} --url ${apiUrl}`,
+    });
+  }
+  if (url === '/api/agent-link/claim' && req.method === 'POST') {
+    const body = (await readBody(req)) as { code?: string; agent?: string; machine?: string };
+    if (!LINK_AGENTS.includes(body?.agent as never)) return sendJson(res, 400, { error: `agent must be one of ${LINK_AGENTS.join(', ')}` });
+    const claimed = link.claim(String(body.code ?? ''), body.agent as (typeof LINK_AGENTS)[number], String(body.machine ?? ''));
+    if (!claimed) return sendJson(res, 404, { error: 'that pairing code is wrong or has expired; make a new one with Connect agent in the studio' });
+    return sendJson(res, 200, claimed);
+  }
+  if (url === '/api/agent-link/next' && req.method === 'GET') {
+    const task = await link.next(bearerOf(req));
+    if (task === 'unauthorized') return sendJson(res, 401, { error: 'this connection was removed or the studio forgot it; pair again' });
+    if (!task) {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+    return sendJson(res, 200, task);
+  }
+  if (url === '/api/agent-link/result' && req.method === 'POST') {
+    const body = (await readBody(req)) as { taskId?: string; ok?: boolean; summary?: string };
+    const ok = link.report(bearerOf(req), { taskId: String(body?.taskId ?? ''), ok: body?.ok === true, summary: String(body?.summary ?? '') });
+    return sendJson(res, ok ? 200 : 401, { ok });
+  }
+  if (url === '/api/agent-link/status' && req.method === 'GET') {
+    return sendJson(res, 200, link.status(ownerOf(req)));
+  }
+  if (url === '/api/agent-link' && req.method === 'DELETE') {
+    return sendJson(res, 200, { ok: link.disconnect(ownerOf(req)) });
+  }
+  if (url === '/api/mcp') {
+    // Only a paired connector may use the tools. Stateless: one server and transport per request.
+    if (!link.isConnector(bearerOf(req))) return sendJson(res, 401, { error: 'a paired aideos connect token is required' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'the aideos MCP endpoint is stateless; use POST' });
+    const [{ createMcpServer }, { StreamableHTTPServerTransport }] = await Promise.all([
+      import('../backend/mcp/server.ts'),
+      import('@modelcontextprotocol/sdk/server/streamableHttp.js'),
+    ]);
+    const body = await readBody(req);
+    const server = createMcpServer({ remote: true });
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+    res.on('close', () => {
+      void transport.close();
+      void server.close();
+    });
+    await server.connect(transport);
+    await transport.handleRequest(req, res, body);
+    return;
+  }
+  sendJson(res, 404, { error: `${req.method} ${url} is not an agent link route` });
+}
+
 // Registers all API routes, static video package streaming, audio retiming, and CORS middlewares.
 function setupApiMiddlewares(server: { middlewares: any }): void {
   startFilmWatcher();
@@ -389,7 +480,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
     // Ensure permissive CORS headers for all incoming API and asset requests
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Range, Authorization, Accept, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Range, Authorization, Accept, X-Requested-With, X-Aideos-Owner, Mcp-Session-Id, Mcp-Protocol-Version');
     if (req.method === 'OPTIONS') {
       res.statusCode = 204;
       res.end();
@@ -403,6 +494,15 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
         service: 'aideos-backend',
         uptime: process.uptime(),
         timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    // Handle /api/agent-link/* (pairing the owner's own coding agent through `aideos connect`) and
+    // /api/mcp (the aideos tools that agent works through). See backend/agentLink/store.ts.
+    if (url.startsWith('/api/agent-link') || url === '/api/mcp') {
+      void handleAgentLink(req, res, url).catch((err) => {
+        if (!res.headersSent) sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) });
       });
       return;
     }
@@ -841,6 +941,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
             // Automatically prompt and dispatch to connected coding agent across channels
             const dispatch = await dispatchTask({
+              ownerKey: ownerOf(req),
               eventType: "auto_build_scenes",
               filmId: projectId,
               filmTitle,
@@ -887,6 +988,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           void readBody(req).then(async (body: any) => {
             const { filmId = "kvcache", filmTitle = "Film", event = "custom_directive", customInstruction, script } = body || {};
             const dispatch = await dispatchTask({
+              ownerKey: ownerOf(req),
               eventType: event as any || "custom_directive",
               filmId,
               filmTitle,
@@ -911,6 +1013,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             const actionText = description || `Canvas action: ${action}`;
 
             const dispatch = await dispatchTask({
+              ownerKey: ownerOf(req),
               eventType: "canvas_updated",
               filmId,
               filmTitle: film.title || filmId,
@@ -1379,6 +1482,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
               // Automatically prompt and dispatch to connected coding agent across channels
               const dispatch = await dispatchTask({
+              ownerKey: ownerOf(req),
                 eventType: "ai_edit",
                 filmId,
                 filmTitle: film.title || filmId,
@@ -1723,6 +1827,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
               // Automatically prompt and dispatch to connected coding agent across channels
               const dispatch = await dispatchTask({
+              ownerKey: ownerOf(req),
                 eventType: "voiceover_ready",
                 filmId: projectId,
                 filmTitle: taskOpts.filmTitle,
@@ -1762,6 +1867,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             }
 
             const dispatch = await dispatchTask({
+              ownerKey: ownerOf(req),
               eventType: "critique",
               filmId: film.id,
               filmTitle: film.title || film.id,
@@ -2167,7 +2273,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 const swap = await tools.swapShotVisual(film, shotId, String(body?.visual ?? ''), await defaultDeviceCaller());
                 return sendJson(res, swap.ok ? 200 : 422, swap);
               }
-              const dispatch = await tools.requestShotRedesign(film, shotId, String(body?.note ?? ''));
+              const dispatch = await tools.requestShotRedesign(film, shotId, String(body?.note ?? ''), { ownerKey: ownerOf(req) });
               sendJson(res, 200, { ok: true, channels: dispatch.channels, taskId: dispatch.taskId, message: dispatch.message });
             }).catch(err => sendJson(res, 500, { error: String(err) }));
             return;
@@ -2177,7 +2283,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               const film = loadFilm(body?.film);
               if (!film) return sendJson(res, 404, { error: `Film "${filmId}" not found` });
               const { requestFilmDesign } = await import('../backend/designSpec/shotTools.ts');
-              const dispatch = await requestFilmDesign(film);
+              const dispatch = await requestFilmDesign(film, ownerOf(req));
               sendJson(res, 200, { ok: true, channels: dispatch.channels, taskId: dispatch.taskId, message: dispatch.message });
             }).catch(err => sendJson(res, 500, { error: String(err) }));
             return;

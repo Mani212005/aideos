@@ -24,6 +24,9 @@ services:
         sync: false
       - key: AIDEOS_GEMINI_MODEL
         value: gemini-3.5-flash
+      # The address a paired `aideos connect` dials (the studio shows it in its pairing command).
+      - key: AIDEOS_PUBLIC_API_URL
+        value: https://aideos-backend.onrender.com
       - key: WAN_GPU_HOST
         sync: false
       - key: WAN_GPU_USER

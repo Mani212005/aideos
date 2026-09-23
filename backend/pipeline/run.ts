@@ -399,6 +399,7 @@ export async function runProduction(
           const outcome = await designFilm(slug, {
             agentTimeoutMs: request.designAgentTimeoutMs,
             llmCaller: request.designLlmCaller,
+            ...(request.ownerKey ? { ownerKey: request.ownerKey } : {}),
             onProgress: (message) => emit("design", "running", message),
           });
           emit("design", "running", `design: ${outcome.note}`);

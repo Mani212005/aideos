@@ -26,7 +26,8 @@ export type DispatchChannel =
   | "firstmate_inbox"
   | "mcp_queue"
   | "tmux"
-  | "file_inbox";
+  | "file_inbox"
+  | "agent_link";
 
 export interface AgentTaskContext {
   filmId: string;
@@ -83,6 +84,11 @@ export interface DispatchOptions {
   fallbackHandler?: (task: AgentTask) => Promise<any>;
   sessionName?: string;
   pane?: string;
+  /**
+   * The studio owner key the request carried (the X-Aideos-Owner header). When the owner has an
+   * agent connected through `aideos connect`, the task goes to that agent and nowhere else.
+   */
+  ownerKey?: string;
 }
 
 export interface DispatchResult {
