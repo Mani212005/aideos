@@ -65,6 +65,16 @@ export interface ProductionRequest {
    * film's audio the editor is actually previewing.
    */
   syncToPreview?: boolean;
+  /**
+   * Give the film a bespoke design after the template compile: the connected coding agent first,
+   * then the server model, then the template design flagged as a fallback. Default on, except
+   * under the Node test runner, where a run must never message a live agent session.
+   */
+  bespoke?: boolean;
+  /** How long the design stage waits for the connected agent (default 20 minutes). */
+  designAgentTimeoutMs?: number;
+  /** Model for the server-model design fallback; null disables it. Omit to use Gemini when configured. */
+  designLlmCaller?: import("../designSpec/designer").DesignLlmCaller | null;
 }
 
 

@@ -108,6 +108,19 @@ export function buildTaskContext(opts: DispatchOptions, rootDir: string = ROOT):
 export function buildDirectingPrompt(opts: DispatchOptions, context?: AgentTaskContext): string {
   const ctx = context || buildTaskContext(opts);
   const title = ctx.filmTitle || ctx.filmId;
+  if (opts.eventType === "design_film") {
+    // The brief is the whole contract; the prompt only points at it and at the one gate.
+    return `🎬 [Aideos Studio] Design the picture for "${title}" (${ctx.filmId})
+
+This film gets a bespoke design, unique to it. Everything you need is in videos/${ctx.filmId}/design/BRIEF.md:
+what the film says shot by shot, the standard layer, the design.json format and the commands.
+
+1. Read videos/${ctx.filmId}/design/BRIEF.md.
+2. Write videos/${ctx.filmId}/design/design.json and the SVG artwork it names in videos/${ctx.filmId}/visuals/.
+3. Run \`aideos design build ${ctx.filmId}\` and fix what it reports until it prints PASS.
+4. Run \`aideos design check ${ctx.filmId} --stills\`, look at the stills in .frames/${ctx.filmId}/, and improve anything that reads badly, then build again.
+The studio reloads the film on its own once a build passes.`;
+  }
   const audioRef = ctx.voiceoverPath || `videos/${ctx.filmId}/voiceover.wav`;
   const durationText = ctx.durationSec !== undefined ? `${ctx.durationSec.toFixed(1)}s` : "measured";
   const shotsText = ctx.shotCount !== undefined ? `${ctx.shotCount} shots` : "compiled shots";

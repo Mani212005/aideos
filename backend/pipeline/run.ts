@@ -6,6 +6,7 @@
  * restarting from zero, and every failure is reported with the stage that produced it.
  */
 
+import { designFilm } from "../designSpec/designer";
 import crypto from "crypto";
 import fs from "fs";
 import fsp from "fs/promises";
@@ -359,7 +360,9 @@ export async function runProduction(
     if (shouldStop("narrate")) return buildResult("narrate");
 
     // ---- design: compile the screenplay and the timing spine into a film ---------------------
-    const designFingerprint = fingerprint(script, narration.shotDurations, request.music ?? null, wantsBroll);
+    // A run must never message a live agent session from inside the test runner.
+    const bespoke = request.bespoke ?? !process.env.NODE_TEST_CONTEXT;
+    const designFingerprint = fingerprint(script, narration.shotDurations, request.music ?? null, wantsBroll, bespoke);
 
     const design = await runStage(
       "design",
@@ -383,6 +386,17 @@ export async function runProduction(
           `${compiled.film.shots.length} shots, ${compiled.film.canvas.nodes.length} nodes, ` +
             `${compiled.footage.length} shot(s) flagged for footage`,
         );
+        if (bespoke) {
+          const outcome = await designFilm(slug, {
+            agentTimeoutMs: request.designAgentTimeoutMs,
+            llmCaller: request.designLlmCaller,
+            onProgress: (message) => emit("design", "running", message),
+          });
+          emit("design", "running", `design: ${outcome.note}`);
+          if (outcome.source === "templates") warnings.push(outcome.note);
+          const designed = readFilm(slug);
+          if (designed) return { ...compiled, film: designed };
+        }
         return compiled;
       },
     );

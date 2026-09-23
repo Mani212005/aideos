@@ -7,7 +7,8 @@
  */
 
 import * as path from "path";
-import { midShotPicks, renderReviewStills as renderStills, shotFrames, type StillPick } from "../sceneKit";
+import { shotFrames } from "../sceneKit";
+import { midShotPicks, renderReviewStills as renderStills, type StillPick } from "../sceneKit/reviewStills";
 import { readVoiceoverTiming } from "./produceVoiceover";
 
 /** Where the review stills land. Ignored by git, like every other proofing artefact. */

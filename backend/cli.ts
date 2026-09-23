@@ -474,6 +474,8 @@ program
   .option("--force <stages>", "comma-separated stages to re-run even when resuming")
   .option("--stop-after <stage>", "stop cleanly after this stage")
   .option("--skip-verify", "skip the closing frame and audio inspection pass")
+  .option("--no-bespoke", "keep the template design instead of designing the film with the agent or server model")
+  .option("--design-timeout <minutes>", "how long to wait for the connected agent's design", "20")
   .action(
     async (options: {
       script?: string;
@@ -494,6 +496,8 @@ program
       force?: string;
       stopAfter?: ProductionStage;
       skipVerify?: boolean;
+        bespoke?: boolean;
+        designTimeout: string;
     }) => {
       const script = options.scriptFile
         ? await fs.readFile(path.resolve(ROOT, options.scriptFile), "utf-8")
@@ -524,6 +528,8 @@ program
           force: options.force?.split(",").map((s) => s.trim()) as ProductionStage[] | undefined,
           stopAfter: options.stopAfter,
           skipVerify: options.skipVerify,
+          bespoke: options.bespoke,
+          designAgentTimeoutMs: Number(options.designTimeout) * 60_000,
         },
         (event) => console.log(formatProgress(event)),
       );
@@ -572,6 +578,8 @@ program
   .option("--force <stages>", "comma-separated stages to re-run even when resuming")
   .option("--stop-after <stage>", "stop cleanly after this stage")
   .option("--skip-verify", "skip the closing frame and audio inspection pass")
+  .option("--no-bespoke", "keep the template design instead of designing the film with the agent or server model")
+  .option("--design-timeout <minutes>", "how long to wait for the connected agent's design", "20")
   .action(
     async (
       prompt: string,
@@ -593,6 +601,8 @@ program
         force?: string;
         stopAfter?: ProductionStage;
         skipVerify?: boolean;
+        bespoke?: boolean;
+        designTimeout: string;
       },
     ) => {
       const result = await runDirector(
@@ -615,6 +625,8 @@ program
           force: options.force?.split(",").map((s) => s.trim()) as ProductionStage[] | undefined,
           stopAfter: options.stopAfter,
           skipVerify: options.skipVerify,
+          bespoke: options.bespoke,
+          designAgentTimeoutMs: Number(options.designTimeout) * 60_000,
         },
         (event) => console.log(formatProgress(event)),
       );
