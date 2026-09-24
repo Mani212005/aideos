@@ -189,6 +189,16 @@ async function handleTask(task, conn, url) {
   }
 }
 
+// Updates or validates a saved connection when reconnecting without a pairing code.
+export function updateConnection(conn, args) {
+  if (!conn) throw new Error(`no saved connection for ${args.url}; run with the pairing code shown by Connect agent in the studio`);
+  if (args.agent && args.agent !== conn.agent) {
+    throw new Error(`this URL is paired as ${conn.agent}; to switch agents, pair again with a fresh code from Connect agent in the studio`);
+  }
+  if (args.model) return { ...conn, model: args.model };
+  return conn;
+}
+
 // Pairs (when given a code) and then serves tasks until stopped.
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -211,14 +221,14 @@ async function main() {
     saveConnection(url, conn);
     log(`paired with ${url} as ${agent}${conn.model ? ` with model ${conn.model}` : ""}`);
     if (claim.json?.replaced) log(`this replaced your ${claim.json.replaced.agentLabel ?? claim.json.replaced.agent} agent (${claim.json.replaced.machine}); its connector will stop`);
-  } else if (conn && args.model) {
-    conn = { ...conn, model: args.model };
-    saveConnection(url, conn);
-    log(`model for ${url} set to ${args.model}`);
-  } else if (conn && args.agent && args.agent !== conn.agent) {
-    throw new Error(`this URL is paired as ${conn.agent}; to switch agents, pair again with a fresh code from Connect agent in the studio`);
+  } else {
+    const next = updateConnection(conn, { ...args, url });
+    if (next !== conn) {
+      conn = next;
+      saveConnection(url, conn);
+      log(`model for ${url} set to ${args.model}`);
+    }
   }
-  if (!conn) throw new Error(`no saved connection for ${url}; run with the pairing code shown by Connect agent in the studio`);
   if (conn.model && (conn.agent === "opencode" || conn.agent === "agy")) log(`using model ${conn.model} for ${conn.agent} tasks`);
   else if (conn.model) log(`note: --model has no effect for ${conn.agent}; it applies to opencode and agy runs`);
   if (conn.agent === "agy") await registerAgyServer(url, conn.token);

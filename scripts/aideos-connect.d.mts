@@ -6,6 +6,19 @@
 /** Parses connector argv into a pairing code and flags. */
 export function parseArgs(argv: string[]): { code?: string; agent?: string; url?: string; model?: string; help?: boolean };
 
+/** Connection entry stored per studio URL. */
+export interface SavedConnection {
+  token: string;
+  agent: string;
+  model?: string;
+}
+
+/** Updates or validates a saved connection when reconnecting without a pairing code. */
+export function updateConnection(
+  conn: SavedConnection | undefined | null,
+  args: { url: string; agent?: string; model?: string },
+): SavedConnection;
+
 /** Builds the command that runs one task through the chosen agent, confined to the aideos tools. */
 export function agentCommand(
   agent: string,

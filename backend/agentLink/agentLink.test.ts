@@ -149,6 +149,21 @@ test("AgentLink: --model overrides the run model for opencode and agy only", asy
   assert.match(taskFailureHint("codex", "unauthorized: invalid api key", undefined)!, /credential problem/);
 });
 
+test("AgentLink: reconnecting updates the model but rejects mismatched agents without a code", async () => {
+  const { updateConnection } = await import("../../scripts/aideos-connect.mjs");
+  const conn = { token: "tok-1", agent: "claude" };
+  const url = "https://studio.example";
+
+  assert.throws(() => updateConnection(null, { url }), /no saved connection/);
+  assert.throws(() => updateConnection(conn, { url, agent: "opencode" }), /paired as claude; to switch agents, pair again/);
+  assert.throws(() => updateConnection(conn, { url, agent: "opencode", model: "anthropic/claude-sonnet-4-5" }), /paired as claude; to switch agents, pair again/);
+
+  assert.deepEqual(updateConnection(conn, { url }), conn);
+  assert.deepEqual(updateConnection(conn, { url, agent: "claude" }), conn);
+  assert.deepEqual(updateConnection(conn, { url, model: "anthropic/claude-sonnet-4-5" }), { token: "tok-1", agent: "claude", model: "anthropic/claude-sonnet-4-5" });
+  assert.deepEqual(updateConnection(conn, { url, agent: "claude", model: "anthropic/claude-sonnet-4-5" }), { token: "tok-1", agent: "claude", model: "anthropic/claude-sonnet-4-5" });
+});
+
 test("AgentLink: every agent command is confined to the aideos MCP tools", async () => {
   const { agentCommand } = await import("../../scripts/aideos-connect.mjs");
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "connect-"));
