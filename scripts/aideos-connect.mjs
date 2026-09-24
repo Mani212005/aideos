@@ -5,8 +5,9 @@
  * task the studio sends through the agent's own headless mode, so the owner's own agent
  * subscription does the work.
  *
- *   node aideos-connect.mjs <PAIRING-CODE> --agent claude|agy|codex|opencode --url <studio api url>
+ *   node aideos-connect.mjs <PAIRING-CODE> --agent claude|agy|codex|opencode [--model provider/model] --url <studio api url>
  *   node aideos-connect.mjs --url <studio api url>        (reconnect with the saved connection)
+ *   node aideos-connect.mjs --url <studio api url> --model provider/model   (keep the connection, switch the model)
  *
  * The agent never gets a shell or this machine's files for a task: it runs in an empty scratch
  * folder and works only through the studio's aideos MCP tools (read the brief, write design.json
@@ -24,12 +25,13 @@ const CONFIG_FILE = path.join(os.homedir(), ".config", "aideos", "connections.js
 const TASK_TIMEOUT_MS = 30 * 60 * 1000;
 
 // Parses argv into a pairing code and flags.
-function parseArgs(argv) {
-  const out = { code: undefined, agent: undefined, url: undefined };
+export function parseArgs(argv) {
+  const out = { code: undefined, agent: undefined, url: undefined, model: undefined };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--agent") out.agent = argv[++i];
     else if (a === "--url") out.url = argv[++i];
+    else if (a === "--model") out.model = argv[++i];
     else if (a === "-h" || a === "--help") out.help = true;
     else if (!a.startsWith("-")) out.code = a;
   }
@@ -63,7 +65,11 @@ function log(message) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Builds the command that runs one task through the chosen agent, confined to the aideos tools.
-export function agentCommand(agent, prompt, { url, token, scratch }) {
+// `model` (provider/model) overrides the agent's default model for the run; when omitted the
+// agent uses its own configured default. opencode merges OPENCODE_CONFIG over the user's global
+// config, so a configured default still applies - but its free-tier default model refuses
+// headless `run` use ("can only be used from within OpenCode"), hence the explicit override.
+export function agentCommand(agent, prompt, { url, token, scratch, model }) {
   const mcpUrl = `${url}/api/mcp`;
   if (agent === "claude") {
     const config = path.join(scratch, "aideos-mcp.json");
@@ -73,7 +79,7 @@ export function agentCommand(agent, prompt, { url, token, scratch }) {
   }
   if (agent === "agy") {
     // Antigravity keeps MCP servers in its own config; the connector registered "aideos" at startup.
-    return { cmd: "agy", args: ["-p", prompt, "--sandbox", "--dangerously-skip-permissions"], env: {} };
+    return { cmd: "agy", args: ["-p", prompt, "--sandbox", "--dangerously-skip-permissions", ...(model ? ["--model", model] : [])], env: {} };
   }
   if (agent === "codex") {
     return {
@@ -92,7 +98,7 @@ export function agentCommand(agent, prompt, { url, token, scratch }) {
       }),
       { mode: 0o600 },
     );
-    return { cmd: "opencode", args: ["run", "--dir", scratch, prompt], env: { OPENCODE_CONFIG: config } };
+    return { cmd: "opencode", args: ["run", ...(model ? ["--model", model] : []), "--dir", scratch, prompt], env: { OPENCODE_CONFIG: config } };
   }
   throw new Error(`unknown agent "${agent}"`);
 }
@@ -142,26 +148,65 @@ async function api(url, route, { method = "GET", token, body, timeoutMs = 40_000
   return { status: res.status, json };
 }
 
+// Explains a provider/model refusal in actionable terms, or null when the tail shows no known cause.
+// The common case: opencode's default free-tier model refuses headless `run` use, so the user
+// must pick a usable model from `opencode models` / `agy models` and re-pair with --model.
+export function taskFailureHint(agent, tail, model) {
+  if (/free tier|can only be used from within/i.test(tail)) {
+    const listCmd = agent === "agy" ? "agy models" : agent === "opencode" ? "opencode models" : null;
+    return (
+      `the ${agent} default model${model ? ` (${model})` : ""} refused this run: ` +
+      `free-tier models only work inside ${agent === "opencode" ? "OpenCode's own client" : "the agent's own client"}. ` +
+      `Re-pair with a usable model${listCmd ? ` (see \`${listCmd}\`)` : ""}: ` +
+      `run the pairing command again with --model provider/model appended.`
+    );
+  }
+  if (/unauthorized|invalid api key|authentication|no model|model not found/i.test(tail)) {
+    return (
+      `the ${agent} run looks like a model or credential problem. ` +
+      `Check the agent's auth, then re-pair with an explicit usable model by appending --model provider/model to the pairing command.`
+    );
+  }
+  return null;
+}
+
 // Runs one task and reports its outcome to the studio.
 async function handleTask(task, conn, url) {
   log(`task ${task.id}: ${task.eventType} for ${task.filmId}`);
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-task-"));
   try {
-    const { cmd, args, env } = agentCommand(conn.agent, task.prompt, { url, token: conn.token, scratch });
+    const { cmd, args, env } = agentCommand(conn.agent, task.prompt, { url, token: conn.token, scratch, model: conn.model });
     const { code, tail } = await run(cmd, args, scratch, env, TASK_TIMEOUT_MS);
     const ok = code === 0;
-    log(`task ${task.id} ${ok ? "finished" : `failed (exit ${code})`}`);
-    await api(url, "/api/agent-link/result", { method: "POST", token: conn.token, body: { taskId: task.id, ok, summary: tail.trim().split("\n").slice(-8).join("\n") } }).catch(() => {});
+    const hint = ok ? null : taskFailureHint(conn.agent, tail, conn.model);
+    if (hint) log(`task ${task.id} failed (exit ${code}): ${hint}`);
+    else log(`task ${task.id} ${ok ? "finished" : `failed (exit ${code})`}`);
+    const lines = tail.trim().split("\n").slice(-8);
+    if (hint) lines.push(`aideos: ${hint}`);
+    await api(url, "/api/agent-link/result", { method: "POST", token: conn.token, body: { taskId: task.id, ok, summary: lines.join("\n") } }).catch(() => {});
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
+}
+
+// Updates or validates a saved connection when reconnecting without a pairing code.
+export function updateConnection(conn, args) {
+  if (!conn) throw new Error(`no saved connection for ${args.url}; run with the pairing code shown by Connect agent in the studio`);
+  if (args.agent && args.agent !== conn.agent) {
+    throw new Error(`this URL is paired as ${conn.agent}; to switch agents, pair again with a fresh code from Connect agent in the studio`);
+  }
+  if (args.model) return { ...conn, model: args.model };
+  return conn;
 }
 
 // Pairs (when given a code) and then serves tasks until stopped.
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help || !args.url) {
-    console.log("usage: node aideos-connect.mjs <PAIRING-CODE> --agent claude|agy|codex|opencode --url <studio api url>");
+    console.log("usage: node aideos-connect.mjs <PAIRING-CODE> --agent claude|agy|codex|opencode [--model provider/model] --url <studio api url>");
+    console.log("  --model overrides the agent's default model for every task (e.g. --model anthropic/claude-sonnet-4-5).");
+    console.log("  Without it the agent's own default applies; opencode's free-tier default refuses headless runs,");
+    console.log("  so pass --model with a usable model (see `opencode models`) when tasks fail with a free-tier error.");
     process.exit(args.help ? 0 : 1);
   }
   const url = args.url.replace(/\/$/, "");
@@ -172,11 +217,20 @@ async function main() {
     if (!AGENTS.includes(agent)) throw new Error(`--agent must be one of ${AGENTS.join(", ")}`);
     const claim = await api(url, "/api/agent-link/claim", { method: "POST", body: { code: args.code, agent, machine: os.hostname() } });
     if (claim.status !== 200) throw new Error(claim.json?.error ?? `pairing failed (HTTP ${claim.status})`);
-    conn = { token: claim.json.token, agent };
+    conn = { token: claim.json.token, agent, ...(args.model ? { model: args.model } : {}) };
     saveConnection(url, conn);
-    log(`paired with ${url} as ${agent}`);
+    log(`paired with ${url} as ${agent}${conn.model ? ` with model ${conn.model}` : ""}`);
+    if (claim.json?.replaced) log(`this replaced your ${claim.json.replaced.agentLabel ?? claim.json.replaced.agent} agent (${claim.json.replaced.machine}); its connector will stop`);
+  } else {
+    const next = updateConnection(conn, { ...args, url });
+    if (next !== conn) {
+      conn = next;
+      saveConnection(url, conn);
+      log(`model for ${url} set to ${args.model}`);
+    }
   }
-  if (!conn) throw new Error(`no saved connection for ${url}; run with the pairing code shown by Connect agent in the studio`);
+  if (conn.model && (conn.agent === "opencode" || conn.agent === "agy")) log(`using model ${conn.model} for ${conn.agent} tasks`);
+  else if (conn.model) log(`note: --model has no effect for ${conn.agent}; it applies to opencode and agy runs`);
   if (conn.agent === "agy") await registerAgyServer(url, conn.token);
 
   log(`waiting for tasks from ${url} (Ctrl-C to stop)`);
@@ -194,7 +248,17 @@ async function main() {
     }
     if (res.status === 401) {
       saveConnection(url, null);
-      throw new Error("the studio no longer knows this connection (disconnected, or the server was reset); pair again from Connect agent");
+      const by = res.json?.replacedBy;
+      let when = "";
+      if (by?.at) {
+        const t = new Date(by.at);
+        if (!Number.isNaN(t.getTime())) when = `, paired ${t.toLocaleString()}`;
+      }
+      throw new Error(
+        by
+          ? `this connection was replaced by ${by.agentLabel ?? by.agent} (${by.machine}${when}); that agent now gets the work - to switch back, pair again from Connect agent in the studio`
+          : "the studio no longer knows this connection (disconnected, or the server was reset); pair again from Connect agent",
+      );
     }
     if (res.status === 200 && res.json?.id) await handleTask(res.json, conn, url);
     else if (res.status !== 204) {

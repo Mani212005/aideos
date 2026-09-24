@@ -303,6 +303,11 @@ An individual vector path inside a limb:
 * `cancelFallbackTimer(taskId)`, `clearAllFallbackTimers()`: Manages and clears active fallback timer callbacks.
 * `getAgentSession()`, `setAgentSession(info)`: Reads and persists active agent session metadata (`.aideos_session.json`).
 
+### `backend/agentLink/` (Headless Coding Agent Link & Connector Hub)
+* `AgentLinkStore` (`backend/agentLink/store.ts`): State store for pairing codes, owner keys, and connected agent long-poll queues with single-agent-per-owner replacement tracking (`startPairing`, `claim`, `replacementNote`, `isValid`, `ownerOf`, `push`, `next`, `result`).
+* `remoteTaskPrompt(taskId, prompt)` (`backend/agentLink/prompt.ts`): Maps studio task instructions onto the sandboxed MCP tool interface for headless agents.
+* `aideos-connect.mjs` (`scripts/aideos-connect.mjs`): Standalone dependency-free connector script linking local coding agents (Claude, Antigravity, Codex, OpenCode) to the studio via long-polling, supporting `--model provider/model` overrides, free-tier refusal diagnostics (`taskFailureHint`), and connection update preservation (`updateConnection`).
+
 ### `backend/agentPrompter.ts` (Auto-Prompter Facade)
 * Delegates backwards-compatible prompter APIs (`getAgentSession`, `setAgentSession`, `buildDirectingPrompt`, `dispatchPromptToAgent`) directly to `backend/agentBridge/`.
 
@@ -406,6 +411,7 @@ An individual vector path inside a limb:
 
 ### Studio Inspector & Telemetry Components (`editor/src/components/`)
 * **`AgentActivityInspector.tsx`**: Live real-time agent telemetry timeline subscribing to SSE stream (`/api/agent/trace`) with filterable execution steps, live status pills (LIVE / CONNECTING / OFFLINE), and empty state.
+* **`AgentConnect.tsx`**: Header dialog modal generating pairing codes, displaying CLI connect commands with agent selectors, and warning on active agent replacements.
 
 ### Handcrafted Neobrutalism UI Primitives (`editor/src/components/ui/`)
 * **`Badge.tsx`**: Status indicators and token chips.
