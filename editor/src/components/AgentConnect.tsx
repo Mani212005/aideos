@@ -174,6 +174,11 @@ export function AgentConnect() {
                   {status.agentLabel} on {status.machine} has not checked in since {ago(status.lastSeen)}. Start the connector again in that terminal, or pair a new one.
                 </Note>
               ) : null}
+              {status?.connected && pairing ? (
+                <Note tone="warn">
+                  Claiming this code replaces {status.agentLabel} on {status.machine}: that terminal&apos;s connector will stop on its next check-in.
+                </Note>
+              ) : null}
               <div>
                 <div className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-ink-soft">Agent</div>
                 <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Agent">

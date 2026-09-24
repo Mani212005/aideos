@@ -76,6 +76,28 @@ test("AgentLink: expired codes, offline agents, disconnects and re-pairing", asy
   assert.ok(!saved.includes(second.token) && !saved.includes(ownerKey), "secrets are stored hashed");
 });
 
+test("AgentLink: re-pairing names the replaced agent so both terminals can explain the takeover", async () => {
+  const { s } = store();
+  const { ownerKey, code } = s.startPairing();
+  const first = s.claim(code, "agy", "mani-mbp")!;
+  assert.equal(first.replaced, null, "first pairing replaces nothing");
+  await s.next(first.token, 0);
+
+  const again = s.startPairing(ownerKey);
+  const second = s.claim(again.code, "opencode", "other-box")!;
+  assert.deepEqual(second.replaced, { agent: "agy", agentLabel: "Antigravity", machine: "mani-mbp" });
+  assert.equal(await s.next(first.token, 0), "unauthorized", "the replaced connector's next poll is rejected");
+
+  const note = s.replacementNote(first.token)!;
+  assert.equal(note.agent, "opencode");
+  assert.equal(note.agentLabel, "OpenCode");
+  assert.equal(note.machine, "other-box");
+  assert.ok(note.at, "the takeover carries a timestamp");
+  assert.equal(s.replacementNote(first.token), null, "the note is consumed on read");
+  assert.equal(s.replacementNote(second.token), null, "the live token has no note");
+  assert.equal(s.replacementNote("bogus"), null, "unknown tokens have no note");
+});
+
 test("AgentLink: remote prompts map shell steps onto the aideos tools", () => {
   const p = remoteTaskPrompt("t-9", "Run `aideos design build demo` until PASS.");
   assert.match(p, /aideos_design_build/);
@@ -92,6 +114,39 @@ test("AgentLink: design tools only touch a film's design spec and visuals", () =
   }
   assert.throws(() => resolveFilmFile("../etc", "design/design.json", writable), /not a film id/);
   assert.throws(() => resolveFilmFile("no-such-film", "design/design.json", writable), /no film/);
+});
+
+test("AgentLink: --model overrides the run model for opencode and agy only", async () => {
+  const { agentCommand, parseArgs, taskFailureHint } = await import("../../scripts/aideos-connect.mjs");
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "connect-model-"));
+  const opts = { url: "https://studio.example", token: "tok", scratch };
+
+  assert.deepEqual(parseArgs(["CODE", "--agent", "opencode", "--model", "anthropic/claude-sonnet-4-5", "--url", "https://x"]).model, "anthropic/claude-sonnet-4-5");
+  assert.equal(parseArgs(["CODE", "--url", "https://x"]).model, undefined);
+
+  const ocDefault = agentCommand("opencode", "do it", opts);
+  assert.ok(!ocDefault.args.includes("--model"), "no --model flag without an override");
+  const oc = agentCommand("opencode", "do it", { ...opts, model: "anthropic/claude-sonnet-4-5" });
+  assert.deepEqual(oc.args.slice(1, 3), ["--model", "anthropic/claude-sonnet-4-5"]);
+  assert.equal(oc.args[oc.args.length - 1], "do it", "the prompt stays the last arg");
+
+  const agyDefault = agentCommand("agy", "do it", opts);
+  assert.ok(!agyDefault.args.includes("--model"));
+  const agy = agentCommand("agy", "do it", { ...opts, model: "gemini-3-pro" });
+  assert.ok(agy.args.includes("--model") && agy.args.includes("gemini-3-pro"));
+  assert.ok(agy.args.includes("--sandbox"), "the sandbox confinement is kept with a model override");
+
+  const claude = agentCommand("claude", "do it", { ...opts, model: "whatever" });
+  assert.ok(!claude.args.includes("--model"), "agents without a model flag ignore the override");
+
+  const refusal = "Error: Error from provider (Console): OpenCode's free tier can only be used from within OpenCode";
+  const hint = taskFailureHint("opencode", refusal, undefined)!;
+  assert.match(hint, /free-tier models only work inside/);
+  assert.match(hint, /--model provider\/model/);
+  assert.match(hint, /opencode models/);
+  assert.match(taskFailureHint("agy", "free tier unavailable", "m")!, /--model provider\/model/);
+  assert.equal(taskFailureHint("opencode", "some unrelated crash", undefined), null);
+  assert.match(taskFailureHint("codex", "unauthorized: invalid api key", undefined)!, /credential problem/);
 });
 
 test("AgentLink: every agent command is confined to the aideos MCP tools", async () => {

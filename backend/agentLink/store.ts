@@ -62,6 +62,14 @@ interface StoredConnection {
   lastSeen: string;
 }
 
+/** Who replaced a dropped connector token, so its next poll can say so instead of just 401. */
+export interface ReplacementNote {
+  agent: LinkAgent;
+  agentLabel: string;
+  machine: string;
+  at: string;
+}
+
 interface StoredState {
   pairCodes: Record<string, { ownerHash: string; expiresAt: number }>;
   connections: StoredConnection[];
@@ -102,6 +110,9 @@ export class AgentLinkStore {
   private queues = new Map<string, LinkTask[]>();
   private waiters = new Map<string, Array<(task: LinkTask | null) => void>>();
   private results = new Map<string, LinkTaskResult>();
+  // Old connector tokens dropped by a re-pairing, each pointing at what replaced it. Memory-only:
+  // a server restart forgets them and the next 401 falls back to the generic message.
+  private replacedTokens = new Map<string, ReplacementNote>();
 
   private readonly file: string;
   private readonly now: () => number;
@@ -160,29 +171,55 @@ export class AgentLinkStore {
     return { ownerKey, code, expiresAt: new Date(expiresAt).toISOString() };
   }
 
-  /** Claims a pairing code for a connector. Returns its token, or null when the code is wrong or expired. */
-  claim(code: string, agent: LinkAgent, machine: string): { token: string } | null {
+  /**
+   * Claims a pairing code for a connector. Returns its token, or null when the code is wrong
+   * or expired. One agent per owner: pairing again replaces the previous connection, and the
+   * replaced agent is reported back so the new connector can say whose terminal will go quiet.
+   */
+  claim(code: string, agent: LinkAgent, machine: string): { token: string; replaced: { agent: LinkAgent; agentLabel: string; machine: string } | null } | null {
     this.prune();
     const entry = this.state.pairCodes[code.trim().toUpperCase()];
     if (!entry) return null;
     delete this.state.pairCodes[code.trim().toUpperCase()];
     const token = secret();
     const at = new Date(this.now()).toISOString();
-    // One agent per owner: pairing again replaces the previous connection.
+    const machineName = machine.slice(0, 80) || "unknown machine";
     const replaced = this.state.connections.filter((c) => c.ownerHash === entry.ownerHash);
-    for (const old of replaced) this.release(old.id);
+    for (const old of replaced) {
+      this.release(old.id);
+      this.replacedTokens.set(old.tokenHash, { agent, agentLabel: LINK_AGENT_LABEL[agent], machine: machineName, at });
+    }
+    // Bound the tombstones: only the most recent replacements stay explainable.
+    while (this.replacedTokens.size > 20) {
+      const oldest = this.replacedTokens.keys().next();
+      if (oldest.done) break;
+      this.replacedTokens.delete(oldest.value);
+    }
     this.state.connections = this.state.connections.filter((c) => c.ownerHash !== entry.ownerHash);
     this.state.connections.push({
       id: secret(9),
       tokenHash: hash(token),
       ownerHash: entry.ownerHash,
       agent,
-      machine: machine.slice(0, 80) || "unknown machine",
+      machine: machineName,
       createdAt: at,
       lastSeen: at,
     });
     this.save();
-    return { token };
+    const first = replaced[0];
+    return { token, replaced: first ? { agent: first.agent, agentLabel: LINK_AGENT_LABEL[first.agent], machine: first.machine } : null };
+  }
+
+  /**
+   * What replaced the connector holding this token, if a re-pairing dropped it. Consumed on
+   * read: the old connector exits on its next poll, so it asks once. Unknown tokens return
+   * null (a server restart forgets replacements; the generic 401 message covers that case).
+   */
+  replacementNote(token: string | undefined): ReplacementNote | null {
+    if (!token) return null;
+    const note = this.replacedTokens.get(hash(token)) ?? null;
+    if (note) this.replacedTokens.delete(hash(token));
+    return note;
   }
 
   /** True when a connector token is valid. */

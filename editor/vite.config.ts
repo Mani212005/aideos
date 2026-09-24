@@ -433,7 +433,15 @@ async function handleAgentLink(req: IncomingMessage, res: ServerResponse, url: s
   }
   if (url === '/api/agent-link/next' && req.method === 'GET') {
     const task = await link.next(bearerOf(req));
-    if (task === 'unauthorized') return sendJson(res, 401, { error: 'this connection was removed or the studio forgot it; pair again' });
+    if (task === 'unauthorized') {
+      const replacedBy = link.replacementNote(bearerOf(req));
+      return sendJson(res, 401, {
+        error: replacedBy
+          ? `this connection was replaced by ${replacedBy.agentLabel} (${replacedBy.machine}); that agent now gets the work`
+          : 'this connection was removed or the studio forgot it; pair again',
+        ...(replacedBy ? { replacedBy } : {}),
+      });
+    }
     if (!task) {
       res.statusCode = 204;
       res.end();
