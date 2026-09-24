@@ -34,6 +34,7 @@ interface Pairing {
   code: string;
   expiresAt: string;
   command: string;
+  startedAt?: number;
 }
 
 // Formats how long ago an ISO time was.
@@ -75,11 +76,14 @@ export function AgentConnect() {
     return () => window.clearInterval(t);
   }, [refresh, open, pairing]);
 
-  // A pairing is done once the connector checks in.
+  // A pairing is done once a new connector checks in.
   useEffect(() => {
-    if (pairing && status?.connected && status.online) setPairing(null);
+    if (!pairing || !status?.connected || !status.online) return;
+    if (pairing.startedAt && status.lastSeen && Date.parse(status.lastSeen) < pairing.startedAt - 1000) return;
+    setPairing(null);
   }, [pairing, status]);
 
+  // Starts a pairing session and records when it began so old online check-ins do not clear it prematurely.
   const pair = async () => {
     setBusy(true);
     setError(null);
@@ -88,7 +92,7 @@ export function AgentConnect() {
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
       writeOwnerKey(body.ownerKey);
-      setPairing({ code: body.code, expiresAt: body.expiresAt, command: body.command });
+      setPairing({ code: body.code, expiresAt: body.expiresAt, command: body.command, startedAt: Date.now() });
       setCopied(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
