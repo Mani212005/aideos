@@ -291,6 +291,11 @@ An individual vector path inside a limb:
 * `setActiveFilm(slug)`: Points `src/dl/activeFilm.ts` at the target film package.
 * `wireFootageIntoFilm(slug, shotId, relPath, promptText)`: Wires rendered B-roll video clip into a shot as an `AnalogyInset` block and saves to both storage targets.
 
+### `backend/pipeline/deviceData.ts` (Model-Authored Chart & Metaphor Data)
+* `authorDeviceData(requests, caller)`: Authors and validates data for complex chart devices (`TokenStrip`, `Plot`, `MatrixGrid`, `Distribution`, `LayerStack`, `ScaleBar`) via batched LLM generation, refusing any block that fails validation or uses ungrounded labels/numbers.
+* `checkDeviceHonesty(block, source)`: Verifies that all labels, tokens, ticks, and numbers shown by an authored block or metaphor are grounded in the beat's spoken narration or on-screen copy.
+* `groundMetaphorContent(raw, source)`: Validates model-authored `MetaphorViewer` payloads against schema constraints, ensures no default fallback fields were omitted, and verifies beat honesty.
+
 ### `backend/agentBridge/` (Connected Agent Bridge Hub & Multi-Channel Dispatcher)
 * `traceBus` (`backend/agentBridge/traceBus.ts`): Global singleton in-process telemetry and live film update bus (`TraceBus`) collecting and streaming execution steps (`recordStep`, `updateStep`, `getRecentSteps`, `subscribe`, `clear`) and broadcasting real-time film change notifications (`onFilmUpdate`, `notifyFilmUpdated`, `filmSubscriberCount`) across coding agents, Studio clients, AI edit planning, neural TTS synthesis, GPU B-roll rendering, and invariant validation.
 * `formatStepTimestamp(date)`, `generateStepId()` (`backend/agentBridge/traceBus.ts`): Formatting and identifier helpers for trace steps.
@@ -327,7 +332,7 @@ An individual vector path inside a limb:
 * `hasScreenplayTags(raw)`: Returns true when raw script text contains at least one recognizable screenplay tag beat.
 * `structureUntaggedProseToScript(raw)`: Deterministically structures untagged prose paragraphs into Claude screenplay segments with slug IDs, headlines, visual descriptions, and narration beats.
 * `extractSpokenBlocks(raw)`: Extracts strictly the spoken narration dialogue with zero visual or on-screen tag leakage.
-* `buildBlocksForPrimitive(primitive, group, fallbackTitle)`: Builds conforming `GeneratedBlock` structures for any of the 7 animated primitives.
+* `buildBlocksForPrimitive(primitive, group, fallbackTitle)`: Builds conforming `GeneratedBlock` structures for any of the 7 animated primitives; never invents stand-in data, falling back to `TextReveal` when required metrics, backtick code, or percentage bounds are missing.
 * `selectScenePrimitives(segments, options)`: Maps screenplay segments to animated primitives with active components history tracking via Jev.
 * `buildFilmPartsFromScript(raw, targetDurationSec, options)`: Compiles a Claude screenplay (falling back to `structureUntaggedProseToScript` for untagged prose) into Remotion-ready sub-shots, canvas nodes and edges, supporting optional heuristic primitive mapping (`usePrimitives`).
 * `buildFilmPartsFromScriptAsync(raw, targetDurationSec, options)`: Compiles a Claude screenplay (falling back to `structureUntaggedProseToScript` for untagged prose) into Remotion-ready parts asynchronously using Jev for intelligent primitive selection across the 7 animated primitives.

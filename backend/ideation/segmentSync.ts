@@ -4,6 +4,7 @@
  */
 import type { Block, MetaphorContent } from "../../src/dl/schema";
 import type { SegmentAudioInfo } from "../audio";
+import { groundMetaphorContent } from "../pipeline/deviceData";
 import {
   selectShotVisualIntent,
   selectVisualIntentFallback,
@@ -64,21 +65,16 @@ export function buildBriefFromSegmentFallback(
     },
   ];
 
-  if (decision.blockType === "StatCounter") {
-    const rawVal = segmentText.match(/\b(\d+(?:\.\d+)?%|\d+x|\d+\s*(?:ms|fps|flps))\b/i)?.[1] || "100%";
-    const num = parseFloat(rawVal.replace(/[^\d.]/g, "")) || 100;
+  const metric = decision.blockType === "StatCounter" ? segmentText.match(/\b(\d+(?:\.\d+)?%|\d+x|\d+\s*(?:ms|fps|flps))\b/i)?.[1] : undefined;
+  if (metric) {
+    // The counter shows a figure the narration says; with none, the beat keeps its text card.
+    const num = parseFloat(metric.replace(/[^\d.]/g, ""));
     blocks.push({
       c: "StatCounter",
       to: num,
       format: "plain",
       label: headline.slice(0, 24),
-      suffix: rawVal.includes("%") ? "%" : undefined,
-    });
-  } else if (decision.blockType === "MetaphorViewer" && decision.metaphor) {
-    blocks.push({
-      c: "MetaphorViewer",
-      metaphorType: decision.metaphor.kind,
-      content: decision.metaphor,
+      suffix: metric.includes("%") ? "%" : undefined,
     });
   }
 
@@ -121,11 +117,13 @@ export async function generateSegmentVisualBrief(
     },
   ];
 
-  if (decision.blockType === "MetaphorViewer" && decision.metaphor) {
+  // A model-authored metaphor is drawn only when every label parses and comes from the narration.
+  const grounded = decision.blockType === "MetaphorViewer" ? groundMetaphorContent(decision.metaphor, { narration: trimmed, onscreen: [headline] }) : null;
+  if (grounded && "content" in grounded) {
     blocks.push({
       c: "MetaphorViewer",
-      metaphorType: decision.metaphor.kind,
-      content: decision.metaphor,
+      metaphorType: grounded.content.kind,
+      content: grounded.content,
     });
   } else if (decision.blockType === "CharacterBeat") {
     blocks.push({
@@ -144,7 +142,7 @@ export async function generateSegmentVisualBrief(
     segmentText: trimmed,
     visualDirection: decision.rationale,
     blocks,
-    metaphor: decision.metaphor?.kind,
+    metaphor: grounded && "content" in grounded ? grounded.content.kind : undefined,
     needsFootage: false,
   };
 }
