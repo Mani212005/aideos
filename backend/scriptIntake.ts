@@ -691,12 +691,14 @@ export async function selectScenePrimitives(
   // Every group is asked about in one batched Jev request; each answer is then gated against
   // the group's live state (including the components already on screen) in order.
   const groupsBySegment = segments.map((seg) => groupSegmentBeats(seg.beats));
+  // The camera is the move the compile below gives that shot: a cut to open, then alternating pan and zoom-out.
   const flatStates: JevDecisionState[] = segments.flatMap((seg, segIdx) =>
-    groupsBySegment[segIdx].map((group) => ({
+    groupsBySegment[segIdx].map((group, gi) => ({
       visual: group.visual,
       narration: group.narration,
       onscreen: group.onscreen,
       sceneTitle: seg.title,
+      camera: segIdx === 0 && gi === 0 ? "cut" : gi % 2 === 0 ? "pan" : "zoom-out",
     })),
   );
   const prefetched = await prefetchPrimitiveAnswers(flatStates, options);
@@ -717,6 +719,8 @@ export async function selectScenePrimitives(
         onscreen: group.onscreen,
         activeComponents: [...activeComponents],
         sceneTitle: seg.title,
+        camera: flatStates[flatIndex].camera,
+        ...(activeComponents.length ? { previousPick: activeComponents[activeComponents.length - 1] } : {}),
       };
 
       const decision = prefetched

@@ -131,7 +131,19 @@ what the film says shot by shot, the standard layer, the design.json format and 
 2. Write videos/${ctx.filmId}/design/design.json and the SVG artwork it names in videos/${ctx.filmId}/visuals/.
 3. Run \`aideos design build ${ctx.filmId}\` and fix what it reports until it prints PASS.
 4. Run \`aideos design check ${ctx.filmId} --stills\`, look at the stills in .frames/${ctx.filmId}/, and improve anything that reads badly, then build again.
-The studio reloads the film on its own once a build passes.`;
+The studio reloads the film on its own once a build passes.${opts.customInstruction ? `\n\nThe vision judge ruled some sampled frames wrong. Fix these first, exactly as reported:\n${opts.customInstruction}` : ""}`;
+  }
+  if (opts.eventType === "frame_review") {
+    const stride = typeof opts.metadata?.stride === "number" ? opts.metadata.stride : 6;
+    const count = typeof opts.metadata?.sampleCount === "number" ? opts.metadata.sampleCount : "the";
+    return `🎬 [Aideos Studio] Review ${count} sampled frames of "${title}" (${ctx.filmId}) and repair what is wrong
+
+Stills (1920x1080, every ${stride}th frame) are rendered once in .frames/${ctx.filmId}/judge/; videos/${ctx.filmId}/design/judge/manifest.json lists each one with its shot, narration and on-screen copy. Over MCP, call aideos_frame_stills to receive them as images. Do this for every sample, in one round:
+1. Critique the still against its shot's narration: your own opinions, and concrete suggestions (each one a change you would make).
+2. Repair the design where a frame is wrong: edit design/design.json and visuals/, then run \`aideos design build ${ctx.filmId}\` (or aideos_design_build) until it prints PASS. Only a passing build writes the film.
+3. Score the frame as it is after your repair against its narration as an image-text similarity from 0 (unrelated) to 1 (exactly this).
+4. Submit with aideos_submit_frame_review: {filmId, samples: [{frame, note, suggestions, similarity, repaired}]}, or write videos/${ctx.filmId}/design/judge/agent-report.json.
+A text-only judge (Jev) then rules on every frame and rates every suggestion, so leave no sample out.${opts.customInstruction ? `\n\nFix these first, exactly as reported:\n${opts.customInstruction}` : ""}`;
   }
   const audioRef = ctx.voiceoverPath || `videos/${ctx.filmId}/voiceover.wav`;
   const durationText = ctx.durationSec !== undefined ? `${ctx.durationSec.toFixed(1)}s` : "measured";

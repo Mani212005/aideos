@@ -40,6 +40,8 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
   // outside a Remotion composition, as in unit tests, there is no frame and 0 is used.
   let frame = 0;
   try {
+    // The hook still runs on every render; the try only absorbs its throw outside a composition.
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     frame = useCurrentFrame();
   } catch {
     frame = 0;

@@ -14,6 +14,8 @@ import { FILM_ID, VIDEOS_DIR } from "../pipeline/filmStore";
 import { buildDesign, formatBuildStatus } from "../designSpec/build";
 import { writeDesignBrief } from "../designSpec/brief";
 import { checkFilmDesignById, formatDesignReport } from "../designCheck/designCheck";
+import { frameReviewSchema, writeAgentReview } from "../visionJudge/agentReview";
+import { judgeFramesDir } from "../visionJudge/sampler";
 
 /** Files an agent may read inside a film package. */
 const READABLE = /^(design\/(design|status|visual-choices|base-film)\.json|design\/BRIEF\.md|visuals\/[a-z0-9-]+\.svg|film\.json)$/;
@@ -122,6 +124,56 @@ export function registerDesignTools(server: McpServer): void {
       if (!FILM_ID.test(filmId)) return text(`"${filmId}" is not a film id`, true);
       const report = checkFilmDesignById(filmId);
       return text(formatDesignReport(report), !report.ok);
+    },
+  );
+
+  server.registerTool(
+    "aideos_frame_stills",
+    {
+      title: "Get the sampled review stills",
+      description:
+        "Return the frames the vision judge sampled from a film (1920x1080 stills, rendered once) as images, each preceded by its frame number, shot, narration and on-screen copy. Critique each against its narration.",
+      inputSchema: { filmId: z.string(), limit: z.number().int().min(1).max(12).default(6), offset: z.number().int().min(0).default(0) },
+    },
+    async ({ filmId, limit, offset }) => {
+      try {
+        resolveFilmFile(filmId, "film.json", /^film\.json$/);
+        const manifestFile = path.join(VIDEOS_DIR, filmId, "design", "judge", "manifest.json");
+        if (!fs.existsSync(manifestFile)) return text("no stills have been sampled for this film yet", true);
+        const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8")) as {
+          samples: { frame: number; shotId: string; narration: string; onscreen: string[] }[];
+        };
+        const content: ({ type: "text"; text: string } | { type: "image"; data: string; mimeType: string })[] = [];
+        for (const s of manifest.samples.slice(offset, offset + limit)) {
+          const png = path.join(judgeFramesDir(filmId), `frame-${String(s.frame).padStart(6, "0")}.png`);
+          if (!fs.existsSync(png)) continue;
+          content.push({ type: "text", text: `frame ${s.frame} | shot ${s.shotId} | narration: ${s.narration} | on screen: ${s.onscreen.join(" / ")}` });
+          content.push({ type: "image", data: fs.readFileSync(png).toString("base64"), mimeType: "image/png" });
+        }
+        content.push({ type: "text", text: `${manifest.samples.length} samples in all; this call returned ${offset}-${Math.min(manifest.samples.length, offset + limit) - 1}.` });
+        return { content };
+      } catch (err) {
+        return text(err instanceof Error ? err.message : String(err), true);
+      }
+    },
+  );
+
+  server.registerTool(
+    "aideos_submit_frame_review",
+    {
+      title: "Submit the frame review",
+      description:
+        "Submit your review of the sampled frames: per frame, your note (opinions), concrete suggestions, an image-text similarity score (0 to 1) against the narration for the frame as it is after any repair, and whether you repaired it. A text-only judge then rules on each frame and rates each suggestion.",
+      inputSchema: { filmId: z.string(), samples: frameReviewSchema.shape.samples },
+    },
+    async ({ filmId, samples }) => {
+      try {
+        resolveFilmFile(filmId, "film.json", /^film\.json$/);
+        const stored = writeAgentReview(filmId, { samples });
+        return text(`stored a review of ${stored.samples.length} frames at ${stored.at}`);
+      } catch (err) {
+        return text(err instanceof Error ? err.message : String(err), true);
+      }
     },
   );
 }
