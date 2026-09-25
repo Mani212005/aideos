@@ -49,3 +49,55 @@ export function installOwnerHeader(): void {
     return original(input, { ...init, headers });
   };
 }
+
+/** Makes a fresh owner key. Tokens are bound to the old key's hash, so swapping it ends them for good, even across a server restart. */
+export function rotateOwnerKey(): string {
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  const key = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  writeOwnerKey(key);
+  return key;
+}
+
+const EXPECTED_STORAGE = "aideos.agentLink.expected";
+
+/** What the studio last saw connected, remembered so a server restart shows "reconnecting" rather than "disconnected". */
+export interface ExpectedLink {
+  agentLabel: string;
+  machine: string;
+  lastOnline: number;
+}
+
+/** The link this browser last saw online, if any. */
+export function readExpectedLink(): ExpectedLink | null {
+  try {
+    const raw = window.localStorage.getItem(EXPECTED_STORAGE);
+    return raw ? (JSON.parse(raw) as ExpectedLink) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Remembers (or with null forgets) the link this browser last saw online. */
+export function writeExpectedLink(link: ExpectedLink | null): void {
+  try {
+    if (link) window.localStorage.setItem(EXPECTED_STORAGE, JSON.stringify(link));
+    else window.localStorage.removeItem(EXPECTED_STORAGE);
+  } catch {
+    // Storage can be refused; the badge then just shows the server's own view.
+  }
+}
+
+/**
+ * The state the badge shows. A server that restarted after the link was last online has lost its
+ * connection table until the agent's next check-in, so that is "reconnecting", not "disconnected".
+ */
+export function linkPhase(
+  status: { connected: boolean; online: boolean; startedAt?: string } | null,
+  expected: ExpectedLink | null,
+): "online" | "offline" | "reconnecting" | "none" {
+  if (!status) return expected ? "reconnecting" : "none";
+  if (status.connected) return status.online ? "online" : "offline";
+  if (expected && status.startedAt && Date.parse(status.startedAt) >= expected.lastOnline - 2000) return "reconnecting";
+  return "none";
+}
