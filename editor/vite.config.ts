@@ -12,6 +12,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
+import { synthesizeVoiceover, VoiceSynthesisError, readContainerMemoryLimit, sayToWav } from '../backend/voiceSynthesis.ts'
 import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
 import { transcribe, writeImportWords } from '../backend/transcribe.ts'
 import { detectFillers } from '../backend/editContext/detectFillers.ts'
@@ -1626,151 +1627,47 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             const publicPath = path.join(pkgDir, outFilename);
 
             let generated = false;
+            let synthesisError: VoiceSynthesisError | undefined;
 
-            // Helper to encode Float32Array to 16-bit PCM WAV
-            function encodeWav(float32Data: Float32Array, rate: number): Buffer {
-              const numChannels = 1;
-              const bytesPerSample = 2;
-              const blockAlign = numChannels * bytesPerSample;
-              const byteRate = rate * blockAlign;
-              const dataSize = float32Data.length * bytesPerSample;
-              const buffer = Buffer.alloc(44 + dataSize);
-
-              buffer.write("RIFF", 0);
-              buffer.writeUInt32LE(36 + dataSize, 4);
-              buffer.write("WAVE", 8);
-              buffer.write("fmt ", 12);
-              buffer.writeUInt32LE(16, 16);
-              buffer.writeUInt16LE(1, 20);
-              buffer.writeUInt16LE(numChannels, 22);
-              buffer.writeUInt32LE(rate, 24);
-              buffer.writeUInt32LE(byteRate, 28);
-              buffer.writeUInt16LE(blockAlign, 32);
-              buffer.writeUInt16LE(16, 34);
-              buffer.write("data", 36);
-              buffer.writeUInt32LE(dataSize, 40);
-
-              let bufOffset = 44;
-              for (let i = 0; i < float32Data.length; i++) {
-                const s = Math.max(-1, Math.min(1, float32Data[i]));
-                const val = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                buffer.writeInt16LE(Math.floor(val), bufOffset);
-                bufOffset += 2;
-              }
-              return buffer;
-            }
-
-            // 1. KOKORO NEURAL TTS (Local ONNX - Full Multi-Paragraph Concatenation)
-            if (voice.startsWith('kokoro-')) {
-              try {
-                const kokoroVoice = voice.replace(/^kokoro-/, '');
-                console.log(`[TTS] Synthesizing full script with local Kokoro-82M voice "${kokoroVoice}"...`);
-                const { KokoroTTS } = await import('kokoro-js');
-                const tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'q8' });
-
-                const paragraphs = chunkTextForTTS(cleanText, 800);
-                const allAudio: Float32Array[] = [];
-                let sampleRate = 24000;
-
-                for (let i = 0; i < paragraphs.length; i++) {
-                  const p = paragraphs[i].trim();
-                  if (!p) continue;
-                  console.log(`[TTS] Kokoro [${i + 1}/${paragraphs.length}] (${p.length} chars): ${p.slice(0, 35)}...`);
-                  const audio = await tts.generate(p, { voice: kokoroVoice });
-                  sampleRate = audio.sampling_rate;
-                  const trimmed = trimSilence(audio.audio, 0.005);
-                  if (trimmed.length > 0) {
-                    allAudio.push(trimmed);
-                  }
-                  // Controlled 200ms pause between distinct scene/shot boundaries
-                  if (i < paragraphs.length - 1) {
-                    const pauseSamples = Math.floor(sampleRate * 0.20);
-                    allAudio.push(new Float32Array(pauseSamples));
-                  }
-                }
-
-                const totalLength = allAudio.reduce((acc, a) => acc + a.length, 0);
-                const merged = new Float32Array(totalLength);
-                let offset = 0;
-                for (const a of allAudio) {
-                  merged.set(a, offset);
-                  offset += a.length;
-                }
-
-                const wavBuffer = encodeWav(merged, sampleRate);
-                fs.writeFileSync(publicPath, wavBuffer);
-                generated = true;
-                console.log(`[TTS] Kokoro synthesized full audio: ${(totalLength / sampleRate).toFixed(2)}s`);
-              } catch (err) {
-                console.warn('[TTS] Kokoro synthesis error:', err);
+            let deepgramKey = process.env.DEEPGRAM_API_KEY || '';
+            if (!deepgramKey) {
+              const envPath = path.resolve(__dirname, '../.env');
+              if (fs.existsSync(envPath)) {
+                const match = fs.readFileSync(envPath, 'utf8').match(/DEEPGRAM_API_KEY\s*=\s*([a-zA-Z0-9_-]+)/);
+                if (match) deepgramKey = match[1];
               }
             }
 
-            // 2. DEEPGRAM NEURAL TTS (Aura)
-            if (!generated && (voice.startsWith('aura-') || !voice.startsWith('macos-'))) {
-              let deepgramKey = process.env.DEEPGRAM_API_KEY || '';
-              if (!deepgramKey) {
-                const envPath = path.resolve(__dirname, '../.env');
-                if (fs.existsSync(envPath)) {
-                  const envContent = fs.readFileSync(envPath, 'utf8');
-                  const match = envContent.match(/DEEPGRAM_API_KEY\s*=\s*([a-zA-Z0-9_-]+)/);
-                  if (match) deepgramKey = match[1];
-                }
-              }
-
-              if (deepgramKey) {
-                try {
-                  const dgModel = voice.startsWith('aura-') ? voice : 'aura-helios-en';
-                  console.log(`[TTS] Synthesizing with Deepgram Aura model "${dgModel}"...`);
-                  const dgUrl = `https://api.deepgram.com/v1/speak?model=${encodeURIComponent(dgModel)}&encoding=linear16&sample_rate=48000`;
-                  const dgRes = await fetch(dgUrl, {
-                    method: 'POST',
-                    headers: {
-                      Authorization: `Token ${deepgramKey}`,
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ text: cleanText }),
-                  });
-
-                  if (dgRes.ok) {
-                    const audioBuffer = Buffer.from(await dgRes.arrayBuffer());
-                    fs.writeFileSync(publicPath, audioBuffer);
-                    generated = true;
-                  } else {
-                    console.warn('[TTS] Deepgram API returned', dgRes.status, await dgRes.text());
-                  }
-                } catch (e) {
-                  console.warn('[TTS] Deepgram synthesis failed, trying fallback:', e);
-                }
-              }
-            }
-
-            // 3. MACOS NATIVE TTS FALLBACK
-            if (!generated) {
-              try {
-                let macVoice = 'Samantha';
-                if (voice.toLowerCase().includes('daniel')) macVoice = 'Daniel';
-                else if (voice.toLowerCase().includes('alex')) macVoice = 'Alex';
-                else if (voice.toLowerCase().includes('eddy')) macVoice = 'Eddy';
-                else if (voice.toLowerCase().includes('flo')) macVoice = 'Flo';
-                else if (voice.toLowerCase().includes('fred')) macVoice = 'Fred';
-
-                console.log(`[TTS] Synthesizing with macOS voice "${macVoice}"...`);
-                const tmpText = path.join('/tmp', `aideos_script_${Date.now()}.txt`);
-                const tmpAiff = path.join('/tmp', `aideos_voice_${Date.now()}.aiff`);
-                fs.writeFileSync(tmpText, cleanText, 'utf8');
-
-                const say = spawnSync('say', ['-v', macVoice, '-f', tmpText, '-o', tmpAiff]);
-                if (say.status === 0 && fs.existsSync(tmpAiff)) {
-                  spawnSync('ffmpeg', ['-y', '-i', tmpAiff, '-ar', '48000', '-ac', '1', publicPath]);
-                  if (fs.existsSync(publicPath)) {
-                    generated = true;
-                  }
-                }
-                try { fs.unlinkSync(tmpText); fs.unlinkSync(tmpAiff); } catch (_) {}
-              } catch (e) {
-                console.error('[TTS] macOS fallback failed:', e);
-              }
+            try {
+              const result = await synthesizeVoiceover(
+                {
+                  text: cleanText,
+                  voice,
+                  deepgramKey,
+                  googleKey: process.env.GOOGLE_API_KEY || '',
+                  chunk: chunkTextForTTS,
+                  trimSilence,
+                },
+                {
+                  fetch,
+                  kokoro: async (text, kokoroVoice) => {
+                    // Model load is cached by transformers.js after the first call.
+                    const { KokoroTTS } = await import('kokoro-js');
+                    const tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'q8' });
+                    const audio = await tts.generate(text, { voice: kokoroVoice as never });
+                    return { samples: audio.audio, sampleRate: audio.sampling_rate };
+                  },
+                  say: sayToWav,
+                  memoryLimitBytes: readContainerMemoryLimit,
+                  platform: process.platform,
+                },
+              );
+              fs.writeFileSync(publicPath, result.wav);
+              generated = true;
+              console.log(`[TTS] synthesized ${cleanText.length} chars with ${result.provider}`);
+            } catch (err) {
+              if (err instanceof VoiceSynthesisError) synthesisError = err;
+              console.warn('[TTS] synthesis failed:', err);
             }
 
             if (generated) {
@@ -1874,7 +1771,11 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 dispatch,
               });
             } else {
-              sendJson(res, 500, { error: 'Failed to synthesize voiceover audio.' });
+              sendJson(res, 503, {
+                error: 'Failed to synthesize voiceover audio.',
+                detail: synthesisError?.message,
+                attempts: synthesisError?.attempts,
+              });
             }
           }).catch(err => sendJson(res, 500, { error: String(err) }));
           return;
