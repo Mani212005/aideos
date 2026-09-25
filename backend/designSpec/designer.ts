@@ -6,6 +6,10 @@
  *    goes through the same build; the build's errors are fed back for a bounded number of repairs.
  * 3. Templates: the film keeps its compiled template design, marked so the studio flags it.
  * Every path passes the same design check; nothing reaches the film without it.
+ * A passing design is then sampled and ruled on by the vision judge (backend/visionJudge); a frame
+ * it fails goes back to the same synthesis paths with the exact error attached, and the repair
+ * still has to pass the design build to reach the film. The judge never calls Gemini: the server
+ * model repairs only when a caller was passed in.
  */
 
 import { generateText, isGoogleAiConfigured } from "../modelClient";
@@ -16,6 +20,7 @@ import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { dispatchTask } from "../agentBridge/dispatcher";
 import { buildDesign, designDir, formatBuildStatus, readDesignStatus, type DesignBuildStatus } from "./build";
 import { renderDesignBrief, writeDesignBrief } from "./brief";
+import { judgeAndRepair, type JudgeOptions, type JudgeResult } from "../visionJudge/judge";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 
@@ -27,6 +32,8 @@ export interface DesignOutcome {
   source: "agent" | "server-model" | "templates";
   note: string;
   status?: DesignBuildStatus;
+  /** The vision judge's ruling on the finished design, when it ran. */
+  judge?: JudgeResult;
 }
 
 /** Options for designing one film. */
@@ -45,10 +52,12 @@ export interface DesignFilmOptions {
   onProgress?: (message: string) => void;
   /** Studio owner key, so the task reaches the owner's agent connected through `aideos connect`. */
   ownerKey?: string;
+  /** Vision-judge settings, or false to skip it. It is off under the Node test runner unless given here. */
+  judge?: JudgeOptions | false;
 }
 
 // Sends the design task to the connected agent and waits for a passing build or the timeout.
-async function tryAgent(filmId: string, opts: DesignFilmOptions): Promise<DesignBuildStatus | null> {
+async function tryAgent(filmId: string, opts: DesignFilmOptions, instruction?: string): Promise<DesignBuildStatus | null> {
   const requestedAt = new Date().toISOString();
   const film = readFilm(filmId);
   const dispatch = await dispatchTask({
@@ -56,6 +65,7 @@ async function tryAgent(filmId: string, opts: DesignFilmOptions): Promise<Design
     filmId,
     filmTitle: film?.title,
     enableFallback: false,
+    ...(instruction ? { customInstruction: instruction } : {}),
     ...(opts.ownerKey ? { ownerKey: opts.ownerKey } : {}),
   });
   // The prompt only reaches an agent through a connector, tmux or a steering inbox; the queue and
@@ -162,17 +172,36 @@ function markTemplates(filmId: string, note: string): void {
   writeFilm(filmId, { ...film, design: { source: "templates", note } });
 }
 
+// Runs the vision judge on a finished design and sends failed frames back through the path that made it.
+async function judgeDesign(filmId: string, outcome: DesignOutcome, opts: DesignFilmOptions): Promise<DesignOutcome> {
+  if (opts.judge === false || (opts.judge === undefined && process.env.NODE_TEST_CONTEXT)) return outcome;
+  const judgeOptions: JudgeOptions = { skipAgent: opts.skipAgent, ownerKey: opts.ownerKey, onProgress: opts.onProgress, ...(opts.judge ?? {}) };
+  const repair = async (errors: string): Promise<boolean> => {
+    if (outcome.source === "agent") return (await tryAgent(filmId, opts, errors)) !== null;
+    if (!opts.llmCaller) return false;
+    return (await tryServerModel(filmId, opts.llmCaller, opts, `The vision judge ruled these frames wrong. Fix each one, exactly as reported:\n${errors}`)) !== null;
+  };
+  const judge = await judgeAndRepair(filmId, { ...judgeOptions, repair });
+  const note = judge.skipped
+    ? `${outcome.note}; vision judge skipped: ${judge.skipped}`
+    : judge.passed
+      ? `${outcome.note}; vision judge: ${judge.samples.length} frames match`
+      : `${outcome.note}; vision judge: ${judge.failures.length} of ${judge.samples.length} frames still fail`;
+  opts.onProgress?.(note);
+  return { ...outcome, note, judge };
+}
+
 // Gives a film a bespoke design: the agent first, then the server model, then flagged templates.
 export async function designFilm(filmId: string, opts: DesignFilmOptions = {}): Promise<DesignOutcome> {
   writeDesignBrief(filmId);
   if (!opts.skipAgent) {
     const status = await tryAgent(filmId, opts);
-    if (status) return { source: "agent", note: "designed by the connected coding agent", status };
+    if (status) return judgeDesign(filmId, { source: "agent", note: "designed by the connected coding agent", status }, opts);
   }
   const caller = opts.llmCaller === undefined ? await defaultCaller() : opts.llmCaller;
   if (caller) {
     const status = await tryServerModel(filmId, caller, opts);
-    if (status) return { source: "server-model", note: "designed by the server model", status };
+    if (status) return judgeDesign(filmId, { source: "server-model", note: "designed by the server model", status }, opts);
   }
   const note = caller
     ? "bespoke design failed the design check; kept the template design"

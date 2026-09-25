@@ -3,7 +3,10 @@
  * Implements CHOICE over the 7 animated primitives and shot-level visual strategies, each with
  * confidence gating, safe fallback, and fast deterministic heuristic fallback over one shared
  * decision client. The prefetch functions batch every beat of a film into one request (split only
- * past MAX_BATCH_QUESTIONS), so a build costs one round-trip instead of one per beat.
+ * past MAX_BATCH_QUESTIONS), so a build costs one round-trip instead of one per beat. The same
+ * client also runs the vision-judge frameVerdict CHOICE (Match, WrongData, LayoutDefect,
+ * Unreadable, plus accept / accept-with-change / reject on each suggestion): Jev only ever sees
+ * text (narration, on-screen copy, the coding model's note, the image-text embedding score).
  */
 
 import { narrationSupportsVisual } from "./shotVisualCues";
@@ -57,16 +60,60 @@ export const TYPESAFE_ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 /** OpenRouter alpha decisions endpoint. */
 export const OPENROUTER_DECISIONS_ENDPOINT = "https://openrouter.ai/api/alpha/decisions";
 
-/** Rubric criteria descriptions for the 7 primitives passed to Jev CHOICE question. */
+/**
+ * Rubric criteria for the 7 primitives, written by communicative job: each entry says what the
+ * primitive is for, when to pick it and (just as important) when not to, so a near-miss such as a
+ * date read as a metric is ruled out by the rubric rather than caught later.
+ */
 export const PRIMITIVE_CRITERIA: Record<AnimatedPrimitive, string> = {
-  TextReveal: "Kinetic typography reveal for headlines, primary narrative titles, quotes, or spoken thesis statements.",
-  StatCounter: "Large animated numerical counter with units for metrics, performance numbers, benchmarks, percentages, or quantitative gains.",
-  CodeBlock: "Syntax or terminal code block for code snippets, terminal commands, function signatures, or raw script execution.",
-  Card: "Container card grouping related metadata, concept definitions, architectural modules, or structured properties.",
-  Divider: "Thin hairline separator rule separating distinct sections, conceptual phases, or narrative shifts.",
-  IconLabel: "Compact icon with accompanying short text badge or label for status, tags, tools, or metadata flags.",
-  ProgressBar: "Linear or segmented progress indicator for completion, steps, stages, timelines, or percentages toward a target.",
+  TextReveal:
+    "JOB: state the claim. WHEN the spoken phrase is a thesis, quote, definition or headline the viewer should read. WHEN NOT: the phrase carries a figure with a unit (StatCounter), literal code (CodeBlock) or several parts to group (Card).",
+  StatCounter:
+    "JOB: prove a point with a number. WHEN the spoken phrase states a measured quantity with a unit, percentage or multiplier. WHEN NOT: the number is incidental (a date, an ordinal, 'one of') or only progress toward a target (ProgressBar).",
+  CodeBlock:
+    "JOB: show the literal thing that is typed or run. WHEN the spoken phrase names a command, function, snippet or terminal output. WHEN NOT: the phrase only talks about software in general terms (TextReveal or Card).",
+  Card:
+    "JOB: group related parts into one unit. WHEN two or more on-screen items belong together, or a concept is defined with properties. WHEN NOT: there is a single short line (TextReveal) or the previous beat already showed a Card.",
+  Divider:
+    "JOB: mark a change of chapter. WHEN the narration turns ('now', 'next', 'back to') and nothing new needs showing. WHEN NOT: a claim is being made or any content is on screen that the viewer still has to read.",
+  IconLabel:
+    "JOB: tag something in a few words. WHEN the spoken phrase names a tool, status, category or flag that a compact badge can carry. WHEN NOT: the phrase is a full sentence (TextReveal) or a group of items (Card).",
+  ProgressBar:
+    "JOB: show how far along something is. WHEN the spoken phrase describes stages, steps, completion or movement toward a target. WHEN NOT: the percentage is the finding itself (StatCounter) or nothing advances.",
 };
+
+/** Most spoken-phrase candidates offered to Jev for one beat. */
+export const MAX_PHRASE_CANDIDATES = 6;
+
+// Splits narration into short spoken clauses Jev can name as the phrase a pick serves.
+export function candidatePhrases(narration: string | undefined): string[] {
+  const clauses = (narration ?? "")
+    .split(/[.!?;:,]|\s-\s|\b(?:but|and then|so that)\b/i)
+    .map((c) => c.trim().replace(/\s+/g, " "))
+    .filter((c) => c.split(" ").length >= 2 && c.split(" ").length <= 12);
+  return [...new Set(clauses)].slice(0, MAX_PHRASE_CANDIDATES);
+}
+
+// Builds the criteria map (phrase1, phrase2, ...) for the servesPhrase question of one beat.
+function phraseCriteria(phrases: string[]): Record<string, string> {
+  return Object.fromEntries(phrases.map((p, i) => [`phrase${i + 1}`, `The pick serves the spoken phrase: "${p}"`]));
+}
+
+// Maps a raw servesPhrase answer (a key or the phrase itself) back to a spoken phrase, or null.
+function normalizePhrase(raw: string, phrases: string[]): string | null {
+  const clean = raw.trim().toLowerCase();
+  const byKey = /^phrase(\d+)$/.exec(clean.replace(/[^a-z0-9]/g, ""));
+  if (byKey) return phrases[Number(byKey[1]) - 1] ?? null;
+  return phrases.find((p) => p.toLowerCase() === clean) ?? null;
+}
+
+/** Instructions for the primitive CHOICE question. */
+const PRIMITIVE_INSTRUCTIONS =
+  "Pick the one primitive whose communicative job fits the spoken phrase it must serve. Read each WHEN NOT rule before choosing. Prefer a different primitive from the previous beat's pick, and do not repeat what is already on screen.";
+
+/** Instructions for the servesPhrase CHOICE question that accompanies each primitive pick. */
+const PHRASE_INSTRUCTIONS =
+  "Name the spoken phrase your primitive pick serves: the one moment of the narration the viewer should see it for.";
 
 /** State representation evaluated by Jev for primitive selection. */
 export interface JevDecisionState {
@@ -75,6 +122,10 @@ export interface JevDecisionState {
   onscreen?: string[];
   activeComponents?: string[];
   sceneTitle?: string;
+  /** The camera move the shot plays under (cut, pan, zoom-in, zoom-out, hold). */
+  camera?: string;
+  /** The primitive picked for the beat before this one, when known. */
+  previousPick?: string;
 }
 
 /** Options for configuring Jev decision calls. */
@@ -93,6 +144,8 @@ export interface JevChoiceAnswer {
   choice: AnimatedPrimitive;
   confidence: number;
   probabilities: Record<string, number>;
+  /** The spoken phrase the pick serves; null when one was asked for and none valid was named. */
+  phrase?: string | null;
 }
 
 /** Final primitive selection result with provenance and fallback tracking. */
@@ -103,6 +156,8 @@ export interface PrimitiveSelectionResult {
   probabilities?: Record<string, number>;
   rawChoice?: string;
   fallbackReason?: string;
+  /** The spoken phrase the pick was said to serve. */
+  phrase?: string;
 }
 
 // Global injectable mock handler for testing without network requests.
@@ -184,6 +239,7 @@ export function buildDecisionRequest(
   state: JevDecisionState,
   model: string = DEFAULT_JEV_MODEL,
 ): Record<string, unknown> {
+  const phrases = candidatePhrases(state.narration);
   return {
     model,
     state: {
@@ -192,14 +248,14 @@ export function buildDecisionRequest(
       onscreen: state.onscreen || [],
       activeComponents: state.activeComponents || [],
       ...(state.sceneTitle ? { sceneTitle: state.sceneTitle } : {}),
+      ...(state.camera ? { camera: state.camera } : {}),
+      ...(state.previousPick ? { previousPick: state.previousPick } : {}),
     },
     questions: {
-      primitive: {
-        type: "choice",
-        instructions:
-          "Select the single most appropriate animated visual primitive from the 7 design system primitives for this scene.",
-        criteria: PRIMITIVE_CRITERIA,
-      },
+      primitive: { type: "choice", instructions: PRIMITIVE_INSTRUCTIONS, criteria: PRIMITIVE_CRITERIA },
+      ...(phrases.length
+        ? { servesPhrase: { type: "choice", instructions: PHRASE_INSTRUCTIONS, criteria: phraseCriteria(phrases) } }
+        : {}),
     },
   };
 }
@@ -216,7 +272,7 @@ function normalizePrimitiveName(raw: string): AnimatedPrimitive | null {
 }
 
 // Parses the JSON response from the Jev decisions API into a typed JevChoiceAnswer.
-export function parseDecisionResponse(val: unknown): JevChoiceAnswer {
+export function parseDecisionResponse(val: unknown, phrases: string[] = []): JevChoiceAnswer {
   if (!val || typeof val !== "object") {
     throw new Error("Invalid Jev response: expected JSON object");
   }
@@ -280,7 +336,19 @@ export function parseDecisionResponse(val: unknown): JevChoiceAnswer {
     choice: canonicalChoice,
     confidence,
     probabilities,
+    ...(phrases.length ? { phrase: readServedPhrase(answersContainer.servesPhrase, phrases) } : {}),
   };
+}
+
+// Reads the servesPhrase answer into one of the offered spoken phrases, or null when none valid was named.
+function readServedPhrase(data: unknown, phrases: string[]): string | null {
+  const raw =
+    typeof data === "string"
+      ? data
+      : data && typeof data === "object"
+        ? String((data as Record<string, unknown>).choice ?? (data as Record<string, unknown>).value ?? "")
+        : "";
+  return normalizePhrase(raw, phrases);
 }
 
 // Selects the most appropriate primitive deterministically using fast heuristic rules.
@@ -365,7 +433,7 @@ export function heuristicPrimitiveSelection(state: JevDecisionState): AnimatedPr
 }
 
 // Evaluates model choice against confidence thresholds and falls back safely on low confidence.
-export function applyConfidenceGating(
+function gatePrimitiveByConfidence(
   answer: JevChoiceAnswer,
   state: JevDecisionState,
   options?: { complexThreshold?: number; minThreshold?: number },
@@ -374,6 +442,7 @@ export function applyConfidenceGating(
   const minThreshold = options?.minThreshold ?? DEFAULT_MIN_CONFIDENCE_THRESHOLD;
 
   const isComplex = COMPLEX_PRIMITIVES.includes(answer.choice);
+  const phrase = answer.phrase ?? undefined;
 
   // If Jev selects a complex primitive with insufficient confidence, fall back to safe generic primitive
   if (isComplex && answer.confidence < complexThreshold) {
@@ -388,6 +457,7 @@ export function applyConfidenceGating(
       confidence: answer.confidence,
       probabilities: answer.probabilities,
       rawChoice: answer.choice,
+      ...(phrase ? { phrase } : {}),
       fallbackReason: `Low confidence (${answer.confidence.toFixed(2)} < ${complexThreshold}) for complex primitive ${answer.choice}; safely fell back to ${safeFallback}`,
     };
   }
@@ -401,6 +471,7 @@ export function applyConfidenceGating(
       confidence: answer.confidence,
       probabilities: answer.probabilities,
       rawChoice: answer.choice,
+      ...(phrase ? { phrase } : {}),
       fallbackReason: `Confidence (${answer.confidence.toFixed(2)} < ${minThreshold}) below minimum threshold; fell back to heuristic`,
     };
   }
@@ -411,6 +482,44 @@ export function applyConfidenceGating(
     confidence: answer.confidence,
     probabilities: answer.probabilities,
     rawChoice: answer.choice,
+    ...(phrase ? { phrase } : {}),
+  };
+}
+
+// Applies the pick rules a rubric cannot enforce alone: a named phrase for a complex pick, and no back-to-back repeat.
+export function applyConfidenceGating(
+  answer: JevChoiceAnswer,
+  state: JevDecisionState,
+  options?: { complexThreshold?: number; minThreshold?: number },
+): PrimitiveSelectionResult {
+  // A complex primitive that names no spoken phrase it serves is a guess, so it degrades safely.
+  if (answer.phrase === null && COMPLEX_PRIMITIVES.includes(answer.choice)) {
+    const isMultiItem = (state.onscreen && state.onscreen.length > 1) || (state.narration && state.narration.length > 120);
+    const safeFallback: AnimatedPrimitive = isMultiItem ? "Card" : "TextReveal";
+    return {
+      primitive: safeFallback,
+      source: "confidence-fallback",
+      confidence: answer.confidence,
+      probabilities: answer.probabilities,
+      rawChoice: answer.choice,
+      fallbackReason: `${answer.choice} named no spoken phrase it serves; safely fell back to ${safeFallback}`,
+    };
+  }
+  const previous = state.previousPick ?? state.activeComponents?.[state.activeComponents.length - 1];
+  const gated = gatePrimitiveByConfidence(answer, state, options);
+  if (gated.source !== "jev" || gated.primitive !== previous || previous === "TextReveal") return gated;
+  // A repeat of the previous beat's pick gives way to Jev's own runner-up when it is close enough.
+  const top = answer.probabilities[answer.choice] ?? answer.confidence;
+  const runnerUp = Object.entries(answer.probabilities)
+    .map(([name, p]) => ({ name: normalizePrimitiveName(name), p }))
+    .filter((e): e is { name: AnimatedPrimitive; p: number } => e.name !== null && e.name !== previous)
+    .sort((x, y) => y.p - x.p)[0];
+  if (!runnerUp || runnerUp.p < top * 0.6) return gated;
+  return {
+    ...gated,
+    primitive: runnerUp.name,
+    source: "confidence-fallback",
+    fallbackReason: `${previous} repeats the previous beat; used Jev's runner-up ${runnerUp.name} (${runnerUp.p.toFixed(2)})`,
   };
 }
 
@@ -451,7 +560,7 @@ export async function decidePrimitiveWithModel(
     }
 
     const json = (await response.json()) as unknown;
-    return parseDecisionResponse(json);
+    return parseDecisionResponse(json, candidatePhrases(state.narration));
   } catch (err: unknown) {
     if (err instanceof Error && err.name === "AbortError") {
       throw new Error(`Jev decision timed out after ${timeoutMs}ms`);
@@ -855,34 +964,56 @@ export const DEFAULT_JEV_BATCH_TIMEOUT_MS = 6000;
 /** A prefetched Jev answer for one item, or the reason it could not be answered. */
 export type PrefetchedAnswer<A> = { answer: A } | { error: string };
 
-// Asks one CHOICE question per item in as few Jev requests as possible and returns one result per item.
+/** An extra CHOICE question asked alongside each item's main one (for example the phrase a pick serves). */
+interface ExtraQuestion {
+  suffix: string;
+  instructions: string;
+  criteria: Record<string, string>;
+}
+
+// Asks one CHOICE question (plus optional extras) per item in as few Jev requests as possible and returns one result per item.
 async function askChoiceBatch<A>(
   items: Record<string, unknown>[],
   instructions: string,
   criteria: Record<string, string>,
-  parse: (val: unknown, questionKey: string) => A,
+  parse: (val: unknown, questionKey: string, index: number) => A,
   options: JevDecisionOptions | undefined,
   context: string,
+  extras?: (index: number) => ExtraQuestion[],
 ): Promise<PrefetchedAnswer<A>[]> {
   const model = options?.model ?? getJevModel(options?.endpoint ?? getJevEndpoint(options?.apiKey));
   const requestOptions = { ...options, timeoutMs: options?.timeoutMs ?? DEFAULT_JEV_BATCH_TIMEOUT_MS };
+  // Chunks are cut by question count, so an item with extra questions counts for all of them.
   const chunks: number[][] = [];
-  for (let start = 0; start < items.length; start += MAX_BATCH_QUESTIONS) {
-    chunks.push(items.slice(start, start + MAX_BATCH_QUESTIONS).map((_, k) => start + k));
-  }
+  let current: number[] = [];
+  let used = 0;
+  items.forEach((_, i) => {
+    const cost = 1 + (extras ? extras(i).length : 0);
+    if (current.length && used + cost > MAX_BATCH_QUESTIONS) {
+      chunks.push(current);
+      current = [];
+      used = 0;
+    }
+    current.push(i);
+    used += cost;
+  });
+  if (current.length) chunks.push(current);
   const results: PrefetchedAnswer<A>[] = new Array(items.length);
   await Promise.all(
     chunks.map(async (indices) => {
       const questions: Record<string, unknown> = {};
-      indices.forEach((_, k) => {
+      indices.forEach((itemIndex, k) => {
         questions[`q${k}`] = { type: "choice", instructions: `For \`beats[${k}]\`: ${instructions}`, criteria };
+        for (const extra of extras?.(itemIndex) ?? []) {
+          questions[`q${k}${extra.suffix}`] = { type: "choice", instructions: `For \`beats[${k}]\`: ${extra.instructions}`, criteria: extra.criteria };
+        }
       });
       const payload = { model, state: { beats: indices.map((i) => items[i]) }, questions };
       try {
         const json = await postJevRequest(payload, requestOptions);
         indices.forEach((itemIndex, k) => {
           try {
-            results[itemIndex] = { answer: parse(json, `q${k}`) };
+            results[itemIndex] = { answer: parse(json, `q${k}`, itemIndex) };
           } catch (err: unknown) {
             results[itemIndex] = { error: err instanceof Error ? err.message : String(err) };
           }
@@ -941,22 +1072,43 @@ export async function prefetchPrimitiveAnswers(
   options?: JevDecisionOptions,
 ): Promise<PrefetchedAnswer<JevChoiceAnswer>[] | null> {
   if (activeMockHandler || !(options?.apiKey ?? getJevApiKey()) || states.length === 0) return null;
-  const items = states.map((s) => ({
+  const phrases = states.map((s) => candidatePhrases(s.narration));
+  // What is already on screen, the camera and the previous beat travel with each beat. The
+  // previous beat's pick is not known until this batch answers, so its on-screen copy stands in
+  // here and the gate re-checks the repeat rule against the real previous pick.
+  const items = states.map((s, i) => ({
     visual: s.visual || "",
     narration: s.narration || "",
     onscreen: s.onscreen || [],
+    alreadyOnScreen: i > 0 ? states[i - 1].onscreen || [] : [],
+    ...(s.camera ? { camera: s.camera } : {}),
     ...(s.sceneTitle ? { sceneTitle: s.sceneTitle } : {}),
   }));
   return askChoiceBatch(
     items,
-    "select the single most appropriate animated visual primitive from the 7 design system primitives for this scene. Neighbouring beats are context only.",
+    PRIMITIVE_INSTRUCTIONS + " Neighbouring beats are context only.",
     PRIMITIVE_CRITERIA,
-    (val, key) => {
+    (val, key, i) => {
       const parsed = parseChoiceAnswer(val, key, (raw) => normalizePrimitiveName(raw));
-      return { choice: parsed.choice as AnimatedPrimitive, confidence: parsed.confidence, probabilities: parsed.probabilities };
+      let phrase: string | null | undefined;
+      if (phrases[i].length) {
+        try {
+          const named = parseChoiceAnswer(val, `${key}phrase`, (raw) => normalizePhrase(raw, phrases[i]));
+          phrase = named.choice;
+        } catch {
+          phrase = null;
+        }
+      }
+      return {
+        choice: parsed.choice as AnimatedPrimitive,
+        confidence: parsed.confidence,
+        probabilities: parsed.probabilities,
+        ...(phrase !== undefined ? { phrase } : {}),
+      };
     },
     options,
     "prefetchPrimitiveAnswers",
+    (i) => (phrases[i].length ? [{ suffix: "phrase", instructions: PHRASE_INSTRUCTIONS, criteria: phraseCriteria(phrases[i]) }] : []),
   );
 }
 
@@ -968,4 +1120,288 @@ export function resolvePrimitive(
 ): PrimitiveSelectionResult {
   if ("answer" in prefetched) return applyConfidenceGating(prefetched.answer, state, options);
   return { primitive: heuristicPrimitiveSelection(state), source: "heuristic-fallback", fallbackReason: prefetched.error };
+}
+
+/** What Jev rules a sampled frame to be: it matches its intent, or the way it fails. */
+export const FRAME_VERDICTS = ["Match", "WrongData", "LayoutDefect", "Unreadable"] as const;
+
+export type FrameVerdict = (typeof FRAME_VERDICTS)[number];
+
+/** What Jev rules on each concrete suggestion the coding model made about a frame. */
+export const SUGGESTION_VERDICTS = ["accept", "accept-with-change", "reject"] as const;
+
+export type SuggestionVerdict = (typeof SUGGESTION_VERDICTS)[number];
+
+/** Rubric criteria for the frameVerdict CHOICE question, one per verdict. */
+export const FRAME_VERDICT_CRITERIA: Record<FrameVerdict, string> = {
+  Match: "The frame depicts what the narration says and the on-screen copy backs it. Small polish notes do not change this.",
+  WrongData: "What the frame shows contradicts, invents or omits something the narration says (a wrong number, chart kind or subject), or the image-text score is below its threshold with no layout excuse.",
+  LayoutDefect: "The frame's content is right but its composition is broken: overlap, clipping, off-frame or crowded elements, or a collision with the caption band.",
+  Unreadable: "The content is right but cannot be read: text too small, too low contrast, blurred by motion, or on screen too briefly.",
+};
+
+/** Rubric criteria for the per-suggestion CHOICE question. */
+export const SUGGESTION_VERDICT_CRITERIA: Record<SuggestionVerdict, string> = {
+  accept: "The suggestion is concrete, fixes a real problem in this frame and can be applied as written.",
+  "accept-with-change": "The suggestion points at a real problem but its remedy needs adjusting (a different amount, target or wording) before it is applied.",
+  reject: "The suggestion is vague, unrelated to this frame's intent, or would break the narration or the design standard.",
+};
+
+/** Default image-text agreement (0..1) below which a frame counts as not matching its intent. */
+export const DEFAULT_EMBEDDING_THRESHOLD = 0.5;
+
+/** Most questions one frame-verdict request carries. */
+const MAX_FRAME_QUESTIONS = 24;
+
+/** Text-only state Jev rules on for one sampled frame: never pixels, only what was said and written about them. */
+export interface FrameVerdictState {
+  frame?: number;
+  shotId?: string;
+  narration: string;
+  onscreen?: string[];
+  /** The coding model's own opinions on the frame. */
+  note?: string;
+  /** The coding model's concrete suggestions for the frame. */
+  suggestions?: string[];
+  /** Image-text agreement for the frame against the intent text (0..1), or null when none was computed. */
+  embeddingScore?: number | null;
+  embeddingThreshold?: number;
+  /** True when the coding model already repaired what its note describes, so the note is history, not a live defect. */
+  repaired?: boolean;
+}
+
+/** Parsed Jev rulings for one frame and each of its suggestions. */
+export interface FrameVerdictAnswer {
+  choice: FrameVerdict;
+  confidence: number;
+  probabilities: Record<string, number>;
+  suggestions: { choice: SuggestionVerdict; confidence: number }[];
+}
+
+/** Final ruling for a frame with provenance, mirroring the primitive and shot-visual results. */
+export interface FrameVerdictResult {
+  verdict: FrameVerdict;
+  source: "jev" | "confidence-fallback" | "heuristic-fallback";
+  confidence?: number;
+  rawChoice?: string;
+  fallbackReason?: string;
+  suggestionVerdicts: SuggestionVerdict[];
+}
+
+// Global injectable mock handler for frame-verdict decisions in tests.
+let activeFrameVerdictMockHandler:
+  | ((state: FrameVerdictState) => Promise<FrameVerdictAnswer | null> | FrameVerdictAnswer | null)
+  | null = null;
+
+// Sets a mock handler for frame-verdict decisions in tests.
+export function setMockFrameVerdictHandler(handler: typeof activeFrameVerdictMockHandler): void {
+  activeFrameVerdictMockHandler = handler;
+}
+
+// Clears the active mock handler for frame-verdict decisions.
+export function clearMockFrameVerdictHandler(): void {
+  activeFrameVerdictMockHandler = null;
+}
+
+// Normalizes a raw string to a canonical FrameVerdict if valid.
+function normalizeFrameVerdictName(raw: string): FrameVerdict | null {
+  const clean = raw.trim().toLowerCase().replace(/[^a-z]/g, "");
+  return FRAME_VERDICTS.find((v) => v.toLowerCase() === clean) ?? null;
+}
+
+// Normalizes a raw string to a canonical SuggestionVerdict if valid.
+function normalizeSuggestionVerdictName(raw: string): SuggestionVerdict | null {
+  const clean = raw.trim().toLowerCase().replace(/[^a-z]/g, "");
+  return SUGGESTION_VERDICTS.find((v) => v.replace(/-/g, "") === clean) ?? null;
+}
+
+// Builds the text-only state object for one frame as Jev receives it.
+function frameStateForJev(state: FrameVerdictState): Record<string, unknown> {
+  return {
+    narration: state.narration,
+    onscreen: state.onscreen ?? [],
+    modelNote: state.note ?? "",
+    ...(state.repaired ? { repaired: true } : {}),
+    suggestions: state.suggestions ?? [],
+    embedding: {
+      score: typeof state.embeddingScore === "number" ? state.embeddingScore : null,
+      threshold: state.embeddingThreshold ?? DEFAULT_EMBEDDING_THRESHOLD,
+    },
+  };
+}
+
+/** Instructions for the frameVerdict CHOICE question. */
+const FRAME_VERDICT_INSTRUCTIONS =
+  "Rule on the sampled frame from the narration, the on-screen copy, the coding model's note and the image-text embedding score against its threshold. Choose Match unless the evidence shows one specific failure.";
+
+/** Instructions for each suggestion CHOICE question. */
+const SUGGESTION_VERDICT_INSTRUCTIONS =
+  "Rate the coding model's suggestion at this index of `suggestions` for this frame: accept it, accept it with a change, or reject it.";
+
+// Builds the request payload for one frame's verdict and suggestion ratings.
+export function buildFrameVerdictRequest(state: FrameVerdictState, model: string = DEFAULT_JEV_MODEL): Record<string, unknown> {
+  const questions: Record<string, unknown> = {
+    frameVerdict: { type: "choice", instructions: FRAME_VERDICT_INSTRUCTIONS, criteria: FRAME_VERDICT_CRITERIA },
+  };
+  (state.suggestions ?? []).forEach((_, j) => {
+    questions[`suggestion${j}`] = {
+      type: "choice",
+      instructions: `${SUGGESTION_VERDICT_INSTRUCTIONS} (index ${j})`,
+      criteria: SUGGESTION_VERDICT_CRITERIA,
+    };
+  });
+  return { model, state: frameStateForJev(state), questions };
+}
+
+// Parses one frame's verdict and suggestion ratings out of a response, reading keys with a prefix.
+function parseFrameVerdictAnswer(val: unknown, frameKey: string, suggestionKey: (j: number) => string, count: number): FrameVerdictAnswer {
+  const verdict = parseChoiceAnswer(val, frameKey, (raw) => normalizeFrameVerdictName(raw));
+  const suggestions: FrameVerdictAnswer["suggestions"] = [];
+  for (let j = 0; j < count; j++) {
+    try {
+      const s = parseChoiceAnswer(val, suggestionKey(j), (raw) => normalizeSuggestionVerdictName(raw));
+      suggestions.push({ choice: s.choice as SuggestionVerdict, confidence: s.confidence });
+    } catch {
+      // A missing rating falls back to the heuristic for that one suggestion.
+      suggestions.push({ choice: "reject", confidence: 0 });
+    }
+  }
+  return { choice: verdict.choice as FrameVerdict, confidence: verdict.confidence, probabilities: verdict.probabilities, suggestions };
+}
+
+// Parses the JSON response for a single frame-verdict request.
+export function parseFrameVerdictResponse(val: unknown, suggestionCount = 0): FrameVerdictAnswer {
+  return parseFrameVerdictAnswer(val, "frameVerdict", (j) => `suggestion${j}`, suggestionCount);
+}
+
+// Rates one suggestion deterministically: concrete text tied to a real defect is accepted, filler is rejected.
+export function heuristicSuggestionVerdict(suggestion: string, frameVerdict: FrameVerdict): SuggestionVerdict {
+  const text = suggestion.trim();
+  if (text.split(/\s+/).filter(Boolean).length < 4 || /\b(redo|start over|everything|make it better|improve)\b/i.test(text)) return "reject";
+  return frameVerdict === "Match" ? "accept-with-change" : "accept";
+}
+
+// Rules on a frame deterministically from the model's note and the embedding score, for when Jev cannot answer.
+export function heuristicFrameVerdict(state: FrameVerdictState): FrameVerdict {
+  // A note about a defect the model has already repaired describes history, so only the score still counts.
+  const note = state.repaired ? "" : `${state.note ?? ""} ${(state.suggestions ?? []).join(" ")}`.toLowerCase();
+  if (/\b(unreadable|illegible|too small|tiny|low contrast|blurr?ed|cannot read|hard to read)\b/.test(note)) return "Unreadable";
+  if (/\b(overlap|overlaps|clipp?ed|cut off|off-frame|off screen|crowded|collides|collision|misaligned)\b/.test(note)) return "LayoutDefect";
+  if (/\b(wrong number|wrong data|contradicts|does not match|mismatch|not what is said|invented|missing the)\b/.test(note)) return "WrongData";
+  const threshold = state.embeddingThreshold ?? DEFAULT_EMBEDDING_THRESHOLD;
+  if (typeof state.embeddingScore === "number" && state.embeddingScore < threshold) return "WrongData";
+  return "Match";
+}
+
+// Evaluates a frame answer against confidence thresholds and falls back to the heuristic when unsure.
+export function applyFrameVerdictGating(
+  answer: FrameVerdictAnswer,
+  state: FrameVerdictState,
+  options?: { complexThreshold?: number; minThreshold?: number },
+): FrameVerdictResult {
+  const minThreshold = options?.minThreshold ?? DEFAULT_MIN_CONFIDENCE_THRESHOLD;
+  const defectThreshold = options?.complexThreshold ?? DEFAULT_SHOT_COMPLEX_CONFIDENCE_THRESHOLD;
+  const suggestions = state.suggestions ?? [];
+  const unsure = answer.confidence < minThreshold || (answer.choice !== "Match" && answer.confidence < defectThreshold);
+  const verdict = unsure ? heuristicFrameVerdict(state) : answer.choice;
+  const suggestionVerdicts = suggestions.map((text, j) => {
+    const rated = answer.suggestions[j];
+    return rated && rated.confidence >= minThreshold ? rated.choice : heuristicSuggestionVerdict(text, verdict);
+  });
+  return {
+    verdict,
+    source: unsure ? "confidence-fallback" : "jev",
+    confidence: answer.confidence,
+    rawChoice: answer.choice,
+    ...(unsure
+      ? { fallbackReason: `Confidence (${answer.confidence.toFixed(2)}) too low for ${answer.choice}; fell back to heuristic` }
+      : {}),
+    suggestionVerdicts,
+  };
+}
+
+// Builds the result for a frame the heuristic ruled on because Jev was not used or failed.
+function heuristicFrameResult(state: FrameVerdictState, reason: string): FrameVerdictResult {
+  const verdict = heuristicFrameVerdict(state);
+  return {
+    verdict,
+    source: "heuristic-fallback",
+    fallbackReason: reason,
+    suggestionVerdicts: (state.suggestions ?? []).map((s) => heuristicSuggestionVerdict(s, verdict)),
+  };
+}
+
+// Rules on every sampled frame with one shared Jev client: mock, else batched live requests, else heuristic.
+export async function judgeFrameVerdicts(
+  states: FrameVerdictState[],
+  options?: JevDecisionOptions,
+): Promise<FrameVerdictResult[]> {
+  if (activeFrameVerdictMockHandler) {
+    return Promise.all(
+      states.map(async (state) => {
+        try {
+          const answer = await activeFrameVerdictMockHandler!(state);
+          return answer ? applyFrameVerdictGating(answer, state, options) : heuristicFrameResult(state, "Mock handler returned nothing");
+        } catch (err: unknown) {
+          return heuristicFrameResult(state, `Mock handler error: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }),
+    );
+  }
+  const apiKey = options?.apiKey ?? getJevApiKey();
+  if (!apiKey) return states.map((s) => heuristicFrameResult(s, "No Jev API key configured in environment"));
+  if (states.length === 0) return [];
+
+  // Frames are cut into requests by question count; each frame asks its verdict plus one question per suggestion.
+  const model = options?.model ?? getJevModel(options?.endpoint ?? getJevEndpoint(apiKey));
+  const requestOptions = { ...options, timeoutMs: options?.timeoutMs ?? DEFAULT_JEV_BATCH_TIMEOUT_MS };
+  const chunks: number[][] = [];
+  let current: number[] = [];
+  let used = 0;
+  states.forEach((s, i) => {
+    const cost = 1 + (s.suggestions?.length ?? 0);
+    if (current.length && used + cost > MAX_FRAME_QUESTIONS) {
+      chunks.push(current);
+      current = [];
+      used = 0;
+    }
+    current.push(i);
+    used += cost;
+  });
+  if (current.length) chunks.push(current);
+
+  const results: FrameVerdictResult[] = new Array(states.length);
+  await Promise.all(
+    chunks.map(async (indices) => {
+      const questions: Record<string, unknown> = {};
+      indices.forEach((frameIndex, k) => {
+        questions[`f${k}`] = { type: "choice", instructions: `For \`frames[${k}]\`: ${FRAME_VERDICT_INSTRUCTIONS}`, criteria: FRAME_VERDICT_CRITERIA };
+        (states[frameIndex].suggestions ?? []).forEach((_, j) => {
+          questions[`f${k}s${j}`] = {
+            type: "choice",
+            instructions: `For \`frames[${k}]\`: ${SUGGESTION_VERDICT_INSTRUCTIONS} (index ${j})`,
+            criteria: SUGGESTION_VERDICT_CRITERIA,
+          };
+        });
+      });
+      const payload = { model, state: { frames: indices.map((i) => frameStateForJev(states[i])) }, questions };
+      try {
+        const json = await postJevRequest(payload, requestOptions);
+        indices.forEach((frameIndex, k) => {
+          const state = states[frameIndex];
+          try {
+            const answer = parseFrameVerdictAnswer(json, `f${k}`, (j) => `f${k}s${j}`, state.suggestions?.length ?? 0);
+            results[frameIndex] = applyFrameVerdictGating(answer, state, options);
+          } catch (err: unknown) {
+            results[frameIndex] = heuristicFrameResult(state, err instanceof Error ? err.message : String(err));
+          }
+        });
+      } catch (err: unknown) {
+        warnJevCallFailure("judgeFrameVerdicts", err);
+        const reason = err instanceof Error ? err.message : String(err);
+        for (const frameIndex of indices) results[frameIndex] = heuristicFrameResult(states[frameIndex], reason);
+      }
+    }),
+  );
+  return results;
 }

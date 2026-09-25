@@ -13,7 +13,8 @@ export type AgentEventType =
   | "produce_film"
   | "canvas_updated"
   | "critique"
-  | "design_film";
+  | "design_film"
+  | "frame_review";
 
 export type AgentTaskStatus =
   | "pending"
