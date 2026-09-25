@@ -242,26 +242,7 @@ export function selectVisualIntentFallback(input: VisualDecisionInput): VisualDe
     };
   }
 
-  // 7. Relational trade-offs between competing physical quantities -> MetaphorViewer (balance-scale)
-  if (
-    (lower.includes("trade-off") || lower.includes("dual-phase design") || lower.includes("opposing constraints")) &&
-    input.prevMetaphor !== "balance-scale"
-  ) {
-    return {
-      blockType: "MetaphorViewer",
-      metaphor: {
-        kind: "balance-scale",
-        leftLabel: "Primary Constraint",
-        rightLabel: "Tradeoff Penalty",
-        caption: "Equilibrium Boundary",
-      },
-      headline,
-      rationale: `Narration describes competing engineering constraints that demand equilibrium; Balance Scale illustrates mutual trade-off.`,
-      confidence: 0.85,
-    };
-  }
-
-  // 8. Default to clean kinetic typography for narrative prose and transitions
+  // 7. Default to clean kinetic typography for narrative prose and transitions
   return {
     blockType: "none",
     headline,

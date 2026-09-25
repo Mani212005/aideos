@@ -430,7 +430,7 @@ Let us set up the environment in seconds.
 
 test("Jev: buildBlocksForPrimitive builds valid blocks for all 7 primitives", () => {
   const group = {
-    onscreen: ["Headline", "Secondary details"],
+    onscreen: ["Headline", "Secondary details", "Run `npm test` now"],
     visual: "Visual prompt text",
     narration: "Spoken text with 50% gain and 5x multiplier.",
   };
@@ -514,5 +514,13 @@ test("Jev: selectPrimitive logs a non-silent warning and still falls back when a
     console.warn = originalWarn;
     if (originalKey === undefined) delete process.env.TYPESAFE_API_KEY;
     else process.env.TYPESAFE_API_KEY = originalKey;
+  }
+});
+
+test("Jev: buildBlocksForPrimitive never invents a counter, snippet or bar the beat does not carry", () => {
+  const bare = { onscreen: ["Just words"], narration: "Nothing quantitative is said here." };
+  for (const prim of ["StatCounter", "CodeBlock", "ProgressBar"] as const) {
+    const blocks = buildBlocksForPrimitive(prim, bare, "Title");
+    assert.ok(blocks.every((b) => b.c === "TextReveal"), `${prim} must fall back to the text card`);
   }
 });

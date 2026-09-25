@@ -86,3 +86,14 @@ test("DeviceData: position labels need no narrated number, and empty optional fi
   assert.equal(result.refusals.size, 0, [...result.refusals.values()].join("; "));
   assert.equal((result.blocks.get("b:MatrixGrid") as { sweep: string }).sweep, "row");
 });
+
+test("groundMetaphorContent: refuses stock defaults, invented labels and unknown kinds; keeps grounded payloads", async () => {
+  const { groundMetaphorContent } = await import("./deviceData");
+  const source = { narration: "Speed trades off against accuracy in every design.", onscreen: [] };
+  assert.ok("reason" in groundMetaphorContent({ kind: "balance-scale", leftLabel: "Speed" }, source), "an unwritten label falls back to stock copy");
+  assert.ok("reason" in groundMetaphorContent({ kind: "balance-scale", leftLabel: "Speed", rightLabel: "Latency", caption: "Design" }, source), "an ungrounded label is refused");
+  assert.ok("reason" in groundMetaphorContent({ kind: "nope" }, source));
+  assert.ok("reason" in groundMetaphorContent(undefined, source));
+  const ok = groundMetaphorContent({ kind: "balance-scale", leftLabel: "Speed", rightLabel: "Accuracy", caption: "Design" }, source);
+  assert.ok("content" in ok && ok.content.kind === "balance-scale");
+});

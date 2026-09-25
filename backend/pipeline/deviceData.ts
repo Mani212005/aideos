@@ -9,7 +9,7 @@
  */
 
 import { generateText, isGoogleAiConfigured } from "../modelClient";
-import { blockSchema, type Block } from "../../src/dl/schema";
+import { blockSchema, metaphorContentSchema, type Block, type MetaphorContent } from "../../src/dl/schema";
 import { SHOT_COMPLEX_VISUALS, type ShotVisual } from "../jev";
 import { numbersIn } from "../shotVisualCues";
 
@@ -102,6 +102,11 @@ function shownText(block: Block): string[] {
   for (const k of ["caption", "xLabel", "yLabel", "endLabel", "rowLabel", "colLabel", "valueLabel", "prompt", "note", "bottomLabel", "topLabel", "label"]) {
     if (typeof b[k] === "string") out.push((b[k] as string).replace(/_{3,}/g, " "));
   }
+  for (const k of ["leftLabel", "rightLabel", "levelLabel", "quoteText", "stampText", "title", "subtitle"]) {
+    if (typeof b[k] === "string") out.push(b[k] as string);
+  }
+  if (Array.isArray(b.gearLabels)) out.push(...(b.gearLabels as string[]));
+  if (b.content && typeof b.content === "object") out.push(...shownText(b.content as Block));
   for (const k of ["tokens", "ticks"]) if (Array.isArray(b[k])) out.push(...(b[k] as string[]));
   if (Array.isArray(b.items)) out.push(...(b.items as Array<{ label: string }>).map((i) => i.label));
   if (Array.isArray(b.layers)) out.push(...(b.layers as Array<string | { label: string; dim?: string }>).flatMap((l) => (typeof l === "string" ? [l] : [l.label, l.dim ?? ""])));
@@ -199,4 +204,26 @@ export async function authorDeviceData(requests: DeviceRequest[], caller: Device
 export async function defaultDeviceCaller(): Promise<DeviceLlmCaller | null> {
   if (!isGoogleAiConfigured()) return null;
   return (prompt, systemInstruction) => generateText(prompt, { systemInstruction, temperature: 0.2 });
+}
+
+// Checks a model-authored metaphor payload as written: every label the film shows must be present
+// (never filled from the schema's stock defaults), parse against the film schema and come from the
+// beat's own words. Returns the payload to draw, or the reason it is refused (beat keeps its text).
+export function groundMetaphorContent(
+  raw: unknown,
+  source: { narration: string; onscreen: string[]; sceneTitle?: string },
+): { content: MetaphorContent } | { reason: string } {
+  if (!raw || typeof raw !== "object") return { reason: "the model authored no metaphor content" };
+  const kind = (raw as { kind?: unknown }).kind;
+  const option = metaphorContentSchema.options.find((o) => o.shape.kind.value === kind);
+  if (!option) return { reason: `unknown metaphor kind "${String(kind)}"` };
+  // A defaulted string field is stock copy the model never wrote, so it must be sent explicitly.
+  const missing = Object.entries(option.shape).find(
+    ([k, field]) => k !== "kind" && field.def.type === "default" && (raw as Record<string, unknown>)[k] === undefined,
+  );
+  if (missing) return { reason: `the model left "${missing[0]}" unwritten, which would fall back to stock copy` };
+  const parsed = metaphorContentSchema.safeParse(raw);
+  if (!parsed.success) return { reason: `not a valid ${String(kind)}: ${parsed.error.issues[0]?.message ?? "schema mismatch"}` };
+  const dishonest = checkDeviceHonesty({ c: "MetaphorViewer", content: parsed.data }, source);
+  return dishonest ? { reason: dishonest } : { content: parsed.data };
 }

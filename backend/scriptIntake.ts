@@ -602,8 +602,10 @@ export function buildBlocksForPrimitive(
       const match = searchTarget.match(
         /\b(\d+(?:\.\d+)?)\s*(%|percent\b|x\b|times\b|ms\b|fps\b|gb\b|mb\b|tb\b|k\b|m\b|b\b|billion\b|million\b|trillion\b)?/i,
       );
-      const val = match && match[1] ? parseFloat(match[1]) : 100;
-      const rawSuffix = match?.[2] ? (match[2].toLowerCase() === "times" ? "x" : match[2]) : undefined;
+      // No number in the beat means no counter: the beat keeps its text rather than a made-up 100.
+      if (!match || !match[1]) return buildBlocksForPrimitive("TextReveal", group, fallbackTitle);
+      const val = parseFloat(match[1]);
+      const rawSuffix = match[2] ? (match[2].toLowerCase() === "times" ? "x" : match[2]) : undefined;
       const label = (group.onscreen[0] || fallbackTitle || "Key Metric").slice(0, 44);
       return [
         {
@@ -619,14 +621,15 @@ export function buildBlocksForPrimitive(
     case "CodeBlock": {
       const fullText = `${group.onscreen.join("\n")}\n${group.visual || ""}`;
       const codeMatch = fullText.match(/`([^`]+)`/);
-      const code = (codeMatch ? codeMatch[1] : group.onscreen[0] || group.visual || "console.log('ready');").slice(0, 300);
+      // Only code the script actually writes is shown; there is no stand-in snippet.
+      if (!codeMatch) return buildBlocksForPrimitive("TextReveal", group, fallbackTitle);
+      const code = codeMatch[1].slice(0, 300);
       const caption = (group.onscreen[0] || fallbackTitle || "Snippet").slice(0, 60);
       return [
         {
           c: "CodeBlock",
           text: code,
           code,
-          language: "typescript",
           caption,
         },
       ];
@@ -662,11 +665,14 @@ export function buildBlocksForPrimitive(
     }
     case "ProgressBar": {
       const label = (group.onscreen[0] || fallbackTitle || "Progress").slice(0, 44);
+      // The fill is a percentage the beat says; with none, the bar is not drawn (no canned 75%).
+      const pct = /\b(\d{1,3}(?:\.\d+)?)\s*(?:%|percent\b)/i.exec(`${group.narration || ""} ${group.onscreen.join(" ")}`);
+      if (!pct || Number(pct[1]) > 100) return buildBlocksForPrimitive("TextReveal", group, fallbackTitle);
       return [
         {
           c: "ProgressBar",
           text: label,
-          value: 0.75,
+          value: Number(pct[1]) / 100,
           label,
         },
       ];
