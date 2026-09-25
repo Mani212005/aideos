@@ -129,6 +129,13 @@ Tools:
 | `aideos_claim_task`      | Claim a pending task to begin execution and prevent hybrid fallback.       |
 | `aideos_complete_task`   | Mark a claimed agent task as completed with summary and execution results. |
 | `aideos_report_step`     | Report execution step, tool call, or validation check to live Agent Trace. |
+| `aideos_design_brief`    | Fetch the design brief for a film package.                                 |
+| `aideos_read_file`       | Read a film design spec, SVG visual, or status JSON file.                  |
+| `aideos_write_file`      | Write design.json or visuals SVG in a film package.                        |
+| `aideos_design_build`    | Compile design.json, run design checks, and write the passing film.        |
+| `aideos_design_check`    | Run design checks (schema, palette, typography, pacing, honest numbers).   |
+| `aideos_frame_stills`    | Fetch sampled 1920x1080 review stills as images with frame metadata.       |
+| `aideos_submit_frame_review` | Submit notes, suggestions, and image-text similarity scores.           |
 
 A full render takes tens of minutes, so `aideos_produce_film` never blocks: it starts the run in
 the background and hands back a `runId` for the caller to poll. Run records live in the server

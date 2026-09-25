@@ -282,7 +282,7 @@ An individual vector path inside a limb:
 * `buildProseTransformSystemInstruction()` (`backend/pipeline/director.ts`): Assembles the system instruction for transforming raw prose into structured scenes, visual directions, on-screen text, and narration beats.
 * `compileFilmFromScreenplayAsync(script, narration, shotDurations, options, jevOptions)` (`backend/pipeline/design.ts`): The design stage's compile path. Compiles screenplay and narration spine into a validated `Film`, asking Jev `selectShotVisual` (see `backend/jev.ts`) only for beats that could take a device, and emitting a device only when `backend/shotVisualCues.ts` finds its data in the narration and the beat has on-screen copy to headline it.
 * `renderFormat(slug, format, options)` (`backend/pipeline/render.ts`): Drives Remotion render with headless verification and contact sheet generation.
-* `startMcpServer()` (`backend/mcp/server.ts`): Exposes the production pipeline and agent bridge as an MCP stdio server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`, `aideos_edit_film`, `aideos_get_pending_tasks`, `aideos_claim_task`, `aideos_complete_task`, and `aideos_report_step`.
+* `startMcpServer()` (`backend/mcp/server.ts`): Exposes the production pipeline, design tools, and agent bridge as an MCP stdio server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`, `aideos_edit_film`, `aideos_get_pending_tasks`, `aideos_claim_task`, `aideos_complete_task`, `aideos_report_step`, `aideos_design_brief`, `aideos_read_file`, `aideos_write_file`, `aideos_design_build`, `aideos_design_check`, `aideos_frame_stills`, and `aideos_submit_frame_review`.
 
 ### `backend/pipeline/filmStore.ts`
 * `ROOT`: Absolute path to project root directory.
@@ -320,6 +320,25 @@ An individual vector path inside a limb:
 * `parseDecisionResponse(val)`: Validates and parses decision response from Jev endpoint into typed `JevChoiceAnswer`.
 * `setMockJevHandler(handler)`, `getMockJevHandler()`, `clearMockJevHandler()`: Test hooks for injecting mock Jev decisions without live network calls.
 * `selectShotVisual(state, options)`: Chooses a shot-level visual (`Text`, `StatCounter`, `TokenStrip`, `Plot`, `MatrixGrid`, `Distribution`, `LayerStack`, `ScaleBar`) with the same confidence gating and heuristic fallback; `setMockShotVisualHandler`/`clearMockShotVisualHandler` are its test hooks.
+* `judgeFrameVerdicts(states, options)`: Evaluates sampled scene-film frames against narration and notes (`Match`, `WrongData`, `LayoutDefect`, `Unreadable`) and rates suggestions (`accept`, `accept-with-change`, `reject`) using text-only Jev CHOICE with confidence gating and heuristic fallback.
+* `buildFrameVerdictRequest(state, model)`: Constructs payload for frame-verdict decisions.
+* `parseFrameVerdictResponse(val, suggestionCount)`: Parses response for a single frame-verdict request.
+* `heuristicFrameVerdict(state)`, `heuristicSuggestionVerdict(suggestion, frameVerdict)`: Deterministic heuristic fallbacks for frame verdicts and suggestion ratings.
+* `setMockFrameVerdictHandler(handler)`, `clearMockFrameVerdictHandler()`: Test hooks for injecting mock frame-verdict decisions.
+* `candidatePhrases(narration)`: Extracts candidate spoken clauses for the `servesPhrase` question.
+* `PRIMITIVE_CRITERIA`: Rubric criteria for the 7 animated primitives written by communicative job (JOB, WHEN, WHEN NOT).
+
+### `backend/visionJudge/` (Rendered Frame Vision Judge & Embedding Review Loop)
+* `judgeFilm(filmId, options)` (`backend/visionJudge/judge.ts`): Judges a designed scene film's rendered frames through 5-7 frame sampling, coding agent critique and image-text similarity scoring, per-frame embedding logging, and text-only Jev rulings.
+* `judgeAndRepair(filmId, options)` (`backend/visionJudge/judge.ts`): Bounded repair loop handing exact failure errors back to synthesis for automated fixing.
+* `describeFailure(sample, narration)` (`backend/visionJudge/judge.ts`): Formats exact error string from a failed sample and suggestions for synthesis retry.
+* `renderSamples(filmId, film, options)` (`backend/visionJudge/sampler.ts`): Samples every 5-7th frame and rasterizes each once to a verified 1920x1080 PNG via headless Chrome.
+* `sampleFrameNumbers(totalFrames, options)`, `clampStride(stride)`, `describeFrame(film, frame)` (`backend/visionJudge/sampler.ts`): Frame index sampling helpers with 5-7 stride clamping and frame narration/on-screen metadata extraction.
+* `writeAgentReview(filmId, raw, now)`, `readAgentReview(filmId, since)` (`backend/visionJudge/agentReview.ts`): Validates and persists/reads the coding model's frame review (`design/judge/agent-report.json`).
+* `appendEmbeddingLog(filmId, entries)` (`backend/visionJudge/agentReview.ts`): Appends per-frame similarity scores and thresholds to `design/judge/embedding-log.jsonl`.
+
+### `backend/mcp/designTools.ts` (Design & Review MCP Tools)
+* `registerDesignTools(server)`: Registers sandboxed MCP tools for reading briefs (`aideos_design_brief`), inspecting design files (`aideos_read_file`), writing design specs and SVGs (`aideos_write_file`), building designs (`aideos_design_build`), validating against design rules (`aideos_design_check`), fetching sampled review stills (`aideos_frame_stills`), and submitting coding model frame reviews (`aideos_submit_frame_review`).
 
 ### `backend/scriptIntake.ts`
 * `parseClaudeScript(raw)`: Parses a raw Claude or legacy screenplay into structured `ScriptSegment` items containing ordered visual, narration, and on-screen beats.
