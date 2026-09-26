@@ -403,6 +403,30 @@ function filmApiPlugin(): Plugin {
   };
 }
 
+// Answers a refused agent token with why it ended (replaced, disconnected, tab closed, or unknown).
+function sendEnded(res: ServerResponse, link: { replacementNote(t?: string): any; endReason(t?: string): string }, token: string | undefined): void {
+  const replacedBy = link.replacementNote(token);
+  const reason = replacedBy ? 'replaced' : link.endReason(token);
+  const error =
+    reason === 'replaced' && replacedBy
+      ? `this connection was replaced by ${replacedBy.agentLabel} (${replacedBy.machine}); that agent now gets the work`
+      : reason === 'disconnected'
+        ? 'you disconnected this agent in the studio'
+        : reason === 'tab-closed'
+          ? 'the studio tab was closed, so the link ended; open the studio and connect again'
+          : 'this connection is not recognised by the studio; connect again from Connect agent';
+  sendJson(res, 401, { error, reason, ...(replacedBy ? { replacedBy } : {}) });
+}
+
+// Summarises an MCP tools/call request as one activity line (tool name and the file it touches), or null.
+function describeToolCall(body: unknown): string | null {
+  const b = body as { method?: string; params?: { name?: string; arguments?: Record<string, unknown> } } | null;
+  if (b?.method !== 'tools/call' || !b.params?.name || b.params.name === 'aideos_wait_for_task') return null;
+  const args = b.params.arguments ?? {};
+  const target = [args.path, args.filmId, args.film, args.title].find((v) => typeof v === 'string');
+  return `${b.params.name.replace(/^aideos_/, '')}${target ? ` ${String(target).slice(0, 120)}` : ''}`;
+}
+
 // Serves the agent link: pairing, the connector's task poll and results, status, and the remote MCP tools.
 async function handleAgentLink(req: IncomingMessage, res: ServerResponse, url: string): Promise<void> {
   const { agentLink, LINK_AGENTS } = await import('../backend/agentLink/store.ts');
@@ -414,14 +438,22 @@ async function handleAgentLink(req: IncomingMessage, res: ServerResponse, url: s
     return;
   }
   if (url === '/api/agent-link/pair' && req.method === 'POST') {
-    const body = (await readBody(req).catch(() => ({}))) as { agent?: string };
-    const agent = LINK_AGENTS.includes(body?.agent as never) ? body.agent : 'claude';
-    const pairing = link.startPairing(ownerOf(req));
+    const body = (await readBody(req).catch(() => ({}))) as { agent?: string; mode?: string };
+    const agent = (LINK_AGENTS.includes(body?.agent as never) ? body.agent : 'claude') as (typeof LINK_AGENTS)[number];
     const apiUrl = publicApiUrl(req);
+    if (body?.mode === 'agent') {
+      const { buildAgentInstructions } = await import('../backend/agentLink/connectInstructions.ts');
+      const linked = link.startAgentPairing(ownerOf(req), agent);
+      return sendJson(res, 200, { ownerKey: linked.ownerKey, apiUrl, mode: 'agent', ...buildAgentInstructions(agent, apiUrl, linked.token) });
+    }
+    const pairing = link.startPairing(ownerOf(req));
     return sendJson(res, 200, {
-      ...pairing,
+      ownerKey: pairing.ownerKey,
+      code: pairing.code,
+      expiresAt: pairing.expiresAt,
+      mode: 'connector',
       apiUrl,
-      command: `curl -fsSL ${apiUrl}/api/agent-link/connect.mjs -o aideos-connect.mjs && node aideos-connect.mjs ${pairing.code} --agent ${agent} --url ${apiUrl}`,
+      command: `curl -fsSL ${apiUrl}/api/agent-link/connect.mjs -o aideos-connect.mjs && node aideos-connect.mjs ${pairing.pairingToken} --agent ${agent} --url ${apiUrl}`,
     });
   }
   if (url === '/api/agent-link/claim' && req.method === 'POST') {
@@ -433,15 +465,7 @@ async function handleAgentLink(req: IncomingMessage, res: ServerResponse, url: s
   }
   if (url === '/api/agent-link/next' && req.method === 'GET') {
     const task = await link.next(bearerOf(req));
-    if (task === 'unauthorized') {
-      const replacedBy = link.replacementNote(bearerOf(req));
-      return sendJson(res, 401, {
-        error: replacedBy
-          ? `this connection was replaced by ${replacedBy.agentLabel} (${replacedBy.machine}); that agent now gets the work`
-          : 'this connection was removed or the studio forgot it; pair again',
-        ...(replacedBy ? { replacedBy } : {}),
-      });
-    }
+    if (task === 'unauthorized') return sendEnded(res, link, bearerOf(req));
     if (!task) {
       res.statusCode = 204;
       res.end();
@@ -454,22 +478,42 @@ async function handleAgentLink(req: IncomingMessage, res: ServerResponse, url: s
     const ok = link.report(bearerOf(req), { taskId: String(body?.taskId ?? ''), ok: body?.ok === true, summary: String(body?.summary ?? '') });
     return sendJson(res, ok ? 200 : 401, { ok });
   }
+  if (url === '/api/agent-link/activity' && req.method === 'GET') {
+    const since = Number(new URL(req.url ?? '', 'http://x').searchParams.get('since') ?? 0) || 0;
+    const lines = link.activity(bearerOf(req), since);
+    if (!lines) return sendEnded(res, link, bearerOf(req));
+    return sendJson(res, 200, { activity: lines });
+  }
   if (url === '/api/agent-link/status' && req.method === 'GET') {
+    // The browser polling this is its heartbeat: the link ends when the tab stops asking.
     return sendJson(res, 200, link.status(ownerOf(req)));
   }
   if (url === '/api/agent-link' && req.method === 'DELETE') {
     return sendJson(res, 200, { ok: link.disconnect(ownerOf(req)) });
   }
   if (url === '/api/mcp') {
-    // Only a paired connector may use the tools. Stateless: one server and transport per request.
-    if (!link.isConnector(bearerOf(req))) return sendJson(res, 401, { error: 'a paired aideos connect token is required' });
+    // Only a paired agent may use the tools. Stateless: one server and transport per request.
+    const token = bearerOf(req);
+    const auth = link.authenticate(token);
+    if (!('conn' in auth)) return sendEnded(res, link, token);
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'the aideos MCP endpoint is stateless; use POST' });
     const [{ createMcpServer }, { StreamableHTTPServerTransport }] = await Promise.all([
       import('../backend/mcp/server.ts'),
       import('@modelcontextprotocol/sdk/server/streamableHttp.js'),
     ]);
     const body = await readBody(req);
-    const server = createMcpServer({ remote: true });
+    const call = describeToolCall(body);
+    if (call) link.recordActivity(token, call);
+    const server = createMcpServer({
+      remote: true,
+      link: {
+        waitForTask: async (holdMs) => {
+          const task = await link.next(token, holdMs);
+          return task === 'unauthorized' ? 'ended' : task;
+        },
+        complete: (taskId, summary, ok) => void link.report(token, { taskId, ok, summary: summary ?? '' }),
+      },
+    });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on('close', () => {
       void transport.close();

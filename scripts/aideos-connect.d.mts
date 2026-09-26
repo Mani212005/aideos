@@ -28,3 +28,15 @@ export function agentCommand(
 
 /** Explains a provider/model refusal in actionable terms, or null when the tail shows no known cause. */
 export function taskFailureHint(agent: string, tail: string, model?: string): string | null;
+
+/** Indents agent output so it reads as a block under the connector's own log lines. */
+export function indentAgentOutput(text: string): string;
+
+/** Collapses repeated reconnect failures into calm single lines. */
+export function createReconnectNotes(
+  say: (message: string) => void,
+  now?: () => number,
+): { failed: () => void; ok: () => void };
+
+/** Formats a millisecond duration as a short elapsed string. */
+export function formatElapsed(ms: number): string;

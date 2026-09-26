@@ -61,6 +61,57 @@ function log(message) {
   console.log(`[aideos ${new Date().toLocaleTimeString()}] ${message}`);
 }
 
+// Indents the agent's own output under a rule so it reads as the agent talking, not the connector.
+export function indentAgentOutput(text) {
+  return text
+    .split("\n")
+    .map((line, i, all) => (line === "" && i === all.length - 1 ? "" : `    | ${line}`))
+    .join("\n");
+}
+
+// Turns transient connection trouble into calm lines: one when it starts, one every 5 minutes if it
+// lasts, and one when it clears. Never a line per retry.
+export function createReconnectNotes(say, now = Date.now) {
+  let since = null;
+  let lastNote = 0;
+  return {
+    failed() {
+      if (since === null) {
+        since = now();
+        lastNote = since;
+        say("studio unreachable (it restarts on its own; your link is kept) - reconnecting quietly");
+      } else if (now() - lastNote >= 5 * 60_000) {
+        lastNote = now();
+        say(`still reconnecting (${Math.round((now() - since) / 60_000)} min) - your link is kept`);
+      }
+    },
+    ok() {
+      if (since === null) return;
+      const secs = Math.round((now() - since) / 1000);
+      since = null;
+      say(`reconnected after ${secs < 90 ? `${secs}s` : `${Math.round(secs / 60)} min`}`);
+    },
+  };
+}
+
+// Formats a duration in ms as 1m 05s.
+export function formatElapsed(ms) {
+  const s = Math.round(ms / 1000);
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
+}
+
+// Prints the opening banner: who is connected to what, and what this agent may touch.
+function banner(url, conn) {
+  const rule = "-".repeat(64);
+  console.log(`\n${rule}\n  aideos connect - linked to your studio\n${rule}`);
+  console.log(`  studio   ${url}`);
+  console.log(`  agent    ${conn.agent}${conn.model ? ` (model ${conn.model})` : ""}, running on this machine with your own login`);
+  console.log("  access   each task runs in an empty temp folder; the agent gets only the studio's aideos tools,");
+  console.log("           no shell and none of your files. You will see every task and tool call below.");
+  console.log("  stays    linked until you disconnect in the studio or close the studio tab. Ctrl-C here stops it.");
+  console.log(`${rule}\n`);
+}
+
 // Waits.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -115,7 +166,7 @@ function run(cmd, args, cwd, env, timeoutMs) {
     const child = spawn(cmd, args, { cwd, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] });
     const keep = (chunk) => {
       const s = chunk.toString();
-      process.stdout.write(s);
+      process.stdout.write(indentAgentOutput(s));
       tail = (tail + s).slice(-1500);
     };
     child.stdout.on("data", keep);
@@ -170,21 +221,55 @@ export function taskFailureHint(agent, tail, model) {
   return null;
 }
 
+// Prints the studio-side tool calls the agent makes during a task, until stopped; returns the stopper.
+function followActivity(url, token) {
+  let since = 0;
+  let stopped = false;
+  const tick = async () => {
+    while (!stopped) {
+      try {
+        const res = await api(url, `/api/agent-link/activity?since=${since}`, { token, timeoutMs: 8000 });
+        for (const a of res.json?.activity ?? []) {
+          since = Math.max(since, a.seq);
+          if (!/^received task/.test(a.text)) log(`  > ${a.text}`);
+        }
+      } catch {}
+      await sleep(2500);
+    }
+  };
+  const seed = api(url, "/api/agent-link/activity", { token, timeoutMs: 8000 })
+    .then((r) => {
+      for (const a of r.json?.activity ?? []) since = Math.max(since, a.seq);
+    })
+    .catch(() => {});
+  void seed.then(tick);
+  return () => {
+    stopped = true;
+  };
+}
+
 // Runs one task and reports its outcome to the studio.
 async function handleTask(task, conn, url) {
-  log(`task ${task.id}: ${task.eventType} for ${task.filmId}`);
+  const started = Date.now();
+  log(`task received: ${task.eventType} for film "${task.filmId}" (${task.id})`);
+  log("agent is working on it - its output follows");
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-task-"));
+  const stopActivity = followActivity(url, conn.token);
+  const heartbeat = setInterval(() => log(`still working (${formatElapsed(Date.now() - started)})`), 60_000);
   try {
     const { cmd, args, env } = agentCommand(conn.agent, task.prompt, { url, token: conn.token, scratch, model: conn.model });
     const { code, tail } = await run(cmd, args, scratch, env, TASK_TIMEOUT_MS);
     const ok = code === 0;
     const hint = ok ? null : taskFailureHint(conn.agent, tail, conn.model);
-    if (hint) log(`task ${task.id} failed (exit ${code}): ${hint}`);
-    else log(`task ${task.id} ${ok ? "finished" : `failed (exit ${code})`}`);
+    const took = formatElapsed(Date.now() - started);
+    if (hint) log(`task failed after ${took} (exit ${code}): ${hint}`);
+    else log(ok ? `task finished in ${took} - waiting for the next one` : `task failed after ${took} (exit ${code})`);
     const lines = tail.trim().split("\n").slice(-8);
     if (hint) lines.push(`aideos: ${hint}`);
     await api(url, "/api/agent-link/result", { method: "POST", token: conn.token, body: { taskId: task.id, ok, summary: lines.join("\n") } }).catch(() => {});
   } finally {
+    clearInterval(heartbeat);
+    stopActivity();
     fs.rmSync(scratch, { recursive: true, force: true });
   }
 }
@@ -233,32 +318,42 @@ async function main() {
   else if (conn.model) log(`note: --model has no effect for ${conn.agent}; it applies to opencode and agy runs`);
   if (conn.agent === "agy") await registerAgyServer(url, conn.token);
 
-  log(`waiting for tasks from ${url} (Ctrl-C to stop)`);
+  banner(url, conn);
+  log("waiting for tasks from the studio");
+  const notes = createReconnectNotes(log);
   let backoff = 1000;
   for (;;) {
     let res;
     try {
       res = await api(url, "/api/agent-link/next", { token: conn.token });
-      backoff = 1000;
-    } catch (err) {
-      log(`studio unreachable (${err.name === "TimeoutError" ? "timed out" : err.message}); retrying in ${Math.round(backoff / 1000)}s`);
+    } catch {
+      notes.failed();
       await sleep(backoff);
-      backoff = Math.min(backoff * 2, 30_000);
+      backoff = Math.min(backoff * 2, 15_000);
       continue;
     }
+    // A gateway error or timeout (restart, redeploy, free-plan wake-up) is never the end of the link.
+    if (res.status >= 500 || res.status === 404 || res.status === 429) {
+      notes.failed();
+      await sleep(backoff);
+      backoff = Math.min(backoff * 2, 15_000);
+      continue;
+    }
+    notes.ok();
+    backoff = 1000;
     if (res.status === 401) {
       saveConnection(url, null);
       const by = res.json?.replacedBy;
+      const reason = res.json?.reason;
       let when = "";
       if (by?.at) {
         const t = new Date(by.at);
         if (!Number.isNaN(t.getTime())) when = `, paired ${t.toLocaleString()}`;
       }
-      throw new Error(
-        by
-          ? `this connection was replaced by ${by.agentLabel ?? by.agent} (${by.machine}${when}); that agent now gets the work - to switch back, pair again from Connect agent in the studio`
-          : "the studio no longer knows this connection (disconnected, or the server was reset); pair again from Connect agent",
-      );
+      if (by) throw new Error(`this connection was replaced by ${by.agentLabel ?? by.agent} (${by.machine}${when}); that agent now gets the work - to switch back, pair again from Connect agent in the studio`);
+      if (reason === "disconnected") throw new Error("you disconnected this agent in the studio. To link again, use Connect agent in the studio.");
+      if (reason === "tab-closed") throw new Error("the studio tab was closed, so the link ended. Open the studio and use Connect agent to link again.");
+      throw new Error(res.json?.error ?? "the studio no longer recognises this connection; pair again from Connect agent");
     }
     if (res.status === 200 && res.json?.id) await handleTask(res.json, conn, url);
     else if (res.status !== 204) {
