@@ -19,6 +19,7 @@ import { detectFillers } from '../backend/editContext/detectFillers.ts'
 import { detectSilences } from '../backend/editContext/detectSilences.ts'
 import { buildEditContext } from '../backend/editContext/buildEditContext.ts'
 import { planEdits, applyEditProgram } from '../backend/editPlanner/index.ts'
+import { appendEditProvenanceRecord, readEditProvenanceLog } from '../backend/editPlanner/provenanceLog.ts'
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from '../src/dl/convertFilm.ts'
 import { executeCritique } from '../backend/critique/engine.ts'
 import {
@@ -1501,6 +1502,19 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           return;
         }
 
+        // Handle /api/edit-log (Provenance log for a film's AI edit history - Phase 4)
+        if (url.startsWith('/api/edit-log') && req.method === 'GET') {
+          const qs = new URL(req.url ?? '/', 'http://localhost').searchParams;
+          const filmId = qs.get('filmId') || '';
+          if (!filmId || !FILM_ID.test(filmId)) {
+            sendJson(res, 400, { error: 'filmId query param is required and must be a valid film slug' });
+            return;
+          }
+          const records = readEditProvenanceLog(videosDir, filmId);
+          sendJson(res, 200, { filmId, count: records.length, records });
+          return;
+        }
+
         // Handle /api/ai-edit (Model-driven AI editing core, planning and executing EditOp programs)
         if (url === '/api/ai-edit' && req.method === 'POST') {
           void readBody(req).then(async (body: any) => {
@@ -1583,6 +1597,17 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               });
 
               // If dryRun, return plan and ops for client preview/approval
+              // Record provenance for both preview and apply paths
+              appendEditProvenanceRecord(videosDir, filmId, {
+                request,
+                plan: planResult.plan,
+                ops: planResult.ops,
+                attempts: planResult.attempts,
+                dryRun,
+                source: "studio",
+                warnings: planResult.warnings,
+              });
+
               if (dryRun) {
                 sendJson(res, 200, {
                   ok: true,

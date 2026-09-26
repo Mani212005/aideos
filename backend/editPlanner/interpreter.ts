@@ -1,8 +1,9 @@
 /**
- * File Description: Pure Transactional Interpreter for Video Edit Programs (Phase 2).
+ * File Description: Pure Transactional Interpreter for Video Edit Programs (Phases 2-3).
  * Interprets closed EditOp programs by dispatching to timeline, voiceover, and layer engines.
  * Implements atomic execution with full rollback on validation or runtime failure,
  * adhering to Axiom 1 (pure data) and the single-commit undo contract.
+ * Phase 3 additions: add_lower_third op for broadcast-style lower-third overlays.
  */
 
 import type { LayeredFilm, Clip, Layer } from "../../src/dl/layeredSchema";
@@ -172,6 +173,39 @@ function applySingleOp(
           size: (op.size || "headline") as "headline" | "body" | "kicker" | "caption",
           accentWord: op.accentWord,
         },
+        opacity: 1,
+        volume: 1,
+      };
+
+      working = {
+        ...working,
+        clips: [...working.clips, newClip],
+      };
+      break;
+    }
+
+    case "add_lower_third": {
+      const dur = round3(op.endSec - op.startSec);
+      if (dur <= 0) throw new Error(`Invalid lower-third duration: start=${op.startSec}, end=${op.endSec}`);
+      const layerId = op.laneHint || "layer-lower-thirds";
+      working = ensureLayerExists(working, layerId, "Lower Thirds", 31);
+
+      const clipId = `clip-lt-${Date.now().toString(36)}-${shortId()}`;
+      const newClip: Clip = {
+        id: clipId,
+        layerId,
+        position: round3(op.startSec),
+        start: 0,
+        end: dur,
+        kind: "text",
+        payload: {
+          text: op.title,
+          subtitle: op.subtitle,
+          size: "kicker",
+          position: "bottom",
+          lowerThird: true,
+          accentWord: op.accentWord,
+        } as any,
         opacity: 1,
         volume: 1,
       };

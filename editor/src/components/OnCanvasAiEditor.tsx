@@ -34,6 +34,8 @@ function describeEditOp(op: EditOp): string {
   switch (op.op) {
     case "add_text_overlay":
       return `Text Overlay: "${op.text}" at ${op.startSec.toFixed(1)}s - ${op.endSec.toFixed(1)}s (${op.position || "bottom"})`;
+    case "add_lower_third":
+      return `Lower Third: "${op.title}"${op.subtitle ? ` / "${op.subtitle}"` : ""} at ${op.startSec.toFixed(1)}s - ${op.endSec.toFixed(1)}s`;
     case "add_slide":
       return `Slide: ${op.visualDirection || "Visual graphic"} at ${op.startSec.toFixed(1)}s - ${op.endSec.toFixed(1)}s`;
     case "add_caption_track":

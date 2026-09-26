@@ -20,6 +20,7 @@ import { buildEditContext } from "../editContext/buildEditContext";
 import { detectFillers } from "../editContext/detectFillers";
 import { detectSilences } from "../editContext/detectSilences";
 import { planEdits, applyEditProgram } from "../editPlanner";
+import { appendEditProvenanceRecord, readEditProvenanceLog } from "../editPlanner/provenanceLog";
 import type { TranscribedWord } from "../transcribe";
 import { taskQueue, traceBus } from "../agentBridge";
 import { registerDesignTools } from "./designTools";
@@ -380,6 +381,17 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
 
       const planResult = await planEdits(request, context, undefined, { agentHints: hints });
 
+      // Record provenance for both dry-run previews and applied commits
+      appendEditProvenanceRecord(VIDEOS_DIR, slug, {
+        request,
+        plan: planResult.plan,
+        ops: planResult.ops,
+        attempts: planResult.attempts,
+        dryRun: dryRun ?? false,
+        source: "mcp",
+        warnings: planResult.warnings,
+      });
+
       if (dryRun) {
         return jsonResult({
           slug,
@@ -422,6 +434,31 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
           accent: savedFilm.accent,
           durationSec: Number(savedFilm.shots.reduce((sum, s) => sum + s.dur, 0).toFixed(2)),
         },
+      });
+    },
+  );
+
+  server.registerTool(
+    "aideos_list_edit_log",
+    {
+      title: "List AI edit provenance log",
+      description:
+        "Return the full provenance audit trail for a film's AI edit operations. " +
+        "Each record includes the edit request, the generated plan, the resolved EditOp[], " +
+        "the number of LLM repair attempts, and whether it was a dry-run preview or an applied commit.",
+      inputSchema: {
+        slug: z.string().regex(/^[a-z0-9-]+$/).describe("The package slug under videos/."),
+        limit: z.number().int().min(1).max(200).optional().describe("Maximum number of records to return (newest first). Defaults to 50."),
+      },
+    },
+    async ({ slug, limit }) => {
+      const records = readEditProvenanceLog(VIDEOS_DIR, slug);
+      const capped = records.slice(0, limit ?? 50);
+      return jsonResult({
+        slug,
+        total: records.length,
+        returned: capped.length,
+        records: capped,
       });
     },
   );
