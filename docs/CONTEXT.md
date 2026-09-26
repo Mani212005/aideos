@@ -273,6 +273,15 @@ An individual vector path inside a limb:
 * `createTtsBackend(options)`: Instantiates pluggable TTS engine (`kokoro` via worker process, `google`, `say`, `tone`).
 * `KokoroTtsBackend`: Local offline ONNX synthesizer using Kokoro-82M (default).
 
+### `backend/voiceSynthesis.ts`
+* `synthesizeVoiceover(req, deps, env)`: Executes the multi-provider voiceover synthesis chain (local Kokoro -> Deepgram Aura -> Google Cloud TTS -> macOS `say`) for `/api/generate-voiceover` and returns WAV audio with the winning provider, throwing `VoiceSynthesisError` with diagnostic reasons for all skipped or failed providers on total failure.
+* `VoiceSynthesisError`: Error carrying `attempts: ProviderAttempt[]` recording why each provider failed or was skipped.
+* `kokoroFits(limit, env)`: Verifies whether the container or host memory meets the minimum threshold (1.5 GB) for in-process Kokoro TTS, honoring `AIDEOS_KOKORO=1/0` overrides.
+* `readContainerMemoryLimit()`: Detects cgroup v1 and v2 memory limits in containerized Linux environments.
+* `pcm16ToWav(pcm, sampleRate)`, `floatToPcm16(samples)`, `wavDataChunk(wav)`: Pure audio conversion helpers between raw float samples, 16-bit PCM, and WAV data containers.
+* `sayToWav(text, voice)`: Native macOS `say` voice synthesizer pipeline converting AIFF to 48kHz mono WAV via FFmpeg.
+* `macVoiceFor(voice)`: Maps studio voice identifier to macOS system voice name.
+
 ### Production Pipeline, Auto-Prompt Director & MCP Server (`backend/pipeline/`, `backend/mcp/`)
 * Deep reference documentation in [`docs/PRODUCTION_PIPELINE.md`](PRODUCTION_PIPELINE.md) and [`docs/DIRECTOR_GUIDE.md`](DIRECTOR_GUIDE.md).
 * `runProduction(request, onProgress)` (`backend/pipeline/run.ts`): Single typed programmatic entry point driving `intake`, `narrate`, `design`, `broll`, `assemble`, `render`, `verify`.

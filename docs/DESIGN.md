@@ -68,7 +68,7 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 ### 1. Script Stage (`ScriptStage.tsx` / `ScriptEditor.tsx`)
 - **Purpose**: Narrative authoring studio where creators write spoken scripts, structure explanation blocks, and define visual direction cues per shot using raw screenplay markdown or interactive Visual Studio cards.
 - **Claude Intake & Sub-Shots**: Parses timestamped sections, `[VISUAL]`, `[NARRATION]`, and `[ON SCREEN]` tag blocks with zero tag leakage into spoken dialogue, two-way sync, and automatic sub-shot compilation via `backend/scriptIntake.ts`. Untagged plain prose is automatically structured into scenes with visual directions via Director LLM transformation with deterministic heuristic fallback (`structureUntaggedProseToScript`), preventing zero-shot parse failures.
-- **Audio Synthesis**: Triggers Kokoro ONNX TTS voiceover generation and locks timeline duration boundaries.
+- **Audio Synthesis**: Triggers multi-provider voiceover generation (local Kokoro, Deepgram, Google Cloud TTS, macOS say) and locks timeline duration boundaries.
 
 ### 2. Story Stage (`StoryStage.tsx` / `MindMap.tsx` / `NodeEditor.tsx`)
 - **Purpose**: Interactive 2D spatial canvas rendering the underlying graph topology (`CanvasNode` and `CanvasEdge`).

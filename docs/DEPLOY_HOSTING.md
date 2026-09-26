@@ -43,7 +43,9 @@ Before deploying, ensure you have:
 3. **Required API Keys**:
    - `GEMINI_API_KEY` (or `GOOGLE_API_KEY`): Required for AI agent compiler, script intake, director prose transform, critique engine, and Jev semantic primitive compilation.
 4. **Optional API Keys & GPU Settings**:
-   - `DEEPGRAM_API_KEY`: For fast cloud-based word-level audio transcription and TTS.
+   - `DEEPGRAM_API_KEY`: For fast cloud-based word-level audio transcription and neural TTS.
+   - `GOOGLE_API_KEY`: Optional fallback key for Google Cloud TTS if Deepgram is unset.
+   - `AIDEOS_KOKORO`: Set to `1` or `0` to force enable/disable local in-process Kokoro TTS.
    - `PARALLEL_API_KEY`: For web research and script enrichment.
    - `WAN_GPU_HOST`, `WAN_GPU_USER`, `WAN_GPU_PASSWORD`: For remote GPU Wan2.1 diffusion B-roll generation.
 
@@ -123,9 +125,10 @@ Before deploying, ensure you have:
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `GEMINI_API_KEY` | Yes | - | Google Gemini API key for agent compilation and critique |
-| `GOOGLE_API_KEY` | Alternative | - | Fallback Google GenAI API key |
+| `GOOGLE_API_KEY` | Alternative / No | - | Fallback Google GenAI and Cloud TTS API key |
 | `AIDEOS_GEMINI_MODEL` | No | `gemini-2.0-flash` | Gemini model name for screenplay intake and critique |
 | `DEEPGRAM_API_KEY` | No | - | Deepgram API key for speech recognition and neural TTS |
+| `AIDEOS_KOKORO` | No | - | Override container memory gate for local Kokoro TTS (1 to force enable, 0 to force disable) |
 | `PARALLEL_API_KEY` | No | - | Parallel Web Search key for factual script research |
 | `PORT` | No | `8080` (Docker) / `3001` (Dev) | Port for the backend server |
 | `NODE_ENV` | No | `production` | Node environment |
@@ -146,4 +149,4 @@ When hosting on Render's free tier, keep the following considerations in mind:
    - **Interactive Studio, Script Intake, Critique, Audio Sync & Canvas**: Fully functional and responsive.
    - **Full Remotion MP4 Rendering**: Remotion rendering spins up headless Chromium and FFmpeg. On 512 MB RAM, rendering full-length 1080p videos may run slowly or encounter memory constraints. For heavy video rendering workloads, upgrading the Render instance to Starter (512MB-1GB) or Standard (2GB+) is recommended.
 3. **Speech Synthesis**:
-   - Offline Kokoro TTS utilizes CPU ONNX runtime. Google Cloud TTS / Deepgram TTS API keys provide instant cloud voiceover generation without local CPU load.
+   - Local Kokoro TTS requires ~400 MB of ONNX model runtime memory, so on hosts with under 1.5 GB RAM (such as the Render 512 MB free tier), the studio voiceover synthesis route (`/api/generate-voiceover` via `backend/voiceSynthesis.ts`) automatically skips local Kokoro to prevent out-of-memory container crashes. It seamlessly falls back to cloud TTS (`DEEPGRAM_API_KEY` or `GOOGLE_API_KEY`). On memory-constrained hosts without cloud API keys, synthesis returns an HTTP 503 with per-provider failure reasons rather than an opaque 502/500 crash.
