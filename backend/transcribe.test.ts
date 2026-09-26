@@ -53,29 +53,24 @@ test("transcribe: uses the Deepgram path and its injected fetch when an API key 
 
 test("transcribe: falls back to the injected Whisper runner when no Deepgram key is configured", async () => {
   const src = makeFixtureSource();
-  const originalKey = process.env.DEEPGRAM_API_KEY;
-  delete process.env.DEEPGRAM_API_KEY;
-
-  try {
-    let whisperCalled = false;
-    const result = await transcribe(
-      src,
-      {},
-      {
-        extractAudioTrack: (_srcPath, outWavPath) => fs.writeFileSync(outWavPath, "fake wav"),
-        runWhisper: () => {
-          whisperCalled = true;
-          return [{ word: "hi", start: 0, end: 0.3 }];
-        },
+  let whisperCalled = false;
+  const result = await transcribe(
+    src,
+    {},
+    {
+      extractAudioTrack: (_srcPath, outWavPath) => fs.writeFileSync(outWavPath, "fake wav"),
+      // Inject a no-key resolver so the test does not depend on env/dotenv state.
+      resolveApiKey: () => "",
+      runWhisper: () => {
+        whisperCalled = true;
+        return [{ word: "hi", start: 0, end: 0.3 }];
       },
-    );
+    },
+  );
 
-    assert.equal(whisperCalled, true, "the no-key path must call the injected Whisper runner");
-    assert.equal(result.backend, "whisper");
-    assert.deepEqual(result.words, [{ word: "hi", start: 0, end: 0.3 }]);
-  } finally {
-    if (originalKey !== undefined) process.env.DEEPGRAM_API_KEY = originalKey;
-  }
+  assert.equal(whisperCalled, true, "the no-key path must call the injected Whisper runner");
+  assert.equal(result.backend, "whisper");
+  assert.deepEqual(result.words, [{ word: "hi", start: 0, end: 0.3 }]);
 });
 
 test("transcribe: a failed Deepgram response throws with the status and body", async () => {

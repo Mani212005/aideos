@@ -32,6 +32,8 @@ export interface TranscribeDeps {
   extractAudioTrack?: (srcPath: string, outWavPath: string) => void;
   /** Runs the local Whisper fallback. Defaults to shelling out to the whisper CLI. */
   runWhisper?: (wavPath: string) => TranscribedWord[];
+  /** Resolves the Deepgram API key. Injected so tests can force the Whisper fallback path. */
+  resolveApiKey?: () => string;
 }
 
 export interface TranscribeResult {
@@ -150,7 +152,8 @@ export async function transcribe(
     const tmpWav = path.join(tmpDir, "audio.wav");
     extractAudioTrack(resolvedSrc, tmpWav);
 
-    const apiKey = opts.deepgramApiKey ?? resolveDeepgramApiKey();
+    const resolveKey = deps.resolveApiKey ?? resolveDeepgramApiKey;
+    const apiKey = opts.deepgramApiKey ?? resolveKey();
     if (apiKey) {
       const fetchImpl = deps.fetchImpl ?? fetch;
       const words = await transcribeWithDeepgram(tmpWav, apiKey, opts.deepgramModel ?? "nova-2", fetchImpl);
