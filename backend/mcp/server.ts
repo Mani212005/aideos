@@ -155,6 +155,8 @@ export interface McpServerOptions {
     waitForTask(holdMs: number): Promise<{ id: string; eventType: string; filmId: string; prompt: string } | null | "ended">;
     complete(taskId: string, summary: string | undefined, ok: boolean): void;
   };
+  /** Injected LLM caller for testing and offline execution in the edit planner. */
+  llmCaller?: (prompt: string) => Promise<string>;
 }
 
 /** Instructions a remote agent reads: it has no shell, only these tools. */
@@ -379,7 +381,7 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
         theme: film.theme,
       });
 
-      const planResult = await planEdits(request, context, undefined, { agentHints: hints });
+      const planResult = await planEdits(request, context, options.llmCaller, { agentHints: hints });
 
       if (dryRun) {
         appendEditProvenanceRecord(VIDEOS_DIR, slug, {

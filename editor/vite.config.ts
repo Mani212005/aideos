@@ -1605,7 +1605,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 ],
               });
 
-              const planResult = await planEdits(request, context, undefined, { agentHints });
+              const planResult = body.mockPlanResult || (await planEdits(request, context, undefined, { agentHints }));
 
               traceBus.recordStep({
                 phase: "ai_edit",
