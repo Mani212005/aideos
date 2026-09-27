@@ -64,6 +64,7 @@ const ImportedVideoLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }
             <OffthreadVideo
               src={staticFile(vc.src)}
               trimBefore={Math.round(vc.start * fps)}
+              playbackRate={vc.speed ?? 1.0}
               volume={vc.muted ? 0 : (vc.volume ?? 1)}
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />

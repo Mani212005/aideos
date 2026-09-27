@@ -524,6 +524,7 @@ export const videoClipSchema = z.object({
   height: z.number().positive().optional(),
   opacity: z.number().min(0).max(1).default(1),
   volume: z.number().min(0).max(2).default(1),
+  speed: z.number().min(0.25).max(4).default(1).optional(),
   muted: z.boolean().optional(),
   /** Timeline lane this clip sits on. See timelineLayerSchema. */
   layerId: z.string().optional(),

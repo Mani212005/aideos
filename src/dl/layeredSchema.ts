@@ -72,6 +72,7 @@ export const videoPayloadSchema = z.object({
   width: z.number().positive().optional(),
   height: z.number().positive().optional(),
   fps: z.number().positive().optional(),
+  speed: z.number().min(0.25).max(4).default(1).optional(),
 });
 
 /** Audio Clip Payload */
