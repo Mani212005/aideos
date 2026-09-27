@@ -15,8 +15,9 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import type { Film } from "../../src/dl/schema";
-import { convertFilmToLayeredFilm } from "../../src/dl/convertFilm";
+import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
+import { parseFilm } from "../../src/dl/schema";
 import { applyEditProgram } from "./interpreter";
 import { buildEditContext } from "../editContext/buildEditContext";
 import { appendEditProvenanceRecord, readEditProvenanceLog } from "./provenanceLog";
@@ -29,12 +30,18 @@ function createFootageFilmFixture(): Film {
     title: "Phase 3 Test Film",
     fps: 30,
     accent: "#635BFF",
-    canvas: { nodes: [{ id: "n1", label: "Intro", x: 0, y: 0, w: 200, h: 80 }], edges: [] },
+    canvas: {
+      nodes: [
+        { id: "n1", label: "Intro", x: 0, y: 0, w: 200, h: 80 },
+        { id: "n2", label: "Details", x: 300, y: 0, w: 200, h: 80 },
+      ],
+      edges: [{ from: "n1", to: "n2" }],
+    },
     chapters: ["Chapter 1"],
     shots: [
       {
         id: "shot-1",
-        stage: "anchor",
+        stage: "none",
         ch: "Chapter 1",
         dur: 10,
         look: "n1",
@@ -328,4 +335,37 @@ test("Phase 4 - Provenance log: ignores corrupt lines and returns valid records"
   assert.equal(records.length, 2, "Two valid records must survive despite one corrupt line");
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test("Phase 4 - Lower-third schema round-trip preserves subtitle and lowerThird flags", () => {
+  const film = convertFilmToLayeredFilm(createFootageFilmFixture());
+  const context = buildEditContext(film, [], [], [], { fps: 30, durationSec: 10 });
+
+  const ops: EditOp[] = [
+    {
+      op: "add_lower_third",
+      title: "Alex Smith",
+      subtitle: "Principal Designer",
+      startSec: 2,
+      endSec: 6,
+    },
+  ];
+
+  const result = applyEditProgram(film, ops, context);
+  assert.equal(result.rejected.length, 0);
+
+  // Convert LayeredFilm to Film manifest
+  const updatedFilm = convertLayeredFilmToFilm(result.film);
+  assert.ok(updatedFilm.overlayClips, "overlayClips should exist");
+  const ltOverlay = updatedFilm.overlayClips?.find((oc) => (oc.payload as any)?.lowerThird);
+  assert.ok(ltOverlay, "Lower-third overlay clip must be preserved in overlayClips");
+
+  // Parse through canonical Film schema
+  const parsed = parseFilm(updatedFilm);
+  const parsedOverlay = parsed.overlayClips?.find((oc) => (oc.payload as any)?.lowerThird);
+  assert.ok(parsedOverlay, "parseFilm must preserve lowerThird overlay clip");
+  const payload = parsedOverlay?.payload as any;
+  assert.equal(payload.text, "Alex Smith");
+  assert.equal(payload.subtitle, "Principal Designer");
+  assert.equal(payload.lowerThird, true);
 });

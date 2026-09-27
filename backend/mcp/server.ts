@@ -381,18 +381,17 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
 
       const planResult = await planEdits(request, context, undefined, { agentHints: hints });
 
-      // Record provenance for both dry-run previews and applied commits
-      appendEditProvenanceRecord(VIDEOS_DIR, slug, {
-        request,
-        plan: planResult.plan,
-        ops: planResult.ops,
-        attempts: planResult.attempts,
-        dryRun: dryRun ?? false,
-        source: "mcp",
-        warnings: planResult.warnings,
-      });
-
       if (dryRun) {
+        appendEditProvenanceRecord(VIDEOS_DIR, slug, {
+          request,
+          plan: planResult.plan,
+          ops: planResult.ops,
+          attempts: planResult.attempts,
+          dryRun: true,
+          source: "mcp",
+          warnings: planResult.warnings,
+        });
+
         return jsonResult({
           slug,
           applied: false,
@@ -418,6 +417,16 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
 
       const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
       const savedFilm = writeFilm(slug, updatedFilm);
+
+      appendEditProvenanceRecord(VIDEOS_DIR, slug, {
+        request,
+        plan: planResult.plan,
+        ops: planResult.ops,
+        attempts: planResult.attempts,
+        dryRun: false,
+        source: "mcp",
+        warnings: planResult.warnings,
+      });
 
       return jsonResult({
         slug,

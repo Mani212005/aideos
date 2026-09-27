@@ -81,16 +81,15 @@ export const Video: React.FC<FilmProps> = ({
             const speed = ac.speed ?? 1.0;
             const isRetimed = Math.abs(speed - 1.0) > 0.001;
             const startFrame = Math.round(ac.position * FPS);
-            const rawDurFrames = Math.max(1, Math.round(ac.end * FPS) - Math.round((ac.start ?? 0) * FPS));
-            const effectiveDurFrames = Math.max(1, Math.round(rawDurFrames / speed));
-            const startFrom = isRetimed ? Math.round(((ac.start ?? 0) / speed) * FPS) : Math.round((ac.start ?? 0) * FPS);
+            const durFrames = Math.max(1, Math.round(ac.end * FPS) - Math.round((ac.start ?? 0) * FPS));
+            const startFrom = Math.round((ac.start ?? 0) * FPS);
             const clipLevel = (ac.volume ?? 1) * effectiveVoiceoverVolume;
             const audioSrc = isRetimed
               ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
               : staticFile(ac.src);
 
             return (
-              <Sequence key={ac.id} from={startFrame} durationInFrames={effectiveDurFrames}>
+              <Sequence key={ac.id} from={startFrame} durationInFrames={durFrames}>
                 <Audio
                   src={audioSrc}
                   trimBefore={startFrom}

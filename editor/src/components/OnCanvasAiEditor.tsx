@@ -23,6 +23,7 @@ interface OnCanvasAiEditorProps {
 }
 
 interface PlannedState {
+  request: string;
   plan: string;
   ops: EditOp[];
   warnings: string[];
@@ -115,6 +116,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
       }
 
       setPlannedState({
+        request: query,
         plan: data.plan,
         ops: data.ops || [],
         warnings: data.warnings || [],
@@ -158,6 +160,21 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ film: updatedFilm }),
+      }).catch(() => undefined);
+
+      void fetch("/api/edit-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filmId: film.id,
+          request: plannedState.request || promptInput || "Applied AI edit",
+          plan: plannedState.plan,
+          ops: plannedState.ops,
+          attempts: 1,
+          dryRun: false,
+          source: "studio",
+          warnings: plannedState.warnings,
+        }),
       }).catch(() => undefined);
 
       setStatusMessage({

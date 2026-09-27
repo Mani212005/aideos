@@ -161,6 +161,41 @@ test("validator: rejects invalid accent hex formats", () => {
   assert.ok(result.errors.some((e) => e.includes("hex code") || e.includes("Schema violation")));
 });
 
+test("validator: rejects invalid add_lower_third timing or empty title", () => {
+  const film = createTestLayeredFilm();
+  const context = buildEditContext(film, [], [], [], { fps: 30, durationSec: 10 });
+
+  const invertedTiming = validateEditProgram(
+    [{ op: "add_lower_third", title: "Speaker", startSec: 4, endSec: 2 }],
+    context,
+  );
+  assert.equal(invertedTiming.valid, false);
+  assert.ok(invertedTiming.errors.some((e) => e.includes("must be strictly less than endSec")));
+
+  const emptyTitle = validateEditProgram(
+    [{ op: "add_lower_third", title: "   ", startSec: 1, endSec: 4 }],
+    context,
+  );
+  assert.equal(emptyTitle.valid, false);
+  assert.ok(emptyTitle.errors.some((e) => e.includes("title content cannot be empty")));
+});
+
+test("validator: accepts valid add_lower_third and set_theme operations", () => {
+  const film = createTestLayeredFilm();
+  const context = buildEditContext(film, [], [], [], { fps: 30, durationSec: 10 });
+
+  const result = validateEditProgram(
+    [
+      { op: "add_lower_third", title: "Jane Smith", subtitle: "Lead Architect", startSec: 1, endSec: 4 },
+      { op: "set_theme", partialTheme: { mode: "dark" } },
+    ],
+    context,
+  );
+  assert.equal(result.valid, true);
+  assert.equal(result.errors.length, 0);
+  assert.equal(result.program?.length, 2);
+});
+
 test("validator: rejects empty edit program", () => {
   const film = createTestLayeredFilm();
   const context = buildEditContext(film, [], [], [], { fps: 30, durationSec: 10 });

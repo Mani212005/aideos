@@ -539,6 +539,9 @@ export const textPayloadSchema = z.object({
   text: z.string().min(1),
   size: z.enum(["kicker", "headline", "body", "caption"]).default("headline"),
   accentWord: z.string().optional(),
+  subtitle: z.string().optional(),
+  lowerThird: z.boolean().optional(),
+  position: z.enum(["top", "center", "bottom"]).optional(),
   x: z.number().optional(),
   y: z.number().optional(),
 });

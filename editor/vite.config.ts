@@ -1515,6 +1515,27 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           return;
         }
 
+        if (url.startsWith('/api/edit-log') && req.method === 'POST') {
+          void readBody(req).then((body: any) => {
+            const { filmId, request, plan, ops, attempts = 1, dryRun = false, source = 'studio', warnings = [] } = body || {};
+            if (!filmId || !FILM_ID.test(filmId)) {
+              sendJson(res, 400, { error: 'filmId is required and must be a valid film slug' });
+              return;
+            }
+            appendEditProvenanceRecord(videosDir, filmId, {
+              request: request || 'Applied AI edit',
+              plan: plan || '',
+              ops: Array.isArray(ops) ? ops : [],
+              attempts: typeof attempts === 'number' ? attempts : 1,
+              dryRun: Boolean(dryRun),
+              source,
+              warnings: Array.isArray(warnings) ? warnings : [],
+            });
+            sendJson(res, 200, { ok: true, filmId });
+          }).catch((err) => sendJson(res, 500, { error: String(err) }));
+          return;
+        }
+
         // Handle /api/ai-edit (Model-driven AI editing core, planning and executing EditOp programs)
         if (url === '/api/ai-edit' && req.method === 'POST') {
           void readBody(req).then(async (body: any) => {
@@ -1597,18 +1618,17 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               });
 
               // If dryRun, return plan and ops for client preview/approval
-              // Record provenance for both preview and apply paths
-              appendEditProvenanceRecord(videosDir, filmId, {
-                request,
-                plan: planResult.plan,
-                ops: planResult.ops,
-                attempts: planResult.attempts,
-                dryRun,
-                source: "studio",
-                warnings: planResult.warnings,
-              });
-
               if (dryRun) {
+                appendEditProvenanceRecord(videosDir, filmId, {
+                  request,
+                  plan: planResult.plan,
+                  ops: planResult.ops,
+                  attempts: planResult.attempts,
+                  dryRun: true,
+                  source: "studio",
+                  warnings: planResult.warnings,
+                });
+
                 sendJson(res, 200, {
                   ok: true,
                   dryRun: true,
@@ -1638,6 +1658,16 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
               const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
               writeFilm(updatedFilm.id, updatedFilm);
+
+              appendEditProvenanceRecord(videosDir, filmId, {
+                request,
+                plan: planResult.plan,
+                ops: planResult.ops,
+                attempts: planResult.attempts,
+                dryRun: false,
+                source: "studio",
+                warnings: planResult.warnings,
+              });
 
               traceBus.recordStep({
                 phase: "ai_edit",

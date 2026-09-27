@@ -113,6 +113,22 @@ export function validateEditProgram(
         break;
       }
 
+      case "add_lower_third": {
+        if (op.startSec >= op.endSec) {
+          errors.push(`${opPrefix} startSec (${op.startSec}) must be strictly less than endSec (${op.endSec})`);
+        }
+        if (op.startSec < 0) {
+          errors.push(`${opPrefix} startSec (${op.startSec}) cannot be negative`);
+        }
+        if (op.endSec > filmDuration + 10) {
+          warnings.push(`${opPrefix} endSec (${op.endSec}) extends past film duration (${filmDuration.toFixed(1)}s)`);
+        }
+        if (!op.title || op.title.trim().length === 0) {
+          errors.push(`${opPrefix} title content cannot be empty`);
+        }
+        break;
+      }
+
       case "add_slide": {
         if (op.startSec >= op.endSec) {
           errors.push(`${opPrefix} startSec (${op.startSec}) must be strictly less than endSec (${op.endSec})`);
@@ -213,6 +229,13 @@ export function validateEditProgram(
       case "set_accent": {
         if (!/^#[0-9a-fA-F]{6}$/.test(op.hex)) {
           errors.push(`${opPrefix} accent hex code "${op.hex}" must be a 6-digit hex color (e.g. #635BFF)`);
+        }
+        break;
+      }
+
+      case "set_theme": {
+        if (!op.partialTheme || typeof op.partialTheme !== "object" || Array.isArray(op.partialTheme)) {
+          errors.push(`${opPrefix} partialTheme must be an object`);
         }
         break;
       }
