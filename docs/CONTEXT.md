@@ -49,6 +49,7 @@ An imported footage picture clip entry on the multi-track timeline (`src/dl/sche
 * `width?: number, height?: number` (Source video dimensions in pixels)
 * `opacity?: number` (Visual opacity, 0.0 to 1.0, default 1.0)
 * `volume?: number` (Embedded audio level multiplier, 0.0 to 2.0, default 1.0)
+* `speed?: number` (Playback rate multiplier, 0.25 to 4.0, default 1.0, wired to Remotion playbackRate)
 * `muted?: boolean` (True to mute embedded audio track)
 * `layerId?: string` (Assigned timeline layer ID)
 * `linkedClipId?: string` (Id of the linked `audioClips` entry, kept symmetric on both sides)
@@ -291,7 +292,7 @@ An individual vector path inside a limb:
 * `buildProseTransformSystemInstruction()` (`backend/pipeline/director.ts`): Assembles the system instruction for transforming raw prose into structured scenes, visual directions, on-screen text, and narration beats.
 * `compileFilmFromScreenplayAsync(script, narration, shotDurations, options, jevOptions)` (`backend/pipeline/design.ts`): The design stage's compile path. Compiles screenplay and narration spine into a validated `Film`, asking Jev `selectShotVisual` (see `backend/jev.ts`) only for beats that could take a device, and emitting a device only when `backend/shotVisualCues.ts` finds its data in the narration and the beat has on-screen copy to headline it.
 * `renderFormat(slug, format, options)` (`backend/pipeline/render.ts`): Drives Remotion render with headless verification and contact sheet generation.
-* `startMcpServer(options)` / `createMcpServer(options)` (`backend/mcp/server.ts`): Exposes the production pipeline, design tools, agent bridge, and remote agent link loop (`aideos_wait_for_task`) as an MCP stdio/HTTP server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`, `aideos_edit_film`, `aideos_get_pending_tasks`, `aideos_claim_task`, `aideos_complete_task`, `aideos_report_step`, `aideos_design_brief`, `aideos_read_file`, `aideos_write_file`, `aideos_design_build`, `aideos_design_check`, `aideos_frame_stills`, `aideos_submit_frame_review`, and `aideos_wait_for_task`.
+* `startMcpServer(options)` / `createMcpServer(options)` (`backend/mcp/server.ts`): Exposes the production pipeline, design tools, agent bridge, and remote agent link loop (`aideos_wait_for_task`) as an MCP stdio/HTTP server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`, `aideos_edit_film`, `aideos_list_edit_log`, `aideos_get_pending_tasks`, `aideos_claim_task`, `aideos_complete_task`, `aideos_report_step`, `aideos_design_brief`, `aideos_read_file`, `aideos_write_file`, `aideos_design_build`, `aideos_design_check`, `aideos_frame_stills`, `aideos_submit_frame_review`, and `aideos_wait_for_task`.
 
 ### `backend/pipeline/filmStore.ts`
 * `ROOT`: Absolute path to project root directory.
@@ -405,6 +406,25 @@ An individual vector path inside a limb:
 * `compile.ts`: Pure deterministic compiler (`compileScene`) threading keyframes, actions, and custom animation timelines onto frames.
 * `validateScene.ts`: Phase 1 semantic and physical integrity validator (`validateScene`) including Rule 20 timeline consistency.
 * `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`, `collectSceneAssetElementIds`).
+
+### `backend/transcribe.ts` (Audio & Video Transcription)
+* `transcribe(src, options, deps)`: Transcribes audio or video media into word-level timings (`TranscribedWord[]`) with confidence scores, using Deepgram with local Whisper CLI fallback.
+* `writeImportWords(packageDir, words)`: Writes `import_words.json` and phrase-grouped `import_captions.vtt` sidecars into the package directory.
+* `readImportWords(packageDir)`: Reads transcribed words from `import_words.json` when present.
+* `resolveDeepgramApiKey()`: Resolves Deepgram API key from environment variables.
+
+### `backend/editContext/` (Edit Context Assembly & Signal Detection)
+* `detectFillers(words, options)` (`detectFillers.ts`): Identifies fixed filler words ("um", "uh") and confidence-gated colloquial phrases ("like", "you know") as `FillerSpan[]`.
+* `detectSilences(words, options)` (`detectSilences.ts`): Identifies silence intervals and dead-air gaps between words as `SilenceWindow[]`.
+* `buildEditContext(layeredFilm, transcript, fillers, silences, options)` (`buildEditContext.ts`): Assembles pure, structured timeline context (`EditContext`) summarizing lanes, clips, media dimensions, fillers, and silences for LLM planning.
+
+### `backend/editPlanner/` (Model-Driven AI Edit Planning, Validation, Execution & Provenance Logging)
+* `editOpSchema`, `editProgramSchema` (`schema.ts`): Closed Zod discriminated union and array schema defining the complete edit operation vocabulary (`add_text_overlay`, `add_lower_third`, `add_slide`, `add_caption_track`, `remove_fillers`, `remove_dead_air`, `trim_range`, `split_clip`, `move_clip`, `set_clip_speed`, `set_clip_volume`, `set_layer_state`, `set_accent`, `set_theme`, `reorder_segments`).
+* `validateEditProgram(program, context)` (`validator.ts`): Validates edit operation programs against schema constraints, timeline bounds, and dry-run layer model simulation.
+* `applyEditProgram(film, program, context)` (`interpreter.ts`): Pure transactional interpreter applying `EditOp[]` to `LayeredFilm` with atomic rollback on failure.
+* `planEdits(request, context, llmCaller, options)` (`planner.ts`): Model-driven planner generating and validating `EditOp[]` programs from natural language requests in a 3-attempt validate-and-repair loop.
+* `appendEditProvenanceRecord(videosDir, filmId, record, source)` (`provenanceLog.ts`): Appends structured edit audit records to `videos/<slug>/edit_log.jsonl` for preview and commit events.
+* `readEditProvenanceLog(videosDir, filmId)` (`provenanceLog.ts`): Reads edit provenance records for a film package, newest first.
 
 ### `src/dl/validateFilm.ts` & `scripts/validate_film.ts`
 * `validateFilm(film)`: Runs Zod schema parsing and structural integrity assertions.

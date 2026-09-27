@@ -1,8 +1,9 @@
 /**
- * File Description: Closed Zod Schema and TypeScript Types for Video Edit Operations (Phase 2).
+ * File Description: Closed Zod Schema and TypeScript Types for Video Edit Operations (Phases 2-3).
  * Defines the complete, closed editing operation vocabulary (EditOp) for the AI editor:
- * text overlays, slides, caption tracks, filler-word removal, dead-air removal, range trimming,
- * splitting, moving clips, clip speed, volume, lane mute/hide, accent, theme, and segment reordering.
+ * text overlays, lower-thirds, slides, caption tracks, filler-word removal, dead-air removal,
+ * range trimming, splitting, moving clips, clip speed, volume, lane mute/hide, accent, theme,
+ * and segment reordering.
  */
 
 import { z } from "zod";
@@ -16,6 +17,17 @@ export const addTextOverlayOpSchema = z.object({
   position: z.enum(["top", "center", "bottom"]).optional().describe("Vertical positioning of the text on screen"),
   accentWord: z.string().optional().describe("Optional word within text to highlight with the theme accent color"),
   laneHint: z.string().optional().describe("Optional target layer ID or name"),
+  label: z.string().optional().describe("Human-readable label for this edit operation"),
+});
+
+export const addLowerThirdOpSchema = z.object({
+  op: z.literal("add_lower_third"),
+  title: z.string().min(1).describe("Primary text line (e.g. speaker name or topic label)"),
+  subtitle: z.string().optional().describe("Optional secondary line (e.g. role or context)"),
+  startSec: z.number().min(0).describe("Timeline start second for the lower-third card"),
+  endSec: z.number().min(0).describe("Timeline end second for the lower-third card"),
+  accentWord: z.string().optional().describe("Word in title to highlight with the theme accent color"),
+  laneHint: z.string().optional().describe("Optional target lane ID for the lower-third clip"),
   label: z.string().optional().describe("Human-readable label for this edit operation"),
 });
 
@@ -143,6 +155,7 @@ export const reorderSegmentsOpSchema = z.object({
  */
 export const editOpSchema = z.discriminatedUnion("op", [
   addTextOverlayOpSchema,
+  addLowerThirdOpSchema,
   addSlideOpSchema,
   addCaptionTrackOpSchema,
   removeFillersOpSchema,
@@ -162,6 +175,7 @@ export const editOpSchema = z.discriminatedUnion("op", [
 export type EditOp = z.infer<typeof editOpSchema>;
 
 export type AddTextOverlayOp = z.infer<typeof addTextOverlayOpSchema>;
+export type AddLowerThirdOp = z.infer<typeof addLowerThirdOpSchema>;
 export type AddSlideOp = z.infer<typeof addSlideOpSchema>;
 export type AddCaptionTrackOp = z.infer<typeof addCaptionTrackOpSchema>;
 export type RemoveFillersOp = z.infer<typeof removeFillersOpSchema>;

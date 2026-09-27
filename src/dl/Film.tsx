@@ -4,10 +4,10 @@
 
 import React from "react";
 import { AbsoluteFill, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
-import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext } from "./tokens";
+import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO } from "./tokens";
 import { getFullScreenHeroLayout, heroScrimGradient } from "./fullScreenHeroLayout";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
-import { AccentContext } from "./accent";
+import { AccentContext, useAccent } from "./accent";
 import { BlockView } from "./Block";
 import { CanvasGraph } from "./CanvasGraph";
 import { SceneStage } from "./SceneStage";
@@ -64,6 +64,7 @@ const ImportedVideoLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }
             <OffthreadVideo
               src={staticFile(vc.src)}
               trimBefore={Math.round(vc.start * fps)}
+              playbackRate={vc.speed ?? 1.0}
               volume={vc.muted ? 0 : (vc.volume ?? 1)}
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
@@ -74,10 +75,55 @@ const ImportedVideoLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }
   );
 };
 
-/** One text overlay clip, sized and worded per its payload's `size`. */
+/** One text overlay clip, sized and worded per its payload's `size` and lower-third flags. */
 const OverlayText: React.FC<{ payload: TextPayload; durationInFrames: number }> = ({ payload, durationInFrames }) => {
   const layout = useLayout();
   const palette = useTokens();
+  const accent = useAccent();
+
+  if (payload.lowerThird || payload.subtitle) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: layout.grid * 0.5,
+          background: palette.surface,
+          border: `1px solid ${palette.rule()}`,
+          borderLeft: `4px solid ${accent}`,
+          padding: `${layout.grid * 1.2}px ${layout.grid * 2}px`,
+          borderRadius: layout.radius.inner,
+          maxWidth: "80%",
+        }}
+      >
+        <span
+          style={{
+            ...layout.type("body"),
+            fontFamily: MONO,
+            fontWeight: 700,
+            fontSize: layout.type("body").fontSize * 1.1,
+            color: palette.ink,
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {payload.text}
+        </span>
+        {payload.subtitle ? (
+          <span
+            style={{
+              ...layout.type("caption"),
+              fontFamily: MONO,
+              color: palette.muted,
+              fontSize: layout.type("caption").fontSize * 0.95,
+            }}
+          >
+            {payload.subtitle}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
   if (payload.size === "kicker") {
     return <Kicker text={payload.text} start={0} index={0} durationInFrames={durationInFrames} />;
   }
@@ -115,6 +161,9 @@ const OverlayLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }) => {
       {film.overlayClips.map((oc) => {
         const durationInFrames = Math.max(1, Math.round((oc.end - oc.start) * fps));
         const hasPosition = oc.payload && "x" in oc.payload && oc.payload.x !== undefined;
+        const textPayload = oc.kind === "text" ? (oc.payload as TextPayload) : undefined;
+        const isLowerThird = Boolean(textPayload?.lowerThird || textPayload?.subtitle);
+
         const positionStyle: React.CSSProperties = hasPosition
           ? {
               left: `${((oc.payload as { x?: number }).x ?? 0.5) * 100}%`,
@@ -122,6 +171,13 @@ const OverlayLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }) => {
               transform: "translate(-50%, -50%)",
               alignItems: "center",
               justifyContent: "center",
+            }
+          : isLowerThird
+          ? {
+              left: "6%",
+              bottom: "12%",
+              alignItems: "flex-start",
+              justifyContent: "flex-start",
             }
           : { left: 0, right: 0, bottom: "10%", alignItems: "center", justifyContent: "center" };
 
@@ -644,16 +700,15 @@ export const FilmView: React.FC<FilmViewProps> = ({
                 const speed = ac.speed ?? 1.0;
                 const isRetimed = Math.abs(speed - 1.0) > 0.001;
                 const startFrame = Math.round(ac.position * fps);
-                const rawDurFrames = Math.max(1, Math.round(ac.end * fps) - Math.round((ac.start ?? 0) * fps));
-                const effectiveDurFrames = Math.max(1, Math.round(rawDurFrames / speed));
-                const startFrom = isRetimed ? Math.round(((ac.start ?? 0) / speed) * fps) : Math.round((ac.start ?? 0) * fps);
-                const endAt = isRetimed ? Math.round((ac.end / speed) * fps) : Math.round(ac.end * fps);
+                const durFrames = Math.max(1, Math.round(ac.end * fps) - Math.round((ac.start ?? 0) * fps));
+                const startFrom = Math.round((ac.start ?? 0) * fps);
+                const endAt = Math.round(ac.end * fps);
                 const audioSrc = isRetimed
                   ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
                   : staticFile(ac.src);
 
                 return (
-                  <Sequence key={ac.id} from={startFrame} durationInFrames={effectiveDurFrames}>
+                  <Sequence key={ac.id} from={startFrame} durationInFrames={durFrames}>
                     <Audio
                       src={audioSrc}
                       startFrom={startFrom}

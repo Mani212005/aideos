@@ -23,6 +23,7 @@ interface OnCanvasAiEditorProps {
 }
 
 interface PlannedState {
+  request: string;
   plan: string;
   ops: EditOp[];
   warnings: string[];
@@ -34,6 +35,8 @@ function describeEditOp(op: EditOp): string {
   switch (op.op) {
     case "add_text_overlay":
       return `Text Overlay: "${op.text}" at ${op.startSec.toFixed(1)}s - ${op.endSec.toFixed(1)}s (${op.position || "bottom"})`;
+    case "add_lower_third":
+      return `Lower Third: "${op.title}"${op.subtitle ? ` / "${op.subtitle}"` : ""} at ${op.startSec.toFixed(1)}s - ${op.endSec.toFixed(1)}s`;
     case "add_slide":
       return `Slide: ${op.visualDirection || "Visual graphic"} at ${op.startSec.toFixed(1)}s - ${op.endSec.toFixed(1)}s`;
     case "add_caption_track":
@@ -113,6 +116,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
       }
 
       setPlannedState({
+        request: query,
         plan: data.plan,
         ops: data.ops || [],
         warnings: data.warnings || [],
@@ -156,6 +160,21 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ film: updatedFilm }),
+      }).catch(() => undefined);
+
+      void fetch("/api/edit-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filmId: film.id,
+          request: plannedState.request || promptInput || "Applied AI edit",
+          plan: plannedState.plan,
+          ops: plannedState.ops,
+          attempts: 1,
+          dryRun: false,
+          source: "studio",
+          warnings: plannedState.warnings,
+        }),
       }).catch(() => undefined);
 
       setStatusMessage({

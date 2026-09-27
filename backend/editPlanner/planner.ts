@@ -1,8 +1,9 @@
 /**
- * File Description: Model-Driven Video Edit Planner (Phase 2).
+ * File Description: Model-Driven Video Edit Planner (Phases 2-3).
  * Composes the EditContext into an AI prompt, queries the injected LLM (or Google Gen AI client),
  * and validates the resulting EditOp program in a 3-attempt validate-then-repair loop
  * mirroring backend/scene/generateSvg.ts's generateWithRepair contract.
+ * Phase 3 additions: add_lower_third in the planner vocabulary for broadcast-style callouts.
  */
 
 import type { EditContext } from "../editContext/buildEditContext";
@@ -140,6 +141,7 @@ ${clipsSummary}
 ---
 ### ALLOWED EDIT OPERATIONS (EditOp VOCABULARY)
 - add_text_overlay: { "op": "add_text_overlay", "text": string, "startSec": number, "endSec": number, "size"?: "headline"|"body"|"kicker", "position"?: "top"|"center"|"bottom", "accentWord"?: string, "laneHint"?: string, "label"?: string }
+- add_lower_third: { "op": "add_lower_third", "title": string, "subtitle"?: string, "startSec": number, "endSec": number, "accentWord"?: string, "laneHint"?: string, "label"?: string } (broadcast-style lower-third name/role card in bottom-quarter of frame)
 - add_slide: { "op": "add_slide", "visualDirection"?: string, "sceneSpec"?: object, "startSec": number, "endSec": number, "style"?: string, "label"?: string }
 - add_caption_track: { "op": "add_caption_track", "style"?: "kinetic"|"standard", "fromSec"?: number, "toSec"?: number, "label"?: string }
 - remove_fillers: { "op": "remove_fillers", "scope"?: "all" | string[] | { "fromSec": number, "toSec": number }, "confidenceMin"?: number, "label"?: string }

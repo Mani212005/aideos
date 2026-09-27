@@ -254,7 +254,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
         end: vc.end,
         sourceDuration: vc.sourceDuration,
         kind: "video",
-        payload: { src: vc.src, width: vc.width, height: vc.height },
+        payload: { src: vc.src, width: vc.width, height: vc.height, speed: vc.speed },
         linkedClipId: vc.linkedClipId ?? null,
         volume: vc.muted ? 0 : Math.min(2, Math.max(0, vc.volume ?? 1)),
         opacity: vc.opacity ?? 1,
@@ -492,6 +492,7 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
             height: p.height,
             opacity: c.opacity ?? 1,
             volume: c.volume ?? 1,
+            speed: p.speed,
             layerId: c.layerId === CONVERTED_LAYER_IDS.video ? undefined : c.layerId,
             linkedClipId: c.linkedClipId ?? undefined,
           };

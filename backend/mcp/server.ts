@@ -20,6 +20,7 @@ import { buildEditContext } from "../editContext/buildEditContext";
 import { detectFillers } from "../editContext/detectFillers";
 import { detectSilences } from "../editContext/detectSilences";
 import { planEdits, applyEditProgram } from "../editPlanner";
+import { appendEditProvenanceRecord, readEditProvenanceLog } from "../editPlanner/provenanceLog";
 import type { TranscribedWord } from "../transcribe";
 import { taskQueue, traceBus } from "../agentBridge";
 import { registerDesignTools } from "./designTools";
@@ -154,6 +155,8 @@ export interface McpServerOptions {
     waitForTask(holdMs: number): Promise<{ id: string; eventType: string; filmId: string; prompt: string } | null | "ended">;
     complete(taskId: string, summary: string | undefined, ok: boolean): void;
   };
+  /** Injected LLM caller for testing and offline execution in the edit planner. */
+  llmCaller?: (prompt: string) => Promise<string>;
 }
 
 /** Instructions a remote agent reads: it has no shell, only these tools. */
@@ -378,9 +381,19 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
         theme: film.theme,
       });
 
-      const planResult = await planEdits(request, context, undefined, { agentHints: hints });
+      const planResult = await planEdits(request, context, options.llmCaller, { agentHints: hints });
 
       if (dryRun) {
+        appendEditProvenanceRecord(VIDEOS_DIR, slug, {
+          request,
+          plan: planResult.plan,
+          ops: planResult.ops,
+          attempts: planResult.attempts,
+          dryRun: true,
+          source: "mcp",
+          warnings: planResult.warnings,
+        });
+
         return jsonResult({
           slug,
           applied: false,
@@ -407,6 +420,16 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
       const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
       const savedFilm = writeFilm(slug, updatedFilm);
 
+      appendEditProvenanceRecord(VIDEOS_DIR, slug, {
+        request,
+        plan: planResult.plan,
+        ops: planResult.ops,
+        attempts: planResult.attempts,
+        dryRun: false,
+        source: "mcp",
+        warnings: planResult.warnings,
+      });
+
       return jsonResult({
         slug,
         applied: true,
@@ -422,6 +445,31 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
           accent: savedFilm.accent,
           durationSec: Number(savedFilm.shots.reduce((sum, s) => sum + s.dur, 0).toFixed(2)),
         },
+      });
+    },
+  );
+
+  server.registerTool(
+    "aideos_list_edit_log",
+    {
+      title: "List AI edit provenance log",
+      description:
+        "Return the full provenance audit trail for a film's AI edit operations. " +
+        "Each record includes the edit request, the generated plan, the resolved EditOp[], " +
+        "the number of LLM repair attempts, and whether it was a dry-run preview or an applied commit.",
+      inputSchema: {
+        slug: z.string().regex(/^[a-z0-9-]+$/).describe("The package slug under videos/."),
+        limit: z.number().int().min(1).max(200).optional().describe("Maximum number of records to return (newest first). Defaults to 50."),
+      },
+    },
+    async ({ slug, limit }) => {
+      const records = readEditProvenanceLog(VIDEOS_DIR, slug);
+      const capped = records.slice(0, limit ?? 50);
+      return jsonResult({
+        slug,
+        total: records.length,
+        returned: capped.length,
+        records: capped,
       });
     },
   );
