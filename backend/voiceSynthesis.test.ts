@@ -6,8 +6,8 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { synthesizeVoiceover, VoiceSynthesisError, kokoroFits, pcm16ToWav, wavDataChunk } from "./voiceSynthesis.ts";
-import type { SynthesisDeps, SynthesisRequest } from "./voiceSynthesis.ts";
+import { synthesizeVoiceover, VoiceSynthesisError, kokoroFits, pcm16ToWav, wavDataChunk } from "./voiceSynthesis";
+import type { SynthesisDeps, SynthesisRequest } from "./voiceSynthesis";
 
 const MB = 1024 ** 2;
 
