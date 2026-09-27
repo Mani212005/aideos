@@ -552,7 +552,7 @@ export function ScriptEditor({
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Voice synthesis failed");
+      if (!res.ok) throw new Error([data.error || "Voice synthesis failed", data.detail].filter(Boolean).join(" "));
 
       setAudioUrl(data.audioSrc);
       if (data.actualDurationSec) {

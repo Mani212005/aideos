@@ -124,7 +124,7 @@ Aideos is engineered around 4 strict architectural invariants:
 
 The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run editor` or the global terminal command `aideos`), presenting a 7-stage Neobrutalism editing interface:
 
-1. **Stage 1: Script (`ScriptStage.tsx`)**: Write and edit screenplay narration text in Full Screenplay markdown, interactive Visual Studio beat cards, or Spoken Text view, with automatic Remotion sub-shot compilation and instant Kokoro TTS voiceover generation.
+1. **Stage 1: Script (`ScriptStage.tsx`)**: Write and edit screenplay narration text in Full Screenplay markdown, interactive Visual Studio beat cards, or Spoken Text view, with automatic Remotion sub-shot compilation and instant multi-provider TTS voiceover generation (Kokoro, Deepgram, Google Cloud TTS, macOS say).
 2. **Stage 2: Story (`StoryStage.tsx`)**: Drag and drop nodes across the 2D infinite spatial canvas, edit card labels, route directed edges, and solve camera zoom anchors, automatically streaming canvas actions to connected coding agents.
 3. **Stage 3: Look (`LookStage.tsx`)**: Storyboard gallery with 1-click character gesture posing (`Wave`, `Point`, `Think`, `Celebrate`), paper texture presets (Blueprint, Archival White, Charcoal), typography controls, and accent color pickers.
 4. **Stage 4: Motion (`MotionStage.tsx`)**: Custom SVG movie animation authoring studio with element-level timeline keyframing, motion templates (staged entry, pulse, draw-on strokes), and frame-synchronized preview.
