@@ -146,6 +146,14 @@ export interface McpServerOptions {
    * keeps film reading, editing, design and task tools.
    */
   remote?: boolean;
+  /**
+   * The agent's link to the studio when it works from its own session (added by the HTTP handler
+   * for a paired token): lets it wait for the next studio task and report how a task ended.
+   */
+  link?: {
+    waitForTask(holdMs: number): Promise<{ id: string; eventType: string; filmId: string; prompt: string } | null | "ended">;
+    complete(taskId: string, summary: string | undefined, ok: boolean): void;
+  };
 }
 
 /** Instructions a remote agent reads: it has no shell, only these tools. */
@@ -153,7 +161,8 @@ const REMOTE_INSTRUCTIONS =
   "You are connected to an Aideos studio through `aideos connect`. You have no shell and no checkout of the studio: " +
   "work only through these tools. To design a film: aideos_design_brief, then aideos_write_file for design/design.json " +
   "and visuals/<name>.svg, then aideos_design_build until it prints PASS, and aideos_design_check to review. " +
-  "Report progress with aideos_report_step and finish the task you were given with aideos_complete_task.";
+  "Report progress with aideos_report_step and finish the task you were given with aideos_complete_task. " +
+  "If aideos_wait_for_task is available, call it repeatedly to receive the studio's tasks.";
 
 /** Builds the server and registers every tool on it. */
 export function createMcpServer(options: McpServerOptions = {}): McpServer {
@@ -458,6 +467,27 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
     },
   );
 
+  if (options.link) {
+    const link = options.link;
+    server.registerTool(
+      "aideos_wait_for_task",
+      {
+        title: "Wait for the next studio task",
+        description:
+          "Block until the Aideos studio sends this agent a task, or about 40 seconds pass. Returns the task with full instructions, " +
+          "or a note to call this tool again. Do the task with the aideos tools, finish with aideos_complete_task, then call this again. " +
+          "Keep calling it until it says the studio disconnected: that is how this agent stays linked to the studio.",
+        inputSchema: {},
+      },
+      async () => {
+        const task = await link.waitForTask(40_000);
+        if (task === "ended") return jsonResult({ status: "disconnected", message: "The studio ended this link (disconnected, replaced by another agent, or the studio tab was closed). Stop calling this tool." });
+        if (!task) return jsonResult({ status: "idle", message: "No task yet. Call aideos_wait_for_task again." });
+        return jsonResult({ status: "task", taskId: task.id, eventType: task.eventType, filmId: task.filmId, instructions: task.prompt });
+      },
+    );
+  }
+
   server.registerTool(
     "aideos_complete_task",
     {
@@ -473,6 +503,7 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
     async ({ taskId, summary, result }) => {
       try {
         const task = taskQueue.completeTask(taskId, { summary, ...(result || {}) });
+        options.link?.complete(taskId, summary, true);
         return jsonResult({ ok: true, task: taskSummary(task) });
       } catch (err: any) {
         return jsonResult({ ok: false, error: err?.message || String(err) });

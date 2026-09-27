@@ -27,6 +27,10 @@ services:
       # The address a paired `aideos connect` dials (the studio shows it in its pairing command).
       - key: AIDEOS_PUBLIC_API_URL
         value: https://aideos-backend.onrender.com
+      # Signs agent-link tokens so a paired agent survives every restart (the free plan wipes the
+      # filesystem). Optional: without it the key is derived from GEMINI_API_KEY, which is also stable.
+      - key: AIDEOS_LINK_SECRET
+        generateValue: true
       - key: WAN_GPU_HOST
         sync: false
       - key: WAN_GPU_USER

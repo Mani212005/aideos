@@ -282,7 +282,7 @@ An individual vector path inside a limb:
 * `buildProseTransformSystemInstruction()` (`backend/pipeline/director.ts`): Assembles the system instruction for transforming raw prose into structured scenes, visual directions, on-screen text, and narration beats.
 * `compileFilmFromScreenplayAsync(script, narration, shotDurations, options, jevOptions)` (`backend/pipeline/design.ts`): The design stage's compile path. Compiles screenplay and narration spine into a validated `Film`, asking Jev `selectShotVisual` (see `backend/jev.ts`) only for beats that could take a device, and emitting a device only when `backend/shotVisualCues.ts` finds its data in the narration and the beat has on-screen copy to headline it.
 * `renderFormat(slug, format, options)` (`backend/pipeline/render.ts`): Drives Remotion render with headless verification and contact sheet generation.
-* `startMcpServer()` (`backend/mcp/server.ts`): Exposes the production pipeline, design tools, and agent bridge as an MCP stdio server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`, `aideos_edit_film`, `aideos_get_pending_tasks`, `aideos_claim_task`, `aideos_complete_task`, `aideos_report_step`, `aideos_design_brief`, `aideos_read_file`, `aideos_write_file`, `aideos_design_build`, `aideos_design_check`, `aideos_frame_stills`, and `aideos_submit_frame_review`.
+* `startMcpServer(options)` / `createMcpServer(options)` (`backend/mcp/server.ts`): Exposes the production pipeline, design tools, agent bridge, and remote agent link loop (`aideos_wait_for_task`) as an MCP stdio/HTTP server with tools `aideos_produce_film`, `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`, `aideos_edit_film`, `aideos_get_pending_tasks`, `aideos_claim_task`, `aideos_complete_task`, `aideos_report_step`, `aideos_design_brief`, `aideos_read_file`, `aideos_write_file`, `aideos_design_build`, `aideos_design_check`, `aideos_frame_stills`, `aideos_submit_frame_review`, and `aideos_wait_for_task`.
 
 ### `backend/pipeline/filmStore.ts`
 * `ROOT`: Absolute path to project root directory.
@@ -309,9 +309,10 @@ An individual vector path inside a limb:
 * `getAgentSession()`, `setAgentSession(info)`: Reads and persists active agent session metadata (`.aideos_session.json`).
 
 ### `backend/agentLink/` (Headless Coding Agent Link & Connector Hub)
-* `AgentLinkStore` (`backend/agentLink/store.ts`): State store for pairing codes, owner keys, and connected agent long-poll queues with single-agent-per-owner replacement tracking (`startPairing`, `claim`, `replacementNote`, `isValid`, `ownerOf`, `push`, `next`, `result`).
+* `AgentLinkStore` (`backend/agentLink/store.ts`): State store for signed pairing tokens, owner keys, heartbeat tracking, and connected agent long-poll queues with single-agent-per-owner replacement tracking (`startPairing`, `startAgentPairing`, `claim`, `authenticate`, `replacementNote`, `isConnector`, `endReason`, `status`, `disconnect`, `heartbeat`, `enqueue`, `next`, `report`, `recordActivity`, `activity`).
+* `buildAgentInstructions(agent, apiUrl, token)` (`backend/agentLink/connectInstructions.ts`): Generates agent-native MCP configuration commands and the paste-in prompt for Claude Code, Antigravity, Codex, and OpenCode.
 * `remoteTaskPrompt(taskId, prompt)` (`backend/agentLink/prompt.ts`): Maps studio task instructions onto the sandboxed MCP tool interface for headless agents.
-* `aideos-connect.mjs` (`scripts/aideos-connect.mjs`): Standalone dependency-free connector script linking local coding agents (Claude, Antigravity, Codex, OpenCode) to the studio via long-polling, supporting `--model provider/model` overrides, free-tier refusal diagnostics (`taskFailureHint`), and connection update preservation (`updateConnection`).
+* `aideos-connect.mjs` (`scripts/aideos-connect.mjs`): Standalone dependency-free connector script linking local coding agents (Claude, Antigravity, Codex, OpenCode) to the studio via long-polling, supporting `--model provider/model` overrides, free-tier refusal diagnostics (`taskFailureHint`), quiet reconnect notes (`createReconnectNotes`), indented agent output (`indentAgentOutput`), duration formatting (`formatElapsed`), and real-time tool call streaming.
 
 ### `backend/agentPrompter.ts` (Auto-Prompter Facade)
 * Delegates backwards-compatible prompter APIs (`getAgentSession`, `setAgentSession`, `buildDirectingPrompt`, `dispatchPromptToAgent`) directly to `backend/agentBridge/`.
@@ -432,10 +433,11 @@ An individual vector path inside a limb:
 ### State & Integration Layer (`editor/src/state/`)
 * **`useFilmProject.ts`**: Owns the active `Film` document, autosave debounce, single labelled undo/redo transaction stack, and live studio hot-reload subscribing to `film_updated` SSE events from `/api/agent/trace` to reflect external agent modifications instantly without manual refresh.
 * **`useLayeredTimeline.ts`**: Derives `LayeredFilm`, executes layer engine mutations (`moveClip`, `trimClip`, `rippleTrimClip`, `splitClip`, `removeClip`, `rippleRemoveClip`), folds changes back losslessly via `convertLayeredFilmToFilm`, and computes `renderFilm` for preview and export.
+* **`agentLink.ts`**: Manages browser owner key state (`readOwnerKey`, `writeOwnerKey`, `rotateOwnerKey`), remembers expected active links across server restarts (`readExpectedLink`, `writeExpectedLink`, `linkPhase`), and installs global `X-Aideos-Owner` fetch headers (`installOwnerHeader`).
 
 ### Studio Inspector & Telemetry Components (`editor/src/components/`)
 * **`AgentActivityInspector.tsx`**: Live real-time agent telemetry timeline subscribing to SSE stream (`/api/agent/trace`) with filterable execution steps, live status pills (LIVE / CONNECTING / OFFLINE), and empty state.
-* **`AgentConnect.tsx`**: Header dialog modal generating pairing codes, displaying CLI connect commands with agent selectors, and warning on active agent replacements.
+* **`AgentConnect.tsx`**: Header badge and dialog modal supporting two linking modes (running agent session via MCP and downloadable connector), presence heartbeating, reconnecting state recovery across restarts, and live activity feeds.
 
 ### Handcrafted Neobrutalism UI Primitives (`editor/src/components/ui/`)
 * **`Badge.tsx`**: Status indicators and token chips.

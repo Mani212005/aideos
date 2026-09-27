@@ -42,7 +42,9 @@ Before deploying, ensure you have:
 2. **Vercel Account**: Access to [vercel.com](https://vercel.com).
 3. **Required API Keys**:
    - `GEMINI_API_KEY` (or `GOOGLE_API_KEY`): Required for AI agent compiler, script intake, director prose transform, critique engine, and Jev semantic primitive compilation.
-4. **Optional API Keys & GPU Settings**:
+4. **Optional API Keys, Secrets & GPU Settings**:
+   - `AIDEOS_LINK_SECRET`: Secret key used to sign agent-link tokens so pairings persist across server restarts (automatically generated via Blueprint `render.yaml`, or derived from `GEMINI_API_KEY`).
+   - `AIDEOS_PUBLIC_API_URL`: Public address of the backend dialed by `aideos connect` (e.g. `https://aideos-backend.onrender.com`).
    - `DEEPGRAM_API_KEY`: For fast cloud-based word-level audio transcription and TTS.
    - `PARALLEL_API_KEY`: For web research and script enrichment.
    - `WAN_GPU_HOST`, `WAN_GPU_USER`, `WAN_GPU_PASSWORD`: For remote GPU Wan2.1 diffusion B-roll generation.
@@ -125,6 +127,8 @@ Before deploying, ensure you have:
 | `GEMINI_API_KEY` | Yes | - | Google Gemini API key for agent compilation and critique |
 | `GOOGLE_API_KEY` | Alternative | - | Fallback Google GenAI API key |
 | `AIDEOS_GEMINI_MODEL` | No | `gemini-2.0-flash` | Gemini model name for screenplay intake and critique |
+| `AIDEOS_PUBLIC_API_URL` | No | `https://aideos-backend.onrender.com` | Public backend URL shown in agent link connect commands |
+| `AIDEOS_LINK_SECRET` | No | Derived / generated | HMAC secret key signing agent link tokens across restarts |
 | `DEEPGRAM_API_KEY` | No | - | Deepgram API key for speech recognition and neural TTS |
 | `PARALLEL_API_KEY` | No | - | Parallel Web Search key for factual script research |
 | `PORT` | No | `8080` (Docker) / `3001` (Dev) | Port for the backend server |
