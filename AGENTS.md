@@ -54,9 +54,10 @@ File Description: This file defines the core guidelines, coding principles, and 
   `filler_words`, `utterances` all on) when a key is configured, else a local Whisper CLI
   fallback. Both paths return the same `TranscribedWord[]` shape (the existing `WordInfo` plus a
   per-word `confidence`), so downstream code never needs to know which backend ran. The network
-  fetch, the ffmpeg extraction and the Whisper subprocess are all injectable via `deps`, mirroring
-  the `llmCaller` injection convention elsewhere, so tests exercise real routing/parsing logic
-  without ever touching the network or a real ASR process. `writeImportWords` persists the result
+  fetch, the API key resolution, the ffmpeg extraction and the Whisper subprocess are all
+  injectable via `deps`, mirroring the `llmCaller` injection convention elsewhere, so tests
+  exercise real routing/parsing logic without ever touching the network, .env files or a real
+  ASR process. `writeImportWords` persists the result
   to `videos/<slug>/import_words.json` (`{words: TranscribedWord[]}`, each carrying a `filler`
   flag once a detection pass has run) plus `import_captions.vtt` via `audio.ts`'s `buildCaptionsVtt`.
 - `backend/editContext/` holds the pure signal-detection and context-assembly modules
