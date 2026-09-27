@@ -237,12 +237,13 @@ File Description: This file defines the core guidelines, coding principles, and 
   until it is removed from the list. Subtrees with their own enforcement (`films/`, `scene/`,
   `tokens.ts`) are excluded and say why in the file.
 
-## AI Video Editing Core (Phase 2)
+## AI Video Editing Core (Phases 2-4)
 
-- `backend/editPlanner/schema.ts` defines the closed Zod discriminated union `EditOp` representing the entire editing vocabulary (text overlays, slides, caption track, filler word removal, dead air removal, range trim, splitting, moving clips, clip speed, volume, mute/hide lanes, accent, theme, reordering). Unknown op kinds are rejected.
+- `backend/editPlanner/schema.ts` defines the closed Zod discriminated union `EditOp` representing the entire editing vocabulary (text overlays, lower-thirds, slides, caption track, filler word removal, dead air removal, range trim, splitting, moving clips, clip speed, volume, mute/hide lanes, accent, theme, reordering). Unknown op kinds are rejected.
 - `backend/editPlanner/validator.ts`'s `validateEditProgram(ops, context)` enforces semantic timeline bounds, entity references, and runs a dry-run simulation against `validateLayeredFilm`.
-- `backend/editPlanner/interpreter.ts`'s `applyEditProgram(film, ops, context)` is a pure transactional interpreter mapping `EditOp[]` to timeline and voiceover engine operations with atomic rollback on failure.
+- `backend/editPlanner/interpreter.ts`'s `applyEditProgram(film, ops, context)` is a pure transactional interpreter mapping `EditOp[]` to timeline and voiceover engine operations with atomic rollback on failure. Supports `add_lower_third` for broadcast-style name/role callout cards, and synchronous video/audio clip speed adjustments.
 - `backend/editPlanner/planner.ts`'s `planEdits(request, context, llmCaller)` uses a 3-attempt validate-then-repair loop feeding validation errors back to the model, returning `{ plan, ops }`.
+- `backend/editPlanner/provenanceLog.ts`'s `appendEditProvenanceRecord` / `readEditProvenanceLog` records an append-only JSON Lines audit trail to `videos/<slug>/edit_log.jsonl` capturing natural-language requests, generated plans, resolved ops, repair attempts, dry-run status, and source tags, queryable via `GET /api/edit-log` and MCP tool `aideos_list_edit_log`.
 - `editor/src/components/OnCanvasAiEditor.tsx` renders the model-driven AI edit panel with dry-run-then-apply UX, folding committed edits through `convertLayeredFilmToFilm` for a single undo step.
 ## Connected Agent Bridge Hub (Phase 2)
 - `backend/agentBridge/` is the single authoritative hub for multi-channel outbound dispatch to connected AI coding agents.

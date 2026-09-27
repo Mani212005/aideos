@@ -125,6 +125,7 @@ Tools:
 | `aideos_list_films`      | Video packages on disk, with shot count, duration and B-roll status.        |
 | `aideos_get_film`        | The validated film manifest for one package.                               |
 | `aideos_edit_film`       | Plan and execute natural-language edits on a video package with rollback.   |
+| `aideos_list_edit_log`   | Return the full provenance audit trail for a film's AI edit operations.    |
 | `aideos_get_pending_tasks`| Fetch pending directing, voiceover, screenplay, and editing tasks.         |
 | `aideos_claim_task`      | Claim a pending task to begin execution and prevent hybrid fallback.       |
 | `aideos_complete_task`   | Mark a claimed agent task as completed with summary and execution results. |
