@@ -136,6 +136,7 @@ Tools:
 | `aideos_design_check`    | Run design checks (schema, palette, typography, pacing, honest numbers).   |
 | `aideos_frame_stills`    | Fetch sampled 1920x1080 review stills as images with frame metadata.       |
 | `aideos_submit_frame_review` | Submit notes, suggestions, and image-text similarity scores.           |
+| `aideos_wait_for_task`   | Wait for and receive the next studio task (remote agent-link sessions).    |
 
 A full render takes tens of minutes, so `aideos_produce_film` never blocks: it starts the run in
 the background and hands back a `runId` for the caller to poll. Run records live in the server
