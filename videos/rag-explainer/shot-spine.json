@@ -1,0 +1,1084 @@
+{
+  "totalDurationSec": 65.877,
+  "ttsBackend": "kokoro:af_heart",
+  "segments": [
+    {
+      "shotId": "stale",
+      "text": "I know so much, but I stopped learning last spring.",
+      "startSec": 0,
+      "durationSec": 2.806,
+      "words": [
+        {
+          "word": "I",
+          "startSec": 0,
+          "endSec": 0.08
+        },
+        {
+          "word": "know",
+          "startSec": 0.08,
+          "endSec": 0.22
+        },
+        {
+          "word": "so",
+          "startSec": 0.22,
+          "endSec": 0.42
+        },
+        {
+          "word": "much,",
+          "startSec": 0.42,
+          "endSec": 0.72
+        },
+        {
+          "word": "but",
+          "startSec": 0.96,
+          "endSec": 1.06
+        },
+        {
+          "word": "I",
+          "startSec": 1.06,
+          "endSec": 1.16
+        },
+        {
+          "word": "stopped",
+          "startSec": 1.16,
+          "endSec": 1.38
+        },
+        {
+          "word": "learning",
+          "startSec": 1.38,
+          "endSec": 1.66
+        },
+        {
+          "word": "last",
+          "startSec": 1.66,
+          "endSec": 1.94
+        },
+        {
+          "word": "spring.",
+          "startSec": 1.94,
+          "endSec": 2.28
+        }
+      ]
+    },
+    {
+      "shotId": "invent",
+      "text": "Ask me about today, and I'll invent anything.",
+      "startSec": 2.806,
+      "durationSec": 2.68,
+      "words": [
+        {
+          "word": "Ask",
+          "startSec": 2.806,
+          "endSec": 3.006
+        },
+        {
+          "word": "me",
+          "startSec": 3.006,
+          "endSec": 3.146
+        },
+        {
+          "word": "about",
+          "startSec": 3.146,
+          "endSec": 3.306
+        },
+        {
+          "word": "today,",
+          "startSec": 3.306,
+          "endSec": 3.626
+        },
+        {
+          "word": "and",
+          "startSec": 3.626,
+          "endSec": 4.126
+        },
+        {
+          "word": "I'll",
+          "startSec": 4.126,
+          "endSec": 4.326
+        },
+        {
+          "word": "invent",
+          "startSec": 4.326,
+          "endSec": 4.586
+        },
+        {
+          "word": "anything.",
+          "startSec": 4.586,
+          "endSec": 4.966
+        }
+      ]
+    },
+    {
+      "shotId": "halluc",
+      "text": "They call it hallucination. I call it confidence.",
+      "startSec": 5.487,
+      "durationSec": 3.181,
+      "words": [
+        {
+          "word": "They",
+          "startSec": 5.487,
+          "endSec": 5.567
+        },
+        {
+          "word": "call",
+          "startSec": 5.567,
+          "endSec": 5.847
+        },
+        {
+          "word": "it",
+          "startSec": 5.847,
+          "endSec": 5.947
+        },
+        {
+          "word": "hallucination.",
+          "startSec": 5.947,
+          "endSec": 6.667
+        },
+        {
+          "word": "I",
+          "startSec": 7.127,
+          "endSec": 7.267
+        },
+        {
+          "word": "call",
+          "startSec": 7.267,
+          "endSec": 7.487
+        },
+        {
+          "word": "it",
+          "startSec": 7.487,
+          "endSec": 7.587
+        },
+        {
+          "word": "confidence.",
+          "startSec": 7.587,
+          "endSec": 8.027
+        }
+      ]
+    },
+    {
+      "shotId": "nexttoken",
+      "text": "No source, no brakes. Just the next likely word.",
+      "startSec": 8.667,
+      "durationSec": 3.106,
+      "words": [
+        {
+          "word": "No",
+          "startSec": 8.667,
+          "endSec": 8.807
+        },
+        {
+          "word": "source,",
+          "startSec": 8.807,
+          "endSec": 9.127
+        },
+        {
+          "word": "no",
+          "startSec": 9.327,
+          "endSec": 9.427
+        },
+        {
+          "word": "brakes.",
+          "startSec": 9.427,
+          "endSec": 10.187
+        },
+        {
+          "word": "Just",
+          "startSec": 10.187,
+          "endSec": 10.287
+        },
+        {
+          "word": "the",
+          "startSec": 10.287,
+          "endSec": 10.427
+        },
+        {
+          "word": "next",
+          "startSec": 10.427,
+          "endSec": 10.587
+        },
+        {
+          "word": "likely",
+          "startSec": 10.587,
+          "endSec": 10.927
+        },
+        {
+          "word": "word.",
+          "startSec": 10.927,
+          "endSec": 11.267
+        }
+      ]
+    },
+    {
+      "shotId": "lookup",
+      "text": "So don't make me remember. Let me look it up.",
+      "startSec": 11.774,
+      "durationSec": 2.559,
+      "words": [
+        {
+          "word": "So",
+          "startSec": 11.774,
+          "endSec": 11.894
+        },
+        {
+          "word": "don't",
+          "startSec": 11.894,
+          "endSec": 12.114
+        },
+        {
+          "word": "make",
+          "startSec": 12.114,
+          "endSec": 12.234
+        },
+        {
+          "word": "me",
+          "startSec": 12.234,
+          "endSec": 12.374
+        },
+        {
+          "word": "remember.",
+          "startSec": 12.374,
+          "endSec": 12.734
+        },
+        {
+          "word": "Let",
+          "startSec": 13.154,
+          "endSec": 13.314
+        },
+        {
+          "word": "me",
+          "startSec": 13.314,
+          "endSec": 13.454
+        },
+        {
+          "word": "look",
+          "startSec": 13.454,
+          "endSec": 13.614
+        },
+        {
+          "word": "it",
+          "startSec": 13.614,
+          "endSec": 13.714
+        },
+        {
+          "word": "up.",
+          "startSec": 13.714,
+          "endSec": 13.874
+        }
+      ]
+    },
+    {
+      "shotId": "title",
+      "text": "Retrieval. Augmented. Generation.",
+      "startSec": 14.332,
+      "durationSec": 2.687,
+      "words": [
+        {
+          "word": "Retrieval.",
+          "startSec": 14.332,
+          "endSec": 14.832
+        },
+        {
+          "word": "Augmented.",
+          "startSec": 14.832,
+          "endSec": 15.492
+        },
+        {
+          "word": "Generation.",
+          "startSec": 15.852,
+          "endSec": 16.372
+        }
+      ]
+    },
+    {
+      "shotId": "tear",
+      "text": "Step one: tear your documents into chunks.",
+      "startSec": 17.019,
+      "durationSec": 2.622,
+      "words": [
+        {
+          "word": "Step",
+          "startSec": 17.019,
+          "endSec": 17.199
+        },
+        {
+          "word": "one:",
+          "startSec": 17.199,
+          "endSec": 17.539
+        },
+        {
+          "word": "tear",
+          "startSec": 17.839,
+          "endSec": 17.939
+        },
+        {
+          "word": "your",
+          "startSec": 17.939,
+          "endSec": 18.059
+        },
+        {
+          "word": "documents",
+          "startSec": 18.059,
+          "endSec": 18.539
+        },
+        {
+          "word": "into",
+          "startSec": 18.539,
+          "endSec": 18.739
+        },
+        {
+          "word": "chunks.",
+          "startSec": 18.739,
+          "endSec": 19.079
+        }
+      ]
+    },
+    {
+      "shotId": "overlap",
+      "text": "Small pieces, with a little overlap, so no sentence gets cut.",
+      "startSec": 19.641,
+      "durationSec": 3.702,
+      "words": [
+        {
+          "word": "Small",
+          "startSec": 19.641,
+          "endSec": 19.841
+        },
+        {
+          "word": "pieces,",
+          "startSec": 19.841,
+          "endSec": 20.181
+        },
+        {
+          "word": "with",
+          "startSec": 20.181,
+          "endSec": 20.481
+        },
+        {
+          "word": "a",
+          "startSec": 20.481,
+          "endSec": 20.581
+        },
+        {
+          "word": "little",
+          "startSec": 20.581,
+          "endSec": 20.661
+        },
+        {
+          "word": "overlap,",
+          "startSec": 20.661,
+          "endSec": 21.121
+        },
+        {
+          "word": "so",
+          "startSec": 21.121,
+          "endSec": 21.581
+        },
+        {
+          "word": "no",
+          "startSec": 21.581,
+          "endSec": 21.781
+        },
+        {
+          "word": "sentence",
+          "startSec": 21.781,
+          "endSec": 22.141
+        },
+        {
+          "word": "gets",
+          "startSec": 22.141,
+          "endSec": 22.521
+        },
+        {
+          "word": "cut.",
+          "startSec": 22.521,
+          "endSec": 22.881
+        }
+      ]
+    },
+    {
+      "shotId": "sizes",
+      "text": "Too small, it loses the plot. Too big, the signal drowns.",
+      "startSec": 23.343,
+      "durationSec": 3.881,
+      "words": [
+        {
+          "word": "Too",
+          "startSec": 23.343,
+          "endSec": 23.443
+        },
+        {
+          "word": "small,",
+          "startSec": 23.443,
+          "endSec": 23.803
+        },
+        {
+          "word": "it",
+          "startSec": 24.023,
+          "endSec": 24.083
+        },
+        {
+          "word": "loses",
+          "startSec": 24.063,
+          "endSec": 24.323
+        },
+        {
+          "word": "the",
+          "startSec": 24.323,
+          "endSec": 24.523
+        },
+        {
+          "word": "plot.",
+          "startSec": 24.523,
+          "endSec": 24.763
+        },
+        {
+          "word": "Too",
+          "startSec": 25.163,
+          "endSec": 25.383
+        },
+        {
+          "word": "big,",
+          "startSec": 25.383,
+          "endSec": 25.643
+        },
+        {
+          "word": "the",
+          "startSec": 25.863,
+          "endSec": 25.923
+        },
+        {
+          "word": "signal",
+          "startSec": 25.923,
+          "endSec": 26.183
+        },
+        {
+          "word": "drowns.",
+          "startSec": 26.183,
+          "endSec": 26.903
+        }
+      ]
+    },
+    {
+      "shotId": "vectors",
+      "text": "Step two: every chunk becomes a vector, a point in space.",
+      "startSec": 27.224,
+      "durationSec": 3.624,
+      "words": [
+        {
+          "word": "Step",
+          "startSec": 27.224,
+          "endSec": 27.384
+        },
+        {
+          "word": "two:",
+          "startSec": 27.384,
+          "endSec": 27.704
+        },
+        {
+          "word": "every",
+          "startSec": 27.924,
+          "endSec": 28.124
+        },
+        {
+          "word": "chunk",
+          "startSec": 28.124,
+          "endSec": 28.364
+        },
+        {
+          "word": "becomes",
+          "startSec": 28.364,
+          "endSec": 28.644
+        },
+        {
+          "word": "a",
+          "startSec": 28.644,
+          "endSec": 28.764
+        },
+        {
+          "word": "vector,",
+          "startSec": 28.764,
+          "endSec": 29.044
+        },
+        {
+          "word": "a",
+          "startSec": 29.424,
+          "endSec": 29.564
+        },
+        {
+          "word": "point",
+          "startSec": 29.564,
+          "endSec": 29.764
+        },
+        {
+          "word": "in",
+          "startSec": 29.764,
+          "endSec": 29.944
+        },
+        {
+          "word": "space.",
+          "startSec": 29.944,
+          "endSec": 30.264
+        }
+      ]
+    },
+    {
+      "shotId": "meaning",
+      "text": "Meaning is just coordinates. Similar ideas land close.",
+      "startSec": 30.848,
+      "durationSec": 3.811,
+      "words": [
+        {
+          "word": "Meaning",
+          "startSec": 30.848,
+          "endSec": 31.048
+        },
+        {
+          "word": "is",
+          "startSec": 31.048,
+          "endSec": 31.328
+        },
+        {
+          "word": "just",
+          "startSec": 31.328,
+          "endSec": 31.488
+        },
+        {
+          "word": "coordinates.",
+          "startSec": 31.488,
+          "endSec": 31.968
+        },
+        {
+          "word": "Similar",
+          "startSec": 32.548,
+          "endSec": 32.888
+        },
+        {
+          "word": "ideas",
+          "startSec": 32.888,
+          "endSec": 33.428
+        },
+        {
+          "word": "land",
+          "startSec": 33.428,
+          "endSec": 33.788
+        },
+        {
+          "word": "close.",
+          "startSec": 33.788,
+          "endSec": 34.068
+        }
+      ]
+    },
+    {
+      "shotId": "query",
+      "text": "Step three: your question becomes a point too.",
+      "startSec": 34.659,
+      "durationSec": 2.822,
+      "words": [
+        {
+          "word": "Step",
+          "startSec": 34.659,
+          "endSec": 34.819
+        },
+        {
+          "word": "three:",
+          "startSec": 34.819,
+          "endSec": 35.479
+        },
+        {
+          "word": "your",
+          "startSec": 35.479,
+          "endSec": 35.559
+        },
+        {
+          "word": "question",
+          "startSec": 35.559,
+          "endSec": 35.879
+        },
+        {
+          "word": "becomes",
+          "startSec": 35.879,
+          "endSec": 36.359
+        },
+        {
+          "word": "a",
+          "startSec": 36.359,
+          "endSec": 36.499
+        },
+        {
+          "word": "point",
+          "startSec": 36.499,
+          "endSec": 36.659
+        },
+        {
+          "word": "too.",
+          "startSec": 36.659,
+          "endSec": 36.959
+        }
+      ]
+    },
+    {
+      "shotId": "topk",
+      "text": "Draw rings around it. Grab the nearest few. That's top k.",
+      "startSec": 37.481,
+      "durationSec": 3.74,
+      "words": [
+        {
+          "word": "Draw",
+          "startSec": 37.481,
+          "endSec": 37.701
+        },
+        {
+          "word": "rings",
+          "startSec": 37.701,
+          "endSec": 37.981
+        },
+        {
+          "word": "around",
+          "startSec": 37.981,
+          "endSec": 38.281
+        },
+        {
+          "word": "it.",
+          "startSec": 38.281,
+          "endSec": 38.501
+        },
+        {
+          "word": "Grab",
+          "startSec": 38.821,
+          "endSec": 39.021
+        },
+        {
+          "word": "the",
+          "startSec": 39.021,
+          "endSec": 39.221
+        },
+        {
+          "word": "nearest",
+          "startSec": 39.221,
+          "endSec": 39.441
+        },
+        {
+          "word": "few.",
+          "startSec": 39.441,
+          "endSec": 39.761
+        },
+        {
+          "word": "That's",
+          "startSec": 39.981,
+          "endSec": 40.281
+        },
+        {
+          "word": "top",
+          "startSec": 40.281,
+          "endSec": 40.461
+        },
+        {
+          "word": "k.",
+          "startSec": 40.461,
+          "endSec": 40.721
+        }
+      ]
+    },
+    {
+      "shotId": "stuff",
+      "text": "Step four: stuff those chunks into my prompt.",
+      "startSec": 41.221,
+      "durationSec": 2.877,
+      "words": [
+        {
+          "word": "Step",
+          "startSec": 41.221,
+          "endSec": 41.381
+        },
+        {
+          "word": "four:",
+          "startSec": 41.381,
+          "endSec": 42.021
+        },
+        {
+          "word": "stuff",
+          "startSec": 42.021,
+          "endSec": 42.181
+        },
+        {
+          "word": "those",
+          "startSec": 42.181,
+          "endSec": 42.461
+        },
+        {
+          "word": "chunks",
+          "startSec": 42.461,
+          "endSec": 42.821
+        },
+        {
+          "word": "into",
+          "startSec": 42.821,
+          "endSec": 43.081
+        },
+        {
+          "word": "my",
+          "startSec": 43.081,
+          "endSec": 43.221
+        },
+        {
+          "word": "prompt.",
+          "startSec": 43.221,
+          "endSec": 43.561
+        }
+      ]
+    },
+    {
+      "shotId": "receipts",
+      "text": "Now I've got receipts before I speak.",
+      "startSec": 44.098,
+      "durationSec": 2.301,
+      "words": [
+        {
+          "word": "Now",
+          "startSec": 44.098,
+          "endSec": 44.298
+        },
+        {
+          "word": "I've",
+          "startSec": 44.298,
+          "endSec": 44.518
+        },
+        {
+          "word": "got",
+          "startSec": 44.518,
+          "endSec": 44.678
+        },
+        {
+          "word": "receipts",
+          "startSec": 44.678,
+          "endSec": 45.178
+        },
+        {
+          "word": "before",
+          "startSec": 45.178,
+          "endSec": 45.398
+        },
+        {
+          "word": "I",
+          "startSec": 45.398,
+          "endSec": 45.618
+        },
+        {
+          "word": "speak.",
+          "startSec": 45.618,
+          "endSec": 45.858
+        }
+      ]
+    },
+    {
+      "shotId": "shift",
+      "text": "Watch the odds shift once the context lands.",
+      "startSec": 46.4,
+      "durationSec": 2.682,
+      "words": [
+        {
+          "word": "Watch",
+          "startSec": 46.4,
+          "endSec": 46.54
+        },
+        {
+          "word": "the",
+          "startSec": 46.54,
+          "endSec": 46.76
+        },
+        {
+          "word": "odds",
+          "startSec": 46.76,
+          "endSec": 46.98
+        },
+        {
+          "word": "shift",
+          "startSec": 46.98,
+          "endSec": 47.26
+        },
+        {
+          "word": "once",
+          "startSec": 47.26,
+          "endSec": 47.6
+        },
+        {
+          "word": "the",
+          "startSec": 47.6,
+          "endSec": 47.76
+        },
+        {
+          "word": "context",
+          "startSec": 47.76,
+          "endSec": 48.08
+        },
+        {
+          "word": "lands.",
+          "startSec": 48.08,
+          "endSec": 48.58
+        }
+      ]
+    },
+    {
+      "shotId": "grounded",
+      "text": "The guesses fall away. The answer has a source.",
+      "startSec": 49.082,
+      "durationSec": 2.813,
+      "words": [
+        {
+          "word": "The",
+          "startSec": 49.082,
+          "endSec": 49.142
+        },
+        {
+          "word": "guesses",
+          "startSec": 49.142,
+          "endSec": 49.382
+        },
+        {
+          "word": "fall",
+          "startSec": 49.382,
+          "endSec": 49.682
+        },
+        {
+          "word": "away.",
+          "startSec": 49.682,
+          "endSec": 49.962
+        },
+        {
+          "word": "The",
+          "startSec": 50.362,
+          "endSec": 50.422
+        },
+        {
+          "word": "answer",
+          "startSec": 50.422,
+          "endSec": 50.722
+        },
+        {
+          "word": "has",
+          "startSec": 50.722,
+          "endSec": 50.982
+        },
+        {
+          "word": "a",
+          "startSec": 50.982,
+          "endSec": 51.082
+        },
+        {
+          "word": "source.",
+          "startSec": 51.082,
+          "endSec": 51.322
+        }
+      ]
+    },
+    {
+      "shotId": "wrong",
+      "text": "But fetch the wrong chunk, and I'll be wrong, with citations.",
+      "startSec": 51.895,
+      "durationSec": 3.378,
+      "words": [
+        {
+          "word": "But",
+          "startSec": 51.895,
+          "endSec": 51.975
+        },
+        {
+          "word": "fetch",
+          "startSec": 51.975,
+          "endSec": 52.175
+        },
+        {
+          "word": "the",
+          "startSec": 52.175,
+          "endSec": 52.395
+        },
+        {
+          "word": "wrong",
+          "startSec": 52.395,
+          "endSec": 52.595
+        },
+        {
+          "word": "chunk,",
+          "startSec": 52.595,
+          "endSec": 52.935
+        },
+        {
+          "word": "and",
+          "startSec": 53.255,
+          "endSec": 53.395
+        },
+        {
+          "word": "I'll",
+          "startSec": 53.395,
+          "endSec": 53.495
+        },
+        {
+          "word": "be",
+          "startSec": 53.495,
+          "endSec": 53.595
+        },
+        {
+          "word": "wrong,",
+          "startSec": 53.595,
+          "endSec": 53.875
+        },
+        {
+          "word": "with",
+          "startSec": 53.875,
+          "endSec": 54.115
+        },
+        {
+          "word": "citations.",
+          "startSec": 54.115,
+          "endSec": 54.755
+        }
+      ]
+    },
+    {
+      "shotId": "garbage",
+      "text": "Garbage in, confident out. Bad retrieval is the bug.",
+      "startSec": 55.273,
+      "durationSec": 3.627,
+      "words": [
+        {
+          "word": "Garbage",
+          "startSec": 55.273,
+          "endSec": 55.653
+        },
+        {
+          "word": "in,",
+          "startSec": 55.653,
+          "endSec": 55.873
+        },
+        {
+          "word": "confident",
+          "startSec": 56.053,
+          "endSec": 56.373
+        },
+        {
+          "word": "out.",
+          "startSec": 56.373,
+          "endSec": 56.713
+        },
+        {
+          "word": "Bad",
+          "startSec": 57.193,
+          "endSec": 57.393
+        },
+        {
+          "word": "retrieval",
+          "startSec": 57.393,
+          "endSec": 57.893
+        },
+        {
+          "word": "is",
+          "startSec": 57.893,
+          "endSec": 58.053
+        },
+        {
+          "word": "the",
+          "startSec": 58.053,
+          "endSec": 58.173
+        },
+        {
+          "word": "bug.",
+          "startSec": 58.173,
+          "endSec": 58.413
+        }
+      ]
+    },
+    {
+      "shotId": "recap",
+      "text": "Chunk it. Embed it. Search it. Stuff it.",
+      "startSec": 58.9,
+      "durationSec": 2.539,
+      "words": [
+        {
+          "word": "Chunk",
+          "startSec": 58.9,
+          "endSec": 59.16
+        },
+        {
+          "word": "it.",
+          "startSec": 59.16,
+          "endSec": 59.28
+        },
+        {
+          "word": "Embed",
+          "startSec": 59.36,
+          "endSec": 59.54
+        },
+        {
+          "word": "it.",
+          "startSec": 59.54,
+          "endSec": 59.8
+        },
+        {
+          "word": "Search",
+          "startSec": 60.04,
+          "endSec": 60.18
+        },
+        {
+          "word": "it.",
+          "startSec": 60.18,
+          "endSec": 60.44
+        },
+        {
+          "word": "Stuff",
+          "startSec": 60.62,
+          "endSec": 60.82
+        },
+        {
+          "word": "it.",
+          "startSec": 60.82,
+          "endSec": 61.04
+        }
+      ]
+    },
+    {
+      "shotId": "end",
+      "text": "Ground it. Then let the model speak.",
+      "startSec": 61.439,
+      "durationSec": 4.438,
+      "words": [
+        {
+          "word": "Ground",
+          "startSec": 61.439,
+          "endSec": 61.679
+        },
+        {
+          "word": "it.",
+          "startSec": 61.679,
+          "endSec": 61.879
+        },
+        {
+          "word": "Then",
+          "startSec": 62.139,
+          "endSec": 62.239
+        },
+        {
+          "word": "let",
+          "startSec": 62.239,
+          "endSec": 62.399
+        },
+        {
+          "word": "the",
+          "startSec": 62.399,
+          "endSec": 62.499
+        },
+        {
+          "word": "model",
+          "startSec": 62.499,
+          "endSec": 62.719
+        },
+        {
+          "word": "speak.",
+          "startSec": 62.719,
+          "endSec": 63.099
+        }
+      ]
+    }
+  ]
+}

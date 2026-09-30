@@ -279,6 +279,14 @@ File Description: This file defines the core guidelines, coding principles, and 
 - The judge never writes a film: only a passing `buildDesign` does (design check plus honesty check). A failed sample comes back with its exact error text (`JudgeFailure.error`) for synthesis; `designer.ts` repairs through the agent, or through a server model only when a caller was passed in. With no agent connected, or under the Node test runner, the agent round is skipped and the text fallback rules.
 - The primitive pick is asked by communicative job (`PRIMITIVE_CRITERIA`: JOB, WHEN, WHEN NOT), carries camera, what is already on screen and the previous pick, and must name the spoken phrase it serves (`servesPhrase`; a complex pick that names none degrades to TextReveal or Card).
 
+## Kinetic typography scene films (`backend/ragExplainer/`)
+
+- `videos/rag-explainer/` is the worked example of a lyric-style film built on the scene kit: `kit.ts`'s `Canvas` authors one SVG asset plus its continuity-safe timeline (`to()` derives each clip's start value), `lyric()` lays narrated words out from Chrome-measured kerned widths (`measureWords.ts` -> `wordWidths.json`) and throws when a line does not match the narration or overflows. Its README has the rebuild commands.
+- Word timing for a synthesized voice comes from local Whisper (`produceVoiceover.ts`), not the pipeline's `distributeWordTimings`, which only estimates.
+- The film's own chapter rail (`Film.tsx` `Rail`) paints an opaque scrim over the bottom ~90px and a light full-bleed card would be cut by it: keep content above y=900 of the 1080 window and inset any light card.
+- An element declared hidden or offset but never animated has no clip, so the engine leaves it visible: pin it with a clip (`Canvas.timeline()` does this for `init()`ed values).
+- Two scene assets fading over each other at the same screen position is unreadable: fade the outgoing asset ~10 frames before the next shot starts.
+
 ## Maintaining this file
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.
 - Keep it concise. Prefer pointers to authoritative files over copying details.

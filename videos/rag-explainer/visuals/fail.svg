@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1920" width="1920" height="1920">
+<g transform="translate(0 420)">
+<g id="root">
+<text id="w-wrong-2" transform="translate(120 310)" font-family="Geist" font-weight="800" font-size="84" fill="#F5F5F5" letter-spacing="-2.52">But</text>
+<text id="w-wrong-5" transform="translate(276.492 310)" font-family="Geist" font-weight="800" font-size="84" fill="#F5F5F5" letter-spacing="-2.52">fetch</text>
+<text id="w-wrong-8" transform="translate(506.568 310)" font-family="Geist" font-weight="800" font-size="84" fill="#F5F5F5" letter-spacing="-2.52">the</text>
+<text id="w-wrong-11" transform="translate(120 399.04)" font-family="Geist" font-weight="800" font-size="84" fill="#F5F5F5" letter-spacing="-2.52">wrong</text>
+<text id="w-wrong-14" transform="translate(385.104 399.04)" font-family="Geist" font-weight="800" font-size="84" fill="#F5F5F5" letter-spacing="-2.52">chunk</text>
+<text id="w-wrong-17" transform="translate(120 488.08)" font-family="Geist" font-weight="800" font-size="84" fill="#F5F5F5" letter-spacing="-2.52">and</text>
+<text id="w-wrong-20" transform="translate(285.06 488.08)" font-family="Geist" font-weight="800" font-size="84" fill="#F5F5F5" letter-spacing="-2.52">I'll</text>
+<text id="w-wrong-23" transform="translate(389.052 488.08)" font-family="Geist" font-weight="800" font-size="84" fill="#F5F5F5" letter-spacing="-2.52">be</text>
+<text id="w-wrong-26" transform="translate(505.644 488.08)" font-family="Geist" font-weight="800" font-size="84" fill="#F5F5F5" letter-spacing="-2.52">wrong</text>
+<text id="w-wrong-29" transform="translate(120 577.12)" font-family="Geist" font-weight="800" font-size="84" fill="#F5F5F5" letter-spacing="-2.52">with</text>
+<text id="w-wrong-32" transform="translate(310.008 577.12)" font-family="Geist" font-weight="800" font-size="84" fill="#FF5A1F" letter-spacing="-2.52">citations</text>
+<text id="w-garbage-57" transform="translate(120 310)" font-family="Geist" font-weight="800" font-size="92" fill="#F5F5F5" letter-spacing="-2.76">Garbage</text>
+<text id="w-garbage-60" transform="translate(511.736 310)" font-family="Geist" font-weight="800" font-size="92" fill="#F5F5F5" letter-spacing="-2.76">in</text>
+<text id="w-garbage-63" transform="translate(120 407.52)" font-family="Geist" font-weight="800" font-size="92" fill="#F5F5F5" letter-spacing="-2.76">confident</text>
+<text id="w-garbage-66" transform="translate(559.024 407.52)" font-family="Geist" font-weight="800" font-size="92" fill="#F5F5F5" letter-spacing="-2.76">out</text>
+<text id="w-garbage-69" transform="translate(120 505.04)" font-family="Geist" font-weight="800" font-size="92" fill="#F5F5F5" letter-spacing="-2.76">Bad</text>
+<text id="w-garbage-72" transform="translate(308.324 505.04)" font-family="Geist" font-weight="800" font-size="92" fill="#F5F5F5" letter-spacing="-2.76">retrieval</text>
+<text id="w-garbage-75" transform="translate(120 602.56)" font-family="Geist" font-weight="800" font-size="92" fill="#F5F5F5" letter-spacing="-2.76">is</text>
+<text id="w-garbage-78" transform="translate(212.092 602.56)" font-family="Geist" font-weight="800" font-size="92" fill="#F5F5F5" letter-spacing="-2.76">the</text>
+<text id="w-garbage-81" transform="translate(375.944 602.56)" font-family="Geist" font-weight="800" font-size="92" fill="#FF5A1F" letter-spacing="-2.76">bug</text>
+<g id="f-q" transform="translate(1000 200)"><rect x="0" y="0" width="800" height="64" fill="#101013" stroke="rgba(245,245,245,0.22)" stroke-width="2"/><text transform="translate(24 42)" font-family="JetBrains Mono" font-weight="500" font-size="26" fill="#F5F5F5">Q: what is the refund window?</text></g>
+<line id="f-l1" x1="1400" y1="264" x2="1400" y2="340" fill="none" stroke="rgba(245,245,245,0.22)" stroke-width="3"/>
+<g id="f-r" transform="translate(1000 340)"><rect x="0" y="0" width="800" height="160" fill="#101013" stroke="#FF5A1F" stroke-width="2"/><text transform="translate(24 38)" font-family="JetBrains Mono" font-weight="500" font-size="18" fill="#8A8A8E" letter-spacing="2.16">RETRIEVED</text><text transform="translate(24 80)" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FF5A1F">shipping.md</text><text transform="translate(24 126)" font-family="JetBrains Mono" font-weight="500" font-size="32" fill="#F5F5F5">orders ship in 5 business days</text><g id="f-tag" transform="translate(550 18)"><rect x="0" y="0" width="226" height="40" fill="#FF5A1F"/><text transform="translate(113 27)" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#0A0A0B" text-anchor="middle" letter-spacing="2">WRONG CHUNK</text></g></g>
+<line id="f-l2" x1="1400" y1="500" x2="1400" y2="576" fill="none" stroke="rgba(245,245,245,0.22)" stroke-width="3"/>
+<g id="f-a" transform="translate(1000 576)"><rect x="0" y="0" width="800" height="140" fill="#101013" stroke="rgba(245,245,245,0.22)" stroke-width="2"/><text transform="translate(24 38)" font-family="JetBrains Mono" font-weight="500" font-size="18" fill="#8A8A8E" letter-spacing="2.16">ANSWER</text><text transform="translate(24 96)" font-family="JetBrains Mono" font-weight="500" font-size="38" fill="#F5F5F5">A: 5 business days</text><g id="f-cite" transform="translate(520 76)"><rect x="0" y="0" width="256" height="44" fill="none" stroke="#FF5A1F" stroke-width="2"/><path d="M14 24 L22 32 L36 14" fill="none" stroke="#FF5A1F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><text transform="translate(52 30)" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#FF5A1F">shipping.md</text></g></g>
+<text id="f-gi" transform="translate(1424 312)" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FF5A1F" letter-spacing="3.08">GARBAGE IN</text>
+<text id="f-co" transform="translate(1424 548)" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FF5A1F" letter-spacing="3.08">CONFIDENT OUT</text>
+<rect id="f-bug" x="986" y="326" width="828" height="188" fill="none" stroke="#FF5A1F" stroke-width="4" stroke-dasharray="14 10"/>
+<g id="f-bug-tag" transform="translate(986 740)"><rect x="0" y="0" width="330" height="50" fill="#FF5A1F"/><text transform="translate(165 33)" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#0A0A0B" text-anchor="middle" letter-spacing="1.76">BAD RETRIEVAL = BUG</text></g>
+</g>
+</g>
+</svg>

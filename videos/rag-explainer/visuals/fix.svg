@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1920" width="1920" height="1920">
+<g transform="translate(0 420)">
+<g id="root">
+<text id="w-lookup-2" transform="translate(120 250)" font-family="Geist" font-weight="800" font-size="118" fill="#F5F5F5" letter-spacing="-3.54">So</text>
+<text id="w-lookup-5" transform="translate(292.752 250)" font-family="Geist" font-weight="800" font-size="118" fill="#F5F5F5" letter-spacing="-3.54">don't</text>
+<text id="w-lookup-8" transform="translate(599.08 250)" font-family="Geist" font-weight="800" font-size="118" fill="#F5F5F5" letter-spacing="-3.54">make</text>
+<text id="w-lookup-11" transform="translate(926.176 250)" font-family="Geist" font-weight="800" font-size="118" fill="#F5F5F5" letter-spacing="-3.54">me</text>
+<text id="w-lookup-14" transform="translate(120 375.08)" font-family="Geist" font-weight="800" font-size="118" fill="#F5F5F5" letter-spacing="-3.54">remember</text>
+<text id="w-lookup-17" transform="translate(120 500.16)" font-family="Geist" font-weight="800" font-size="118" fill="#F5F5F5" letter-spacing="-3.54">Let</text>
+<text id="w-lookup-20" transform="translate(323.55 500.16)" font-family="Geist" font-weight="800" font-size="118" fill="#F5F5F5" letter-spacing="-3.54">me</text>
+<text id="w-lookup-23" transform="translate(517.66 500.16)" font-family="Geist" font-weight="800" font-size="118" fill="#FF5A1F" letter-spacing="-3.54">look</text>
+<text id="w-lookup-26" transform="translate(789.06 500.16)" font-family="Geist" font-weight="800" font-size="118" fill="#FF5A1F" letter-spacing="-3.54">it</text>
+<text id="w-lookup-29" transform="translate(890.658 500.16)" font-family="Geist" font-weight="800" font-size="118" fill="#FF5A1F" letter-spacing="-3.54">up</text>
+<g id="search" transform="translate(1000 700)"><rect x="0" y="0" width="800" height="96" fill="#101013" stroke="rgba(245,245,245,0.22)" stroke-width="2"/><circle cx="52" cy="46" r="17" fill="none" stroke="#FF5A1F" stroke-width="4"/><line x1="65" y1="59" x2="82" y2="76" fill="none" stroke="#FF5A1F" stroke-width="4" stroke-linecap="round"/><text transform="translate(112 59)" font-family="JetBrains Mono" font-weight="500" font-size="34" fill="#F5F5F5">refund window policy</text><rect id="sb-cover" x="112" y="22" width="408" height="50" fill="#101013"/><rect id="sb-caret" x="112" y="26" width="3" height="42" fill="#FF5A1F"/><text transform="translate(770 57)" font-family="JetBrains Mono" font-weight="500" font-size="20" fill="#8A8A8E" text-anchor="end" letter-spacing="2">ENTER</text></g>
+<g id="card"><defs><clipPath id="card-clip"><rect x="64" y="152" width="1792" height="732"/></clipPath></defs>
+<g clip-path="url(#card-clip)"><rect x="64" y="152" width="1792" height="732" fill="#F2F0EE"/>
+<text id="w-title-78" transform="translate(130 356)" font-family="Geist" font-weight="800" font-size="220" fill="#FF5A1F" letter-spacing="-7.7">RETRIEVAL</text>
+<rect x="64" y="370" width="1792" height="352" fill="#F2F0EE"/>
+<text id="w-title-80" transform="translate(130 580.4)" font-family="Geist" font-weight="800" font-size="220" fill="#0A0A0B" letter-spacing="-7.7">AUGMENTED</text>
+<rect x="64" y="594.4" width="1792" height="289.6" fill="#F2F0EE"/>
+<text id="w-title-82" transform="translate(130 804.8)" font-family="Geist" font-weight="800" font-size="220" fill="#0A0A0B" letter-spacing="-7.7">GENERATION</text>
+<rect x="64" y="818.8" width="1792" height="65.2" fill="#F2F0EE"/>
+<text id="note-0" transform="translate(1824 344)" font-family="JetBrains Mono" font-weight="500" font-size="26" fill="#0A0A0B" text-anchor="end" opacity="0.7">find the facts</text>
+<text id="note-1" transform="translate(1824 572.48)" font-family="JetBrains Mono" font-weight="500" font-size="26" fill="#0A0A0B" text-anchor="end" opacity="0.7">add to the prompt</text>
+<text id="note-2" transform="translate(1824 800.96)" font-family="JetBrains Mono" font-weight="500" font-size="26" fill="#0A0A0B" text-anchor="end" opacity="0.7">write the answer</text></g></g>
+</g>
+</g>
+</svg>

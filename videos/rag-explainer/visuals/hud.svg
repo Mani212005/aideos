@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1920" width="1920" height="1920">
+<g transform="translate(0 420)">
+<g id="root">
+<path d="M74 44 L44 44 L44 74" fill="none" stroke="rgba(245,245,245,0.22)" stroke-width="2"/><path d="M1846 44 L1876 44 L1876 74" fill="none" stroke="rgba(245,245,245,0.22)" stroke-width="2"/><path d="M74 900 L44 900 L44 870" fill="none" stroke="rgba(245,245,245,0.22)" stroke-width="2"/><path d="M1846 900 L1876 900 L1876 870" fill="none" stroke="rgba(245,245,245,0.22)" stroke-width="2"/>
+<text transform="translate(84 92)" font-family="JetBrains Mono" font-weight="500" font-size="20" fill="#8A8A8E" letter-spacing="1.6">RAG / RETRIEVAL-AUGMENTED GENERATION</text>
+<text id="ctx-0" transform="translate(1836 92)" font-family="JetBrains Mono" font-weight="500" font-size="20" fill="#8A8A8E" text-anchor="end" letter-spacing="1.6">CONTEXT 0000 / 8192</text>
+<text id="ctx-1" transform="translate(1836 92)" font-family="JetBrains Mono" font-weight="500" font-size="20" fill="#8A8A8E" text-anchor="end" letter-spacing="1.6">CONTEXT 0214 / 8192</text>
+<text id="ctx-2" transform="translate(1836 92)" font-family="JetBrains Mono" font-weight="500" font-size="20" fill="#8A8A8E" text-anchor="end" letter-spacing="1.6">CONTEXT 0508 / 8192</text>
+<text id="ctx-3" transform="translate(1836 92)" font-family="JetBrains Mono" font-weight="500" font-size="20" fill="#8A8A8E" text-anchor="end" letter-spacing="1.6">CONTEXT 0831 / 8192</text>
+<text id="ctx-4" transform="translate(1836 92)" font-family="JetBrains Mono" font-weight="500" font-size="20" fill="#8A8A8E" text-anchor="end" letter-spacing="1.6">CONTEXT 1204 / 8192</text>
+<text transform="translate(1836 122)" font-family="JetBrains Mono" font-weight="500" font-size="20" fill="#8A8A8E" text-anchor="end" letter-spacing="1.6">T 0.7  TOP-P 0.9</text>
+</g>
+</g>
+</svg>

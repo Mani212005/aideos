@@ -20,7 +20,7 @@ import type { BackgroundPreset, FontPreset } from "./schema";
 
 /** Geist speaks. Everything a human reads as a sentence. */
 export const { fontFamily: SANS } = loadGeist("normal", {
-  weights: ["300", "400", "500", "600"],
+  weights: ["300", "400", "500", "600", "800"],
   subsets: ["latin"],
 });
 
