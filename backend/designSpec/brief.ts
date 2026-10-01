@@ -34,6 +34,8 @@ export const EXAMPLE_SPEC = {
   ],
 };
 
+import { RUBRIC_SUMMARY } from "../goodVideoRubric";
+
 // Formats seconds as m:ss.
 function clock(sec: number): string {
   const s = Math.max(0, Math.round(sec));
@@ -58,6 +60,9 @@ Design this film's picture from scratch, as one continuous vector scene unique t
 then run \`aideos design build ${film.id}\` and fix whatever it reports until it prints PASS. A failing
 build never touches the film, so iterate freely. The worked example of a finished scene film is
 \`videos/still-talking/\` (built by \`backend/stillTalking/scene.ts\` on the same kit).
+
+## Video Quality Expectations
+${RUBRIC_SUMMARY}
 
 ## The standard layer (enforced by the build)
 

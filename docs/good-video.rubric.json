@@ -1,0 +1,136 @@
+{
+  "criteria": [
+    {
+      "id": "1",
+      "name": "One persistent stage",
+      "gate": true,
+      "target": "stage-clear events <= 1 per 30 s; median 2 s layout correlation >= 0.75",
+      "anchors": {
+        "0": "Absent",
+        "2": "Partly",
+        "4": "Clearly good"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Carry-over with transformation",
+      "gate": false,
+      "target": ">= 1 per 20 s",
+      "anchors": {
+        "0": "Absent",
+        "2": "Partly",
+        "4": "Clearly good"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Visible cause and effect",
+      "gate": false,
+      "target": "every beat with a verb of action",
+      "anchors": {
+        "0": "Absent",
+        "2": "Partly",
+        "4": "Clearly good"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Camera that does something",
+      "gate": true,
+      "target": "present, purposeful",
+      "anchors": {
+        "0": "Absent",
+        "2": "Partly",
+        "4": "Clearly good"
+      }
+    },
+    {
+      "id": "5",
+      "name": "Bottom captions",
+      "gate": true,
+      "target": "pass",
+      "anchors": {
+        "0": "Absent",
+        "2": "Partly",
+        "4": "Clearly good"
+      }
+    },
+    {
+      "id": "6",
+      "name": "Readability",
+      "gate": true,
+      "target": "zero violations among essential text",
+      "anchors": {
+        "0": "Absent",
+        "2": "Partly",
+        "4": "Clearly good"
+      }
+    },
+    {
+      "id": "7",
+      "name": "No overlap or clipping",
+      "gate": true,
+      "target": "zero",
+      "anchors": {
+        "0": "Absent",
+        "2": "Partly",
+        "4": "Clearly good"
+      }
+    },
+    {
+      "id": "8",
+      "name": "Audio sync",
+      "gate": true,
+      "target": "pass",
+      "anchors": {
+        "0": "Absent",
+        "2": "Partly",
+        "4": "Clearly good"
+      }
+    },
+    {
+      "id": "9",
+      "name": "Pacing",
+      "gate": false,
+      "target": "pass",
+      "anchors": {
+        "0": "Absent",
+        "2": "Partly",
+        "4": "Clearly good"
+      }
+    },
+    {
+      "id": "10",
+      "name": "Storyline",
+      "gate": false,
+      "target": ">= 3 of 4",
+      "anchors": {
+        "0": "Absent",
+        "2": "Partly",
+        "4": "Clearly good"
+      }
+    },
+    {
+      "id": "11",
+      "name": "Accuracy and honesty",
+      "gate": false,
+      "target": "zero ungrounded",
+      "anchors": {
+        "0": "Absent",
+        "2": "Partly",
+        "4": "Clearly good"
+      }
+    },
+    {
+      "id": "12",
+      "name": "Loudness and mix",
+      "gate": false,
+      "target": "pass",
+      "anchors": {
+        "0": "Absent",
+        "2": "Partly",
+        "4": "Clearly good"
+      }
+    }
+  ]
+}

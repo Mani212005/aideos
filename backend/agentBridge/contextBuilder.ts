@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { FILM_ID, readFilm, ROOT } from "../pipeline/filmStore";
 import type { AgentTaskContext, DispatchOptions } from "./types";
+import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 
 /** Core design invariants enforced across the Aideos explainer video standard. */
 export const DESIGN_INVARIANTS: string[] = [
@@ -171,7 +172,7 @@ A text-only judge (Jev) then rules on every frame and rates every suggestion, so
     : `- Word Timings: Pending or in ${ctx.voiceoverWordsPath || `videos/${ctx.filmId}/voiceover_words.json`}`;
 
   return `🎬 [Aideos Studio Auto-Prompter] ${eventHeadline} for "${title}" (${ctx.filmId})
-
+  
 📋 Context & Video Package Artifacts:
 - Screenplay: ${ctx.scriptPath}
 - Film Spec: ${ctx.filmPath}
@@ -179,8 +180,10 @@ A text-only judge (Jev) then rules on every frame and rates every suggestion, so
 ${wordTimingInfo}
 - Director Guide: ${ctx.directorGuideRef || "docs/DIRECTOR_GUIDE.md"}
 
+${RUBRIC_SUMMARY}
+
 🎯 Directing Mission for Agent:
-1. Review docs/DIRECTOR_GUIDE.md for creative direction, visual storytelling craft, and the 19 cinematic pacing invariants.
+1. Review docs/DIRECTOR_GUIDE.md for creative direction and visual storytelling craft.
 2. Read the screenplay in ${ctx.scriptPath} and inspect scene layouts in ${ctx.filmPath}.
 3. Architect the visual scenes:
    - Design evocative visual devices (TokenStrip, MatrixGrid, LayerStack, Plot, ScaleBar, Distribution, or AnalogyInset GPU B-roll).
@@ -188,7 +191,7 @@ ${wordTimingInfo}
    - Ensure dynamic camera movement (cut on chapter changes, pan, zoom-in, zoom-out) across 2D canvas stations.
    - Maintain pacing: rotate visual devices (never hold >25s, no back-to-back repeats, return to canvas spine every 60-90s).
    - Keep shot durations locked to narration audio.
-4. Run \`npm run validate:film ${ctx.filmPath}\` to verify with zero invariant violations.
+4. Run \`npm run validate:film ${ctx.filmPath}\` to verify with zero violations.
 5. If using MCP, call \`aideos_claim_task\` to acknowledge and \`aideos_complete_task\` when done.
 6. The live studio at http://localhost:3001 hot-reloads automatically as you edit.`;
 }
