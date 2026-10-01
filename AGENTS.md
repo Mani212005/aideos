@@ -269,6 +269,11 @@ Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos
 - Instant studio hot-reload: When `videos/<slug>/film.json` is modified on disk by an agent or written via `backend/pipeline/filmStore.ts` / `writeFilm`, `traceBus.notifyFilmUpdated` broadcasts `event: film_updated` over the SSE `/api/agent/trace` stream. `editor/src/state/useFilmProject.ts` receives the event and updates the open film live without a manual refresh.
 - `backend/agentBridge/canvasLoop.test.ts` covers the complete bi-directional loop, fallback handling, and instant studio update path.
 
+## Review (deterministic checks on the rendered video)
+
+- `aideos review <slug|mp4>` (`backend/review/`, [docs/REVIEW.md](docs/REVIEW.md)) measures a rendered mp4 against the measurable rubric criteria (persistent stage, captions, readability, overlap, audio sync, pacing, number grounding, loudness, plus camera and carry-over from film data) and writes `review.json` with evidence frames. Exit 1 on a failed gate, 2 when it cannot run. Run it on any video you make and attach the report.
+- Camera comes from film data and carry-over from element identity, never from pixels (global phase correlation and overlap in place both mislead, see the audit lessons in docs/REVIEW.md). A criterion with missing inputs is `skipped`, never a pass. Every threshold is in `backend/review/thresholds.ts` and was set from the three reference videos: re-run `npm run calibrate:review` (paths in env vars, the mp4s are never committed) after changing one.
+
 ## Vision judge (frame review loop)
 
 - `backend/visionJudge/` judges a designed scene film's rendered frames: `sampler.ts` renders every 5-7th frame once through `backend/scene/renderStill.ts` into `.frames/<id>/judge/` (never qlmanage, never a browser on localhost); `judge.ts` sends those stills to the connected agent as a `frame_review` task in one round (critique with opinions and concrete suggestions, repair through `aideos design build`, and one image-text score per sample), logs each score with its threshold to `design/judge/embedding-log.jsonl`, then asks Jev for the verdicts.

@@ -751,6 +751,35 @@ program
     if (reports.some((r) => !r.ok)) process.exitCode = 1;
   });
 
+program
+  .command("review")
+  .description("Review a rendered video against the good-video rubric: measurable checks on the mp4 (and film data), evidence frames, exit 1 when a gate fails")
+  .argument("<target>", "a film slug under videos/ or the path of an mp4")
+  .option("--film <film.json>", "film data to read the camera, persistence and geometry from (a slug review finds it itself)")
+  .option("--words <file>", "word timings (voiceover_words.json) or narration text, for audio sync, caption matching and grounding")
+  .option("--out <dir>", "where review.json and the review/ evidence frames are written")
+  .option("--no-ocr", "skip the OCR pass (no caption, readability, overlap or grounding checks)")
+  .option("--json", "print the report as JSON on stdout (progress goes to stderr)")
+  .action(async (target: string, options: { film?: string; words?: string; out?: string; ocr: boolean; json?: boolean }) => {
+    const { reviewVideo, formatReview } = await import("./review/review");
+    try {
+      const report = await reviewVideo({
+        target,
+        film: options.film,
+        words: options.words,
+        outDir: options.out,
+        skipOcr: !options.ocr,
+        onProgress: (m) => console.error(`[review] ${m}`),
+      });
+      console.log(options.json ? JSON.stringify(report, null, 2) : formatReview(report));
+      if (!report.passed) process.exitCode = 1;
+    } catch (err) {
+      // A tool error is not a gate failure: exit 2 so callers can tell "could not review" from "reviewed and failed".
+      console.error(err instanceof Error ? err.message : String(err));
+      process.exitCode = 2;
+    }
+  });
+
 // parseAsync, so a rejected action surfaces as a one-line CLI error rather than
 // an unhandled rejection with a raw stack trace, and exits non-zero.
 program.parseAsync().catch((err: unknown) => {
