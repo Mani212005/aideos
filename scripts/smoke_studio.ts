@@ -124,11 +124,15 @@ async function loadInChrome(chrome: string, url: string, settleMs = 8000): Promi
     ws.close();
     return { rendered: check?.result?.value === true, errors };
   } finally {
-    const exited = new Promise((r) => browser.once("exit", r));
+    const exited = browser.exitCode !== null ? Promise.resolve() : new Promise((r) => browser.once("exit", r));
     browser.kill("SIGKILL");
     await Promise.race([exited, new Promise((r) => setTimeout(r, 3000))]);
     // Chrome helpers can still be flushing the profile; a leftover temp dir is harmless.
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    try {
+      fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    } catch {
+      // Chrome helpers can still be flushing the profile; temp cleanup is best-effort.
+    }
   }
 }
 
