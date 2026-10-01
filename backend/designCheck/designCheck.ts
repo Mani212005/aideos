@@ -17,7 +17,7 @@ import { parseSvgDocument, walkSvgNodes } from "../../src/dl/scene/svgDocument";
 import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNode";
 import { narrationSupportsVisual, numbersIn } from "../shotVisualCues";
 import type { ShotVisual } from "../jev";
-import { FPS } from "../sceneKit";
+import { FPS, CAPTION_SAFE_SQUARE } from "../sceneKit";
 import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 
 /** The standard layer rules a finding can belong to. */
@@ -31,7 +31,8 @@ export type DesignRule =
   | "continuity"
   | "origin"
   | "audio-lock"
-  | "honest-data";
+  | "honest-data"
+  | "safe-area";
 
 /** One problem found in a film's design. Errors block shipping; warnings are worth a look. */
 export interface DesignFinding {
@@ -344,7 +345,11 @@ export function checkFilmDesign(raw: unknown): DesignReport {
     for (const e of result.errors) {
       findings.push({ rule: "scene", severity: "error", where: e.entityId ?? "scene", message: e.message });
     }
+    const hasCaptions = film.captions !== "off";
     for (const asset of assets) {
+      if (hasCaptions && asset.position.y > CAPTION_SAFE_SQUARE.y1 && asset.assetId !== "background") {
+        findings.push({ rule: "safe-area", severity: "error", where: asset.assetId, message: `placed at y=${asset.position.y}, which is inside the caption band (y > ${CAPTION_SAFE_SQUARE.y1}); move it up to keep it readable.` });
+      }
       checkAsset(asset, film.accent, findings);
       clips += checkContinuity(asset, findings);
     }

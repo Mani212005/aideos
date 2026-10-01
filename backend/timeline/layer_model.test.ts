@@ -213,7 +213,7 @@ test("Regression: round tripping preserves voiceover metadata the layer model ca
       version: "1788945136237",
       durationSec: 166.357,
     },
-    captions: "WEBVTT\n\n00:00.000 --> 00:02.000\nhello",
+    captions: "bottom",
   };
 
   const layered = convertFilmToLayeredFilm(film);

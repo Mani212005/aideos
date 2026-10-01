@@ -532,7 +532,7 @@ export function buildFilmFromAudioResult(
     canvas: { nodes, edges },
     shots,
     voiceover: { src: "voiceover.wav", volume: 1, durationSec: audioResult.totalAudioDuration },
-    captions: "captions.vtt",
+    captions: "bottom",
     ...(options?.music ? { music: options.music } : {}),
     ...(options?.sfx ? { sfx: options.sfx } : {}),
   };

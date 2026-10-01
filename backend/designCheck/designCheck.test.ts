@@ -160,3 +160,18 @@ test("DesignCheck: scene camera survives parseFilm in schema", () => {
   assert.equal(report.findings.find(f => f.rule === "schema"), undefined);
   assert.equal(report.findings.find(f => f.rule === "camera"), undefined);
 });
+
+test("DesignCheck: placing an asset in the caption band of a captioned film is an error", () => {
+  const film = stillTalking();
+  // still-talking is a scene film. We place an asset low in the frame (e.g. y = 1300)
+  const prop = film.scene.props[0];
+  prop.position.y = 1300;
+  
+  // With captions disabled, it passes
+  film.captions = "off";
+  assert.ok(!errorRules(film).includes("safe-area"));
+  
+  // With captions enabled (or default), it fails
+  film.captions = "bottom";
+  assert.ok(errorRules(film).includes("safe-area"));
+});

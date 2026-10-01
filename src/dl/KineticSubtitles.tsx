@@ -1,10 +1,5 @@
 /**
- * ==============================================================================
- * AIDEOS 2.0: PRETEXT KINETIC SUBTITLES & TEXT ENGINE
- * ==============================================================================
- * Calculates word-level karaoke highlights and smooth phrase-chunked subtitles
- * inside Remotion's 60 FPS render cycle with zero layout jitter.
- * ==============================================================================
+ * File Description: Pretext kinetic subtitles and text engine calculating word-level karaoke highlights and phrase-chunked subtitles inside Remotion's render cycle.
  */
 
 import React, { useMemo } from "react";
@@ -162,10 +157,9 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
             fontFamily,
             fontWeight: 700,
             lineHeight: 1.35,
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "center",
-            gap: "8px 12px",
+            display: "block",
+            textAlign: "center",
+            textWrap: "balance",
           }}
         >
           {activePhrase.words.map((w, localIdx) => {
@@ -184,21 +178,23 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
             const dynamicScale = isActive ? interpolate(scale, [0, 1], [1.12, 1.0]) : 1.0;
 
             return (
-              <span
-                key={`${globalIdx}-${w.text}`}
-                style={{
-                  color: isActive ? highlightColor : isPast ? primaryColor : "rgba(255, 255, 255, 0.38)",
-                  transform: `scale(${dynamicScale})`,
-                  display: "inline-block",
-                  textShadow: isActive
-                    ? `0 0 20px ${highlightColor}88, 0 2px 6px rgba(0,0,0,0.8)`
-                    : isPast
-                    ? "0 2px 4px rgba(0,0,0,0.5)"
-                    : "none",
-                }}
-              >
-                {w.text}
-              </span>
+              <React.Fragment key={`${globalIdx}-${w.text}`}>
+                <span
+                  style={{
+                    color: isActive ? highlightColor : isPast ? primaryColor : "rgba(255, 255, 255, 0.38)",
+                    transform: `scale(${dynamicScale})`,
+                    display: "inline-block",
+                    margin: "4px 6px",
+                    textShadow: isActive
+                      ? `0 0 20px ${highlightColor}88, 0 2px 6px rgba(0,0,0,0.8)`
+                      : isPast
+                      ? "0 2px 4px rgba(0,0,0,0.5)"
+                      : "none",
+                  }}
+                >
+                  {w.text}
+                </span>
+              </React.Fragment>
             );
           })}
         </div>

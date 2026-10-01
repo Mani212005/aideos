@@ -682,7 +682,8 @@ export const filmBaseSchema = z.object({
   overlayClips: z.array(overlayClipSchema).optional(),
   /** Editor timeline lanes. Absent means the editor derives its default lane set. */
   layers: z.array(timelineLayerSchema).optional(),
-  captions: z.string().min(1).optional(),
+  /** Burned-in captions rendering. default is "bottom" */
+  captions: z.union([z.enum(["bottom", "off"]), z.string()]).default("bottom").optional(),
   /**
    * Burn kinetic subtitles into the picture. Omit to keep the long-standing default of on.
    * Set false for a film that puts its own words on screen: §04 leaves subtitles to the platform,

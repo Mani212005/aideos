@@ -9,7 +9,7 @@
 
 ## 🎬 Two Formats, One Film
 
-`Long` (1920x1080) and `Reel` (1080x1920) are not two separate edits. They derive automatically from the exact same canvas and shot list; the vertical reel solves framing with safe mobile padding, centered typography ($\le 8$ complete words), and phrase-locked kinetic subtitles (`KineticSubtitles.tsx`) positioned in the bottom safe area using the active theme accent token.
+`Long` (1920x1080) and `Reel` (1080x1920) are not two separate edits. They derive automatically from the exact same canvas and shot list, sharing safe-area padding and phrase-locked bottom kinetic subtitles (`KineticSubtitles.tsx`) using the active theme accent token.
 
 ---
 
