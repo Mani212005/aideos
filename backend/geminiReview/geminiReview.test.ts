@@ -26,6 +26,10 @@ import {
   formatReviewSummary,
   runReviewLoop,
 } from "./reviewLoop";
+import {
+  inspectCamera,
+  measureBottomCaptions,
+} from "./facts";
 import type { CriterionEvaluation, GeminiReviewReport, ReviewFeedbackItem } from "./types";
 
 // Helper to construct a full 12-criterion evaluation list for test mocks.
@@ -108,6 +112,27 @@ test("Rubric: buildPairwiseReviewPrompt contains core comparison directives", ()
   assert.ok(prompt.includes("Video 2"));
   assert.ok(prompt.includes("video1Score"));
   assert.ok(prompt.includes("video2Score"));
+  assert.ok(!prompt.includes("HNSW"));
+  assert.ok(!prompt.includes("express train"));
+
+  const promptWithTopic = buildPairwiseReviewPrompt("Distributed consensus algorithms");
+  assert.ok(promptWithTopic.includes("Distributed consensus algorithms"));
+});
+
+test("facts: inspectCamera handles missing film.json without hardcoded path heuristics", () => {
+  const result = inspectCamera(undefined, 60);
+  assert.equal(result.measured, false);
+  assert.equal(result.moveCount, 0);
+
+  const nonExistent = inspectCamera("/path/to/nonexistent/film.json", 60);
+  assert.equal(nonExistent.measured, false);
+  assert.equal(nonExistent.moveCount, 0);
+});
+
+test("facts: measureBottomCaptions handles short duration safely", async () => {
+  const shortResult = await measureBottomCaptions("dummy.mp4", 1.5);
+  assert.equal(shortResult.measured, false);
+  assert.equal(shortResult.hasCaptions, false);
 });
 
 test("geminiReview: cleanModelJsonResponse strips markdown code block fences", () => {

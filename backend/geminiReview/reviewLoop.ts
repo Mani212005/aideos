@@ -72,7 +72,7 @@ export async function renderVideoForSlug(slug: string, format: "long" | "reel" =
   const outPath = path.join(REPO_ROOT, "out", `${slug}-${format}.mp4`);
   await fsp.mkdir(path.dirname(outPath), { recursive: true });
 
-  const compId = format === "reel" ? "Reel" : "Main";
+  const compId = format === "reel" ? "Reel" : "Long";
   const cmd = `npx remotion render src/index.ts ${compId} ${outPath} --props='{"filmId":"${slug}"}' --gl=angle`;
 
   execSync(cmd, { cwd: REPO_ROOT, stdio: "inherit" });

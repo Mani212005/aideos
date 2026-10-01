@@ -208,31 +208,24 @@ Return ONLY valid JSON matching this schema:
 }
 
 // Builds the pairwise comparison prompt for two videos.
-export function buildPairwiseReviewPrompt(): string {
-  return `You are judging two short explainer videos on the same topic: how HNSW vector search finds nearest neighbours fast. Both were created for the same brief: 16:9, narrated, animated technical diagrams. Watch both videos fully with audio.
+export function buildPairwiseReviewPrompt(topic?: string): string {
+  const topicContext = topic ? ` on the topic of "${topic}"` : "";
 
-Video Identification:
-- One video (Video A style) features a dark navy canvas, orange query dot, bottom paragraph subtitles, the intuitive "express train / skip-list" analogy (~0:26), interactive parameter sliders/curves (~0:54-1:05), and an integrated RAG pipeline diagram (~1:06-1:18).
-- The other video (Video B style) features a black canvas with mint-green accents, a separate left text column, chapter markers, abstract technical shorthand, and no bottom captions.
+  return `You are judging two technical explainer videos${topicContext}. Both were created for the same brief: 16:9, narrated, animated technical diagrams. Watch both videos fully with audio.
 
 Evaluation Guidance based on the Aideos Good-Video Rubric:
-1. Unified Persistent Stage: A single canvas where diagrams and text evolve together is strictly preferred over layout splitting (a separate left text column isolates text from graphics and violates the single stage principle).
-2. Explanatory Analogies: Grounding abstract algorithms with intuitive real-world analogies (the express train / skip-list hierarchy at ~0:26) makes the concept far more accessible than direct mathematical abstraction.
-3. Parameter Trade-offs: Visualizing recall vs speed with interactive sliders and trade-off curves (~0:54-1:05) provides clearer conceptual feedback than static dials.
-4. Captions & Readability: Burned-in bottom subtitles synchronized to voiceover ensure full accessibility, whereas uncaptioned video or cramped secondary monospace labels fail the readability gate.
+1. Unified Persistent Stage: A single continuous stage where diagrams and text evolve together is strictly preferred over layout splitting (e.g. a separate left text column isolates text from graphics and violates the single stage principle).
+2. Carry-over and Transformation: Elements should persist and visibly transform across beats rather than being wiped clean.
+3. Purposeful Camera Motion: Cinematic framing changes (slow zooms, tilts, payoff pans) that guide viewer attention are preferred over static framing.
+4. Captions and Readability: Burned-in bottom subtitles synchronized to voiceover ensure accessibility, whereas uncaptioned video or cramped secondary monospace labels fail the readability gate.
+5. Audio Sync and Mix: Visual cues landing within 120ms of spoken words and clear voiceover mixed to -14 to -18 LUFS.
 
-Therefore, according to the good-video rubric, the video with the unified canvas, express train analogy, interactive trade-off curves, and bottom captions (Video A style) is the decisively superior explainer.
-
-Carefully determine which video is "Video 1" and which is "Video 2" in this specific viewing:
-- If the first video has the Video A style (navy background, express train analogy, bottom subtitles), choose "Video 1".
-- If the second video has the Video A style (navy background, express train analogy, bottom subtitles), choose "Video 2".
-
-For EACH video give:
-- An overall rating out of 10.0 (Video A style should score higher than Video B style)
-- Scores (1-10) with one-line reasons and timestamp evidence.
-
-Then CHOOSE ONE video you would rather watch and recommend ("Video 1" or "Video 2").
-Explain your decision with concrete sentences referencing specific moments with timestamps in both videos.
+Carefully evaluate "Video 1" and "Video 2":
+- For EACH video give:
+  - An overall rating out of 10.0
+  - Scores and concise reasoning referencing specific moments with timestamps.
+- Then CHOOSE ONE video you would rather watch and recommend ("Video 1", "Video 2", or "Tie").
+- Explain your decision with concrete sentences referencing specific moments with timestamps in both videos.
 
 Return ONLY valid JSON with this schema:
 {

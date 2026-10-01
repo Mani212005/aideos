@@ -98,22 +98,36 @@ export function measureAudioLoudness(videoPath: string): {
   }
 }
 
+// Checks if the tesseract OCR binary is installed and executable.
+export function isTesseractAvailable(): boolean {
+  try {
+    execSync("tesseract --version", { stdio: ["ignore", "ignore", "ignore"] });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Runs tesseract OCR on an image file to extract on-screen text.
-export function runTesseractOnImage(imagePath: string): Promise<string> {
+export function runTesseractOnImage(imagePath: string): Promise<string | null> {
   return new Promise((resolve) => {
-    const child = spawn("tesseract", [imagePath, "stdout", "--psm", "11"], {
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    let out = "";
-    child.stdout.on("data", (d) => {
-      out += d.toString();
-    });
-    child.on("close", (code) => {
-      resolve(code === 0 ? out.trim() : "");
-    });
-    child.on("error", () => {
-      resolve("");
-    });
+    try {
+      const child = spawn("tesseract", [imagePath, "stdout", "--psm", "11"], {
+        stdio: ["ignore", "pipe", "ignore"],
+      });
+      let out = "";
+      child.stdout.on("data", (d) => {
+        out += d.toString();
+      });
+      child.on("close", (code) => {
+        resolve(code === 0 || code === 1 ? out.trim() : null);
+      });
+      child.on("error", () => {
+        resolve(null);
+      });
+    } catch {
+      resolve(null);
+    }
   });
 }
 
@@ -143,6 +157,18 @@ export async function measureBottomCaptions(
     };
   }
 
+  if (!isTesseractAvailable()) {
+    return {
+      measured: false,
+      hasCaptions: false,
+      coverageRatio: 0,
+      sampledFrames: 0,
+      captionFrames: 0,
+      score: 0,
+      summary: "Tesseract OCR not installed or executable; caption measurement skipped",
+    };
+  }
+
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-ocr-"));
   const sampleTimes: number[] = [];
   const startT = Math.max(1, durationSec * 0.05);
@@ -167,18 +193,20 @@ export async function measureBottomCaptions(
         execSync(cmd, { stdio: ["ignore", "ignore", "ignore"] });
 
         if (fs.existsSync(framePath)) {
-          sampledFrames++;
           const text = await runTesseractOnImage(framePath);
+          if (text !== null) {
+            sampledFrames++;
 
-          // Extract words and filter out chapter rail titles, timeline stamps, and UI rails
-          const tokens = text.split(/\s+/).map((w) => w.trim()).filter((w) => w.length > 2);
-          const nonChapterWords = tokens.filter(
-            (w) => !/^(CHAPTER|\d|THE|PROBLEM|IDEA|DESCENT|DIALS|WILD|RECALL)/i.test(w) && !/^\d{1,2}:\d{2}$/.test(w),
-          );
+            // Extract words and filter out chapter rail titles, timeline stamps, and UI rails
+            const tokens = text.split(/\s+/).map((w) => w.trim()).filter((w) => w.length > 2);
+            const nonChapterWords = tokens.filter(
+              (w) => !/^(CHAPTER|\d|THE|PROBLEM|IDEA|DESCENT|DIALS|WILD|RECALL)/i.test(w) && !/^\d{1,2}:\d{2}$/.test(w),
+            );
 
-          // A caption band carries >= 3 legible words of spoken narration text
-          if (nonChapterWords.length >= 3) {
-            captionFrames++;
+            // A caption band carries >= 3 legible words of spoken narration text
+            if (nonChapterWords.length >= 3) {
+              captionFrames++;
+            }
           }
         }
       } catch {
@@ -199,7 +227,7 @@ export async function measureBottomCaptions(
       sampledFrames: 0,
       captionFrames: 0,
       score: 0,
-      summary: "Could not sample video frames for OCR",
+      summary: "Could not sample video frames or run OCR",
     };
   }
 
@@ -223,11 +251,10 @@ export async function measureBottomCaptions(
   };
 }
 
-// Inspects film data or camera continuity to verify camera movement.
+// Inspects film data to verify camera movement.
 export function inspectCamera(
   filmPath?: string,
   durationSec = 80,
-  videoPath?: string,
 ): {
   measured: boolean;
   hasCameraMoves: boolean;
@@ -268,38 +295,10 @@ export function inspectCamera(
     } catch {}
   }
 
-  // When no film.json exists (bare video), check whether this is Video A or has continuous camera transformations
-  if (videoPath) {
-    const filename = path.basename(videoPath).toLowerCase();
-    const fullPath = path.resolve(videoPath).toLowerCase();
-    const isVideoA = fullPath.includes("video-ab-bare") || filename.includes("video_a");
-    const isVideoB = fullPath.includes("video-ab-aideos") || filename.includes("video_b");
-
-    if (isVideoA) {
-      return {
-        measured: true,
-        hasCameraMoves: true,
-        moveCount: 4,
-        score: 9.0,
-        summary: "Continuous camera movement verified: slow pulls, 3D layer perspective tilts, and framing zooms across beats",
-      };
-    }
-
-    if (isVideoB) {
-      return {
-        measured: true,
-        hasCameraMoves: false,
-        moveCount: 1,
-        score: 4.0,
-        summary: "Static camera: long stretches without camera movement; fixed viewport framing",
-      };
-    }
-  }
-
   return {
     measured: false,
     hasCameraMoves: true,
-    moveCount: 1,
+    moveCount: 0,
     score: 7.5,
     summary: "Camera track evaluation left to visual critic",
   };
@@ -350,7 +349,7 @@ export async function extractDeterministicFacts(
     }
   }
 
-  const camera = inspectCamera(filmPath, durationSec, resolved);
+  const camera = inspectCamera(filmPath, durationSec);
 
   const rawSummaryText = [
     `=== PRE-MEASURED GROUND TRUTH FACTS (DETERMINISTIC FACTS) ===`,
