@@ -74,9 +74,12 @@ npm run backend -- film --script-file videos/speculative-decoding/script.md --ti
 
 # 8. Start Model Context Protocol (MCP) server
 npm run backend -- mcp
+
+# 9. Run deterministic quality review checks on a rendered video
+npm run review -- videos/speculative-decoding/out/speculative-decoding-long.mp4
 ```
 
-See [docs/PRODUCTION_PIPELINE.md](docs/PRODUCTION_PIPELINE.md) and [docs/DIRECTOR_GUIDE.md](docs/DIRECTOR_GUIDE.md) for full programmatic, auto-prompt, and MCP pipeline documentation.
+See [docs/PRODUCTION_PIPELINE.md](docs/PRODUCTION_PIPELINE.md), [docs/DIRECTOR_GUIDE.md](docs/DIRECTOR_GUIDE.md), and [docs/REVIEW.md](docs/REVIEW.md) for full production, direction, and review documentation.
 
 ---
 

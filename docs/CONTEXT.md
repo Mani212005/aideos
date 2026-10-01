@@ -353,6 +353,14 @@ An individual vector path inside a limb:
 * `writeAgentReview(filmId, raw, now)`, `readAgentReview(filmId, since)` (`backend/visionJudge/agentReview.ts`): Validates and persists/reads the coding model's frame review (`design/judge/agent-report.json`).
 * `appendEmbeddingLog(filmId, entries)` (`backend/visionJudge/agentReview.ts`): Appends per-frame similarity scores and thresholds to `design/judge/embedding-log.jsonl`.
 
+### `backend/review/` (Deterministic Video Review & Good-Video Rubric)
+* `reviewVideo(options)` (`backend/review/review.ts`): Orchestrates measuring the rendered video (picture, text, audio) plus film data and narration where available, evaluating rubric criteria, extracting evidence stills for failed criteria, and writing `review.json`.
+* `formatReview(report)` (`backend/review/review.ts`): Formats a `ReviewReport` into a human-readable terminal summary with passing/failing gates.
+* `measureRenderFacts(videoPath, options)` (`backend/review/renderFacts.ts`): Measures layout persistence, stage clears, cuts, stillness, captions, text size, contrast, overlap, and on-screen numbers from decoded frames and OCR.
+* `evaluateCriteria(inputs, thresholds)` (`backend/review/criteria.ts`): Pure evaluation of rubric criteria from measured facts against calibrated thresholds.
+* `deriveFilmFacts(film, words)` (`backend/review/source.ts`): Derives camera motion, element persistence, and carry-over transformations from aideos film data.
+* `deriveNarrationFacts(words, duration)` (`backend/review/speech.ts`): Derives pace, dead air, narrated moments, and sync alignment from word timings or narration text.
+
 ### `backend/mcp/designTools.ts` (Design & Review MCP Tools)
 * `registerDesignTools(server)`: Registers sandboxed MCP tools for reading briefs (`aideos_design_brief`), inspecting design files (`aideos_read_file`), writing design specs and SVGs (`aideos_write_file`), building designs (`aideos_design_build`), validating against design rules (`aideos_design_check`), fetching sampled review stills (`aideos_frame_stills`), and submitting coding model frame reviews (`aideos_submit_frame_review`).
 
