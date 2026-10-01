@@ -74,6 +74,7 @@ ${RUBRIC_SUMMARY}
 - **Continuity:** one scene for the whole film. Base elements stay on screen and evolve; new elements build on what is there (no disconnected frames). A clip must start from the value the previous clip on that element and property left (the build names the clip when it does not). To jump, hide the element first and set \`allowJump\`. One element keeps one transform \`origin\` for the whole film.
 - **Timing:** never write frames. Cue every clip to the narration: \`"shot"\`, \`"shot@0.4"\`, \`"shot@end"\`, \`'shot:"spoken phrase"'\`, \`'shot:"spoken phrase"@end'\`, \`"end"\`, each optionally \`+N\`/\`-N\` frames. Aim at the word being said: every visual depicts what is spoken at that moment. A cue naming a phrase that is not spoken in that shot fails the build.
 - **Honest data:** any number, label or chart on screen must come from the narration. A counter must show a number that is actually said.
+- **Quality review gate:** Every rendered video must pass the Gemini 3.8 Flash quality review loop (\`aideos review-loop ${film.id}\`). The model evaluates the real video and audio against the 12-criterion rubric. An agent may only claim done once Gemini rates the video 9.0 or higher with all 6 hard gates passing (verdict: ACCEPT).
 
 ## design.json
 
@@ -95,6 +96,8 @@ ${shots}
 
 - \`aideos design build ${film.id}\`: compile, check, and write the film when it passes. Result also in \`videos/${film.id}/design/status.json\`.
 - \`aideos design check ${film.id} --stills\`: re-check and render review stills into \`.frames/${film.id}/\`. Look at them: fix anything that reads badly, collides with captions, or is off the safe square.
+- \`aideos review-loop ${film.id}\`: run the iterative Gemini 3.8 Flash review loop on the rendered video until it achieves a score of 9.0+ out of 10.0 (required for acceptance).
+- \`aideos gemini-review out/${film.id}-long.mp4\`: run a single Gemini 3.8 Flash video review with timestamp evidence and prioritized feedback.
 `;
 }
 

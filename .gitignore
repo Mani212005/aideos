@@ -96,3 +96,8 @@ examples/*/footage/
 
 # Agent link pairings (hashed secrets) for aideos connect.
 .aideos/
+
+# Gemini video review reports and round state
+videos/*/gemini-review/
+videos/*/review.json
+videos/*/review-loop.json
