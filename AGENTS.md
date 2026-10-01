@@ -16,7 +16,7 @@ Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos
    - **Typography**: Geist for voice/narrative, JetBrains Mono for all system/code/numbers.
    - **Motion Easing**: Ease-out-expo cubic-bezier(0.16, 1, 0.3, 1) for all transitions.
    - **7 Animated Primitives**: TextReveal, StatCounter, CodeBlock, Card, Divider, IconLabel, ProgressBar.
-   - **Single Canvas Model**: 2D infinite spatial canvas with continuous camera motion (camera support is currently being added) and wide payoff zooms.
+   - **Single Canvas Model**: 2D infinite spatial canvas with continuous camera motion and wide payoff zooms.
 5. **Great Coding Principles & Refinement**:
    - Perform quality and refinement checks to verify code logic and appearance.
    - Maintain clean, modular, well-structured, and readable code.
