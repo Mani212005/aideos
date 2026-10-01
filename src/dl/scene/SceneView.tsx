@@ -1,6 +1,6 @@
 /**
  * File Description: Remotion and React DOM Renderer for Compiled Aideos Scenes (Phase 3/13).
- * Renders sorted scene entities in layer order: environment assets are drawn from their own parsed
+ * Renders sorted scene entities in layer order with camera transformation applied: environment assets are drawn from their own parsed
  * SVG documents with full transform, per-instance id namespacing and compiled element-level custom
  * animation applied; actors are drawn as articulated vector rigs with hierarchical skeletal
  * transforms and rotating subgroups (D1). Pure React with no Node imports, so the same component
@@ -245,6 +245,17 @@ export const SceneView: React.FC<SceneViewProps> = ({
     );
   };
 
+  let cameraTransform = "";
+  if (frame.camera) {
+    const sw = sceneSize?.w ?? width;
+    const sh = sceneSize?.h ?? height;
+    const cx = frame.camera.center.x;
+    const cy = frame.camera.center.y;
+    const z = frame.camera.zoom;
+    const r = frame.camera.rotation;
+    cameraTransform = `translate(${sw / 2}, ${sh / 2}) rotate(${r}) scale(${z}) translate(${-cx}, ${-cy})`;
+  }
+
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -259,10 +270,12 @@ export const SceneView: React.FC<SceneViewProps> = ({
       {/* Background canvas fill */}
       <rect width="100%" height="100%" fill={palette.canvas} />
 
-      {/* Render all entities strictly in ascending resolvedLayer order */}
-      {frame.entities.map((entity) =>
-        entity.kind === "actor" ? renderActor(entity) : renderEnvironmentAsset(entity),
-      )}
+      <g transform={cameraTransform || undefined}>
+        {/* Render all entities strictly in ascending resolvedLayer order */}
+        {frame.entities.map((entity) =>
+          entity.kind === "actor" ? renderActor(entity) : renderEnvironmentAsset(entity),
+        )}
+      </g>
     </svg>
   );
 };

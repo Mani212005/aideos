@@ -17,6 +17,7 @@ The root data contract defining a complete video composition (stored in `src/dl/
 * `theme?: ThemeConfig` (Global paper background, typography, and camera settings)
 * `chapters: string[]` (Ordered list of chapter titles for the progress rail)
 * `canvas: { nodes: CanvasNode[], edges: CanvasEdge[] }` (The continuous 2D spatial graph)
+* `scene?: FilmScene` (Optional vector scene replacing the canvas graph for scene films)
 * `shots: Shot[]` (Ordered chronological sequence of camera shots and visual blocks)
 * `voiceover?: { src: string, volume?: number, speed?: number, retimedSrc?: string }` (Master audio track source file)
 * `layers?: LayerDefinition[]` (Persisted non-linear track definitions and settings)
@@ -82,6 +83,18 @@ Static image overlay payload for standalone image overlays and layered image cli
 Standalone caption cue payload for standalone subtitle overlays.
 * `text: string` (Caption text content)
 * `startFrame?: number, endFrame?: number` (Optional frame-level timing bounds)
+
+### `CameraTrack`
+Declarative camera motion track for continuous scene graph camera movement (`src/dl/schema.ts`, `src/dl/scene/types.ts`).
+* `keyframes: CameraKeyframe[]` (Ordered list of camera position, zoom, and rotation keyframes)
+
+### `CameraKeyframe`
+A discrete camera position and framing keyframe on the scene timeline.
+* `frame: number` (Frame index, integer >= 0)
+* `center: { x: number, y: number }` (Scene center coordinate)
+* `zoom: number` (Camera zoom multiplier, positive number)
+* `rotation?: number` (Camera rotation angle in degrees)
+* `easing?: string` (Optional transition easing curve name, e.g. "expoInOut")
 
 ### `Shot`
 A single continuous camera view and duration window on the timeline.
@@ -405,15 +418,25 @@ An individual vector path inside a limb:
 
 ### `src/dl/scene/` (Custom SVG Animation & Scene Graph)
 * Deep reference documentation in [`src/dl/scene/README.md`](../src/dl/scene/README.md).
+* `types.ts`: TypeScript contracts for scene hierarchy, actors, environment assets, custom SVG animation timelines, and camera tracks (`CameraKeyframe`, `CameraTrack`).
 * `svgAnimation.ts`: Declarative timeline types (`SvgAnimationClip`, `SvgAnimationTimeline`), easing curves, stagger calculations, validator (`validateSvgTimeline`), and compiler (`compileSvgTimeline`).
 * `svgDocument.ts`: Pure dependency-free SVG document parser (`parseSvgDocument`), element ID discovery (`collectSvgElementIds`), and bounds calculation.
 * `svgReact.tsx`: React SVG renderer (`renderSvgDocumentToReact`) with instance namespacing and per-frame element state transforms.
 * `SceneClip.tsx`: Remotion composition entry point with single compilation and current frame selection.
 * `sceneTiming.ts`: Audio-first retiming helpers (`framesForAudioMs`, `audioSyncDriftMs`, `alignSceneToAudio`, `retimeSvgTimeline`).
-* `SceneView.tsx`: Pure browser-safe SVG scene renderer with no filesystem imports.
-* `compile.ts`: Pure deterministic compiler (`compileScene`) threading keyframes, actions, and custom animation timelines onto frames.
+* `SceneView.tsx`: Pure browser-safe SVG scene renderer with camera transform support and no filesystem imports.
+* `compile.ts`: Pure deterministic compiler (`compileScene`) threading keyframes, actions, custom animation timelines, and camera tracks onto frames.
 * `validateScene.ts`: Phase 1 semantic and physical integrity validator (`validateScene`) including Rule 20 timeline consistency.
 * `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`, `collectSceneAssetElementIds`).
+
+### `backend/sceneKit/` (Scene Film Authoring Kit)
+* `stage.ts`: Scene geometry constants (`SCENE_SIZE`, `SAFE_SQUARE`, `FORMAT_WINDOWS`, `FPS`).
+* `timeline.ts`: Pure `Timeline` authoring builder enforcing value holding, origin uniqueness, and camera track continuity (`Timeline.camera`, `Timeline.buildCamera`).
+* `timing.ts`: Word-level narration cue mapping (`createCues`, `shotFrames`).
+* `assets.ts`: Validated SVG asset generator (`writeSvgAssets`).
+
+### `backend/designCheck/` (Design Standard Gate)
+* `checkFilmDesign(raw)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, static artwork, locked palette, typography, motion continuity, audio lock, honest data, and speed-capped continuous camera moves (max 20% frame width per second, no zero-duration jumps).
 
 ### `backend/transcribe.ts` (Audio & Video Transcription)
 * `transcribe(src, options, deps)`: Transcribes audio or video media into word-level timings (`TranscribedWord[]`) with confidence scores, using Deepgram with local Whisper CLI fallback.

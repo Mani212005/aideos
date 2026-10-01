@@ -59,3 +59,27 @@ test("sceneKit: the safe square is inside both format windows", () => {
   assert.ok(rectInside(SAFE_SQUARE, FORMAT_WINDOWS.reel));
   assert.ok(!rectInside({ x0: 0, y0: 0, x1: 100, y1: 100 }, SAFE_SQUARE));
 });
+
+test("sceneKit: camera tracks hold continuity and do not run past film", () => {
+  const t = new Timeline("t", 100);
+  t.camera({ id: "cam1", from: { center: { x: 960, y: 960 }, zoom: 1 }, to: { center: { x: 500, y: 500 }, zoom: 2 }, start: 0, end: 50 });
+  
+  assert.throws(() => 
+    t.camera({ id: "cam2", from: { center: { x: 0, y: 0 }, zoom: 2 }, to: { center: { x: 100, y: 100 }, zoom: 2 }, start: 50, end: 60 })
+  , /camera starts at different state/);
+
+  assert.doesNotThrow(() => 
+    t.camera({ id: "cam2-jump", from: { center: { x: 0, y: 0 }, zoom: 2 }, to: { center: { x: 100, y: 100 }, zoom: 2 }, start: 50, end: 60, allowJump: true })
+  );
+});
+
+test("sceneKit: camera track is exported in buildCamera()", () => {
+  const t = new Timeline("t", 100);
+  assert.equal(t.buildCamera(), undefined);
+  t.camera({ id: "c", from: { center: { x: 0, y: 0 }, zoom: 1 }, to: { center: { x: 10, y: 10 }, zoom: 2 }, start: 10, end: 20 });
+  const cam = t.buildCamera();
+  assert.ok(cam);
+  assert.equal(cam.keyframes.length, 2);
+  assert.equal(cam.keyframes[0].frame, 10);
+  assert.equal(cam.keyframes[1].frame, 20);
+});

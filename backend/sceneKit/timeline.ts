@@ -6,10 +6,21 @@
  * Timeline refuses both at authoring time, with the clip ids involved, instead of shipping a glitch.
  */
 
-import type { Vec2 } from "../../src/dl/scene/types";
+import type { Vec2, CameraTrack, CameraKeyframe } from "../../src/dl/scene/types";
 import type { SvgAnimationClip, SvgAnimatableProperty, SvgEasing } from "../../src/dl/scene/svgAnimation";
 
 /** Arguments for one authored clip, with an end frame instead of a duration. */
+
+export interface CameraClipSpec {
+  id: string;
+  from: { center: Vec2, zoom: number, rotation?: number };
+  to: { center: Vec2, zoom: number, rotation?: number };
+  start: number;
+  end: number;
+  easing?: SvgEasing;
+  allowJump?: boolean;
+}
+
 export interface ClipSpec {
   id: string;
   targets: string[];
@@ -49,6 +60,8 @@ export class Timeline {
   private clips: SvgAnimationClip[] = [];
   private lastValue = new Map<string, { clipId: string; value: number }>();
   private origins = new Map<string, { clipId: string; origin: Vec2 }>();
+  private cameraKeyframes: CameraKeyframe[] = [];
+  private lastCamera?: { clipId: string, state: { center: Vec2, zoom: number, rotation: number } };
 
   private readonly timelineId: string;
   private readonly durationFrames: number;
@@ -116,7 +129,73 @@ export class Timeline {
     return this;
   }
 
-  /** Hands back the finished timeline for attaching to its asset. */
+  // Appends a camera motion clip to the timeline with continuity validation.
+  camera(spec: CameraClipSpec): this {
+    if (spec.end <= spec.start) {
+      throw new Error(`[${this.timelineId}/${spec.id}] end ${spec.end} is not after start ${spec.start}.`);
+    }
+    if (spec.end > this.durationFrames) {
+      throw new Error(`[${this.timelineId}/${spec.id}] ends at frame ${spec.end}, past the film's ${this.durationFrames}.`);
+    }
+
+    const startState = {
+      center: { ...spec.from.center },
+      zoom: spec.from.zoom,
+      rotation: spec.from.rotation ?? 0
+    };
+
+    if (!spec.allowJump && this.lastCamera) {
+      const p = this.lastCamera.state;
+      if (Math.abs(p.center.x - startState.center.x) > 1e-6 ||
+          Math.abs(p.center.y - startState.center.y) > 1e-6 ||
+          Math.abs(p.zoom - startState.zoom) > 1e-6 ||
+          Math.abs(p.rotation - startState.rotation) > 1e-6) {
+         throw new Error(`[${this.timelineId}/${spec.id}] camera starts at different state than "${this.lastCamera.clipId}" left it. A gap here is a visible snap on screen.`);
+      }
+    }
+
+    this.cameraKeyframes.push({
+      frame: spec.start,
+      center: { ...spec.from.center },
+      zoom: spec.from.zoom,
+      rotation: spec.from.rotation ?? 0,
+      easing: spec.easing
+    });
+
+    this.cameraKeyframes.push({
+      frame: spec.end,
+      center: { ...spec.to.center },
+      zoom: spec.to.zoom,
+      rotation: spec.to.rotation ?? 0
+    });
+
+    this.lastCamera = {
+      clipId: spec.id,
+      state: { center: { ...spec.to.center }, zoom: spec.to.zoom, rotation: spec.to.rotation ?? 0 }
+    };
+
+    return this;
+  }
+
+  // Builds and returns the compiled camera track keyframes sorted by frame.
+  buildCamera(): CameraTrack | undefined {
+    if (this.cameraKeyframes.length === 0) return undefined;
+    
+    const unique = new Map<number, CameraKeyframe>();
+    for (const k of this.cameraKeyframes) {
+      if (unique.has(k.frame)) {
+        const ext = unique.get(k.frame)!;
+        unique.set(k.frame, { ...ext, ...k, easing: k.easing ?? ext.easing });
+      } else {
+        unique.set(k.frame, k);
+      }
+    }
+    
+    const sorted = Array.from(unique.values()).sort((a, b) => a.frame - b.frame);
+    return { keyframes: sorted };
+  }
+
+  // Hands back the finished timeline for attaching to its asset.
   build() {
     return { timelineId: this.timelineId, clips: this.clips };
   }

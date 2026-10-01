@@ -1,9 +1,9 @@
 <!--
-File Description: Reference for the Aideos scene graph's custom SVG animation layer - the clip
+File Description: Reference for the Aideos scene graph's custom SVG animation layer and scene camera - the clip
 format, how it compiles, how it renders, and the rules that keep it deterministic.
 -->
 
-# Custom SVG animation
+# Custom SVG animation and Scene Camera
 
 A scene asset is a plain, static `.svg` document. Motion is authored separately, as declarative
 clips that name elements inside that document by id. Nothing in the asset animates itself: no
@@ -14,8 +14,11 @@ which is what makes a render reproducible.
 videos/<slug>/visuals/thing.svg   static artwork, stable ids
         +
 SvgAnimationTimeline              which id moves, how, when
+        +
+Scene.camera                      center, zoom, rotation trajectory
         =
 CompiledEntity.elementStates[f]   dense per-frame state
+CompiledFrame.camera              dense per-frame camera state
 ```
 
 | Piece | File |
@@ -23,11 +26,13 @@ CompiledEntity.elementStates[f]   dense per-frame state
 | Clip format, easing, compiler, validator | `svgAnimation.ts` |
 | SVG parser (element identity, id discovery) | `svgDocument.ts` |
 | Parsed tree to React elements, id namespacing | `svgReact.tsx` |
-| Scene compiler (threads timelines onto frames) | `compile.ts` |
-| Renderer | `SceneView.tsx` |
+| Scene compiler (threads timelines onto frames, compiles camera) | `compile.ts` |
+| Scene data types (hierarchy, tracks, camera track) | `types.ts` |
+| Renderer (with camera transform) | `SceneView.tsx` |
 | Remotion entry point | `SceneClip.tsx` |
 | Whole-film stage | `../SceneStage.tsx` |
 | Audio-first retiming | `sceneTiming.ts` |
+| Scene-film kit (Timeline builder, camera authoring) | `../../../backend/sceneKit/timeline.ts` |
 | Node-side asset loading | `../../../backend/scene/loadSceneAssets.ts` |
 | Browser-bundle SVG source map builder | `../../../backend/scene/buildSvgSources.ts` |
 
@@ -103,6 +108,61 @@ conflict with no correct answer, so it fails rather than picking a winner.
 an id the document does not declare. Pass `collectSceneAssetElementIds(scene)` (or
 `loadSceneAssets(scene).elementIdsByAssetId`) to `compileScene` as `assetElementIds` to get the same
 check at compile time.
+
+## Scene camera
+
+A scene can define a declarative camera track (`scene.camera = { keyframes: CameraKeyframe[] }`)
+to continuously pan, zoom, or rotate across the persistent 2D scene stage without jumping between
+disconnected shots.
+
+```ts
+scene.camera = {
+  keyframes: [
+    { frame: 0, center: { x: 960, y: 960 }, zoom: 1 },
+    { frame: 90, center: { x: 500, y: 500 }, zoom: 1.8, easing: "expoInOut" },
+    { frame: 180, center: { x: 500, y: 500 }, zoom: 1.8 },
+  ],
+};
+```
+
+**Keyframe properties.** `frame`, `center` (`{ x, y }` in scene space), `zoom` (scale factor > 0),
+`rotation` (degrees, optional), `easing` (optional).
+
+**Interpolation.** When `easing` is omitted, the compiler interpolates trajectory coordinates via
+Catmull-Rom splines across keyframes for smooth continuous motion, while preserving exact coordinates
+during hold intervals (where `from` equals `to`) to avoid drift. When `easing` is specified, the
+named curve (`expoOut`, `expoInOut`, `linear`, etc.) governs the transition between adjacent keyframes.
+
+**Authoring with sceneKit.** The scene-film kit's `Timeline` builder provides `Timeline.camera(...)`
+and `Timeline.buildCamera()`:
+
+```ts
+timeline
+  .camera({
+    id: "cam-intro",
+    from: { center: { x: 960, y: 960 }, zoom: 1 },
+    to: { center: { x: 500, y: 500 }, zoom: 1.8 },
+    start: 0,
+    end: 90,
+    easing: "expoInOut",
+  })
+  .camera({
+    id: "cam-focus",
+    from: { center: { x: 500, y: 500 }, zoom: 1.8 },
+    to: { center: { x: 1200, y: 600 }, zoom: 2.2 },
+    start: 120,
+    end: 180,
+  });
+```
+
+`Timeline.camera` asserts temporal bounds and validates continuity: the camera must begin at the
+exact center, zoom, and rotation where the prior camera clip ended, unless explicitly flagged with
+`allowJump: true`.
+
+**Speed limits & validation.** `checkFilmDesign` (`backend/designCheck/`) validates that declared
+camera tracks contain at least two keyframes, exhibit actual motion, have no zero-duration jumps,
+and keep translation speed below 20% of the scene frame width per second (384 px/s for 1920-wide scenes)
+to prevent disorienting camera shifts.
 
 ## Rendering
 

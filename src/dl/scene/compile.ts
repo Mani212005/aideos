@@ -3,12 +3,12 @@
  * Compiles high-level scenes, actions, and tracks into dense, verified per-frame execution data.
  * Implements joint-mask blending, Catmull-Rom spline interpolation, rest-hold gap anchoring (C-14),
  * hierarchical kinematic transform composition (C-6), environment sub-rotation (D1), custom
- * element-level SVG animation timelines, and per-frame derived layering (D5).
+ * element-level SVG animation timelines, per-frame derived layering (D5), and camera track compilation.
  */
 
 import type { Scene, EnvironmentAsset, SchemaVersion } from "./types";
-import type { SvgElementState } from "./svgAnimation";
-import { compileSvgTimeline } from "./svgAnimation";
+import type { SvgElementState, SvgEasing } from "./svgAnimation";
+import { compileSvgTimeline, applySvgEasing } from "./svgAnimation";
 import { validateScene } from "./validateScene";
 import { getActionDefinition, getAffectedJointsForAction } from "./actions";
 import { getCharacterRigById } from "../characters";
@@ -39,8 +39,15 @@ export interface CompiledEntity {
   elementStates?: Record<string, SvgElementState>;
 }
 
+export interface CompiledCameraState {
+  center: { x: number; y: number };
+  zoom: number;
+  rotation: number;
+}
+
 export interface CompiledFrame {
   frame: number;
+  camera?: CompiledCameraState;
   entities: CompiledEntity[]; // sorted ascending by resolvedLayer
 }
 
@@ -473,7 +480,83 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
     });
   }
 
+  
+  // 4b. Pre-compile Camera
+  const cameraCurves: CompiledCameraState[] = new Array(totalFrames);
+  const defaultCameraState: CompiledCameraState = {
+    center: { x: scene.sceneSize.w / 2, y: scene.sceneSize.h / 2 },
+    zoom: 1.0,
+    rotation: 0
+  };
+
+  if (scene.camera && scene.camera.keyframes && scene.camera.keyframes.length > 0) {
+    const kfs = scene.camera.keyframes;
+    const sortedKfs = [...kfs].sort((a, b) => a.frame - b.frame);
+    
+    // Builds Catmull-Rom spline knots from keyframes using a given property extractor.
+    const buildSpline = (extractor: (k: typeof sortedKfs[0]) => number) => {
+      const knots = sortedKfs.map(k => ({
+        t: totalFrames > 1 ? k.frame / (totalFrames - 1) : 0,
+        val: extractor(k)
+      }));
+      if (knots[0].t > 0) knots.unshift({ t: 0, val: knots[0].val });
+      if (knots[knots.length - 1].t < 1) knots.push({ t: 1, val: knots[knots.length - 1].val });
+      return knots;
+    };
+    const splineX = buildSpline(k => k.center.x);
+    const splineY = buildSpline(k => k.center.y);
+    const splineZoom = buildSpline(k => k.zoom);
+    const splineRot = buildSpline(k => k.rotation ?? 0);
+
+    for (let f = 0; f < totalFrames; f++) {
+      if (sortedKfs.length === 1 || f <= sortedKfs[0].frame) {
+        const k = sortedKfs[0];
+        cameraCurves[f] = { center: { ...k.center }, zoom: k.zoom, rotation: k.rotation ?? 0 };
+      } else if (f >= sortedKfs[sortedKfs.length - 1].frame) {
+        const k = sortedKfs[sortedKfs.length - 1];
+        cameraCurves[f] = { center: { ...k.center }, zoom: k.zoom, rotation: k.rotation ?? 0 };
+      } else {
+        const nextIdx = sortedKfs.findIndex((k) => k.frame > f);
+        const k0 = sortedKfs[nextIdx - 1];
+        const k1 = sortedKfs[nextIdx];
+        
+        if (k0.easing) {
+          const t = (f - k0.frame) / (k1.frame - k0.frame);
+          const easedT = applySvgEasing(k0.easing as SvgEasing, t);
+          cameraCurves[f] = {
+            center: {
+              x: k0.center.x + (k1.center.x - k0.center.x) * easedT,
+              y: k0.center.y + (k1.center.y - k0.center.y) * easedT
+            },
+            zoom: k0.zoom + (k1.zoom - k0.zoom) * easedT,
+            rotation: (k0.rotation ?? 0) + ((k1.rotation ?? 0) - (k0.rotation ?? 0)) * easedT
+          };
+        } else {
+          const normT = totalFrames > 1 ? f / (totalFrames - 1) : 0;
+          const isHoldX = Math.abs(k0.center.x - k1.center.x) < 1e-6;
+          const isHoldY = Math.abs(k0.center.y - k1.center.y) < 1e-6;
+          const isHoldZoom = Math.abs(k0.zoom - k1.zoom) < 1e-6;
+          const isHoldRot = Math.abs((k0.rotation ?? 0) - (k1.rotation ?? 0)) < 1e-6;
+
+          cameraCurves[f] = {
+            center: {
+              x: isHoldX ? k0.center.x : evaluateCatmullRomSpline(splineX, normT),
+              y: isHoldY ? k0.center.y : evaluateCatmullRomSpline(splineY, normT),
+            },
+            zoom: isHoldZoom ? k0.zoom : evaluateCatmullRomSpline(splineZoom, normT),
+            rotation: isHoldRot ? (k0.rotation ?? 0) : evaluateCatmullRomSpline(splineRot, normT),
+          };
+        }
+      }
+    }
+  } else {
+    for (let f = 0; f < totalFrames; f++) {
+      cameraCurves[f] = defaultCameraState;
+    }
+  }
+
   // 5. Assemble Per-Frame Compiled Data & Resolve Layers (D5)
+
   const compiledFrames: CompiledFrame[] = new Array(totalFrames);
 
   for (let f = 0; f < totalFrames; f++) {
@@ -608,6 +691,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
 
     compiledFrames[f] = {
       frame: f,
+      camera: cameraCurves[f],
       entities: entitiesAtFrame,
     };
   }

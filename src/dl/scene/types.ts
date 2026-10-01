@@ -1,7 +1,7 @@
 /**
  * File Description: Pure TypeScript data contract for the Aideos 2D Scene Graph.
  * Defines serializable scene hierarchy (background, props, actors), tracks, keyframes,
- * rotating subgroups (D1), custom SVG animation timelines, actions, model sheets (D2),
+ * rotating subgroups (D1), custom SVG animation timelines, camera tracks, actions, model sheets (D2),
  * and scene root. (Axiom 1: pure data).
  */
 
@@ -91,6 +91,18 @@ export interface ModelSheet {
   defaultFacing: "left" | "right";
 }
 
+export interface CameraKeyframe {
+  frame: number;
+  center: Vec2;
+  zoom: number;
+  rotation?: number;
+  easing?: string;
+}
+
+export interface CameraTrack {
+  keyframes: CameraKeyframe[];
+}
+
 export interface Scene {
   schemaVersion: SchemaVersion;
   sceneId: string;
@@ -100,6 +112,7 @@ export interface Scene {
   audioSource: string;
   audioDurationMs: number;
   sceneSize: { w: number; h: number }; // virtual scene coordinate space (e.g. 1920x1080)
+  camera?: CameraTrack;
   background: EnvironmentAsset;
   props: EnvironmentAsset[];
   actors: ActorInstance[]; // length <= 15
