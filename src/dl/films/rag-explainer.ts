@@ -67,9 +67,9 @@ export const ragExplainerFilm: Film = {
     "schemaVersion": "1.0.0",
     "sceneId": "rag-explainer",
     "fps": 30,
-    "durationFrames": 1976,
+    "durationFrames": 1947,
     "audioSource": "videos/rag-explainer/voiceover.wav",
-    "audioDurationMs": 65867,
+    "audioDurationMs": 64900,
     "sceneSize": {
       "w": 1920,
       "h": 1920
@@ -109,7 +109,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 382,
+              "startFrame": 374,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -144,7 +144,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 2,
+              "startFrame": 3,
               "durationFrames": 8
             },
             {
@@ -155,7 +155,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 6,
+              "startFrame": 7,
               "durationFrames": 8
             },
             {
@@ -166,7 +166,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 10,
+              "startFrame": 11,
               "durationFrames": 8
             },
             {
@@ -177,7 +177,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 14,
+              "startFrame": 15,
               "durationFrames": 8
             },
             {
@@ -188,7 +188,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 18,
+              "startFrame": 19,
               "durationFrames": 8
             },
             {
@@ -199,7 +199,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 22,
+              "startFrame": 23,
               "durationFrames": 8
             },
             {
@@ -210,7 +210,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 26,
+              "startFrame": 27,
               "durationFrames": 8
             },
             {
@@ -221,7 +221,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 30,
+              "startFrame": 31,
               "durationFrames": 8
             },
             {
@@ -232,7 +232,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 34,
+              "startFrame": 35,
               "durationFrames": 8
             },
             {
@@ -243,7 +243,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 38,
+              "startFrame": 39,
               "durationFrames": 8
             },
             {
@@ -254,7 +254,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 58,
+              "startFrame": 63,
               "durationFrames": 10
             },
             {
@@ -265,7 +265,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 62,
+              "startFrame": 67,
               "durationFrames": 10
             },
             {
@@ -276,7 +276,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 62,
+              "startFrame": 67,
               "durationFrames": 10
             },
             {
@@ -287,7 +287,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 62,
+              "startFrame": 67,
               "durationFrames": 10
             },
             {
@@ -298,7 +298,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 130,
+              "startFrame": 136,
               "durationFrames": 10,
               "origin": {
                 "x": 0,
@@ -313,7 +313,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 133,
+              "startFrame": 139,
               "durationFrames": 10,
               "origin": {
                 "x": 0,
@@ -328,7 +328,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 136,
+              "startFrame": 142,
               "durationFrames": 10,
               "origin": {
                 "x": 0,
@@ -343,7 +343,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 139,
+              "startFrame": 145,
               "durationFrames": 10,
               "origin": {
                 "x": 0,
@@ -358,7 +358,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 142,
+              "startFrame": 148,
               "durationFrames": 10,
               "origin": {
                 "x": 0,
@@ -373,7 +373,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 145,
+              "startFrame": 151,
               "durationFrames": 10,
               "origin": {
                 "x": 0,
@@ -388,7 +388,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 148,
+              "startFrame": 154,
               "durationFrames": 10,
               "origin": {
                 "x": 0,
@@ -403,7 +403,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 151,
+              "startFrame": 157,
               "durationFrames": 10,
               "origin": {
                 "x": 0,
@@ -418,7 +418,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 130,
+              "startFrame": 136,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -430,7 +430,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 133,
+              "startFrame": 139,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -442,7 +442,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 136,
+              "startFrame": 142,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -454,7 +454,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 139,
+              "startFrame": 145,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -466,7 +466,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 142,
+              "startFrame": 148,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -478,7 +478,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 145,
+              "startFrame": 151,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -490,7 +490,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 148,
+              "startFrame": 154,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -502,7 +502,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 151,
+              "startFrame": 157,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -514,7 +514,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 169,
+              "startFrame": 177,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -549,7 +549,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 1,
+              "startFrame": 2,
               "durationFrames": 10
             },
             {
@@ -560,7 +560,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1,
+              "startFrame": 2,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -595,7 +595,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 12,
+              "startFrame": 13,
               "durationFrames": 10
             },
             {
@@ -606,7 +606,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 12,
+              "startFrame": 13,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -618,7 +618,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 28,
+              "startFrame": 30,
               "durationFrames": 10
             },
             {
@@ -629,7 +629,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 28,
+              "startFrame": 30,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -641,7 +641,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 31,
+              "startFrame": 33,
               "durationFrames": 10
             },
             {
@@ -652,7 +652,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 31,
+              "startFrame": 33,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -664,7 +664,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 34,
+              "startFrame": 36,
               "durationFrames": 10
             },
             {
@@ -675,7 +675,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 34,
+              "startFrame": 36,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -687,7 +687,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 40,
+              "startFrame": 44,
               "durationFrames": 10
             },
             {
@@ -698,7 +698,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 40,
+              "startFrame": 44,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -710,7 +710,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 49,
+              "startFrame": 53,
               "durationFrames": 10
             },
             {
@@ -721,7 +721,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 49,
+              "startFrame": 53,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -733,7 +733,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 57,
+              "startFrame": 62,
               "durationFrames": 10
             },
             {
@@ -744,7 +744,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 57,
+              "startFrame": 62,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -756,7 +756,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -768,7 +768,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -780,7 +780,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -792,7 +792,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -804,7 +804,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -816,7 +816,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -828,7 +828,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -840,7 +840,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -852,7 +852,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -864,7 +864,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -876,7 +876,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -888,7 +888,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -900,7 +900,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -912,7 +912,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -924,7 +924,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -936,7 +936,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -948,7 +948,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -960,7 +960,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -972,7 +972,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -984,7 +984,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 76,
+              "startFrame": 79,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -996,7 +996,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -59,
               "to": 0,
-              "startFrame": 83,
+              "startFrame": 86,
               "durationFrames": 10
             },
             {
@@ -1007,7 +1007,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 83,
+              "startFrame": 86,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1019,7 +1019,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -59,
               "to": 0,
-              "startFrame": 89,
+              "startFrame": 92,
               "durationFrames": 10
             },
             {
@@ -1030,7 +1030,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 89,
+              "startFrame": 92,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1042,7 +1042,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -59,
               "to": 0,
-              "startFrame": 93,
+              "startFrame": 97,
               "durationFrames": 10
             },
             {
@@ -1053,7 +1053,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 93,
+              "startFrame": 97,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1065,7 +1065,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -59,
               "to": 0,
-              "startFrame": 98,
+              "startFrame": 102,
               "durationFrames": 10
             },
             {
@@ -1076,7 +1076,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 98,
+              "startFrame": 102,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1088,7 +1088,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -59,
               "to": 0,
-              "startFrame": 108,
+              "startFrame": 112,
               "durationFrames": 10
             },
             {
@@ -1099,7 +1099,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 108,
+              "startFrame": 112,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1111,7 +1111,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -59,
               "to": 0,
-              "startFrame": 123,
+              "startFrame": 128,
               "durationFrames": 10
             },
             {
@@ -1122,7 +1122,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 123,
+              "startFrame": 128,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1134,7 +1134,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -59,
               "to": 0,
-              "startFrame": 129,
+              "startFrame": 135,
               "durationFrames": 10
             },
             {
@@ -1145,7 +1145,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 129,
+              "startFrame": 135,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1157,7 +1157,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -59,
               "to": 0,
-              "startFrame": 137,
+              "startFrame": 143,
               "durationFrames": 10
             },
             {
@@ -1168,7 +1168,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 137,
+              "startFrame": 143,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1180,7 +1180,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1192,7 +1192,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1204,7 +1204,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1216,7 +1216,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1228,7 +1228,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1240,7 +1240,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1252,7 +1252,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1264,7 +1264,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1276,7 +1276,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1288,7 +1288,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1300,7 +1300,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1312,7 +1312,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1324,7 +1324,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1336,7 +1336,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1348,7 +1348,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1360,7 +1360,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 157,
+              "startFrame": 165,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1372,7 +1372,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 164,
+              "startFrame": 172,
               "durationFrames": 9,
               "origin": {
                 "x": 102.64499999999998,
@@ -1387,7 +1387,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 164,
+              "startFrame": 172,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1399,7 +1399,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 166,
+              "startFrame": 174,
               "durationFrames": 9,
               "origin": {
                 "x": 77.94000000000001,
@@ -1414,7 +1414,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 166,
+              "startFrame": 174,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1426,7 +1426,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 174,
+              "startFrame": 182,
               "durationFrames": 9,
               "origin": {
                 "x": 30.15,
@@ -1441,7 +1441,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 174,
+              "startFrame": 182,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1453,7 +1453,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 177,
+              "startFrame": 185,
               "durationFrames": 9,
               "origin": {
                 "x": 514.164,
@@ -1468,7 +1468,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 177,
+              "startFrame": 185,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1480,7 +1480,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 213,
+              "startFrame": 219,
               "durationFrames": 9,
               "origin": {
                 "x": 12.600000000000001,
@@ -1495,7 +1495,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 213,
+              "startFrame": 219,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1507,7 +1507,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 217,
+              "startFrame": 223,
               "durationFrames": 9,
               "origin": {
                 "x": 77.94000000000001,
@@ -1522,7 +1522,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 217,
+              "startFrame": 223,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1534,7 +1534,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 224,
+              "startFrame": 230,
               "durationFrames": 9,
               "origin": {
                 "x": 30.15,
@@ -1549,7 +1549,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 224,
+              "startFrame": 230,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1561,7 +1561,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 227,
+              "startFrame": 233,
               "durationFrames": 9,
               "origin": {
                 "x": 240.03000000000003,
@@ -1576,7 +1576,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 227,
+              "startFrame": 233,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1684,7 +1684,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 222,
+              "startFrame": 228,
               "durationFrames": 8
             },
             {
@@ -1695,7 +1695,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0,
               "to": 0.99,
-              "startFrame": 226,
+              "startFrame": 232,
               "durationFrames": 24,
               "origin": {
                 "x": 340,
@@ -1767,7 +1767,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 279,
+              "startFrame": 278,
               "durationFrames": 10
             },
             {
@@ -1778,7 +1778,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 279,
+              "startFrame": 278,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1790,7 +1790,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 282,
+              "startFrame": 281,
               "durationFrames": 10
             },
             {
@@ -1801,7 +1801,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 282,
+              "startFrame": 281,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1813,7 +1813,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 305,
+              "startFrame": 304,
               "durationFrames": 10
             },
             {
@@ -1824,7 +1824,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 305,
+              "startFrame": 304,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1836,7 +1836,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 308,
+              "startFrame": 307,
               "durationFrames": 10
             },
             {
@@ -1847,7 +1847,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 308,
+              "startFrame": 307,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1859,7 +1859,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 312,
+              "startFrame": 311,
               "durationFrames": 10
             },
             {
@@ -1870,7 +1870,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 312,
+              "startFrame": 311,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1882,7 +1882,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 317,
+              "startFrame": 316,
               "durationFrames": 10
             },
             {
@@ -1893,7 +1893,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 317,
+              "startFrame": 316,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1905,7 +1905,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 327,
+              "startFrame": 326,
               "durationFrames": 10
             },
             {
@@ -1916,7 +1916,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 327,
+              "startFrame": 326,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -1928,7 +1928,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1940,7 +1940,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1952,7 +1952,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1964,7 +1964,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1976,7 +1976,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -1988,7 +1988,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -2000,7 +2000,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -2012,7 +2012,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -2024,7 +2024,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -2036,7 +2036,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -2048,7 +2048,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -2060,7 +2060,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -2072,7 +2072,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -2084,7 +2084,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -2096,7 +2096,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -2108,7 +2108,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -2120,7 +2120,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -2132,7 +2132,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 347,
+              "startFrame": 340,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3154,7 +3154,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 371,
+              "startFrame": 364,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -3315,7 +3315,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 353,
+              "startFrame": 346,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -3327,7 +3327,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 513,
+              "startFrame": 504,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -3339,7 +3339,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 352,
+              "startFrame": 345,
               "durationFrames": 10
             },
             {
@@ -3350,7 +3350,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 352,
+              "startFrame": 345,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -3362,7 +3362,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 356,
+              "startFrame": 349,
               "durationFrames": 10
             },
             {
@@ -3373,7 +3373,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 356,
+              "startFrame": 349,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -3385,7 +3385,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 362,
+              "startFrame": 355,
               "durationFrames": 10
             },
             {
@@ -3396,7 +3396,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 362,
+              "startFrame": 355,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -3408,7 +3408,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 366,
+              "startFrame": 359,
               "durationFrames": 10
             },
             {
@@ -3419,7 +3419,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 366,
+              "startFrame": 359,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -3431,7 +3431,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 370,
+              "startFrame": 363,
               "durationFrames": 10
             },
             {
@@ -3442,7 +3442,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 370,
+              "startFrame": 363,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -3454,7 +3454,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 394,
+              "startFrame": 385,
               "durationFrames": 10
             },
             {
@@ -3465,7 +3465,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 394,
+              "startFrame": 385,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -3477,7 +3477,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 398,
+              "startFrame": 390,
               "durationFrames": 10
             },
             {
@@ -3488,7 +3488,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 398,
+              "startFrame": 390,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -3500,7 +3500,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 403,
+              "startFrame": 394,
               "durationFrames": 10
             },
             {
@@ -3511,7 +3511,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 403,
+              "startFrame": 394,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -3523,7 +3523,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 407,
+              "startFrame": 399,
               "durationFrames": 10
             },
             {
@@ -3534,7 +3534,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 407,
+              "startFrame": 399,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -3546,7 +3546,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 47.2,
               "to": 0,
-              "startFrame": 410,
+              "startFrame": 402,
               "durationFrames": 10
             },
             {
@@ -3557,7 +3557,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 410,
+              "startFrame": 402,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -3569,7 +3569,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3581,7 +3581,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3593,7 +3593,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3605,7 +3605,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3617,7 +3617,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3629,7 +3629,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3641,7 +3641,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3653,7 +3653,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3665,7 +3665,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3677,7 +3677,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3689,7 +3689,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3701,7 +3701,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3713,7 +3713,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3725,7 +3725,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3737,7 +3737,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3749,7 +3749,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 422,
+              "startFrame": 407,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3761,7 +3761,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 422,
+              "startFrame": 410,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3773,7 +3773,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 422,
+              "startFrame": 410,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3785,7 +3785,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 422,
+              "startFrame": 413,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3797,7 +3797,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -21.24,
-              "startFrame": 422,
+              "startFrame": 413,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -3809,7 +3809,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 396,
+              "startFrame": 387,
               "durationFrames": 10
             },
             {
@@ -3820,7 +3820,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 1,
               "to": 0.9,
-              "startFrame": 404,
+              "startFrame": 395,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -3836,7 +3836,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.9,
               "to": 0.85,
-              "startFrame": 405,
+              "startFrame": 396,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -3852,7 +3852,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.85,
               "to": 0.75,
-              "startFrame": 406,
+              "startFrame": 397,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -3868,7 +3868,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.75,
               "to": 0.65,
-              "startFrame": 407,
+              "startFrame": 398,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -3884,7 +3884,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.65,
               "to": 0.6,
-              "startFrame": 408,
+              "startFrame": 399,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -3900,7 +3900,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.6,
               "to": 0.5,
-              "startFrame": 409,
+              "startFrame": 400,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -3916,7 +3916,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.5,
               "to": 0.4,
-              "startFrame": 410,
+              "startFrame": 401,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -3932,7 +3932,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.4,
               "to": 0.35,
-              "startFrame": 411,
+              "startFrame": 402,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -3948,7 +3948,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.35,
               "to": 0.25,
-              "startFrame": 412,
+              "startFrame": 403,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -3964,7 +3964,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.25,
               "to": 0.15000000000000002,
-              "startFrame": 413,
+              "startFrame": 404,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -3980,7 +3980,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.15000000000000002,
               "to": 0.09999999999999998,
-              "startFrame": 414,
+              "startFrame": 405,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -3996,7 +3996,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.09999999999999998,
               "to": 0,
-              "startFrame": 415,
+              "startFrame": 406,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -4012,7 +4012,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 40.8,
-              "startFrame": 404,
+              "startFrame": 395,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -4024,7 +4024,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 40.8,
               "to": 61.199999999999996,
-              "startFrame": 405,
+              "startFrame": 396,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -4036,7 +4036,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 61.199999999999996,
               "to": 102,
-              "startFrame": 406,
+              "startFrame": 397,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -4048,7 +4048,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 102,
               "to": 142.79999999999998,
-              "startFrame": 407,
+              "startFrame": 398,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -4060,7 +4060,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 142.79999999999998,
               "to": 163.2,
-              "startFrame": 408,
+              "startFrame": 399,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -4072,7 +4072,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 163.2,
               "to": 204,
-              "startFrame": 409,
+              "startFrame": 400,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -4084,7 +4084,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 204,
               "to": 244.79999999999998,
-              "startFrame": 410,
+              "startFrame": 401,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -4096,7 +4096,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 244.79999999999998,
               "to": 265.2,
-              "startFrame": 411,
+              "startFrame": 402,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -4108,7 +4108,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 265.2,
               "to": 306,
-              "startFrame": 412,
+              "startFrame": 403,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -4120,7 +4120,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 306,
               "to": 346.79999999999995,
-              "startFrame": 413,
+              "startFrame": 404,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -4132,7 +4132,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 346.79999999999995,
               "to": 367.2,
-              "startFrame": 414,
+              "startFrame": 405,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -4144,7 +4144,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 367.2,
               "to": 408,
-              "startFrame": 415,
+              "startFrame": 406,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -4156,7 +4156,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 424,
+              "startFrame": 409,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4168,7 +4168,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 224.4,
               "to": 0,
-              "startFrame": 429,
+              "startFrame": 414,
               "durationFrames": 14
             },
             {
@@ -4179,7 +4179,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 224.4,
               "to": 0,
-              "startFrame": 444,
+              "startFrame": 431,
               "durationFrames": 14
             },
             {
@@ -4190,7 +4190,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 224.4,
               "to": 0,
-              "startFrame": 475,
+              "startFrame": 463,
               "durationFrames": 14
             },
             {
@@ -4201,7 +4201,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 436,
+              "startFrame": 421,
               "durationFrames": 8
             },
             {
@@ -4212,7 +4212,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 451,
+              "startFrame": 438,
               "durationFrames": 8
             },
             {
@@ -4223,7 +4223,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 482,
+              "startFrame": 470,
               "durationFrames": 8
             },
             {
@@ -4234,7 +4234,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 1080,
               "to": 0,
-              "startFrame": 420,
+              "startFrame": 405,
               "durationFrames": 16
             },
             {
@@ -4245,7 +4245,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -1080,
-              "startFrame": 497,
+              "startFrame": 488,
               "durationFrames": 16,
               "easing": "expoInOut"
             }
@@ -4274,7 +4274,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 511,
+              "startFrame": 502,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -4286,7 +4286,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1382,
+              "startFrame": 1340,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4298,7 +4298,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 512,
+              "startFrame": 503,
               "durationFrames": 6
             },
             {
@@ -4309,7 +4309,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 816,
+              "startFrame": 795,
               "durationFrames": 5,
               "easing": "linear"
             },
@@ -4321,7 +4321,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 818,
+              "startFrame": 797,
               "durationFrames": 6
             },
             {
@@ -4332,7 +4332,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1039,
+              "startFrame": 1003,
               "durationFrames": 5,
               "easing": "linear"
             },
@@ -4344,7 +4344,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1041,
+              "startFrame": 1005,
               "durationFrames": 6
             },
             {
@@ -4355,7 +4355,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1236,
+              "startFrame": 1193,
               "durationFrames": 5,
               "easing": "linear"
             },
@@ -4367,7 +4367,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1238,
+              "startFrame": 1195,
               "durationFrames": 6
             },
             {
@@ -4378,7 +4378,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 521,
+              "startFrame": 512,
               "durationFrames": 8
             },
             {
@@ -4389,7 +4389,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 527,
+              "startFrame": 518,
               "durationFrames": 8
             },
             {
@@ -4400,7 +4400,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 816,
+              "startFrame": 795,
               "durationFrames": 5,
               "easing": "linear"
             },
@@ -4412,7 +4412,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 816,
+              "startFrame": 795,
               "durationFrames": 5,
               "easing": "linear"
             },
@@ -4424,7 +4424,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 827,
+              "startFrame": 806,
               "durationFrames": 8
             },
             {
@@ -4435,7 +4435,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 833,
+              "startFrame": 812,
               "durationFrames": 8
             },
             {
@@ -4446,7 +4446,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1039,
+              "startFrame": 1003,
               "durationFrames": 5,
               "easing": "linear"
             },
@@ -4458,7 +4458,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1039,
+              "startFrame": 1003,
               "durationFrames": 5,
               "easing": "linear"
             },
@@ -4470,7 +4470,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1050,
+              "startFrame": 1014,
               "durationFrames": 8
             },
             {
@@ -4481,7 +4481,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1056,
+              "startFrame": 1020,
               "durationFrames": 8
             },
             {
@@ -4492,7 +4492,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1236,
+              "startFrame": 1193,
               "durationFrames": 5,
               "easing": "linear"
             },
@@ -4504,7 +4504,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1236,
+              "startFrame": 1193,
               "durationFrames": 5,
               "easing": "linear"
             },
@@ -4516,7 +4516,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1247,
+              "startFrame": 1204,
               "durationFrames": 8
             },
             {
@@ -4527,7 +4527,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1253,
+              "startFrame": 1210,
               "durationFrames": 8
             },
             {
@@ -4538,7 +4538,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 41.6,
               "to": 0,
-              "startFrame": 510,
+              "startFrame": 501,
               "durationFrames": 10
             },
             {
@@ -4549,7 +4549,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 510,
+              "startFrame": 501,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4561,7 +4561,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 41.6,
               "to": 0,
-              "startFrame": 515,
+              "startFrame": 506,
               "durationFrames": 10
             },
             {
@@ -4572,7 +4572,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 515,
+              "startFrame": 506,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4584,7 +4584,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 41.6,
               "to": 0,
-              "startFrame": 534,
+              "startFrame": 524,
               "durationFrames": 10
             },
             {
@@ -4595,7 +4595,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 534,
+              "startFrame": 524,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4607,7 +4607,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 41.6,
               "to": 0,
-              "startFrame": 537,
+              "startFrame": 527,
               "durationFrames": 10
             },
             {
@@ -4618,7 +4618,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 537,
+              "startFrame": 527,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4630,7 +4630,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 41.6,
               "to": 0,
-              "startFrame": 541,
+              "startFrame": 530,
               "durationFrames": 10
             },
             {
@@ -4641,7 +4641,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 541,
+              "startFrame": 530,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4653,7 +4653,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 41.6,
               "to": 0,
-              "startFrame": 555,
+              "startFrame": 544,
               "durationFrames": 10
             },
             {
@@ -4664,7 +4664,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 555,
+              "startFrame": 544,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4676,7 +4676,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 41.6,
               "to": 0,
-              "startFrame": 561,
+              "startFrame": 550,
               "durationFrames": 10
             },
             {
@@ -4687,7 +4687,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 561,
+              "startFrame": 550,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4699,7 +4699,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4711,7 +4711,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18.72,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4723,7 +4723,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4735,7 +4735,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18.72,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4747,7 +4747,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4759,7 +4759,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18.72,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4771,7 +4771,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4783,7 +4783,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18.72,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4795,7 +4795,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4807,7 +4807,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18.72,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4819,7 +4819,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4831,7 +4831,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18.72,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4843,7 +4843,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4855,7 +4855,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18.72,
-              "startFrame": 581,
+              "startFrame": 563,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -4867,7 +4867,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 588,
+              "startFrame": 570,
               "durationFrames": 10
             },
             {
@@ -4878,7 +4878,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 588,
+              "startFrame": 570,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4890,7 +4890,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 594,
+              "startFrame": 576,
               "durationFrames": 10
             },
             {
@@ -4901,7 +4901,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 594,
+              "startFrame": 576,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4913,7 +4913,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 604,
+              "startFrame": 586,
               "durationFrames": 10
             },
             {
@@ -4924,7 +4924,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 604,
+              "startFrame": 586,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4936,7 +4936,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 613,
+              "startFrame": 595,
               "durationFrames": 10
             },
             {
@@ -4947,7 +4947,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 613,
+              "startFrame": 595,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4959,7 +4959,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 616,
+              "startFrame": 598,
               "durationFrames": 10
             },
             {
@@ -4970,7 +4970,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 616,
+              "startFrame": 598,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -4982,7 +4982,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 619,
+              "startFrame": 600,
               "durationFrames": 10
             },
             {
@@ -4993,7 +4993,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 619,
+              "startFrame": 600,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5005,7 +5005,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 633,
+              "startFrame": 614,
               "durationFrames": 10
             },
             {
@@ -5016,7 +5016,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 633,
+              "startFrame": 614,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5028,7 +5028,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 646,
+              "startFrame": 628,
               "durationFrames": 10
             },
             {
@@ -5039,7 +5039,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 646,
+              "startFrame": 628,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5051,7 +5051,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 652,
+              "startFrame": 633,
               "durationFrames": 10
             },
             {
@@ -5062,7 +5062,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 652,
+              "startFrame": 633,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5074,7 +5074,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 663,
+              "startFrame": 644,
               "durationFrames": 10
             },
             {
@@ -5085,7 +5085,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 663,
+              "startFrame": 644,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5097,7 +5097,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 675,
+              "startFrame": 655,
               "durationFrames": 10
             },
             {
@@ -5108,7 +5108,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 675,
+              "startFrame": 655,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5120,7 +5120,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5132,7 +5132,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5144,7 +5144,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5156,7 +5156,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5168,7 +5168,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5180,7 +5180,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5192,7 +5192,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5204,7 +5204,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5216,7 +5216,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5228,7 +5228,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5240,7 +5240,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5252,7 +5252,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5264,7 +5264,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5276,7 +5276,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5288,7 +5288,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5300,7 +5300,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5312,7 +5312,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5324,7 +5324,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5336,7 +5336,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5348,7 +5348,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5360,7 +5360,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5372,7 +5372,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 692,
+              "startFrame": 667,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5384,7 +5384,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -42,
               "to": 0,
-              "startFrame": 699,
+              "startFrame": 674,
               "durationFrames": 10
             },
             {
@@ -5395,7 +5395,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 699,
+              "startFrame": 674,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5407,7 +5407,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -42,
               "to": 0,
-              "startFrame": 702,
+              "startFrame": 677,
               "durationFrames": 10
             },
             {
@@ -5418,7 +5418,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 702,
+              "startFrame": 677,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5430,7 +5430,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -42,
               "to": 0,
-              "startFrame": 720,
+              "startFrame": 696,
               "durationFrames": 10
             },
             {
@@ -5441,7 +5441,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 720,
+              "startFrame": 696,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5453,7 +5453,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -42,
               "to": 0,
-              "startFrame": 721,
+              "startFrame": 697,
               "durationFrames": 10
             },
             {
@@ -5464,7 +5464,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 721,
+              "startFrame": 697,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5476,7 +5476,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -42,
               "to": 0,
-              "startFrame": 729,
+              "startFrame": 706,
               "durationFrames": 10
             },
             {
@@ -5487,7 +5487,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 729,
+              "startFrame": 706,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5499,7 +5499,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -42,
               "to": 0,
-              "startFrame": 735,
+              "startFrame": 712,
               "durationFrames": 10
             },
             {
@@ -5510,7 +5510,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 735,
+              "startFrame": 712,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5522,7 +5522,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -42,
               "to": 0,
-              "startFrame": 754,
+              "startFrame": 733,
               "durationFrames": 10
             },
             {
@@ -5533,7 +5533,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 754,
+              "startFrame": 733,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5545,7 +5545,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -42,
               "to": 0,
-              "startFrame": 760,
+              "startFrame": 740,
               "durationFrames": 10
             },
             {
@@ -5556,7 +5556,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 760,
+              "startFrame": 740,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5568,7 +5568,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -42,
               "to": 0,
-              "startFrame": 775,
+              "startFrame": 755,
               "durationFrames": 10
             },
             {
@@ -5579,7 +5579,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 775,
+              "startFrame": 755,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5591,7 +5591,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -42,
               "to": 0,
-              "startFrame": 777,
+              "startFrame": 757,
               "durationFrames": 10
             },
             {
@@ -5602,7 +5602,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 777,
+              "startFrame": 757,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5614,7 +5614,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -42,
               "to": 0,
-              "startFrame": 784,
+              "startFrame": 766,
               "durationFrames": 10
             },
             {
@@ -5625,7 +5625,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 784,
+              "startFrame": 766,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -5637,7 +5637,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5649,7 +5649,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5661,7 +5661,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5673,7 +5673,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5685,7 +5685,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5697,7 +5697,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5709,7 +5709,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5721,7 +5721,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5733,7 +5733,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5745,7 +5745,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5757,7 +5757,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5769,7 +5769,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5781,7 +5781,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5793,7 +5793,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5805,7 +5805,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5817,7 +5817,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5829,7 +5829,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5841,7 +5841,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5853,7 +5853,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5865,7 +5865,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5877,7 +5877,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5889,7 +5889,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 809,
+              "startFrame": 788,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -5901,7 +5901,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 515,
+              "startFrame": 506,
               "durationFrames": 10
             },
             {
@@ -5912,7 +5912,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 515,
+              "startFrame": 506,
               "durationFrames": 10
             },
             {
@@ -5923,7 +5923,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 515,
+              "startFrame": 506,
               "durationFrames": 10
             },
             {
@@ -5934,7 +5934,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 515,
+              "startFrame": 506,
               "durationFrames": 10
             },
             {
@@ -5945,7 +5945,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 515,
+              "startFrame": 506,
               "durationFrames": 10
             },
             {
@@ -5956,7 +5956,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 515,
+              "startFrame": 506,
               "durationFrames": 10
             },
             {
@@ -5967,7 +5967,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 515,
+              "startFrame": 506,
               "durationFrames": 10
             },
             {
@@ -5978,7 +5978,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 560,
+              "startFrame": 549,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -5990,7 +5990,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": -10,
-              "startFrame": 556,
+              "startFrame": 545,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6005,7 +6005,7 @@ export const ragExplainerFilm: Film = {
               "property": "rotate",
               "from": 0,
               "to": -1.8,
-              "startFrame": 556,
+              "startFrame": 545,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6020,7 +6020,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 26,
-              "startFrame": 559,
+              "startFrame": 548,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6035,7 +6035,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 14,
-              "startFrame": 559,
+              "startFrame": 548,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6050,7 +6050,7 @@ export const ragExplainerFilm: Film = {
               "property": "rotate",
               "from": 0,
               "to": 2.2,
-              "startFrame": 559,
+              "startFrame": 548,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6065,7 +6065,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": -10,
-              "startFrame": 562,
+              "startFrame": 551,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6080,7 +6080,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 28,
-              "startFrame": 562,
+              "startFrame": 551,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6095,7 +6095,7 @@ export const ragExplainerFilm: Film = {
               "property": "rotate",
               "from": 0,
               "to": -1.8,
-              "startFrame": 562,
+              "startFrame": 551,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6110,7 +6110,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 26,
-              "startFrame": 565,
+              "startFrame": 554,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6125,7 +6125,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 42,
-              "startFrame": 565,
+              "startFrame": 554,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6140,7 +6140,7 @@ export const ragExplainerFilm: Film = {
               "property": "rotate",
               "from": 0,
               "to": 2.2,
-              "startFrame": 565,
+              "startFrame": 554,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6155,7 +6155,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": -10,
-              "startFrame": 568,
+              "startFrame": 557,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6170,7 +6170,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 56,
-              "startFrame": 568,
+              "startFrame": 557,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6185,7 +6185,7 @@ export const ragExplainerFilm: Film = {
               "property": "rotate",
               "from": 0,
               "to": -1.8,
-              "startFrame": 568,
+              "startFrame": 557,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6200,7 +6200,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 26,
-              "startFrame": 571,
+              "startFrame": 560,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6215,7 +6215,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 70,
-              "startFrame": 571,
+              "startFrame": 560,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6230,7 +6230,7 @@ export const ragExplainerFilm: Film = {
               "property": "rotate",
               "from": 0,
               "to": 2.2,
-              "startFrame": 571,
+              "startFrame": 560,
               "durationFrames": 16,
               "origin": {
                 "x": 200,
@@ -6245,7 +6245,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 562,
+              "startFrame": 551,
               "durationFrames": 10
             },
             {
@@ -6256,7 +6256,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 565,
+              "startFrame": 554,
               "durationFrames": 10
             },
             {
@@ -6267,7 +6267,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 568,
+              "startFrame": 557,
               "durationFrames": 10
             },
             {
@@ -6278,7 +6278,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 571,
+              "startFrame": 560,
               "durationFrames": 10
             },
             {
@@ -6289,7 +6289,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 574,
+              "startFrame": 563,
               "durationFrames": 10
             },
             {
@@ -6300,7 +6300,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 577,
+              "startFrame": 566,
               "durationFrames": 10
             },
             {
@@ -6311,7 +6311,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 562,
+              "startFrame": 551,
               "durationFrames": 8
             },
             {
@@ -6322,7 +6322,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 565,
+              "startFrame": 554,
               "durationFrames": 8
             },
             {
@@ -6333,7 +6333,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 568,
+              "startFrame": 557,
               "durationFrames": 8
             },
             {
@@ -6344,7 +6344,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 571,
+              "startFrame": 560,
               "durationFrames": 8
             },
             {
@@ -6355,7 +6355,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 574,
+              "startFrame": 563,
               "durationFrames": 8
             },
             {
@@ -6366,7 +6366,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 577,
+              "startFrame": 566,
               "durationFrames": 8
             },
             {
@@ -6377,7 +6377,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 620,
+              "startFrame": 601,
               "durationFrames": 8
             },
             {
@@ -6388,7 +6388,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 624,
+              "startFrame": 605,
               "durationFrames": 8
             },
             {
@@ -6399,7 +6399,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 628,
+              "startFrame": 609,
               "durationFrames": 8
             },
             {
@@ -6410,7 +6410,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 632,
+              "startFrame": 613,
               "durationFrames": 8
             },
             {
@@ -6421,7 +6421,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 636,
+              "startFrame": 617,
               "durationFrames": 8
             },
             {
@@ -6432,7 +6432,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 624,
+              "startFrame": 605,
               "durationFrames": 8
             },
             {
@@ -6443,7 +6443,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 694,
+              "startFrame": 669,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6455,7 +6455,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 699,
+              "startFrame": 674,
               "durationFrames": 8
             },
             {
@@ -6466,7 +6466,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 703,
+              "startFrame": 678,
               "durationFrames": 8
             },
             {
@@ -6477,7 +6477,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 705,
+              "startFrame": 680,
               "durationFrames": 8
             },
             {
@@ -6488,7 +6488,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 707,
+              "startFrame": 682,
               "durationFrames": 8
             },
             {
@@ -6499,7 +6499,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 709,
+              "startFrame": 684,
               "durationFrames": 8
             },
             {
@@ -6510,7 +6510,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 711,
+              "startFrame": 686,
               "durationFrames": 8
             },
             {
@@ -6521,7 +6521,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 713,
+              "startFrame": 688,
               "durationFrames": 8
             },
             {
@@ -6532,7 +6532,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 715,
+              "startFrame": 690,
               "durationFrames": 8
             },
             {
@@ -6543,7 +6543,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 717,
+              "startFrame": 692,
               "durationFrames": 8
             },
             {
@@ -6554,7 +6554,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 719,
+              "startFrame": 694,
               "durationFrames": 8
             },
             {
@@ -6565,7 +6565,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 721,
+              "startFrame": 696,
               "durationFrames": 8
             },
             {
@@ -6576,7 +6576,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 723,
+              "startFrame": 698,
               "durationFrames": 8
             },
             {
@@ -6587,7 +6587,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 725,
+              "startFrame": 700,
               "durationFrames": 8
             },
             {
@@ -6598,7 +6598,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 757,
+              "startFrame": 737,
               "durationFrames": 8
             },
             {
@@ -6609,7 +6609,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 761,
+              "startFrame": 741,
               "durationFrames": 14
             },
             {
@@ -6620,7 +6620,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 761,
+              "startFrame": 741,
               "durationFrames": 8
             },
             {
@@ -6631,7 +6631,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.18,
-              "startFrame": 785,
+              "startFrame": 767,
               "durationFrames": 14,
               "easing": "linear"
             },
@@ -6643,7 +6643,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6655,7 +6655,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6667,7 +6667,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6679,7 +6679,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6691,7 +6691,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6703,7 +6703,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6715,7 +6715,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6727,7 +6727,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6739,7 +6739,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6751,7 +6751,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6763,7 +6763,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6775,7 +6775,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6787,7 +6787,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6799,7 +6799,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 807,
+              "startFrame": 786,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -6811,7 +6811,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 816,
+              "startFrame": 795,
               "durationFrames": 10
             },
             {
@@ -6822,7 +6822,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 816,
+              "startFrame": 795,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -6834,7 +6834,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 821,
+              "startFrame": 800,
               "durationFrames": 10
             },
             {
@@ -6845,7 +6845,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 821,
+              "startFrame": 800,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -6857,7 +6857,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 837,
+              "startFrame": 816,
               "durationFrames": 10
             },
             {
@@ -6868,7 +6868,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 837,
+              "startFrame": 816,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -6880,7 +6880,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 843,
+              "startFrame": 822,
               "durationFrames": 10
             },
             {
@@ -6891,7 +6891,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 843,
+              "startFrame": 822,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -6903,7 +6903,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 850,
+              "startFrame": 829,
               "durationFrames": 10
             },
             {
@@ -6914,7 +6914,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 850,
+              "startFrame": 829,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -6926,7 +6926,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 858,
+              "startFrame": 838,
               "durationFrames": 10
             },
             {
@@ -6937,7 +6937,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 858,
+              "startFrame": 838,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -6949,7 +6949,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 862,
+              "startFrame": 841,
               "durationFrames": 10
             },
             {
@@ -6960,7 +6960,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 862,
+              "startFrame": 841,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -6972,7 +6972,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 882,
+              "startFrame": 862,
               "durationFrames": 10
             },
             {
@@ -6983,7 +6983,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 882,
+              "startFrame": 862,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -6995,7 +6995,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 886,
+              "startFrame": 866,
               "durationFrames": 10
             },
             {
@@ -7006,7 +7006,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 886,
+              "startFrame": 866,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -7018,7 +7018,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 892,
+              "startFrame": 872,
               "durationFrames": 10
             },
             {
@@ -7029,7 +7029,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 892,
+              "startFrame": 872,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -7041,7 +7041,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 897,
+              "startFrame": 877,
               "durationFrames": 10
             },
             {
@@ -7052,7 +7052,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 897,
+              "startFrame": 877,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -7064,7 +7064,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7076,7 +7076,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7088,7 +7088,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7100,7 +7100,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7112,7 +7112,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7124,7 +7124,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7136,7 +7136,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7148,7 +7148,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7160,7 +7160,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7172,7 +7172,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7184,7 +7184,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7196,7 +7196,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7208,7 +7208,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7220,7 +7220,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7232,7 +7232,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7244,7 +7244,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7256,7 +7256,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7268,7 +7268,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7280,7 +7280,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7292,7 +7292,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7304,7 +7304,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7316,7 +7316,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 917,
+              "startFrame": 892,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7328,7 +7328,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 924,
+              "startFrame": 899,
               "durationFrames": 10
             },
             {
@@ -7339,7 +7339,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 924,
+              "startFrame": 899,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -7351,7 +7351,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 930,
+              "startFrame": 905,
               "durationFrames": 10
             },
             {
@@ -7362,7 +7362,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 930,
+              "startFrame": 905,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -7374,7 +7374,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 939,
+              "startFrame": 913,
               "durationFrames": 10
             },
             {
@@ -7385,7 +7385,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 939,
+              "startFrame": 913,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -7397,7 +7397,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 944,
+              "startFrame": 917,
               "durationFrames": 10
             },
             {
@@ -7408,7 +7408,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 944,
+              "startFrame": 917,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -7420,7 +7420,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 975,
+              "startFrame": 948,
               "durationFrames": 10
             },
             {
@@ -7431,7 +7431,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 975,
+              "startFrame": 948,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -7443,7 +7443,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 986,
+              "startFrame": 957,
               "durationFrames": 10
             },
             {
@@ -7454,7 +7454,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 986,
+              "startFrame": 957,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -7466,7 +7466,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1002,
+              "startFrame": 973,
               "durationFrames": 10
             },
             {
@@ -7477,7 +7477,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1002,
+              "startFrame": 973,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -7489,7 +7489,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1013,
+              "startFrame": 983,
               "durationFrames": 10
             },
             {
@@ -7500,7 +7500,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1013,
+              "startFrame": 983,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -7512,7 +7512,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7524,7 +7524,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7536,7 +7536,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7548,7 +7548,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7560,7 +7560,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7572,7 +7572,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7584,7 +7584,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7596,7 +7596,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7608,7 +7608,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7620,7 +7620,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7632,7 +7632,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7644,7 +7644,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7656,7 +7656,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7668,7 +7668,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7680,7 +7680,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7692,7 +7692,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -7704,7 +7704,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 838,
+              "startFrame": 817,
               "durationFrames": 8
             },
             {
@@ -7715,7 +7715,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 840,
+              "startFrame": 819,
               "durationFrames": 8
             },
             {
@@ -7726,7 +7726,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 842,
+              "startFrame": 821,
               "durationFrames": 8
             },
             {
@@ -7737,7 +7737,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 844,
+              "startFrame": 823,
               "durationFrames": 8
             },
             {
@@ -7748,7 +7748,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 846,
+              "startFrame": 825,
               "durationFrames": 8
             },
             {
@@ -7759,7 +7759,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 848,
+              "startFrame": 827,
               "durationFrames": 8
             },
             {
@@ -7770,7 +7770,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 850,
+              "startFrame": 829,
               "durationFrames": 8
             },
             {
@@ -7781,7 +7781,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 852,
+              "startFrame": 831,
               "durationFrames": 8
             },
             {
@@ -7792,7 +7792,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 854,
+              "startFrame": 833,
               "durationFrames": 8
             },
             {
@@ -7803,7 +7803,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 856,
+              "startFrame": 835,
               "durationFrames": 8
             },
             {
@@ -7814,7 +7814,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 859,
+              "startFrame": 838,
               "durationFrames": 8
             },
             {
@@ -7825,7 +7825,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 881,
+              "startFrame": 861,
               "durationFrames": 18
             },
             {
@@ -7836,7 +7836,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 881,
+              "startFrame": 861,
               "durationFrames": 18
             },
             {
@@ -7847,7 +7847,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 893,
+              "startFrame": 873,
               "durationFrames": 8
             },
             {
@@ -7858,7 +7858,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 893,
+              "startFrame": 873,
               "durationFrames": 8
             },
             {
@@ -7869,7 +7869,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 65,
-              "startFrame": 863,
+              "startFrame": 842,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -7885,7 +7885,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 112,
-              "startFrame": 863,
+              "startFrame": 842,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -7901,7 +7901,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 0.22,
-              "startFrame": 863,
+              "startFrame": 842,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -7917,7 +7917,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 877,
+              "startFrame": 856,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -7929,7 +7929,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 879,
+              "startFrame": 858,
               "durationFrames": 8,
               "origin": {
                 "x": 0,
@@ -7944,7 +7944,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 879,
+              "startFrame": 858,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -7956,7 +7956,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": -138,
-              "startFrame": 866,
+              "startFrame": 845,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -7972,7 +7972,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 169,
-              "startFrame": 866,
+              "startFrame": 845,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -7988,7 +7988,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 0.22,
-              "startFrame": 866,
+              "startFrame": 845,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8004,7 +8004,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 880,
+              "startFrame": 859,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -8016,7 +8016,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 882,
+              "startFrame": 861,
               "durationFrames": 8,
               "origin": {
                 "x": 0,
@@ -8031,7 +8031,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 882,
+              "startFrame": 861,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -8043,7 +8043,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 30,
-              "startFrame": 869,
+              "startFrame": 848,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8059,7 +8059,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 89,
-              "startFrame": 869,
+              "startFrame": 848,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8075,7 +8075,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 0.22,
-              "startFrame": 869,
+              "startFrame": 848,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8091,7 +8091,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 883,
+              "startFrame": 862,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -8103,7 +8103,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 885,
+              "startFrame": 864,
               "durationFrames": 8,
               "origin": {
                 "x": 0,
@@ -8118,7 +8118,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 885,
+              "startFrame": 864,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -8130,7 +8130,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": -100,
-              "startFrame": 872,
+              "startFrame": 851,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8146,7 +8146,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 19,
-              "startFrame": 872,
+              "startFrame": 851,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8162,7 +8162,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 0.22,
-              "startFrame": 872,
+              "startFrame": 851,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8178,7 +8178,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 886,
+              "startFrame": 865,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -8190,7 +8190,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 888,
+              "startFrame": 867,
               "durationFrames": 8,
               "origin": {
                 "x": 0,
@@ -8205,7 +8205,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 888,
+              "startFrame": 867,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -8217,7 +8217,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 410,
-              "startFrame": 875,
+              "startFrame": 854,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8233,7 +8233,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -149,
-              "startFrame": 875,
+              "startFrame": 854,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8249,7 +8249,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 0.22,
-              "startFrame": 875,
+              "startFrame": 854,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8265,7 +8265,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 889,
+              "startFrame": 868,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -8277,7 +8277,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 891,
+              "startFrame": 870,
               "durationFrames": 8,
               "origin": {
                 "x": 0,
@@ -8292,7 +8292,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 891,
+              "startFrame": 870,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -8304,7 +8304,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 212,
-              "startFrame": 878,
+              "startFrame": 857,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8320,7 +8320,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -91,
-              "startFrame": 878,
+              "startFrame": 857,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8336,7 +8336,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 0.22,
-              "startFrame": 878,
+              "startFrame": 857,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8352,7 +8352,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 892,
+              "startFrame": 871,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -8364,7 +8364,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 894,
+              "startFrame": 873,
               "durationFrames": 8,
               "origin": {
                 "x": 0,
@@ -8379,7 +8379,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 894,
+              "startFrame": 873,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -8391,7 +8391,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 372,
-              "startFrame": 881,
+              "startFrame": 860,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8407,7 +8407,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -185,
-              "startFrame": 881,
+              "startFrame": 860,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8423,7 +8423,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 0.22,
-              "startFrame": 881,
+              "startFrame": 860,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8439,7 +8439,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 895,
+              "startFrame": 874,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -8451,7 +8451,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 897,
+              "startFrame": 876,
               "durationFrames": 8,
               "origin": {
                 "x": 0,
@@ -8466,7 +8466,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 897,
+              "startFrame": 876,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -8478,7 +8478,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 32,
-              "startFrame": 884,
+              "startFrame": 863,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8494,7 +8494,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 95,
-              "startFrame": 884,
+              "startFrame": 863,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8510,7 +8510,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 0.22,
-              "startFrame": 884,
+              "startFrame": 863,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8526,7 +8526,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 898,
+              "startFrame": 877,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -8538,7 +8538,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 900,
+              "startFrame": 879,
               "durationFrames": 8,
               "origin": {
                 "x": 0,
@@ -8553,7 +8553,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 900,
+              "startFrame": 879,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -8565,7 +8565,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 342,
-              "startFrame": 887,
+              "startFrame": 866,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8581,7 +8581,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 41,
-              "startFrame": 887,
+              "startFrame": 866,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8597,7 +8597,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 0.22,
-              "startFrame": 887,
+              "startFrame": 866,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8613,7 +8613,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 901,
+              "startFrame": 880,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -8625,7 +8625,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 903,
+              "startFrame": 882,
               "durationFrames": 8,
               "origin": {
                 "x": 0,
@@ -8640,7 +8640,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 903,
+              "startFrame": 882,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -8652,7 +8652,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": -14,
-              "startFrame": 890,
+              "startFrame": 869,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8668,7 +8668,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 49,
-              "startFrame": 890,
+              "startFrame": 869,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8684,7 +8684,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 0.22,
-              "startFrame": 890,
+              "startFrame": 869,
               "durationFrames": 22,
               "easing": "expoInOut",
               "origin": {
@@ -8700,7 +8700,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 904,
+              "startFrame": 883,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -8712,7 +8712,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 906,
+              "startFrame": 885,
               "durationFrames": 8,
               "origin": {
                 "x": 0,
@@ -8727,7 +8727,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 906,
+              "startFrame": 885,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -8739,7 +8739,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1032,
+              "startFrame": 996,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -8751,7 +8751,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 976,
+              "startFrame": 949,
               "durationFrames": 18
             },
             {
@@ -8762,7 +8762,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 984,
+              "startFrame": 957,
               "durationFrames": 18
             },
             {
@@ -8773,7 +8773,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 992,
+              "startFrame": 965,
               "durationFrames": 18
             },
             {
@@ -8784,7 +8784,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 984,
+              "startFrame": 957,
               "durationFrames": 8
             },
             {
@@ -8795,7 +8795,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 992,
+              "startFrame": 965,
               "durationFrames": 8
             },
             {
@@ -8806,7 +8806,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1000,
+              "startFrame": 973,
               "durationFrames": 8
             },
             {
@@ -8817,7 +8817,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1039,
+              "startFrame": 1003,
               "durationFrames": 10
             },
             {
@@ -8828,7 +8828,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1039,
+              "startFrame": 1003,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -8840,7 +8840,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1044,
+              "startFrame": 1008,
               "durationFrames": 10
             },
             {
@@ -8851,7 +8851,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1044,
+              "startFrame": 1008,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -8863,7 +8863,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1063,
+              "startFrame": 1029,
               "durationFrames": 10
             },
             {
@@ -8874,7 +8874,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1063,
+              "startFrame": 1029,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -8886,7 +8886,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1066,
+              "startFrame": 1032,
               "durationFrames": 10
             },
             {
@@ -8897,7 +8897,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1066,
+              "startFrame": 1032,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -8909,7 +8909,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1075,
+              "startFrame": 1042,
               "durationFrames": 10
             },
             {
@@ -8920,7 +8920,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1075,
+              "startFrame": 1042,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -8932,7 +8932,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1090,
+              "startFrame": 1058,
               "durationFrames": 10
             },
             {
@@ -8943,7 +8943,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1090,
+              "startFrame": 1058,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -8955,7 +8955,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1094,
+              "startFrame": 1062,
               "durationFrames": 10
             },
             {
@@ -8966,7 +8966,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1094,
+              "startFrame": 1062,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -8978,7 +8978,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1099,
+              "startFrame": 1067,
               "durationFrames": 10
             },
             {
@@ -8989,7 +8989,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1099,
+              "startFrame": 1067,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9001,7 +9001,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9013,7 +9013,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9025,7 +9025,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9037,7 +9037,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9049,7 +9049,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9061,7 +9061,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9073,7 +9073,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9085,7 +9085,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9097,7 +9097,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9109,7 +9109,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9121,7 +9121,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9133,7 +9133,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9145,7 +9145,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9157,7 +9157,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9169,7 +9169,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9181,7 +9181,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1116,
+              "startFrame": 1082,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9193,7 +9193,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -44,
               "to": 0,
-              "startFrame": 1123,
+              "startFrame": 1089,
               "durationFrames": 10
             },
             {
@@ -9204,7 +9204,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1123,
+              "startFrame": 1089,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9216,7 +9216,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -44,
               "to": 0,
-              "startFrame": 1130,
+              "startFrame": 1096,
               "durationFrames": 10
             },
             {
@@ -9227,7 +9227,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1130,
+              "startFrame": 1096,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9239,7 +9239,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -44,
               "to": 0,
-              "startFrame": 1138,
+              "startFrame": 1104,
               "durationFrames": 10
             },
             {
@@ -9250,7 +9250,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1138,
+              "startFrame": 1104,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9262,7 +9262,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -44,
               "to": 0,
-              "startFrame": 1147,
+              "startFrame": 1113,
               "durationFrames": 10
             },
             {
@@ -9273,7 +9273,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1147,
+              "startFrame": 1113,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9285,7 +9285,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -44,
               "to": 0,
-              "startFrame": 1164,
+              "startFrame": 1129,
               "durationFrames": 10
             },
             {
@@ -9296,7 +9296,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1164,
+              "startFrame": 1129,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9308,7 +9308,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -44,
               "to": 0,
-              "startFrame": 1170,
+              "startFrame": 1134,
               "durationFrames": 10
             },
             {
@@ -9319,7 +9319,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1170,
+              "startFrame": 1134,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9331,7 +9331,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -44,
               "to": 0,
-              "startFrame": 1176,
+              "startFrame": 1140,
               "durationFrames": 10
             },
             {
@@ -9342,7 +9342,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1176,
+              "startFrame": 1140,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9354,7 +9354,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -44,
               "to": 0,
-              "startFrame": 1182,
+              "startFrame": 1147,
               "durationFrames": 10
             },
             {
@@ -9365,7 +9365,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1182,
+              "startFrame": 1147,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9377,7 +9377,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -44,
               "to": 0,
-              "startFrame": 1198,
+              "startFrame": 1162,
               "durationFrames": 10
             },
             {
@@ -9388,7 +9388,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1198,
+              "startFrame": 1162,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9400,7 +9400,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -44,
               "to": 0,
-              "startFrame": 1207,
+              "startFrame": 1171,
               "durationFrames": 10
             },
             {
@@ -9411,7 +9411,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1207,
+              "startFrame": 1171,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9423,7 +9423,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -44,
               "to": 0,
-              "startFrame": 1213,
+              "startFrame": 1176,
               "durationFrames": 10
             },
             {
@@ -9434,7 +9434,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1213,
+              "startFrame": 1176,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9446,7 +9446,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9458,7 +9458,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.84,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9470,7 +9470,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9482,7 +9482,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.84,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9494,7 +9494,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9506,7 +9506,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.84,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9518,7 +9518,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9530,7 +9530,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.84,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9542,7 +9542,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9554,7 +9554,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.84,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9566,7 +9566,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9578,7 +9578,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.84,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9590,7 +9590,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9602,7 +9602,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.84,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9614,7 +9614,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9626,7 +9626,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.84,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9638,7 +9638,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9650,7 +9650,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.84,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9662,7 +9662,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9674,7 +9674,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.84,
-              "startFrame": 1229,
+              "startFrame": 1186,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9686,7 +9686,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1229,
+              "startFrame": 1187,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9698,7 +9698,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.84,
-              "startFrame": 1229,
+              "startFrame": 1187,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -9710,7 +9710,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1063,
+              "startFrame": 1029,
               "durationFrames": 8
             },
             {
@@ -9721,7 +9721,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 75,
-              "startFrame": 1095,
+              "startFrame": 1063,
               "durationFrames": 18,
               "easing": "expoInOut",
               "origin": {
@@ -9737,7 +9737,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": 263,
-              "startFrame": 1095,
+              "startFrame": 1063,
               "durationFrames": 18,
               "easing": "expoInOut",
               "origin": {
@@ -9753,7 +9753,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1,
               "to": 0.06,
-              "startFrame": 1095,
+              "startFrame": 1063,
               "durationFrames": 18,
               "easing": "expoInOut",
               "origin": {
@@ -9769,7 +9769,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1107,
+              "startFrame": 1075,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9781,7 +9781,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 1111,
+              "startFrame": 1079,
               "durationFrames": 10,
               "origin": {
                 "x": 0,
@@ -9796,7 +9796,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1111,
+              "startFrame": 1079,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -9808,7 +9808,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1117,
+              "startFrame": 1085,
               "durationFrames": 8
             },
             {
@@ -9819,7 +9819,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1113,
+              "startFrame": 1081,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -9831,7 +9831,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 3.4,
-              "startFrame": 1113,
+              "startFrame": 1081,
               "durationFrames": 22,
               "easing": "expoOut",
               "origin": {
@@ -9847,7 +9847,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1115,
+              "startFrame": 1083,
               "durationFrames": 20,
               "easing": "linear"
             },
@@ -9859,7 +9859,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 1131,
+              "startFrame": 1097,
               "durationFrames": 18
             },
             {
@@ -9870,7 +9870,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 1138,
+              "startFrame": 1104,
               "durationFrames": 18
             },
             {
@@ -9881,7 +9881,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 1145,
+              "startFrame": 1111,
               "durationFrames": 18
             },
             {
@@ -9892,7 +9892,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0.4,
               "to": 1,
-              "startFrame": 1177,
+              "startFrame": 1141,
               "durationFrames": 10,
               "origin": {
                 "x": 0,
@@ -9907,7 +9907,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0.4,
               "to": 1,
-              "startFrame": 1180,
+              "startFrame": 1144,
               "durationFrames": 10,
               "origin": {
                 "x": 0,
@@ -9922,7 +9922,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0.4,
               "to": 1,
-              "startFrame": 1183,
+              "startFrame": 1147,
               "durationFrames": 10,
               "origin": {
                 "x": 0,
@@ -9937,7 +9937,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0.4,
               "to": 1,
-              "startFrame": 1186,
+              "startFrame": 1150,
               "durationFrames": 10,
               "origin": {
                 "x": 0,
@@ -9952,7 +9952,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1177,
+              "startFrame": 1141,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9964,7 +9964,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1180,
+              "startFrame": 1144,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9976,7 +9976,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1183,
+              "startFrame": 1147,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -9988,7 +9988,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1186,
+              "startFrame": 1150,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10000,7 +10000,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 1183,
+              "startFrame": 1148,
               "durationFrames": 14
             },
             {
@@ -10011,7 +10011,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 1186,
+              "startFrame": 1151,
               "durationFrames": 14
             },
             {
@@ -10022,7 +10022,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 1189,
+              "startFrame": 1154,
               "durationFrames": 14
             },
             {
@@ -10033,7 +10033,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 1192,
+              "startFrame": 1157,
               "durationFrames": 14
             },
             {
@@ -10044,7 +10044,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.22,
-              "startFrame": 1177,
+              "startFrame": 1141,
               "durationFrames": 14,
               "easing": "linear"
             },
@@ -10056,7 +10056,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.22,
-              "startFrame": 1177,
+              "startFrame": 1141,
               "durationFrames": 14,
               "easing": "linear"
             },
@@ -10068,7 +10068,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.22,
-              "startFrame": 1177,
+              "startFrame": 1141,
               "durationFrames": 14,
               "easing": "linear"
             },
@@ -10080,7 +10080,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.22,
-              "startFrame": 1177,
+              "startFrame": 1141,
               "durationFrames": 14,
               "easing": "linear"
             },
@@ -10092,7 +10092,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.22,
-              "startFrame": 1177,
+              "startFrame": 1141,
               "durationFrames": 14,
               "easing": "linear"
             },
@@ -10104,7 +10104,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.22,
-              "startFrame": 1177,
+              "startFrame": 1141,
               "durationFrames": 14,
               "easing": "linear"
             },
@@ -10116,7 +10116,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.22,
-              "startFrame": 1177,
+              "startFrame": 1141,
               "durationFrames": 14,
               "easing": "linear"
             },
@@ -10128,7 +10128,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.22,
-              "startFrame": 1177,
+              "startFrame": 1141,
               "durationFrames": 14,
               "easing": "linear"
             },
@@ -10140,7 +10140,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.22,
-              "startFrame": 1177,
+              "startFrame": 1141,
               "durationFrames": 14,
               "easing": "linear"
             },
@@ -10152,7 +10152,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.22,
-              "startFrame": 1177,
+              "startFrame": 1141,
               "durationFrames": 14,
               "easing": "linear"
             },
@@ -10164,7 +10164,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1208,
+              "startFrame": 1172,
               "durationFrames": 8
             },
             {
@@ -10175,7 +10175,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1236,
+              "startFrame": 1193,
               "durationFrames": 10
             },
             {
@@ -10186,7 +10186,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1236,
+              "startFrame": 1193,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10198,7 +10198,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1240,
+              "startFrame": 1198,
               "durationFrames": 10
             },
             {
@@ -10209,7 +10209,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1240,
+              "startFrame": 1198,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10221,7 +10221,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1260,
+              "startFrame": 1219,
               "durationFrames": 10
             },
             {
@@ -10232,7 +10232,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1260,
+              "startFrame": 1219,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10244,7 +10244,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1264,
+              "startFrame": 1224,
               "durationFrames": 10
             },
             {
@@ -10255,7 +10255,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1264,
+              "startFrame": 1224,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10267,7 +10267,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1273,
+              "startFrame": 1233,
               "durationFrames": 10
             },
             {
@@ -10278,7 +10278,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1273,
+              "startFrame": 1233,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10290,7 +10290,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1284,
+              "startFrame": 1245,
               "durationFrames": 10
             },
             {
@@ -10301,7 +10301,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1284,
+              "startFrame": 1245,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10313,7 +10313,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1291,
+              "startFrame": 1253,
               "durationFrames": 10
             },
             {
@@ -10324,7 +10324,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1291,
+              "startFrame": 1253,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10336,7 +10336,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 36.800000000000004,
               "to": 0,
-              "startFrame": 1296,
+              "startFrame": 1258,
               "durationFrames": 10
             },
             {
@@ -10347,7 +10347,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1296,
+              "startFrame": 1258,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10359,7 +10359,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10371,7 +10371,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10383,7 +10383,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10395,7 +10395,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10407,7 +10407,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10419,7 +10419,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10431,7 +10431,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10443,7 +10443,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10455,7 +10455,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10467,7 +10467,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10479,7 +10479,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10491,7 +10491,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10503,7 +10503,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10515,7 +10515,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10527,7 +10527,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10539,7 +10539,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1315,
+              "startFrame": 1273,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10551,7 +10551,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1322,
+              "startFrame": 1280,
               "durationFrames": 10
             },
             {
@@ -10562,7 +10562,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1322,
+              "startFrame": 1280,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10574,7 +10574,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1328,
+              "startFrame": 1286,
               "durationFrames": 10
             },
             {
@@ -10585,7 +10585,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1328,
+              "startFrame": 1286,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10597,7 +10597,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1335,
+              "startFrame": 1293,
               "durationFrames": 10
             },
             {
@@ -10608,7 +10608,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1335,
+              "startFrame": 1293,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10620,7 +10620,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1339,
+              "startFrame": 1298,
               "durationFrames": 10
             },
             {
@@ -10631,7 +10631,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1339,
+              "startFrame": 1298,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10643,7 +10643,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1354,
+              "startFrame": 1315,
               "durationFrames": 10
             },
             {
@@ -10654,7 +10654,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1354,
+              "startFrame": 1315,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10666,7 +10666,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1361,
+              "startFrame": 1322,
               "durationFrames": 10
             },
             {
@@ -10677,7 +10677,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1361,
+              "startFrame": 1322,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10689,7 +10689,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1368,
+              "startFrame": 1329,
               "durationFrames": 10
             },
             {
@@ -10700,7 +10700,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1368,
+              "startFrame": 1329,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10712,7 +10712,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10724,7 +10724,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10736,7 +10736,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10748,7 +10748,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10760,7 +10760,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10772,7 +10772,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10784,7 +10784,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10796,7 +10796,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10808,7 +10808,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10820,7 +10820,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10832,7 +10832,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10844,7 +10844,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10856,7 +10856,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10868,7 +10868,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1384,
+              "startFrame": 1342,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -10880,7 +10880,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1257,
+              "startFrame": 1216,
               "durationFrames": 10
             },
             {
@@ -10891,7 +10891,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0.14,
-              "startFrame": 1257,
+              "startFrame": 1216,
               "durationFrames": 14,
               "easing": "linear"
             },
@@ -10903,7 +10903,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1275,
+              "startFrame": 1234,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -10915,7 +10915,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0.12,
               "to": 1,
-              "startFrame": 1275,
+              "startFrame": 1234,
               "durationFrames": 18,
               "origin": {
                 "x": 390,
@@ -10930,7 +10930,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": -175,
               "to": 0,
-              "startFrame": 1275,
+              "startFrame": 1234,
               "durationFrames": 18,
               "origin": {
                 "x": 390,
@@ -10945,7 +10945,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 50,
               "to": 0,
-              "startFrame": 1275,
+              "startFrame": 1234,
               "durationFrames": 18,
               "origin": {
                 "x": 390,
@@ -10960,7 +10960,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1275,
+              "startFrame": 1234,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -10972,7 +10972,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1275,
+              "startFrame": 1234,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -10984,7 +10984,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1340,
+              "startFrame": 1299,
               "durationFrames": 8
             },
             {
@@ -10995,7 +10995,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1284,
+              "startFrame": 1243,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11007,7 +11007,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0.12,
               "to": 1,
-              "startFrame": 1284,
+              "startFrame": 1243,
               "durationFrames": 18,
               "origin": {
                 "x": 390,
@@ -11022,7 +11022,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": -128,
               "to": 0,
-              "startFrame": 1284,
+              "startFrame": 1243,
               "durationFrames": 18,
               "origin": {
                 "x": 390,
@@ -11037,7 +11037,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 9,
               "to": 0,
-              "startFrame": 1284,
+              "startFrame": 1243,
               "durationFrames": 18,
               "origin": {
                 "x": 390,
@@ -11052,7 +11052,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1284,
+              "startFrame": 1243,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -11064,7 +11064,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1284,
+              "startFrame": 1243,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -11076,7 +11076,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1345,
+              "startFrame": 1304,
               "durationFrames": 8
             },
             {
@@ -11087,7 +11087,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1293,
+              "startFrame": 1252,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11099,7 +11099,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0.12,
               "to": 1,
-              "startFrame": 1293,
+              "startFrame": 1252,
               "durationFrames": 18,
               "origin": {
                 "x": 390,
@@ -11114,7 +11114,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": -210,
               "to": 0,
-              "startFrame": 1293,
+              "startFrame": 1252,
               "durationFrames": 18,
               "origin": {
                 "x": 390,
@@ -11129,7 +11129,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -71,
               "to": 0,
-              "startFrame": 1293,
+              "startFrame": 1252,
               "durationFrames": 18,
               "origin": {
                 "x": 390,
@@ -11144,7 +11144,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1293,
+              "startFrame": 1252,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -11156,7 +11156,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1293,
+              "startFrame": 1252,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -11168,7 +11168,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1350,
+              "startFrame": 1309,
               "durationFrames": 8
             },
             {
@@ -11179,7 +11179,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1302,
+              "startFrame": 1261,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11191,7 +11191,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0.12,
               "to": 1,
-              "startFrame": 1302,
+              "startFrame": 1261,
               "durationFrames": 18,
               "origin": {
                 "x": 390,
@@ -11206,7 +11206,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": -90,
               "to": 0,
-              "startFrame": 1302,
+              "startFrame": 1261,
               "durationFrames": 18,
               "origin": {
                 "x": 390,
@@ -11221,7 +11221,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -239,
               "to": 0,
-              "startFrame": 1302,
+              "startFrame": 1261,
               "durationFrames": 18,
               "origin": {
                 "x": 390,
@@ -11236,7 +11236,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1302,
+              "startFrame": 1261,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -11248,7 +11248,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1302,
+              "startFrame": 1261,
               "durationFrames": 8,
               "easing": "linear"
             },
@@ -11260,7 +11260,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1355,
+              "startFrame": 1314,
               "durationFrames": 8
             },
             {
@@ -11271,7 +11271,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0,
               "to": 0.147,
-              "startFrame": 1275,
+              "startFrame": 1234,
               "durationFrames": 45,
               "origin": {
                 "x": 550,
@@ -11315,7 +11315,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1392,
+              "startFrame": 1350,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -11327,7 +11327,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1547,
+              "startFrame": 1513,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11339,7 +11339,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 1391,
+              "startFrame": 1349,
               "durationFrames": 10
             },
             {
@@ -11350,7 +11350,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1391,
+              "startFrame": 1349,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11362,7 +11362,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 1395,
+              "startFrame": 1354,
               "durationFrames": 10
             },
             {
@@ -11373,7 +11373,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1395,
+              "startFrame": 1354,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11385,7 +11385,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 1402,
+              "startFrame": 1361,
               "durationFrames": 10
             },
             {
@@ -11396,7 +11396,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1402,
+              "startFrame": 1361,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11408,7 +11408,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 1408,
+              "startFrame": 1368,
               "durationFrames": 10
             },
             {
@@ -11419,7 +11419,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1408,
+              "startFrame": 1368,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11431,7 +11431,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 1417,
+              "startFrame": 1377,
               "durationFrames": 10
             },
             {
@@ -11442,7 +11442,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1417,
+              "startFrame": 1377,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11454,7 +11454,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 1427,
+              "startFrame": 1388,
               "durationFrames": 10
             },
             {
@@ -11465,7 +11465,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1427,
+              "startFrame": 1388,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11477,7 +11477,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 1432,
+              "startFrame": 1393,
               "durationFrames": 10
             },
             {
@@ -11488,7 +11488,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1432,
+              "startFrame": 1393,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11500,7 +11500,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 40,
               "to": 0,
-              "startFrame": 1441,
+              "startFrame": 1403,
               "durationFrames": 10
             },
             {
@@ -11511,7 +11511,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1441,
+              "startFrame": 1403,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11523,7 +11523,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11535,7 +11535,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11547,7 +11547,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11559,7 +11559,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11571,7 +11571,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11583,7 +11583,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11595,7 +11595,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11607,7 +11607,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11619,7 +11619,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11631,7 +11631,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11643,7 +11643,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11655,7 +11655,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11667,7 +11667,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11679,7 +11679,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11691,7 +11691,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11703,7 +11703,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -18,
-              "startFrame": 1464,
+              "startFrame": 1429,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11715,7 +11715,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1471,
+              "startFrame": 1436,
               "durationFrames": 10
             },
             {
@@ -11726,7 +11726,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1471,
+              "startFrame": 1436,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11738,7 +11738,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1473,
+              "startFrame": 1437,
               "durationFrames": 10
             },
             {
@@ -11749,7 +11749,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1473,
+              "startFrame": 1437,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11761,7 +11761,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1480,
+              "startFrame": 1445,
               "durationFrames": 10
             },
             {
@@ -11772,7 +11772,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1480,
+              "startFrame": 1445,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11784,7 +11784,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1489,
+              "startFrame": 1455,
               "durationFrames": 10
             },
             {
@@ -11795,7 +11795,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1489,
+              "startFrame": 1455,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11807,7 +11807,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1510,
+              "startFrame": 1477,
               "durationFrames": 10
             },
             {
@@ -11818,7 +11818,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1510,
+              "startFrame": 1477,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11830,7 +11830,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1512,
+              "startFrame": 1479,
               "durationFrames": 10
             },
             {
@@ -11841,7 +11841,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1512,
+              "startFrame": 1479,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11853,7 +11853,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1521,
+              "startFrame": 1488,
               "durationFrames": 10
             },
             {
@@ -11864,7 +11864,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1521,
+              "startFrame": 1488,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11876,7 +11876,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1528,
+              "startFrame": 1497,
               "durationFrames": 10
             },
             {
@@ -11887,7 +11887,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1528,
+              "startFrame": 1497,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11899,7 +11899,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1531,
+              "startFrame": 1500,
               "durationFrames": 10
             },
             {
@@ -11910,7 +11910,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1531,
+              "startFrame": 1500,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -11922,7 +11922,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11934,7 +11934,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11946,7 +11946,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11958,7 +11958,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11970,7 +11970,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11982,7 +11982,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -11994,7 +11994,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -12006,7 +12006,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -12018,7 +12018,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -12030,7 +12030,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -12042,7 +12042,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -12054,7 +12054,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -12066,7 +12066,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -12078,7 +12078,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -12090,7 +12090,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -12102,7 +12102,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -12114,7 +12114,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -12126,7 +12126,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1549,
+              "startFrame": 1515,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -12138,7 +12138,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 30,
               "to": 0,
-              "startFrame": 1393,
+              "startFrame": 1351,
               "durationFrames": 14
             },
             {
@@ -12149,7 +12149,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1393,
+              "startFrame": 1351,
               "durationFrames": 10,
               "easing": "linear"
             },
@@ -12161,7 +12161,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 1,
               "to": 0.9310344827586207,
-              "startFrame": 1396,
+              "startFrame": 1354,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12177,7 +12177,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.9310344827586207,
               "to": 0.896551724137931,
-              "startFrame": 1397,
+              "startFrame": 1355,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12193,7 +12193,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.896551724137931,
               "to": 0.8275862068965517,
-              "startFrame": 1398,
+              "startFrame": 1356,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12209,7 +12209,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.8275862068965517,
               "to": 0.7931034482758621,
-              "startFrame": 1399,
+              "startFrame": 1357,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12225,7 +12225,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.7931034482758621,
               "to": 0.7241379310344828,
-              "startFrame": 1400,
+              "startFrame": 1358,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12241,7 +12241,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.7241379310344828,
               "to": 0.6551724137931034,
-              "startFrame": 1401,
+              "startFrame": 1359,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12257,7 +12257,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.6551724137931034,
               "to": 0.6206896551724138,
-              "startFrame": 1402,
+              "startFrame": 1360,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12273,7 +12273,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.6206896551724138,
               "to": 0.5517241379310345,
-              "startFrame": 1403,
+              "startFrame": 1361,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12289,7 +12289,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.5517241379310345,
               "to": 0.48275862068965514,
-              "startFrame": 1404,
+              "startFrame": 1362,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12305,7 +12305,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.48275862068965514,
               "to": 0.4482758620689655,
-              "startFrame": 1405,
+              "startFrame": 1363,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12321,7 +12321,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.4482758620689655,
               "to": 0.3793103448275862,
-              "startFrame": 1406,
+              "startFrame": 1364,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12337,7 +12337,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.3793103448275862,
               "to": 0.3448275862068966,
-              "startFrame": 1407,
+              "startFrame": 1365,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12353,7 +12353,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.3448275862068966,
               "to": 0.27586206896551724,
-              "startFrame": 1408,
+              "startFrame": 1366,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12369,7 +12369,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.27586206896551724,
               "to": 0.2068965517241379,
-              "startFrame": 1409,
+              "startFrame": 1367,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12385,7 +12385,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.2068965517241379,
               "to": 0.1724137931034483,
-              "startFrame": 1410,
+              "startFrame": 1368,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12401,7 +12401,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.1724137931034483,
               "to": 0.10344827586206895,
-              "startFrame": 1411,
+              "startFrame": 1369,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12417,7 +12417,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.10344827586206895,
               "to": 0.06896551724137934,
-              "startFrame": 1412,
+              "startFrame": 1370,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12433,7 +12433,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.06896551724137934,
               "to": 0,
-              "startFrame": 1413,
+              "startFrame": 1371,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -12449,7 +12449,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 0,
               "to": 36,
-              "startFrame": 1396,
+              "startFrame": 1354,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12461,7 +12461,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 36,
               "to": 54,
-              "startFrame": 1397,
+              "startFrame": 1355,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12473,7 +12473,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 54,
               "to": 90,
-              "startFrame": 1398,
+              "startFrame": 1356,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12485,7 +12485,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 90,
               "to": 108,
-              "startFrame": 1399,
+              "startFrame": 1357,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12497,7 +12497,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 108,
               "to": 144,
-              "startFrame": 1400,
+              "startFrame": 1358,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12509,7 +12509,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 144,
               "to": 180,
-              "startFrame": 1401,
+              "startFrame": 1359,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12521,7 +12521,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 180,
               "to": 198,
-              "startFrame": 1402,
+              "startFrame": 1360,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12533,7 +12533,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 198,
               "to": 234,
-              "startFrame": 1403,
+              "startFrame": 1361,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12545,7 +12545,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 234,
               "to": 270,
-              "startFrame": 1404,
+              "startFrame": 1362,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12557,7 +12557,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 270,
               "to": 288,
-              "startFrame": 1405,
+              "startFrame": 1363,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12569,7 +12569,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 288,
               "to": 324,
-              "startFrame": 1406,
+              "startFrame": 1364,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12581,7 +12581,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 324,
               "to": 342,
-              "startFrame": 1407,
+              "startFrame": 1365,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12593,7 +12593,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 342,
               "to": 378,
-              "startFrame": 1408,
+              "startFrame": 1366,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12605,7 +12605,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 378,
               "to": 414,
-              "startFrame": 1409,
+              "startFrame": 1367,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12617,7 +12617,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 414,
               "to": 432,
-              "startFrame": 1410,
+              "startFrame": 1368,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12629,7 +12629,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 432,
               "to": 468,
-              "startFrame": 1411,
+              "startFrame": 1369,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12641,7 +12641,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 468,
               "to": 486,
-              "startFrame": 1412,
+              "startFrame": 1370,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12653,7 +12653,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateX",
               "from": 486,
               "to": 522,
-              "startFrame": 1413,
+              "startFrame": 1371,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12665,7 +12665,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0,
               "to": 0.34,
-              "startFrame": 1418,
+              "startFrame": 1376,
               "durationFrames": 14,
               "origin": {
                 "x": 250,
@@ -12680,7 +12680,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0,
               "to": 0.34,
-              "startFrame": 1418,
+              "startFrame": 1376,
               "durationFrames": 14,
               "origin": {
                 "x": 250,
@@ -12695,7 +12695,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1418,
+              "startFrame": 1376,
               "durationFrames": 6
             },
             {
@@ -12706,7 +12706,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1418,
+              "startFrame": 1376,
               "durationFrames": 6
             },
             {
@@ -12717,7 +12717,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0,
               "to": 0.27,
-              "startFrame": 1421,
+              "startFrame": 1379,
               "durationFrames": 14,
               "origin": {
                 "x": 250,
@@ -12732,7 +12732,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0,
               "to": 0.27,
-              "startFrame": 1421,
+              "startFrame": 1379,
               "durationFrames": 14,
               "origin": {
                 "x": 250,
@@ -12747,7 +12747,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1421,
+              "startFrame": 1379,
               "durationFrames": 6
             },
             {
@@ -12758,7 +12758,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0,
               "to": 0.22,
-              "startFrame": 1424,
+              "startFrame": 1382,
               "durationFrames": 14,
               "origin": {
                 "x": 250,
@@ -12773,7 +12773,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0,
               "to": 0.22,
-              "startFrame": 1424,
+              "startFrame": 1382,
               "durationFrames": 14,
               "origin": {
                 "x": 250,
@@ -12788,7 +12788,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1424,
+              "startFrame": 1382,
               "durationFrames": 6
             },
             {
@@ -12799,7 +12799,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0,
               "to": 0.17,
-              "startFrame": 1427,
+              "startFrame": 1385,
               "durationFrames": 14,
               "origin": {
                 "x": 250,
@@ -12814,7 +12814,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0,
               "to": 0.17,
-              "startFrame": 1427,
+              "startFrame": 1385,
               "durationFrames": 14,
               "origin": {
                 "x": 250,
@@ -12829,7 +12829,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1427,
+              "startFrame": 1385,
               "durationFrames": 6
             },
             {
@@ -12840,7 +12840,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.34,
               "to": 0.04,
-              "startFrame": 1442,
+              "startFrame": 1404,
               "durationFrames": 20,
               "origin": {
                 "x": 250,
@@ -12855,7 +12855,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.34,
               "to": 0.04,
-              "startFrame": 1442,
+              "startFrame": 1404,
               "durationFrames": 20,
               "origin": {
                 "x": 250,
@@ -12870,7 +12870,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1452,
+              "startFrame": 1414,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12882,7 +12882,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1452,
+              "startFrame": 1414,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12894,7 +12894,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1442,
+              "startFrame": 1404,
               "durationFrames": 8
             },
             {
@@ -12905,7 +12905,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1442,
+              "startFrame": 1404,
               "durationFrames": 8
             },
             {
@@ -12916,7 +12916,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.27,
               "to": 0.93,
-              "startFrame": 1442,
+              "startFrame": 1404,
               "durationFrames": 20,
               "origin": {
                 "x": 250,
@@ -12931,7 +12931,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.27,
               "to": 0.93,
-              "startFrame": 1442,
+              "startFrame": 1404,
               "durationFrames": 20,
               "origin": {
                 "x": 250,
@@ -12946,7 +12946,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1452,
+              "startFrame": 1414,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12958,7 +12958,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1452,
+              "startFrame": 1414,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -12970,7 +12970,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1446,
+              "startFrame": 1408,
               "durationFrames": 8
             },
             {
@@ -12981,7 +12981,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1446,
+              "startFrame": 1408,
               "durationFrames": 8
             },
             {
@@ -12992,7 +12992,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.22,
               "to": 0.02,
-              "startFrame": 1442,
+              "startFrame": 1404,
               "durationFrames": 20,
               "origin": {
                 "x": 250,
@@ -13007,7 +13007,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.22,
               "to": 0.02,
-              "startFrame": 1442,
+              "startFrame": 1404,
               "durationFrames": 20,
               "origin": {
                 "x": 250,
@@ -13022,7 +13022,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1452,
+              "startFrame": 1414,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13034,7 +13034,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1452,
+              "startFrame": 1414,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13046,7 +13046,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.17,
               "to": 0.01,
-              "startFrame": 1442,
+              "startFrame": 1404,
               "durationFrames": 20,
               "origin": {
                 "x": 250,
@@ -13061,7 +13061,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.17,
               "to": 0.01,
-              "startFrame": 1442,
+              "startFrame": 1404,
               "durationFrames": 20,
               "origin": {
                 "x": 250,
@@ -13076,7 +13076,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1452,
+              "startFrame": 1414,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13088,7 +13088,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1452,
+              "startFrame": 1414,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13100,7 +13100,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1448,
+              "startFrame": 1410,
               "durationFrames": 8
             },
             {
@@ -13111,7 +13111,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1448,
+              "startFrame": 1410,
               "durationFrames": 8
             },
             {
@@ -13122,7 +13122,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0,
               "to": 0.83,
-              "startFrame": 1448,
+              "startFrame": 1410,
               "durationFrames": 14,
               "origin": {
                 "x": 1000,
@@ -13137,7 +13137,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1448,
+              "startFrame": 1410,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13149,7 +13149,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1483,
+              "startFrame": 1448,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13161,7 +13161,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1483,
+              "startFrame": 1448,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13173,7 +13173,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1493,
+              "startFrame": 1458,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13185,7 +13185,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1493,
+              "startFrame": 1458,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13197,7 +13197,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1502,
+              "startFrame": 1468,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13209,7 +13209,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1502,
+              "startFrame": 1468,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13221,7 +13221,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1512,
+              "startFrame": 1479,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13233,7 +13233,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1512,
+              "startFrame": 1479,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13245,7 +13245,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1521,
+              "startFrame": 1489,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13257,7 +13257,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1521,
+              "startFrame": 1489,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13269,7 +13269,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1531,
+              "startFrame": 1499,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13281,7 +13281,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1531,
+              "startFrame": 1499,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13293,7 +13293,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1540,
+              "startFrame": 1509,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13305,7 +13305,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1540,
+              "startFrame": 1509,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -13317,7 +13317,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.83,
               "to": 0.71,
-              "startFrame": 1483,
+              "startFrame": 1448,
               "durationFrames": 10,
               "origin": {
                 "x": 1000,
@@ -13332,8 +13332,8 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.71,
               "to": 0.56,
-              "startFrame": 1493,
-              "durationFrames": 9,
+              "startFrame": 1458,
+              "durationFrames": 10,
               "origin": {
                 "x": 1000,
                 "y": 0
@@ -13347,7 +13347,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.56,
               "to": 0.41,
-              "startFrame": 1502,
+              "startFrame": 1468,
               "durationFrames": 10,
               "origin": {
                 "x": 1000,
@@ -13362,8 +13362,8 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.41,
               "to": 0.27,
-              "startFrame": 1512,
-              "durationFrames": 9,
+              "startFrame": 1479,
+              "durationFrames": 10,
               "origin": {
                 "x": 1000,
                 "y": 0
@@ -13377,7 +13377,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.27,
               "to": 0.16,
-              "startFrame": 1521,
+              "startFrame": 1489,
               "durationFrames": 10,
               "origin": {
                 "x": 1000,
@@ -13392,8 +13392,8 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.16,
               "to": 0.09,
-              "startFrame": 1531,
-              "durationFrames": 9,
+              "startFrame": 1499,
+              "durationFrames": 10,
               "origin": {
                 "x": 1000,
                 "y": 0
@@ -13407,7 +13407,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.09,
               "to": 0.04,
-              "startFrame": 1540,
+              "startFrame": 1509,
               "durationFrames": 10,
               "origin": {
                 "x": 1000,
@@ -13422,7 +13422,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1507,
+              "startFrame": 1474,
               "durationFrames": 8
             },
             {
@@ -13433,7 +13433,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 1,
               "to": 0.9411764705882353,
-              "startFrame": 1513,
+              "startFrame": 1480,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -13449,7 +13449,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.9411764705882353,
               "to": 0.8235294117647058,
-              "startFrame": 1514,
+              "startFrame": 1481,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -13465,7 +13465,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.8235294117647058,
               "to": 0.7647058823529411,
-              "startFrame": 1515,
+              "startFrame": 1482,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -13481,7 +13481,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.7647058823529411,
               "to": 0.7058823529411764,
-              "startFrame": 1516,
+              "startFrame": 1483,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -13497,7 +13497,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.7058823529411764,
               "to": 0.5882352941176471,
-              "startFrame": 1517,
+              "startFrame": 1484,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -13513,7 +13513,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.5882352941176471,
               "to": 0.5294117647058824,
-              "startFrame": 1518,
+              "startFrame": 1485,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -13529,7 +13529,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.5294117647058824,
               "to": 0.47058823529411764,
-              "startFrame": 1519,
+              "startFrame": 1486,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -13545,7 +13545,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.47058823529411764,
               "to": 0.4117647058823529,
-              "startFrame": 1520,
+              "startFrame": 1487,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -13561,7 +13561,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.4117647058823529,
               "to": 0.2941176470588235,
-              "startFrame": 1521,
+              "startFrame": 1488,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -13577,7 +13577,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.2941176470588235,
               "to": 0.23529411764705888,
-              "startFrame": 1522,
+              "startFrame": 1489,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -13593,7 +13593,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.23529411764705888,
               "to": 0.17647058823529416,
-              "startFrame": 1523,
+              "startFrame": 1490,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -13609,7 +13609,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.17647058823529416,
               "to": 0.05882352941176472,
-              "startFrame": 1524,
+              "startFrame": 1491,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -13625,7 +13625,7 @@ export const ragExplainerFilm: Film = {
               "property": "scaleX",
               "from": 0.05882352941176472,
               "to": 0,
-              "startFrame": 1525,
+              "startFrame": 1492,
               "durationFrames": 1,
               "easing": "linear",
               "origin": {
@@ -13641,7 +13641,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1532,
+              "startFrame": 1501,
               "durationFrames": 8
             },
             {
@@ -13717,7 +13717,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1557,
+              "startFrame": 1523,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -13729,7 +13729,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1757,
+              "startFrame": 1721,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -13741,7 +13741,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 33.6,
               "to": 0,
-              "startFrame": 1556,
+              "startFrame": 1522,
               "durationFrames": 10
             },
             {
@@ -13752,7 +13752,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1556,
+              "startFrame": 1522,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -13764,7 +13764,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 33.6,
               "to": 0,
-              "startFrame": 1558,
+              "startFrame": 1525,
               "durationFrames": 10
             },
             {
@@ -13775,7 +13775,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1558,
+              "startFrame": 1525,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -13787,7 +13787,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 33.6,
               "to": 0,
-              "startFrame": 1564,
+              "startFrame": 1531,
               "durationFrames": 10
             },
             {
@@ -13798,7 +13798,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1564,
+              "startFrame": 1531,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -13810,7 +13810,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 33.6,
               "to": 0,
-              "startFrame": 1571,
+              "startFrame": 1538,
               "durationFrames": 10
             },
             {
@@ -13821,7 +13821,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1571,
+              "startFrame": 1538,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -13833,7 +13833,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 33.6,
               "to": 0,
-              "startFrame": 1577,
+              "startFrame": 1545,
               "durationFrames": 10
             },
             {
@@ -13844,7 +13844,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1577,
+              "startFrame": 1545,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -13856,7 +13856,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 33.6,
               "to": 0,
-              "startFrame": 1597,
+              "startFrame": 1566,
               "durationFrames": 10
             },
             {
@@ -13867,7 +13867,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1597,
+              "startFrame": 1566,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -13879,7 +13879,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 33.6,
               "to": 0,
-              "startFrame": 1601,
+              "startFrame": 1570,
               "durationFrames": 10
             },
             {
@@ -13890,7 +13890,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1601,
+              "startFrame": 1570,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -13902,7 +13902,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 33.6,
               "to": 0,
-              "startFrame": 1604,
+              "startFrame": 1574,
               "durationFrames": 10
             },
             {
@@ -13913,7 +13913,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1604,
+              "startFrame": 1574,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -13925,7 +13925,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 33.6,
               "to": 0,
-              "startFrame": 1607,
+              "startFrame": 1577,
               "durationFrames": 10
             },
             {
@@ -13936,7 +13936,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1607,
+              "startFrame": 1577,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -13948,7 +13948,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 33.6,
               "to": 0,
-              "startFrame": 1615,
+              "startFrame": 1586,
               "durationFrames": 10
             },
             {
@@ -13959,7 +13959,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1615,
+              "startFrame": 1586,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -13971,7 +13971,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 33.6,
               "to": 0,
-              "startFrame": 1622,
+              "startFrame": 1594,
               "durationFrames": 10
             },
             {
@@ -13982,7 +13982,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1622,
+              "startFrame": 1594,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -13994,7 +13994,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14006,7 +14006,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14018,7 +14018,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14030,7 +14030,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14042,7 +14042,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14054,7 +14054,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14066,7 +14066,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14078,7 +14078,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14090,7 +14090,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14102,7 +14102,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14114,7 +14114,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14126,7 +14126,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14138,7 +14138,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14150,7 +14150,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14162,7 +14162,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14174,7 +14174,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14186,7 +14186,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14198,7 +14198,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14210,7 +14210,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14222,7 +14222,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14234,7 +14234,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14246,7 +14246,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -15.12,
-              "startFrame": 1650,
+              "startFrame": 1619,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14258,7 +14258,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1657,
+              "startFrame": 1626,
               "durationFrames": 10
             },
             {
@@ -14269,7 +14269,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1657,
+              "startFrame": 1626,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14281,7 +14281,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1669,
+              "startFrame": 1637,
               "durationFrames": 10
             },
             {
@@ -14292,7 +14292,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1669,
+              "startFrame": 1637,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14304,7 +14304,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1681,
+              "startFrame": 1650,
               "durationFrames": 10
             },
             {
@@ -14315,7 +14315,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1681,
+              "startFrame": 1650,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14327,7 +14327,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1690,
+              "startFrame": 1659,
               "durationFrames": 10
             },
             {
@@ -14338,7 +14338,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1690,
+              "startFrame": 1659,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14350,7 +14350,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1715,
+              "startFrame": 1684,
               "durationFrames": 10
             },
             {
@@ -14361,7 +14361,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1715,
+              "startFrame": 1684,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14373,7 +14373,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1721,
+              "startFrame": 1690,
               "durationFrames": 10
             },
             {
@@ -14384,7 +14384,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1721,
+              "startFrame": 1690,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14396,7 +14396,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1736,
+              "startFrame": 1705,
               "durationFrames": 10
             },
             {
@@ -14407,7 +14407,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1736,
+              "startFrame": 1705,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14419,7 +14419,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1741,
+              "startFrame": 1710,
               "durationFrames": 10
             },
             {
@@ -14430,7 +14430,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1741,
+              "startFrame": 1710,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14442,7 +14442,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": -46,
               "to": 0,
-              "startFrame": 1744,
+              "startFrame": 1714,
               "durationFrames": 10
             },
             {
@@ -14453,7 +14453,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1744,
+              "startFrame": 1714,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14465,7 +14465,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14477,7 +14477,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14489,7 +14489,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14501,7 +14501,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14513,7 +14513,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14525,7 +14525,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14537,7 +14537,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14549,7 +14549,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14561,7 +14561,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14573,7 +14573,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14585,7 +14585,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14597,7 +14597,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14609,7 +14609,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14621,7 +14621,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14633,7 +14633,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14645,7 +14645,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1759,
+              "startFrame": 1723,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14657,7 +14657,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1759,
+              "startFrame": 1725,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14669,7 +14669,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 0,
               "to": -16.56,
-              "startFrame": 1759,
+              "startFrame": 1725,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -14681,7 +14681,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1561,
+              "startFrame": 1527,
               "durationFrames": 10
             },
             {
@@ -14692,7 +14692,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 1559,
+              "startFrame": 1526,
               "durationFrames": 12
             },
             {
@@ -14703,7 +14703,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1572,
+              "startFrame": 1539,
               "durationFrames": 10
             },
             {
@@ -14714,7 +14714,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0,
               "to": 1,
-              "startFrame": 1578,
+              "startFrame": 1546,
               "durationFrames": 10,
               "origin": {
                 "x": 113,
@@ -14729,7 +14729,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1578,
+              "startFrame": 1546,
               "durationFrames": 5,
               "easing": "linear"
             },
@@ -14741,7 +14741,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 1605,
+              "startFrame": 1575,
               "durationFrames": 12
             },
             {
@@ -14752,7 +14752,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1605,
+              "startFrame": 1575,
               "durationFrames": 10
             },
             {
@@ -14763,7 +14763,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1623,
+              "startFrame": 1595,
               "durationFrames": 8
             },
             {
@@ -14774,7 +14774,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1658,
+              "startFrame": 1627,
               "durationFrames": 8
             },
             {
@@ -14785,7 +14785,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1682,
+              "startFrame": 1651,
               "durationFrames": 8
             },
             {
@@ -14796,7 +14796,7 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 1722,
+              "startFrame": 1691,
               "durationFrames": 16
             },
             {
@@ -14807,7 +14807,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1745,
+              "startFrame": 1715,
               "durationFrames": 8
             }
           ]
@@ -14835,7 +14835,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1767,
+              "startFrame": 1731,
               "durationFrames": 4,
               "easing": "linear"
             },
@@ -14847,7 +14847,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 1766,
+              "startFrame": 1730,
               "durationFrames": 9,
               "origin": {
                 "x": 191.394,
@@ -14862,7 +14862,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1766,
+              "startFrame": 1730,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14874,7 +14874,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 1774,
+              "startFrame": 1737,
               "durationFrames": 9,
               "origin": {
                 "x": 41.53999999999999,
@@ -14889,7 +14889,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1774,
+              "startFrame": 1737,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14901,7 +14901,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 1780,
+              "startFrame": 1743,
               "durationFrames": 9,
               "origin": {
                 "x": 202.92600000000002,
@@ -14916,7 +14916,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1780,
+              "startFrame": 1743,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14928,7 +14928,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 1785,
+              "startFrame": 1749,
               "durationFrames": 9,
               "origin": {
                 "x": 41.53999999999999,
@@ -14943,7 +14943,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1785,
+              "startFrame": 1749,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14955,7 +14955,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 1800,
+              "startFrame": 1763,
               "durationFrames": 9,
               "origin": {
                 "x": 208.816,
@@ -14970,7 +14970,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1800,
+              "startFrame": 1763,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -14982,7 +14982,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 1804,
+              "startFrame": 1767,
               "durationFrames": 9,
               "origin": {
                 "x": 41.53999999999999,
@@ -14997,7 +14997,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1804,
+              "startFrame": 1767,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15009,7 +15009,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 1818,
+              "startFrame": 1780,
               "durationFrames": 9,
               "origin": {
                 "x": 150.536,
@@ -15024,7 +15024,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1818,
+              "startFrame": 1780,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15036,7 +15036,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 1824,
+              "startFrame": 1786,
               "durationFrames": 9,
               "origin": {
                 "x": 41.53999999999999,
@@ -15051,7 +15051,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1824,
+              "startFrame": 1786,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15063,7 +15063,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1837,
+              "startFrame": 1794,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -15075,7 +15075,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1837,
+              "startFrame": 1794,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -15087,7 +15087,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1837,
+              "startFrame": 1794,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -15099,7 +15099,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1837,
+              "startFrame": 1794,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -15111,7 +15111,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1837,
+              "startFrame": 1794,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -15123,7 +15123,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1837,
+              "startFrame": 1794,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -15135,7 +15135,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1837,
+              "startFrame": 1794,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -15147,7 +15147,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1837,
+              "startFrame": 1797,
               "durationFrames": 7,
               "easing": "linear"
             },
@@ -15159,7 +15159,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0.7,
               "to": 1,
-              "startFrame": 1767,
+              "startFrame": 1731,
               "durationFrames": 12,
               "origin": {
                 "x": 0,
@@ -15174,7 +15174,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1767,
+              "startFrame": 1731,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15186,7 +15186,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1837,
+              "startFrame": 1794,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15198,7 +15198,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0.7,
               "to": 1,
-              "startFrame": 1781,
+              "startFrame": 1744,
               "durationFrames": 12,
               "origin": {
                 "x": 0,
@@ -15213,7 +15213,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1781,
+              "startFrame": 1744,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15225,7 +15225,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1837,
+              "startFrame": 1794,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15237,7 +15237,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0.7,
               "to": 1,
-              "startFrame": 1801,
+              "startFrame": 1764,
               "durationFrames": 12,
               "origin": {
                 "x": 0,
@@ -15252,7 +15252,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1801,
+              "startFrame": 1764,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15264,7 +15264,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1837,
+              "startFrame": 1794,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15276,7 +15276,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 0.7,
               "to": 1,
-              "startFrame": 1819,
+              "startFrame": 1781,
               "durationFrames": 12,
               "origin": {
                 "x": 0,
@@ -15291,7 +15291,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1819,
+              "startFrame": 1781,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15303,7 +15303,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1837,
+              "startFrame": 1794,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15315,7 +15315,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 1842,
+              "startFrame": 1799,
               "durationFrames": 9,
               "origin": {
                 "x": 398.705,
@@ -15330,7 +15330,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1842,
+              "startFrame": 1799,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15342,7 +15342,7 @@ export const ragExplainerFilm: Film = {
               "property": "scale",
               "from": 1.5,
               "to": 1,
-              "startFrame": 1849,
+              "startFrame": 1807,
               "durationFrames": 9,
               "origin": {
                 "x": 77.05,
@@ -15357,7 +15357,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1849,
+              "startFrame": 1807,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15369,7 +15369,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 30.400000000000002,
               "to": 0,
-              "startFrame": 1863,
+              "startFrame": 1822,
               "durationFrames": 10
             },
             {
@@ -15380,7 +15380,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1863,
+              "startFrame": 1822,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15392,7 +15392,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 30.400000000000002,
               "to": 0,
-              "startFrame": 1866,
+              "startFrame": 1825,
               "durationFrames": 10
             },
             {
@@ -15403,7 +15403,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1866,
+              "startFrame": 1825,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15415,7 +15415,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 30.400000000000002,
               "to": 0,
-              "startFrame": 1871,
+              "startFrame": 1830,
               "durationFrames": 10
             },
             {
@@ -15426,7 +15426,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1871,
+              "startFrame": 1830,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15438,7 +15438,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 30.400000000000002,
               "to": 0,
-              "startFrame": 1874,
+              "startFrame": 1833,
               "durationFrames": 10
             },
             {
@@ -15449,7 +15449,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1874,
+              "startFrame": 1833,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15461,7 +15461,7 @@ export const ragExplainerFilm: Film = {
               "property": "translateY",
               "from": 30.400000000000002,
               "to": 0,
-              "startFrame": 1881,
+              "startFrame": 1840,
               "durationFrames": 10
             },
             {
@@ -15472,7 +15472,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1881,
+              "startFrame": 1840,
               "durationFrames": 6,
               "easing": "linear"
             },
@@ -15484,8 +15484,8 @@ export const ragExplainerFilm: Film = {
               "property": "drawOn",
               "from": 0,
               "to": 1,
-              "startFrame": 1867,
-              "durationFrames": 26,
+              "startFrame": 1826,
+              "durationFrames": 28,
               "easing": "expoOut"
             },
             {
@@ -15496,7 +15496,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1899,
+              "startFrame": 1860,
               "durationFrames": 14
             }
           ]
@@ -15524,7 +15524,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1283,
+              "startFrame": 1242,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -15536,7 +15536,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1283,
+              "startFrame": 1242,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -15548,7 +15548,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1292,
+              "startFrame": 1251,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -15560,7 +15560,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1292,
+              "startFrame": 1251,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -15572,7 +15572,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1301,
+              "startFrame": 1260,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -15584,7 +15584,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1301,
+              "startFrame": 1260,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -15596,7 +15596,7 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 1,
               "to": 0,
-              "startFrame": 1310,
+              "startFrame": 1269,
               "durationFrames": 1,
               "easing": "linear"
             },
@@ -15608,9 +15608,2473 @@ export const ragExplainerFilm: Film = {
               "property": "opacity",
               "from": 0,
               "to": 1,
-              "startFrame": 1310,
+              "startFrame": 1269,
               "durationFrames": 1,
               "easing": "linear"
+            },
+            {
+              "clipId": "beat-0-opacity-8",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 0,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-9",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 3,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-10",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 17,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-11",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 20,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-12",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 35,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-13",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 38,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-14",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 52,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-15",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 55,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-16",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 69,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-17",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 72,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-18",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 87,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-19",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 90,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-20",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 104,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-21",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 107,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-22",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 121,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-23",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 124,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-24",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 138,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-25",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 141,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-26",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 156,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-27",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 159,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-28",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 173,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-29",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 176,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-30",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 190,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-31",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 193,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-32",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 208,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-33",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 211,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-34",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 225,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-35",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 228,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-36",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 242,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-37",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 245,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-38",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 260,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-39",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 263,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-40",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 277,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-41",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 280,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-42",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 294,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-43",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 297,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-44",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 312,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-45",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 315,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-46",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 329,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-47",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 332,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-48",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 346,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-49",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 349,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-50",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 363,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-51",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 366,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-52",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 381,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-53",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 384,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-54",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 398,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-55",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 401,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-56",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 415,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-57",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 418,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-58",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 433,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-59",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 436,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-60",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 450,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-61",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 453,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-62",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 467,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-63",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 470,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-64",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 485,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-65",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 488,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-66",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 502,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-67",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 505,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-68",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 519,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-69",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 522,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-70",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 537,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-71",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 540,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-72",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 554,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-73",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 557,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-74",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 571,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-75",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 574,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-76",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 588,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-77",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 591,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-78",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 606,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-79",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 609,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-80",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 623,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-81",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 626,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-82",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 640,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-83",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 643,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-84",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 658,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-85",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 661,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-86",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 675,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-87",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 678,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-88",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 692,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-89",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 695,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-90",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 710,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-91",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 713,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-92",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 727,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-93",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 730,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-94",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 744,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-95",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 747,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-96",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 762,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-97",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 765,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-98",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 779,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-99",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 782,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-100",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 796,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-101",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 799,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-102",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 813,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-103",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 816,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-104",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 831,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-105",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 834,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-106",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 848,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-107",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 851,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-108",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 865,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-109",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 868,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-110",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 883,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-111",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 886,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-112",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 900,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-113",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 903,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-114",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 917,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-115",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 920,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-116",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 935,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-117",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 938,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-118",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 952,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-119",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 955,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-120",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 969,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-121",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 972,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-122",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 987,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-123",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 990,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-124",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1004,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-125",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1007,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-126",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1021,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-127",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1024,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-128",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1038,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-129",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1041,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-130",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1056,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-131",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1059,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-132",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1073,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-133",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1076,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-134",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1090,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-135",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1093,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-136",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1108,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-137",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1111,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-138",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1125,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-139",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1128,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-140",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1142,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-141",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1145,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-142",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1160,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-143",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1163,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-144",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1177,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-145",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1180,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-146",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1194,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-147",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1197,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-148",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1212,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-149",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1215,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-150",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1229,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-151",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1232,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-152",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1246,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-153",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1249,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-154",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1263,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-155",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1266,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-156",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1281,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-157",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1284,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-158",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1298,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-159",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1301,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-160",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1315,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-161",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1318,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-162",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1333,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-163",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1336,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-164",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1350,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-165",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1353,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-166",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1367,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-167",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1370,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-168",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1385,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-169",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1388,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-170",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1402,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-171",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1405,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-172",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1419,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-173",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1422,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-174",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1437,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-175",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1440,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-176",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1454,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-177",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1457,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-178",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1471,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-179",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1474,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-180",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1488,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-181",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1491,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-182",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1506,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-183",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1509,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-184",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1523,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-185",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1526,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-186",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1540,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-187",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1543,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-188",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1558,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-189",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1561,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-190",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1575,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-191",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1578,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-192",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1592,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-193",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1595,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-194",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1610,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-195",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1613,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-196",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1627,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-197",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1630,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-198",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1644,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-199",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1647,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-200",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1662,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-201",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1665,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-202",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1679,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-203",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1682,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-204",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1696,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-205",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1699,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-206",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1713,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-207",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1716,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-208",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1731,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-209",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1734,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-210",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1748,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-211",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1751,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-212",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1765,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-213",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1768,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-214",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1783,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-215",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1786,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-216",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1800,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-217",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1803,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-218",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1817,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-219",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1820,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-220",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1835,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-221",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1838,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-222",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1852,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-223",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1855,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-0-opacity-224",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1869,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-0-opacity-225",
+              "targets": [
+                "beat-0"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1872,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-1-opacity-226",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1887,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-1-opacity-227",
+              "targets": [
+                "beat-1"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1890,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-2-opacity-228",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1904,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-2-opacity-229",
+              "targets": [
+                "beat-2"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1907,
+              "durationFrames": 10
+            },
+            {
+              "clipId": "beat-3-opacity-230",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 0.18,
+              "to": 1,
+              "startFrame": 1921,
+              "durationFrames": 2
+            },
+            {
+              "clipId": "beat-3-opacity-231",
+              "targets": [
+                "beat-3"
+              ],
+              "property": "opacity",
+              "from": 1,
+              "to": 0.18,
+              "startFrame": 1924,
+              "durationFrames": 10
             }
           ]
         }
@@ -15622,7 +18086,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "stale",
       "ch": "the problem",
-      "dur": 2.8,
+      "dur": 2.9,
       "stage": "none",
       "look": "all",
       "move": "cut",
@@ -15636,7 +18100,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "invent",
       "ch": "the problem",
-      "dur": 2.7,
+      "dur": 2.8667,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15650,7 +18114,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "halluc",
       "ch": "the problem",
-      "dur": 3.1667,
+      "dur": 2.9,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15664,7 +18128,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "nexttoken",
       "ch": "the problem",
-      "dur": 3.1,
+      "dur": 2.8667,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15678,7 +18142,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "lookup",
       "ch": "the fix",
-      "dur": 2.5667,
+      "dur": 2.3,
       "stage": "none",
       "look": "all",
       "move": "cut",
@@ -15692,7 +18156,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "title",
       "ch": "the fix",
-      "dur": 2.7,
+      "dur": 2.9,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15706,7 +18170,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "tear",
       "ch": "the pipeline",
-      "dur": 2.6,
+      "dur": 2.3,
       "stage": "none",
       "look": "all",
       "move": "cut",
@@ -15720,7 +18184,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "overlap",
       "ch": "the pipeline",
-      "dur": 3.7,
+      "dur": 3.4667,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15734,7 +18198,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "sizes",
       "ch": "the pipeline",
-      "dur": 3.9,
+      "dur": 4.0333,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15748,7 +18212,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "vectors",
       "ch": "the pipeline",
-      "dur": 3.6,
+      "dur": 3.4667,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15762,7 +18226,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "meaning",
       "ch": "the pipeline",
-      "dur": 3.8333,
+      "dur": 3.4667,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15776,7 +18240,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "query",
       "ch": "the pipeline",
-      "dur": 2.8,
+      "dur": 2.8667,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15790,7 +18254,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "topk",
       "ch": "the pipeline",
-      "dur": 3.7667,
+      "dur": 3.4667,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15804,7 +18268,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "stuff",
       "ch": "the answer",
-      "dur": 2.8667,
+      "dur": 2.9,
       "stage": "none",
       "look": "all",
       "move": "cut",
@@ -15832,7 +18296,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "shift",
       "ch": "the answer",
-      "dur": 2.6667,
+      "dur": 2.9,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15846,7 +18310,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "grounded",
       "ch": "the answer",
-      "dur": 2.8333,
+      "dur": 2.8667,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15860,7 +18324,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "wrong",
       "ch": "the catch",
-      "dur": 3.3667,
+      "dur": 3.4667,
       "stage": "none",
       "look": "all",
       "move": "cut",
@@ -15874,7 +18338,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "garbage",
       "ch": "the catch",
-      "dur": 3.6333,
+      "dur": 3.4667,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15888,7 +18352,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "recap",
       "ch": "the catch",
-      "dur": 2.5333,
+      "dur": 2.3,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15902,7 +18366,7 @@ export const ragExplainerFilm: Film = {
     {
       "id": "end",
       "ch": "the catch",
-      "dur": 4.4333,
+      "dur": 4.9,
       "stage": "none",
       "look": "all",
       "move": "pan",
@@ -15918,7 +18382,12 @@ export const ragExplainerFilm: Film = {
     "src": "videos/rag-explainer/voiceover.wav",
     "volume": 1,
     "speed": 1,
-    "durationSec": 65.8667
+    "durationSec": 64.9
   },
-  "subtitles": false
+  "subtitles": false,
+  "music": {
+    "src": "videos/rag-explainer/beat.wav",
+    "volume": 0.25,
+    "duckUnderVoiceover": false
+  }
 };

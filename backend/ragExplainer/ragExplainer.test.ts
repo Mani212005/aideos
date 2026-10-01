@@ -17,6 +17,8 @@ import type { NarrationTiming } from "../sceneKit";
 import { BEATS } from "./beats";
 import { alignWords } from "./produceVoiceover";
 import { Canvas } from "./kit";
+import { BEAT_BPM, MAX_TEMPO_FACTOR, MIN_TEMPO_FACTOR, beatSeconds, fitSpine, planBeatGrid, type RawSegment } from "./beatGrid";
+import type { VoiceoverTiming } from "./produceVoiceover";
 
 const ROOT = path.resolve(__dirname, "../..");
 const PACKAGE_DIR = path.join(ROOT, "videos/rag-explainer");
@@ -117,4 +119,47 @@ test("rag-explainer: film.json, its generated shadow and the SVG source map agre
   assert.ok(match, "the shadow module carries the film as a JSON literal");
   assert.deepEqual(JSON.parse(match![1]), film);
   assert.equal(fs.readFileSync(generatedModulePath(), "utf8"), renderModule(collectSvgSources()));
+});
+
+test("beat grid: every line starts on a whole beat and is stretched within the allowed tempo range", () => {
+  const plans = planBeatGrid([{ speechSec: 2.3 }, { speechSec: 3.4 }, { speechSec: 2.9 }, { speechSec: 4.1 }]);
+  let beat = 0;
+  for (const plan of plans) {
+    assert.equal(plan.startBeat, beat, "a line starts on the beat after the previous slot");
+    assert.ok(plan.tempo >= MIN_TEMPO_FACTOR - 1e-9 && plan.tempo <= MAX_TEMPO_FACTOR + 1e-9, `tempo ${plan.tempo} stays gentle`);
+    assert.ok(Math.abs(plan.startSec - plan.startBeat * beatSeconds()) < 1e-9);
+    assert.ok(plan.speechSec + 0.2 <= plan.beats * beatSeconds() + 1e-6, "the stretched speech fits inside its slot");
+    beat += plan.beats;
+  }
+});
+
+test("beat grid: a line that cannot hit a whole-beat slot in range is padded with silence, never over-slowed", () => {
+  const plans = planBeatGrid([{ speechSec: 0.3 }], 60);
+  assert.ok(plans[0].tempo >= MIN_TEMPO_FACTOR - 1e-9);
+  assert.ok(plans[0].speechSec + 0.2 <= plans[0].beats * beatSeconds(60) + 1e-6);
+});
+
+test("beat grid: fitSpine puts the first sound on the beat and scales the words around it", () => {
+  const raw: VoiceoverTiming = {
+    totalDurationSec: 5,
+    segments: [{ shotId: "a", text: "one two", startSec: 2, durationSec: 3, words: [{ word: "one", startSec: 2.1, endSec: 2.5 }, { word: "two", startSec: 2.6, endSec: 3.0 }] }],
+  };
+  const segments: RawSegment[] = [{ ...raw.segments[0], onsetSec: 0.1, endSec: 1.0 }];
+  const plans = planBeatGrid([{ speechSec: 0.9 }]);
+  const fitted = fitSpine(raw, segments, plans, 2);
+  assert.equal(fitted.segments[0].startSec, 0);
+  assert.equal(fitted.segments[0].words[0].startSec, 0, "the first word lands on the downbeat");
+  assert.ok(Math.abs(fitted.segments[0].words[1].startSec - 0.5 / plans[0].tempo) < 0.002);
+  assert.equal(fitted.totalDurationSec, Number((plans[0].beats * beatSeconds() + 2).toFixed(3)));
+});
+
+test("rag-explainer: every shipped line starts on a beat of the track and the film carries the beat stem", () => {
+  const spine = JSON.parse(fs.readFileSync(path.join(PACKAGE_DIR, "shot-spine.json"), "utf8")) as VoiceoverTiming;
+  const beat = beatSeconds(BEAT_BPM);
+  for (const segment of spine.segments) {
+    const beats = segment.startSec / beat;
+    assert.ok(Math.abs(beats - Math.round(beats)) < 0.01, `${segment.shotId} starts ${beats.toFixed(3)} beats in`);
+  }
+  const film = parseFilm(JSON.parse(fs.readFileSync(path.join(PACKAGE_DIR, "film.json"), "utf8")));
+  assert.equal(film.music?.src, "videos/rag-explainer/beat.wav");
 });

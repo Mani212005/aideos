@@ -16,6 +16,7 @@ import { loadSceneAssets } from "../scene/loadSceneAssets";
 import { buildSvgSources } from "../scene/buildSvgSources";
 import { FPS, SCENE_SIZE, shotFrames, writeSvgAssets } from "../sceneKit";
 import { BEATS, CHAPTERS } from "./beats";
+import { BEAT_BPM, beatSeconds } from "./beatGrid";
 import { readVoiceoverTiming, type VoiceoverTiming } from "./produceVoiceover";
 import { Canvas } from "./kit";
 import { backdropSvg, buildHud } from "./scenes/common";
@@ -50,10 +51,12 @@ export function buildPackageScene(): { scene: Scene; timing: VoiceoverTiming; ar
   const outro = buildOutro(timing, durationFrames);
   const hud = new Canvas("hud", timing, durationFrames);
   const ctxLabels = ["0214", "0508", "0831", "1204"];
+  const beatFrames: number[] = [];
+  for (let b = 0; Math.round(b * beatSeconds() * FPS) < durationFrames - 14; b++) beatFrames.push(Math.round(b * beatSeconds() * FPS));
   buildHud(hud, [
     { label: "CONTEXT 0000 / 8192", frame: 0 },
     ...stuffFrames(timing).map((frame, j) => ({ label: `CONTEXT ${ctxLabels[j]} / 8192`, frame: frame + 8 })),
-  ]);
+  ], { bpm: BEAT_BPM, beatFrames });
 
   const layers: Array<{ id: string; canvas: Canvas; layer: number }> = [
     { id: "liar", canvas: liar, layer: 2 },
@@ -150,6 +153,9 @@ export function buildFilm(): { film: Film; scene: Scene; artwork: Record<string,
     shots: buildShots(spans),
     subtitles: false,
     voiceover: { src: "videos/rag-explainer/voiceover.wav", volume: 1, durationSec: Number((durationFrames / FPS).toFixed(4)) },
+    // The stem is mastered hot and ducked line by line under the voice (beatTrack.py). Video.tsx would duck a
+    // whole shot at a time and plays the track at this volume otherwise, so 0.25 sets the bed ~10 dB under speech.
+    music: { src: "videos/rag-explainer/beat.wav", volume: 0.25, duckUnderVoiceover: false },
   });
   return { film, scene, artwork };
 }

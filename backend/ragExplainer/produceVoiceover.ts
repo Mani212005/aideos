@@ -1,6 +1,6 @@
 /**
  * File Description: Audio-first narration step for the film "RAG, in four steps".
- * Synthesizes every beat with the project's own narration pipeline (Kokoro), masters the take,
+ * Synthesizes every beat with the project's own narration pipeline (Kokoro), masters the take (the raw take),
  * then replaces the synthesizer's estimated word offsets with real ones measured by the locally
  * cached Whisper model, aligned back onto the script's own words. The result is shot-spine.json:
  * which shot each line belongs to, where it starts, and the frame-accurate moment of every word.
@@ -208,8 +208,10 @@ export async function produceVoiceover(): Promise<VoiceoverTiming> {
       };
     }),
   };
-  fs.writeFileSync(timingPath(), `${JSON.stringify(timing, null, 2)}\n`, "utf8");
-  console.log(`[rag-explainer] voiceover.wav ${timing.totalDurationSec.toFixed(2)}s, ${timing.segments.length} shots, ${result.ttsBackend}.`);
+  // The take stays raw here: produceBeat.ts fits it to the tempo grid and writes the shipped spine and voiceover.
+  fs.writeFileSync(path.join(outDir, "shot-spine.raw.json"), `${JSON.stringify(timing, null, 2)}\n`, "utf8");
+  fs.copyFileSync(result.voiceoverPath, path.join(outDir, "voiceover.raw.wav"));
+  console.log(`[rag-explainer] raw take ${timing.totalDurationSec.toFixed(2)}s, ${timing.segments.length} shots, ${result.ttsBackend}.`);
   return timing;
 }
 

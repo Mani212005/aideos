@@ -50,12 +50,31 @@ function readoutSeries(c: Canvas, prefix: string, x: number, y: number, values: 
  * The persistent HUD: corner brackets, a title tag and the live context readout. It stays on screen
  * for the whole film in muted tones. The chapter rail and progress are the film's own (Film.tsx).
  */
-export function buildHud(c: Canvas, contextSteps: Array<{ label: string; frame: number }>): void {
+export function buildHud(c: Canvas, contextSteps: Array<{ label: string; frame: number }>, tempo: { bpm: number; beatFrames: number[] }): void {
   c.add(corners());
   c.add(text("RAG / RETRIEVAL-AUGMENTED GENERATION", { x: 84, y: 92, size: 20, face: "mono", weight: 500, fill: PAL.muted, tracking: 0.08 }));
   readoutSeries(c, "ctx", W - 84, 92, contextSteps);
   c.add(text("T 0.7  TOP-P 0.9", { x: W - 84, y: 122, size: 20, face: "mono", weight: 500, fill: PAL.muted, anchor: "end", tracking: 0.08 }));
+  beatMeter(c, 84, 122, tempo);
+}
 
+/**
+ * A four-cell bar counter beside a BPM readout: one cell lights on each beat of the track (the downbeat in
+ * accent), so the viewer can see the film land on the beat the audio plays.
+ */
+function beatMeter(c: Canvas, x: number, y: number, tempo: { bpm: number; beatFrames: number[] }): void {
+  c.add(text(`${tempo.bpm} BPM`, { x, y, size: 20, face: "mono", weight: 500, fill: PAL.muted, tracking: 0.08 }));
+  const ids = [0, 1, 2, 3].map((i) => {
+    const id = `beat-${i}`;
+    c.add(el("rect", { id, x: x + 140 + i * 34, y: y - 15, width: 26, height: 10, fill: i === 0 ? PAL.accent : PAL.ink }));
+    c.init(id, { opacity: 0.18 });
+    return id;
+  });
+  tempo.beatFrames.forEach((frame, b) => {
+    const id = ids[b % 4];
+    c.to(id, "opacity", 1, frame, frame + 2);
+    c.to(id, "opacity", 0.18, frame + 3, frame + 13);
+  });
 }
 
 /** One row of the next-token panel. */
