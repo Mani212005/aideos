@@ -284,8 +284,6 @@ function checkHonestData(film: Film, findings: DesignFinding[]): void {
   }
 }
 
-// Runs every standard-layer rule over a parsed film manifest.
-
 // Checks the scene camera keyframes for valid speed limits and motion.
 function checkCamera(scene: Scene, findings: DesignFinding[]): void {
   if (!scene.camera || !scene.camera.keyframes || scene.camera.keyframes.length === 0) return;
@@ -325,6 +323,7 @@ function checkCamera(scene: Scene, findings: DesignFinding[]): void {
   }
 }
 
+// Runs every standard-layer rule over a parsed film manifest.
 export function checkFilmDesign(raw: unknown): DesignReport {
   const findings: DesignFinding[] = [];
   const filmId = (raw as { id?: string })?.id ?? "unknown";

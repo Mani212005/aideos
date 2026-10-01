@@ -1,7 +1,7 @@
 /**
  * File Description: Pure TypeScript data contract for the Aideos 2D Scene Graph.
  * Defines serializable scene hierarchy (background, props, actors), tracks, keyframes,
- * rotating subgroups (D1), custom SVG animation timelines, actions, model sheets (D2),
+ * rotating subgroups (D1), custom SVG animation timelines, camera tracks, actions, model sheets (D2),
  * and scene root. (Axiom 1: pure data).
  */
 

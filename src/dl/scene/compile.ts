@@ -3,7 +3,7 @@
  * Compiles high-level scenes, actions, and tracks into dense, verified per-frame execution data.
  * Implements joint-mask blending, Catmull-Rom spline interpolation, rest-hold gap anchoring (C-14),
  * hierarchical kinematic transform composition (C-6), environment sub-rotation (D1), custom
- * element-level SVG animation timelines, and per-frame derived layering (D5).
+ * element-level SVG animation timelines, per-frame derived layering (D5), and camera track compilation.
  */
 
 import type { Scene, EnvironmentAsset, SchemaVersion } from "./types";
@@ -493,6 +493,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
     const kfs = scene.camera.keyframes;
     const sortedKfs = [...kfs].sort((a, b) => a.frame - b.frame);
     
+    // Builds Catmull-Rom spline knots from keyframes using a given property extractor.
     const buildSpline = (extractor: (k: typeof sortedKfs[0]) => number) => {
       const knots = sortedKfs.map(k => ({
         t: totalFrames > 1 ? k.frame / (totalFrames - 1) : 0,

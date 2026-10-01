@@ -129,8 +129,7 @@ export class Timeline {
     return this;
   }
 
-  /** Hands back the finished timeline for attaching to its asset. */
-
+  // Appends a camera motion clip to the timeline with continuity validation.
   camera(spec: CameraClipSpec): this {
     if (spec.end <= spec.start) {
       throw new Error(`[${this.timelineId}/${spec.id}] end ${spec.end} is not after start ${spec.start}.`);
@@ -178,6 +177,7 @@ export class Timeline {
     return this;
   }
 
+  // Builds and returns the compiled camera track keyframes sorted by frame.
   buildCamera(): CameraTrack | undefined {
     if (this.cameraKeyframes.length === 0) return undefined;
     
@@ -195,6 +195,7 @@ export class Timeline {
     return { keyframes: sorted };
   }
 
+  // Hands back the finished timeline for attaching to its asset.
   build() {
     return { timelineId: this.timelineId, clips: this.clips };
   }

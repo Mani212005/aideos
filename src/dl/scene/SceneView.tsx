@@ -1,6 +1,6 @@
 /**
  * File Description: Remotion and React DOM Renderer for Compiled Aideos Scenes (Phase 3/13).
- * Renders sorted scene entities in layer order: environment assets are drawn from their own parsed
+ * Renders sorted scene entities in layer order with camera transformation applied: environment assets are drawn from their own parsed
  * SVG documents with full transform, per-instance id namespacing and compiled element-level custom
  * animation applied; actors are drawn as articulated vector rigs with hierarchical skeletal
  * transforms and rotating subgroups (D1). Pure React with no Node imports, so the same component
