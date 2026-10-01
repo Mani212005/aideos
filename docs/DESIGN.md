@@ -19,7 +19,7 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 1. **Single Canvas Model**: 2D/3D infinite spatial canvas with continuous camera panning, zoom-in payoffs, and anchor tracking across two responsive aspect ratios (`Long` 1920x1080 and `Reel` 1080x1920).
 2. **Audio-First Pipeline**: Audio narration duration locks the video timeline length, with kinetic word-level subtitles powered by `@chenglou/pretext`.
 3. **Dual Design System Separation**:
-   - **Rendered Video Design System (`src/dl/README.md`)**: The output video is strictly governed by the 6-value theme palette (`#0A0A0B` canvas, `#F5F5F5` primary text, `#8A8A8E` muted text, `#635BFF` accent), Geist + JetBrains Mono typography, and `ease-out-expo` motion.
+   - **Rendered Video Design System (`src/dl/README.md`)**: The output video is strictly governed by a per-film declared palette with a measured contrast floor, Geist + JetBrains Mono typography, and `ease-out-expo` motion.
    - **Editor Chrome Neobrutalism Design System (`editor/src/styles/tokens.css`)**: The editor application is a pure light-themed interface with bone paper tones (`--nb-paper`, `--nb-surface`, `--nb-subtle`), 2-4px hard borders, 0px border radius, and hard offset shadows. The only dark surface is `--nb-matte`, reserved for the video canvas matte behind the preview player.
 4. **Pure Data Non-Linear Layer Model**: Timeline operations (move, trim, split, ripple, layer mute/hide/lock) are pure functions over `LayeredFilm` that round-trip losslessly to `Film` JSON documents.
 
