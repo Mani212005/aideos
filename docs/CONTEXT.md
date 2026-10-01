@@ -429,14 +429,35 @@ An individual vector path inside a limb:
 * `validateScene.ts`: Phase 1 semantic and physical integrity validator (`validateScene`) including Rule 20 timeline consistency.
 * `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`, `collectSceneAssetElementIds`).
 
-### `backend/sceneKit/` (Scene Film Authoring Kit)
+### `backend/sceneKit/` (Scene-Film Authoring & Stage Kit)
 * `stage.ts`: Scene geometry constants (`SCENE_SIZE`, `SAFE_SQUARE`, `FORMAT_WINDOWS`, `FPS`).
-* `timeline.ts`: Pure `Timeline` authoring builder enforcing value holding, origin uniqueness, and camera track continuity (`Timeline.camera`, `Timeline.buildCamera`).
-* `timing.ts`: Word-level narration cue mapping (`createCues`, `shotFrames`).
-* `assets.ts`: Validated SVG asset generator (`writeSvgAssets`).
+* `Canvas` (`canvas.ts`): Authoring canvas combining static SVG markup generation and continuity-checked declarative animation clips; provides `group`, `add`, `svg`, `lifetime`, `init`, `to`, `fadeIn`, `fadeOut`, `cutOn`, `cutOff`, `draw`, `appear`, `typeReveal`, `typeCaret`, and `lyric` for kinetic typography locked to spoken words.
+* `Timeline` (`timeline.ts`): Continuity-checked declarative timeline builder enforcing monotonic clip transitions, single-origin transforms, and camera track continuity (`Timeline.camera`, `Timeline.buildCamera`).
+* `shotFrames(timing)`, `createCues(timing)` (`timing.ts`): Calculates cumulative shot frame spans and creates audio-first word-level cue resolution functions from narration timing.
+* `writeSvgAssets(dir, assets)` (`assets.ts`): Validates and persists SVG artwork dictionaries to disk.
+* `PAL`, `DEFAULT_ACCENT`, `HAIR`, `HAIR2`, `W`, `H`, `OY`, `FONT`, `frameOf(sec)`, `rng(seed)`, `n(v)`, `attrs(o)`, `el(tag, o, inner)`, `g(id, x, y, inner, extra)`, `text(content, o)`, `stroke(color, width, extra)` (`svg.ts`): SVG markup generators, deterministic random number generator, standard palette tokens, and layout constants.
+* `measureText(text, size, face, weight, trackingEm)`, `tokenWidth(token, size, face, weight, trackingEm)`, `advanceEm(ch, face, weight)`, `MONO_ADVANCE` (`typeMetrics.ts`): Font metric measurement with kerning support backed by `wordWidths.json`.
+* `wrapBalanced(marked, options)` (`wrap.ts`): Balanced line wrapping algorithm for display type.
+* `corners(inset, bottom, len, color)`, `backdropSvg(options)`, `hudTag(label, x, y, anchor)`, `readoutSeries(canvas, prefix, x, y, values)` (`chrome.ts`): Frame furniture and chrome elements for scene films.
+* `produceVoiceover(config)`, `readVoiceoverTiming(slug, spineFile, rootDir)` (`voiceover.ts`): Audio-first narration synthesis, mastering, Whisper word alignment, and shot-spine persistence.
+* `previewFrames(source, frames, rootDir)`, `framesFromArgs(args)` (`preview.ts`): Fast headless Chrome preview frames rasterizer.
+* `reviewFilmFrames(slug, frames, scale)` (`reviewFrames.ts`): Renders Remotion composition review stills for any scene film.
+* `midShotPicks(spans, composition)`, `renderReviewStills(picks, outDir, scale)` (`reviewStills.ts`): Renders review still picks via Remotion bundler and renderer.
+* `displayWords(lines, extra)`, `unmeasuredWords(words, table)`, `measureWords(words, file)` (`measureWords.ts`): Measures unmeasured words in headless Chrome and merges them into `wordWidths.json`.
 
-### `backend/designCheck/` (Design Standard Gate)
-* `checkFilmDesign(raw)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, static artwork, locked palette, typography, motion continuity, audio lock, honest data, and speed-capped continuous camera moves (max 20% frame width per second, no zero-duration jumps).
+### `backend/designCheck/` (Deterministic Design Standard Checker)
+* `checkFilmDesign(raw)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, scene engine validity, static self-contained artwork, locked palette, typography, motion continuity, single transform origin, picture locked to narration, honest data / grounded numbers, and speed-capped continuous camera moves (max 20% frame width per second, no zero-duration jumps).
+* `checkFilmDesignById(filmId)` (`designCheck.ts`): Loads a film by package slug and executes design validation.
+* `formatDesignReport(report)` (`designCheck.ts`): Formats validation findings and recommendations into a terminal report.
+* `offPaletteColours(svgText, accent)` (`designCheck.ts`): Finds colour literals in SVG markup that violate the locked palette and chosen accent.
+
+### `backend/designSpec/` (Bespoke Film Design Specification & Compiler)
+* `renderDesignBrief(film)`, `writeDesignBrief(filmId)` (`brief.ts`): Generates designer briefs (`design/BRIEF.md`) containing film contracts, shot narration, and asset specifications.
+* `compileDesign(film, spec, options)` (`compile.ts`): Compiles a `DesignSpec` and narration timing into a validated scene film.
+* `buildDesign(filmId, source)` (`build.ts`): Compiles design specifications, executes design checks, and writes passing films.
+* `resolveCue(cue, cues)` (`cues.ts`): Resolves cue strings and frame offsets against narration timing cues.
+* `designFilm(filmId, options)` (`designer.ts`): Orchestrates agent-based and server-model film design workflows with validation retry loops.
+* `requestShotMotion(filmId, request)` (`motionRequests.ts`): Manages shot-level motion design tasks and history snapshots.
 
 ### `backend/transcribe.ts` (Audio & Video Transcription)
 * `transcribe(src, options, deps)`: Transcribes audio or video media into word-level timings (`TranscribedWord[]`) with confidence scores, using Deepgram with local Whisper CLI fallback.
