@@ -357,7 +357,8 @@ export class Canvas {
         const land = Math.max(0, frameOf(word.startSec) - (o.lead0 ?? 1));
         this.add(text(displayShape(tok), { id, x, y: baseline, size, face, weight, fill: isAccent ? accent : fill, tracking }));
         ids.push(id);
-        placed.push({ id, text: displayShape(tok), x, y: baseline, w: widths[i], size, startFrame: land, endFrame: frameOf(word.endSec) });
+        const endWord = segment.words[wordIndex + wordsCovered - 1];
+        placed.push({ id, text: displayShape(tok), x, y: baseline, w: widths[i], size, startFrame: land, endFrame: frameOf(endWord.endSec) });
 
         const entry = o.rowEntry?.[r] ?? o.entry ?? "rise";
         entries.set(id, entry);
