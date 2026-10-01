@@ -50,7 +50,7 @@ export async function renderReviewStills(scale = 0.5): Promise<string> {
   return renderStills(picks(), OUT_DIR, scale);
 }
 
-if (require.main === module) {
+if (typeof require !== "undefined" && require.main === module) {
   const scaleArg = Number.parseFloat(process.argv[2] ?? "0.5");
   renderReviewStills(Number.isFinite(scaleArg) ? scaleArg : 0.5)
     .then((dir) => console.log(`[still-talking] review stills in ${dir}`))
