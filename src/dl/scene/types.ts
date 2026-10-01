@@ -91,6 +91,18 @@ export interface ModelSheet {
   defaultFacing: "left" | "right";
 }
 
+export interface CameraKeyframe {
+  frame: number;
+  center: Vec2;
+  zoom: number;
+  rotation?: number;
+  easing?: string;
+}
+
+export interface CameraTrack {
+  keyframes: CameraKeyframe[];
+}
+
 export interface Scene {
   schemaVersion: SchemaVersion;
   sceneId: string;
@@ -100,6 +112,7 @@ export interface Scene {
   audioSource: string;
   audioDurationMs: number;
   sceneSize: { w: number; h: number }; // virtual scene coordinate space (e.g. 1920x1080)
+  camera?: CameraTrack;
   background: EnvironmentAsset;
   props: EnvironmentAsset[];
   actors: ActorInstance[]; // length <= 15

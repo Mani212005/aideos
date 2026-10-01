@@ -245,6 +245,17 @@ export const SceneView: React.FC<SceneViewProps> = ({
     );
   };
 
+  let cameraTransform = "";
+  if (frame.camera) {
+    const sw = sceneSize?.w ?? width;
+    const sh = sceneSize?.h ?? height;
+    const cx = frame.camera.center.x;
+    const cy = frame.camera.center.y;
+    const z = frame.camera.zoom;
+    const r = frame.camera.rotation;
+    cameraTransform = `translate(${sw / 2}, ${sh / 2}) rotate(${r}) scale(${z}) translate(${-cx}, ${-cy})`;
+  }
+
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -259,10 +270,12 @@ export const SceneView: React.FC<SceneViewProps> = ({
       {/* Background canvas fill */}
       <rect width="100%" height="100%" fill={palette.canvas} />
 
-      {/* Render all entities strictly in ascending resolvedLayer order */}
-      {frame.entities.map((entity) =>
-        entity.kind === "actor" ? renderActor(entity) : renderEnvironmentAsset(entity),
-      )}
+      <g transform={cameraTransform || undefined}>
+        {/* Render all entities strictly in ascending resolvedLayer order */}
+        {frame.entities.map((entity) =>
+          entity.kind === "actor" ? renderActor(entity) : renderEnvironmentAsset(entity),
+        )}
+      </g>
     </svg>
   );
 };

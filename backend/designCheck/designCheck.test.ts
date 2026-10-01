@@ -100,3 +100,39 @@ test("DesignCheck: palette allows neutrals and the film accent, and flags other 
   assert.deepEqual(offPaletteColours(`<rect fill="#00C2A8"/>`), ["#00C2A8"]);
   assert.deepEqual(offPaletteColours(`<rect fill="#00C2A8"/>`, "#00C2A8"), []);
 });
+
+test("DesignCheck: camera moves must be present and speed-capped", () => {
+  const film = { ...JSON.parse(JSON.stringify(stillTalking())), id: "camera-test" };
+  
+  // Valid camera
+  film.scene.camera = {
+    keyframes: [
+      { frame: 0, center: { x: 500, y: 500 }, zoom: 1 },
+      { frame: 100, center: { x: 550, y: 500 }, zoom: 1.2 }
+    ]
+  };
+  const valid = checkFilmDesign(film);
+  assert.equal(valid.findings.find(f => f.rule === "camera"), undefined);
+
+  // No moves
+  film.scene.camera = {
+    keyframes: [
+      { frame: 0, center: { x: 500, y: 500 }, zoom: 1 },
+      { frame: 100, center: { x: 500, y: 500 }, zoom: 1 }
+    ]
+  };
+  const nomove = checkFilmDesign(film);
+  assert.ok(nomove.findings.some(f => f.rule === "camera" && f.message.includes("no moves")));
+
+  // Too fast
+  film.scene.camera = {
+    keyframes: [
+      { frame: 0, center: { x: 0, y: 0 }, zoom: 1 },
+      { frame: 30, center: { x: 1000, y: 0 }, zoom: 1 }
+    ]
+  };
+  // 1000 pixels in 30 frames = 1000 pixels in 1 second.
+  // 20% of 1920 = 384 pixels/second. So it should fail.
+  const fast = checkFilmDesign(film);
+  assert.ok(fast.findings.some(f => f.rule === "camera" && f.message.includes("speed limit")));
+});
