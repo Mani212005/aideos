@@ -1,3 +1,7 @@
+<!--
+File Description: Documentation and usage reference for the aideos review deterministic video checks and good-video rubric.
+-->
+
 # aideos review: deterministic checks on a rendered video
 
 `aideos review <slug|mp4>` measures a rendered video against the measurable half of the good-video
