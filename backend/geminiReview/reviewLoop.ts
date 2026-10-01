@@ -6,7 +6,8 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
+import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { reviewVideo, reviewPairwise } from "./geminiReview";
 import type {
   GeminiReviewReport,
@@ -55,8 +56,8 @@ export function resolveVideoOutputPath(slug: string, format: "long" | "reel" = "
   const candidates = [
     path.join(REPO_ROOT, "out", `${slug}-${format}.mp4`),
     path.join(REPO_ROOT, "out", `${slug}.mp4`),
-    path.join(REPO_ROOT, "videos", slug, `${format}.mp4`),
-    path.join(REPO_ROOT, "videos", slug, "out.mp4"),
+    path.join(resolvePackageDir(slug), `${format}.mp4`),
+    path.join(resolvePackageDir(slug), "out.mp4"),
     path.join(REPO_ROOT, "out", `${format}.mp4`),
   ];
 
@@ -73,65 +74,18 @@ export async function renderVideoForSlug(slug: string, format: "long" | "reel" =
   await fsp.mkdir(path.dirname(outPath), { recursive: true });
 
   const compId = format === "reel" ? "Reel" : "Long";
-  const cmd = `npx remotion render src/index.ts ${compId} ${outPath} --props='{"filmId":"${slug}"}' --gl=angle`;
+  const args = [
+    "remotion", "render", "src/index.ts", compId, outPath, `--props={"filmId":"${slug}"}`, "--gl=angle"
+  ];
 
-  execSync(cmd, { cwd: REPO_ROOT, stdio: "inherit" });
+  execFileSync("npx", args, { cwd: REPO_ROOT, stdio: "inherit" });
   if (!fs.existsSync(outPath)) {
     throw new Error(`Render failed to create output file at ${outPath}`);
   }
   return outPath;
 }
 
-// Applies prioritized feedback items to update the film configuration where possible.
-export async function applyFeedbackToFilm(slug: string, feedback: ReviewFeedbackItem[]): Promise<boolean> {
-  const filmPath = path.join(REPO_ROOT, "videos", slug, "film.json");
-  if (!fs.existsSync(filmPath)) return false;
 
-  try {
-    const raw = await fsp.readFile(filmPath, "utf8");
-    const film = JSON.parse(raw);
-    let modified = false;
-
-    for (const item of feedback) {
-      const text = `${item.issue} ${item.recommendation}`.toLowerCase();
-
-      // Ensure captions are enabled if feedback mentions missing bottom captions
-      if (text.includes("caption") && film.showCaptions !== true) {
-        film.showCaptions = true;
-        modified = true;
-      }
-
-      // Add gentle camera motion if camera is reported missing or static
-      if ((text.includes("camera") || text.includes("pan") || text.includes("zoom")) && Array.isArray(film.shots)) {
-        for (const shot of film.shots) {
-          if (!shot.move || shot.move === "none") {
-            shot.move = "slow-zoom-in";
-            modified = true;
-          }
-        }
-      }
-
-      // Adjust pacing if frames held too long
-      if ((text.includes("pacing") || text.includes("held too long") || text.includes("shorten")) && Array.isArray(film.shots)) {
-        for (const shot of film.shots) {
-          if (shot.dur && shot.dur > 15) {
-            shot.dur = Number((shot.dur * 0.85).toFixed(2));
-            modified = true;
-          }
-        }
-      }
-    }
-
-    if (modified) {
-      await fsp.writeFile(filmPath, JSON.stringify(film, null, 2), "utf8");
-      return true;
-    }
-  } catch (err) {
-    // Non-fatal; continue loop
-    return false;
-  }
-  return false;
-}
 
 // Orchestrates the multi-round render-review-refine loop until score >= 9.0 or maxRounds reached.
 export async function runReviewLoop(
@@ -144,7 +98,7 @@ export async function runReviewLoop(
   const onProgress = options?.onProgress || (() => {});
   const autoRefine = options?.autoRefine ?? true;
 
-  const videoDir = path.join(REPO_ROOT, "videos", slug);
+  const videoDir = resolvePackageDir(slug);
   const reviewDir = path.join(videoDir, "gemini-review");
   await fsp.mkdir(reviewDir, { recursive: true });
 
@@ -169,7 +123,7 @@ export async function runReviewLoop(
     if (options?.mockReviewer) {
       report = await options.mockReviewer(videoPath, round);
     } else {
-      report = await reviewVideo(videoPath, { onProgress });
+      report = await reviewVideo(videoPath, { onProgress, slug });
     }
 
     // Optional pairwise comparison against reference video

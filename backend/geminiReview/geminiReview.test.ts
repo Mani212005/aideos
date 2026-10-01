@@ -9,6 +9,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import {
   RUBRIC_CRITERIA,
   validateCriterionTimestamps,
@@ -413,7 +414,7 @@ test("reviewLoop: applyFeedbackToFilm modifies film.json configuration", async (
 test("reviewLoop: runs multi-round loop and achieves target score 9.0+", async () => {
   const tmpVideoDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-loop-test-"));
   const testSlug = "mock-loop-slug";
-  const repoVideos = path.join(__dirname, "../../videos", testSlug);
+  const repoVideos = resolvePackageDir(testSlug);
   fs.mkdirSync(repoVideos, { recursive: true });
 
   let roundCounter = 0;
@@ -530,7 +531,7 @@ test("geminiReview: grounds measurable gates in deterministic facts", async () =
 test("reviewLoop: requires winning or tying pairwise check when reference video is configured", async () => {
   const tmpVideoDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-loop-ref-test-"));
   const testSlug = "mock-ref-slug";
-  const repoVideos = path.join(__dirname, "../../videos", testSlug);
+  const repoVideos = resolvePackageDir(testSlug);
   fs.mkdirSync(repoVideos, { recursive: true });
 
   const candidateVideo = path.join(tmpVideoDir, "candidate.mp4");

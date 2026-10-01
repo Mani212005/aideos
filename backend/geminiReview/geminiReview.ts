@@ -7,6 +7,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { GeminiVideoClient, type GeminiClientOptions } from "./geminiClient";
 import { extractDeterministicFacts } from "./facts";
 import {
@@ -29,6 +30,7 @@ export interface SingleReviewOptions {
   filmPath?: string;
   skipFacts?: boolean;
   facts?: DeterministicVideoFacts;
+  slug?: string;
   onProgress?: (message: string) => void;
 }
 
@@ -46,13 +48,11 @@ export function computeFileHash(filePath: string): string {
 
 // Strips markdown code block fences and extracts clean JSON text.
 export function cleanModelJsonResponse(rawText: string): string {
-  let cleaned = rawText.trim();
-  if (cleaned.startsWith("```json")) {
-    cleaned = cleaned.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-  } else if (cleaned.startsWith("```")) {
-    cleaned = cleaned.replace(/^```\s*/, "").replace(/\s*```$/, "");
+  const match = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (match && match[1]) {
+    return match[1].trim();
   }
-  return cleaned.trim();
+  return rawText.trim();
 }
 
 // Reviews a single rendered video against the 12-criterion good-video rubric.
@@ -92,11 +92,17 @@ export async function reviewVideo(
 
   // Check for pre-existing deterministic review report (e.g. from fm/aideos-review-deterministic)
   let deterministicReviewContext: string | undefined;
-  const parentDir = path.dirname(resolvedPath);
-  const possiblePaths = [
-    path.join(parentDir, "review.json"),
-    path.join(parentDir, "..", "review.json"),
-  ];
+  const possiblePaths = [];
+  if (options?.slug) {
+    possiblePaths.push(path.join(resolvePackageDir(options.slug), "review.json"));
+  } else {
+    const parentDir = path.dirname(resolvedPath);
+    possiblePaths.push(
+      path.join(parentDir, "review.json"),
+      path.join(parentDir, "..", "review.json")
+    );
+  }
+
   for (const p of possiblePaths) {
     if (fs.existsSync(p)) {
       try {

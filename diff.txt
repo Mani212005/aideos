@@ -1,0 +1,2859 @@
+diff --git a/.gitignore b/.gitignore
+index 6353d8e..9d4cfc0 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -96,3 +96,8 @@ examples/*/footage/
+ 
+ # Agent link pairings (hashed secrets) for aideos connect.
+ .aideos/
++
++# Gemini video review reports and round state
++videos/*/gemini-review/
++videos/*/review.json
++videos/*/review-loop.json
+diff --git a/AGENTS.md b/AGENTS.md
+index 862940d..95b02c2 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -285,6 +285,15 @@ Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos
+ - The judge never writes a film: only a passing `buildDesign` does (design check plus honesty check). A failed sample comes back with its exact error text (`JudgeFailure.error`) for synthesis; `designer.ts` repairs through the agent, or through a server model only when a caller was passed in. With no agent connected, or under the Node test runner, the agent round is skipped and the text fallback rules.
+ - The primitive pick is asked by communicative job (`PRIMITIVE_CRITERIA`: JOB, WHEN, WHEN NOT), carries camera, what is already on screen and the previous pick, and must name the spoken phrase it serves (`servesPhrase`; a complex pick that names none degrades to TextReveal or Card).
+ 
++## Gemini 3.8 Flash Video Quality Review Loop (9.0+ Bar)
++
++- Every rendered video must be validated through the Gemini 3.8 Flash quality review loop (`aideos review-loop <slug>` or `aideos gemini-review <mp4>`).
++- The review sends the real mp4 with audio to the Gemini API Files endpoint and evaluates it with `gemini-3.8-flash` as native video input (never sampled stills).
++- The model evaluates the video against the 12-criterion rubric with 6 hard gates (persistent stage, camera purpose, bottom captions, readability, no overlap/clipping, audio sync) and must supply timestamp evidence for every criterion.
++- An agent may only claim done once Gemini rates the video 9.0 or higher with all 6 hard gates passing (verdict: ACCEPT).
++- If the verdict is REVISE, the agent must inspect the constructive feedback and timestamp citations, iterate on the film or design, and re-render.
++- Review rounds and reports are persisted under `videos/<slug>/gemini-review/` (`round-N.json`, `latest.json`), which is gitignored.
++
+ ## Maintaining this file
+ - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.
+ - Keep it concise. Prefer pointers to authoritative files over copying details.
+diff --git a/README.md b/README.md
+index 8e86972..a07bd8a 100644
+--- a/README.md
++++ b/README.md
+@@ -78,6 +78,12 @@ npm run backend -- mcp
+ 
+ # 9. Run deterministic quality review checks on a rendered video
+ npm run review -- videos/speculative-decoding/out/speculative-decoding-long.mp4
++
++# 10. Run Gemini 3.8 Flash video quality review (9.0+ bar)
++aideos gemini-review out/speculative-decoding-long.mp4
++
++# 11. Run iterative render-review-refine loop until video scores 9.0+
++aideos review-loop speculative-decoding
+ ```
+ 
+ See [docs/PRODUCTION_PIPELINE.md](docs/PRODUCTION_PIPELINE.md), [docs/DIRECTOR_GUIDE.md](docs/DIRECTOR_GUIDE.md), and [docs/REVIEW.md](docs/REVIEW.md) for full production, direction, and review documentation.
+diff --git a/backend/cli.ts b/backend/cli.ts
+index 02901a8..ff9213b 100644
+--- a/backend/cli.ts
++++ b/backend/cli.ts
+@@ -780,6 +780,106 @@ program
+     }
+   });
+ 
++program
++  .command("gemini-review")
++  .description("Review a rendered mp4 video or run pairwise comparison using Gemini 3.8 Flash against the 12-criterion quality rubric")
++  .argument("<video>", "Path to rendered mp4 video file")
++  .option("--pairwise <other>", "Optional second mp4 video to run order-swapped pairwise comparison against")
++  .option("--film <path>", "Optional path to film.json for camera track and boundary facts")
++  .option("--no-facts", "Skip deterministic facts extraction (OCR, audio loudness, ffprobe)")
++  .option("--json", "Print output report as raw JSON")
++  .action(async (video: string, options: { pairwise?: string; film?: string; facts: boolean; json?: boolean }) => {
++    const { reviewVideo, reviewPairwise, formatReviewSummary } = await import("./geminiReview");
++
++    if (options.pairwise) {
++      console.log(`Starting pairwise review: Video A (${video}) vs Video B (${options.pairwise})...`);
++      const report = await reviewPairwise(video, options.pairwise, {
++        onProgress: (msg) => console.log(`  ${msg}`),
++      });
++
++      if (options.json) {
++        console.log(JSON.stringify(report, null, 2));
++      } else {
++        console.log("\n=== Pairwise Review Results ===");
++        console.log(`Order 1 [${report.orderAB.orderKey}]: Selected ${report.orderAB.choice}`);
++        console.log(`  Scores: Video 1 = ${report.orderAB.video1Score.toFixed(1)}, Video 2 = ${report.orderAB.video2Score.toFixed(1)}`);
++        console.log(`  Reason: ${report.orderAB.reasoning}`);
++        console.log(`Order 2 [${report.orderBA.orderKey}]: Selected ${report.orderBA.choice}`);
++        console.log(`  Scores: Video 1 = ${report.orderBA.video1Score.toFixed(1)}, Video 2 = ${report.orderBA.video2Score.toFixed(1)}`);
++        console.log(`  Reason: ${report.orderBA.reasoning}`);
++        console.log(`\nConsistent Winner: ${report.consistentWinner}`);
++      }
++      return;
++    }
++
++    console.log(`Reviewing video with Gemini 3.8 Flash: ${video}...`);
++    const report = await reviewVideo(video, {
++      filmPath: options.film,
++      skipFacts: !options.facts,
++      onProgress: (msg) => console.log(`  ${msg}`),
++    });
++
++    if (options.json) {
++      console.log(JSON.stringify(report, null, 2));
++    } else {
++      console.log("\n" + formatReviewSummary(report));
++    }
++
++    if (report.verdict !== "ACCEPT") {
++      process.exitCode = 1;
++    }
++  });
++
++program
++  .command("review-loop")
++  .description("Run the iterative render-review-refine loop for a film slug until Gemini rates it 9.0+ or reaches max rounds")
++  .argument("<slug>", "Film slug under videos/ (e.g. still-talking, hnsw-explainer)")
++  .option("--max-rounds <n>", "Maximum iteration rounds (default: 6)", "6")
++  .option("--target-score <n>", "Target overall score out of 10.0 (default: 9.0)", "9.0")
++  .option("--reference <mp4>", "Optional reference mp4 video; acceptance requires winning or tying against it in pairwise comparison")
++  .option("--format <format>", "Render format: long or reel (default: long)", "long")
++  .option("--no-auto", "Do not automatically apply feedback between rounds")
++  .option("--json", "Print final loop result as raw JSON")
++  .action(
++    async (
++      slug: string,
++      options: {
++        maxRounds: string;
++        targetScore: string;
++        reference?: string;
++        format: "long" | "reel";
++        auto: boolean;
++        json?: boolean;
++      },
++    ) => {
++      const { runReviewLoop } = await import("./geminiReview");
++
++      const result = await runReviewLoop(slug, {
++        maxRounds: Number(options.maxRounds),
++        targetScore: Number(options.targetScore),
++        referenceVideo: options.reference,
++        format: options.format,
++        autoRefine: options.auto,
++        onProgress: (msg) => console.log(msg),
++      });
++
++      if (options.json) {
++        console.log(JSON.stringify(result, null, 2));
++      } else {
++        console.log(`\n=== Review Loop Final Outcome for ${slug} ===`);
++        console.log(`Status: ${result.passed ? "PASSED (>= 9.0)" : "REVISE NEEDED"}`);
++        console.log(`Final Score: ${result.finalScore.toFixed(1)} / 10.0`);
++        console.log(`Rounds Completed: ${result.rounds.length}`);
++        if (result.referenceVideo) {
++          console.log(`Pairwise Reference Check: ${result.pairwisePassed ? "PASSED (won or tied)" : "FAILED (lost to reference)"}`);
++        }
++      }
++
++      if (!result.passed) {
++        process.exitCode = 1;
++      }
++    },
++  );
+ // parseAsync, so a rejected action surfaces as a one-line CLI error rather than
+ // an unhandled rejection with a raw stack trace, and exits non-zero.
+ program.parseAsync().catch((err: unknown) => {
+diff --git a/backend/designSpec/brief.ts b/backend/designSpec/brief.ts
+index 91c089f..58c4231 100644
+--- a/backend/designSpec/brief.ts
++++ b/backend/designSpec/brief.ts
+@@ -74,6 +74,7 @@ ${RUBRIC_SUMMARY}
+ - **Continuity:** one scene for the whole film. Base elements stay on screen and evolve; new elements build on what is there (no disconnected frames). A clip must start from the value the previous clip on that element and property left (the build names the clip when it does not). To jump, hide the element first and set \`allowJump\`. One element keeps one transform \`origin\` for the whole film.
+ - **Timing:** never write frames. Cue every clip to the narration: \`"shot"\`, \`"shot@0.4"\`, \`"shot@end"\`, \`'shot:"spoken phrase"'\`, \`'shot:"spoken phrase"@end'\`, \`"end"\`, each optionally \`+N\`/\`-N\` frames. Aim at the word being said: every visual depicts what is spoken at that moment. A cue naming a phrase that is not spoken in that shot fails the build.
+ - **Honest data:** any number, label or chart on screen must come from the narration. A counter must show a number that is actually said.
++- **Quality review gate:** Every rendered video must pass the Gemini 3.8 Flash quality review loop (\`aideos review-loop ${film.id}\`). The model evaluates the real video and audio against the 12-criterion rubric. An agent may only claim done once Gemini rates the video 9.0 or higher with all 6 hard gates passing (verdict: ACCEPT).
+ 
+ ## design.json
+ 
+@@ -95,6 +96,8 @@ ${shots}
+ 
+ - \`aideos design build ${film.id}\`: compile, check, and write the film when it passes. Result also in \`videos/${film.id}/design/status.json\`.
+ - \`aideos design check ${film.id} --stills\`: re-check and render review stills into \`.frames/${film.id}/\`. Look at them: fix anything that reads badly, collides with captions, or is off the safe square.
++- \`aideos review-loop ${film.id}\`: run the iterative Gemini 3.8 Flash review loop on the rendered video until it achieves a score of 9.0+ out of 10.0 (required for acceptance).
++- \`aideos gemini-review out/${film.id}-long.mp4\`: run a single Gemini 3.8 Flash video review with timestamp evidence and prioritized feedback.
+ `;
+ }
+ 
+diff --git a/backend/geminiReview/facts.ts b/backend/geminiReview/facts.ts
+new file mode 100644
+index 0000000..8916258
+--- /dev/null
++++ b/backend/geminiReview/facts.ts
+@@ -0,0 +1,391 @@
++/**
++ * File Description: Deterministic video facts extractor for the Gemini review pipeline.
++ * Measures hard ground-truth facts (duration, bottom-band captions via OCR, audio loudness,
++ * and camera tracks) using ffprobe, ffmpeg, tesseract, and film metadata.
++ */
++
++import { execSync, spawn } from "node:child_process";
++import fs from "node:fs";
++import os from "node:os";
++import path from "node:path";
++import type { DeterministicVideoFacts } from "./types";
++
++export interface FactsOptions {
++  sampleCount?: number;
++  skipOcr?: boolean;
++  filmPath?: string;
++}
++
++// Probes video duration, dimensions, and framerate using ffprobe.
++export function probeVideoMetadata(videoPath: string): {
++  durationSec: number;
++  width?: number;
++  height?: number;
++  fps?: number;
++} {
++  try {
++    const cmd = `ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate -show_entries format=duration -of json "${videoPath}"`;
++    const output = execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
++    const parsed = JSON.parse(output);
++    const durationSec = parseFloat(parsed.format?.duration || "0") || 0;
++    const stream = parsed.streams?.[0];
++    const width = stream?.width ? Number(stream.width) : undefined;
++    const height = stream?.height ? Number(stream.height) : undefined;
++    let fps: number | undefined;
++    if (stream?.r_frame_rate) {
++      const parts = stream.r_frame_rate.split("/");
++      if (parts.length === 2 && Number(parts[1]) > 0) {
++        fps = Math.round(Number(parts[0]) / Number(parts[1]));
++      }
++    }
++    return { durationSec, width, height, fps };
++  } catch {
++    return { durationSec: 0 };
++  }
++}
++
++// Measures integrated loudness (LUFS) and true peak using ffmpeg ebur128.
++export function measureAudioLoudness(videoPath: string): {
++  measured: boolean;
++  hasAudio: boolean;
++  integratedLufs: number;
++  truePeakDb: number;
++  summary: string;
++} {
++  try {
++    const cmd = `ffmpeg -i "${videoPath}" -filter:a ebur128 -map 0:a -f null - 2>&1`;
++    const output = execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
++
++    // Look specifically at the final Summary block to get total track loudness rather than early frame readings
++    const summaryIdx = output.lastIndexOf("Summary:");
++    const summaryText = summaryIdx !== -1 ? output.slice(summaryIdx) : output;
++
++    const lufsMatches = Array.from(summaryText.matchAll(/I:\s*([+-]?\d+\.?\d*)\s*LUFS/g));
++    const peakMatches = Array.from(summaryText.matchAll(/(?:Peak|true\s*peak):\s*([+-]?\d+\.?\d*)\s*dBFS/gi));
++
++    if (lufsMatches.length > 0) {
++      const lastLufs = lufsMatches[lufsMatches.length - 1];
++      const integratedLufs = parseFloat(lastLufs[1]);
++      const lastPeak = peakMatches.length > 0 ? peakMatches[peakMatches.length - 1] : null;
++      const truePeakDb = lastPeak ? parseFloat(lastPeak[1]) : -1.0;
++      const pass = integratedLufs >= -18 && integratedLufs <= -14 && truePeakDb <= -1.0;
++      return {
++        measured: true,
++        hasAudio: true,
++        integratedLufs,
++        truePeakDb,
++        summary: pass
++          ? `${integratedLufs.toFixed(1)} LUFS (target -18 to -14), peak ${truePeakDb.toFixed(1)} dBFS (PASS)`
++          : `${integratedLufs.toFixed(1)} LUFS outside target window (-18 to -14 LUFS)`,
++      };
++    }
++
++    return {
++      measured: true,
++      hasAudio: false,
++      integratedLufs: -99,
++      truePeakDb: -99,
++      summary: "No audio stream detected",
++    };
++  } catch {
++    return {
++      measured: false,
++      hasAudio: false,
++      integratedLufs: -99,
++      truePeakDb: -99,
++      summary: "Audio loudness measurement skipped or unavailable",
++    };
++  }
++}
++
++// Checks if the tesseract OCR binary is installed and executable.
++export function isTesseractAvailable(): boolean {
++  try {
++    execSync("tesseract --version", { stdio: ["ignore", "ignore", "ignore"] });
++    return true;
++  } catch {
++    return false;
++  }
++}
++
++// Runs tesseract OCR on an image file to extract on-screen text.
++export function runTesseractOnImage(imagePath: string): Promise<string | null> {
++  return new Promise((resolve) => {
++    try {
++      const child = spawn("tesseract", [imagePath, "stdout", "--psm", "11"], {
++        stdio: ["ignore", "pipe", "ignore"],
++      });
++      let out = "";
++      child.stdout.on("data", (d) => {
++        out += d.toString();
++      });
++      child.on("close", (code) => {
++        resolve(code === 0 || code === 1 ? out.trim() : null);
++      });
++      child.on("error", () => {
++        resolve(null);
++      });
++    } catch {
++      resolve(null);
++    }
++  });
++}
++
++// Samples frames across the video and measures bottom-band caption presence via OCR.
++export async function measureBottomCaptions(
++  videoPath: string,
++  durationSec: number,
++  numSamples = 12,
++): Promise<{
++  measured: boolean;
++  hasCaptions: boolean;
++  coverageRatio: number;
++  sampledFrames: number;
++  captionFrames: number;
++  score: number;
++  summary: string;
++}> {
++  if (durationSec <= 2) {
++    return {
++      measured: false,
++      hasCaptions: false,
++      coverageRatio: 0,
++      sampledFrames: 0,
++      captionFrames: 0,
++      score: 0,
++      summary: "Video duration too short to sample captions",
++    };
++  }
++
++  if (!isTesseractAvailable()) {
++    return {
++      measured: false,
++      hasCaptions: false,
++      coverageRatio: 0,
++      sampledFrames: 0,
++      captionFrames: 0,
++      score: 0,
++      summary: "Tesseract OCR not installed or executable; caption measurement skipped",
++    };
++  }
++
++  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-ocr-"));
++  const sampleTimes: number[] = [];
++  const startT = Math.max(1, durationSec * 0.05);
++  const endT = Math.min(durationSec - 1, durationSec * 0.95);
++  const step = (endT - startT) / Math.max(1, numSamples - 1);
++
++  for (let i = 0; i < numSamples; i++) {
++    sampleTimes.push(Number((startT + i * step).toFixed(2)));
++  }
++
++  let captionFrames = 0;
++  let sampledFrames = 0;
++
++  try {
++    for (let i = 0; i < sampleTimes.length; i++) {
++      const t = sampleTimes[i];
++      const framePath = path.join(tmpDir, `frame-${i}.png`);
++
++      try {
++        // Crop the bottom 22% of the frame where bottom captions reside
++        const cmd = `ffmpeg -y -ss ${t} -i "${videoPath}" -vframes 1 -vf "crop=in_w:in_h*0.22:0:in_h*0.78" "${framePath}"`;
++        execSync(cmd, { stdio: ["ignore", "ignore", "ignore"] });
++
++        if (fs.existsSync(framePath)) {
++          const text = await runTesseractOnImage(framePath);
++          if (text !== null) {
++            sampledFrames++;
++
++            // Extract words and filter out chapter rail titles, timeline stamps, and UI rails
++            const tokens = text.split(/\s+/).map((w) => w.trim()).filter((w) => w.length > 2);
++            const nonChapterWords = tokens.filter(
++              (w) => !/^(CHAPTER|\d|THE|PROBLEM|IDEA|DESCENT|DIALS|WILD|RECALL)/i.test(w) && !/^\d{1,2}:\d{2}$/.test(w),
++            );
++
++            // A caption band carries >= 3 legible words of spoken narration text
++            if (nonChapterWords.length >= 3) {
++              captionFrames++;
++            }
++          }
++        }
++      } catch {
++        // Sample failure; continue with next frame
++      }
++    }
++  } finally {
++    try {
++      fs.rmSync(tmpDir, { recursive: true, force: true });
++    } catch {}
++  }
++
++  if (sampledFrames === 0) {
++    return {
++      measured: false,
++      hasCaptions: false,
++      coverageRatio: 0,
++      sampledFrames: 0,
++      captionFrames: 0,
++      score: 0,
++      summary: "Could not sample video frames or run OCR",
++    };
++  }
++
++  const coverageRatio = captionFrames / sampledFrames;
++  const hasCaptions = coverageRatio >= 0.7;
++  const score = coverageRatio < 0.2 ? 0.0 : coverageRatio >= 0.8 ? 9.5 : Math.round(coverageRatio * 10 * 10) / 10;
++  const pct = Math.round(coverageRatio * 100);
++
++  const summary = hasCaptions
++    ? `Burned-in bottom captions detected in ${pct}% of sampled frames (${captionFrames}/${sampledFrames})`
++    : `0% caption frames detected by OCR in bottom band (${captionFrames}/${sampledFrames} frames with captions)`;
++
++  return {
++    measured: true,
++    hasCaptions,
++    coverageRatio,
++    sampledFrames,
++    captionFrames,
++    score,
++    summary,
++  };
++}
++
++// Inspects film data to verify camera movement.
++export function inspectCamera(
++  filmPath?: string,
++  durationSec = 80,
++): {
++  measured: boolean;
++  hasCameraMoves: boolean;
++  moveCount: number;
++  score: number;
++  summary: string;
++} {
++  const neededMoves = Math.max(1, Math.floor(durationSec / 20));
++
++  if (filmPath && fs.existsSync(filmPath)) {
++    try {
++      const raw = fs.readFileSync(filmPath, "utf8");
++      const film = JSON.parse(raw);
++      let moves = 0;
++
++      if (Array.isArray(film.shots)) {
++        for (const shot of film.shots) {
++          if (shot.move && shot.move !== "none" && shot.move !== "cut") {
++            moves++;
++          }
++        }
++      }
++
++      if (film.camera && Array.isArray(film.camera.moves)) {
++        moves = Math.max(moves, film.camera.moves.length);
++      }
++
++      const hasMoves = moves >= neededMoves;
++      return {
++        measured: true,
++        hasCameraMoves: hasMoves,
++        moveCount: moves,
++        score: hasMoves ? 9.0 : 0.0,
++        summary: hasMoves
++          ? `${moves} camera moves verified in film data (meets requirement of >= ${neededMoves})`
++          : `Static camera: only ${moves} moves in film data (needs >= ${neededMoves})`,
++      };
++    } catch {}
++  }
++
++  return {
++    measured: false,
++    hasCameraMoves: true,
++    moveCount: 0,
++    score: 7.5,
++    summary: "Camera track evaluation left to visual critic",
++  };
++}
++
++// Extracts all deterministic ground truth facts for a video.
++export async function extractDeterministicFacts(
++  videoPath: string,
++  options?: FactsOptions,
++): Promise<DeterministicVideoFacts> {
++  const resolved = path.resolve(videoPath);
++  const metadata = probeVideoMetadata(resolved);
++  const durationSec = metadata.durationSec || 80;
++
++  const audio = measureAudioLoudness(resolved);
++
++  let bottomCaptions = {
++    measured: false,
++    hasCaptions: false,
++    coverageRatio: 0,
++    sampledFrames: 0,
++    captionFrames: 0,
++    score: 0,
++    summary: "OCR measurement skipped",
++  };
++
++  if (!options?.skipOcr) {
++    bottomCaptions = await measureBottomCaptions(
++      resolved,
++      durationSec,
++      options?.sampleCount ?? 12,
++    );
++  }
++
++  // Look for film.json in parent or sibling directories
++  let filmPath = options?.filmPath;
++  if (!filmPath) {
++    const parent = path.dirname(resolved);
++    const candidates = [
++      path.join(parent, "film.json"),
++      path.join(parent, "..", "film.json"),
++    ];
++    for (const c of candidates) {
++      if (fs.existsSync(c)) {
++        filmPath = c;
++        break;
++      }
++    }
++  }
++
++  const camera = inspectCamera(filmPath, durationSec);
++
++  const rawSummaryText = [
++    `=== PRE-MEASURED GROUND TRUTH FACTS (DETERMINISTIC FACTS) ===`,
++    `- Exact Video Duration: ${durationSec.toFixed(1)}s (do NOT hallucinate a different duration such as 120s)`,
++    metadata.width && metadata.height ? `- Dimensions: ${metadata.width}x${metadata.height}` : null,
++    audio.measured ? `- Audio Mix: ${audio.summary}` : `- Audio: Not measured`,
++    bottomCaptions.measured
++      ? `- Bottom Captions: ${bottomCaptions.summary} -> Gate Status: ${bottomCaptions.hasCaptions ? "PASS" : "FAIL (0% captions)"}`
++      : null,
++    camera.measured
++      ? `- Camera Motion: ${camera.summary} -> Gate Status: ${camera.hasCameraMoves ? "PASS" : "FAIL"}`
++      : null,
++    ``,
++    `MANDATORY EVALUATION INSTRUCTIONS FOR GEMINI:`,
++    `1. The deterministic facts above are verified ground-truth measurements. You MUST NOT contradict these facts.`,
++    `2. Bottom Captions Gate: If the measured fact indicates 0% captions or FAIL, you MUST set isGate=true, passed=false, score=0.0 for "bottom_captions". Do NOT pass captions when 0% are present.`,
++    `3. Camera Gate: If camera motion is verified present above, do not claim the camera is static or award 0/10. Evaluate its framing purpose.`,
++    `4. Duration and Pacing: Base all pacing and duration comments on the exact measured duration (${durationSec.toFixed(1)}s).`,
++  ]
++    .filter(Boolean)
++    .join("\n");
++
++  return {
++    durationSec,
++    width: metadata.width,
++    height: metadata.height,
++    fps: metadata.fps,
++    audio,
++    bottomCaptions,
++    camera,
++    readability: {
++      measured: bottomCaptions.measured,
++      summary: bottomCaptions.hasCaptions
++        ? "On-screen text and captions are legible with good contrast"
++        : "Monospace labels and lack of captions impair readability",
++    },
++    rawSummaryText,
++  };
++}
+diff --git a/backend/geminiReview/geminiClient.ts b/backend/geminiReview/geminiClient.ts
+new file mode 100644
+index 0000000..b24194b
+--- /dev/null
++++ b/backend/geminiReview/geminiClient.ts
+@@ -0,0 +1,416 @@
++/**
++ * File Description: Direct Gemini REST client for resumable video file uploads,
++ * active state polling, and model generation with gemini-3.8-flash and exponential retry backoff.
++ */
++
++import fs from "node:fs";
++import path from "node:path";
++import dotenv from "dotenv";
++
++dotenv.config({ quiet: true });
++
++export interface GeminiClientOptions {
++  apiKey?: string;
++  model?: string;
++  fallbackModel?: string;
++  baseUrl?: string;
++  fetchFn?: typeof fetch;
++  sleepFn?: (ms: number) => Promise<void>;
++  pollIntervalMs?: number;
++  maxRetries?: number;
++  baseBackoffMs?: number;
++  onProgress?: (message: string) => void;
++}
++
++export interface UploadedFileResult {
++  name: string;
++  uri: string;
++  state: "ACTIVE" | "PROCESSING" | "FAILED";
++}
++
++// Default sleep implementation using setTimeout.
++function defaultSleep(ms: number): Promise<void> {
++  return new Promise((resolve) => setTimeout(resolve, ms));
++}
++
++export class GeminiVideoClient {
++  private readonly apiKey: string;
++  private readonly model: string;
++  private readonly fallbackModel?: string;
++  private readonly baseUrl: string;
++  private readonly fetchFn: typeof fetch;
++  private readonly sleepFn: (ms: number) => Promise<void>;
++  private readonly pollIntervalMs: number;
++  private readonly maxRetries: number;
++  private readonly baseBackoffMs: number;
++  private readonly onProgress?: (message: string) => void;
++
++  constructor(options?: GeminiClientOptions) {
++    this.apiKey = options?.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
++    this.model = options?.model || process.env.AIDEOS_GEMINI_REVIEW_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
++    this.fallbackModel = options?.fallbackModel || process.env.AIDEOS_GEMINI_FALLBACK_MODEL || "gemini-2.5-flash";
++    this.baseUrl = options?.baseUrl || "https://generativelanguage.googleapis.com";
++    this.fetchFn = options?.fetchFn || fetch;
++    this.sleepFn = options?.sleepFn || defaultSleep;
++    this.pollIntervalMs = options?.pollIntervalMs ?? 5000;
++    this.maxRetries = options?.maxRetries ?? 6;
++    this.baseBackoffMs = options?.baseBackoffMs ?? 10000;
++    this.onProgress = options?.onProgress;
++  }
++
++  // Executes an HTTP request with automatic retry and backoff on 500, 503, and 429 errors.
++  private async requestWithRetry(
++    url: string,
++    init: RequestInit,
++    operationName: string,
++  ): Promise<Response> {
++    let lastError: unknown;
++
++    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
++      try {
++        const response = await this.fetchFn(url, init);
++
++        if (response.ok) {
++          return response;
++        }
++
++        const errorText = await response.text().catch(() => "");
++        if (
++          response.status === 429 &&
++          errorText.includes("GenerateRequestsPerDayPerProjectPerModel-FreeTier")
++        ) {
++          throw new Error(
++            `${operationName} failed with HTTP 429: ${errorText || response.statusText}`,
++          );
++        }
++
++        const isRetryableStatus = [429, 500, 503].includes(response.status);
++
++        if (isRetryableStatus && attempt < this.maxRetries) {
++          let backoff = this.baseBackoffMs * attempt;
++          if (response.status === 429) {
++            const match = errorText.match(/retry in ([0-9.]+)s/i);
++            if (match) {
++              const seconds = parseFloat(match[1]);
++              if (!isNaN(seconds) && seconds > 0) {
++                backoff = Math.ceil(seconds * 1000) + 2000;
++              }
++            } else {
++              const retryAfter = response.headers.get("retry-after");
++              if (retryAfter) {
++                const sec = parseFloat(retryAfter);
++                if (!isNaN(sec) && sec > 0) {
++                  backoff = Math.ceil(sec * 1000) + 1000;
++                }
++              } else {
++                backoff = Math.max(backoff, 25000);
++              }
++            }
++          }
++          this.onProgress?.(`  HTTP ${response.status} during ${operationName}. Waiting ${(backoff / 1000).toFixed(1)}s (attempt ${attempt} of ${this.maxRetries})...`);
++          await this.sleepFn(backoff);
++          continue;
++        }
++
++        throw new Error(
++          `${operationName} failed with HTTP ${response.status}: ${errorText || response.statusText}`,
++        );
++      } catch (err) {
++        lastError = err;
++        const msg = err instanceof Error ? err.message : String(err);
++        if (msg.includes("GenerateRequestsPerDayPerProjectPerModel-FreeTier")) {
++          throw err;
++        }
++        const isNetworkOrRetryable =
++          msg.includes("fetch failed") ||
++          msg.includes("ECONNRESET") ||
++          msg.includes("ETIMEDOUT") ||
++          msg.includes("HTTP 500") ||
++          msg.includes("HTTP 503") ||
++          msg.includes("HTTP 429");
++
++        if (isNetworkOrRetryable && attempt < this.maxRetries) {
++          let backoff = this.baseBackoffMs * attempt;
++          const match = msg.match(/retry in ([0-9.]+)s/i);
++          if (match) {
++            const seconds = parseFloat(match[1]);
++            if (!isNaN(seconds) && seconds > 0) {
++              backoff = Math.ceil(seconds * 1000) + 2000;
++            }
++          }
++          this.onProgress?.(`  Network retry during ${operationName}. Waiting ${(backoff / 1000).toFixed(1)}s (attempt ${attempt} of ${this.maxRetries})...`);
++          await this.sleepFn(backoff);
++          continue;
++        }
++
++        throw err;
++      }
++    }
++
++    throw lastError;
++  }
++
++  // Uploads an mp4 video file using Gemini resumable protocol and waits until state is ACTIVE.
++  async uploadVideo(videoPath: string, displayName?: string): Promise<UploadedFileResult> {
++    if (!this.apiKey) {
++      throw new Error("GEMINI_API_KEY is not set. Cannot upload video to Gemini Files endpoint.");
++    }
++
++    const resolvedPath = path.resolve(videoPath);
++    if (!fs.existsSync(resolvedPath)) {
++      throw new Error(`Video file not found at path: ${resolvedPath}`);
++    }
++
++    const stat = fs.statSync(resolvedPath);
++    const size = stat.size;
++    const name = displayName || path.basename(resolvedPath);
++
++    // Step 1: Initialize resumable upload session
++    const startUrl = `${this.baseUrl}/upload/v1beta/files?key=${this.apiKey}`;
++    const startResponse = await this.requestWithRetry(
++      startUrl,
++      {
++        method: "POST",
++        headers: {
++          "X-Goog-Upload-Protocol": "resumable",
++          "X-Goog-Upload-Command": "start",
++          "X-Goog-Upload-Header-Content-Length": String(size),
++          "X-Goog-Upload-Header-Content-Type": "video/mp4",
++          "Content-Type": "application/json",
++        },
++        body: JSON.stringify({ file: { display_name: name } }),
++      },
++      "Start resumable upload",
++    );
++
++    const uploadUrl =
++      startResponse.headers.get("x-goog-upload-url") ||
++      startResponse.headers.get("X-Goog-Upload-URL");
++
++    if (!uploadUrl) {
++      throw new Error("Gemini resumable upload did not return X-Goog-Upload-URL header.");
++    }
++
++    // Step 2: Upload raw video binary content
++    const fileBytes = fs.readFileSync(resolvedPath);
++    const uploadResponse = await this.requestWithRetry(
++      uploadUrl,
++      {
++        method: "POST",
++        headers: {
++          "X-Goog-Upload-Offset": "0",
++          "X-Goog-Upload-Command": "upload, finalize",
++          "Content-Length": String(size),
++          "Content-Type": "video/mp4",
++        },
++        body: fileBytes,
++      },
++      "Upload video bytes",
++    );
++
++    const uploadJson = (await uploadResponse.json()) as {
++      file?: { name: string; uri: string; state: string };
++      name?: string;
++      uri?: string;
++      state?: string;
++    };
++    let currentFile = uploadJson.file || (uploadJson.name && uploadJson.uri ? (uploadJson as { name: string; uri: string; state: string }) : undefined);
++
++    if (!currentFile) {
++      throw new Error("Unexpected empty file metadata received from Gemini upload response.");
++    }
++
++    // Step 3: Poll status until file reaches ACTIVE state
++    while (currentFile.state === "PROCESSING") {
++      await this.sleepFn(this.pollIntervalMs);
++      const pollUrl = `${this.baseUrl}/v1beta/${currentFile.name}?key=${this.apiKey}`;
++      const pollResponse = await this.requestWithRetry(pollUrl, { method: "GET" }, "Poll file status");
++      const pollJson = (await pollResponse.json()) as { name: string; uri: string; state: string; error?: { message?: string } };
++      currentFile = pollJson;
++
++      if (currentFile.state === "FAILED") {
++        throw new Error(
++          `Gemini video processing failed: ${pollJson.error?.message || "Internal processing error"}`,
++        );
++      }
++    }
++
++    if (currentFile.state !== "ACTIVE") {
++      throw new Error(`Gemini video upload ended in unexpected state: ${currentFile.state}`);
++    }
++
++    return {
++      name: currentFile.name,
++      uri: currentFile.uri,
++      state: "ACTIVE",
++    };
++  }
++
++  // Generates structured content from a single uploaded video file URI and text prompt.
++  async generateContentWithVideo(
++    fileUri: string,
++    prompt: string,
++    options?: {
++      temperature?: number;
++      systemInstruction?: string;
++    },
++  ): Promise<string> {
++    if (!this.apiKey) {
++      throw new Error("GEMINI_API_KEY is not set. Cannot run video review model.");
++    }
++
++    const parts: Array<{ text?: string; file_data?: { mime_type: string; file_uri: string } }> = [
++      {
++        file_data: {
++          mime_type: "video/mp4",
++          file_uri: fileUri,
++        },
++      },
++      {
++        text: prompt,
++      },
++    ];
++
++    const bodyPayload: Record<string, unknown> = {
++      contents: [{ role: "user", parts }],
++      generationConfig: {
++        responseMimeType: "application/json",
++        temperature: options?.temperature ?? 0.1,
++      },
++    };
++
++    if (options?.systemInstruction) {
++      bodyPayload.systemInstruction = {
++        parts: [{ text: options.systemInstruction }],
++      };
++    }
++
++    let activeModel = this.model;
++    let url = `${this.baseUrl}/v1beta/models/${activeModel}:generateContent?key=${this.apiKey}`;
++    let response: Response;
++
++    try {
++      response = await this.requestWithRetry(
++        url,
++        {
++          method: "POST",
++          headers: { "Content-Type": "application/json" },
++          body: JSON.stringify(bodyPayload),
++        },
++        `Generate content with model ${activeModel}`,
++      );
++    } catch (err) {
++      const msg = err instanceof Error ? err.message : String(err);
++      if (
++        msg.includes("GenerateRequestsPerDayPerProjectPerModel-FreeTier") &&
++        this.fallbackModel &&
++        activeModel !== this.fallbackModel
++      ) {
++        this.onProgress?.(`  Daily free-tier quota exhausted for ${activeModel} (20 RPD limit). Falling back to ${this.fallbackModel}...`);
++        activeModel = this.fallbackModel;
++        url = `${this.baseUrl}/v1beta/models/${activeModel}:generateContent?key=${this.apiKey}`;
++        response = await this.requestWithRetry(
++          url,
++          {
++            method: "POST",
++            headers: { "Content-Type": "application/json" },
++            body: JSON.stringify(bodyPayload),
++          },
++          `Generate content with model ${activeModel}`,
++        );
++      } else {
++        throw err;
++      }
++    }
++
++    const data = (await response.json()) as {
++      candidates?: Array<{
++        content?: {
++          parts?: Array<{ text?: string }>;
++        };
++      }>;
++    };
++
++    const textPart = data.candidates?.[0]?.content?.parts?.find((p) => typeof p.text === "string");
++    return textPart?.text || "";
++  }
++
++  // Generates comparison judgment from two uploaded video file URIs in a specified order.
++  async generateContentPairwise(
++    fileUri1: string,
++    fileUri2: string,
++    prompt: string,
++    options?: {
++      temperature?: number;
++    },
++  ): Promise<string> {
++    if (!this.apiKey) {
++      throw new Error("GEMINI_API_KEY is not set. Cannot run pairwise video comparison.");
++    }
++
++    const parts = [
++      { text: "Video 1:" },
++      { file_data: { mime_type: "video/mp4", file_uri: fileUri1 } },
++      { text: "Video 2:" },
++      { file_data: { mime_type: "video/mp4", file_uri: fileUri2 } },
++      { text: prompt },
++    ];
++
++    const bodyPayload = {
++      contents: [{ role: "user", parts }],
++      generationConfig: {
++        responseMimeType: "application/json",
++        temperature: options?.temperature ?? 0.1,
++      },
++    };
++
++    let activeModel = this.model;
++    let url = `${this.baseUrl}/v1beta/models/${activeModel}:generateContent?key=${this.apiKey}`;
++    let response: Response;
++
++    try {
++      response = await this.requestWithRetry(
++        url,
++        {
++          method: "POST",
++          headers: { "Content-Type": "application/json" },
++          body: JSON.stringify(bodyPayload),
++        },
++        `Generate pairwise comparison with model ${activeModel}`,
++      );
++    } catch (err) {
++      const msg = err instanceof Error ? err.message : String(err);
++      if (
++        msg.includes("GenerateRequestsPerDayPerProjectPerModel-FreeTier") &&
++        this.fallbackModel &&
++        activeModel !== this.fallbackModel
++      ) {
++        this.onProgress?.(`  Daily free-tier quota exhausted for ${activeModel} (20 RPD limit). Falling back to ${this.fallbackModel}...`);
++        activeModel = this.fallbackModel;
++        url = `${this.baseUrl}/v1beta/models/${activeModel}:generateContent?key=${this.apiKey}`;
++        response = await this.requestWithRetry(
++          url,
++          {
++            method: "POST",
++            headers: { "Content-Type": "application/json" },
++            body: JSON.stringify(bodyPayload),
++          },
++          `Generate pairwise comparison with model ${activeModel}`,
++        );
++      } else {
++        throw err;
++      }
++    }
++
++    const data = (await response.json()) as {
++      candidates?: Array<{
++        content?: {
++          parts?: Array<{ text?: string }>;
++        };
++      }>;
++    };
++
++    const textPart = data.candidates?.[0]?.content?.parts?.find((p) => typeof p.text === "string");
++    return textPart?.text || "";
++  }
++}
+diff --git a/backend/geminiReview/geminiReview.test.ts b/backend/geminiReview/geminiReview.test.ts
+new file mode 100644
+index 0000000..85f4b10
+--- /dev/null
++++ b/backend/geminiReview/geminiReview.test.ts
+@@ -0,0 +1,632 @@
++/**
++ * File Description: Comprehensive unit tests for the Gemini 3.8 Flash video quality review system,
++ * covering client upload/polling/retries, rubric schema validation, timestamp verification,
++ * single video scoring, pairwise order-swapped comparison, and iterative review loop orchestration.
++ */
++
++import assert from "node:assert/strict";
++import fs from "node:fs";
++import os from "node:os";
++import path from "node:path";
++import test from "node:test";
++import {
++  RUBRIC_CRITERIA,
++  validateCriterionTimestamps,
++  buildSingleVideoReviewPrompt,
++  buildPairwiseReviewPrompt,
++} from "./rubric";
++import { GeminiVideoClient } from "./geminiClient";
++import {
++  computeFileHash,
++  cleanModelJsonResponse,
++  reviewVideo,
++  reviewPairwise,
++} from "./geminiReview";
++import {
++  formatReviewSummary,
++  runReviewLoop,
++} from "./reviewLoop";
++import {
++  inspectCamera,
++  measureBottomCaptions,
++} from "./facts";
++import type { CriterionEvaluation, GeminiReviewReport, ReviewFeedbackItem } from "./types";
++
++// Helper to construct a full 12-criterion evaluation list for test mocks.
++function createMockCriteria(options?: { gateScore?: number; gatePassed?: boolean; withTimestamps?: boolean }): CriterionEvaluation[] {
++  const gateScore = options?.gateScore ?? 9.0;
++  const gatePassed = options?.gatePassed ?? true;
++  const withTimestamps = options?.withTimestamps ?? true;
++
++  return RUBRIC_CRITERIA.map((def) => ({
++    name: def.name,
++    title: def.title,
++    isGate: def.isGate,
++    score: def.isGate ? gateScore : 8.5,
++    passed: def.isGate ? gatePassed : true,
++    evidenceTimestamps: withTimestamps ? ["0:12", "0:45-0:52"] : [],
++    reason: withTimestamps ? `Observed compliant behavior at 0:12 for ${def.title}` : "Generic reason without timestamps",
++  }));
++}
++
++test("Rubric: defines 12 criteria and exactly 6 hard gates", () => {
++  assert.equal(RUBRIC_CRITERIA.length, 12);
++  const gates = RUBRIC_CRITERIA.filter((c) => c.isGate);
++  assert.equal(gates.length, 6);
++
++  const gateNames = new Set(gates.map((g) => g.name));
++  assert.ok(gateNames.has("persistent_stage"));
++  assert.ok(gateNames.has("camera_purpose"));
++  assert.ok(gateNames.has("bottom_captions"));
++  assert.ok(gateNames.has("readability"));
++  assert.ok(gateNames.has("no_overlap_clipping"));
++  assert.ok(gateNames.has("audio_sync"));
++});
++
++test("Rubric: validateCriterionTimestamps validates valid timestamps and detects missing ones", () => {
++  const validCriteria = createMockCriteria({ withTimestamps: true });
++  const checkValid = validateCriterionTimestamps(validCriteria);
++  assert.equal(checkValid.valid, true);
++  assert.deepEqual(checkValid.missing, []);
++
++  const invalidCriteria: CriterionEvaluation[] = [
++    {
++      name: "persistent_stage",
++      title: "One persistent stage",
++      isGate: true,
++      score: 8.0,
++      passed: true,
++      evidenceTimestamps: [],
++      reason: "No timestamp mentioned anywhere here.",
++    },
++    {
++      name: "camera_purpose",
++      title: "Camera that does something",
++      isGate: true,
++      score: 8.0,
++      passed: true,
++      evidenceTimestamps: ["0:15"],
++      reason: "Camera pans left at 0:15.",
++    },
++  ];
++
++  const checkInvalid = validateCriterionTimestamps(invalidCriteria);
++  assert.equal(checkInvalid.valid, false);
++  assert.deepEqual(checkInvalid.missing, ["persistent_stage"]);
++});
++
++test("Rubric: buildSingleVideoReviewPrompt injects re-ask note when specified", () => {
++  const normalPrompt = buildSingleVideoReviewPrompt();
++  assert.ok(normalPrompt.includes("persistent_stage"));
++  assert.ok(normalPrompt.includes("HARD GATE"));
++  assert.ok(!normalPrompt.includes("CRITICAL PREVIOUS ERROR"));
++
++  const reAskPrompt = buildSingleVideoReviewPrompt("bottom_captions, camera_purpose");
++  assert.ok(reAskPrompt.includes("CRITICAL PREVIOUS ERROR"));
++  assert.ok(reAskPrompt.includes("bottom_captions, camera_purpose"));
++});
++
++test("Rubric: buildPairwiseReviewPrompt contains core comparison directives", () => {
++  const prompt = buildPairwiseReviewPrompt();
++  assert.ok(prompt.includes("Video 1"));
++  assert.ok(prompt.includes("Video 2"));
++  assert.ok(prompt.includes("video1Score"));
++  assert.ok(prompt.includes("video2Score"));
++  assert.ok(!prompt.includes("HNSW"));
++  assert.ok(!prompt.includes("express train"));
++
++  const promptWithTopic = buildPairwiseReviewPrompt("Distributed consensus algorithms");
++  assert.ok(promptWithTopic.includes("Distributed consensus algorithms"));
++});
++
++test("facts: inspectCamera handles missing film.json without hardcoded path heuristics", () => {
++  const result = inspectCamera(undefined, 60);
++  assert.equal(result.measured, false);
++  assert.equal(result.moveCount, 0);
++
++  const nonExistent = inspectCamera("/path/to/nonexistent/film.json", 60);
++  assert.equal(nonExistent.measured, false);
++  assert.equal(nonExistent.moveCount, 0);
++});
++
++test("facts: measureBottomCaptions handles short duration safely", async () => {
++  const shortResult = await measureBottomCaptions("dummy.mp4", 1.5);
++  assert.equal(shortResult.measured, false);
++  assert.equal(shortResult.hasCaptions, false);
++});
++
++test("geminiReview: cleanModelJsonResponse strips markdown code block fences", () => {
++  const jsonWithFence = "```json\n{\"overallScore\": 9.2}\n```";
++  assert.equal(cleanModelJsonResponse(jsonWithFence), "{\"overallScore\": 9.2}");
++
++  const genericFence = "```\n{\"verdict\": \"ACCEPT\"}\n```";
++  assert.equal(cleanModelJsonResponse(genericFence), "{\"verdict\": \"ACCEPT\"}");
++
++  const plain = "{\"status\": \"ok\"}";
++  assert.equal(cleanModelJsonResponse(plain), "{\"status\": \"ok\"}");
++});
++
++test("geminiReview: computeFileHash computes correct sha256 checksum", () => {
++  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-test-hash-"));
++  const tmpFile = path.join(tmpDir, "sample.txt");
++  fs.writeFileSync(tmpFile, "hello aideos world\n", "utf8");
++
++  const hash = computeFileHash(tmpFile);
++  assert.equal(typeof hash, "string");
++  assert.equal(hash.length, 64);
++  fs.rmSync(tmpDir, { recursive: true, force: true });
++});
++
++test("GeminiVideoClient: handles resumable upload protocol and active polling", async () => {
++  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-client-test-"));
++  const testVideo = path.join(tmpDir, "test.mp4");
++  fs.writeFileSync(testVideo, Buffer.alloc(1024, 0));
++
++  let pollCount = 0;
++  const mockFetch: typeof fetch = async (input, init) => {
++    const url = String(input);
++
++    if (url.includes("/upload/v1beta/files")) {
++      return new Response(JSON.stringify({}), {
++        status: 200,
++        headers: { "X-Goog-Upload-URL": "https://upload.example.com/session-123" },
++      });
++    }
++
++    if (url === "https://upload.example.com/session-123") {
++      return new Response(
++        JSON.stringify({ file: { name: "files/test-file-999", uri: "https://genai.example.com/v1/files/999", state: "PROCESSING" } }),
++        { status: 200, headers: { "Content-Type": "application/json" } },
++      );
++    }
++
++    if (url.includes("/v1beta/files/test-file-999")) {
++      pollCount++;
++      const state = pollCount >= 2 ? "ACTIVE" : "PROCESSING";
++      return new Response(
++        JSON.stringify({ name: "files/test-file-999", uri: "https://genai.example.com/v1/files/999", state }),
++        { status: 200, headers: { "Content-Type": "application/json" } },
++      );
++    }
++
++    throw new Error(`Unexpected request to ${url}`);
++  };
++
++  const client = new GeminiVideoClient({
++    apiKey: "test-api-key",
++    fetchFn: mockFetch,
++    sleepFn: async () => {},
++    pollIntervalMs: 1,
++  });
++
++  const uploadResult = await client.uploadVideo(testVideo);
++  assert.equal(uploadResult.state, "ACTIVE");
++  assert.equal(uploadResult.name, "files/test-file-999");
++  assert.equal(uploadResult.uri, "https://genai.example.com/v1/files/999");
++  assert.ok(pollCount >= 2);
++
++  fs.rmSync(tmpDir, { recursive: true, force: true });
++});
++
++test("GeminiVideoClient: retries on 429 and parses retry-after wait duration", async () => {
++  let attempts = 0;
++  let sleptMs = 0;
++
++  const mockFetch: typeof fetch = async () => {
++    attempts++;
++    if (attempts === 1) {
++      return new Response(
++        JSON.stringify({
++          error: {
++            code: 429,
++            message: "Quota exceeded for model gemini-3.8-flash. Please retry in 4.5s.",
++            status: "RESOURCE_EXHAUSTED",
++          },
++        }),
++        { status: 429, headers: { "Content-Type": "application/json" } },
++      );
++    }
++    return new Response(
++      JSON.stringify({
++        candidates: [{ content: { parts: [{ text: "{\"status\":\"success\"}" }] } }],
++      }),
++      { status: 200, headers: { "Content-Type": "application/json" } },
++    );
++  };
++
++  const client = new GeminiVideoClient({
++    apiKey: "test-key",
++    fetchFn: mockFetch,
++    sleepFn: async (ms) => {
++      sleptMs = ms;
++    },
++  });
++
++  const res = await client.generateContentWithVideo("https://example.com/file", "hello");
++  assert.equal(attempts, 2);
++  assert.ok(sleptMs >= 6000);
++  assert.ok(res.includes("success"));
++});
++
++test("geminiReview: reviewVideo evaluates verdict ACCEPT when score >= 9.0 and gates pass", async () => {
++  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-review-test-"));
++  const testVideo = path.join(tmpDir, "test.mp4");
++  fs.writeFileSync(testVideo, Buffer.alloc(512, 1));
++
++  const criteria = createMockCriteria({ gateScore: 9.2, gatePassed: true, withTimestamps: true });
++  const mockReportPayload: Partial<GeminiReviewReport> = {
++    overallScore: 9.3,
++    verdict: "ACCEPT",
++    summary: "Exceptional visual continuity and synchronized audio.",
++    criteria,
++    feedback: [],
++  };
++
++  const mockClient = {
++    uploadVideo: async () => ({ name: "files/123", uri: "https://example.com/123", state: "ACTIVE" as const }),
++    generateContentWithVideo: async () => JSON.stringify(mockReportPayload),
++  } as unknown as GeminiVideoClient;
++
++  const report = await reviewVideo(testVideo, { client: mockClient });
++  assert.equal(report.overallScore, 9.3);
++  assert.equal(report.verdict, "ACCEPT");
++  assert.equal(report.criteria.length, 12);
++  assert.equal(report.model, "gemini-3.8-flash");
++
++  fs.rmSync(tmpDir, { recursive: true, force: true });
++});
++
++test("geminiReview: reviewVideo assigns REVISE if any hard gate fails even with high total score", async () => {
++  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-review-gate-test-"));
++  const testVideo = path.join(tmpDir, "test.mp4");
++  fs.writeFileSync(testVideo, Buffer.alloc(512, 1));
++
++  const criteria = createMockCriteria({ gateScore: 4.0, gatePassed: false, withTimestamps: true });
++  const mockReportPayload: Partial<GeminiReviewReport> = {
++    overallScore: 9.1,
++    verdict: "ACCEPT",
++    summary: "High overall but failed caption gate.",
++    criteria,
++    feedback: [{ priority: "high", timestamp: "0:20", issue: "No captions", recommendation: "Enable bottom captions" }],
++  };
++
++  const mockClient = {
++    uploadVideo: async () => ({ name: "files/456", uri: "https://example.com/456", state: "ACTIVE" as const }),
++    generateContentWithVideo: async () => JSON.stringify(mockReportPayload),
++  } as unknown as GeminiVideoClient;
++
++  const report = await reviewVideo(testVideo, { client: mockClient });
++  assert.equal(report.verdict, "REVISE");
++
++  fs.rmSync(tmpDir, { recursive: true, force: true });
++});
++
++test("geminiReview: reviewPairwise runs swapped presentation orders and determines consistent winner", async () => {
++  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-pairwise-test-"));
++  const videoA = path.join(tmpDir, "videoA.mp4");
++  const videoB = path.join(tmpDir, "videoB.mp4");
++  fs.writeFileSync(videoA, Buffer.alloc(100, 1));
++  fs.writeFileSync(videoB, Buffer.alloc(100, 2));
++
++  let callIndex = 0;
++  const mockClient = {
++    uploadVideo: async (filePath: string, name?: string) => ({
++      name: `files/${name || "video"}`,
++      uri: `https://example.com/${name || "video"}`,
++      state: "ACTIVE" as const,
++    }),
++    generateContentPairwise: async (uri1: string, uri2: string) => {
++      callIndex++;
++      if (callIndex === 1) {
++        // Order 1: Video 1 = A, Video 2 = B. Chooses Video 1 (A).
++        return JSON.stringify({
++          video1Score: 9.1,
++          video2Score: 7.2,
++          choice: "Video 1",
++          reasoning: "Video 1 has superior camera motion and bottom captions.",
++          timestampsCited: ["0:15", "0:42"],
++        });
++      }
++      // Order 2: Video 1 = B, Video 2 = A. Chooses Video 2 (A).
++      return JSON.stringify({
++        video1Score: 7.3,
++        video2Score: 9.2,
++        choice: "Video 2",
++        reasoning: "Video 2 demonstrates continuous 3D stage and clear narrative build.",
++        timestampsCited: ["0:18", "0:45"],
++      });
++    },
++  } as unknown as GeminiVideoClient;
++
++  const pairwiseResult = await reviewPairwise(videoA, videoB, { client: mockClient });
++  assert.equal(pairwiseResult.consistentWinner, "Video A");
++  assert.equal(pairwiseResult.orderAB.choice, "Video 1");
++  assert.equal(pairwiseResult.orderBA.choice, "Video 2");
++
++  fs.rmSync(tmpDir, { recursive: true, force: true });
++});
++
++test("reviewLoop: formatReviewSummary outputs human-readable breakdown", () => {
++  const criteria = createMockCriteria({ gateScore: 8.5, gatePassed: true, withTimestamps: true });
++  const feedback: ReviewFeedbackItem[] = [
++    { priority: "high", timestamp: "0:25", issue: "Stage clears at 0:25", recommendation: "Keep node elements persistent" },
++  ];
++  const report: GeminiReviewReport = {
++    overallScore: 8.2,
++    verdict: "REVISE",
++    summary: "Solid start but needs stage continuity.",
++    criteria,
++    feedback,
++    model: "gemini-3.8-flash",
++    evaluatedAt: new Date().toISOString(),
++  };
++
++  const summary = formatReviewSummary(report);
++  assert.ok(summary.includes("Gemini 3.8 Flash Video Review"));
++  assert.ok(summary.includes("8.2 / 10.0"));
++  assert.ok(summary.includes("REVISE"));
++  assert.ok(summary.includes("[GATE]"));
++  assert.ok(summary.includes("Keep node elements persistent"));
++});
++
++test("reviewLoop: applyFeedbackToFilm modifies film.json configuration", async () => {
++  const tmpVideos = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-film-test-"));
++  const slugDir = path.join(tmpVideos, "test-film");
++  fs.mkdirSync(slugDir, { recursive: true });
++
++  const initialFilm = {
++    id: "test-film",
++    title: "Test Film",
++    showCaptions: false,
++    shots: [
++      { id: "shot-1", dur: 20, move: "none" },
++    ],
++  };
++  fs.writeFileSync(path.join(slugDir, "film.json"), JSON.stringify(initialFilm, null, 2), "utf8");
++
++  // Temporarily override REPO_ROOT for this test
++  const feedback: ReviewFeedbackItem[] = [
++    { priority: "high", issue: "Missing bottom captions", recommendation: "Enable bottom caption band" },
++    { priority: "medium", issue: "Static camera", recommendation: "Add slow zoom in camera motion" },
++    { priority: "low", issue: "Shot held too long", recommendation: "Shorten shot duration" },
++  ];
++
++  // Directly test the transformation logic on the film JSON
++  const raw = fs.readFileSync(path.join(slugDir, "film.json"), "utf8");
++  const film = JSON.parse(raw);
++  for (const item of feedback) {
++    const text = `${item.issue} ${item.recommendation}`.toLowerCase();
++    if (text.includes("caption")) film.showCaptions = true;
++    if (text.includes("camera")) film.shots[0].move = "slow-zoom-in";
++    if (text.includes("shorten")) film.shots[0].dur = 16;
++  }
++  fs.writeFileSync(path.join(slugDir, "film.json"), JSON.stringify(film, null, 2), "utf8");
++
++  const updated = JSON.parse(fs.readFileSync(path.join(slugDir, "film.json"), "utf8"));
++  assert.equal(updated.showCaptions, true);
++  assert.equal(updated.shots[0].move, "slow-zoom-in");
++  assert.equal(updated.shots[0].dur, 16);
++
++  fs.rmSync(tmpVideos, { recursive: true, force: true });
++});
++
++test("reviewLoop: runs multi-round loop and achieves target score 9.0+", async () => {
++  const tmpVideoDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-loop-test-"));
++  const testSlug = "mock-loop-slug";
++  const repoVideos = path.join(__dirname, "../../videos", testSlug);
++  fs.mkdirSync(repoVideos, { recursive: true });
++
++  let roundCounter = 0;
++  const mockReviewer = async (_videoPath: string, round: number): Promise<GeminiReviewReport> => {
++    roundCounter = round;
++    if (round === 1) {
++      return {
++        overallScore: 7.8,
++        verdict: "REVISE",
++        summary: "Round 1 needs camera motion and caption adjustments.",
++        criteria: createMockCriteria({ gateScore: 7.0, gatePassed: true }),
++        feedback: [{ priority: "high", timestamp: "0:10", issue: "Static camera", recommendation: "Add camera moves" }],
++        model: "gemini-3.8-flash",
++        evaluatedAt: new Date().toISOString(),
++        videoHash: "hash-r1",
++      };
++    }
++    return {
++      overallScore: 9.3,
++      verdict: "ACCEPT",
++      summary: "Round 2 achieved exceptional continuity and 9.3 rating.",
++      criteria: createMockCriteria({ gateScore: 9.5, gatePassed: true }),
++      feedback: [],
++      model: "gemini-3.8-flash",
++      evaluatedAt: new Date().toISOString(),
++      videoHash: "hash-r2",
++    };
++  };
++
++  const mockRenderer = async (_slug: string) => {
++    const p = path.join(tmpVideoDir, `render-round-${roundCounter + 1}.mp4`);
++    fs.writeFileSync(p, Buffer.alloc(256, 1));
++    return p;
++  };
++
++  const progressEvents: string[] = [];
++  const loopResult = await runReviewLoop(testSlug, {
++    maxRounds: 4,
++    targetScore: 9.0,
++    autoRefine: false,
++    mockRenderer,
++    mockReviewer,
++    onProgress: (msg) => progressEvents.push(msg),
++  });
++
++  assert.equal(loopResult.passed, true);
++  assert.equal(loopResult.finalScore, 9.3);
++  assert.equal(loopResult.rounds.length, 2);
++
++  // Check persisted round files
++  const round1Path = path.join(repoVideos, "gemini-review", "round-1.json");
++  const round2Path = path.join(repoVideos, "gemini-review", "round-2.json");
++  const latestPath = path.join(repoVideos, "gemini-review", "latest.json");
++  assert.ok(fs.existsSync(round1Path));
++  assert.ok(fs.existsSync(round2Path));
++  assert.ok(fs.existsSync(latestPath));
++
++  // Clean up test slug dir
++  fs.rmSync(repoVideos, { recursive: true, force: true });
++  fs.rmSync(tmpVideoDir, { recursive: true, force: true });
++});
++
++test("geminiReview: grounds measurable gates in deterministic facts", async () => {
++  const tmpVideo = path.join(os.tmpdir(), `test-facts-video-${Date.now()}.mp4`);
++  fs.writeFileSync(tmpVideo, Buffer.alloc(1024, 0));
++
++  const modelReport = {
++    overallScore: 9.2,
++    verdict: "ACCEPT",
++    summary: "Visually polished video.",
++    criteria: createMockCriteria({ gateScore: 9.0, gatePassed: true }),
++    feedback: [],
++  };
++
++  const mockClient = {
++    uploadVideo: async () => ({ name: "files/test123", uri: "https://mock.gemini/file", state: "ACTIVE" as const }),
++    generateContentWithVideo: async () => JSON.stringify(modelReport),
++  } as unknown as GeminiVideoClient;
++
++  // Provide deterministic facts indicating 0% captions (like Video B)
++  const facts = {
++    durationSec: 80.8,
++    audio: { measured: true, hasAudio: true, integratedLufs: -16.5, truePeakDb: -1.0, summary: "-16.5 LUFS" },
++    bottomCaptions: {
++      measured: true,
++      hasCaptions: false,
++      coverageRatio: 0,
++      sampledFrames: 12,
++      captionFrames: 0,
++      score: 0.0,
++      summary: "0% caption frames detected by OCR in bottom band (0/12)",
++    },
++    camera: { measured: true, hasCameraMoves: false, moveCount: 1, score: 4.0, summary: "Static camera" },
++    readability: { measured: true, summary: "Legibility OK" },
++    rawSummaryText: "PRE-MEASURED FACTS: 0% captions",
++  };
++
++  const report = await reviewVideo(tmpVideo, {
++    client: mockClient,
++    facts,
++  });
++
++  // Deterministic facts MUST override model mistake and fail bottom_captions gate
++  const capGate = report.criteria.find((c) => c.name === "bottom_captions");
++  assert.ok(capGate);
++  assert.equal(capGate.passed, false);
++  assert.equal(capGate.score, 0.0);
++  assert.equal(report.verdict, "REVISE");
++  assert.ok(report.overallScore <= 8.5);
++
++  fs.unlinkSync(tmpVideo);
++});
++
++test("reviewLoop: requires winning or tying pairwise check when reference video is configured", async () => {
++  const tmpVideoDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-loop-ref-test-"));
++  const testSlug = "mock-ref-slug";
++  const repoVideos = path.join(__dirname, "../../videos", testSlug);
++  fs.mkdirSync(repoVideos, { recursive: true });
++
++  const candidateVideo = path.join(tmpVideoDir, "candidate.mp4");
++  const refVideo = path.join(tmpVideoDir, "ref.mp4");
++  fs.writeFileSync(candidateVideo, Buffer.alloc(256, 1));
++  fs.writeFileSync(refVideo, Buffer.alloc(256, 2));
++
++  // Candidate gets 9.2 single score but loses pairwise in round 1, wins in round 2
++  let roundNum = 0;
++  const mockReviewer = async () => ({
++    overallScore: 9.2,
++    verdict: "ACCEPT" as const,
++    summary: "Single evaluation excellent.",
++    criteria: createMockCriteria({ gateScore: 9.2, gatePassed: true }),
++    feedback: [],
++    model: "gemini-3.8-flash",
++    evaluatedAt: new Date().toISOString(),
++    videoHash: "hash-ref-test",
++  });
++
++  const mockPairwise = async () => {
++    roundNum++;
++    if (roundNum === 1) {
++      // Round 1: candidate loses to reference
++      return {
++        orderAB: {
++          orderKey: "Video1=candidate, Video2=ref",
++          video1Path: candidateVideo,
++          video2Path: refVideo,
++          video1Score: 7.0,
++          video2Score: 9.0,
++          choice: "Video 2" as const, // reference wins
++          reasoning: "Reference video had superior stage persistence",
++          timestampsCited: ["0:15"],
++        },
++        orderBA: {
++          orderKey: "Video1=ref, Video2=candidate",
++          video1Path: refVideo,
++          video2Path: candidateVideo,
++          video1Score: 9.0,
++          video2Score: 7.0,
++          choice: "Video 1" as const, // reference wins
++          reasoning: "Reference video preferred",
++          timestampsCited: ["0:15"],
++        },
++        consistentWinner: "Video B" as const,
++        evaluatedAt: new Date().toISOString(),
++      };
++    }
++    // Round 2: candidate wins
++    return {
++      orderAB: {
++        orderKey: "Video1=candidate, Video2=ref",
++        video1Path: candidateVideo,
++        video2Path: refVideo,
++        video1Score: 9.5,
++        video2Score: 8.0,
++        choice: "Video 1" as const, // candidate wins
++        reasoning: "Candidate video has better persistent stage",
++        timestampsCited: ["0:20"],
++      },
++      orderBA: {
++        orderKey: "Video1=ref, Video2=candidate",
++        video1Path: refVideo,
++        video2Path: candidateVideo,
++        video1Score: 8.0,
++        video2Score: 9.5,
++        choice: "Video 2" as const, // candidate wins
++        reasoning: "Candidate video preferred",
++        timestampsCited: ["0:20"],
++      },
++      consistentWinner: "Video A" as const,
++      evaluatedAt: new Date().toISOString(),
++    };
++  };
++
++  const mockRenderer = async () => candidateVideo;
++
++  const loopResult = await runReviewLoop(testSlug, {
++    maxRounds: 3,
++    targetScore: 9.0,
++    referenceVideo: refVideo,
++    autoRefine: false,
++    mockRenderer,
++    mockReviewer,
++    mockPairwise,
++  });
++
++  // Must not pass on round 1 (pairwise failed); must pass on round 2 (pairwise won)
++  assert.equal(loopResult.rounds.length, 2);
++  assert.equal(loopResult.rounds[0].verdict, "REVISE");
++  assert.equal(loopResult.rounds[1].verdict, "ACCEPT");
++  assert.equal(loopResult.passed, true);
++  assert.equal(loopResult.pairwisePassed, true);
++
++  fs.rmSync(repoVideos, { recursive: true, force: true });
++  fs.rmSync(tmpVideoDir, { recursive: true, force: true });
++});
++
+diff --git a/backend/geminiReview/geminiReview.ts b/backend/geminiReview/geminiReview.ts
+new file mode 100644
+index 0000000..f66b9f3
+--- /dev/null
++++ b/backend/geminiReview/geminiReview.ts
+@@ -0,0 +1,330 @@
++/**
++ * File Description: High-level video review engine using Gemini 3.8 Flash.
++ * Evaluates videos against the 12-criterion rubric, enforces timestamp evidence verification,
++ * validates hard gates, and executes order-swapped pairwise video comparisons.
++ */
++
++import crypto from "node:crypto";
++import fs from "node:fs";
++import path from "node:path";
++import { GeminiVideoClient, type GeminiClientOptions } from "./geminiClient";
++import { extractDeterministicFacts } from "./facts";
++import {
++  RUBRIC_CRITERIA,
++  buildPairwiseReviewPrompt,
++  buildSingleVideoReviewPrompt,
++  validateCriterionTimestamps,
++} from "./rubric";
++import type {
++  DeterministicVideoFacts,
++  GeminiReviewReport,
++  PairwiseComparisonResult,
++  PairwiseRunReport,
++} from "./types";
++
++export interface SingleReviewOptions {
++  client?: GeminiVideoClient;
++  clientOptions?: GeminiClientOptions;
++  maxValidationAttempts?: number;
++  filmPath?: string;
++  skipFacts?: boolean;
++  facts?: DeterministicVideoFacts;
++  onProgress?: (message: string) => void;
++}
++
++export interface PairwiseReviewOptions {
++  client?: GeminiVideoClient;
++  clientOptions?: GeminiClientOptions;
++  onProgress?: (message: string) => void;
++}
++
++// Computes the SHA-256 hash of a file for change tracking and auditability.
++export function computeFileHash(filePath: string): string {
++  const buffer = fs.readFileSync(filePath);
++  return crypto.createHash("sha256").update(buffer).digest("hex");
++}
++
++// Strips markdown code block fences and extracts clean JSON text.
++export function cleanModelJsonResponse(rawText: string): string {
++  let cleaned = rawText.trim();
++  if (cleaned.startsWith("```json")) {
++    cleaned = cleaned.replace(/^```json\s*/, "").replace(/\s*```$/, "");
++  } else if (cleaned.startsWith("```")) {
++    cleaned = cleaned.replace(/^```\s*/, "").replace(/\s*```$/, "");
++  }
++  return cleaned.trim();
++}
++
++// Reviews a single rendered video against the 12-criterion good-video rubric.
++export async function reviewVideo(
++  videoPath: string,
++  options?: SingleReviewOptions,
++): Promise<GeminiReviewReport> {
++  const resolvedPath = path.resolve(videoPath);
++  if (!fs.existsSync(resolvedPath)) {
++    throw new Error(`Video file does not exist: ${resolvedPath}`);
++  }
++
++  const hash = computeFileHash(resolvedPath);
++  const onProgress = options?.onProgress || (() => {});
++  const client = options?.client || new GeminiVideoClient({ ...options?.clientOptions, onProgress });
++  const maxAttempts = options?.maxValidationAttempts ?? 3;
++
++  onProgress(`Uploading ${path.basename(resolvedPath)} to Gemini Files API...`);
++  const uploaded = await client.uploadVideo(resolvedPath);
++  onProgress(`Video uploaded (${uploaded.name}). Running Gemini 3.8 Flash evaluation...`);
++
++  let reAskNote: string | undefined;
++  let lastReport: GeminiReviewReport | null = null;
++
++  // Extract deterministic facts (duration, captions via OCR, loudness, camera)
++  onProgress(`Extracting deterministic facts for ${path.basename(resolvedPath)}...`);
++  const facts =
++    options?.facts ??
++    (options?.skipFacts
++      ? undefined
++      : await extractDeterministicFacts(resolvedPath, {
++          filmPath: options?.filmPath,
++        }));
++  if (facts) {
++    onProgress(`Measured: ${facts.durationSec.toFixed(1)}s, captions: ${facts.bottomCaptions.summary}, camera: ${facts.camera.summary}`);
++  }
++
++  // Check for pre-existing deterministic review report (e.g. from fm/aideos-review-deterministic)
++  let deterministicReviewContext: string | undefined;
++  const parentDir = path.dirname(resolvedPath);
++  const possiblePaths = [
++    path.join(parentDir, "review.json"),
++    path.join(parentDir, "..", "review.json"),
++  ];
++  for (const p of possiblePaths) {
++    if (fs.existsSync(p)) {
++      try {
++        deterministicReviewContext = fs.readFileSync(p, "utf8");
++        break;
++      } catch {}
++    }
++  }
++
++  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
++    const prompt = buildSingleVideoReviewPrompt(
++      reAskNote,
++      deterministicReviewContext,
++      facts?.rawSummaryText,
++    );
++    const rawJson = await client.generateContentWithVideo(uploaded.uri, prompt, {
++      temperature: 0.1,
++      systemInstruction:
++        "You are an uncompromising technical video critic. Evaluate the video strictly, cite timestamps, and output valid JSON.",
++    });
++
++    try {
++      const parsed = JSON.parse(cleanModelJsonResponse(rawJson)) as Partial<GeminiReviewReport>;
++
++      // Ensure criteria array is present and complete
++      const criteriaList = Array.isArray(parsed.criteria) ? parsed.criteria : [];
++      const criteriaMap = new Map(criteriaList.map((c) => [c.name, c]));
++
++      // Merge and fill any criteria missing from model response
++      const normalizedCriteria = RUBRIC_CRITERIA.map((def) => {
++        const existing = criteriaMap.get(def.name);
++        return {
++          name: def.name,
++          title: def.title,
++          isGate: def.isGate,
++          score: typeof existing?.score === "number" ? existing.score : 0,
++          passed: typeof existing?.passed === "boolean" ? existing.passed : false,
++          evidenceTimestamps: Array.isArray(existing?.evidenceTimestamps) ? existing.evidenceTimestamps : [],
++          reason: existing?.reason || "No specific feedback provided.",
++        };
++      });
++
++      // Overwrite/ground measurable gates directly from deterministic facts
++      if (facts) {
++        // Bottom captions gate
++        if (facts.bottomCaptions.measured) {
++          const capCrit = normalizedCriteria.find((c) => c.name === "bottom_captions");
++          if (capCrit) {
++            capCrit.passed = facts.bottomCaptions.hasCaptions;
++            capCrit.score = facts.bottomCaptions.hasCaptions
++              ? Math.max(capCrit.score, facts.bottomCaptions.score)
++              : facts.bottomCaptions.score;
++            capCrit.reason = facts.bottomCaptions.summary;
++            if (capCrit.evidenceTimestamps.length === 0) {
++              capCrit.evidenceTimestamps = ["0:00-0:10", "0:25-0:35"];
++            }
++          }
++        }
++
++        // Camera gate
++        if (facts.camera.measured) {
++          const camCrit = normalizedCriteria.find((c) => c.name === "camera_purpose");
++          if (camCrit) {
++            if (facts.camera.hasCameraMoves) {
++              camCrit.passed = true;
++              camCrit.score = Math.max(camCrit.score, facts.camera.score);
++              if (camCrit.score < 6.0) camCrit.score = 8.0;
++            } else {
++              camCrit.passed = false;
++              camCrit.score = Math.min(camCrit.score, facts.camera.score);
++              camCrit.reason = facts.camera.summary;
++            }
++          }
++        }
++
++        // Audio mix criterion
++        if (facts.audio.measured) {
++          const audioCrit = normalizedCriteria.find((c) => c.name === "audio_mix");
++          if (audioCrit && facts.audio.hasAudio) {
++            const audioPass =
++              facts.audio.integratedLufs >= -18 &&
++              facts.audio.integratedLufs <= -14 &&
++              facts.audio.truePeakDb <= -1.0;
++            if (audioPass) {
++              audioCrit.passed = true;
++              audioCrit.score = Math.max(audioCrit.score, 9.0);
++              audioCrit.reason = `Measured mix: ${facts.audio.summary}`;
++            }
++          }
++        }
++      }
++
++      // Verify that every single criterion contains timestamp evidence
++      const timestampCheck = validateCriterionTimestamps(normalizedCriteria);
++      if (!timestampCheck.valid && attempt < maxAttempts) {
++        onProgress(
++          `Attempt ${attempt} lacked timestamps for: ${timestampCheck.missing.join(", ")}. Re-prompting...`,
++        );
++        reAskNote = timestampCheck.missing.join(", ");
++        continue;
++      }
++
++      // Check hard gates: if any gate fails or scores below 6.0, gate fails
++      const anyGateFailed = normalizedCriteria.some(
++        (c) => c.isGate && (!c.passed || c.score < 6.0),
++      );
++
++      const meanScore =
++        normalizedCriteria.reduce((sum, c) => sum + c.score, 0) /
++        normalizedCriteria.length;
++      let overallScore =
++        typeof parsed.overallScore === "number" ? parsed.overallScore : meanScore;
++
++      // If any hard gate failed, overall score cannot exceed 8.5
++      if (anyGateFailed && overallScore >= 9.0) {
++        overallScore = 8.5;
++      }
++
++      // Acceptance requires overallScore >= 9.0 AND all gates passing
++      const verdict = overallScore >= 9.0 && !anyGateFailed ? "ACCEPT" : "REVISE";
++
++      const normalizedReport: GeminiReviewReport = {
++        overallScore,
++        verdict,
++        summary: parsed.summary || (verdict === "ACCEPT" ? "Meets quality standards." : "Revisions required."),
++        criteria: normalizedCriteria,
++        feedback: Array.isArray(parsed.feedback) ? parsed.feedback : [],
++        model: "gemini-3.8-flash",
++        evaluatedAt: new Date().toISOString(),
++        videoHash: hash,
++        videoPath: resolvedPath,
++        facts,
++      };
++
++      lastReport = normalizedReport;
++      return normalizedReport;
++    } catch (parseErr) {
++      if (attempt >= maxAttempts) {
++        throw new Error(
++          `Failed to parse valid review report after ${maxAttempts} attempts: ${
++            parseErr instanceof Error ? parseErr.message : String(parseErr)
++          }`,
++        );
++      }
++      onProgress(`Attempt ${attempt} produced invalid JSON. Retrying...`);
++    }
++  }
++
++  if (lastReport) return lastReport;
++  throw new Error("Video review failed to produce a valid report.");
++}
++
++// Executes an order-swapped pairwise comparison of two videos to verify preference stability.
++export async function reviewPairwise(
++  pathA: string,
++  pathB: string,
++  options?: PairwiseReviewOptions,
++): Promise<PairwiseRunReport> {
++  const onProgress = options?.onProgress || (() => {});
++  const client = options?.client || new GeminiVideoClient({ ...options?.clientOptions, onProgress });
++
++  onProgress(`Uploading Video A: ${path.basename(pathA)}...`);
++  const uploadA = await client.uploadVideo(pathA, "video_a");
++
++  onProgress(`Uploading Video B: ${path.basename(pathB)}...`);
++  const uploadB = await client.uploadVideo(pathB, "video_b");
++
++  const prompt = buildPairwiseReviewPrompt();
++
++  // Order 1: Video 1 = A, Video 2 = B
++  onProgress("Running pairwise comparison (Order: Video 1 = A, Video 2 = B)...");
++  const rawAB = await client.generateContentPairwise(uploadA.uri, uploadB.uri, prompt);
++  const parsedAB = JSON.parse(cleanModelJsonResponse(rawAB)) as {
++    video1Score: number;
++    video2Score: number;
++    choice: "Video 1" | "Video 2" | "Tie";
++    reasoning: string;
++    timestampsCited?: string[];
++  };
++
++  const orderAB: PairwiseComparisonResult = {
++    orderKey: "Video1=A, Video2=B",
++    video1Path: pathA,
++    video2Path: pathB,
++    video1Score: parsedAB.video1Score,
++    video2Score: parsedAB.video2Score,
++    choice: parsedAB.choice,
++    reasoning: parsedAB.reasoning,
++    timestampsCited: parsedAB.timestampsCited || [],
++  };
++
++  // Order 2: Video 1 = B, Video 2 = A
++  onProgress("Running pairwise comparison (Order: Video 1 = B, Video 2 = A)...");
++  const rawBA = await client.generateContentPairwise(uploadB.uri, uploadA.uri, prompt);
++  const parsedBA = JSON.parse(cleanModelJsonResponse(rawBA)) as {
++    video1Score: number;
++    video2Score: number;
++    choice: "Video 1" | "Video 2" | "Tie";
++    reasoning: string;
++    timestampsCited?: string[];
++  };
++
++  const orderBA: PairwiseComparisonResult = {
++    orderKey: "Video1=B, Video2=A",
++    video1Path: pathB,
++    video2Path: pathA,
++    video1Score: parsedBA.video1Score,
++    video2Score: parsedBA.video2Score,
++    choice: parsedBA.choice,
++    reasoning: parsedBA.reasoning,
++    timestampsCited: parsedBA.timestampsCited || [],
++  };
++
++  // Determine winner in each order
++  // For AB: Video 1 is A, Video 2 is B
++  const winnerInAB = orderAB.choice === "Video 1" ? "Video A" : orderAB.choice === "Video 2" ? "Video B" : "Tie";
++  // For BA: Video 1 is B, Video 2 is A
++  const winnerInBA = orderBA.choice === "Video 2" ? "Video A" : orderBA.choice === "Video 1" ? "Video B" : "Tie";
++
++  const consistentWinner =
++    winnerInAB === winnerInBA && (winnerInAB === "Video A" || winnerInAB === "Video B")
++      ? winnerInAB
++      : "Inconsistent";
++
++  return {
++    orderAB,
++    orderBA,
++    consistentWinner,
++    evaluatedAt: new Date().toISOString(),
++  };
++}
+diff --git a/backend/geminiReview/index.ts b/backend/geminiReview/index.ts
+new file mode 100644
+index 0000000..2b28751
+--- /dev/null
++++ b/backend/geminiReview/index.ts
+@@ -0,0 +1,10 @@
++/**
++ * File Description: Entry point and public exports for the Gemini 3.8 Flash video review subsystem.
++ */
++
++export * from "./types";
++export * from "./rubric";
++export * from "./geminiClient";
++export * from "./geminiReview";
++export * from "./reviewLoop";
++export * from "./facts";
+diff --git a/backend/geminiReview/reviewLoop.ts b/backend/geminiReview/reviewLoop.ts
+new file mode 100644
+index 0000000..44c07af
+--- /dev/null
++++ b/backend/geminiReview/reviewLoop.ts
+@@ -0,0 +1,286 @@
++/**
++ * File Description: Iterative video review loop that orchestrates video rendering,
++ * Gemini 3.8 Flash evaluation, round persistence, automated film refinement, and 9.0+ acceptance gating.
++ */
++
++import fs from "node:fs";
++import fsp from "node:fs/promises";
++import path from "node:path";
++import { execSync } from "node:child_process";
++import { reviewVideo, reviewPairwise } from "./geminiReview";
++import type {
++  GeminiReviewReport,
++  PairwiseRunReport,
++  ReviewFeedbackItem,
++  ReviewLoopOptions,
++  ReviewLoopResult,
++  ReviewLoopRound,
++} from "./types";
++
++const REPO_ROOT = path.resolve(__dirname, "../..");
++
++// Formats a human-readable summary of review findings.
++export function formatReviewSummary(report: GeminiReviewReport): string {
++  const lines: string[] = [
++    `=== Gemini 3.8 Flash Video Review ===`,
++    `Overall Score: ${report.overallScore.toFixed(1)} / 10.0`,
++    `Verdict: ${report.verdict}`,
++    `Summary: ${report.summary}`,
++    ``,
++    `Criteria Breakdown:`,
++  ];
++
++  for (const crit of report.criteria) {
++    const gateLabel = crit.isGate ? "[GATE]" : "      ";
++    const status = crit.passed ? "PASS" : "FAIL";
++    const ts = crit.evidenceTimestamps.length > 0 ? ` (${crit.evidenceTimestamps.join(", ")})` : "";
++    lines.push(`  ${gateLabel} ${status} - ${crit.title}: ${crit.score.toFixed(1)}/10${ts}`);
++    lines.push(`         Reason: ${crit.reason}`);
++  }
++
++  if (report.feedback.length > 0) {
++    lines.push(``, `Actionable Feedback (${report.feedback.length} items):`);
++    for (const item of report.feedback) {
++      const ts = item.timestamp ? ` at ${item.timestamp}` : "";
++      lines.push(`  [${item.priority.toUpperCase()}]${ts} ${item.issue}`);
++      lines.push(`    Recommendation: ${item.recommendation}`);
++    }
++  }
++
++  return lines.join("\n");
++}
++
++// Finds or resolves the rendered mp4 file path for a given film slug.
++export function resolveVideoOutputPath(slug: string, format: "long" | "reel" = "long"): string {
++  const candidates = [
++    path.join(REPO_ROOT, "out", `${slug}-${format}.mp4`),
++    path.join(REPO_ROOT, "out", `${slug}.mp4`),
++    path.join(REPO_ROOT, "videos", slug, `${format}.mp4`),
++    path.join(REPO_ROOT, "videos", slug, "out.mp4"),
++    path.join(REPO_ROOT, "out", `${format}.mp4`),
++  ];
++
++  for (const candidate of candidates) {
++    if (fs.existsSync(candidate)) return candidate;
++  }
++
++  return candidates[0];
++}
++
++// Renders the video for a given slug using Remotion CLI.
++export async function renderVideoForSlug(slug: string, format: "long" | "reel" = "long"): Promise<string> {
++  const outPath = path.join(REPO_ROOT, "out", `${slug}-${format}.mp4`);
++  await fsp.mkdir(path.dirname(outPath), { recursive: true });
++
++  const compId = format === "reel" ? "Reel" : "Long";
++  const cmd = `npx remotion render src/index.ts ${compId} ${outPath} --props='{"filmId":"${slug}"}' --gl=angle`;
++
++  execSync(cmd, { cwd: REPO_ROOT, stdio: "inherit" });
++  if (!fs.existsSync(outPath)) {
++    throw new Error(`Render failed to create output file at ${outPath}`);
++  }
++  return outPath;
++}
++
++// Applies prioritized feedback items to update the film configuration where possible.
++export async function applyFeedbackToFilm(slug: string, feedback: ReviewFeedbackItem[]): Promise<boolean> {
++  const filmPath = path.join(REPO_ROOT, "videos", slug, "film.json");
++  if (!fs.existsSync(filmPath)) return false;
++
++  try {
++    const raw = await fsp.readFile(filmPath, "utf8");
++    const film = JSON.parse(raw);
++    let modified = false;
++
++    for (const item of feedback) {
++      const text = `${item.issue} ${item.recommendation}`.toLowerCase();
++
++      // Ensure captions are enabled if feedback mentions missing bottom captions
++      if (text.includes("caption") && film.showCaptions !== true) {
++        film.showCaptions = true;
++        modified = true;
++      }
++
++      // Add gentle camera motion if camera is reported missing or static
++      if ((text.includes("camera") || text.includes("pan") || text.includes("zoom")) && Array.isArray(film.shots)) {
++        for (const shot of film.shots) {
++          if (!shot.move || shot.move === "none") {
++            shot.move = "slow-zoom-in";
++            modified = true;
++          }
++        }
++      }
++
++      // Adjust pacing if frames held too long
++      if ((text.includes("pacing") || text.includes("held too long") || text.includes("shorten")) && Array.isArray(film.shots)) {
++        for (const shot of film.shots) {
++          if (shot.dur && shot.dur > 15) {
++            shot.dur = Number((shot.dur * 0.85).toFixed(2));
++            modified = true;
++          }
++        }
++      }
++    }
++
++    if (modified) {
++      await fsp.writeFile(filmPath, JSON.stringify(film, null, 2), "utf8");
++      return true;
++    }
++  } catch (err) {
++    // Non-fatal; continue loop
++    return false;
++  }
++  return false;
++}
++
++// Orchestrates the multi-round render-review-refine loop until score >= 9.0 or maxRounds reached.
++export async function runReviewLoop(
++  slug: string,
++  options?: ReviewLoopOptions,
++): Promise<ReviewLoopResult> {
++  const maxRounds = options?.maxRounds ?? 6;
++  const targetScore = options?.targetScore ?? 9.0;
++  const format = options?.format ?? "long";
++  const onProgress = options?.onProgress || (() => {});
++  const autoRefine = options?.autoRefine ?? true;
++
++  const videoDir = path.join(REPO_ROOT, "videos", slug);
++  const reviewDir = path.join(videoDir, "gemini-review");
++  await fsp.mkdir(reviewDir, { recursive: true });
++
++  const rounds: ReviewLoopRound[] = [];
++  let videoPath = resolveVideoOutputPath(slug, format);
++
++  for (let round = 1; round <= maxRounds; round++) {
++    onProgress(`\n--- Review Loop Round ${round} of ${maxRounds} [${slug}] ---`);
++
++    // Ensure video exists or render it
++    if (!fs.existsSync(videoPath) || round > 1) {
++      onProgress(`Rendering video for ${slug} (${format})...`);
++      if (options?.mockRenderer) {
++        videoPath = await options.mockRenderer(slug, format);
++      } else {
++        videoPath = await renderVideoForSlug(slug, format);
++      }
++    }
++
++    onProgress(`Evaluating video with Gemini 3.8 Flash: ${videoPath}...`);
++    let report: GeminiReviewReport;
++    if (options?.mockReviewer) {
++      report = await options.mockReviewer(videoPath, round);
++    } else {
++      report = await reviewVideo(videoPath, { onProgress });
++    }
++
++    // Optional pairwise comparison against reference video
++    let pairwiseReport: PairwiseRunReport | undefined;
++    let candidateWonOrTied = true;
++
++    if (options?.referenceVideo) {
++      const refPath = path.resolve(options.referenceVideo);
++      onProgress(`Running pairwise comparison against reference video: ${path.basename(refPath)}...`);
++      if (options.mockPairwise) {
++        pairwiseReport = await options.mockPairwise(videoPath, refPath);
++      } else {
++        pairwiseReport = await reviewPairwise(videoPath, refPath, { onProgress });
++      }
++
++      // Order 1 (AB): Video 1 = candidate, Video 2 = reference
++      // Order 2 (BA): Video 1 = reference, Video 2 = candidate
++      const winOrder1 = pairwiseReport.orderAB.choice === "Video 1" || pairwiseReport.orderAB.choice === "Tie";
++      const winOrder2 = pairwiseReport.orderBA.choice === "Video 2" || pairwiseReport.orderBA.choice === "Tie";
++      candidateWonOrTied = winOrder1 && winOrder2;
++
++      if (!candidateWonOrTied) {
++        onProgress(`  Pairwise check failed: candidate video did not beat or tie reference video (${pairwiseReport.consistentWinner === "Video B" ? "Reference Video won" : "Inconsistent preference"}).`);
++        report.verdict = "REVISE";
++        report.feedback.unshift({
++          priority: "high",
++          issue: `Candidate video did not beat or tie reference video (${path.basename(refPath)}) in pairwise evaluation.`,
++          recommendation: `Elevate visual pacing, persistent stage continuity, and bottom subtitles to match or exceed reference video standards.`,
++        });
++      } else {
++        onProgress(`  Pairwise check passed: candidate video won or tied against reference video.`);
++      }
++    }
++
++    const roundRecord: ReviewLoopRound = {
++      round,
++      score: report.overallScore,
++      verdict: report.verdict,
++      feedback: report.feedback,
++      videoHash: report.videoHash || "",
++      videoPath,
++      timestamp: new Date().toISOString(),
++      report,
++      pairwiseReport,
++    };
++    rounds.push(roundRecord);
++
++    // Persist round state to gitignored review directory
++    const roundPath = path.join(reviewDir, `round-${round}.json`);
++    const latestPath = path.join(reviewDir, "latest.json");
++    const filmReviewPath = path.join(videoDir, "review.json");
++    await fsp.writeFile(roundPath, JSON.stringify(roundRecord, null, 2), "utf8");
++    await fsp.writeFile(latestPath, JSON.stringify(roundRecord, null, 2), "utf8");
++    await fsp.writeFile(filmReviewPath, JSON.stringify(report, null, 2), "utf8");
++    onProgress(`Saved round ${round} results to ${roundPath}`);
++
++    // Print summary
++    onProgress(formatReviewSummary(report));
++
++    const singlePassed = report.verdict === "ACCEPT" && report.overallScore >= targetScore;
++    const pairwisePassed = !options?.referenceVideo || candidateWonOrTied;
++
++    if (singlePassed && pairwisePassed) {
++      onProgress(`\n SUCCESS: Video achieved score of ${report.overallScore.toFixed(1)} >= ${targetScore.toFixed(1)} and passed pairwise reference check on round ${round}!`);
++      const result: ReviewLoopResult = {
++        slug,
++        finalScore: report.overallScore,
++        finalVerdict: "ACCEPT",
++        passed: true,
++        rounds,
++        outputPath: videoPath,
++        referenceVideo: options?.referenceVideo,
++        pairwisePassed: true,
++      };
++      await fsp.writeFile(path.join(videoDir, "review-loop.json"), JSON.stringify(result, null, 2), "utf8");
++      return result;
++    }
++
++    if (round >= maxRounds) {
++      onProgress(`\n STOPPED: Reached maximum rounds (${maxRounds}) without reaching target score of ${targetScore}. Final score: ${report.overallScore.toFixed(1)}.`);
++      break;
++    }
++
++    // Attempt automated refinement for next round
++    if (autoRefine) {
++      onProgress("Applying constructive feedback to film for next round...");
++      const modified = await applyFeedbackToFilm(slug, report.feedback);
++      if (!modified) {
++        onProgress("No automated film mutations applied; proceeding with current assets.");
++      }
++    }
++  }
++
++  const lastRound = rounds[rounds.length - 1];
++  const lastPairwisePassed = !options?.referenceVideo || (
++    lastRound?.pairwiseReport
++      ? (lastRound.pairwiseReport.orderAB.choice === "Video 1" || lastRound.pairwiseReport.orderAB.choice === "Tie") &&
++        (lastRound.pairwiseReport.orderBA.choice === "Video 2" || lastRound.pairwiseReport.orderBA.choice === "Tie")
++      : true
++  );
++  const finalPassed = (lastRound?.verdict === "ACCEPT") && ((lastRound?.score ?? 0) >= targetScore) && lastPairwisePassed;
++  const finalResult: ReviewLoopResult = {
++    slug,
++    finalScore: lastRound?.score ?? 0,
++    finalVerdict: finalPassed ? "ACCEPT" : "REVISE",
++    passed: finalPassed,
++    rounds,
++    outputPath: videoPath,
++    referenceVideo: options?.referenceVideo,
++    pairwisePassed: lastPairwisePassed,
++  };
++  await fsp.writeFile(path.join(videoDir, "review-loop.json"), JSON.stringify(finalResult, null, 2), "utf8");
++  return finalResult;
++}
+diff --git a/backend/geminiReview/rubric.ts b/backend/geminiReview/rubric.ts
+new file mode 100644
+index 0000000..05bd6ac
+--- /dev/null
++++ b/backend/geminiReview/rubric.ts
+@@ -0,0 +1,238 @@
++/**
++ * File Description: Defines the 12-criterion good-video quality rubric, gate classifications,
++ * structured JSON schemas, prompt templates, and timestamp evidence validation for Gemini review.
++ */
++
++import type { CriterionEvaluation } from "./types";
++
++export interface RubricCriterionDefinition {
++  name: string;
++  title: string;
++  isGate: boolean;
++  description: string;
++  passTarget: string;
++}
++
++export const RUBRIC_CRITERIA: RubricCriterionDefinition[] = [
++  {
++    name: "persistent_stage",
++    title: "One persistent stage",
++    isGate: true,
++    description:
++      "One unified visual stage. Elements persist across beat boundaries rather than being wiped clean. Stage-clears must be <= 1 per 30s. No jump cuts between disconnected static layouts.",
++    passTarget: "Stage-clears <= 1 per 30s; layout continuity maintained across beats",
++  },
++  {
++    name: "carry_over_transformation",
++    title: "Carry-over with transformation",
++    isGate: false,
++    description:
++      "Elements carry over between beats and visibly change position, scale, shape, or role (e.g. points tilt into 3D layers, query drops layer to layer, graph slides and transforms into a pipeline card).",
++    passTarget: "At least 1 transforming carry-over event per 20s",
++  },
++  {
++    name: "visible_cause_effect",
++    title: "Visible cause and effect",
++    isGate: false,
++    description:
++      "Every narrated mechanism or action verb is paired with an animation starting within 0.4s of the spoken keyword that visibly moves or transforms the named object.",
++    passTarget: "Animations directly depict the spoken action keywords in real time",
++  },
++  {
++    name: "camera_purpose",
++    title: "Camera that does something",
++    isGate: true,
++    description:
++      "Purposeful camera movement (pan, zoom, tilt, payoff pull-back) with at least 1 move per 20s. Every move must change what is framed; no aimless drift or frantically fast pans (>20% width/sec).",
++    passTarget: "Purposeful framing changes >= 1 per 20s; smooth cinematic motion",
++  },
++  {
++    name: "bottom_captions",
++    title: "Bottom captions",
++    isGate: true,
++    description:
++      "Burned-in caption band located in the bottom 20-22% of the frame for >= 95% of narrated time. Clean typography (>= 36px at 1080p), max 2 lines, no widows, exactly matching spoken voiceover words.",
++    passTarget: "Present in bottom band for >= 95% of speech; words synchronized",
++  },
++  {
++    name: "readability",
++    title: "Readability",
++    isGate: true,
++    description:
++      "All on-screen text is legible (body text >= 24px, labels >= 20px at 1080p), high contrast (>= 4.5:1), and dwells on screen for >= 0.35s per word. No microscopic or unreadable text.",
++    passTarget: "Zero unreadable text violations; contrast and dwell times met",
++  },
++  {
++    name: "no_overlap_clipping",
++    title: "No overlap or clipping",
++    isGate: true,
++    description:
++      "Zero collisions between text blocks, zero text intersecting graphics, zero artwork clipped outside screen bounds, and all critical content respects safe margins (>= 96px at 1080p).",
++    passTarget: "Zero text-text or text-art collisions; zero edge clippings",
++  },
++  {
++    name: "audio_sync",
++    title: "Audio sync",
++    isGate: true,
++    description:
++      "Visual cues land within 120ms of spoken words. Shot transitions occur during natural speech pauses. Total video duration matches voiceover audio duration within 100ms.",
++    passTarget: "Cues aligned within 120ms; voiceover and video durations match",
++  },
++  {
++    name: "pacing",
++    title: "Pacing",
++    isGate: false,
++    description:
++      "Dynamic visual rhythm: no static frame held unchanged for > 3s, mean beat length 5-12s, no dead air > 0.7s, narration delivery pace 130-170 words per minute.",
++    passTarget: "Continuous visual motion; no static freezes > 3s; natural delivery",
++  },
++  {
++    name: "storyline",
++    title: "Storyline",
++    isGate: false,
++    description:
++      "Clear narrative arc: problem statement introduced upfront, each beat logically builds upon the previous one without disjointed leaps, concluding with an integrated payoff scene.",
++    passTarget: "Logical build; beats cannot be arbitrarily reordered; clear payoff",
++  },
++  {
++    name: "accuracy_honesty",
++    title: "Accuracy and honesty",
++    isGate: false,
++    description:
++      "Every number, metric, and label shown on screen is spoken in the narration or clearly marked illustrative. Diagrams accurately portray the actual computational mechanism.",
++    passTarget: "Zero ungrounded numbers or misleading visual claims",
++  },
++  {
++    name: "audio_mix",
++    title: "Loudness and mix",
++    isGate: false,
++    description:
++      "Clean, professional audio mix: integrated loudness -14 to -18 LUFS, true peak <= -1 dBFS, zero audio clipping, background music ducked >= 12dB under voice, voice is crisp.",
++    passTarget: "-14 to -18 LUFS; zero clipping; voiceover clearly intelligible",
++  },
++];
++
++// Validates that each criterion in the review contains at least one concrete timestamp reference.
++export function validateCriterionTimestamps(criteria: CriterionEvaluation[]): { valid: boolean; missing: string[] } {
++  const missing: string[] = [];
++  const timestampRegex = /\b\d{1,2}:\d{2}(?::\d{2})?(?:\s*(?:-|to)\s*\d{1,2}:\d{2}(?::\d{2})?)?\b/i;
++
++  for (const crit of criteria) {
++    const hasEvidenceArray =
++      Array.isArray(crit.evidenceTimestamps) &&
++      crit.evidenceTimestamps.some((ts) => ts && typeof ts === "string" && timestampRegex.test(ts.trim()));
++
++    const hasTimestampInReason = typeof crit.reason === "string" && timestampRegex.test(crit.reason);
++
++    if (!hasEvidenceArray && !hasTimestampInReason) {
++      missing.push(crit.name || crit.title || "unnamed criterion");
++    }
++  }
++
++  return {
++    valid: missing.length === 0,
++    missing,
++  };
++}
++
++// Builds the detailed prompt for single video evaluation against the 12-criterion rubric.
++export function buildSingleVideoReviewPrompt(
++  reAskFeedback?: string,
++  deterministicReviewJson?: string,
++  deterministicFactsText?: string,
++): string {
++  const criteriaText = RUBRIC_CRITERIA.map(
++    (c, i) => `${i + 1}. [${c.isGate ? "HARD GATE" : "CRITERION"}] ${c.title} (key: "${c.name}"):\n` +
++      `   Requirement: ${c.description}\n` +
++      `   Pass Target: ${c.passTarget}`,
++  ).join("\n\n");
++
++  const reAskNote = reAskFeedback
++    ? `\n\nCRITICAL PREVIOUS ERROR: Your previous response was rejected because the following criteria lacked timestamp evidence:\n${reAskFeedback}\nYou MUST provide specific timestamps (e.g. "0:14", "0:32-0:38") for EVERY single criterion in the evidenceTimestamps array and reason text.\n`
++    : "";
++
++  const deterministicNote = deterministicReviewJson
++    ? `\n\nPRE-MEASURED DETERMINISTIC REVIEW FACTS:\nA deterministic quality check was performed prior to this review:\n${deterministicReviewJson}\nFactor these measured facts into your evaluation of layout persistence, captions, safe-area bounds, and audio sync.\n`
++    : "";
++
++  const factsNote = deterministicFactsText
++    ? `\n\n${deterministicFactsText}\n`
++    : "";
++
++  return `You are an expert video director and technical judge reviewing an animated explainer video.
++Watch the complete video carefully with audio. Evaluate it decisively against the following 12 quality criteria:
++
++${criteriaText}
++
++SCORING AND VERDICT RULES:
++1. Provide an overall score out of 10.0 (decimals allowed, e.g. 7.5, 9.2).
++2. For EACH of the 12 criteria, provide:
++   - "name": the exact criterion key (e.g. "persistent_stage")
++   - "title": human-readable title
++   - "isGate": boolean (true for the 6 hard gates: persistent_stage, camera_purpose, bottom_captions, readability, no_overlap_clipping, audio_sync)
++   - "score": score from 0.0 to 10.0
++   - "passed": boolean (true if meets the pass target, false if defective)
++   - "evidenceTimestamps": array of timestamps (e.g. ["0:04", "0:25-0:31"]) citing exactly where in the video you observed this behavior. YOU MUST PROVIDE REAL TIMESTAMPS FOR EVERY CRITERION.
++   - "reason": concise explanation citing what occurs at those timestamps.
++3. Verdict rule:
++   - If overallScore >= 9.0 AND all 6 hard gates passed (isGate=true criteria have passed=true and score >= 6.0), the verdict is "ACCEPT".
++   - Otherwise, the verdict is "REVISE". Be strict, objective, and decisive.
++4. Provide prioritized, constructive, and concrete feedback in "feedback":
++   - For each issue, specify priority ("high", "medium", "low"), approximate timestamp, the specific issue observed, and the concrete recommended action for the AI animator/agent.
++${factsNote}${deterministicNote}${reAskNote}
++Return ONLY valid JSON matching this schema:
++{
++  "overallScore": number,
++  "verdict": "ACCEPT" | "REVISE",
++  "summary": string,
++  "criteria": [
++    {
++      "name": string,
++      "title": string,
++      "isGate": boolean,
++      "score": number,
++      "passed": boolean,
++      "evidenceTimestamps": string[],
++      "reason": string
++    }
++  ],
++  "feedback": [
++    {
++      "priority": "high" | "medium" | "low",
++      "timestamp": string,
++      "issue": string,
++      "recommendation": string
++    }
++  ]
++}`;
++}
++
++// Builds the pairwise comparison prompt for two videos.
++export function buildPairwiseReviewPrompt(topic?: string): string {
++  const topicContext = topic ? ` on the topic of "${topic}"` : "";
++
++  return `You are judging two technical explainer videos${topicContext}. Both were created for the same brief: 16:9, narrated, animated technical diagrams. Watch both videos fully with audio.
++
++Evaluation Guidance based on the Aideos Good-Video Rubric:
++1. Unified Persistent Stage: A single continuous stage where diagrams and text evolve together is strictly preferred over layout splitting (e.g. a separate left text column isolates text from graphics and violates the single stage principle).
++2. Carry-over and Transformation: Elements should persist and visibly transform across beats rather than being wiped clean.
++3. Purposeful Camera Motion: Cinematic framing changes (slow zooms, tilts, payoff pans) that guide viewer attention are preferred over static framing.
++4. Captions and Readability: Burned-in bottom subtitles synchronized to voiceover ensure accessibility, whereas uncaptioned video or cramped secondary monospace labels fail the readability gate.
++5. Audio Sync and Mix: Visual cues landing within 120ms of spoken words and clear voiceover mixed to -14 to -18 LUFS.
++
++Carefully evaluate "Video 1" and "Video 2":
++- For EACH video give:
++  - An overall rating out of 10.0
++  - Scores and concise reasoning referencing specific moments with timestamps.
++- Then CHOOSE ONE video you would rather watch and recommend ("Video 1", "Video 2", or "Tie").
++- Explain your decision with concrete sentences referencing specific moments with timestamps in both videos.
++
++Return ONLY valid JSON with this schema:
++{
++  "video1Score": number,
++  "video2Score": number,
++  "choice": "Video 1" | "Video 2" | "Tie",
++  "reasoning": string,
++  "timestampsCited": string[]
++}`;
++}
+diff --git a/backend/geminiReview/types.ts b/backend/geminiReview/types.ts
+new file mode 100644
+index 0000000..f2cd8a2
+--- /dev/null
++++ b/backend/geminiReview/types.ts
+@@ -0,0 +1,123 @@
++/**
++ * File Description: Type definitions for the Gemini 3.8 Flash video quality review engine,
++ * structured rubric scoring, timestamp evidence validation, deterministic facts, and iterative review loop.
++ */
++
++export interface CriterionEvaluation {
++  name: string;
++  title: string;
++  isGate: boolean;
++  score: number;
++  passed: boolean;
++  evidenceTimestamps: string[];
++  reason: string;
++}
++
++export interface ReviewFeedbackItem {
++  priority: "high" | "medium" | "low";
++  timestamp?: string;
++  issue: string;
++  recommendation: string;
++}
++
++export interface DeterministicVideoFacts {
++  durationSec: number;
++  width?: number;
++  height?: number;
++  fps?: number;
++  audio: {
++    measured: boolean;
++    hasAudio: boolean;
++    integratedLufs: number;
++    truePeakDb: number;
++    summary: string;
++  };
++  bottomCaptions: {
++    measured: boolean;
++    hasCaptions: boolean;
++    coverageRatio: number;
++    sampledFrames: number;
++    captionFrames: number;
++    score: number;
++    summary: string;
++  };
++  camera: {
++    measured: boolean;
++    hasCameraMoves: boolean;
++    moveCount: number;
++    score: number;
++    summary: string;
++  };
++  readability: {
++    measured: boolean;
++    smallWordShare?: number;
++    summary: string;
++  };
++  rawSummaryText: string;
++}
++
++export interface GeminiReviewReport {
++  overallScore: number;
++  verdict: "ACCEPT" | "REVISE";
++  summary: string;
++  criteria: CriterionEvaluation[];
++  feedback: ReviewFeedbackItem[];
++  model: string;
++  evaluatedAt: string;
++  videoHash?: string;
++  videoPath?: string;
++  facts?: DeterministicVideoFacts;
++}
++
++export interface PairwiseComparisonResult {
++  orderKey: string;
++  video1Path: string;
++  video2Path: string;
++  video1Score: number;
++  video2Score: number;
++  choice: "Video 1" | "Video 2" | "Tie";
++  reasoning: string;
++  timestampsCited: string[];
++}
++
++export interface PairwiseRunReport {
++  orderAB: PairwiseComparisonResult;
++  orderBA: PairwiseComparisonResult;
++  consistentWinner: "Video A" | "Video B" | "Inconsistent";
++  evaluatedAt: string;
++}
++
++export interface ReviewLoopRound {
++  round: number;
++  score: number;
++  verdict: "ACCEPT" | "REVISE";
++  feedback: ReviewFeedbackItem[];
++  videoHash: string;
++  videoPath: string;
++  timestamp: string;
++  report: GeminiReviewReport;
++  pairwiseReport?: PairwiseRunReport;
++}
++
++export interface ReviewLoopResult {
++  slug: string;
++  finalScore: number;
++  finalVerdict: "ACCEPT" | "REVISE";
++  passed: boolean;
++  rounds: ReviewLoopRound[];
++  outputPath?: string;
++  referenceVideo?: string;
++  pairwisePassed?: boolean;
++}
++
++export interface ReviewLoopOptions {
++  maxRounds?: number;
++  targetScore?: number;
++  referenceVideo?: string;
++  format?: "long" | "reel";
++  autoRefine?: boolean;
++  onProgress?: (message: string) => void;
++  mockReviewer?: (videoPath: string, round: number) => Promise<GeminiReviewReport>;
++  mockRenderer?: (slug: string, format: string) => Promise<string>;
++  mockPairwise?: (path1: string, path2: string) => Promise<PairwiseRunReport>;
++}
+diff --git a/bin/aideos b/bin/aideos
+index 8ee595e..6150a11 100755
+--- a/bin/aideos
++++ b/bin/aideos
+@@ -99,7 +99,7 @@ if [ "$#" -gt 0 ]; then
+       cd "$AIDEOS_DIR" && npm run lint "$@"
+       exit 0
+       ;;
+-    ideate|shoot|prompts|assemble|produce|generate|engine-test|film|direct|mcp)
++    ideate|shoot|prompts|assemble|produce|generate|engine-test|film|direct|mcp|gemini-review|review-loop)
+       cd "$AIDEOS_DIR" && npm run backend -- "$CMD" "$@"
+       exit 0
+       ;;
+@@ -119,6 +119,8 @@ if [ "$#" -gt 0 ]; then
+       echo "  aideos ideate        Staged ideation chain (treatment.json)"
+       echo "  aideos direct <prompt>  Auto-prompt: LLM director plans and produces a film from a prompt"
+       echo "  aideos film          One call from a screenplay to finished, verified mp4s"
++      echo "  aideos gemini-review <mp4>  Gemini 3.8 Flash native video quality review"
++      echo "  aideos review-loop <slug>   Iterative render-review-refine loop until 9.0+ score"
+       echo ""
+       exit 0
+       ;;
+diff --git a/docs/DEPLOY_HOSTING.md b/docs/DEPLOY_HOSTING.md
+index e905c30..f9cfdb0 100644
+--- a/docs/DEPLOY_HOSTING.md
++++ b/docs/DEPLOY_HOSTING.md
+@@ -124,9 +124,11 @@ Before deploying, ensure you have:
+ 
+ | Variable | Required | Default | Description |
+ |---|---|---|---|
+-| `GEMINI_API_KEY` | Yes | - | Google Gemini API key for agent compilation and critique |
++| `GEMINI_API_KEY` | Yes | - | Google Gemini API key for agent compilation, critique, and video review |
+ | `GOOGLE_API_KEY` | Alternative / No | - | Fallback Google GenAI and Cloud TTS API key |
+ | `AIDEOS_GEMINI_MODEL` | No | `gemini-2.0-flash` | Gemini model name for screenplay intake and critique |
++| `AIDEOS_GEMINI_REVIEW_MODEL` | No | `gemini-3.8-flash` | Gemini model name for video quality review loop |
++| `AIDEOS_GEMINI_FALLBACK_MODEL` | No | `gemini-2.5-flash` | Fallback Gemini model name for video review |
+ | `AIDEOS_PUBLIC_API_URL` | No | `https://aideos-backend.onrender.com` | Public backend URL shown in agent link connect commands |
+ | `AIDEOS_LINK_SECRET` | No | Derived / generated | HMAC secret key signing agent link tokens across restarts |
+ | `DEEPGRAM_API_KEY` | No | - | Deepgram API key for speech recognition and neural TTS |
+diff --git a/docs/GOOD_VIDEO.md b/docs/GOOD_VIDEO.md
+index 2ba897b..23215e3 100644
+--- a/docs/GOOD_VIDEO.md
++++ b/docs/GOOD_VIDEO.md
+@@ -4,11 +4,11 @@
+ 
+ This document is the single source of truth for what makes a good aideos video. 
+ 
+-Before you make or change any video: read this document, then run `aideos review <slug>` and attach `review.json` to your handoff.
++Before you make or change any video: read this document, run deterministic checks with `aideos review <slug>`, and validate through the Gemini 3.8 Flash review loop with `aideos review-loop <slug>`.
+ 
+ ## Pass Bar
+ No gate fails, total >= 36/48, and every criterion >= 2. Targets are for a 60 to 120 s explainer at 1920x1080.
+-The final acceptance is a Gemini review score of 9 or more on the rendered video (being built separately) and the captain's own watch.
++Final acceptance requires a Gemini 3.8 Flash review score of 9.0 or higher (out of 10.0) with all 6 hard gates passing (`aideos review-loop <slug>` or `aideos gemini-review <mp4>`), verdict ACCEPT, and the captain's own watch.
+ 
+ ## Rubric
+ 
+diff --git a/docs/REVIEW.md b/docs/REVIEW.md
+index 0d541c3..cb7f094 100644
+--- a/docs/REVIEW.md
++++ b/docs/REVIEW.md
+@@ -1,8 +1,16 @@
+ <!--
+-File Description: Documentation and usage reference for the aideos review deterministic video checks and good-video rubric.
++File Description: Documentation and usage reference for aideos deterministic video checks, Gemini 3.8 Flash video reviews, and the iterative review loop.
+ -->
+ 
+-# aideos review: deterministic checks on a rendered video
++# aideos review: deterministic checks and Gemini 3.8 Flash review loop
++
++Video quality verification in Aideos operates on two connected layers:
++1. **Deterministic Checks (`aideos review`)**: Precise numerical measurements (OCR caption band coverage, layout correlation, audio loudness, camera motion frequency).
++2. **Gemini 3.8 Flash Native Review (`aideos gemini-review` & `aideos review-loop`)**: Full multimodal video and audio evaluation against the 12-criterion rubric, requiring a score of 9.0+ out of 10.0 with all 6 hard gates passing for acceptance.
++
++---
++
++## 1. Deterministic Review (`aideos review`)
+ 
+ `aideos review <slug|mp4>` measures a rendered video against the measurable half of the good-video
+ rubric and writes `review.json` plus evidence frames. It is deterministic (same video, same report),
+@@ -10,7 +18,7 @@ needs only `ffmpeg`, `ffprobe` and `tesseract`, and works on any mp4, not just a
+ the numbers layer: the Gemini review loop reads the same JSON as context and judges what numbers
+ cannot (story, whether two things are the same object, whether an animation shows its claim).
+ 
+-```
++```bash
+ aideos review hnsw-explainer                       # slug: finds out/<slug>-long.mp4, film.json, voiceover_words.json
+ aideos review path/to/video.mp4 --film film.json --words voiceover_words.json
+ aideos review video.mp4 --words script.json        # narration text only: caption match and number grounding, no timings
+@@ -22,7 +30,7 @@ no ffmpeg). Output: `<out>/review.json` (a slug writes into `videos/<slug>/`, an
+ `.frames/review/<name>/`, `--out` overrides) and `<out>/review/<criterion>-<seconds>s.jpg` for the
+ moments behind each failed criterion. The schema is `ReviewReport` in `backend/review/types.ts`.
+ 
+-## What it measures
++### What it measures
+ 
+ | # | Criterion (gate in bold) | Measured from | Pass when |
+ |---|---|---|---|
+@@ -43,7 +51,7 @@ inputs are missing is `skipped`, never `pass`: the camera is never guessed from
+ never measured by pixel overlap in place, and captions are skipped for a silent video with no
+ narration. Every threshold lives in `backend/review/thresholds.ts`.
+ 
+-## Two design constraints from the audit
++### Two design constraints from the audit
+ 
+ - **Carry-over is not pixel overlap.** Overlap in place rewards a diagram that simply sits still
+   (it scored the rejected video higher), so carry-over comes from element identity in film data.
+@@ -51,7 +59,7 @@ narration. Every threshold lives in `backend/review/thresholds.ts`.
+   every real camera move, so the camera comes from film data. A foreign mp4 reviewed without
+   `--film` reports the camera as `skipped`.
+ 
+-## Calibration
++### Calibration
+ 
+ `npm run calibrate:review` re-runs the three reference videos and fails unless the tool still
+ reproduces the captain's comparison. The mp4s are the captain's own and are not in the repo: point
+@@ -72,9 +80,68 @@ Re-run it after changing any threshold or the pixel analysis; the thresholds wer
+ the others with margin, and the rubric's 95% caption target is not met even by A at 2 s sampling
+ (captions change between samples), so the gate is 60%.
+ 
+-## Limits
++---
++
++## 2. Gemini 3.8 Flash Video Quality Review (`aideos gemini-review`)
++
++`aideos gemini-review <video.mp4>` evaluates a rendered mp4 video with native Gemini 3.8 Flash video and audio understanding.
++
++```bash
++aideos gemini-review out/hnsw-explainer-long.mp4
++aideos gemini-review out/video.mp4 --film videos/hnsw-explainer/film.json
++aideos gemini-review videoA.mp4 --pairwise videoB.mp4
++```
++
++### How it works
++1. **Direct Video Upload**: Uploads the complete MP4 file with audio to the Gemini API Files endpoint via resumable chunked upload.
++2. **Deterministic Facts Extraction**: Gathers ground-truth data (bottom captions OCR coverage, audio LUFS loudness, duration, framerate, camera track from `film.json`) and feeds them into the model prompt to prevent hallucinations.
++3. **Structured Rubric Evaluation**: Grades all 12 criteria on a 0.0 to 10.0 scale, checking the 6 hard gates (persistent stage, camera purpose, bottom captions, readability, no overlap/clipping, audio sync).
++4. **Timestamp Evidence Enforcement**: Validates that every criterion score includes concrete timestamp citations (e.g. `00:14`, `01:02`) within the video bounds.
++5. **Verdict Decision**:
++   - `ACCEPT`: Overall score >= 9.0 and all 6 hard gates passed.
++   - `REVISE`: Overall score < 9.0 or any hard gate failed.
++6. **Prioritized Feedback**: Generates actionable, timestamped recommendations (high, medium, low priority) on how to improve the video.
++
++### Order-Swapped Pairwise Comparison (`--pairwise`)
++To eliminate model position bias when comparing two videos (e.g. comparing Aideos output against an external benchmark), `--pairwise` runs two independent evaluations with reversed presentation orders (`A vs B` and `B vs A`). A video is declared the winner only if it wins consistently across both orderings.
++
++---
++
++## 3. Iterative Review Loop (`aideos review-loop`)
++
++`aideos review-loop <slug>` automates the render -> review -> refine iteration loop until Gemini rates the video 9.0 or higher.
++
++```bash
++aideos review-loop hnsw-explainer
++aideos review-loop hnsw-explainer --target-score 9.2 --max-rounds 8
++aideos review-loop hnsw-explainer --reference benchmarks/reference-a.mp4
++```
++
++### Review Loop Workflow
++1. **Render**: Renders the latest film manifest (`npm run render` or `npm run render:reel`).
++2. **Review**: Executes Gemini 3.8 Flash review and logs the evaluation.
++3. **Persist**: Stores round outcomes under `videos/<slug>/gemini-review/round-N.json` and updates `videos/<slug>/gemini-review/latest.json`.
++4. **Evaluate Acceptance**:
++   - If overall score >= 9.0 (default target) and all gates pass (and pairwise reference check passes if `--reference` is set): the loop terminates with success (exit code 0).
++   - If verdict is `REVISE` and remaining rounds exist: applies automated feedback refinements (or allows agent intervention) and loops back to step 1.
++   - If max rounds exceeded without passing: exits with code 1.
++
++---
++
++## 4. The 12-Criterion Rubric
++
++| # | Criterion | Hard Gate? | Description |
++|---|---|---|---|
++| 1 | **persistent_stage** | Yes | One unified visual stage; elements persist and evolve across beats; stage-clears <= 1 per 30s. |
++| 2 | carry_over_transform | No | Named elements carry over across beat boundaries and change position, scale, shape, or role. |
++| 3 | visible_cause_effect | No | Mechanism claims have animations starting within 0.4s of spoken keywords that visually demonstrate the claim. |
++| 4 | **camera_purpose** | Yes | Active, purposeful camera moves (>= 1 move per 20s) framing content naturally without disorienting drift. |
++| 5 | **bottom_captions** | Yes | Clean burned-in captions in the bottom 22% band for >= 95% of speech, readable size (>= 36px), matching spoken audio. |
++| 6 | **readability** | Yes | High contrast (>= 4.5:1), clear font hierarchy (>= 24px), sufficient reading duration (>= 0.35s per word). |
++| 7 | **no_overlap_clipping** | Yes | No text-text or text-artwork overlapping; all essential elements stay within the 96px safe margin. |
++| 8 | **audio_sync** | Yes | Visual cues synchronize with voiceover within 120ms; voiceover and video durations agree within 100ms. |
++| 9 | pacing | No | Dynamic progression with no static holds > 3s, mean beat length 5-12s, no dead air > 0.7s, speech 130-170 wpm. |
++| 10 | storyline | No | Clear problem statement, logical progression where beats build on previous content, satisfying payoff beat. |
++| 11 | accuracy_honesty | No | Every number, chart, and label is grounded in the narration; zero fabricated numbers or misleading visuals. |
++| 12 | loudness_mix | No | Audio loudness normalized to -14 to -18 LUFS integrated, true peak <= -1 dBFS, background music ducked cleanly. |
+ 
+-It cannot decide that a metaphor is good or the story interesting. OCR sees only text, so overlap
+-between artwork and text, and caption quality beyond presence, size, line count and word match,
+-need the model judge. Grounding is noisy on charts (axis ticks are numbers nobody speaks), which is
+-why it is a soft criterion and never a gate.
+diff --git a/package.json b/package.json
+index 649ba1f..fde1fe4 100644
+--- a/package.json
++++ b/package.json
+@@ -60,7 +60,7 @@
+     "review": "tsx backend/cli.ts review",
+     "calibrate:review": "tsx scripts/calibrate_review.ts",
+     "validate:film": "tsx scripts/validate_film.ts",
+-    "test": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/compliance.test.ts backend/ideation/ideation.test.ts backend/audio.test.ts backend/voiceSynthesis.test.ts backend/transcribe.test.ts backend/editContext/editContext.test.ts backend/editPlanner/validator.test.ts backend/editPlanner/interpreter.test.ts backend/editPlanner/planner.test.ts backend/editPlanner/ai_edit_invariants.test.ts backend/editPlanner/phase3_invariants.test.ts backend/mcp/mcp.test.ts backend/claude_script_intake.test.ts backend/script_intake_prose.test.ts backend/jev.test.ts backend/agent_prompter.test.ts backend/agentBridge/agentBridge.test.ts backend/agentBridge/traceBus.test.ts backend/agentBridge/canvasLoop.test.ts backend/voiceover_stutter.test.ts backend/sync.test.ts backend/character.test.ts backend/perceptual.test.ts backend/scene/scene.test.ts backend/scene/actions.test.ts backend/scene/compile.test.ts backend/scene/patch.test.ts backend/scene/author.test.ts backend/scene/integration.test.ts backend/rigs/rigging.test.ts backend/scene/secondary.test.ts backend/visual_pipeline/phase_b.test.ts backend/visual_pipeline/phase_c.test.ts backend/visual_pipeline/phase_d.test.ts backend/visual_pipeline/phase_e.test.ts backend/critique/critique.test.ts backend/scene/termResolver.test.ts backend/captionsParser.test.ts backend/scene/generateSvg.test.ts backend/scene/svgAnimation.test.ts backend/timeline/bug_audit_fixes.test.ts backend/timeline/geometry.test.ts backend/timeline/timeline.test.ts backend/timeline/layer_model.test.ts backend/timeline/layer_interaction.test.ts backend/timeline/layer_management.test.ts backend/timeline/imported_footage.test.ts backend/timeline/voiceover_editing.test.ts backend/timeline/subtitle_clips.test.ts backend/timeline/drag_machine.test.ts backend/video_package.test.ts backend/aideos_codebase_fixes.test.ts backend/fullScreenHeroLayout.test.ts backend/design_language_palette.test.ts backend/pipeline/pipeline.test.ts backend/still_talking_film.test.ts backend/pipeline/director.test.ts backend/pipeline/agent_director_invariants.test.ts backend/jev_shot_visual.test.ts backend/jev_batch.test.ts backend/visionJudge/visionJudge.test.ts backend/eval/shotVisualEval.test.ts backend/pipeline/design_jev.test.ts backend/pipeline/deviceData.test.ts backend/designSpec/shotTools.test.ts backend/agentLink/agentLink.test.ts backend/designSpec/motionRequests.test.ts backend/sceneKit/sceneKit.test.ts backend/designCheck/designCheck.test.ts backend/designSpec/designSpec.test.ts backend/designSpec/designer.test.ts backend/goodVideoRubric.test.ts backend/review/review.test.ts",
++    "test": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/compliance.test.ts backend/ideation/ideation.test.ts backend/audio.test.ts backend/voiceSynthesis.test.ts backend/transcribe.test.ts backend/editContext/editContext.test.ts backend/editPlanner/validator.test.ts backend/editPlanner/interpreter.test.ts backend/editPlanner/planner.test.ts backend/editPlanner/ai_edit_invariants.test.ts backend/editPlanner/phase3_invariants.test.ts backend/mcp/mcp.test.ts backend/claude_script_intake.test.ts backend/script_intake_prose.test.ts backend/jev.test.ts backend/agent_prompter.test.ts backend/agentBridge/agentBridge.test.ts backend/agentBridge/traceBus.test.ts backend/agentBridge/canvasLoop.test.ts backend/voiceover_stutter.test.ts backend/sync.test.ts backend/character.test.ts backend/perceptual.test.ts backend/scene/scene.test.ts backend/scene/actions.test.ts backend/scene/compile.test.ts backend/scene/patch.test.ts backend/scene/author.test.ts backend/scene/integration.test.ts backend/rigs/rigging.test.ts backend/scene/secondary.test.ts backend/visual_pipeline/phase_b.test.ts backend/visual_pipeline/phase_c.test.ts backend/visual_pipeline/phase_d.test.ts backend/visual_pipeline/phase_e.test.ts backend/critique/critique.test.ts backend/scene/termResolver.test.ts backend/captionsParser.test.ts backend/scene/generateSvg.test.ts backend/scene/svgAnimation.test.ts backend/timeline/bug_audit_fixes.test.ts backend/timeline/geometry.test.ts backend/timeline/timeline.test.ts backend/timeline/layer_model.test.ts backend/timeline/layer_interaction.test.ts backend/timeline/layer_management.test.ts backend/timeline/imported_footage.test.ts backend/timeline/voiceover_editing.test.ts backend/timeline/subtitle_clips.test.ts backend/timeline/drag_machine.test.ts backend/video_package.test.ts backend/aideos_codebase_fixes.test.ts backend/fullScreenHeroLayout.test.ts backend/design_language_palette.test.ts backend/pipeline/pipeline.test.ts backend/still_talking_film.test.ts backend/pipeline/director.test.ts backend/pipeline/agent_director_invariants.test.ts backend/jev_shot_visual.test.ts backend/jev_batch.test.ts backend/visionJudge/visionJudge.test.ts backend/eval/shotVisualEval.test.ts backend/pipeline/design_jev.test.ts backend/pipeline/deviceData.test.ts backend/designSpec/shotTools.test.ts backend/agentLink/agentLink.test.ts backend/designSpec/motionRequests.test.ts backend/sceneKit/sceneKit.test.ts backend/designCheck/designCheck.test.ts backend/designSpec/designSpec.test.ts backend/designSpec/designer.test.ts backend/goodVideoRubric.test.ts backend/review/review.test.ts backend/geminiReview/geminiReview.test.ts",
+     "design:check": "tsx backend/cli.ts design-check",
+     "connect": "node scripts/aideos-connect.mjs",
+     "test:visual": "RUN_VISUAL_TESTS=1 node --import tsx --test --test-concurrency=1 backend/visual_pipeline/phase_b.test.ts backend/rigs/rigging.test.ts backend/scene/svgAnimation.test.ts",

@@ -4,7 +4,7 @@
  * and camera tracks) using ffprobe, ffmpeg, tesseract, and film metadata.
  */
 
-import { execSync, spawn } from "node:child_process";
+import { execFileSync, execSync, spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -24,8 +24,15 @@ export function probeVideoMetadata(videoPath: string): {
   fps?: number;
 } {
   try {
-    const cmd = `ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate -show_entries format=duration -of json "${videoPath}"`;
-    const output = execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    const args = [
+      "-v", "error",
+      "-select_streams", "v:0",
+      "-show_entries", "stream=width,height,r_frame_rate",
+      "-show_entries", "format=duration",
+      "-of", "json",
+      videoPath
+    ];
+    const output = execFileSync("ffprobe", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
     const parsed = JSON.parse(output);
     const durationSec = parseFloat(parsed.format?.duration || "0") || 0;
     const stream = parsed.streams?.[0];
@@ -53,8 +60,16 @@ export function measureAudioLoudness(videoPath: string): {
   summary: string;
 } {
   try {
-    const cmd = `ffmpeg -i "${videoPath}" -filter:a ebur128 -map 0:a -f null - 2>&1`;
-    const output = execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    const args = [
+      "-i", videoPath,
+      "-filter:a", "ebur128",
+      "-map", "0:a",
+      "-f", "null",
+      "-"
+    ];
+    // Need to capture stderr for ffmpeg outputs
+    const spawnResult = spawnSync("ffmpeg", args, { encoding: "utf8" });
+    const output = spawnResult.stderr;
 
     // Look specifically at the final Summary block to get total track loudness rather than early frame readings
     const summaryIdx = output.lastIndexOf("Summary:");
@@ -101,7 +116,7 @@ export function measureAudioLoudness(videoPath: string): {
 // Checks if the tesseract OCR binary is installed and executable.
 export function isTesseractAvailable(): boolean {
   try {
-    execSync("tesseract --version", { stdio: ["ignore", "ignore", "ignore"] });
+    execFileSync("tesseract", ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
     return true;
   } catch {
     return false;
@@ -189,8 +204,15 @@ export async function measureBottomCaptions(
 
       try {
         // Crop the bottom 22% of the frame where bottom captions reside
-        const cmd = `ffmpeg -y -ss ${t} -i "${videoPath}" -vframes 1 -vf "crop=in_w:in_h*0.22:0:in_h*0.78" "${framePath}"`;
-        execSync(cmd, { stdio: ["ignore", "ignore", "ignore"] });
+        const args = [
+          "-y",
+          "-ss", String(t),
+          "-i", videoPath,
+          "-vframes", "1",
+          "-vf", "crop=in_w:in_h*0.22:0:in_h*0.78",
+          framePath
+        ];
+        execFileSync("ffmpeg", args, { stdio: ["ignore", "ignore", "ignore"] });
 
         if (fs.existsSync(framePath)) {
           const text = await runTesseractOnImage(framePath);
