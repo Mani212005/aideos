@@ -9,8 +9,8 @@ This document serves as the complete technical context and API dictionary for th
 ## 1. Core Film Schema & Data Types (`src/dl/schema.ts`)
 
 ### `Film`
-The root data contract defining a complete video composition (stored in `src/dl/films/<id>.ts` or `videos/<slug>/film.json`).
-* `id: string` (Lowercase kebab-case identifier, e.g. "character-showcase", "what-is-jepa")
+The root data contract defining a complete video composition (stored authoritatively in `videos/<slug>/film.json`, with a generated shadow in `src/dl/films/<id>.ts`).
+* `id: string` (Lowercase kebab-case identifier, e.g. "hello-scene", "sample-explainer")
 * `title: string` (Human-readable video title)
 * `fps: number` (Target playback framerate, standard is 30)
 * `accent?: string` (Primary brand hex color override, e.g. "#635BFF")

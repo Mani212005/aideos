@@ -111,7 +111,7 @@ Before deploying, ensure you have:
    - Expected response: `{"status":"ok","service":"aideos-backend","uptime":...,"timestamp":"..."}`.
 2. **Verify Film Registry**:
    - Open `https://<your-vercel-app>.vercel.app/api/films`.
-   - Expected response: JSON list of available film package slugs (e.g. `["kvcache", "still-talking", ...]`).
+   - Expected response: JSON list of available film package slugs (e.g. `["hello-scene", ...]`).
 3. **Verify Interactive Studio**:
    - Open `https://<your-vercel-app>.vercel.app`.
    - The Studio Editor should load cleanly with the 2D infinite spatial canvas and playback controls.

@@ -23,9 +23,9 @@ The same thing from a terminal:
 
 ```bash
 npm run backend -- film \
-  --script-file videos/speculative-decoding/script.md \
-  --title "Speculative Decoding" \
-  --slug speculative-decoding \
+  --script-file videos/my-video/script.md \
+  --title "My Video" \
+  --slug my-video \
   --broll --formats long,reel
 ```
 

@@ -11,7 +11,7 @@ Every AI agent working on the `aideos` project MUST read and adhere strictly to 
 ## 2. Video Production Agent Workflow
 ### Stage A: Script Storage & Package Isolation
 1. **Directory Location**: When the user provides a script, store it under the self-contained package folder as `videos/<slug>/script.md`.
-2. **Git Ignore Requirement**: `videos/*/script.md`, `videos/*/footage/`, and `videos/*/voiceover.wav` MUST remain gitignored so local screenplay text, raw voiceover, and footage artifacts are never committed to version control.
+2. **Git Ignore Requirement**: The entire `videos/` package folder is gitignored (see `videos/README.md`) so personal videos, scripts, raw voiceover, and footage artifacts are never committed to version control. `AIDEOS_VIDEOS_DIR` allows storing them anywhere.
 3. **Package Isolation**: Each project maintains its own isolated workspace under `videos/<slug>/` containing `film.json`, `script.md`, `voiceover.wav`, `voiceover_words.json`, `footage/`, and `visuals/`.
 
 ### Stage B: Video Composition
