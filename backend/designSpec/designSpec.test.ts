@@ -1,6 +1,6 @@
 /**
  * File Description: Tests for design specs: cue resolution, compiling a spec onto a film, and the
- * errors a designer gets back. The committed demo (videos/speculative-decoding-designed) is the
+ * errors a designer gets back. The committed demo (test_fixtures/packages/speculative-decoding-designed) is the
  * fixture, so the test also proves that design keeps compiling and passing the design check.
  */
 
@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import { parseFilm } from "../../src/dl/schema";
 import { createCues } from "../sceneKit";
 import { checkFilmDesign } from "../designCheck/designCheck";
@@ -15,7 +16,7 @@ import { compileDesign, narrationTimingForFilm, type TimedWord } from "./compile
 import { resolveCue } from "./cues";
 import { designSpecSchema, type DesignSpec } from "./spec";
 
-const PKG = path.resolve(__dirname, "../../videos/speculative-decoding-designed");
+const PKG = path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed");
 const base = () => parseFilm(JSON.parse(fs.readFileSync(path.join(PKG, "design/base-film.json"), "utf8")));
 const words = (): TimedWord[] => JSON.parse(fs.readFileSync(path.join(PKG, "voiceover_words.json"), "utf8")).words;
 const spec = (): DesignSpec => designSpecSchema.parse(JSON.parse(fs.readFileSync(path.join(PKG, "design/design.json"), "utf8")));

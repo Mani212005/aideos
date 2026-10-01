@@ -6,9 +6,9 @@
  */
 
 import fs from "node:fs";
-import path from "node:path";
 import type { EnvironmentAsset, Scene } from "../../src/dl/scene/types";
 import { parseSvgDocument } from "../../src/dl/scene/svgDocument";
+import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 
 export interface LoadSceneAssetsOptions {
   /**
@@ -27,17 +27,13 @@ export interface LoadedSceneAssets {
   problems: Array<{ assetId: string; svgSource: string; message: string }>;
 }
 
-/** The repo root: asset svgSource paths ("videos/<id>/visuals/x.svg") are relative to it. */
-const REPO_ROOT = path.resolve(__dirname, "../..");
-
 /**
  * Resolves an asset svgSource: absolute, relative to the working directory, or relative to the
- * repo root. The editor dev server runs from editor/, so a cwd-only lookup missed every asset.
+ * repo root, with "videos/<id>/..." following AIDEOS_VIDEOS_DIR. The editor dev server runs from
+ * editor/, so a cwd-only lookup missed every asset.
  */
 function resolveAssetPath(svgSource: string): string {
-  if (path.isAbsolute(svgSource)) return svgSource;
-  const fromCwd = path.resolve(process.cwd(), svgSource);
-  return fs.existsSync(fromCwd) ? fromCwd : path.resolve(REPO_ROOT, svgSource);
+  return resolveRepoAssetPath(svgSource);
 }
 
 /** Reads every environment asset of a scene into the source map and id index SceneView needs. */

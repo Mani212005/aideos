@@ -455,6 +455,7 @@ export function buildCaptionsVtt(words: WordInfo[]): string {
 
 import { buildBriefFromSegmentFallback } from "./ideation/segmentSync";
 import { generateRelationshipAwareCanvas, type ConceptEntity } from "./ideation/graphLayout";
+import { getVideosDir } from "../src/dl/videoPackageLoader";
 
 /**
  * The part of a narration result a film is built from: the spoken segments and their
@@ -594,6 +595,7 @@ export function resolveAudioSourcePath(src: string): string {
       path.resolve(base, cleanSrc.replace(/^\//, "")),
       path.resolve(base, "public", cleanSrc.replace(/^\//, "")),
       path.resolve(base, "videos", cleanSrc.replace(/^\/?videos\/?/, "")),
+      path.resolve(getVideosDir(), cleanSrc.replace(/^\/?videos\/?/, "")),
       path.resolve(base, ".tmp_audio", cleanSrc.replace(/^\/?(\.tmp_audio|api\/audio)\/?/, "")),
     );
   }

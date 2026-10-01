@@ -15,8 +15,8 @@ import { buildSvgSources } from "../scene/buildSvgSources";
 import { checkFilmDesign, type DesignFinding } from "../designCheck/designCheck";
 import { compileDesign, DEFAULT_BACKGROUND_FILE, type DesignSource, type TimedWord } from "./compile";
 import { designSpecSchema } from "./spec";
+import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
 
 /** The outcome of one build, as written to design/status.json. */
 export interface DesignBuildStatus {
@@ -35,7 +35,7 @@ const DEFAULT_BACKGROUND_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox=
 
 // Returns the design folder of a film package.
 export function designDir(filmId: string): string {
-  return path.join(REPO_ROOT, "videos", filmId, "design");
+  return path.join(resolvePackageDir(filmId), "design");
 }
 
 // Reads a film's last build status, or null when it has never been built.
@@ -54,7 +54,7 @@ function record(filmId: string, status: DesignBuildStatus): DesignBuildStatus {
 // Builds a film's design from its spec and writes the film only when the design check passes.
 export function buildDesign(filmId: string, source: DesignSource = "agent"): DesignBuildStatus {
   const at = new Date().toISOString();
-  const pkg = path.join(REPO_ROOT, "videos", filmId);
+  const pkg = resolvePackageDir(filmId);
   const fail = (errors: string[], findings: DesignFinding[] = []) =>
     record(filmId, { state: "failed", source, at, errors, findings });
 

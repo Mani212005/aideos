@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "npm --prefix .. run ensure:generated --silent",
     "dev": "vite",
+    "prebuild": "npm --prefix .. run ensure:generated --silent",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"

@@ -53,11 +53,10 @@ to the canvas every 90s, and at most three accents in a frame.
 - **A new block:** add it to `blockSchema`, build it in `primitives.tsx` or
   `devices.tsx`, and wire it into `Block.tsx`. The union is exhaustive, so
   skipping the last step is a compile error rather than an empty frame.
-- **A new film:** write `films/<topic>.ts` as pure data (`import type` only -
-  the validator loads it in plain Node) and point `activeFilm.ts` at it, or create a
-  standalone video package under `videos/<slug>/` (`film.json`, `script.md`,
-  `voiceover.wav`, `footage/`, `visuals/`) and
-  load via `src/dl/videoPackageLoader.ts`.
+- **A new film:** create a standalone video package under `videos/<slug>/`
+  (`film.json`, `script.md`, `voiceover.wav`, `footage/`, `visuals/`),
+  or copy `examples/hello-scene/`. The shadow module in `src/dl/films/<slug>.ts`
+  is generated automatically by `npm run ensure:generated`.
 
 ## Deliberately not implemented
 

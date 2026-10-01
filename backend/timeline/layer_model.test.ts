@@ -7,13 +7,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
-import { flashAttentionFilm } from "../../src/dl/films/flash-attention";
-import { transformersVsMambaFilm } from "../../src/dl/films/transformers-vs-mamba";
-import { marsWaterFilm } from "../../src/dl/films/mars-water";
-import { raftVsPaxosFilm } from "../../src/dl/films/raft-vs-paxos";
-import { howBrowsersWorkFilm } from "../../src/dl/films/how-browsers-work";
+import { loadFixtureFilm } from "../testSupport/fixtureFilms";
 import { buildTimeline, activeShotAt } from "../../src/dl/camera";
 import type { LayeredFilm } from "../../src/dl/layeredSchema";
+
+const fixtureFilmA = loadFixtureFilm("fixture-canvas-a");
+const fixtureFilmB = loadFixtureFilm("fixture-canvas-b");
+const fixtureFilmC = loadFixtureFilm("fixture-canvas-c");
 
 function createValidLayeredFilm(): LayeredFilm {
   return {
@@ -156,14 +156,8 @@ test("L1-3: Round-trip JSON.parse(JSON.stringify(film)) deep-equals original", (
 });
 
 // L1-4: Migration Fidelity Gate
-test("L1-4: Migration fidelity: Converting all 5 existing films to LayeredFilm and back preserves shot structure", () => {
-  const prodFilms = [
-    flashAttentionFilm,
-    transformersVsMambaFilm,
-    marsWaterFilm,
-    raftVsPaxosFilm,
-    howBrowsersWorkFilm,
-  ];
+test("L1-4: Migration fidelity: Converting the fixture films to LayeredFilm and back preserves shot structure", () => {
+  const prodFilms = [fixtureFilmA, fixtureFilmB, fixtureFilmC];
 
   for (const origFilm of prodFilms) {
     const layered = convertFilmToLayeredFilm(origFilm);
@@ -209,7 +203,7 @@ test("L1-5: A clip at position: 4.0 with nothing before it produces null activeS
 // ==============================================================================
 
 test("Regression: round tripping preserves voiceover metadata the layer model cannot hold", () => {
-  const original = flashAttentionFilm;
+  const original = fixtureFilmA;
   const film = {
     ...original,
     voiceover: {
@@ -233,7 +227,7 @@ test("Regression: round tripping preserves voiceover metadata the layer model ca
 });
 
 test("Regression: round tripping preserves per-shot fields outside the animation payload", () => {
-  const original = flashAttentionFilm;
+  const original = fixtureFilmA;
   const film = {
     ...original,
     shots: original.shots.map((s, i) =>
@@ -250,7 +244,7 @@ test("Regression: round tripping preserves per-shot fields outside the animation
 });
 
 test("Regression: imported footage audio survives the trip back to a Film", () => {
-  const original = flashAttentionFilm;
+  const original = fixtureFilmA;
   const layered = convertFilmToLayeredFilm(original);
   const withFootageAudio = {
     ...layered,
@@ -288,7 +282,7 @@ test("Regression: imported footage audio survives the trip back to a Film", () =
 });
 
 test("Regression: an edited music clip keeps its timing across a round trip", () => {
-  const original = { ...flashAttentionFilm, music: { src: "bgm.mp3", volume: 0.5, duckUnderVoiceover: true } };
+  const original = { ...fixtureFilmA, music: { src: "bgm.mp3", volume: 0.5, duckUnderVoiceover: true } };
   const layered = convertFilmToLayeredFilm(original);
 
   const moved = {
@@ -308,14 +302,14 @@ test("Regression: an edited music clip keeps its timing across a round trip", ()
 });
 
 test("Regression: an untouched film still round trips without gaining an audioClips list", () => {
-  const original = { ...flashAttentionFilm, music: { src: "bgm.mp3", volume: 0.5, duckUnderVoiceover: true } };
+  const original = { ...fixtureFilmA, music: { src: "bgm.mp3", volume: 0.5, duckUnderVoiceover: true } };
   const back = convertLayeredFilmToFilm(convertFilmToLayeredFilm(original), original);
   assert.equal(back.audioClips, undefined, "nothing was edited, so the summary fields still suffice");
   assert.equal(back.music?.src, "bgm.mp3");
 });
 
 test("Regression: user-created lanes and per-clip lane assignments survive a round trip", () => {
-  const original = flashAttentionFilm;
+  const original = fixtureFilmA;
   const layered = convertFilmToLayeredFilm(original);
 
   const withCustomLane = {
@@ -344,7 +338,7 @@ test("Regression: user-created lanes and per-clip lane assignments survive a rou
 });
 
 test("Regression: an untouched film does not gain a layers block", () => {
-  const original = flashAttentionFilm;
+  const original = fixtureFilmA;
   const back = convertLayeredFilmToFilm(convertFilmToLayeredFilm(original), original);
   assert.equal(back.layers, undefined);
 });

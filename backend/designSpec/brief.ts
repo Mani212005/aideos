@@ -12,8 +12,8 @@ import { FORMAT_WINDOWS, SAFE_SQUARE, SCENE_SIZE } from "../sceneKit";
 import { LOCKED_PALETTE } from "../designCheck/designCheck";
 import { designDir } from "./build";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
+import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
 
 /** A small but complete design.json, shown to the designer as the shape to follow. */
 export const EXAMPLE_SPEC = {
@@ -57,8 +57,9 @@ export function renderDesignBrief(film: Film): string {
 Design this film's picture from scratch, as one continuous vector scene unique to this film. Write
 \`videos/${film.id}/design/design.json\` and the SVG artwork it names in \`videos/${film.id}/visuals/\`,
 then run \`aideos design build ${film.id}\` and fix whatever it reports until it prints PASS. A failing
-build never touches the film, so iterate freely. The worked example of a finished scene film is
-\`videos/still-talking/\` (built by \`backend/stillTalking/scene.ts\` on the same kit).
+build never touches the film, so iterate freely. The smallest worked example of a scene film is
+\`examples/hello-scene/\`; a full-length one is \`test_fixtures/packages/still-talking/\` (built by
+\`backend/stillTalking/scene.ts\` on the same kit).
 
 ## Video Quality Expectations
 ${RUBRIC_SUMMARY}
@@ -99,7 +100,7 @@ ${shots}
 
 // Writes design/BRIEF.md for a film and returns its path.
 export function writeDesignBrief(filmId: string): string {
-  const film = parseFilm(JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "videos", filmId, "film.json"), "utf8")));
+  const film = parseFilm(JSON.parse(fs.readFileSync(path.join(resolvePackageDir(filmId), "film.json"), "utf8")));
   const dir = designDir(filmId);
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, "BRIEF.md");

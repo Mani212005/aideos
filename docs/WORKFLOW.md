@@ -10,7 +10,7 @@ This document details the complete end-to-end workflow of the Aideos Explainer V
 
 Aideos is engineered around 4 strict architectural invariants:
 
-1. **Films are Pure Data (`src/dl/films/*.ts`, `videos/<slug>/film.json`)**:
+1. **Films are Pure Data (`videos/<slug>/film.json`, with generated `src/dl/films/*.ts` shadows)**:
    - No React runtime logic, side-effects, or random math inside film definitions. Every film is a pure, serializable JSON data structure conforming strictly to `filmSchema` (`src/dl/schema.ts`).
 2. **Master Clock Audio Spine**:
    - Video duration is never guessed. The synthesized voiceover audio is the immutable master clock of the film. Total shot durations must sum to the voiceover length within a strict tolerance of $\pm 50\text{ms}$.
@@ -51,7 +51,7 @@ Aideos is engineered around 4 strict architectural invariants:
 │  STAGE 4: SPATIAL CANVAS GRAPH & VECTOR RIG ASSEMBLY                         │
 │  • Computes 2D node coordinates (x, y, w, h) & directed edges               │
 │  • Assembles pure TypeScript Character Rigs (Astro Guide, Tech Architect)    │
-│  • Compiles final film.ts data model and updates activeFilm.ts               │
+│  • Compiles authoritative film.json data model and syncs activeFilm.ts       │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │ Compiled Film Data
                                        ▼

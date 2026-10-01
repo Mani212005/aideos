@@ -11,8 +11,8 @@ import path from "node:path";
 import type { Film } from "../../src/dl/schema";
 import type { ShotVisualResult } from "../jev";
 import type { DeviceReport } from "./deviceData";
+import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
 
 /** One shot's recorded visual decision. */
 export interface VisualChoice extends ShotVisualResult {
@@ -30,7 +30,7 @@ export interface VisualChoices {
 
 // Returns the file path for a film's visual choices.
 export function visualChoicesFile(filmId: string): string {
-  return path.join(REPO_ROOT, "videos", filmId, "design", "visual-choices.json");
+  return path.join(resolvePackageDir(filmId), "design", "visual-choices.json");
 }
 
 // Writes the visual choices for a freshly compiled film.

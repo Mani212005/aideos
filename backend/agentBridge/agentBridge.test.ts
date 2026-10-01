@@ -4,6 +4,7 @@
  */
 
 import test from "node:test";
+import "../testSupport/fixtureVideosDir";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -146,12 +147,12 @@ test("TaskQueue emits lifecycle events to registered listeners", () => {
 test("buildTaskContext resolves existing video package files and design invariants", () => {
   const context = buildTaskContext({
     eventType: "auto_build_scenes",
-    filmId: "why-dit-replaced-unet",
-    filmTitle: "Why DiT Replaced U-Net",
+    filmId: "sample-explainer",
+    filmTitle: "Sample Explainer",
   });
 
-  assert.equal(context.filmId, "why-dit-replaced-unet");
-  assert.equal(context.filmTitle, "Why DiT Replaced U-Net");
+  assert.equal(context.filmId, "sample-explainer");
+  assert.equal(context.filmTitle, "Sample Explainer");
   assert.ok(context.film);
   assert.ok(context.durationSec && context.durationSec > 0);
   assert.ok(context.shotCount && context.shotCount > 0);

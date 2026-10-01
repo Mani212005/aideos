@@ -9,14 +9,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import { buildSvgSources } from "../scene/buildSvgSources";
 import { readFilm } from "../pipeline/filmStore";
 import { designFilm, type DesignLlmCaller } from "./designer";
 
 const ROOT = path.resolve(__dirname, "../..");
-const DEMO = path.join(ROOT, "videos/speculative-decoding-designed");
+const DEMO = path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed");
 const ID = "tmp-designer-test";
-const PKG = path.join(ROOT, "videos", ID);
+const PKG = path.join(TEST_VIDEOS_DIR, ID);
 
 // Creates a fresh undesigned copy of the demo film under a temporary id.
 function freshPackage(): void {

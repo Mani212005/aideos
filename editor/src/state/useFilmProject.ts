@@ -256,7 +256,7 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
           }
         }
         if (!activeId || !ids.includes(activeId)) {
-          activeId = ids.includes("what-is-jepa") ? "what-is-jepa" : ids[0];
+          activeId = ids[0];
         }
 
         const filmRes = await fetch(`/api/films/${activeId}`);

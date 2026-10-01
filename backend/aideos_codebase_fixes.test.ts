@@ -1,5 +1,5 @@
 /**
- * File Description: Unit tests validating the 4 codebase fixes: model client retry loops, TTS auth options, film shadow integrity, and pruned legacy files.
+ * File Description: Unit tests validating the 4 codebase fixes: model client retry loops, TTS auth options, generated film shadow modules.
  */
 
 import test from "node:test";
@@ -8,6 +8,7 @@ import fs from "fs";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import { TextToSpeechClient } from "@google-cloud/text-to-speech";
+import "./testSupport/fixtureVideosDir";
 import { generateStructuredJson } from "./modelClient";
 
 // Helper to get ApiClient prototype for mocking
@@ -100,44 +101,23 @@ test("TextToSpeechClient configures apiKey directly when GOOGLE_API_KEY is provi
   assert.equal((client.auth as any).apiKey, apiKey, "TextToSpeechClient must bind passed apiKey into auth client");
 });
 
-// Test 4: Verify deleted stale json files in src/dl/films are absent and ts shadows exist
-test("stale pre-migration json files in src/dl/films are pruned while ts shadows exist", () => {
-  const prunedFiles = [
-    "flash-attention.json",
-    "how-browsers-work.json",
-    "mars-water.json",
-    "raft-vs-paxos.json",
-    "transformers-vs-mamba.json",
-  ];
+// Test 4: the generated shadow modules are rebuilt from the packages on disk, never committed
+test("ensureGenerated writes film shadow modules that export valid film structures and survive a re-run", async () => {
+  const { ensureGenerated } = await import("./pipeline/generatedFiles");
+  const { listVideoPackages } = await import("../src/dl/videoPackageLoader");
+  const slugs = ["hello-scene", "sample-explainer"];
+  for (const slug of slugs) assert.ok(listVideoPackages().includes(slug), `package ${slug} must be discoverable`);
 
-  for (const file of prunedFiles) {
-    const jsonPath = path.join(process.cwd(), "src/dl/films", file);
-    assert.equal(fs.existsSync(jsonPath), false, `Stale file ${file} should not exist in src/dl/films`);
+  const first = ensureGenerated();
+  assert.ok(first.shadows >= 0 && first.activeFilm.length > 0, "an active film must always be pointed at");
+  assert.equal(ensureGenerated().shadows, 0, "a second run has nothing to rewrite");
 
-    const tsName = file.replace(/\.json$/, ".ts");
-    const tsPath = path.join(process.cwd(), "src/dl/films", tsName);
-    assert.equal(fs.existsSync(tsPath), true, `TypeScript shadow ${tsName} must exist in src/dl/films`);
-  }
-});
-
-// Test 5: Verify resynced shadow ts files parse as valid film structures
-test("resynced shadow film ts modules export valid film structures", async () => {
-  const slugs = [
-    { mod: "./src/dl/films/graphEngineering.ts", exportName: "graphEngineeringFilm" },
-    { mod: "./src/dl/films/graph-engineering-4min.ts", exportName: "graphEngineering4minFilm" },
-    { mod: "./src/dl/films/kvcache.ts", exportName: "kvcacheFilm" },
-    { mod: "./src/dl/films/rlAdapters.ts", exportName: "rlAdaptersFilm" },
-    { mod: "./src/dl/films/rlEnvironments.ts", exportName: "rlEnvironmentsFilm" },
-  ];
-
-  for (const { mod, exportName } of slugs) {
-    const modPath = path.resolve(process.cwd(), mod);
-    assert.ok(fs.existsSync(modPath), `Module ${mod} must exist`);
+  for (const slug of slugs) {
+    const modPath = path.resolve(process.cwd(), "src/dl/films", `${slug}.ts`);
+    assert.ok(fs.existsSync(modPath), `shadow ${slug}.ts must be generated`);
     const imported = await import(modPath);
-    const film = imported[exportName];
-    assert.ok(film, `Export ${exportName} must be defined in ${mod}`);
-    assert.ok(film.id, `Film ${exportName} must have an id`);
-    assert.ok(Array.isArray(film.shots), `Film ${exportName} must have shots array`);
-    assert.ok(film.shots.length > 0, `Film ${exportName} shots must not be empty`);
+    const film = Object.values(imported).find((v: any) => v && v.id === slug) as any;
+    assert.ok(film, `shadow ${slug}.ts must export the film`);
+    assert.ok(Array.isArray(film.shots) && film.shots.length > 0, `film ${slug} shots must not be empty`);
   }
 });

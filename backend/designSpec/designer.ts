@@ -21,8 +21,8 @@ import { dispatchTask } from "../agentBridge/dispatcher";
 import { buildDesign, designDir, formatBuildStatus, readDesignStatus, type DesignBuildStatus } from "./build";
 import { renderDesignBrief, writeDesignBrief } from "./brief";
 import { judgeAndRepair, type JudgeOptions, type JudgeResult } from "../visionJudge/judge";
+import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
 
 /** Asks a text model for a completion; injectable so tests never reach a real model. */
 export type DesignLlmCaller = (prompt: string, systemInstruction: string) => Promise<string>;
@@ -111,7 +111,7 @@ async function tryServerModel(
   opts: DesignFilmOptions,
   instruction?: string,
 ): Promise<DesignBuildStatus | null> {
-  const film = parseFilm(JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "videos", filmId, "film.json"), "utf8")));
+  const film = parseFilm(JSON.parse(fs.readFileSync(path.join(resolvePackageDir(filmId), "film.json"), "utf8")));
   const system =
     renderDesignBrief(film) +
     `\n## Reply format\n\nReply with one JSON object and nothing else: {"design": <the design.json object>, "svgs": {"visuals/<name>.svg": "<complete svg document>", ...}}. Every file named in design.json must be in svgs.\n`;
@@ -131,7 +131,7 @@ async function tryServerModel(
       prompt = `Your last reply could not be used: ${err instanceof Error ? err.message : String(err)}. Return the JSON object again.`;
       continue;
     }
-    const pkg = path.join(REPO_ROOT, "videos", filmId);
+    const pkg = resolvePackageDir(filmId);
     fs.mkdirSync(designDir(filmId), { recursive: true });
     fs.writeFileSync(path.join(designDir(filmId), "design.json"), JSON.stringify(reply.design, null, 2) + "\n");
     for (const [file, svg] of Object.entries(reply.svgs)) {

@@ -1,13 +1,14 @@
 /**
  * File Description: Generates the browser-side SVG source map for scene films.
  * SceneView is pure and has no filesystem access, so the source text of every committed asset under
- * videos/<slug>/visuals/ is written into a generated module the Remotion bundle imports directly.
+ * videos/<slug>/visuals/ and examples/<slug>/visuals/ is written into a generated, gitignored module the Remotion bundle imports directly.
  * Inlining rather than fetching keeps the render synchronous and reproducible: a frame can never be
  * drawn before its artwork has arrived, because the artwork is part of the bundle.
  */
 
 import fs from "node:fs";
 import path from "node:path";
+import { getExamplesDir, getVideosDir } from "../../src/dl/videoPackageLoader";
 
 /** Repo root, resolved from this file's own location. */
 function projectRoot(): string {
@@ -19,20 +20,28 @@ export function generatedModulePath(): string {
   return path.join(projectRoot(), "src/dl/scene/assets/svgSources.generated.ts");
 }
 
-/** Collects every committed scene asset, keyed by the repo-relative path a film names it by. */
-export function collectSvgSources(): Record<string, string> {
-  const videosDir = path.join(projectRoot(), "videos");
-  const sources: Record<string, string> = {};
-  if (!fs.existsSync(videosDir)) return sources;
-
-  for (const slug of fs.readdirSync(videosDir).sort()) {
-    const visuals = path.join(videosDir, slug, "visuals");
+/** Adds every svg under <dir>/<slug>/visuals/ to the map, keyed "<prefix>/<slug>/visuals/<file>". */
+function collectFrom(dir: string, prefix: string, sources: Record<string, string>): void {
+  if (!fs.existsSync(dir)) return;
+  for (const slug of fs.readdirSync(dir).sort()) {
+    const visuals = path.join(dir, slug, "visuals");
     if (!fs.existsSync(visuals) || !fs.statSync(visuals).isDirectory()) continue;
     for (const file of fs.readdirSync(visuals).sort()) {
       if (!file.endsWith(".svg")) continue;
-      sources[`videos/${slug}/visuals/${file}`] = fs.readFileSync(path.join(visuals, file), "utf8");
+      sources[`${prefix}/${slug}/visuals/${file}`] = fs.readFileSync(path.join(visuals, file), "utf8");
     }
   }
+}
+
+/**
+ * Collects every scene asset on this machine, keyed by the repo-relative path a film names it by:
+ * the personal videos directory ("videos/...", wherever AIDEOS_VIDEOS_DIR points) and the committed
+ * examples ("examples/..."). The result is gitignored: it differs per machine.
+ */
+export function collectSvgSources(): Record<string, string> {
+  const sources: Record<string, string> = {};
+  collectFrom(getVideosDir(), "videos", sources);
+  collectFrom(getExamplesDir(), "examples", sources);
   return sources;
 }
 
@@ -44,7 +53,7 @@ export function renderModule(sources: Record<string, string>): string {
   return [
     "/**",
     " * File Description: Generated SVG source map for scene films. Do not edit by hand.",
-    " * Every committed asset under videos/<slug>/visuals/ inlined as source text, keyed by the path a",
+    " * Every asset under videos/<slug>/visuals/ and examples/<slug>/visuals/ inlined as source text, keyed by the path a",
     " * film's scene names it by, so Remotion's browser bundle can draw a scene without reading disk.",
     " * Regenerate with: npx tsx backend/scene/buildSvgSources.ts",
     " */",

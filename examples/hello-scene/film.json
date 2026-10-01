@@ -1,0 +1,209 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "hello-scene",
+  "title": "Hello Scene",
+  "fps": 30,
+  "accent": "#635BFF",
+  "theme": {
+    "background": "smooth-dark",
+    "fontFamily": "geist",
+    "accent": "#635BFF"
+  },
+  "chapters": [
+    "Hello"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "hello",
+        "label": "Hello",
+        "x": 160,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      },
+      {
+        "id": "scene",
+        "label": "Scene",
+        "x": 590,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      }
+    ],
+    "edges": [
+      {
+        "from": "hello",
+        "to": "scene"
+      }
+    ]
+  },
+  "scene": {
+    "schemaVersion": "1.0.0",
+    "sceneId": "hello-scene",
+    "fps": 30,
+    "durationFrames": 300,
+    "sceneSize": {
+      "w": 1920,
+      "h": 1920
+    },
+    "background": {
+      "assetId": "background",
+      "svgSource": "examples/hello-scene/visuals/canvas.svg",
+      "layer": 0,
+      "position": {
+        "x": 960,
+        "y": 960
+      },
+      "scale": 4.8,
+      "rotation": 0,
+      "opacity": 1
+    },
+    "props": [
+      {
+        "assetId": "nodes",
+        "svgSource": "examples/hello-scene/visuals/nodes.svg",
+        "layer": 1,
+        "position": {
+          "x": 960,
+          "y": 640
+        },
+        "scale": 2.2,
+        "rotation": 0,
+        "opacity": 1,
+        "animation": {
+          "timelineId": "nodes-motion",
+          "clips": [
+            {
+              "clipId": "nodes-in",
+              "targets": [
+                "nodes"
+              ],
+              "property": "opacity",
+              "from": 0,
+              "to": 1,
+              "startFrame": 0,
+              "durationFrames": 24,
+              "easing": "expoOut"
+            }
+          ]
+        }
+      },
+      {
+        "assetId": "query",
+        "svgSource": "examples/hello-scene/visuals/query.svg",
+        "layer": 2,
+        "position": {
+          "x": 564,
+          "y": 640
+        },
+        "scale": 2.2,
+        "rotation": 0,
+        "opacity": 1,
+        "animation": {
+          "timelineId": "query-motion",
+          "clips": [
+            {
+              "clipId": "query-in",
+              "targets": [
+                "query"
+              ],
+              "property": "opacity",
+              "from": 0,
+              "to": 1,
+              "startFrame": 0,
+              "durationFrames": 24,
+              "easing": "expoOut"
+            },
+            {
+              "clipId": "query-hop-1",
+              "targets": [
+                "query"
+              ],
+              "property": "translateX",
+              "from": 0,
+              "to": 180,
+              "startFrame": 95,
+              "durationFrames": 45,
+              "easing": "expoInOut"
+            },
+            {
+              "clipId": "query-hop-2",
+              "targets": [
+                "query"
+              ],
+              "property": "translateX",
+              "from": 180,
+              "to": 360,
+              "startFrame": 200,
+              "durationFrames": 45,
+              "easing": "expoInOut"
+            }
+          ]
+        }
+      }
+    ],
+    "actors": [],
+    "audioSource": "none",
+    "audioDurationMs": 10000
+  },
+  "shots": [
+    {
+      "id": "beat-01",
+      "ch": "Hello",
+      "dur": 3.0,
+      "stage": "frame",
+      "look": "hello",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "A tiny scene film: one persistent stage.",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Hello, scene",
+          "size": "headline"
+        }
+      ]
+    },
+    {
+      "id": "beat-02",
+      "ch": "Hello",
+      "dur": 3.5,
+      "stage": "frame",
+      "look": "hello",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Each beat transforms what is already there.",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Things move on one stage",
+          "size": "headline"
+        }
+      ]
+    },
+    {
+      "id": "beat-03",
+      "ch": "Hello",
+      "dur": 3.5,
+      "stage": "frame",
+      "look": "hello",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Your videos live in the videos folder, outside git.",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Make your own",
+          "size": "headline"
+        }
+      ]
+    }
+  ]
+}

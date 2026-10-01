@@ -9,14 +9,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import { parseFilm } from "../../src/dl/schema";
 import { listMotionRequests, requestMotion, revertMotion } from "./motionRequests";
 import { buildSvgSources } from "../scene/buildSvgSources";
 
 const ROOT = path.resolve(__dirname, "../..");
-const SRC = path.join(ROOT, "videos/speculative-decoding-designed");
+const SRC = path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed");
 const ID = "zz-motion-requests-test";
-const PKG = path.join(ROOT, "videos", ID);
+const PKG = path.join(TEST_VIDEOS_DIR, ID);
 const SHADOW = path.join(ROOT, "src/dl/films", `${ID}.ts`);
 
 // Copies the designed demo film into a throwaway package.

@@ -6,22 +6,18 @@
  */
 
 import fs from "fs";
-import path from "path";
 import { validateScene as pureValidateScene, type ValidationResult } from "./validateScene";
 import type { EnvironmentAsset, Scene } from "./types";
 import { collectSvgElementIds, parseSvgDocument } from "./svgDocument";
-
-/** The repo root: asset svgSource paths ("videos/<id>/visuals/x.svg") are relative to it. */
-const REPO_ROOT = path.resolve(__dirname, "../../..");
+import { resolveRepoAssetPath } from "../videoPackageLoader";
 
 /**
  * Resolves an asset svgSource: absolute, relative to the working directory, or relative to the
- * repo root. The editor dev server runs from editor/, so a cwd-only lookup missed every asset.
+ * repo root, with "videos/<id>/..." following AIDEOS_VIDEOS_DIR. The editor dev server runs from
+ * editor/, so a cwd-only lookup missed every asset.
  */
 function resolveAssetPath(svgSource: string): string {
-  if (path.isAbsolute(svgSource)) return svgSource;
-  const fromCwd = path.resolve(process.cwd(), svgSource);
-  return fs.existsSync(fromCwd) ? fromCwd : path.resolve(REPO_ROOT, svgSource);
+  return resolveRepoAssetPath(svgSource);
 }
 
 /** Reads an asset's SVG off disk and returns the element ids it declares, or null if unreadable. */

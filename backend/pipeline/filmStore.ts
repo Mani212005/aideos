@@ -5,6 +5,10 @@
  * requires the two never be written independently, so every write in the production pipeline goes
  * through writeFilm here, which is the backend twin of the editor dev server's helper of the same
  * name and emits the identical module format.
+ *
+ * Neither location is committed: videos/ (or AIDEOS_VIDEOS_DIR) holds the owner's personal videos
+ * and src/dl/films/ plus src/dl/activeFilm.ts are generated, so a fresh clone starts with only
+ * examples/. `ensureGenerated` rebuilds every generated file from whatever packages are on disk.
  */
 
 import fs from "fs";
@@ -12,15 +16,14 @@ import path from "path";
 import type { Block, Film } from "../../src/dl/schema";
 import { parseFilm } from "../../src/dl/schema";
 import { traceBus } from "../agentBridge/traceBus";
+import { getVideosDir, resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { ROOT, FILMS_DIR, FILM_ID, filmModule, ensureGenerated, setActiveFilm } from "./generatedFiles";
 
-/** Repo root, resolved from this module so the pipeline works from any cwd. */
-export const ROOT = path.resolve(__dirname, "../..");
-export const VIDEOS_DIR = path.join(ROOT, "videos");
-export const FILMS_DIR = path.join(ROOT, "src/dl/films");
+export { ROOT, FILMS_DIR, FILM_ID, ensureGenerated, setActiveFilm };
+
+/** Where new packages are written: AIDEOS_VIDEOS_DIR, else <root>/videos (gitignored). */
+export const VIDEOS_DIR = getVideosDir();
 export const PUBLIC_DIR = path.join(ROOT, "public");
-
-/** The schema's own id rule, which also makes path traversal unrepresentable. */
-export const FILM_ID = /^[a-z0-9-]+$/;
 
 /** Turns arbitrary text into a film id: lowercase letters, digits and dashes only. */
 export function slugify(text: string): string {
@@ -33,19 +36,7 @@ export function slugify(text: string): string {
   );
 }
 
-/** `kv-cache` becomes `kvCacheFilm`: film ids may contain dashes, identifiers may not. */
-function exportName(id: string): string {
-  const camel = id.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase());
-  const identifier = `${camel}Film`;
-  return /^[0-9]/.test(identifier) ? `_${identifier}` : identifier;
-}
-
-/** The generated shadow module: pure data behind a type-only import. */
-function filmModule(film: Film): string {
-  return `import type { Film } from "../schema";\n\nexport const ${exportName(film.id)}: Film = ${JSON.stringify(film, null, 2)};\n`;
-}
-
-/** Absolute path of a package directory for a slug. */
+/** Absolute path of a package directory for a slug, where it is written. */
 export function packageDir(slug: string): string {
   if (!FILM_ID.test(slug)) throw new Error(`invalid film id "${slug}": lowercase letters, digits and dashes only`);
   return path.join(VIDEOS_DIR, slug);
@@ -53,7 +44,8 @@ export function packageDir(slug: string): string {
 
 /** Loads a film, preferring the authoritative film.json and falling back to the shadow module. */
 export function readFilm(slug: string): Film | null {
-  const pkgFilmPath = path.join(packageDir(slug), "film.json");
+  if (!FILM_ID.test(slug)) throw new Error(`invalid film id "${slug}": lowercase letters, digits and dashes only`);
+  const pkgFilmPath = path.join(resolvePackageDir(slug), "film.json");
   if (fs.existsSync(pkgFilmPath)) {
     try {
       return JSON.parse(fs.readFileSync(pkgFilmPath, "utf8")) as Film;
@@ -88,23 +80,9 @@ export function writeFilm(slug: string, film: Film): Film {
   return validated;
 }
 
-/** Points src/dl/activeFilm.ts at a package so Remotion's CLI render bundles that film. */
-export function setActiveFilm(slug: string): void {
-  if (!FILM_ID.test(slug)) throw new Error(`invalid film id "${slug}"`);
-  const contents = `import { ${exportName(slug)} } from "./films/${slug}";
-import type { Film } from "./schema";
-
-/**
- * Which film renders. One line, so swapping the subject of the whole pipeline
- * is a one-word change rather than a search through the components.
- */
-export const ACTIVE_FILM: Film = ${exportName(slug)};
-`;
-  fs.writeFileSync(path.join(ROOT, "src/dl/activeFilm.ts"), contents, "utf8");
-}
-
 /** Reads the slug src/dl/activeFilm.ts currently points at, so a run can restore it. */
 export function readActiveFilmSource(): string {
+  ensureGenerated();
   return fs.readFileSync(path.join(ROOT, "src/dl/activeFilm.ts"), "utf8");
 }
 
