@@ -123,7 +123,8 @@ export async function runReviewLoop(
     if (options?.mockReviewer) {
       report = await options.mockReviewer(videoPath, round);
     } else {
-      report = await reviewVideo(videoPath, { onProgress, slug });
+      const filmPath = path.join(resolvePackageDir(slug), "film.json");
+      report = await reviewVideo(videoPath, { onProgress, slug, filmPath });
     }
 
     // Optional pairwise comparison against reference video
@@ -207,14 +208,7 @@ export async function runReviewLoop(
       break;
     }
 
-    // Attempt automated refinement for next round
-    if (autoRefine) {
-      onProgress("Applying constructive feedback to film for next round...");
-      const modified = await applyFeedbackToFilm(slug, report.feedback);
-      if (!modified) {
-        onProgress("No automated film mutations applied; proceeding with current assets.");
-      }
-    }
+
   }
 
   const lastRound = rounds[rounds.length - 1];

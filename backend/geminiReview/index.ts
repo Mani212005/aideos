@@ -4,7 +4,6 @@
 
 export * from "./types";
 export * from "./rubric";
-export * from "./geminiClient";
 export * from "./geminiReview";
 export * from "./reviewLoop";
 export * from "./facts";

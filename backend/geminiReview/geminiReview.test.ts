@@ -147,107 +147,17 @@ test("geminiReview: cleanModelJsonResponse strips markdown code block fences", (
   assert.equal(cleanModelJsonResponse(plain), "{\"status\": \"ok\"}");
 });
 
-test("geminiReview: computeFileHash computes correct sha256 checksum", () => {
+test("geminiReview: computeFileHash computes correct sha256 checksum", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-test-hash-"));
   const tmpFile = path.join(tmpDir, "sample.txt");
   fs.writeFileSync(tmpFile, "hello aideos world\n", "utf8");
 
-  const hash = computeFileHash(tmpFile);
+  const hash = await computeFileHash(tmpFile);
   assert.equal(typeof hash, "string");
   assert.equal(hash.length, 64);
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test("GeminiVideoClient: handles resumable upload protocol and active polling", async () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-client-test-"));
-  const testVideo = path.join(tmpDir, "test.mp4");
-  fs.writeFileSync(testVideo, Buffer.alloc(1024, 0));
-
-  let pollCount = 0;
-  const mockFetch: typeof fetch = async (input, init) => {
-    const url = String(input);
-
-    if (url.includes("/upload/v1beta/files")) {
-      return new Response(JSON.stringify({}), {
-        status: 200,
-        headers: { "X-Goog-Upload-URL": "https://upload.example.com/session-123" },
-      });
-    }
-
-    if (url === "https://upload.example.com/session-123") {
-      return new Response(
-        JSON.stringify({ file: { name: "files/test-file-999", uri: "https://genai.example.com/v1/files/999", state: "PROCESSING" } }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    if (url.includes("/v1beta/files/test-file-999")) {
-      pollCount++;
-      const state = pollCount >= 2 ? "ACTIVE" : "PROCESSING";
-      return new Response(
-        JSON.stringify({ name: "files/test-file-999", uri: "https://genai.example.com/v1/files/999", state }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    throw new Error(`Unexpected request to ${url}`);
-  };
-
-  const client = new GeminiVideoClient({
-    apiKey: "test-api-key",
-    fetchFn: mockFetch,
-    sleepFn: async () => {},
-    pollIntervalMs: 1,
-  });
-
-  const uploadResult = await client.uploadVideo(testVideo);
-  assert.equal(uploadResult.state, "ACTIVE");
-  assert.equal(uploadResult.name, "files/test-file-999");
-  assert.equal(uploadResult.uri, "https://genai.example.com/v1/files/999");
-  assert.ok(pollCount >= 2);
-
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-});
-
-test("GeminiVideoClient: retries on 429 and parses retry-after wait duration", async () => {
-  let attempts = 0;
-  let sleptMs = 0;
-
-  const mockFetch: typeof fetch = async () => {
-    attempts++;
-    if (attempts === 1) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 429,
-            message: "Quota exceeded for model gemini-3.8-flash. Please retry in 4.5s.",
-            status: "RESOURCE_EXHAUSTED",
-          },
-        }),
-        { status: 429, headers: { "Content-Type": "application/json" } },
-      );
-    }
-    return new Response(
-      JSON.stringify({
-        candidates: [{ content: { parts: [{ text: "{\"status\":\"success\"}" }] } }],
-      }),
-      { status: 200, headers: { "Content-Type": "application/json" } },
-    );
-  };
-
-  const client = new GeminiVideoClient({
-    apiKey: "test-key",
-    fetchFn: mockFetch,
-    sleepFn: async (ms) => {
-      sleptMs = ms;
-    },
-  });
-
-  const res = await client.generateContentWithVideo("https://example.com/file", "hello");
-  assert.equal(attempts, 2);
-  assert.ok(sleptMs >= 6000);
-  assert.ok(res.includes("success"));
-});
 
 test("geminiReview: reviewVideo evaluates verdict ACCEPT when score >= 9.0 and gates pass", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-review-test-"));

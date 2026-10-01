@@ -8,7 +8,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
-import { GeminiVideoClient, type GeminiClientOptions } from "./geminiClient";
+import { getGoogleAiClient } from "../modelClient";
 import { extractDeterministicFacts } from "./facts";
 import {
   RUBRIC_CRITERIA,
@@ -40,10 +40,83 @@ export interface PairwiseReviewOptions {
   onProgress?: (message: string) => void;
 }
 
+export interface GeminiVideoClient {
+  uploadVideo(filePath: string, displayName?: string): Promise<{ name: string, uri: string, state: string }>;
+  generateContentWithVideo(videoUri: string, promptText: string, options?: { temperature?: number, systemInstruction?: string }): Promise<string>;
+  generateContentPairwise(videoUriA: string, videoUriB: string, promptText: string): Promise<string>;
+}
+
+export interface GeminiClientOptions {
+  onProgress?: (message: string) => void;
+  [key: string]: any;
+}
+
+function createDefaultClient(options?: GeminiClientOptions): GeminiVideoClient {
+  const ai = getGoogleAiClient();
+  const modelName = process.env.AIDEOS_GEMINI_REVIEW_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  const onProgress = options?.onProgress || (() => {});
+  
+  return {
+    async uploadVideo(filePath: string, displayName?: string) {
+      const file = await ai.files.upload({
+        file: filePath,
+        config: { displayName: displayName || path.basename(filePath) }
+      });
+      let currentFile = file;
+      while (currentFile.state === "PROCESSING") {
+        onProgress(`  Video processing (${currentFile.name})...`);
+        await new Promise(r => setTimeout(r, 5000));
+        currentFile = await ai.files.get({ name: file.name });
+      }
+      if (currentFile.state === "FAILED") {
+        throw new Error(`Video processing failed for ${filePath}`);
+      }
+      return currentFile as any;
+    },
+    async generateContentWithVideo(videoUri: string, promptText: string, configOpts?: any) {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: [{
+          role: "user",
+          parts: [
+            { fileData: { fileUri: videoUri, mimeType: "video/mp4" } },
+            { text: promptText }
+          ]
+        }],
+        config: {
+          temperature: configOpts?.temperature ?? 0.1,
+          systemInstruction: configOpts?.systemInstruction,
+        }
+      });
+      return response.text || "";
+    },
+    async generateContentPairwise(uriA: string, uriB: string, promptText: string) {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: [{
+          role: "user",
+          parts: [
+            { fileData: { fileUri: uriA, mimeType: "video/mp4" } },
+            { fileData: { fileUri: uriB, mimeType: "video/mp4" } },
+            { text: promptText }
+          ]
+        }],
+        config: { temperature: 0.1 }
+      });
+      return response.text || "";
+    }
+  };
+}
+
 // Computes the SHA-256 hash of a file for change tracking and auditability.
-export function computeFileHash(filePath: string): string {
-  const buffer = fs.readFileSync(filePath);
-  return crypto.createHash("sha256").update(buffer).digest("hex");
+export function computeFileHash(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash("sha256");
+    const stream = fs.createReadStream(filePath);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+    stream.on("error", reject);
+  });
 }
 
 // Strips markdown code block fences and extracts clean JSON text.
@@ -65,9 +138,9 @@ export async function reviewVideo(
     throw new Error(`Video file does not exist: ${resolvedPath}`);
   }
 
-  const hash = computeFileHash(resolvedPath);
+  const hash = await computeFileHash(resolvedPath);
   const onProgress = options?.onProgress || (() => {});
-  const client = options?.client || new GeminiVideoClient({ ...options?.clientOptions, onProgress });
+  const client = options?.client || createDefaultClient({ ...options?.clientOptions, onProgress });
   const maxAttempts = options?.maxValidationAttempts ?? 3;
 
   onProgress(`Uploading ${path.basename(resolvedPath)} to Gemini Files API...`);
@@ -262,7 +335,7 @@ export async function reviewPairwise(
   options?: PairwiseReviewOptions,
 ): Promise<PairwiseRunReport> {
   const onProgress = options?.onProgress || (() => {});
-  const client = options?.client || new GeminiVideoClient({ ...options?.clientOptions, onProgress });
+  const client = options?.client || createDefaultClient({ ...options?.clientOptions, onProgress });
 
   onProgress(`Uploading Video A: ${path.basename(pathA)}...`);
   const uploadA = await client.uploadVideo(pathA, "video_a");
