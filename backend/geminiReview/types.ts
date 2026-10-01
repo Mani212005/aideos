@@ -1,6 +1,6 @@
 /**
  * File Description: Type definitions for the Gemini 3.8 Flash video quality review engine,
- * structured rubric scoring, timestamp evidence validation, and iterative review loop.
+ * structured rubric scoring, timestamp evidence validation, deterministic facts, and iterative review loop.
  */
 
 export interface CriterionEvaluation {
@@ -20,6 +20,42 @@ export interface ReviewFeedbackItem {
   recommendation: string;
 }
 
+export interface DeterministicVideoFacts {
+  durationSec: number;
+  width?: number;
+  height?: number;
+  fps?: number;
+  audio: {
+    measured: boolean;
+    hasAudio: boolean;
+    integratedLufs: number;
+    truePeakDb: number;
+    summary: string;
+  };
+  bottomCaptions: {
+    measured: boolean;
+    hasCaptions: boolean;
+    coverageRatio: number;
+    sampledFrames: number;
+    captionFrames: number;
+    score: number;
+    summary: string;
+  };
+  camera: {
+    measured: boolean;
+    hasCameraMoves: boolean;
+    moveCount: number;
+    score: number;
+    summary: string;
+  };
+  readability: {
+    measured: boolean;
+    smallWordShare?: number;
+    summary: string;
+  };
+  rawSummaryText: string;
+}
+
 export interface GeminiReviewReport {
   overallScore: number;
   verdict: "ACCEPT" | "REVISE";
@@ -30,6 +66,7 @@ export interface GeminiReviewReport {
   evaluatedAt: string;
   videoHash?: string;
   videoPath?: string;
+  facts?: DeterministicVideoFacts;
 }
 
 export interface PairwiseComparisonResult {
@@ -59,6 +96,7 @@ export interface ReviewLoopRound {
   videoPath: string;
   timestamp: string;
   report: GeminiReviewReport;
+  pairwiseReport?: PairwiseRunReport;
 }
 
 export interface ReviewLoopResult {
@@ -68,14 +106,18 @@ export interface ReviewLoopResult {
   passed: boolean;
   rounds: ReviewLoopRound[];
   outputPath?: string;
+  referenceVideo?: string;
+  pairwisePassed?: boolean;
 }
 
 export interface ReviewLoopOptions {
   maxRounds?: number;
   targetScore?: number;
+  referenceVideo?: string;
   format?: "long" | "reel";
   autoRefine?: boolean;
   onProgress?: (message: string) => void;
   mockReviewer?: (videoPath: string, round: number) => Promise<GeminiReviewReport>;
   mockRenderer?: (slug: string, format: string) => Promise<string>;
+  mockPairwise?: (path1: string, path2: string) => Promise<PairwiseRunReport>;
 }

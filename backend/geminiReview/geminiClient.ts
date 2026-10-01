@@ -12,6 +12,7 @@ dotenv.config({ quiet: true });
 export interface GeminiClientOptions {
   apiKey?: string;
   model?: string;
+  fallbackModel?: string;
   baseUrl?: string;
   fetchFn?: typeof fetch;
   sleepFn?: (ms: number) => Promise<void>;
@@ -35,6 +36,7 @@ function defaultSleep(ms: number): Promise<void> {
 export class GeminiVideoClient {
   private readonly apiKey: string;
   private readonly model: string;
+  private readonly fallbackModel?: string;
   private readonly baseUrl: string;
   private readonly fetchFn: typeof fetch;
   private readonly sleepFn: (ms: number) => Promise<void>;
@@ -45,7 +47,8 @@ export class GeminiVideoClient {
 
   constructor(options?: GeminiClientOptions) {
     this.apiKey = options?.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
-    this.model = options?.model || process.env.AIDEOS_GEMINI_REVIEW_MODEL || "gemini-3.8-flash";
+    this.model = options?.model || process.env.AIDEOS_GEMINI_REVIEW_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
+    this.fallbackModel = options?.fallbackModel || process.env.AIDEOS_GEMINI_FALLBACK_MODEL || "gemini-2.5-flash";
     this.baseUrl = options?.baseUrl || "https://generativelanguage.googleapis.com";
     this.fetchFn = options?.fetchFn || fetch;
     this.sleepFn = options?.sleepFn || defaultSleep;
@@ -72,6 +75,15 @@ export class GeminiVideoClient {
         }
 
         const errorText = await response.text().catch(() => "");
+        if (
+          response.status === 429 &&
+          errorText.includes("GenerateRequestsPerDayPerProjectPerModel-FreeTier")
+        ) {
+          throw new Error(
+            `${operationName} failed with HTTP 429: ${errorText || response.statusText}`,
+          );
+        }
+
         const isRetryableStatus = [429, 500, 503].includes(response.status);
 
         if (isRetryableStatus && attempt < this.maxRetries) {
@@ -106,6 +118,9 @@ export class GeminiVideoClient {
       } catch (err) {
         lastError = err;
         const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("GenerateRequestsPerDayPerProjectPerModel-FreeTier")) {
+          throw err;
+        }
         const isNetworkOrRetryable =
           msg.includes("fetch failed") ||
           msg.includes("ECONNRESET") ||
@@ -244,7 +259,6 @@ export class GeminiVideoClient {
       throw new Error("GEMINI_API_KEY is not set. Cannot run video review model.");
     }
 
-    const url = `${this.baseUrl}/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
     const parts: Array<{ text?: string; file_data?: { mime_type: string; file_uri: string } }> = [
       {
         file_data: {
@@ -271,15 +285,43 @@ export class GeminiVideoClient {
       };
     }
 
-    const response = await this.requestWithRetry(
-      url,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bodyPayload),
-      },
-      `Generate content with model ${this.model}`,
-    );
+    let activeModel = this.model;
+    let url = `${this.baseUrl}/v1beta/models/${activeModel}:generateContent?key=${this.apiKey}`;
+    let response: Response;
+
+    try {
+      response = await this.requestWithRetry(
+        url,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(bodyPayload),
+        },
+        `Generate content with model ${activeModel}`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        msg.includes("GenerateRequestsPerDayPerProjectPerModel-FreeTier") &&
+        this.fallbackModel &&
+        activeModel !== this.fallbackModel
+      ) {
+        this.onProgress?.(`  Daily free-tier quota exhausted for ${activeModel} (20 RPD limit). Falling back to ${this.fallbackModel}...`);
+        activeModel = this.fallbackModel;
+        url = `${this.baseUrl}/v1beta/models/${activeModel}:generateContent?key=${this.apiKey}`;
+        response = await this.requestWithRetry(
+          url,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(bodyPayload),
+          },
+          `Generate content with model ${activeModel}`,
+        );
+      } else {
+        throw err;
+      }
+    }
 
     const data = (await response.json()) as {
       candidates?: Array<{
@@ -306,7 +348,6 @@ export class GeminiVideoClient {
       throw new Error("GEMINI_API_KEY is not set. Cannot run pairwise video comparison.");
     }
 
-    const url = `${this.baseUrl}/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
     const parts = [
       { text: "Video 1:" },
       { file_data: { mime_type: "video/mp4", file_uri: fileUri1 } },
@@ -323,15 +364,43 @@ export class GeminiVideoClient {
       },
     };
 
-    const response = await this.requestWithRetry(
-      url,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bodyPayload),
-      },
-      `Generate pairwise comparison with model ${this.model}`,
-    );
+    let activeModel = this.model;
+    let url = `${this.baseUrl}/v1beta/models/${activeModel}:generateContent?key=${this.apiKey}`;
+    let response: Response;
+
+    try {
+      response = await this.requestWithRetry(
+        url,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(bodyPayload),
+        },
+        `Generate pairwise comparison with model ${activeModel}`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        msg.includes("GenerateRequestsPerDayPerProjectPerModel-FreeTier") &&
+        this.fallbackModel &&
+        activeModel !== this.fallbackModel
+      ) {
+        this.onProgress?.(`  Daily free-tier quota exhausted for ${activeModel} (20 RPD limit). Falling back to ${this.fallbackModel}...`);
+        activeModel = this.fallbackModel;
+        url = `${this.baseUrl}/v1beta/models/${activeModel}:generateContent?key=${this.apiKey}`;
+        response = await this.requestWithRetry(
+          url,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(bodyPayload),
+          },
+          `Generate pairwise comparison with model ${activeModel}`,
+        );
+      } else {
+        throw err;
+      }
+    }
 
     const data = (await response.json()) as {
       candidates?: Array<{

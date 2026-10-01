@@ -7,9 +7,10 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { reviewVideo } from "./geminiReview";
+import { reviewVideo, reviewPairwise } from "./geminiReview";
 import type {
   GeminiReviewReport,
+  PairwiseRunReport,
   ReviewFeedbackItem,
   ReviewLoopOptions,
   ReviewLoopResult,
@@ -171,6 +172,38 @@ export async function runReviewLoop(
       report = await reviewVideo(videoPath, { onProgress });
     }
 
+    // Optional pairwise comparison against reference video
+    let pairwiseReport: PairwiseRunReport | undefined;
+    let candidateWonOrTied = true;
+
+    if (options?.referenceVideo) {
+      const refPath = path.resolve(options.referenceVideo);
+      onProgress(`Running pairwise comparison against reference video: ${path.basename(refPath)}...`);
+      if (options.mockPairwise) {
+        pairwiseReport = await options.mockPairwise(videoPath, refPath);
+      } else {
+        pairwiseReport = await reviewPairwise(videoPath, refPath, { onProgress });
+      }
+
+      // Order 1 (AB): Video 1 = candidate, Video 2 = reference
+      // Order 2 (BA): Video 1 = reference, Video 2 = candidate
+      const winOrder1 = pairwiseReport.orderAB.choice === "Video 1" || pairwiseReport.orderAB.choice === "Tie";
+      const winOrder2 = pairwiseReport.orderBA.choice === "Video 2" || pairwiseReport.orderBA.choice === "Tie";
+      candidateWonOrTied = winOrder1 && winOrder2;
+
+      if (!candidateWonOrTied) {
+        onProgress(`  Pairwise check failed: candidate video did not beat or tie reference video (${pairwiseReport.consistentWinner === "Video B" ? "Reference Video won" : "Inconsistent preference"}).`);
+        report.verdict = "REVISE";
+        report.feedback.unshift({
+          priority: "high",
+          issue: `Candidate video did not beat or tie reference video (${path.basename(refPath)}) in pairwise evaluation.`,
+          recommendation: `Elevate visual pacing, persistent stage continuity, and bottom subtitles to match or exceed reference video standards.`,
+        });
+      } else {
+        onProgress(`  Pairwise check passed: candidate video won or tied against reference video.`);
+      }
+    }
+
     const roundRecord: ReviewLoopRound = {
       round,
       score: report.overallScore,
@@ -180,6 +213,7 @@ export async function runReviewLoop(
       videoPath,
       timestamp: new Date().toISOString(),
       report,
+      pairwiseReport,
     };
     rounds.push(roundRecord);
 
@@ -195,8 +229,11 @@ export async function runReviewLoop(
     // Print summary
     onProgress(formatReviewSummary(report));
 
-    if (report.verdict === "ACCEPT" && report.overallScore >= targetScore) {
-      onProgress(`\n SUCCESS: Video achieved score of ${report.overallScore.toFixed(1)} >= ${targetScore.toFixed(1)} on round ${round}!`);
+    const singlePassed = report.verdict === "ACCEPT" && report.overallScore >= targetScore;
+    const pairwisePassed = !options?.referenceVideo || candidateWonOrTied;
+
+    if (singlePassed && pairwisePassed) {
+      onProgress(`\n SUCCESS: Video achieved score of ${report.overallScore.toFixed(1)} >= ${targetScore.toFixed(1)} and passed pairwise reference check on round ${round}!`);
       const result: ReviewLoopResult = {
         slug,
         finalScore: report.overallScore,
@@ -204,6 +241,8 @@ export async function runReviewLoop(
         passed: true,
         rounds,
         outputPath: videoPath,
+        referenceVideo: options?.referenceVideo,
+        pairwisePassed: true,
       };
       await fsp.writeFile(path.join(videoDir, "review-loop.json"), JSON.stringify(result, null, 2), "utf8");
       return result;
@@ -225,13 +264,22 @@ export async function runReviewLoop(
   }
 
   const lastRound = rounds[rounds.length - 1];
+  const lastPairwisePassed = !options?.referenceVideo || (
+    lastRound?.pairwiseReport
+      ? (lastRound.pairwiseReport.orderAB.choice === "Video 1" || lastRound.pairwiseReport.orderAB.choice === "Tie") &&
+        (lastRound.pairwiseReport.orderBA.choice === "Video 2" || lastRound.pairwiseReport.orderBA.choice === "Tie")
+      : true
+  );
+  const finalPassed = (lastRound?.verdict === "ACCEPT") && ((lastRound?.score ?? 0) >= targetScore) && lastPairwisePassed;
   const finalResult: ReviewLoopResult = {
     slug,
     finalScore: lastRound?.score ?? 0,
-    finalVerdict: lastRound?.verdict ?? "REVISE",
-    passed: (lastRound?.verdict === "ACCEPT") && ((lastRound?.score ?? 0) >= targetScore),
+    finalVerdict: finalPassed ? "ACCEPT" : "REVISE",
+    passed: finalPassed,
     rounds,
     outputPath: videoPath,
+    referenceVideo: options?.referenceVideo,
+    pairwisePassed: lastPairwisePassed,
   };
   await fsp.writeFile(path.join(videoDir, "review-loop.json"), JSON.stringify(finalResult, null, 2), "utf8");
   return finalResult;

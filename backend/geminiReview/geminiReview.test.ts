@@ -24,7 +24,6 @@ import {
 } from "./geminiReview";
 import {
   formatReviewSummary,
-  applyFeedbackToFilm,
   runReviewLoop,
 } from "./reviewLoop";
 import type { CriterionEvaluation, GeminiReviewReport, ReviewFeedbackItem } from "./types";
@@ -451,3 +450,158 @@ test("reviewLoop: runs multi-round loop and achieves target score 9.0+", async (
   fs.rmSync(repoVideos, { recursive: true, force: true });
   fs.rmSync(tmpVideoDir, { recursive: true, force: true });
 });
+
+test("geminiReview: grounds measurable gates in deterministic facts", async () => {
+  const tmpVideo = path.join(os.tmpdir(), `test-facts-video-${Date.now()}.mp4`);
+  fs.writeFileSync(tmpVideo, Buffer.alloc(1024, 0));
+
+  const modelReport = {
+    overallScore: 9.2,
+    verdict: "ACCEPT",
+    summary: "Visually polished video.",
+    criteria: createMockCriteria({ gateScore: 9.0, gatePassed: true }),
+    feedback: [],
+  };
+
+  const mockClient = {
+    uploadVideo: async () => ({ name: "files/test123", uri: "https://mock.gemini/file", state: "ACTIVE" as const }),
+    generateContentWithVideo: async () => JSON.stringify(modelReport),
+  } as unknown as GeminiVideoClient;
+
+  // Provide deterministic facts indicating 0% captions (like Video B)
+  const facts = {
+    durationSec: 80.8,
+    audio: { measured: true, hasAudio: true, integratedLufs: -16.5, truePeakDb: -1.0, summary: "-16.5 LUFS" },
+    bottomCaptions: {
+      measured: true,
+      hasCaptions: false,
+      coverageRatio: 0,
+      sampledFrames: 12,
+      captionFrames: 0,
+      score: 0.0,
+      summary: "0% caption frames detected by OCR in bottom band (0/12)",
+    },
+    camera: { measured: true, hasCameraMoves: false, moveCount: 1, score: 4.0, summary: "Static camera" },
+    readability: { measured: true, summary: "Legibility OK" },
+    rawSummaryText: "PRE-MEASURED FACTS: 0% captions",
+  };
+
+  const report = await reviewVideo(tmpVideo, {
+    client: mockClient,
+    facts,
+  });
+
+  // Deterministic facts MUST override model mistake and fail bottom_captions gate
+  const capGate = report.criteria.find((c) => c.name === "bottom_captions");
+  assert.ok(capGate);
+  assert.equal(capGate.passed, false);
+  assert.equal(capGate.score, 0.0);
+  assert.equal(report.verdict, "REVISE");
+  assert.ok(report.overallScore <= 8.5);
+
+  fs.unlinkSync(tmpVideo);
+});
+
+test("reviewLoop: requires winning or tying pairwise check when reference video is configured", async () => {
+  const tmpVideoDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-loop-ref-test-"));
+  const testSlug = "mock-ref-slug";
+  const repoVideos = path.join(__dirname, "../../videos", testSlug);
+  fs.mkdirSync(repoVideos, { recursive: true });
+
+  const candidateVideo = path.join(tmpVideoDir, "candidate.mp4");
+  const refVideo = path.join(tmpVideoDir, "ref.mp4");
+  fs.writeFileSync(candidateVideo, Buffer.alloc(256, 1));
+  fs.writeFileSync(refVideo, Buffer.alloc(256, 2));
+
+  // Candidate gets 9.2 single score but loses pairwise in round 1, wins in round 2
+  let roundNum = 0;
+  const mockReviewer = async () => ({
+    overallScore: 9.2,
+    verdict: "ACCEPT" as const,
+    summary: "Single evaluation excellent.",
+    criteria: createMockCriteria({ gateScore: 9.2, gatePassed: true }),
+    feedback: [],
+    model: "gemini-3.8-flash",
+    evaluatedAt: new Date().toISOString(),
+    videoHash: "hash-ref-test",
+  });
+
+  const mockPairwise = async () => {
+    roundNum++;
+    if (roundNum === 1) {
+      // Round 1: candidate loses to reference
+      return {
+        orderAB: {
+          orderKey: "Video1=candidate, Video2=ref",
+          video1Path: candidateVideo,
+          video2Path: refVideo,
+          video1Score: 7.0,
+          video2Score: 9.0,
+          choice: "Video 2" as const, // reference wins
+          reasoning: "Reference video had superior stage persistence",
+          timestampsCited: ["0:15"],
+        },
+        orderBA: {
+          orderKey: "Video1=ref, Video2=candidate",
+          video1Path: refVideo,
+          video2Path: candidateVideo,
+          video1Score: 9.0,
+          video2Score: 7.0,
+          choice: "Video 1" as const, // reference wins
+          reasoning: "Reference video preferred",
+          timestampsCited: ["0:15"],
+        },
+        consistentWinner: "Video B" as const,
+        evaluatedAt: new Date().toISOString(),
+      };
+    }
+    // Round 2: candidate wins
+    return {
+      orderAB: {
+        orderKey: "Video1=candidate, Video2=ref",
+        video1Path: candidateVideo,
+        video2Path: refVideo,
+        video1Score: 9.5,
+        video2Score: 8.0,
+        choice: "Video 1" as const, // candidate wins
+        reasoning: "Candidate video has better persistent stage",
+        timestampsCited: ["0:20"],
+      },
+      orderBA: {
+        orderKey: "Video1=ref, Video2=candidate",
+        video1Path: refVideo,
+        video2Path: candidateVideo,
+        video1Score: 8.0,
+        video2Score: 9.5,
+        choice: "Video 2" as const, // candidate wins
+        reasoning: "Candidate video preferred",
+        timestampsCited: ["0:20"],
+      },
+      consistentWinner: "Video A" as const,
+      evaluatedAt: new Date().toISOString(),
+    };
+  };
+
+  const mockRenderer = async () => candidateVideo;
+
+  const loopResult = await runReviewLoop(testSlug, {
+    maxRounds: 3,
+    targetScore: 9.0,
+    referenceVideo: refVideo,
+    autoRefine: false,
+    mockRenderer,
+    mockReviewer,
+    mockPairwise,
+  });
+
+  // Must not pass on round 1 (pairwise failed); must pass on round 2 (pairwise won)
+  assert.equal(loopResult.rounds.length, 2);
+  assert.equal(loopResult.rounds[0].verdict, "REVISE");
+  assert.equal(loopResult.rounds[1].verdict, "ACCEPT");
+  assert.equal(loopResult.passed, true);
+  assert.equal(loopResult.pairwisePassed, true);
+
+  fs.rmSync(repoVideos, { recursive: true, force: true });
+  fs.rmSync(tmpVideoDir, { recursive: true, force: true });
+});
+

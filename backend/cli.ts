@@ -785,8 +785,10 @@ program
   .description("Review a rendered mp4 video or run pairwise comparison using Gemini 3.8 Flash against the 12-criterion quality rubric")
   .argument("<video>", "Path to rendered mp4 video file")
   .option("--pairwise <other>", "Optional second mp4 video to run order-swapped pairwise comparison against")
+  .option("--film <path>", "Optional path to film.json for camera track and boundary facts")
+  .option("--no-facts", "Skip deterministic facts extraction (OCR, audio loudness, ffprobe)")
   .option("--json", "Print output report as raw JSON")
-  .action(async (video: string, options: { pairwise?: string; json?: boolean }) => {
+  .action(async (video: string, options: { pairwise?: string; film?: string; facts: boolean; json?: boolean }) => {
     const { reviewVideo, reviewPairwise, formatReviewSummary } = await import("./geminiReview");
 
     if (options.pairwise) {
@@ -812,6 +814,8 @@ program
 
     console.log(`Reviewing video with Gemini 3.8 Flash: ${video}...`);
     const report = await reviewVideo(video, {
+      filmPath: options.film,
+      skipFacts: !options.facts,
       onProgress: (msg) => console.log(`  ${msg}`),
     });
 
@@ -832,6 +836,7 @@ program
   .argument("<slug>", "Film slug under videos/ (e.g. still-talking, hnsw-explainer)")
   .option("--max-rounds <n>", "Maximum iteration rounds (default: 6)", "6")
   .option("--target-score <n>", "Target overall score out of 10.0 (default: 9.0)", "9.0")
+  .option("--reference <mp4>", "Optional reference mp4 video; acceptance requires winning or tying against it in pairwise comparison")
   .option("--format <format>", "Render format: long or reel (default: long)", "long")
   .option("--no-auto", "Do not automatically apply feedback between rounds")
   .option("--json", "Print final loop result as raw JSON")
@@ -841,6 +846,7 @@ program
       options: {
         maxRounds: string;
         targetScore: string;
+        reference?: string;
         format: "long" | "reel";
         auto: boolean;
         json?: boolean;
@@ -851,6 +857,7 @@ program
       const result = await runReviewLoop(slug, {
         maxRounds: Number(options.maxRounds),
         targetScore: Number(options.targetScore),
+        referenceVideo: options.reference,
         format: options.format,
         autoRefine: options.auto,
         onProgress: (msg) => console.log(msg),
@@ -863,6 +870,9 @@ program
         console.log(`Status: ${result.passed ? "PASSED (>= 9.0)" : "REVISE NEEDED"}`);
         console.log(`Final Score: ${result.finalScore.toFixed(1)} / 10.0`);
         console.log(`Rounds Completed: ${result.rounds.length}`);
+        if (result.referenceVideo) {
+          console.log(`Pairwise Reference Check: ${result.pairwisePassed ? "PASSED (won or tied)" : "FAILED (lost to reference)"}`);
+        }
       }
 
       if (!result.passed) {

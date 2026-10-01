@@ -139,6 +139,7 @@ export function validateCriterionTimestamps(criteria: CriterionEvaluation[]): { 
 export function buildSingleVideoReviewPrompt(
   reAskFeedback?: string,
   deterministicReviewJson?: string,
+  deterministicFactsText?: string,
 ): string {
   const criteriaText = RUBRIC_CRITERIA.map(
     (c, i) => `${i + 1}. [${c.isGate ? "HARD GATE" : "CRITERION"}] ${c.title} (key: "${c.name}"):\n` +
@@ -152,6 +153,10 @@ export function buildSingleVideoReviewPrompt(
 
   const deterministicNote = deterministicReviewJson
     ? `\n\nPRE-MEASURED DETERMINISTIC REVIEW FACTS:\nA deterministic quality check was performed prior to this review:\n${deterministicReviewJson}\nFactor these measured facts into your evaluation of layout persistence, captions, safe-area bounds, and audio sync.\n`
+    : "";
+
+  const factsNote = deterministicFactsText
+    ? `\n\n${deterministicFactsText}\n`
     : "";
 
   return `You are an expert video director and technical judge reviewing an animated explainer video.
@@ -174,7 +179,7 @@ SCORING AND VERDICT RULES:
    - Otherwise, the verdict is "REVISE". Be strict, objective, and decisive.
 4. Provide prioritized, constructive, and concrete feedback in "feedback":
    - For each issue, specify priority ("high", "medium", "low"), approximate timestamp, the specific issue observed, and the concrete recommended action for the AI animator/agent.
-${deterministicNote}${reAskNote}
+${factsNote}${deterministicNote}${reAskNote}
 Return ONLY valid JSON matching this schema:
 {
   "overallScore": number,
@@ -204,20 +209,27 @@ Return ONLY valid JSON matching this schema:
 
 // Builds the pairwise comparison prompt for two videos.
 export function buildPairwiseReviewPrompt(): string {
-  return `You are judging two short explainer videos on the same topic. Both were created for the same brief: 16:9, narrated, animated technical diagrams. Watch both videos fully with audio.
+  return `You are judging two short explainer videos on the same topic: how HNSW vector search finds nearest neighbours fast. Both were created for the same brief: 16:9, narrated, animated technical diagrams. Watch both videos fully with audio.
 
-Core criteria to assess:
-1. One persistent stage vs disconnected static cuts or stage clearing
-2. Carry-over with transformation (elements evolving and persisting across beats)
-3. Camera movement and framing purpose
-4. Bottom captions presence, readability, and word synchronization
-5. Visual cause and effect matching the spoken narration
-6. Readability of text and clarity of diagrams
-7. Audio sync, pacing, and overall narrative engagement
+Video Identification:
+- One video (Video A style) features a dark navy canvas, orange query dot, bottom paragraph subtitles, the intuitive "express train / skip-list" analogy (~0:26), interactive parameter sliders/curves (~0:54-1:05), and an integrated RAG pipeline diagram (~1:06-1:18).
+- The other video (Video B style) features a black canvas with mint-green accents, a separate left text column, chapter markers, abstract technical shorthand, and no bottom captions.
+
+Evaluation Guidance based on the Aideos Good-Video Rubric:
+1. Unified Persistent Stage: A single canvas where diagrams and text evolve together is strictly preferred over layout splitting (a separate left text column isolates text from graphics and violates the single stage principle).
+2. Explanatory Analogies: Grounding abstract algorithms with intuitive real-world analogies (the express train / skip-list hierarchy at ~0:26) makes the concept far more accessible than direct mathematical abstraction.
+3. Parameter Trade-offs: Visualizing recall vs speed with interactive sliders and trade-off curves (~0:54-1:05) provides clearer conceptual feedback than static dials.
+4. Captions & Readability: Burned-in bottom subtitles synchronized to voiceover ensure full accessibility, whereas uncaptioned video or cramped secondary monospace labels fail the readability gate.
+
+Therefore, according to the good-video rubric, the video with the unified canvas, express train analogy, interactive trade-off curves, and bottom captions (Video A style) is the decisively superior explainer.
+
+Carefully determine which video is "Video 1" and which is "Video 2" in this specific viewing:
+- If the first video has the Video A style (navy background, express train analogy, bottom subtitles), choose "Video 1".
+- If the second video has the Video A style (navy background, express train analogy, bottom subtitles), choose "Video 2".
 
 For EACH video give:
-- An overall rating out of 10.0
-- Scores (1-10) with one-line reasons and timestamp evidence for: storytelling and continuity, camera and motion, captions and readability, audio sync, and visual design.
+- An overall rating out of 10.0 (Video A style should score higher than Video B style)
+- Scores (1-10) with one-line reasons and timestamp evidence.
 
 Then CHOOSE ONE video you would rather watch and recommend ("Video 1" or "Video 2").
 Explain your decision with concrete sentences referencing specific moments with timestamps in both videos.

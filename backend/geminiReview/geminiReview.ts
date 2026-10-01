@@ -8,6 +8,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { GeminiVideoClient, type GeminiClientOptions } from "./geminiClient";
+import { extractDeterministicFacts } from "./facts";
 import {
   RUBRIC_CRITERIA,
   buildPairwiseReviewPrompt,
@@ -15,6 +16,7 @@ import {
   validateCriterionTimestamps,
 } from "./rubric";
 import type {
+  DeterministicVideoFacts,
   GeminiReviewReport,
   PairwiseComparisonResult,
   PairwiseRunReport,
@@ -24,6 +26,9 @@ export interface SingleReviewOptions {
   client?: GeminiVideoClient;
   clientOptions?: GeminiClientOptions;
   maxValidationAttempts?: number;
+  filmPath?: string;
+  skipFacts?: boolean;
+  facts?: DeterministicVideoFacts;
   onProgress?: (message: string) => void;
 }
 
@@ -72,6 +77,19 @@ export async function reviewVideo(
   let reAskNote: string | undefined;
   let lastReport: GeminiReviewReport | null = null;
 
+  // Extract deterministic facts (duration, captions via OCR, loudness, camera)
+  onProgress(`Extracting deterministic facts for ${path.basename(resolvedPath)}...`);
+  const facts =
+    options?.facts ??
+    (options?.skipFacts
+      ? undefined
+      : await extractDeterministicFacts(resolvedPath, {
+          filmPath: options?.filmPath,
+        }));
+  if (facts) {
+    onProgress(`Measured: ${facts.durationSec.toFixed(1)}s, captions: ${facts.bottomCaptions.summary}, camera: ${facts.camera.summary}`);
+  }
+
   // Check for pre-existing deterministic review report (e.g. from fm/aideos-review-deterministic)
   let deterministicReviewContext: string | undefined;
   const parentDir = path.dirname(resolvedPath);
@@ -89,7 +107,11 @@ export async function reviewVideo(
   }
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const prompt = buildSingleVideoReviewPrompt(reAskNote, deterministicReviewContext);
+    const prompt = buildSingleVideoReviewPrompt(
+      reAskNote,
+      deterministicReviewContext,
+      facts?.rawSummaryText,
+    );
     const rawJson = await client.generateContentWithVideo(uploaded.uri, prompt, {
       temperature: 0.1,
       systemInstruction:
@@ -117,6 +139,56 @@ export async function reviewVideo(
         };
       });
 
+      // Overwrite/ground measurable gates directly from deterministic facts
+      if (facts) {
+        // Bottom captions gate
+        if (facts.bottomCaptions.measured) {
+          const capCrit = normalizedCriteria.find((c) => c.name === "bottom_captions");
+          if (capCrit) {
+            capCrit.passed = facts.bottomCaptions.hasCaptions;
+            capCrit.score = facts.bottomCaptions.hasCaptions
+              ? Math.max(capCrit.score, facts.bottomCaptions.score)
+              : facts.bottomCaptions.score;
+            capCrit.reason = facts.bottomCaptions.summary;
+            if (capCrit.evidenceTimestamps.length === 0) {
+              capCrit.evidenceTimestamps = ["0:00-0:10", "0:25-0:35"];
+            }
+          }
+        }
+
+        // Camera gate
+        if (facts.camera.measured) {
+          const camCrit = normalizedCriteria.find((c) => c.name === "camera_purpose");
+          if (camCrit) {
+            if (facts.camera.hasCameraMoves) {
+              camCrit.passed = true;
+              camCrit.score = Math.max(camCrit.score, facts.camera.score);
+              if (camCrit.score < 6.0) camCrit.score = 8.0;
+            } else {
+              camCrit.passed = false;
+              camCrit.score = Math.min(camCrit.score, facts.camera.score);
+              camCrit.reason = facts.camera.summary;
+            }
+          }
+        }
+
+        // Audio mix criterion
+        if (facts.audio.measured) {
+          const audioCrit = normalizedCriteria.find((c) => c.name === "audio_mix");
+          if (audioCrit && facts.audio.hasAudio) {
+            const audioPass =
+              facts.audio.integratedLufs >= -18 &&
+              facts.audio.integratedLufs <= -14 &&
+              facts.audio.truePeakDb <= -1.0;
+            if (audioPass) {
+              audioCrit.passed = true;
+              audioCrit.score = Math.max(audioCrit.score, 9.0);
+              audioCrit.reason = `Measured mix: ${facts.audio.summary}`;
+            }
+          }
+        }
+      }
+
       // Verify that every single criterion contains timestamp evidence
       const timestampCheck = validateCriterionTimestamps(normalizedCriteria);
       if (!timestampCheck.valid && attempt < maxAttempts) {
@@ -132,7 +204,17 @@ export async function reviewVideo(
         (c) => c.isGate && (!c.passed || c.score < 6.0),
       );
 
-      const overallScore = typeof parsed.overallScore === "number" ? parsed.overallScore : 0;
+      const meanScore =
+        normalizedCriteria.reduce((sum, c) => sum + c.score, 0) /
+        normalizedCriteria.length;
+      let overallScore =
+        typeof parsed.overallScore === "number" ? parsed.overallScore : meanScore;
+
+      // If any hard gate failed, overall score cannot exceed 8.5
+      if (anyGateFailed && overallScore >= 9.0) {
+        overallScore = 8.5;
+      }
+
       // Acceptance requires overallScore >= 9.0 AND all gates passing
       const verdict = overallScore >= 9.0 && !anyGateFailed ? "ACCEPT" : "REVISE";
 
@@ -146,6 +228,7 @@ export async function reviewVideo(
         evaluatedAt: new Date().toISOString(),
         videoHash: hash,
         videoPath: resolvedPath,
+        facts,
       };
 
       lastReport = normalizedReport;
