@@ -44,7 +44,7 @@ A timeline hangs off an `EnvironmentAsset` as `animation`:
 props: [
   {
     assetId: "diagram",
-    svgSource: "videos/kvcache/visuals/pipeline.svg",
+    svgSource: "videos/<slug>/visuals/pipeline.svg",
     position: { x: 960, y: 540 },
     scale: 2.2,
     rotation: 0,

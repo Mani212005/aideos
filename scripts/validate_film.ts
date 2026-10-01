@@ -16,8 +16,8 @@ Usage:
   npx tsx scripts/validate_film.ts <path-to-film.json>
 
 Examples:
-  npx tsx scripts/validate_film.ts public/film.json
-  npx tsx scripts/validate_film.ts videos/why-dit-replaced-unet/film.json
+  npx tsx scripts/validate_film.ts examples/hello-scene/film.json
+  npx tsx scripts/validate_film.ts videos/my-video/film.json
 `);
   process.exit(0);
 }
