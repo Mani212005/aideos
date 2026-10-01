@@ -532,13 +532,18 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
           };
         } else {
           const normT = totalFrames > 1 ? f / (totalFrames - 1) : 0;
+          const isHoldX = Math.abs(k0.center.x - k1.center.x) < 1e-6;
+          const isHoldY = Math.abs(k0.center.y - k1.center.y) < 1e-6;
+          const isHoldZoom = Math.abs(k0.zoom - k1.zoom) < 1e-6;
+          const isHoldRot = Math.abs((k0.rotation ?? 0) - (k1.rotation ?? 0)) < 1e-6;
+
           cameraCurves[f] = {
             center: {
-              x: evaluateCatmullRomSpline(splineX, normT),
-              y: evaluateCatmullRomSpline(splineY, normT)
+              x: isHoldX ? k0.center.x : evaluateCatmullRomSpline(splineX, normT),
+              y: isHoldY ? k0.center.y : evaluateCatmullRomSpline(splineY, normT),
             },
-            zoom: evaluateCatmullRomSpline(splineZoom, normT),
-            rotation: evaluateCatmullRomSpline(splineRot, normT)
+            zoom: isHoldZoom ? k0.zoom : evaluateCatmullRomSpline(splineZoom, normT),
+            rotation: isHoldRot ? (k0.rotation ?? 0) : evaluateCatmullRomSpline(splineRot, normT),
           };
         }
       }

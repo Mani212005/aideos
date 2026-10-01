@@ -135,4 +135,27 @@ test("DesignCheck: camera moves must be present and speed-capped", () => {
   // 20% of 1920 = 384 pixels/second. So it should fail.
   const fast = checkFilmDesign(film);
   assert.ok(fast.findings.some(f => f.rule === "camera" && f.message.includes("speed limit")));
+
+  // Unsorted keyframes that exceed speed limit when ordered chronologically
+  film.scene.camera = {
+    keyframes: [
+      { frame: 30, center: { x: 1000, y: 0 }, zoom: 1 },
+      { frame: 0, center: { x: 0, y: 0 }, zoom: 1 }
+    ]
+  };
+  const unsortedFast = checkFilmDesign(film);
+  assert.ok(unsortedFast.findings.some(f => f.rule === "camera" && f.message.includes("speed limit")));
+});
+
+test("DesignCheck: scene camera survives parseFilm in schema", () => {
+  const film = { ...JSON.parse(JSON.stringify(stillTalking())), id: "camera-schema-test" };
+  film.scene.camera = {
+    keyframes: [
+      { frame: 0, center: { x: 500, y: 500 }, zoom: 1 },
+      { frame: 100, center: { x: 550, y: 500 }, zoom: 1.2 }
+    ]
+  };
+  const report = checkFilmDesign(film);
+  assert.equal(report.findings.find(f => f.rule === "schema"), undefined);
+  assert.equal(report.findings.find(f => f.rule === "camera"), undefined);
 });

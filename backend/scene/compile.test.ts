@@ -634,3 +634,24 @@ test("C-17: dangling custom animation targets fail the compile loudly", () => {
     /SCENE_ANIMATION_COMPILE_FAILED/,
   );
 });
+
+// C-18: Camera hold intervals maintain exact position without Catmull-Rom overshoot
+test("C-18: camera hold intervals maintain exact values without spline drift", () => {
+  const scene = makeValidScene();
+  scene.camera = {
+    keyframes: [
+      { frame: 0, center: { x: 100, y: 100 }, zoom: 1 },
+      { frame: 30, center: { x: 500, y: 500 }, zoom: 2 },
+      { frame: 60, center: { x: 500, y: 500 }, zoom: 2 },
+      { frame: 89, center: { x: 900, y: 900 }, zoom: 1 },
+    ],
+  };
+
+  const compiled = compileScene(scene);
+  for (let f = 30; f <= 60; f++) {
+    const cam = compiled.frames[f].camera!;
+    assert.equal(cam.center.x, 500, `frame ${f} center.x was ${cam.center.x}`);
+    assert.equal(cam.center.y, 500, `frame ${f} center.y was ${cam.center.y}`);
+    assert.equal(cam.zoom, 2, `frame ${f} zoom was ${cam.zoom}`);
+  }
+});

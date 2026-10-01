@@ -286,9 +286,10 @@ function checkHonestData(film: Film, findings: DesignFinding[]): void {
 
 // Runs every standard-layer rule over a parsed film manifest.
 
+// Checks the scene camera keyframes for valid speed limits and motion.
 function checkCamera(scene: Scene, findings: DesignFinding[]): void {
   if (!scene.camera || !scene.camera.keyframes || scene.camera.keyframes.length === 0) return;
-  const kfs = scene.camera.keyframes;
+  const kfs = [...scene.camera.keyframes].sort((a, b) => a.frame - b.frame);
   if (kfs.length < 2) {
     findings.push({ rule: "camera", severity: "error", where: "scene.camera", message: "declares a camera but has no moves (needs at least two keyframes)." });
     return;
@@ -296,7 +297,7 @@ function checkCamera(scene: Scene, findings: DesignFinding[]): void {
   
   let hasMove = false;
   for (let i = 1; i < kfs.length; i++) {
-    const p1 = kfs[i-1];
+    const p1 = kfs[i - 1];
     const p2 = kfs[i];
     const dx = p2.center.x - p1.center.x;
     const dy = p2.center.y - p1.center.y;
@@ -308,12 +309,14 @@ function checkCamera(scene: Scene, findings: DesignFinding[]): void {
     
     const frames = p2.frame - p1.frame;
     if (frames > 0) {
-      const durationSec = frames / scene.fps;
+      const durationSec = frames / (scene.fps || FPS);
       const speed = dist / durationSec;
-      const maxSpeed = scene.sceneSize.w * 0.20;
+      const maxSpeed = (scene.sceneSize?.w ?? 1920) * 0.20;
       if (speed > maxSpeed) {
         findings.push({ rule: "camera", severity: "error", where: `scene.camera segment ${p1.frame}-${p2.frame}`, message: `camera moves ${speed.toFixed(1)} px/s, exceeding the speed limit of 20% of frame width (${maxSpeed} px/s).` });
       }
+    } else if (dist > 1e-3) {
+      findings.push({ rule: "camera", severity: "error", where: `scene.camera segment ${p1.frame}-${p2.frame}`, message: `camera has an instantaneous jump of ${dist.toFixed(1)} px at frame ${p1.frame}.` });
     }
   }
   

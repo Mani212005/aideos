@@ -358,6 +358,21 @@ export const environmentAssetSchema = z.object({
   animation: svgAnimationTimelineSchema.optional(),
 });
 
+export const cameraKeyframeSchema = z.object({
+  frame: z.number().int().min(0),
+  center: z.object({ x: z.number(), y: z.number() }),
+  zoom: z.number().positive(),
+  rotation: z.number().optional(),
+  easing: z.string().optional(),
+});
+
+export const cameraTrackSchema = z.object({
+  keyframes: z.array(cameraKeyframeSchema),
+});
+
+export type CameraKeyframe = z.infer<typeof cameraKeyframeSchema>;
+export type CameraTrack = z.infer<typeof cameraTrackSchema>;
+
 export const sceneSchema = z.object({
   schemaVersion: z.string().min(1),
   sceneId: z.string().min(1),
@@ -366,6 +381,7 @@ export const sceneSchema = z.object({
   audioSource: z.string().min(1),
   audioDurationMs: z.number().min(0),
   sceneSize: z.object({ w: z.number().positive(), h: z.number().positive() }),
+  camera: cameraTrackSchema.optional(),
   background: environmentAssetSchema,
   props: z.array(environmentAssetSchema),
   actors: z.array(z.unknown()).default([]),
