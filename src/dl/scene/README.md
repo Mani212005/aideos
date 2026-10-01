@@ -32,7 +32,7 @@ CompiledFrame.camera              dense per-frame camera state
 | Remotion entry point | `SceneClip.tsx` |
 | Whole-film stage | `../SceneStage.tsx` |
 | Audio-first retiming | `sceneTiming.ts` |
-| Scene-film kit (Timeline builder, camera authoring) | `../../../backend/sceneKit/timeline.ts` |
+| Scene-film kit (Canvas, Timeline builder, camera authoring) | `../../../backend/sceneKit/` |
 | Node-side asset loading | `../../../backend/scene/loadSceneAssets.ts` |
 | Browser-bundle SVG source map builder | `../../../backend/scene/buildSvgSources.ts` |
 
