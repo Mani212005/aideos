@@ -11,6 +11,7 @@ import { parseFilm, type Film } from "../../src/dl/schema";
 import { FORMAT_WINDOWS, SAFE_SQUARE, SCENE_SIZE } from "../sceneKit";
 import { LOCKED_PALETTE } from "../designCheck/designCheck";
 import { designDir } from "./build";
+import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 
@@ -58,6 +59,9 @@ Design this film's picture from scratch, as one continuous vector scene unique t
 then run \`aideos design build ${film.id}\` and fix whatever it reports until it prints PASS. A failing
 build never touches the film, so iterate freely. The worked example of a finished scene film is
 \`videos/still-talking/\` (built by \`backend/stillTalking/scene.ts\` on the same kit).
+
+## Video Quality Expectations
+${RUBRIC_SUMMARY}
 
 ## The standard layer (enforced by the build)
 

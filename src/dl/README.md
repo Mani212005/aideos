@@ -56,15 +56,11 @@ to the canvas every 90s, and at most three accents in a frame.
 - **A new film:** write `films/<topic>.ts` as pure data (`import type` only -
   the validator loads it in plain Node) and point `activeFilm.ts` at it, or create a
   standalone video package under `videos/<slug>/` (`film.json`, `script.md`,
-  `voiceover.wav`, `footage/`, `shotlist.json`, `treatment.json`, `visuals/`) and
+  `voiceover.wav`, `footage/`, `visuals/`) and
   load via `src/dl/videoPackageLoader.ts`.
 
 ## Deliberately not implemented
 
-- **No captions in Long format.** Burned-in subtitles fight the 16:9 panel for
-  the same space, and long-form platforms draw their own from the sidecar track
-  (`captions.vtt`). In vertical Reel format, kinetic captions are enabled at the
-  bottom fifth safe area for muted social viewing (configurable via `subtitles: false`).
 - **No shadows, no grain, no vignette.** Depth is a hairline and a lift in
   surface value.
 

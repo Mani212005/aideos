@@ -14,6 +14,7 @@ You have complete creative autonomy. The browser canvas is your viewport; the de
 - **Visual Art & SVG Creation**: You are not limited to fixed templates. Author custom animated SVGs, evocative geometric motion, abstract vector scenes, and expressive spatial layouts to explain mechanisms intuitively.
 - **Cinematic B-Roll**: Use photoreal GPU footage ([`AnalogyInset`](../src/dl/devices.tsx) with `needsFootage`) for visceral real-world metaphors, tactile machinery, and atmospheric depth.
 - **Rhythm & Breathing**: Film is music for the eyes. Alternate between tight analytical focus shots and wide canvas camera pull-backs to let the viewer breathe and re-anchor the big picture.
+- **Good Video Standard**: Every film must satisfy the authoritative quality rubric in [`docs/GOOD_VIDEO.md`](GOOD_VIDEO.md) (persistent stage, carry-over with transformation, visible cause and effect, camera movement, bottom captions, and honest data).
 
 ---
 
@@ -33,6 +34,7 @@ While your artistic choices are completely free, your screenplay must respect th
 
 ## 3. Reference Links & Tooling
 
+- **Good Video Standard**: See [`docs/GOOD_VIDEO.md`](GOOD_VIDEO.md) for the 12-criterion quality rubric and pass bar.
 - **Schema & Invariants**: See [`src/dl/schema.ts`](../src/dl/schema.ts) for full type definitions and runsheet rules.
 - **Visual Component Library**: Inspect [`src/dl/devices.tsx`](../src/dl/devices.tsx) and [`src/dl/metaphors/MetaphorViewer.tsx`](../src/dl/metaphors/MetaphorViewer.tsx) for available visual blocks.
 - **Validation**: Test your authored screenplay instantly with:

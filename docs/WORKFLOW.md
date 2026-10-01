@@ -16,8 +16,8 @@ Aideos is engineered around 4 strict architectural invariants:
    - Video duration is never guessed. The synthesized voiceover audio is the immutable master clock of the film. Total shot durations must sum to the voiceover length within a strict tolerance of $\pm 50\text{ms}$.
 3. **Derived Camera Framing**:
    - The virtual camera never uses hardcoded pixel offsets. Viewport centers, zoom factors, and bounding boxes are mathematically derived from continuous 2D node coordinates $(x, y, w, h)$ on the spatial canvas graph.
-4. **Strict 6-Value Semantic Design System**:
-   - Every color in the video is mapped to 6 semantic tokens (`canvas`, `surface`, `ink`, `muted`, `hairline`, `accent`). This guarantees that switching themes (e.g. Archival Paper, Blueprint, Charcoal, Warm Editorial) instantly recolors every scene, character, and card with 100% harmony.
+4. **Declared Palette with Semantic Theme Tokens**:
+   - Colors map to semantic tokens (`canvas`, `surface`, `ink`, `muted`, `hairline`, `accent`) with a measured contrast floor. Switching themes (e.g. Archival Paper, Blueprint, Charcoal, Warm Editorial) recolors scenes, characters, and cards with measured contrast and harmony.
 
 ---
 

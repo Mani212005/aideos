@@ -430,7 +430,7 @@ An individual vector path inside a limb:
 * `validateFilm(film)`: Runs Zod schema parsing and structural integrity assertions.
 * `validatePacingInvariants(film)`: Enforces max 25s hold, no consecutive device repeats, and text breathers every 60-90s.
 * `validateFilmAudioAndAssets(film, projectDir)`: Enforces duration sum invariant ($\sum \text{Shots} = \text{Audio} \pm 50\text{ms}$) and confirms audio asset presence.
-* `scripts/validate_film.ts`: Standalone CLI validator (`npm run validate:film <path/to/film.json>`) validating arbitrary `film.json` files against all 19 cinematic invariants and printing a runsheet.
+* `scripts/validate_film.ts`: Standalone CLI validator (`npm run validate:film <path/to/film.json>`) validating arbitrary `film.json` files against cinematic schema and pacing constraints and printing a runsheet.
 
 ---
 
