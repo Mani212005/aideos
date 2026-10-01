@@ -16,6 +16,7 @@ import { spawnSync } from "child_process";
 import dotenv from "dotenv";
 import { produceAudioPipeline } from "../audio";
 import { narrationSegments, spokenWordCount, BEATS } from "./beats";
+import { getVideosDir } from "../../src/dl/videoPackageLoader";
 
 dotenv.config();
 
@@ -62,7 +63,7 @@ export interface VoiceoverTiming {
 
 /** Absolute path to the still-talking video package. */
 export function packageDir(): string {
-  return path.resolve(__dirname, "../../videos/still-talking");
+  return path.join(getVideosDir(), "still-talking");
 }
 
 /** Path of the shot spine artefact the film builder consumes. */

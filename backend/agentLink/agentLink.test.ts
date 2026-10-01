@@ -112,7 +112,7 @@ test("AgentLink: remote prompts map shell steps onto the aideos tools", () => {
 
 test("AgentLink: design tools only touch a film's design spec and visuals", () => {
   const writable = /^(design\/design\.json|visuals\/[a-z0-9-]+\.svg)$/;
-  assert.match(resolveFilmFile("speculative-decoding-designed", "design/design.json", writable), /videos\/speculative-decoding-designed\/design\/design\.json$/);
+  assert.match(resolveFilmFile("speculative-decoding-designed", "design/design.json", writable), /speculative-decoding-designed\/design\/design\.json$/);
   assert.match(resolveFilmFile("speculative-decoding-designed", "./visuals/road-2.svg", writable), /visuals\/road-2\.svg$/);
   for (const bad of ["film.json", "../../package.json", "visuals/../film.json", "visuals/Road.svg", "design/base-film.json"]) {
     assert.throws(() => resolveFilmFile("speculative-decoding-designed", bad, writable), /not a file this tool may touch/, bad);

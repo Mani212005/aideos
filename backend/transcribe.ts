@@ -11,6 +11,7 @@ import os from "os";
 import path from "path";
 import type { WordInfo } from "./audio";
 import { resolveAudioSourcePath, buildCaptionsVtt } from "./audio";
+import { getVideosDir } from "../src/dl/videoPackageLoader";
 
 /** A transcribed word: the shared WordInfo shape plus the ASR backend's own confidence score. */
 export interface TranscribedWord extends WordInfo {
@@ -172,7 +173,7 @@ export async function transcribe(
 export function writeImportWords(
   slug: string,
   words: TranscribedWord[],
-  videosDir: string = path.resolve(process.cwd(), "videos"),
+  videosDir: string = getVideosDir(),
 ): { wordsPath: string; vttPath: string } {
   const dir = path.join(videosDir, slug);
   fs.mkdirSync(dir, { recursive: true });

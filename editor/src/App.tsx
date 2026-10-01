@@ -26,8 +26,7 @@ import {
   Subtitles,
   TriangleAlert,
 } from "lucide-react";
-import { whatIsJepaFilm } from "../../src/dl/films/what-is-jepa";
-import { kvcacheFilm } from "../../src/dl/films/kvcache";
+import { PLACEHOLDER_FILM } from "./state/placeholderFilm";
 import { useFilmProject } from "./state/useFilmProject";
 import { useLayeredTimeline } from "./state/useLayeredTimeline";
 import { Badge, Button, Panel, RailTab, Select, Spinner, ToastStack } from "./components/ui";
@@ -58,7 +57,7 @@ const DESIGN_SOURCE_LABEL = {
  * the generated film modules: doing so makes Vite treat every autosave (which rewrites those
  * modules) as a source change and hot-reloads the whole page out from under the user.
  */
-const bundledFilmIds: string[] = [whatIsJepaFilm.id, kvcacheFilm.id];
+const bundledFilmIds: string[] = [PLACEHOLDER_FILM.id];
 
 export const FORMATS = {
   long: { width: 1920, height: 1080, label: "16:9" },
@@ -88,7 +87,7 @@ export type SelectionTarget =
 
 /** Root application shell: header, stage rail, active stage and the context inspector. */
 export default function App() {
-  const project = useFilmProject(whatIsJepaFilm || kvcacheFilm, bundledFilmIds);
+  const project = useFilmProject(PLACEHOLDER_FILM, bundledFilmIds);
   const { film, commit, notify } = project;
 
   // The stage lives in the URL hash, so a reload (Vite hot-reloads the page when an agent's design

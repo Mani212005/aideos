@@ -4,8 +4,16 @@
 
 import fs from "fs";
 import path from "path";
-import { whatIsJepaFilm } from "../src/dl/films/what-is-jepa";
+import { readFilm } from "../backend/pipeline/filmStore";
 import { chunkTextForTTS, trimSilence, splitScriptIntoSegments } from "../backend/audio";
+
+// The film to verify: the slug given as the first argument, else the committed example.
+const verifyFilm = (() => {
+  const slug = process.argv[2] ?? "hello-scene";
+  const film = readFilm(slug);
+  if (!film) throw new Error(`no video package "${slug}"; pass the slug of one under videos/`);
+  return film;
+})();
 
 // Helper function to encode Float32Array into 16-bit PCM WAV buffer
 function encodeWav(float32Data: Float32Array, rate: number): Buffer {
@@ -84,11 +92,11 @@ function detectSilenceGaps(samples: Float32Array, sampleRate: number, threshold 
 async function runVerification() {
   console.log("=== Empirical Verification: Voiceover Synthesis & Silence Gap Telemetry ===");
 
-  const shots = whatIsJepaFilm.shots;
+  const shots = verifyFilm.shots;
   const shotTexts = shots.map((s) => (s.scriptText || "").trim()).filter(Boolean);
   const fullText = shotTexts.join("\n\n");
 
-  console.log(`Input Film: "${whatIsJepaFilm.title}" (${shots.length} shots, ${fullText.length} chars)`);
+  console.log(`Input Film: "${verifyFilm.title}" (${shots.length} shots, ${fullText.length} chars)`);
 
   // 1. Verify Chunking Behavior
   const chunks = chunkTextForTTS(fullText, 800);
@@ -215,7 +223,7 @@ async function runVerification() {
   const telemetryReport = {
     timestamp: new Date().toISOString(),
     summary: {
-      filmTitle: whatIsJepaFilm.title,
+      filmTitle: verifyFilm.title,
       totalShots: shots.length,
       totalChars: fullText.length,
       totalAudioDurationSec: Number(totalDurationSec.toFixed(3)),
@@ -238,7 +246,7 @@ async function runVerification() {
     "# Voiceover Stutter Fix: Empirical Verification Report",
     "",
     "## 1. Executive Summary",
-    `- **Film Tested:** "${whatIsJepaFilm.title}" (${shots.length} shots, ${fullText.length} characters)`,
+    `- **Film Tested:** "${verifyFilm.title}" (${shots.length} shots, ${fullText.length} characters)`,
     `- **Total Synthesized Audio Duration:** ${totalDurationSec.toFixed(2)}s`,
     `- **Compounded Dead-Air Silence Eliminated:** ${totalDeadAirEliminated}ms (~${(totalDeadAirEliminated / 1000).toFixed(2)}s of silence stripped)`,
     `- **Synthesis Chunk Count:** Reduced from ${legacyChunks.length} aggressive sub-chunks (220-char) down to ${chunks.length} intact shot-level chunks (800-char threshold, 1:1 with shots)`,

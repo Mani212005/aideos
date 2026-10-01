@@ -18,6 +18,7 @@ import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNod
 import { narrationSupportsVisual, numbersIn } from "../shotVisualCues";
 import type { ShotVisual } from "../jev";
 import { FPS } from "../sceneKit";
+import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 
 /** The standard layer rules a finding can belong to. */
 export type DesignRule =
@@ -89,7 +90,7 @@ export function offPaletteColours(svgText: string, accent?: string): string[] {
 // Checks one asset document is static, self-contained, on palette and in the allowed typefaces.
 function checkAsset(asset: EnvironmentAsset, accent: string | undefined, findings: DesignFinding[]): void {
   if (!asset.svgSource) return;
-  const file = path.resolve(REPO_ROOT, asset.svgSource);
+  const file = resolveRepoAssetPath(asset.svgSource);
   if (!fs.existsSync(file)) return; // The scene rule already reports a missing file.
   const text = fs.readFileSync(file, "utf8");
   const where = asset.svgSource;
@@ -360,10 +361,10 @@ export function checkFilmDesign(raw: unknown): DesignReport {
   };
 }
 
-// Loads videos/<id>/film.json and checks it.
+// Loads the film.json of a video package (personal videos dir, else examples/) and checks it.
 export function checkFilmDesignById(filmId: string): DesignReport {
-  const file = path.join(REPO_ROOT, "videos", filmId, "film.json");
-  if (!fs.existsSync(file)) throw new Error(`no film at videos/${filmId}/film.json`);
+  const file = path.join(resolvePackageDir(filmId), "film.json");
+  if (!fs.existsSync(file)) throw new Error(`no film at ${path.relative(REPO_ROOT, file)}`);
   return checkFilmDesign(JSON.parse(fs.readFileSync(file, "utf8")));
 }
 

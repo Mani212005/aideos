@@ -1,17 +1,18 @@
 /**
  * File Description: Regression tests for the "Still Talking" video package.
- * Checks the shipped artefacts rather than the builder that made them: that the manifest parses,
- * that its scene passes the scene engine's node-side validation against the committed SVG assets,
+ * Checks the committed fixture package (test_fixtures/packages/still-talking) rather than the builder
+ * that made it: that the manifest parses,
+ * that its scene passes the scene engine's node-side validation against the fixture's SVG assets,
  * that the artwork is genuinely static, that the film renders identically twice, that the narration
- * recorded in the manifest is the narration that was measured, and that the three files which are
- * only ever written together (film.json, its generated shadow, and the bundled SVG source map)
- * have not drifted apart.
+ * recorded in the manifest is the narration that was measured, and that the generated shadow and
+ * the bundled SVG source map are rebuilt from the manifest.
  */
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import "./testSupport/fixtureVideosDir";
 import { parseFilm } from "../src/dl/schema";
 import type { Scene } from "../src/dl/scene/types";
 import { validateSceneWithNodeAssets } from "../src/dl/scene/validateSceneNode";
@@ -19,11 +20,13 @@ import { compileScene } from "../src/dl/scene/compile";
 import { parseSvgDocument, collectSvgElementIds } from "../src/dl/scene/svgDocument";
 import { loadSceneAssets } from "./scene/loadSceneAssets";
 import { renderFrameSvgMarkup } from "./scene/renderStill";
-import { collectSvgSources, renderModule, generatedModulePath } from "./scene/buildSvgSources";
+import { buildSvgSources, collectSvgSources, renderModule, generatedModulePath } from "./scene/buildSvgSources";
+import { ensureGenerated } from "./pipeline/generatedFiles";
 import { BEATS } from "./stillTalking/beats";
+import { getVideosDir } from "../src/dl/videoPackageLoader";
 
 const ROOT = path.resolve(__dirname, "..");
-const PACKAGE_DIR = path.join(ROOT, "videos/still-talking");
+const PACKAGE_DIR = path.join(getVideosDir(), "still-talking");
 
 /** Reads the shipped manifest, which is the authoritative description of the film. */
 function readFilm() {
@@ -115,21 +118,23 @@ test("still-talking: the same frame renders identically twice", () => {
   }
 });
 
-test("still-talking: manifest, generated shadow and bundled artwork stay in step", () => {
+test("still-talking: the generated shadow and bundled artwork are rebuilt from the manifest", () => {
   const filmJson = fs.readFileSync(path.join(PACKAGE_DIR, "film.json"), "utf8");
+  ensureGenerated();
   const shadow = fs.readFileSync(path.join(ROOT, "src/dl/films/still-talking.ts"), "utf8");
   const shadowJson = shadow.match(/=\s*(\{[\s\S]*\})\s*;/);
   assert.ok(shadowJson, "The generated shadow module must hold the film as plain JSON");
   assert.deepEqual(
     JSON.parse(shadowJson[1]),
     JSON.parse(filmJson),
-    "src/dl/films/still-talking.ts has drifted from videos/still-talking/film.json",
+    "src/dl/films/still-talking.ts was not regenerated from film.json",
   );
 
   // The browser bundle draws from the generated source map, so a stale map is a stale film.
+  buildSvgSources();
   assert.equal(
     fs.readFileSync(generatedModulePath(), "utf8"),
     renderModule(collectSvgSources()),
-    "src/dl/scene/assets/svgSources.generated.ts is stale: npx tsx backend/scene/buildSvgSources.ts",
+    "src/dl/scene/assets/svgSources.generated.ts is stale: npm run ensure:generated",
   );
 });

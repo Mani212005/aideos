@@ -311,7 +311,8 @@ An individual vector path inside a limb:
 * `ROOT`: Absolute path to project root directory.
 * `readFilm(slug)`: Reads and parses `videos/<slug>/film.json` as authoritative `Film`.
 * `writeFilm(slug, film)`: Validates and persists `Film` to both `videos/<slug>/film.json` and its shadow `src/dl/films/<slug>.ts` module simultaneously, and broadcasts `traceBus.notifyFilmUpdated` for live Studio synchronization.
-* `setActiveFilm(slug)`: Points `src/dl/activeFilm.ts` at the target film package.
+* `setActiveFilm(slug)`: Points the generated, gitignored `src/dl/activeFilm.ts` at the target film package.
+* `ensureGenerated()` (`generatedFiles.ts`): Rebuilds every generated file (`src/dl/films/<slug>.ts` shadows, `svgSources.generated.ts`, `activeFilm.ts`) from the packages on disk; run by `npm run ensure:generated`, postinstall and the pre-hooks of the scripts that bundle them.
 * `wireFootageIntoFilm(slug, shotId, relPath, promptText)`: Wires rendered B-roll video clip into a shot as an `AnalogyInset` block and saves to both storage targets.
 
 ### `backend/pipeline/deviceData.ts` (Model-Authored Chart & Metaphor Data)
@@ -394,8 +395,10 @@ An individual vector path inside a limb:
 
 ### `src/dl/videoPackageLoader.ts`
 * `getProjectRoot()`: Resolves the absolute path to the project root directory walking up the filesystem.
-* `getVideosDir()`: Resolves the absolute path to the `videos/` package directory (honors `AIDEOS_VIDEOS_DIR`).
-* `listVideoPackages()`: Returns a sorted array of all valid video package directory slugs in `videos/`.
+* `getVideosDir()`: Resolves the absolute path to the gitignored personal `videos/` package directory (honors `AIDEOS_VIDEOS_DIR`, a relative value resolves against the repo root); where new packages are written.
+* `getExamplesDir()`, `resolvePackageDir(slug)`: The committed `examples/` fallback and the directory a slug reads from (personal first, then examples).
+* `resolveRepoAssetPath(rel)`: Resolves a repo-relative asset path a film names, mapping `videos/...` through `AIDEOS_VIDEOS_DIR`.
+* `listVideoPackages()`: Returns a sorted array of all available package slugs: those in `videos/` plus any `examples/` package they do not shadow.
 * `loadVideoPackage(slug)`: Loads and parses a standalone video package (`film.json`, `shotlist.json`, `treatment.json`, and visuals availability).
 
 ### `backend/scene/generateSvg.ts`

@@ -40,7 +40,9 @@ The Aideos Timeline & Trimmer implements industry-standard non-linear editing ge
 ## 📦 Per-Video Package Architecture & Custom SVG Engine
 
 1. **Self-Contained Video Packages (`videos/<slug>/`):**
-   * Each explainer video is packaged in a self-contained directory containing `film.json`, `script.md`, `voiceover.wav` + `voiceover_words.json`, `footage/`, `visuals/`.
+   * Each explainer video is packaged in a self-contained directory containing `film.json`, `script.md`, `voiceover.wav` + `voiceover_words.json`, `footage/` (GPU B-roll clips), `visuals/`.
+   * Your videos stay out of git: `videos/` is gitignored (set `AIDEOS_VIDEOS_DIR` to keep them anywhere), and only `examples/hello-scene/` ships so a fresh clone renders something. See `videos/README.md`.
+   * Discovered and loaded dynamically at runtime via the unified loader `src/dl/videoPackageLoader.ts`.
    * Discovered and loaded dynamically at runtime via the unified loader `src/dl/videoPackageLoader.ts`.
 2. **Custom Animation (`src/dl/scene/`):**
    * Static animatable `.svg` scene assets.
@@ -70,7 +72,7 @@ npm run render:reel
 npm run backend -- direct "Why attention scales quadratically" --broll --formats long,reel
 
 # 7. Run end-to-end production pipeline from an existing screenplay (intake -> narrate -> design -> b-roll -> assemble -> render -> verify)
-npm run backend -- film --script-file videos/speculative-decoding/script.md --title "Speculative Decoding" --slug speculative-decoding --broll --formats long,reel
+npm run backend -- film --script-file videos/my-video/script.md --title "My Video" --slug my-video --broll --formats long,reel
 
 # 8. Start Model Context Protocol (MCP) server
 npm run backend -- mcp

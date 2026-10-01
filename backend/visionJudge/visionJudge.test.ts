@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import {
   ANIMATED_PRIMITIVES,
   PRIMITIVE_CRITERIA,
@@ -33,9 +34,9 @@ import { judgeAndRepair, judgeFilm } from "./judge";
 import { clampStride, describeFrame, sampleFrameNumbers } from "./sampler";
 
 const ROOT = path.resolve(__dirname, "../..");
-const DEMO = path.join(ROOT, "videos/speculative-decoding-designed");
+const DEMO = path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed");
 const ID = "tmp-vision-judge-test";
-const PKG = path.join(ROOT, "videos", ID);
+const PKG = path.join(TEST_VIDEOS_DIR, ID);
 const FRAMES = path.join(ROOT, ".frames", ID);
 
 // Creates a temporary designed film (scene included) under its own id.

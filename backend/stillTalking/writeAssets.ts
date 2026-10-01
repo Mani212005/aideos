@@ -8,10 +8,11 @@
 import * as path from "path";
 import { writeSvgAssets } from "../sceneKit";
 import { buildAllArtwork } from "./artwork";
+import { getVideosDir } from "../../src/dl/videoPackageLoader";
 
 /** Absolute path to the film's visuals directory. */
 export function visualsDir(): string {
-  return path.resolve(__dirname, "../../videos/still-talking/visuals");
+  return path.join(getVideosDir(), "still-talking", "visuals");
 }
 
 /** Writes every asset and returns the element ids each document declares, keyed by file name. */

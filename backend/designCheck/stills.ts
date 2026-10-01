@@ -11,12 +11,13 @@ import { parseFilm } from "../../src/dl/schema";
 import { readActiveFilmSource, restoreActiveFilmSource, setActiveFilm } from "../pipeline/filmStore";
 import { FPS } from "../sceneKit";
 import { midShotPicks, renderReviewStills, type StillPick } from "../sceneKit/reviewStills";
+import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 
 // Renders a film's review stills into .frames/<id>/ and returns that directory.
 export async function renderFilmReviewStills(filmId: string, scale = 0.5): Promise<string> {
-  const film = parseFilm(JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "videos", filmId, "film.json"), "utf8")));
+  const film = parseFilm(JSON.parse(fs.readFileSync(path.join(resolvePackageDir(filmId), "film.json"), "utf8")));
   const fps = film.fps ?? FPS;
   const spans = new Map<string, { from: number; to: number }>();
   let cursor = 0;

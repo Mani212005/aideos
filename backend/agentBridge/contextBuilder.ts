@@ -7,6 +7,7 @@ import path from "node:path";
 import { FILM_ID, readFilm, ROOT } from "../pipeline/filmStore";
 import type { AgentTaskContext, DispatchOptions } from "./types";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
+import { getVideosDir } from "../../src/dl/videoPackageLoader";
 
 /** Core design invariants enforced across the Aideos explainer video standard. */
 export const DESIGN_INVARIANTS: string[] = [
@@ -24,7 +25,7 @@ export const DESIGN_INVARIANTS: string[] = [
 export function buildTaskContext(opts: DispatchOptions, rootDir: string = ROOT): AgentTaskContext {
   const filmId = opts.filmId || "film";
   const filmTitle = opts.filmTitle || filmId;
-  const videosRoot = path.join(rootDir, "videos");
+  const videosRoot = rootDir === ROOT ? getVideosDir() : path.join(rootDir, "videos");
   const pkgDir = path.join(videosRoot, filmId);
 
   // Script resolution

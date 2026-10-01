@@ -162,7 +162,8 @@ test("Video Package Loader: resolves project root and videos directory regardles
   assert.ok(fs.existsSync(path.join(rootDir, "src", "dl")));
 
   const videosDir = getVideosDir();
-  assert.ok(videosDir.endsWith(path.sep + "videos"));
+  const configured = process.env.AIDEOS_VIDEOS_DIR;
+  assert.equal(videosDir, configured ? path.resolve(rootDir, configured) : path.join(rootDir, "videos"));
 
   const packages = listVideoPackages();
   assert.ok(Array.isArray(packages));

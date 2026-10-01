@@ -8,11 +8,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { buildDirectingPrompt } from "../agentBridge/contextBuilder";
 import { designOverview, swapShotVisual } from "./shotTools";
 
-const DESIGNED = parseFilm(JSON.parse(fs.readFileSync(path.resolve(__dirname, "../../videos/speculative-decoding-designed/film.json"), "utf8")));
+const DESIGNED = parseFilm(JSON.parse(fs.readFileSync(path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed/film.json"), "utf8")));
 
 // A two-shot film with on-screen copy, for swaps.
 function film(narration: string): Film {

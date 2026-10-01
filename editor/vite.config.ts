@@ -11,6 +11,7 @@ import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
+import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../src/dl/videoPackageLoader.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
 import { synthesizeVoiceover, VoiceSynthesisError, readContainerMemoryLimit, sayToWav } from '../backend/voiceSynthesis.ts'
 import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
@@ -43,7 +44,9 @@ import { createEngine } from '../backend/engine/index.ts'
 import type { VideoJobSpec } from '../backend/engine/types.ts'
 
 const filmsDir = path.resolve(__dirname, '../src/dl/films');
-const videosDir = path.resolve(__dirname, '../videos');
+// The owner's personal, gitignored videos (AIDEOS_VIDEOS_DIR moves it); examples/ is the read-only fallback.
+const videosDir = getVideosDir();
+const examplesDir = getExamplesDir();
 
 // The schema's own id rule. It also happens to make traversal unrepresentable:
 // a film can only ever be written as `<id>.ts` inside src/dl/films.
@@ -63,7 +66,7 @@ const filmModule = (film: Film) =>
 // Loads a film by id, preferring the video package's film.json (authoritative) and
 // falling back to the generated src/dl/films/<id>.ts module.
 function readFilm(filmId: string): Film | null {
-  const pkgFilmPath = path.join(videosDir, filmId, 'film.json');
+  const pkgFilmPath = path.join(resolvePackageDir(filmId), 'film.json');
   if (fs.existsSync(pkgFilmPath)) {
     try {
       return JSON.parse(fs.readFileSync(pkgFilmPath, 'utf8'));
@@ -581,6 +584,11 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           const filePath = path.join(videosDir, rel);
           if (!rel.includes('..') && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
             serveFileWithRange(req, res, filePath);
+            return;
+          }
+          const exampleFile = path.join(examplesDir, rel);
+          if (!rel.includes('..') && fs.existsSync(exampleFile) && fs.statSync(exampleFile).isFile()) {
+            serveFileWithRange(req, res, exampleFile);
             return;
           }
           const m = rel.match(/^([^/]+)\/footage\/([^/]+)$/);
@@ -2342,10 +2350,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               .filter(f => f.endsWith('.ts') && f !== 'index.ts')
               .forEach(f => set.add(f.replace(/\.ts$/, '')));
           }
-          if (fs.existsSync(videosDir)) {
-            fs.readdirSync(videosDir)
-              .filter(f => !f.startsWith('.') && fs.existsSync(path.join(videosDir, f, 'film.json')))
-              .forEach(f => set.add(f));
+          for (const slug of listVideoPackages()) {
+            if (fs.existsSync(path.join(resolvePackageDir(slug), 'film.json'))) set.add(slug);
           }
           sendJson(res, 200, Array.from(set).sort());
           return;
@@ -2363,7 +2369,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
         // Support GET /api/films/:id to fetch any film definition dynamically
         if (req.method === 'GET') {
-          const videoPkgFilmPath = path.join(videosDir, id, 'film.json');
+          const videoPkgFilmPath = path.join(resolvePackageDir(id), 'film.json');
           if (fs.existsSync(videoPkgFilmPath)) {
             try {
               const film = JSON.parse(fs.readFileSync(videoPkgFilmPath, 'utf8'));

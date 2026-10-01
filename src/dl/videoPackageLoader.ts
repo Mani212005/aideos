@@ -1,6 +1,8 @@
 /**
  * File Description: Unified Video Package Loader for Aideos.
  * Discovers and dynamically loads self-contained video packages from videos/<slug>/film.json.
+ * The videos directory is personal and gitignored (AIDEOS_VIDEOS_DIR moves it anywhere); the
+ * committed examples/ directory is a read-only fallback so a fresh clone always has a film.
  */
 
 import fs from "node:fs";
@@ -41,33 +43,74 @@ export function getProjectRoot(): string {
 }
 
 /**
- * Resolves the absolute path to the videos directory.
+ * Resolves the absolute path to the videos directory: AIDEOS_VIDEOS_DIR (a relative value is
+ * resolved against the project root, not the cwd, since the editor server runs from editor/),
+ * else <root>/videos. This is the only place new packages are written.
  */
 export function getVideosDir(): string {
   if (process.env.AIDEOS_VIDEOS_DIR) {
-    return path.resolve(process.env.AIDEOS_VIDEOS_DIR);
+    return path.resolve(getProjectRoot(), process.env.AIDEOS_VIDEOS_DIR);
   }
   return path.resolve(getProjectRoot(), "videos");
 }
 
-/**
- * Lists all available video package slugs in the videos/ directory.
- */
-export function listVideoPackages(): string[] {
-  const dir = getVideosDir();
+/** Resolves the committed examples directory, a read-only fallback pool of tiny packages. */
+export function getExamplesDir(): string {
+  return path.resolve(getProjectRoot(), "examples");
+}
+
+/** Lists the package folders (with a film.json) directly inside a directory. */
+function packagesIn(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir, { withFileTypes: true })
-    .filter((dirent) => dirent.isDirectory() && !dirent.name.startsWith("."))
-    .map((dirent) => dirent.name)
-    .sort();
+    .filter((d) => d.isDirectory() && !d.name.startsWith(".") && fs.existsSync(path.join(dir, d.name, "film.json")))
+    .map((d) => d.name);
+}
+
+/**
+ * Lists every available video package slug: the personal videos directory first, then any
+ * committed example that a personal package of the same name does not shadow.
+ */
+export function listVideoPackages(): string[] {
+  const dir = getVideosDir();
+  const personal = fs.existsSync(dir)
+    ? fs
+        .readdirSync(dir, { withFileTypes: true })
+        .filter((dirent) => dirent.isDirectory() && !dirent.name.startsWith("."))
+        .map((dirent) => dirent.name)
+    : [];
+  const examples = packagesIn(getExamplesDir()).filter((slug) => !personal.includes(slug));
+  return [...personal, ...examples].sort();
+}
+
+/** The package directory a slug resolves to for reading: personal first, then examples. */
+export function resolvePackageDir(slug: string): string {
+  const personal = path.join(getVideosDir(), slug);
+  if (fs.existsSync(path.join(personal, "film.json"))) return personal;
+  const example = path.join(getExamplesDir(), slug);
+  if (fs.existsSync(path.join(example, "film.json"))) return example;
+  return personal;
+}
+
+/**
+ * Resolves a repo-relative asset path a film names ("videos/<slug>/visuals/x.svg",
+ * "examples/<slug>/..."). A "videos/" path follows AIDEOS_VIDEOS_DIR, then the cwd, then the root.
+ */
+export function resolveRepoAssetPath(rel: string): string {
+  if (path.isAbsolute(rel)) return rel;
+  const candidates: string[] = [];
+  const m = /^videos\/(.*)$/.exec(rel);
+  if (m) candidates.push(path.join(getVideosDir(), m[1]));
+  candidates.push(path.resolve(process.cwd(), rel), path.resolve(getProjectRoot(), rel));
+  return candidates.find((c) => fs.existsSync(c)) ?? candidates[candidates.length - 1];
 }
 
 /**
  * Loads a complete Film manifest from a video package directory.
  */
 export function loadVideoPackage(slug: string): VideoPackage | null {
-  const pkgDir = path.join(getVideosDir(), slug);
+  const pkgDir = resolvePackageDir(slug);
   const filmJsonPath = path.join(pkgDir, "film.json");
 
   if (!fs.existsSync(filmJsonPath)) {

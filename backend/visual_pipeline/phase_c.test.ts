@@ -13,6 +13,7 @@ import { lintMetaphorSourceFiles, FORBIDDEN_HARDCODED_LABELS } from "./lintMetap
 import { MetaphorViewer } from "../../src/dl/metaphors/MetaphorViewer";
 import { validateFilmAudioAndAssets } from "../../src/dl/validateFilm";
 import type { Film, MetaphorContent } from "../../src/dl/schema";
+import { loadFixtureFilm } from "../testSupport/fixtureFilms";
 
 const baseFilm: Film = {
   id: "test-film-c",
@@ -184,15 +185,11 @@ test("M-4: Rule M3 rejects shot metaphor and content.kind mismatch (the exact E-
   );
 });
 
-test("M-5: Cross-film check compiles repo films and verifies zero GPU terms appear in non-GPU films", async () => {
-  const marsModule = await import("../../src/dl/films/mars-water");
-  const browsersModule = await import("../../src/dl/films/how-browsers-work");
-  const raftModule = await import("../../src/dl/films/raft-vs-paxos");
-
+test("M-5: Cross-film check compiles the fixture films and verifies zero GPU terms appear in non-GPU films", () => {
   const nonGpuFilms = [
-    { name: "mars-water", film: (marsModule as any).marsWaterFilm || (marsModule as any).ACTIVE_FILM },
-    { name: "how-browsers-work", film: (browsersModule as any).howBrowsersWorkFilm || (browsersModule as any).ACTIVE_FILM },
-    { name: "raft-vs-paxos", film: (raftModule as any).raftVsPaxosFilm || (raftModule as any).ACTIVE_FILM },
+    { name: "fixture-canvas-a", film: loadFixtureFilm("fixture-canvas-a") },
+    { name: "fixture-canvas-b", film: loadFixtureFilm("fixture-canvas-b") },
+    { name: "fixture-canvas-c", film: loadFixtureFilm("fixture-canvas-c") },
   ];
 
   for (const { name, film } of nonGpuFilms) {
