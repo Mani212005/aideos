@@ -20,6 +20,7 @@ The root data contract defining a complete video composition (stored authoritati
 * `scene?: FilmScene` (Optional vector scene replacing the canvas graph for scene films)
 * `shots: Shot[]` (Ordered chronological sequence of camera shots and visual blocks)
 * `voiceover?: { src: string, volume?: number, speed?: number, retimedSrc?: string }` (Master audio track source file)
+* `captions?: "bottom" | "off" | string` (Burned-in bottom captions rendering mode or sidecar path, default "bottom")
 * `layers?: LayerDefinition[]` (Persisted non-linear track definitions and settings)
 * `audioClips?: AudioClip[]` (Persisted multi-track audio clips)
 * `videoClips?: VideoClip[]` (Persisted imported footage picture clips)

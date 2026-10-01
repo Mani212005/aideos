@@ -1,6 +1,6 @@
 /**
  * File Description: Computes the format-safe media, scrim and caption geometry for full-screen B-roll heroes,
- * and owns the single definition of where a reel's burned-in subtitle band starts so the two never collide.
+ * and owns the single definition of where the burned-in subtitle band starts so the two never collide.
  */
 
 import type { Format } from "./tokens";
@@ -63,7 +63,7 @@ const SCRIM_STOPS = [
 /**
  * Returns edge-to-edge media plus a caption placement that clears every piece of bottom chrome.
  *
- * The bottom of either frame is already spoken for: a reel burns in its subtitle card over the
+ * The bottom of either frame is already spoken for: both formats burn in the subtitle card over the
  * bottom fifth, and both cuts draw the chapter rail just above the bottom margin. So the hero
  * label lives in the top margin on both canvases. That also keeps the two deliverables the same
  * film rather than two per-format designs (see `Format` in src/dl/tokens.ts).
