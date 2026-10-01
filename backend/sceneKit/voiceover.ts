@@ -142,7 +142,10 @@ function whisperWords(wavPath: string, ranges: Array<[number, number]>): HeardWo
     maxBuffer: 32 * 1024 * 1024,
   });
   try {
-    if (run.status !== 0) throw new Error(`whisper failed: ${run.stderr || run.error}`);
+    if (run.status !== 0) {
+      const errorMsg = run.error ? ` Spawn error: ${run.error.message}` : "";
+      throw new Error(`whisper failed: ${run.stderr || ""}${errorMsg}`);
+    }
     return JSON.parse(fs.readFileSync(out, "utf8")) as HeardWord[][];
   } finally {
     fs.rmSync(out, { force: true });

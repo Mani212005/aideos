@@ -70,8 +70,12 @@ const words = ${JSON.stringify(missing)};
   );
   const run = spawnSync(chrome, ["--headless=new", "--disable-gpu", "--virtual-time-budget=15000", "--dump-dom", `file://${page}`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   fs.rmSync(dir, { recursive: true, force: true });
-  const match = run.stdout.match(/RESULT(\{.*?\})END/s);
-  if (!match) throw new Error(`Chrome returned no measurements: ${run.stderr.slice(0, 400)}`);
+  const match = (run.stdout || "").match(/RESULT(\{.*?\})END/s);
+  if (!match) {
+    const stderrMsg = run.stderr ? run.stderr.slice(0, 400) : "";
+    const errorMsg = run.error ? ` Spawn error: ${run.error.message}` : "";
+    throw new Error(`Chrome returned no measurements: ${stderrMsg}${errorMsg}`);
+  }
   const measured = JSON.parse(match[1]) as Record<"500" | "800", Record<string, number>>;
   const merged = { "500": { ...table["500"], ...measured["500"] }, "800": { ...table["800"], ...measured["800"] } };
   for (const w of ["500", "800"] as const) merged[w] = Object.fromEntries(Object.entries(merged[w]).sort(([a], [b]) => (a < b ? -1 : 1)));

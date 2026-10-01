@@ -50,7 +50,10 @@ export function previewFrames(source: PreviewSource, frames: Array<{ frame: numb
     const png = path.join(outDir, `${name}.png`);
     fs.writeFileSync(htmlPath, previewPage(svg));
     const run = spawnSync(chrome, ["--headless=new", "--disable-gpu", "--hide-scrollbars", `--window-size=${win.x1 - win.x0},${win.y1 - win.y0}`, "--virtual-time-budget=8000", `--screenshot=${png}`, `file://${htmlPath}`], { encoding: "utf8" });
-    if (!fs.existsSync(png)) throw new Error(`preview failed for ${name}: ${run.stderr}`);
+    if (!fs.existsSync(png)) {
+      const errorMsg = run.error ? ` Spawn error: ${run.error.message}` : "";
+      throw new Error(`preview failed for ${name}: ${run.stderr || ""}${errorMsg}`);
+    }
     fs.rmSync(htmlPath, { force: true });
     out.push(png);
   }
