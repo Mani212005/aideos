@@ -57,7 +57,8 @@ function writeIfChanged(file: string, text: string): boolean {
  * Rebuilds every generated, gitignored file from the packages on disk: one shadow module per
  * package (src/dl/films/<slug>.ts), the bundled SVG source map, and an activeFilm.ts when none
  * exists. Safe to run at any time; a fresh clone gets the committed example, an owner gets all
- * of their videos. Packages whose film.json does not parse are skipped, never fatal.
+ * of their videos. Shadows with no package behind them are removed. Packages whose film.json does
+ * not parse are skipped, never fatal.
  */
 export function ensureGenerated(): { shadows: number; svgAssets: number; activeFilm: string } {
   let shadows = 0;
@@ -77,6 +78,14 @@ export function ensureGenerated(): { shadows: number; svgAssets: number; activeF
     if (writeIfChanged(path.join(FILMS_DIR, `${slug}.ts`), filmModule(film))) shadows++;
     if (file.startsWith(getVideosDir() + path.sep)) firstPersonal ??= slug;
     else firstExample ??= slug;
+  }
+  // A shadow whose package is gone (a deleted video, or a test fixture from an earlier run) would
+  // still be listed by the studio, so only shadows of packages on disk are kept.
+  const available = new Set(listVideoPackages());
+  if (fs.existsSync(FILMS_DIR)) {
+    for (const file of fs.readdirSync(FILMS_DIR)) {
+      if (file.endsWith(".ts") && !available.has(file.slice(0, -3))) fs.rmSync(path.join(FILMS_DIR, file), { force: true });
+    }
   }
   const svgAssets = buildSvgSources();
 
