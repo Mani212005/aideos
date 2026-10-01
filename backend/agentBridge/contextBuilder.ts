@@ -10,7 +10,7 @@ import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 
 /** Core design invariants enforced across the Aideos explainer video standard. */
 export const DESIGN_INVARIANTS: string[] = [
-  "Color Palette: 6-value palette (#0A0A0B canvas, #F5F5F5 text primary, #8A8A8E text muted, #635BFF accent, rgba(245,245,245,.10) hairline depth, #101013 surface).",
+  "Color Palette: Per-film declared palette with a measured contrast floor.",
   "Typography: Geist for voice/narrative, JetBrains Mono for all system/code/numbers.",
   "Motion Easing: Ease-out-expo cubic-bezier(0.16, 1, 0.3, 1) for all transitions.",
   "7 Animated Primitives: TextReveal, StatCounter, CodeBlock, Card, Divider, IconLabel, ProgressBar.",

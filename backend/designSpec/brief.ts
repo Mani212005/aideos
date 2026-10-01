@@ -11,6 +11,7 @@ import { parseFilm, type Film } from "../../src/dl/schema";
 import { FORMAT_WINDOWS, SAFE_SQUARE, SCENE_SIZE } from "../sceneKit";
 import { LOCKED_PALETTE } from "../designCheck/designCheck";
 import { designDir } from "./build";
+import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 
@@ -33,8 +34,6 @@ export const EXAMPLE_SPEC = {
     { id: "beam-swing", asset: "lamp", targets: ["beam"], property: "rotate", from: 0, to: 24, start: 'how-it-works:"next word"', end: "how-it-works@end", origin: [0, -40], easing: "expoInOut" },
   ],
 };
-
-import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 
 // Formats seconds as m:ss.
 function clock(sec: number): string {

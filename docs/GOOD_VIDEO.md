@@ -1,3 +1,5 @@
+<!-- File Description: Authoritative rubric and quality standard defining what makes a good Aideos explainer video. -->
+
 # Good Video Definition
 
 This document is the single source of truth for what makes a good aideos video. 
