@@ -2,7 +2,7 @@
  * File Description: Glyph advance widths for the two typefaces scene films set display type in.
  * Geist advances were measured once in headless Chrome (canvas measureText, 1000px, weights 500 and
  * 800, printable ASCII) so word positions can be laid out in Node without a browser; JetBrains Mono is
- * fixed-pitch at 0.6em. Kerning is not modelled, which is why layouts leave a little slack.
+ * fixed-pitch at 0.6em. Kerning is modelled for known words via wordWidths.json, falling back to per-glyph advances.
  */
 
 import * as fs from "fs";
