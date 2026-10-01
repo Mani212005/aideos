@@ -43,7 +43,6 @@ The Aideos Timeline & Trimmer implements industry-standard non-linear editing ge
    * Each explainer video is packaged in a self-contained directory containing `film.json`, `script.md`, `voiceover.wav` + `voiceover_words.json`, `footage/` (GPU B-roll clips), `visuals/`.
    * Your videos stay out of git: `videos/` is gitignored (set `AIDEOS_VIDEOS_DIR` to keep them anywhere), and only `examples/hello-scene/` ships so a fresh clone renders something. See `videos/README.md`.
    * Discovered and loaded dynamically at runtime via the unified loader `src/dl/videoPackageLoader.ts`.
-   * Discovered and loaded dynamically at runtime via the unified loader `src/dl/videoPackageLoader.ts`.
 2. **Custom Animation (`src/dl/scene/`):**
    * Static animatable `.svg` scene assets.
    * Declarative custom SVG animation engine (`src/dl/scene/`) drives element-level motion (translations, scale, rotate, opacity, drawOn) with audio-first retiming. See [src/dl/scene/README.md](src/dl/scene/README.md).
