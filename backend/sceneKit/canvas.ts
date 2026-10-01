@@ -11,7 +11,7 @@
 import type { SvgAnimatableProperty, SvgEasing } from "../../src/dl/scene/svgAnimation";
 import { Timeline } from "./timeline";
 import { createCues, type Cues, type NarrationTiming } from "./timing";
-import { measureText, tokenWidth, type Face } from "./typeMetrics";
+import { measureText, tokenWidth, resolveTypeOpts, type TypeOpts, type Face } from "./typeMetrics";
 import { DEFAULT_ACCENT, OY, PAL, W, frameOf, g, text, type AttrValue } from "./svg";
 import { norm, bare, shape } from "./text";
 
@@ -62,7 +62,7 @@ export interface PlacedLine {
 }
 
 /** Options for one kinetic lyric line. */
-export interface LyricOpts {
+export interface LyricOpts extends TypeOpts {
   beat: string;
   /** Rows of tokens exactly as narrated; a leading * marks an accent word. */
   rows: string[];
@@ -71,10 +71,7 @@ export interface LyricOpts {
   y: number;
   size: number | number[];
   align?: "left" | "center" | "right";
-  face?: Face;
-  weight?: 500 | 800;
   lead?: number;
-  tracking?: number;
   upper?: boolean;
   entry?: "rise" | "slam" | "drop" | "mask";
   /** Overrides `entry` for individual rows (a small row under a huge one should not slam). */
@@ -292,9 +289,7 @@ export class Canvas {
   lyric(o: LyricOpts): PlacedLine {
     const segment = this.timing.segments.find((s) => s.shotId === o.beat);
     if (!segment) throw new Error(`[${this.name}] no narrated shot "${o.beat}".`);
-    const face = o.face ?? "sans";
-    const weight = o.weight ?? 800;
-    const tracking = o.tracking ?? (face === "sans" ? -0.03 : 0);
+    const { face, weight, tracking } = resolveTypeOpts(o);
     const lead = o.lead ?? 1.06;
     const accent = o.accentFill ?? this.accent;
     const fill = o.fill ?? PAL.ink;
@@ -388,13 +383,16 @@ export class Canvas {
       baseline += Math.max(sizes[r], sizes[r + 1] ?? 0) * lead;
     });
 
-    if (o.exit !== "hold" && o.entry !== "mask") {
+    if (o.exit !== "hold") {
       const leaveAt = typeof o.exit === "number" ? o.exit : shotEnd - 8;
       placed.forEach((w) => {
         // A word that is still landing when the line leaves has nothing to leave from.
         const from = Math.max(leaveAt, w.startFrame + 11);
         this.to(w.id, "opacity", 0, from, from + 7, { easing: "linear" });
-        if (entries.get(w.id) !== "slam") this.to(w.id, "translateY", -w.size * 0.18, from, from + 7, { easing: "linear" });
+        const entry = entries.get(w.id);
+        if (entry !== "slam" && entry !== "mask") {
+          this.to(w.id, "translateY", -w.size * 0.18, from, from + 7, { easing: "linear" });
+        }
       });
     }
     return { ids, words: placed, box };

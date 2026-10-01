@@ -62,3 +62,19 @@ export function tokenWidth(token: string, size: number, face: Face, weight: 500 
   const core = punct ? token.slice(0, -punct.length) : token;
   return measureText(core, size, face, weight, trackingEm) + (punct ? measureText(punct, size, face, weight, trackingEm) : 0);
 }
+
+/** Common type settings for a text block. */
+export interface TypeOpts {
+  face?: Face;
+  weight?: 500 | 800;
+  /** Letter-spacing in em. */
+  tracking?: number;
+}
+
+/** Resolves optional type settings to their film defaults. */
+export function resolveTypeOpts(o: TypeOpts): { face: Face; weight: 500 | 800; tracking: number } {
+  const face = o.face ?? "sans";
+  const weight = o.weight ?? 800;
+  const tracking = o.tracking ?? (face === "sans" ? -0.03 : 0);
+  return { face, weight, tracking };
+}

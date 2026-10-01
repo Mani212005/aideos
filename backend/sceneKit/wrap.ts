@@ -5,25 +5,19 @@
  * come out even. Every token is measured as it will be set (kerned words, trailing punctuation).
  */
 
-import { tokenWidth, measureText, type Face } from "./typeMetrics";
+import { tokenWidth, measureText, resolveTypeOpts, type TypeOpts } from "./typeMetrics";
 import { shape } from "./text";
 
 /** How the line will be set, which decides how wide each token is. */
-export interface WrapOpts {
+export interface WrapOpts extends TypeOpts {
   size: number;
   /** The widest a row may be, in px. */
   maxWidth: number;
-  face?: Face;
-  weight?: 500 | 800;
-  /** Letter-spacing in em. */
-  tracking?: number;
 }
 
 /** Splits a marked display line into balanced rows that fit `maxWidth`, keeping each token's markup. */
 export function wrapBalanced(marked: string, o: WrapOpts): string[] {
-  const face = o.face ?? "sans";
-  const weight = o.weight ?? 800;
-  const tracking = o.tracking ?? (face === "sans" ? -0.03 : 0);
+  const { face, weight, tracking } = resolveTypeOpts(o);
   const tokens = marked.split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return [];
   const space = measureText(" ", o.size, face, weight, tracking);
