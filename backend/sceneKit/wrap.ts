@@ -6,6 +6,7 @@
  */
 
 import { tokenWidth, measureText, type Face } from "./typeMetrics";
+import { shape } from "./text";
 
 /** How the line will be set, which decides how wide each token is. */
 export interface WrapOpts {
@@ -16,11 +17,6 @@ export interface WrapOpts {
   weight?: 500 | 800;
   /** Letter-spacing in em. */
   tracking?: number;
-}
-
-/** Strips display markup (accent stars and `{n}` spoken-span suffixes) so a token is measured as drawn. */
-function shape(token: string): string {
-  return token.replace(/\{\d+\}$/, "").replace(/\*/g, "");
 }
 
 /** Splits a marked display line into balanced rows that fit `maxWidth`, keeping each token's markup. */

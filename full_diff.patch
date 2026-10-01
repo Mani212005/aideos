@@ -1,0 +1,2927 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index 862940d..75b6f1b 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -126,6 +126,16 @@ Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos
+   given one transform `origin` (the compiler applies the last origin it sees to every frame).
+   `Timeline.camera()` likewise enforces camera track continuity from the previous camera clip,
+   preventing visual snaps on camera movement.
++- `backend/sceneKit/` is also the authoring layer, so a new scene film writes no kit code of its own:
++  `Canvas` (`canvas.ts`: markup plus continuity-checked motion, and `lyric()` kinetic type that
++  throws when a row no longer matches the narration or overflows its bounds; a token like `HNSW{4}`
++  covers four spoken words), `svg.ts` (palette, `el`/`g`/`text`, seeded `rng`), `typeMetrics.ts` plus
++  `wordWidths.json` (kerned Geist word widths measured in Chrome; add a film's new words with
++  `measureWords.ts`, which merges rather than replaces), `wrap.ts` (`wrapBalanced`), `chrome.ts`
++  (corners, backdrop, readouts), and the Node-only tools `voiceover.ts` (`produceVoiceover({slug,
++  beats, alignment})`: synthesize, master, optional Whisper word alignment, write the spine),
++  `preview.ts` (fast Chrome frames) and `reviewFrames.ts` (`npx tsx backend/sceneKit/reviewFrames.ts
++  <slug>`). A film supplies its beats, artwork and accent; topic scenes stay in the film's own folder.
+ - Aim a cue at a spoken word, not at a fraction of its shot: the payoff word of a sentence is
+   usually near its end. The kit's `createCues(timing).word()` reads the narration's own offsets and throws
+   when the phrase is no longer in that shot, so rewriting a line cannot silently mis-time the film.
+diff --git a/backend/sceneKit/authoring.test.ts b/backend/sceneKit/authoring.test.ts
+new file mode 100644
+index 0000000..dbdbb7f
+--- /dev/null
++++ b/backend/sceneKit/authoring.test.ts
+@@ -0,0 +1,216 @@
++/**
++ * File Description: Tests for the scene kit's authoring layer: the Canvas (motion continuity and
++ * kinetic lyric lines), SVG primitives, type metrics and balanced wrapping, frame furniture, the
++ * word-measurement helpers, and the voiceover step's alignment and spine reading. They run on
++ * plain fixtures with no network, TTS, browser or real film package.
++ */
++
++import assert from "node:assert/strict";
++import fs from "node:fs";
++import os from "node:os";
++import path from "node:path";
++import test from "node:test";
++import { parseSvgDocument, collectSvgElementIds } from "../../src/dl/scene/svgDocument";
++import { Canvas, PAL, DEFAULT_ACCENT, W, H, OY, FORMAT_WINDOWS, rng, text, measureText, tokenWidth, wrapBalanced, backdropSvg, corners, hudTag, readoutSeries, type NarrationTiming } from "./index";
++import { displayWords, unmeasuredWords } from "./measureWords";
++import { alignWords, readVoiceoverTiming, timingPath } from "./voiceover";
++
++/** A one-line narration fixture: "Hello brave world" spoken over the first second of a three second film. */
++const TIMING: NarrationTiming = {
++  totalDurationSec: 3,
++  segments: [
++    {
++      shotId: "hello",
++      text: "Hello brave world",
++      startSec: 0,
++      durationSec: 3,
++      words: [
++        { word: "Hello", startSec: 0, endSec: 0.3 },
++        { word: "brave", startSec: 0.4, endSec: 0.7 },
++        { word: "world", startSec: 0.8, endSec: 1.1 },
++      ],
++    },
++  ],
++};
++
++/** A line whose first token is spelled out letter by letter: "H N S W is fast". */
++const SPELLED: NarrationTiming = {
++  totalDurationSec: 3,
++  segments: [
++    {
++      shotId: "spell",
++      text: "H N S W is fast",
++      startSec: 0,
++      durationSec: 3,
++      words: ["H", "N", "S", "W", "is", "fast"].map((word, i) => ({ word, startSec: i * 0.3, endSec: i * 0.3 + 0.25 })),
++    },
++  ],
++};
++
++test("window geometry is the wide cut's strip through the square scene", () => {
++  assert.equal(W, FORMAT_WINDOWS.wide.x1 - FORMAT_WINDOWS.wide.x0);
++  assert.equal(H, 1080);
++  assert.equal(OY, 420);
++});
++
++test("canvas: a lyric whose words are not the narration fails the build", () => {
++  const c = new Canvas("t", TIMING, 90);
++  assert.throws(() => c.lyric({ beat: "hello", rows: ["Hello brave planet"], x: 100, y: 200, size: 80 }), /do not match the narration/);
++});
++
++test("canvas: a row too wide for its bounds fails instead of overflowing the frame", () => {
++  const c = new Canvas("t", TIMING, 90);
++  assert.throws(() => c.lyric({ beat: "hello", rows: ["Hello brave world"], x: 100, y: 200, size: 400 }), /outside/);
++});
++
++test("canvas: each word lands on the frame it is spoken, one frame ahead", () => {
++  const c = new Canvas("t", TIMING, 90);
++  const line = c.lyric({ beat: "hello", rows: ["Hello brave world"], x: 100, y: 200, size: 60, exit: "hold" });
++  assert.deepEqual(line.words.map((w) => w.startFrame), [0, 11, 23]);
++});
++
++test("canvas: a display token may cover several spoken words and lands on the first", () => {
++  const c = new Canvas("t", SPELLED, 90);
++  const line = c.lyric({ beat: "spell", rows: ["HNSW{4} is fast"], x: 100, y: 200, size: 60, exit: "hold" });
++  assert.deepEqual(line.words.map((w) => w.text), ["HNSW", "is", "fast"]);
++  assert.equal(line.words[0].startFrame, 0);
++  assert.equal(line.words[1].startFrame, Math.round(1.2 * 30) - 1, "the next word is cued on its own spoken word, after the four letters");
++  assert.throws(() => new Canvas("t", SPELLED, 90).lyric({ beat: "spell", rows: ["HNSW{3} is fast"], x: 100, y: 200, size: 60 }), /do not match the narration/);
++});
++
++test("canvas: accent spans take the film's accent, and the design accent when none is given", () => {
++  const withAccent = new Canvas("t", TIMING, 90, { accent: "#35E0A1" });
++  withAccent.lyric({ beat: "hello", rows: ["Hello *brave* world"], x: 100, y: 200, size: 60, exit: "hold" });
++  assert.match(withAccent.svg(), /fill="#35E0A1"/);
++  const plain = new Canvas("t", TIMING, 90);
++  plain.lyric({ beat: "hello", rows: ["Hello *brave* world"], x: 100, y: 200, size: 60, exit: "hold" });
++  assert.match(plain.svg(), new RegExp(`fill="${DEFAULT_ACCENT}"`));
++});
++
++test("canvas: motion helpers refuse a clip that overlaps the previous one on the same property", () => {
++  const c = new Canvas("t", TIMING, 90);
++  c.to("a", "translateX", 10, 0, 20);
++  assert.throws(() => c.to("a", "translateX", 20, 10, 30), /overlaps/);
++  // Starting where the last clip ended is fine, and begins from its end value by construction.
++  c.to("a", "translateX", 20, 20, 30);
++  const clips = c.timeline().clips;
++  assert.equal(clips[1].from, 10, "the second clip starts from where the first left the value");
++});
++
++test("canvas: a value declared with init() but never animated is pinned, not left visible", () => {
++  const c = new Canvas("t", TIMING, 90);
++  c.init("hidden", { opacity: 0 });
++  const clips = c.timeline().clips;
++  assert.ok(clips.some((clip) => clip.targets.includes("hidden") && clip.property === "opacity" && clip.from === 0 && clip.to === 0));
++});
++
++test("canvas: mark and wrapSince group everything added after the mark into one element", () => {
++  const c = new Canvas("t", TIMING, 90);
++  c.add(text("before", { size: 20, id: "before" }));
++  const mark = c.mark();
++  c.add(text("one", { size: 20, id: "one" }));
++  c.add(text("two", { size: 20, id: "two" }));
++  c.wrapSince(mark, "group");
++  const svg = c.svg();
++  const ids = collectSvgElementIds(parseSvgDocument(svg));
++  assert.ok(ids.includes("group"));
++  assert.match(svg, /<g id="group">[\s\S]*id="one"[\s\S]*id="two"[\s\S]*<\/g>/);
++  assert.ok(svg.indexOf('id="before"') < svg.indexOf('id="group"'), "markup before the mark stays outside the group");
++});
++
++test("canvas: svg() is a parseable full-scene document with the window offset applied once", () => {
++  const c = new Canvas("t", TIMING, 90);
++  c.add(text("hi", { size: 20, id: "hi" }));
++  const svg = c.svg();
++  assert.match(svg, /viewBox="0 0 1920 1920"/);
++  assert.match(svg, new RegExp(`translate\\(0 ${OY}\\)`));
++  assert.doesNotThrow(() => parseSvgDocument(svg));
++});
++
++test("svg: rng is deterministic per seed and text() escapes its content", () => {
++  const a = rng(7);
++  const b = rng(7);
++  assert.deepEqual([a(), a(), a()], [b(), b(), b()]);
++  assert.notEqual(rng(7)(), rng(8)());
++  assert.match(text("a < b & c", { size: 20 }), /a &lt; b &amp; c/);
++});
++
++test("type metrics: trailing punctuation adds its own glyph width to the measured word", () => {
++  const bare = tokenWidth("fast", 60, "sans", 800, -0.03);
++  const withStop = tokenWidth("fast.", 60, "sans", 800, -0.03);
++  assert.ok(Math.abs(withStop - bare - measureText(".", 60, "sans", 800, -0.03)) < 1e-9);
++  assert.equal(tokenWidth("fast", 60, "mono", 500, 0), 4 * 0.6 * 60, "mono is fixed pitch");
++});
++
++test("wrapBalanced: rows fit the limit, and a stray word is not left alone on the last row", () => {
++  const line = "The honest way to answer is to *measure the distance* to *every single one.*";
++  const opts = { size: 58, maxWidth: 680 };
++  const rows = wrapBalanced(line, opts);
++  assert.ok(rows.length >= 2);
++  assert.equal(rows.join(" "), line, "no token is dropped or reordered");
++  const widths = rows.map((r) => r.split(" ").reduce((sum, t, i) => sum + tokenWidth(t.replace(/\*/g, ""), 58, "sans", 800, -0.03) + (i ? measureText(" ", 58, "sans", 800, -0.03) : 0), 0));
++  for (const w of widths) assert.ok(w <= opts.maxWidth + 0.5, `row of ${Math.round(w)}px fits ${opts.maxWidth}`);
++  assert.ok(Math.min(...widths) > 0.55 * Math.max(...widths), "rows are even, not one long and one short");
++  assert.deepEqual(wrapBalanced("", opts), []);
++  assert.deepEqual(wrapBalanced("one", opts), ["one"]);
++});
++
++test("frame furniture: the backdrop and corners are valid scene markup in the window", () => {
++  const backdrop = backdropSvg({ accent: "#35E0A1" });
++  assert.doesNotThrow(() => parseSvgDocument(backdrop));
++  assert.match(backdrop, /#35E0A1/);
++  assert.match(backdrop, new RegExp(`y="${OY}" width="${W}" height="${H}"`));
++  assert.equal((corners().match(/<path/g) ?? []).length, 4);
++  assert.match(hudTag("A / B"), new RegExp(PAL.muted));
++});
++
++test("frame furniture: a readout series shows exactly one value at a time", () => {
++  const c = new Canvas("t", TIMING, 90);
++  readoutSeries(c, "r", 100, 100, [{ label: "1", frame: 0 }, { label: "2", frame: 30 }, { label: "3", frame: 60 }]);
++  const clips = c.timeline().clips;
++  const onFor = (id: string) => clips.filter((clip) => clip.targets.includes(id) && clip.property === "opacity");
++  assert.equal(onFor("r-1").length, 2, "the middle value is cut on and off");
++  assert.equal(onFor("r-0").length, 1, "the first value starts visible and is cut off");
++});
++
++test("measureWords: display words are bare, in both cases, and only unmeasured ones are queued", () => {
++  const words = displayWords(["Hello, *world*. HNSW:*{4} ok"], ["Extra"]);
++  assert.deepEqual(words, ["Extra", "HNSW", "Hello", "OK", "WORLD", "world", "HELLO", "ok"].sort());
++  const table = { "500": { Hello: 3 }, "800": { Hello: 3, ok: 1 } };
++  assert.deepEqual(unmeasuredWords(["Hello", "ok"], table as never), ["ok"]);
++});
++
++test("alignWords: matched words take whisper's timing, missed words share the gap between neighbours", () => {
++  const heard = [
++    { word: "Hello,", start: 0.1, end: 0.4 },
++    { word: "world", start: 1.0, end: 1.3 },
++  ];
++  const out = alignWords(["Hello", "brave", "world"], heard, 0, 1.5);
++  assert.deepEqual(out[0], { startSec: 0.1, endSec: 0.4 });
++  assert.deepEqual(out[2], { startSec: 1.0, endSec: 1.3 });
++  assert.ok(out[1].startSec >= 0.4 && out[1].endSec <= 1.0, "the missed word sits between its neighbours");
++});
++
++test("alignWords: extra heard words never steal a scripted word's slot", () => {
++  const heard = [
++    { word: "uh", start: 0.0, end: 0.1 },
++    { word: "brave", start: 0.3, end: 0.6 },
++    { word: "new", start: 0.6, end: 0.8 },
++    { word: "world", start: 0.8, end: 1.1 },
++  ];
++  const out = alignWords(["brave", "world"], heard, 0, 1.2);
++  assert.equal(out[0].startSec, 0.3);
++  assert.equal(out[1].startSec, 0.8);
++});
++
++test("voiceover: the spine is read from the film's own package and a missing one says how to make it", () => {
++  const root = fs.mkdtempSync(path.join(os.tmpdir(), "kit-voiceover-"));
++  try {
++    assert.throws(() => readVoiceoverTiming("demo", "shot-spine.json", root), /Missing .*shot-spine\.json/);
++    fs.mkdirSync(path.join(root, "videos/demo"), { recursive: true });
++    fs.writeFileSync(timingPath("demo", "shot-spine.json", root), JSON.stringify(TIMING));
++    assert.deepEqual(readVoiceoverTiming("demo", "shot-spine.json", root).segments[0].shotId, "hello");
++  } finally {
++    fs.rmSync(root, { recursive: true, force: true });
++  }
++});
+diff --git a/backend/sceneKit/canvas.ts b/backend/sceneKit/canvas.ts
+new file mode 100644
+index 0000000..2b6fe70
+--- /dev/null
++++ b/backend/sceneKit/canvas.ts
+@@ -0,0 +1,402 @@
++/**
++ * File Description: The scene-film authoring canvas.
++ * A Canvas collects one asset's SVG markup and its animation timeline together. Its motion helpers
++ * work in terms of "where this value should end up" and derive each clip's start value from the last
++ * clip on the same element, which keeps the scene engine's continuity rule true by construction.
++ * lyric() lays spoken lines out as kinetic type: every word is its own element that lands on the
++ * frame it is spoken, with positions measured from real glyph advances so nothing overflows, and a
++ * display token may cover several spoken words ("HNSW{4}" is four letters said one by one).
++ */
++
++import type { SvgAnimatableProperty, SvgEasing } from "../../src/dl/scene/svgAnimation";
++import { Timeline } from "./timeline";
++import { createCues, type Cues, type NarrationTiming } from "./timing";
++import { measureText, tokenWidth, type Face } from "./typeMetrics";
++import { DEFAULT_ACCENT, OY, PAL, W, frameOf, g, text, type AttrValue } from "./svg";
++
++/** Rest value of each property, which is what an untouched element holds. */
++const REST: Record<string, number> = { translateX: 0, translateY: 0, rotate: 0, scale: 1, scaleX: 1, scaleY: 1, opacity: 1, drawOn: 1 };
++
++/** Options shared by the motion helpers. */
++export interface MotionOpts {
++  easing?: SvgEasing;
++  /** Frames between consecutive targets' starts. */
++  stagger?: number;
++  /** Transform origin for scale and rotate, in the element's own (authored translate) space. */
++  origin?: { x: number; y: number };
++}
++
++/** The frames on which a typed line gains characters, and how many it has typed by then. */
++function typingSteps(chars: number, start: number, end: number): Array<{ frame: number; done: number }> {
++  const frames = Math.max(1, end - start);
++  const out: Array<{ frame: number; done: number }> = [];
++  let last = 0;
++  for (let f = 0; f < frames; f++) {
++    const done = Math.min(chars, Math.round(((f + 1) * chars) / frames));
++    if (done !== last) {
++      out.push({ frame: start + f, done });
++      last = done;
++    }
++  }
++  return out;
++}
++
++/** The word a spoken line contributed, for graphics that need to align with it. */
++export interface PlacedWord {
++  id: string;
++  text: string;
++  x: number;
++  y: number;
++  w: number;
++  size: number;
++  startFrame: number;
++  endFrame: number;
++}
++
++/** What Lyric() hands back: its words and the box they fill. */
++export interface PlacedLine {
++  ids: string[];
++  words: PlacedWord[];
++  box: { x0: number; y0: number; x1: number; y1: number };
++}
++
++/** Options for one kinetic lyric line. */
++export interface LyricOpts {
++  beat: string;
++  /** Rows of tokens exactly as narrated; a leading * marks an accent word. */
++  rows: string[];
++  x: number;
++  /** Baseline of the first row. */
++  y: number;
++  size: number | number[];
++  align?: "left" | "center" | "right";
++  face?: Face;
++  weight?: 500 | 800;
++  lead?: number;
++  tracking?: number;
++  upper?: boolean;
++  entry?: "rise" | "slam" | "drop" | "mask";
++  /** Overrides `entry` for individual rows (a small row under a huge one should not slam). */
++  rowEntry?: Array<"rise" | "slam" | "drop" | "mask" | undefined>;
++  /** Markup appended straight after each row is drawn, e.g. the floor a masked row rises from under. */
++  afterRow?: (row: number, baseline: number, size: number) => string;
++  fill?: string;
++  accentFill?: string;
++  /** "fade" at the end of the shot, "hold" to keep it, or an explicit frame to start leaving at. */
++  exit?: "fade" | "hold" | number;
++  /** Left and right limits a row may not cross. */
++  bounds?: { x0: number; x1: number };
++  /** Frames a word lands ahead of its spoken start. */
++  lead0?: number;
++}
++
++/** One asset's markup and timeline, authored together. */
++export class Canvas {
++  readonly name: string;
++  readonly durationFrames: number;
++  readonly timing: NarrationTiming;
++  /** The film's single accent, which lyric() uses for *accent* spans unless told otherwise. */
++  readonly accent: string;
++  readonly cues: Cues;
++  readonly tl: Timeline;
++  private parts: string[] = [];
++  private readonly cur = new Map<string, number>();
++  private readonly busy = new Map<string, number>();
++  private readonly initial = new Map<string, number>();
++  private seq = 0;
++
++  // Plain fields rather than parameter properties: backend modules must stay erasable TypeScript.
++  constructor(name: string, timing: NarrationTiming, durationFrames: number, opts: { accent?: string } = {}) {
++    this.name = name;
++    this.accent = opts.accent ?? DEFAULT_ACCENT;
++    this.timing = timing;
++    this.durationFrames = durationFrames;
++    this.cues = createCues(timing);
++    this.tl = new Timeline(`${name}-motion`, durationFrames);
++  }
++
++  /**
++   * The finished timeline. An element declared with init() whose property never moves has no clip,
++   * and the engine would leave it at rest (visible, unscaled), so each such value is pinned with a
++   * clip that holds it from the first frame.
++   */
++  timeline() {
++    for (const [key, value] of this.initial) {
++      if (this.busy.has(key)) continue;
++      const [id, prop] = key.split("::");
++      this.tl.add({ id: this.uid(`${id}-pin`), targets: [id], property: prop as SvgAnimatableProperty, from: value, to: value, start: 0, end: 1, easing: "linear" });
++      this.busy.set(key, 1);
++    }
++    return this.tl.build();
++  }
++
++  /** A fresh unique element id with a readable prefix. */
++  uid(prefix: string): string {
++    return `${prefix}-${this.seq++}`;
++  }
++
++  /** Collects everything added while `fn` runs into one <g> (translated to x, y), then adds that group. */
++  group(id: string | undefined, x: number, y: number, fn: () => void, extra: Record<string, AttrValue> = {}): void {
++    const outer = this.parts;
++    this.parts = [];
++    try {
++      fn();
++      const inner = this.parts.join("\n");
++      this.parts = outer;
++      this.add(g(id, x, y, inner, extra));
++    } finally {
++      this.parts = outer;
++    }
++  }
++
++  /** Marks the current end of the markup, so everything added after it can be wrapped as one group. */
++  mark(): number {
++    return this.parts.length;
++  }
++
++  /** Wraps everything added since `mark` in one <g>, so it can be dimmed or faded as a single element. */
++  wrapSince(mark: number, id: string): void {
++    const inner = this.parts.splice(mark).join("\n");
++    this.parts.push(g(id, 0, 0, inner));
++  }
++
++  /** Appends markup to the asset. */
++  add(markup: string): void {
++    this.parts.push(markup);
++  }
++
++  /** The finished document: a full-scene viewBox whose window offset is applied once, here. */
++  svg(): string {
++    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1920" width="1920" height="1920">\n<g transform="translate(0 ${OY})">\n<g id="root">\n${this.parts.join("\n")}\n</g>\n</g>\n</svg>\n`;
++  }
++
++  /** Keeps the asset on screen between two frames: it fades in at `from` (unless that is frame 0) and out at `to`. */
++  lifetime(from: number, to: number | null): void {
++    if (from > 0) {
++      this.init("root", { opacity: 0 });
++      this.fadeIn("root", from, 4, { easing: "linear" });
++    }
++    if (to !== null) this.fadeOut("root", to, 6, { easing: "linear" });
++  }
++
++  /** Declares what an element holds before its first clip, so it can start hidden or off to one side. */
++  init(ids: string | string[], values: Partial<Record<SvgAnimatableProperty, number>>): void {
++    for (const id of Array.isArray(ids) ? ids : [ids]) {
++      for (const [prop, value] of Object.entries(values)) {
++        this.cur.set(`${id}::${prop}`, value as number);
++        this.initial.set(`${id}::${prop}`, value as number);
++      }
++    }
++  }
++
++  /** The value an element's property holds right now in authoring order. */
++  value(id: string, prop: SvgAnimatableProperty): number {
++    return this.cur.get(`${id}::${prop}`) ?? REST[prop];
++  }
++
++  /**
++   * Moves a property of each target to a value between two frames. The start value is whatever the
++   * previous clip left, so a snap cannot be authored. Targets start `stagger` frames apart.
++   */
++  to(ids: string | string[], prop: SvgAnimatableProperty, value: number, start: number, end: number, opts: MotionOpts = {}): void {
++    const list = Array.isArray(ids) ? ids : [ids];
++    list.forEach((id, i) => {
++      const s = start + (opts.stagger ?? 0) * i;
++      const e = end + (opts.stagger ?? 0) * i;
++      const key = `${id}::${prop}`;
++      const from = this.cur.get(key) ?? REST[prop];
++      if (from === value && !this.busy.has(key)) {
++        // Nothing to do, but remember the slot is now explicitly held.
++        this.cur.set(key, value);
++        return;
++      }
++      const freeAt = this.busy.get(key) ?? 0;
++      if (s < freeAt) {
++        throw new Error(`[${this.name}] ${id} ${prop}: a clip starting at ${s} overlaps the previous one ending at ${freeAt}.`);
++      }
++      this.tl.add({
++        id: this.uid(`${id}-${prop}`),
++        targets: [id],
++        property: prop,
++        from,
++        to: value,
++        start: s,
++        end: e,
++        easing: opts.easing,
++        origin: opts.origin,
++      });
++      this.cur.set(key, value);
++      this.busy.set(key, e);
++    });
++  }
++
++  /** Fades elements in over a span. */
++  fadeIn(ids: string | string[], start: number, dur = 8, opts: MotionOpts = {}): void {
++    this.to(ids, "opacity", 1, start, start + dur, opts);
++  }
++
++  /** Fades elements out over a span. */
++  fadeOut(ids: string | string[], start: number, dur = 8, opts: MotionOpts = {}): void {
++    this.to(ids, "opacity", 0, start, start + dur, opts);
++  }
++
++  /** Cuts an element on at a frame (a one-frame fade, which is the shortest clip the engine takes). */
++  cutOn(ids: string | string[], frame: number, opts: MotionOpts = {}): void {
++    this.to(ids, "opacity", 1, frame, frame + 1, { easing: "linear", ...opts });
++  }
++
++  /** Cuts an element off at a frame. */
++  cutOff(ids: string | string[], frame: number, opts: MotionOpts = {}): void {
++    this.to(ids, "opacity", 0, frame, frame + 1, { easing: "linear", ...opts });
++  }
++
++  /** Draws stroked elements on from nothing; they start undrawn. */
++  draw(ids: string | string[], start: number, end: number, opts: MotionOpts = {}): void {
++    const list = Array.isArray(ids) ? ids : [ids];
++    this.init(list, { drawOn: 0 });
++    this.to(list, "drawOn", 1, start, end, opts);
++  }
++
++  /** Starts elements hidden and fades them in; the most common entrance. */
++  appear(ids: string | string[], start: number, dur = 8, opts: MotionOpts = {}): void {
++    this.init(ids, { opacity: 0 });
++    this.fadeIn(ids, start, dur, opts);
++  }
++
++  /**
++   * Reveals monospace text one character at a time by shrinking a cover (painted in the panel's own
++   * colour, exactly as wide as the text) toward the text's far edge. The cover is the animated
++   * element; the text itself is plain static markup.
++   */
++  typeReveal(coverId: string, left: number, width: number, chars: number, start: number, end: number): void {
++    const origin = { x: left + width, y: 0 };
++    this.init(coverId, { scaleX: 1 });
++    for (const step of typingSteps(chars, start, end)) {
++      this.to(coverId, "scaleX", Math.max(0, 1 - step.done / chars), step.frame, step.frame + 1, { easing: "linear", origin });
++    }
++  }
++
++  /** Steps a caret along a typed line, one character pitch per step. */
++  typeCaret(caretId: string, charWidth: number, chars: number, start: number, end: number): void {
++    for (const step of typingSteps(chars, start, end)) {
++      this.to(caretId, "translateX", charWidth * step.done, step.frame, step.frame + 1, { easing: "linear" });
++    }
++  }
++
++  /**
++   * Lays one spoken line out as kinetic type. Each word is placed from measured glyph advances and
++   * lands on the frame it is spoken; the line is checked against the narration so a rewritten line
++   * fails the build instead of silently mis-timing the film.
++   */
++  lyric(o: LyricOpts): PlacedLine {
++    const segment = this.timing.segments.find((s) => s.shotId === o.beat);
++    if (!segment) throw new Error(`[${this.name}] no narrated shot "${o.beat}".`);
++    const face = o.face ?? "sans";
++    const weight = o.weight ?? 800;
++    const tracking = o.tracking ?? (face === "sans" ? -0.03 : 0);
++    const lead = o.lead ?? 1.06;
++    const accent = o.accentFill ?? this.accent;
++    const fill = o.fill ?? PAL.ink;
++    const bounds = o.bounds ?? { x0: 100, x1: W - 100 };
++
++    // A display token may cover several spoken words ("HNSW{4}" is the four letters H N S W said one by one).
++    const tokens = o.rows.map((row) => row.split(/\s+/).filter(Boolean));
++    const flat = tokens.flat();
++    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
++    const spanOf = (t: string) => Number(t.match(/\{(\d+)\}$/)?.[1] ?? 1);
++    const bare = (t: string) => t.replace(/\{\d+\}$/, "");
++    let cursor = 0;
++    for (const t of flat) {
++      const said = segment.words.slice(cursor, cursor + spanOf(t)).map((w) => norm(w.word)).join("");
++      if (said !== norm(bare(t))) cursor = -1;
++      if (cursor < 0) break;
++      cursor += spanOf(t);
++    }
++    if (cursor !== segment.words.length) {
++      throw new Error(
++        `[${this.name}] lyric rows for "${o.beat}" do not match the narration.\n  rows: ${flat.join(" ")}\n  said: ${segment.words.map((w) => w.word).join(" ")}`,
++      );
++    }
++
++    const sizes = o.rows.map((_, r) => (Array.isArray(o.size) ? o.size[r] ?? o.size[o.size.length - 1] : o.size));
++    const shape = (t: string) => {
++      const plain = bare(t).replace(/\*/g, "");
++      return o.upper ? plain.toUpperCase() : plain;
++    };
++
++    // A *...* span may cover several tokens: it opens on a token that starts with * and closes on one that ends with *.
++    let inAccent = false;
++    const placed: PlacedWord[] = [];
++    const entries = new Map<string, string>();
++    const ids: string[] = [];
++    let wordIndex = 0;
++    let baseline = o.y;
++    const box = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
++    const shotEnd = this.cues.to(o.beat);
++
++    tokens.forEach((row, r) => {
++      const size = sizes[r];
++      const space = measureText(" ", size, face, weight, 0) + tracking * size;
++      const widths = row.map((t) => tokenWidth(shape(t), size, face, weight, tracking));
++      const rowWidth = widths.reduce((a, b) => a + b, 0) + space * (row.length - 1);
++      let x = o.align === "center" ? o.x - rowWidth / 2 : o.align === "right" ? o.x - rowWidth : o.x;
++      if (x < bounds.x0 - 0.5 || x + rowWidth > bounds.x1 + 0.5) {
++        throw new Error(`[${this.name}] row "${row.join(" ")}" of "${o.beat}" spans ${Math.round(x)}..${Math.round(x + rowWidth)}, outside ${bounds.x0}..${bounds.x1}.`);
++      }
++      box.x0 = Math.min(box.x0, x);
++      box.x1 = Math.max(box.x1, x + rowWidth);
++      box.y0 = Math.min(box.y0, baseline - size * 0.78);
++      box.y1 = Math.max(box.y1, baseline + size * 0.22);
++
++      row.forEach((tok, i) => {
++        const word = segment.words[wordIndex];
++        const wordsCovered = spanOf(tok);
++        const id = this.uid(`w-${o.beat}`);
++        if (tok.startsWith("*")) inAccent = true;
++        const isAccent = inAccent;
++        if (bare(tok).length > 1 && bare(tok).endsWith("*")) inAccent = false;
++        const land = Math.max(0, frameOf(word.startSec) - (o.lead0 ?? 1));
++        this.add(text(shape(tok), { id, x, y: baseline, size, face, weight, fill: isAccent ? accent : fill, tracking }));
++        ids.push(id);
++        placed.push({ id, text: shape(tok), x, y: baseline, w: widths[i], size, startFrame: land, endFrame: frameOf(word.endSec) });
++
++        const entry = o.rowEntry?.[r] ?? o.entry ?? "rise";
++        entries.set(id, entry);
++        if (entry === "mask") {
++          // A masked word is always opaque; it simply rises from behind the floor drawn after its row.
++          this.init(id, { translateY: size * 1.02 });
++          this.to(id, "translateY", 0, land, land + 14);
++          x += widths[i] + space;
++          wordIndex += wordsCovered;
++          return;
++        }
++        this.init(id, { opacity: 0 });
++        if (entry === "slam") {
++          const origin = { x: widths[i] / 2, y: -size * 0.3 };
++          this.init(id, { scale: 1.5 });
++          this.to(id, "scale", 1, land, land + 9, { origin });
++        } else {
++          const from = entry === "drop" ? -size * 0.5 : size * 0.4;
++          this.init(id, { translateY: from });
++          this.to(id, "translateY", 0, land, land + 10);
++        }
++        this.to(id, "opacity", 1, land, land + 6, { easing: "linear" });
++        x += widths[i] + space;
++        wordIndex += wordsCovered;
++      });
++      if (o.afterRow) this.add(o.afterRow(r, baseline, size));
++      baseline += Math.max(sizes[r], sizes[r + 1] ?? 0) * lead;
++    });
++
++    if (o.exit !== "hold" && o.entry !== "mask") {
++      const leaveAt = typeof o.exit === "number" ? o.exit : shotEnd - 8;
++      placed.forEach((w) => {
++        // A word that is still landing when the line leaves has nothing to leave from.
++        const from = Math.max(leaveAt, w.startFrame + 11);
++        this.to(w.id, "opacity", 0, from, from + 7, { easing: "linear" });
++        if (entries.get(w.id) !== "slam") this.to(w.id, "translateY", -w.size * 0.18, from, from + 7, { easing: "linear" });
++      });
++    }
++    return { ids, words: placed, box };
++  }
++}
+diff --git a/backend/sceneKit/chrome.ts b/backend/sceneKit/chrome.ts
+new file mode 100644
+index 0000000..2c7aa67
+--- /dev/null
++++ b/backend/sceneKit/chrome.ts
+@@ -0,0 +1,64 @@
++/**
++ * File Description: Frame furniture shared by scene films: the corner brackets, the dotted backdrop
++ * with its soft accent glow, a muted mono tag, and a readout whose value changes over the film.
++ * These are the quiet, persistent pieces that keep a dark canvas from being flat; they carry no topic.
++ */
++
++import type { Canvas } from "./canvas";
++import { H, HAIR2, OY, PAL, W, el, n, stroke, text } from "./svg";
++
++/**
++ * Corner brackets. The bottom pair sits at `bottom` rather than at the frame's edge, because the
++ * film's chapter rail paints an opaque scrim over the last ~90px of the window.
++ */
++export function corners(inset = 44, bottom = 940, len = 30, color: string = HAIR2): string {
++  const c = (x: number, y: number, dx: number, dy: number) =>
++    el("path", { d: `M${n(x + dx * len)} ${n(y)} L${n(x)} ${n(y)} L${n(x)} ${n(y + dy * len)}`, ...stroke(color, 2) });
++  return [c(inset, inset, 1, 1), c(W - inset, inset, -1, 1), c(inset, bottom, 1, -1), c(W - inset, bottom, -1, -1)].join("");
++}
++
++/** Options for the static backdrop. */
++export interface BackdropOpts {
++  /** The film's accent, used for the glow. */
++  accent: string;
++  /** Glow centre and radius as percentages of the window; defaults to the middle, slightly low. */
++  glow?: { cx: number; cy: number; r: number; opacity?: number };
++  /** Opacity of the dot grid. */
++  dotOpacity?: number;
++}
++
++/** The static backdrop: a dotted grid and a soft accent glow, sized to the square scene with the window in the middle. */
++export function backdropSvg(o: BackdropOpts): string {
++  const glow = o.glow ?? { cx: 50, cy: 58, r: 55 };
++  const defs =
++    `<defs>` +
++    `<pattern id="dots" width="48" height="48" patternUnits="userSpaceOnUse"><circle cx="24" cy="24" r="1.3" fill="${PAL.ink}" fill-opacity="${o.dotOpacity ?? 0.1}"/></pattern>` +
++    `<radialGradient id="glow" cx="${glow.cx}%" cy="${glow.cy}%" r="${glow.r}%"><stop offset="0" stop-color="${o.accent}" stop-opacity="${glow.opacity ?? 0.1}"/><stop offset="1" stop-color="${o.accent}" stop-opacity="0"/></radialGradient>` +
++    `</defs>`;
++  return (
++    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1920" width="1920" height="1920">${defs}` +
++    `<rect x="0" y="0" width="1920" height="1920" fill="${PAL.canvas}"/>` +
++    `<rect x="0" y="${OY}" width="${W}" height="${H}" fill="url(#dots)"/>` +
++    `<rect x="0" y="${OY}" width="${W}" height="${H}" fill="url(#glow)"/>` +
++    `</svg>\n`
++  );
++}
++
++/** A small muted mono tag, for naming the film in a corner of the HUD. */
++export function hudTag(label: string, x = 84, y = 92, anchor: "start" | "end" = "start"): string {
++  return text(label, { x, y, size: 20, face: "mono", weight: 500, fill: PAL.muted, anchor, tracking: 0.08 });
++}
++
++/** A mono readout whose value changes over the film: each value is its own element, cut on and off at its frame. */
++export function readoutSeries(c: Canvas, prefix: string, x: number, y: number, values: Array<{ label: string; frame: number }>): void {
++  const ids = values.map((v, i) => {
++    const id = `${prefix}-${i}`;
++    c.add(text(v.label, { id, x, y, size: 20, face: "mono", weight: 500, fill: PAL.muted, anchor: "end", tracking: 0.08 }));
++    return id;
++  });
++  ids.forEach((id, i) => {
++    c.init(id, { opacity: i === 0 ? 1 : 0 });
++    if (i > 0) c.cutOn(id, values[i].frame);
++    if (i < ids.length - 1) c.cutOff(id, values[i + 1].frame);
++  });
++}
+diff --git a/backend/sceneKit/index.ts b/backend/sceneKit/index.ts
+index dc186e7..7ba231d 100644
+--- a/backend/sceneKit/index.ts
++++ b/backend/sceneKit/index.ts
+@@ -1,14 +1,21 @@
+ /**
+  * File Description: The scene-film kit: everything a bespoke scene film is built from.
+  * Stage geometry, the continuity-checked timeline builder, audio-first cues aimed at spoken words,
+- * and validated SVG asset writing; review stills live in ./reviewStills, imported directly.
+- * Extracted from the "Still Talking" builder so every film designed by an agent gets the same
+- * standard layer (clip format: src/dl/scene/README.md).
++ * validated SVG asset writing, SVG authoring primitives, the Canvas (markup plus motion authored
++ * together, with kinetic-type lyric lines), measured type metrics, balanced wrapping and frame
++ * furniture. Everything here is topic-free: a film supplies its own beats, artwork and accent.
++ * Node-only tools are imported directly by the film that needs them rather than re-exported here,
++ * because this index is imported by code the editor dev server loads: ./voiceover (narration
++ * step), ./measureWords, ./preview, ./reviewStills and ./reviewFrames (stills load Remotion).
++ * Clip format: src/dl/scene/README.md.
+  */
+ 
+ export { FPS, SCENE_SIZE, FORMAT_WINDOWS, SAFE_SQUARE, CAPTION_SAFE_SQUARE, rectInside, type SceneRect } from "./stage";
+ export { Timeline, type ClipSpec } from "./timeline";
+ export { shotFrames, createCues, type NarrationTiming, type ShotFrames, type Cues } from "./timing";
+ export { writeSvgAssets } from "./assets";
+-// Review stills (./reviewStills) are deliberately not re-exported: they load Remotion's bundler
+-// and renderer, and this index is imported by code the editor dev server loads.
++export { PAL, DEFAULT_ACCENT, HAIR, HAIR2, W, H, OY, FONT, frameOf, rng, n, attrs, el, g, text, stroke, type AttrValue, type TextOpts } from "./svg";
++export { Canvas, type LyricOpts, type MotionOpts, type PlacedLine, type PlacedWord } from "./canvas";
++export { measureText, tokenWidth, advanceEm, MONO_ADVANCE, type Face } from "./typeMetrics";
++export { wrapBalanced, type WrapOpts } from "./wrap";
++export { corners, backdropSvg, hudTag, readoutSeries, type BackdropOpts } from "./chrome";
+diff --git a/backend/sceneKit/measureWords.ts b/backend/sceneKit/measureWords.ts
+new file mode 100644
+index 0000000..d19cb9b
+--- /dev/null
++++ b/backend/sceneKit/measureWords.ts
+@@ -0,0 +1,85 @@
++/**
++ * File Description: Measures the width of display words in Geist, with the font's own kerning, by
++ * asking headless Chrome, and merges them into the shared wordWidths.json table. Per-glyph advances
++ * are close but drift by a few pixels per word once kerning pairs ("kn", "ow", "Th") apply, and words
++ * are laid out one element at a time, so the error would show as uneven gaps. The table is a cache
++ * keyed by exact word and weight (em per word, weights 500 and 800): words already in it are kept,
++ * so each film only measures what it adds.
++ * Usage from a film: await measureWords(displayWords(narrationLines)); then re-run its build.
++ */
++
++import * as fs from "fs";
++import * as os from "os";
++import * as path from "path";
++import { spawnSync } from "child_process";
++import { findChromeBinary } from "../scene/renderStill";
++
++/** Output file, read by typeMetrics at layout time. */
++export const WORD_WIDTHS_PATH = path.resolve(__dirname, "wordWidths.json");
++
++/** Every distinct display word of some narration lines, in the case it may be set in (as written and upper-cased). */
++export function displayWords(lines: string[], extra: string[] = []): string[] {
++  const set = new Set<string>(extra);
++  for (const line of lines) {
++    for (const raw of line.split(/\s+/)) {
++      const bare = raw.replace(/\{\d+\}$/, "").replace(/[.,:;?!*]/g, "");
++      if (!bare) continue;
++      set.add(bare);
++      set.add(bare.toUpperCase());
++    }
++  }
++  return [...set].sort();
++}
++
++/** Reads the current table, or an empty one when the file is missing. */
++function readTable(file: string): Record<"500" | "800", Record<string, number>> {
++  try {
++    const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
++    return { "500": parsed["500"] ?? {}, "800": parsed["800"] ?? {} };
++  } catch {
++    return { "500": {}, "800": {} };
++  }
++}
++
++/** The words a table does not have yet at both weights. */
++export function unmeasuredWords(words: string[], table = readTable(WORD_WIDTHS_PATH)): string[] {
++  return words.filter((w) => table["500"][w] === undefined || table["800"][w] === undefined);
++}
++
++/** Measures the words the table lacks in headless Chrome and merges them in; returns how many were added. */
++export function measureWords(words: string[], file: string = WORD_WIDTHS_PATH): number {
++  const table = readTable(file);
++  const missing = unmeasuredWords(words, table);
++  if (missing.length === 0) return 0;
++  const chrome = findChromeBinary();
++  if (!chrome) throw new Error("Chrome is required to measure words.");
++  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kit-measure-"));
++  const page = path.join(dir, "m.html");
++  fs.writeFileSync(
++    page,
++    `<!doctype html><html><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Geist:wght@500;800&display=block" rel="stylesheet"></head><body><pre id="out">pending</pre><canvas id="c"></canvas><script>
++const words = ${JSON.stringify(missing)};
++(async () => {
++  await document.fonts.load("800 100px Geist"); await document.fonts.load("500 100px Geist");
++  const ctx = document.getElementById("c").getContext("2d");
++  const out = { "500": {}, "800": {} };
++  for (const w of ["500", "800"]) { ctx.font = w + " 1000px Geist"; for (const word of words) out[w][word] = Math.round(ctx.measureText(word).width) / 1000; }
++  document.getElementById("out").textContent = "RESULT" + JSON.stringify(out) + "END";
++})();
++</script></body></html>`,
++  );
++  const run = spawnSync(chrome, ["--headless=new", "--disable-gpu", "--virtual-time-budget=15000", "--dump-dom", `file://${page}`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
++  fs.rmSync(dir, { recursive: true, force: true });
++  const match = (run.stdout || "").match(/RESULT(\{.*?\})END/s);
++  if (!match) {
++    const stderrMsg = run.stderr ? run.stderr.slice(0, 400) : "";
++    const errorMsg = run.error ? ` Spawn error: ${run.error.message}` : "";
++    throw new Error(`Chrome returned no measurements: ${stderrMsg}${errorMsg}`);
++  }
++  const measured = JSON.parse(match[1]) as Record<"500" | "800", Record<string, number>>;
++  const merged = { "500": { ...table["500"], ...measured["500"] }, "800": { ...table["800"], ...measured["800"] } };
++  for (const w of ["500", "800"] as const) merged[w] = Object.fromEntries(Object.entries(merged[w]).sort(([a], [b]) => (a < b ? -1 : 1)));
++  fs.writeFileSync(file, `${JSON.stringify(merged, null, 1)}\n`);
++  console.log(`[scene-kit] measured ${missing.length} new words x 2 weights -> ${file}`);
++  return missing.length;
++}
+diff --git a/backend/sceneKit/preview.ts b/backend/sceneKit/preview.ts
+new file mode 100644
+index 0000000..99ce4da
+--- /dev/null
++++ b/backend/sceneKit/preview.ts
+@@ -0,0 +1,66 @@
++/**
++ * File Description: Fast frame preview for scene films.
++ * Compiles a film's scene straight from its builders, renders chosen frames to markup and
++ * screenshots them with headless Chrome (real Geist and JetBrains Mono from Google Fonts), cropped to
++ * the 1920x1080 window the wide cut shows. Far quicker than a Remotion bundle, so it is the loop used
++ * while designing; the real compositions are still inspected (reviewStills.ts) before anything ships.
++ */
++
++import * as fs from "fs";
++import * as path from "path";
++import { spawnSync } from "child_process";
++import { compileScene } from "../../src/dl/scene/compile";
++import type { Scene } from "../../src/dl/scene/types";
++import { loadSceneAssets } from "../scene/loadSceneAssets";
++import { renderFrameSvgMarkup, findChromeBinary } from "../scene/renderStill";
++import { writeSvgAssets } from "./assets";
++import { FORMAT_WINDOWS } from "./stage";
++
++/** What a film hands the previewer: its scene and the artwork documents it was built with. */
++export interface PreviewSource {
++  slug: string;
++  scene: Scene;
++  /** SVG documents by file name, written to videos/<slug>/visuals before rendering. */
++  artwork: Record<string, string>;
++}
++
++/** The page that crops the square scene to the wide window. */
++function previewPage(svg: string): string {
++  const win = FORMAT_WINDOWS.wide;
++  const w = win.x1 - win.x0;
++  const h = win.y1 - win.y0;
++  return `<!doctype html><html><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;800&family=JetBrains+Mono:wght@400;500;700&display=block" rel="stylesheet"><style>html,body{margin:0;background:#0A0A0B;overflow:hidden}#w{width:${w}px;height:${h}px;overflow:hidden;position:relative}#w svg{position:absolute;left:${-win.x0}px;top:${-win.y0}px}</style></head><body><div id="w">${svg}</div></body></html>`;
++}
++
++// Renders the given frames to PNGs under .frames/<slug>/preview and returns their paths.
++export function previewFrames(source: PreviewSource, frames: Array<{ frame: number; name: string }>, rootDir: string = path.resolve(__dirname, "../..")): string[] {
++  const outDir = path.join(rootDir, ".frames", source.slug, "preview");
++  writeSvgAssets(path.join(rootDir, "videos", source.slug, "visuals"), source.artwork);
++  const assets = loadSceneAssets(source.scene);
++  const compiled = compileScene(source.scene, { assetElementIds: assets.elementIdsByAssetId, clockMs: 0 });
++  const chrome = findChromeBinary();
++  if (!chrome) throw new Error("No Chrome found for previews.");
++  const win = FORMAT_WINDOWS.wide;
++  fs.mkdirSync(outDir, { recursive: true });
++  const out: string[] = [];
++  for (const { frame, name } of frames) {
++    const f = Math.min(frame, compiled.frames.length - 1);
++    const svg = renderFrameSvgMarkup(compiled.frames[f], { width: 1920, height: 1920, sceneSize: source.scene.sceneSize, svgSources: assets.svgSources });
++    const htmlPath = path.join(outDir, `${name}.html`);
++    const png = path.join(outDir, `${name}.png`);
++    fs.writeFileSync(htmlPath, previewPage(svg));
++    const run = spawnSync(chrome, ["--headless=new", "--disable-gpu", "--hide-scrollbars", `--window-size=${win.x1 - win.x0},${win.y1 - win.y0}`, "--virtual-time-budget=8000", `--screenshot=${png}`, `file://${htmlPath}`], { encoding: "utf8" });
++    if (!fs.existsSync(png)) {
++      const errorMsg = run.error ? ` Spawn error: ${run.error.message}` : "";
++      throw new Error(`preview failed for ${name}: ${run.stderr || ""}${errorMsg}`);
++    }
++    fs.rmSync(htmlPath, { force: true });
++    out.push(png);
++  }
++  return out;
++}
++
++// Parses CLI frame-number arguments into named preview picks.
++export function framesFromArgs(args: string[]): Array<{ frame: number; name: string }> {
++  return args.map(Number).filter((v) => Number.isFinite(v)).map((frame) => ({ frame, name: `f${String(frame).padStart(5, "0")}` }));
++}
+diff --git a/backend/sceneKit/reviewFrames.ts b/backend/sceneKit/reviewFrames.ts
+new file mode 100644
+index 0000000..2c8d2e2
+--- /dev/null
++++ b/backend/sceneKit/reviewFrames.ts
+@@ -0,0 +1,34 @@
++/**
++ * File Description: Renders review stills of any scene film from its real Remotion compositions.
++ * Run as `npx tsx backend/sceneKit/reviewFrames.ts <slug> [frame...]`. With no frames it takes one
++ * frame just past the middle of every shot; otherwise it takes the frame numbers given. Unlike the
++ * quick preview this goes through the full film compositor, so the chapter rail and its scrim are in
++ * the picture, which is how the film actually ships. Stills land in .frames/<slug>/review.
++ */
++
++import * as path from "path";
++import { shotFrames } from "./timing";
++import { midShotPicks, renderReviewStills, type StillPick } from "./reviewStills";
++import { readVoiceoverTiming } from "./voiceover";
++
++// Renders review stills for a film: the given frames, or the middle of every shot.
++export async function reviewFilmFrames(slug: string, frames: number[] = [], scale = 0.5): Promise<string> {
++  const { spans } = shotFrames(readVoiceoverTiming(slug));
++  const picks: StillPick[] =
++    frames.length > 0 ? frames.map((frame) => ({ composition: "Long", frame, name: `f${String(frame).padStart(5, "0")}` })) : midShotPicks(spans, "Long");
++  return renderReviewStills(picks, path.resolve(__dirname, "../../.frames", slug, "review"), scale);
++}
++
++if (typeof require !== "undefined" && require.main === module) {
++  const [slug, ...rest] = process.argv.slice(2);
++  if (!slug) {
++    console.error("Usage: npx tsx backend/sceneKit/reviewFrames.ts <slug> [frame...]");
++    process.exit(1);
++  }
++  reviewFilmFrames(slug, rest.map(Number).filter((v) => Number.isFinite(v)))
++    .then((dir) => console.log(`[${slug}] review stills in ${dir}`))
++    .catch((err) => {
++      console.error(err);
++      process.exit(1);
++    });
++}
+diff --git a/backend/sceneKit/svg.ts b/backend/sceneKit/svg.ts
+new file mode 100644
+index 0000000..8eb1f30
+--- /dev/null
++++ b/backend/sceneKit/svg.ts
+@@ -0,0 +1,117 @@
++/**
++ * File Description: SVG authoring primitives shared by every scene film.
++ * The locked palette, the 1920x1080 authoring window inside the square scene, a seeded random
++ * source for procedural art, and small string builders (attributes, elements, groups, text) that
++ * produce the markup the scene engine animates. Pure and free of Node imports, so it is safe in
++ * any bundle that reaches the kit.
++ */
++
++import { escapeXmlText } from "../../src/dl/scene/svgDocument";
++import { FPS, FORMAT_WINDOWS } from "./stage";
++import type { Face } from "./typeMetrics";
++
++/** The locked neutral palette (src/dl/README.md). A film adds exactly one accent of its own. */
++export const PAL = {
++  canvas: "#0A0A0B",
++  ink: "#F5F5F5",
++  muted: "#8A8A8E",
++  surface: "#101013",
++  /** The light scene's ground: a neutral within the design check's tint tolerance. */
++  cream: "#F2F0EE",
++} as const;
++
++/** The design system's accent, used when a film does not pick its own. */
++export const DEFAULT_ACCENT = "#635BFF";
++
++/** Faint and medium ink for hairlines and quiet fills. */
++export const HAIR = "rgba(245,245,245,0.10)";
++export const HAIR2 = "rgba(245,245,245,0.22)";
++
++/** Window geometry: authors work in a 1920x1080 window that sits in the middle of the square scene. */
++export const W = FORMAT_WINDOWS.wide.x1 - FORMAT_WINDOWS.wide.x0;
++export const H = FORMAT_WINDOWS.wide.y1 - FORMAT_WINDOWS.wide.y0;
++export const OY = FORMAT_WINDOWS.wide.y0;
++
++/** Family names as the film loads them (src/dl/tokens.ts). */
++export const FONT: Record<Face, string> = { sans: "Geist", mono: "JetBrains Mono" };
++
++/** Converts seconds to the nearest frame. */
++export const frameOf = (sec: number): number => Math.round(sec * FPS);
++
++/** A small deterministic random source, so procedural art is identical on every build. */
++export function rng(seed: number): () => number {
++  let a = seed >>> 0;
++  return () => {
++    a = (a + 0x6d2b79f5) >>> 0;
++    let t = a;
++    t = Math.imul(t ^ (t >>> 15), t | 1);
++    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
++    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
++  };
++}
++
++/** Formats a number for an attribute: at most three decimals, no trailing noise. */
++export const n = (v: number): string => String(Math.round(v * 1000) / 1000);
++
++export type AttrValue = string | number | undefined | null | false;
++
++/** Serializes an attribute record, skipping empty values. */
++export function attrs(o: Record<string, AttrValue>): string {
++  return Object.entries(o)
++    .filter(([, v]) => v !== undefined && v !== null && v !== false)
++    .map(([k, v]) => `${k}="${typeof v === "number" ? n(v) : v}"`)
++    .join(" ");
++}
++
++/** Builds one element from a tag, attributes and inner markup. */
++export function el(tag: string, o: Record<string, AttrValue>, inner?: string): string {
++  const a = attrs(o);
++  return inner === undefined ? `<${tag} ${a}/>` : `<${tag} ${a}>${inner}</${tag}>`;
++}
++
++/** Builds a <g> positioned by an authored translate, so local animation origins sit at its anchor. */
++export function g(id: string | undefined, x: number, y: number, inner: string, extra: Record<string, AttrValue> = {}): string {
++  return el("g", { id, transform: x || y ? `translate(${n(x)} ${n(y)})` : undefined, ...extra }, inner);
++}
++
++/** Options for a text element. */
++export interface TextOpts {
++  id?: string;
++  x?: number;
++  y?: number;
++  size: number;
++  face?: Face;
++  weight?: number;
++  fill?: string;
++  anchor?: "start" | "middle" | "end";
++  tracking?: number;
++  opacity?: number;
++}
++
++/** Builds a <text> element whose anchor is its own origin, so it can animate about that point. */
++export function text(content: string, o: TextOpts): string {
++  const face = o.face ?? "sans";
++  return el(
++    "text",
++    {
++      id: o.id,
++      transform: o.x || o.y ? `translate(${n(o.x ?? 0)} ${n(o.y ?? 0)})` : undefined,
++      "font-family": FONT[face],
++      "font-weight": o.weight ?? (face === "mono" ? 500 : 800),
++      "font-size": o.size,
++      fill: o.fill ?? PAL.ink,
++      "text-anchor": o.anchor && o.anchor !== "start" ? o.anchor : undefined,
++      "letter-spacing": o.tracking ? n(o.tracking * o.size) : undefined,
++      opacity: o.opacity,
++    },
++    escapeXmlText(content),
++  );
++}
++
++/** Stroke defaults used across the drawings. */
++export const stroke = (color: string, width = 2, extra: Record<string, AttrValue> = {}) => ({
++  fill: "none",
++  stroke: color,
++  "stroke-width": width,
++  ...extra,
++});
+diff --git a/backend/sceneKit/typeMetrics.ts b/backend/sceneKit/typeMetrics.ts
+new file mode 100644
+index 0000000..9bc0f7d
+--- /dev/null
++++ b/backend/sceneKit/typeMetrics.ts
+@@ -0,0 +1,63 @@
++/**
++ * File Description: Glyph advance widths for the two typefaces scene films set display type in.
++ * Geist advances were measured once in headless Chrome (canvas measureText, 1000px, weights 500 and
++ * 800, printable ASCII) so word positions can be laid out in Node without a browser; JetBrains Mono is
++ * fixed-pitch at 0.6em. Kerning is modelled for known words via wordWidths.json, falling back to per-glyph advances.
++ */
++
++import * as fs from "fs";
++import * as path from "path";
++
++/** Geist advance widths per 1000 units for ASCII 32..126, at weights 500 and 800. */
++const GEIST: Record<500 | 800, number[]> = {
++  500: [243,228,361,515,643,810,649,186,290,290,427,562,213,418,213,494,673,406,630,625,629,641,604,531,624,606,302,302,546,544,546,570,925,689,688,713,701,609,595,713,716,280,607,656,583,890,745,751,657,745,680,654,568,694,688,968,633,594,561,361,470,361,438,558,258,565,608,563,608,576,412,607,591,256,284,609,282,885,591,588,608,608,394,537,410,586,560,829,607,553,552,395,274,395,523],
++  800: [221,272,405,626,683,833,734,212,339,339,419,574,248,417,248,536,703,470,665,662,670,686,638,551,684,643,315,315,552,556,552,602,981,750,710,745,723,628,609,751,724,310,637,705,592,927,753,788,679,781,706,695,615,708,751,1038,715,650,610,404,516,404,473,563,288,609,647,615,647,620,464,647,621,294,355,666,328,907,621,633,647,647,440,586,462,618,633,859,671,603,598,414,304,414,523],
++};
++
++/** JetBrains Mono advance per em. */
++export const MONO_ADVANCE = 0.6;
++
++/** Kerned width in em of whole words, measured in Chrome (measureWords.ts); words missing from it fall back to glyph advances. */
++let WORDS: Record<string, Record<string, number>> | null = null;
++
++// Loads the measured word table once; a missing file just means falling back to per-glyph advances.
++function wordTable(): Record<string, Record<string, number>> {
++  if (WORDS) return WORDS;
++  try {
++    WORDS = JSON.parse(fs.readFileSync(path.resolve(__dirname, "wordWidths.json"), "utf8")) as Record<string, Record<string, number>>;
++  } catch {
++    WORDS = {};
++  }
++  return WORDS;
++}
++
++/** Typeface choice for measuring. */
++export type Face = "sans" | "mono";
++
++// Returns one character's advance in em for the given face and weight.
++export function advanceEm(ch: string, face: Face, weight: 500 | 800 = 800): number {
++  if (face === "mono") return MONO_ADVANCE;
++  const code = ch.charCodeAt(0);
++  const table = GEIST[weight];
++  if (code < 32 || code > 126) return 0.6;
++  return table[code - 32] / 1000;
++}
++
++// Measures a string in pixels at a font size, including letter-spacing in em.
++export function measureText(text: string, size: number, face: Face, weight: 500 | 800 = 800, trackingEm = 0): number {
++  const known = face === "sans" ? wordTable()[String(weight)]?.[text] : undefined;
++  if (known !== undefined) return (known + trackingEm * [...text].length) * size;
++  let em = 0;
++  for (const ch of text) em += advanceEm(ch, face, weight) + trackingEm;
++  return em * size;
++}
++
++/**
++ * Width of a display token in px: the word is measured whole (with the font's own kerning when the word
++ * table has it) and any trailing punctuation is added glyph by glyph, since the table holds bare words.
++ */
++export function tokenWidth(token: string, size: number, face: Face, weight: 500 | 800, trackingEm: number): number {
++  const punct = token.match(/[.,:;?!]+$/)?.[0] ?? "";
++  const core = punct ? token.slice(0, -punct.length) : token;
++  return measureText(core, size, face, weight, trackingEm) + (punct ? measureText(punct, size, face, weight, trackingEm) : 0);
++}
+diff --git a/backend/sceneKit/voiceover.ts b/backend/sceneKit/voiceover.ts
+new file mode 100644
+index 0000000..e922363
+--- /dev/null
++++ b/backend/sceneKit/voiceover.ts
+@@ -0,0 +1,306 @@
++/**
++ * File Description: Audio-first narration step shared by every scene film.
++ * Synthesizes a film's beats with the project's own narration pipeline, masters the take for
++ * delivery (loudness, then peak), appends a tail handle so the closing card can be read, and records
++ * the shot spine: which shot each line belongs to, where it starts, and when each word is spoken.
++ * Word offsets come either from the synthesizer or, for kinetic typography, from the locally cached
++ * Whisper model aligned back onto the script's own words. The picture is compiled from the spine
++ * alone, so a re-recorded take retimes the whole film.
++ */
++
++import * as fs from "fs";
++import * as path from "path";
++import { spawnSync } from "child_process";
++import dotenv from "dotenv";
++import { produceAudioPipeline } from "../audio";
++import { getVideosDir } from "../../src/dl/videoPackageLoader";
++import type { NarrationTiming } from "./timing";
++
++dotenv.config();
++
++/** Repo root, resolved from this file so it holds whichever directory the caller was launched from. */
++const REPO_ROOT = path.resolve(__dirname, "../..");
++
++/** The measurement a film builder reads back: what was said, and exactly when. */
++export interface VoiceoverTiming extends NarrationTiming {
++  /** Which synthesizer produced the take, recorded for provenance. */
++  ttsBackend?: string;
++}
++
++/** One beat of the script: the shot it belongs to and the exact words spoken over it. */
++export interface NarratedBeat {
++  id: string;
++  narration: string;
++}
++
++/** Everything a film decides about its narration. */
++export interface VoiceoverConfig {
++  /** The film's package folder name: videos/<slug>. */
++  slug: string;
++  beats: NarratedBeat[];
++  /** Synthesizer pace multiplier. */
++  speed?: number;
++  /** Silence between lines in ms, which is also the beat a line resets on. */
++  gapMs?: number;
++  /** Silence appended after the last word in ms. The take is exactly this much longer. */
++  tailMs?: number;
++  /** Delivery loudness in LUFS and true-peak ceiling in dBFS. */
++  targetLufs?: number;
++  truePeakDb?: number;
++  /** Where word offsets come from: the synthesizer's estimates, or Whisper measuring the real audio. */
++  alignment?: "synthesizer" | "whisper";
++  /** File the spine is written to inside the package. */
++  spineFile?: string;
++  /** Copy the mastered wav (and the pipeline's captions) to public/ for the live preview. */
++  syncToPreview?: boolean;
++  /** Override the package root (tests). */
++  rootDir?: string;
++}
++
++/** A word as whisper heard it. */
++export interface HeardWord {
++  word: string;
++  start: number;
++  end: number;
++}
++
++const DEFAULTS = { speed: 1, gapMs: 420, tailMs: 2200, targetLufs: -16, truePeakDb: -1, alignment: "synthesizer", spineFile: "shot-spine.json" } as const;
++
++// Absolute path to a film's video package.
++export function packageDir(slug: string, rootDir?: string): string {
++  if (rootDir) return path.resolve(rootDir, "videos", slug);
++  return path.join(getVideosDir(), slug);
++}
++
++// Path of the shot spine artefact a film builder consumes.
++export function timingPath(slug: string, spineFile: string = DEFAULTS.spineFile, rootDir?: string): string {
++  return path.join(packageDir(slug, rootDir), spineFile);
++}
++
++// Runs ffmpeg and hands back its stderr report.
++function ffmpegReport(args: string[]): string {
++  const run = spawnSync("ffmpeg", args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
++  if (run.error) throw run.error;
++  return run.stderr ?? "";
++}
++
++// Measured loudness of a wav: integrated LUFS and true peak in dBFS.
++function measureLoudness(wavPath: string, lufs: number, tp: number): { lufs: number; truePeakDb: number } {
++  const report = ffmpegReport(["-i", wavPath, "-af", `loudnorm=I=${lufs}:TP=${tp}:LRA=7:print_format=json`, "-f", "null", "-"]);
++  const json = report.slice(report.lastIndexOf("{"), report.lastIndexOf("}") + 1);
++  const parsed = JSON.parse(json) as { input_i: string; input_tp: string };
++  return { lufs: Number.parseFloat(parsed.input_i), truePeakDb: Number.parseFloat(parsed.input_tp) };
++}
++
++// Reads the sample peak of a wav in dBFS, as ffmpeg's volumedetect filter reports it.
++function measurePeakDb(wavPath: string): number {
++  const report = ffmpegReport(["-i", wavPath, "-af", "volumedetect", "-f", "null", "-"]);
++  const match = report.match(/max_volume:\s*(-?[\d.]+) dB/);
++  if (!match) throw new Error(`Could not read a peak level from ${wavPath}.`);
++  return Number.parseFloat(match[1]);
++}
++
++/**
++ * Masters the narration for delivery without changing its length. Loudness normalization rides the
++ * voice's isolated plosive peaks down and brings the body up; peak normalization then spends the
++ * headroom that leaves. Doing only the second is how a correct-looking master plays quiet.
++ */
++function masterForDelivery(wavPath: string, lufs: number, tp: number): { lufs: number; truePeakDb: number } {
++  const staged = `${wavPath}.mastered.wav`;
++  ffmpegReport(["-y", "-i", wavPath, "-af", `loudnorm=I=${lufs}:TP=${tp}:LRA=7`, "-ar", "44100", "-ac", "2", staged]);
++  if (!fs.existsSync(staged)) throw new Error(`Mastering produced no output for ${wavPath}.`);
++  const gainDb = tp - measurePeakDb(staged);
++  const peaked = `${wavPath}.peaked.wav`;
++  ffmpegReport(["-y", "-i", staged, "-af", `volume=${gainDb.toFixed(2)}dB`, "-ar", "44100", "-ac", "2", peaked]);
++  fs.rmSync(staged, { force: true });
++  fs.renameSync(peaked, wavPath);
++  return { lufs: measureLoudness(wavPath, lufs, tp).lufs, truePeakDb: measurePeakDb(wavPath) };
++}
++
++// Appends the tail handle to the master: the film is exactly as long as the wav, tail included.
++function appendTailHandle(wavPath: string, tailMs: number): void {
++  const padded = `${wavPath}.padded.wav`;
++  ffmpegReport(["-y", "-i", wavPath, "-af", `apad=pad_dur=${(tailMs / 1000).toFixed(3)}`, "-ar", "44100", "-ac", "2", padded]);
++  if (!fs.existsSync(padded)) throw new Error(`Could not append a tail handle to ${wavPath}.`);
++  fs.renameSync(padded, wavPath);
++}
++
++// Lowercases a word and strips everything but letters and digits, for matching spoken to scripted.
++function norm(word: string): string {
++  return word.toLowerCase().replace(/[^a-z0-9]/g, "");
++}
++
++// Transcribes each [start, end] range of a wav with local whisper, one word list per range.
++function whisperWords(wavPath: string, ranges: Array<[number, number]>): HeardWord[][] {
++  const rangesFile = `${wavPath}.ranges.json`;
++  const out = `${wavPath}.words.json`;
++  fs.writeFileSync(rangesFile, JSON.stringify(ranges));
++  const script = path.resolve(__dirname, "whisperWords.py");
++  const run = spawnSync("python3", [script, wavPath, rangesFile, out], {
++    encoding: "utf8",
++    env: { ...process.env, KMP_DUPLICATE_LIB_OK: "TRUE" },
++    maxBuffer: 32 * 1024 * 1024,
++  });
++  try {
++    if (run.status !== 0) {
++      const errorMsg = run.error ? ` Spawn error: ${run.error.message}` : "";
++      throw new Error(`whisper failed: ${run.stderr || ""}${errorMsg}`);
++    }
++    return JSON.parse(fs.readFileSync(out, "utf8")) as HeardWord[][];
++  } finally {
++    fs.rmSync(out, { force: true });
++    fs.rmSync(rangesFile, { force: true });
++  }
++}
++
++/**
++ * Aligns scripted words onto heard words with a longest-common-subsequence match, then fills any
++ * scripted word whisper missed by spreading it evenly between its matched neighbours.
++ */
++export function alignWords(
++  scripted: string[],
++  heard: HeardWord[],
++  fallbackStart: number,
++  fallbackEnd: number,
++): Array<{ startSec: number; endSec: number }> {
++  const n = scripted.length;
++  const m = heard.length;
++  const a = scripted.map(norm);
++  const b = heard.map((h) => norm(h.word));
++  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
++  for (let i = n - 1; i >= 0; i--) {
++    for (let j = m - 1; j >= 0; j--) {
++      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
++    }
++  }
++  const matched: Array<{ startSec: number; endSec: number } | null> = new Array(n).fill(null);
++  let i = 0;
++  let j = 0;
++  while (i < n && j < m) {
++    if (a[i] === b[j]) {
++      matched[i] = { startSec: heard[j].start, endSec: heard[j].end };
++      i++;
++      j++;
++    } else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
++    else j++;
++  }
++  // Fill the gaps: a run of unmatched words shares the time between its matched neighbours.
++  const out: Array<{ startSec: number; endSec: number }> = new Array(n);
++  let k = 0;
++  while (k < n) {
++    const hit = matched[k];
++    if (hit) {
++      out[k] = hit;
++      k++;
++      continue;
++    }
++    let end = k;
++    while (end < n && !matched[end]) end++;
++    const left = k > 0 ? out[k - 1].endSec : fallbackStart;
++    const right = end < n ? (matched[end] as { startSec: number }).startSec : fallbackEnd;
++    const step = Math.max(0.05, (right - left) / (end - k));
++    for (let q = k; q < end; q++) out[q] = { startSec: left + step * (q - k), endSec: left + step * (q - k + 1) };
++    k = end;
++  }
++  return out;
++}
++
++// Synthesizes the narration, measures word timings and records the shot spine.
++export async function produceVoiceover(config: VoiceoverConfig): Promise<VoiceoverTiming> {
++  const alignment = config.alignment ?? DEFAULTS.alignment;
++  const tailMs = config.tailMs ?? DEFAULTS.tailMs;
++  const targetLufs = config.targetLufs ?? DEFAULTS.targetLufs;
++  const truePeakDb = config.truePeakDb ?? DEFAULTS.truePeakDb;
++  const syncToPreview = config.syncToPreview ?? true;
++  const outDir = packageDir(config.slug, config.rootDir);
++  fs.mkdirSync(outDir, { recursive: true });
++  const { beats } = config;
++  const segments = beats.map((b) => b.narration);
++  console.log(`[${config.slug}] ${segments.length} lines, ${segments.join(" ").split(/\s+/).filter(Boolean).length} spoken words.`);
++
++  const result = await produceAudioPipeline(segments, outDir, {
++    gapMs: config.gapMs ?? DEFAULTS.gapMs,
++    speed: config.speed ?? DEFAULTS.speed,
++    syncToPreview,
++  });
++  if (result.segments.length !== beats.length) {
++    throw new Error(
++      `Narration produced ${result.segments.length} segments for ${beats.length} beats: a line was too short to stand alone. Lengthen it.`,
++    );
++  }
++  const mastered = masterForDelivery(result.voiceoverPath, targetLufs, truePeakDb);
++  appendTailHandle(result.voiceoverPath, tailMs);
++  // Remotion resolves staticFile() against public/, so the copy there has to be the mastered one.
++  const publicCopy = path.resolve(REPO_ROOT, "public/voiceover.wav");
++  if (syncToPreview && path.resolve(outDir) !== path.dirname(publicCopy) && fs.existsSync(path.dirname(publicCopy))) {
++    fs.copyFileSync(result.voiceoverPath, publicCopy);
++  }
++  const tailSec = tailMs / 1000;
++  const totalSec = result.totalAudioDuration + tailSec;
++
++  // Shot spans run boundary to boundary, so a shot starts exactly where its narration does and the
++  // spans sum to the length of the wav.
++  const shotDurations = result.shotDurations.map((d, i) => (i === result.shotDurations.length - 1 ? d + tailSec : d));
++
++  let heardByLine: HeardWord[][] | null = null;
++  if (alignment === "whisper") {
++    // Each line is transcribed on its own clip, padded a little either side.
++    let probe = 0;
++    const ranges = shotDurations.map((d): [number, number] => {
++      const range: [number, number] = [Math.max(0, probe - 0.1), Math.min(totalSec, probe + d + 0.1)];
++      probe += d;
++      return range;
++    });
++    heardByLine = whisperWords(result.voiceoverPath, ranges);
++  }
++
++  let cursor = 0;
++  const timing: VoiceoverTiming = {
++    totalDurationSec: Number(totalSec.toFixed(3)),
++    ttsBackend: result.ttsBackend,
++    segments: result.segments.map((segment, idx) => {
++      const startSec = cursor;
++      cursor += shotDurations[idx];
++      const base = { shotId: beats[idx].id, text: segment.text, startSec: Number(startSec.toFixed(3)), durationSec: Number(shotDurations[idx].toFixed(3)) };
++      if (!heardByLine) {
++        return {
++          ...base,
++          words: segment.words.map((w) => ({
++            word: w.punctuated_word ?? w.word,
++            startSec: Number((segment.startOffset + w.start).toFixed(3)),
++            endSec: Number((segment.startOffset + w.end).toFixed(3)),
++          })),
++        };
++      }
++      const scripted = segment.text.split(/\s+/).filter(Boolean);
++      const times = alignWords(scripted, heardByLine[idx], startSec, startSec + segment.duration);
++      return {
++        ...base,
++        // Speech cannot start before its line does (whisper tends to pull a first word early), and
++        // a word is never shorter than a frame or earlier than the word before it.
++        words: scripted.map((word, w) => {
++          const prevEnd = w > 0 ? Math.max(startSec, times[w - 1].startSec) : startSec;
++          const from = Math.max(startSec, prevEnd, times[w].startSec);
++          times[w] = { startSec: from, endSec: Math.max(from + 0.06, times[w].endSec) };
++          return { word, startSec: Number(from.toFixed(3)), endSec: Number(times[w].endSec.toFixed(3)) };
++        }),
++      };
++    }),
++  };
++
++  fs.writeFileSync(path.join(outDir, config.spineFile ?? DEFAULTS.spineFile), `${JSON.stringify(timing, null, 2)}\n`, "utf8");
++  console.log(
++    `[${config.slug}] take ${timing.totalDurationSec.toFixed(2)}s, ${timing.segments.length} shots, ${result.ttsBackend}, ` +
++      `mastered to ${mastered.lufs.toFixed(1)} LUFS / ${mastered.truePeakDb.toFixed(1)} dBTP.`,
++  );
++  return timing;
++}
++
++// Reads back a film's measured shot spine, failing loudly when the audio step has not run yet.
++export function readVoiceoverTiming(slug: string, spineFile: string = DEFAULTS.spineFile, rootDir?: string): VoiceoverTiming {
++  const file = timingPath(slug, spineFile, rootDir);
++  if (!fs.existsSync(file)) {
++    throw new Error(`Missing ${file}. Run the film's narration step first (it calls produceVoiceover from backend/sceneKit/voiceover.ts).`);
++  }
++  return JSON.parse(fs.readFileSync(file, "utf8")) as VoiceoverTiming;
++}
+diff --git a/backend/sceneKit/whisperWords.py b/backend/sceneKit/whisperWords.py
+new file mode 100644
+index 0000000..d470080
+--- /dev/null
++++ b/backend/sceneKit/whisperWords.py
+@@ -0,0 +1,37 @@
++# File Description: Transcribes time ranges of a wav with the locally cached openai-whisper model and writes word-level timings as JSON.
++# Used by the scene kit's voiceover step (sceneKit/voiceover.ts) because the synthesizer's own word offsets are estimates, and a kinetic
++# typography film needs each word to land on the frame it is actually spoken. Each line is transcribed on its own clip,
++# which keeps whisper from smearing a word across the silence between two lines.
++import json
++import os
++import sys
++
++os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
++
++import whisper  # noqa: E402
++
++SAMPLE_RATE = 16000
++
++
++# Reads [[start, end], ...] ranges from argv[2] and writes one list of {word, start, end} per range (absolute seconds).
++def main() -> None:
++    wav_path, ranges_path, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
++    with open(ranges_path) as fh:
++        ranges = json.load(fh)
++    model = whisper.load_model("small")
++    audio = whisper.load_audio(wav_path)
++    lines = []
++    for start, end in ranges:
++        clip = audio[int(start * SAMPLE_RATE) : int(end * SAMPLE_RATE)]
++        result = model.transcribe(clip, word_timestamps=True, language="en", condition_on_previous_text=False)
++        words = []
++        for segment in result["segments"]:
++            for w in segment.get("words", []):
++                words.append({"word": w["word"].strip(), "start": round(start + float(w["start"]), 3), "end": round(start + float(w["end"]), 3)})
++        lines.append(words)
++    with open(out_path, "w") as fh:
++        json.dump(lines, fh)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/backend/sceneKit/wordWidths.json b/backend/sceneKit/wordWidths.json
+new file mode 100644
+index 0000000..efaf636
+--- /dev/null
++++ b/backend/sceneKit/wordWidths.json
+@@ -0,0 +1,952 @@
++{
++ "500": {
++  "A": 0.689,
++  "ABOUT": 3.357,
++  "ABOVE": 3.333,
++  "ACROSS": 4.09,
++  "ALL": 1.811,
++  "ALSO": 2.613,
++  "AND": 2.095,
++  "ANSWER": 4.241,
++  "ANYTHING": 4.94,
++  "APPROXIMATE": 6.837,
++  "AROUND": 4.221,
++  "ASK": 1.953,
++  "AT": 1.163,
++  "AUGMENTED": 6.103,
++  "AWAY": 2.648,
++  "Ask": 1.804,
++  "Augmented": 5.41,
++  "BAD": 2.033,
++  "BE": 1.281,
++  "BEAM": 2.837,
++  "BECOMES": 4.89,
++  "BEFORE": 3.919,
++  "BEST": 2.462,
++  "BIG": 1.658,
++  "BOTTOM": 4.146,
++  "BRAKES": 3.932,
++  "BUG": 2.094,
++  "BUT": 1.949,
++  "BY": 1.238,
++  "Bad": 1.845,
++  "But": 1.646,
++  "CALL": 2.498,
++  "CALLED": 3.757,
++  "CANDIDATES": 6.12,
++  "CHECKS": 3.993,
++  "CHUNK": 3.552,
++  "CHUNKS": 4.166,
++  "CITATIONS": 4.978,
++  "CLIMBS": 3.709,
++  "CLOSE": 3.264,
++  "CLOSER": 3.937,
++  "CLOSEST": 4.446,
++  "COMPARISONS": 7.341,
++  "CONFIDENCE": 6.404,
++  "CONFIDENT": 5.631,
++  "CONTEXT": 4.533,
++  "COORDINATES": 7.016,
++  "CUT": 1.975,
++  "Chunk": 3.068,
++  "DATABASE": 4.995,
++  "DATABASES": 5.649,
++  "DESIGN": 3.708,
++  "DIALS": 2.843,
++  "DISTANCE": 4.783,
++  "DOCUMENTS": 6.238,
++  "DON'T": 2.972,
++  "DOWN": 3.106,
++  "DRAW": 2.93,
++  "DROP": 2.796,
++  "DROWNS": 4.421,
++  "Draw": 2.425,
++  "EACH": 2.691,
++  "EF": 1.196,
++  "EMBED": 3.447,
++  "ENOUGH": 4.205,
++  "ENTERS": 3.773,
++  "EVERY": 3.141,
++  "EXACT": 3.163,
++  "Each": 2.302,
++  "Embed": 3.26,
++  "FALL": 2.324,
++  "FANS": 2.564,
++  "FAR": 1.86,
++  "FAST": 2.349,
++  "FETCH": 3.141,
++  "FEW": 2.167,
++  "FINDING": 3.983,
++  "FIX": 1.48,
++  "FOR": 2.037,
++  "FOUR": 2.735,
++  "FROM": 2.893,
++  "GARBAGE": 4.702,
++  "GENERATION": 6.222,
++  "GETS": 2.504,
++  "GOOD": 2.927,
++  "GOT": 1.992,
++  "GRAB": 2.737,
++  "GROUND": 4.267,
++  "GUESSES": 4.612,
++  "Garbage": 3.992,
++  "Generation": 5.117,
++  "Grab": 2.234,
++  "Ground": 3.417,
++  "H": 0.716,
++  "HALLUCINATION": 7.782,
++  "HAND": 2.801,
++  "HANDS": 3.455,
++  "HAS": 2.014,
++  "HIERARCHICAL": 7.181,
++  "HNSW": 3.014,
++  "HOLDS": 3.335,
++  "HONEST": 3.981,
++  "HOP": 2.12,
++  "HOW": 2.384,
++  "Hop": 1.892,
++  "I": 0.28,
++  "I'LL": 1.604,
++  "I'VE": 1.74,
++  "I'll": 1.021,
++  "I've": 1.576,
++  "IDEAS": 2.891,
++  "IN": 1.007,
++  "INDEX": 2.943,
++  "INSIDE": 3.24,
++  "INSTEAD": 4.125,
++  "INTO": 2.25,
++  "INVENT": 3.528,
++  "IS": 0.919,
++  "IT": 0.812,
++  "It": 0.653,
++  "JUST": 2.484,
++  "Just": 2.1,
++  "K": 0.656,
++  "KEEPS": 3.148,
++  "KNOW": 3.06,
++  "LAND": 2.658,
++  "LANDS": 3.312,
++  "LAST": 2.399,
++  "LAYER": 3.034,
++  "LAYERS": 3.673,
++  "LEAP": 2.472,
++  "LEARNING": 4.928,
++  "LET": 1.716,
++  "LIKELY": 3.092,
++  "LINKED": 3.495,
++  "LINKS": 2.816,
++  "LITTLE": 3.041,
++  "LONG": 2.74,
++  "LOOK": 2.682,
++  "LOOKS": 3.296,
++  "LOSES": 3.213,
++  "Leap": 2.295,
++  "Let": 1.504,
++  "M": 0.89,
++  "MAKE": 2.808,
++  "MANY": 2.866,
++  "ME": 1.481,
++  "MEANING": 4.58,
++  "MEASURE": 4.788,
++  "MILLION": 4.018,
++  "MISSES": 3.718,
++  "MODEL": 3.54,
++  "MORE": 2.926,
++  "MOST": 2.808,
++  "MUCH": 3.025,
++  "MY": 1.464,
++  "Meaning": 4.052,
++  "N": 0.745,
++  "NAVIGABLE": 5.46,
++  "NEAREST": 4.474,
++  "NEIGHBOUR": 5.823,
++  "NEIGHBOURS": 6.462,
++  "NEXT": 2.534,
++  "NO": 1.482,
++  "NOBODY": 4.185,
++  "NONE": 2.829,
++  "NOTICES": 4.223,
++  "NOW": 2.414,
++  "No": 1.323,
++  "Now": 2.126,
++  "ODDS": 2.828,
++  "OF": 1.356,
++  "ON": 1.507,
++  "ONCE": 2.812,
++  "ONE": 2.098,
++  "OR": 1.442,
++  "OUT": 2.013,
++  "OVERLAP": 4.534,
++  "On": 1.342,
++  "PIECES": 3.482,
++  "PIPELINE": 4.283,
++  "PLOT": 2.471,
++  "POINT": 2.946,
++  "POINTS": 3.56,
++  "PROMPT": 4.161,
++  "QUERIES": 4.261,
++  "QUERY": 3.308,
++  "QUESTION": 4.991,
++  "RAG": 2.038,
++  "RANDOM": 4.417,
++  "RECALL": 3.787,
++  "RECEIPTS": 4.703,
++  "REMEMBER": 5.58,
++  "REPEAT": 3.692,
++  "RETRIEVAL": 5.231,
++  "RINGS": 3.04,
++  "Retrieval": 4.163,
++  "S": 0.654,
++  "SAME": 2.765,
++  "SEARCH": 4.032,
++  "SENTENCE": 5.167,
++  "SET": 1.841,
++  "SHIFT": 2.787,
++  "SHORTER": 4.612,
++  "SIGNAL": 3.633,
++  "SIMILAR": 3.988,
++  "SINGLE": 3.518,
++  "SLOW": 2.86,
++  "SMALL": 3.355,
++  "SO": 1.405,
++  "SOME": 2.896,
++  "SOURCE": 4.099,
++  "SPACE": 3.222,
++  "SPARSE": 3.852,
++  "SPEAK": 3.24,
++  "SPRING": 3.687,
++  "STACK": 3.104,
++  "STEP": 2.414,
++  "STOP": 2.56,
++  "STOPPED": 4.48,
++  "STUFF": 3.062,
++  "Search": 3.303,
++  "Similar": 3.291,
++  "Small": 2.637,
++  "So": 1.253,
++  "Stack": 2.751,
++  "Step": 2.199,
++  "Stop": 2.211,
++  "Stuff": 2.322,
++  "TEAR": 2.498,
++  "THAT": 2.411,
++  "THAT'S": 3.261,
++  "THE": 1.849,
++  "THEM": 2.731,
++  "THEN": 2.586,
++  "THEY": 2.423,
++  "THOSE": 3.267,
++  "THOUSAND": 5.401,
++  "THREE": 3.131,
++  "TO": 1.279,
++  "TODAY": 3.164,
++  "TOO": 2.03,
++  "TOP": 1.947,
++  "TRADE": 3.2,
++  "TRICK": 2.848,
++  "TRUE": 2.54,
++  "TURN": 2.702,
++  "TWO": 2.241,
++  "That": 2.049,
++  "That's": 2.762,
++  "The": 1.696,
++  "Then": 2.277,
++  "They": 2.223,
++  "Too": 1.654,
++  "Turn": 2.039,
++  "Two": 1.914,
++  "UP": 1.366,
++  "USUALLY": 4.268,
++  "VECTOR": 3.942,
++  "W": 0.968,
++  "WATCH": 3.409,
++  "WAY": 2.068,
++  "WHEN": 2.988,
++  "WHICHEVER": 5.885,
++  "WHOLE": 3.534,
++  "WIDE": 2.527,
++  "WITH": 2.446,
++  "WORD": 3.075,
++  "WORLD": 3.6,
++  "WRONG": 3.815,
++  "Watch": 2.975,
++  "YOUR": 2.693,
++  "Your": 2.082,
++  "a": 0.565,
++  "about": 2.703,
++  "above": 2.826,
++  "across": 3.107,
++  "all": 1.11,
++  "also": 1.945,
++  "and": 1.749,
++  "answer": 3.414,
++  "anything": 4.079,
++  "approximate": 5.827,
++  "around": 3.267,
++  "at": 0.927,
++  "away": 2.434,
++  "be": 1.174,
++  "beam": 2.622,
++  "becomes": 4.27,
++  "before": 3.022,
++  "best": 2.081,
++  "big": 1.452,
++  "bottom": 3.337,
++  "brakes": 3.166,
++  "bug": 1.781,
++  "but": 1.568,
++  "by": 1.135,
++  "call": 1.674,
++  "called": 2.841,
++  "candidates": 5.154,
++  "checks": 3.339,
++  "chunk": 2.91,
++  "chunks": 3.389,
++  "citations": 4.026,
++  "climbs": 3.108,
++  "close": 2.514,
++  "closer": 2.898,
++  "closest": 3.421,
++  "comparisons": 6.002,
++  "confidence": 5.186,
++  "confident": 4.441,
++  "context": 3.565,
++  "coordinates": 5.51,
++  "cut": 1.523,
++  "database": 4.343,
++  "databases": 4.87,
++  "design": 3.135,
++  "dials": 2.203,
++  "distance": 4.015,
++  "documents": 5.237,
++  "don't": 2.363,
++  "down": 2.556,
++  "drop": 2.154,
++  "drowns": 3.451,
++  "each": 2.279,
++  "ef": 0.958,
++  "enough": 3.484,
++  "enters": 2.969,
++  "every": 2.572,
++  "exact": 2.582,
++  "fall": 1.492,
++  "fans": 2.06,
++  "far": 1.339,
++  "fast": 1.858,
++  "fetch": 2.456,
++  "few": 1.749,
++  "finding": 3.256,
++  "fix": 1.19,
++  "for": 1.342,
++  "four": 1.928,
++  "from": 2.201,
++  "gets": 2.075,
++  "good": 2.361,
++  "got": 1.566,
++  "guesses": 3.904,
++  "hallucination": 5.98,
++  "hand": 2.329,
++  "hands": 2.856,
++  "has": 1.675,
++  "hierarchical": 5.457,
++  "holds": 2.571,
++  "honest": 3.218,
++  "how": 1.969,
++  "ideas": 2.516,
++  "in": 0.853,
++  "index": 2.567,
++  "inside": 2.788,
++  "instead": 3.486,
++  "into": 1.797,
++  "invent": 2.882,
++  "is": 0.783,
++  "it": 0.63,
++  "just": 1.758,
++  "k": 0.609,
++  "keeps": 2.818,
++  "know": 2.536,
++  "land": 2.031,
++  "lands": 2.557,
++  "last": 1.757,
++  "layer": 2.306,
++  "layers": 2.803,
++  "leap": 2.023,
++  "learning": 3.806,
++  "let": 1.232,
++  "likely": 2.444,
++  "linked": 2.847,
++  "links": 2.21,
++  "little": 2.077,
++  "long": 2.039,
++  "look": 2.04,
++  "looks": 2.519,
++  "loses": 2.482,
++  "make": 2.559,
++  "many": 2.547,
++  "me": 1.448,
++  "measure": 4.05,
++  "million": 3.088,
++  "misses": 3.281,
++  "model": 2.901,
++  "more": 2.38,
++  "most": 2.368,
++  "much": 2.59,
++  "my": 1.405,
++  "navigable": 4.533,
++  "nearest": 3.556,
++  "neighbour": 4.726,
++  "neighbours": 5.223,
++  "next": 2.065,
++  "no": 1.167,
++  "nobody": 3.484,
++  "none": 2.311,
++  "notices": 3.435,
++  "odds": 2.311,
++  "of": 0.97,
++  "once": 2.286,
++  "one": 1.732,
++  "or": 0.972,
++  "out": 1.548,
++  "overlap": 3.479,
++  "pieces": 3.066,
++  "pipeline": 3.72,
++  "plot": 1.847,
++  "point": 2.401,
++  "points": 2.922,
++  "prompt": 3.386,
++  "queries": 3.465,
++  "query": 2.673,
++  "question": 4.068,
++  "random": 3.558,
++  "recall": 2.594,
++  "receipts": 3.812,
++  "remember": 4.795,
++  "repeat": 3.022,
++  "retrieval": 3.851,
++  "rings": 2.341,
++  "same": 2.548,
++  "search": 3.165,
++  "sentence": 4.313,
++  "set": 1.483,
++  "shift": 2.11,
++  "shorter": 3.388,
++  "signal": 2.798,
++  "single": 2.826,
++  "slow": 2.197,
++  "small": 2.51,
++  "so": 1.115,
++  "some": 2.553,
++  "source": 3.174,
++  "space": 2.823,
++  "sparse": 3.155,
++  "speak": 2.868,
++  "spring": 2.939,
++  "stopped": 3.85,
++  "stuff": 2.199,
++  "tear": 1.928,
++  "that": 1.902,
++  "the": 1.55,
++  "them": 2.424,
++  "then": 2.131,
++  "those": 2.654,
++  "thousand": 4.415,
++  "three": 2.464,
++  "to": 0.982,
++  "today": 2.662,
++  "too": 1.56,
++  "top": 1.58,
++  "trade": 2.503,
++  "trick": 2.189,
++  "true": 1.942,
++  "two": 1.789,
++  "up": 1.194,
++  "usually": 3.324,
++  "vector": 3,
++  "way": 1.896,
++  "when": 2.554,
++  "whichever": 4.825,
++  "whole": 2.831,
++  "wide": 2.239,
++  "with": 2.025,
++  "word": 2.342,
++  "world": 2.629,
++  "wrong": 2.924,
++  "your": 2.085
++ },
++ "800": {
++  "A": 0.75,
++  "ABOUT": 3.534,
++  "ABOVE": 3.505,
++  "ACROSS": 4.302,
++  "ALL": 1.894,
++  "ALSO": 2.765,
++  "AND": 2.186,
++  "ANSWER": 4.44,
++  "ANYTHING": 5.212,
++  "APPROXIMATE": 7.277,
++  "AROUND": 4.387,
++  "ASK": 2.089,
++  "AT": 1.263,
++  "AUGMENTED": 6.401,
++  "AWAY": 2.868,
++  "Ask": 1.965,
++  "Augmented": 5.78,
++  "BAD": 2.12,
++  "BE": 1.33,
++  "BEAM": 2.98,
++  "BECOMES": 5.107,
++  "BEFORE": 4.066,
++  "BEST": 2.601,
++  "BIG": 1.746,
++  "BOTTOM": 4.369,
++  "BRAKES": 4.148,
++  "BUG": 2.17,
++  "BUT": 2.034,
++  "BY": 1.304,
++  "Bad": 1.946,
++  "But": 1.762,
++  "CALL": 2.608,
++  "CALLED": 3.932,
++  "CANDIDATES": 6.444,
++  "CHECKS": 4.169,
++  "CHUNK": 3.649,
++  "CHUNKS": 4.304,
++  "CITATIONS": 5.293,
++  "CLIMBS": 3.915,
++  "CLOSE": 3.407,
++  "CLOSER": 4.112,
++  "CLOSEST": 4.677,
++  "COMPARISONS": 7.685,
++  "CONFIDENCE": 6.618,
++  "CONFIDENT": 5.869,
++  "CONTEXT": 4.823,
++  "COORDINATES": 7.372,
++  "CUT": 2.068,
++  "Chunk": 3.237,
++  "DATABASE": 5.259,
++  "DATABASES": 5.954,
++  "DESIGN": 3.854,
++  "DIALS": 3.006,
++  "DISTANCE": 5.003,
++  "DOCUMENTS": 6.516,
++  "DON'T": 3.106,
++  "DOWN": 3.217,
++  "DRAW": 3.095,
++  "DROP": 2.891,
++  "DROWNS": 4.591,
++  "Draw": 2.561,
++  "EACH": 2.785,
++  "EF": 1.237,
++  "EMBED": 3.596,
++  "ENOUGH": 4.33,
++  "ENTERS": 3.966,
++  "EVERY": 3.311,
++  "EXACT": 3.392,
++  "Each": 2.437,
++  "Embed": 3.423,
++  "FALL": 2.417,
++  "FANS": 2.676,
++  "FAR": 1.951,
++  "FAST": 2.498,
++  "FETCH": 3.253,
++  "FEW": 2.269,
++  "FINDING": 4.149,
++  "FIX": 1.612,
++  "FOR": 2.108,
++  "FOUR": 2.826,
++  "FROM": 3.009,
++  "GARBAGE": 4.937,
++  "GENERATION": 6.526,
++  "GETS": 2.649,
++  "GOOD": 3.055,
++  "GOT": 2.114,
++  "GRAB": 2.88,
++  "GROUND": 4.416,
++  "GUESSES": 4.821,
++  "Garbage": 4.277,
++  "Generation": 5.544,
++  "Grab": 2.407,
++  "Ground": 3.647,
++  "H": 0.724,
++  "HALLUCINATION": 8.14,
++  "HAND": 2.9,
++  "HANDS": 3.595,
++  "HAS": 2.114,
++  "HIERARCHICAL": 7.518,
++  "HNSW": 3.125,
++  "HOLDS": 3.463,
++  "HONEST": 4.139,
++  "HOP": 2.179,
++  "HOW": 2.477,
++  "Hop": 1.984,
++  "I": 0.31,
++  "I'LL": 1.684,
++  "I'VE": 1.872,
++  "I'll": 1.167,
++  "I've": 1.745,
++  "IDEAS": 3.054,
++  "IN": 1.051,
++  "INDEX": 3.11,
++  "INSIDE": 3.388,
++  "INSTEAD": 4.363,
++  "INTO": 2.39,
++  "INVENT": 3.712,
++  "IS": 0.988,
++  "IT": 0.901,
++  "It": 0.747,
++  "JUST": 2.624,
++  "Just": 2.269,
++  "K": 0.705,
++  "KEEPS": 3.306,
++  "KNOW": 3.2,
++  "LAND": 2.758,
++  "LANDS": 3.453,
++  "LAST": 2.547,
++  "LAYER": 3.199,
++  "LAYERS": 3.879,
++  "LEAP": 2.595,
++  "LEARNING": 5.147,
++  "LET": 1.809,
++  "LIKELY": 3.28,
++  "LINKED": 3.662,
++  "LINKS": 2.977,
++  "LITTLE": 3.262,
++  "LONG": 2.83,
++  "LOOK": 2.815,
++  "LOOKS": 3.47,
++  "LOSES": 3.362,
++  "Leap": 2.436,
++  "Let": 1.624,
++  "M": 0.927,
++  "MAKE": 2.972,
++  "MANY": 3.022,
++  "ME": 1.543,
++  "MEANING": 4.791,
++  "MEASURE": 4.999,
++  "MILLION": 4.2,
++  "MISSES": 3.927,
++  "MODEL": 3.652,
++  "MORE": 3.037,
++  "MOST": 2.968,
++  "MUCH": 3.104,
++  "MY": 1.557,
++  "Meaning": 4.309,
++  "N": 0.753,
++  "NAVIGABLE": 5.769,
++  "NEAREST": 4.695,
++  "NEIGHBOUR": 6.041,
++  "NEIGHBOURS": 6.721,
++  "NEXT": 2.696,
++  "NO": 1.523,
++  "NOBODY": 4.347,
++  "NONE": 2.897,
++  "NOTICES": 4.429,
++  "NOW": 2.505,
++  "No": 1.376,
++  "Now": 2.204,
++  "ODDS": 2.94,
++  "OF": 1.403,
++  "ON": 1.546,
++  "ONCE": 2.886,
++  "ONE": 2.162,
++  "OR": 1.499,
++  "OUT": 2.111,
++  "OVERLAP": 4.749,
++  "On": 1.409,
++  "PIECES": 3.637,
++  "PIPELINE": 4.476,
++  "PLOT": 2.592,
++  "POINT": 3.096,
++  "POINTS": 3.751,
++  "PROMPT": 4.352,
++  "QUERIES": 4.458,
++  "QUERY": 3.459,
++  "QUESTION": 5.227,
++  "RAG": 2.151,
++  "RANDOM": 4.602,
++  "RECALL": 3.942,
++  "RECEIPTS": 4.937,
++  "REMEMBER": 5.827,
++  "REPEAT": 3.882,
++  "RETRIEVAL": 5.53,
++  "RINGS": 3.185,
++  "Retrieval": 4.567,
++  "S": 0.695,
++  "SAME": 2.907,
++  "SEARCH": 4.195,
++  "SENTENCE": 5.37,
++  "SET": 1.944,
++  "SHIFT": 2.935,
++  "SHORTER": 4.824,
++  "SIGNAL": 3.812,
++  "SIMILAR": 4.224,
++  "SINGLE": 3.679,
++  "SLOW": 3,
++  "SMALL": 3.512,
++  "SO": 1.483,
++  "SOME": 3.032,
++  "SOURCE": 4.254,
++  "SPACE": 3.353,
++  "SPARSE": 4.034,
++  "SPEAK": 3.424,
++  "SPRING": 3.85,
++  "STACK": 3.317,
++  "STEP": 2.563,
++  "STOP": 2.703,
++  "STOPPED": 4.692,
++  "STUFF": 3.2,
++  "Search": 3.548,
++  "Similar": 3.566,
++  "Small": 2.833,
++  "So": 1.333,
++  "Stack": 2.999,
++  "Step": 2.381,
++  "Stop": 2.394,
++  "Stuff": 2.578,
++  "TEAR": 2.657,
++  "THAT": 2.578,
++  "THAT'S": 3.495,
++  "THE": 1.941,
++  "THEM": 2.868,
++  "THEN": 2.689,
++  "THEY": 2.571,
++  "THOSE": 3.425,
++  "THOUSAND": 5.631,
++  "THREE": 3.274,
++  "TO": 1.363,
++  "TODAY": 3.351,
++  "TOO": 2.151,
++  "TOP": 2.047,
++  "TRADE": 3.375,
++  "TRICK": 3.045,
++  "TRUE": 2.658,
++  "TURN": 2.797,
++  "TWO": 2.377,
++  "That": 2.237,
++  "That's": 3.025,
++  "The": 1.829,
++  "Then": 2.44,
++  "They": 2.401,
++  "Too": 1.791,
++  "Turn": 2.224,
++  "Two": 2.052,
++  "UP": 1.402,
++  "USUALLY": 4.468,
++  "VECTOR": 4.154,
++  "W": 1.038,
++  "WATCH": 3.597,
++  "WAY": 2.235,
++  "WHEN": 3.098,
++  "WHICHEVER": 6.145,
++  "WHOLE": 3.682,
++  "WIDE": 2.664,
++  "WITH": 2.621,
++  "WORD": 3.206,
++  "WORLD": 3.76,
++  "WRONG": 3.98,
++  "Watch": 3.213,
++  "YOUR": 2.818,
++  "Your": 2.261,
++  "a": 0.609,
++  "about": 2.923,
++  "above": 3.064,
++  "across": 3.388,
++  "all": 1.244,
++  "also": 2.125,
++  "and": 1.864,
++  "answer": 3.652,
++  "anything": 4.403,
++  "approximate": 6.299,
++  "around": 3.505,
++  "at": 1.029,
++  "away": 2.574,
++  "be": 1.257,
++  "beam": 2.767,
++  "becomes": 4.565,
++  "before": 3.298,
++  "best": 2.271,
++  "big": 1.567,
++  "bottom": 3.612,
++  "brakes": 3.429,
++  "bug": 1.892,
++  "but": 1.699,
++  "by": 1.219,
++  "call": 1.852,
++  "called": 3.098,
++  "candidates": 5.593,
++  "checks": 3.601,
++  "chunk": 3.113,
++  "chunks": 3.621,
++  "citations": 4.448,
++  "climbs": 3.354,
++  "close": 2.746,
++  "closer": 3.176,
++  "closest": 3.76,
++  "comparisons": 6.467,
++  "confidence": 5.634,
++  "confident": 4.851,
++  "context": 3.905,
++  "coordinates": 6.005,
++  "cut": 1.667,
++  "database": 4.694,
++  "databases": 5.27,
++  "design": 3.375,
++  "dials": 2.421,
++  "distance": 4.377,
++  "documents": 5.61,
++  "don't": 2.555,
++  "down": 2.699,
++  "drop": 2.323,
++  "drowns": 3.687,
++  "each": 2.437,
++  "ef": 1.054,
++  "enough": 3.71,
++  "enters": 3.244,
++  "every": 2.825,
++  "exact": 2.814,
++  "fall": 1.678,
++  "fans": 2.237,
++  "far": 1.483,
++  "fast": 2.055,
++  "fetch": 2.698,
++  "few": 1.876,
++  "finding": 3.539,
++  "fix": 1.358,
++  "for": 1.491,
++  "four": 2.109,
++  "from": 2.372,
++  "gets": 2.268,
++  "good": 2.53,
++  "got": 1.707,
++  "guesses": 4.215,
++  "hallucination": 6.511,
++  "hand": 2.471,
++  "hands": 3.047,
++  "has": 1.791,
++  "hierarchical": 5.963,
++  "holds": 2.776,
++  "honest": 3.472,
++  "how": 2.069,
++  "ideas": 2.718,
++  "in": 0.921,
++  "index": 2.768,
++  "inside": 3.024,
++  "instead": 3.776,
++  "into": 1.97,
++  "invent": 3.153,
++  "is": 0.87,
++  "it": 0.73,
++  "just": 1.97,
++  "k": 0.666,
++  "keeps": 3.031,
++  "know": 2.693,
++  "land": 2.188,
++  "lands": 2.765,
++  "last": 1.946,
++  "layer": 2.52,
++  "layers": 3.066,
++  "leap": 2.186,
++  "learning": 4.124,
++  "let": 1.374,
++  "likely": 2.697,
++  "linked": 3.079,
++  "links": 2.408,
++  "little": 2.375,
++  "long": 2.194,
++  "look": 2.229,
++  "looks": 2.737,
++  "loses": 2.713,
++  "make": 2.701,
++  "many": 2.696,
++  "me": 1.514,
++  "measure": 4.319,
++  "million": 3.357,
++  "misses": 3.534,
++  "model": 3.097,
++  "more": 2.537,
++  "most": 2.54,
++  "much": 2.73,
++  "my": 1.479,
++  "navigable": 4.912,
++  "nearest": 3.863,
++  "neighbour": 5.075,
++  "neighbours": 5.621,
++  "next": 2.248,
++  "no": 1.24,
++  "nobody": 3.73,
++  "none": 2.458,
++  "notices": 3.753,
++  "odds": 2.483,
++  "of": 1.067,
++  "once": 2.455,
++  "one": 1.851,
++  "or": 1.063,
++  "out": 1.685,
++  "overlap": 3.815,
++  "pieces": 3.332,
++  "pipeline": 4.036,
++  "plot": 2.029,
++  "point": 2.609,
++  "points": 3.183,
++  "prompt": 3.639,
++  "queries": 3.763,
++  "query": 2.887,
++  "question": 4.407,
++  "random": 3.792,
++  "recall": 2.862,
++  "receipts": 4.182,
++  "remember": 5.102,
++  "repeat": 3.289,
++  "retrieval": 4.281,
++  "rings": 2.548,
++  "same": 2.703,
++  "search": 3.424,
++  "sentence": 4.666,
++  "set": 1.634,
++  "shift": 2.354,
++  "shorter": 3.72,
++  "signal": 3.04,
++  "single": 3.067,
++  "slow": 2.36,
++  "small": 2.714,
++  "so": 1.209,
++  "some": 2.713,
++  "source": 3.442,
++  "space": 3.039,
++  "sparse": 3.422,
++  "speak": 3.093,
++  "spring": 3.185,
++  "stopped": 4.165,
++  "stuff": 2.465,
++  "tear": 2.112,
++  "that": 2.089,
++  "the": 1.68,
++  "them": 2.578,
++  "then": 2.291,
++  "those": 2.88,
++  "thousand": 4.734,
++  "three": 2.692,
++  "to": 1.083,
++  "today": 2.884,
++  "too": 1.706,
++  "top": 1.72,
++  "trade": 2.73,
++  "trick": 2.44,
++  "true": 2.124,
++  "two": 1.912,
++  "up": 1.265,
++  "usually": 3.613,
++  "vector": 3.316,
++  "way": 2.002,
++  "when": 2.688,
++  "whichever": 5.203,
++  "whole": 3.022,
++  "wide": 2.39,
++  "with": 2.191,
++  "word": 2.5,
++  "world": 2.835,
++  "wrong": 3.115,
++  "your": 2.254
++ }
++}
+diff --git a/backend/sceneKit/wrap.ts b/backend/sceneKit/wrap.ts
+new file mode 100644
+index 0000000..6407933
+--- /dev/null
++++ b/backend/sceneKit/wrap.ts
+@@ -0,0 +1,62 @@
++/**
++ * File Description: Balanced line wrapping for display type.
++ * A greedy wrap leaves a stray word alone on the last row. This wrapper finds the fewest rows a
++ * greedy fill needs, then shrinks the row limit as far as that same row count allows, so the rows
++ * come out even. Every token is measured as it will be set (kerned words, trailing punctuation).
++ */
++
++import { tokenWidth, measureText, type Face } from "./typeMetrics";
++
++/** How the line will be set, which decides how wide each token is. */
++export interface WrapOpts {
++  size: number;
++  /** The widest a row may be, in px. */
++  maxWidth: number;
++  face?: Face;
++  weight?: 500 | 800;
++  /** Letter-spacing in em. */
++  tracking?: number;
++}
++
++/** Strips display markup (accent stars and `{n}` spoken-span suffixes) so a token is measured as drawn. */
++function shape(token: string): string {
++  return token.replace(/\{\d+\}$/, "").replace(/\*/g, "");
++}
++
++/** Splits a marked display line into balanced rows that fit `maxWidth`, keeping each token's markup. */
++export function wrapBalanced(marked: string, o: WrapOpts): string[] {
++  const face = o.face ?? "sans";
++  const weight = o.weight ?? 800;
++  const tracking = o.tracking ?? (face === "sans" ? -0.03 : 0);
++  const tokens = marked.split(/\s+/).filter(Boolean);
++  if (tokens.length === 0) return [];
++  const space = measureText(" ", o.size, face, weight, tracking);
++  const widths = tokens.map((t) => tokenWidth(shape(t), o.size, face, weight, tracking));
++
++  // Greedy fill at a given limit, returning the rows as token index ranges.
++  const fill = (limit: number): Array<[number, number]> => {
++    const out: Array<[number, number]> = [];
++    let start = 0;
++    let w = 0;
++    tokens.forEach((_, i) => {
++      const next = i === start ? widths[i] : w + space + widths[i];
++      if (i > start && next > limit) {
++        out.push([start, i]);
++        start = i;
++        w = widths[i];
++      } else w = next;
++    });
++    out.push([start, tokens.length]);
++    return out;
++  };
++
++  const rowCount = fill(o.maxWidth).length;
++  let lo = o.maxWidth / rowCount;
++  let hi = o.maxWidth;
++  for (let k = 0; k < 24; k++) {
++    const mid = (lo + hi) / 2;
++    if (fill(mid).length <= rowCount) hi = mid;
++    else lo = mid;
++  }
++  return fill(hi).map(([a, b]) => tokens.slice(a, b).join(" "));
++}
+diff --git a/backend/stillTalking/artwork.ts b/backend/stillTalking/artwork.ts
+index 5ac10fc..130b969 100644
+--- a/backend/stillTalking/artwork.ts
++++ b/backend/stillTalking/artwork.ts
+@@ -8,6 +8,8 @@
+  * requires, and all motion lives in the separate declarative timelines.
+  */
+ 
++import { rng } from "../sceneKit";
++
+ /** Colour tokens of the rendered-video design language, written literally into SVG attributes. */
+ export const COLOR = {
+   canvas: "#0A0A0B",
+@@ -32,17 +34,6 @@ function accentAlpha(alpha: number): string {
+   return `rgba(99, 91, 255, ${alpha.toFixed(3)})`;
+ }
+ 
+-/** Deterministic 32 bit PRNG, so a regenerated star field is byte identical to the committed one. */
+-function mulberry32(seed: number): () => number {
+-  let a = seed >>> 0;
+-  return () => {
+-    a = (a + 0x6d2b79f5) >>> 0;
+-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+-  };
+-}
+-
+ /** Rounds a coordinate to two decimals so emitted path data stays stable and readable. */
+ function r2(value: number): number {
+   return Math.round(value * 100) / 100;
+@@ -100,7 +91,7 @@ function buildStarField(options: {
+   opacityMax: number;
+   twinkles: number;
+ }): string {
+-  const rand = mulberry32(options.seed);
++  const rand = rng(options.seed);
+   const stars: string[] = [];
+   for (let i = 0; i < options.count; i++) {
+     const x = r2(options.xMin + rand() * (options.xMax - options.xMin));
+@@ -481,7 +472,7 @@ function buildPlate(): string {
+ 
+ /** Builds the heliopause: the boundary arc, the wind that stops at it, and what waits outside. */
+ function buildBoundary(): string {
+-  const rand = mulberry32(20120825);
++  const rand = rng(20120825);
+ 
+   // Solar wind: short streamers on the inside, all pointing outward along the craft's heading.
+   const wind: string[] = [];
+@@ -543,7 +534,7 @@ function buildRecord(): string {
+ 
+   // The pulsar map: rays of different lengths radiating from one point, as etched on the cover.
+   const rays: string[] = [];
+-  const rand = mulberry32(1977);
++  const rand = rng(1977);
+   for (let i = 0; i < 14; i++) {
+     const angle = (i / 14) * Math.PI * 2 + 0.2;
+     const len = 46 + rand() * 66;
+diff --git a/backend/stillTalking/produceVoiceover.ts b/backend/stillTalking/produceVoiceover.ts
+index 32ae557..ae4d365 100644
+--- a/backend/stillTalking/produceVoiceover.ts
++++ b/backend/stillTalking/produceVoiceover.ts
+@@ -1,230 +1,47 @@
+ /**
+  * File Description: Audio-first narration step for the film "Still Talking".
+- * Runs the project's narration pipeline over the beat sheet's spoken text and records the shot
+- * spine it produced: which shot each narration segment belongs to, where it starts, how long it
+- * runs, and when each word inside it is spoken. The film's picture is compiled from that
+- * measurement, so a re-recorded take retimes the film instead of drifting away from it.
+- *
+- * The pipeline itself owns voiceover.wav, captions.vtt and voiceover_words.json, which are shared
+- * artefacts every film produces. This step owns shot-spine.json, the same measurement keyed by
+- * shot, and that is the only narration artefact the film builder reads.
++ * Declares this film's delivery choices (pace, gaps, tail handle) and hands the beat sheet to the
++ * shared scene-kit voiceover step (backend/sceneKit/voiceover.ts), which synthesizes, masters and
++ * records shot-spine.json. The film's picture is compiled from that measurement, so a re-recorded
++ * take retimes the film instead of drifting away from it.
+  */
+ 
+-import * as fs from "fs";
+-import * as path from "path";
+-import { spawnSync } from "child_process";
+-import dotenv from "dotenv";
+-import { produceAudioPipeline } from "../audio";
+-import { narrationSegments, spokenWordCount, BEATS } from "./beats";
+-import { getVideosDir } from "../../src/dl/videoPackageLoader";
++import { BEATS, spokenWordCount } from "./beats";
++import { produceVoiceover as produceKitVoiceover, readVoiceoverTiming as readKitTiming, type VoiceoverTiming } from "../sceneKit/voiceover";
+ 
+-dotenv.config();
++export type { VoiceoverTiming };
+ 
+-/**
+- * Delivery loudness for the master, in LUFS, with its true-peak ceiling in dBFS.
+- * The pipeline peak-normalizes, which leaves a neural voice around -21 LUFS: correct on paper and
+- * noticeably quiet next to anything else on a feed. Loudness normalizing on top of it is a per-film
+- * mastering decision, so it lives here rather than in the shared pipeline.
+- */
+-const TARGET_LUFS = -16;
+-const TARGET_TRUE_PEAK_DB = -1;
++/** The video package this film lives in (videos/<slug>). */
++export const SLUG = "still-talking";
+ 
+-/**
+- * Narration pace multiplier handed to the synthesizer.
+- * Slightly under one reads as narration rather than as conversation, which is what a film about
+- * something that has been travelling for fifty years needs.
+- */
++/** Narration pace: slightly under one reads as narration rather than conversation, which suits a fifty-year voyage. */
+ const NARRATION_SPEED = 0.94;
+ 
+ /** Silence held between narration beats, which is also the film's smallest breathing space. */
+ const BEAT_GAP_MS = 520;
+ 
+-/**
+- * Silence appended after the last word, in milliseconds.
+- * Narration assembly trims its tail, which leaves the film cutting to black under a tenth of a
+- * second after the final syllable and gives the closing card no time to be read. The handle is
+- * part of the take rather than a frame count added later, so the scene stays clocked to its audio.
+- */
++/** Silence appended after the last word so the closing card can be read and the scene stays clocked to its audio. */
+ const TAIL_HANDLE_MS = 2200;
+ 
+-/** The measurement the film builder reads back: what was said, and exactly when. */
+-export interface VoiceoverTiming {
+-  totalDurationSec: number;
+-  /** Which synthesizer produced the take, recorded for provenance. */
+-  ttsBackend?: string;
+-  segments: Array<{
+-    shotId: string;
+-    text: string;
+-    startSec: number;
+-    durationSec: number;
+-    words: Array<{ word: string; startSec: number; endSec: number }>;
+-  }>;
+-}
+-
+-/** Absolute path to the still-talking video package. */
+-export function packageDir(): string {
+-  return path.join(getVideosDir(), "still-talking");
+-}
+-
+-/** Path of the shot spine artefact the film builder consumes. */
+-export function timingPath(): string {
+-  return path.join(packageDir(), "shot-spine.json");
+-}
+-
+-/** Runs ffmpeg and hands back its report, which is written to stderr rather than to stdout. */
+-function ffmpegReport(args: string[]): string {
+-  const run = spawnSync("ffmpeg", args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+-  if (run.error) throw run.error;
+-  return run.stderr ?? "";
+-}
+-
+-/** Measured loudness of a wav: integrated LUFS and true peak in dBFS. */
+-function measureLoudness(wavPath: string): { lufs: number; truePeakDb: number } {
+-  const report = ffmpegReport([
+-    "-i", wavPath,
+-    "-af", `loudnorm=I=${TARGET_LUFS}:TP=${TARGET_TRUE_PEAK_DB}:LRA=7:print_format=json`,
+-    "-f", "null", "-",
+-  ]);
+-  const json = report.slice(report.lastIndexOf("{"), report.lastIndexOf("}") + 1);
+-  const parsed = JSON.parse(json) as { input_i: string; input_tp: string };
+-  return { lufs: Number.parseFloat(parsed.input_i), truePeakDb: Number.parseFloat(parsed.input_tp) };
+-}
+-
+-/** Reads the sample peak of a wav in dBFS, as ffmpeg's volumedetect filter reports it. */
+-function measurePeakDb(wavPath: string): number {
+-  const report = ffmpegReport(["-i", wavPath, "-af", "volumedetect", "-f", "null", "-"]);
+-  const match = report.match(/max_volume:\s*(-?[\d.]+) dB/);
+-  if (!match) throw new Error(`Could not read a peak level from ${wavPath}.`);
+-  return Number.parseFloat(match[1]);
+-}
+-
+-/**
+- * Masters the narration for delivery without changing its length.
+- * Two things have to be true at once and neither follows from the other. Loudness normalization
+- * rides the voice's isolated plosive peaks down and brings the body of the narration up, which is
+- * what puts the film at the level everything else on a feed sits at; peak normalization then
+- * spends the headroom that leaves, so the file is as loud as it can be while still holding a
+- * decibel clear of full scale. Doing only the second is how a correct-looking master plays quiet.
+- */
+-function masterForDelivery(wavPath: string): { lufs: number; truePeakDb: number } {
+-  const staged = `${wavPath}.mastered.wav`;
+-  ffmpegReport([
+-    "-y", "-i", wavPath,
+-    "-af", `loudnorm=I=${TARGET_LUFS}:TP=${TARGET_TRUE_PEAK_DB}:LRA=7`,
+-    "-ar", "44100", "-ac", "2", staged,
+-  ]);
+-  if (!fs.existsSync(staged)) throw new Error(`Mastering produced no output for ${wavPath}.`);
+-
+-  const gainDb = TARGET_TRUE_PEAK_DB - measurePeakDb(staged);
+-  const peaked = `${wavPath}.peaked.wav`;
+-  ffmpegReport([
+-    "-y", "-i", staged,
+-    "-af", `volume=${gainDb.toFixed(2)}dB`,
+-    "-ar", "44100", "-ac", "2", peaked,
+-  ]);
+-  fs.rmSync(staged, { force: true });
+-  fs.renameSync(peaked, wavPath);
+-
+-  // Remotion resolves staticFile() against public/, so the copy there has to be the mastered one.
+-  const publicCopy = path.resolve(__dirname, "../../public/voiceover.wav");
+-  if (fs.existsSync(path.dirname(publicCopy))) fs.copyFileSync(wavPath, publicCopy);
+-
+-  return { lufs: measureLoudness(wavPath).lufs, truePeakDb: measurePeakDb(wavPath) };
+-}
+-
+-/**
+- * Appends the tail handle to the master and copies the result where Remotion reads it.
+- * Padding the take rather than the timeline is what keeps the scene honestly clocked to its
+- * audio: the film is exactly as long as the wav, tail included.
+- */
+-function appendTailHandle(wavPath: string): void {
+-  const padded = `${wavPath}.padded.wav`;
+-  ffmpegReport([
+-    "-y", "-i", wavPath,
+-    "-af", `apad=pad_dur=${(TAIL_HANDLE_MS / 1000).toFixed(3)}`,
+-    "-ar", "44100", "-ac", "2", padded,
+-  ]);
+-  if (!fs.existsSync(padded)) throw new Error(`Could not append a tail handle to ${wavPath}.`);
+-  fs.renameSync(padded, wavPath);
+-
+-  const publicCopy = path.resolve(__dirname, "../../public/voiceover.wav");
+-  if (fs.existsSync(path.dirname(publicCopy))) fs.copyFileSync(wavPath, publicCopy);
+-}
+-
+ /** Synthesizes the narration and records the shot spine it produced. */
+ export async function produceVoiceover(): Promise<VoiceoverTiming> {
+-  const outDir = packageDir();
+-  fs.mkdirSync(outDir, { recursive: true });
+-
+-  const segments = narrationSegments();
+-  console.log(
+-    `[still-talking] ${segments.length} narration beats, ${spokenWordCount()} spoken words.`,
+-  );
+-
+-  const result = await produceAudioPipeline(segments, outDir, {
+-    gapMs: BEAT_GAP_MS,
++  console.log(`[${SLUG}] ${BEATS.length} narration beats, ${spokenWordCount()} spoken words.`);
++  return produceKitVoiceover({
++    slug: SLUG,
++    beats: BEATS.map((beat) => ({ id: beat.id, narration: beat.narration })),
+     speed: NARRATION_SPEED,
++    gapMs: BEAT_GAP_MS,
++    tailMs: TAIL_HANDLE_MS,
++    alignment: "synthesizer",
+   });
+-
+-  if (result.segments.length !== BEATS.length) {
+-    throw new Error(
+-      `Narration produced ${result.segments.length} segments for ${BEATS.length} beats. ` +
+-        "The pipeline merged a beat that was too short to stand on its own: lengthen it in beats.ts.",
+-    );
+-  }
+-
+-  const mastered = masterForDelivery(result.voiceoverPath);
+-  appendTailHandle(result.voiceoverPath);
+-  const tailSec = TAIL_HANDLE_MS / 1000;
+-
+-  // Shot spans run boundary to boundary, so a shot starts exactly where its narration does and
+-  // the spans sum to the length of the wav.
+-  const shotDurations = result.shotDurations.map((d, i) =>
+-    i === result.shotDurations.length - 1 ? d + tailSec : d,
+-  );
+-
+-  let cursor = 0;
+-  const timing: VoiceoverTiming = {
+-    totalDurationSec: Number((result.totalAudioDuration + tailSec).toFixed(3)),
+-    ttsBackend: result.ttsBackend,
+-    segments: result.segments.map((segment, i) => {
+-      const startSec = cursor;
+-      cursor += shotDurations[i];
+-      return {
+-        shotId: BEATS[i].id,
+-        text: segment.text,
+-        startSec: Number(startSec.toFixed(3)),
+-        durationSec: Number(shotDurations[i].toFixed(3)),
+-        words: segment.words.map((w) => ({
+-          word: w.punctuated_word ?? w.word,
+-          startSec: Number((segment.startOffset + w.start).toFixed(3)),
+-          endSec: Number((segment.startOffset + w.end).toFixed(3)),
+-        })),
+-      };
+-    }),
+-  };
+-
+-  fs.writeFileSync(timingPath(), `${JSON.stringify(timing, null, 2)}\n`, "utf8");
+-  console.log(
+-    `[still-talking] voiceover.wav is ${timing.totalDurationSec.toFixed(2)}s across ` +
+-      `${timing.segments.length} shots, synthesized with ${result.ttsBackend}, ` +
+-      `mastered to ${mastered.lufs.toFixed(1)} LUFS / ${mastered.truePeakDb.toFixed(1)} dBTP.`,
+-  );
+-  return timing;
+ }
+ 
+ /** Reads back the measured shot spine, failing loudly when the audio step has not run yet. */
+ export function readVoiceoverTiming(): VoiceoverTiming {
+-  const file = timingPath();
+-  if (!fs.existsSync(file)) {
+-    throw new Error(
+-      `Missing ${file}. Run the narration step first: npx tsx backend/stillTalking/produceVoiceover.ts`,
+-    );
+-  }
+-  return JSON.parse(fs.readFileSync(file, "utf8")) as VoiceoverTiming;
++  return readKitTiming(SLUG);
+ }
+ 
+-if (require.main === module) {
++if (typeof require !== "undefined" && require.main === module) {
+   produceVoiceover().catch((err) => {
+     console.error(err);
+     process.exit(1);
+diff --git a/backend/stillTalking/reviewFrames.ts b/backend/stillTalking/reviewFrames.ts
+index 03be705..d658493 100644
+--- a/backend/stillTalking/reviewFrames.ts
++++ b/backend/stillTalking/reviewFrames.ts
+@@ -50,7 +50,7 @@ export async function renderReviewStills(scale = 0.5): Promise<string> {
+   return renderStills(picks(), OUT_DIR, scale);
+ }
+ 
+-if (require.main === module) {
++if (typeof require !== "undefined" && require.main === module) {
+   const scaleArg = Number.parseFloat(process.argv[2] ?? "0.5");
+   renderReviewStills(Number.isFinite(scaleArg) ? scaleArg : 0.5)
+     .then((dir) => console.log(`[still-talking] review stills in ${dir}`))
+diff --git a/docs/CONTEXT.md b/docs/CONTEXT.md
+index c07c4de..6154e9a 100644
+--- a/docs/CONTEXT.md
++++ b/docs/CONTEXT.md
+@@ -433,14 +433,35 @@ An individual vector path inside a limb:
+ * `validateScene.ts`: Phase 1 semantic and physical integrity validator (`validateScene`) including Rule 20 timeline consistency.
+ * `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`, `collectSceneAssetElementIds`).
+ 
+-### `backend/sceneKit/` (Scene Film Authoring Kit)
++### `backend/sceneKit/` (Scene-Film Authoring & Stage Kit)
+ * `stage.ts`: Scene geometry constants (`SCENE_SIZE`, `SAFE_SQUARE`, `FORMAT_WINDOWS`, `FPS`).
+-* `timeline.ts`: Pure `Timeline` authoring builder enforcing value holding, origin uniqueness, and camera track continuity (`Timeline.camera`, `Timeline.buildCamera`).
+-* `timing.ts`: Word-level narration cue mapping (`createCues`, `shotFrames`).
+-* `assets.ts`: Validated SVG asset generator (`writeSvgAssets`).
+-
+-### `backend/designCheck/` (Design Standard Gate)
+-* `checkFilmDesign(raw)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, static artwork, locked palette, typography, motion continuity, audio lock, honest data, and speed-capped continuous camera moves (max 20% frame width per second, no zero-duration jumps).
++* `Canvas` (`canvas.ts`): Authoring canvas combining static SVG markup generation and continuity-checked declarative animation clips; provides `group`, `add`, `svg`, `lifetime`, `init`, `to`, `fadeIn`, `fadeOut`, `cutOn`, `cutOff`, `draw`, `appear`, `typeReveal`, `typeCaret`, and `lyric` for kinetic typography locked to spoken words.
++* `Timeline` (`timeline.ts`): Continuity-checked declarative timeline builder enforcing monotonic clip transitions, single-origin transforms, and camera track continuity (`Timeline.camera`, `Timeline.buildCamera`).
++* `shotFrames(timing)`, `createCues(timing)` (`timing.ts`): Calculates cumulative shot frame spans and creates audio-first word-level cue resolution functions from narration timing.
++* `writeSvgAssets(dir, assets)` (`assets.ts`): Validates and persists SVG artwork dictionaries to disk.
++* `PAL`, `DEFAULT_ACCENT`, `HAIR`, `HAIR2`, `W`, `H`, `OY`, `FONT`, `frameOf(sec)`, `rng(seed)`, `n(v)`, `attrs(o)`, `el(tag, o, inner)`, `g(id, x, y, inner, extra)`, `text(content, o)`, `stroke(color, width, extra)` (`svg.ts`): SVG markup generators, deterministic random number generator, standard palette tokens, and layout constants.
++* `measureText(text, size, face, weight, trackingEm)`, `tokenWidth(token, size, face, weight, trackingEm)`, `advanceEm(ch, face, weight)`, `MONO_ADVANCE` (`typeMetrics.ts`): Font metric measurement with kerning support backed by `wordWidths.json`.
++* `wrapBalanced(marked, options)` (`wrap.ts`): Balanced line wrapping algorithm for display type.
++* `corners(inset, bottom, len, color)`, `backdropSvg(options)`, `hudTag(label, x, y, anchor)`, `readoutSeries(canvas, prefix, x, y, values)` (`chrome.ts`): Frame furniture and chrome elements for scene films.
++* `produceVoiceover(config)`, `readVoiceoverTiming(slug, spineFile, rootDir)` (`voiceover.ts`): Audio-first narration synthesis, mastering, Whisper word alignment, and shot-spine persistence.
++* `previewFrames(source, frames, rootDir)`, `framesFromArgs(args)` (`preview.ts`): Fast headless Chrome preview frames rasterizer.
++* `reviewFilmFrames(slug, frames, scale)` (`reviewFrames.ts`): Renders Remotion composition review stills for any scene film.
++* `midShotPicks(spans, composition)`, `renderReviewStills(picks, outDir, scale)` (`reviewStills.ts`): Renders review still picks via Remotion bundler and renderer.
++* `displayWords(lines, extra)`, `unmeasuredWords(words, table)`, `measureWords(words, file)` (`measureWords.ts`): Measures unmeasured words in headless Chrome and merges them into `wordWidths.json`.
++
++### `backend/designCheck/` (Deterministic Design Standard Checker)
++* `checkFilmDesign(raw)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, scene engine validity, static self-contained artwork, locked palette, typography, motion continuity, single transform origin, picture locked to narration, honest data / grounded numbers, and speed-capped continuous camera moves (max 20% frame width per second, no zero-duration jumps).
++* `checkFilmDesignById(filmId)` (`designCheck.ts`): Loads a film by package slug and executes design validation.
++* `formatDesignReport(report)` (`designCheck.ts`): Formats validation findings and recommendations into a terminal report.
++* `offPaletteColours(svgText, accent)` (`designCheck.ts`): Finds colour literals in SVG markup that violate the locked palette and chosen accent.
++
++### `backend/designSpec/` (Bespoke Film Design Specification & Compiler)
++* `renderDesignBrief(film)`, `writeDesignBrief(filmId)` (`brief.ts`): Generates designer briefs (`design/BRIEF.md`) containing film contracts, shot narration, and asset specifications.
++* `compileDesign(film, spec, options)` (`compile.ts`): Compiles a `DesignSpec` and narration timing into a validated scene film.
++* `buildDesign(filmId, source)` (`build.ts`): Compiles design specifications, executes design checks, and writes passing films.
++* `resolveCue(cue, cues)` (`cues.ts`): Resolves cue strings and frame offsets against narration timing cues.
++* `designFilm(filmId, options)` (`designer.ts`): Orchestrates agent-based and server-model film design workflows with validation retry loops.
++* `requestShotMotion(filmId, request)` (`motionRequests.ts`): Manages shot-level motion design tasks and history snapshots.
+ 
+ ### `backend/transcribe.ts` (Audio & Video Transcription)
+ * `transcribe(src, options, deps)`: Transcribes audio or video media into word-level timings (`TranscribedWord[]`) with confidence scores, using Deepgram with local Whisper CLI fallback.
+diff --git a/package.json b/package.json
+index 649ba1f..90c2b06 100644
+--- a/package.json
++++ b/package.json
+@@ -60,7 +60,7 @@
+     "review": "tsx backend/cli.ts review",
+     "calibrate:review": "tsx scripts/calibrate_review.ts",
+     "validate:film": "tsx scripts/validate_film.ts",
+-    "test": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/compliance.test.ts backend/ideation/ideation.test.ts backend/audio.test.ts backend/voiceSynthesis.test.ts backend/transcribe.test.ts backend/editContext/editContext.test.ts backend/editPlanner/validator.test.ts backend/editPlanner/interpreter.test.ts backend/editPlanner/planner.test.ts backend/editPlanner/ai_edit_invariants.test.ts backend/editPlanner/phase3_invariants.test.ts backend/mcp/mcp.test.ts backend/claude_script_intake.test.ts backend/script_intake_prose.test.ts backend/jev.test.ts backend/agent_prompter.test.ts backend/agentBridge/agentBridge.test.ts backend/agentBridge/traceBus.test.ts backend/agentBridge/canvasLoop.test.ts backend/voiceover_stutter.test.ts backend/sync.test.ts backend/character.test.ts backend/perceptual.test.ts backend/scene/scene.test.ts backend/scene/actions.test.ts backend/scene/compile.test.ts backend/scene/patch.test.ts backend/scene/author.test.ts backend/scene/integration.test.ts backend/rigs/rigging.test.ts backend/scene/secondary.test.ts backend/visual_pipeline/phase_b.test.ts backend/visual_pipeline/phase_c.test.ts backend/visual_pipeline/phase_d.test.ts backend/visual_pipeline/phase_e.test.ts backend/critique/critique.test.ts backend/scene/termResolver.test.ts backend/captionsParser.test.ts backend/scene/generateSvg.test.ts backend/scene/svgAnimation.test.ts backend/timeline/bug_audit_fixes.test.ts backend/timeline/geometry.test.ts backend/timeline/timeline.test.ts backend/timeline/layer_model.test.ts backend/timeline/layer_interaction.test.ts backend/timeline/layer_management.test.ts backend/timeline/imported_footage.test.ts backend/timeline/voiceover_editing.test.ts backend/timeline/subtitle_clips.test.ts backend/timeline/drag_machine.test.ts backend/video_package.test.ts backend/aideos_codebase_fixes.test.ts backend/fullScreenHeroLayout.test.ts backend/design_language_palette.test.ts backend/pipeline/pipeline.test.ts backend/still_talking_film.test.ts backend/pipeline/director.test.ts backend/pipeline/agent_director_invariants.test.ts backend/jev_shot_visual.test.ts backend/jev_batch.test.ts backend/visionJudge/visionJudge.test.ts backend/eval/shotVisualEval.test.ts backend/pipeline/design_jev.test.ts backend/pipeline/deviceData.test.ts backend/designSpec/shotTools.test.ts backend/agentLink/agentLink.test.ts backend/designSpec/motionRequests.test.ts backend/sceneKit/sceneKit.test.ts backend/designCheck/designCheck.test.ts backend/designSpec/designSpec.test.ts backend/designSpec/designer.test.ts backend/goodVideoRubric.test.ts backend/review/review.test.ts",
++    "test": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/compliance.test.ts backend/ideation/ideation.test.ts backend/audio.test.ts backend/voiceSynthesis.test.ts backend/transcribe.test.ts backend/editContext/editContext.test.ts backend/editPlanner/validator.test.ts backend/editPlanner/interpreter.test.ts backend/editPlanner/planner.test.ts backend/editPlanner/ai_edit_invariants.test.ts backend/editPlanner/phase3_invariants.test.ts backend/mcp/mcp.test.ts backend/claude_script_intake.test.ts backend/script_intake_prose.test.ts backend/jev.test.ts backend/agent_prompter.test.ts backend/agentBridge/agentBridge.test.ts backend/agentBridge/traceBus.test.ts backend/agentBridge/canvasLoop.test.ts backend/voiceover_stutter.test.ts backend/sync.test.ts backend/character.test.ts backend/perceptual.test.ts backend/scene/scene.test.ts backend/scene/actions.test.ts backend/scene/compile.test.ts backend/scene/patch.test.ts backend/scene/author.test.ts backend/scene/integration.test.ts backend/rigs/rigging.test.ts backend/scene/secondary.test.ts backend/visual_pipeline/phase_b.test.ts backend/visual_pipeline/phase_c.test.ts backend/visual_pipeline/phase_d.test.ts backend/visual_pipeline/phase_e.test.ts backend/critique/critique.test.ts backend/scene/termResolver.test.ts backend/captionsParser.test.ts backend/scene/generateSvg.test.ts backend/scene/svgAnimation.test.ts backend/timeline/bug_audit_fixes.test.ts backend/timeline/geometry.test.ts backend/timeline/timeline.test.ts backend/timeline/layer_model.test.ts backend/timeline/layer_interaction.test.ts backend/timeline/layer_management.test.ts backend/timeline/imported_footage.test.ts backend/timeline/voiceover_editing.test.ts backend/timeline/subtitle_clips.test.ts backend/timeline/drag_machine.test.ts backend/video_package.test.ts backend/aideos_codebase_fixes.test.ts backend/fullScreenHeroLayout.test.ts backend/design_language_palette.test.ts backend/pipeline/pipeline.test.ts backend/still_talking_film.test.ts backend/pipeline/director.test.ts backend/pipeline/agent_director_invariants.test.ts backend/jev_shot_visual.test.ts backend/jev_batch.test.ts backend/visionJudge/visionJudge.test.ts backend/eval/shotVisualEval.test.ts backend/pipeline/design_jev.test.ts backend/pipeline/deviceData.test.ts backend/designSpec/shotTools.test.ts backend/agentLink/agentLink.test.ts backend/designSpec/motionRequests.test.ts backend/sceneKit/sceneKit.test.ts backend/sceneKit/authoring.test.ts backend/designCheck/designCheck.test.ts backend/designSpec/designSpec.test.ts backend/designSpec/designer.test.ts backend/goodVideoRubric.test.ts backend/review/review.test.ts",
+     "design:check": "tsx backend/cli.ts design-check",
+     "connect": "node scripts/aideos-connect.mjs",
+     "test:visual": "RUN_VISUAL_TESTS=1 node --import tsx --test --test-concurrency=1 backend/visual_pipeline/phase_b.test.ts backend/rigs/rigging.test.ts backend/scene/svgAnimation.test.ts",
+diff --git a/src/dl/scene/README.md b/src/dl/scene/README.md
+index e3c1dc0..32790fc 100644
+--- a/src/dl/scene/README.md
++++ b/src/dl/scene/README.md
+@@ -32,7 +32,7 @@ CompiledFrame.camera              dense per-frame camera state
+ | Remotion entry point | `SceneClip.tsx` |
+ | Whole-film stage | `../SceneStage.tsx` |
+ | Audio-first retiming | `sceneTiming.ts` |
+-| Scene-film kit (Timeline builder, camera authoring) | `../../../backend/sceneKit/timeline.ts` |
++| Scene-film kit (Canvas, Timeline builder, camera authoring) | `../../../backend/sceneKit/` |
+ | Node-side asset loading | `../../../backend/scene/loadSceneAssets.ts` |
+ | Browser-bundle SVG source map builder | `../../../backend/scene/buildSvgSources.ts` |
+ 

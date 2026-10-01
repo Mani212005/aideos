@@ -15,6 +15,7 @@ import dotenv from "dotenv";
 import { produceAudioPipeline } from "../audio";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import type { NarrationTiming } from "./timing";
+import { norm } from "./text";
 
 dotenv.config();
 
@@ -125,10 +126,7 @@ function appendTailHandle(wavPath: string, tailMs: number): void {
   fs.renameSync(padded, wavPath);
 }
 
-// Lowercases a word and strips everything but letters and digits, for matching spoken to scripted.
-function norm(word: string): string {
-  return word.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
+
 
 // Transcribes each [start, end] range of a wav with local whisper, one word list per range.
 function whisperWords(wavPath: string, ranges: Array<[number, number]>): HeardWord[][] {
@@ -277,10 +275,10 @@ export async function produceVoiceover(config: VoiceoverConfig): Promise<Voiceov
       return {
         ...base,
         // Speech cannot start before its line does (whisper tends to pull a first word early), and
-        // a word is never shorter than a frame or earlier than the word before it.
+        // a word is never shorter than a frame or earlier than the word before it starts.
         words: scripted.map((word, w) => {
-          const prevEnd = w > 0 ? Math.max(startSec, times[w - 1].startSec) : startSec;
-          const from = Math.max(startSec, prevEnd, times[w].startSec);
+          const prevStart = w > 0 ? Math.max(startSec, times[w - 1].startSec) : startSec;
+          const from = Math.max(startSec, prevStart, times[w].startSec);
           times[w] = { startSec: from, endSec: Math.max(from + 0.06, times[w].endSec) };
           return { word, startSec: Number(from.toFixed(3)), endSec: Number(times[w].endSec.toFixed(3)) };
         }),

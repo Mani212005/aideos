@@ -45,8 +45,9 @@ export function advanceEm(ch: string, face: Face, weight: 500 | 800 = 800): numb
 
 // Measures a string in pixels at a font size, including letter-spacing in em.
 export function measureText(text: string, size: number, face: Face, weight: 500 | 800 = 800, trackingEm = 0): number {
-  const known = face === "sans" ? wordTable()[String(weight)]?.[text] : undefined;
-  if (known !== undefined) return (known + trackingEm * [...text].length) * size;
+  const table = wordTable()[String(weight)];
+  const known = face === "sans" && table && Object.hasOwn(table, text) ? table[text] : undefined;
+  if (typeof known === "number") return (known + trackingEm * [...text].length) * size;
   let em = 0;
   for (const ch of text) em += advanceEm(ch, face, weight) + trackingEm;
   return em * size;

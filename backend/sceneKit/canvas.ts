@@ -13,6 +13,7 @@ import { Timeline } from "./timeline";
 import { createCues, type Cues, type NarrationTiming } from "./timing";
 import { measureText, tokenWidth, type Face } from "./typeMetrics";
 import { DEFAULT_ACCENT, OY, PAL, W, frameOf, g, text, type AttrValue } from "./svg";
+import { norm, bare, shape } from "./text";
 
 /** Rest value of each property, which is what an untouched element holds. */
 const REST: Record<string, number> = { translateX: 0, translateY: 0, rotate: 0, scale: 1, scaleX: 1, scaleY: 1, opacity: 1, drawOn: 1 };
@@ -302,9 +303,7 @@ export class Canvas {
     // A display token may cover several spoken words ("HNSW{4}" is the four letters H N S W said one by one).
     const tokens = o.rows.map((row) => row.split(/\s+/).filter(Boolean));
     const flat = tokens.flat();
-    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
     const spanOf = (t: string) => Number(t.match(/\{(\d+)\}$/)?.[1] ?? 1);
-    const bare = (t: string) => t.replace(/\{\d+\}$/, "");
     let cursor = 0;
     for (const t of flat) {
       const said = segment.words.slice(cursor, cursor + spanOf(t)).map((w) => norm(w.word)).join("");
@@ -319,8 +318,8 @@ export class Canvas {
     }
 
     const sizes = o.rows.map((_, r) => (Array.isArray(o.size) ? o.size[r] ?? o.size[o.size.length - 1] : o.size));
-    const shape = (t: string) => {
-      const plain = bare(t).replace(/\*/g, "");
+    const displayShape = (t: string) => {
+      const plain = shape(t);
       return o.upper ? plain.toUpperCase() : plain;
     };
 
@@ -337,7 +336,7 @@ export class Canvas {
     tokens.forEach((row, r) => {
       const size = sizes[r];
       const space = measureText(" ", size, face, weight, 0) + tracking * size;
-      const widths = row.map((t) => tokenWidth(shape(t), size, face, weight, tracking));
+      const widths = row.map((t) => tokenWidth(displayShape(t), size, face, weight, tracking));
       const rowWidth = widths.reduce((a, b) => a + b, 0) + space * (row.length - 1);
       let x = o.align === "center" ? o.x - rowWidth / 2 : o.align === "right" ? o.x - rowWidth : o.x;
       if (x < bounds.x0 - 0.5 || x + rowWidth > bounds.x1 + 0.5) {
@@ -356,9 +355,9 @@ export class Canvas {
         const isAccent = inAccent;
         if (bare(tok).length > 1 && bare(tok).endsWith("*")) inAccent = false;
         const land = Math.max(0, frameOf(word.startSec) - (o.lead0 ?? 1));
-        this.add(text(shape(tok), { id, x, y: baseline, size, face, weight, fill: isAccent ? accent : fill, tracking }));
+        this.add(text(displayShape(tok), { id, x, y: baseline, size, face, weight, fill: isAccent ? accent : fill, tracking }));
         ids.push(id);
-        placed.push({ id, text: shape(tok), x, y: baseline, w: widths[i], size, startFrame: land, endFrame: frameOf(word.endSec) });
+        placed.push({ id, text: displayShape(tok), x, y: baseline, w: widths[i], size, startFrame: land, endFrame: frameOf(word.endSec) });
 
         const entry = o.rowEntry?.[r] ?? o.entry ?? "rise";
         entries.set(id, entry);
