@@ -622,7 +622,7 @@ export async function compileFilmFromScreenplayAsync(
     canvas: { nodes, edges },
     shots,
     voiceover: { src: `videos/${slug}/voiceover.wav`, volume: 1, durationSec: totalSec },
-    captions: `videos/${slug}/captions.vtt`,
+    captions: "bottom",
     ...(options.music ? { music: options.music } : {}),
   });
 

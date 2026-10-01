@@ -30,6 +30,9 @@ export const FORMAT_WINDOWS: Record<"wide" | "reel", SceneRect> = {
 /** The centre square both formats see. Anything essential to the story belongs inside it. */
 export const SAFE_SQUARE: SceneRect = { x0: 420, y0: 420, x1: 1500, y1: 1500 };
 
+/** The safe square excluding the bottom 22% caption band (y=1260 to 1500 in wide, y=1498 to 1920 in reel). */
+export const CAPTION_SAFE_SQUARE: SceneRect = { x0: 420, y0: 420, x1: 1500, y1: 1260 };
+
 // Reports whether one rectangle lies entirely inside another.
 export function rectInside(inner: SceneRect, outer: SceneRect): boolean {
   return inner.x0 >= outer.x0 && inner.y0 >= outer.y0 && inner.x1 <= outer.x1 && inner.y1 <= outer.y1;

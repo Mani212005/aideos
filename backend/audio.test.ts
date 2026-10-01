@@ -156,7 +156,7 @@ test("buildFilmFromAudioResult produces valid film JSON matching audio result", 
   assert.equal(film.shots[1].dur, 4.2);
   assert.equal(film.shots[2].dur, 3.5);
   assert.equal(film.voiceover?.src, "voiceover.wav");
-  assert.equal(film.captions, "captions.vtt");
+  assert.equal(film.captions, "bottom");
 
   const shotSum = film.shots.reduce((sum, s) => sum + s.dur, 0);
   assert.ok(Math.abs(shotSum - dummyResult.totalAudioDuration) < 0.05);

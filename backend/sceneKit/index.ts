@@ -6,7 +6,7 @@
  * standard layer (clip format: src/dl/scene/README.md).
  */
 
-export { FPS, SCENE_SIZE, FORMAT_WINDOWS, SAFE_SQUARE, rectInside, type SceneRect } from "./stage";
+export { FPS, SCENE_SIZE, FORMAT_WINDOWS, SAFE_SQUARE, CAPTION_SAFE_SQUARE, rectInside, type SceneRect } from "./stage";
 export { Timeline, type ClipSpec } from "./timeline";
 export { shotFrames, createCues, type NarrationTiming, type ShotFrames, type Cues } from "./timing";
 export { writeSvgAssets } from "./assets";

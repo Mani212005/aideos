@@ -561,7 +561,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
   const { width, height, fps } = useVideoConfig();
   const current = shotAt(timeline, frame);
   const cam = camAt(film, timeline, frame, { width, height });
-  const isReel = width < height;
+
 
   // The whole composition drifts 100 -> 104% across a held shot; the diagram
   // inside never moves once drawn. It is the difference between a still frame
@@ -687,11 +687,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {activeTransition === "paper-rip" && (
           <PaperRip active={isTransitioning} progress={transitionProgress} frame={frame} />
         )}
-        {/* Burned-in subtitles are a reel-only treatment. src/dl/README.md rules them out of
-            the design language because they fight the panel for the same space and every
-            long-form platform draws its own from the sidecar track - but a vertical frame
-            already reserves its bottom fifth for platform chrome, and social video is
-            watched muted, so there the caption has somewhere to live and a job to do. */}
+        {/* Burned-in subtitles previously reel-only, now default across formats */}
         {/* Master Audio Track & Multi-Clip Voiceover Spine */}
         {includeAudio && (
           <>
@@ -760,8 +756,8 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {/* Chapter Rail */}
         {showRail ? <Rail film={film} timeline={timeline} /> : null}
 
-        {/* Burned-in subtitles are a reel-only treatment rendered after Rail */}
-        {isReel && captionWords && captionWords.length > 0 ? (
+        {/* Burned-in subtitles rendered after Rail */}
+        {film.captions !== "off" && captionWords && captionWords.length > 0 ? (
           <KineticSubtitles
             words={captionWords}
             maxWidth={width * 0.86}
