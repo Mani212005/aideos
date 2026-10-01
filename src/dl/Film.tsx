@@ -761,7 +761,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
           <KineticSubtitles
             words={captionWords}
             maxWidth={width * 0.86}
-            fontSize={Math.round(width * 0.042)}
+            fontSize={Math.round(Math.min(width, height) * 0.042)}
             highlightColor={accent}
             position="bottom"
           />

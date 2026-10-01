@@ -1,10 +1,5 @@
 /**
- * ==============================================================================
- * AIDEOS 2.0: PRETEXT KINETIC SUBTITLES & TEXT ENGINE
- * ==============================================================================
- * Calculates word-level karaoke highlights and smooth phrase-chunked subtitles
- * inside Remotion's 60 FPS render cycle with zero layout jitter.
- * ==============================================================================
+ * File Description: Pretext kinetic subtitles and text engine calculating word-level karaoke highlights and phrase-chunked subtitles inside Remotion's render cycle.
  */
 
 import React, { useMemo } from "react";
