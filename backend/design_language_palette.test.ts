@@ -18,8 +18,7 @@ const PALETTE = ["#0A0A0B", "#F5F5F5", "#8A8A8E", "#635BFF", "#101013"];
  * Subtrees governed by their own rules rather than by this one:
  * - `films/` and the schema/converter defaults are film DATA. A film carries its own
  *   `theme.accent`; that value is authored per film, not a component styling choice.
- * - `scene/` is the generative SVG surface. Its rules are enforced by the validators in
- *   `backend/scene/generateSvg.ts` against generated assets, which is where they belong.
+ * - `scene/` is the custom SVG scene surface, governed by its own asset validation.
  * - `tokens.ts` is where the palettes and background themes are DEFINED, so every literal
  *   in it is by definition the source rather than a violation.
  */
@@ -40,8 +39,6 @@ const NOT_GOVERNED_HERE = [
 const KNOWN_DRIFT = [
   "src/dl/CanvasGraph.tsx",
   "src/dl/KineticSubtitles.tsx",
-  "src/dl/metaphors/GlowingClusterMetaphor.tsx",
-  "src/dl/metaphors/MetaphorViewer.tsx",
 ];
 
 /**

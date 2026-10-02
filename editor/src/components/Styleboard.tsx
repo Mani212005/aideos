@@ -1,6 +1,6 @@
 /**
- * File Description: Styleboard & Visual Keyframe Studio component providing rich scene previews,
- * SVG character animations, metaphor badges, 3D camera controls, and animated primitive specimens.
+ * File Description: Styleboard and Visual Keyframe Studio component providing rich scene previews,
+ * metaphor badges, 3D camera controls, and animated primitive specimens.
  */
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
@@ -12,17 +12,10 @@ import type {
   CameraAngle,
 } from "../../../src/dl/schema";
 import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
-import { CHARACTER_RIGS } from "../../../src/dl/characters";
+
 import { ShotModal } from "./ShotModal";
 import {
-  User,
-  Code,
   Bot,
-  FlaskConical,
-  Briefcase,
-  Headphones,
-  BookOpen,
-  Cpu,
   Square,
   Box,
   Video,
@@ -53,20 +46,6 @@ interface StyleboardProps {
   onSelectShot?: (id: string) => void;
   onUpdateFilm?: (film: Film) => void;
 }
-
-const RIG_ICONS: Record<
-  string,
-  React.ComponentType<{ size?: number; className?: string }>
-> = {
-  astronaut: User,
-  developer: Code,
-  robot: Bot,
-  scientist: FlaskConical,
-  executive: Briefcase,
-  "data-engineer": Headphones,
-  educator: BookOpen,
-  mascot: Cpu,
-};
 
 const ACCENTS = [
   { name: "Electric Indigo", hex: "#635BFF" },
@@ -114,14 +93,6 @@ function getMapBounds(film: Film) {
  * Derives a prominent visual metaphor label and Lucide icon from a shot.
  */
 function getMetaphorInfo(shot: Shot) {
-  // Check if shot has a CharacterBeat
-  const charBlock = shot.blocks.find((b) => b.c === "CharacterBeat") as any;
-  if (charBlock) {
-    const charName =
-      charBlock.characterId === "developer" ? "Tech Architect" : "Astro Guide";
-    return { label: `Character: ${charName}`, icon: User, color: "#635BFF" };
-  }
-
   if (shot.needsFootage) {
     return { label: "GPU B-Roll Scene", icon: FilmIcon, color: "#F59E0B" };
   }
@@ -159,41 +130,6 @@ function getMetaphorInfo(shot: Shot) {
  */
 function renderBlockPreview(block: Block, accent: string) {
   switch (block.c) {
-    case "CharacterBeat":
-      const charBlock = block as any;
-      const rig =
-        CHARACTER_RIGS[charBlock.characterId as keyof typeof CHARACTER_RIGS] ||
-        CHARACTER_RIGS.astronaut;
-      const poseKeyframes = charBlock.keyframes || [{ t: 0, pose: "neutral" }];
-      const RigIcon = RIG_ICONS[charBlock.characterId] || User;
-      return (
-        <div className="bg-paper-3 p-3 border border-select/40 flex items-center justify-between shadow-nb-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-select/20 border border-select/50 flex items-center justify-center text-select-text">
-              <RigIcon size={20} />
-            </div>
-            <div>
-              <div className="text-xs font-bold text-ink flex items-center gap-1.5">
-                <span>{rig.name}</span>
-                <span className="badge badge-xs badge-primary font-mono">
-                  {charBlock.stage || "frame"}
-                </span>
-              </div>
-              <div className="text-[10px] text-ink-soft font-mono mt-0.5">
-                Pose:{" "}
-                <span className="text-select-text font-bold">
-                  {poseKeyframes[0]?.pose || "neutral"}
-                </span>{" "}
-                ({poseKeyframes.length} keyframes)
-              </div>
-            </div>
-          </div>
-          <span className="text-[10px] font-mono text-ink bg-success/25 border-2 border-ink/30 px-2 py-0.5  shadow-nb-sm">
-            60 FPS SVG
-          </span>
-        </div>
-      );
-
     case "TextReveal":
       return (
         <div className="py-1">
@@ -514,41 +450,21 @@ export function Styleboard({
   };
 
   /**
-   * Toggles or changes a shot's visual mode (Standard, SVG Character, or B-Roll).
+   * Toggles or changes a shot's visual mode (Standard or B-Roll).
    */
   const handleSetShotMode = (
     shotIdx: number,
-    mode: "standard" | "character" | "b-roll",
+    mode: "standard" | "b-roll",
   ) => {
     if (!onUpdateFilm) return;
     const updatedShots = [...film.shots];
     const shot = updatedShots[shotIdx];
     if (!shot) return;
 
-    if (mode === "character") {
-      // Remove other device blocks and add CharacterBeat
-      const filteredBlocks = shot.blocks.filter(
-        (b) => b.c !== "CharacterBeat" && b.c !== "MetaphorViewer",
-      );
-      const charBlock: Block = {
-        c: "CharacterBeat",
-        characterId: "astronaut",
-        stage: "frame",
-        keyframes: [
-          { t: 0, pose: "neutral" },
-          { t: 0.5, pose: "present-right" },
-        ],
-      } as any;
-
-      updatedShots[shotIdx] = {
-        ...shot,
-        needsFootage: false,
-        blocks: [charBlock, ...filteredBlocks],
-      };
-    } else if (mode === "b-roll") {
+    if (mode === "b-roll") {
       // Set needsFootage flag and attach AnalogyInset block
       const filteredBlocks = shot.blocks.filter(
-        (b) => b.c !== "CharacterBeat" && b.c !== "AnalogyInset",
+        (b) => b.c !== "AnalogyInset",
       );
       const footageSrc =
         existingFootage[shot.id] || `footage/${film.id}_${shot.id}.mp4`;
@@ -579,7 +495,7 @@ export function Styleboard({
       return;
     } else {
       // Standard narrative text / devices
-      const filteredBlocks = shot.blocks.filter((b) => b.c !== "CharacterBeat");
+      const filteredBlocks = shot.blocks.filter((b) => b.c !== "AnalogyInset");
       updatedShots[shotIdx] = {
         ...shot,
         needsFootage: false,
@@ -764,15 +680,8 @@ export function Styleboard({
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {film.shots.map((shot, idx) => {
                 const metaphor = getMetaphorInfo(shot);
-                const hasChar = shot.blocks.some(
-                  (b) => b.c === "CharacterBeat",
-                );
                 const hasBroll = !!shot.needsFootage;
-                const activeMode = hasChar
-                  ? "character"
-                  : hasBroll
-                    ? "b-roll"
-                    : "standard";
+                const activeMode = hasBroll ? "b-roll" : "standard";
 
                 return (
                   <div
@@ -838,20 +747,6 @@ export function Styleboard({
                           title="Standard Device / Text Mode"
                         >
                           Standard
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSetShotMode(idx, "character");
-                          }}
-                          className={`text-[10px] px-2 py-0.5 font-mono transition-all flex items-center gap-1 ${
-                            activeMode === "character"
-                              ? "bg-select text-select-ink font-bold"
-                              : "text-ink-soft hover:text-ink"
-                          }`}
-                          title="SVG Character Rig Animation"
-                        >
-                          <User size={10} /> Character
                         </button>
                         <button
                           onClick={(e) => {
@@ -1012,31 +907,6 @@ export function Styleboard({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Primitive 0: CharacterBeat */}
-              <div className="bg-paper-3 border border-select/40 p-5 flex flex-col gap-3">
-                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
-                  <span className="text-xs font-mono font-bold text-ink">
-                    00 · CharacterBeat
-                  </span>
-                  <span className="badge badge-xs badge-primary font-mono">
-                    SVG Rig
-                  </span>
-                </div>
-                <div className="p-3 bg-paper border-2 border-ink flex items-center gap-3 shadow-nb-sm">
-                  <div className="w-8 h-8 bg-select/20 border border-select/40 flex items-center justify-center text-select-text">
-                    <User size={18} />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-ink">
-                      Astro Guide / Tech Architect
-                    </div>
-                    <div className="text-[10px] text-ink-soft">
-                      8 Presets · Kinematics
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Primitive 1: TextReveal */}
               <div className="bg-paper-3 border-2 border-ink p-5 flex flex-col gap-3 shadow-nb-sm">
                 <div className="flex items-center justify-between border-b-2 border-ink pb-2">

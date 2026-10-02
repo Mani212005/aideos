@@ -1959,7 +1959,6 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               title,
               id,
               script = '',
-              characterId = 'developer',
               theme = 'smooth-dark',
               accent = '#635BFF',
               voice: _voice = 'kokoro-am_adam',
@@ -2057,24 +2056,15 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 let visualBlock: any;
                 if (i === 0) {
                   visualBlock = {
-                    c: "CharacterBeat",
-                    characterId,
-                    poses: [
-                      { t: 0.0, groups: { torso: { rotate: 0 }, rightArm: { rotate: -20 }, leftArm: { rotate: 20 } } },
-                      { t: 0.4, groups: { torso: { rotate: 3 }, rightArm: { rotate: -65 }, leftArm: { rotate: -10 } } },
-                      { t: 1.0, groups: { torso: { rotate: 0 }, rightArm: { rotate: 0 }, leftArm: { rotate: 0 } } },
-                    ],
+                    c: "TextReveal",
+                    text: headline,
                   };
                 } else if (i === count - 1) {
                   visualBlock = {
-                    c: "CharacterBeat",
-                    characterId,
-                    poses: [
-                      { t: 0.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
-                      { t: 0.25, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
-                      { t: 0.85, groups: { torso: { rotate: 0 }, head: { rotate: -4 }, leftArm: { rotate: 110 }, rightArm: { rotate: -110 } } },
-                      { t: 1.0, groups: { torso: { rotate: 0 }, head: { rotate: 0 }, leftArm: { rotate: 0 }, rightArm: { rotate: 0 } } },
-                    ],
+                    c: "StatCounter",
+                    to: 10,
+                    suffix: "x",
+                    label: "Milestone",
                   };
                 } else if (i === 1) {
                   visualBlock = {

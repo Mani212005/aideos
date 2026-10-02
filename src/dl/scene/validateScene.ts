@@ -5,11 +5,8 @@
  * 100% pure TypeScript validator with zero Node runtime dependencies.
  */
 
-import type { Scene, EnvironmentAsset, ActorInstance, Track } from "./types";
+import type { Scene, EnvironmentAsset, Track } from "./types";
 import { validateSvgTimeline } from "./svgAnimation";
-import { getCharacterRigById } from "../characters";
-import { getModelSheet } from "./modelSheet";
-import { ACTION_METADATA, getAffectedJointsForAction } from "./actions";
 
 export interface ValidationError {
   rule: number;
@@ -234,135 +231,8 @@ export function validateScene(scene: Scene): ValidationResult {
     }
   }
 
-  // Rules 6, 7, 10, 12, 13, 17, 18: Validate actors
-  if (Array.isArray(scene.actors)) {
-    for (const actor of scene.actors) {
-      // Rule 6: rigId resolves to a rig in cast library
-      const rig = getCharacterRigById(actor.rigId);
-      if (!rig) {
-        errors.push({
-          rule: 6,
-          entityId: actor.instanceId,
-          message: `Actor "${actor.instanceId}" references unknown rigId "${actor.rigId}"`,
-        });
-      }
+  // Rule 14
 
-      // Rule 17: rigId has corresponding ModelSheet
-      const modelSheet = getModelSheet(actor.rigId);
-      if (!modelSheet) {
-        errors.push({
-          rule: 17,
-          entityId: actor.instanceId,
-          message: `Actor "${actor.instanceId}" rigId "${actor.rigId}" has no corresponding ModelSheet registered`,
-        });
-      }
-
-      // Rule 10: scale > 0
-      if (actor.scale !== undefined && (actor.scale <= 0 || isNaN(actor.scale))) {
-        errors.push({
-          rule: 10,
-          entityId: actor.instanceId,
-          message: `Actor "${actor.instanceId}" scale ${actor.scale} must be strictly positive (> 0)`,
-        });
-      }
-
-      // Rule 19: Actor position falls within sceneSize bounds
-      if (scene.sceneSize && actor.position) {
-        if (
-          actor.position.x < 0 ||
-          actor.position.x > scene.sceneSize.w ||
-          actor.position.y < 0 ||
-          actor.position.y > scene.sceneSize.h
-        ) {
-          errors.push({
-            rule: 19,
-            entityId: actor.instanceId,
-            message: `Actor "${actor.instanceId}" position (${actor.position.x}, ${actor.position.y}) is out of canvas bounds [0..${scene.sceneSize.w}, 0..${scene.sceneSize.h}]`,
-          });
-        }
-      }
-
-      // Rule 7: Every key in jointTracks resolves to CharacterGroup.id
-      if (actor.jointTracks && rig) {
-        const validGroupIds = new Set(rig.groups.map((g) => g.id));
-        for (const [jointName, tr] of Object.entries(actor.jointTracks)) {
-          if (!validGroupIds.has(jointName)) {
-            errors.push({
-              rule: 7,
-              entityId: actor.instanceId,
-              message: `Actor "${actor.instanceId}" jointTrack references unknown joint group "${jointName}" for rig "${actor.rigId}"`,
-            });
-          }
-          validateTrack(tr, actor.instanceId, `joint-${jointName}`);
-        }
-      }
-
-      // Validate positionTracks
-      if (actor.positionTracks) {
-        for (const tr of actor.positionTracks) validateTrack(tr, actor.instanceId, `pos-${tr.trackId}`);
-      }
-
-      // Rules 12, 13, 18: Validate actions
-      if (actor.actions && Array.isArray(actor.actions)) {
-        // Collect actions starting at each frame for Rule 18
-        const actionsByStartFrame = new Map<number, typeof actor.actions>();
-
-        for (const act of actor.actions) {
-          // Rule 12: actionId resolves to action registry
-          if (!ACTION_METADATA[act.actionId]) {
-            errors.push({
-              rule: 12,
-              entityId: actor.instanceId,
-              message: `Actor "${actor.instanceId}" references unknown actionId "${act.actionId}"`,
-            });
-          }
-
-          // Rule 13: startFrame + durationFrames <= durationFrames
-          if (
-            act.startFrame < 0 ||
-            act.durationFrames <= 0 ||
-            act.startFrame + act.durationFrames > scene.durationFrames
-          ) {
-            errors.push({
-              rule: 13,
-              entityId: actor.instanceId,
-              message: `Actor "${actor.instanceId}" action "${act.actionId}" interval [${act.startFrame}, ${act.startFrame + act.durationFrames}] exceeds scene durationFrames (${scene.durationFrames})`,
-            });
-          }
-
-          if (!actionsByStartFrame.has(act.startFrame)) {
-            actionsByStartFrame.set(act.startFrame, []);
-          }
-          actionsByStartFrame.get(act.startFrame)!.push(act);
-        }
-
-        // Rule 18: Simultaneous Action Collision Rule
-        // Two ScheduledActions on the same actor sharing startFrame and any joint in common is an error
-        for (const [startFrame, startActions] of actionsByStartFrame.entries()) {
-          if (startActions.length > 1) {
-            const jointOwners = new Map<string, string>(); // jointId -> actionId
-            for (const act of startActions) {
-              const affected = getAffectedJointsForAction(act);
-              for (const joint of affected) {
-                if (jointOwners.has(joint)) {
-                  const existingActionId = jointOwners.get(joint)!;
-                  errors.push({
-                    rule: 18,
-                    entityId: actor.instanceId,
-                    message: `SIMULTANEOUS_ACTION_COLLISION: Actor "${actor.instanceId}" has simultaneous actions "${existingActionId}" and "${act.actionId}" starting at frame ${startFrame} both affecting joint "${joint}"`,
-                  });
-                } else {
-                  jointOwners.set(joint, act.actionId);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Rule 14 (D4): durationFrames / fps * 1000 within ±50ms of audioDurationMs
   if (scene.fps > 0 && scene.durationFrames > 0 && typeof scene.audioDurationMs === "number") {
     const computedDurationMs = (scene.durationFrames / scene.fps) * 1000;
     const diffMs = Math.abs(computedDurationMs - scene.audioDurationMs);
@@ -371,42 +241,6 @@ export function validateScene(scene: Scene): ValidationResult {
         rule: 14,
         message: `AUDIO_DURATION_MISMATCH: Scene duration (${computedDurationMs.toFixed(1)}ms across ${scene.durationFrames} frames @ ${scene.fps}fps) differs from audioDurationMs (${scene.audioDurationMs}ms) by ${diffMs.toFixed(1)}ms (exceeds ±50ms threshold)`,
       });
-    }
-  }
-
-  // Warning W1: Normalized Median Scale Warning
-  // Normalize each actor's scale by its canonicalScale, compute median, warn if > ±40% deviation
-  if (Array.isArray(scene.actors) && scene.actors.length > 0) {
-    const normalizedScales: Array<{ actor: ActorInstance; normScale: number }> = [];
-    for (const actor of scene.actors) {
-      const ms = getModelSheet(actor.rigId);
-      const canonical = ms?.canonicalScale || 1.0;
-      const effectiveScale = actor.scale || 1.0;
-      normalizedScales.push({
-        actor,
-        normScale: effectiveScale / canonical,
-      });
-    }
-
-    // Compute median normalized scale
-    const sortedNormScales = [...normalizedScales].sort((a, b) => a.normScale - b.normScale);
-    const midIdx = Math.floor(sortedNormScales.length / 2);
-    const medianNormScale =
-      sortedNormScales.length % 2 === 0
-        ? (sortedNormScales[midIdx - 1].normScale + sortedNormScales[midIdx].normScale) / 2
-        : sortedNormScales[midIdx].normScale;
-
-    if (medianNormScale > 0) {
-      for (const item of normalizedScales) {
-        const deviation = Math.abs(item.normScale - medianNormScale) / medianNormScale;
-        if (deviation > 0.4) {
-          warnings.push({
-            warningId: "W1_SCALE_DEVIATION",
-            entityId: item.actor.instanceId,
-            message: `Actor "${item.actor.instanceId}" normalized scale (${item.normScale.toFixed(2)}) deviates by ${(deviation * 100).toFixed(1)}% from scene median (${medianNormScale.toFixed(2)}) (exceeds ±40% threshold)`,
-          });
-        }
-      }
     }
   }
 

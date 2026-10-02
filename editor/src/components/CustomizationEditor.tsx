@@ -143,12 +143,10 @@ const STORY_STYLES: Array<{
 ];
 
 const METAPHOR_OPTIONS: Array<{
-  id: NonNullable<Shot["metaphor"]> | "none" | "character-beat" | "b-roll";
+  id: NonNullable<Shot["metaphor"]> | "none" | "b-roll";
   label: string;
 }> = [
   { id: "none", label: "Default Spatial Node" },
-  { id: "character-beat", label: "Character Rig (Astronaut / Developer)" },
-  { id: "character-throw", label: "Reading & Discarding Script" },
   { id: "b-roll", label: "B-Roll Scene (AI Generated)" },
   { id: "spider-web", label: "Spider Web Weaving" },
   { id: "liquid-bucket", label: "Liquid Buffer Reservoir" },
@@ -283,27 +281,8 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
     const shot = updatedShots[shotIdx];
     if (!shot) return;
 
-    if (metaphor === "character-beat") {
-      const filteredBlocks = shot.blocks.filter(
-        (b) => b.c !== "CharacterBeat" && b.c !== "MetaphorViewer",
-      );
-      const charBlock = {
-        c: "CharacterBeat",
-        characterId: "astronaut",
-        stage: "frame",
-        keyframes: [
-          { t: 0, pose: "neutral" },
-          { t: 0.5, pose: "present-right" },
-        ],
-      };
-      updatedShots[shotIdx] = {
-        ...shot,
-        metaphor: "character-throw",
-        needsFootage: false,
-        blocks: [charBlock as any, ...filteredBlocks],
-      };
-    } else if (metaphor === "b-roll") {
-      const filteredBlocks = shot.blocks.filter((b) => b.c !== "CharacterBeat");
+    if (metaphor === "b-roll") {
+      const filteredBlocks = shot.blocks.filter((b) => b.c !== "AnalogyInset");
       updatedShots[shotIdx] = {
         ...shot,
         metaphor: undefined,
@@ -311,7 +290,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
         blocks: filteredBlocks,
       };
     } else if (metaphor === "none") {
-      const filteredBlocks = shot.blocks.filter((b) => b.c !== "CharacterBeat");
+      const filteredBlocks = shot.blocks.filter((b) => b.c !== "AnalogyInset");
       updatedShots[shotIdx] = {
         ...shot,
         metaphor: undefined,

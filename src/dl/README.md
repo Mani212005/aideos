@@ -17,7 +17,7 @@ same film, not two edits of it.
 | §04 Primitives        | `primitives.tsx`                                 |
 | §05 Stations          | `Film.tsx` - `Stage`                             |
 | §06 Camera/continuity | `camera.ts` + `CanvasGraph.tsx` / `SceneStage.tsx` |
-| §07 Device library    | `devices.tsx` + `CharacterRig.tsx` (`characters/`) |
+| §07 Device library    | `devices.tsx`                                   |
 | Custom SVG animation  | `scene/` - see [scene/README.md](scene/README.md)  |
 | §08 Runsheet          | `schema.ts` `superRefine` + `scripts/validate-dl.mjs` |
 | §09 Schema contract   | `schema.ts`                                      |

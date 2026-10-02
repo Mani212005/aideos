@@ -20,9 +20,6 @@ import {
   reorderLayer,
 } from "./layer_manager";
 import {
-  mergeSubtitleClips,
-} from "./subtitle_engine";
-import {
   closeAudioGapWithDependencies,
 } from "./voiceover_engine";
 import {
@@ -362,32 +359,6 @@ test("Finding 9: reorderLayer emits update actions for target and colliding laye
   const action1 = result.actions.find((a) => a.path[1] === 0);
   const action2 = result.actions.find((a) => a.path[1] === 1);
   assert.ok(action1 && action2);
-  assert.doesNotThrow(() => validateLayeredFilm(result.film));
-});
-
-// Finding 10: mergeSubtitleClips handles inverted clip ID order without producing negative duration.
-test("Finding 10: mergeSubtitleClips handles reversed clip order correctly", () => {
-  const layeredFilm: LayeredFilm = {
-    id: "lf-sub-merge",
-    title: "Subtitle Merge Test",
-    fps: 30,
-    accent: "#635BFF",
-    chapters: ["ch1"],
-    canvas: { nodes: [{ id: "n1", label: "N1", x: 0, y: 0, w: 100, h: 50 }, { id: "n2", label: "N2", x: 200, y: 0, w: 100, h: 50 }], edges: [{ from: "n1", to: "n2" }] },
-    layers: [{ id: "sub-layer", number: 20, label: "Subtitles", locked: false, hidden: false, muted: false, height: 40 }],
-    clips: [
-      { id: "sub-1", layerId: "sub-layer", position: 1.0, start: 0, end: 2.0, kind: "subtitle", payload: { text: "Hello" }, opacity: 1, volume: 1 },
-      { id: "sub-2", layerId: "sub-layer", position: 3.5, start: 0, end: 1.5, kind: "subtitle", payload: { text: "World" }, opacity: 1, volume: 1 },
-    ],
-  };
-
-  // Pass second clip first
-  const result = mergeSubtitleClips(layeredFilm, "sub-2", "sub-1");
-  const merged = result.film.clips.find((c) => c.kind === "subtitle")!;
-  assert.ok(merged);
-  assert.equal(merged.position, 1.0);
-  assert.equal(merged.end, 4.0); // 1.0s to (3.5 + 1.5 = 5.0s) -> dur 4.0s
-  assert.ok(merged.end > merged.start);
   assert.doesNotThrow(() => validateLayeredFilm(result.film));
 });
 

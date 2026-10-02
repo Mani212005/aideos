@@ -1,8 +1,7 @@
 /**
  * File Description: Model-Driven Video Edit Planner (Phases 2-3).
  * Composes the EditContext into an AI prompt, queries the injected LLM (or Google Gen AI client),
- * and validates the resulting EditOp program in a 3-attempt validate-then-repair loop
- * mirroring backend/scene/generateSvg.ts's generateWithRepair contract.
+ * and validates the resulting EditOp program in a 3-attempt validate-then-repair loop.
  * Phase 3 additions: add_lower_third in the planner vocabulary for broadcast-style callouts.
  */
 
