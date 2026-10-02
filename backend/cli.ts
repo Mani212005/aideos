@@ -784,7 +784,7 @@ program
   .command("gemini-review")
   .description("Review a rendered mp4 video or run pairwise comparison using Gemini 3.8 Flash against the 12-criterion quality rubric")
   .argument("<video>", "Path to rendered mp4 video file")
-  .option("--pairwise <other>", "Optional second mp4 video to run order-swapped pairwise comparison against")
+  .option("--pairwise <other>", "Optional second mp4 video to run cross-review pairwise comparison against")
   .option("--film <path>", "Optional path to film.json for camera track and boundary facts")
   .option("--no-facts", "Skip deterministic facts extraction (OCR, audio loudness, ffprobe)")
   .option("--json", "Print output report as raw JSON")
@@ -801,16 +801,20 @@ program
       if (options.json) {
         console.log(JSON.stringify(report, null, 2));
       } else {
-        const formatScore = (val: unknown) =>
-          typeof val === "number" ? val.toFixed(1) : String(val ?? "N/A");
-        console.log("\n=== Pairwise Review Results ===");
-        console.log(`Order 1 [${report.orderAB.orderKey}]: Selected ${report.orderAB.choice}`);
-        console.log(`  Scores: Video 1 = ${formatScore(report.orderAB.video1Score)}, Video 2 = ${formatScore(report.orderAB.video2Score)}`);
-        console.log(`  Reason: ${report.orderAB.reasoning}`);
-        console.log(`Order 2 [${report.orderBA.orderKey}]: Selected ${report.orderBA.choice}`);
-        console.log(`  Scores: Video 1 = ${formatScore(report.orderBA.video1Score)}, Video 2 = ${formatScore(report.orderBA.video2Score)}`);
-        console.log(`  Reason: ${report.orderBA.reasoning}`);
-        console.log(`\nConsistent Winner: ${report.consistentWinner}`);
+        const formatScore = (n: number) => typeof n === "number" ? n.toFixed(1) : String(n ?? "N/A");
+        console.log("");
+        console.log("=== PAIRWISE CROSS-REVIEW RESULTS ===");
+        console.log(`Video A: ${report.videoA.path}`);
+        console.log(`  Rating by its watcher: ${formatScore(report.videoA.ratingByWatcher)}`);
+        console.log(`  Rating by other agent: ${formatScore(report.videoA.ratingByOther)}`);
+        console.log(`  FINAL SCORE: ${formatScore(report.videoA.finalRating)}`);
+        console.log("");
+        console.log(`Video B: ${report.videoB.path}`);
+        console.log(`  Rating by its watcher: ${formatScore(report.videoB.ratingByWatcher)}`);
+        console.log(`  Rating by other agent: ${formatScore(report.videoB.ratingByOther)}`);
+        console.log(`  FINAL SCORE: ${formatScore(report.videoB.finalRating)}`);
+        console.log("");
+        console.log(`WINNER: ${report.winner}`);
       }
       return;
     }

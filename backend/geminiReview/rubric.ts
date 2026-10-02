@@ -233,52 +233,18 @@ Return ONLY valid JSON matching this schema:
 }`;
 }
 
-// Builds the pairwise comparison prompt for two videos.
-export function buildPairwiseReviewPrompt(
-  video1OrTopic?: string,
-  video2Path?: string,
-  topic?: string,
-): string {
-  let video1: string | undefined;
-  let video2: string | undefined;
-  let topicStr: string | undefined;
+// Builds the watch phase evaluation prompt for a single video in pairwise cross-review.
+export function buildPairwiseWatchPrompt(videoPath?: string): string {
+  const locationContext = videoPath
+    ? `Watch and inspect the complete local video file at: ${videoPath} with audio. Base your evaluation strictly on what you visually see and hear in the video; do not look for, open, or read any other files or source code. DO NOT write or run scripts. DO NOT extract frames. ONLY watch the video and return the required JSON.`
+    : `Watch the video in this directory with audio. DO NOT run any tools. DO NOT write or run scripts. ONLY watch the video and return the required JSON.`;
 
-  if (video2Path) {
-    video1 = video1OrTopic;
-    video2 = video2Path;
-    topicStr = topic;
-  } else {
-    topicStr = video1OrTopic;
-  }
+  return `Evaluate the video against the 12-criterion quality rubric (e.g. unified persistent stage, carry-over and transformation, purposeful camera motion, readable bottom captions, audio sync).\n${locationContext}\nProduce a detailed report: provide an overall rating (0-10), what you like, what you dislike, and what you are neutral on. Cite specific timestamps for your points.`;
+}
 
-  const topicContext = topicStr ? ` on the topic of "${topicStr}"` : "";
-  const locationContext = (video1 && video2)
-    ? `\nVideo 1 is located at: ${video1}\nVideo 2 is located at: ${video2}\nWatch and inspect both complete local video files carefully with audio. Base your evaluation strictly on what you visually see and hear in the videos; do not look for, open, or read any other files or source code. DO NOT write or run scripts. DO NOT extract frames. ONLY watch the videos and return the required JSON.\n`
-    : `\nWatch both videos fully with audio. DO NOT run any tools. DO NOT write or run scripts. ONLY watch the videos and return the required JSON.\n`;
-
-  return `You are judging two technical explainer videos${topicContext}. Both were created for the same brief: 16:9, narrated, animated technical diagrams. ${locationContext}
-Evaluation Guidance based on the Aideos Good-Video Rubric:
-1. Unified Persistent Stage: A single continuous stage where diagrams and text evolve together is strictly preferred over layout splitting (e.g. a separate left text column isolates text from graphics and violates the single stage principle).
-2. Carry-over and Transformation: Elements should persist and visibly transform across beats rather than being wiped clean.
-3. Purposeful Camera Motion: Cinematic framing changes (slow zooms, tilts, payoff pans) that guide viewer attention are preferred over static framing.
-4. Captions and Readability: Burned-in bottom subtitles synchronized to voiceover ensure accessibility, whereas uncaptioned video or cramped secondary monospace labels fail the readability gate.
-5. Audio Sync and Mix: Visual cues landing within 120ms of spoken words and clear voiceover mixed to -14 to -18 LUFS.
-
-Carefully evaluate "Video 1" and "Video 2":
-- For EACH video give:
-  - An overall rating out of 10.0
-  - Scores and concise reasoning referencing specific moments with timestamps.
-- Then CHOOSE ONE video you would rather watch and recommend ("Video 1", "Video 2", or "Tie").
-- Explain your decision with concrete sentences referencing specific moments with timestamps in both videos.
-
-Return ONLY valid JSON with this schema:
-{
-  "video1Score": number,
-  "video2Score": number,
-  "choice": "Video 1" | "Video 2" | "Tie",
-  "reasoning": string,
-  "timestampsCited": string[]
-}`;
+// Builds the exchange phase prompt for scoring the other video based on its evaluation report.
+export function buildPairwiseExchangePrompt(otherVideoName: string, otherReport: object): string {
+  return `You have watched your video. Here is the evaluation report for the OTHER video (${otherVideoName}):\n${JSON.stringify(otherReport, null, 2)}\n\nCompare the other video's report to the video you watched. Give the OTHER video a rating (0-10) and brief reasoning.`;
 }
 
 export const SINGLE_REVIEW_JSON_SCHEMA = {
@@ -331,17 +297,25 @@ export const SINGLE_REVIEW_JSON_SCHEMA = {
   required: ["overallScore", "verdict", "summary", "criteria", "feedback"],
 };
 
-export const PAIRWISE_REVIEW_JSON_SCHEMA = {
+export const PAIRWISE_WATCH_JSON_SCHEMA = {
   type: "object",
   properties: {
-    video1Score: { type: "number" },
-    video2Score: { type: "number" },
-    choice: { type: "string", enum: ["Video 1", "Video 2", "Tie"] },
-    reasoning: { type: "string" },
-    timestampsCited: {
-      type: "array",
-      items: { type: "string" },
-    },
+    rating: { type: "number" },
+    likes: { type: "array", items: { type: "string" } },
+    dislikes: { type: "array", items: { type: "string" } },
+    neutral: { type: "array", items: { type: "string" } },
+    timestamps: { type: "array", items: { type: "string" } },
   },
-  required: ["video1Score", "video2Score", "choice", "reasoning"],
+  required: ["rating", "likes", "dislikes", "neutral", "timestamps"],
+  additionalProperties: false,
+};
+
+export const PAIRWISE_EXCHANGE_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    otherVideoRating: { type: "number" },
+    reasoning: { type: "string" },
+  },
+  required: ["otherVideoRating", "reasoning"],
+  additionalProperties: false,
 };

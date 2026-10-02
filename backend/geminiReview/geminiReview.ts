@@ -1,7 +1,7 @@
 /**
  * File Description: High-level video review engine using the agy CLI agent running Gemini 3.8 Flash.
  * Evaluates local mp4 videos against the 12-criterion rubric, enforces timestamp evidence verification,
- * validates hard gates, and executes order-swapped pairwise video comparisons.
+ * validates hard gates, and executes dual-agent cross-review pairwise video comparisons.
  */
 
 import { execFile } from "node:child_process";
@@ -12,10 +12,12 @@ import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { extractDeterministicFacts } from "./facts";
 import {
-  PAIRWISE_REVIEW_JSON_SCHEMA,
+  PAIRWISE_EXCHANGE_JSON_SCHEMA,
+  PAIRWISE_WATCH_JSON_SCHEMA,
   RUBRIC_CRITERIA,
   SINGLE_REVIEW_JSON_SCHEMA,
-  buildPairwiseReviewPrompt,
+  buildPairwiseExchangePrompt,
+  buildPairwiseWatchPrompt,
   buildSingleVideoReviewPrompt,
   validateCriterionTimestamps,
 } from "./rubric";
@@ -25,8 +27,8 @@ import type {
   AgyRunnerOptions,
   DeterministicVideoFacts,
   GeminiReviewReport,
-  PairwiseComparisonResult,
   PairwiseRunReport,
+  WatchReport,
 } from "./types";
 
 export interface SingleReviewOptions {
@@ -80,6 +82,10 @@ export async function defaultAgyRunner(
 
   if (options?.schema) {
     args.push("--json-schema", JSON.stringify(options.schema));
+  }
+
+  if (options?.conversationId) {
+    args.push("--conversation", options.conversationId);
   }
 
   return new Promise<string>((resolve, reject) => {
@@ -183,6 +189,9 @@ export async function defaultAgyRunner(
           }
 
           if (parsed.structured_output && typeof parsed.structured_output === "object") {
+            if (parsed.conversation_id && !parsed.structured_output.conversation_id) {
+              parsed.structured_output.conversation_id = parsed.conversation_id;
+            }
             return resolve(JSON.stringify(parsed.structured_output));
           }
 
@@ -478,7 +487,7 @@ export async function reviewVideo(
   throw new Error("Video review failed to produce a valid report.");
 }
 
-// Executes an order-swapped pairwise comparison of two videos to verify preference stability.
+// Executes a dual-agent cross-review pairwise comparison of two videos to verify preference stability.
 export async function reviewPairwise(
   pathA: string,
   pathB: string,
@@ -486,12 +495,8 @@ export async function reviewPairwise(
 ): Promise<PairwiseRunReport> {
   const resolvedA = path.resolve(pathA);
   const resolvedB = path.resolve(pathB);
-  if (!fs.existsSync(resolvedA)) {
-    throw new Error(`Video file does not exist: ${resolvedA}`);
-  }
-  if (!fs.existsSync(resolvedB)) {
-    throw new Error(`Video file does not exist: ${resolvedB}`);
-  }
+  if (!fs.existsSync(resolvedA)) throw new Error(`Video file does not exist: ${resolvedA}`);
+  if (!fs.existsSync(resolvedB)) throw new Error(`Video file does not exist: ${resolvedB}`);
 
   const onProgress = options?.onProgress || (() => {});
   const runner = resolveRunner(options);
@@ -500,134 +505,94 @@ export async function reviewPairwise(
     process.env.AIDEOS_GEMINI_REVIEW_MODEL ||
     process.env.GEMINI_MODEL ||
     "gemini-3.8-flash-high";
+  const timeoutSeconds = options?.timeoutSeconds;
 
-  const timeoutSeconds =
-    options?.timeoutSeconds ??
-    (Number(process.env.AIDEOS_AGY_TIMEOUT) || 1800);
+  const wsA = createIsolatedVideoWorkspace({ "video.mp4": resolvedA });
+  const wsB = createIsolatedVideoWorkspace({ "video.mp4": resolvedB });
 
-  // Order 1: Video 1 = A, Video 2 = B
-  onProgress(`Running pairwise comparison with agy (${modelName}) (Order: Video 1 = A, Video 2 = B)...`);
-  const workspaceAB = createIsolatedVideoWorkspace({
-    "video_1.mp4": resolvedA,
-    "video_2.mp4": resolvedB,
-  });
-  let parsedAB: {
-    video1Score: number;
-    video2Score: number;
-    choice: "Video 1" | "Video 2" | "Tie";
-    reasoning: string;
-    timestampsCited?: string[];
-  };
   try {
-    const promptAB = buildPairwiseReviewPrompt(
-      workspaceAB.videoPaths["video_1.mp4"],
-      workspaceAB.videoPaths["video_2.mp4"],
-    );
-    const rawAB = await runner(promptAB, {
+    const promptWatchA = buildPairwiseWatchPrompt(wsA.videoPaths["video.mp4"]);
+    onProgress(`Watching Video A (${path.basename(resolvedA)})...`);
+    const rawWatchA = await runner(promptWatchA, {
+      cwd: wsA.dir,
+      schema: PAIRWISE_WATCH_JSON_SCHEMA,
       model: modelName,
-      cwd: workspaceAB.dir,
       timeoutSeconds,
-      schema: PAIRWISE_REVIEW_JSON_SCHEMA,
       onProgress,
     });
+    const parsedWatchA = (
+      typeof rawWatchA === "string" ? JSON.parse(cleanModelJsonResponse(rawWatchA)) : rawWatchA
+    ) as WatchReport & { conversation_id?: string };
+    const convA = parsedWatchA.conversation_id;
 
-    parsedAB = (
-      typeof rawAB === "string" ? JSON.parse(cleanModelJsonResponse(rawAB)) : rawAB
-    ) as typeof parsedAB;
-  } finally {
-    workspaceAB.cleanup();
-  }
-
-  if (
-    typeof parsedAB?.video1Score !== "number" ||
-    typeof parsedAB?.video2Score !== "number" ||
-    !parsedAB?.choice
-  ) {
-    throw new Error(
-      `Invalid pairwise comparison output from agy (Order AB): missing scores or choice in ${JSON.stringify(parsedAB)}`,
-    );
-  }
-
-  const orderAB: PairwiseComparisonResult = {
-    orderKey: "Video1=A, Video2=B",
-    video1Path: resolvedA,
-    video2Path: resolvedB,
-    video1Score: parsedAB.video1Score,
-    video2Score: parsedAB.video2Score,
-    choice: parsedAB.choice,
-    reasoning: parsedAB.reasoning,
-    timestampsCited: parsedAB.timestampsCited || [],
-  };
-
-  // Order 2: Video 1 = B, Video 2 = A
-  onProgress(`Running pairwise comparison with agy (${modelName}) (Order: Video 1 = B, Video 2 = A)...`);
-  const workspaceBA = createIsolatedVideoWorkspace({
-    "video_1.mp4": resolvedB,
-    "video_2.mp4": resolvedA,
-  });
-  let parsedBA: {
-    video1Score: number;
-    video2Score: number;
-    choice: "Video 1" | "Video 2" | "Tie";
-    reasoning: string;
-    timestampsCited?: string[];
-  };
-  try {
-    const promptBA = buildPairwiseReviewPrompt(
-      workspaceBA.videoPaths["video_1.mp4"],
-      workspaceBA.videoPaths["video_2.mp4"],
-    );
-    const rawBA = await runner(promptBA, {
+    const promptWatchB = buildPairwiseWatchPrompt(wsB.videoPaths["video.mp4"]);
+    onProgress(`Watching Video B (${path.basename(resolvedB)})...`);
+    const rawWatchB = await runner(promptWatchB, {
+      cwd: wsB.dir,
+      schema: PAIRWISE_WATCH_JSON_SCHEMA,
       model: modelName,
-      cwd: workspaceBA.dir,
       timeoutSeconds,
-      schema: PAIRWISE_REVIEW_JSON_SCHEMA,
       onProgress,
     });
+    const parsedWatchB = (
+      typeof rawWatchB === "string" ? JSON.parse(cleanModelJsonResponse(rawWatchB)) : rawWatchB
+    ) as WatchReport & { conversation_id?: string };
+    const convB = parsedWatchB.conversation_id;
 
-    parsedBA = (
-      typeof rawBA === "string" ? JSON.parse(cleanModelJsonResponse(rawBA)) : rawBA
-    ) as typeof parsedBA;
+    const promptExA = buildPairwiseExchangePrompt("Video B", parsedWatchB);
+    onProgress(`Exchange Phase: Agent A rating Video B...`);
+    const rawExA = await runner(promptExA, {
+      cwd: wsA.dir,
+      schema: PAIRWISE_EXCHANGE_JSON_SCHEMA,
+      conversationId: convA,
+      model: modelName,
+      timeoutSeconds,
+      onProgress,
+    });
+    const parsedExA = (
+      typeof rawExA === "string" ? JSON.parse(cleanModelJsonResponse(rawExA)) : rawExA
+    ) as { otherVideoRating: number; reasoning: string };
+    const ratingB_byA = parsedExA.otherVideoRating;
+
+    const promptExB = buildPairwiseExchangePrompt("Video A", parsedWatchA);
+    onProgress(`Exchange Phase: Agent B rating Video A...`);
+    const rawExB = await runner(promptExB, {
+      cwd: wsB.dir,
+      schema: PAIRWISE_EXCHANGE_JSON_SCHEMA,
+      conversationId: convB,
+      model: modelName,
+      timeoutSeconds,
+      onProgress,
+    });
+    const parsedExB = (
+      typeof rawExB === "string" ? JSON.parse(cleanModelJsonResponse(rawExB)) : rawExB
+    ) as { otherVideoRating: number; reasoning: string };
+    const ratingA_byB = parsedExB.otherVideoRating;
+
+    const finalA = (parsedWatchA.rating + ratingA_byB) / 2;
+    const finalB = (parsedWatchB.rating + ratingB_byA) / 2;
+    const winner = finalA > finalB ? "Video A" : finalB > finalA ? "Video B" : "Tie";
+
+    return {
+      videoA: {
+        path: resolvedA,
+        watchReport: parsedWatchA,
+        ratingByWatcher: parsedWatchA.rating,
+        ratingByOther: ratingA_byB,
+        finalRating: finalA,
+      },
+      videoB: {
+        path: resolvedB,
+        watchReport: parsedWatchB,
+        ratingByWatcher: parsedWatchB.rating,
+        ratingByOther: ratingB_byA,
+        finalRating: finalB,
+      },
+      winner,
+      evaluatedAt: new Date().toISOString(),
+    };
   } finally {
-    workspaceBA.cleanup();
+    wsA.cleanup();
+    wsB.cleanup();
   }
-
-  if (
-    typeof parsedBA?.video1Score !== "number" ||
-    typeof parsedBA?.video2Score !== "number" ||
-    !parsedBA?.choice
-  ) {
-    throw new Error(
-      `Invalid pairwise comparison output from agy (Order BA): missing scores or choice in ${JSON.stringify(parsedBA)}`,
-    );
-  }
-
-  const orderBA: PairwiseComparisonResult = {
-    orderKey: "Video1=B, Video2=A",
-    video1Path: resolvedB,
-    video2Path: resolvedA,
-    video1Score: parsedBA.video1Score,
-    video2Score: parsedBA.video2Score,
-    choice: parsedBA.choice,
-    reasoning: parsedBA.reasoning,
-    timestampsCited: parsedBA.timestampsCited || [],
-  };
-
-  // Determine winner in each order
-  // For AB: Video 1 is A, Video 2 is B
-  const winnerInAB = orderAB.choice === "Video 1" ? "Video A" : orderAB.choice === "Video 2" ? "Video B" : "Tie";
-  // For BA: Video 1 is B, Video 2 is A
-  const winnerInBA = orderBA.choice === "Video 2" ? "Video A" : orderBA.choice === "Video 1" ? "Video B" : "Tie";
-
-  const consistentWinner =
-    winnerInAB === winnerInBA && (winnerInAB === "Video A" || winnerInAB === "Video B")
-      ? winnerInAB
-      : "Inconsistent";
-
-  return {
-    orderAB,
-    orderBA,
-    consistentWinner,
-    evaluatedAt: new Date().toISOString(),
-  };
 }
