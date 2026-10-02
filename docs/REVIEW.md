@@ -123,7 +123,7 @@ aideos review-loop hnsw-explainer --reference benchmarks/reference-a.mp4
 3. **Persist**: Stores round outcomes under `videos/<slug>/gemini-review/round-N.json` and updates `videos/<slug>/gemini-review/latest.json`.
 4. **Evaluate Acceptance**:
    - If overall score >= 9.0 (default target) and all gates pass (and pairwise reference check passes if `--reference` is set): the loop terminates with success (exit code 0).
-   - If verdict is `REVISE` and remaining rounds exist: applies automated feedback refinements (or allows agent intervention) and loops back to step 1.
+   - If verdict is `REVISE` and remaining rounds exist: the feedback and timestamp citations guide agent or human iteration on the film before the next render and review round.
    - If max rounds exceeded without passing: exits with code 1.
 
 ---
