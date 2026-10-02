@@ -15,14 +15,20 @@ import {
   validateCriterionTimestamps,
   buildSingleVideoReviewPrompt,
   buildPairwiseReviewPrompt,
+  SINGLE_REVIEW_JSON_SCHEMA,
+  PAIRWISE_REVIEW_JSON_SCHEMA,
 } from "./rubric";
 import {
-  GeminiVideoClient,
   computeFileHash,
   cleanModelJsonResponse,
   reviewVideo,
   reviewPairwise,
+  defaultAgyRunner,
 } from "./geminiReview";
+import type {
+  AgyRunner,
+  AgyReviewClient,
+} from "./types";
 import {
   formatReviewSummary,
   runReviewLoop,
@@ -173,16 +179,13 @@ test("geminiReview: reviewVideo evaluates verdict ACCEPT when score >= 9.0 and g
     feedback: [],
   };
 
-  const mockClient = {
-    uploadVideo: async () => ({ name: "files/123", uri: "https://example.com/123", state: "ACTIVE" as const }),
-    generateContentWithVideo: async () => JSON.stringify(mockReportPayload),
-  } as unknown as GeminiVideoClient;
+  const mockRunner: AgyRunner = async () => JSON.stringify(mockReportPayload);
 
-  const report = await reviewVideo(testVideo, { client: mockClient });
+  const report = await reviewVideo(testVideo, { runner: mockRunner, model: "gemini-3.8-flash-high" });
   assert.equal(report.overallScore, 9.3);
   assert.equal(report.verdict, "ACCEPT");
   assert.equal(report.criteria.length, 12);
-  assert.equal(report.model, "gemini-3.8-flash");
+  assert.equal(report.model, "gemini-3.8-flash-high");
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
@@ -201,12 +204,9 @@ test("geminiReview: reviewVideo assigns REVISE if any hard gate fails even with 
     feedback: [{ priority: "high", timestamp: "0:20", issue: "No captions", recommendation: "Enable bottom captions" }],
   };
 
-  const mockClient = {
-    uploadVideo: async () => ({ name: "files/456", uri: "https://example.com/456", state: "ACTIVE" as const }),
-    generateContentWithVideo: async () => JSON.stringify(mockReportPayload),
-  } as unknown as GeminiVideoClient;
+  const mockRunner: AgyRunner = async () => JSON.stringify(mockReportPayload);
 
-  const report = await reviewVideo(testVideo, { client: mockClient });
+  const report = await reviewVideo(testVideo, { runner: mockRunner });
   assert.equal(report.verdict, "REVISE");
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -220,36 +220,35 @@ test("geminiReview: reviewPairwise runs swapped presentation orders and determin
   fs.writeFileSync(videoB, Buffer.alloc(100, 2));
 
   let callIndex = 0;
-  const mockClient = {
-    uploadVideo: async (filePath: string, name?: string) => ({
-      name: `files/${name || "video"}`,
-      uri: `https://example.com/${name || "video"}`,
-      state: "ACTIVE" as const,
-    }),
-    generateContentPairwise: async (uri1: string, uri2: string) => {
-      callIndex++;
-      if (callIndex === 1) {
-        // Order 1: Video 1 = A, Video 2 = B. Chooses Video 1 (A).
-        return JSON.stringify({
-          video1Score: 9.1,
-          video2Score: 7.2,
-          choice: "Video 1",
-          reasoning: "Video 1 has superior camera motion and bottom captions.",
-          timestampsCited: ["0:15", "0:42"],
-        });
-      }
-      // Order 2: Video 1 = B, Video 2 = A. Chooses Video 2 (A).
+  const mockRunner: AgyRunner = async (prompt: string) => {
+    callIndex++;
+    if (callIndex === 1) {
+      assert.ok(prompt.includes("Video 1 is located at:"));
+      assert.ok(prompt.includes(videoA));
+      assert.ok(prompt.includes(videoB));
+      // Order 1: Video 1 = A, Video 2 = B. Chooses Video 1 (A).
       return JSON.stringify({
-        video1Score: 7.3,
-        video2Score: 9.2,
-        choice: "Video 2",
-        reasoning: "Video 2 demonstrates continuous 3D stage and clear narrative build.",
-        timestampsCited: ["0:18", "0:45"],
+        video1Score: 9.1,
+        video2Score: 7.2,
+        choice: "Video 1",
+        reasoning: "Video 1 has superior camera motion and bottom captions.",
+        timestampsCited: ["0:15", "0:42"],
       });
-    },
-  } as unknown as GeminiVideoClient;
+    }
+    assert.ok(prompt.includes("Video 1 is located at:"));
+    assert.ok(prompt.includes(videoB));
+    assert.ok(prompt.includes(videoA));
+    // Order 2: Video 1 = B, Video 2 = A. Chooses Video 2 (A).
+    return JSON.stringify({
+      video1Score: 7.3,
+      video2Score: 9.2,
+      choice: "Video 2",
+      reasoning: "Video 2 demonstrates continuous 3D stage and clear narrative build.",
+      timestampsCited: ["0:18", "0:45"],
+    });
+  };
 
-  const pairwiseResult = await reviewPairwise(videoA, videoB, { client: mockClient });
+  const pairwiseResult = await reviewPairwise(videoA, videoB, { runner: mockRunner });
   assert.equal(pairwiseResult.consistentWinner, "Video A");
   assert.equal(pairwiseResult.orderAB.choice, "Video 1");
   assert.equal(pairwiseResult.orderBA.choice, "Video 2");
@@ -357,10 +356,7 @@ test("geminiReview: grounds measurable gates in deterministic facts", async () =
     feedback: [],
   };
 
-  const mockClient = {
-    uploadVideo: async () => ({ name: "files/test123", uri: "https://mock.gemini/file", state: "ACTIVE" as const }),
-    generateContentWithVideo: async () => JSON.stringify(modelReport),
-  } as unknown as GeminiVideoClient;
+  const mockRunner: AgyRunner = async () => JSON.stringify(modelReport);
 
   // Provide deterministic facts indicating 0% captions (like Video B)
   const facts = {
@@ -381,7 +377,7 @@ test("geminiReview: grounds measurable gates in deterministic facts", async () =
   };
 
   const report = await reviewVideo(tmpVideo, {
-    client: mockClient,
+    runner: mockRunner,
     facts,
   });
 
@@ -496,5 +492,111 @@ test("reviewLoop: requires winning or tying pairwise check when reference video 
 
   fs.rmSync(repoVideos, { recursive: true, force: true });
   fs.rmSync(tmpVideoDir, { recursive: true, force: true });
+});
+
+test("geminiReview: prompt includes video file path and local inspection directive", () => {
+  const singlePrompt = buildSingleVideoReviewPrompt("/Users/test/render.mp4");
+  assert.ok(singlePrompt.includes("Watch and inspect the complete local video file at: /Users/test/render.mp4 with audio."));
+
+  const pairwisePrompt = buildPairwiseReviewPrompt("/Users/test/videoA.mp4", "/Users/test/videoB.mp4");
+  assert.ok(pairwisePrompt.includes("Video 1 is located at: /Users/test/videoA.mp4"));
+  assert.ok(pairwisePrompt.includes("Video 2 is located at: /Users/test/videoB.mp4"));
+  assert.ok(pairwisePrompt.includes("Watch and inspect both complete local video files carefully with audio."));
+});
+
+test("geminiReview: supports client injection via AgyReviewClient", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-client-inject-test-"));
+  const testVideo = path.join(tmpDir, "test.mp4");
+  fs.writeFileSync(testVideo, Buffer.alloc(128, 1));
+
+  const criteria = createMockCriteria({ gateScore: 9.0, gatePassed: true, withTimestamps: true });
+  const mockReportPayload: Partial<GeminiReviewReport> = {
+    overallScore: 9.1,
+    verdict: "ACCEPT",
+    summary: "Client injection works cleanly.",
+    criteria,
+    feedback: [],
+  };
+
+  const mockClient: AgyReviewClient = {
+    runReviewPrompt: async () => JSON.stringify(mockReportPayload),
+  };
+
+  const report = await reviewVideo(testVideo, { client: mockClient });
+  assert.equal(report.overallScore, 9.1);
+  assert.equal(report.verdict, "ACCEPT");
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test("geminiReview: throws descriptive error when agy CLI is missing", async () => {
+  assert.equal(typeof defaultAgyRunner, "function");
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-missing-agy-test-"));
+  const testVideo = path.join(tmpDir, "test.mp4");
+  fs.writeFileSync(testVideo, Buffer.alloc(128, 1));
+
+  const failingRunner: AgyRunner = async () => {
+    const err = new Error("spawn agy ENOENT");
+    (err as any).code = "ENOENT";
+    throw new Error("agy CLI not found on PATH. Please ensure agy is installed and accessible.");
+  };
+
+  await assert.rejects(
+    () => reviewVideo(testVideo, { runner: failingRunner }),
+    /agy CLI not found on PATH/,
+  );
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test("geminiReview: throws descriptive error on agy auth failure without fallback", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-auth-fail-test-"));
+  const testVideo = path.join(tmpDir, "test.mp4");
+  fs.writeFileSync(testVideo, Buffer.alloc(128, 1));
+
+  const authFailingRunner: AgyRunner = async () => {
+    throw new Error("agy review failed: Not authenticated or signed in to agy. Details: please login");
+  };
+
+  await assert.rejects(
+    () => reviewVideo(testVideo, { runner: authFailingRunner }),
+    /Not authenticated or signed in to agy/,
+  );
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test("geminiReview: throws descriptive error on quota exceeded without silent fallback", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-quota-fail-test-"));
+  const testVideo = path.join(tmpDir, "test.mp4");
+  fs.writeFileSync(testVideo, Buffer.alloc(128, 1));
+
+  const quotaFailingRunner: AgyRunner = async () => {
+    throw new Error("agy review failed: Quota exceeded or rate limited. No silent fallback allowed. Details: 429 RESOURCE_EXHAUSTED");
+  };
+
+  await assert.rejects(
+    () => reviewVideo(testVideo, { runner: quotaFailingRunner }),
+    /Quota exceeded or rate limited\. No silent fallback allowed/,
+  );
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test("geminiReview: schemas enforce expected required properties", () => {
+  assert.deepEqual(SINGLE_REVIEW_JSON_SCHEMA.required, [
+    "overallScore",
+    "verdict",
+    "summary",
+    "criteria",
+    "feedback",
+  ]);
+
+  assert.deepEqual(PAIRWISE_REVIEW_JSON_SCHEMA.required, [
+    "video1Score",
+    "video2Score",
+    "choice",
+    "reasoning",
+  ]);
 });
 

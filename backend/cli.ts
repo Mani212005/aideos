@@ -800,12 +800,14 @@ program
       if (options.json) {
         console.log(JSON.stringify(report, null, 2));
       } else {
+        const formatScore = (val: unknown) =>
+          typeof val === "number" ? val.toFixed(1) : String(val ?? "N/A");
         console.log("\n=== Pairwise Review Results ===");
         console.log(`Order 1 [${report.orderAB.orderKey}]: Selected ${report.orderAB.choice}`);
-        console.log(`  Scores: Video 1 = ${report.orderAB.video1Score.toFixed(1)}, Video 2 = ${report.orderAB.video2Score.toFixed(1)}`);
+        console.log(`  Scores: Video 1 = ${formatScore(report.orderAB.video1Score)}, Video 2 = ${formatScore(report.orderAB.video2Score)}`);
         console.log(`  Reason: ${report.orderAB.reasoning}`);
         console.log(`Order 2 [${report.orderBA.orderKey}]: Selected ${report.orderBA.choice}`);
-        console.log(`  Scores: Video 1 = ${report.orderBA.video1Score.toFixed(1)}, Video 2 = ${report.orderBA.video2Score.toFixed(1)}`);
+        console.log(`  Scores: Video 1 = ${formatScore(report.orderBA.video1Score)}, Video 2 = ${formatScore(report.orderBA.video2Score)}`);
         console.log(`  Reason: ${report.orderBA.reasoning}`);
         console.log(`\nConsistent Winner: ${report.consistentWinner}`);
       }

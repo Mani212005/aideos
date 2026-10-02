@@ -119,4 +119,26 @@ export interface ReviewLoopOptions {
   mockReviewer?: (videoPath: string, round: number) => Promise<GeminiReviewReport>;
   mockRenderer?: (slug: string, format: string) => Promise<string>;
   mockPairwise?: (path1: string, path2: string) => Promise<PairwiseRunReport>;
+  runner?: AgyRunner;
+  model?: string;
+  timeoutSeconds?: number;
+}
+
+export interface AgyRunnerOptions {
+  model?: string;
+  timeoutSeconds?: number;
+  schema?: object;
+  onProgress?: (message: string) => void;
+}
+
+export type AgyRunner = (
+  prompt: string,
+  options?: AgyRunnerOptions,
+) => Promise<string | Record<string, any>>;
+
+export interface AgyReviewClient {
+  runReviewPrompt(
+    prompt: string,
+    options?: AgyRunnerOptions,
+  ): Promise<string | Record<string, any>>;
 }
