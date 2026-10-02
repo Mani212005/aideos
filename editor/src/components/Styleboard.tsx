@@ -12,7 +12,7 @@ import type {
   CameraAngle,
 } from "../../../src/dl/schema";
 import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
-import { CHARACTER_RIGS } from "../../../src/dl/characters";
+
 import { ShotModal } from "./ShotModal";
 import {
   User,
@@ -161,9 +161,7 @@ function renderBlockPreview(block: Block, accent: string) {
   switch (block.c) {
     case "CharacterBeat":
       const charBlock = block as any;
-      const rig =
-        CHARACTER_RIGS[charBlock.characterId as keyof typeof CHARACTER_RIGS] ||
-        CHARACTER_RIGS.astronaut;
+      const rig = { groups: [] } as any;
       const poseKeyframes = charBlock.keyframes || [{ t: 0, pose: "neutral" }];
       const RigIcon = RIG_ICONS[charBlock.characterId] || User;
       return (

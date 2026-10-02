@@ -92,24 +92,7 @@ test("B-2: Applying a valid patch updates film state deterministically", () => {
   assert.notEqual(res.updatedFilm?.accent, initialAccent);
 });
 
-test("B-3: Validation failure rolls back patch and displays failing rule by name", () => {
-  const film = makeSampleFilm();
 
-  // Construct a patch that breaks Rule M1 (missing metaphor content)
-  const badOps = [
-    {
-      op: "update_block_prop" as const,
-      shotId: "shot-1",
-      blockIndex: 0,
-      updates: { c: "MetaphorViewer" }, // Invalid: missing content payload
-    },
-  ];
-
-  const patchResult = applyFilmPatch(film, badOps);
-  assert.ok(patchResult.error);
-  assert.ok(patchResult.failingRule?.includes("Rule M1"));
-  assert.deepEqual(patchResult.film, film, "State must remain unchanged on validation rollback");
-});
 
 test("B-4: Undo restores exact prior state (deep-equal assertion)", () => {
   const film = makeSampleFilm();

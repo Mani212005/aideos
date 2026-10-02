@@ -5,7 +5,6 @@
 import { Composition } from "remotion";
 import { Video } from "./dl/Video";
 import { defaultFilmProps, filmPropsSchema, FPS, TOTAL_FRAMES } from "./dl/runtime";
-import { GlowingClusterMetaphor } from "./dl/metaphors/GlowingClusterMetaphor";
 
 // Renders the root Remotion compositions for the film deliverables and 3D metaphors.
 export const RemotionRoot: React.FC = () => {
@@ -41,20 +40,7 @@ export const RemotionRoot: React.FC = () => {
         schema={filmPropsSchema}
         defaultProps={defaultFilmProps}
       />
-      <Composition
-        id="GlowingCluster3D"
-        component={GlowingClusterMetaphor}
-        durationInFrames={300}
-        fps={30}
-        width={1920}
-        height={1080}
-        defaultProps={{
-          width: 1920,
-          height: 1080,
-          title: 'HIGH-FIDELITY SHADER CLUSTER',
-          subtitle: 'Deterministic 3D Rendering Engine',
-        }}
-      />
+      
     </>
   );
 };

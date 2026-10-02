@@ -9,7 +9,6 @@
 
 import React from "react";
 import type { CompiledFrame, CompiledEntity } from "./compile";
-import { getCharacterRigById } from "../characters";
 import { PALETTE, useTokens } from "../tokens";
 import { useAccent } from "../accent";
 import { parseSvgDocument, type SvgDocument } from "./svgDocument";
@@ -38,25 +37,6 @@ export interface SceneViewProps {
 }
 
 // Maps semantic token to active hex color
-const resolveSemanticColor = (token: string | undefined, accentColor: string, palette: ReturnType<typeof useTokens>): string => {
-  switch (token) {
-    case "surface":
-      return palette.surface;
-    case "ink":
-      return palette.ink;
-    case "muted":
-      return palette.muted;
-    case "hairline":
-      return palette.hairline;
-    case "accent":
-      return accentColor;
-    case "canvas":
-      return palette.canvas;
-    case "none":
-    default:
-      return "none";
-  }
-};
 
 /** Parsed-document cache keyed by source text, so a repeated asset parses once per process. */
 const parsedDocumentCache = new Map<string, SvgDocument | null>();
@@ -181,70 +161,6 @@ export const SceneView: React.FC<SceneViewProps> = ({
     );
   };
 
-  // Renders one articulated character actor with hierarchical joint rotations.
-  const renderActor = (entity: CompiledEntity) => {
-    const rigId = entity.rigId || "developer";
-    const rig = getCharacterRigById(rigId) || getCharacterRigById("developer")!;
-    const tr = entity.transform;
-    const joints = entity.joints || {};
-
-    const rootGroups = rig.groups.filter((g) => !g.parent);
-    const childGroupsByParent: Record<string, typeof rig.groups> = {};
-
-    for (const group of rig.groups) {
-      if (group.parent) {
-        if (!childGroupsByParent[group.parent]) childGroupsByParent[group.parent] = [];
-        childGroupsByParent[group.parent].push(group);
-      }
-    }
-
-    const renderGroup = (group: (typeof rig.groups)[0]) => {
-      const rot = joints[group.id] ?? group.defaultRotation ?? 0;
-      const pivot = group.pivot;
-      const children = childGroupsByParent[group.id] || [];
-
-      return (
-        <g
-          key={group.id}
-          id={`group-${entity.entityId}-${group.id}`}
-          transform={`translate(${pivot.x}, ${pivot.y}) rotate(${rot}) translate(${-pivot.x}, ${-pivot.y})`}
-        >
-          {group.paths.map((p, idx) => {
-            const fill = resolveSemanticColor(p.fill, accentColor, palette);
-            const stroke = resolveSemanticColor(p.stroke, accentColor, palette);
-            return (
-              <path
-                key={idx}
-                d={p.d}
-                fill={fill}
-                stroke={stroke}
-                strokeWidth={p.strokeWidth ?? (stroke !== "none" ? 2 : 0)}
-                fillRule={p.fillRule}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            );
-          })}
-          {children.map((child) => renderGroup(child))}
-        </g>
-      );
-    };
-
-    return (
-      <g
-        key={entity.entityId}
-        id={`actor-${entity.entityId}`}
-        ref={(el) => onMountEntityRef?.(entity.entityId, el)}
-        transform={`translate(${tr.x}, ${tr.y}) scale(${tr.scale})`}
-        opacity={tr.opacity}
-      >
-        <g transform="translate(-200, -300)">
-          {rootGroups.map((root) => renderGroup(root))}
-        </g>
-      </g>
-    );
-  };
-
   let cameraTransform = "";
   if (frame.camera) {
     const sw = sceneSize?.w ?? width;
@@ -272,9 +188,7 @@ export const SceneView: React.FC<SceneViewProps> = ({
 
       <g transform={cameraTransform || undefined}>
         {/* Render all entities strictly in ascending resolvedLayer order */}
-        {frame.entities.map((entity) =>
-          entity.kind === "actor" ? renderActor(entity) : renderEnvironmentAsset(entity),
-        )}
+        {frame.entities.map((entity) => renderEnvironmentAsset(entity))}
       </g>
     </svg>
   );

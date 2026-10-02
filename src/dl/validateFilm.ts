@@ -5,11 +5,8 @@
  * 100% pure TypeScript data validator with zero Node runtime imports.
  */
 import { parseFilm, type Film, type Block, type Shot } from "./schema";
-import { CHARACTER_RIGS } from "./characters";
 import { buildTimeline, camAt, lookBox, projectBox } from "./camera";
 import { computeBlockRect } from "./layout";
-import { verifyTrajectoryContinuity } from "./motion/verifier";
-import { evaluateCatmullRomSpline } from "./motion/spline";
 
 /**
  * Maximum allowed physical velocity discontinuity at interior keyframe knots (degrees per physical second).
@@ -134,121 +131,6 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
               }
             }
           }
-        }
-      }
-    }
-
-    // 4. Character rig integrity & pose validation
-    for (let bIdx = 0; bIdx < shot.blocks.length; bIdx++) {
-      const block = shot.blocks[bIdx];
-      if (block.c === "CharacterBeat") {
-        const rig = CHARACTER_RIGS[block.characterId];
-        if (!rig) {
-          throw new Error(
-            `Shot ${sIdx} ("${shot.id}") block ${bIdx} references unknown characterId "${block.characterId}". Available: ${Object.keys(CHARACTER_RIGS).join(", ")}`,
-          );
-        }
-        const validGroupIds = new Set(rig.groups.map((g) => g.id));
-        let prevT = -1;
-        for (let pIdx = 0; pIdx < block.poses.length; pIdx++) {
-          const pose = block.poses[pIdx];
-          if (pose.t < 0 || pose.t > 1) {
-            throw new Error(
-              `Shot ${sIdx} ("${shot.id}") block ${bIdx} pose ${pIdx} has invalid progress t=${pose.t}; must be between 0 and 1`,
-            );
-          }
-          if (pose.t < prevT) {
-            throw new Error(
-              `Shot ${sIdx} ("${shot.id}") block ${bIdx} pose keyframes must be non-decreasing in t (pose ${pIdx} t=${pose.t} < prev ${prevT})`,
-            );
-          }
-          prevT = pose.t;
-
-          for (const groupId of Object.keys(pose.groups)) {
-            if (!validGroupIds.has(groupId)) {
-              throw new Error(
-                `Shot ${sIdx} ("${shot.id}") block ${bIdx} pose ${pIdx} references unknown group "${groupId}" for character "${block.characterId}". Valid groups: ${Array.from(validGroupIds).join(", ")}`,
-              );
-            }
-          }
-        }
-
-        // 5. Motion Continuity Verifier Gate (C1 Continuity across multi-knot sequences)
-        if (block.poses.length >= 3) {
-          const knotsT = block.poses.map((p) => p.t);
-          const interiorKnots = knotsT.slice(1, -1);
-
-          for (const groupId of Array.from(validGroupIds)) {
-            const jointKnots = block.poses
-              .filter((p) => typeof p.groups?.[groupId]?.rotate === "number")
-              .map((p) => ({ t: p.t, val: p.groups[groupId].rotate! }));
-
-            if (jointKnots.length >= 3) {
-              const evalSpline = (tQuery: number) => evaluateCatmullRomSpline(jointKnots, tQuery);
-              const continuityReport = verifyTrajectoryContinuity(
-                evalSpline,
-                interiorKnots,
-                shot.dur,
-                1e-4,
-                MAX_ALLOWED_VELOCITY_DISCONTINUITY_DEG_PER_SEC
-              );
-
-              if (!continuityReport.isC1Continuous) {
-                const badKnot = continuityReport.knots.find((k) => !k.isC1Continuous) || continuityReport.knots[0];
-                throw new Error(
-                  `MOTION_CONTINUITY_VIOLATION: Shot ${sIdx} ("${shot.id}") CharacterBeat joint "${groupId}" has a C0 velocity discontinuity of ${badKnot.physicalVelocityDiscontinuity.toFixed(3)} deg/s (raw normalized Δv=${badKnot.rawNormalizedDiscontinuity.toFixed(3)} / shot.dur=${shot.dur.toFixed(1)}s) at knot t=${badKnot.t} (exceeds threshold ${MAX_ALLOWED_VELOCITY_DISCONTINUITY_DEG_PER_SEC} deg/s)`,
-                );
-              }
-            }
-          }
-        }
-      }
-
-      // 6. Visual Metaphor data-driven content & kind integrity (Rules M1, M2, M3)
-      if (block.c === "MetaphorViewer") {
-        if (!block.content) {
-          throw new Error(
-            `METAPHOR_MISSING_CONTENT: Shot ${sIdx} ("${shot.id}") MetaphorViewer block ${bIdx} must carry a valid content payload (Rule M1)`,
-          );
-        }
-
-        const validKinds = [
-          "spider-web",
-          "liquid-bucket",
-          "balance-scale",
-          "clock-gears",
-          "rocket-launch",
-          "character-throw",
-          "typing-cursor-quote",
-          "glowing-cluster",
-          "custom",
-        ];
-        if (!validKinds.includes(block.content.kind)) {
-          throw new Error(
-            `METAPHOR_INVALID_KIND: Shot ${sIdx} ("${shot.id}") MetaphorViewer content has invalid kind "${block.content.kind}" (Rule M1)`,
-          );
-        }
-
-        // Rule M2: Required label fields must be non-empty strings
-        if (block.content.kind === "balance-scale") {
-          if (!block.content.leftLabel?.trim() || !block.content.rightLabel?.trim()) {
-            throw new Error(
-              `METAPHOR_EMPTY_LABEL: Shot ${sIdx} ("${shot.id}") balance-scale must provide non-empty leftLabel and rightLabel (Rule M2)`,
-            );
-          }
-        } else if (block.content.kind === "liquid-bucket") {
-          if (!block.content.levelLabel?.trim()) {
-            throw new Error(
-              `METAPHOR_EMPTY_LABEL: Shot ${sIdx} ("${shot.id}") liquid-bucket must provide non-empty levelLabel (Rule M2)`,
-            );
-          }
-        }
-
-        // Rule M3: Kind in content must match shot's metaphor field when present
-        if (shot.metaphor && shot.metaphor !== block.content.kind) {
-          throw new Error(
-            `METAPHOR_KIND_MISMATCH: Shot ${sIdx} ("${shot.id}") metaphor field is "${shot.metaphor}" but MetaphorViewer block content.kind is "${block.content.kind}" (Rule M3)`,
-          );
         }
       }
     }

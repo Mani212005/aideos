@@ -5,7 +5,6 @@
  */
 
 import type { Scene, ActorInstance, Vec2 } from "./types";
-import type { ActionParams } from "./actions";
 import { validateScene } from "./validateScene";
 import { compileScene } from "./compile";
 
@@ -13,7 +12,7 @@ export type PatchOp =
   | { op: "adjust_joint"; instanceId: string; joint: string; frame: number; deltaDegrees: number }
   | { op: "set_joint"; instanceId: string; joint: string; frame: number; valueDegrees: number }
   | { op: "retime_action"; instanceId: string; actionIndex: number; shiftFrames: number }
-  | { op: "set_action"; instanceId: string; actionIndex: number; actionId: string; params: ActionParams }
+  
   | { op: "move_entity"; entityId: string; to: Vec2 }
   | { op: "set_layer"; entityId: string; layer: number } // D5 explicit override
   | { op: "clear_layer"; entityId: string } // D5 revert to derived
@@ -116,37 +115,7 @@ export function applyPatch(scene: Scene, ops: PatchOp[]): PatchResult {
           break;
         }
 
-        case "set_action": {
-          const actor = workingScene.actors.find((a) => a.instanceId === op.instanceId);
-          if (!actor) {
-            rejected.push({ op, reason: `Actor with instanceId "${op.instanceId}" not found in scene` });
-            continue;
-          }
-          if (!actor.actions) actor.actions = [];
-          if (op.actionIndex < 0 || op.actionIndex > actor.actions.length) {
-            rejected.push({
-              op,
-              reason: `Invalid actionIndex ${op.actionIndex} (actions length: ${actor.actions.length})`,
-            });
-            continue;
-          }
-
-          const newAction = {
-            actionId: op.actionId,
-            startFrame: actor.actions[op.actionIndex]?.startFrame ?? 0,
-            durationFrames: op.params.durationFrames,
-            intensity: op.params.intensity,
-            side: op.params.side,
-          };
-
-          if (op.actionIndex === actor.actions.length) {
-            actor.actions.push(newAction);
-          } else {
-            actor.actions[op.actionIndex] = newAction;
-          }
-          applied.push(op);
-          break;
-        }
+        
 
         case "move_entity": {
           // Check background, props, actors

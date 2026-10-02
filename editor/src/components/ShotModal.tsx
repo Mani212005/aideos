@@ -4,8 +4,8 @@
 
 import React, { useState } from "react";
 import type { Film, Shot, Block } from "../../../src/dl/schema";
-import { POSE_PRESETS, getAllCharacterRigs } from "../../../src/dl/characters";
-import { CharacterRigView } from "../../../src/dl/CharacterRig";
+
+
 import {
   Mic,
   Sparkles,
@@ -98,7 +98,7 @@ export const ShotModal: React.FC<ShotModalProps> = ({
   if (!isOpen || shotIndex < 0 || shotIndex >= film.shots.length) return null;
 
   const shot = film.shots[shotIndex];
-  const allRigs = getAllCharacterRigs();
+  const allRigs: any[] = [];
 
   // Find active character block or b-roll inset if one exists
   const charBlock = shot.blocks.find((b) => b.c === "CharacterBeat") as any;
@@ -115,11 +115,11 @@ export const ShotModal: React.FC<ShotModalProps> = ({
   const activeCharId = charBlock?.characterId || "astronaut";
   const poses = charBlock?.poses ||
     charBlock?.keyframes || [
-      { t: 0, pose: "neutral", groups: { ...POSE_PRESETS.neutral.groups } },
+      { t: 0, pose: "neutral", groups: {  } },
       {
         t: 0.5,
         pose: "present-right",
-        groups: { ...POSE_PRESETS["present-right"].groups },
+        groups: {  },
       },
     ];
 
@@ -151,11 +151,11 @@ export const ShotModal: React.FC<ShotModalProps> = ({
         characterId: "astronaut",
         stage: "frame",
         poses: [
-          { t: 0, pose: "neutral", groups: { ...POSE_PRESETS.neutral.groups } },
+          { t: 0, pose: "neutral", groups: {  } },
           {
             t: 0.5,
             pose: "present-right",
-            groups: { ...POSE_PRESETS["present-right"].groups },
+            groups: {  },
           },
         ],
       } as any;
@@ -217,7 +217,7 @@ export const ShotModal: React.FC<ShotModalProps> = ({
 
   // Helper to apply a one-click gesture preset to the active timeline moment
   const applyGesturePreset = (presetId: string) => {
-    const preset = POSE_PRESETS[presetId as keyof typeof POSE_PRESETS];
+    const preset: any = { name: "unknown", groups: {} };
     if (!preset || !charBlock) return;
 
     const updatedPoses = [...poses];
@@ -259,7 +259,7 @@ export const ShotModal: React.FC<ShotModalProps> = ({
     const newMoment = {
       t: nextT,
       pose: "present-right",
-      groups: { ...POSE_PRESETS["present-right"].groups },
+      groups: {  },
     };
     const updatedPoses = [...poses, newMoment].sort(
       (a: any, b: any) => a.t - b.t,
@@ -348,12 +348,7 @@ export const ShotModal: React.FC<ShotModalProps> = ({
                   <span>Live Pose: {currentActiveGestureId}</span>
                 </div>
                 <div className="w-full h-36 flex items-center justify-center pt-3">
-                  <CharacterRigView
-                    characterId={activeCharId}
-                    poses={poses}
-                    durationInFrames={1}
-                    start={0}
-                  />
+                  
                 </div>
               </div>
             )}

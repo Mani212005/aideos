@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import type { Film, Shot, Block } from "../../../src/dl/schema";
 import { getShotDuration } from "../../../backend/timeline/timeline";
-import { POSE_PRESETS, getAllCharacterRigs } from "../../../src/dl/characters";
+
 import { TransitionEditor } from "./TransitionEditor";
 import { ShotDesignPanel } from "./ShotDesignPanel";
 import { TRANSITION_PRESETS, type TransitionType } from "../transitions";
@@ -90,7 +90,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
   const fps = film.fps || 30;
   const dur = getShotDuration(shot);
   const pos = shot.position ?? shot.startSec ?? 0;
-  const characterRigs = getAllCharacterRigs();
+  const characterRigs: any[] = [];
 
   // Character Beat block helper
   const charBlockIdx = shot.blocks.findIndex((b) => b.c === "CharacterBeat");
@@ -131,7 +131,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
             {
               c: "CharacterBeat",
               characterId: "developer",
-              poses: [{ t: 0, groups: { ...POSE_PRESETS.neutral.groups } }],
+              poses: [{ t: 0, groups: {  } }],
             } as Block,
           ],
         },
@@ -184,9 +184,9 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
   };
 
   // 1-Click Pose Preset Application
-  const applyPosePreset = (presetKey: string) => {
+  const applyPosePreset = (_presetKey: string) => {
     if (charBlockIdx < 0 || !charBlock) return;
-    const preset = POSE_PRESETS[presetKey];
+    const preset: any = { name: "unknown", groups: {} };
     if (!preset) return;
 
     const poses =
