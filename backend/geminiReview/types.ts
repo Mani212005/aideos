@@ -115,7 +115,6 @@ export interface ReviewLoopOptions {
   targetScore?: number;
   referenceVideo?: string;
   format?: "long" | "reel";
-  autoRefine?: boolean;
   onProgress?: (message: string) => void;
   mockReviewer?: (videoPath: string, round: number) => Promise<GeminiReviewReport>;
   mockRenderer?: (slug: string, format: string) => Promise<string>;

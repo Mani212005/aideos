@@ -16,8 +16,8 @@ import {
   buildSingleVideoReviewPrompt,
   buildPairwiseReviewPrompt,
 } from "./rubric";
-import { GeminiVideoClient } from "./geminiClient";
 import {
+  GeminiVideoClient,
   computeFileHash,
   cleanModelJsonResponse,
   reviewVideo,
@@ -280,47 +280,6 @@ test("reviewLoop: formatReviewSummary outputs human-readable breakdown", () => {
   assert.ok(summary.includes("Keep node elements persistent"));
 });
 
-test("reviewLoop: applyFeedbackToFilm modifies film.json configuration", async () => {
-  const tmpVideos = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-film-test-"));
-  const slugDir = path.join(tmpVideos, "test-film");
-  fs.mkdirSync(slugDir, { recursive: true });
-
-  const initialFilm = {
-    id: "test-film",
-    title: "Test Film",
-    showCaptions: false,
-    shots: [
-      { id: "shot-1", dur: 20, move: "none" },
-    ],
-  };
-  fs.writeFileSync(path.join(slugDir, "film.json"), JSON.stringify(initialFilm, null, 2), "utf8");
-
-  // Temporarily override REPO_ROOT for this test
-  const feedback: ReviewFeedbackItem[] = [
-    { priority: "high", issue: "Missing bottom captions", recommendation: "Enable bottom caption band" },
-    { priority: "medium", issue: "Static camera", recommendation: "Add slow zoom in camera motion" },
-    { priority: "low", issue: "Shot held too long", recommendation: "Shorten shot duration" },
-  ];
-
-  // Directly test the transformation logic on the film JSON
-  const raw = fs.readFileSync(path.join(slugDir, "film.json"), "utf8");
-  const film = JSON.parse(raw);
-  for (const item of feedback) {
-    const text = `${item.issue} ${item.recommendation}`.toLowerCase();
-    if (text.includes("caption")) film.showCaptions = true;
-    if (text.includes("camera")) film.shots[0].move = "slow-zoom-in";
-    if (text.includes("shorten")) film.shots[0].dur = 16;
-  }
-  fs.writeFileSync(path.join(slugDir, "film.json"), JSON.stringify(film, null, 2), "utf8");
-
-  const updated = JSON.parse(fs.readFileSync(path.join(slugDir, "film.json"), "utf8"));
-  assert.equal(updated.showCaptions, true);
-  assert.equal(updated.shots[0].move, "slow-zoom-in");
-  assert.equal(updated.shots[0].dur, 16);
-
-  fs.rmSync(tmpVideos, { recursive: true, force: true });
-});
-
 test("reviewLoop: runs multi-round loop and achieves target score 9.0+", async () => {
   const tmpVideoDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-loop-test-"));
   const testSlug = "mock-loop-slug";
@@ -364,7 +323,6 @@ test("reviewLoop: runs multi-round loop and achieves target score 9.0+", async (
   const loopResult = await runReviewLoop(testSlug, {
     maxRounds: 4,
     targetScore: 9.0,
-    autoRefine: false,
     mockRenderer,
     mockReviewer,
     onProgress: (msg) => progressEvents.push(msg),
@@ -524,7 +482,6 @@ test("reviewLoop: requires winning or tying pairwise check when reference video 
     maxRounds: 3,
     targetScore: 9.0,
     referenceVideo: refVideo,
-    autoRefine: false,
     mockRenderer,
     mockReviewer,
     mockPairwise,

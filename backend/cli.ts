@@ -838,7 +838,6 @@ program
   .option("--target-score <n>", "Target overall score out of 10.0 (default: 9.0)", "9.0")
   .option("--reference <mp4>", "Optional reference mp4 video; acceptance requires winning or tying against it in pairwise comparison")
   .option("--format <format>", "Render format: long or reel (default: long)", "long")
-  .option("--no-auto", "Do not automatically apply feedback between rounds")
   .option("--json", "Print final loop result as raw JSON")
   .action(
     async (
@@ -848,7 +847,6 @@ program
         targetScore: string;
         reference?: string;
         format: "long" | "reel";
-        auto: boolean;
         json?: boolean;
       },
     ) => {
@@ -859,7 +857,6 @@ program
         targetScore: Number(options.targetScore),
         referenceVideo: options.reference,
         format: options.format,
-        autoRefine: options.auto,
         onProgress: (msg) => console.log(msg),
       });
 

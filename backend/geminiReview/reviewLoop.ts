@@ -1,6 +1,6 @@
 /**
  * File Description: Iterative video review loop that orchestrates video rendering,
- * Gemini 3.8 Flash evaluation, round persistence, automated film refinement, and 9.0+ acceptance gating.
+ * Gemini 3.8 Flash evaluation, round persistence, and 9.0+ acceptance gating.
  */
 
 import fs from "node:fs";
@@ -96,7 +96,6 @@ export async function runReviewLoop(
   const targetScore = options?.targetScore ?? 9.0;
   const format = options?.format ?? "long";
   const onProgress = options?.onProgress || (() => {});
-  const autoRefine = options?.autoRefine ?? true;
 
   const videoDir = resolvePackageDir(slug);
   const reviewDir = path.join(videoDir, "gemini-review");
@@ -175,10 +174,8 @@ export async function runReviewLoop(
     // Persist round state to gitignored review directory
     const roundPath = path.join(reviewDir, `round-${round}.json`);
     const latestPath = path.join(reviewDir, "latest.json");
-    const filmReviewPath = path.join(videoDir, "review.json");
     await fsp.writeFile(roundPath, JSON.stringify(roundRecord, null, 2), "utf8");
     await fsp.writeFile(latestPath, JSON.stringify(roundRecord, null, 2), "utf8");
-    await fsp.writeFile(filmReviewPath, JSON.stringify(report, null, 2), "utf8");
     onProgress(`Saved round ${round} results to ${roundPath}`);
 
     // Print summary
