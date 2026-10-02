@@ -11,7 +11,7 @@
 import type { SvgAnimatableProperty, SvgEasing } from "../../src/dl/scene/svgAnimation";
 import { Timeline } from "./timeline";
 import { createCues, type Cues, type NarrationTiming } from "./timing";
-import { measureText, tokenWidth, resolveTypeOpts, type TypeOpts, type Face } from "./typeMetrics";
+import { measureText, tokenWidth, resolveTypeOpts, type TypeOpts } from "./typeMetrics";
 import { DEFAULT_ACCENT, OY, PAL, W, frameOf, g, text, type AttrValue } from "./svg";
 import { norm, bare, shape } from "./text";
 
