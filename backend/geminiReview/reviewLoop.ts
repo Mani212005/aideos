@@ -122,7 +122,14 @@ export async function runReviewLoop(
       report = await options.mockReviewer(videoPath, round);
     } else {
       const filmPath = path.join(resolvePackageDir(slug), "film.json");
-      report = await reviewVideo(videoPath, { onProgress, slug, filmPath });
+      report = await reviewVideo(videoPath, {
+        onProgress,
+        slug,
+        filmPath,
+        runner: options?.runner,
+        model: options?.model,
+        timeoutSeconds: options?.timeoutSeconds,
+      });
     }
 
     // Optional pairwise comparison against reference video
@@ -135,7 +142,12 @@ export async function runReviewLoop(
       if (options.mockPairwise) {
         pairwiseReport = await options.mockPairwise(videoPath, refPath);
       } else {
-        pairwiseReport = await reviewPairwise(videoPath, refPath, { onProgress });
+        pairwiseReport = await reviewPairwise(videoPath, refPath, {
+          onProgress,
+          runner: options?.runner,
+          model: options?.model,
+          timeoutSeconds: options?.timeoutSeconds,
+        });
       }
 
       // Order 1 (AB): Video 1 = candidate, Video 2 = reference

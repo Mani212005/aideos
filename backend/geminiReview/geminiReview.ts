@@ -1,22 +1,28 @@
 /**
- * File Description: High-level video review engine using Gemini 3.8 Flash.
- * Evaluates videos against the 12-criterion rubric, enforces timestamp evidence verification,
+ * File Description: High-level video review engine using the agy CLI agent running Gemini 3.8 Flash.
+ * Evaluates local mp4 videos against the 12-criterion rubric, enforces timestamp evidence verification,
  * validates hard gates, and executes order-swapped pairwise video comparisons.
  */
 
+import { execFile } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
-import { getGoogleAiClient } from "../modelClient";
 import { extractDeterministicFacts } from "./facts";
 import {
+  PAIRWISE_REVIEW_JSON_SCHEMA,
   RUBRIC_CRITERIA,
+  SINGLE_REVIEW_JSON_SCHEMA,
   buildPairwiseReviewPrompt,
   buildSingleVideoReviewPrompt,
   validateCriterionTimestamps,
 } from "./rubric";
 import type {
+  AgyReviewClient,
+  AgyRunner,
+  AgyRunnerOptions,
   DeterministicVideoFacts,
   GeminiReviewReport,
   PairwiseComparisonResult,
@@ -24,8 +30,10 @@ import type {
 } from "./types";
 
 export interface SingleReviewOptions {
-  client?: GeminiVideoClient;
-  clientOptions?: GeminiClientOptions;
+  runner?: AgyRunner;
+  client?: AgyReviewClient;
+  model?: string;
+  timeoutSeconds?: number;
   maxValidationAttempts?: number;
   filmPath?: string;
   skipFacts?: boolean;
@@ -35,80 +43,178 @@ export interface SingleReviewOptions {
 }
 
 export interface PairwiseReviewOptions {
-  client?: GeminiVideoClient;
-  clientOptions?: GeminiClientOptions;
+  runner?: AgyRunner;
+  client?: AgyReviewClient;
+  model?: string;
+  timeoutSeconds?: number;
   onProgress?: (message: string) => void;
 }
 
-export interface GeminiVideoClient {
-  uploadVideo(filePath: string, displayName?: string): Promise<{ name: string, uri: string, state: string }>;
-  generateContentWithVideo(videoUri: string, promptText: string, options?: { temperature?: number, systemInstruction?: string }): Promise<string>;
-  generateContentPairwise(videoUriA: string, videoUriB: string, promptText: string): Promise<string>;
-}
+// Executes agy CLI non-interactively in print mode with structured JSON schema.
+export async function defaultAgyRunner(
+  prompt: string,
+  options?: AgyRunnerOptions,
+): Promise<string> {
+  const model =
+    options?.model ||
+    process.env.AIDEOS_GEMINI_REVIEW_MODEL ||
+    process.env.GEMINI_MODEL ||
+    "gemini-3.8-flash-high";
+  const timeoutSec =
+    options?.timeoutSeconds ??
+    (Number(process.env.AIDEOS_AGY_TIMEOUT) || 1800);
+  const printTimeoutArg = `${timeoutSec}s`;
 
-export interface GeminiClientOptions {
-  onProgress?: (message: string) => void;
-  [key: string]: any;
-}
+  const args: string[] = [
+    "-p",
+    prompt,
+    "--model",
+    model,
+    "--print-timeout",
+    printTimeoutArg,
+    "--output-format",
+    "json",
+    "--dangerously-skip-permissions",
+  ];
 
-function createDefaultClient(options?: GeminiClientOptions): GeminiVideoClient {
-  const ai = getGoogleAiClient();
-  const modelName = process.env.AIDEOS_GEMINI_REVIEW_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
-  const onProgress = options?.onProgress || (() => {});
-  
-  return {
-    async uploadVideo(filePath: string, displayName?: string) {
-      const file = await ai.files.upload({
-        file: filePath,
-        config: { displayName: displayName || path.basename(filePath) }
-      });
-      if (!file.name) {
-        throw new Error(`Video upload did not return a valid file name for ${filePath}`);
-      }
-      let currentFile = file;
-      while (currentFile.state === "PROCESSING") {
-        onProgress(`  Video processing (${currentFile.name})...`);
-        await new Promise(r => setTimeout(r, 5000));
-        currentFile = await ai.files.get({ name: file.name });
-      }
-      if (currentFile.state === "FAILED") {
-        throw new Error(`Video processing failed for ${filePath}`);
-      }
-      return currentFile as any;
-    },
-    async generateContentWithVideo(videoUri: string, promptText: string, configOpts?: any) {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: [{
-          role: "user",
-          parts: [
-            { fileData: { fileUri: videoUri, mimeType: "video/mp4" } },
-            { text: promptText }
-          ]
-        }],
-        config: {
-          temperature: configOpts?.temperature ?? 0.1,
-          systemInstruction: configOpts?.systemInstruction,
+  if (options?.schema) {
+    args.push("--json-schema", JSON.stringify(options.schema));
+  }
+
+  return new Promise<string>((resolve, reject) => {
+    execFile(
+      "agy",
+      args,
+      {
+        cwd: options?.cwd,
+        maxBuffer: 50 * 1024 * 1024,
+        timeout: (timeoutSec + 30) * 1000,
+      },
+      (error, stdout, stderr) => {
+        if (error) {
+          if ((error as any).code === "ENOENT") {
+            return reject(
+              new Error(
+                "agy CLI not found on PATH. Please ensure agy is installed and accessible.",
+              ),
+            );
+          }
+
+          const combined = `${error.message}\n${stdout}\n${stderr}`;
+          if (
+            combined.includes("RESOURCE_EXHAUSTED") ||
+            combined.includes("quota") ||
+            combined.includes("429") ||
+            combined.includes("rate limit")
+          ) {
+            return reject(
+              new Error(
+                `agy review failed: Quota exceeded or rate limited. No silent fallback allowed. Details: ${combined.trim()}`,
+              ),
+            );
+          }
+          if (
+            combined.includes("not authenticated") ||
+            combined.includes("not signed in") ||
+            combined.includes("login") ||
+            combined.includes("auth")
+          ) {
+            return reject(
+              new Error(
+                `agy review failed: Not authenticated or signed in to agy. Details: ${combined.trim()}`,
+              ),
+            );
+          }
+
+          try {
+            const parsed = JSON.parse(stdout);
+            if (parsed.status === "ERROR") {
+              const errStr = parsed.error || stderr || error.message;
+              return reject(new Error(`agy review failed (${parsed.status}): ${errStr}`));
+            }
+          } catch {}
+
+          return reject(
+            new Error(
+              `agy execution failed (exit code ${error.code || "unknown"}): ${stderr || error.message}`,
+            ),
+          );
         }
-      });
-      return response.text || "";
-    },
-    async generateContentPairwise(uriA: string, uriB: string, promptText: string) {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: [{
-          role: "user",
-          parts: [
-            { fileData: { fileUri: uriA, mimeType: "video/mp4" } },
-            { fileData: { fileUri: uriB, mimeType: "video/mp4" } },
-            { text: promptText }
-          ]
-        }],
-        config: { temperature: 0.1 }
-      });
-      return response.text || "";
-    }
-  };
+
+        const combinedOutput = `${stdout}\n${stderr}`;
+        if (combinedOutput.includes("print timeout after")) {
+          return reject(
+            new Error(
+              `agy review timed out: print timeout expired before agent completed review. Details: ${combinedOutput.trim()}`,
+            ),
+          );
+        }
+
+        try {
+          const parsed = JSON.parse(stdout);
+          if (parsed.status === "ERROR") {
+            const errStr = parsed.error || stderr || "Unknown error";
+            if (
+              errStr.includes("RESOURCE_EXHAUSTED") ||
+              errStr.includes("quota") ||
+              errStr.includes("429") ||
+              errStr.includes("rate limit")
+            ) {
+              return reject(
+                new Error(
+                  `agy review failed: Quota exceeded or rate limited. No silent fallback allowed. Details: ${errStr}`,
+                ),
+              );
+            }
+            if (
+              errStr.includes("not authenticated") ||
+              errStr.includes("not signed in") ||
+              errStr.includes("login") ||
+              errStr.includes("auth")
+            ) {
+              return reject(
+                new Error(
+                  `agy review failed: Not authenticated or signed in to agy. Details: ${errStr}`,
+                ),
+              );
+            }
+            return reject(new Error(`agy review failed: ${errStr}`));
+          }
+
+          if (parsed.structured_output && typeof parsed.structured_output === "object") {
+            return resolve(JSON.stringify(parsed.structured_output));
+          }
+
+          if (typeof parsed.response === "string" && parsed.response.trim().length > 0) {
+            return resolve(cleanModelJsonResponse(parsed.response));
+          }
+
+          if (
+            parsed.status === "SUCCESS" &&
+            !parsed.structured_output &&
+            (!parsed.response || parsed.response.trim().length === 0)
+          ) {
+            return reject(
+              new Error("agy review failed: agent returned empty response without structured output."),
+            );
+          }
+
+          return resolve(stdout);
+        } catch {
+          return resolve(cleanModelJsonResponse(stdout));
+        }
+      },
+    );
+  });
+}
+
+// Resolves the active review runner function from options or default agy CLI.
+function resolveRunner(options?: { runner?: AgyRunner; client?: AgyReviewClient }): AgyRunner {
+  if (options?.runner) return options.runner;
+  if (options?.client?.runReviewPrompt) {
+    return (prompt, opts) => options.client!.runReviewPrompt(prompt, opts);
+  }
+  return defaultAgyRunner;
 }
 
 // Computes the SHA-256 hash of a file for change tracking and auditability.
@@ -131,6 +237,32 @@ export function cleanModelJsonResponse(rawText: string): string {
   return rawText.trim();
 }
 
+// Creates an isolated temporary directory containing hardlinks or copies of video files under neutral names.
+export function createIsolatedVideoWorkspace(
+  videos: Record<string, string>,
+): { dir: string; videoPaths: Record<string, string>; cleanup: () => void } {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-review-"));
+  const videoPaths: Record<string, string> = {};
+
+  for (const [neutralName, srcPath] of Object.entries(videos)) {
+    const destPath = path.join(dir, neutralName);
+    try {
+      fs.linkSync(srcPath, destPath);
+    } catch {
+      fs.copyFileSync(srcPath, destPath);
+    }
+    videoPaths[neutralName] = destPath;
+  }
+
+  const cleanup = () => {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch {}
+  };
+
+  return { dir, videoPaths, cleanup };
+}
+
 // Reviews a single rendered video against the 12-criterion good-video rubric.
 export async function reviewVideo(
   videoPath: string,
@@ -143,17 +275,14 @@ export async function reviewVideo(
 
   const hash = await computeFileHash(resolvedPath);
   const onProgress = options?.onProgress || (() => {});
-  const client = options?.client || createDefaultClient({ ...options?.clientOptions, onProgress });
+  const runner = resolveRunner(options);
+  const modelName =
+    options?.model ||
+    process.env.AIDEOS_GEMINI_REVIEW_MODEL ||
+    process.env.GEMINI_MODEL ||
+    "gemini-3.8-flash-high";
   const maxAttempts = options?.maxValidationAttempts ?? 3;
 
-  onProgress(`Uploading ${path.basename(resolvedPath)} to Gemini Files API...`);
-  const uploaded = await client.uploadVideo(resolvedPath);
-  onProgress(`Video uploaded (${uploaded.name}). Running Gemini 3.8 Flash evaluation...`);
-
-  let reAskNote: string | undefined;
-  let lastReport: GeminiReviewReport | null = null;
-
-  // Extract deterministic facts (duration, captions via OCR, loudness, camera)
   onProgress(`Extracting deterministic facts for ${path.basename(resolvedPath)}...`);
   const facts =
     options?.facts ??
@@ -166,7 +295,6 @@ export async function reviewVideo(
     onProgress(`Measured: ${facts.durationSec.toFixed(1)}s, captions: ${facts.bottomCaptions.summary}, camera: ${facts.camera.summary}`);
   }
 
-  // Check for pre-existing deterministic review report (e.g. from fm/aideos-review-deterministic)
   let deterministicReviewContext: string | undefined;
   const possiblePaths = [];
   if (options?.slug) {
@@ -175,7 +303,7 @@ export async function reviewVideo(
     const parentDir = path.dirname(resolvedPath);
     possiblePaths.push(
       path.join(parentDir, "review.json"),
-      path.join(parentDir, "..", "review.json")
+      path.join(parentDir, "..", "review.json"),
     );
   }
 
@@ -188,20 +316,35 @@ export async function reviewVideo(
     }
   }
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const prompt = buildSingleVideoReviewPrompt(
-      reAskNote,
-      deterministicReviewContext,
-      facts?.rawSummaryText,
-    );
-    const rawJson = await client.generateContentWithVideo(uploaded.uri, prompt, {
-      temperature: 0.1,
-      systemInstruction:
-        "You are an uncompromising technical video critic. Evaluate the video strictly, cite timestamps, and output valid JSON.",
-    });
+  onProgress(`Evaluating ${path.basename(resolvedPath)} with agy (${modelName})...`);
+
+  let reAskNote: string | undefined;
+  let lastReport: GeminiReviewReport | null = null;
+
+  const workspace = createIsolatedVideoWorkspace({ "video.mp4": resolvedPath });
+  try {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const prompt = buildSingleVideoReviewPrompt(
+        workspace.videoPaths["video.mp4"],
+        reAskNote,
+        deterministicReviewContext,
+        facts?.rawSummaryText,
+      );
+
+      const rawResult = await runner(prompt, {
+        model: modelName,
+        cwd: workspace.dir,
+        timeoutSeconds: options?.timeoutSeconds,
+        schema: SINGLE_REVIEW_JSON_SCHEMA,
+        onProgress,
+      });
 
     try {
-      const parsed = JSON.parse(cleanModelJsonResponse(rawJson)) as Partial<GeminiReviewReport>;
+      const parsed = (
+        typeof rawResult === "string"
+          ? JSON.parse(cleanModelJsonResponse(rawResult))
+          : rawResult
+      ) as Partial<GeminiReviewReport>;
 
       // Ensure criteria array is present and complete
       const criteriaList = Array.isArray(parsed.criteria) ? parsed.criteria : [];
@@ -306,7 +449,7 @@ export async function reviewVideo(
         summary: parsed.summary || (verdict === "ACCEPT" ? "Meets quality standards." : "Revisions required."),
         criteria: normalizedCriteria,
         feedback: Array.isArray(parsed.feedback) ? parsed.feedback : [],
-        model: "gemini-3.8-flash",
+        model: modelName,
         evaluatedAt: new Date().toISOString(),
         videoHash: hash,
         videoPath: resolvedPath,
@@ -326,6 +469,9 @@ export async function reviewVideo(
       onProgress(`Attempt ${attempt} produced invalid JSON. Retrying...`);
     }
   }
+} finally {
+  workspace.cleanup();
+}
 
   if (lastReport) return lastReport;
   throw new Error("Video review failed to produce a valid report.");
@@ -337,32 +483,74 @@ export async function reviewPairwise(
   pathB: string,
   options?: PairwiseReviewOptions,
 ): Promise<PairwiseRunReport> {
+  const resolvedA = path.resolve(pathA);
+  const resolvedB = path.resolve(pathB);
+  if (!fs.existsSync(resolvedA)) {
+    throw new Error(`Video file does not exist: ${resolvedA}`);
+  }
+  if (!fs.existsSync(resolvedB)) {
+    throw new Error(`Video file does not exist: ${resolvedB}`);
+  }
+
   const onProgress = options?.onProgress || (() => {});
-  const client = options?.client || createDefaultClient({ ...options?.clientOptions, onProgress });
+  const runner = resolveRunner(options);
+  const modelName =
+    options?.model ||
+    process.env.AIDEOS_GEMINI_REVIEW_MODEL ||
+    process.env.GEMINI_MODEL ||
+    "gemini-3.8-flash-high";
 
-  onProgress(`Uploading Video A: ${path.basename(pathA)}...`);
-  const uploadA = await client.uploadVideo(pathA, "video_a");
-
-  onProgress(`Uploading Video B: ${path.basename(pathB)}...`);
-  const uploadB = await client.uploadVideo(pathB, "video_b");
-
-  const prompt = buildPairwiseReviewPrompt();
+  const timeoutSeconds =
+    options?.timeoutSeconds ??
+    (Number(process.env.AIDEOS_AGY_TIMEOUT) || 1800);
 
   // Order 1: Video 1 = A, Video 2 = B
-  onProgress("Running pairwise comparison (Order: Video 1 = A, Video 2 = B)...");
-  const rawAB = await client.generateContentPairwise(uploadA.uri, uploadB.uri, prompt);
-  const parsedAB = JSON.parse(cleanModelJsonResponse(rawAB)) as {
+  onProgress(`Running pairwise comparison with agy (${modelName}) (Order: Video 1 = A, Video 2 = B)...`);
+  const workspaceAB = createIsolatedVideoWorkspace({
+    "video_1.mp4": resolvedA,
+    "video_2.mp4": resolvedB,
+  });
+  let parsedAB: {
     video1Score: number;
     video2Score: number;
     choice: "Video 1" | "Video 2" | "Tie";
     reasoning: string;
     timestampsCited?: string[];
   };
+  try {
+    const promptAB = buildPairwiseReviewPrompt(
+      workspaceAB.videoPaths["video_1.mp4"],
+      workspaceAB.videoPaths["video_2.mp4"],
+    );
+    const rawAB = await runner(promptAB, {
+      model: modelName,
+      cwd: workspaceAB.dir,
+      timeoutSeconds,
+      schema: PAIRWISE_REVIEW_JSON_SCHEMA,
+      onProgress,
+    });
+
+    parsedAB = (
+      typeof rawAB === "string" ? JSON.parse(cleanModelJsonResponse(rawAB)) : rawAB
+    ) as typeof parsedAB;
+  } finally {
+    workspaceAB.cleanup();
+  }
+
+  if (
+    typeof parsedAB?.video1Score !== "number" ||
+    typeof parsedAB?.video2Score !== "number" ||
+    !parsedAB?.choice
+  ) {
+    throw new Error(
+      `Invalid pairwise comparison output from agy (Order AB): missing scores or choice in ${JSON.stringify(parsedAB)}`,
+    );
+  }
 
   const orderAB: PairwiseComparisonResult = {
     orderKey: "Video1=A, Video2=B",
-    video1Path: pathA,
-    video2Path: pathB,
+    video1Path: resolvedA,
+    video2Path: resolvedB,
     video1Score: parsedAB.video1Score,
     video2Score: parsedAB.video2Score,
     choice: parsedAB.choice,
@@ -371,20 +559,52 @@ export async function reviewPairwise(
   };
 
   // Order 2: Video 1 = B, Video 2 = A
-  onProgress("Running pairwise comparison (Order: Video 1 = B, Video 2 = A)...");
-  const rawBA = await client.generateContentPairwise(uploadB.uri, uploadA.uri, prompt);
-  const parsedBA = JSON.parse(cleanModelJsonResponse(rawBA)) as {
+  onProgress(`Running pairwise comparison with agy (${modelName}) (Order: Video 1 = B, Video 2 = A)...`);
+  const workspaceBA = createIsolatedVideoWorkspace({
+    "video_1.mp4": resolvedB,
+    "video_2.mp4": resolvedA,
+  });
+  let parsedBA: {
     video1Score: number;
     video2Score: number;
     choice: "Video 1" | "Video 2" | "Tie";
     reasoning: string;
     timestampsCited?: string[];
   };
+  try {
+    const promptBA = buildPairwiseReviewPrompt(
+      workspaceBA.videoPaths["video_1.mp4"],
+      workspaceBA.videoPaths["video_2.mp4"],
+    );
+    const rawBA = await runner(promptBA, {
+      model: modelName,
+      cwd: workspaceBA.dir,
+      timeoutSeconds,
+      schema: PAIRWISE_REVIEW_JSON_SCHEMA,
+      onProgress,
+    });
+
+    parsedBA = (
+      typeof rawBA === "string" ? JSON.parse(cleanModelJsonResponse(rawBA)) : rawBA
+    ) as typeof parsedBA;
+  } finally {
+    workspaceBA.cleanup();
+  }
+
+  if (
+    typeof parsedBA?.video1Score !== "number" ||
+    typeof parsedBA?.video2Score !== "number" ||
+    !parsedBA?.choice
+  ) {
+    throw new Error(
+      `Invalid pairwise comparison output from agy (Order BA): missing scores or choice in ${JSON.stringify(parsedBA)}`,
+    );
+  }
 
   const orderBA: PairwiseComparisonResult = {
     orderKey: "Video1=B, Video2=A",
-    video1Path: pathB,
-    video2Path: pathA,
+    video1Path: resolvedB,
+    video2Path: resolvedA,
     video1Score: parsedBA.video1Score,
     video2Score: parsedBA.video2Score,
     choice: parsedBA.choice,

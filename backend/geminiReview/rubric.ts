@@ -137,10 +137,32 @@ export function validateCriterionTimestamps(criteria: CriterionEvaluation[]): { 
 
 // Builds the detailed prompt for single video evaluation against the 12-criterion rubric.
 export function buildSingleVideoReviewPrompt(
-  reAskFeedback?: string,
-  deterministicReviewJson?: string,
+  videoPathOrFeedback?: string,
+  reAskFeedbackOrReviewJson?: string,
+  deterministicReviewJsonOrFacts?: string,
   deterministicFactsText?: string,
 ): string {
+  let videoPath: string | undefined;
+  let reAskFeedback: string | undefined;
+  let deterministicReviewJson: string | undefined;
+  let factsText = deterministicFactsText;
+
+  const isVideo =
+    typeof videoPathOrFeedback === "string" &&
+    (videoPathOrFeedback.endsWith(".mp4") ||
+      videoPathOrFeedback.includes("/") ||
+      videoPathOrFeedback.includes("\\"));
+
+  if (isVideo) {
+    videoPath = videoPathOrFeedback;
+    reAskFeedback = reAskFeedbackOrReviewJson;
+    deterministicReviewJson = deterministicReviewJsonOrFacts;
+  } else {
+    reAskFeedback = videoPathOrFeedback;
+    deterministicReviewJson = reAskFeedbackOrReviewJson;
+    factsText = deterministicReviewJsonOrFacts;
+  }
+
   const criteriaText = RUBRIC_CRITERIA.map(
     (c, i) => `${i + 1}. [${c.isGate ? "HARD GATE" : "CRITERION"}] ${c.title} (key: "${c.name}"):\n` +
       `   Requirement: ${c.description}\n` +
@@ -155,12 +177,16 @@ export function buildSingleVideoReviewPrompt(
     ? `\n\nPRE-MEASURED DETERMINISTIC REVIEW FACTS:\nA deterministic quality check was performed prior to this review:\n${deterministicReviewJson}\nFactor these measured facts into your evaluation of layout persistence, captions, safe-area bounds, and audio sync.\n`
     : "";
 
-  const factsNote = deterministicFactsText
-    ? `\n\n${deterministicFactsText}\n`
+  const factsNote = factsText
+    ? `\n\n${factsText}\n`
     : "";
 
+  const videoDirective = videoPath
+    ? `Watch and inspect the complete local video file at: ${videoPath} with audio. Base your evaluation strictly on what you visually see and hear in the video; do not look for, open, or read any other files or source code.`
+    : `Watch the complete video carefully with audio.`;
+
   return `You are an expert video director and technical judge reviewing an animated explainer video.
-Watch the complete video carefully with audio. Evaluate it decisively against the following 12 quality criteria:
+${videoDirective} Evaluate it decisively against the following 12 quality criteria:
 
 ${criteriaText}
 
@@ -208,11 +234,29 @@ Return ONLY valid JSON matching this schema:
 }
 
 // Builds the pairwise comparison prompt for two videos.
-export function buildPairwiseReviewPrompt(topic?: string): string {
-  const topicContext = topic ? ` on the topic of "${topic}"` : "";
+export function buildPairwiseReviewPrompt(
+  video1OrTopic?: string,
+  video2Path?: string,
+  topic?: string,
+): string {
+  let video1: string | undefined;
+  let video2: string | undefined;
+  let topicStr: string | undefined;
 
-  return `You are judging two technical explainer videos${topicContext}. Both were created for the same brief: 16:9, narrated, animated technical diagrams. Watch both videos fully with audio.
+  if (video2Path) {
+    video1 = video1OrTopic;
+    video2 = video2Path;
+    topicStr = topic;
+  } else {
+    topicStr = video1OrTopic;
+  }
 
+  const topicContext = topicStr ? ` on the topic of "${topicStr}"` : "";
+  const locationContext = (video1 && video2)
+    ? `\nVideo 1 is located at: ${video1}\nVideo 2 is located at: ${video2}\nWatch and inspect both complete local video files carefully with audio. Base your evaluation strictly on what you visually see and hear in the videos; do not look for, open, or read any other files or source code.\n`
+    : `\nWatch both videos fully with audio.\n`;
+
+  return `You are judging two technical explainer videos${topicContext}. Both were created for the same brief: 16:9, narrated, animated technical diagrams. ${locationContext}
 Evaluation Guidance based on the Aideos Good-Video Rubric:
 1. Unified Persistent Stage: A single continuous stage where diagrams and text evolve together is strictly preferred over layout splitting (e.g. a separate left text column isolates text from graphics and violates the single stage principle).
 2. Carry-over and Transformation: Elements should persist and visibly transform across beats rather than being wiped clean.
@@ -236,3 +280,68 @@ Return ONLY valid JSON with this schema:
   "timestampsCited": string[]
 }`;
 }
+
+export const SINGLE_REVIEW_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    overallScore: { type: "number" },
+    verdict: { type: "string", enum: ["ACCEPT", "REVISE"] },
+    summary: { type: "string" },
+    criteria: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          title: { type: "string" },
+          isGate: { type: "boolean" },
+          score: { type: "number" },
+          passed: { type: "boolean" },
+          evidenceTimestamps: {
+            type: "array",
+            items: { type: "string" },
+          },
+          reason: { type: "string" },
+        },
+        required: [
+          "name",
+          "title",
+          "isGate",
+          "score",
+          "passed",
+          "evidenceTimestamps",
+          "reason",
+        ],
+      },
+    },
+    feedback: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          priority: { type: "string", enum: ["high", "medium", "low"] },
+          timestamp: { type: "string" },
+          issue: { type: "string" },
+          recommendation: { type: "string" },
+        },
+        required: ["priority", "issue", "recommendation"],
+      },
+    },
+  },
+  required: ["overallScore", "verdict", "summary", "criteria", "feedback"],
+};
+
+export const PAIRWISE_REVIEW_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    video1Score: { type: "number" },
+    video2Score: { type: "number" },
+    choice: { type: "string", enum: ["Video 1", "Video 2", "Tie"] },
+    reasoning: { type: "string" },
+    timestampsCited: {
+      type: "array",
+      items: { type: "string" },
+    },
+  },
+  required: ["video1Score", "video2Score", "choice", "reasoning"],
+};
