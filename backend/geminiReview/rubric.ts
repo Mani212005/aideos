@@ -182,8 +182,8 @@ export function buildSingleVideoReviewPrompt(
     : "";
 
   const videoDirective = videoPath
-    ? `Watch and inspect the complete local video file at: ${videoPath} with audio. Base your evaluation strictly on what you visually see and hear in the video; do not look for, open, or read any other files or source code.`
-    : `Watch the complete video carefully with audio.`;
+    ? `Watch and inspect the complete local video file at: ${videoPath} with audio. Base your evaluation strictly on what you visually see and hear in the video; do not look for, open, or read any other files or source code. DO NOT write or run scripts. DO NOT extract frames. ONLY watch the video and return the required JSON.`
+    : `Watch the complete video carefully with audio. DO NOT run any tools. DO NOT write or run scripts. ONLY watch the video and return the required JSON.`;
 
   return `You are an expert video director and technical judge reviewing an animated explainer video.
 ${videoDirective} Evaluate it decisively against the following 12 quality criteria:
@@ -253,8 +253,8 @@ export function buildPairwiseReviewPrompt(
 
   const topicContext = topicStr ? ` on the topic of "${topicStr}"` : "";
   const locationContext = (video1 && video2)
-    ? `\nVideo 1 is located at: ${video1}\nVideo 2 is located at: ${video2}\nWatch and inspect both complete local video files carefully with audio. Base your evaluation strictly on what you visually see and hear in the videos; do not look for, open, or read any other files or source code.\n`
-    : `\nWatch both videos fully with audio.\n`;
+    ? `\nVideo 1 is located at: ${video1}\nVideo 2 is located at: ${video2}\nWatch and inspect both complete local video files carefully with audio. Base your evaluation strictly on what you visually see and hear in the videos; do not look for, open, or read any other files or source code. DO NOT write or run scripts. DO NOT extract frames. ONLY watch the videos and return the required JSON.\n`
+    : `\nWatch both videos fully with audio. DO NOT run any tools. DO NOT write or run scripts. ONLY watch the videos and return the required JSON.\n`;
 
   return `You are judging two technical explainer videos${topicContext}. Both were created for the same brief: 16:9, narrated, animated technical diagrams. ${locationContext}
 Evaluation Guidance based on the Aideos Good-Video Rubric:

@@ -792,9 +792,10 @@ program
     const { reviewVideo, reviewPairwise, formatReviewSummary } = await import("./geminiReview");
 
     if (options.pairwise) {
-      console.log(`Starting pairwise review: Video A (${video}) vs Video B (${options.pairwise})...`);
+      const logMsg = `Starting pairwise review: Video A (${video}) vs Video B (${options.pairwise})...`;
+      options.json ? console.error(logMsg) : console.log(logMsg);
       const report = await reviewPairwise(video, options.pairwise, {
-        onProgress: (msg) => console.log(`  ${msg}`),
+        onProgress: (msg) => options.json ? console.error(`  ${msg}`) : console.log(`  ${msg}`),
       });
 
       if (options.json) {
@@ -814,11 +815,12 @@ program
       return;
     }
 
-    console.log(`Reviewing video with Gemini 3.8 Flash: ${video}...`);
+    const logMsg = `Reviewing video with Gemini 3.8 Flash: ${video}...`;
+    options.json ? console.error(logMsg) : console.log(logMsg);
     const report = await reviewVideo(video, {
       filmPath: options.film,
       skipFacts: !options.facts,
-      onProgress: (msg) => console.log(`  ${msg}`),
+      onProgress: (msg) => options.json ? console.error(`  ${msg}`) : console.log(`  ${msg}`),
     });
 
     if (options.json) {

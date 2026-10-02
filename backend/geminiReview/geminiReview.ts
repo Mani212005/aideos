@@ -74,6 +74,7 @@ export async function defaultAgyRunner(
     printTimeoutArg,
     "--output-format",
     "json",
+    "--sandbox",
     "--dangerously-skip-permissions",
   ];
 
