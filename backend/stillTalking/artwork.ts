@@ -8,6 +8,8 @@
  * requires, and all motion lives in the separate declarative timelines.
  */
 
+import { rng } from "../sceneKit";
+
 /** Colour tokens of the rendered-video design language, written literally into SVG attributes. */
 export const COLOR = {
   canvas: "#0A0A0B",
@@ -30,17 +32,6 @@ function inkAlpha(alpha: number): string {
 /** Accent at an arbitrary alpha, used only where the accent is deliberately receding. */
 function accentAlpha(alpha: number): string {
   return `rgba(99, 91, 255, ${alpha.toFixed(3)})`;
-}
-
-/** Deterministic 32 bit PRNG, so a regenerated star field is byte identical to the committed one. */
-function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 /** Rounds a coordinate to two decimals so emitted path data stays stable and readable. */
@@ -100,7 +91,7 @@ function buildStarField(options: {
   opacityMax: number;
   twinkles: number;
 }): string {
-  const rand = mulberry32(options.seed);
+  const rand = rng(options.seed);
   const stars: string[] = [];
   for (let i = 0; i < options.count; i++) {
     const x = r2(options.xMin + rand() * (options.xMax - options.xMin));
@@ -481,7 +472,7 @@ function buildPlate(): string {
 
 /** Builds the heliopause: the boundary arc, the wind that stops at it, and what waits outside. */
 function buildBoundary(): string {
-  const rand = mulberry32(20120825);
+  const rand = rng(20120825);
 
   // Solar wind: short streamers on the inside, all pointing outward along the craft's heading.
   const wind: string[] = [];
@@ -543,7 +534,7 @@ function buildRecord(): string {
 
   // The pulsar map: rays of different lengths radiating from one point, as etched on the cover.
   const rays: string[] = [];
-  const rand = mulberry32(1977);
+  const rand = rng(1977);
   for (let i = 0; i < 14; i++) {
     const angle = (i / 14) * Math.PI * 2 + 0.2;
     const len = 46 + rand() * 66;

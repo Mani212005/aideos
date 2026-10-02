@@ -126,6 +126,16 @@ Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos
   given one transform `origin` (the compiler applies the last origin it sees to every frame).
   `Timeline.camera()` likewise enforces camera track continuity from the previous camera clip,
   preventing visual snaps on camera movement.
+- `backend/sceneKit/` is also the authoring layer, so a new scene film writes no kit code of its own:
+  `Canvas` (`canvas.ts`: markup plus continuity-checked motion, and `lyric()` kinetic type that
+  throws when a row no longer matches the narration or overflows its bounds; a token like `HNSW{4}`
+  covers four spoken words), `svg.ts` (palette, `el`/`g`/`text`, seeded `rng`), `typeMetrics.ts` plus
+  `wordWidths.json` (kerned Geist word widths measured in Chrome; add a film's new words with
+  `measureWords.ts`, which merges rather than replaces), `wrap.ts` (`wrapBalanced`), `chrome.ts`
+  (corners, backdrop, readouts), and the Node-only tools `voiceover.ts` (`produceVoiceover({slug,
+  beats, alignment})`: synthesize, master, optional Whisper word alignment, write the spine),
+  `preview.ts` (fast Chrome frames) and `reviewFrames.ts` (`npx tsx backend/sceneKit/reviewFrames.ts
+  <slug>`). A film supplies its beats, artwork and accent; topic scenes stay in the film's own folder.
 - Aim a cue at a spoken word, not at a fraction of its shot: the payoff word of a sentence is
   usually near its end. The kit's `createCues(timing).word()` reads the narration's own offsets and throws
   when the phrase is no longer in that shot, so rewriting a line cannot silently mis-time the film.
