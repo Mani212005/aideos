@@ -24,6 +24,7 @@ import {
   reviewVideo,
   reviewPairwise,
   defaultAgyRunner,
+  createIsolatedVideoWorkspace,
 } from "./geminiReview";
 import type {
   AgyRunner,
@@ -224,8 +225,8 @@ test("geminiReview: reviewPairwise runs swapped presentation orders and determin
     callIndex++;
     if (callIndex === 1) {
       assert.ok(prompt.includes("Video 1 is located at:"));
-      assert.ok(prompt.includes(videoA));
-      assert.ok(prompt.includes(videoB));
+      assert.ok(prompt.includes("video_1.mp4"));
+      assert.ok(prompt.includes("video_2.mp4"));
       // Order 1: Video 1 = A, Video 2 = B. Chooses Video 1 (A).
       return JSON.stringify({
         video1Score: 9.1,
@@ -236,8 +237,8 @@ test("geminiReview: reviewPairwise runs swapped presentation orders and determin
       });
     }
     assert.ok(prompt.includes("Video 1 is located at:"));
-    assert.ok(prompt.includes(videoB));
-    assert.ok(prompt.includes(videoA));
+    assert.ok(prompt.includes("video_1.mp4"));
+    assert.ok(prompt.includes("video_2.mp4"));
     // Order 2: Video 1 = B, Video 2 = A. Chooses Video 2 (A).
     return JSON.stringify({
       video1Score: 7.3,
@@ -598,5 +599,105 @@ test("geminiReview: schemas enforce expected required properties", () => {
     "choice",
     "reasoning",
   ]);
+});
+
+test("geminiReview: createIsolatedVideoWorkspace creates temp dir with neutral videos and cleans up", () => {
+  const tmpSrcDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-src-test-"));
+  const srcA = path.join(tmpSrcDir, "origA.mp4");
+  const srcB = path.join(tmpSrcDir, "origB.mp4");
+  fs.writeFileSync(srcA, "content A");
+  fs.writeFileSync(srcB, "content B");
+
+  const workspace = createIsolatedVideoWorkspace({
+    "video_1.mp4": srcA,
+    "video_2.mp4": srcB,
+  });
+
+  assert.ok(fs.existsSync(workspace.dir));
+  assert.ok(fs.existsSync(workspace.videoPaths["video_1.mp4"]));
+  assert.ok(fs.existsSync(workspace.videoPaths["video_2.mp4"]));
+  assert.equal(fs.readFileSync(workspace.videoPaths["video_1.mp4"], "utf8"), "content A");
+  assert.equal(fs.readFileSync(workspace.videoPaths["video_2.mp4"], "utf8"), "content B");
+
+  workspace.cleanup();
+  assert.equal(fs.existsSync(workspace.dir), false);
+  fs.rmSync(tmpSrcDir, { recursive: true, force: true });
+});
+
+test("geminiReview: reviewVideo executes in isolated workspace with neutral video.mp4 and cleans up", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-review-iso-test-"));
+  const testVideo = path.join(tmpDir, "source_explainer.mp4");
+  fs.writeFileSync(testVideo, Buffer.alloc(128, 1));
+
+  let capturedCwd: string | undefined;
+  const mockReportPayload: Partial<GeminiReviewReport> = {
+    overallScore: 9.2,
+    verdict: "ACCEPT",
+    summary: "Isolated workspace test passed.",
+    criteria: createMockCriteria({ gateScore: 9.0, gatePassed: true, withTimestamps: true }),
+    feedback: [],
+  };
+
+  const runner: AgyRunner = async (prompt, opts) => {
+    capturedCwd = opts?.cwd;
+    assert.ok(capturedCwd, "runner options must receive cwd");
+    assert.ok(fs.existsSync(capturedCwd), "isolated cwd directory must exist during review");
+    assert.ok(fs.existsSync(path.join(capturedCwd, "video.mp4")), "isolated video.mp4 must exist in cwd");
+    assert.ok(prompt.includes("video.mp4"), "prompt must reference isolated video.mp4");
+    assert.ok(prompt.includes("do not look for, open, or read any other files or source code"));
+    return JSON.stringify(mockReportPayload);
+  };
+
+  const report = await reviewVideo(testVideo, { runner });
+  assert.equal(report.overallScore, 9.2);
+  assert.equal(report.verdict, "ACCEPT");
+  assert.equal(report.videoPath, path.resolve(testVideo));
+  assert.ok(capturedCwd);
+  assert.equal(fs.existsSync(capturedCwd), false, "isolated workspace cwd must be cleaned up after review");
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test("geminiReview: reviewPairwise executes each order in isolated workspace with neutral video_1.mp4 and video_2.mp4", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-pairwise-iso-test-"));
+  const videoA = path.join(tmpDir, "a.mp4");
+  const videoB = path.join(tmpDir, "b.mp4");
+  fs.writeFileSync(videoA, Buffer.alloc(128, 1));
+  fs.writeFileSync(videoB, Buffer.alloc(128, 2));
+
+  const capturedCwds: string[] = [];
+  const runner: AgyRunner = async (prompt, opts) => {
+    assert.ok(opts?.cwd, "pairwise runner must receive isolated cwd");
+    assert.ok(fs.existsSync(opts.cwd), "pairwise cwd must exist during run");
+    assert.ok(fs.existsSync(path.join(opts.cwd, "video_1.mp4")), "video_1.mp4 must exist in cwd");
+    assert.ok(fs.existsSync(path.join(opts.cwd, "video_2.mp4")), "video_2.mp4 must exist in cwd");
+    capturedCwds.push(opts.cwd);
+
+    if (prompt.includes("Order: Video 1 = A, Video 2 = B") || capturedCwds.length === 1) {
+      return JSON.stringify({
+        video1Score: 9.0,
+        video2Score: 7.0,
+        choice: "Video 1",
+        reasoning: "Video 1 is superior.",
+        timestampsCited: ["0:10"],
+      });
+    }
+    return JSON.stringify({
+      video1Score: 7.0,
+      video2Score: 9.0,
+      choice: "Video 2",
+      reasoning: "Video 2 is superior.",
+      timestampsCited: ["0:10"],
+    });
+  };
+
+  const report = await reviewPairwise(videoA, videoB, { runner });
+  assert.equal(report.consistentWinner, "Video A");
+  assert.equal(capturedCwds.length, 2);
+  for (const cwd of capturedCwds) {
+    assert.equal(fs.existsSync(cwd), false, "pairwise isolated workspace must be cleaned up");
+  }
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 

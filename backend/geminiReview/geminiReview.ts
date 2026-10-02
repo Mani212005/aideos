@@ -7,6 +7,7 @@
 import { execFile } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { extractDeterministicFacts } from "./facts";
@@ -61,7 +62,7 @@ export async function defaultAgyRunner(
     "gemini-3.8-flash-high";
   const timeoutSec =
     options?.timeoutSeconds ??
-    (Number(process.env.AIDEOS_AGY_TIMEOUT) || 900);
+    (Number(process.env.AIDEOS_AGY_TIMEOUT) || 1800);
   const printTimeoutArg = `${timeoutSec}s`;
 
   const args: string[] = [
@@ -85,6 +86,7 @@ export async function defaultAgyRunner(
       "agy",
       args,
       {
+        cwd: options?.cwd,
         maxBuffer: 50 * 1024 * 1024,
         timeout: (timeoutSec + 30) * 1000,
       },
@@ -235,6 +237,32 @@ export function cleanModelJsonResponse(rawText: string): string {
   return rawText.trim();
 }
 
+// Creates an isolated temporary directory containing hardlinks or copies of video files under neutral names.
+export function createIsolatedVideoWorkspace(
+  videos: Record<string, string>,
+): { dir: string; videoPaths: Record<string, string>; cleanup: () => void } {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-review-"));
+  const videoPaths: Record<string, string> = {};
+
+  for (const [neutralName, srcPath] of Object.entries(videos)) {
+    const destPath = path.join(dir, neutralName);
+    try {
+      fs.linkSync(srcPath, destPath);
+    } catch {
+      fs.copyFileSync(srcPath, destPath);
+    }
+    videoPaths[neutralName] = destPath;
+  }
+
+  const cleanup = () => {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch {}
+  };
+
+  return { dir, videoPaths, cleanup };
+}
+
 // Reviews a single rendered video against the 12-criterion good-video rubric.
 export async function reviewVideo(
   videoPath: string,
@@ -293,20 +321,23 @@ export async function reviewVideo(
   let reAskNote: string | undefined;
   let lastReport: GeminiReviewReport | null = null;
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const prompt = buildSingleVideoReviewPrompt(
-      resolvedPath,
-      reAskNote,
-      deterministicReviewContext,
-      facts?.rawSummaryText,
-    );
+  const workspace = createIsolatedVideoWorkspace({ "video.mp4": resolvedPath });
+  try {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const prompt = buildSingleVideoReviewPrompt(
+        workspace.videoPaths["video.mp4"],
+        reAskNote,
+        deterministicReviewContext,
+        facts?.rawSummaryText,
+      );
 
-    const rawResult = await runner(prompt, {
-      model: modelName,
-      timeoutSeconds: options?.timeoutSeconds,
-      schema: SINGLE_REVIEW_JSON_SCHEMA,
-      onProgress,
-    });
+      const rawResult = await runner(prompt, {
+        model: modelName,
+        cwd: workspace.dir,
+        timeoutSeconds: options?.timeoutSeconds,
+        schema: SINGLE_REVIEW_JSON_SCHEMA,
+        onProgress,
+      });
 
     try {
       const parsed = (
@@ -438,6 +469,9 @@ export async function reviewVideo(
       onProgress(`Attempt ${attempt} produced invalid JSON. Retrying...`);
     }
   }
+} finally {
+  workspace.cleanup();
+}
 
   if (lastReport) return lastReport;
   throw new Error("Video review failed to produce a valid report.");
@@ -468,27 +502,40 @@ export async function reviewPairwise(
 
   const timeoutSeconds =
     options?.timeoutSeconds ??
-    (Number(process.env.AIDEOS_AGY_TIMEOUT) || 1200);
+    (Number(process.env.AIDEOS_AGY_TIMEOUT) || 1800);
 
   // Order 1: Video 1 = A, Video 2 = B
   onProgress(`Running pairwise comparison with agy (${modelName}) (Order: Video 1 = A, Video 2 = B)...`);
-  const promptAB = buildPairwiseReviewPrompt(resolvedA, resolvedB);
-  const rawAB = await runner(promptAB, {
-    model: modelName,
-    timeoutSeconds,
-    schema: PAIRWISE_REVIEW_JSON_SCHEMA,
-    onProgress,
+  const workspaceAB = createIsolatedVideoWorkspace({
+    "video_1.mp4": resolvedA,
+    "video_2.mp4": resolvedB,
   });
-
-  const parsedAB = (
-    typeof rawAB === "string" ? JSON.parse(cleanModelJsonResponse(rawAB)) : rawAB
-  ) as {
+  let parsedAB: {
     video1Score: number;
     video2Score: number;
     choice: "Video 1" | "Video 2" | "Tie";
     reasoning: string;
     timestampsCited?: string[];
   };
+  try {
+    const promptAB = buildPairwiseReviewPrompt(
+      workspaceAB.videoPaths["video_1.mp4"],
+      workspaceAB.videoPaths["video_2.mp4"],
+    );
+    const rawAB = await runner(promptAB, {
+      model: modelName,
+      cwd: workspaceAB.dir,
+      timeoutSeconds,
+      schema: PAIRWISE_REVIEW_JSON_SCHEMA,
+      onProgress,
+    });
+
+    parsedAB = (
+      typeof rawAB === "string" ? JSON.parse(cleanModelJsonResponse(rawAB)) : rawAB
+    ) as typeof parsedAB;
+  } finally {
+    workspaceAB.cleanup();
+  }
 
   if (
     typeof parsedAB?.video1Score !== "number" ||
@@ -496,7 +543,7 @@ export async function reviewPairwise(
     !parsedAB?.choice
   ) {
     throw new Error(
-      `Invalid pairwise comparison output from agy (Order AB): missing scores or choice in ${JSON.stringify(rawAB)}`,
+      `Invalid pairwise comparison output from agy (Order AB): missing scores or choice in ${JSON.stringify(parsedAB)}`,
     );
   }
 
@@ -513,23 +560,36 @@ export async function reviewPairwise(
 
   // Order 2: Video 1 = B, Video 2 = A
   onProgress(`Running pairwise comparison with agy (${modelName}) (Order: Video 1 = B, Video 2 = A)...`);
-  const promptBA = buildPairwiseReviewPrompt(resolvedB, resolvedA);
-  const rawBA = await runner(promptBA, {
-    model: modelName,
-    timeoutSeconds,
-    schema: PAIRWISE_REVIEW_JSON_SCHEMA,
-    onProgress,
+  const workspaceBA = createIsolatedVideoWorkspace({
+    "video_1.mp4": resolvedB,
+    "video_2.mp4": resolvedA,
   });
-
-  const parsedBA = (
-    typeof rawBA === "string" ? JSON.parse(cleanModelJsonResponse(rawBA)) : rawBA
-  ) as {
+  let parsedBA: {
     video1Score: number;
     video2Score: number;
     choice: "Video 1" | "Video 2" | "Tie";
     reasoning: string;
     timestampsCited?: string[];
   };
+  try {
+    const promptBA = buildPairwiseReviewPrompt(
+      workspaceBA.videoPaths["video_1.mp4"],
+      workspaceBA.videoPaths["video_2.mp4"],
+    );
+    const rawBA = await runner(promptBA, {
+      model: modelName,
+      cwd: workspaceBA.dir,
+      timeoutSeconds,
+      schema: PAIRWISE_REVIEW_JSON_SCHEMA,
+      onProgress,
+    });
+
+    parsedBA = (
+      typeof rawBA === "string" ? JSON.parse(cleanModelJsonResponse(rawBA)) : rawBA
+    ) as typeof parsedBA;
+  } finally {
+    workspaceBA.cleanup();
+  }
 
   if (
     typeof parsedBA?.video1Score !== "number" ||
@@ -537,7 +597,7 @@ export async function reviewPairwise(
     !parsedBA?.choice
   ) {
     throw new Error(
-      `Invalid pairwise comparison output from agy (Order BA): missing scores or choice in ${JSON.stringify(rawBA)}`,
+      `Invalid pairwise comparison output from agy (Order BA): missing scores or choice in ${JSON.stringify(parsedBA)}`,
     );
   }
 
