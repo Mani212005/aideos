@@ -78,6 +78,12 @@ npm run backend -- mcp
 
 # 9. Run deterministic quality review checks on a rendered video
 npm run review -- videos/speculative-decoding/out/speculative-decoding-long.mp4
+
+# 10. Run Gemini 3.8 Flash video quality review (9.0+ bar)
+aideos gemini-review out/speculative-decoding-long.mp4
+
+# 11. Run iterative render-review-refine loop until video scores 9.0+
+aideos review-loop speculative-decoding
 ```
 
 See [docs/PRODUCTION_PIPELINE.md](docs/PRODUCTION_PIPELINE.md), [docs/DIRECTOR_GUIDE.md](docs/DIRECTOR_GUIDE.md), and [docs/REVIEW.md](docs/REVIEW.md) for full production, direction, and review documentation.

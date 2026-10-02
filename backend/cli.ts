@@ -780,6 +780,103 @@ program
     }
   });
 
+program
+  .command("gemini-review")
+  .description("Review a rendered mp4 video or run pairwise comparison using Gemini 3.8 Flash against the 12-criterion quality rubric")
+  .argument("<video>", "Path to rendered mp4 video file")
+  .option("--pairwise <other>", "Optional second mp4 video to run order-swapped pairwise comparison against")
+  .option("--film <path>", "Optional path to film.json for camera track and boundary facts")
+  .option("--no-facts", "Skip deterministic facts extraction (OCR, audio loudness, ffprobe)")
+  .option("--json", "Print output report as raw JSON")
+  .action(async (video: string, options: { pairwise?: string; film?: string; facts: boolean; json?: boolean }) => {
+    const { reviewVideo, reviewPairwise, formatReviewSummary } = await import("./geminiReview");
+
+    if (options.pairwise) {
+      console.log(`Starting pairwise review: Video A (${video}) vs Video B (${options.pairwise})...`);
+      const report = await reviewPairwise(video, options.pairwise, {
+        onProgress: (msg) => console.log(`  ${msg}`),
+      });
+
+      if (options.json) {
+        console.log(JSON.stringify(report, null, 2));
+      } else {
+        console.log("\n=== Pairwise Review Results ===");
+        console.log(`Order 1 [${report.orderAB.orderKey}]: Selected ${report.orderAB.choice}`);
+        console.log(`  Scores: Video 1 = ${report.orderAB.video1Score.toFixed(1)}, Video 2 = ${report.orderAB.video2Score.toFixed(1)}`);
+        console.log(`  Reason: ${report.orderAB.reasoning}`);
+        console.log(`Order 2 [${report.orderBA.orderKey}]: Selected ${report.orderBA.choice}`);
+        console.log(`  Scores: Video 1 = ${report.orderBA.video1Score.toFixed(1)}, Video 2 = ${report.orderBA.video2Score.toFixed(1)}`);
+        console.log(`  Reason: ${report.orderBA.reasoning}`);
+        console.log(`\nConsistent Winner: ${report.consistentWinner}`);
+      }
+      return;
+    }
+
+    console.log(`Reviewing video with Gemini 3.8 Flash: ${video}...`);
+    const report = await reviewVideo(video, {
+      filmPath: options.film,
+      skipFacts: !options.facts,
+      onProgress: (msg) => console.log(`  ${msg}`),
+    });
+
+    if (options.json) {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      console.log("\n" + formatReviewSummary(report));
+    }
+
+    if (report.verdict !== "ACCEPT") {
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("review-loop")
+  .description("Run the iterative render-review-refine loop for a film slug until Gemini rates it 9.0+ or reaches max rounds")
+  .argument("<slug>", "Film slug under videos/ (e.g. still-talking, hnsw-explainer)")
+  .option("--max-rounds <n>", "Maximum iteration rounds (default: 6)", "6")
+  .option("--target-score <n>", "Target overall score out of 10.0 (default: 9.0)", "9.0")
+  .option("--reference <mp4>", "Optional reference mp4 video; acceptance requires winning or tying against it in pairwise comparison")
+  .option("--format <format>", "Render format: long or reel (default: long)", "long")
+  .option("--json", "Print final loop result as raw JSON")
+  .action(
+    async (
+      slug: string,
+      options: {
+        maxRounds: string;
+        targetScore: string;
+        reference?: string;
+        format: "long" | "reel";
+        json?: boolean;
+      },
+    ) => {
+      const { runReviewLoop } = await import("./geminiReview");
+
+      const result = await runReviewLoop(slug, {
+        maxRounds: Number(options.maxRounds),
+        targetScore: Number(options.targetScore),
+        referenceVideo: options.reference,
+        format: options.format,
+        onProgress: (msg) => console.log(msg),
+      });
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(`\n=== Review Loop Final Outcome for ${slug} ===`);
+        console.log(`Status: ${result.passed ? "PASSED (>= 9.0)" : "REVISE NEEDED"}`);
+        console.log(`Final Score: ${result.finalScore.toFixed(1)} / 10.0`);
+        console.log(`Rounds Completed: ${result.rounds.length}`);
+        if (result.referenceVideo) {
+          console.log(`Pairwise Reference Check: ${result.pairwisePassed ? "PASSED (won or tied)" : "FAILED (lost to reference)"}`);
+        }
+      }
+
+      if (!result.passed) {
+        process.exitCode = 1;
+      }
+    },
+  );
 // parseAsync, so a rejected action surfaces as a one-line CLI error rather than
 // an unhandled rejection with a raw stack trace, and exits non-zero.
 program.parseAsync().catch((err: unknown) => {

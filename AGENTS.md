@@ -295,6 +295,15 @@ Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos
 - The judge never writes a film: only a passing `buildDesign` does (design check plus honesty check). A failed sample comes back with its exact error text (`JudgeFailure.error`) for synthesis; `designer.ts` repairs through the agent, or through a server model only when a caller was passed in. With no agent connected, or under the Node test runner, the agent round is skipped and the text fallback rules.
 - The primitive pick is asked by communicative job (`PRIMITIVE_CRITERIA`: JOB, WHEN, WHEN NOT), carries camera, what is already on screen and the previous pick, and must name the spoken phrase it serves (`servesPhrase`; a complex pick that names none degrades to TextReveal or Card).
 
+## Gemini 3.8 Flash Video Quality Review Loop (9.0+ Bar)
+
+- Every rendered video must be validated through the Gemini 3.8 Flash quality review loop (`aideos review-loop <slug>` or `aideos gemini-review <mp4>`).
+- The review sends the real mp4 with audio to the Gemini API Files endpoint and evaluates it with `gemini-3.8-flash` as native video input (never sampled stills).
+- The model evaluates the video against the 12-criterion rubric with 6 hard gates (persistent stage, camera purpose, bottom captions, readability, no overlap/clipping, audio sync) and must supply timestamp evidence for every criterion.
+- An agent may only claim done once Gemini rates the video 9.0 or higher with all 6 hard gates passing (verdict: ACCEPT).
+- If the verdict is REVISE, the agent must inspect the constructive feedback and timestamp citations, iterate on the film or design, and re-render.
+- Review rounds and reports are persisted under `videos/<slug>/gemini-review/` (`round-N.json`, `latest.json`), which is gitignored.
+
 ## Maintaining this file
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.
 - Keep it concise. Prefer pointers to authoritative files over copying details.

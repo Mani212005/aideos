@@ -124,9 +124,10 @@ Before deploying, ensure you have:
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `GEMINI_API_KEY` | Yes | - | Google Gemini API key for agent compilation and critique |
+| `GEMINI_API_KEY` | Yes | - | Google Gemini API key for agent compilation, critique, and video review |
 | `GOOGLE_API_KEY` | Alternative / No | - | Fallback Google GenAI and Cloud TTS API key |
 | `AIDEOS_GEMINI_MODEL` | No | `gemini-2.0-flash` | Gemini model name for screenplay intake and critique |
+| `AIDEOS_GEMINI_REVIEW_MODEL` | No | `gemini-3.8-flash` | Gemini model name for video quality review loop |
 | `AIDEOS_PUBLIC_API_URL` | No | `https://aideos-backend.onrender.com` | Public backend URL shown in agent link connect commands |
 | `AIDEOS_LINK_SECRET` | No | Derived / generated | HMAC secret key signing agent link tokens across restarts |
 | `DEEPGRAM_API_KEY` | No | - | Deepgram API key for speech recognition and neural TTS |
