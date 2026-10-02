@@ -6,13 +6,12 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
-import { execFileSync, execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { reviewVideo, reviewPairwise } from "./geminiReview";
 import type {
   GeminiReviewReport,
   PairwiseRunReport,
-  ReviewFeedbackItem,
   ReviewLoopOptions,
   ReviewLoopResult,
   ReviewLoopRound,

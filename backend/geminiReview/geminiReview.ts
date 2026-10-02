@@ -62,6 +62,9 @@ function createDefaultClient(options?: GeminiClientOptions): GeminiVideoClient {
         file: filePath,
         config: { displayName: displayName || path.basename(filePath) }
       });
+      if (!file.name) {
+        throw new Error(`Video upload did not return a valid file name for ${filePath}`);
+      }
       let currentFile = file;
       while (currentFile.state === "PROCESSING") {
         onProgress(`  Video processing (${currentFile.name})...`);
