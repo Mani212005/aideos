@@ -116,6 +116,10 @@ function buildProps(
     if (state.opacityDriven || state.opacity !== 1) {
       props.opacity = state.opacity;
     }
+    if (state.x1 !== undefined) props.x1 = state.x1;
+    if (state.y1 !== undefined) props.y1 = state.y1;
+    if (state.x2 !== undefined) props.x2 = state.x2;
+    if (state.y2 !== undefined) props.y2 = state.y2;
   }
 
   return props;
