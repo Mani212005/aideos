@@ -42,8 +42,8 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤
 │ • Markdown │ │ • 2D Spatial│ │ • Styleboard│ │ • Custom SVG│ │ • Layered  │ │ • Word Sync│ │ • Critique │
 │   Screenplay│ │   Mind Map │ │   Gallery  │ │   Animation│ │   Timeline │ │ • Kinetic   │ │   Studio   │
-│ • Claude   │ │ • Node Drag│ │ • Character│ │ • Keyframe  │ │ • Waveforms│ │   Highlight │ │ • Health & │
-│   Intake   │ │ • Directed │ │   Posing   │ │   Timeline │ │ • Drag     │ │ • Phrase   │ │   Pacing   │
+│ • Claude   │ │ • Node Drag│ │ • Accent    │ │ • Keyframe  │ │ • Waveforms│ │   Highlight │ │ • Health & │
+│   Intake   │ │ • Directed │ │   Color    │ │   Timeline │ │ • Drag     │ │ • Phrase   │ │   Pacing   │
 │ • Spoken VO│ │   Edges    │ │ • Theme    │ │ • Motion   │ │   Machine  │ │   Locks    │ │ • Headless │
 │   Extract  │ │ • Camera   │ │   Customizer│ │   Templates│ │ • Inspector│ │ • Subtitle │ │   MP4 Export│
 │ • TTS Synth│ │   Anchors  │ │ • Typography│ │ • Frame-Sync│ │ • Asset Bin │ │   Timing   │ │   Progress │
@@ -76,7 +76,7 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 
 ### 3. Look Stage (`LookStage.tsx` / `Styleboard.tsx` / `CustomizationEditor.tsx`)
 - **Purpose**: Visual styling and storyboard gallery combining theme customization with keyframe inspection.
-- **Features**: Allows 1-click character gesture posing (`Wave`, `Point`, `Think`, `Celebrate`), background canvas texture selection (`paper-white`, `blueprint`, `charcoal`, `parchment`), and typography configuration (`geist`, `mono`, `space-grotesk`).
+- **Features**: Allows background canvas texture selection (`paper-white`, `blueprint`, `charcoal`, `parchment`), accent color customization, and typography configuration (`geist`, `mono`, `space-grotesk`).
 
 ### 4. Motion Stage (`MotionStage.tsx`)
 - **Purpose**: Dedicated authoring studio for custom SVG movie animations and element-level keyframing.
@@ -112,6 +112,6 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 - **Frontend Shell**: React 19, Vite, TailwindCSS, Lucide Icons, `@remotion/player`.
 - **UI Design System**: Neobrutalism tokens (`tokens.css`), custom UI primitives (`src/components/ui/`), bone paper palette.
 - **Timeline Engine**: Pure TypeScript non-linear geometry (`backend/timeline/`), pure drag state machine (`drag_machine.ts`), sticky snapping (`snap.ts`).
-- **3D & Vector Graphics**: Three.js, React Three Fiber (R3F), pure SVG scene engine (`src/dl/scene/`), 2-level kinematic character rigs (`src/dl/characters/`).
+- **3D & Vector Graphics**: Three.js, React Three Fiber (R3F), pure SVG scene engine (`src/dl/scene/`).
 - **Typography & Motion**: `@chenglou/pretext`, Remotion `useCurrentFrame()`, `interpolate()`, `spring()`.
 - **Backend & CLI**: Node.js, `tsx`, Express REST API, Remotion CLI.

@@ -68,7 +68,7 @@ export interface ScheduledAction {
 
 export interface ActorInstance {
   instanceId: string; // unique within scene. NEVER regenerated.
-  rigId: string; // references a CharacterRig in the cast library
+  rigId: string; // rig identifier
   /** D5: omit to derive from position.y per frame. Present = explicit override. */
   layer?: number;
   position: Vec2; // base placement when no position track exists

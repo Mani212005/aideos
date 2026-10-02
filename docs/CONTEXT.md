@@ -134,11 +134,9 @@ A directed relationship connection between two canvas nodes.
 
 Blocks are divided into two strict categories:
 
-### A. Device & Character Blocks (`DEVICE_BLOCKS`)
+### A. Device Blocks (`DEVICE_BLOCKS`)
 Interactive, complex visual containers that spend 1 accent token:
-* **`CharacterBeat`**: 2-level kinematic SVG character rig (`characterId`, `poses`).
 * **`DeviceCard`**: Browser window, code editor, or terminal mockup (`variant`, `title`, `url`).
-* **`MetaphorViewer`**: Interactive concept visualizer (KV cache, balance scale, fluid reservoir).
 * **`MatrixGrid`**: 2D memory allocation and tensor cell grid (`values`, `rowLabel`, `colLabel`, `sweep`).
 * **`TokenStrip`**: Sequence token cards with active highlighting (`tokens`, `lit`, `caption`).
 * **`AttentionArcs`**: Directed curved attention links between tokens (`tokens`, `focus`, `links`).
@@ -161,45 +159,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ---
 
-## 3. Pure TypeScript Character Rigs (`src/dl/characters/`)
-
-### `CharacterRig`
-Interface defining a modular vector rig:
-* `id: string` ("astronaut" | "developer")
-* `name: string` ("Astro Guide" | "Tech Architect")
-* `description: string` (Short visual description)
-* `viewBox: string` (SVG viewBox string, e.g. "0 0 200 320")
-* `groups: CharacterGroup[]` (Hierarchy of limbs and joint groups)
-
-### `CharacterGroup`
-A single poseable limb or joint container:
-* `id: string` ("torso" | "head" | "leftArm" | "rightArm" | "legs")
-* `parent?: string` (Parent group ID for 2-level hierarchical transforms, e.g. "torso")
-* `pivot: { x: number, y: number }` (Rotational hinge anchor coordinate)
-* `defaultRotation?: number` (Rest angle in degrees)
-* `paths: CharacterPath[]` (Array of SVG vector paths)
-
-### `CharacterPath`
-An individual vector path inside a limb:
-* `d: string` (SVG path data definition)
-* `fill?: SemanticToken` ("surface" | "ink" | "muted" | "hairline" | "accent" | "canvas" | "none")
-* `stroke?: SemanticToken` ("surface" | "ink" | "muted" | "hairline" | "accent" | "canvas" | "none")
-* `strokeWidth?: number` (Stroke thickness in pixels)
-
-### `POSE_PRESETS` (`src/dl/characters/presets.ts`)
-8 built-in one-click gesture configurations:
-* `neutral`: Rest posture, attentive listening.
-* `present-right`: Body tilted -4 deg, left arm -35 deg, right arm +20 deg pointing right.
-* `present-left`: Body tilted +4 deg, left arm +20 deg, right arm -35 deg pointing left.
-* `think`: Body tilted -2 deg, head +8 deg, right hand to chin at -65 deg.
-* `shrug`: Both arms raised at -45 deg and +45 deg, head +6 deg.
-* `wave`: Right arm raised +85 deg with +15 deg wave flick.
-* `crossed-arms`: Left arm -40 deg, right arm +40 deg crossed over chest.
-* `celebrate`: Both arms raised high at +110 deg and -110 deg.
-
----
-
-## 4. Camera & Spatial Coordinates Engine (`src/dl/camera.ts`)
+## 3. Camera & Spatial Coordinates Engine (`src/dl/camera.ts`)
 
 | Function | Signature | Description |
 | :--- | :--- | :--- |
@@ -212,7 +172,7 @@ An individual vector path inside a limb:
 
 ---
 
-## 5. Design System Tokens (`src/dl/tokens.ts`, `src/dl/motion.ts`, `editor/src/styles/tokens.css`)
+## 4. Design System Tokens (`src/dl/tokens.ts`, `src/dl/motion.ts`, `editor/src/styles/tokens.css`)
 
 ### Rendered Video Design System (`src/dl/tokens.ts`)
 * `useTokens()`: React hook providing active theme-token colors for Remotion components dynamically.
@@ -246,7 +206,7 @@ An individual vector path inside a limb:
 
 ---
 
-## 6. Backend Produce & Validation Engine (`backend/`, `src/dl/validateFilm.ts`)
+## 5. Backend Produce & Validation Engine (`backend/`, `src/dl/validateFilm.ts`)
 
 ### `backend/modelClient.ts`
 * `getGoogleAiClient()`: Builds and returns the authenticated Google Gen AI client using GEMINI_API_KEY or GOOGLE_API_KEY.
@@ -339,9 +299,6 @@ An individual vector path inside a limb:
 * `remoteTaskPrompt(taskId, prompt)` (`backend/agentLink/prompt.ts`): Maps studio task instructions onto the sandboxed MCP tool interface for headless agents.
 * `aideos-connect.mjs` (`scripts/aideos-connect.mjs`): Standalone dependency-free connector script linking local coding agents (Claude, Antigravity, Codex, OpenCode) to the studio via long-polling, supporting `--model provider/model` overrides, free-tier refusal diagnostics (`taskFailureHint`), quiet reconnect notes (`createReconnectNotes`), indented agent output (`indentAgentOutput`), duration formatting (`formatElapsed`), and real-time tool call streaming.
 
-### `backend/agentPrompter.ts` (Auto-Prompter Facade)
-* Delegates backwards-compatible prompter APIs (`getAgentSession`, `setAgentSession`, `buildDirectingPrompt`, `dispatchPromptToAgent`) directly to `backend/agentBridge/`.
-
 ### `backend/jev.ts` (TypeSafe Jev Decision Model & Primitive Selection)
 * `selectPrimitive(state, options)`: Selects the most appropriate animated primitive from the 7 design system primitives (`TextReveal`, `StatCounter`, `CodeBlock`, `Card`, `Divider`, `IconLabel`, `ProgressBar`) using TypeSafe Jev decision model evaluation with confidence gating, safe-generic fallback (`TextReveal` or `Card`), and fast deterministic heuristic fallback.
 * `decidePrimitiveWithModel(state, options)`: Sends structured choice question to TypeSafe System One (`/v1/systemone`) or OpenRouter alpha decisions endpoint with timeout handling.
@@ -398,7 +355,7 @@ An individual vector path inside a limb:
 
 ### `backend/sync.ts`
 * `runSemanticVisualSync(film, captions)`: Evaluates spoken words against visual device blocks.
-* `matchShotVisual(segmentText, chapter)`: Determines whether a shot uses `CharacterBeat`, `DeviceCard`, `StatCounter`, or `TextReveal`.
+* `matchShotVisual(segmentText, chapter)`: Determines whether a shot uses `DeviceCard`, `StatCounter`, or `TextReveal`.
 
 ### `src/dl/videoPackageLoader.ts`
 * `getProjectRoot()`: Resolves the absolute path to the project root directory walking up the filesystem.
@@ -407,16 +364,6 @@ An individual vector path inside a limb:
 * `resolveRepoAssetPath(rel)`: Resolves a repo-relative asset path a film names, mapping `videos/...` through `AIDEOS_VIDEOS_DIR`.
 * `listVideoPackages()`: Returns a sorted array of all available package slugs: those in `videos/` plus any `examples/` package they do not shadow.
 * `loadVideoPackage(slug)`: Loads and parses a standalone video package (`film.json`, `shotlist.json`, `treatment.json`, and visuals availability).
-
-### `backend/scene/generateSvg.ts`
-* `buildSvgPrompt(options)`: Constructs the system prompt for synthesizing bespoke React SVG visual components with invariant rules.
-* `buildSvgAssetPrompt(options)`: Constructs the system prompt for synthesizing plain animatable static SVG scene assets.
-* `validateGeneratedSvg(code)`: Validates generated React SVG code against geometric (viewBox, aspect ratio), determinism, self-containment, center-60% containment, and export invariants.
-* `validateGeneratedSvgAsset(svgText)`: Validates generated static SVG scene assets (viewBox, preserveAspectRatio, static purity, unique element IDs, center-60% containment).
-* `buildRepairPrompt(basePrompt, rejected, errors)`: Constructs retry prompt feeding validator failure reasons back to the model.
-* `cleanCodeFence(raw)`: Strips markdown code fences from generated LLM code.
-* `synthesizeBespokeSvg(options, llmCaller, targetDir)`: Synthesizes, validates, and saves a bespoke React SVG component to `videos/<slug>/visuals/` with automated repair retry loop.
-* `synthesizeAnimatableSvgAsset(options, llmCaller, targetDir)`: Synthesizes, validates, and saves a plain animatable static SVG asset to `videos/<slug>/visuals/` with declared element IDs.
 
 ### `backend/scene/loadSceneAssets.ts`
 * `loadSceneAssets(scene, options)`: Reads a scene's SVG assets off disk on the Node side, returning `svgSources` and `elementIdsByAssetId` for browser components.
@@ -491,14 +438,12 @@ An individual vector path inside a limb:
 * `readEditProvenanceLog(videosDir, filmId)` (`provenanceLog.ts`): Reads edit provenance records for a film package, newest first.
 
 ### `src/dl/validateFilm.ts` & `scripts/validate_film.ts`
-* `validateFilm(film)`: Runs Zod schema parsing and structural integrity assertions.
-* `validatePacingInvariants(film)`: Enforces max 25s hold, no consecutive device repeats, and text breathers every 60-90s.
-* `validateFilmAudioAndAssets(film, projectDir)`: Enforces duration sum invariant ($\sum \text{Shots} = \text{Audio} \pm 50\text{ms}$) and confirms audio asset presence.
+* `validateFilmAudioAndAssets(film, options)`: Validates duration sum invariant, analytical bounding box geometry, and non-overlap constraints.
 * `scripts/validate_film.ts`: Standalone CLI validator (`npm run validate:film <path/to/film.json>`) validating arbitrary `film.json` files against cinematic schema and pacing constraints and printing a runsheet.
 
 ---
 
-## 7. Non-Linear Layer Engine & Timeline Tools (`backend/timeline/`, `src/dl/convertFilm.ts`)
+## 6. Non-Linear Layer Engine & Timeline Tools (`backend/timeline/`, `src/dl/convertFilm.ts`)
 
 * **`convertFilm.ts` (`src/dl/convertFilm.ts`)**: Lossless bidirectional converter between `Film` and `LayeredFilm` (`convertFilmToLayeredFilm`, `convertLayeredFilmToFilm`, `defaultTimelineLayers`, `CONVERTED_LAYER_IDS`), preserving multi-track `audioClips`, `videoClips`, and `overlayClips` with symmetric clip linking and on-demand lane resolution.
 * **`layer_engine.ts` (`backend/timeline/layer_engine.ts`)**: Pure functional engine operating over `LayeredFilm`. Provides `importMediaAssetToLayeredFilm`, `unlinkClips`, `moveLayerClip`, `moveMultipleLayerClips`, `trimLayerClipEdge`, `rippleTrimLayerClipEdge`, `splitLayerClipAtTime`, `deleteLayerClip`, `rippleDeleteLayerClip`, and deterministic left-to-right sweep `resolveLayerCollisions`.
@@ -508,16 +453,15 @@ An individual vector path inside a limb:
 * **`snap.ts`**: Magnetic snapping engine (`computeSnapPoints`, `snapTimeToTargets`) with zoom-adaptive thresholds and self-ignore boundaries.
 * **`waveform.ts`**: Node-side FFmpeg audio peak extraction (`extractWaveformPeaks`, `extractAudioPeaks`) producing normalized amplitude vectors.
 * **`voiceover_engine.ts`**: Browser-safe voiceover gap analysis, cue retiming, and drift calculation (`calculateNarrationDrift`).
-* **`subtitle_engine.ts`**: VTT subtitle cue splitting, merging, retiming, and validation.
 
 ---
 
-## 8. Interactive Web Studio Architecture (`editor/`)
+## 7. Interactive Web Studio Architecture (`editor/`)
 
 ### 7 Sequential Editing Stages (`editor/src/screens/`)
 * **`ScriptStage.tsx` (`ScriptEditor.tsx`)**: Screenplay markdown editor with tag parsing, Visual Studio segment cards, and Kokoro ONNX TTS voiceover synthesis.
 * **`StoryStage.tsx` (`MindMap.tsx`, `NodeEditor.tsx`)**: 2D infinite spatial canvas for dragging nodes, editing labels, and connecting directed edges; dispatches spatial actions (`add_node`, `add_edge`, `add_shot`) to the Agent Bridge Hub via `/api/canvas/event`.
-* **`LookStage.tsx` (`Styleboard.tsx`, `CustomizationEditor.tsx`)**: Storyboard keyframe gallery, 1-click character gesture posing, canvas texture selection, and typography styling.
+* **`LookStage.tsx` (`Styleboard.tsx`, `CustomizationEditor.tsx`)**: Storyboard keyframe gallery, canvas texture selection, and typography styling.
 * **`MotionStage.tsx` (`motionTemplates.ts`)**: Custom SVG animation authoring studio with element-level timeline keyframing, motion templates, and live scrubbing.
 * **`EditStage.tsx` (`TimelineEditor.tsx`, `InspectorPanel.tsx`, `AssetBin.tsx`, `OnCanvasAiEditor.tsx`)**: Non-linear multi-track timeline with clip dragging, sticky snapping, magnetic ripple editing (R), linked audio-video trimming, waveform preview, track mute/hide/lock, clip/shot inspector, and model-driven AI edit panel (`OnCanvasAiEditor.tsx`) dispatching validated edit programs to Agent Bridge with live trace telemetry.
 * **`CaptionsStage.tsx` (`KineticCaptionEditor.tsx`)**: Word-level subtitle karaoke editor powered by `@chenglou/pretext`.

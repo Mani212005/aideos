@@ -36,7 +36,7 @@ While your artistic choices are completely free, your screenplay must respect th
 
 - **Good Video Standard**: See [`docs/GOOD_VIDEO.md`](GOOD_VIDEO.md) for the 12-criterion quality rubric and pass bar.
 - **Schema & Invariants**: See [`src/dl/schema.ts`](../src/dl/schema.ts) for full type definitions and runsheet rules.
-- **Visual Component Library**: Inspect [`src/dl/devices.tsx`](../src/dl/devices.tsx) and [`src/dl/metaphors/MetaphorViewer.tsx`](../src/dl/metaphors/MetaphorViewer.tsx) for available visual blocks.
+- **Visual Component Library**: Inspect [`src/dl/devices.tsx`](../src/dl/devices.tsx) for available visual blocks.
 - **Validation**: Test your authored screenplay instantly with:
   ```bash
   npm run validate:film videos/<slug>/film.json

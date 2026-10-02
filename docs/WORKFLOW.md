@@ -48,9 +48,9 @@ Aideos is engineered around 4 strict architectural invariants:
                                        │ Verified Shotlist
                                        ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  STAGE 4: SPATIAL CANVAS GRAPH & VECTOR RIG ASSEMBLY                         │
+│  STAGE 4: SPATIAL CANVAS GRAPH & SCENE ASSEMBLY                              │
 │  • Computes 2D node coordinates (x, y, w, h) & directed edges               │
-│  • Assembles pure TypeScript Character Rigs (Astro Guide, Tech Architect)    │
+│  • Assembles visual devices, camera framing, and canvas stations             │
 │  • Compiles authoritative film.json data model and syncs activeFilm.ts       │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │ Compiled Film Data
@@ -86,26 +86,22 @@ Aideos is engineered around 4 strict architectural invariants:
 
 ### Stage 3: Semantic Visual Sync Gate (`backend/sync.ts`)
 1. **Semantic Match**: Inspects each spoken sentence to determine the best visual presentation:
-   - Explaining a human guide or greeting -> `CharacterBeat`
    - Showing a browser, terminal, or UI -> `DeviceCard`
    - Explaining memory allocation or arrays -> `MatrixGrid`
    - Highlighting big performance numbers -> `StatCounter`
-   - Conceptual trade-offs -> `ComparisonView`
-2. **Bespoke Generative SVG Synthesis & Animation (`backend/scene/generateSvg.ts`, `src/dl/scene/`)**:
-   - For custom visual directions, synthesizes theme-harmonized React SVG components or static animatable `.svg` assets into `videos/<slug>/visuals/` via generate-validate-repair loops.
-   - Validates geometric invariants (Rule V-4 explicit `viewBox` and `preserveAspectRatio="xMidYMid meet"`, Rule V-2 middle-60% viewport centering, addressable element IDs, self-containment, and frame-driven determinism).
-   - Animates static SVG documents via declarative element-level timelines (`src/dl/scene/svgAnimation.ts`) with audio-first retiming (`src/dl/scene/sceneTiming.ts`).
-3. **Pacing Invariant Verification (`src/dl/validateFilm.ts`)**:
+   - Showing token sequences -> `TokenStrip`
+2. **Custom SVG Animation (`src/dl/scene/`)**:
+   - For custom vector scenes, animates static SVG documents via declarative element-level timelines (`src/dl/scene/svgAnimation.ts`) with audio-first retiming (`src/dl/scene/sceneTiming.ts`).
+3. **Pacing Invariant Verification (`src/dl/schema.ts`, `scripts/validate_film.ts`)**:
    - First shot must cut (`move: "cut"`).
    - No device hold exceeds 25 seconds.
    - No consecutive repeats of the same device block without a canvas/text reset.
    - Viewer receives a text beat breather every 60-90 seconds.
 
-### Stage 4: Spatial Graph & Character Rigs (`src/dl/characters/`, `src/dl/CanvasGraph.tsx`)
+### Stage 4: Spatial Graph & Canvas Layout (`src/dl/CanvasGraph.tsx`)
 1. **2D Node Layout**: Positions concept nodes on the continuous spatial graph with bounding boxes $(x, y, w, h)$.
-2. **Character Rigging**: Pure TypeScript vector rigs (`astronaut.ts`, `developer.ts`) provide 2-level hierarchical kinematic transforms.
-3. **Keyframe Interpolation**: Evaluates pose keyframes via `ease-out-expo` (`motion.ts`) across normalized progress $t \in [0, 1]$.
-4. **Package Assembly**: Assembles self-contained video package under `videos/<slug>/` (`film.json`, `script.md`, `voiceover.wav`, `footage/`, `shotlist.json`, `treatment.json`, `visuals/`) loaded by `src/dl/videoPackageLoader.ts`.
+2. **Camera Framing**: Solves continuous camera framing and zoom targets across canvas nodes.
+3. **Package Assembly**: Assembles self-contained video package under `videos/<slug>/` (`film.json`, `script.md`, `voiceover.wav`, `footage/`, `shotlist.json`, `treatment.json`, `visuals/`) loaded by `src/dl/videoPackageLoader.ts`.
 
 ### Stage 5: Remotion Video Rendering (`src/dl/Film.tsx`)
 1. **Compositions**:
@@ -126,7 +122,7 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 
 1. **Stage 1: Script (`ScriptStage.tsx`)**: Write and edit screenplay narration text in Full Screenplay markdown, interactive Visual Studio beat cards, or Spoken Text view, with automatic Remotion sub-shot compilation and instant multi-provider TTS voiceover generation (Kokoro, Deepgram, Google Cloud TTS, macOS say).
 2. **Stage 2: Story (`StoryStage.tsx`)**: Drag and drop nodes across the 2D infinite spatial canvas, edit card labels, route directed edges, and solve camera zoom anchors, automatically streaming canvas actions to connected coding agents.
-3. **Stage 3: Look (`LookStage.tsx`)**: Storyboard gallery with 1-click character gesture posing (`Wave`, `Point`, `Think`, `Celebrate`), paper texture presets (Blueprint, Archival White, Charcoal), typography controls, and accent color pickers.
+3. **Stage 3: Look (`LookStage.tsx`)**: Storyboard gallery with paper texture presets (Blueprint, Archival White, Charcoal), typography controls, and accent color pickers.
 4. **Stage 4: Motion (`MotionStage.tsx`)**: Custom SVG movie animation authoring studio with element-level timeline keyframing, motion templates (staged entry, pulse, draw-on strokes), and frame-synchronized preview.
 5. **Stage 5: Edit (`EditStage.tsx`)**: Non-linear multi-track timeline displaying audio waveforms, track controls (lock, mute, hide), clip dragging with sticky snapping, transition selectors, unified clip/shot inspector, and model-driven AI edit panel connected to Agent Bridge.
 6. **Stage 6: Captions (`CaptionsStage.tsx`)**: Word-level subtitle karaoke editor powered by `@chenglou/pretext` for phrase locks and keyword highlight timing.

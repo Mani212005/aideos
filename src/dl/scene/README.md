@@ -202,5 +202,5 @@ appear twice in one frame without id collisions.
 
 Scene length is derived from the narration, never chosen. `framesForAudioMs` converts a segment
 length to frames; `alignSceneToAudio` re-clocks a whole scene to a new take, retiming keyframe
-tracks, actions and every animation clip proportionally so visuals stay on their beats instead of
+tracks and every animation clip proportionally so visuals stay on their beats instead of
 drifting. Validation Rule 14 holds the two within 50ms.
