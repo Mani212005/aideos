@@ -376,6 +376,12 @@ An individual vector path inside a limb:
 * `deriveFilmFacts(film, words)` (`backend/review/source.ts`): Derives camera motion, element persistence, and carry-over transformations from aideos film data.
 * `deriveNarrationFacts(words, duration)` (`backend/review/speech.ts`): Derives pace, dead air, narrated moments, and sync alignment from word timings or narration text.
 
+### `backend/geminiReview/` (Gemini 3.8 Flash Video Quality Review Loop & Rubric)
+* `reviewVideo(videoPath, options)` (`backend/geminiReview/geminiReview.ts`): Evaluates rendered mp4 video and audio against the 12-criterion rubric with Gemini 3.8 Flash, deterministic facts extraction, timestamp evidence validation, and pairwise comparison support.
+* `runReviewLoop(slug, options)` (`backend/geminiReview/reviewLoop.ts`): Orchestrates the iterative render, review, and feedback loop until the video passes all 6 hard gates with an overall score >= 9.0, persisting round reports to `videos/<slug>/gemini-review/`.
+* `extractDeterministicFacts(videoPath, options)` (`backend/geminiReview/facts.ts`): Extracts OCR captions coverage, audio loudness LUFS, duration, framerate, and camera tracks for ground-truth review prompt context.
+* `RUBRIC_CRITERIA`, `RUBRIC_SYSTEM_PROMPT` (`backend/geminiReview/rubric.ts`): The 12-criterion rubric definition and system prompt enforcing the 6 hard gates.
+
 ### `backend/mcp/designTools.ts` (Design & Review MCP Tools)
 * `registerDesignTools(server)`: Registers sandboxed MCP tools for reading briefs (`aideos_design_brief`), inspecting design files (`aideos_read_file`), writing design specs and SVGs (`aideos_write_file`), building designs (`aideos_design_build`), validating against design rules (`aideos_design_check`), fetching sampled review stills (`aideos_frame_stills`), and submitting coding model frame reviews (`aideos_submit_frame_review`).
 
