@@ -138,6 +138,7 @@ export interface AgyRunnerOptions {
   timeoutSeconds?: number;
   schema?: object;
   cwd?: string;
+  conversationId?: string;
   onProgress?: (message: string) => void;
 }
 

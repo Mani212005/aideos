@@ -218,8 +218,7 @@ export async function runReviewLoop(
   const lastRound = rounds[rounds.length - 1];
   const lastPairwisePassed = !options?.referenceVideo || (
     lastRound?.pairwiseReport
-      ? (lastRound.pairwiseReport.orderAB.choice === "Video 1" || lastRound.pairwiseReport.orderAB.choice === "Tie") &&
-        (lastRound.pairwiseReport.orderBA.choice === "Video 2" || lastRound.pairwiseReport.orderBA.choice === "Tie")
+      ? (lastRound.pairwiseReport.winner === "Video A" || lastRound.pairwiseReport.winner === "Tie")
       : true
   );
   const finalPassed = (lastRound?.verdict === "ACCEPT") && ((lastRound?.score ?? 0) >= targetScore) && lastPairwisePassed;

@@ -12,9 +12,13 @@ import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { extractDeterministicFacts } from "./facts";
 import {
-    RUBRIC_CRITERIA,
+  PAIRWISE_EXCHANGE_JSON_SCHEMA,
+  PAIRWISE_WATCH_JSON_SCHEMA,
+  RUBRIC_CRITERIA,
   SINGLE_REVIEW_JSON_SCHEMA,
-    buildSingleVideoReviewPrompt,
+  buildPairwiseExchangePrompt,
+  buildPairwiseWatchPrompt,
+  buildSingleVideoReviewPrompt,
   validateCriterionTimestamps,
 } from "./rubric";
 import type {
@@ -23,7 +27,8 @@ import type {
   AgyRunnerOptions,
   DeterministicVideoFacts,
   GeminiReviewReport,
-    PairwiseRunReport,
+  PairwiseRunReport,
+  WatchReport,
 } from "./types";
 
 export interface SingleReviewOptions {
@@ -77,6 +82,10 @@ export async function defaultAgyRunner(
 
   if (options?.schema) {
     args.push("--json-schema", JSON.stringify(options.schema));
+  }
+
+  if (options?.conversationId) {
+    args.push("--conversation", options.conversationId);
   }
 
   return new Promise<string>((resolve, reject) => {
@@ -180,6 +189,9 @@ export async function defaultAgyRunner(
           }
 
           if (parsed.structured_output && typeof parsed.structured_output === "object") {
+            if (parsed.conversation_id && !parsed.structured_output.conversation_id) {
+              parsed.structured_output.conversation_id = parsed.conversation_id;
+            }
             return resolve(JSON.stringify(parsed.structured_output));
           }
 
@@ -475,134 +487,109 @@ export async function reviewVideo(
   throw new Error("Video review failed to produce a valid report.");
 }
 
-// Executes an order-swapped pairwise comparison of two videos to verify preference stability.
-const WATCH_SCHEMA = {
-  type: "object",
-  properties: {
-    rating: { type: "number" },
-    likes: { type: "array", items: { type: "string" } },
-    dislikes: { type: "array", items: { type: "string" } },
-    neutral: { type: "array", items: { type: "string" } },
-    timestamps: { type: "array", items: { type: "string" } }
-  },
-  required: ["rating", "likes", "dislikes", "neutral", "timestamps"],
-  additionalProperties: false
-};
-
-const EXCHANGE_SCHEMA = {
-  type: "object",
-  properties: {
-    otherVideoRating: { type: "number" },
-    reasoning: { type: "string" }
-  },
-  required: ["otherVideoRating", "reasoning"],
-  additionalProperties: false
-};
-
-async function runAgyCrossPhase(
-  prompt: string,
-  cwd: string,
-  schema: any,
-  conversationId?: string,
-  modelName: string = "gemini-3.8-flash-high"
-): Promise<{ conversation_id: string; output: any }> {
-  const args = [
-    "-p", prompt,
-    "--model", modelName,
-    "--output-format", "json",
-    "--sandbox",
-    "--dangerously-skip-permissions",
-    "--json-schema", JSON.stringify(schema)
-  ];
-  if (conversationId) {
-    args.push("--conversation", conversationId);
-  }
-
-  return new Promise((resolve, reject) => {
-    import("node:child_process").then(({ execFile }) => {
-      execFile("agy", args, { cwd, maxBuffer: 50 * 1024 * 1024 }, (err, stdout, stderr) => {
-        if (err) {
-          return reject(new Error(`agy failed: ${err.message}\n${stdout}\n${stderr}`));
-        }
-        try {
-          const parsed = JSON.parse(stdout);
-          if (parsed.status === "ERROR") {
-            return reject(new Error(`agy returned ERROR: ${parsed.error || stdout}`));
-          }
-          resolve({
-            conversation_id: parsed.conversation_id,
-            output: parsed.structured_output
-          });
-        } catch (e) {
-          reject(new Error(`Failed to parse agy JSON output: ${stdout}`));
-        }
-      });
-    });
-  });
-}
-
+// Executes a dual-agent cross-review pairwise comparison of two videos to verify preference stability.
 export async function reviewPairwise(
   pathA: string,
   pathB: string,
   options?: PairwiseReviewOptions,
-): Promise<import("./types").PairwiseRunReport> {
-  const fsApi = await import("node:fs");
-  const pathApi = await import("node:path");
-  const rA = pathApi.resolve(pathA);
-  const rB = pathApi.resolve(pathB);
-  if (!fsApi.existsSync(rA)) throw new Error(`Video file does not exist: ${rA}`);
-  if (!fsApi.existsSync(rB)) throw new Error(`Video file does not exist: ${rB}`);
+): Promise<PairwiseRunReport> {
+  const resolvedA = path.resolve(pathA);
+  const resolvedB = path.resolve(pathB);
+  if (!fs.existsSync(resolvedA)) throw new Error(`Video file does not exist: ${resolvedA}`);
+  if (!fs.existsSync(resolvedB)) throw new Error(`Video file does not exist: ${resolvedB}`);
 
   const onProgress = options?.onProgress || (() => {});
-  const modelName = options?.model || "gemini-3.8-flash-high";
+  const runner = resolveRunner(options);
+  const modelName =
+    options?.model ||
+    process.env.AIDEOS_GEMINI_REVIEW_MODEL ||
+    process.env.GEMINI_MODEL ||
+    "gemini-3.8-flash-high";
+  const timeoutSeconds = options?.timeoutSeconds;
 
-  const wsA = createIsolatedVideoWorkspace({ "video.mp4": rA });
-  const wsB = createIsolatedVideoWorkspace({ "video.mp4": rB });
+  const wsA = createIsolatedVideoWorkspace({ "video.mp4": resolvedA });
+  const wsB = createIsolatedVideoWorkspace({ "video.mp4": resolvedB });
 
   try {
-    const promptWatch = "Evaluate the video in this directory against a 12-criterion quality rubric (e.g. unified persistent stage, carry-over and transformation, purposeful camera motion, readable bottom captions, audio sync). Produce a detailed report: provide an overall rating (0-10), what you like, what you dislike, and what you are neutral on. Cite specific timestamps for your points.";
+    const promptWatchA = buildPairwiseWatchPrompt(wsA.videoPaths["video.mp4"]);
+    onProgress(`Watching Video A (${path.basename(resolvedA)})...`);
+    const rawWatchA = await runner(promptWatchA, {
+      cwd: wsA.dir,
+      schema: PAIRWISE_WATCH_JSON_SCHEMA,
+      model: modelName,
+      timeoutSeconds,
+      onProgress,
+    });
+    const parsedWatchA = (
+      typeof rawWatchA === "string" ? JSON.parse(cleanModelJsonResponse(rawWatchA)) : rawWatchA
+    ) as WatchReport & { conversation_id?: string };
+    const convA = parsedWatchA.conversation_id;
 
-    onProgress(`Watching Video A (${pathApi.basename(rA)})...`);
-    const resA = await runAgyCrossPhase(promptWatch, wsA.dir, WATCH_SCHEMA, undefined, modelName);
-    const watchReportA = resA.output as import("./types").WatchReport;
-    const convA = resA.conversation_id;
+    const promptWatchB = buildPairwiseWatchPrompt(wsB.videoPaths["video.mp4"]);
+    onProgress(`Watching Video B (${path.basename(resolvedB)})...`);
+    const rawWatchB = await runner(promptWatchB, {
+      cwd: wsB.dir,
+      schema: PAIRWISE_WATCH_JSON_SCHEMA,
+      model: modelName,
+      timeoutSeconds,
+      onProgress,
+    });
+    const parsedWatchB = (
+      typeof rawWatchB === "string" ? JSON.parse(cleanModelJsonResponse(rawWatchB)) : rawWatchB
+    ) as WatchReport & { conversation_id?: string };
+    const convB = parsedWatchB.conversation_id;
 
-    onProgress(`Watching Video B (${pathApi.basename(rB)})...`);
-    const resB = await runAgyCrossPhase(promptWatch, wsB.dir, WATCH_SCHEMA, undefined, modelName);
-    const watchReportB = resB.output as import("./types").WatchReport;
-    const convB = resB.conversation_id;
-
-    const promptExA = `You have watched your video. Here is the evaluation report for the OTHER video (Video B):\n${JSON.stringify(watchReportB, null, 2)}\n\nCompare the other video's report to the video you watched. Give the OTHER video a rating (0-10) and brief reasoning.`;
+    const promptExA = buildPairwiseExchangePrompt("Video B", parsedWatchB);
     onProgress(`Exchange Phase: Agent A rating Video B...`);
-    const exA = await runAgyCrossPhase(promptExA, wsA.dir, EXCHANGE_SCHEMA, convA, modelName);
-    const ratingB_byA = exA.output.otherVideoRating;
+    const rawExA = await runner(promptExA, {
+      cwd: wsA.dir,
+      schema: PAIRWISE_EXCHANGE_JSON_SCHEMA,
+      conversationId: convA,
+      model: modelName,
+      timeoutSeconds,
+      onProgress,
+    });
+    const parsedExA = (
+      typeof rawExA === "string" ? JSON.parse(cleanModelJsonResponse(rawExA)) : rawExA
+    ) as { otherVideoRating: number; reasoning: string };
+    const ratingB_byA = parsedExA.otherVideoRating;
 
-    const promptExB = `You have watched your video. Here is the evaluation report for the OTHER video (Video A):\n${JSON.stringify(watchReportA, null, 2)}\n\nCompare the other video's report to the video you watched. Give the OTHER video a rating (0-10) and brief reasoning.`;
+    const promptExB = buildPairwiseExchangePrompt("Video A", parsedWatchA);
     onProgress(`Exchange Phase: Agent B rating Video A...`);
-    const exB = await runAgyCrossPhase(promptExB, wsB.dir, EXCHANGE_SCHEMA, convB, modelName);
-    const ratingA_byB = exB.output.otherVideoRating;
+    const rawExB = await runner(promptExB, {
+      cwd: wsB.dir,
+      schema: PAIRWISE_EXCHANGE_JSON_SCHEMA,
+      conversationId: convB,
+      model: modelName,
+      timeoutSeconds,
+      onProgress,
+    });
+    const parsedExB = (
+      typeof rawExB === "string" ? JSON.parse(cleanModelJsonResponse(rawExB)) : rawExB
+    ) as { otherVideoRating: number; reasoning: string };
+    const ratingA_byB = parsedExB.otherVideoRating;
 
-    const finalA = (watchReportA.rating + ratingA_byB) / 2;
-    const finalB = (watchReportB.rating + ratingB_byA) / 2;
-    const winner = finalA > finalB ? "Video A" : (finalB > finalA ? "Video B" : "Tie");
+    const finalA = (parsedWatchA.rating + ratingA_byB) / 2;
+    const finalB = (parsedWatchB.rating + ratingB_byA) / 2;
+    const winner = finalA > finalB ? "Video A" : finalB > finalA ? "Video B" : "Tie";
 
     return {
       videoA: {
-        path: rA,
-        watchReport: watchReportA,
-        ratingByWatcher: watchReportA.rating,
+        path: resolvedA,
+        watchReport: parsedWatchA,
+        ratingByWatcher: parsedWatchA.rating,
         ratingByOther: ratingA_byB,
-        finalRating: finalA
+        finalRating: finalA,
       },
       videoB: {
-        path: rB,
-        watchReport: watchReportB,
-        ratingByWatcher: watchReportB.rating,
+        path: resolvedB,
+        watchReport: parsedWatchB,
+        ratingByWatcher: parsedWatchB.rating,
         ratingByOther: ratingB_byA,
-        finalRating: finalB
+        finalRating: finalB,
       },
       winner,
-      evaluatedAt: new Date().toISOString()
+      evaluatedAt: new Date().toISOString(),
     };
   } finally {
     wsA.cleanup();

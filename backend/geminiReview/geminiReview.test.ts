@@ -14,9 +14,11 @@ import {
   RUBRIC_CRITERIA,
   validateCriterionTimestamps,
   buildSingleVideoReviewPrompt,
-  buildPairwiseReviewPrompt,
+  buildPairwiseWatchPrompt,
+  buildPairwiseExchangePrompt,
   SINGLE_REVIEW_JSON_SCHEMA,
-  PAIRWISE_REVIEW_JSON_SCHEMA,
+  PAIRWISE_WATCH_JSON_SCHEMA,
+  PAIRWISE_EXCHANGE_JSON_SCHEMA,
 } from "./rubric";
 import {
   computeFileHash,
@@ -114,17 +116,16 @@ test("Rubric: buildSingleVideoReviewPrompt injects re-ask note when specified", 
   assert.ok(reAskPrompt.includes("bottom_captions, camera_purpose"));
 });
 
-test("Rubric: buildPairwiseReviewPrompt contains core comparison directives", () => {
-  const prompt = buildPairwiseReviewPrompt();
-  assert.ok(prompt.includes("Video 1"));
-  assert.ok(prompt.includes("Video 2"));
-  assert.ok(prompt.includes("video1Score"));
-  assert.ok(prompt.includes("video2Score"));
-  assert.ok(!prompt.includes("HNSW"));
-  assert.ok(!prompt.includes("express train"));
+test("Rubric: buildPairwiseWatchPrompt and buildPairwiseExchangePrompt contain core directives", () => {
+  const watchPrompt = buildPairwiseWatchPrompt("/Users/test/video.mp4");
+  assert.ok(watchPrompt.includes("Watch and inspect the complete local video file at: /Users/test/video.mp4 with audio."));
+  assert.ok(watchPrompt.includes("12-criterion quality rubric"));
+  assert.ok(watchPrompt.includes("DO NOT write or run scripts. DO NOT extract frames. ONLY watch the video and return the required JSON."));
 
-  const promptWithTopic = buildPairwiseReviewPrompt("Distributed consensus algorithms");
-  assert.ok(promptWithTopic.includes("Distributed consensus algorithms"));
+  const exchangePrompt = buildPairwiseExchangePrompt("Video B", { rating: 8.5, likes: ["persistent stage"] });
+  assert.ok(exchangePrompt.includes("OTHER video (Video B)"));
+  assert.ok(exchangePrompt.includes("persistent stage"));
+  assert.ok(exchangePrompt.includes("Give the OTHER video a rating (0-10) and brief reasoning."));
 });
 
 test("facts: inspectCamera handles missing film.json without hardcoded path heuristics", () => {
@@ -213,7 +214,7 @@ test("geminiReview: reviewVideo assigns REVISE if any hard gate fails even with 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test("geminiReview: reviewPairwise runs swapped presentation orders and determines consistent winner", async () => {
+test("geminiReview: reviewPairwise runs dual-agent cross-review and determines winner", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-pairwise-test-"));
   const videoA = path.join(tmpDir, "videoA.mp4");
   const videoB = path.join(tmpDir, "videoB.mp4");
@@ -224,35 +225,47 @@ test("geminiReview: reviewPairwise runs swapped presentation orders and determin
   const mockRunner: AgyRunner = async (prompt: string) => {
     callIndex++;
     if (callIndex === 1) {
-      assert.ok(prompt.includes("Video 1 is located at:"));
-      assert.ok(prompt.includes("video_1.mp4"));
-      assert.ok(prompt.includes("video_2.mp4"));
-      // Order 1: Video 1 = A, Video 2 = B. Chooses Video 1 (A).
+      assert.ok(prompt.includes("video.mp4"));
       return JSON.stringify({
-        video1Score: 9.1,
-        video2Score: 7.2,
-        choice: "Video 1",
-        reasoning: "Video 1 has superior camera motion and bottom captions.",
-        timestampsCited: ["0:15", "0:42"],
+        rating: 9.0,
+        likes: ["Continuous 3D stage and camera moves"],
+        dislikes: [],
+        neutral: [],
+        timestamps: ["0:15", "0:42"],
       });
     }
-    assert.ok(prompt.includes("Video 1 is located at:"));
-    assert.ok(prompt.includes("video_1.mp4"));
-    assert.ok(prompt.includes("video_2.mp4"));
-    // Order 2: Video 1 = B, Video 2 = A. Chooses Video 2 (A).
+    if (callIndex === 2) {
+      assert.ok(prompt.includes("video.mp4"));
+      return JSON.stringify({
+        rating: 7.0,
+        likes: ["Color palette"],
+        dislikes: ["No bottom captions"],
+        neutral: [],
+        timestamps: ["0:18", "0:45"],
+      });
+    }
+    if (callIndex === 3) {
+      assert.ok(prompt.includes("OTHER video (Video B)"));
+      return JSON.stringify({
+        otherVideoRating: 7.0,
+        reasoning: "Video B lacks synchronized bottom captions.",
+      });
+    }
+    assert.ok(prompt.includes("OTHER video (Video A)"));
     return JSON.stringify({
-      video1Score: 7.3,
-      video2Score: 9.2,
-      choice: "Video 2",
-      reasoning: "Video 2 demonstrates continuous 3D stage and clear narrative build.",
-      timestampsCited: ["0:18", "0:45"],
+      otherVideoRating: 9.0,
+      reasoning: "Video A demonstrates superior stage continuity.",
     });
   };
 
   const pairwiseResult = await reviewPairwise(videoA, videoB, { runner: mockRunner });
   assert.equal(pairwiseResult.winner, "Video A");
-  assert.equal(pairwiseResult.orderAB.choice, "Video 1");
-  assert.equal(pairwiseResult.orderBA.choice, "Video 2");
+  assert.equal(pairwiseResult.videoA.finalRating, 9.0);
+  assert.equal(pairwiseResult.videoB.finalRating, 7.0);
+  assert.equal(pairwiseResult.videoA.ratingByWatcher, 9.0);
+  assert.equal(pairwiseResult.videoA.ratingByOther, 9.0);
+  assert.equal(pairwiseResult.videoB.ratingByWatcher, 7.0);
+  assert.equal(pairwiseResult.videoB.ratingByOther, 7.0);
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
@@ -422,21 +435,17 @@ test("reviewLoop: requires winning or tying pairwise check when reference video 
     if (roundNum === 1) {
       // Round 1: candidate loses to reference
       return {
-        videoA: { path: "a.mp4", watchReport: {} as any, ratingByWatcher: 9.0, ratingByOther: 9.0, finalRating: 9.0 },
-  videoB: { path: "b.mp4", watchReport: {} as any, ratingByWatcher: 7.0, ratingByOther: 7.0, finalRating: 7.0 },
-  winner: "Video A" as const,
-        
-        consistentWinner: "Video B" as const,
+        videoA: { path: candidateVideo, watchReport: {} as any, ratingByWatcher: 7.0, ratingByOther: 7.0, finalRating: 7.0 },
+        videoB: { path: refVideo, watchReport: {} as any, ratingByWatcher: 9.0, ratingByOther: 9.0, finalRating: 9.0 },
+        winner: "Video B" as const,
         evaluatedAt: new Date().toISOString(),
       };
     }
     // Round 2: candidate wins
     return {
-      videoA: { path: "a.mp4", watchReport: {} as any, ratingByWatcher: 9.0, ratingByOther: 9.0, finalRating: 9.0 },
-  videoB: { path: "b.mp4", watchReport: {} as any, ratingByWatcher: 7.0, ratingByOther: 7.0, finalRating: 7.0 },
-  winner: "Video A" as const,
-      
-      consistentWinner: "Video A" as const,
+      videoA: { path: candidateVideo, watchReport: {} as any, ratingByWatcher: 9.5, ratingByOther: 9.0, finalRating: 9.25 },
+      videoB: { path: refVideo, watchReport: {} as any, ratingByWatcher: 7.5, ratingByOther: 8.0, finalRating: 7.75 },
+      winner: "Video A" as const,
       evaluatedAt: new Date().toISOString(),
     };
   };
@@ -471,14 +480,12 @@ test("geminiReview: prompt includes video file path and local inspection directi
   const singlePromptNoPath = buildSingleVideoReviewPrompt();
   assert.ok(singlePromptNoPath.includes("DO NOT run any tools. DO NOT write or run scripts. ONLY watch the video and return the required JSON."));
 
-  const pairwisePrompt = buildPairwiseReviewPrompt("/Users/test/videoA.mp4", "/Users/test/videoB.mp4");
-  assert.ok(pairwisePrompt.includes("Video 1 is located at: /Users/test/videoA.mp4"));
-  assert.ok(pairwisePrompt.includes("Video 2 is located at: /Users/test/videoB.mp4"));
-  assert.ok(pairwisePrompt.includes("Watch and inspect both complete local video files carefully with audio."));
-  assert.ok(pairwisePrompt.includes("DO NOT write or run scripts. DO NOT extract frames. ONLY watch the videos and return the required JSON."));
+  const watchPrompt = buildPairwiseWatchPrompt("/Users/test/videoA.mp4");
+  assert.ok(watchPrompt.includes("Watch and inspect the complete local video file at: /Users/test/videoA.mp4 with audio."));
+  assert.ok(watchPrompt.includes("DO NOT write or run scripts. DO NOT extract frames. ONLY watch the video and return the required JSON."));
 
-  const pairwisePromptNoPath = buildPairwiseReviewPrompt();
-  assert.ok(pairwisePromptNoPath.includes("DO NOT run any tools. DO NOT write or run scripts. ONLY watch the videos and return the required JSON."));
+  const watchPromptNoPath = buildPairwiseWatchPrompt();
+  assert.ok(watchPromptNoPath.includes("12-criterion quality rubric"));
 });
 
 test("geminiReview: supports client injection via AgyReviewClient", async () => {
@@ -569,10 +576,16 @@ test("geminiReview: schemas enforce expected required properties", () => {
     "feedback",
   ]);
 
-  assert.deepEqual(PAIRWISE_REVIEW_JSON_SCHEMA.required, [
-    "video1Score",
-    "video2Score",
-    "choice",
+  assert.deepEqual(PAIRWISE_WATCH_JSON_SCHEMA.required, [
+    "rating",
+    "likes",
+    "dislikes",
+    "neutral",
+    "timestamps",
+  ]);
+
+  assert.deepEqual(PAIRWISE_EXCHANGE_JSON_SCHEMA.required, [
+    "otherVideoRating",
     "reasoning",
   ]);
 });
@@ -634,7 +647,7 @@ test("geminiReview: reviewVideo executes in isolated workspace with neutral vide
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test("geminiReview: reviewPairwise executes each order in isolated workspace with neutral video_1.mp4 and video_2.mp4", async () => {
+test("geminiReview: reviewPairwise executes in isolated workspaces with neutral video.mp4", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-pairwise-iso-test-"));
   const videoA = path.join(tmpDir, "a.mp4");
   const videoB = path.join(tmpDir, "b.mp4");
@@ -645,30 +658,45 @@ test("geminiReview: reviewPairwise executes each order in isolated workspace wit
   const runner: AgyRunner = async (prompt, opts) => {
     assert.ok(opts?.cwd, "pairwise runner must receive isolated cwd");
     assert.ok(fs.existsSync(opts.cwd), "pairwise cwd must exist during run");
-    assert.ok(fs.existsSync(path.join(opts.cwd, "video_1.mp4")), "video_1.mp4 must exist in cwd");
-    assert.ok(fs.existsSync(path.join(opts.cwd, "video_2.mp4")), "video_2.mp4 must exist in cwd");
-    capturedCwds.push(opts.cwd);
+    assert.ok(fs.existsSync(path.join(opts.cwd, "video.mp4")), "video.mp4 must exist in cwd");
+    if (!capturedCwds.includes(opts.cwd)) {
+      capturedCwds.push(opts.cwd);
+    }
 
-    if (prompt.includes("Order: Video 1 = A, Video 2 = B") || capturedCwds.length === 1) {
+    if (capturedCwds.length === 1 && prompt.includes("video.mp4")) {
       return JSON.stringify({
-        video1Score: 9.0,
-        video2Score: 7.0,
-        choice: "Video 1",
-        reasoning: "Video 1 is superior.",
-        timestampsCited: ["0:10"],
+        rating: 9.0,
+        likes: ["Persistent stage"],
+        dislikes: [],
+        neutral: [],
+        timestamps: ["0:10"],
+      });
+    }
+    if (capturedCwds.length === 2 && prompt.includes("video.mp4")) {
+      return JSON.stringify({
+        rating: 7.0,
+        likes: ["Clear voiceover"],
+        dislikes: ["No bottom captions"],
+        neutral: [],
+        timestamps: ["0:10"],
+      });
+    }
+    if (prompt.includes("OTHER video (Video B)")) {
+      return JSON.stringify({
+        otherVideoRating: 7.0,
+        reasoning: "Video B missing captions.",
       });
     }
     return JSON.stringify({
-      video1Score: 7.0,
-      video2Score: 9.0,
-      choice: "Video 2",
-      reasoning: "Video 2 is superior.",
-      timestampsCited: ["0:10"],
+      otherVideoRating: 9.0,
+      reasoning: "Video A is better.",
     });
   };
 
   const report = await reviewPairwise(videoA, videoB, { runner });
   assert.equal(report.winner, "Video A");
+  assert.equal(report.videoA.path, path.resolve(videoA));
+  assert.equal(report.videoB.path, path.resolve(videoB));
   assert.equal(capturedCwds.length, 2);
   for (const cwd of capturedCwds) {
     assert.equal(fs.existsSync(cwd), false, "pairwise isolated workspace must be cleaned up");
