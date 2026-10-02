@@ -1,7 +1,7 @@
 /**
  * File Description: Comprehensive unit tests for the Gemini 3.8 Flash video quality review system,
  * covering client upload/polling/retries, rubric schema validation, timestamp verification,
- * single video scoring, pairwise order-swapped comparison, and iterative review loop orchestration.
+ * single video scoring, pairwise cross-review comparison, and iterative review loop orchestration.
  */
 
 import assert from "node:assert/strict";

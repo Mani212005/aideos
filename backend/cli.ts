@@ -784,7 +784,7 @@ program
   .command("gemini-review")
   .description("Review a rendered mp4 video or run pairwise comparison using Gemini 3.8 Flash against the 12-criterion quality rubric")
   .argument("<video>", "Path to rendered mp4 video file")
-  .option("--pairwise <other>", "Optional second mp4 video to run order-swapped pairwise comparison against")
+  .option("--pairwise <other>", "Optional second mp4 video to run cross-review pairwise comparison against")
   .option("--film <path>", "Optional path to film.json for camera track and boundary facts")
   .option("--no-facts", "Skip deterministic facts extraction (OCR, audio loudness, ffprobe)")
   .option("--json", "Print output report as raw JSON")
