@@ -498,11 +498,19 @@ test("reviewLoop: requires winning or tying pairwise check when reference video 
 test("geminiReview: prompt includes video file path and local inspection directive", () => {
   const singlePrompt = buildSingleVideoReviewPrompt("/Users/test/render.mp4");
   assert.ok(singlePrompt.includes("Watch and inspect the complete local video file at: /Users/test/render.mp4 with audio."));
+  assert.ok(singlePrompt.includes("DO NOT write or run scripts. DO NOT extract frames. ONLY watch the video and return the required JSON."));
+
+  const singlePromptNoPath = buildSingleVideoReviewPrompt();
+  assert.ok(singlePromptNoPath.includes("DO NOT run any tools. DO NOT write or run scripts. ONLY watch the video and return the required JSON."));
 
   const pairwisePrompt = buildPairwiseReviewPrompt("/Users/test/videoA.mp4", "/Users/test/videoB.mp4");
   assert.ok(pairwisePrompt.includes("Video 1 is located at: /Users/test/videoA.mp4"));
   assert.ok(pairwisePrompt.includes("Video 2 is located at: /Users/test/videoB.mp4"));
   assert.ok(pairwisePrompt.includes("Watch and inspect both complete local video files carefully with audio."));
+  assert.ok(pairwisePrompt.includes("DO NOT write or run scripts. DO NOT extract frames. ONLY watch the videos and return the required JSON."));
+
+  const pairwisePromptNoPath = buildPairwiseReviewPrompt();
+  assert.ok(pairwisePromptNoPath.includes("DO NOT run any tools. DO NOT write or run scripts. ONLY watch the videos and return the required JSON."));
 });
 
 test("geminiReview: supports client injection via AgyReviewClient", async () => {
