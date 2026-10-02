@@ -78,8 +78,8 @@ props: [
 ```
 
 **Properties.** `translateX`, `translateY`, `scale`, `scaleX`, `scaleY`, `rotate`, `opacity`,
-`drawOn`. `drawOn` reveals a stroked path from 0 to 1 by dashing its stroke; declared on a group,
-it reaches the strokeable geometry inside.
+`drawOn`, `x1`, `y1`, `x2`, `y2`. `drawOn` reveals a stroked path from 0 to 1 by dashing its stroke; declared on a group,
+it reaches the strokeable geometry inside. `x1`, `y1`, `x2`, `y2` animate line endpoint coordinates directly.
 
 **Easing.** `expoOut` is the default and is the project's only curve, `cubic-bezier(0.16, 1, 0.3, 1)`
 (§03, `motion.ts`). `expoIn`, `expoInOut`, `linear` and `hold` exist for the cases that genuinely

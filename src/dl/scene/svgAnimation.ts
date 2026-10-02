@@ -15,6 +15,7 @@ import type { Vec2 } from "./types";
  * - rotate turns it about its transform origin, in degrees.
  * - opacity fades it, clamped to [0, 1].
  * - drawOn reveals a stroked path from 0 (nothing drawn) to 1 (fully drawn) via stroke dashing.
+ * - x1 / y1 / x2 / y2 animate line endpoint coordinates directly.
  */
 export type SvgAnimatableProperty =
   | "translateX"
