@@ -93,7 +93,7 @@ aideos gemini-review videoA.mp4 --pairwise videoB.mp4
 ```
 
 ### How it works
-1. **Direct Video Inspection in Isolated Workspace via agy CLI**: Invokes the agy CLI agent running Gemini 3.8 Flash (e.g. `gemini-3.8-flash-high`) non-interactively in print mode with `--sandbox` within an isolated temporary directory using neutral filenames (`video.mp4` for single review, `video_1.mp4` and `video_2.mp4` for pairwise comparisons) and explicit directives to evaluate only the visual and audio stream without writing scripts, extracting frames, or accessing repository files.
+1. **Direct Video Inspection in Isolated Workspace via agy CLI**: Invokes the agy CLI agent running Gemini 3.8 Flash (e.g. `gemini-3.8-flash-high`) non-interactively in print mode with `--sandbox` within an isolated temporary directory using neutral filenames (`video.mp4` for single review, `video.mp4` for single review and pairwise comparisons) and explicit directives to evaluate only the visual and audio stream without writing scripts, extracting frames, or accessing repository files.
 2. **Deterministic Facts Extraction**: Gathers ground-truth data (bottom captions OCR coverage, audio LUFS loudness, duration, framerate, camera track from `film.json`) and feeds them into the model prompt to prevent hallucinations.
 3. **Structured Rubric Evaluation**: Grades all 12 criteria on a 0.0 to 10.0 scale, checking the 6 hard gates (persistent stage, camera purpose, bottom captions, readability, no overlap/clipping, audio sync).
 4. **Timestamp Evidence Enforcement**: Validates that every criterion score includes concrete timestamp citations (e.g. `00:14`, `01:02`) within the video bounds.
@@ -102,8 +102,11 @@ aideos gemini-review videoA.mp4 --pairwise videoB.mp4
    - `REVISE`: Overall score < 9.0 or any hard gate failed.
 6. **Prioritized Feedback**: Generates actionable, timestamped recommendations (high, medium, low priority) on how to improve the video.
 
-### Order-Swapped Pairwise Comparison (`--pairwise`)
-To eliminate model position bias when comparing two videos (e.g. comparing Aideos output against an external benchmark), `--pairwise` runs two independent evaluations with reversed presentation orders (`A vs B` and `B vs A`). A video is declared the winner only if it wins consistently across both orderings.
+### Cross-Review Pairwise Comparison (`--pairwise`)
+To eliminate model position bias and multimodal cross-alignment hallucinations when comparing two videos (e.g. comparing Aideos output against an external benchmark), `--pairwise` runs a dual-agent cross-review process:
+1. **Watch Phase**: Two separate agy agents watch each video individually in isolated temporary workspaces and generate a structured JSON evaluation report (rating, likes, dislikes, neutral, timestamps).
+2. **Exchange Phase**: Each agent resumes its conversation and reads the *other* video's evaluation report, scoring the competing video purely on its text-based merits.
+3. **Final Scoring**: The final score for each video is the average of its watcher's rating and the competing agent's peer rating. The winner is the video with the highest average score.
 
 ---
 

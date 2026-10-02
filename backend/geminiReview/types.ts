@@ -69,22 +69,31 @@ export interface GeminiReviewReport {
   facts?: DeterministicVideoFacts;
 }
 
-export interface PairwiseComparisonResult {
-  orderKey: string;
-  video1Path: string;
-  video2Path: string;
-  video1Score: number;
-  video2Score: number;
-  choice: "Video 1" | "Video 2" | "Tie";
-  reasoning: string;
-  timestampsCited: string[];
+export interface WatchReport {
+  rating: number;
+  likes: string[];
+  dislikes: string[];
+  neutral: string[];
+  timestamps: string[];
 }
 
 export interface PairwiseRunReport {
-  orderAB: PairwiseComparisonResult;
-  orderBA: PairwiseComparisonResult;
-  consistentWinner: "Video A" | "Video B" | "Inconsistent";
-  evaluatedAt: string;
+  videoA: {
+    path: string;
+    watchReport: WatchReport;
+    ratingByWatcher: number;
+    ratingByOther: number;
+    finalRating: number;
+  };
+  videoB: {
+    path: string;
+    watchReport: WatchReport;
+    ratingByWatcher: number;
+    ratingByOther: number;
+    finalRating: number;
+  };
+  winner: "Video A" | "Video B" | "Tie";
+  evaluatedAt?: string;
 }
 
 export interface ReviewLoopRound {

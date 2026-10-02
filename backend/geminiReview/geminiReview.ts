@@ -12,11 +12,9 @@ import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { extractDeterministicFacts } from "./facts";
 import {
-  PAIRWISE_REVIEW_JSON_SCHEMA,
-  RUBRIC_CRITERIA,
+    RUBRIC_CRITERIA,
   SINGLE_REVIEW_JSON_SCHEMA,
-  buildPairwiseReviewPrompt,
-  buildSingleVideoReviewPrompt,
+    buildSingleVideoReviewPrompt,
   validateCriterionTimestamps,
 } from "./rubric";
 import type {
@@ -25,8 +23,7 @@ import type {
   AgyRunnerOptions,
   DeterministicVideoFacts,
   GeminiReviewReport,
-  PairwiseComparisonResult,
-  PairwiseRunReport,
+    PairwiseRunReport,
 } from "./types";
 
 export interface SingleReviewOptions {
@@ -479,155 +476,136 @@ export async function reviewVideo(
 }
 
 // Executes an order-swapped pairwise comparison of two videos to verify preference stability.
+const WATCH_SCHEMA = {
+  type: "object",
+  properties: {
+    rating: { type: "number" },
+    likes: { type: "array", items: { type: "string" } },
+    dislikes: { type: "array", items: { type: "string" } },
+    neutral: { type: "array", items: { type: "string" } },
+    timestamps: { type: "array", items: { type: "string" } }
+  },
+  required: ["rating", "likes", "dislikes", "neutral", "timestamps"],
+  additionalProperties: false
+};
+
+const EXCHANGE_SCHEMA = {
+  type: "object",
+  properties: {
+    otherVideoRating: { type: "number" },
+    reasoning: { type: "string" }
+  },
+  required: ["otherVideoRating", "reasoning"],
+  additionalProperties: false
+};
+
+async function runAgyCrossPhase(
+  prompt: string,
+  cwd: string,
+  schema: any,
+  conversationId?: string,
+  modelName: string = "gemini-3.8-flash-high"
+): Promise<{ conversation_id: string; output: any }> {
+  const args = [
+    "-p", prompt,
+    "--model", modelName,
+    "--output-format", "json",
+    "--sandbox",
+    "--dangerously-skip-permissions",
+    "--json-schema", JSON.stringify(schema)
+  ];
+  if (conversationId) {
+    args.push("--conversation", conversationId);
+  }
+
+  return new Promise((resolve, reject) => {
+    import("node:child_process").then(({ execFile }) => {
+      execFile("agy", args, { cwd, maxBuffer: 50 * 1024 * 1024 }, (err, stdout, stderr) => {
+        if (err) {
+          return reject(new Error(`agy failed: ${err.message}\n${stdout}\n${stderr}`));
+        }
+        try {
+          const parsed = JSON.parse(stdout);
+          if (parsed.status === "ERROR") {
+            return reject(new Error(`agy returned ERROR: ${parsed.error || stdout}`));
+          }
+          resolve({
+            conversation_id: parsed.conversation_id,
+            output: parsed.structured_output
+          });
+        } catch (e) {
+          reject(new Error(`Failed to parse agy JSON output: ${stdout}`));
+        }
+      });
+    });
+  });
+}
+
 export async function reviewPairwise(
   pathA: string,
   pathB: string,
   options?: PairwiseReviewOptions,
-): Promise<PairwiseRunReport> {
-  const resolvedA = path.resolve(pathA);
-  const resolvedB = path.resolve(pathB);
-  if (!fs.existsSync(resolvedA)) {
-    throw new Error(`Video file does not exist: ${resolvedA}`);
-  }
-  if (!fs.existsSync(resolvedB)) {
-    throw new Error(`Video file does not exist: ${resolvedB}`);
-  }
+): Promise<import("./types").PairwiseRunReport> {
+  const fsApi = await import("node:fs");
+  const pathApi = await import("node:path");
+  const rA = pathApi.resolve(pathA);
+  const rB = pathApi.resolve(pathB);
+  if (!fsApi.existsSync(rA)) throw new Error(`Video file does not exist: ${rA}`);
+  if (!fsApi.existsSync(rB)) throw new Error(`Video file does not exist: ${rB}`);
 
   const onProgress = options?.onProgress || (() => {});
-  const runner = resolveRunner(options);
-  const modelName =
-    options?.model ||
-    process.env.AIDEOS_GEMINI_REVIEW_MODEL ||
-    process.env.GEMINI_MODEL ||
-    "gemini-3.8-flash-high";
+  const modelName = options?.model || "gemini-3.8-flash-high";
 
-  const timeoutSeconds =
-    options?.timeoutSeconds ??
-    (Number(process.env.AIDEOS_AGY_TIMEOUT) || 1800);
+  const wsA = createIsolatedVideoWorkspace({ "video.mp4": rA });
+  const wsB = createIsolatedVideoWorkspace({ "video.mp4": rB });
 
-  // Order 1: Video 1 = A, Video 2 = B
-  onProgress(`Running pairwise comparison with agy (${modelName}) (Order: Video 1 = A, Video 2 = B)...`);
-  const workspaceAB = createIsolatedVideoWorkspace({
-    "video_1.mp4": resolvedA,
-    "video_2.mp4": resolvedB,
-  });
-  let parsedAB: {
-    video1Score: number;
-    video2Score: number;
-    choice: "Video 1" | "Video 2" | "Tie";
-    reasoning: string;
-    timestampsCited?: string[];
-  };
   try {
-    const promptAB = buildPairwiseReviewPrompt(
-      workspaceAB.videoPaths["video_1.mp4"],
-      workspaceAB.videoPaths["video_2.mp4"],
-    );
-    const rawAB = await runner(promptAB, {
-      model: modelName,
-      cwd: workspaceAB.dir,
-      timeoutSeconds,
-      schema: PAIRWISE_REVIEW_JSON_SCHEMA,
-      onProgress,
-    });
+    const promptWatch = "Evaluate the video in this directory against a 12-criterion quality rubric (e.g. unified persistent stage, carry-over and transformation, purposeful camera motion, readable bottom captions, audio sync). Produce a detailed report: provide an overall rating (0-10), what you like, what you dislike, and what you are neutral on. Cite specific timestamps for your points.";
 
-    parsedAB = (
-      typeof rawAB === "string" ? JSON.parse(cleanModelJsonResponse(rawAB)) : rawAB
-    ) as typeof parsedAB;
+    onProgress(`Watching Video A (${pathApi.basename(rA)})...`);
+    const resA = await runAgyCrossPhase(promptWatch, wsA.dir, WATCH_SCHEMA, undefined, modelName);
+    const watchReportA = resA.output as import("./types").WatchReport;
+    const convA = resA.conversation_id;
+
+    onProgress(`Watching Video B (${pathApi.basename(rB)})...`);
+    const resB = await runAgyCrossPhase(promptWatch, wsB.dir, WATCH_SCHEMA, undefined, modelName);
+    const watchReportB = resB.output as import("./types").WatchReport;
+    const convB = resB.conversation_id;
+
+    const promptExA = `You have watched your video. Here is the evaluation report for the OTHER video (Video B):\n${JSON.stringify(watchReportB, null, 2)}\n\nCompare the other video's report to the video you watched. Give the OTHER video a rating (0-10) and brief reasoning.`;
+    onProgress(`Exchange Phase: Agent A rating Video B...`);
+    const exA = await runAgyCrossPhase(promptExA, wsA.dir, EXCHANGE_SCHEMA, convA, modelName);
+    const ratingB_byA = exA.output.otherVideoRating;
+
+    const promptExB = `You have watched your video. Here is the evaluation report for the OTHER video (Video A):\n${JSON.stringify(watchReportA, null, 2)}\n\nCompare the other video's report to the video you watched. Give the OTHER video a rating (0-10) and brief reasoning.`;
+    onProgress(`Exchange Phase: Agent B rating Video A...`);
+    const exB = await runAgyCrossPhase(promptExB, wsB.dir, EXCHANGE_SCHEMA, convB, modelName);
+    const ratingA_byB = exB.output.otherVideoRating;
+
+    const finalA = (watchReportA.rating + ratingA_byB) / 2;
+    const finalB = (watchReportB.rating + ratingB_byA) / 2;
+    const winner = finalA > finalB ? "Video A" : (finalB > finalA ? "Video B" : "Tie");
+
+    return {
+      videoA: {
+        path: rA,
+        watchReport: watchReportA,
+        ratingByWatcher: watchReportA.rating,
+        ratingByOther: ratingA_byB,
+        finalRating: finalA
+      },
+      videoB: {
+        path: rB,
+        watchReport: watchReportB,
+        ratingByWatcher: watchReportB.rating,
+        ratingByOther: ratingB_byA,
+        finalRating: finalB
+      },
+      winner,
+      evaluatedAt: new Date().toISOString()
+    };
   } finally {
-    workspaceAB.cleanup();
+    wsA.cleanup();
+    wsB.cleanup();
   }
-
-  if (
-    typeof parsedAB?.video1Score !== "number" ||
-    typeof parsedAB?.video2Score !== "number" ||
-    !parsedAB?.choice
-  ) {
-    throw new Error(
-      `Invalid pairwise comparison output from agy (Order AB): missing scores or choice in ${JSON.stringify(parsedAB)}`,
-    );
-  }
-
-  const orderAB: PairwiseComparisonResult = {
-    orderKey: "Video1=A, Video2=B",
-    video1Path: resolvedA,
-    video2Path: resolvedB,
-    video1Score: parsedAB.video1Score,
-    video2Score: parsedAB.video2Score,
-    choice: parsedAB.choice,
-    reasoning: parsedAB.reasoning,
-    timestampsCited: parsedAB.timestampsCited || [],
-  };
-
-  // Order 2: Video 1 = B, Video 2 = A
-  onProgress(`Running pairwise comparison with agy (${modelName}) (Order: Video 1 = B, Video 2 = A)...`);
-  const workspaceBA = createIsolatedVideoWorkspace({
-    "video_1.mp4": resolvedB,
-    "video_2.mp4": resolvedA,
-  });
-  let parsedBA: {
-    video1Score: number;
-    video2Score: number;
-    choice: "Video 1" | "Video 2" | "Tie";
-    reasoning: string;
-    timestampsCited?: string[];
-  };
-  try {
-    const promptBA = buildPairwiseReviewPrompt(
-      workspaceBA.videoPaths["video_1.mp4"],
-      workspaceBA.videoPaths["video_2.mp4"],
-    );
-    const rawBA = await runner(promptBA, {
-      model: modelName,
-      cwd: workspaceBA.dir,
-      timeoutSeconds,
-      schema: PAIRWISE_REVIEW_JSON_SCHEMA,
-      onProgress,
-    });
-
-    parsedBA = (
-      typeof rawBA === "string" ? JSON.parse(cleanModelJsonResponse(rawBA)) : rawBA
-    ) as typeof parsedBA;
-  } finally {
-    workspaceBA.cleanup();
-  }
-
-  if (
-    typeof parsedBA?.video1Score !== "number" ||
-    typeof parsedBA?.video2Score !== "number" ||
-    !parsedBA?.choice
-  ) {
-    throw new Error(
-      `Invalid pairwise comparison output from agy (Order BA): missing scores or choice in ${JSON.stringify(parsedBA)}`,
-    );
-  }
-
-  const orderBA: PairwiseComparisonResult = {
-    orderKey: "Video1=B, Video2=A",
-    video1Path: resolvedB,
-    video2Path: resolvedA,
-    video1Score: parsedBA.video1Score,
-    video2Score: parsedBA.video2Score,
-    choice: parsedBA.choice,
-    reasoning: parsedBA.reasoning,
-    timestampsCited: parsedBA.timestampsCited || [],
-  };
-
-  // Determine winner in each order
-  // For AB: Video 1 is A, Video 2 is B
-  const winnerInAB = orderAB.choice === "Video 1" ? "Video A" : orderAB.choice === "Video 2" ? "Video B" : "Tie";
-  // For BA: Video 1 is B, Video 2 is A
-  const winnerInBA = orderBA.choice === "Video 2" ? "Video A" : orderBA.choice === "Video 1" ? "Video B" : "Tie";
-
-  const consistentWinner =
-    winnerInAB === winnerInBA && (winnerInAB === "Video A" || winnerInAB === "Video B")
-      ? winnerInAB
-      : "Inconsistent";
-
-  return {
-    orderAB,
-    orderBA,
-    consistentWinner,
-    evaluatedAt: new Date().toISOString(),
-  };
 }

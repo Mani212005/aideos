@@ -250,7 +250,7 @@ test("geminiReview: reviewPairwise runs swapped presentation orders and determin
   };
 
   const pairwiseResult = await reviewPairwise(videoA, videoB, { runner: mockRunner });
-  assert.equal(pairwiseResult.consistentWinner, "Video A");
+  assert.equal(pairwiseResult.winner, "Video A");
   assert.equal(pairwiseResult.orderAB.choice, "Video 1");
   assert.equal(pairwiseResult.orderBA.choice, "Video 2");
 
@@ -422,52 +422,20 @@ test("reviewLoop: requires winning or tying pairwise check when reference video 
     if (roundNum === 1) {
       // Round 1: candidate loses to reference
       return {
-        orderAB: {
-          orderKey: "Video1=candidate, Video2=ref",
-          video1Path: candidateVideo,
-          video2Path: refVideo,
-          video1Score: 7.0,
-          video2Score: 9.0,
-          choice: "Video 2" as const, // reference wins
-          reasoning: "Reference video had superior stage persistence",
-          timestampsCited: ["0:15"],
-        },
-        orderBA: {
-          orderKey: "Video1=ref, Video2=candidate",
-          video1Path: refVideo,
-          video2Path: candidateVideo,
-          video1Score: 9.0,
-          video2Score: 7.0,
-          choice: "Video 1" as const, // reference wins
-          reasoning: "Reference video preferred",
-          timestampsCited: ["0:15"],
-        },
+        videoA: { path: "a.mp4", watchReport: {} as any, ratingByWatcher: 9.0, ratingByOther: 9.0, finalRating: 9.0 },
+  videoB: { path: "b.mp4", watchReport: {} as any, ratingByWatcher: 7.0, ratingByOther: 7.0, finalRating: 7.0 },
+  winner: "Video A" as const,
+        
         consistentWinner: "Video B" as const,
         evaluatedAt: new Date().toISOString(),
       };
     }
     // Round 2: candidate wins
     return {
-      orderAB: {
-        orderKey: "Video1=candidate, Video2=ref",
-        video1Path: candidateVideo,
-        video2Path: refVideo,
-        video1Score: 9.5,
-        video2Score: 8.0,
-        choice: "Video 1" as const, // candidate wins
-        reasoning: "Candidate video has better persistent stage",
-        timestampsCited: ["0:20"],
-      },
-      orderBA: {
-        orderKey: "Video1=ref, Video2=candidate",
-        video1Path: refVideo,
-        video2Path: candidateVideo,
-        video1Score: 8.0,
-        video2Score: 9.5,
-        choice: "Video 2" as const, // candidate wins
-        reasoning: "Candidate video preferred",
-        timestampsCited: ["0:20"],
-      },
+      videoA: { path: "a.mp4", watchReport: {} as any, ratingByWatcher: 9.0, ratingByOther: 9.0, finalRating: 9.0 },
+  videoB: { path: "b.mp4", watchReport: {} as any, ratingByWatcher: 7.0, ratingByOther: 7.0, finalRating: 7.0 },
+  winner: "Video A" as const,
+      
       consistentWinner: "Video A" as const,
       evaluatedAt: new Date().toISOString(),
     };
@@ -700,7 +668,7 @@ test("geminiReview: reviewPairwise executes each order in isolated workspace wit
   };
 
   const report = await reviewPairwise(videoA, videoB, { runner });
-  assert.equal(report.consistentWinner, "Video A");
+  assert.equal(report.winner, "Video A");
   assert.equal(capturedCwds.length, 2);
   for (const cwd of capturedCwds) {
     assert.equal(fs.existsSync(cwd), false, "pairwise isolated workspace must be cleaned up");

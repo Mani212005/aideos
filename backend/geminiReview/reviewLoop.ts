@@ -150,14 +150,10 @@ export async function runReviewLoop(
         });
       }
 
-      // Order 1 (AB): Video 1 = candidate, Video 2 = reference
-      // Order 2 (BA): Video 1 = reference, Video 2 = candidate
-      const winOrder1 = pairwiseReport.orderAB.choice === "Video 1" || pairwiseReport.orderAB.choice === "Tie";
-      const winOrder2 = pairwiseReport.orderBA.choice === "Video 2" || pairwiseReport.orderBA.choice === "Tie";
-      candidateWonOrTied = winOrder1 && winOrder2;
+      candidateWonOrTied = pairwiseReport.winner === "Video A" || pairwiseReport.winner === "Tie";
 
       if (!candidateWonOrTied) {
-        onProgress(`  Pairwise check failed: candidate video did not beat or tie reference video (${pairwiseReport.consistentWinner === "Video B" ? "Reference Video won" : "Inconsistent preference"}).`);
+        onProgress(`  Pairwise check failed: candidate video did not beat or tie reference video (Reference video scored ${pairwiseReport.videoB.finalRating} vs Candidate ${pairwiseReport.videoA.finalRating}).`);
         report.verdict = "REVISE";
         report.feedback.unshift({
           priority: "high",
