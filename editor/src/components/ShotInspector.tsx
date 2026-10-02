@@ -1,7 +1,7 @@
 /**
- * File Description: Unified, intuitive Shot & Clip Inspector for Aideos Studio.
+ * File Description: Unified, intuitive Shot and Clip Inspector for Aideos Studio.
  * Replaces text-heavy stacked inspectors with a sleek, tabbed, visual control center
- * covering Visual Metaphors, SVG Character Rigs, Numeric Timing, Camera, and Screenplay Narration.
+ * covering Visual Metaphors, Numeric Timing, Camera, and Screenplay Narration.
  */
 
 import React, { useState } from "react";
@@ -11,7 +11,6 @@ import {
   Layers,
   Clock,
   FileText,
-  User,
   Type,
   Film as FilmIcon,
   Mic,
@@ -39,7 +38,7 @@ interface ShotInspectorProps {
 type InspectorTab = "visuals" | "timing" | "narration";
 
 const METAPHOR_OPTIONS = [
-  { id: "none", name: "Clean Scene", desc: "Pure character rig & typography" },
+  { id: "none", name: "Clean Scene", desc: "Pure standard card and typography" },
   {
     id: "glowing-cluster",
     name: "Latent Embeddings",
@@ -51,11 +50,11 @@ const METAPHOR_OPTIONS = [
   {
     id: "typing-cursor-quote",
     name: "Terminal Code",
-    desc: "Code & command quotes",
+    desc: "Code and command quotes",
   },
   {
     id: "rocket-launch",
-    name: "Scale & Deploy",
+    name: "Scale and Deploy",
     desc: "Scalability trajectory",
   },
 ];
@@ -67,6 +66,7 @@ const MOTIONS = [
   { id: "zoom-out", name: "Zoom Out" },
 ];
 
+// Tabbed inspector sidebar panel for fine-tuning shot visuals, timing, and narration.
 export const ShotInspector: React.FC<ShotInspectorProps> = ({
   film,
   selectedShotId,
@@ -90,54 +90,28 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
   const fps = film.fps || 30;
   const dur = getShotDuration(shot);
   const pos = shot.position ?? shot.startSec ?? 0;
-  const characterRigs: any[] = [];
-
-  // Character Beat block helper
-  const charBlockIdx = shot.blocks.findIndex((b) => b.c === "CharacterBeat");
-  const charBlock =
-    charBlockIdx >= 0 ? (shot.blocks[charBlockIdx] as any) : null;
 
   // Active render mode derivation
-  const hasCharacter = Boolean(charBlock);
   const hasBRoll = shot.blocks.some((b) => b.c === "AnalogyInset");
   const hasMetaphor =
     Boolean(shot.metaphor) || shot.blocks.some((b) => b.c === "MetaphorViewer");
-  const renderMode = hasCharacter
-    ? "character"
-    : hasBRoll
-      ? "b-roll"
-      : hasMetaphor
-        ? "metaphor"
-        : "standard";
+  const renderMode = hasBRoll
+    ? "b-roll"
+    : hasMetaphor
+      ? "metaphor"
+      : "standard";
 
-  // Switch render mode macro cleanly
+  // Switches shot render mode and synchronizes block components.
   const setRenderMode = (
-    mode: "standard" | "character" | "metaphor" | "b-roll",
+    mode: "standard" | "metaphor" | "b-roll",
   ) => {
     const cleanBlocks = shot.blocks.filter(
       (b) =>
-        b.c !== "CharacterBeat" &&
         b.c !== "AnalogyInset" &&
         b.c !== "MetaphorViewer",
     );
 
-    if (mode === "character") {
-      onUpdateShot(
-        shotIndex,
-        {
-          metaphor: undefined,
-          blocks: [
-            ...cleanBlocks,
-            {
-              c: "CharacterBeat",
-              characterId: "developer",
-              poses: [{ t: 0, groups: {  } }],
-            } as Block,
-          ],
-        },
-        `Set ${shot.id} to SVG Character Rig`,
-      );
-    } else if (mode === "metaphor") {
+    if (mode === "metaphor") {
       const textBlock = shot.blocks.find((b) => b.c === "TextReveal");
       onUpdateShot(
         shotIndex,
@@ -181,28 +155,6 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
         `Set ${shot.id} to Standard Scene`,
       );
     }
-  };
-
-  // 1-Click Pose Preset Application
-  const applyPosePreset = (_presetKey: string) => {
-    if (charBlockIdx < 0 || !charBlock) return;
-    const preset: any = { name: "unknown", groups: {} };
-    if (!preset) return;
-
-    const poses =
-      Array.isArray(charBlock.poses) && charBlock.poses.length > 0
-        ? [...charBlock.poses]
-        : [{ t: 0, groups: {} }];
-
-    const targetIdx = poses.length - 1;
-    poses[targetIdx] = {
-      t: poses[targetIdx]?.t ?? 0,
-      groups: { ...preset.groups },
-    };
-
-    const newBlocks = [...shot.blocks];
-    newBlocks[charBlockIdx] = { ...charBlock, poses };
-    onUpdateShot(shotIndex, { blocks: newBlocks }, `Apply pose ${preset.name}`);
   };
 
   return (
@@ -290,21 +242,21 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
             <label className="text-[10px] font-mono text-ink-soft font-bold uppercase tracking-wider">
               Render Mode
             </label>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               <button
                 type="button"
-                onClick={() => setRenderMode("character")}
+                onClick={() => setRenderMode("standard")}
                 className={`p-2 border-2 border-ink text-left flex items-center gap-2 transition-all cursor-pointer ${
-                  renderMode === "character"
+                  renderMode === "standard"
                     ? "bg-select/20 border-select text-ink shadow-nb-sm-nb-sm"
                     : "bg-paper-3 border-2 border-ink text-ink-soft hover:border-ink hover:text-ink"
                 }`}
               >
-                <User className="w-4 h-4 text-ink shrink-0" />
+                <Type className="w-4 h-4 text-ink shrink-0" />
                 <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-[11px]">Character Rig</span>
+                  <span className="font-bold text-[11px]">Standard</span>
                   <span className="text-[9px] opacity-70 truncate">
-                    Animated Vector Actor
+                    Pure Typography
                   </span>
                 </div>
               </button>
@@ -329,24 +281,6 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
 
               <button
                 type="button"
-                onClick={() => setRenderMode("standard")}
-                className={`p-2 border-2 border-ink text-left flex items-center gap-2 transition-all cursor-pointer ${
-                  renderMode === "standard"
-                    ? "bg-select/20 border-select text-ink shadow-nb-sm-nb-sm"
-                    : "bg-paper-3 border-2 border-ink text-ink-soft hover:border-ink hover:text-ink"
-                }`}
-              >
-                <Type className="w-4 h-4 text-ink shrink-0" />
-                <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-[11px]">Standard</span>
-                  <span className="text-[9px] opacity-70 truncate">
-                    Pure Typography
-                  </span>
-                </div>
-              </button>
-
-              <button
-                type="button"
                 onClick={() => setRenderMode("b-roll")}
                 className={`p-2 border-2 border-ink text-left flex items-center gap-2 transition-all cursor-pointer ${
                   renderMode === "b-roll"
@@ -364,65 +298,6 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
               </button>
             </div>
           </div>
-
-          {/* SVG Character Rig Controls */}
-          {renderMode === "character" && charBlock && (
-            <div className="flex flex-col gap-2.5 bg-paper-3 p-2.5 border-2 border-ink shadow-nb-sm">
-              <div className="flex items-center justify-between">
-                <label className="text-[10px] font-mono text-ink font-bold uppercase tracking-wider">
-                  Character Cast
-                </label>
-                <select
-                  value={charBlock.characterId || "developer"}
-                  onChange={(e) => {
-                    const newBlocks = [...shot.blocks];
-                    newBlocks[charBlockIdx] = {
-                      ...charBlock,
-                      characterId: e.target.value,
-                    };
-                    onUpdateShot(
-                      shotIndex,
-                      { blocks: newBlocks },
-                      `Switch character to ${e.target.value}`,
-                    );
-                  }}
-                  className="bg-sunken border-2 border-ink px-2 py-1 text-xs text-ink outline-none focus:border-2 border-ink shadow-nb-sm"
-                >
-                  {characterRigs.map((rig) => (
-                    <option key={rig.id} value={rig.id}>
-                      {rig.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 1-Click Pose Chips */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] text-ink-soft">1-Click Poses</span>
-                <div className="grid grid-cols-4 gap-1">
-                  {[
-                    { id: "neutral", label: "Rest" },
-                    { id: "think", label: "Think" },
-                    { id: "present-right", label: "Point R" },
-                    { id: "present-left", label: "Point L" },
-                    { id: "wave-left", label: "Wave" },
-                    { id: "celebrate", label: "Cheer" },
-                    { id: "shrug", label: "Shrug" },
-                    { id: "walk", label: "Walk" },
-                  ].map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => applyPosePreset(preset.id)}
-                      className="bg-paper-3 hover:bg-sunken text-ink text-[10px] py-1.5 px-1 border-2 border-ink hover:border-ink/80 transition-colors text-center truncate cursor-pointer shadow-nb-sm hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Visual Metaphor Device Picker */}
           {renderMode === "metaphor" && (

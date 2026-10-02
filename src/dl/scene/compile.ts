@@ -224,38 +224,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
     }
   }
 
-  // 4. Pre-compile Actor Positions (positionTracks)
-  const actorPosCurves: Map<string, { x: number[]; y: number[] }> = new Map();
-  for (const actor of scene.actors) {
-    const interpolatePosTrack = (trackId: string, defaultVal: number): number[] => {
-      const tr = actor.positionTracks?.find((t) => t.trackId === trackId);
-      if (!tr || !tr.keyframes || tr.keyframes.length === 0) {
-        return new Array(totalFrames).fill(defaultVal);
-      }
-      const splineKnots = tr.keyframes.map((k) => ({
-        t: totalFrames > 1 ? k.frame / (totalFrames - 1) : 0,
-        val: k.value,
-      }));
-      if (splineKnots[0].t > 0) splineKnots.unshift({ t: 0, val: splineKnots[0].val });
-      if (splineKnots[splineKnots.length - 1].t < 1) {
-        splineKnots.push({ t: 1, val: splineKnots[splineKnots.length - 1].val });
-      }
-      const res = new Array<number>(totalFrames);
-      for (let f = 0; f < totalFrames; f++) {
-        const normT = totalFrames > 1 ? f / (totalFrames - 1) : 0;
-        res[f] = evaluateCatmullRomSpline(splineKnots, normT);
-      }
-      return res;
-    };
-
-    actorPosCurves.set(actor.instanceId, {
-      x: interpolatePosTrack("x", actor.position.x),
-      y: interpolatePosTrack("y", actor.position.y),
-    });
-  }
-
-  
-  // 4b. Pre-compile Camera
+  // 4. Pre-compile Camera
   const cameraCurves: CompiledCameraState[] = new Array(totalFrames);
   const defaultCameraState: CompiledCameraState = {
     center: { x: scene.sceneSize.w / 2, y: scene.sceneSize.h / 2 },
