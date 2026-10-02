@@ -1,3 +1,7 @@
+/**
+ * File Description: SVG isometric and flat layered planes building block for 3D multi-layer diagrams.
+ */
+
 import { el, g, PAL, n } from "../svg";
 
 export interface LayerPlaneConfig {
@@ -12,6 +16,7 @@ export interface LayerPlaneConfig {
   flatBounds?: { x: number; y: number; w: number; h: number };
 }
 
+// Computes linear interpolation between values a and b at progress t.
 export function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
@@ -19,6 +24,7 @@ export function lerp(a: number, b: number, t: number) {
 export class LayerPlanes {
   config: Required<Omit<LayerPlaneConfig, 'top'>> & { top: (l: number) => number };
 
+  // Initializes multi-layer planes with perspective geometry and tilt configuration.
   constructor(cfg: LayerPlaneConfig) {
     this.config = {
       id: cfg.id,
@@ -26,13 +32,14 @@ export class LayerPlanes {
       wNear: cfg.wNear ?? 1200,
       wFar: cfg.wFar ?? 800,
       h: cfg.h ?? 300,
-      top: cfg.top ?? ((l: number) => 100 + (2 - l) * 300),
+      top: cfg.top ?? ((l: number) => 100 + ((cfg.layers ?? 3) - 1 - l) * 300),
       layers: cfg.layers ?? 3,
       tilt: cfg.tilt ?? 1,
       flatBounds: cfg.flatBounds ?? { x: 300, y: 100, w: 1320, h: 880 },
     };
   }
 
+  // Projects normalized UV coordinates on a given layer plane into 2D canvas coordinates.
   project(u: number, v: number, layer: number) {
     const { cx, wNear, wFar, h, top, tilt, flatBounds: fb } = this.config;
     const fx = fb.x + u * fb.w;
@@ -48,6 +55,7 @@ export class LayerPlanes {
     };
   }
 
+  // Generates SVG polygon elements for all configured layer planes.
   drawPlanes() {
     const out: string[] = [];
     for (let l = this.config.layers - 1; l >= 0; l--) {

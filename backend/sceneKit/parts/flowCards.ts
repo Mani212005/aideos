@@ -1,4 +1,8 @@
-import { el, g, text, stroke, PAL}  from "../svg";
+/**
+ * File Description: SVG flow card building block for flowchart cards and connecting edges.
+ */
+
+import { el, g, text, stroke, PAL } from "../svg";
 
 export interface FlowCardNode {
   id: string;
@@ -17,6 +21,7 @@ export interface FlowCardEdge {
   label?: string;
 }
 
+// Renders interactive flow cards and directional connector edges into an SVG group.
 export function drawFlowCards(id: string, cards: FlowCardNode[], edges: FlowCardEdge[]) {
   const cardMap = new Map(cards.map(c => [c.id, c]));
 
@@ -31,7 +36,6 @@ export function drawFlowCards(id: string, cards: FlowCardNode[], edges: FlowCard
     const tx = t.x + t.w / 2;
     const ty = t.y + t.h / 2;
     
-    // Simple line for now
     const line = el("line", {
       id: e.id,
       x1: sx,
@@ -41,8 +45,20 @@ export function drawFlowCards(id: string, cards: FlowCardNode[], edges: FlowCard
       ...stroke(PAL.muted, 2)
     });
     
-    return line;
-  }).join("\n");
+    let labelEl = "";
+    if (e.label) {
+      labelEl = text(e.label, {
+        id: `${e.id}-label`,
+        x: (sx + tx) / 2,
+        y: (sy + ty) / 2 - 8,
+        size: 14,
+        anchor: "middle",
+        fill: PAL.muted
+      });
+    }
+    
+    return labelEl ? `${line}\n${labelEl}` : line;
+  }).filter(Boolean).join("\n");
 
   const cardEls = cards.map(c => {
     const rect = el("rect", {
@@ -69,8 +85,8 @@ export function drawFlowCards(id: string, cards: FlowCardNode[], edges: FlowCard
       });
     }
     
-    return g(c.id, 0, 0, rect + "\n" + labelEl);
-  }).join("\n");
+    return g(c.id, 0, 0, labelEl ? `${rect}\n${labelEl}` : rect);
+  }).filter(Boolean).join("\n");
 
-  return g(id, 0, 0, edgeEls + "\n" + cardEls);
+  return g(id, 0, 0, [edgeEls, cardEls].filter(Boolean).join("\n"));
 }

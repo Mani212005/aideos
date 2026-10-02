@@ -1,4 +1,8 @@
-import { el, g, text, stroke, PAL}  from "../svg";
+/**
+ * File Description: SVG callout building block for diagram annotations with pointers and labels.
+ */
+
+import { el, g, text, stroke, PAL } from "../svg";
 
 export interface CalloutConfig {
   id: string;
@@ -10,6 +14,7 @@ export interface CalloutConfig {
   color?: string;
 }
 
+// Renders an annotated callout indicator with a pointer line, target dot, and text label.
 export function drawCallout(cfg: CalloutConfig) {
   const { id, x, y, labelX, labelY, label, color } = cfg;
   const c = color ?? PAL.ink;
@@ -31,7 +36,6 @@ export function drawCallout(cfg: CalloutConfig) {
     fill: c
   });
   
-  // Basic bounding box estimation for text to draw a background if needed, but simple text is fine
   const labelEl = text(label, {
     id: `${id}-label`,
     x: labelX + (labelX > x ? 10 : -10),

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "id": "diagram-parts",
-  "title": "Hello Scene",
+  "title": "Diagram Parts",
   "fps": 30,
   "accent": "#635BFF",
   "theme": {
@@ -52,10 +52,10 @@
       "svgSource": "examples/diagram-parts/visuals/scene.svg",
       "layer": 0,
       "position": {
-        "x": 960,
-        "y": 960
+        "x": 0,
+        "y": 0
       },
-      "scale": 4.8,
+      "scale": 1,
       "rotation": 0,
       "opacity": 1
     },

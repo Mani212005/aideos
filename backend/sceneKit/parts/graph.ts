@@ -1,4 +1,8 @@
-import { el, g, stroke, PAL}  from "../svg";
+/**
+ * File Description: SVG graph building block for network graphs with nodes, links, and labels.
+ */
+
+import { el, g, text, stroke, PAL } from "../svg";
 
 export interface GraphNode {
   id: string;
@@ -18,6 +22,7 @@ export interface GraphEdge {
   opacity?: number;
 }
 
+// Renders a network graph composed of nodes and interconnecting edges into an SVG group.
 export function drawGraph(id: string, nodes: GraphNode[], edges: GraphEdge[]) {
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
 
@@ -37,14 +42,24 @@ export function drawGraph(id: string, nodes: GraphNode[], edges: GraphEdge[]) {
   }).filter(Boolean).join("\n");
 
   const nodeEls = nodes.map(nd => {
-    return el("circle", {
+    const circle = el("circle", {
       id: nd.id,
       cx: nd.x,
       cy: nd.y,
       r: nd.radius ?? 6,
       fill: nd.fill ?? PAL.ink
     });
-  }).join("\n");
+    if (!nd.label) return circle;
+    const lbl = text(nd.label, {
+      id: `${nd.id}-label`,
+      x: nd.x,
+      y: nd.y + (nd.radius ?? 6) + 14,
+      size: 14,
+      anchor: "middle",
+      fill: PAL.ink
+    });
+    return `${circle}\n${lbl}`;
+  }).filter(Boolean).join("\n");
 
-  return g(id, 0, 0, edgeEls + "\n" + nodeEls);
+  return g(id, 0, 0, [edgeEls, nodeEls].filter(Boolean).join("\n"));
 }

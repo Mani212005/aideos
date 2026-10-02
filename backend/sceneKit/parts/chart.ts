@@ -1,3 +1,7 @@
+/**
+ * File Description: SVG 2D chart building block for line graphs with axes and progress dots.
+ */
+
 import { el, g, stroke, PAL, n } from "../svg";
 
 export interface ChartConfig {
@@ -11,6 +15,7 @@ export interface ChartConfig {
   dotProgress?: number; // 0..1 along the curve
 }
 
+// Renders a 2D line chart with axes, plotted curve, and optional progress marker dot.
 export function drawChart(cfg: ChartConfig) {
   const { id, x, y, w, h, data, dotProgress } = cfg;
   
@@ -40,9 +45,10 @@ export function drawChart(cfg: ChartConfig) {
   // Dot
   let dot = "";
   if (dotProgress !== undefined && data.length > 1) {
-    // Interpolate point
+    // Interpolate point with clamped progress
+    const clampedProgress = Math.max(0, Math.min(1, dotProgress));
     const maxIdx = data.length - 1;
-    const exactIdx = dotProgress * maxIdx;
+    const exactIdx = clampedProgress * maxIdx;
     const i = Math.floor(exactIdx);
     const j = Math.ceil(exactIdx);
     const t = exactIdx - i;

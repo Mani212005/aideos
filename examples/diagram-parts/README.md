@@ -1,16 +1,13 @@
 <!--
-File Description: Explains the hello-scene example package, the tiny committed scene film that renders on a fresh clone.
+File Description: Explains the diagram-parts example package demonstrating ready-made diagram building blocks.
 -->
 
-# hello-scene
+# diagram-parts
 
-A 10 second, silent, three-shot scene film (about 12 KB). It is the only video package that ships
-in git: your own videos live in `videos/` (gitignored) or wherever `AIDEOS_VIDEOS_DIR` points.
+A scene film demonstrating ready-made diagram building blocks (graphs, layer planes, charts, flowchart cards, and callouts) composed on a single persistent stage using sceneKit.
 
-- `film.json`: the manifest, a scene film on a square 1920 x 1920 scene space with three text shots.
-- `visuals/`: three static SVGs (backdrop, three nodes, a query dot) that the scene's clips animate by id.
+- `film.json`: the manifest, configuring a 1920 x 1920 square scene canvas and shots.
+- `visuals/scene.svg`: static scene artwork compiled from diagram primitives in `backend/sceneKit/parts/`.
+- `build.ts`: authoring script generating `visuals/scene.svg`.
 
-On a fresh clone `npm install` generates the files Remotion needs from this package, so
-`npm run studio` and `npm run editor` open it straight away, and `npm run render` renders it.
-It also anchors `npm run smoke:studio`. Check it with `npm run design:check -- hello-scene`.
-Copy the folder to `videos/<your-slug>/` (and change `id`) to start your own.
+Run `npm run design:check -- diagram-parts` to validate against the design system rules.
