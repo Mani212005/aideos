@@ -861,7 +861,7 @@ program
         targetScore: Number(options.targetScore),
         referenceVideo: options.reference,
         format: options.format,
-        onProgress: (msg) => console.log(msg),
+        onProgress: (msg) => (options.json ? console.error(msg) : console.log(msg)),
       });
 
       if (options.json) {
