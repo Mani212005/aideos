@@ -440,7 +440,8 @@ An individual vector path inside a limb:
 * `shotFrames(timing)`, `createCues(timing)` (`timing.ts`): Calculates cumulative shot frame spans and creates audio-first word-level cue resolution functions from narration timing.
 * `writeSvgAssets(dir, assets)` (`assets.ts`): Validates and persists SVG artwork dictionaries to disk.
 * `PAL`, `DEFAULT_ACCENT`, `HAIR`, `HAIR2`, `W`, `H`, `OY`, `FONT`, `frameOf(sec)`, `rng(seed)`, `n(v)`, `attrs(o)`, `el(tag, o, inner)`, `g(id, x, y, inner, extra)`, `text(content, o)`, `stroke(color, width, extra)` (`svg.ts`): SVG markup generators, deterministic random number generator, standard palette tokens, and layout constants.
-* `measureText(text, size, face, weight, trackingEm)`, `tokenWidth(token, size, face, weight, trackingEm)`, `advanceEm(ch, face, weight)`, `MONO_ADVANCE` (`typeMetrics.ts`): Font metric measurement with kerning support backed by `wordWidths.json`.
+* `norm(word)`, `bare(token)`, `shape(token)` (`text.ts`): Text normalization and markup stripping helpers for matching spoken words and measuring display tokens.
+* `measureText(text, size, face, weight, trackingEm)`, `tokenWidth(token, size, face, weight, trackingEm)`, `advanceEm(ch, face, weight)`, `resolveTypeOpts(options)`, `MONO_ADVANCE` (`typeMetrics.ts`): Font metric measurement with kerning support backed by `wordWidths.json`.
 * `wrapBalanced(marked, options)` (`wrap.ts`): Balanced line wrapping algorithm for display type.
 * `corners(inset, bottom, len, color)`, `backdropSvg(options)`, `hudTag(label, x, y, anchor)`, `readoutSeries(canvas, prefix, x, y, values)` (`chrome.ts`): Frame furniture and chrome elements for scene films.
 * `produceVoiceover(config)`, `readVoiceoverTiming(slug, spineFile, rootDir)` (`voiceover.ts`): Audio-first narration synthesis, mastering, Whisper word alignment, and shot-spine persistence.
