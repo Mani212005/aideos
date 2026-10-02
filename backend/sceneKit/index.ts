@@ -19,3 +19,4 @@ export { Canvas, type LyricOpts, type MotionOpts, type PlacedLine, type PlacedWo
 export { measureText, tokenWidth, advanceEm, MONO_ADVANCE, type Face } from "./typeMetrics";
 export { wrapBalanced, type WrapOpts } from "./wrap";
 export { corners, backdropSvg, hudTag, readoutSeries, type BackdropOpts } from "./chrome";
+export * from "./parts";

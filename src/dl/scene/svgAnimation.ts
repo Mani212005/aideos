@@ -15,6 +15,7 @@ import type { Vec2 } from "./types";
  * - rotate turns it about its transform origin, in degrees.
  * - opacity fades it, clamped to [0, 1].
  * - drawOn reveals a stroked path from 0 (nothing drawn) to 1 (fully drawn) via stroke dashing.
+ * - x1 / y1 / x2 / y2 animate line endpoint coordinates directly.
  */
 export type SvgAnimatableProperty =
   | "translateX"
@@ -24,7 +25,11 @@ export type SvgAnimatableProperty =
   | "scaleY"
   | "rotate"
   | "opacity"
-  | "drawOn";
+  | "drawOn"
+  | "x1"
+  | "y1"
+  | "x2"
+  | "y2";
 
 /** The easing curves available to a clip. expoOut is the project standard (see motion.ts EXPO). */
 export type SvgEasing = "linear" | "expoOut" | "expoIn" | "expoInOut" | "hold";
@@ -83,6 +88,10 @@ export interface SvgElementState {
   /** Transform origin in the asset's own coordinate space. */
   originX: number;
   originY: number;
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
 }
 
 /** Per-frame element state for one asset: frames[f][elementId]. */
@@ -115,6 +124,10 @@ export const SVG_ANIMATABLE_PROPERTIES: readonly SvgAnimatableProperty[] = [
   "rotate",
   "opacity",
   "drawOn",
+  "x1",
+  "y1",
+  "x2",
+  "y2",
 ];
 
 const SVG_EASINGS: readonly SvgEasing[] = ["linear", "expoOut", "expoIn", "expoInOut", "hold"];
@@ -227,7 +240,7 @@ function evaluateClipValue(clip: SvgAnimationClip, targetIndex: number, frame: n
 }
 
 /** The individual state fields a clip can drive. "scale" writes scaleX and scaleY. */
-type SvgStateSlot = "translateX" | "translateY" | "scaleX" | "scaleY" | "rotate" | "opacity" | "drawOn";
+type SvgStateSlot = "translateX" | "translateY" | "scaleX" | "scaleY" | "rotate" | "opacity" | "drawOn" | "x1" | "y1" | "x2" | "y2";
 
 /** Writes one resolved value into a single element state slot. */
 function assignSlot(state: SvgElementState, slot: SvgStateSlot, value: number): void {

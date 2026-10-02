@@ -45,7 +45,7 @@ The Aideos Timeline & Trimmer implements industry-standard non-linear editing ge
    * Discovered and loaded dynamically at runtime via the unified loader `src/dl/videoPackageLoader.ts`.
 2. **Custom Animation (`src/dl/scene/`):**
    * Static animatable `.svg` scene assets.
-   * Declarative custom SVG animation engine (`src/dl/scene/`) drives element-level motion (translations, scale, rotate, opacity, drawOn) with audio-first retiming. See [src/dl/scene/README.md](src/dl/scene/README.md).
+   * Declarative custom SVG animation engine (`src/dl/scene/`) drives element-level motion (translations, scale, rotate, opacity, drawOn, line endpoints) with audio-first retiming. See [src/dl/scene/README.md](src/dl/scene/README.md).
 
 ---
 
