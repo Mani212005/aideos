@@ -155,6 +155,66 @@ test("geminiReview: cleanModelJsonResponse strips markdown code block fences", (
   assert.equal(cleanModelJsonResponse(plain), "{\"status\": \"ok\"}");
 });
 
+test("geminiReview: cleanModelJsonResponse strips fences carrying any language tag, prose and unterminated fences", () => {
+  // The reported crash: the reviewer wrapped the watch-phase JSON in a fence tagged "python".
+  assert.equal(cleanModelJsonResponse("```python\n{\"rating\": 8.5}\n```"), "{\"rating\": 8.5}");
+  assert.equal(cleanModelJsonResponse("```JSON {\"rating\": 8.5}```"), "{\"rating\": 8.5}");
+  assert.equal(cleanModelJsonResponse("```json{\"rating\": 8.5}```"), "{\"rating\": 8.5}");
+  // Prose around the fence, and the first fence that is not JSON.
+  assert.equal(
+    cleanModelJsonResponse("Here is the report:\n```text\nnotes\n```\n```json\n{\"rating\": 8.5}\n```\nDone."),
+    "{\"rating\": 8.5}",
+  );
+  // A cut-off reply that never closed its fence.
+  assert.equal(cleanModelJsonResponse("```json\n{\"rating\": 8.5}"), "{\"rating\": 8.5}");
+  // Prose around a bare object.
+  assert.equal(cleanModelJsonResponse("Sure! {\"rating\": 8.5} Hope that helps."), "{\"rating\": 8.5}");
+  // Nested braces inside a fenced object survive.
+  assert.equal(cleanModelJsonResponse("```python\n{\"a\": {\"b\": [1, 2]}}\n```"), "{\"a\": {\"b\": [1, 2]}}");
+});
+
+test("geminiReview: reviewPairwise survives watch-phase JSON wrapped in a python code fence", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-pairwise-fence-"));
+  const videoA = path.join(tmpDir, "a.mp4");
+  const videoB = path.join(tmpDir, "b.mp4");
+  fs.writeFileSync(videoA, Buffer.alloc(100, 1));
+  fs.writeFileSync(videoB, Buffer.alloc(100, 2));
+
+  const fenced = (obj: unknown) => "```python\n" + JSON.stringify(obj) + "\n```";
+  let call = 0;
+  const runner: AgyRunner = async () => {
+    call++;
+    if (call <= 2) return fenced({ rating: 8.0, likes: [], dislikes: [], neutral: [], timestamps: [] });
+    return fenced({ otherVideoRating: 8.0, reasoning: "same" });
+  };
+
+  const result = await reviewPairwise(videoA, videoB, { runner });
+  assert.equal(result.winner, "Tie");
+  assert.equal(result.videoA.finalRating, 8.0);
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test("geminiReview: defaultAgyRunner unwraps a fenced text reply and keeps the conversation id", async () => {
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-fake-agy-"));
+  const reply = JSON.stringify({
+    conversation_id: "conv-123",
+    status: "SUCCESS",
+    response: "```python\n{\"rating\": 7.5}\n```",
+  });
+  fs.writeFileSync(path.join(binDir, "agy"), `#!/bin/sh\ncat <<'EOF'\n${reply}\nEOF\n`, { mode: 0o755 });
+  const savedPath = process.env.PATH;
+  process.env.PATH = `${binDir}${path.delimiter}${savedPath}`;
+  try {
+    const raw = await defaultAgyRunner("hello", { timeoutSeconds: 30 });
+    const parsed = JSON.parse(raw);
+    assert.equal(parsed.rating, 7.5);
+    assert.equal(parsed.conversation_id, "conv-123");
+  } finally {
+    process.env.PATH = savedPath;
+    fs.rmSync(binDir, { recursive: true, force: true });
+  }
+});
+
 test("geminiReview: computeFileHash computes correct sha256 checksum", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-test-hash-"));
   const tmpFile = path.join(tmpDir, "sample.txt");

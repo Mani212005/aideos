@@ -20,6 +20,7 @@ import { runProduction } from "./pipeline/run";
 import { runDirector } from "./pipeline/director";
 import type { ProductionFormat, ProductionProgress, ProductionStage } from "./pipeline/types";
 import type { TtsBackendName } from "./tts";
+import { registerAllCheckCommands, rewriteAllCheckArgv } from "./allCheck/cli";
 
 dotenv.config({ quiet: true });
 
@@ -885,9 +886,11 @@ program
       }
     },
   );
+registerAllCheckCommands(program);
+
 // parseAsync, so a rejected action surfaces as a one-line CLI error rather than
 // an unhandled rejection with a raw stack trace, and exits non-zero.
-program.parseAsync().catch((err: unknown) => {
+program.parseAsync(rewriteAllCheckArgv(process.argv)).catch((err: unknown) => {
   console.error(err instanceof Error ? err.message : String(err));
   process.exit(1);
 });

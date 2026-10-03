@@ -4,7 +4,8 @@ File Description: Documentation and usage reference for aideos deterministic vid
 
 # aideos review: deterministic checks and Gemini 3.8 Flash review loop
 
-Video quality verification in Aideos operates on two connected layers:
+Video quality verification in Aideos operates on two connected layers, and `aideos all-check` (section 4) runs
+both, on the long cut and the reel, with an agent that fixes the film between rounds:
 1. **Deterministic Checks (`aideos review`)**: Precise numerical measurements (OCR caption band coverage, layout correlation, audio loudness, camera motion frequency).
 2. **Gemini 3.8 Flash Native Review (`aideos gemini-review` & `aideos review-loop`)**: Full multimodal video and audio evaluation against the 12-criterion rubric, requiring a score of 9.0+ out of 10.0 with all 6 hard gates passing for acceptance.
 
@@ -131,7 +132,83 @@ aideos review-loop hnsw-explainer --reference benchmarks/reference-a.mp4
 
 ---
 
-## 4. The 12-Criterion Rubric
+## 4. The whole check in a background agent (`aideos all-check`)
+
+`aideos all-check <slug>` is the single command (and the `all-check` skill, see below) that takes a film to
+"good" on **both formats**: it composes render, `aideos review`, `aideos gemini-review`, the pairwise
+cross-review and the fix-and-repeat loop, which `review-loop` alone does not do (it re-renders and re-reviews
+without changing anything between rounds).
+
+```bash
+aideos all-check hnsw                                     # defaults: 6 rounds, 9.0 target
+aideos all-check hnsw --reference ref.mp4 --rounds 8 --target 9.2
+aideos all-check hnsw --agent claude                      # background agent: claude or agy
+aideos all-check wait hnsw                                # block until the result file exists, print scores and paths
+aideos all-check status hnsw                              # rounds so far
+```
+
+### What happens
+
+1. **Preflight** (before any agent starts; one message listing each problem with its exact fix): the video
+   package, its voiceover, ffmpeg/ffprobe, tesseract, tmux, the background agent's CLI, and the agy login (the
+   Gemini review runs plain `agy`, checked with `agy models`).
+2. **One run per video.** `videos/<slug>/all-check/lock.json` names the tmux window running the agent; a second
+   run is refused and pointed at it. A lock whose window is gone is stale and replaced.
+3. **Launch.** The brief (`all-check/brief.md`, readable, it is exactly what the agent is told) and `launch.sh`
+   are written and a new tmux window starts the agent with all permissions pre-approved: `claude
+   --dangerously-skip-permissions "<prompt>"` or `agy --prompt-interactive "<prompt>"
+   --dangerously-skip-permissions`. The agent is `--agent`, else the agent all-check was invoked from (Claude Code),
+   else the default saved by the `aideos` menu (`~/.config/aideos/agent`), else agy. The window stays open to watch
+   or step in. `HOME`, `PATH`, `AIDEOS_VIDEOS_DIR` and the review model variables are passed with `tmux -e`, since a
+   window inherits the tmux server's environment, not the caller's.
+4. **The agent runs the loop** with these commands (all `aideos all-check <sub> <slug>`, also spelled
+   `all-check-<sub>`): `round --format long|reel|both` renders through Remotion, backs up `film.json`
+   (`all-check/backups/`), runs the measured review and the Gemini review (the measured `review.json` is handed to
+   the reviewer as context), runs the cross-review for the long cut when `--reference` was given, and extracts stills
+   every 4 s; `frames --round N --format F --clean | --issue "..."` records the agent's own frame check;
+   `rollback --round N` restores a backup; `finish` closes the run. Order: long until it passes, then reel, then one
+   final `round --format both`. Two rules are enforced by the tool, not the prompt: a round that scores lower than
+   the best earlier round (compared on the formats both measured) puts that round's `film.json` back automatically
+   and says "ROLLED BACK"; and a new round is refused until the previous round's frame check is recorded.
+5. **Pass** = per format, the reviewer's JSON says at least the target (9.0) with every hard gate passing, AND
+   the measured checks pass (`aideos review`: no failed gate; soft failures are listed, not blocking), AND (long
+   only) the cross-review against the reference is a win or a tie, AND the agent's frame check is clean. The agent
+   never scores its own work and never writes the round records: a tool that cannot run (agy signed out, quota)
+   is recorded as an error, never a pass. **All good** = one round holds a passing long and a passing reel from the
+   same `film.json`, still unchanged when `finish` runs.
+6. **Stop.** After the round budget (`--rounds`, default 6; a round past it is refused) `finish` reports the best
+   round honestly and everything that still fails. When the run did not pass, `finish` also restores the best
+   round's `film.json` (the version it replaced is kept as `all-check/backups/film.before-finish.json`) and keeps
+   that round's renders as `final-long.mp4` and `final-reel.mp4`, so the package ends on the best film, not the last
+   experiment. An interactive agent that stops at a summary without running `finish` is covered twice: the window
+   script runs `finish` if the agent process exits, and `all-check wait` closes the run itself from the measured
+   records once the agent's screen has been silent for 10 minutes (`--idle-min`) with no round running.
+7. **Result.** `videos/<slug>/all-check/` gets `report.md`, `result.json`, `round-N/<format>.md|.json` (scores,
+   failures, reviewer feedback), the reviewer and measured reports, the rendered `round-N/<format>.mp4`, the stills
+   `round-N/<format>-frames/`, and `final-long.mp4` + `final-reel.mp4`. A macOS notification is sent; on a pass the
+   final videos open. `aideos exit` logic runs only if the studio was not already running when all-check started.
+   `aideos all-check wait` exits 0 all good, 1 not all good, 3 still running at the timeout, 4 the agent window
+   closed without a result.
+
+### Rules for the background agent
+
+It works in the main aideos folder on `videos/<slug>/` only (`videos/` is gitignored, so a git worktree would
+not contain the video). A fix that needs aideos code (`src/`, `backend/`, `editor/`) goes into a treehouse worktree
+and a PR, never edits on main. Scratch files (patch scripts, notes) belong in `all-check/scratch/`, never the repo
+root: `launch` records the repo's dirty paths in `all-check/repo-baseline.json`, and each `round` and `finish`
+lists anything new outside the package as a rule violation (in the round output, `report.md` and `result.json`).
+
+### The skill
+
+`.agents/skills/all-check/SKILL.md` is the skill for Claude Code (`.claude/skills` is a link to `.agents/skills`)
+and Antigravity (agy reads `.agents/skills/` of the project it is started in; confirmed with a real run). Asking
+"run all-check on hnsw" starts the command above, waits for the result file and reports the scores and the final
+video paths. The skill also lists the single commands (`aideos render`, `reel`, `review`, `gemini-review`,
+`review-loop`, `exit`) for one-off use.
+
+---
+
+## 5. The 12-Criterion Rubric
 
 | # | Criterion | Hard Gate? | Description |
 |---|---|---|---|
