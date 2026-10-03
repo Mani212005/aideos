@@ -1,6 +1,6 @@
 /**
  * File Description: Parses and validates the command line of `aideos all-check <slug>
- * [--reference <mp4>] [--rounds <n>] [--target <score>] [--agent claude|agy]` into typed options,
+ * [--reference <mp4>] [--rounds <n>] [--target <score>] [--agent claude|agy] [--model <id>] [--allow-forbidden-model]` into typed options,
  * failing with one clear line per mistake. Pure apart from the reference file existence check.
  */
 
@@ -21,6 +21,8 @@ export interface RawAllCheckFlags {
   rounds?: string | number;
   target?: string | number;
   agent?: string;
+  model?: string;
+  allowForbiddenModel?: boolean;
 }
 
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;
@@ -72,5 +74,7 @@ export function parseAllCheckOptions(slug: string, flags: RawAllCheckFlags = {})
     rounds: parseRounds(flags.rounds),
     target: parseTarget(flags.target),
     agent: normalizeAgent(flags.agent),
+    model: flags.model?.trim() || undefined,
+    allowForbiddenModel: flags.allowForbiddenModel === true,
   };
 }

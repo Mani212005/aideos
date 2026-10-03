@@ -79,7 +79,7 @@ function archivePreviousRun(slug: string, stamp: string): void {
 // Starts a run: refuses a second one, checks preflight, then opens the agent's tmux window.
 export function startAllCheck(options: AllCheckOptions, deps: StartDeps = realStartDeps()): StartResult {
   const slug = options.slug;
-  const agent = resolveAgent({ flag: options.agent, env: deps.env });
+  const agent = resolveAgent({ flag: options.agent, modelFlag: options.model, allowForbiddenModel: options.allowForbiddenModel });
   const startedAt = deps.now().toISOString();
 
   // One run per video: the lock is taken first so a second start is refused before any slower check.
@@ -99,6 +99,7 @@ export function startAllCheck(options: AllCheckOptions, deps: StartDeps = realSt
       rounds: options.rounds,
       target: options.target,
       agent: agent.agent,
+      model: agent.model,
       startedAt,
       studioWasRunning: deps.studioRunning(),
     };
@@ -107,7 +108,7 @@ export function startAllCheck(options: AllCheckOptions, deps: StartDeps = realSt
     writeRepoBaseline(slug, REPO_ROOT);
     const briefPath = path.join(dir, "brief.md");
     fs.writeFileSync(briefPath, buildBrief(config, REPO_ROOT));
-    const scriptPath = writeLaunchScript(slug, agent.agent, briefPath);
+    const scriptPath = writeLaunchScript(slug, agent.agent, briefPath, agent.model);
 
     const window = deps.launch(slug, scriptPath);
     attachWindowToLock(slug, window.windowId, window.session);

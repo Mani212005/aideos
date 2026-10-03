@@ -1,52 +1,65 @@
 /**
- * File Description: Chooses which coding agent runs the all-check loop in the background and builds
- * the command that starts it with a written brief. Order: --agent, the agent the user invoked
- * all-check from (Claude Code announces itself through CLAUDECODE), the default saved by the
- * `aideos` menu in ~/.config/aideos/agent, then agy. Only claude and agy are supported background
- * agents: any other saved default falls back to agy and says so.
+ * File Description: Chooses which coding agent and model run the all-check loop in the background and
+ * builds the command that starts it with a written brief. The choice comes from the video model
+ * policy in aideos.config.json (generation agent and model), whichever agent invoked all-check; only
+ * an explicit per-run --agent / --model overrides it. A generation model the policy forbids
+ * (gemini-3.1-pro) is refused unless --allow-forbidden-model is given. Only claude and agy can run
+ * as background agents.
  */
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import type { AgentName } from "./types";
+import {
+  AideosConfigError,
+  forbiddenGenerationMatch,
+  loadAideosConfig,
+  type AideosConfig,
+} from "../aideosConfig";
+import { AllCheckError, type AgentName } from "./types";
 
-/** Where the `aideos` menu stores the user's locked default agent. */
-export function savedAgentFile(home: string = os.homedir()): string {
-  return path.join(home, ".config", "aideos", "agent");
-}
-
-/** The agent chosen, why, and a note when a saved default could not be honoured. */
+/** The agent and model chosen, and why. */
 export interface ResolvedAgent {
   agent: AgentName;
-  source: "flag" | "invoking-agent" | "saved-default" | "fallback";
+  model: string;
+  source: "config" | "flag";
+  /** Set when the policy would have refused the model and an explicit override let it through. */
   note?: string;
 }
 
 /** The inputs of the choice, injectable for tests. */
 export interface AgentEnv {
   flag?: AgentName;
-  env: NodeJS.ProcessEnv;
-  home?: string;
+  modelFlag?: string;
+  allowForbiddenModel?: boolean;
+  config?: AideosConfig;
 }
 
-// Decides the background agent from the flag, the invoking agent, the saved default, then agy.
-export function resolveAgent({ flag, env, home }: AgentEnv): ResolvedAgent {
-  if (flag) return { agent: flag, source: "flag" };
-  if (env.CLAUDECODE === "1") return { agent: "claude", source: "invoking-agent" };
-
-  let saved = "";
+// Decides the background agent and model from the flags, else the configured generation policy.
+export function resolveAgent({ flag, modelFlag, allowForbiddenModel, config }: AgentEnv): ResolvedAgent {
+  let cfg: AideosConfig;
   try {
-    saved = fs.readFileSync(savedAgentFile(home), "utf8").trim().toLowerCase();
-  } catch {
-    // No saved default.
+    cfg = config ?? loadAideosConfig();
+  } catch (err) {
+    if (err instanceof AideosConfigError) throw new AllCheckError(err.message);
+    throw err;
   }
-  if (saved === "claude") return { agent: "claude", source: "saved-default" };
-  if (saved === "agy" || saved === "antigravity") return { agent: "agy", source: "saved-default" };
-  if (saved && saved !== "none") {
-    return { agent: "agy", source: "fallback", note: `saved default "${saved}" cannot run all-check; using agy (pass --agent claude to use Claude Code)` };
+  const { generation, reviewer, forbiddenGenerationModels } = cfg.videoModels;
+  const agent: AgentName = flag ?? generation.agent;
+  // A different agent than the configured one has no configured generation model: use its reviewer
+  // model if it is the reviewer agent (never the agent's own default, which may be gemini-3.1-pro).
+  const model = modelFlag?.trim() || (agent === generation.agent ? generation.model : agent === reviewer.agent ? reviewer.model : "");
+  if (!model) throw new AllCheckError(`no model is configured for the ${agent} agent: pass --model <id>`);
+
+  const hit = forbiddenGenerationMatch(model, { generation, reviewer, forbiddenGenerationModels });
+  let note: string | undefined;
+  if (hit) {
+    if (!allowForbiddenModel) {
+      throw new AllCheckError(
+        `${model} is not allowed for video generation (aideos.config.json forbids "${hit}"). ` +
+          `Generation uses ${generation.agent} ${generation.model}; pass --allow-forbidden-model to override for this run`,
+      );
+    }
+    note = `${model} is normally forbidden for generation; allowed by --allow-forbidden-model`;
   }
-  return { agent: "agy", source: "fallback" };
+  return { agent, model, source: flag || modelFlag ? "flag" : "config", note };
 }
 
 /** An executable and its arguments. */
@@ -60,11 +73,11 @@ export function agentPrompt(briefPath: string, slug: string): string {
   return `You are the all-check background agent for the film "${slug}". Read ${briefPath} now and follow it exactly, to the end.`;
 }
 
-// Builds the interactive, fully pre-approved command for an agent with its brief.
-export function buildAgentCommand(agent: AgentName, briefPath: string, slug: string): AgentCommand {
+// Builds the interactive, fully pre-approved command for an agent, on an explicit model, with its brief.
+export function buildAgentCommand(agent: AgentName, briefPath: string, slug: string, model: string): AgentCommand {
   const prompt = agentPrompt(briefPath, slug);
   if (agent === "claude") {
-    return { command: "claude", args: ["--dangerously-skip-permissions", prompt] };
+    return { command: "claude", args: ["--model", model, "--dangerously-skip-permissions", prompt] };
   }
-  return { command: "agy", args: ["--prompt-interactive", prompt, "--dangerously-skip-permissions"] };
+  return { command: "agy", args: ["--model", model, "--prompt-interactive", prompt, "--dangerously-skip-permissions"] };
 }

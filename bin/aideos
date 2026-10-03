@@ -54,7 +54,7 @@ if [ "$#" -gt 0 ]; then
       cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts review "$@"
       ;;
     all-check)
-      # aideos all-check <slug> [--reference <mp4>] [--rounds <n>] [--target <score>] [--agent claude|agy] [--wait]
+      # aideos all-check <slug> [--reference <mp4>] [--rounds <n>] [--target <score>] [--agent claude|agy] [--model <id>] [--allow-forbidden-model] [--wait]
       # Runs the whole video check (render long and reel, measured and Gemini review, fix, repeat) in a
       # background agent in its own tmux window. Also: all-check status|wait|round|frames|rollback|finish <slug>.
       cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts all-check "$@"

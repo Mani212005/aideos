@@ -87,7 +87,8 @@ aideos review-loop speculative-decoding
 
 # 12. Full check of the long cut AND the reel in a background agent (own tmux window): render, measured review,
 #     Gemini review, fix, repeat; reports the scores and final videos (also the `all-check` skill)
-aideos all-check speculative-decoding [--reference ref.mp4] [--rounds 6] [--target 9.0] [--agent claude|agy]
+aideos all-check speculative-decoding [--reference ref.mp4] [--rounds 6] [--target 9.0] [--agent claude|agy] [--model <id>]
+#     (models come from aideos.config.json: Claude Sonnet 5.5 generates, Gemini 3.8 Flash reviews)
 aideos all-check wait speculative-decoding
 ```
 

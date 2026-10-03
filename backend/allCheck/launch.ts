@@ -20,6 +20,7 @@ const FORWARDED_ENV = [
   "HOME",
   "PATH",
   "AIDEOS_VIDEOS_DIR",
+  "AIDEOS_CONFIG",
   "AIDEOS_GEMINI_REVIEW_MODEL",
   "GEMINI_MODEL",
   "AIDEOS_AGY_TIMEOUT",
@@ -48,12 +49,12 @@ export function shellQuote(value: string): string {
 }
 
 // Writes the script the tmux window runs: the agent command, then a shell that keeps the window open.
-export function writeLaunchScript(slug: string, agent: AgentName, briefPath: string): string {
-  const cmd = buildAgentCommand(agent, briefPath, slug);
+export function writeLaunchScript(slug: string, agent: AgentName, briefPath: string, model: string): string {
+  const cmd = buildAgentCommand(agent, briefPath, slug, model);
   const scriptPath = path.join(allCheckDir(slug), "launch.sh");
   const script = [
     "#!/usr/bin/env bash",
-    `# File Description: Starts the all-check ${agent} agent for "${slug}" with its brief (written by aideos all-check).`,
+    `# File Description: Starts the all-check ${agent} agent (${model}) for "${slug}" with its brief (written by aideos all-check).`,
     `cd ${shellQuote(REPO_ROOT)}`,
     `${[cmd.command, ...cmd.args].map(shellQuote).join(" ")}`,
     `echo`,

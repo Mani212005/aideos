@@ -32,6 +32,10 @@ export interface AllCheckOptions {
   target: number;
   /** Background agent, when named on the command line. */
   agent?: AgentName;
+  /** Generation model for this run, overriding aideos.config.json. */
+  model?: string;
+  /** Lets a model the config forbids for generation (gemini-3.1-pro) run anyway. */
+  allowForbiddenModel?: boolean;
 }
 
 /** Saved at launch so the round and finish commands enforce the same rules the run started with. */
@@ -42,6 +46,8 @@ export interface AllCheckConfig {
   rounds: number;
   target: number;
   agent: AgentName;
+  /** The generation model the background agent was started with. */
+  model?: string;
   startedAt: string;
   /** Whether the studio was already listening when the run started: only a studio all-check owns is shut down at the end. */
   studioWasRunning: boolean;
