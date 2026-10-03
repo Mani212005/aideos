@@ -333,6 +333,11 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `deriveFilmFacts(film, words)` (`backend/review/source.ts`): Derives camera motion, element persistence, and carry-over transformations from aideos film data.
 * `deriveNarrationFacts(words, duration)` (`backend/review/speech.ts`): Derives pace, dead air, narrated moments, and sync alignment from word timings or narration text.
 
+### `backend/aideosConfig.ts` (Video Model Policy & Config Loader)
+* `loadAideosConfig(file?)`: Loads and validates `aideos.config.json` containing the committed video model policy (generation agent/model, reviewer agent/model, forbidden generation models).
+* `reviewerModel(explicit?, env?, file?)`: Resolves the active reviewer model from explicit options, environment variables (`AIDEOS_GEMINI_REVIEW_MODEL`, `GEMINI_MODEL`), or `aideos.config.json`.
+* `forbiddenGenerationMatch(model, policy)`: Checks if a model ID matches any configured forbidden generation models (e.g. `gemini-3.1-pro`).
+
 ### `backend/geminiReview/` (Gemini 3.8 Flash Video Quality Review Loop & Rubric)
 * `reviewVideo(videoPath, options)` (`backend/geminiReview/geminiReview.ts`): Evaluates rendered mp4 video and audio against the 12-criterion rubric via the agy CLI agent running Gemini 3.8 Flash (`gemini-3.8-flash-high`) in an isolated workspace with neutral `video.mp4`, with deterministic facts extraction, timestamp evidence validation, and pairwise comparison support.
 * `reviewPairwise(pathA, pathB, options)` (`backend/geminiReview/geminiReview.ts`): Executes a cross-review pairwise evaluation where two independent agy CLI agents in isolated workspaces first evaluate their respective videos, then exchange text-based evaluation reports to score each other, avoiding multimodal position bias.
@@ -344,6 +349,8 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ### `backend/allCheck/` (End-to-End Review & Repair Background Agent)
 * `runAllCheck(slug, options, deps)` (`backend/allCheck/index.ts`): Orchestrates preflight, locking, brief generation, and launching the background agent in its own tmux window to review and repair long and reel formats.
+* `resolveAgent(env)` (`backend/allCheck/agent.ts`): Resolves the background agent and model from `aideos.config.json` or CLI flags, enforcing the forbidden generation model policy.
+* `buildAgentCommand(agent, briefPath, slug, model)` (`backend/allCheck/agent.ts`): Builds the interactive invocation command for the background agent with the specified model and brief.
 * `formatAllCheckReport(result)` (`backend/allCheck/index.ts`): Formats final all-check outcomes and round summaries into human-readable markdown.
 * `runPreflight(slug, options, deps)` (`backend/allCheck/preflight.ts`): Validates video package, voiceover, ffmpeg, tesseract, tmux, agent CLI, and agy login before starting the background agent.
 * `acquireLock(slug, record, deps)`, `releaseLock(slug, deps)`, `inspectLock(slug, deps)` (`backend/allCheck/lock.ts`): Manages the per-video lock in `videos/<slug>/all-check/lock.json` tied to the active tmux window.

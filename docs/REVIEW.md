@@ -226,7 +226,7 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 11 | accuracy_honesty | No | Every number, chart, and label is grounded in the narration; zero fabricated numbers or misleading visuals. |
 | 12 | loudness_mix | No | Audio loudness normalized to -14 to -18 LUFS integrated, true peak <= -1 dBFS, background music ducked cleanly. |
 
-## 5. Video model policy (`aideos.config.json`)
+## 6. Video model policy (`aideos.config.json`)
 
 The committed `aideos.config.json` at the repo root is the one place the video models are written down
 (loader: `backend/aideosConfig.ts`):

@@ -304,7 +304,7 @@ Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos
 ## Video model policy (`aideos.config.json`)
 
 - Generation and fixing is Claude Sonnet 5.5 (`claude`, `claude-sonnet-5-5`); review is Gemini 3.8 Flash (`agy`, `gemini-3.8-flash-high`). Gemini 3.1 Pro is out for generation unless the captain explicitly asks. Both live in the committed `aideos.config.json`, loaded by `backend/aideosConfig.ts`; never hard-code a video model elsewhere, read the config.
-- `aideos all-check` launches its background agent from that config with an explicit `--model` regardless of which agent invoked it (the old "invoking agent / saved default" choice is gone); `backend/geminiReview` takes the reviewer model from it. Per-run `--agent`/`--model` override; a forbidden generation model needs `--allow-forbidden-model`. See [docs/REVIEW.md](docs/REVIEW.md) section 5.
+- `aideos all-check` launches its background agent from that config with an explicit `--model` regardless of which agent invoked it (the old "invoking agent / saved default" choice is gone); `backend/geminiReview` takes the reviewer model from it. Per-run `--agent`/`--model` override; a forbidden generation model needs `--allow-forbidden-model`. See [docs/REVIEW.md](docs/REVIEW.md) section 6.
 
 ## Gemini 3.8 Flash Video Quality Review Loop (9.0+ Bar)
 
