@@ -84,6 +84,11 @@ aideos gemini-review out/speculative-decoding-long.mp4
 
 # 11. Run iterative render-review-refine loop until video scores 9.0+
 aideos review-loop speculative-decoding
+
+# 12. Full check of the long cut AND the reel in a background agent (own tmux window): render, measured review,
+#     Gemini review, fix, repeat; reports the scores and final videos (also the `all-check` skill)
+aideos all-check speculative-decoding [--reference ref.mp4] [--rounds 6] [--target 9.0] [--agent claude|agy]
+aideos all-check wait speculative-decoding
 ```
 
 See [docs/PRODUCTION_PIPELINE.md](docs/PRODUCTION_PIPELINE.md), [docs/DIRECTOR_GUIDE.md](docs/DIRECTOR_GUIDE.md), and [docs/REVIEW.md](docs/REVIEW.md) for full production, direction, and review documentation.

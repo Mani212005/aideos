@@ -145,6 +145,10 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos produce` | Runs audio-first produce pipeline | `voiceover.wav`, `captions.vtt`, `film.ts` |
 | `aideos ideate "<topic>"` | Runs staged LLM dramatic ideation | `treatment.json` |
 | `aideos direct "<prompt>"` | Auto-prompt: LLM director plans and produces a complete film from a prompt | `out/<slug>-long.mp4`, `out/<slug>-reel.mp4` |
+| `aideos review <slug\|mp4>` | Runs deterministic quality review checks | `<out>/review.json`, evidence stills |
+| `aideos gemini-review <mp4>` | Evaluates video against 12-criterion rubric via Gemini 3.8 Flash (agy) | Terminal score & verdict, JSON |
+| `aideos review-loop <slug>` | Iterative render and review loop until 9.0+ score | `videos/<slug>/gemini-review/` |
+| `aideos all-check <slug>` | Full check and repair in background agent (long and reel, 9.0+ bar) | `videos/<slug>/all-check/`, final MP4s |
 | `npm run backend -- film` | Autonomous pipeline (intake, narrate, design, b-roll, assemble, render, verify) | `out/<slug>-long.mp4`, `out/<slug>-reel.mp4` |
 | `npm run validate:film <path>` | Standalone invariant validator for arbitrary film manifests | Runsheet & status in terminal |
 | `npm run backend -- mcp` | Starts Model Context Protocol (MCP) server over stdio | MCP stdio interface |

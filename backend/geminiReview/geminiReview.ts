@@ -41,6 +41,8 @@ export interface SingleReviewOptions {
   skipFacts?: boolean;
   facts?: DeterministicVideoFacts;
   slug?: string;
+  /** Path of a measured review.json to hand the reviewer as context; overrides the slug and sibling lookup. */
+  reviewContextPath?: string;
   onProgress?: (message: string) => void;
 }
 
@@ -196,7 +198,16 @@ export async function defaultAgyRunner(
           }
 
           if (typeof parsed.response === "string" && parsed.response.trim().length > 0) {
-            return resolve(cleanModelJsonResponse(parsed.response));
+            const cleaned = cleanModelJsonResponse(parsed.response);
+            // Keep the conversation id on a text reply too: the pairwise exchange phase resumes the watcher's conversation by it.
+            try {
+              const obj = JSON.parse(cleaned);
+              if (obj && typeof obj === "object" && !Array.isArray(obj) && parsed.conversation_id && !obj.conversation_id) {
+                obj.conversation_id = parsed.conversation_id;
+                return resolve(JSON.stringify(obj));
+              }
+            } catch {}
+            return resolve(cleaned);
           }
 
           if (
@@ -238,13 +249,40 @@ export function computeFileHash(filePath: string): Promise<string> {
   });
 }
 
-// Strips markdown code block fences and extracts clean JSON text.
-export function cleanModelJsonResponse(rawText: string): string {
-  const match = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (match && match[1]) {
-    return match[1].trim();
+// Reports whether a string parses as JSON.
+function isJsonText(text: string): boolean {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch {
+    return false;
   }
-  return rawText.trim();
+}
+
+// Strips markdown code fences (with or without a language tag such as json or python) and surrounding prose, returning the JSON text.
+export function cleanModelJsonResponse(rawText: string): string {
+  const text = rawText.trim();
+  if (isJsonText(text)) return text;
+
+  let firstBody: string | undefined;
+  for (const match of text.matchAll(/```[A-Za-z0-9_+.-]*[ \t]*\r?\n?([\s\S]*?)```/g)) {
+    const body = match[1].trim();
+    firstBody ??= body;
+    if (isJsonText(body)) return body;
+  }
+
+  // An unterminated fence (a cut-off reply) still opens with the marker line; drop it.
+  const candidate = firstBody ?? text.replace(/^```[A-Za-z0-9_+.-]*[ \t]*\r?\n?/, "").trim();
+  if (isJsonText(candidate)) return candidate;
+
+  // Prose around a bare JSON object: take the outermost braces.
+  const open = candidate.indexOf("{");
+  const close = candidate.lastIndexOf("}");
+  if (open >= 0 && close > open) {
+    const slice = candidate.slice(open, close + 1);
+    if (isJsonText(slice)) return slice;
+  }
+  return candidate;
 }
 
 // Creates an isolated temporary directory containing hardlinks or copies of video files under neutral names.
@@ -306,8 +344,10 @@ export async function reviewVideo(
   }
 
   let deterministicReviewContext: string | undefined;
-  const possiblePaths = [];
-  if (options?.slug) {
+  const possiblePaths: string[] = [];
+  if (options?.reviewContextPath) {
+    possiblePaths.push(path.resolve(options.reviewContextPath));
+  } else if (options?.slug) {
     possiblePaths.push(path.join(resolvePackageDir(options.slug), "review.json"));
   } else {
     const parentDir = path.dirname(resolvedPath);

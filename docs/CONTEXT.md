@@ -342,6 +342,20 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `extractDeterministicFacts(videoPath, options)` (`backend/geminiReview/facts.ts`): Extracts OCR captions coverage, audio loudness LUFS, duration, framerate, and camera tracks for ground-truth review prompt context.
 * `RUBRIC_CRITERIA`, `RUBRIC_SYSTEM_PROMPT`, `SINGLE_REVIEW_JSON_SCHEMA`, `PAIRWISE_WATCH_JSON_SCHEMA`, `PAIRWISE_EXCHANGE_JSON_SCHEMA` (`backend/geminiReview/rubric.ts`): The 12-criterion rubric definitions, structured JSON schemas, and review prompts enforcing the 6 hard gates.
 
+### `backend/allCheck/` (End-to-End Review & Repair Background Agent)
+* `runAllCheck(slug, options, deps)` (`backend/allCheck/index.ts`): Orchestrates preflight, locking, brief generation, and launching the background agent in its own tmux window to review and repair long and reel formats.
+* `formatAllCheckReport(result)` (`backend/allCheck/index.ts`): Formats final all-check outcomes and round summaries into human-readable markdown.
+* `runPreflight(slug, options, deps)` (`backend/allCheck/preflight.ts`): Validates video package, voiceover, ffmpeg, tesseract, tmux, agent CLI, and agy login before starting the background agent.
+* `acquireLock(slug, record, deps)`, `releaseLock(slug, deps)`, `inspectLock(slug, deps)` (`backend/allCheck/lock.ts`): Manages the per-video lock in `videos/<slug>/all-check/lock.json` tied to the active tmux window.
+* `generateAgentBrief(context)` (`backend/allCheck/brief.ts`): Generates structured instructions and review constraints for the background coding agent (`videos/<slug>/all-check/brief.md`).
+* `launchAgentProcess(options, deps)` (`backend/allCheck/launch.ts`): Creates a dedicated tmux window and launches the coding agent (Claude Code or Antigravity) with pre-approved permissions.
+* `executeReviewRound(slug, options, deps)` (`backend/allCheck/round.ts`): Renders formats, backs up `film.json`, executes measured review and Gemini 3.8 Flash review, extracts stills, and performs automatic rollback on score regressions.
+* `recordFrameCheck(slug, options, deps)` (`backend/allCheck/round.ts`): Records the agent's inspection of rendered frame stills for visual defects.
+* `findBestRound(rounds)` (`backend/allCheck/best.ts`): Evaluates completed rounds to identify the best composite round and detect repo baseline violations.
+* `rollbackToRound(slug, round, deps)` (`backend/allCheck/best.ts`): Restores `film.json` from a designated previous round backup.
+* `finishAllCheck(slug, options, deps)` (`backend/allCheck/finish.ts`): Concludes an all-check run, restores the best `film.json` on incomplete runs, copies final MP4s, and writes reports.
+* `waitForResult(slug, options, deps)` (`backend/allCheck/finish.ts`): Blocks and polls for the all-check result file with real-time round reporting and agent idle detection.
+
 ### `backend/mcp/designTools.ts` (Design & Review MCP Tools)
 * `registerDesignTools(server)`: Registers sandboxed MCP tools for reading briefs (`aideos_design_brief`), inspecting design files (`aideos_read_file`), writing design specs and SVGs (`aideos_write_file`), building designs (`aideos_design_build`), validating against design rules (`aideos_design_check`), fetching sampled review stills (`aideos_frame_stills`), and submitting coding model frame reviews (`aideos_submit_frame_review`).
 

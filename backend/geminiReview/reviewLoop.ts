@@ -8,6 +8,7 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { ensureGenerated } from "../pipeline/generatedFiles";
 import { reviewVideo, reviewPairwise } from "./geminiReview";
 import type {
   GeminiReviewReport,
@@ -70,6 +71,8 @@ export function resolveVideoOutputPath(slug: string, format: "long" | "reel" = "
 // Renders the video for a given slug using Remotion CLI.
 export async function renderVideoForSlug(slug: string, format: "long" | "reel" = "long"): Promise<string> {
   const outPath = path.join(REPO_ROOT, "out", `${slug}-${format}.mp4`);
+  // Remotion bundles the generated film shadows, so a film.json edited since the last render must be re-shadowed first.
+  ensureGenerated();
   await fsp.mkdir(path.dirname(outPath), { recursive: true });
 
   const compId = format === "reel" ? "Reel" : "Long";
