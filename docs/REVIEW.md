@@ -156,9 +156,10 @@ aideos all-check status hnsw                              # rounds so far
    run is refused and pointed at it. A lock whose window is gone is stale and replaced.
 3. **Launch.** The brief (`all-check/brief.md`, readable, it is exactly what the agent is told) and `launch.sh`
    are written and a new tmux window starts the agent with all permissions pre-approved: `claude
-   --dangerously-skip-permissions "<prompt>"` or `agy --prompt-interactive "<prompt>"
-   --dangerously-skip-permissions`. The agent is `--agent`, else the agent all-check was invoked from (Claude Code),
-   else the default saved by the `aideos` menu (`~/.config/aideos/agent`), else agy. The window stays open to watch
+   --model <model> --dangerously-skip-permissions "<prompt>"` or `agy --model <model> --prompt-interactive "<prompt>"
+   --dangerously-skip-permissions`. The agent and model come from the video model policy in `aideos.config.json`
+   (see "Video model policy" below): Claude Sonnet 5.5, whichever agent invoked all-check. Only `--agent` / `--model`
+   change it for one run. The window stays open to watch
    or step in. `HOME`, `PATH`, `AIDEOS_VIDEOS_DIR` and the review model variables are passed with `tmux -e`, since a
    window inherits the tmux server's environment, not the caller's.
 4. **The agent runs the loop** with these commands (all `aideos all-check <sub> <slug>`, also spelled
@@ -225,3 +226,17 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 11 | accuracy_honesty | No | Every number, chart, and label is grounded in the narration; zero fabricated numbers or misleading visuals. |
 | 12 | loudness_mix | No | Audio loudness normalized to -14 to -18 LUFS integrated, true peak <= -1 dBFS, background music ducked cleanly. |
 
+## 6. Video model policy (`aideos.config.json`)
+
+The committed `aideos.config.json` at the repo root is the one place the video models are written down
+(loader: `backend/aideosConfig.ts`):
+
+| Role | Agent | Model | Read by |
+|---|---|---|---|
+| Generation and fixing | `claude` | `claude-sonnet-5-5` | `aideos all-check` (the background agent's launch command) |
+| Reviewer | `agy` | `gemini-3.8-flash-high` | `aideos gemini-review`, `review-loop`, `--pairwise` (an explicit `--model`, then `AIDEOS_GEMINI_REVIEW_MODEL` / `GEMINI_MODEL`, still win) |
+
+Gemini 3.1 Pro is not part of this: `forbiddenGenerationModels` lists `gemini-3.1-pro`, and `all-check` refuses it
+(exit 2, with the message naming the override) unless the run passes `--allow-forbidden-model`. Per-run overrides:
+`aideos all-check <slug> --agent agy --model <id>`. `--agent agy` without `--model` runs the configured reviewer model,
+never agy's own default. A missing or malformed config is an error, not a silent default.

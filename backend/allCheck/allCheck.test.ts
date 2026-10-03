@@ -14,7 +14,8 @@ import test from "node:test";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import type { GeminiReviewReport, PairwiseRunReport } from "../geminiReview";
 import type { ReviewReport } from "../review/types";
-import { agentPrompt, buildAgentCommand, resolveAgent, savedAgentFile } from "./agent";
+import { agentPrompt, buildAgentCommand, resolveAgent } from "./agent";
+import { forbiddenGenerationMatch, loadAideosConfig, reviewerModel, type AideosConfig } from "../aideosConfig";
 import { buildBrief } from "./brief";
 import { ALL_CHECK_SUBCOMMANDS, rewriteAllCheckArgv } from "./cli";
 import { betterEarlierRound, dirtyRepoPaths, rankRecord, rollbackFilm, settleRound, strayFiles, writeRepoBaseline } from "./best";
@@ -83,35 +84,73 @@ test("options: defaults, validation and aliases", () => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-test("agent: flag, invoking agent, saved default, fallback and commands", () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), "allcheck-home-"));
-  assert.equal(resolveAgent({ env: {}, home }).agent, "agy");
-  assert.equal(resolveAgent({ env: {}, home }).source, "fallback");
+const POLICY: AideosConfig = {
+  schema: "aideos.config/1",
+  videoModels: {
+    generation: { agent: "claude", model: "claude-sonnet-5-5" },
+    reviewer: { agent: "agy", model: "gemini-3.8-flash-high" },
+    forbiddenGenerationModels: ["gemini-3.1-pro"],
+  },
+};
 
-  fs.mkdirSync(path.dirname(savedAgentFile(home)), { recursive: true });
-  fs.writeFileSync(savedAgentFile(home), "claude\n");
-  assert.deepEqual(resolveAgent({ env: {}, home }), { agent: "claude", source: "saved-default" });
-  fs.writeFileSync(savedAgentFile(home), "antigravity");
-  assert.equal(resolveAgent({ env: {}, home }).agent, "agy");
+test("config: the committed aideos.config.json holds the video model policy", () => {
+  const cfg = loadAideosConfig();
+  assert.deepEqual(cfg.videoModels.generation, { agent: "claude", model: "claude-sonnet-5-5" });
+  assert.deepEqual(cfg.videoModels.reviewer, { agent: "agy", model: "gemini-3.8-flash-high" });
+  assert.ok(forbiddenGenerationMatch("gemini-3.1-pro-high", cfg.videoModels));
+  assert.ok(forbiddenGenerationMatch("Gemini-3-1-Pro", cfg.videoModels));
+  assert.equal(forbiddenGenerationMatch("gemini-3.8-flash-high", cfg.videoModels), undefined);
+});
 
-  fs.writeFileSync(savedAgentFile(home), "codex");
-  const unsupported = resolveAgent({ env: {}, home });
-  assert.equal(unsupported.agent, "agy");
-  assert.match(unsupported.note ?? "", /codex/);
-  fs.writeFileSync(savedAgentFile(home), "none");
-  assert.equal(resolveAgent({ env: {}, home }).note, undefined);
+test("config: a missing, malformed or incomplete file is an error, not a default", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-config-"));
+  const file = path.join(tmp, "c.json");
+  assert.throws(() => loadAideosConfig(file), /cannot read/);
+  fs.writeFileSync(file, "{ nope");
+  assert.throws(() => loadAideosConfig(file), /cannot read/);
+  fs.writeFileSync(file, JSON.stringify({ videoModels: { generation: { agent: "codex", model: "x" } } }));
+  assert.throws(() => loadAideosConfig(file), /generation must be/);
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
 
-  // The flag beats the invoking agent, which beats the saved default.
-  assert.equal(resolveAgent({ flag: "agy", env: { CLAUDECODE: "1" }, home }).agent, "agy");
-  assert.deepEqual(resolveAgent({ env: { CLAUDECODE: "1" }, home }), { agent: "claude", source: "invoking-agent" });
-  fs.rmSync(home, { recursive: true, force: true });
+test("config: the reviewer model is explicit, then env, then the config", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-config-"));
+  const file = path.join(tmp, "c.json");
+  fs.writeFileSync(file, JSON.stringify(POLICY));
+  assert.equal(reviewerModel(undefined, {}, file), "gemini-3.8-flash-high");
+  assert.equal(reviewerModel(undefined, { AIDEOS_GEMINI_REVIEW_MODEL: "m-env" }, file), "m-env");
+  assert.equal(reviewerModel("m-explicit", { AIDEOS_GEMINI_REVIEW_MODEL: "m-env" }, file), "m-explicit");
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
 
-  const claude = buildAgentCommand("claude", "/b/brief.md", "hnsw");
+test("agent: the configured generation agent and model win, whoever invoked all-check", () => {
+  assert.deepEqual(resolveAgent({ config: POLICY }), { agent: "claude", model: "claude-sonnet-5-5", source: "config", note: undefined });
+  // An explicit agent without a model gets that agent's configured model, never its own default.
+  assert.equal(resolveAgent({ flag: "agy", config: POLICY }).model, "gemini-3.8-flash-high");
+  assert.deepEqual(
+    (({ agent, model, source }) => ({ agent, model, source }))(resolveAgent({ flag: "claude", modelFlag: "claude-opus-5-5", config: POLICY })),
+    { agent: "claude", model: "claude-opus-5-5", source: "flag" },
+  );
+});
+
+test("agent: gemini-3.1-pro is refused for generation unless explicitly allowed", () => {
+  assert.throws(() => resolveAgent({ flag: "agy", modelFlag: "gemini-3.1-pro-high", config: POLICY }), (e: unknown) => {
+    assert.ok(e instanceof AllCheckError);
+    assert.match(e.message, /not allowed for video generation/);
+    assert.match(e.message, /--allow-forbidden-model/);
+    return true;
+  });
+  const allowed = resolveAgent({ flag: "agy", modelFlag: "gemini-3.1-pro-high", allowForbiddenModel: true, config: POLICY });
+  assert.equal(allowed.model, "gemini-3.1-pro-high");
+  assert.match(allowed.note ?? "", /allowed by --allow-forbidden-model/);
+});
+
+test("agent: the launch command names the model for each agent", () => {
+  const claude = buildAgentCommand("claude", "/b/brief.md", "hnsw", "claude-sonnet-5-5");
   assert.equal(claude.command, "claude");
-  assert.ok(claude.args.includes("--dangerously-skip-permissions"));
-  assert.equal(claude.args[claude.args.length - 1], agentPrompt("/b/brief.md", "hnsw"));
-  const agy = buildAgentCommand("agy", "/b/brief.md", "hnsw");
-  assert.deepEqual(agy.args, ["--prompt-interactive", agentPrompt("/b/brief.md", "hnsw"), "--dangerously-skip-permissions"]);
+  assert.deepEqual(claude.args, ["--model", "claude-sonnet-5-5", "--dangerously-skip-permissions", agentPrompt("/b/brief.md", "hnsw")]);
+  const agy = buildAgentCommand("agy", "/b/brief.md", "hnsw", "gemini-3.8-flash-high");
+  assert.deepEqual(agy.args, ["--model", "gemini-3.8-flash-high", "--prompt-interactive", agentPrompt("/b/brief.md", "hnsw"), "--dangerously-skip-permissions"]);
 });
 
 test("preflight: a ready machine has no problems, each failure names its fix", () => {
@@ -308,9 +347,9 @@ test("launch script quotes a hostile slug-free path and keeps the window open", 
   makePackage(slug);
   try {
     fs.mkdirSync(allCheckDir(slug), { recursive: true });
-    const script = writeLaunchScript(slug, "agy", "/tmp/it's a brief.md");
+    const script = writeLaunchScript(slug, "agy", "/tmp/it's a brief.md", "gemini-3.8-flash-high");
     const text = fs.readFileSync(script, "utf8");
-    assert.match(text, /'agy' '--prompt-interactive'/);
+    assert.match(text, /'agy' '--model' 'gemini-3.8-flash-high' '--prompt-interactive'/);
     assert.ok(text.includes(`'\\''`), "single quotes in a path are escaped");
     assert.equal(fs.statSync(script).mode & 0o111, 0o111);
   } finally {
@@ -873,7 +912,7 @@ test("launch script: an agent that exits without a result still gets a verdict f
   makePackage(slug);
   try {
     fs.mkdirSync(allCheckDir(slug), { recursive: true });
-    const text = fs.readFileSync(writeLaunchScript(slug, "claude", "/tmp/brief.md"), "utf8");
+    const text = fs.readFileSync(writeLaunchScript(slug, "claude", "/tmp/brief.md", "claude-sonnet-5-5"), "utf8");
     assert.match(text, /\[ -f '[^']*result\.json' \] \|\| npx tsx backend\/cli\.ts all-check finish 'ac-script-finish'/);
     assert.ok(text.indexOf("all-check finish") < text.indexOf("exec "), "the verdict is written before the window is kept open");
   } finally {

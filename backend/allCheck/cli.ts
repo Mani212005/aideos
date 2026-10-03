@@ -84,13 +84,15 @@ export function registerAllCheckCommands(program: Command): void {
     .option("--reference <mp4>", "reference video the long cut must win or tie against in the cross-review")
     .option("--rounds <n>", "round budget (default 6)")
     .option("--target <score>", "reviewer score both formats must reach (default 9.0)")
-    .option("--agent <name>", "background agent: claude or agy (default: the calling agent, else the saved aideos default, else agy)")
+    .option("--agent <name>", "background agent: claude or agy (default: videoModels.generation.agent in aideos.config.json)")
+    .option("--model <id>", "generation model for this run (default: videoModels.generation.model in aideos.config.json)")
+    .option("--allow-forbidden-model", "allow a generation model the config forbids (gemini-3.1-pro) for this run")
     .option("--wait", "stay and wait for the result, then print it")
-    .action(async (slug: string, flags: { reference?: string; rounds?: string; target?: string; agent?: string; wait?: boolean }) => {
+    .action(async (slug: string, flags: { reference?: string; rounds?: string; target?: string; agent?: string; model?: string; allowForbiddenModel?: boolean; wait?: boolean }) => {
       try {
         const options = parseAllCheckOptions(slug, flags);
         const started = startAllCheck(options);
-        console.log(`all-check started for "${slug}" with the ${started.agent.agent} agent${started.agent.note ? ` (${started.agent.note})` : ""}.`);
+        console.log(`all-check started for "${slug}" with the ${started.agent.agent} agent on ${started.agent.model}${started.agent.note ? ` (${started.agent.note})` : ""}.`);
         console.log(`  window:  ${started.window.windowId} in tmux session "${started.window.session}" (watch or step in: ${started.window.attachCommand})`);
         console.log(`  brief:   ${started.briefPath}`);
         console.log(`  result:  ${started.resultPath}`);

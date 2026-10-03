@@ -29,13 +29,13 @@ automatically.
 ## How to run it
 
 1. Work out from the request: the **slug** (the folder under `videos/`; if the user gave a title, run `ls videos` and pick the match, ask only if it is ambiguous), and optionally a **reference** mp4, a **round budget** and a **target** score.
-2. Start it from the repo root, naming the agent you are running as (`claude` for Claude Code, `agy` for Antigravity):
+2. Start it from the repo root. Do not pass `--agent` or `--model`: the background agent and model come from `aideos.config.json` (Claude Sonnet 5.5 generates and fixes, Gemini 3.8 Flash reviews), whichever agent you are running as. Gemini 3.1 Pro is refused for generation unless the user explicitly asks for it (`--agent agy --model gemini-3.1-pro-high --allow-forbidden-model`).
 
    ```bash
-   aideos all-check <slug> --agent <claude|agy> [--reference <mp4>] [--rounds <n>] [--target <score>]
+   aideos all-check <slug> [--reference <mp4>] [--rounds <n>] [--target <score>]
    ```
 
-   If `aideos` is not on PATH, use `npx tsx backend/cli.ts all-check <slug> ...` from the repo root. The same command works from a plain terminal; there the background agent is the user's saved default from the aideos menu (`~/.config/aideos/agent`), else agy.
+   If `aideos` is not on PATH, use `npx tsx backend/cli.ts all-check <slug> ...` from the repo root. The same command works from a plain terminal; there too the background agent is the one in `aideos.config.json`.
 3. **If it prints "all-check cannot start"**: that is the preflight (agy signed in, video package, voiceover, ffmpeg, tesseract, tmux). Show the user that message with its exact fix and stop. Do not work around it, and do not start anything yourself.
 4. **If it says all-check is already running** on that video: tell the user, point them at the window it names, and offer `aideos all-check wait <slug>`. One run per video at a time.
 5. Otherwise it prints the tmux window, the brief and the result file. Tell the user the check is running and that `tmux attach` shows the agent working (they can step in).

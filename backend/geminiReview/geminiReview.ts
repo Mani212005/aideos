@@ -9,6 +9,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { reviewerModel } from "../aideosConfig";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { extractDeterministicFacts } from "./facts";
 import {
@@ -60,10 +61,7 @@ export async function defaultAgyRunner(
   options?: AgyRunnerOptions,
 ): Promise<string> {
   const model =
-    options?.model ||
-    process.env.AIDEOS_GEMINI_REVIEW_MODEL ||
-    process.env.GEMINI_MODEL ||
-    "gemini-3.8-flash-high";
+    reviewerModel(options?.model);
   const timeoutSec =
     options?.timeoutSeconds ??
     (Number(process.env.AIDEOS_AGY_TIMEOUT) || 1800);
@@ -325,10 +323,7 @@ export async function reviewVideo(
   const onProgress = options?.onProgress || (() => {});
   const runner = resolveRunner(options);
   const modelName =
-    options?.model ||
-    process.env.AIDEOS_GEMINI_REVIEW_MODEL ||
-    process.env.GEMINI_MODEL ||
-    "gemini-3.8-flash-high";
+    reviewerModel(options?.model);
   const maxAttempts = options?.maxValidationAttempts ?? 3;
 
   onProgress(`Extracting deterministic facts for ${path.basename(resolvedPath)}...`);
@@ -541,10 +536,7 @@ export async function reviewPairwise(
   const onProgress = options?.onProgress || (() => {});
   const runner = resolveRunner(options);
   const modelName =
-    options?.model ||
-    process.env.AIDEOS_GEMINI_REVIEW_MODEL ||
-    process.env.GEMINI_MODEL ||
-    "gemini-3.8-flash-high";
+    reviewerModel(options?.model);
   const timeoutSeconds = options?.timeoutSeconds;
 
   const wsA = createIsolatedVideoWorkspace({ "video.mp4": resolvedA });
