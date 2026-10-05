@@ -18,7 +18,7 @@ export function getRetimedAudioFilename(src: string, speed: number): string {
   return `retimed_${base}_${speedStr}x.wav`;
 }
 
-/** Compute the relative public path for a retimed audio track. */
+/** Compute the relative path for a retimed audio track. */
 export function getRetimedAudioRelPath(src: string, speed: number): string {
   return `.tmp_audio/${getRetimedAudioFilename(src, speed)}`;
 }

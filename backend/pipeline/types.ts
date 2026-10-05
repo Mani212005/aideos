@@ -62,9 +62,8 @@ export interface ProductionRequest {
   /** Skip the final frame-and-audio inspection pass. */
   skipVerify?: boolean;
   /**
-   * Copy the synthesized voiceover and captions into public/ for the editor's live preview.
-   * Defaults to true. Set false for a throwaway or test run so it cannot overwrite whatever
-   * film's audio the editor is actually previewing.
+   * Preview sync flag (legacy option retained for caller compatibility; voiceover and captions
+   * are resolved directly from videos/<slug>/ via the public/videos symlink).
    */
   syncToPreview?: boolean;
   /**

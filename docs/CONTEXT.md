@@ -231,7 +231,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 ### `src/dl/audio/retime.ts` (Deterministic Retimed Audio Paths)
 * `sanitizeAudioName(src)`: Converts audio source path into a filesystem-safe identifier.
 * `getRetimedAudioFilename(src, speed)`: Computes deterministic filename for a retimed audio track.
-* `getRetimedAudioRelPath(src, speed)`: Computes relative public path (`.tmp_audio/...`) for a retimed audio track.
+* `getRetimedAudioRelPath(src, speed)`: Computes relative path (`.tmp_audio/...`) for a retimed audio track.
 
 ### `backend/pcm.ts`
 * `trimSilence(samples, threshold)`: Trims leading and trailing silence samples from Float32Array audio.
