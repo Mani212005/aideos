@@ -171,7 +171,7 @@ filesystem access:
 ```ts
 const assets = loadSceneAssets(scene);                    // Node side
 const compiled = compileScene(scene, { assetElementIds: assets.elementIdsByAssetId });
-renderFrameStill(compiled.frames[30], "out/frame.png", { svgSources: assets.svgSources });
+renderFrameStill(compiled.frames[30], "videos/my-video/renders/frame.png", { svgSources: assets.svgSources });
 ```
 
 Inside a composition, `SceneClip` does the compile and frame selection:

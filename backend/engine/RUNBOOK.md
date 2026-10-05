@@ -128,7 +128,7 @@ npm run backend -- engine-test "<prompt>" --engine ssh-wangp --seconds 5
       "totalFrames": 144, "delayFrames": 30, "fullScreenHero": true }`
 3. `public/gpu_robot_arm/` is gitignored (repo convention for frame sequences);
    the frames stay local, the film data references them.
-4. `npm run validate` then `npx remotion render Long out/long.mp4 --gl=angle`
+4. `npm run validate` then `npx remotion render Long videos/<slug>/renders/long.mp4 --gl=angle`
    (the `--gl=angle` flag avoids a flaky SwiftShader WebGL context failure on macOS).
 
 ## Politeness and disk hygiene

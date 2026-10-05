@@ -34,8 +34,8 @@ program
 
 
 const FORMATS = {
-  long: { script: "render", label: "long (1920×1080) → out/long.mp4" },
-  reel: { script: "render:reel", label: "reel (1080×1920) → out/reel.mp4" },
+  long: { script: "render", label: "long (1920x1080) -> videos/<slug>/renders/long.mp4" },
+  reel: { script: "render:reel", label: "reel (1080x1920) -> videos/<slug>/renders/reel.mp4" },
 } as const;
 
 /** Keeps the hand-written explanation that makes this file readable. */

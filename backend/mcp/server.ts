@@ -227,7 +227,7 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
         voice: z.string().optional().describe("Voice id for the chosen synthesizer, for example af_heart."),
         speed: z.number().min(0.5).max(2).optional().describe("Narration pace multiplier. Below 1 slows delivery, which reads better for explainer copy. Defaults to 1."),
         music: z.string().optional().describe("Background music filename inside public/. Ducked under narration automatically."),
-        outDir: z.string().optional().describe("Directory the finished mp4s land in. Defaults to the repo's out/."),
+        outDir: z.string().optional().describe("Directory the finished mp4s land in. Defaults to the video package's renders/ directory (videos/<slug>/renders/)."),
         resume: z.boolean().optional().describe("Reuse completed stages from a previous run of the same slug. Defaults to true."),
         force: z.array(z.enum(PRODUCTION_STAGES)).optional().describe("Stages to re-run even when resuming."),
         stopAfter: z.enum(PRODUCTION_STAGES).optional().describe("Stop cleanly after this stage instead of rendering."),

@@ -20,7 +20,7 @@ the numbers layer: the Gemini review loop reads the same JSON as context and jud
 cannot (story, whether two things are the same object, whether an animation shows its claim).
 
 ```bash
-aideos review hnsw-explainer                       # slug: finds out/<slug>-long.mp4, film.json, voiceover_words.json
+aideos review hnsw-explainer                       # slug: finds videos/<slug>/renders/long.mp4 (or out/ fallback), film.json, voiceover_words.json
 aideos review path/to/video.mp4 --film film.json --words voiceover_words.json
 aideos review video.mp4 --words script.json        # narration text only: caption match and number grounding, no timings
 npm run review -- <slug|mp4> [--json] [--no-ocr] [--out dir]
@@ -88,8 +88,8 @@ the others with margin, and the rubric's 95% caption target is not met even by A
 `aideos gemini-review <video.mp4>` evaluates a rendered mp4 video with native Gemini 3.8 Flash video and audio understanding.
 
 ```bash
-aideos gemini-review out/hnsw-explainer-long.mp4
-aideos gemini-review out/video.mp4 --film videos/hnsw-explainer/film.json
+aideos gemini-review videos/hnsw-explainer/renders/long.mp4
+aideos gemini-review videos/hnsw-explainer/renders/reel.mp4 --film videos/hnsw-explainer/film.json
 aideos gemini-review videoA.mp4 --pairwise videoB.mp4
 ```
 

@@ -10,6 +10,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { evaluateCriteria } from "./criteria";
 import { detectSilences, extractStill, measureLoudness, probeVideo } from "./media";
 import { measureRender } from "./renderFacts";
@@ -45,11 +46,35 @@ export interface ResolvedTarget {
 }
 
 // Finds the rendered mp4 of a film slug among the places the pipeline and the studio put it.
-function findSlugVideo(slug: string): string | null {
-  const dir = path.join(REPO_ROOT, "videos", slug);
-  const candidates = [path.join(REPO_ROOT, "out", `${slug}-long.mp4`), path.join(REPO_ROOT, "out", `${slug}.mp4`)];
-  if (fs.existsSync(dir)) candidates.push(...fs.readdirSync(dir).filter((f) => f.endsWith(".mp4")).map((f) => path.join(dir, f)));
-  candidates.push(path.join(REPO_ROOT, "out", `${slug}-reel.mp4`));
+export function findSlugVideo(slug: string): string | null {
+  const pkgDir = resolvePackageDir(slug);
+  const rendersDir = path.join(pkgDir, "renders");
+  const candidates: string[] = [];
+
+  if (fs.existsSync(rendersDir)) {
+    candidates.push(
+      path.join(rendersDir, "long.mp4"),
+      path.join(rendersDir, `${slug}-long.mp4`),
+      path.join(rendersDir, `${slug}.mp4`),
+      path.join(rendersDir, "reel.mp4"),
+      path.join(rendersDir, `${slug}-reel.mp4`),
+    );
+    candidates.push(...fs.readdirSync(rendersDir).filter((f) => f.endsWith(".mp4")).map((f) => path.join(rendersDir, f)));
+  }
+
+  if (fs.existsSync(pkgDir)) {
+    candidates.push(...fs.readdirSync(pkgDir).filter((f) => f.endsWith(".mp4")).map((f) => path.join(pkgDir, f)));
+  }
+
+  const outDir = path.join(REPO_ROOT, "out");
+  if (fs.existsSync(outDir)) {
+    candidates.push(
+      path.join(outDir, `${slug}-long.mp4`),
+      path.join(outDir, `${slug}.mp4`),
+      path.join(outDir, `${slug}-reel.mp4`),
+    );
+  }
+
   return candidates.find((c) => fs.existsSync(c)) ?? null;
 }
 
@@ -68,17 +93,17 @@ export function resolveTarget(req: ReviewRequest): ResolvedTarget {
     };
   }
   const slug = req.target;
-  const dir = path.join(REPO_ROOT, "videos", slug);
-  const filmJson = path.join(dir, "film.json");
+  const pkgDir = resolvePackageDir(slug);
+  const filmJson = path.join(pkgDir, "film.json");
   if (!fs.existsSync(filmJson)) throw new Error(`"${slug}" is neither an mp4 nor a film: no videos/${slug}/film.json`);
   const mp4 = findSlugVideo(slug);
-  if (!mp4) throw new Error(`no rendered video for "${slug}": looked for out/${slug}-long.mp4, out/${slug}.mp4 and videos/${slug}/*.mp4. Render it first (npm run render) or pass an mp4 path.`);
+  if (!mp4) throw new Error(`no rendered video for "${slug}": looked for videos/${slug}/renders/long.mp4, videos/${slug}/renders/*.mp4, and fallback out/${slug}-long.mp4. Render it first (npm run render) or pass an mp4 path.`);
   return {
     subject: slug,
     mp4,
     film: req.film ? path.resolve(req.film) : filmJson,
     words: req.words ? path.resolve(req.words) : siblingFile(filmJson, "voiceover_words.json"),
-    outDir: path.resolve(req.outDir ?? dir),
+    outDir: path.resolve(req.outDir ?? pkgDir),
   };
 }
 

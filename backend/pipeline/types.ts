@@ -35,7 +35,7 @@ export interface ProductionRequest {
   slug?: string;
   /** Which formats to render. Defaults to both. */
   formats?: ProductionFormat[];
-  /** Where the finished mp4s land. Defaults to the repo's out/ directory. */
+  /** Where the finished mp4s land. Defaults to the video package's renders/ directory (videos/<slug>/renders/). */
   outDir?: string;
   /** Generate B-roll footage on the GPU and wire it into the film. */
   broll?: boolean;

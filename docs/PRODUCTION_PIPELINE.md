@@ -16,7 +16,7 @@ const result = await runProduction(
   (event) => console.log(event.stage, event.status, event.message, event.progress),
 );
 
-result.outputs; // [{ format: "long", path: "out/speculative-decoding-long.mp4", ... }, ...]
+result.outputs; // [{ format: "long", path: "videos/speculative-decoding/renders/long.mp4", ... }, ...]
 ```
 
 The same thing from a terminal:
@@ -41,8 +41,8 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 | `design`   | Compiles the screenplay plus the spine into a validated film, picking each shot's visual with Jev (heuristic fallback) | `film.json` and its `src/dl/films/<slug>.ts` shadow |
 | `broll`    | Renders GPU footage for the flagged shots and fetches the clips                       | `videos/<slug>/footage/<shotId>.mp4`                |
 | `assemble` | Wires each clip into its shot as a full-screen inset                                 | `film.json` and its `src/dl/films/<slug>.ts` shadow |
-| `render`   | Installs the film as active and drives Remotion for each requested format            | `src/dl/activeFilm.ts`, `out/<slug>-long.mp4`, `out/<slug>-reel.mp4` |
-| `verify`   | Probes the rendered files and writes contact sheets across the whole duration         | `out/review/<slug>/<format>-sheet.jpg`              |
+| `render`   | Installs the film as active and drives Remotion for each requested format            | `src/dl/activeFilm.ts`, `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` |
+| `verify`   | Probes the rendered files and writes contact sheets across the whole duration         | `videos/<slug>/review/<format>-sheet.jpg`          |
 
 Progress arrives through the second argument to `runProduction`: one `ProductionProgress` per
 event, carrying the stage, its status, a human-readable message, an optional 0..1 fraction within
@@ -148,7 +148,7 @@ process, so `aideos_run_status` only knows about runs that process started; the 
 
 The `verify` stage probes each rendered file with ffprobe, measures audio levels and silence with
 ffmpeg, and writes a twelve-frame contact sheet sampled evenly across the whole duration to
-`out/review/<slug>/`. It records warnings rather than failing, so a run always produces something
+`videos/<slug>/review/`. It records warnings rather than failing, so a run always produces something
 to look at: wrong frame size, picture and narration lengths disagreeing by more than a second,
 a missing audio stream, clipping, or more than two and a half seconds of silence.
 

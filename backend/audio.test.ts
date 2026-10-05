@@ -257,7 +257,7 @@ test("ensureRetimedAudio pre-renders retimed audio for static Remotion CLI resol
   };
 
   ensureRetimedAudio(mockFilm as any);
-  const expectedPath = path.resolve(process.cwd(), "public", getRetimedAudioRelPath(mockFilm.voiceover.src, 1.2));
+  const expectedPath = path.resolve(process.cwd(), getRetimedAudioRelPath(mockFilm.voiceover.src, 1.2));
   assert.ok(fsSync.existsSync(expectedPath), `Expected pre-rendered file at ${expectedPath}`);
 });
 

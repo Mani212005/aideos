@@ -56,8 +56,8 @@ Everything lands in `videos/<slug>/all-check/`: `brief.md` (what the agent was t
 
 | Command | What it does |
 |---|---|
-| `aideos render` | Render the active film, 16:9, to `out/long.mp4` |
-| `aideos reel` | Render the active film, 9:16, to `out/reel.mp4` |
+| `aideos render` | Render the active film, 16:9, to `videos/<slug>/renders/long.mp4` |
+| `aideos reel` | Render the active film, 9:16, to `videos/<slug>/renders/reel.mp4` |
 | `aideos review <slug\|mp4>` | Measured checks only; writes `review.json`, exit 1 on a failed gate |
 | `aideos gemini-review <mp4>` | Gemini 3.8 Flash review (agy), 12-point rubric, 9.0 bar |
 | `aideos gemini-review <mp4> --pairwise <ref.mp4>` | Cross-review of two videos |

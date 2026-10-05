@@ -611,11 +611,6 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             serveFileWithRange(req, res, filePath);
             return;
           }
-          const pubPath = path.join(path.resolve(__dirname, '../public/.tmp_audio'), rel);
-          if (!rel.includes('..') && fs.existsSync(pubPath) && fs.statSync(pubPath).isFile()) {
-            serveFileWithRange(req, res, pubPath);
-            return;
-          }
         }
 
         // Handle /api/audio/retime (Pitch-corrected WSOLA time-stretching with FFmpeg atempo)
@@ -708,12 +703,12 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 return;
               }
 
-              const outDir = path.resolve(__dirname, '../out');
-              if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+              const rendersDir = path.join(videosDir, film.id, 'renders');
+              if (!fs.existsSync(rendersDir)) fs.mkdirSync(rendersDir, { recursive: true });
 
               const composition = format === 'reel' ? 'Reel' : 'Long';
               const filename = `aideos_${film.id}_${format || 'long'}_${Date.now()}.mp4`;
-              const outPath = path.join(outDir, filename);
+              const outPath = path.join(rendersDir, filename);
 
               // Ensure retimed audio is pre-rendered for Remotion CLI
               ensureRetimedAudio(film);
@@ -771,16 +766,50 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           return;
         }
 
-        // Handle /api/downloads/:filename (Serve rendered video exports from out/)
+        // Handle /api/downloads/:filename (Serve rendered video exports from package renders/ with fallback to out/)
         if (url.startsWith('/api/downloads/') && (req.method === 'GET' || req.method === 'HEAD')) {
           const filename = decodeURIComponent(url.slice('/api/downloads/'.length));
           if (!filename || filename.includes('..')) {
             sendJson(res, 400, { error: 'Invalid filename' });
             return;
           }
-          const outDir = path.resolve(__dirname, '../out');
-          const filePath = path.join(outDir, filename);
-          if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+
+          let filePath: string | null = null;
+
+          const m = /^aideos_([a-z0-9-]+)_/.exec(filename);
+          if (m) {
+            const candidate = path.join(videosDir, m[1], 'renders', filename);
+            if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+              filePath = candidate;
+            }
+          }
+
+          if (!filePath && fs.existsSync(videosDir)) {
+            for (const pkg of fs.readdirSync(videosDir)) {
+              const candidate = path.join(videosDir, pkg, 'renders', filename);
+              if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+                filePath = candidate;
+                break;
+              }
+            }
+          }
+
+          if (!filePath && fs.existsSync(examplesDir)) {
+            for (const pkg of fs.readdirSync(examplesDir)) {
+              const candidate = path.join(examplesDir, pkg, 'renders', filename);
+              if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+                filePath = candidate;
+                break;
+              }
+            }
+          }
+
+          const oldOut = path.resolve(__dirname, '../out', filename);
+          if (!filePath && fs.existsSync(oldOut) && fs.statSync(oldOut).isFile()) {
+            filePath = oldOut;
+          }
+
+          if (filePath) {
             serveFileWithRange(req, res, filePath);
             return;
           }
