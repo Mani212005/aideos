@@ -8,7 +8,7 @@ Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos
 
 ## Core Rules
 
-1. **File Header Description**: Every file created or updated must have a header description at the very top explaining what the file does and its purpose.
+1. **File Header Description**: Every code file created or updated must have a header comment at the very top containing three fields: "File Description: <description>", "Inputs and outputs: <inputs> -> <outputs>", and "Used by: <callers or entry point>".
 2. **Function Documentation**: Every function written must have a clear, one-line comment preceding it that explains what the function is for.
 3. **No Long Dashes**: Never use long dashes (such as em dashes or en dashes) anywhere: in code, UI text, video text, comments, documentation, or agent messages. Always use standard hyphens (-), colons (:), or parentheses ().
 4. **Video Design System Standard**: All videos created must strictly follow the specification defined in [src/dl/README.md](src/dl/README.md). This includes:
