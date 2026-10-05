@@ -2,9 +2,8 @@
  * File Description: Implements Phase 3 segment-scoped visual brief generation
  * and the pre-render semantic sync gate using reasoned visual selection.
  */
-import type { Block, MetaphorContent } from "../../src/dl/schema";
+import type { Block } from "../../src/dl/schema";
 import type { SegmentAudioInfo } from "../audio";
-import { groundMetaphorContent } from "../pipeline/deviceData";
 import {
   selectShotVisualIntent,
   selectVisualIntentFallback,
@@ -17,7 +16,6 @@ export interface SegmentShotMapping {
   segmentText: string;
   visualDirection: string;
   blocks: Block[];
-  metaphor?: MetaphorContent["kind"];
   needsFootage?: boolean;
 }
 
@@ -83,7 +81,6 @@ export function buildBriefFromSegmentFallback(
     segmentText,
     visualDirection: decision.rationale,
     blocks,
-    metaphor: decision.metaphor?.kind,
     needsFootage: false,
   };
 }
@@ -117,32 +114,11 @@ export async function generateSegmentVisualBrief(
     },
   ];
 
-  // A model-authored metaphor is drawn only when every label parses and comes from the narration.
-  const grounded = decision.blockType === "MetaphorViewer" ? groundMetaphorContent(decision.metaphor, { narration: trimmed, onscreen: [headline] }) : null;
-  if (grounded && "content" in grounded) {
-    blocks.push({
-      c: "MetaphorViewer",
-      metaphorType: grounded.content.kind,
-      content: grounded.content,
-    });
-  } else if (decision.blockType === "CharacterBeat") {
-    blocks.push({
-      c: "CharacterBeat",
-      characterId: "astronaut",
-      poses: [
-        { t: 0.0, groups: { torso: { rotate: 0 } } },
-        { t: 0.5, groups: { torso: { rotate: 5 } } },
-        { t: 1.0, groups: { torso: { rotate: 0 } } },
-      ],
-    });
-  }
-
   return {
     shotId,
     segmentText: trimmed,
     visualDirection: decision.rationale,
     blocks,
-    metaphor: grounded && "content" in grounded ? grounded.content.kind : undefined,
     needsFootage: false,
   };
 }

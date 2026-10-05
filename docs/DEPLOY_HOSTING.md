@@ -46,7 +46,6 @@ Before deploying, ensure you have:
    - `AIDEOS_LINK_SECRET`: Secret key used to sign agent-link tokens so pairings persist across server restarts (automatically generated via Blueprint `render.yaml`, or derived from `GEMINI_API_KEY`).
    - `AIDEOS_PUBLIC_API_URL`: Public address of the backend dialed by `aideos connect` (e.g. `https://aideos-backend.onrender.com`).
    - `DEEPGRAM_API_KEY`: For fast cloud-based word-level audio transcription and TTS.
-   - `PARALLEL_API_KEY`: For web research and script enrichment.
    - `WAN_GPU_HOST`, `WAN_GPU_USER`, `WAN_GPU_PASSWORD`: For remote GPU Wan2.1 diffusion B-roll generation.
 
 ---
@@ -80,7 +79,7 @@ Before deploying, ensure you have:
    - `PORT`: `8080`
    - `GEMINI_API_KEY`: `<your-gemini-api-key>`
    - `AIDEOS_GEMINI_MODEL`: `gemini-2.0-flash`
-   - *(Optional)* `DEEPGRAM_API_KEY`, `PARALLEL_API_KEY`, `WAN_GPU_*`
+   - *(Optional)* `DEEPGRAM_API_KEY`, `WAN_GPU_*`
 5. Click **Create Web Service**.
 6. Wait for deployment to complete and copy the backend URL (`https://<your-service>.onrender.com`).
 
@@ -132,7 +131,6 @@ Before deploying, ensure you have:
 | `AIDEOS_LINK_SECRET` | No | Derived / generated | HMAC secret key signing agent link tokens across restarts |
 | `DEEPGRAM_API_KEY` | No | - | Deepgram API key for speech recognition and neural TTS |
 | `AIDEOS_KOKORO` | No | - | Override container memory gate for local Kokoro TTS (1 to force enable, 0 to force disable) |
-| `PARALLEL_API_KEY` | No | - | Parallel Web Search key for factual script research |
 | `PORT` | No | `8080` (Docker) / `3001` (Dev) | Port for the backend server |
 | `NODE_ENV` | No | `production` | Node environment |
 | `WAN_GPU_HOST` | No | - | Remote GPU host for Wan2.1 video diffusion B-roll |

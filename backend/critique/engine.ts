@@ -467,12 +467,9 @@ export function applyFilmPatch(film: Film, ops: FilmPatchOp[]): { film: Film; er
 
 // Maps raw validation error messages into human-readable rule names.
 function extractRuleNameFromError(msg: string): string {
-  if (msg.includes("Rule M1") || msg.includes("METAPHOR_MISSING_CONTENT")) return "Rule M1 (Metaphor Payload Integrity)";
-  if (msg.includes("Rule M2") || msg.includes("METAPHOR_EMPTY_LABEL")) return "Rule M2 (Non-Empty Metaphor Labels)";
   if (msg.includes("Rule M4") || msg.includes("TEMPLATE_VISUAL_DIRECTION")) return "Rule M4 (Template Direction Disallowed)";
   if (msg.includes("Rule M5") || msg.includes("METAPHOR_OVERUSE_VIOLATION")) return "Rule M5 (Metaphor 40% Overuse Quota)";
   if (msg.includes("Rule M6") || msg.includes("CONSECUTIVE_METAPHOR_VIOLATION")) return "Rule M6 (No Consecutive Duplicate Metaphors)";
-  if (msg.includes("MOTION_CONTINUITY_VIOLATION")) return "Kinematic C1 Continuity Rule (Velocity Discontinuity > 5°/s)";
   if (msg.includes("Duration sum invariant")) return "Duration Sum Audio Invariant (±50ms)";
   return "Schema Invariant";
 }

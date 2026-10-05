@@ -236,43 +236,6 @@ export async function measureAudioDuration(filePath: string): Promise<number> {
   }
 }
 
-/**
- * Concatenate encoded audio files with fixed silence gaps through ffmpeg.
- *
- * Kept for callers that already hold encoded files. Every input is forced through aresample and
- * aformat first: ffmpeg's concat filter requires identical rate, layout and sample format on
- * every input, and feeding it mixed inputs is what used to yield silent channel drops or a hard
- * "Input link parameters differ" failure mid-run. The narration pipeline itself no longer uses
- * this path - it concatenates in the sample domain, where the result is exact by construction.
- */
-export async function concatAudioSegments(
-  audioFiles: string[],
-  silenceWavPath: string,
-  outWavPath: string,
-): Promise<number> {
-  if (audioFiles.length === 0) {
-    throw new Error("No audio files provided to concatenate.");
-  }
-
-  if (audioFiles.length === 1) {
-    execSync(`ffmpeg -y -i "${audioFiles[0]}" -ar 44100 -ac 2 "${outWavPath}"`);
-    return await measureAudioDuration(outWavPath);
-  }
-
-  const inputs = audioFiles.flatMap((f, i) => (i === 0 ? [f] : [silenceWavPath, f]));
-  const inputsStr = inputs.map((f) => `-i "${f}"`).join(" ");
-  const normalize = inputs
-    .map((_, i) => `[${i}:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo[n${i}]`)
-    .join(";");
-  const filterStr = `${normalize};${inputs.map((_, i) => `[n${i}]`).join("")}concat=n=${inputs.length}:v=0:a=1[outa]`;
-
-  execSync(
-    `ffmpeg -y ${inputsStr} -filter_complex "${filterStr}" -map "[outa]" -ar 44100 -ac 2 "${outWavPath}"`,
-  );
-
-  return await measureAudioDuration(outWavPath);
-}
-
 /** Synthesize every segment's chunks through the backend, reporting progress as it goes. */
 async function synthesizeSegments(
   segmentTexts: string[],
@@ -519,7 +482,6 @@ export function buildFilmFromAudioResult(
       move: isChapterStart ? ("cut" as const) : ("pan" as const),
       scriptText: seg.text,
       visualDirection: brief.visualDirection,
-      metaphor: brief.metaphor,
       blocks: brief.blocks,
     };
   });
@@ -538,18 +500,6 @@ export function buildFilmFromAudioResult(
   };
 
   return parseFilm(filmRaw);
-}
-
-/** Generate audio for film using the narration pipeline and rebuild the film around it. */
-export async function processAudioForFilm(film: Film, outDir: string): Promise<Film> {
-  const validShots = film.shots.map((s) => (s.scriptText || "").trim()).filter((t) => t.length > 0);
-
-  if (validShots.length === 0) {
-    return film;
-  }
-
-  const audioResult = await produceAudioPipeline(validShots, outDir);
-  return buildFilmFromAudioResult(film.title, audioResult);
 }
 
 /** Result of pitch-corrected WSOLA time-stretching for an audio track. */

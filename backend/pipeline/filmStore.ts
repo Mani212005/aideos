@@ -14,7 +14,7 @@
 import fs from "fs";
 import path from "path";
 import type { Block, Film } from "../../src/dl/schema";
-import { parseFilm } from "../../src/dl/schema";
+import { dropLegacyFilmBlocks, parseFilm } from "../../src/dl/schema";
 import { traceBus } from "../agentBridge/traceBus";
 import { getVideosDir, resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { ROOT, FILMS_DIR, FILM_ID, filmModule, ensureGenerated, setActiveFilm } from "./generatedFiles";
@@ -23,7 +23,6 @@ export { ROOT, FILMS_DIR, FILM_ID, ensureGenerated, setActiveFilm };
 
 /** Where new packages are written: AIDEOS_VIDEOS_DIR, else <root>/videos (gitignored). */
 export const VIDEOS_DIR = getVideosDir();
-export const PUBLIC_DIR = path.join(ROOT, "public");
 
 /** Turns arbitrary text into a film id: lowercase letters, digits and dashes only. */
 export function slugify(text: string): string {
@@ -48,7 +47,7 @@ export function readFilm(slug: string): Film | null {
   const pkgFilmPath = path.join(resolvePackageDir(slug), "film.json");
   if (fs.existsSync(pkgFilmPath)) {
     try {
-      return JSON.parse(fs.readFileSync(pkgFilmPath, "utf8")) as Film;
+      return dropLegacyFilmBlocks(JSON.parse(fs.readFileSync(pkgFilmPath, "utf8")) as Film);
     } catch {
       // Fall through to the generated module.
     }
@@ -56,7 +55,7 @@ export function readFilm(slug: string): Film | null {
   const filmPath = path.join(FILMS_DIR, `${slug}.ts`);
   if (fs.existsSync(filmPath)) {
     const jsonMatch = fs.readFileSync(filmPath, "utf8").match(/=\s*(\{[\s\S]*\})\s*;/);
-    if (jsonMatch) return JSON.parse(jsonMatch[1]) as Film;
+    if (jsonMatch) return dropLegacyFilmBlocks(JSON.parse(jsonMatch[1]) as Film);
   }
   return null;
 }

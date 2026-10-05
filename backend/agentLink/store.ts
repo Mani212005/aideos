@@ -162,7 +162,7 @@ function pairCode(): string {
  */
 export function resolveLinkSecret(file: string, env: NodeJS.ProcessEnv = process.env): string {
   if (env.AIDEOS_LINK_SECRET && env.AIDEOS_LINK_SECRET.length >= 16) return env.AIDEOS_LINK_SECRET;
-  for (const name of ["GEMINI_API_KEY", "GOOGLE_API_KEY", "DEEPGRAM_API_KEY", "PARALLEL_API_KEY"]) {
+  for (const name of ["GEMINI_API_KEY", "GOOGLE_API_KEY", "DEEPGRAM_API_KEY"]) {
     const value = env[name];
     if (value && value.length >= 8) return crypto.createHmac("sha256", value).update("aideos-agent-link-signing-key-v1").digest("base64url");
   }

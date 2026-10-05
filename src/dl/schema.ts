@@ -43,22 +43,6 @@ export const edgeSchema = z.object({
   label: z.string().optional(),
 });
 
-export const poseTransformSchema = z.object({
-  rotate: z.number().min(-360).max(360).optional(),
-  x: z.number().optional(),
-  y: z.number().optional(),
-  scaleX: z.number().min(0.1).max(5).optional(),
-  scaleY: z.number().min(0.1).max(5).optional(),
-});
-
-export const poseKeyframeSchema = z.object({
-  t: z.number().min(0).max(1),
-  groups: z.record(z.string(), poseTransformSchema),
-});
-
-export type PoseTransform = z.infer<typeof poseTransformSchema>;
-export type PoseKeyframe = z.infer<typeof poseKeyframeSchema>;
-
 /**
  * The block library. A closed union, so a generator cannot name a component
  * that does not exist and silently produce an empty frame.
@@ -67,76 +51,7 @@ export type PoseKeyframe = z.infer<typeof poseKeyframeSchema>;
  * no colour. A block that could specify its own colour would be a block that
  * could break §01.
  */
-export const metaphorContentSchema = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("balance-scale"),
-    leftLabel: z.string().min(1).default("Left Parameter"),
-    rightLabel: z.string().min(1).default("Right Parameter"),
-    caption: z.string().min(1).default("Equilibrium Balance"),
-    tilt: z.number().optional(),
-  }),
-  z.object({
-    kind: z.literal("liquid-bucket"),
-    levelLabel: z.string().min(1).default("Level"),
-    caption: z.string().min(1).default("Dynamic Capacity"),
-    fillRatio: z.number().min(0).max(1).default(0.75),
-  }),
-  z.object({
-    kind: z.literal("clock-gears"),
-    gearLabels: z.array(z.string()).default([]),
-    caption: z.string().min(1).default("Cadence & Synchronization"),
-  }),
-  z.object({
-    kind: z.literal("spider-web"),
-    caption: z.string().min(1).default("Procedural Radial Network"),
-  }),
-  z.object({
-    kind: z.literal("character-throw"),
-    caption: z.string().min(1).default("Script Read & Cache"),
-  }),
-  z.object({
-    kind: z.literal("typing-cursor-quote"),
-    quoteText: z.string().default("Architecture Quote / Key Statement"),
-    stampText: z.string().default("VERIFIED / APPROVED"),
-  }),
-  z.object({
-    kind: z.literal("glowing-cluster"),
-    title: z.string().default("Abstract Latent Representation"),
-    subtitle: z.string().default("Deterministic Multi-Dimensional Embedding"),
-  }),
-  z.object({
-    kind: z.literal("rocket-launch"),
-    caption: z.string().default("Scale & Deployment Trajectory"),
-  }),
-  z.object({
-    kind: z.literal("custom"),
-    caption: z.string().default("Custom Visual"),
-  }),
-]);
-
-export type MetaphorContent = z.infer<typeof metaphorContentSchema>;
-
 export const blockSchema = z.discriminatedUnion("c", [
-  z.object({
-    c: z.literal("MetaphorViewer"),
-    metaphorType: z.enum([
-      "typing-cursor-quote",
-      "spider-web",
-      "liquid-bucket",
-      "balance-scale",
-      "clock-gears",
-      "rocket-launch",
-      "character-throw",
-      "glowing-cluster",
-      "custom",
-    ]).optional(),
-    content: metaphorContentSchema.optional(),
-  }),
-  z.object({
-    c: z.literal("CharacterBeat"),
-    characterId: z.string().min(1).default("astronaut"),
-    poses: z.array(poseKeyframeSchema).default([]),
-  }),
   z.object({
     c: z.literal("Kicker"),
     text: z.string().min(1).max(48),
@@ -280,6 +195,35 @@ export const blockSchema = z.discriminatedUnion("c", [
 
 export type Block = z.infer<typeof blockSchema>;
 
+/**
+ * Retired block kinds an older film can still carry. Both drew nothing (CharacterBeat no element,
+ * MetaphorViewer an empty panel), so a film that names them still opens: parsing drops them.
+ */
+export const LEGACY_BLOCK_KINDS = ["MetaphorViewer", "CharacterBeat"] as const;
+
+// Removes retired block kinds from a raw shot (or a timeline animation payload, same fields) before it
+// is validated. A shot that held nothing else shows the bare canvas (stage "none"), not an empty panel.
+export function dropLegacyBlocks(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const shot = raw as { blocks?: unknown };
+  if (!Array.isArray(shot.blocks)) return raw;
+  const blocks = shot.blocks.filter((block) => {
+    const kind = block && typeof block === "object" ? (block as { c?: unknown }).c : undefined;
+    return !(LEGACY_BLOCK_KINDS as readonly unknown[]).includes(kind);
+  });
+  if (blocks.length === shot.blocks.length) return raw;
+  return { ...shot, blocks, ...(blocks.length === 0 ? { stage: "none" } : {}) };
+}
+
+// Applies dropLegacyBlocks to every shot of a raw film, for the paths that serve film.json unparsed.
+export function dropLegacyFilmBlocks<T>(raw: T): T {
+  if (!raw || typeof raw !== "object") return raw;
+  const film = raw as { shots?: unknown };
+  if (!Array.isArray(film.shots)) return raw;
+  const shots = film.shots.map(dropLegacyBlocks);
+  return shots.every((shot, i) => shot === (film.shots as unknown[])[i]) ? raw : ({ ...film, shots } as T);
+}
+
 /** Blocks that can hold the frame on their own. §07's device library. */
 export const DEVICE_BLOCKS = [
   "MatrixGrid",
@@ -291,8 +235,6 @@ export const DEVICE_BLOCKS = [
   "ScaleBar",
   "AnalogyInset",
   "Plot",
-  "CharacterBeat",
-  "MetaphorViewer",
 ] as const;
 
 const isDevice = (b: Block) =>
@@ -440,7 +382,7 @@ export const themeSchema = z.object({
   accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
 });
 
-export const shotSchema = z.object({
+export const shotSchema = z.preprocess(dropLegacyBlocks, z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   ch: z.string().min(1).max(30).optional(),
   /** Timeline position where the clip sits (seconds). Stored data! */
@@ -483,7 +425,7 @@ export const shotSchema = z.object({
   /** Narration / speech playback speed multiplier (e.g. 1.0x, 1.25x, 1.5x) */
   speed: z.number().min(0.25).max(4).default(1).optional(),
   blocks: z.array(blockSchema).max(12).default([]),
-});
+}));
 
 export type CanvasNode = z.infer<typeof nodeSchema>;
 export type CanvasEdge = z.infer<typeof edgeSchema>;

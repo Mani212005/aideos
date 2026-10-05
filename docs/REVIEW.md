@@ -1,13 +1,13 @@
 <!--
-File Description: Documentation and usage reference for aideos deterministic video checks, Gemini 3.8 Flash video reviews, and the iterative review loop.
+File Description: Documentation and usage reference for aideos deterministic video checks, Gemini 3.8 Flash video reviews, and the all-check review and repair loop.
 -->
 
-# aideos review: deterministic checks and Gemini 3.8 Flash review loop
+# aideos review: deterministic checks and Gemini 3.8 Flash review
 
-Video quality verification in Aideos operates on two connected layers, and `aideos all-check` (section 4) runs
+Video quality verification in Aideos operates on two connected layers, and `aideos all-check` (section 3) runs
 both, on the long cut and the reel, with an agent that fixes the film between rounds:
 1. **Deterministic Checks (`aideos review`)**: Precise numerical measurements (OCR caption band coverage, layout correlation, audio loudness, camera motion frequency).
-2. **Gemini 3.8 Flash Native Review (`aideos gemini-review` & `aideos review-loop`)**: Full multimodal video and audio evaluation against the 12-criterion rubric, requiring a score of 9.0+ out of 10.0 with all 6 hard gates passing for acceptance.
+2. **Gemini 3.8 Flash Native Review (`aideos gemini-review`)**: Full multimodal video and audio evaluation against the 12-criterion rubric, requiring a score of 9.0+ out of 10.0 with all 6 hard gates passing for acceptance.
 
 ---
 
@@ -111,33 +111,11 @@ To eliminate model position bias and multimodal cross-alignment hallucinations w
 
 ---
 
-## 3. Iterative Review Loop (`aideos review-loop`)
-
-`aideos review-loop <slug>` automates the render -> review -> refine iteration loop until Gemini rates the video 9.0 or higher.
-
-```bash
-aideos review-loop hnsw-explainer
-aideos review-loop hnsw-explainer --target-score 9.2 --max-rounds 8
-aideos review-loop hnsw-explainer --reference benchmarks/reference-a.mp4
-```
-
-### Review Loop Workflow
-1. **Render**: Renders the latest film manifest (`npm run render` or `npm run render:reel`).
-2. **Review**: Executes Gemini 3.8 Flash review and logs the evaluation.
-3. **Persist**: Stores round outcomes under `videos/<slug>/gemini-review/round-N.json` and updates `videos/<slug>/gemini-review/latest.json`.
-4. **Evaluate Acceptance**:
-   - If overall score >= 9.0 (default target) and all gates pass (and pairwise reference check passes if `--reference` is set): the loop terminates with success (exit code 0).
-   - If verdict is `REVISE` and remaining rounds exist: the feedback and timestamp citations guide agent or human iteration on the film before the next render and review round.
-   - If max rounds exceeded without passing: exits with code 1.
-
----
-
-## 4. The whole check in a background agent (`aideos all-check`)
+## 3. The whole check in a background agent (`aideos all-check`)
 
 `aideos all-check <slug>` is the single command (and the `all-check` skill, see below) that takes a film to
 "good" on **both formats**: it composes render, `aideos review`, `aideos gemini-review`, the pairwise
-cross-review and the fix-and-repeat loop, which `review-loop` alone does not do (it re-renders and re-reviews
-without changing anything between rounds).
+cross-review and the fix-and-repeat loop.
 
 ```bash
 aideos all-check hnsw                                     # defaults: 6 rounds, 9.0 target
@@ -205,11 +183,11 @@ lists anything new outside the package as a rule violation (in the round output,
 and Antigravity (agy reads `.agents/skills/` of the project it is started in; confirmed with a real run). Asking
 "run all-check on hnsw" starts the command above, waits for the result file and reports the scores and the final
 video paths. The skill also lists the single commands (`aideos render`, `reel`, `review`, `gemini-review`,
-`review-loop`, `exit`) for one-off use.
+`exit`) for one-off use.
 
 ---
 
-## 5. The 12-Criterion Rubric
+## 4. The 12-Criterion Rubric
 
 | # | Criterion | Hard Gate? | Description |
 |---|---|---|---|
@@ -226,7 +204,7 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 11 | accuracy_honesty | No | Every number, chart, and label is grounded in the narration; zero fabricated numbers or misleading visuals. |
 | 12 | loudness_mix | No | Audio loudness normalized to -14 to -18 LUFS integrated, true peak <= -1 dBFS, background music ducked cleanly. |
 
-## 6. Video model policy (`aideos.config.json`)
+## 5. Video model policy (`aideos.config.json`)
 
 The committed `aideos.config.json` at the repo root is the one place the video models are written down
 (loader: `backend/aideosConfig.ts`):
@@ -234,7 +212,7 @@ The committed `aideos.config.json` at the repo root is the one place the video m
 | Role | Agent | Model | Read by |
 |---|---|---|---|
 | Generation and fixing | `claude` | `claude-sonnet-5-5` | `aideos all-check` (the background agent's launch command) |
-| Reviewer | `agy` | `gemini-3.8-flash-high` | `aideos gemini-review`, `review-loop`, `--pairwise` (an explicit `--model`, then `AIDEOS_GEMINI_REVIEW_MODEL` / `GEMINI_MODEL`, still win) |
+| Reviewer | `agy` | `gemini-3.8-flash-high` | `aideos gemini-review`, `aideos all-check`, `--pairwise` (an explicit `--model`, then `AIDEOS_GEMINI_REVIEW_MODEL` / `GEMINI_MODEL`, still win) |
 
 Gemini 3.1 Pro is not part of this: `forbiddenGenerationModels` lists `gemini-3.1-pro`, and `all-check` refuses it
 (exit 2, with the message naming the override) unless the run passes `--allow-forbidden-model`. Per-run overrides:

@@ -208,7 +208,7 @@ test("Finding 4: resolveLayerCollisions cascades downstream clips without overla
   assert.ok(rc3.position >= rc2.position + (rc2.end - rc2.start));
 });
 
-// Finding 5: Splitting a shot with a metaphor does not duplicate MetaphorViewer and passes validation.
+// Finding 5: Splitting a shot with a metaphor keeps the metaphor cue on the left half only and passes validation.
 test("Finding 5: splitShotAtTime keeps metaphor on left half and passes Rule M6", () => {
   const film = createTestFilm([
     {
@@ -221,18 +221,7 @@ test("Finding 5: splitShotAtTime keeps metaphor on left half and passes Rule M6"
       look: "n1",
       move: "cut",
       metaphor: "liquid-bucket",
-      blocks: [
-        {
-          c: "MetaphorViewer",
-          metaphorType: "liquid-bucket",
-          content: {
-            kind: "liquid-bucket",
-            levelLabel: "Level",
-            caption: "Dynamic Capacity",
-            fillRatio: 0.75,
-          },
-        },
-      ],
+      blocks: [{ c: "TextReveal", text: "Dynamic capacity", size: "headline" }],
     },
     { id: "s2", ch: "ch1", position: 6, startSec: 6, dur: 4, stage: "frame", look: "n2", move: "pan", blocks: [] },
   ]);
@@ -242,10 +231,10 @@ test("Finding 5: splitShotAtTime keeps metaphor on left half and passes Rule M6"
   const left = result.film.shots[0];
   const right = result.film.shots[1];
 
-  // Left has metaphor; right does not have duplicate MetaphorViewer or metaphor kind
+  // Left keeps the metaphor cue; right does not repeat it, but both halves keep the headline
   assert.equal(left.metaphor, "liquid-bucket");
   assert.equal(right.metaphor, undefined);
-  assert.equal(right.blocks.some((b) => b.c === "MetaphorViewer"), false);
+  assert.deepEqual(right.blocks, left.blocks);
   assert.doesNotThrow(() => validateFilmAudioAndAssets(result.film));
 });
 

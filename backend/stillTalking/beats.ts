@@ -202,11 +202,6 @@ export const BEATS: Beat[] = [
   },
 ];
 
-/** The spoken narration only, one string per shot, in the order the pipeline synthesizes it. */
-export function narrationSegments(): string[] {
-  return BEATS.map((beat) => beat.narration);
-}
-
 /** Total spoken word count, used to keep the film honest about its own length. */
 export function spokenWordCount(): number {
   return BEATS.reduce((sum, beat) => sum + beat.narration.split(/\s+/).filter(Boolean).length, 0);

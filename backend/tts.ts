@@ -27,11 +27,6 @@ export interface TtsBackend {
 /** Names the pipeline understands for AIDEOS_TTS. */
 export type TtsBackendName = "kokoro" | "google" | "say" | "tone";
 
-/** True when Google Cloud TTS credentials are present in the environment. */
-export function isGoogleTtsConfigured(): boolean {
-  return Boolean(process.env.GOOGLE_API_KEY || process.env.GOOGLE_APPLICATION_CREDENTIALS);
-}
-
 /**
  * Decodes any audio file ffmpeg understands into mono Float32 PCM at PCM_SAMPLE_RATE.
  * Centralizing the conversion is what guarantees every backend's output is layout-identical.

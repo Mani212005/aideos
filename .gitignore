@@ -57,13 +57,8 @@ public/*.mov
 *.mov
 
 # Transitions directory
-transitions/
 public/transitions/
 public/footage/
-
-# GPU-rendered b-roll clips from staged assemble runs: large binaries, kept out
-# of the repository like all media (see the note above).
-production/*/footage/
 
 # Runtime and local conversation state
 data/
@@ -77,9 +72,9 @@ scripts/*.mjs
 # The agent connector is served to users at /api/agent-link/connect.mjs, so it must ship.
 !scripts/aideos-connect.mjs
 
-# Local Agent Director session and dispatch state backend/agentPrompter.ts writes to the
-# repo root: which coding agent/tmux pane is connected, and the log of prompts dispatched
-# to it. Regenerated per machine; never something to commit.
+# Local Agent Director session and dispatch state backend/agentBridge/dispatcher.ts and
+# bin/aideos write to the repo root: which coding agent/tmux pane is connected, and the log
+# of prompts dispatched to it. Regenerated per machine; never something to commit.
 /.aideos_session.json
 /.aideos_task.md
 /state/agent_events.jsonl
@@ -100,4 +95,3 @@ examples/*/footage/
 # Gemini video review reports and round state
 videos/*/gemini-review/
 videos/*/review.json
-videos/*/review-loop.json

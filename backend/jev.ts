@@ -24,12 +24,6 @@ export const ANIMATED_PRIMITIVES = [
 
 export type AnimatedPrimitive = (typeof ANIMATED_PRIMITIVES)[number];
 
-/** Safe generic primitives that can be rendered without specialized numeric or syntax structures. */
-export const SAFE_GENERIC_PRIMITIVES: readonly AnimatedPrimitive[] = [
-  "TextReveal",
-  "Card",
-] as const;
-
 /** Complex primitives requiring higher confidence because they demand specialized data shapes. */
 export const COMPLEX_PRIMITIVES: readonly AnimatedPrimitive[] = [
   "StatCounter",

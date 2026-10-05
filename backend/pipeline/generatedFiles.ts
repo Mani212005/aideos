@@ -10,7 +10,7 @@
 
 import fs from "fs";
 import path from "path";
-import type { Film } from "../../src/dl/schema";
+import { dropLegacyFilmBlocks, type Film } from "../../src/dl/schema";
 import { getVideosDir, listVideoPackages, resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { buildSvgSources } from "../scene/buildSvgSources";
 
@@ -70,7 +70,8 @@ export function ensureGenerated(): { shadows: number; svgAssets: number; activeF
     if (!fs.existsSync(file)) continue;
     let film: Film;
     try {
-      film = JSON.parse(fs.readFileSync(file, "utf8")) as Film;
+      // The shadow is typed as Film, so block kinds the schema retired are dropped as parsing drops them.
+      film = dropLegacyFilmBlocks(JSON.parse(fs.readFileSync(file, "utf8")) as Film);
     } catch {
       continue;
     }

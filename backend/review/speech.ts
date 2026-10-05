@@ -71,11 +71,6 @@ export function pauses(words: ReviewWord[], minSec: number): Gap[] {
   return out;
 }
 
-// True when a moment is within `padSec` of a spoken word (so it counts as narrated time).
-export function narratedAt(words: ReviewWord[], t: number, padSec = 1): boolean {
-  return words.some((w) => t >= w.start - padSec && t <= w.end + padSec);
-}
-
 // Lists the times that cut through a spoken word by more than `tolSec` on both sides.
 export function cutsThroughWords(words: ReviewWord[], times: number[], tolSec: number): Array<{ t: number; word: string }> {
   const out: Array<{ t: number; word: string }> = [];

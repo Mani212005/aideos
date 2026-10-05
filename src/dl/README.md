@@ -19,7 +19,7 @@ same film, not two edits of it.
 | §06 Camera/continuity | `camera.ts` + `CanvasGraph.tsx` / `SceneStage.tsx` |
 | §07 Device library    | `devices.tsx`                                   |
 | Custom SVG animation  | `scene/` - see [scene/README.md](scene/README.md)  |
-| §08 Runsheet          | `schema.ts` `superRefine` + `scripts/validate-dl.mjs` |
+| §08 Runsheet          | `schema.ts` `superRefine` + `scripts/validate.mjs` |
 | §09 Schema contract   | `schema.ts`                                      |
 
 ## The three rules that hold it together

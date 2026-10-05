@@ -61,7 +61,6 @@ Everything lands in `videos/<slug>/all-check/`: `brief.md` (what the agent was t
 | `aideos review <slug\|mp4>` | Measured checks only; writes `review.json`, exit 1 on a failed gate |
 | `aideos gemini-review <mp4>` | Gemini 3.8 Flash review (agy), 12-point rubric, 9.0 bar |
 | `aideos gemini-review <mp4> --pairwise <ref.mp4>` | Cross-review of two videos |
-| `aideos review-loop <slug>` | Re-render and re-review up to N rounds, without editing the film |
 | `aideos exit` | Stop the local studio |
 | `aideos all-check status <slug>` | Where a run stands and the rounds so far |
 

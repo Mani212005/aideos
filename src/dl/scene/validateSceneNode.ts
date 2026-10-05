@@ -30,24 +30,6 @@ export function readAssetElementIds(svgSource: string): string[] | null {
   }
 }
 
-/**
- * Collects, for every asset in a scene whose SVG is readable, the element ids it declares.
- * Feed the result to compileScene's assetElementIds option so dangling animation targets fail.
- */
-export function collectSceneAssetElementIds(scene: Scene): Record<string, string[]> {
-  const out: Record<string, string[]> = {};
-  const assets: EnvironmentAsset[] = [];
-  if (scene.background) assets.push(scene.background);
-  if (Array.isArray(scene.props)) assets.push(...scene.props);
-
-  for (const asset of assets) {
-    if (!asset.svgSource) continue;
-    const ids = readAssetElementIds(asset.svgSource);
-    if (ids) out[asset.assetId] = ids;
-  }
-  return out;
-}
-
 /** Validates a scene including every filesystem-backed check the pure validator cannot make. */
 export function validateSceneWithNodeAssets(sceneInput: Scene): ValidationResult {
   const result = pureValidateScene(sceneInput);
