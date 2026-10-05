@@ -11,12 +11,12 @@ File Description: System architecture and design specification for the Aideos We
 
 ## 📌 Executive Overview & Core Philosophy
 
-**Aideos Web Editor** is an enterprise-grade interactive web application designed for authoring, staging, timing, and rendering high-production explainer videos as structured data. Rather than traditional timeline video editors that rely on manual keyframing and opaque video tracks, Aideos treats video as a **single infinite spatial canvas with continuous camera motion, generative SVG animations, and deterministic 3D/2D rendering**.
+**Aideos Web Editor** is an enterprise-grade interactive web application designed for authoring, staging, timing, and rendering high-production explainer videos as structured data. Rather than traditional timeline video editors that rely on manual keyframing and opaque video tracks, Aideos treats video as a **single infinite spatial canvas with continuous camera motion, generative SVG animations, and deterministic 2D rendering**.
 
 The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React 19 single-page application directly to `@remotion/player`, the non-linear layer engine (`backend/timeline/`), and the backend production pipeline.
 
 ### Architectural Directives
-1. **Single Canvas Model**: 2D/3D infinite spatial canvas with continuous camera panning, zoom-in payoffs, and anchor tracking across two responsive aspect ratios (`Long` 1920x1080 and `Reel` 1080x1920).
+1. **Single Canvas Model**: 2D infinite spatial canvas with continuous camera panning, zoom-in payoffs, and anchor tracking across two responsive aspect ratios (`Long` 1920x1080 and `Reel` 1080x1920).
 2. **Audio-First Pipeline**: Audio narration duration locks the video timeline length, with kinetic word-level subtitles powered by `@chenglou/pretext`.
 3. **Dual Design System Separation**:
    - **Rendered Video Design System (`src/dl/README.md`)**: The output video is strictly governed by a per-film declared palette with a measured contrast floor, Geist + JetBrains Mono typography, and `ease-out-expo` motion.
@@ -112,6 +112,6 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 - **Frontend Shell**: React 19, Vite, TailwindCSS, Lucide Icons, `@remotion/player`.
 - **UI Design System**: Neobrutalism tokens (`tokens.css`), custom UI primitives (`src/components/ui/`), bone paper palette.
 - **Timeline Engine**: Pure TypeScript non-linear geometry (`backend/timeline/`), pure drag state machine (`drag_machine.ts`), sticky snapping (`snap.ts`).
-- **3D & Vector Graphics**: Three.js, React Three Fiber (R3F), pure SVG scene engine (`src/dl/scene/`).
+- **Vector Graphics**: Pure SVG scene engine (`src/dl/scene/`).
 - **Typography & Motion**: `@chenglou/pretext`, Remotion `useCurrentFrame()`, `interpolate()`, `spring()`.
 - **Backend & CLI**: Node.js, `tsx`, Express REST API, Remotion CLI.

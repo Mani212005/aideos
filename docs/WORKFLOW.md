@@ -17,7 +17,7 @@ Aideos is engineered around 4 strict architectural invariants:
 3. **Derived Camera Framing**:
    - The virtual camera never uses hardcoded pixel offsets. Viewport centers, zoom factors, and bounding boxes are mathematically derived from continuous 2D node coordinates $(x, y, w, h)$ on the spatial canvas graph.
 4. **Declared Palette with Semantic Theme Tokens**:
-   - Colors map to semantic tokens (`canvas`, `surface`, `ink`, `muted`, `hairline`, `accent`) with a measured contrast floor. Switching themes (e.g. Archival Paper, Blueprint, Charcoal, Warm Editorial) recolors scenes, characters, and cards with measured contrast and harmony.
+   - Colors map to semantic tokens (`canvas`, `surface`, `ink`, `muted`, `hairline`, `accent`) with a measured contrast floor. Switching themes (e.g. Archival Paper, Blueprint, Charcoal, Warm Editorial) recolors scenes and cards with measured contrast and harmony.
 
 ---
 

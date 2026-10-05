@@ -460,7 +460,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `readEditProvenanceLog(videosDir, filmId)` (`provenanceLog.ts`): Reads edit provenance records for a film package, newest first.
 
 ### `src/dl/validateFilm.ts` & `scripts/validate_film.ts`
-* `validateFilmAudioAndAssets(film, options)`: Validates duration sum invariant, analytical bounding box geometry, and non-overlap constraints.
+* `validateFilmAudioAndAssets(film, options)`: Validates duration sum invariant and time-sampled anchor card geometry.
 * `scripts/validate_film.ts`: Standalone CLI validator (`npm run validate:film <path/to/film.json>`) validating arbitrary `film.json` files against cinematic schema and pacing constraints and printing a runsheet.
 
 ---
