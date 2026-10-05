@@ -21,8 +21,7 @@ import { norm } from "./text";
 
 dotenv.config();
 
-/** Repo root, resolved from this file so it holds whichever directory the caller was launched from. */
-const REPO_ROOT = path.resolve(__dirname, "../..");
+
 
 /** The measurement a film builder reads back: what was said, and exactly when. */
 export interface VoiceoverTiming extends NarrationTiming {
@@ -54,7 +53,7 @@ export interface VoiceoverConfig {
   alignment?: "synthesizer" | "whisper";
   /** File the spine is written to inside the package. */
   spineFile?: string;
-  /** Copy the mastered wav (and the pipeline's captions) to public/ for the live preview. */
+  /** Preview sync flag (legacy option retained for caller compatibility). */
   syncToPreview?: boolean;
   /** Override the package root (tests). */
   rootDir?: string;
@@ -230,11 +229,6 @@ export async function produceVoiceover(config: VoiceoverConfig): Promise<Voiceov
   }
   const mastered = masterForDelivery(result.voiceoverPath, targetLufs, truePeakDb);
   appendTailHandle(result.voiceoverPath, tailMs);
-  // Remotion resolves staticFile() against public/, so the copy there has to be the mastered one.
-  const publicCopy = path.resolve(REPO_ROOT, "public/voiceover.wav");
-  if (syncToPreview && path.resolve(outDir) !== path.dirname(publicCopy) && fs.existsSync(path.dirname(publicCopy))) {
-    fs.copyFileSync(result.voiceoverPath, publicCopy);
-  }
   const tailSec = tailMs / 1000;
   const totalSec = result.totalAudioDuration + tailSec;
 

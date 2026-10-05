@@ -231,7 +231,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 ### `src/dl/audio/retime.ts` (Deterministic Retimed Audio Paths)
 * `sanitizeAudioName(src)`: Converts audio source path into a filesystem-safe identifier.
 * `getRetimedAudioFilename(src, speed)`: Computes deterministic filename for a retimed audio track.
-* `getRetimedAudioRelPath(src, speed)`: Computes relative public path (`.tmp_audio/...`) for a retimed audio track.
+* `getRetimedAudioRelPath(src, speed)`: Computes relative path (`.tmp_audio/...`) for a retimed audio track.
 
 ### `backend/pcm.ts`
 * `trimSilence(samples, threshold)`: Trims leading and trailing silence samples from Float32Array audio.
@@ -341,7 +341,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `createIsolatedVideoWorkspace(videos)` (`backend/geminiReview/geminiReview.ts`): Creates an isolated temporary directory containing hardlinks or copies of video files under neutral names (`video.mp4`, `video_1.mp4`, `video_2.mp4`) with automatic cleanup to prevent model agents from inspecting repository source files.
 * `defaultAgyRunner(prompt, options)` (`backend/geminiReview/geminiReview.ts`): Non-interactive agy CLI runner executing in print mode (`-p`) with `--sandbox`, structured JSON schema output, and strict error handling.
 * `formatReviewSummary(report)` (`backend/geminiReview/geminiReview.ts`): Formats a review report as the plain-text breakdown `aideos gemini-review` prints and `aideos all-check` saves.
-* `renderVideoForSlug(slug, format)` (`backend/geminiReview/render.ts`): Renders a film package to `out/<slug>-<format>.mp4` through the Remotion CLI for `aideos all-check`.
+* `renderVideoForSlug(slug, format)` (`backend/geminiReview/render.ts`): Renders a film package to `videos/<slug>/renders/<format>.mp4` through the Remotion CLI for `aideos all-check`.
 * `extractDeterministicFacts(videoPath, options)` (`backend/geminiReview/facts.ts`): Extracts OCR captions coverage, audio loudness LUFS, duration, framerate, and camera tracks for ground-truth review prompt context.
 * `RUBRIC_CRITERIA`, `RUBRIC_SYSTEM_PROMPT`, `SINGLE_REVIEW_JSON_SCHEMA`, `PAIRWISE_WATCH_JSON_SCHEMA`, `PAIRWISE_EXCHANGE_JSON_SCHEMA` (`backend/geminiReview/rubric.ts`): The 12-criterion rubric definitions, structured JSON schemas, and review prompts enforcing the 6 hard gates.
 

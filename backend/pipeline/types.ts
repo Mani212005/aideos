@@ -35,7 +35,7 @@ export interface ProductionRequest {
   slug?: string;
   /** Which formats to render. Defaults to both. */
   formats?: ProductionFormat[];
-  /** Where the finished mp4s land. Defaults to the repo's out/ directory. */
+  /** Where the finished mp4s land. Defaults to the video package's renders/ directory (videos/<slug>/renders/). */
   outDir?: string;
   /** Generate B-roll footage on the GPU and wire it into the film. */
   broll?: boolean;
@@ -62,9 +62,8 @@ export interface ProductionRequest {
   /** Skip the final frame-and-audio inspection pass. */
   skipVerify?: boolean;
   /**
-   * Copy the synthesized voiceover and captions into public/ for the editor's live preview.
-   * Defaults to true. Set false for a throwaway or test run so it cannot overwrite whatever
-   * film's audio the editor is actually previewing.
+   * Preview sync flag (legacy option retained for caller compatibility; voiceover and captions
+   * are resolved directly from videos/<slug>/ via the public/videos symlink).
    */
   syncToPreview?: boolean;
   /**

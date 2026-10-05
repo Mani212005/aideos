@@ -77,10 +77,10 @@ npm run backend -- film --script-file videos/my-video/script.md --title "My Vide
 npm run backend -- mcp
 
 # 9. Run deterministic quality review checks on a rendered video
-npm run review -- videos/speculative-decoding/out/speculative-decoding-long.mp4
+npm run review -- videos/speculative-decoding/renders/long.mp4
 
 # 10. Run Gemini 3.8 Flash video quality review (9.0+ bar)
-aideos gemini-review out/speculative-decoding-long.mp4
+aideos gemini-review videos/speculative-decoding/renders/long.mp4
 
 # 11. Full check of the long cut AND the reel in a background agent (own tmux window): render, measured review,
 #     Gemini review, fix, repeat; reports the scores and final videos (also the `all-check` skill)

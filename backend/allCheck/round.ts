@@ -192,7 +192,24 @@ export async function runFormatRound(req: RoundRequest, round: number, config: A
   }
 
   deps.onProgress(`[round ${round} ${format}] rendering ${slug}`);
-  const rendered = req.skipRender ? path.resolve(__dirname, "../../out", `${slug}-${format}.mp4`) : await deps.render(slug, format);
+  let rendered: string;
+  if (req.skipRender) {
+    const candidates = [
+      path.join(pkg, "renders", `${format}.mp4`),
+      path.join(pkg, "renders", `${slug}-${format}.mp4`),
+      path.join(pkg, `${format}.mp4`),
+      path.join(pkg, `${slug}-${format}.mp4`),
+      path.resolve(__dirname, "../../out", `${slug}-${format}.mp4`),
+      path.resolve(__dirname, "../../out", `${format}.mp4`),
+    ];
+    const found = candidates.find((c) => fs.existsSync(c));
+    if (!found) {
+      throw new AllCheckError(`no rendered video for "${slug}": looked in ${path.join(pkg, "renders")} and fallback out/`);
+    }
+    rendered = found;
+  } else {
+    rendered = await deps.render(slug, format);
+  }
   if (!fs.existsSync(rendered)) throw new AllCheckError(`no rendered video at ${rendered}`);
   const videoPath = path.join(dir, `${format}.mp4`);
   fs.copyFileSync(rendered, videoPath);

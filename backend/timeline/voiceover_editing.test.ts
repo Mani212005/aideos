@@ -22,7 +22,8 @@ import { extractAudioPeaks } from "./waveform";
 import { TimelineTransactionManager } from "./updates";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
 import type { LayeredFilm } from "../../src/dl/layeredSchema";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 
 function createMockAudioFilm(): LayeredFilm {
   return {
@@ -211,7 +212,10 @@ test("L4-5: Sync indicator reports drift accurately after duration alteration", 
 
 // L4-6: Real PCM waveform peak extraction
 test("L4-6: Waveform extraction produces normalized amplitude peaks", () => {
-  const sampleAudio = path.resolve(__dirname, "../../public/voiceover.wav");
+  const fixtureAudio = path.resolve(__dirname, "../../test_fixtures/test_audio.wav");
+  const sampleAudio = fs.existsSync(fixtureAudio)
+    ? fixtureAudio
+    : path.resolve(__dirname, "../../public/voiceover.wav");
   const waveData = extractAudioPeaks(sampleAudio, 50);
   assert.equal(waveData.peaks.length, 50);
   for (const p of waveData.peaks) {

@@ -58,8 +58,8 @@ Aideos is engineered around 4 strict architectural invariants:
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  STAGE 5: REMOTION RENDER ENGINE & INTERACTIVE STUDIO                        │
 │  • Web Editor UI (localhost:3001, CLI: aideos) with 80% Scene Inspector      │
-│  • Landscape Long Render (out/long.mp4, 1920x1080 @ 30 FPS)                  │
-│  • Vertical Reel Render (out/reel.mp4, 1080x1920 @ 30 FPS)                   │
+│  • Landscape Long Render (videos/<slug>/renders/long.mp4, 1920x1080 @ 30 FPS) │
+│  • Vertical Reel Render (videos/<slug>/renders/reel.mp4, 1080x1920 @ 30 FPS)  │
 │  • Kinetic Subtitle Karaoke + Dynamic Audio Music Ducking                    │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -133,15 +133,15 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos` | Launches and opens interactive web studio | `http://localhost:3001/` |
 | `aideos exit` | Gracefully stops the local dev server | Terminal output |
 | `aideos validate` | Runs strict schema & pacing validation | Runsheet & status in terminal |
-| `aideos render` | Renders long-form landscape video | `out/long.mp4` (1920x1080) |
-| `aideos reel` | Renders vertical reel video | `out/reel.mp4` (1080x1920) |
+| `aideos render` | Renders long-form landscape video | `videos/<slug>/renders/long.mp4` (1920x1080) |
+| `aideos reel` | Renders vertical reel video | `videos/<slug>/renders/reel.mp4` (1080x1920) |
 | `aideos studio` | Opens native Remotion Studio UI | Remotion Studio browser tab |
 | `aideos test` | Executes full automated verification suite | Test TAP results |
 | `aideos produce` | Runs audio-first produce pipeline | `voiceover.wav`, `captions.vtt`, `film.ts` |
-| `aideos direct "<prompt>"` | Auto-prompt: LLM director plans and produces a complete film from a prompt | `out/<slug>-long.mp4`, `out/<slug>-reel.mp4` |
+| `aideos direct "<prompt>"` | Auto-prompt: LLM director plans and produces a complete film from a prompt | `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` |
 | `aideos review <slug\|mp4>` | Runs deterministic quality review checks | `<out>/review.json`, evidence stills |
 | `aideos gemini-review <mp4>` | Evaluates video against 12-criterion rubric via Gemini 3.8 Flash (agy) | Terminal score & verdict, JSON |
 | `aideos all-check <slug>` | Full check and repair in background agent (long and reel, 9.0+ bar) | `videos/<slug>/all-check/`, final MP4s |
-| `npm run backend -- film` | Autonomous pipeline (intake, narrate, design, b-roll, assemble, render, verify) | `out/<slug>-long.mp4`, `out/<slug>-reel.mp4` |
+| `npm run backend -- film` | Autonomous pipeline (intake, narrate, design, b-roll, assemble, render, verify) | `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` |
 | `npm run validate:film <path>` | Standalone invariant validator for arbitrary film manifests | Runsheet & status in terminal |
 | `npm run backend -- mcp` | Starts Model Context Protocol (MCP) server over stdio | MCP stdio interface |

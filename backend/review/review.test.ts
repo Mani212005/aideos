@@ -14,12 +14,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { evaluateCriteria, type ReviewInputs } from "./criteria";
 import { parseEbur128, parseSilences } from "./media";
 import { analyzeSample, parseTsv, type OcrWord } from "./ocr";
 import { correlation, frameFeatures, hardCuts, layoutPersistence, percentile, stageClears, staticRuns } from "./pixels";
-import { reviewVideo } from "./review";
+import { findSlugVideo, reviewVideo } from "./review";
 import { readFilmFacts } from "./source";
 import { captionMatch, chanceNearWordStarts, cutsThroughWords, loadNarration, pauses, shareNearWordStarts, spokenNumbers, wordsPerMinute, type Narration } from "./speech";
 import type { RenderFacts } from "./renderFacts";
@@ -437,6 +438,32 @@ test("review: the CLI exits 0 when the gates pass, 1 when one fails, 2 when it c
 
 test("review: a slug that has no film or no rendered video explains what is missing", async () => {
   await assert.rejects(() => reviewVideo({ target: "definitely-not-a-film", noWrite: true }), /neither an mp4 nor a film/);
+});
+
+test("review: findSlugVideo checks package renders/ first and falls back to out/", () => {
+  const testSlug = `review-slug-test-${Date.now()}`;
+  const pkgDir = path.join(getVideosDir(), testSlug);
+  const rendersDir = path.join(pkgDir, "renders");
+  const repoOut = path.join(__dirname, "../../out");
+  const fallbackOut = path.join(repoOut, `${testSlug}-long.mp4`);
+  const packageRender = path.join(rendersDir, "long.mp4");
+
+  fs.mkdirSync(pkgDir, { recursive: true });
+  fs.mkdirSync(repoOut, { recursive: true });
+
+  try {
+    assert.equal(findSlugVideo(testSlug), null);
+
+    fs.writeFileSync(fallbackOut, "dummy video");
+    assert.equal(findSlugVideo(testSlug), fallbackOut);
+
+    fs.mkdirSync(rendersDir, { recursive: true });
+    fs.writeFileSync(packageRender, "dummy package video");
+    assert.equal(findSlugVideo(testSlug), packageRender);
+  } finally {
+    if (fs.existsSync(fallbackOut)) fs.rmSync(fallbackOut, { force: true });
+    if (fs.existsSync(pkgDir)) fs.rmSync(pkgDir, { recursive: true, force: true });
+  }
 });
 
 test("review: burned-in captions at the bottom are read by OCR end to end", { skip: !(HAVE_FFMPEG && HAVE_TESSERACT && FONT) }, async () => {

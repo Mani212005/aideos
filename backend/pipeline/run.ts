@@ -164,8 +164,8 @@ export async function runProduction(
   const title = request.title?.trim() || "Untitled Aideos Film";
   const slug = request.slug?.trim() || slugify(title);
   const formats: ProductionFormat[] = request.formats?.length ? request.formats : ["long", "reel"];
-  const outDir = path.resolve(ROOT, request.outDir ?? "out");
   const pkgDir = packageDir(slug);
+  const outDir = request.outDir ? path.resolve(ROOT, request.outDir) : path.join(pkgDir, "renders");
   const resume = request.resume ?? true;
   const forced = new Set(request.force ?? []);
 
@@ -534,7 +534,7 @@ export async function runProduction(
           if (!FORMAT_SPECS[format]) {
             throw new Error(`Invalid format "${format}". Supported formats are: ${Object.keys(FORMAT_SPECS).join(", ")}`);
           }
-          const outPath = path.join(outDir, `${slug}-${format}.mp4`);
+          const outPath = request.outDir ? path.join(outDir, `${slug}-${format}.mp4`) : path.join(outDir, `${format}.mp4`);
           emit("render", "running", `rendering ${format} (${FORMAT_SPECS[format].width}x${FORMAT_SPECS[format].height})`);
           const output = await renderFormat(format, outPath, {
             onLog: (message, progress) => emit("render", "running", message, progress),
@@ -558,7 +558,7 @@ export async function runProduction(
           emit("verify", "running", "skipped at the caller's request");
           return true;
         }
-        const reviewDir = path.join(ROOT, "out", "review", slug);
+        const reviewDir = path.join(pkgDir, "review");
         await fsp.mkdir(reviewDir, { recursive: true });
 
         for (const output of outputs) {

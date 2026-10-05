@@ -85,9 +85,8 @@ export interface ProduceAudioOptions {
   /** Called once per synthesized chunk so long runs can report progress. */
   onProgress?: (done: number, total: number, label: string) => void;
   /**
-   * Also copy the voiceover and captions into public/ so the editor's live preview picks them up.
-   * Defaults to true. Tests that drive this pipeline against a throwaway probe package must pass
-   * false, or every test run overwrites whatever film's audio is actually live in public/.
+   * Preview sync flag (legacy option retained for caller compatibility; voiceover and captions
+   * are resolved directly from videos/<slug>/ via the public/videos symlink).
    */
   syncToPreview?: boolean;
 }
@@ -332,14 +331,6 @@ export async function produceAudioPipeline(
   const voiceoverPath = path.join(outDir, "voiceover.wav");
   await fs.writeFile(voiceoverPath, encodeWav(normalized, assembled.sampleRate));
 
-  // Remotion resolves staticFile() against public/, so the render always needs a copy there.
-  const publicDir = path.resolve(__dirname, "../public");
-  const syncToPreview = options?.syncToPreview ?? true;
-  if (syncToPreview && path.resolve(outDir) !== publicDir) {
-    await fs.mkdir(publicDir, { recursive: true });
-    await fs.copyFile(voiceoverPath, path.join(publicDir, "voiceover.wav"));
-  }
-
   // Shot durations run boundary to boundary so every shot starts exactly where its narration
   // does, and the final shot absorbs the tail. Summing them reproduces the audio length exactly.
   const segments: SegmentAudioInfo[] = [];
@@ -372,10 +363,6 @@ export async function produceAudioPipeline(
 
   const wordsPath = path.join(outDir, "voiceover_words.json");
   await fs.writeFile(wordsPath, JSON.stringify({ words: absoluteWords }, null, 2), "utf-8");
-
-  if (syncToPreview && path.resolve(outDir) !== publicDir) {
-    await fs.copyFile(captionsPath, path.join(publicDir, "captions.vtt"));
-  }
 
   return {
     segments,
@@ -575,16 +562,6 @@ export function retimeAudioSync(
     fsSync.mkdirSync(cacheDir, { recursive: true });
   }
 
-  // Also ensure public/.tmp_audio exists for direct web serving if needed
-  const publicTmp = path.resolve(process.cwd(), "public/.tmp_audio");
-  if (!fsSync.existsSync(publicTmp)) {
-    try {
-      fsSync.mkdirSync(publicTmp, { recursive: true });
-    } catch {
-      // Best-effort directory creation
-    }
-  }
-
   // If 1.0x speed, measure original duration and return original file
   if (Math.abs(speed - 1.0) < 0.001) {
     let dur = 0;
@@ -637,16 +614,6 @@ export function retimeAudioSync(
       .toString()
       .trim();
     durationSec = Number(parseFloat(durOutput).toFixed(3));
-  }
-
-  // Mirror to public/.tmp_audio if directory is available
-  try {
-    const publicOut = path.join(publicTmp, outFilename);
-    if (!fsSync.existsSync(publicOut)) {
-      fsSync.copyFileSync(outPath, publicOut);
-    }
-  } catch {
-    // Best-effort mirror
   }
 
   return { filePath: outPath, durationSec };
