@@ -134,7 +134,3 @@ export function slicePeaks(peaks: number[], durationSec: number, startSec: numbe
   }
   return out;
 }
-
-/** Lightweight audio waveform generator hook alias for timeline audio tracks. */
-export const useAudioWaveform = useAudioPeaks;
-

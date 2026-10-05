@@ -3,7 +3,7 @@
  */
 
 import React from "react";
-import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { useVideoConfig } from "remotion";
 import {
   accentAt,
   useTokens,
@@ -11,7 +11,7 @@ import {
   SERIF,
   useLayout,
 } from "./tokens";
-import { EXPO, frames, MS, useEntrance, useProgress } from "./motion";
+import { frames, MS, useEntrance, useProgress } from "./motion";
 import { useAccent } from "./accent";
 import { useAlign } from "./align";
 
@@ -670,34 +670,4 @@ export const Plot: React.FC<
       </svg>
     </div>
   );
-};
-
-/**
- * A hairline rectangle that grows from `fromRect` to `toRect` on the curve.
- * This is the §08 join - a canvas node's border becoming a device frame - and
- * it is deliberately the same shape in both directions, so a zoom-out is
- * always the exact reverse of the entry that produced it.
- */
-export const useJoin = (
-  fromRect: { x: number; y: number; w: number; h: number },
-  toRect: { x: number; y: number; w: number; h: number },
-  start: number,
-) => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const p = interpolate(frame, [start, start + frames(MS.move, fps)], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-    easing: EXPO,
-  });
-  const mix = (a: number, b: number) => a + (b - a) * p;
-  return {
-    progress: p,
-    rect: {
-      x: mix(fromRect.x, toRect.x),
-      y: mix(fromRect.y, toRect.y),
-      w: mix(fromRect.w, toRect.w),
-      h: mix(fromRect.h, toRect.h),
-    },
-  };
 };

@@ -1,7 +1,7 @@
 /**
  * File Description: Unified, intuitive Shot and Clip Inspector for Aideos Studio.
  * Replaces text-heavy stacked inspectors with a sleek, tabbed, visual control center
- * covering Visual Metaphors, Numeric Timing, Camera, and Screenplay Narration.
+ * covering Render Mode, Numeric Timing, Camera, and Screenplay Narration.
  */
 
 import React, { useState } from "react";
@@ -37,28 +37,6 @@ interface ShotInspectorProps {
 
 type InspectorTab = "visuals" | "timing" | "narration";
 
-const METAPHOR_OPTIONS = [
-  { id: "none", name: "Clean Scene", desc: "Pure standard card and typography" },
-  {
-    id: "glowing-cluster",
-    name: "Latent Embeddings",
-    desc: "Multi-dimensional latent space",
-  },
-  { id: "balance-scale", name: "Balance Scale", desc: "Trade-off equilibrium" },
-  { id: "clock-gears", name: "Latency Gears", desc: "Pipeline throughput" },
-  { id: "liquid-bucket", name: "Buffer Reservoir", desc: "Memory capacity" },
-  {
-    id: "typing-cursor-quote",
-    name: "Terminal Code",
-    desc: "Code and command quotes",
-  },
-  {
-    id: "rocket-launch",
-    name: "Scale and Deploy",
-    desc: "Scalability trajectory",
-  },
-];
-
 const MOTIONS = [
   { id: "cut", name: "Cut (Instant)" },
   { id: "pan", name: "Pan" },
@@ -93,47 +71,15 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
 
   // Active render mode derivation
   const hasBRoll = shot.blocks.some((b) => b.c === "AnalogyInset");
-  const hasMetaphor =
-    Boolean(shot.metaphor) || shot.blocks.some((b) => b.c === "MetaphorViewer");
-  const renderMode = hasBRoll
-    ? "b-roll"
-    : hasMetaphor
-      ? "metaphor"
-      : "standard";
+  const renderMode = hasBRoll ? "b-roll" : "standard";
 
   // Switches shot render mode and synchronizes block components.
   const setRenderMode = (
-    mode: "standard" | "metaphor" | "b-roll",
+    mode: "standard" | "b-roll",
   ) => {
-    const cleanBlocks = shot.blocks.filter(
-      (b) =>
-        b.c !== "AnalogyInset" &&
-        b.c !== "MetaphorViewer",
-    );
+    const cleanBlocks = shot.blocks.filter((b) => b.c !== "AnalogyInset");
 
-    if (mode === "metaphor") {
-      const textBlock = shot.blocks.find((b) => b.c === "TextReveal");
-      onUpdateShot(
-        shotIndex,
-        {
-          metaphor: "glowing-cluster",
-          blocks: [
-            ...cleanBlocks,
-            {
-              c: "MetaphorViewer",
-              metaphorType: "glowing-cluster",
-              content: {
-                kind: "glowing-cluster",
-                title: textBlock?.text || "Latent Architecture",
-                subtitle: "Multi-Dimensional Space",
-                caption: shot.scriptText || "System Architecture",
-              },
-            } as Block,
-          ],
-        },
-        `Set ${shot.id} to Metaphor Device`,
-      );
-    } else if (mode === "b-roll") {
+    if (mode === "b-roll") {
       onUpdateShot(
         shotIndex,
         {
@@ -242,7 +188,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
             <label className="text-[10px] font-mono text-ink-soft font-bold uppercase tracking-wider">
               Render Mode
             </label>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => setRenderMode("standard")}
@@ -257,24 +203,6 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
                   <span className="font-bold text-[11px]">Standard</span>
                   <span className="text-[9px] opacity-70 truncate">
                     Pure Typography
-                  </span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setRenderMode("metaphor")}
-                className={`p-2 border-2 border-ink text-left flex items-center gap-2 transition-all cursor-pointer ${
-                  renderMode === "metaphor"
-                    ? "bg-select/20 border-select text-ink shadow-nb-sm-nb-sm"
-                    : "bg-paper-3 border-2 border-ink text-ink-soft hover:border-ink hover:text-ink"
-                }`}
-              >
-                <Layers className="w-4 h-4 text-ink shrink-0" />
-                <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-[11px]">Visual Device</span>
-                  <span className="text-[9px] opacity-70 truncate">
-                    Latent Space / Graphs
                   </span>
                 </div>
               </button>
@@ -298,53 +226,6 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
               </button>
             </div>
           </div>
-
-          {/* Visual Metaphor Device Picker */}
-          {renderMode === "metaphor" && (
-            <div className="flex flex-col gap-2 bg-paper-3 p-2.5 border-2 border-ink shadow-nb-sm">
-              <label className="text-[10px] font-mono text-ink font-bold uppercase tracking-wider">
-                Topic Visual Metaphor
-              </label>
-
-              <select
-                value={shot.metaphor || "glowing-cluster"}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const cleanBlocks = shot.blocks.filter(
-                    (b) => b.c !== "MetaphorViewer",
-                  );
-                  const textReveal = shot.blocks.find(
-                    (b) => b.c === "TextReveal",
-                  );
-                  const newMetaphorBlock = {
-                    c: "MetaphorViewer",
-                    metaphorType: val,
-                    content: {
-                      kind: val,
-                      title: textReveal?.text || "Latent Representation",
-                      subtitle: "Multi-Dimensional Space",
-                      caption: shot.scriptText || "System Architecture",
-                    },
-                  };
-                  onUpdateShot(
-                    shotIndex,
-                    {
-                      metaphor: val as any,
-                      blocks: [...cleanBlocks, newMetaphorBlock as any],
-                    },
-                    `Switch metaphor to ${val}`,
-                  );
-                }}
-                className="w-full bg-sunken border-2 border-ink px-2.5 py-1.5 text-xs text-ink outline-none focus:border-2 border-ink shadow-nb-sm"
-              >
-                {METAPHOR_OPTIONS.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
 
           {/* Camera Motion & Transition */}
           <div className="flex flex-col gap-2.5 bg-paper-3 p-2.5 border-2 border-ink shadow-nb-sm">

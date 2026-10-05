@@ -20,7 +20,6 @@ import {
   deleteLayerClip,
   rippleDeleteLayerClip,
   unlinkClips,
-  clipDuration,
   clipEndSec,
   type MediaAssetInput,
 } from "../../../backend/timeline/layer_engine";
@@ -314,9 +313,4 @@ export function useLayeredTimeline({ film, commit, onReject }: UseLayeredTimelin
     setLaneFlag,
     shiftLane,
   };
-}
-
-/** Human-readable duration of a clip, used by inspectors and lane labels. */
-export function formatClipDuration(clip: Clip): string {
-  return `${clipDuration(clip).toFixed(2)}s`;
 }

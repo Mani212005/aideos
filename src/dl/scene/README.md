@@ -105,9 +105,8 @@ driving the same property of the same element over overlapping frames**. That la
 conflict with no correct answer, so it fails rather than picking a winner.
 
 `validateSceneWithNodeAssets` additionally reads each asset off disk and rejects a clip that targets
-an id the document does not declare. Pass `collectSceneAssetElementIds(scene)` (or
-`loadSceneAssets(scene).elementIdsByAssetId`) to `compileScene` as `assetElementIds` to get the same
-check at compile time.
+an id the document does not declare. Pass `loadSceneAssets(scene).elementIdsByAssetId` to
+`compileScene` as `assetElementIds` to get the same check at compile time.
 
 ## Scene camera
 

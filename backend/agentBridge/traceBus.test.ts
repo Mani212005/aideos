@@ -200,7 +200,7 @@ test("MCP server aideos_report_step tool records external coding agent telemetry
   // Directly verify reporting step on trace bus as MCP tool handler does
   const reported = traceBus.recordStep({
     title: "Vector Metaphor Construction",
-    description: "Bound typed MetaphorContent vector devices into canvas",
+    description: "Bound typed vector devices into canvas",
     phase: "authoring",
     status: "done",
     source: "agent",

@@ -12,6 +12,7 @@ import {
   edgeSchema,
   themeSchema,
   blockSchema,
+  dropLegacyBlocks,
   stageSchema,
   lookSchema,
   moveSchema,
@@ -39,8 +40,8 @@ export const layerSchema = z.object({
 
 export type Layer = z.infer<typeof layerSchema>;
 
-/** Animation Clip Payload (procedural spatial beats, character rigs, vector devices) */
-export const animationPayloadSchema = z.object({
+/** Animation Clip Payload (procedural spatial beats and vector devices) */
+export const animationPayloadSchema = z.preprocess(dropLegacyBlocks, z.object({
   shotId: z.string().regex(/^[a-z0-9-]+$/),
   ch: z.string().min(1).max(30).optional(),
   stage: stageSchema,
@@ -64,7 +65,7 @@ export const animationPayloadSchema = z.object({
     "custom",
   ]).optional(),
   blocks: z.array(blockSchema).max(12).default([]),
-});
+}));
 
 /** Video Footage Clip Payload */
 export const videoPayloadSchema = z.object({

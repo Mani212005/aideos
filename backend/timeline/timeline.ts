@@ -349,7 +349,7 @@ export function splitShotAtTime(
     dur: durLeft,
   };
 
-  const rightShotBlocks = (targetShot.blocks || []).filter((b) => b.c !== "MetaphorViewer");
+  const rightShotBlocks = [...(targetShot.blocks || [])];
   const rightShotStage = targetShot.stage === "frame" && rightShotBlocks.length === 0 ? "none" : targetShot.stage;
 
   const rightShot: Shot = {

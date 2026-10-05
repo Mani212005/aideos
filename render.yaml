@@ -20,8 +20,6 @@ services:
         sync: false
       - key: DEEPGRAM_API_KEY
         sync: false
-      - key: PARALLEL_API_KEY
-        sync: false
       - key: AIDEOS_GEMINI_MODEL
         value: gemini-3.5-flash
       # The address a paired `aideos connect` dials (the studio shows it in its pairing command).

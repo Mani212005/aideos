@@ -628,3 +628,34 @@ export async function reviewPairwise(
     wsB.cleanup();
   }
 }
+
+// Formats a human-readable summary of review findings.
+export function formatReviewSummary(report: GeminiReviewReport): string {
+  const lines: string[] = [
+    `=== Gemini 3.8 Flash Video Review ===`,
+    `Overall Score: ${report.overallScore.toFixed(1)} / 10.0`,
+    `Verdict: ${report.verdict}`,
+    `Summary: ${report.summary}`,
+    ``,
+    `Criteria Breakdown:`,
+  ];
+
+  for (const crit of report.criteria) {
+    const gateLabel = crit.isGate ? "[GATE]" : "      ";
+    const status = crit.passed ? "PASS" : "FAIL";
+    const ts = crit.evidenceTimestamps.length > 0 ? ` (${crit.evidenceTimestamps.join(", ")})` : "";
+    lines.push(`  ${gateLabel} ${status} - ${crit.title}: ${crit.score.toFixed(1)}/10${ts}`);
+    lines.push(`         Reason: ${crit.reason}`);
+  }
+
+  if (report.feedback.length > 0) {
+    lines.push(``, `Actionable Feedback (${report.feedback.length} items):`);
+    for (const item of report.feedback) {
+      const ts = item.timestamp ? ` at ${item.timestamp}` : "";
+      lines.push(`  [${item.priority.toUpperCase()}]${ts} ${item.issue}`);
+      lines.push(`    Recommendation: ${item.recommendation}`);
+    }
+  }
+
+  return lines.join("\n");
+}

@@ -1,7 +1,7 @@
 /**
  * File Description: Loads `aideos.config.json` (repo root), the committed home of the video model
  * policy: which agent and model generate and fix a film (all-check's background agent), which
- * agent and model review it (gemini-review, review-loop, pairwise), and which generation models are
+ * agent and model review it (gemini-review, all-check, pairwise), and which generation models are
  * refused unless a run passes an explicit override. Node-only, dependency-free, with the file path
  * injectable so tests never read the real config.
  */

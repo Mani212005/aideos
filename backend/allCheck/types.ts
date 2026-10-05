@@ -9,7 +9,6 @@ import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 
 /** The two deliverables of a film: 16:9 long-form and 9:16 reel. */
 export type CheckFormat = "long" | "reel";
-export const CHECK_FORMATS: readonly CheckFormat[] = ["long", "reel"];
 
 /** Coding agents that can run as the background agent. */
 export type AgentName = "claude" | "agy";

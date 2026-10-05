@@ -1,7 +1,7 @@
 /**
  * File Description: Comprehensive unit tests for the Gemini 3.8 Flash video quality review system,
  * covering client upload/polling/retries, rubric schema validation, timestamp verification,
- * single video scoring, pairwise cross-review comparison, and iterative review loop orchestration.
+ * single video scoring, pairwise cross-review comparison, and the plain-text review summary.
  */
 
 import assert from "node:assert/strict";
@@ -9,7 +9,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import {
   RUBRIC_CRITERIA,
   validateCriterionTimestamps,
@@ -27,15 +26,12 @@ import {
   reviewPairwise,
   defaultAgyRunner,
   createIsolatedVideoWorkspace,
+  formatReviewSummary,
 } from "./geminiReview";
 import type {
   AgyRunner,
   AgyReviewClient,
 } from "./types";
-import {
-  formatReviewSummary,
-  runReviewLoop,
-} from "./reviewLoop";
 import {
   inspectCamera,
   measureBottomCaptions,
@@ -330,7 +326,7 @@ test("geminiReview: reviewPairwise runs dual-agent cross-review and determines w
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test("reviewLoop: formatReviewSummary outputs human-readable breakdown", () => {
+test("geminiReview: formatReviewSummary outputs human-readable breakdown", () => {
   const criteria = createMockCriteria({ gateScore: 8.5, gatePassed: true, withTimestamps: true });
   const feedback: ReviewFeedbackItem[] = [
     { priority: "high", timestamp: "0:25", issue: "Stage clears at 0:25", recommendation: "Keep node elements persistent" },
@@ -351,71 +347,6 @@ test("reviewLoop: formatReviewSummary outputs human-readable breakdown", () => {
   assert.ok(summary.includes("REVISE"));
   assert.ok(summary.includes("[GATE]"));
   assert.ok(summary.includes("Keep node elements persistent"));
-});
-
-test("reviewLoop: runs multi-round loop and achieves target score 9.0+", async () => {
-  const tmpVideoDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-loop-test-"));
-  const testSlug = "mock-loop-slug";
-  const repoVideos = resolvePackageDir(testSlug);
-  fs.mkdirSync(repoVideos, { recursive: true });
-
-  let roundCounter = 0;
-  const mockReviewer = async (_videoPath: string, round: number): Promise<GeminiReviewReport> => {
-    roundCounter = round;
-    if (round === 1) {
-      return {
-        overallScore: 7.8,
-        verdict: "REVISE",
-        summary: "Round 1 needs camera motion and caption adjustments.",
-        criteria: createMockCriteria({ gateScore: 7.0, gatePassed: true }),
-        feedback: [{ priority: "high", timestamp: "0:10", issue: "Static camera", recommendation: "Add camera moves" }],
-        model: "gemini-3.8-flash",
-        evaluatedAt: new Date().toISOString(),
-        videoHash: "hash-r1",
-      };
-    }
-    return {
-      overallScore: 9.3,
-      verdict: "ACCEPT",
-      summary: "Round 2 achieved exceptional continuity and 9.3 rating.",
-      criteria: createMockCriteria({ gateScore: 9.5, gatePassed: true }),
-      feedback: [],
-      model: "gemini-3.8-flash",
-      evaluatedAt: new Date().toISOString(),
-      videoHash: "hash-r2",
-    };
-  };
-
-  const mockRenderer = async (_slug: string) => {
-    const p = path.join(tmpVideoDir, `render-round-${roundCounter + 1}.mp4`);
-    fs.writeFileSync(p, Buffer.alloc(256, 1));
-    return p;
-  };
-
-  const progressEvents: string[] = [];
-  const loopResult = await runReviewLoop(testSlug, {
-    maxRounds: 4,
-    targetScore: 9.0,
-    mockRenderer,
-    mockReviewer,
-    onProgress: (msg) => progressEvents.push(msg),
-  });
-
-  assert.equal(loopResult.passed, true);
-  assert.equal(loopResult.finalScore, 9.3);
-  assert.equal(loopResult.rounds.length, 2);
-
-  // Check persisted round files
-  const round1Path = path.join(repoVideos, "gemini-review", "round-1.json");
-  const round2Path = path.join(repoVideos, "gemini-review", "round-2.json");
-  const latestPath = path.join(repoVideos, "gemini-review", "latest.json");
-  assert.ok(fs.existsSync(round1Path));
-  assert.ok(fs.existsSync(round2Path));
-  assert.ok(fs.existsSync(latestPath));
-
-  // Clean up test slug dir
-  fs.rmSync(repoVideos, { recursive: true, force: true });
-  fs.rmSync(tmpVideoDir, { recursive: true, force: true });
 });
 
 test("geminiReview: grounds measurable gates in deterministic facts", async () => {
@@ -464,72 +395,6 @@ test("geminiReview: grounds measurable gates in deterministic facts", async () =
   assert.ok(report.overallScore <= 8.5);
 
   fs.unlinkSync(tmpVideo);
-});
-
-test("reviewLoop: requires winning or tying pairwise check when reference video is configured", async () => {
-  const tmpVideoDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-loop-ref-test-"));
-  const testSlug = "mock-ref-slug";
-  const repoVideos = resolvePackageDir(testSlug);
-  fs.mkdirSync(repoVideos, { recursive: true });
-
-  const candidateVideo = path.join(tmpVideoDir, "candidate.mp4");
-  const refVideo = path.join(tmpVideoDir, "ref.mp4");
-  fs.writeFileSync(candidateVideo, Buffer.alloc(256, 1));
-  fs.writeFileSync(refVideo, Buffer.alloc(256, 2));
-
-  // Candidate gets 9.2 single score but loses pairwise in round 1, wins in round 2
-  let roundNum = 0;
-  const mockReviewer = async () => ({
-    overallScore: 9.2,
-    verdict: "ACCEPT" as const,
-    summary: "Single evaluation excellent.",
-    criteria: createMockCriteria({ gateScore: 9.2, gatePassed: true }),
-    feedback: [],
-    model: "gemini-3.8-flash",
-    evaluatedAt: new Date().toISOString(),
-    videoHash: "hash-ref-test",
-  });
-
-  const mockPairwise = async () => {
-    roundNum++;
-    if (roundNum === 1) {
-      // Round 1: candidate loses to reference
-      return {
-        videoA: { path: candidateVideo, watchReport: {} as any, ratingByWatcher: 7.0, ratingByOther: 7.0, finalRating: 7.0 },
-        videoB: { path: refVideo, watchReport: {} as any, ratingByWatcher: 9.0, ratingByOther: 9.0, finalRating: 9.0 },
-        winner: "Video B" as const,
-        evaluatedAt: new Date().toISOString(),
-      };
-    }
-    // Round 2: candidate wins
-    return {
-      videoA: { path: candidateVideo, watchReport: {} as any, ratingByWatcher: 9.5, ratingByOther: 9.0, finalRating: 9.25 },
-      videoB: { path: refVideo, watchReport: {} as any, ratingByWatcher: 7.5, ratingByOther: 8.0, finalRating: 7.75 },
-      winner: "Video A" as const,
-      evaluatedAt: new Date().toISOString(),
-    };
-  };
-
-  const mockRenderer = async () => candidateVideo;
-
-  const loopResult = await runReviewLoop(testSlug, {
-    maxRounds: 3,
-    targetScore: 9.0,
-    referenceVideo: refVideo,
-    mockRenderer,
-    mockReviewer,
-    mockPairwise,
-  });
-
-  // Must not pass on round 1 (pairwise failed); must pass on round 2 (pairwise won)
-  assert.equal(loopResult.rounds.length, 2);
-  assert.equal(loopResult.rounds[0].verdict, "REVISE");
-  assert.equal(loopResult.rounds[1].verdict, "ACCEPT");
-  assert.equal(loopResult.passed, true);
-  assert.equal(loopResult.pairwisePassed, true);
-
-  fs.rmSync(repoVideos, { recursive: true, force: true });
-  fs.rmSync(tmpVideoDir, { recursive: true, force: true });
 });
 
 test("geminiReview: prompt includes video file path and local inspection directive", () => {

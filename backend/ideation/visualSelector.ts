@@ -1,10 +1,9 @@
 /**
  * File Description: Reasoned Visual Intent Selector for Aideos.
  * Replaces lexical keyword matching with visual-intent selection, first-class "none" choice,
- * confidence-gated fallback, and data-driven metaphor authoring.
+ * and confidence-gated fallback.
  */
 
-import type { MetaphorContent } from "../../src/dl/schema";
 import { generateStructuredJson, isGoogleAiConfigured } from "../modelClient";
 
 export interface VisualBlockSpec {
@@ -13,18 +12,7 @@ export interface VisualBlockSpec {
   goodFor: string;
 }
 
-export interface MetaphorSpec {
-  kind: MetaphorContent["kind"];
-  description: string;
-  relationship: string;
-}
-
 export const VISUAL_BLOCK_REGISTRY: VisualBlockSpec[] = [
-  {
-    blockType: "CharacterBeat",
-    description: "Articulated 2D SVG character performing contextual anatomical gestures.",
-    goodFor: "Narrator introductions, direct explanations, human emotion, and payoff celebrations.",
-  },
   {
     blockType: "ScaleBar",
     description: "Horizontal logarithmic scale comparing orders of magnitude.",
@@ -76,52 +64,9 @@ export const VISUAL_BLOCK_REGISTRY: VisualBlockSpec[] = [
     goodFor: "Key quantitative metrics, performance speedups, and benchmark percentages.",
   },
   {
-    blockType: "MetaphorViewer",
-    description: "Stylized visual concept visualizer.",
-    goodFor: "Physical analogies, balance scale trade-offs, fluid capacity, and mechanical gear synchronization.",
-  },
-  {
     blockType: "none",
     description: "No diagram or visual device; pure elegant typography and kinetic headline.",
     goodFor: "Conceptual claims, rhetorical statements, transitions, and punchy conclusions.",
-  },
-];
-
-export const METAPHOR_REGISTRY: MetaphorSpec[] = [
-  {
-    kind: "balance-scale",
-    description: "Two-pan mechanical balance scale tilting under opposing weights.",
-    relationship: "Trade-offs and equilibrium between two competing, mutually constraining physical or mathematical quantities.",
-  },
-  {
-    kind: "liquid-bucket",
-    description: "Translucent liquid reservoir with animated wave fill and level graduations.",
-    relationship: "Accumulation, dynamic buffer capacity, drainage, and fluid volume.",
-  },
-  {
-    kind: "clock-gears",
-    description: "Interlocking meshed gears rotating at synchronized angular speeds.",
-    relationship: "Mechanical synchronization, pipeline cadence, and multi-stage hardware execution.",
-  },
-  {
-    kind: "spider-web",
-    description: "Radial spider web weaving with interconnected nodes and concentric spirals.",
-    relationship: "Interconnected graphs, network topologies, and distributed mesh routing.",
-  },
-  {
-    kind: "character-throw",
-    description: "Retro monitor scanning a script document once and discarding it.",
-    relationship: "Single-pass processing, prompt caching, and immutable static reference.",
-  },
-  {
-    kind: "typing-cursor-quote",
-    description: "Terminal editor typing a thesis statement with a verification rubber stamp.",
-    relationship: "Direct quotations, axiomatic theses, and verified historical statements.",
-  },
-  {
-    kind: "glowing-cluster",
-    description: "Multi-dimensional constellation of glowing nodes and geometric mesh lines.",
-    relationship: "High-dimensional latent spaces and abstract embeddings.",
   },
 ];
 
@@ -131,12 +76,10 @@ export interface VisualDecisionInput {
   prevNarration?: string;
   nextNarration?: string;
   prevVisual?: string;
-  prevMetaphor?: string;
 }
 
 export interface VisualDecisionResult {
   blockType: string | "none";
-  metaphor?: MetaphorContent;
   headline: string;
   rationale: string;
   confidence: number;
@@ -263,32 +206,26 @@ export async function selectShotVisualIntent(
 
   try {
     const prompt = `You are the lead visual art director for Aideos technical explainer films.
-Analyze the following shot narration and surrounding context to select the single best visual block or metaphor.
+Analyze the following shot narration and surrounding context to select the single best visual block.
 
 SHOT NARRATION: "${input.narration}"
 PREVIOUS SHOT NARRATION: "${input.prevNarration || "None (First shot)"}"
 NEXT SHOT NARRATION: "${input.nextNarration || "None (Last shot)"}"
 PREVIOUS SHOT VISUAL: "${input.prevVisual || "none"}"
-PREVIOUS SHOT METAPHOR: "${input.prevMetaphor || "none"}"
 
 AVAILABLE VISUAL BLOCKS:
 ${VISUAL_BLOCK_REGISTRY.map((b) => `- ${b.blockType}: ${b.description} (Good for: ${b.goodFor})`).join("\n")}
 
-AVAILABLE METAPHORS (Used ONLY when a physical/relational analogy genuinely clarifies the concept):
-${METAPHOR_REGISTRY.map((m) => `- ${m.kind}: ${m.description} (Relationship: ${m.relationship})`).join("\n")}
-
 CRITICAL ART DIRECTION RULES:
 1. "none" is a first-class, prestigious choice. If the narration is a conceptual claim, question, or transition, choose "none" and let clean typography breathe.
 2. NEVER select a visual based on casual lexical words (e.g. "load balances" is NOT a balance scale; "time" is NOT clock gears; "water" is NOT automatically a liquid bucket).
-3. Do not repeat the same metaphor or visual device used in the previous shot.
+3. Do not repeat the visual device used in the previous shot.
 4. Author a concise headline of at most 8 words capturing the core claim (do NOT copy the entire narration).
 5. Provide a specific, reasoned rationale (2-3 sentences) explaining why this exact visual structure matches the underlying engineering/scientific relationship in this shot.
-6. If selecting MetaphorViewer, you MUST author all dynamic label fields in the content payload.
 
 Respond in JSON format:
 {
   "blockType": string, // One of the block types or "none"
-  "metaphor": { "kind": string, ...dynamicLabelFields } | null,
   "headline": string, // Max 8 words
   "rationale": string, // Specific, non-templated rationale
   "confidence": number // 0.0 to 1.0
@@ -310,7 +247,6 @@ Respond in JSON format:
 
     return {
       blockType: parsed.blockType || "none",
-      metaphor: parsed.metaphor || undefined,
       headline: parsed.headline || extractConciseHeadline(input.narration),
       rationale: parsed.rationale || `Visual representation tailored for "${input.narration}"`,
       confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.85,

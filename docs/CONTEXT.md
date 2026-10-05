@@ -219,11 +219,9 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `chunkTextForTTS(text, maxChars)`: Splits text blocks exceeding maxChars (~800 chars) at sentence boundaries for Kokoro ONNX.
 * `splitScriptIntoSegments(script)`: Splits a narration script into distinct shot-scoped segments (strictly by narration beats for Claude-tagged scripts, or blank-line paragraphs for untagged prose).
 * `measureAudioDuration(filePath)`: Measures exact audio file duration using ffprobe.
-* `concatAudioSegments(audioFiles, silenceWavPath, outWavPath)`: Merges audio clips with fixed pause buffers via FFmpeg concat filter with format normalization.
 * `produceAudioPipeline(script, outDir, options)`: Synthesizes script into sample-domain audio timing spine, emitting `voiceover.wav`, `captions.vtt`, and `voiceover_words.json`.
 * `buildCaptionsVtt(words)`: Builds phrase-grouped WebVTT caption tracks from absolute word timings.
 * `buildFilmFromAudioResult(title, audioResult, options)`: Compiles verified audio durations into a structured `Film` object.
-* `processAudioForFilm(film, outDir)`: Generates audio for a film using the narration pipeline and rebuilds the film around it.
 * `buildAtempoFilter(speed)`: Builds a cascaded FFmpeg atempo filter chain for arbitrary playback speed factors.
 * `resolveAudioSourcePath(src)`: Resolves an audio URL or relative path to an absolute path on disk.
 * `retimeAudioSync(src, speed, options)`: Synchronously retimes audio via FFmpeg WSOLA atempo filter and caches the resulting pitch-corrected WAV.
@@ -276,10 +274,9 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `ensureGenerated()` (`generatedFiles.ts`): Rebuilds every generated file (`src/dl/films/<slug>.ts` shadows, `svgSources.generated.ts`, `activeFilm.ts`) from the packages on disk; run by `npm run ensure:generated`, postinstall and the pre-hooks of the scripts that bundle them.
 * `wireFootageIntoFilm(slug, shotId, relPath, promptText)`: Wires rendered B-roll video clip into a shot as an `AnalogyInset` block and saves to both storage targets.
 
-### `backend/pipeline/deviceData.ts` (Model-Authored Chart & Metaphor Data)
+### `backend/pipeline/deviceData.ts` (Model-Authored Chart Data)
 * `authorDeviceData(requests, caller)`: Authors and validates data for complex chart devices (`TokenStrip`, `Plot`, `MatrixGrid`, `Distribution`, `LayerStack`, `ScaleBar`) via batched LLM generation, refusing any block that fails validation or uses ungrounded labels/numbers.
-* `checkDeviceHonesty(block, source)`: Verifies that all labels, tokens, ticks, and numbers shown by an authored block or metaphor are grounded in the beat's spoken narration or on-screen copy.
-* `groundMetaphorContent(raw, source)`: Validates model-authored `MetaphorViewer` payloads against schema constraints, ensures no default fallback fields were omitted, and verifies beat honesty.
+* `checkDeviceHonesty(block, source)`: Verifies that all labels, tokens, ticks, and numbers shown by an authored block are grounded in the beat's spoken narration or on-screen copy.
 
 ### `backend/agentBridge/` (Connected Agent Bridge Hub & Multi-Channel Dispatcher)
 * `traceBus` (`backend/agentBridge/traceBus.ts`): Global singleton in-process telemetry and live film update bus (`TraceBus`) collecting and streaming execution steps (`recordStep`, `updateStep`, `getRecentSteps`, `subscribe`, `clear`) and broadcasting real-time film change notifications (`onFilmUpdate`, `notifyFilmUpdated`, `filmSubscriberCount`) across coding agents, Studio clients, AI edit planning, neural TTS synthesis, GPU B-roll rendering, and invariant validation.
@@ -338,12 +335,13 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `reviewerModel(explicit?, env?, file?)`: Resolves the active reviewer model from explicit options, environment variables (`AIDEOS_GEMINI_REVIEW_MODEL`, `GEMINI_MODEL`), or `aideos.config.json`.
 * `forbiddenGenerationMatch(model, policy)`: Checks if a model ID matches any configured forbidden generation models (e.g. `gemini-3.1-pro`).
 
-### `backend/geminiReview/` (Gemini 3.8 Flash Video Quality Review Loop & Rubric)
+### `backend/geminiReview/` (Gemini 3.8 Flash Video Quality Review & Rubric)
 * `reviewVideo(videoPath, options)` (`backend/geminiReview/geminiReview.ts`): Evaluates rendered mp4 video and audio against the 12-criterion rubric via the agy CLI agent running Gemini 3.8 Flash (`gemini-3.8-flash-high`) in an isolated workspace with neutral `video.mp4`, with deterministic facts extraction, timestamp evidence validation, and pairwise comparison support.
 * `reviewPairwise(pathA, pathB, options)` (`backend/geminiReview/geminiReview.ts`): Executes a cross-review pairwise evaluation where two independent agy CLI agents in isolated workspaces first evaluate their respective videos, then exchange text-based evaluation reports to score each other, avoiding multimodal position bias.
 * `createIsolatedVideoWorkspace(videos)` (`backend/geminiReview/geminiReview.ts`): Creates an isolated temporary directory containing hardlinks or copies of video files under neutral names (`video.mp4`, `video_1.mp4`, `video_2.mp4`) with automatic cleanup to prevent model agents from inspecting repository source files.
 * `defaultAgyRunner(prompt, options)` (`backend/geminiReview/geminiReview.ts`): Non-interactive agy CLI runner executing in print mode (`-p`) with `--sandbox`, structured JSON schema output, and strict error handling.
-* `runReviewLoop(slug, options)` (`backend/geminiReview/reviewLoop.ts`): Orchestrates the iterative render, review, and feedback loop until the video passes all 6 hard gates with an overall score >= 9.0, persisting round reports to `videos/<slug>/gemini-review/`.
+* `formatReviewSummary(report)` (`backend/geminiReview/geminiReview.ts`): Formats a review report as the plain-text breakdown `aideos gemini-review` prints and `aideos all-check` saves.
+* `renderVideoForSlug(slug, format)` (`backend/geminiReview/render.ts`): Renders a film package to `out/<slug>-<format>.mp4` through the Remotion CLI for `aideos all-check`.
 * `extractDeterministicFacts(videoPath, options)` (`backend/geminiReview/facts.ts`): Extracts OCR captions coverage, audio loudness LUFS, duration, framerate, and camera tracks for ground-truth review prompt context.
 * `RUBRIC_CRITERIA`, `RUBRIC_SYSTEM_PROMPT`, `SINGLE_REVIEW_JSON_SCHEMA`, `PAIRWISE_WATCH_JSON_SCHEMA`, `PAIRWISE_EXCHANGE_JSON_SCHEMA` (`backend/geminiReview/rubric.ts`): The 12-criterion rubric definitions, structured JSON schemas, and review prompts enforcing the 6 hard gates.
 
@@ -377,9 +375,9 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `buildFilmPartsFromScript(raw, targetDurationSec, options)`: Compiles a Claude screenplay (falling back to `structureUntaggedProseToScript` for untagged prose) into Remotion-ready sub-shots, canvas nodes and edges, supporting optional heuristic primitive mapping (`usePrimitives`).
 * `buildFilmPartsFromScriptAsync(raw, targetDurationSec, options)`: Compiles a Claude screenplay (falling back to `structureUntaggedProseToScript` for untagged prose) into Remotion-ready parts asynchronously using Jev for intelligent primitive selection across the 7 animated primitives.
 
-### `backend/sync.ts`
-* `runSemanticVisualSync(film, captions)`: Evaluates spoken words against visual device blocks.
-* `matchShotVisual(segmentText, chapter)`: Determines whether a shot uses `DeviceCard`, `StatCounter`, or `TextReveal`.
+### `backend/ideation/segmentSync.ts`
+* `buildBriefFromSegmentFallback(segmentText, shotId, context)`: Builds a shot's headline and blocks from its narration segment with the heuristic visual selector (used by `buildFilmFromAudioResult`).
+* `runSegmentSyncGate(segments)` / `runPreRenderSyncGate(film, segments)`: Picks a visual brief for every narration segment before `aideos produce` writes the film.
 
 ### `src/dl/videoPackageLoader.ts`
 * `getProjectRoot()`: Resolves the absolute path to the project root directory walking up the filesystem.
@@ -408,7 +406,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `SceneView.tsx`: Pure browser-safe SVG scene renderer with camera transform support and no filesystem imports.
 * `compile.ts`: Pure deterministic compiler (`compileScene`) threading keyframes, actions, custom animation timelines, and camera tracks onto frames.
 * `validateScene.ts`: Phase 1 semantic and physical integrity validator (`validateScene`) including Rule 20 timeline consistency.
-* `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`, `collectSceneAssetElementIds`).
+* `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`).
 
 ### `backend/sceneKit/` (Scene-Film Authoring & Stage Kit)
 * `stage.ts`: Scene geometry constants (`SCENE_SIZE`, `SAFE_SQUARE`, `FORMAT_WINDOWS`, `FPS`).
@@ -462,7 +460,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `readEditProvenanceLog(videosDir, filmId)` (`provenanceLog.ts`): Reads edit provenance records for a film package, newest first.
 
 ### `src/dl/validateFilm.ts` & `scripts/validate_film.ts`
-* `validateFilmAudioAndAssets(film, options)`: Validates duration sum invariant, analytical bounding box geometry, and non-overlap constraints.
+* `validateFilmAudioAndAssets(film, options)`: Validates duration sum invariant and time-sampled anchor card geometry.
 * `scripts/validate_film.ts`: Standalone CLI validator (`npm run validate:film <path/to/film.json>`) validating arbitrary `film.json` files against cinematic schema and pacing constraints and printing a runsheet.
 
 ---

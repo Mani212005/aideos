@@ -78,26 +78,6 @@ export interface CompileOptions {
   assetElementIds?: Record<string, string[]>;
 }
 
-/** Evaluates 2D rigid transform rotating point (cx, cy) around pivot (px, py) by angleDeg. */
-export function rotatePointAroundPivot(
-  cx: number,
-  cy: number,
-  px: number,
-  py: number,
-  angleDeg: number,
-): { x: number; y: number } {
-  const rad = (angleDeg * Math.PI) / 180;
-  const cos = Math.cos(rad);
-  const sin = Math.sin(rad);
-  const dx = cx - px;
-  const dy = cy - py;
-
-  return {
-    x: px + (dx * cos - dy * sin),
-    y: py + (dx * sin + dy * cos),
-  };
-}
-
 /**
  * Compiles a validated Scene into a CompiledScene data structure.
  * @param scene Complete validated scene object.

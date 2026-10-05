@@ -17,7 +17,7 @@ Aideos is engineered around 4 strict architectural invariants:
 3. **Derived Camera Framing**:
    - The virtual camera never uses hardcoded pixel offsets. Viewport centers, zoom factors, and bounding boxes are mathematically derived from continuous 2D node coordinates $(x, y, w, h)$ on the spatial canvas graph.
 4. **Declared Palette with Semantic Theme Tokens**:
-   - Colors map to semantic tokens (`canvas`, `surface`, `ink`, `muted`, `hairline`, `accent`) with a measured contrast floor. Switching themes (e.g. Archival Paper, Blueprint, Charcoal, Warm Editorial) recolors scenes, characters, and cards with measured contrast and harmony.
+   - Colors map to semantic tokens (`canvas`, `surface`, `ink`, `muted`, `hairline`, `accent`) with a measured contrast floor. Switching themes (e.g. Archival Paper, Blueprint, Charcoal, Warm Editorial) recolors scenes and cards with measured contrast and harmony.
 
 ---
 
@@ -25,9 +25,9 @@ Aideos is engineered around 4 strict architectural invariants:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  STAGE 1: IDEATION & DRAMATIC TREATMENT                                      │
-│  • Raw Prompt / Technical Topic -> Staged LLM Reasoning Chain                │
-│  • Emits treatment.json (5 Chapters, Core Claims, Visual Directions)         │
+│  STAGE 1: SCREENPLAY                                                         │
+│  • Raw Prompt / Technical Topic -> Director drafts a Claude screenplay       │
+│  • Or a hand-written screenplay ([VISUAL], [NARRATION], [ON SCREEN] beats)   │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │ Script Text
                                        ▼
@@ -43,7 +43,7 @@ Aideos is engineered around 4 strict architectural invariants:
 │  STAGE 3: SEMANTIC VISUAL SYNC & 7-RULE PACING GATE                          │
 │  • Evaluates narration meaning at each second -> Selects visual blocks        │
 │  • Enforces Pacing Gate: Max 25s hold, no consecutive repeats, 60s breathers │
-│  • Emits shotlist.json (Shots, durations, camera moves, and stages)          │
+│  • Emits the shot list in film.json (durations, camera moves, and stages)    │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │ Verified Shotlist
                                        ▼
@@ -68,15 +68,10 @@ Aideos is engineered around 4 strict architectural invariants:
 
 ## 3. Step-by-Step Pipeline Execution
 
-### Stage 1: Ideation & Treatment Layer (`backend/ideation/`)
-1. **Intake**: Receives technical topic or raw script outline.
-2. **Staged Prompts**: LLM generates a 5-chapter dramatic arc:
-   - Chapter 1: The Hook (Provocative thesis or counter-intuitive claim)
-   - Chapter 2: Core Concept (Deconstructing the foundational principle)
-   - Chapter 3: Architecture & Topology (Deep mechanism breakdown)
-   - Chapter 4: Benchmark & Payoff (Quantifiable metric proof or comparison)
-   - Chapter 5: Conclusion & Future Outlook
-3. **Output**: `videos/<slug>/treatment.json` containing chapter claims, narration lines, and visual direction notes.
+### Stage 1: Screenplay (`backend/pipeline/director.ts`, `backend/scriptIntake.ts`)
+1. **Intake**: Receives a technical topic (`aideos direct "<prompt>"`) or a hand-written Claude screenplay (`aideos film --script`).
+2. **Director Draft**: For a topic, an LLM briefed on [docs/DIRECTOR_GUIDE.md](DIRECTOR_GUIDE.md) drafts a screenplay, and `backend/scriptIntake.ts` validates it before production starts.
+3. **Output**: `videos/<slug>/script.md` containing the timestamped beats with visual direction, narration, and on-screen text.
 
 ### Stage 2: Audio Synthesis & Alignment (`backend/audio.ts`, `backend/pcm.ts`, `backend/tts.ts`)
 1. **Shot-Scoped Segmentation**: Splits script text by Claude screenplay tags (`[NARRATION]`), paragraphs, or explicit shot arrays into discrete shot-scoped narration segments without slicing internal sentence punctuation or leaking visual tags.
@@ -84,7 +79,7 @@ Aideos is engineered around 4 strict architectural invariants:
 3. **Sample-Domain Assembly & Normalization**: Trims silence samples from Float32 buffers, applies short boundary fades to eliminate stitch clicks, inserts exact whole-sample pauses between shot boundaries, normalizes peak amplitude, and writes `voiceover.wav`.
 4. **Alignment & Cues**: Derives exact word-level millisecond start/end timestamps, written to `captions.vtt` and `voiceover_words.json`.
 
-### Stage 3: Semantic Visual Sync Gate (`backend/sync.ts`)
+### Stage 3: Semantic Visual Choice (`backend/pipeline/design.ts`, `backend/jev.ts`)
 1. **Semantic Match**: Inspects each spoken sentence to determine the best visual presentation:
    - Showing a browser, terminal, or UI -> `DeviceCard`
    - Explaining memory allocation or arrays -> `MatrixGrid`
@@ -101,7 +96,7 @@ Aideos is engineered around 4 strict architectural invariants:
 ### Stage 4: Spatial Graph & Canvas Layout (`src/dl/CanvasGraph.tsx`)
 1. **2D Node Layout**: Positions concept nodes on the continuous spatial graph with bounding boxes $(x, y, w, h)$.
 2. **Camera Framing**: Solves continuous camera framing and zoom targets across canvas nodes.
-3. **Package Assembly**: Assembles self-contained video package under `videos/<slug>/` (`film.json`, `script.md`, `voiceover.wav`, `footage/`, `shotlist.json`, `treatment.json`, `visuals/`) loaded by `src/dl/videoPackageLoader.ts`.
+3. **Package Assembly**: Assembles self-contained video package under `videos/<slug>/` (`film.json`, `script.md`, `voiceover.wav`, `footage/`, `visuals/`) loaded by `src/dl/videoPackageLoader.ts`.
 
 ### Stage 5: Remotion Video Rendering (`src/dl/Film.tsx`)
 1. **Compositions**:
@@ -143,11 +138,9 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos studio` | Opens native Remotion Studio UI | Remotion Studio browser tab |
 | `aideos test` | Executes full automated verification suite | Test TAP results |
 | `aideos produce` | Runs audio-first produce pipeline | `voiceover.wav`, `captions.vtt`, `film.ts` |
-| `aideos ideate "<topic>"` | Runs staged LLM dramatic ideation | `treatment.json` |
 | `aideos direct "<prompt>"` | Auto-prompt: LLM director plans and produces a complete film from a prompt | `out/<slug>-long.mp4`, `out/<slug>-reel.mp4` |
 | `aideos review <slug\|mp4>` | Runs deterministic quality review checks | `<out>/review.json`, evidence stills |
 | `aideos gemini-review <mp4>` | Evaluates video against 12-criterion rubric via Gemini 3.8 Flash (agy) | Terminal score & verdict, JSON |
-| `aideos review-loop <slug>` | Iterative render and review loop until 9.0+ score | `videos/<slug>/gemini-review/` |
 | `aideos all-check <slug>` | Full check and repair in background agent (long and reel, 9.0+ bar) | `videos/<slug>/all-check/`, final MP4s |
 | `npm run backend -- film` | Autonomous pipeline (intake, narrate, design, b-roll, assemble, render, verify) | `out/<slug>-long.mp4`, `out/<slug>-reel.mp4` |
 | `npm run validate:film <path>` | Standalone invariant validator for arbitrary film manifests | Runsheet & status in terminal |

@@ -20,7 +20,6 @@ import { compileFilmFromScreenplayAsync, FOOTAGE_HEADROOM_SEC, type FootageReque
 import { defaultDeviceCaller } from "./deviceData";
 import { writeVisualChoices } from "./visualChoices";
 import {
-  PUBLIC_DIR,
   ROOT,
   packageDir,
   readActiveFilmSource,
@@ -88,14 +87,6 @@ function stageRecord(state: RunState, stage: ProductionStage): StageRecord {
     state.stages.push(record);
   }
   return record;
-}
-
-/** Copies a file, creating the destination directory first. */
-async function copyInto(from: string, toDir: string, name?: string): Promise<string> {
-  await fsp.mkdir(toDir, { recursive: true });
-  const dest = path.join(toDir, name ?? path.basename(from));
-  await fsp.copyFile(from, dest);
-  return dest;
 }
 
 /**
@@ -617,15 +608,6 @@ export async function runProduction(
 
 /** Every stage name, in order. Exported so callers can render a progress UI without guessing. */
 export const stages = PRODUCTION_STAGES;
-
-/** Copies the narration and captions into public/ for tooling that reads them from there. */
-export async function mirrorNarrationToPublic(slug: string): Promise<void> {
-  const dir = packageDir(slug);
-  for (const name of ["voiceover.wav", "captions.vtt"]) {
-    const from = path.join(dir, name);
-    if (fs.existsSync(from)) await copyInto(from, PUBLIC_DIR, name);
-  }
-}
 
 /** Restores src/dl/activeFilm.ts to a previously captured body. Used when a run must not stick. */
 export { readActiveFilmSource, restoreActiveFilmSource };

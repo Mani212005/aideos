@@ -9,7 +9,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
-import { filmSchema } from '../src/dl/schema.ts'
+import { dropLegacyFilmBlocks, filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../src/dl/videoPackageLoader.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
@@ -69,7 +69,7 @@ function readFilm(filmId: string): Film | null {
   const pkgFilmPath = path.join(resolvePackageDir(filmId), 'film.json');
   if (fs.existsSync(pkgFilmPath)) {
     try {
-      return JSON.parse(fs.readFileSync(pkgFilmPath, 'utf8'));
+      return dropLegacyFilmBlocks(JSON.parse(fs.readFileSync(pkgFilmPath, 'utf8')));
     } catch {
       // Fall through to the .ts module
     }
@@ -77,7 +77,7 @@ function readFilm(filmId: string): Film | null {
   const filmPath = path.join(filmsDir, `${filmId}.ts`);
   if (fs.existsSync(filmPath)) {
     const jsonMatch = fs.readFileSync(filmPath, 'utf8').match(/=\s*(\{[\s\S]*\})\s*;/);
-    if (jsonMatch) return JSON.parse(jsonMatch[1]);
+    if (jsonMatch) return dropLegacyFilmBlocks(JSON.parse(jsonMatch[1]));
   }
   return null;
 }
@@ -2362,7 +2362,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           const videoPkgFilmPath = path.join(resolvePackageDir(id), 'film.json');
           if (fs.existsSync(videoPkgFilmPath)) {
             try {
-              const film = JSON.parse(fs.readFileSync(videoPkgFilmPath, 'utf8'));
+              const film = dropLegacyFilmBlocks(JSON.parse(fs.readFileSync(videoPkgFilmPath, 'utf8')));
               sendJson(res, 200, { ok: true, film });
               return;
             } catch (err) {
@@ -2379,7 +2379,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           const jsonMatch = content.match(/=\s*(\{[\s\S]*\})\s*;/);
           if (jsonMatch) {
             try {
-              const film = JSON.parse(jsonMatch[1]);
+              const film = dropLegacyFilmBlocks(JSON.parse(jsonMatch[1]));
               sendJson(res, 200, { ok: true, film });
               return;
             } catch (err) {

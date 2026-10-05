@@ -139,12 +139,6 @@ export function generateWordsFromFilm(film: Record<string, unknown>): CaptionWor
   return [];
 }
 
-export const DEFAULT_GIRAFFE_CAPTION_WORDS: CaptionWord[] = [
-  { text: "Welcome", startFrame: 0, endFrame: 15 },
-  { text: "to", startFrame: 16, endFrame: 30 },
-  { text: "Aideos", startFrame: 31, endFrame: 60 },
-];
-
 // Formats numeric seconds into standard HH:MM:SS.mmm WebVTT timecode string.
 function formatVttTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);

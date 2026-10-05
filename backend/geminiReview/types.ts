@@ -96,43 +96,6 @@ export interface PairwiseRunReport {
   evaluatedAt?: string;
 }
 
-export interface ReviewLoopRound {
-  round: number;
-  score: number;
-  verdict: "ACCEPT" | "REVISE";
-  feedback: ReviewFeedbackItem[];
-  videoHash: string;
-  videoPath: string;
-  timestamp: string;
-  report: GeminiReviewReport;
-  pairwiseReport?: PairwiseRunReport;
-}
-
-export interface ReviewLoopResult {
-  slug: string;
-  finalScore: number;
-  finalVerdict: "ACCEPT" | "REVISE";
-  passed: boolean;
-  rounds: ReviewLoopRound[];
-  outputPath?: string;
-  referenceVideo?: string;
-  pairwisePassed?: boolean;
-}
-
-export interface ReviewLoopOptions {
-  maxRounds?: number;
-  targetScore?: number;
-  referenceVideo?: string;
-  format?: "long" | "reel";
-  onProgress?: (message: string) => void;
-  mockReviewer?: (videoPath: string, round: number) => Promise<GeminiReviewReport>;
-  mockRenderer?: (slug: string, format: string) => Promise<string>;
-  mockPairwise?: (path1: string, path2: string) => Promise<PairwiseRunReport>;
-  runner?: AgyRunner;
-  model?: string;
-  timeoutSeconds?: number;
-}
-
 export interface AgyRunnerOptions {
   model?: string;
   timeoutSeconds?: number;

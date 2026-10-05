@@ -1,12 +1,12 @@
 /**
- * File Description: Root Remotion entry point registering compositions for Long (16:9), Reel (9:16), Short (9:16), and standalone 3D shader clusters.
+ * File Description: Root Remotion entry point registering compositions for Long (16:9), Reel (9:16), and Short (9:16).
  */
 
 import { Composition } from "remotion";
 import { Video } from "./dl/Video";
 import { defaultFilmProps, filmPropsSchema, FPS, TOTAL_FRAMES } from "./dl/runtime";
 
-// Renders the root Remotion compositions for the film deliverables and 3D metaphors.
+// Renders the root Remotion compositions for the film deliverables.
 export const RemotionRoot: React.FC = () => {
   return (
     <>

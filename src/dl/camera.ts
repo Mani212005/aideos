@@ -1,4 +1,4 @@
-import type { CanvasEdge, CanvasNode, Film, Shot, CameraAngle } from "./schema";
+import type { CanvasNode, Film, Shot, CameraAngle } from "./schema";
 import { easeExpo, MS } from "./motion";
 
 /**
@@ -239,10 +239,6 @@ export const nodeArrivals = (film: Film, timeline: TimedShot[]): Map<string, num
   });
   return arrivals;
 };
-
-/** An edge arrives with its target - and draws 70ms before the node enters. */
-export const edgeArrival = (edge: CanvasEdge, arrivals: Map<string, number>) =>
-  arrivals.get(edge.to) ?? Infinity;
 
 /** Dynamic 3D Camera Angles & Perspectives */
 export const getCameraPerspective = (

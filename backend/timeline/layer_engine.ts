@@ -109,11 +109,6 @@ function linkedPartnerIndex(clips: Clip[], clip: Clip): number {
   return clips.findIndex((c) => c.id === clip.linkedClipId);
 }
 
-/** True when two half-open timeline intervals genuinely overlap beyond float noise. */
-export function clipsOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
-  return aStart < bEnd - EPS && aEnd > bStart + EPS;
-}
-
 /**
  * Prevent two clips on the same layer from overlapping in time, using a single deterministic left
  * to right ripple sweep. Clips are visited in stored position order and each is placed at the later

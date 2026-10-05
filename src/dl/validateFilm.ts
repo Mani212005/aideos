@@ -1,62 +1,15 @@
 /**
  * File Description: Comprehensive film validator that verifies schema pacing rules,
- * missing sfx/music/voiceover assets, duration-sum audio invariants, and analytical
- * time-sampled bounding box geometry & per-block AABB overlap.
+ * missing sfx/music/voiceover assets, duration-sum audio invariants, and time-sampled
+ * anchor card geometry.
  * 100% pure TypeScript data validator with zero Node runtime imports.
  */
-import { parseFilm, type Film, type Block, type Shot } from "./schema";
+import { parseFilm, type Film } from "./schema";
 import { buildTimeline, camAt, lookBox, projectBox } from "./camera";
-import { computeBlockRect } from "./layout";
-
-/**
- * Maximum allowed physical velocity discontinuity at interior keyframe knots (degrees per physical second).
- * Empirical basis: Smooth Catmull-Rom transitions at multi-action handover seams measure 2.0 - 3.8 deg/s,
- * whereas abrupt C0 motion kinks and joint pops measure > 15.0 deg/s. Threshold is calibrated to 5.0 deg/s.
- */
-export const MAX_ALLOWED_VELOCITY_DISCONTINUITY_DEG_PER_SEC = 5.0;
 
 export interface ValidationOptions {
   toleranceSec?: number;
   measuredVoiceoverDurationSec?: number;
-}
-
-export interface BlockAABB {
-  c: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-/**
- * Analytically computes the 2D screen bounding box for a visual block at progress t in [0, 1].
- */
-export function computeBlockScreenAABB(
-  block: Block,
-  shot: Shot,
-  _cardBox: { x: number; y: number; w: number; h: number },
-  blockIndex: number,
-  totalBlocks: number,
-  tProgress: number,
-  viewport: { width: number; height: number }
-): BlockAABB {
-  const rect = computeBlockRect(
-    { canvas: { nodes: [], edges: [] }, chapters: [], shots: [shot], fps: 30, id: "val", title: "val" } as Film,
-    shot,
-    block,
-    viewport,
-    { blockIndex, totalBlocks, progress: tProgress }
-  );
-  return { c: block.c, x: rect.x, y: rect.y, w: rect.w, h: rect.h };
-}
-
-/**
- * Calculates overlapping pixel area between two 2D Axis-Aligned Bounding Boxes.
- */
-export function calculateAABBOverlapArea(a: BlockAABB, b: BlockAABB): number {
-  const xOverlap = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
-  const yOverlap = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
-  return xOverlap * yOverlap;
 }
 
 // Validates film schema, audio assets, duration invariants, and geometric bounding box constraints.
@@ -83,7 +36,7 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
     }
   }
 
-  // 3. Analytical Time-Sampled Bounding Box & Per-Block Overlap Verification (D-2)
+  // 3. Time-sampled anchor card geometry (D-2)
   const timeline = buildTimeline(film);
   const viewports = [
     { name: "Long", width: 1920, height: 1080 },
@@ -110,27 +63,6 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
               );
             }
           }
-
-          // Compute per-block bounding boxes and assert non-overlap
-          const blockAABBs: BlockAABB[] = shot.blocks.map((b, bi) =>
-            computeBlockScreenAABB(b, shot, cardBox, bi, shot.blocks.length, t, vp)
-          );
-
-          // Pairwise block collision overlap assertion
-          for (let i = 0; i < blockAABBs.length; i++) {
-            for (let j = i + 1; j < blockAABBs.length; j++) {
-              const boxA = blockAABBs[i];
-              const boxB = blockAABBs[j];
-              const overlapArea = calculateAABBOverlapArea(boxA, boxB);
-
-              // If hero character directly overlaps centered headline text in stage: "frame"
-              if (shot.stage === "frame" && (boxA.c === "CharacterBeat" && boxB.c === "TextReveal" && boxA.y < boxB.y + boxB.h)) {
-                throw new Error(
-                  `GEOMETRIC_OVERLAP_VIOLATION: Shot ${sIdx} ("${shot.id}") block ${i} (${boxA.c}) overlaps block ${j} (${boxB.c}) by ${overlapArea.toFixed(1)}px² in ${vp.name} viewport at frame ${sampleFrame}`,
-                );
-              }
-            }
-          }
         }
       }
     }
@@ -150,8 +82,7 @@ export function validateFilmAudioAndAssets(filmInput: unknown, options?: Validat
   const metaphorCounts: Record<string, number> = {};
 
   film.shots.forEach((shot, sIdx) => {
-    const metaphorBlock = shot.blocks.find((b) => b.c === "MetaphorViewer") as { content?: { kind?: string } } | undefined;
-    const kind = metaphorBlock?.content?.kind || shot.metaphor;
+    const kind = shot.metaphor;
     if (kind) {
       metaphorSequence.push({ shotIndex: sIdx, kind });
       metaphorCounts[kind] = (metaphorCounts[kind] ?? 0) + 1;

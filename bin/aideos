@@ -105,7 +105,7 @@ if [ "$#" -gt 0 ]; then
       cd "$AIDEOS_DIR" && npm run lint "$@"
       exit 0
       ;;
-    ideate|shoot|prompts|assemble|produce|generate|engine-test|film|direct|mcp|gemini-review|review-loop)
+    produce|engine-test|film|direct|mcp|gemini-review)
       cd "$AIDEOS_DIR" && npm run backend -- "$CMD" "$@"
       exit 0
       ;;
@@ -122,11 +122,9 @@ if [ "$#" -gt 0 ]; then
       echo "  aideos frames        Render proof stills to .frames/"
       echo "  aideos test          Run full test suite"
       echo "  aideos produce       Audio-first timing spine generation"
-      echo "  aideos ideate        Staged ideation chain (treatment.json)"
       echo "  aideos direct <prompt>  Auto-prompt: LLM director plans and produces a film from a prompt"
       echo "  aideos film          One call from a screenplay to finished, verified mp4s"
       echo "  aideos gemini-review <mp4>  Gemini 3.8 Flash native video quality review"
-      echo "  aideos review-loop <slug>   Iterative render-review-refine loop until 9.0+ score"
       echo "  aideos all-check <slug>     Full check of long cut and reel in a background agent (see docs/REVIEW.md)"
       echo "  aideos review <slug|mp4>    Measured (deterministic) review of a rendered video"
       echo ""

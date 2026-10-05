@@ -311,9 +311,7 @@ export function Styleboard({
                 );
                 if (!hasInset) {
                   hasNewWiring = true;
-                  const filtered = s.blocks.filter(
-                    (b) => b.c !== "CharacterBeat" && b.c !== "AnalogyInset",
-                  );
+                  const filtered = s.blocks.filter((b) => b.c !== "AnalogyInset");
                   return {
                     ...s,
                     blocks: [

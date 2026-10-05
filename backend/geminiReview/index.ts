@@ -5,5 +5,5 @@
 export * from "./types";
 export * from "./rubric";
 export * from "./geminiReview";
-export * from "./reviewLoop";
+export * from "./render";
 export * from "./facts";

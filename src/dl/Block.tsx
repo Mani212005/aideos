@@ -1,5 +1,5 @@
 /**
- * File Description: Maps schema block definitions to corresponding visual primitive and metaphor components.
+ * File Description: Maps schema block definitions to corresponding visual primitive and device components.
  */
 
 import React from "react";
@@ -29,13 +29,12 @@ import {
   VectorSpace,
 } from "./devices";
 
-// Renders the specific UI primitive, interactive device, or visual metaphor for a given film block.
+// Renders the specific UI primitive or interactive device for a given film block.
 export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...timing }) => {
   // Read unconditionally (a hook inside one switch branch breaks when a block changes type);
   // outside a Remotion composition, as in unit tests, there is no frame and 0 is used.
   
   switch (block.c) {
-    case "CharacterBeat": return null;
     case "Kicker":
       return <Kicker {...timing} text={block.text} />;
     case "TextReveal":
@@ -130,11 +129,5 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
       return <IconLabel {...timing} text={block.text} />;
     case "CodeBlock":
       return <CodeBlock {...timing} code={block.code} language={block.language} caption={block.caption} />;
-    case "MetaphorViewer": {
-      return (
-        <div style={{ width: "100%", height: "100%", maxHeight: "100%", flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        </div>
-      );
-    }
   }
 };
