@@ -1,5 +1,7 @@
 /**
  * File Description: SVG flow card building block for flowchart cards and connecting edges.
+ * Inputs and outputs: flowcard steps and connector options -> SVG flowchart cards markup.
+ * Used by: backend/sceneKit/parts/index.ts.
  */
 
 import { el, g, text, stroke, PAL } from "../svg";

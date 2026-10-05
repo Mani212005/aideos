@@ -3,6 +3,8 @@
  * The first step of the workflow: write or paste the screenplay, build scenes from it, and
  * synthesize the voiceover the rest of the timeline locks to. The stage frames the script editor
  * and keeps the "what do I do next" guidance visible rather than hiding it in a side panel.
+ * Inputs and outputs: film project, screenplay parser, TTS options -> screenplay authoring and narration stage.
+ * Used by: editor/src/App.tsx.
  */
 
 import type { Film } from "../../../src/dl/schema";

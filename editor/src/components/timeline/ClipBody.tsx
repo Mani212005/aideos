@@ -4,6 +4,8 @@
  * label that degrades gracefully as the clip narrows, a real waveform for audio, and a link badge
  * for clips that belong to a video plus audio pair. Pointer gestures are reported upward; the clip
  * itself owns no state so a drag can render a ghost copy of it at any candidate position.
+ * Inputs and outputs: clip data, lane geometry, selection state -> rendered timeline clip element with handles.
+ * Used by: editor/src/components/TimelineEditor.tsx.
  */
 
 import React from "react";

@@ -3,6 +3,8 @@
  * A slab with a hard ink border and a blur-free offset shadow that visibly depresses on press
  * (the slab translates into its own shadow). Every editor action uses this component so press
  * feel, focus ring, disabled treatment and tone vocabulary stay identical across the app.
+ * Inputs and outputs: button props (variant, size, onClick) -> Neobrutalism styled button element.
+ * Used by: editor/src/components/ui/index.ts, editor screens and modals.
  */
 
 import React from "react";

@@ -2,6 +2,8 @@
  * File Description: High-level video review engine using the agy CLI agent running Gemini 3.8 Flash.
  * Evaluates local mp4 videos against the 12-criterion rubric, enforces timestamp evidence verification,
  * validates hard gates, and executes dual-agent cross-review pairwise video comparisons.
+ * Inputs and outputs: rendered video MP4, ground truth facts, and rubric -> scored GeminiReviewReport.
+ * Used by: backend/allCheck/round.ts, backend/geminiReview/index.ts.
  */
 
 import { execFile } from "node:child_process";

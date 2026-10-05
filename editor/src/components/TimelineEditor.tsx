@@ -7,6 +7,8 @@
  * trim handles that stay grabbable on short clips, edge auto-scroll, Escape to cancel, and one
  * undoable transaction per gesture. Clips outside the visible time window are not rendered, so a
  * film with thousands of subtitle cues stays responsive.
+ * Inputs and outputs: LayeredFilm state, playhead position, and clip operations -> multi-track NLE timeline editor.
+ * Used by: editor/src/screens/EditStage.tsx.
  */
 
 import React, {

@@ -2,6 +2,8 @@
  * File Description: Unified Google Gen AI Model Client Abstraction (Phase 1).
  * Owns all LLM interactions in the runtime path using the official @google/genai SDK,
  * enforcing structured JSON schema outputs and 3-attempt validation retry loops.
+ * Inputs and outputs: model prompts, schemas, and API options -> structured JSON responses from Google GenAI.
+ * Used by: backend/pipeline/director.ts, backend/pipeline/deviceData.ts, backend/editPlanner/planner.ts.
  */
 
 import { GoogleGenAI } from "@google/genai";

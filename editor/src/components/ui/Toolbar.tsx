@@ -4,6 +4,8 @@
  * controls, ToolbarDivider draws the hard seam between clusters, and ToolbarLabel is the stencil
  * caption used inside a cluster. Keeping these here means every toolbar in the editor has the same
  * height, padding and separator weight.
+ * Inputs and outputs: toolbar actions and children -> horizontal action toolbar.
+ * Used by: editor/src/components/ui/index.ts, editor header and panels.
  */
 
 import React from "react";

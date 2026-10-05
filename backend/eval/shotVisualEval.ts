@@ -4,6 +4,8 @@
  * with `--jev`, through one batched Jev request, then reports each path's accuracy and what the
  * design stage would actually ship after confidence gating and narration grounding. Use it to
  * compare thresholds, criteria wording or models with numbers instead of impressions.
+ * Inputs and outputs: shot_visual_cases.json, optional --jev flag -> benchmark accuracy report.
+ * Used by: npm run eval:visuals.
  */
 
 import fs from "node:fs";

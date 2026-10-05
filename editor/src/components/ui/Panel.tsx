@@ -4,6 +4,8 @@
  * caption bar, PanelBody is the padded scroll region inside it, and Card is the nested slab used
  * for list rows and stat blocks. Together they give every region of the editor the same border
  * weight, seam rhythm, spacing step and hard-shadow depth.
+ * Inputs and outputs: panel title, actions, and children -> styled container panel.
+ * Used by: editor/src/components/ui/index.ts, editor stages and inspectors.
  */
 
 import React from "react";

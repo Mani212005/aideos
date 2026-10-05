@@ -1,5 +1,7 @@
 /**
  * File Description: Build script compiling diagram building blocks into scene.svg for the diagram-parts example.
+ * Inputs and outputs: sceneKit parts drawing functions -> examples/diagram-parts/visuals/scene.svg.
+ * Used by: examples/diagram-parts (build script).
  */
 
 import fs from "fs";

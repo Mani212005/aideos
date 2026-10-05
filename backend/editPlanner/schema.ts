@@ -4,6 +4,8 @@
  * text overlays, lower-thirds, slides, caption tracks, filler-word removal, dead-air removal,
  * range trimming, splitting, moving clips, clip speed, volume, lane mute/hide, accent, theme,
  * and segment reordering.
+ * Inputs and outputs: raw edit operation JSON -> Zod validated EditOp and EditProgram objects.
+ * Used by: backend/editPlanner/validator.ts, backend/editPlanner/interpreter.ts.
  */
 
 import { z } from "zod";

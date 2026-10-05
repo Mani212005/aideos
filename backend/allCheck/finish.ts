@@ -4,6 +4,8 @@
  * that is still on disk), copies the final videos, writes report.md and result.json (the file the
  * calling agent waits for), releases the lock, shuts the studio down only if all-check owned it, sends
  * a notification and opens the finished videos on a pass. The side effects are injectable.
+ * Inputs and outputs: allCheck run state and best round -> final report and completed run state.
+ * Used by: backend/allCheck/index.ts.
  */
 
 import crypto from "node:crypto";

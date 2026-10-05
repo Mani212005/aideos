@@ -4,6 +4,8 @@
  * do not match what the timeline was told, word timings drifting against the audio, sample-rate or
  * channel mismatches on concatenation, and truncated tails. Every assertion here is on real sample
  * data, because those defects are inaudible to a test that only checks a duration number.
+ * Inputs and outputs: audio samples and timing boundaries -> defect-class regression test assertions.
+ * Used by: npm test.
  *
  * The live end-to-end synthesis check is gated behind RUN_TTS_TESTS=1, following the existing
  * RUN_VISUAL_TESTS pattern, so the default suite stays fast and offline.

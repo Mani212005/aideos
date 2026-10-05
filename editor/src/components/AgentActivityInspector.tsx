@@ -3,6 +3,8 @@
  * Subscribes to real-time Server-Sent Events (/api/agent/trace) to display a unified
  * timeline of connected coding agent actions, neural TTS synthesis, AI video editing,
  * GPU B-roll rendering, and 19-rule geometric invariant validation.
+ * Inputs and outputs: agent activity stream and connection state -> activity log panel UI.
+ * Used by: editor/src/components/shell/InspectorPanel.tsx.
  */
 
 import React, { useState, useEffect, useMemo } from "react";

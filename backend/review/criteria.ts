@@ -4,6 +4,8 @@
  * returns one CriterionResult per measurable criterion with its numbers, thresholds, evidence times
  * and the concrete fix. Thresholds come from thresholds.ts only. A criterion whose inputs are
  * missing is "skipped", never a pass: a video is not good because nothing could be measured.
+ * Inputs and outputs: render facts and film facts -> CriterionResult array with thresholds and verdicts.
+ * Used by: backend/review/review.ts.
  */
 
 import type { Loudness, Silence } from "./media";

@@ -2,6 +2,8 @@
  * File Description: Tests for the transcription module. The Deepgram fetch call and the Whisper
  * CLI invocation are both injected dependencies, so these tests exercise the real routing and
  * file-writing logic without ever touching the network or a real ASR subprocess.
+ * Inputs and outputs: audio mock streams and Deepgram/Whisper stubs -> transcription test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

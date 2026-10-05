@@ -1,5 +1,7 @@
 /**
  * File Description: Unit tests validating the 4 codebase fixes: model client retry loops, TTS auth options, generated film shadow modules.
+ * Inputs and outputs: codebase fix fixtures -> test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

@@ -1,6 +1,8 @@
 /**
  * File Description: Tests for model-authored chart data: one batched request, schema and honesty
  * checks on every block, and a clean refusal (never a stand-in) when the model fails or invents.
+ * Inputs and outputs: chart data responses and schema checks -> test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

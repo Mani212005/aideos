@@ -1,3 +1,9 @@
+/**
+ * File Description: Unit tests for segment synchronization, audio result film compilation, ducking calculations, and film asset validation.
+ * Inputs and outputs: segment data, audio results, and film fixtures -> test assertions.
+ * Used by: npm test.
+ */
+
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";

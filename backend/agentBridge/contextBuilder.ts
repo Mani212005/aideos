@@ -1,5 +1,7 @@
 /**
  * File Description: Rich context builder and prompt synthesizer for the Aideos Agent Bridge.
+ * Inputs and outputs: film and shot context -> serialized prompt strings for agent dispatch.
+ * Used by: backend/agentBridge/dispatcher.ts, backend/agentBridge/index.ts.
  */
 
 import fs from "node:fs";

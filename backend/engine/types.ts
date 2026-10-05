@@ -2,6 +2,8 @@
  * File Description: Core types for the Aideos GPU video engine abstraction.
  * Defines VideoJobSpec, VideoJobHandle and the swappable VideoEngine interface
  * that decouples Aideos from any specific generation backend (report section 3.3).
+ * Inputs and outputs: TypeScript definitions -> VideoEngine, VideoJobSpec, and VideoJobHandle interfaces.
+ * Used by: backend/engine/index.ts, backend/engine/nullEngine.ts, backend/engine/sshWanGPEngine.ts.
  */
 
 /** What Aideos wants rendered. Engine-agnostic by design. */

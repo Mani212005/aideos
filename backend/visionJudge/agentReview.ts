@@ -6,6 +6,8 @@
  * the aideos_submit_frame_review MCP tool (or by writing design/judge/agent-report.json), and
  * this module validates it. It also keeps the per-frame embedding log, so every score is recorded
  * with the threshold it was held to.
+ * Inputs and outputs: sampled stills and narration -> agent critique notes and repair proposals.
+ * Used by: backend/visionJudge/judge.ts.
  */
 
 import fs from "node:fs";

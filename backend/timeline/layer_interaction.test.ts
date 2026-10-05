@@ -7,6 +7,8 @@
  * - Self-ignoring sticky snapping.
  * - Multi-select relative offset preservation.
  * - Pending overrides live preview isolation.
+ * Inputs and outputs: multi-track layer interactions and trims -> test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

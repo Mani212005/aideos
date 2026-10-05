@@ -1,6 +1,8 @@
 /**
  * File Description: Loads the small hand-trimmed film fixtures in test_fixtures/films. Tests use
  * these instead of anyone's real videos, which are gitignored and absent on a fresh clone.
+ * Inputs and outputs: none -> loaded film fixtures from test_fixtures/films/.
+ * Used by: backend test suites.
  */
 
 import fs from "node:fs";

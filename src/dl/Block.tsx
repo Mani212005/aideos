@@ -1,5 +1,7 @@
 /**
  * File Description: Maps schema block definitions to corresponding visual primitive and device components.
+ * Inputs and outputs: Block specification and theme tokens -> rendered React visual component.
+ * Used by: src/dl/Film.tsx, editor/src/components/ShotDesignPanel.tsx.
  */
 
 import React from "react";

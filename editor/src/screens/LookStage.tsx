@@ -4,6 +4,8 @@
  * (palette, typography, video type, camera) and the per-shot styleboard. They are sub-views of one
  * stage because a user thinking about look moves between them constantly, and keeping them apart
  * made the old top navigation disagree with the side rail.
+ * Inputs and outputs: film project, theme tokens -> theme customization and styleboard stage.
+ * Used by: editor/src/App.tsx.
  */
 
 import { useState } from "react";

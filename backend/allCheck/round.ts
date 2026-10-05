@@ -6,6 +6,8 @@
  * agent reads. The agent never scores its own work: `passed` needs the reviewer's score, the measured
  * checks, the pairwise result and the agent's frame check, and only the first three come from tools.
  * Every step is injectable so the logic runs in tests without rendering or calling a model.
+ * Inputs and outputs: film slug, format, and round index -> executed review round facts and scores.
+ * Used by: backend/allCheck/index.ts.
  */
 
 import crypto from "node:crypto";

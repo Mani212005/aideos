@@ -6,6 +6,8 @@
  * - Layer hiding (excluded from render).
  * - Multi-text layer overlapping composition.
  * - Cascade deletion of layer and its child clips.
+ * Inputs and outputs: dynamic layer add/delete/reorder calls -> test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

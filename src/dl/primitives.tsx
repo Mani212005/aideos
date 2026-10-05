@@ -1,5 +1,7 @@
 /**
  * File Description: Core animated primitives for the video design system including TextReveal, StatCounter, CodeBlock, and Card components.
+ * Inputs and outputs: primitive props (TextReveal, StatCounter, CodeBlock, Card) -> animated React UI elements.
+ * Used by: src/dl/Block.tsx, editor/src/components/ShotDesignPanel.tsx.
  */
 
 import React from "react";

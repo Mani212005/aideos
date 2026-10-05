@@ -3,6 +3,10 @@
  * SceneView is a pure browser-safe component, so the filesystem half of asset resolution lives
  * here: this module turns a Scene into the svgSources map SceneView renders from, and fails loudly
  * with the asset path in the message when an asset is missing or will not parse.
+ * Inputs and outputs: asset directory and scene manifest -> loaded and validated SVG asset sources.
+ * Used by: backend/pipeline/run.ts, backend/scene/renderStill.ts.
+ * Inputs and outputs: asset directory and scene manifest -> loaded and validated SVG asset sources.
+ * Used by: backend/pipeline/run.ts, backend/scene/renderStill.ts.
  */
 
 import fs from "node:fs";

@@ -3,6 +3,8 @@
  * kinetic lyric lines), SVG primitives, type metrics and balanced wrapping, frame furniture, the
  * word-measurement helpers, and the voiceover step's alignment and spine reading. They run on
  * plain fixtures with no network, TTS, browser or real film package.
+ * Inputs and outputs: canvas markup, typography measurements, and cues -> test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

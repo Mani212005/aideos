@@ -1,5 +1,7 @@
 /**
  * File Description: Unit and integration tests for WebVTT caption parsing, word frame alignment, and VTT serialization.
+ * Inputs and outputs: sample WebVTT caption tracks -> parser test assertions.
+ * Used by: npm test.
  */
 
 import { test } from "node:test";

@@ -2,6 +2,8 @@
  * File Description: Walks the rendered-video component layer (src/dl/**) and fails on colour
  * literals outside the locked palette or on typefaces outside the mandated two, so the class of
  * defect that put an orange "TOPIC SHIFT" card into every film cannot be reintroduced silently.
+ * Inputs and outputs: design tokens and color palettes -> WCAG contrast test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

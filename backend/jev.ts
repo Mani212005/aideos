@@ -7,6 +7,8 @@
  * client also runs the vision-judge frameVerdict CHOICE (Match, WrongData, LayoutDefect,
  * Unreadable, plus accept / accept-with-change / reject on each suggestion): Jev only ever sees
  * text (narration, on-screen copy, the coding model's note, the image-text embedding score).
+ * Inputs and outputs: screenplay beat narration and visual options -> Jev visual and primitive decisions.
+ * Used by: backend/pipeline/design.ts, backend/eval/shotVisualEval.ts.
  */
 
 import { narrationSupportsVisual } from "./shotVisualCues";

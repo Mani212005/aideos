@@ -5,6 +5,10 @@
  * so a broken design never replaces a working film. The first build saves the undesigned film as
  * design/base-film.json and every build starts from it. Every outcome is recorded in
  * videos/<id>/design/status.json, which is how the pipeline learns an agent has finished.
+ * Inputs and outputs: film slug and design specification -> built video package with assets and film.json.
+ * Used by: backend/designSpec/designer.ts.
+ * Inputs and outputs: film slug and design specification -> built video package with assets and film.json.
+ * Used by: backend/designSpec/designer.ts.
  */
 
 import fs from "node:fs";

@@ -1,6 +1,8 @@
 /**
  * File Description: Styleboard and Visual Keyframe Studio component providing rich scene previews,
  * metaphor badges, 3D camera controls, and animated primitive specimens.
+ * Inputs and outputs: theme presets, color swatches, font pairings -> styleboard preview grid.
+ * Used by: editor/src/screens/LookStage.tsx.
  */
 
 import React, { useState, useMemo, useEffect, useRef } from "react";

@@ -1,6 +1,8 @@
 /**
  * File Description: Type definitions for the Gemini 3.8 Flash video quality review engine,
  * structured rubric scoring, timestamp evidence validation, deterministic facts, and iterative review loop.
+ * Inputs and outputs: TypeScript definitions -> types for rubric scoring, facts, and review reports.
+ * Used by: backend/geminiReview/geminiReview.ts, backend/geminiReview/facts.ts.
  */
 
 export interface CriterionEvaluation {

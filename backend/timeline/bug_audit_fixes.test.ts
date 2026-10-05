@@ -1,6 +1,8 @@
 /**
  * File Description: Comprehensive Unit and Regression Test Suite for Video Layer and Timeline Trimmer Bug Fixes.
  * Exercises and verifies all 15 audit findings across rendering, collision geometry, schema converters, and UI operations.
+ * Inputs and outputs: regression fixtures and edge-case timeline configurations -> test assertions.
+ * Used by: npm test.
  */
 
 import { test } from "node:test";

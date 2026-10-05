@@ -1,5 +1,7 @@
 /**
  * File Description: SVG graph building block for network graphs with nodes, links, and labels.
+ * Inputs and outputs: graph nodes, links, and layout parameters -> SVG network graph markup.
+ * Used by: backend/sceneKit/parts/index.ts.
  */
 
 import { el, g, text, stroke, PAL } from "../svg";

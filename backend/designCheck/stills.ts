@@ -3,6 +3,8 @@
  * Points the Remotion bundle at a film, renders one wide-cut still just past the middle of every
  * shot plus the reel at the first, middle and last shots, then restores whichever film was active,
  * so checking a design never changes what the studio or the CLI renders by default.
+ * Inputs and outputs: video package slug -> rendered review PNG stills across wide and reel formats.
+ * Used by: backend/designCheck/designCheck.ts, backend/cli.ts.
  */
 
 import path from "node:path";

@@ -1,6 +1,8 @@
 /**
  * File Description: Comprehensive Test Suite for Phase L-1 Layer and Clip Data Model.
  * Implements L1-1..L1-5 with 7 distinct negative rule assertions and migration fidelity tests.
+ * Inputs and outputs: LayeredFilm schema instances and rule violations -> test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

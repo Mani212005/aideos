@@ -4,6 +4,8 @@
  * the commands that agent (and the calling agent) run. Also rewrites `all-check <sub> ...` into the
  * hyphenated command names so both spellings work. Exit codes: 0 good, 1 not all good, 2 could not
  * run (bad input, preflight, a tool failed), 3 wait timed out, 4 the agent stopped without a result.
+ * Inputs and outputs: CLI arguments -> executes allCheck pipeline.
+ * Used by: backend/cli.ts, bin/aideos.
  */
 
 import path from "node:path";

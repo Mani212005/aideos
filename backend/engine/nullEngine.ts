@@ -2,6 +2,8 @@
  * File Description: Placeholder VideoEngine that simulates the job lifecycle
  * with zero GPU and zero network. Keeps the whole pipeline testable offline
  * (report section 3.3).
+ * Inputs and outputs: job spec -> simulated video render job handle.
+ * Used by: backend/engine/index.ts.
  */
 import fs from "fs/promises";
 import path from "path";

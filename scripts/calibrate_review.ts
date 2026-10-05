@@ -7,6 +7,8 @@
  * unless the tool still reproduces A > B > RAG on stage persistence, A above both on captions, A
  * passing every gate it can be measured on, and B and RAG failing the gates the comparison turned on.
  * Re-run it after changing any threshold in backend/review/thresholds.ts.
+ * Inputs and outputs: environment variable video paths -> prints calibration metrics and exit code.
+ * Used by: npm run calibrate:review.
  */
 
 import { reviewVideo } from "../backend/review/review";

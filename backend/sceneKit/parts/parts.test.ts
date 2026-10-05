@@ -1,5 +1,7 @@
 /**
  * File Description: Unit tests for sceneKit ready-made diagram building blocks.
+ * Inputs and outputs: diagram part generation parameters -> test assertions.
+ * Used by: npm test.
  */
 
 import { describe, it } from "node:test";

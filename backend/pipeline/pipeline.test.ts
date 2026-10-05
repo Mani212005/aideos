@@ -5,6 +5,8 @@
  * the finished video: stage directions leaking on screen, B-roll landing on a shot longer than the
  * clip that covers it, shot durations drifting away from the narration, and runsheet violations
  * that would fail validation only after a render had already been paid for.
+ * Inputs and outputs: screenplay and timing fixtures -> compilation pipeline test assertions.
+ * Used by: npm test.
  */
 
 import test, { after, before } from "node:test";

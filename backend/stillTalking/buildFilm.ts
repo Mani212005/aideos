@@ -4,6 +4,8 @@
  * the film's single animated scene, validates the result against both the film schema and the scene
  * engine's own node-side validator, and then writes the two files that must never drift apart:
  * videos/still-talking/film.json and its generated shadow src/dl/films/still-talking.ts.
+ * Inputs and outputs: slug, beat sheet, and voiceover audio -> built and validated Still Talking film package.
+ * Used by: backend/still_talking_film.test.ts.
  */
 
 import { parseFilm, type Film, type Shot } from "../../src/dl/schema";

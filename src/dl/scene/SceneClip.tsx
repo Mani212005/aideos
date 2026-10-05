@@ -4,6 +4,8 @@
  * declarative scene plus its custom SVG animation timelines into actual motion inside a
  * composition. Frame-driven throughout: the only time input is Remotion's current frame, so the
  * same scene renders identically on every pass.
+ * Inputs and outputs: Scene definition and current frame -> rendered React SVG scene clip.
+ * Used by: src/dl/SceneStage.tsx.
  */
 
 import React from "react";

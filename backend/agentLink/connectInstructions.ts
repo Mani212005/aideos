@@ -3,6 +3,8 @@
  * the one command that adds the studio's aideos MCP endpoint to each supported agent, and the one
  * line to paste into that agent so it starts taking studio tasks in its own normal session.
  * Pure string building, no I/O, so it is unit tested and shared by the pairing route.
+ * Inputs and outputs: pairing code, server URL, and agent preference -> formatted connection instructions.
+ * Used by: editor/src/components/AgentConnect.tsx, backend/agentLink/agentLink.test.ts.
  */
 
 import { LINK_AGENT_LABEL, type LinkAgent } from "./store";

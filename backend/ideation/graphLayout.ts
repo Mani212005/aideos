@@ -3,6 +3,8 @@
  * Generates 3-8 canvas nodes whose coordinates reflect conceptual relationships:
  * sequential progression left-to-right, conceptual contrasts opposed vertically,
  * and related subproblems clustered in proximity.
+ * Inputs and outputs: screenplay sections and relationships -> 2D coordinates for canvas nodes.
+ * Used by: backend/pipeline/design.ts, backend/ideation/segmentSync.ts.
  */
 
 import type { CanvasNode, CanvasEdge } from "../../src/dl/schema";

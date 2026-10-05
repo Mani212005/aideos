@@ -6,6 +6,8 @@
  * them from whatever packages are on disk, falling back to the committed examples/ on a fresh
  * clone. It is run by npm's postinstall and by the pre-hooks of every script that bundles them.
  * Deliberately free of the trace bus and the model clients so a bare install can run it.
+ * Inputs and outputs: video package manifests and SVGs -> generated TypeScript shadow files.
+ * Used by: scripts/ensure_generated.ts, backend/pipeline/run.ts.
  */
 
 import fs from "fs";

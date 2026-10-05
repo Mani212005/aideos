@@ -2,6 +2,8 @@
  * File Description: Tests for the scene-film kit.
  * Covers the timeline builder's continuity, single-origin and overrun rules, audio-first cues
  * (including the failure when a cued word is no longer spoken), and the stage geometry helpers.
+ * Inputs and outputs: timeline builder, cue matcher, and stage geometry -> test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

@@ -2,6 +2,8 @@
  * File Description: Exhaustive unit and invariant test suite for the Agent Director compilation engine.
  * Validates that long scripts (67+ beats across >12 sections) satisfy all 19 cinematic invariants
  * in src/dl/schema.ts without runtime crashes or heuristic repetition.
+ * Inputs and outputs: screenplay samples and film compiler -> invariant test assertions.
+ * Used by: npm test.
  */
 
 import { test } from "node:test";

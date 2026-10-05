@@ -1,6 +1,8 @@
 /**
  * File Description: Types for scripts/aideos-connect.mjs, the dependency-free connector (so its
  * command builder can be tested from TypeScript).
+ * Inputs and outputs: TypeScript declarations -> type definitions for scripts/aideos-connect.mjs.
+ * Used by: backend/agentLink/agentLink.test.ts, scripts/aideos-connect.mjs.
  */
 
 /** Parses connector argv into a pairing code and flags. */

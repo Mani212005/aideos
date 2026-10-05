@@ -6,6 +6,8 @@
  * instead of drifting away from it. A small builder enforces two house rules the scene engine
  * cannot: a clip must start from the value the previous clip on that property left behind, and one
  * element may only ever be scaled or rotated about a single origin.
+ * Inputs and outputs: narration timing cues -> composite Scene definition and custom animation clips for Still Talking.
+ * Used by: backend/stillTalking/buildFilm.ts.
  */
 
 import type { Scene, EnvironmentAsset } from "../../src/dl/scene/types";

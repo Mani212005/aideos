@@ -4,6 +4,8 @@
  * not start where the previous one ended is a visible snap; and the compiler applies the last
  * transform origin it sees to every frame of an element, so an element may only ever have one.
  * Timeline refuses both at authoring time, with the clip ids involved, instead of shipping a glitch.
+ * Inputs and outputs: animation clips and camera track movements -> validated, continuity-checked Scene timeline.
+ * Used by: backend/stillTalking/scene.ts.
  */
 
 import type { Vec2, CameraTrack, CameraKeyframe } from "../../src/dl/scene/types";

@@ -1,5 +1,7 @@
 # File Description: Render Blueprint configuration for deploying the Aideos backend and video rendering container.
 # Purpose: Declares the Docker web service, health checks, ports, and environment variables on Render.
+# Inputs and outputs: Dockerfile, environment variables -> one Docker web service with a health check.
+# Used by: Render (blueprint sync from the main branch).
 
 services:
   - type: web

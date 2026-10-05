@@ -5,6 +5,8 @@
  * built only when it passes the design check. The real film loops the chosen shot on the left, so a
  * finished motion shows up there as soon as the studio reloads the film. Every request is listed
  * with what came of it, with Refine (start from that request's words) and Revert.
+ * Inputs and outputs: prompt input, motion presets -> generated motion request and SVG animation clips.
+ * Used by: editor/src/screens/MotionStage.tsx.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";

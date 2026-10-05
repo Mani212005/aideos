@@ -6,6 +6,8 @@
  * that the artwork is genuinely static, that the film renders identically twice, that the narration
  * recorded in the manifest is the narration that was measured, and that the generated shadow and
  * the bundled SVG source map are rebuilt from the manifest.
+ * Inputs and outputs: still-talking video package fixtures -> regression test assertions.
+ * Used by: npm test.
  */
 
 import { test } from "node:test";

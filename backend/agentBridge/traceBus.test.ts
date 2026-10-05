@@ -2,6 +2,8 @@
  * File Description: Comprehensive unit and integration tests for the unified Live Trace Bus telemetry (Phase 3).
  * Tests trace step recording, subscriber fanout, task queue bridge integration, MCP aideos_report_step tool,
  * and pipeline activity event broadcasting.
+ * Inputs and outputs: simulated trace bus subscriptions and event emissions -> test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

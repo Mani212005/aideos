@@ -6,6 +6,8 @@
  * - Close-gap with multi-track dependency shifting (U-9).
  * - Real-time sync drift monitoring.
  * - Real PCM waveform peak extraction.
+ * Inputs and outputs: voiceover split and trim scenarios -> test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

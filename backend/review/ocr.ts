@@ -5,6 +5,8 @@
  * are too small or too faint to read, does text overlap other text or leave the safe margin, and
  * which numbers are on screen. Sizes are normalised to a 1080 short side so a reel and a wide cut
  * are held to the same standard. The geometry (`analyzeSample`) is pure and unit tested.
+ * Inputs and outputs: full-resolution sample frames -> OCR text blocks, bounding boxes, and caption band facts.
+ * Used by: backend/review/renderFacts.ts.
  */
 
 import { spawn } from "node:child_process";

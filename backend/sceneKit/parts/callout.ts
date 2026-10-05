@@ -1,5 +1,7 @@
 /**
  * File Description: SVG callout building block for diagram annotations with pointers and labels.
+ * Inputs and outputs: callout text, anchor point, and pointer direction -> SVG callout annotation markup.
+ * Used by: backend/sceneKit/parts/index.ts.
  */
 
 import { el, g, text, stroke, PAL } from "../svg";

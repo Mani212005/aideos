@@ -1,5 +1,7 @@
 /**
  * File Description: Root Remotion entry point registering compositions for Long (16:9), Reel (9:16), and Short (9:16).
+ * Inputs and outputs: Remotion composition props and schema -> Remotion Root with Long and Reel compositions.
+ * Used by: src/index.ts (Remotion root entry point).
  */
 
 import { Composition } from "remotion";

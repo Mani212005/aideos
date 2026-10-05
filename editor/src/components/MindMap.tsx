@@ -3,6 +3,8 @@
  * Draws the film's concept graph as draggable outlined node cards on a dot grid, with a connection
  * inspector for editing the edges between them. The canvas owns positioning and selection; the
  * Story stage owns the verbs that create nodes, edges and shots.
+ * Inputs and outputs: film canvas nodes and edges -> interactive mind map node graph canvas.
+ * Used by: editor/src/screens/StoryStage.tsx.
  */
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import type { Film, CanvasNode, CanvasEdge } from "../../../src/dl/schema";

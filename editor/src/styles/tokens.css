@@ -6,6 +6,8 @@
  * drawn directly behind the video frame so footage exposure is judged correctly. Contrast pairs
  * are documented inline and are all WCAG AA or better. This file styles the editor only; the
  * rendered video design language lives in src/dl/README.md and is deliberately untouched.
+ * Inputs and outputs: none -> CSS custom properties for Neobrutalism design tokens.
+ * Used by: editor/tailwind.config.js, editor/src/index.css.
  */
 
 :root {

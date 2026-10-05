@@ -3,6 +3,8 @@
  * Replaces hardcoded regex heuristics with a model-driven planning and execution workflow.
  * Allows users to request edits in natural language, reviews the generated natural-language
  * plan and discrete EditOp checklist (dry-run-then-apply), and commits changes as a single undo step.
+ * Inputs and outputs: user prompt and selected element -> AI editing prompt popover.
+ * Used by: editor/src/App.tsx.
  */
 
 import React, { useState, useMemo } from "react";

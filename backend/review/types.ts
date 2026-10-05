@@ -5,6 +5,8 @@
  * timestamps), the gate failures that make the command exit non-zero, and the raw facts behind them.
  * Criterion ids follow the audit rubric (docs: section 4.2); storyline (10) is not deterministic and
  * is left to the model judge, so it never appears here.
+ * Inputs and outputs: TypeScript definitions -> ReviewReport, CriterionResult, and Facts interfaces.
+ * Used by: backend/review/review.ts, backend/review/criteria.ts.
  */
 
 /** A spoken word with its measured offsets in seconds. */

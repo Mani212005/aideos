@@ -2,6 +2,8 @@
  * File Description: Unit tests for the EditProgram semantic validator (Phase 2).
  * Tests closed Zod schema enforcement, parameter ranges, entity reference verification,
  * and dry-run simulation against LayeredFilm invariants.
+ * Inputs and outputs: sample edit programs -> validation error assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

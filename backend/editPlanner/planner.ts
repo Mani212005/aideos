@@ -3,6 +3,8 @@
  * Composes the EditContext into an AI prompt, queries the injected LLM (or Google Gen AI client),
  * and validates the resulting EditOp program in a 3-attempt validate-then-repair loop.
  * Phase 3 additions: add_lower_third in the planner vocabulary for broadcast-style callouts.
+ * Inputs and outputs: EditContext, natural language prompt, and LLM caller -> validated EditProgram.
+ * Used by: backend/editPlanner/index.ts, backend/mcp/server.ts.
  */
 
 import type { EditContext } from "../editContext/buildEditContext";

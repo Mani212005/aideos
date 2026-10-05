@@ -6,6 +6,8 @@
  * lyric() lays spoken lines out as kinetic type: every word is its own element that lands on the
  * frame it is spoken, with positions measured from real glyph advances so nothing overflows, and a
  * display token may cover several spoken words ("HNSW{4}" is four letters said one by one).
+ * Inputs and outputs: kinetic typography text, stage coordinates, and timing -> assembled SVG elements and animation clips.
+ * Used by: backend/stillTalking/scene.ts, backend/sceneKit/authoring.test.ts.
  */
 
 import type { SvgAnimatableProperty, SvgEasing } from "../../src/dl/scene/svgAnimation";

@@ -1,5 +1,7 @@
 /**
  * File Description: MCP server exposing the Aideos production pipeline as agent-callable tools.
+ * Inputs and outputs: MCP JSON-RPC messages via stdio -> tool execution and results.
+ * Used by: package.json, bin/aideos.
  *
  * A full render takes tens of minutes, which no request/response protocol should be asked to hold
  * open, so aideos_produce_film starts a run in the background and returns a run id immediately.

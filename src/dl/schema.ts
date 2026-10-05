@@ -1,5 +1,7 @@
 /**
  * File Description: Defines the core Zod schema contracts, film data structures, block types, and theme definitions for Aideos.
+ * Inputs and outputs: raw film JSON objects -> Zod validated Film, Shot, CanvasNode, and Block instances.
+ * Used by: src/dl/runtime.ts, src/dl/Film.tsx, editor/vite.config.ts, backend/pipeline/run.ts.
  */
 
 import { z } from "zod";

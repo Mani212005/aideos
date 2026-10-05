@@ -2,6 +2,8 @@
  * File Description: Comprehensive Test Suite for the 5 Foundational Geometry Patterns.
  * Implements G-1..G-5 and negative test cases covering clip data model,
  * transaction manager, sticky snapping, drag state machine, and pending overrides.
+ * Inputs and outputs: timeline geometry fixtures and operations -> test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

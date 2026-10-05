@@ -3,6 +3,8 @@
  * Keeps element identity stable across frames (one React key per document path), namespaces ids and
  * internal references per entity instance, and applies the compiled per-element animation state as
  * plain SVG transform, opacity and stroke-dash attributes. Pure: no Node imports, no DOM access.
+ * Inputs and outputs: SvgElement node and compiled element state -> rendered React SVG DOM node.
+ * Used by: src/dl/scene/SceneView.tsx.
  */
 
 import React from "react";

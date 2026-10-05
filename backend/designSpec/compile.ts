@@ -4,6 +4,10 @@
  * Timeline (so a snap or a second origin is refused with the clip named), and the result is the
  * film with its `scene`, `accent`, `design` provenance and any per-shot block overrides applied.
  * Pure: it reads nothing from disk, so the build step and the tests share it.
+ * Inputs and outputs: shot specifications, visual cues, and layout geometry -> compiled scene and shot timelines.
+ * Used by: backend/designSpec/designer.ts, backend/designSpec/designSpec.test.ts.
+ * Inputs and outputs: shot specifications, visual cues, and layout geometry -> compiled scene and shot timelines.
+ * Used by: backend/designSpec/designer.ts, backend/designSpec/designSpec.test.ts.
  */
 
 import { DEVICE_BLOCKS, type Film } from "../../src/dl/schema";

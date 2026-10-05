@@ -3,6 +3,8 @@
  * file under videos/<slug>/all-check/ so a person can read exactly what the agent was told: the hard
  * rules (touch only videos/<slug>/, code changes go through a worktree and a PR, never self-score),
  * the settings of the run, the long-then-reel-then-final protocol and the exact commands to run.
+ * Inputs and outputs: round metrics and review scores -> formatted markdown review brief for agent.
+ * Used by: backend/allCheck/agent.ts.
  */
 
 import type { AllCheckConfig } from "./types";

@@ -6,6 +6,8 @@
  * earlier, stage-clear events by ink coverage collapsing, never by overlapping pixels in place (that
  * rewards a diagram that simply sits still). Camera is deliberately not measured from pixels: a static
  * grid and HUD dominate global correlation, so camera comes from film data (see source.ts).
+ * Inputs and outputs: grayscale video frames -> layout persistence metrics, cut locations, and stillness scores.
+ * Used by: backend/review/renderFacts.ts.
  */
 
 export const GRID_W = 48;

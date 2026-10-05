@@ -5,6 +5,8 @@
  * markup, headless Chrome, 1920x1080 PNG with the size verified). Nothing opens a browser against
  * localhost and nothing plays video: the stills are produced here once and every later check
  * (the coding model's critique, the embedding score, the log) reads the same files.
+ * Inputs and outputs: scene film and timing -> rasterized sample frame PNGs and beat descriptions.
+ * Used by: backend/visionJudge/judge.ts.
  */
 
 import fs from "node:fs";

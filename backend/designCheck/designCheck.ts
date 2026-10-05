@@ -6,6 +6,8 @@
  * Rules: schema, scene engine validity, static self-contained artwork, palette, typography,
  * continuity (no motion snaps while visible, one origin per element), audio lock, and honest
  * on-screen data.
+ * Inputs and outputs: Film or Scene data -> standard-layer design rule violations and warnings.
+ * Used by: backend/cli.ts, backend/pipeline/run.ts.
  */
 
 import fs from "node:fs";

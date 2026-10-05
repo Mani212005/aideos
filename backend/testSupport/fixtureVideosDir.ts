@@ -4,6 +4,8 @@
  * tests must never read them, and a test that writes a package must never touch the owner's real
  * videos/ folder. Loaded with `node --import` by `npm test` and, idempotently, by any test file that
  * needs a fixture package when run on its own: it sets AIDEOS_VIDEOS_DIR before anything resolves it.
+ * Inputs and outputs: test_fixtures/packages/ -> isolated temporary video packages directory for test process.
+ * Used by: npm test (Node test preload module).
  */
 
 import fs from "node:fs";

@@ -2,6 +2,8 @@
  * File Description: Unit and regression tests for untagged prose parsing, heuristic structuring,
  * Director LLM screenplay transformation, and zero-shot error handling in backend/scriptIntake.ts
  * and backend/pipeline/director.ts.
+ * Inputs and outputs: raw untagged prose samples -> screenplay structuring test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

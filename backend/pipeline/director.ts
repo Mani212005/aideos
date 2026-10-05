@@ -7,6 +7,8 @@
  * runProduction (./run.ts) unchanged, so a prompted film goes through the identical audio-first,
  * design-compiled, invariant-checked pipeline a hand-written screenplay does. The plan is always
  * model-driven: nothing here falls back to a canned or templated screenplay.
+ * Inputs and outputs: creative prompt -> drafted, validated screenplay and produced film.
+ * Used by: backend/cli.ts, backend/pipeline/director.test.ts.
  */
 
 import fs from "fs";

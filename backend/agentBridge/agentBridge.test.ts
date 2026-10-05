@@ -1,6 +1,8 @@
 /**
  * File Description: Comprehensive unit and integration tests for the Aideos Agent Bridge Hub.
  * Tests task queue lifecycle, multi-channel dispatch, Firstmate inbox formatting, MCP tools, and hybrid timeout fallback.
+ * Inputs and outputs: agent bridge task dispatch and queue fixtures -> test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

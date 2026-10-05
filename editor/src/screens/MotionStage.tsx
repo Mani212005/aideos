@@ -8,6 +8,8 @@
  * CSS animation is seeked with a negative delay while paused, so the frame shown is the frame that
  * will render. This screen owns authoring only; the render engine that turns a saved visual into
  * footage lives outside the editor.
+ * Inputs and outputs: film project, scene definition, motion templates -> custom SVG animation authoring stage.
+ * Used by: editor/src/App.tsx.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

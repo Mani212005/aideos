@@ -4,6 +4,8 @@
  * B-roll, assembly, render and verification. Each stage records a fingerprint of its inputs in the
  * package's run state, so a failure partway through resumes from the last good stage instead of
  * restarting from zero, and every failure is reported with the stage that produced it.
+ * Inputs and outputs: ProductionRequest -> executed pipeline stages and ProductionResult.
+ * Used by: backend/cli.ts, backend/mcp/server.ts.
  */
 
 import { designFilm } from "../designSpec/designer";

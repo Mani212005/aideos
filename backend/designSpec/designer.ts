@@ -10,6 +10,10 @@
  * it fails goes back to the same synthesis paths with the exact error attached, and the repair
  * still has to pass the design build to reach the film. The judge never calls Gemini: the server
  * model repairs only when a caller was passed in.
+ * Inputs and outputs: DesignBrief and film assets -> complete generated Scene and Film design.
+ * Used by: backend/pipeline/run.ts.
+ * Inputs and outputs: DesignBrief and film assets -> complete generated Scene and Film design.
+ * Used by: backend/pipeline/run.ts.
  */
 
 import { generateText, isGoogleAiConfigured } from "../modelClient";

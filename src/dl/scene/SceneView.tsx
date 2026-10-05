@@ -5,6 +5,8 @@
  * animation applied; actors are drawn as articulated vector rigs with hierarchical skeletal
  * transforms and rotating subgroups (D1). Pure React with no Node imports, so the same component
  * renders inside Remotion's browser bundle and in server-side stills.
+ * Inputs and outputs: compiled scene state and SVG assets -> rendered hierarchical SVG elements with transforms.
+ * Used by: src/dl/scene/SceneClip.tsx, editor/src/screens/MotionStage.tsx.
  */
 
 import React from "react";

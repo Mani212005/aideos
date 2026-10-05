@@ -6,6 +6,8 @@
  *   the audio mix), and lane height.
  * - Multi-layer compositing resolver (sorts visible clips ascending by layer.number, stable within
  *   a layer) and the matching audio resolver that honours mute.
+ * Inputs and outputs: LayeredFilm and layer CRUD actions -> updated LayeredFilm with re-keyed z-orders.
+ * Used by: backend/timeline/layer_engine.ts, editor/src/state/useLayeredTimeline.ts.
  */
 
 import type { LayeredFilm, Layer, Clip } from "../../src/dl/layeredSchema";

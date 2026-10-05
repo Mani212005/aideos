@@ -3,6 +3,8 @@
  * Draws a tick scale whose label density adapts to the current zoom so the ruler is readable from
  * a ten second close-up to a five minute overview, and hosts the playhead grab target. Labels are
  * mono timecodes so they line up column-wise with every other number in the editor.
+ * Inputs and outputs: timeline duration, zoom factor, playhead frame -> calibrated time ruler and playhead marker.
+ * Used by: editor/src/components/TimelineEditor.tsx.
  */
 
 import { cn } from "../ui";

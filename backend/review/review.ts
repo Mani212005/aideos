@@ -4,6 +4,8 @@
  * criteria, extracts evidence frames for what failed, and writes review.json. The JSON is the
  * interface other tools read (the Gemini review loop includes it as context); the process exit code
  * is non-zero when any gate criterion fails. Deterministic: same video, same report.
+ * Inputs and outputs: video path, optional film data, and voiceover -> ReviewReport JSON.
+ * Used by: backend/cli.ts, backend/allCheck/round.ts.
  */
 
 import fs from "node:fs";

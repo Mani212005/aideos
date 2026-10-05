@@ -1,5 +1,7 @@
 /**
  * File Description: Defines the structured good-video rubric summary, schema, and validation utilities for video quality scoring.
+ * Inputs and outputs: none -> parsed good video quality rubric schema and summary.
+ * Used by: backend/review/criteria.ts, backend/geminiReview/rubric.ts.
  */
 
 import fs from "node:fs";

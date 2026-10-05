@@ -2,6 +2,8 @@
  * File Description: Tests for the agent link: pairing, owner-only task delivery, connector polling,
  * disconnect, the design tools' file rules, and the connector's per-agent commands (each confined
  * to the aideos MCP tools).
+ * Inputs and outputs: pairing flow simulations and token generation -> test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

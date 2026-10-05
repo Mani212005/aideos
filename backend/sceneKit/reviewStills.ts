@@ -3,6 +3,8 @@
  * The film is inspected as it will ship (both formats, real fonts and compositing) rather than as a
  * compiled data structure. One browser serves the whole batch, because opening one per still is by
  * far the slowest part of the job.
+ * Inputs and outputs: film composition and sample frame numbers -> rendered wide and reel PNG stills.
+ * Used by: backend/sceneKit/reviewFrames.ts.
  */
 
 import * as path from "path";

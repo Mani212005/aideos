@@ -4,6 +4,8 @@
  * with nothing in it yet, Note for inline result messages, ProgressBar for long running jobs,
  * Spinner for short ones, IconToggle for lane on/off controls, and Toast for non-blocking status
  * that must not interrupt what the user is doing.
+ * Inputs and outputs: toast message and status -> toast alert notifications.
+ * Used by: editor/src/components/ui/index.ts.
  */
 
 import React, { useEffect } from "react";

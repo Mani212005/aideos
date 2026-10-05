@@ -3,6 +3,8 @@
  * Pairing gives this browser an owner key; it is kept in localStorage and sent as X-Aideos-Owner
  * with every studio API request, which is how the server knows a task may go to the owner's
  * connected agent. Installed once, as a fetch wrapper, so no call site has to remember it.
+ * Inputs and outputs: agent pairing code and polling loop -> reactive agent connection and task status hook.
+ * Used by: editor/src/App.tsx, editor/src/components/AgentConnect.tsx.
  */
 
 const OWNER_KEY_STORAGE = "aideos.ownerKey";

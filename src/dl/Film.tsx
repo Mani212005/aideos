@@ -1,5 +1,7 @@
 /**
  * File Description: Core Remotion film renderer assembling canvas graph, spatial camera movements, staged devices, subtitles, and audio tracks.
+ * Inputs and outputs: Film manifest, current frame, and player props -> composite Remotion video composition.
+ * Used by: src/dl/Video.tsx, src/Root.tsx, editor Remotion Player.
  */
 
 import React from "react";

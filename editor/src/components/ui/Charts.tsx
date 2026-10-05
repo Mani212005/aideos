@@ -4,6 +4,8 @@
  * accent fills, mono numerals, no gradients or blur) so the editor gains no charting dependency.
  * Each one answers a specific editing question: where time is going, where narration is dense,
  * which script beats reached the timeline, and whether the project is ready to export.
+ * Inputs and outputs: pacing, density, and script metrics -> SVG metric gauges and charts.
+ * Used by: editor/src/screens/ReviewStage.tsx.
  */
 
 import { useId, useMemo, useState } from "react";

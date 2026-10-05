@@ -4,6 +4,8 @@
  * property, over which frames, with which easing, and compiles it into dense per-frame element
  * state. Every value is a pure function of the frame index: no wall clock, no CSS transitions and
  * no unseeded randomness, so a scene renders identically on every pass.
+ * Inputs and outputs: declarative SVG animation clips and frame index -> compiled per-element animated attributes.
+ * Used by: src/dl/scene/compile.ts, backend/scene/svgAnimation.test.ts.
  */
 
 import type { Vec2 } from "./types";

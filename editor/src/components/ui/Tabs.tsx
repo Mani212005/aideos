@@ -3,6 +3,8 @@
  * SegmentedTabs is the horizontal slab switcher used for panel and sub-view modes; RailTab is the
  * vertical stage tab used by the single left navigation rail. Both share the same selected
  * treatment so "where am I" reads identically on either navigation surface.
+ * Inputs and outputs: tab items, active key, and onChange -> tabbed navigation header.
+ * Used by: editor/src/components/ui/index.ts, editor stages.
  */
 
 import React from "react";

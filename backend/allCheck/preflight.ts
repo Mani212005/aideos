@@ -3,6 +3,8 @@
  * run cannot recover from halfway: the video package, its voiceover, ffmpeg and tesseract, tmux, the
  * background agent's CLI and the agy login that the Gemini review runs on. Each failure carries the
  * exact fix, and all failures are reported together as one message. Process access is injectable.
+ * Inputs and outputs: slug and environment -> preflight readiness check result.
+ * Used by: backend/allCheck/index.ts.
  */
 
 import fs from "node:fs";

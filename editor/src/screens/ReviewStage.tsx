@@ -4,6 +4,8 @@
  * the project, where is the time going shot by shot, which script beats actually reached the
  * timeline, and how much of the run time is narration versus silence. The AI critique studio sits
  * underneath so a reviewer can act on what the numbers show without changing screens.
+ * Inputs and outputs: film project, review criteria, critique engine -> quality metrics and review readiness stage.
+ * Used by: editor/src/App.tsx.
  */
 
 import { useMemo } from "react";

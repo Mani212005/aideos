@@ -1,5 +1,7 @@
 /**
  * File Description: Vite configuration and custom development API plugins for Aideos Studio editor server.
+ * Inputs and outputs: Vite plugins and API route handlers -> Vite development and API server configuration.
+ * Used by: npm run editor, Vite build, and Render container.
  */
 
 import { defineConfig } from 'vite'

@@ -1,5 +1,7 @@
 /**
  * File Description: Remotion visual-device library, including deterministic full-screen B-roll heroes.
+ * Inputs and outputs: device specifications, frame numbers, and layout dimensions -> rendered mock device frames and heroes.
+ * Used by: src/dl/Film.tsx, src/dl/Block.tsx.
  */
 
 import React from "react";

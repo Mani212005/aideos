@@ -1,6 +1,8 @@
 /**
  * File Description: Tests for the pure edit-context modules: detectFillers, detectSilences and
  * buildEditContext. All three operate on plain data with no network or filesystem access.
+ * Inputs and outputs: transcribed words and sample timings -> test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

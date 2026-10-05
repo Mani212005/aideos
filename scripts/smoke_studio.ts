@@ -4,6 +4,8 @@
  * not render or throws an uncaught error. Unit tests run in Node and cannot see a crash that only
  * happens in the browser bundle (for example a Node-only import leaking into client code, which
  * blanked the studio after #43), so this check loads the real page the way a user does.
+ * Inputs and outputs: none -> launches dev server and headless Chrome, returns exit code 0 on success.
+ * Used by: npm run smoke:studio.
  */
 
 import { spawn } from "node:child_process";

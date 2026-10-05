@@ -5,6 +5,8 @@
  * with bottom captions) must pass every gate it can be measured on, while the rejected aideos
  * explainer ("B") and the RAG film must fail the ones the captain's comparison turned on. Change a
  * value only by re-running the calibration and keeping that ordering.
+ * Inputs and outputs: none -> calibrated threshold constants for review criteria.
+ * Used by: backend/review/criteria.ts.
  */
 
 /** Calibrated on 2026-10-01 against references A, B and RAG (frames at 10 fps, 480x270, ink = 28 levels off the median). */

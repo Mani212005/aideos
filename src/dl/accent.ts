@@ -1,3 +1,9 @@
+/**
+ * File Description: React context and hook managing per-film accent color overrides across rendered components.
+ * Inputs and outputs: theme accent hex color string -> AccentContext provider and useAccent hook.
+ * Used by: src/dl/Film.tsx, src/dl/Block.tsx, and dl visual primitives.
+ */
+
 import { createContext, useContext } from "react";
 import { PALETTE } from "./tokens";
 

@@ -3,6 +3,8 @@
  * Shows who designed it and the idea behind it, the artwork its scene is drawn from, and shot by
  * shot what is said, what is on screen, why that visual was chosen and which motion lands there.
  * A film still on the template design gets one action instead: send it to the connected agent.
+ * Inputs and outputs: active film canvas and shots -> visual preview panel and design surface.
+ * Used by: editor/src/screens/StoryStage.tsx.
  */
 
 import { useState } from "react";

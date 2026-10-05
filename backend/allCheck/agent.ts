@@ -5,6 +5,8 @@
  * an explicit per-run --agent / --model overrides it. A generation model the policy forbids
  * (gemini-3.1-pro) is refused unless --allow-forbidden-model is given. Only claude and agy can run
  * as background agents.
+ * Inputs and outputs: slug and review round results -> dispatched agent review edit tasks.
+ * Used by: backend/allCheck/round.ts.
  */
 
 import {

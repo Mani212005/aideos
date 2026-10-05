@@ -1,3 +1,9 @@
+/**
+ * File Description: React context and hook controlling layout alignment (left or center) across panel blocks.
+ * Inputs and outputs: alignment mode ("left" | "center") -> AlignContext provider and useAlign hook.
+ * Used by: src/dl/Block.tsx and dl layout primitives.
+ */
+
 import { createContext, useContext } from "react";
 
 /**

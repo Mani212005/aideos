@@ -1,5 +1,7 @@
 /**
  * File Description: Validates the active design-language film manifest and prints its runsheet bar chart.
+ * Inputs and outputs: src/dl/activeFilm.ts -> validation errors or formatted ASCII runsheet.
+ * Used by: npm run validate.
  *
  * The schema enforces section 08 rhythm rules: no device past 25s, never the same
  * device twice in a row, a text beat every 60-90s, the canvas returning as an

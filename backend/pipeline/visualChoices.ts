@@ -4,6 +4,8 @@
  * about, the visual it picked, its confidence and runner-ups, whether the pick survived gating,
  * and whether the chart's data was authored or why it was refused. The studio reads it to explain
  * a shot ("why this visual") and to offer the runner-ups as swaps.
+ * Inputs and outputs: shot visual selections and confidence metrics -> persisted visual-choices.json.
+ * Used by: backend/pipeline/design.ts.
  */
 
 import fs from "node:fs";

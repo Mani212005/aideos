@@ -2,6 +2,8 @@
  * File Description: Long-lived Kokoro TTS worker. Loads the Kokoro-82M ONNX model once and then
  * answers newline-delimited JSON synthesis requests on stdin, writing raw mono float32 PCM to the
  * path each request names.
+ * Inputs and outputs: JSON synthesis requests on stdin -> mono Float32 PCM audio written to specified file.
+ * Used by: backend/tts.ts (spawned child process worker).
  *
  * It exists as a separate ESM process for two concrete reasons. Kokoro resolves its voice files
  * relative to its own module directory via import.meta.dirname, which the CJS interop the backend

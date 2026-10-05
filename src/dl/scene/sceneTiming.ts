@@ -4,6 +4,8 @@
  * audio segment rather than chosen. These helpers convert between milliseconds and frames, align a
  * scene to an audio segment so it satisfies validation Rule 14, and retime an animation timeline
  * proportionally when a scene is re-clocked to a different take. Pure: no Node imports.
+ * Inputs and outputs: audio durations and scene timelines -> aligned frame counts and retimed animation tracks.
+ * Used by: backend/scene/svgAnimation.test.ts.
  */
 
 import type { Scene } from "./types";

@@ -9,6 +9,8 @@
  * Also holds the Phase 0 defect class closed: an imported video's picture used to be silently
  * dropped on the round trip back to a Film manifest (audio survived, the picture did not), and
  * footage audio used to collide onto the voiceover spine instead of its own lane.
+ * Inputs and outputs: imported footage test clips and audio -> linking test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

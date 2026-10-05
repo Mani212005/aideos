@@ -2,6 +2,8 @@
  * File Description: Loads pinned WanGP settings templates from backend/engine/profiles/.
  * Each profile is kilobytes of JSON committed to the repo; heavy model weights stay
  * on the GPU box (report section 3.2).
+ * Inputs and outputs: profile name -> loaded JSON profile settings.
+ * Used by: backend/engine/sshWanGPEngine.ts.
  */
 import fs from "fs/promises";
 import path from "path";

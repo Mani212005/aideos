@@ -1,5 +1,7 @@
 /**
  * File Description: Pending task queue and lifecycle manager for the Aideos Agent Bridge.
+ * Inputs and outputs: task requests -> queued, prioritized agent tasks.
+ * Used by: backend/agentBridge/dispatcher.ts, backend/agentBridge/index.ts.
  */
 
 import type { AgentEventType, AgentTask, AgentTaskContext, DispatchChannel } from "./types";

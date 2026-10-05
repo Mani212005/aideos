@@ -2,6 +2,8 @@
  * File Description: The entry points of `aideos all-check`: start a run (preflight, lock, config,
  * brief, tmux window for the background agent), read its status, wait for its result, and roll the
  * film back to a round's backup. Rounds and the finish step live in round.ts and finish.ts.
+ * Inputs and outputs: slug and options -> full multi-round all-check execution result.
+ * Used by: backend/allCheck/cli.ts, backend/allCheck/agent.ts.
  */
 
 import fs from "node:fs";

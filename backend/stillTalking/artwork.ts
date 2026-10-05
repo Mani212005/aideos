@@ -6,6 +6,8 @@
  * here so the drawing and the timeline agree on the same ids and the same coordinates. Nothing
  * emitted here animates itself: the assets are static documents, exactly as the scene engine
  * requires, and all motion lives in the separate declarative timelines.
+ * Inputs and outputs: none -> static SVG asset sources for the Still Talking film.
+ * Used by: backend/stillTalking/writeAssets.ts.
  */
 
 import { rng } from "../sceneKit";

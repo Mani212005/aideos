@@ -1,5 +1,7 @@
 /**
  * File Description: Shared text manipulation helpers for the scene-film kit.
+ * Inputs and outputs: text strings and format options -> formatted, sanitized text strings.
+ * Used by: backend/sceneKit/canvas.ts.
  */
 
 // Lowercases a word and strips everything but letters and digits, for matching spoken to scripted.

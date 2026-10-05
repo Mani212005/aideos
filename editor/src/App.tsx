@@ -5,6 +5,8 @@
  * state, the shared layer-model timeline API, playback state and the global keyboard map, and
  * hands each stage exactly what it needs. No stage owns its own history: every edit is committed
  * through the project's single labelled undo stack.
+ * Inputs and outputs: application props and state -> rendered single-page studio application with navigation and inspectors.
+ * Used by: editor/src/main.tsx.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

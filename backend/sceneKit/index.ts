@@ -8,6 +8,8 @@
  * because this index is imported by code the editor dev server loads: ./voiceover (narration
  * step), ./measureWords, ./preview, ./reviewStills and ./reviewFrames (stills load Remotion).
  * Clip format: src/dl/scene/README.md.
+ * Inputs and outputs: scene kit modules -> public library export for authoring bespoke scene films.
+ * Used by: backend/stillTalking/buildFilm.ts, examples/diagram-parts/build.ts.
  */
 
 export { FPS, SCENE_SIZE, FORMAT_WINDOWS, SAFE_SQUARE, CAPTION_SAFE_SQUARE, rectInside, type SceneRect } from "./stage";

@@ -4,6 +4,8 @@
  * criterion verdicts) run on hand-built data; the end-to-end tests render small synthetic videos with
  * ffmpeg (a stable stage, a stage cleared at every beat, a captioned one) and review them for real,
  * including the CLI exit code and the evidence frames. They skip when ffmpeg or tesseract is missing.
+ * Inputs and outputs: synthetic video samples and hand-crafted review data -> test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

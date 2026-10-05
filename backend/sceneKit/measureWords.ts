@@ -6,6 +6,8 @@
  * keyed by exact word and weight (em per word, weights 500 and 800): words already in it are kept,
  * so each film only measures what it adds.
  * Usage from a film: await measureWords(displayWords(narrationLines)); then re-run its build.
+ * Inputs and outputs: word strings -> measured pixel widths via headless Chrome merged into wordWidths.json.
+ * Used by: backend/sceneKit/typeMetrics.ts.
  */
 
 import * as fs from "fs";

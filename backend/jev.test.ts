@@ -2,6 +2,8 @@
  * File Description: Test suite for TypeSafe Jev model integration for screenplay primitive selection.
  * Verifies request building, response parsing, deterministic heuristic fallback, confidence gating,
  * mock client injection, and screenplay integration with zero live API calls.
+ * Inputs and outputs: mock Jev responses and screenplay beats -> Jev client test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

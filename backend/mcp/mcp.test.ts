@@ -1,6 +1,8 @@
 /**
  * File Description: Unit tests for the Aideos MCP Server, production tools, editing tools, and agent task tools.
  * Verifies tool registration, input validation, task queue operations, and dry-run execution.
+ * Inputs and outputs: MCP tool requests -> test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

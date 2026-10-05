@@ -4,6 +4,8 @@
  * 16-bit PCM WAV encode/decode. Everything here is deterministic and dependency-free so the
  * voiceover regression tests can assert on sample counts and boundary amplitudes directly,
  * which is the only way to prove there is no click, gap or drift at a stitch point.
+ * Inputs and outputs: raw Float32 PCM samples and WAV buffers -> trimmed, normalized, concatenated audio samples and WAV files.
+ * Used by: backend/audio.ts, backend/tts.ts.
  */
 
 /** One synthesized piece of narration and the text it speaks. */

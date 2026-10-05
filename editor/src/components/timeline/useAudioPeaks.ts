@@ -4,6 +4,8 @@
  * it to a fixed bucket of normalised amplitude peaks the timeline can draw at any zoom level.
  * Results are cached per source for the life of the page so scrubbing, zooming and re-renders never
  * re-decode, and any failure degrades to "no waveform" rather than breaking the lane.
+ * Inputs and outputs: audio source URL and sample count -> waveform peak amplitude array.
+ * Used by: editor/src/components/timeline/ClipBody.tsx.
  */
 
 import { useEffect, useState } from "react";
