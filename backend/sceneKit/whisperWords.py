@@ -1,5 +1,8 @@
 # File Description: Transcribes time ranges of a wav with the locally cached openai-whisper model and writes word-level timings as JSON.
-# Used by the scene kit's voiceover step (sceneKit/voiceover.ts) because the synthesizer's own word offsets are estimates, and a kinetic
+# Inputs and outputs: voiceover.wav, a ranges JSON file -> word-level timings JSON.
+# Used by: backend/sceneKit/voiceover.ts (spawned with system python3).
+#
+# Used by the scene kit's voiceover step because the synthesizer's own word offsets are estimates, and a kinetic
 # typography film needs each word to land on the frame it is actually spoken. Each line is transcribed on its own clip,
 # which keeps whisper from smearing a word across the silence between two lines.
 import json

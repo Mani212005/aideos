@@ -4,6 +4,8 @@
  * "switch to the blueprint theme"), runs it through the critique engine, and applies the result as
  * one undoable project edit. Conversation history is kept per project so the assistant remembers
  * what was already asked for on this film.
+ * Inputs and outputs: feedback text and screenshot -> feedback submission dialog.
+ * Used by: editor/src/App.tsx.
  */
 
 import { useState, useRef, useEffect } from "react";

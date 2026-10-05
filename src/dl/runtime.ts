@@ -1,3 +1,9 @@
+/**
+ * File Description: Runtime validation and module-scope timeline initialization for the active film composition.
+ * Inputs and outputs: ACTIVE_FILM manifest -> validated FILM object, compiled TIMELINE, and Remotion composition props schema.
+ * Used by: src/Root.tsx.
+ */
+
 import { z } from "zod";
 import { zColor } from "@remotion/zod-types";
 import { parseFilm } from "./schema";

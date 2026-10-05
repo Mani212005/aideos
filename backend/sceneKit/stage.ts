@@ -3,6 +3,8 @@
  * A scene film is composed on one square scene space. Each output format shows a 1080-wide strip
  * through its centre, so the square in the middle is the only area both formats always see. These
  * numbers are the standard layer's geometry: artwork placement and the design check both use them.
+ * Inputs and outputs: aspect ratio or format type -> coordinate conversion helpers and format safe areas.
+ * Used by: backend/sceneKit/svg.ts, backend/stillTalking/scene.ts.
  */
 
 /** Frames per second of every scene film. */

@@ -3,6 +3,8 @@
  * Field pairs a stencil-style label with its control and an optional hint, and Input, Textarea,
  * Select, NumberStepper and Range are the hard-edged controls themselves. Every control carries
  * the same 2px ink border, white ground and loud focus state so forms read as one system.
+ * Inputs and outputs: field label, error, and child control -> form field wrapper component.
+ * Used by: editor/src/components/ui/index.ts, editor forms.
  */
 
 import React, { useId } from "react";

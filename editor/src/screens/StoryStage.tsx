@@ -3,6 +3,8 @@
  * The spatial map the camera travels across: nodes are the places the film visits and edges are the
  * relationships it draws between them. The stage owns the canvas actions (add node, connect nodes,
  * add a shot) so those verbs live next to the canvas instead of in a distant sidebar.
+ * Inputs and outputs: film project, canvas nodes, shot sequence -> story outline and canvas layout stage.
+ * Used by: editor/src/App.tsx.
  */
 
 import { GitBranch, Plus, Clapperboard } from "lucide-react";

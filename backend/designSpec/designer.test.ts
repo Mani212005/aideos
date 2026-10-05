@@ -3,6 +3,10 @@
  * A temporary copy of the demo film is designed by a fake server model (first try, and after a
  * repair), and falls back to flagged templates when no model is available. The agent path is
  * skipped: a test must never message a live agent session.
+ * Inputs and outputs: design synthesis pipeline fixtures -> test assertions.
+ * Used by: npm test.
+ * Inputs and outputs: design synthesis pipeline fixtures -> test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

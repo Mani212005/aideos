@@ -1,4 +1,8 @@
-// File Description: Customization and Theme Studio Editor for selecting paper textures, typography fonts, video types, storytelling styles, accent colors, saving themes, and directing script-to-visual metaphors.
+/**
+ * File Description: Customization and Theme Studio Editor for selecting paper textures, typography fonts, video types, storytelling styles, accent colors, saving themes, and directing script-to-visual metaphors.
+ * Inputs and outputs: theme selection, typography, color options -> updated film design settings.
+ * Used by: editor/src/screens/LookStage.tsx.
+ */
 
 import React, { useState } from "react";
 import {

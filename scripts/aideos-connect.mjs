@@ -4,6 +4,8 @@
  * in this terminal. It dials out to the studio, so no port is opened on this machine, and runs each
  * task the studio sends through the agent's own headless mode, so the owner's own agent
  * subscription does the work.
+ * Inputs and outputs: CLI arguments (pairing code, agent, url, model) -> long-running agent task worker loop.
+ * Used by: npm run connect, bin/aideos.
  *
  *   node aideos-connect.mjs <PAIRING-CODE> --agent claude|agy|codex|opencode [--model provider/model] --url <studio api url>
  *   node aideos-connect.mjs --url <studio api url>        (reconnect with the saved connection)

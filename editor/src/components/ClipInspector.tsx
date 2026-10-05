@@ -4,6 +4,8 @@
  * dragging: timeline position, source in and out points, derived duration, volume, and the lane it
  * lives on. Every change goes through the same layer-engine operations the drag gestures use, so
  * typing a number and dragging a handle produce identical, equally undoable results.
+ * Inputs and outputs: selected clip and layer information -> clip inspector form and properties controls.
+ * Used by: editor/src/components/shell/InspectorPanel.tsx.
  */
 
 import { Link2, Scissors, Trash2, Unlink } from "lucide-react";

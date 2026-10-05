@@ -2,6 +2,8 @@
  * File Description: Natural-Language Critique & Revision Studio component (Phase B).
  * Allows operators to refine video and scene parameters using natural language with live PatchOp diff previews,
  * real-time 19-rule validation feedback, atomic rollbacks, and full undo/redo capabilities.
+ * Inputs and outputs: film project, critique engine -> critique analysis report and issue list.
+ * Used by: editor/src/screens/ReviewStage.tsx.
  */
 
 import { useState } from "react";

@@ -3,6 +3,8 @@
  * One row per layer, carrying the lane name, its z-order position, the visibility, lock and mute
  * toggles that the layer model actually honours, and the reorder and delete controls. Renaming is
  * inline so a lane can be named without leaving the timeline.
+ * Inputs and outputs: layer data (lock, mute, visibility) -> timeline lane header row controls.
+ * Used by: editor/src/components/TimelineEditor.tsx.
  */
 
 import { useEffect, useRef, useState } from "react";

@@ -2,6 +2,8 @@
  * File Description: Reasoned Visual Intent Selector for Aideos.
  * Replaces lexical keyword matching with visual-intent selection, first-class "none" choice,
  * and confidence-gated fallback.
+ * Inputs and outputs: narration text -> selected visual primitive intent with confidence.
+ * Used by: backend/ideation/segmentSync.ts.
  */
 
 import { generateStructuredJson, isGoogleAiConfigured } from "../modelClient";

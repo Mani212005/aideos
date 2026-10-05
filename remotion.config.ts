@@ -1,8 +1,7 @@
 /**
- * Note: when using the Node APIs (see `scripts/frames.mjs`) this file does not
- * apply - options are passed to those APIs directly.
- *
- * All configuration options: https://remotion.dev/docs/config
+ * File Description: CLI configuration for Remotion rendering and bundling.
+ * Inputs and outputs: configuration API -> sets video image format, output overwrite, and render concurrency.
+ * Used by: Remotion CLI commands (npm run render, npm run render:reel, npm run studio).
  */
 
 import { Config } from "@remotion/cli/config";

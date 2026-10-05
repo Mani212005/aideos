@@ -4,6 +4,8 @@
  * allows (so footage exposure reads true), a resizable split, and the layer-model timeline below
  * it. Also owns the format switcher, the media bin that feeds drag and drop into the timeline, and
  * the guidance shown before a voiceover exists to lock the timeline to.
+ * Inputs and outputs: film project, layered timeline, media assets -> multi-track video editing stage.
+ * Used by: editor/src/App.tsx.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";

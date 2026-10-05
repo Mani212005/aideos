@@ -4,6 +4,8 @@
  * shared scene-kit voiceover step (backend/sceneKit/voiceover.ts), which synthesizes, masters and
  * records shot-spine.json. The film's picture is compiled from that measurement, so a re-recorded
  * take retimes the film instead of drifting away from it.
+ * Inputs and outputs: none -> synthesized and aligned voiceover track for Still Talking.
+ * Used by: backend/stillTalking/buildFilm.ts.
  */
 
 import { BEATS, spokenWordCount } from "./beats";

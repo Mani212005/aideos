@@ -7,6 +7,8 @@
  * - Audio drift calculation between voiceover source duration and timeline duration.
  * This module stays free of Node-only imports so the editor bundle can use it in the browser;
  * PCM waveform extraction lives in ./waveform.ts because it shells out to ffmpeg.
+ * Inputs and outputs: voiceover clips, split points, and trim bounds -> shifted dependent audio and caption clips.
+ * Used by: backend/timeline/timeline.ts, backend/editPlanner/interpreter.ts.
  */
 
 import type { LayeredFilm, Clip } from "../../src/dl/layeredSchema";

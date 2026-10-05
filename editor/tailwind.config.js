@@ -5,6 +5,8 @@
  * end; the single dark token is `matte`, reserved for the area directly behind the video frame.
  * This theme styles the editor UI only - the rendered video design language in src/dl is
  * deliberately untouched.
+ * Inputs and outputs: token definitions and content paths -> Tailwind CSS utility configuration.
+ * Used by: PostCSS and Tailwind build process.
  */
 
 /** @type {import('tailwindcss').Config} */

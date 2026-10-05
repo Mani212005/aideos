@@ -1,6 +1,8 @@
 /**
  * File Description: Node-runtime asset and audio duration verifier for Aideos Films.
  * Extends the pure validateFilm data validator with filesystem asset existence checks and ffprobe duration probes.
+ * Inputs and outputs: Film manifest and project directory -> filesystem asset verification and audio probes.
+ * Used by: backend/sync.test.ts, scripts/validate_film.ts.
  */
 
 import fs from "fs";

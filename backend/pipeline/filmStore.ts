@@ -5,6 +5,8 @@
  * requires the two never be written independently, so every write in the production pipeline goes
  * through writeFilm here, which is the backend twin of the editor dev server's helper of the same
  * name and emits the identical module format.
+ * Inputs and outputs: slug and Film manifest -> writes film.json and src/dl/films shadow.
+ * Used by: backend/pipeline/run.ts, editor/vite.config.ts.
  *
  * Neither location is committed: videos/ (or AIDEOS_VIDEOS_DIR) holds the owner's personal videos
  * and src/dl/films/ plus src/dl/activeFilm.ts are generated, so a fresh clone starts with only

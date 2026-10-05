@@ -3,6 +3,8 @@
  * Studio prompts are written for an agent sitting in the aideos checkout (paths to write, CLI
  * commands to run). An agent reached through `aideos connect` has neither, only the aideos MCP
  * tools, so it gets a short preamble mapping each of those instructions onto a tool.
+ * Inputs and outputs: task description and context -> system prompt for linked agent.
+ * Used by: backend/agentBridge/dispatcher.ts, backend/agentLink/agentLink.test.ts.
  */
 
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";

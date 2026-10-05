@@ -3,6 +3,8 @@
  * in, the progress events that come out while it runs, the result it returns, and the stage-tagged
  * error it throws. Everything the CLI and the MCP server expose is expressed in these types, so a
  * caller can drive a whole film without knowing anything about the stages underneath.
+ * Inputs and outputs: TypeScript definitions -> types for production requests, stages, events, and results.
+ * Used by: backend/pipeline/run.ts, backend/pipeline/director.ts.
  */
 
 import type { TtsBackendName } from "../tts";

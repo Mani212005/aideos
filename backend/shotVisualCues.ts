@@ -4,6 +4,8 @@
  * Both the Jev heuristic fallback (backend/jev.ts) and the design stage's block authoring
  * (backend/pipeline/design.ts) read these cues, so a visual the heuristic picks is always one the
  * design stage can ground, and a model-picked visual the narration does not support is refused.
+ * Inputs and outputs: narration text -> grounded shot visual device match.
+ * Used by: backend/jev.ts, backend/pipeline/design.ts.
  */
 
 import type { ShotVisual } from "./jev";

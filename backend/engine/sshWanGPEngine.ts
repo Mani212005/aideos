@@ -3,6 +3,8 @@
  * on a remote GPU box over SSH (headless CLI transport, report section 3.3).
  * Submits job JSON via scp, launches wgp.py --process under tmux, polls the
  * render log, and rsyncs finished clips back. Phase 1 transport.
+ * Inputs and outputs: job spec and SSH configuration -> remote GPU render job execution and downloaded video.
+ * Used by: backend/engine/index.ts.
  */
 import { spawn } from "child_process";
 import fs from "fs/promises";

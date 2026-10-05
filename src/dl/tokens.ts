@@ -1,3 +1,9 @@
+/**
+ * File Description: Video design language tokens defining color palettes, typography loaders, layout metrics, and theme contexts.
+ * Inputs and outputs: theme presets and options -> loaded fonts, theme tokens, and layout helpers.
+ * Used by: src/dl/Film.tsx, src/dl/Block.tsx, src/dl/CanvasGraph.tsx, and dl visual primitives.
+ */
+
 import { createContext, useContext } from "react";
 import { loadFont as loadGeist } from "@remotion/google-fonts/Geist";
 import { loadFont as loadMono } from "@remotion/google-fonts/JetBrainsMono";

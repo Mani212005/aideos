@@ -2,6 +2,8 @@
  * File Description: Tests for Jev shot-visual choice.
  * Verifies request building, response parsing, heuristic fallbacks, confidence gating, and mock
  * injection for the pipeline compile path, with zero live API calls.
+ * Inputs and outputs: shot visual queries and mock models -> shot visual decision test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

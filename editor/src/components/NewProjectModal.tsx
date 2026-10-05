@@ -4,6 +4,8 @@
  * empty project and build it up by hand. The dialog asks for exactly what the compiler needs (a
  * title, a narrator archetype, a theme and a voice) and shows the run time the pasted script
  * implies, so the user knows what they are about to get before they commit.
+ * Inputs and outputs: template options and project metadata -> new film creation modal dialog.
+ * Used by: editor/src/App.tsx.
  */
 
 import { useState } from "react";

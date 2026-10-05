@@ -1,5 +1,7 @@
-/*
-File Description: Implements sidechain audio ducking calculation for Remotion music audio track under voiceover narration.
+/**
+ * File Description: Implements sidechain audio ducking calculation for Remotion music audio track under voiceover narration.
+ * Inputs and outputs: speech intervals, current frame, and ducking options -> calculated music audio volume.
+ * Used by: src/dl/Film.tsx, backend/sync.test.ts.
 */
 
 export interface SpeechInterval {

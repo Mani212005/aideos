@@ -6,6 +6,8 @@
  * - Invariant 3: Filler and dead-air removals preserve A/V sync with exact duration reductions.
  * - Invariant 4: Edit programs execute atomically with zero side-effects on rollback.
  * - Invariant 5: The EditOp union is closed and rejects unmodeled operations.
+ * Inputs and outputs: synthetic edit operations and LayeredFilm fixtures -> invariant test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

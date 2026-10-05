@@ -4,6 +4,8 @@
  * plain narration text, and derives pace, dead air, which moments are narrated, whether a cut lands
  * inside a spoken word, how far cues sit from word starts compared with chance, and whether caption
  * text matches what is said. No I/O besides reading the file named by the caller.
+ * Inputs and outputs: voiceover words or script text -> SpeechFacts on pace, dead air, and cut alignment.
+ * Used by: backend/review/review.ts.
  */
 
 import fs from "node:fs";

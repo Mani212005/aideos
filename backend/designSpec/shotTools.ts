@@ -5,6 +5,10 @@
  * visual. `swapShotVisual` redraws one shot as another visual kind through the same honest path the
  * design stage uses (a StatCounter read from the narration, any other chart authored and checked).
  * `requestShotRedesign` sends the connected agent a design task focused on one shot.
+ * Inputs and outputs: shot tool command and parameters -> tool execution result.
+ * Used by: backend/agentBridge/dispatcher.ts, editor/vite.config.ts.
+ * Inputs and outputs: shot tool command and parameters -> tool execution result.
+ * Used by: backend/agentBridge/dispatcher.ts, editor/vite.config.ts.
  */
 
 import type { Block, Film, Shot } from "../../src/dl/schema";

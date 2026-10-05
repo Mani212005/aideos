@@ -1,5 +1,7 @@
 /**
  * File Description: Unit tests for good-video rubric schema validation, criteria definitions, and summary formatting.
+ * Inputs and outputs: rubric JSON fixtures -> validation test assertions.
+ * Used by: npm test.
  */
 
 import { test } from "node:test";

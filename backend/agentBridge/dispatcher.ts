@@ -1,5 +1,7 @@
 /**
  * File Description: Multi-channel outbound dispatcher and hybrid fallback manager for the Aideos Agent Bridge.
+ * Inputs and outputs: agent task events and dispatch requests -> dispatched tasks and logged events.
+ * Used by: backend/agentBridge/index.ts, backend/designSpec/designer.ts.
  */
 
 import fs from "node:fs";

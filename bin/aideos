@@ -2,6 +2,8 @@
 # File Description: Global CLI launcher for Aideos. Running 'aideos' starts the interactive
 # visual studio on localhost:3001, opens the browser, connects the AI coding agent in tmux,
 # and activates the bi-directional Auto-Prompter.
+# Inputs and outputs: command-line arguments -> runs the studio, a render, a review or a CLI command.
+# Used by: the `bin` field of package.json (entry point on the user's PATH).
 
 set -e
 

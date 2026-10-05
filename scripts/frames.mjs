@@ -1,8 +1,7 @@
 /**
- * Render a handful of real frames from the design-language film.
- *
- * One bundle, one browser, many stills - letting each renderStill launch its
- * own Chromium disconnects partway through a batch.
+ * File Description: Renders a handful of real stills from the active film with one bundle and one browser.
+ * Inputs and outputs: src/index.ts bundle, frame numbers -> PNG stills under .frames/.
+ * Used by: npm run frames (entry point).
  */
 import { bundle } from "@remotion/bundler";
 import { openBrowser, renderStill, selectComposition } from "@remotion/renderer";

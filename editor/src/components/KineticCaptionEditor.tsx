@@ -1,5 +1,7 @@
-/*
-File Description: This component implements the Kinetic Caption & Pretext Inspector tab in Aideos, rendering an interactive word column for the entire film script with real-time frame timestamp editing and Pretext zero-DOM layout measurement.
+/**
+ * File Description: This component implements the Kinetic Caption & Pretext Inspector tab in Aideos, rendering an interactive word column for the entire film script with real-time frame timestamp editing and Pretext zero-DOM layout measurement.
+ * Inputs and outputs: voiceover words and timing offsets -> interactive kinetic caption word column and timeline.
+ * Used by: editor/src/screens/CaptionsStage.tsx.
 */
 
 import React, { useState, useMemo, useEffect } from "react";

@@ -5,6 +5,10 @@
  * byte-for-byte render determinism, audio-first retiming, the Remotion entry point, compiled
  * opacity winning over an authored opacity attribute, and a RUN_VISUAL_TESTS-gated frame strip
  * written to disk for human review.
+ * Inputs and outputs: SVG animation clips and easing curves -> test assertions.
+ * Used by: npm test.
+ * Inputs and outputs: SVG animation clips and easing curves -> test assertions.
+ * Used by: npm test.
  */
 
 import { test } from "node:test";

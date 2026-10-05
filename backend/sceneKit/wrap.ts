@@ -3,6 +3,8 @@
  * A greedy wrap leaves a stray word alone on the last row. This wrapper finds the fewest rows a
  * greedy fill needs, then shrinks the row limit as far as that same row count allows, so the rows
  * come out even. Every token is measured as it will be set (kerned words, trailing punctuation).
+ * Inputs and outputs: text string, max width, and font measurement -> balanced wrapped text lines.
+ * Used by: backend/sceneKit/canvas.ts.
  */
 
 import { tokenWidth, measureText, resolveTypeOpts, type TypeOpts } from "./typeMetrics";

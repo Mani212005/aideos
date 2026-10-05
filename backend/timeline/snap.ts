@@ -7,6 +7,8 @@
  * - A threshold measured in screen pixels and converted to seconds through the current zoom, so
  *   snapping feels identical at every zoom level.
  * - Grid density that scales with zoom, so a zoomed-out timeline is not sticky everywhere.
+ * Inputs and outputs: drag coordinate, snap targets, and threshold -> snapped coordinate and active guide.
+ * Used by: backend/timeline/drag_machine.ts, backend/timeline/timeline.ts.
  */
 
 import type { Film } from "../../src/dl/schema";

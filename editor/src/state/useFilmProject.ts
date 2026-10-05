@@ -5,6 +5,8 @@
  * autosave round trip to the dev server, and the non-blocking toast queue. Screens never mutate the
  * film directly; they call `commit` with a label so one user gesture is always one undo step and
  * the history surface can name what happened.
+ * Inputs and outputs: storage key and initial film -> reactive film project state with undo/redo transaction stack.
+ * Used by: editor/src/App.tsx.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

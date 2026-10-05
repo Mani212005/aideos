@@ -6,6 +6,8 @@
  * 3. Sticky snapping with self-ignore.
  * 4. Explicit drag state transitions.
  * 5. Pending overrides live preview layer.
+ * Inputs and outputs: LayeredFilm, edit commands, and clip ranges -> updated LayeredFilm and ripple shifts.
+ * Used by: editor/src/state/useLayeredTimeline.ts, backend/timeline/timeline.test.ts.
  */
 
 import type { Film, Shot } from "../../src/dl/schema";

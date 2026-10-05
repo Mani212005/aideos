@@ -2,6 +2,8 @@
  * File Description: Tests for the Jev-driven async design compile path.
  * Verifies schema-valid block authoring for every shot visual, standard blocks for concrete
  * visuals with no footage, footage precedence, narration locking, and deterministic heuristic fallback with no network.
+ * Inputs and outputs: Jev visual decisions and screenplay beats -> design compilation test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

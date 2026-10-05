@@ -8,6 +8,8 @@
  * moved, trimmed, split or imported) are written out to `audioClips`, and imported video clips or
  * standalone overlays are written out to `videoClips` and `overlayClips`, which forward conversion
  * then treats as the authority for those channels.
+ * Inputs and outputs: Film or LayeredFilm data structures -> bidirectional converted Film or LayeredFilm.
+ * Used by: editor/src/state/useLayeredTimeline.ts, editor/vite.config.ts, backend/timeline/timeline.ts.
  */
 
 import type { Film, Shot, AudioClip, VideoClip, OverlayClip } from "./schema";

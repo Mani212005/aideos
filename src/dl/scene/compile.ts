@@ -4,6 +4,8 @@
  * Implements joint-mask blending, Catmull-Rom spline interpolation, rest-hold gap anchoring (C-14),
  * hierarchical kinematic transform composition (C-6), environment sub-rotation (D1), custom
  * element-level SVG animation timelines, per-frame derived layering (D5), and camera track compilation.
+ * Inputs and outputs: raw Scene data and action tracks -> compiled dense per-frame animation state.
+ * Used by: src/dl/scene/SceneClip.tsx, backend/scene/compile.test.ts, editor/src/screens/MotionStage.tsx.
  */
 
 import type { Scene, EnvironmentAsset, SchemaVersion } from "./types";

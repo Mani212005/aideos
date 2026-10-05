@@ -3,6 +3,8 @@
  * and reel deliverables at broadcast-grade settings, then inspects what came out: container and
  * stream facts from ffprobe, audio level and silence statistics, and a contact sheet of frames
  * spread across the whole duration so the output can actually be looked at rather than assumed.
+ * Inputs and outputs: composition name, video slug, and format -> rendered MP4 video deliverables and technical facts.
+ * Used by: backend/pipeline/run.ts.
  */
 
 import { execFileSync, spawn, spawnSync } from "child_process";

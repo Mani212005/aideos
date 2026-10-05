@@ -1,5 +1,7 @@
 /**
  * File Description: Script & Narration Studio component for editing a director screenplay and synthesizing multi-provider voiceover audio directly from its spoken dialogue.
+ * Inputs and outputs: screenplay text and voiceover audio -> interactive screenplay editor with block tags.
+ * Used by: editor/src/screens/ScriptStage.tsx.
  */
 
 import { useState, useEffect, useRef } from "react";

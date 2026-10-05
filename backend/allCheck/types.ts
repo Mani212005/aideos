@@ -2,6 +2,8 @@
  * File Description: Shared types and path helpers of `aideos all-check`: the options of a run, the
  * per-format round record the background agent's measurements are saved as, and the final result
  * file the calling agent waits for. Everything a run writes lives in videos/<slug>/all-check/.
+ * Inputs and outputs: TypeScript definitions -> types for rounds, options, scores, and briefs.
+ * Used by: backend/allCheck/round.ts, backend/allCheck/index.ts.
  */
 
 import path from "node:path";

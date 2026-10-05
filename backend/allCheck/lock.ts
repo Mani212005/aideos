@@ -3,6 +3,8 @@
  * names the tmux window running the agent; a second run is refused with a pointer to the live one,
  * while a lock whose window is gone (crashed, closed without finishing) is stale and is taken over.
  * Creation is atomic (exclusive write), liveness is injectable.
+ * Inputs and outputs: slug and lock state -> mutual exclusion lock file.
+ * Used by: backend/allCheck/index.ts.
  */
 
 import fs from "node:fs";

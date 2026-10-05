@@ -3,6 +3,8 @@
  * Enforces 18 strict error validation rules, custom SVG animation timeline rules (Rule 20),
  * and normalized median scale warnings (W1).
  * 100% pure TypeScript validator with zero Node runtime dependencies.
+ * Inputs and outputs: Scene data object -> validation diagnostics and errors.
+ * Used by: src/dl/scene/validateSceneNode.ts, backend/scene/scene.test.ts.
  */
 
 import type { Scene, EnvironmentAsset, Track } from "./types";

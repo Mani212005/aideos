@@ -4,6 +4,8 @@
  * plus legacy VO:/Voiceover:/Narrator:/VISUAL:/ON-SCREEN TEXT: conventions) into structured segments, back
  * into canonical markdown, into strictly-spoken narration text, and into Remotion sub-shots with on-screen
  * TextReveal overlays. Contains no Node-only imports so it can be bundled for the browser as-is.
+ * Inputs and outputs: raw script text or structured ScriptData -> bidirectional parsed segments, beats, and formatted screenplay.
+ * Used by: backend/pipeline/run.ts, backend/pipeline/director.ts, editor/src/components/ScriptEditor.tsx.
  */
 
 import {

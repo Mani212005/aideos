@@ -3,6 +3,8 @@
  * (Phase 2): the transcript with word timings, filler and silence spans, the current timeline
  * state, and film metadata. Pure and synchronous so the planner prompt is built from one
  * fully-formed, testable object rather than re-deriving state ad hoc at request time.
+ * Inputs and outputs: film, transcript words, and silence/filler spans -> assembled EditContext data structure.
+ * Used by: backend/editContext/editContext.test.ts, backend/editPlanner/planner.ts.
  */
 
 import type { LayeredFilm } from "../../src/dl/layeredSchema";

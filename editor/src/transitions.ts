@@ -1,5 +1,7 @@
 /**
  * File Description: Defines visual transition presets, types, and duration helper utilities for video scene boundaries.
+ * Inputs and outputs: transition type and frame progress -> visual transition styles.
+ * Used by: editor/src/components/TransitionEditor.tsx.
  */
 
 export type TransitionType =

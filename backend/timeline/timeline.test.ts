@@ -2,6 +2,8 @@
  * File Description: Comprehensive Test Suite for Timeline Phase T-B & T-C.
  * Asserts all 9 exact Phase T-B specifications (TB-1..TB-9) and 5 Phase T-C specifications (TC-1..TC-5)
  * alongside named negative test cases.
+ * Inputs and outputs: functional timeline operations and edge cases -> test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

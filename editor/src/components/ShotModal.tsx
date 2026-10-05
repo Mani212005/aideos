@@ -1,5 +1,9 @@
-// File Description: Full-screen intuitive Scene Inspector Modal covering 80% viewport.
-// Translates timeline settings, voiceover narration, visual direction, and GPU B-roll configuration.
+/**
+ * File Description: Full-screen intuitive Scene Inspector Modal covering 80% viewport.
+ * Translates timeline settings, voiceover narration, visual direction, and GPU B-roll configuration.
+ * Inputs and outputs: shot details and film canvas -> modal dialog for inspecting and modifying shot parameters.
+ * Used by: editor/src/App.tsx.
+ */
 
 import React from "react";
 import type { Film, Shot, Block } from "../../../src/dl/schema";

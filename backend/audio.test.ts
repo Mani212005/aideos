@@ -1,5 +1,7 @@
 /**
  * File Description: Unit tests for audio segmentation, caption offsets, timeline gap math, and film construction.
+ * Inputs and outputs: sample audio buffers and synthesis mocks -> audio pipeline test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

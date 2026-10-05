@@ -2,6 +2,10 @@
  * File Description: Tests for the studio's per-shot design actions: the design overview (motion
  * placed in the shot it starts in), swapping a shot's visual through the honest authoring path,
  * and the shot-focused redesign prompt sent to the agent.
+ * Inputs and outputs: shot tool operations and context -> test assertions.
+ * Used by: npm test.
+ * Inputs and outputs: shot tool operations and context -> test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

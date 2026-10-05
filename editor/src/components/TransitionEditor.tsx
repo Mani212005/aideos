@@ -3,6 +3,8 @@
  * Picks the transition played when the camera enters a shot and sets its length, showing the frame
  * count that length actually produces so a choice can be judged in frames rather than in vague
  * seconds. Rendered inside the shot inspector, and able to push the same choice onto every shot.
+ * Inputs and outputs: transition options and timing -> transition configuration controls.
+ * Used by: editor/src/screens/EditStage.tsx.
  */
 
 import React from "react";

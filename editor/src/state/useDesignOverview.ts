@@ -2,6 +2,8 @@
  * File Description: Loads a film's design overview from the dev server (/api/design/:id): who
  * designed it, the idea, the artwork, motion by shot and why each shot got its visual. Shared by
  * the Look stage's Design view and the shot inspector's "why this visual" panel.
+ * Inputs and outputs: film manifest -> computed design metrics (shot count, density, pacing).
+ * Used by: editor/src/components/shell/InspectorPanel.tsx.
  */
 
 import { useCallback, useEffect, useState } from "react";

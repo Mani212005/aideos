@@ -1,5 +1,7 @@
 /**
  * File Description: Top-level Remotion video composition mixing canvas visuals, voiceover narration, sidechain-ducked music, and sound effects.
+ * Inputs and outputs: Film props and dimensions -> full Remotion Composition component.
+ * Used by: src/Root.tsx.
  */
 
 import React from "react";

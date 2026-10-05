@@ -4,6 +4,10 @@
  * plus the SVG artwork it names. Frames are never written by hand: every clip is timed with a cue
  * that names a shot or a spoken phrase, and `aideos design build` resolves the cues against the
  * measured narration, holds the continuity rules and runs the design check before anything ships.
+ * Inputs and outputs: TypeScript definitions -> types and schemas for DesignSpec and visual cues.
+ * Used by: backend/designSpec/designer.ts, backend/designSpec/compile.ts.
+ * Inputs and outputs: TypeScript definitions -> types and schemas for DesignSpec and visual cues.
+ * Used by: backend/designSpec/designer.ts, backend/designSpec/compile.ts.
  *
  * Cue grammar (a string, or a frame number):
  *   "jupiter"                shot start          "jupiter@0.4"      40% through the shot

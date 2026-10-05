@@ -4,6 +4,8 @@
  * address individual elements by id, apply per-frame animated state to them, and keep element
  * identity stable between frames. Has zero Node runtime imports so it runs in Remotion's browser
  * bundle and in Node tests alike.
+ * Inputs and outputs: raw SVG XML string -> parsed SvgDocument element tree.
+ * Used by: src/dl/scene/SceneView.tsx, backend/sceneKit/svg.ts, backend/scene/loadSceneAssets.ts.
  */
 
 /** A single parsed SVG element: tag name, attributes, text content and children. */

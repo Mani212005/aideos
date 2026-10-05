@@ -4,6 +4,8 @@
  * screenshots them with headless Chrome (real Geist and JetBrains Mono from Google Fonts), cropped to
  * the 1920x1080 window the wide cut shows. Far quicker than a Remotion bundle, so it is the loop used
  * while designing; the real compositions are still inspected (reviewStills.ts) before anything ships.
+ * Inputs and outputs: scene definition, frame number, and format -> rendered PNG frame preview.
+ * Used by: scripts/calibrate_review.ts.
  */
 
 import * as fs from "fs";

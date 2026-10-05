@@ -2,6 +2,8 @@
  * File Description: Offline guard for the shot-visual evaluation set.
  * Checks the labelled cases are well formed and that the local heuristic, which is what ships
  * whenever Jev is unavailable, does not regress below its measured accuracy on them.
+ * Inputs and outputs: labelled evaluation dataset -> accuracy assertions on local heuristic.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

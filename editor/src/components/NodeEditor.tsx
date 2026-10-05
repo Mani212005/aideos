@@ -1,4 +1,8 @@
-// File Description: Edits a selected mind map node and keeps its graph and shot references consistent.
+/**
+ * File Description: Edits a selected mind map node and keeps its graph and shot references consistent.
+ * Inputs and outputs: selected canvas node and film graph -> node editor inspector form.
+ * Used by: editor/src/components/shell/InspectorPanel.tsx.
+ */
 
 import { useState, useEffect } from "react";
 import type { Film, CanvasNode, Shot } from "../../../src/dl/schema";

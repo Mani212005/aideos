@@ -4,6 +4,8 @@
  * (document frame, focus ring, scrollbars, form reset, range sliders, hatch and stripe fills)
  * that cannot be expressed as component classes. Component appearance itself lives in
  * src/components/ui. The editor is light throughout; no rule here introduces a dark surface.
+ * Inputs and outputs: Tailwind directives and root layout styles -> global CSS stylesheet.
+ * Used by: editor/src/main.tsx.
  */
 
 @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap");

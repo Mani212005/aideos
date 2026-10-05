@@ -4,6 +4,8 @@
  * agent and model review it (gemini-review, all-check, pairwise), and which generation models are
  * refused unless a run passes an explicit override. Node-only, dependency-free, with the file path
  * injectable so tests never read the real config.
+ * Inputs and outputs: config file on disk or environment variables -> loaded AideosConfig object.
+ * Used by: backend/modelClient.ts, backend/jev.ts, backend/geminiReview/geminiReview.ts.
  */
 
 import fs from "node:fs";

@@ -4,6 +4,8 @@
  * writes design.json and its SVG artwork, then builds and checks, all through these tools. Writes
  * are confined to a film's design spec and visuals folder, so an agent can never touch anything
  * else on the studio server; the build still refuses any design that fails the design check.
+ * Inputs and outputs: MCP tool calls for design and brief -> updated design.json and SVG files.
+ * Used by: backend/mcp/server.ts.
  */
 
 import fs from "node:fs";

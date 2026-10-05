@@ -4,6 +4,8 @@
  * resolution ones for OCR and contrast), measures loudness and silence, and extracts evidence
  * stills. Frames are streamed and reduced one at a time, so a long film never sits in memory.
  * The parsers for ffmpeg's text output are pure and exported for tests.
+ * Inputs and outputs: video file path -> ffmpeg frame decodes, audio loudness stats, and extracted stills.
+ * Used by: backend/review/renderFacts.ts, backend/review/review.ts.
  */
 
 import { spawn, spawnSync } from "node:child_process";

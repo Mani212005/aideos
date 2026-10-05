@@ -2,6 +2,8 @@
  * File Description: Live real-time Trace Event Bus for the Aideos Agent Bridge.
  * Aggregates live execution telemetry from external coding agents, the multi-channel dispatcher,
  * and in-process pipeline stages into a single unified timeline streamed to subscribers.
+ * Inputs and outputs: trace events and subscriber callbacks -> broadcasted event stream.
+ * Used by: backend/agentBridge/index.ts, backend/editPlanner/interpreter.ts, backend/pipeline/filmStore.ts.
  */
 
 import type { Film } from "../../src/dl/schema";

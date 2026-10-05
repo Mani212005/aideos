@@ -3,6 +3,10 @@
  * server model, or is reported as not sent), is settled from the next design build, and can be
  * reverted to the design it replaced. Dispatch is always faked: a real one would reach a live
  * agent session.
+ * Inputs and outputs: motion requests and SVG asset fixtures -> test assertions.
+ * Used by: npm test.
+ * Inputs and outputs: motion requests and SVG asset fixtures -> test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

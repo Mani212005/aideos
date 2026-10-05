@@ -1,3 +1,9 @@
+/**
+ * File Description: Motion grammar constants, cubic-bezier expo easing curves, and duration helpers for film animations.
+ * Inputs and outputs: frame counts, durations, and progress values -> eased interpolation progress numbers.
+ * Used by: src/dl/camera.ts, src/dl/Film.tsx, src/dl/Block.tsx, and dl visual primitives.
+ */
+
 import { Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 
 /**

@@ -7,6 +7,8 @@
  * - Phase 4: Provenance log append-then-read round-trip, newest-first ordering, and
  *   best-effort resilience to corrupt lines.
  * - Phase 4: All Phase 3 ops produce a schema-valid LayeredFilm (Rules 1-7).
+ * Inputs and outputs: Phase 3 edit operations and film fixtures -> regression test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

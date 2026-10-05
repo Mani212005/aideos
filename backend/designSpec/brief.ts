@@ -3,6 +3,10 @@
  * works from: what the film says shot by shot, the standard layer every design must meet, the
  * design.json format with a worked example, and the commands that build and check it. The brief is
  * the whole contract, so a designer needs nothing else to produce a passing bespoke design.
+ * Inputs and outputs: script text and shot count -> structured DesignBrief with visual constraints.
+ * Used by: backend/designSpec/designer.ts.
+ * Inputs and outputs: script text and shot count -> structured DesignBrief with visual constraints.
+ * Used by: backend/designSpec/designer.ts.
  */
 
 import fs from "node:fs";

@@ -4,6 +4,8 @@
  * frame just past the middle of every shot; otherwise it takes the frame numbers given. Unlike the
  * quick preview this goes through the full film compositor, so the chapter rail and its scrim are in
  * the picture, which is how the film actually ships. Stills land in .frames/<slug>/review.
+ * Inputs and outputs: slug and frame numbers -> rendered review PNG stills via Remotion.
+ * Used by: CLI entry point (npx tsx backend/sceneKit/reviewFrames.ts).
  */
 
 import * as path from "path";

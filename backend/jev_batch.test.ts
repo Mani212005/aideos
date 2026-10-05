@@ -2,6 +2,8 @@
  * File Description: Tests for batched Jev decisions and narration-grounded StatCounter quantities.
  * Verifies that a film's beats cost one Jev request instead of one per beat, that a missing or
  * failed answer falls back per beat, and that StatCounter labels come from the narration.
+ * Inputs and outputs: batched beat queries and mock responses -> batch decision test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

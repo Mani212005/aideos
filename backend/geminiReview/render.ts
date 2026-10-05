@@ -1,6 +1,8 @@
 /**
  * File Description: Renders a film package to out/<slug>-<format>.mp4 through the Remotion CLI, so the
  * review tools (`aideos all-check`) can watch the current cut of a film.
+ * Inputs and outputs: video slug and aspect ratio -> rendered MP4 video under out/.
+ * Used by: backend/allCheck/round.ts.
  */
 
 import fs from "node:fs";

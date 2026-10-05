@@ -3,6 +3,8 @@
  * "exports" map that the repo's classic "node" moduleResolution cannot follow, so the surface
  * the narration pipeline actually uses is declared here instead of loosening tsconfig for
  * every module in the project.
+ * Inputs and outputs: ambient declarations -> TypeScript type definitions for kokoro-js package.
+ * Used by: backend/tts.ts, backend/voiceSynthesis.ts.
  */
 
 declare module "kokoro-js" {

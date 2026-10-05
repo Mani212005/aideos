@@ -2,6 +2,8 @@
  * File Description: Unit tests for the AI Video Edit Planner (Phase 2).
  * Tests the LLM planner with injected stub callers, prompt formatting,
  * and the 3-attempt validate-then-repair loop.
+ * Inputs and outputs: mock LLM responses and EditContext -> planner validation test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

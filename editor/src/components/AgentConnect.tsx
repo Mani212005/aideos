@@ -6,6 +6,8 @@
  * the user's own running agent session (add the studio's MCP endpoint, paste one line, watch the
  * work in that agent's own UI) and the secondary the downloadable connector. Polling the status is
  * also this browser's heartbeat: the link ends when the studio tab stops asking, or on Disconnect.
+ * Inputs and outputs: pairing code and status -> modal dialog for linking external agent.
+ * Used by: editor/src/App.tsx.
  */
 
 import { useCallback, useEffect, useState } from "react";

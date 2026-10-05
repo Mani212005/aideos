@@ -4,6 +4,8 @@
  * It switches on the current selection: a timeline clip, a shot, a canvas node, the edit history,
  * or, with nothing selected, a project overview with the shot list. Collapsing it gives the stage
  * its full width without hiding anything the user cannot get back.
+ * Inputs and outputs: current selection (shot, node, clip, project) -> context-sensitive right sidebar inspector.
+ * Used by: editor/src/App.tsx.
  */
 
 import React from "react";

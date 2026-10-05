@@ -2,6 +2,8 @@
  * File Description: Tests that films made before the MetaphorViewer and CharacterBeat blocks were
  * retired still open: parsing drops those block kinds, keeps every other block in order, and turns a
  * shot that held nothing else into a bare-canvas shot, while new content can no longer name them.
+ * Inputs and outputs: legacy film fixtures with retired blocks -> schema migration test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

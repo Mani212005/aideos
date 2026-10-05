@@ -2,6 +2,8 @@
  * File Description: Comprehensive unit tests for the Gemini 3.8 Flash video quality review system,
  * covering client upload/polling/retries, rubric schema validation, timestamp verification,
  * single video scoring, pairwise cross-review comparison, and the plain-text review summary.
+ * Inputs and outputs: mock Gemini responses, rubric definitions -> test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

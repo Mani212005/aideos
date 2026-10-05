@@ -3,6 +3,8 @@
  * SVG source map and src/dl/activeFilm.ts) from the video packages on disk. Runs as npm's
  * postinstall and as the pre-hook of every script that bundles them, so a fresh clone works from
  * examples/ alone and an owner's own videos are picked up automatically.
+ * Inputs and outputs: video packages on disk -> generated TypeScript shadow files and activeFilm.ts.
+ * Used by: npm run ensure:generated, npm postinstall, and pre-hooks.
  */
 
 import { ensureGenerated } from "../backend/pipeline/generatedFiles";

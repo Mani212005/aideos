@@ -2,6 +2,8 @@
  * File Description: Deterministic video facts extractor for the Gemini review pipeline.
  * Measures hard ground-truth facts (duration, bottom-band captions via OCR, audio loudness,
  * and camera tracks) using ffprobe, ffmpeg, tesseract, and film metadata.
+ * Inputs and outputs: video mp4, transcript words, and film metadata -> deterministic GroundTruthFacts.
+ * Used by: backend/geminiReview/geminiReview.ts.
  */
 
 import { execFileSync, spawn, spawnSync } from "node:child_process";

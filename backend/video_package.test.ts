@@ -3,6 +3,8 @@
  * committed sample-explainer fixture (personal videos are gitignored, so tests never read them).
  * Verifies schema conformance, pacing rules, canvas graph connectedness, audio-word timing, layer conversion,
  * and that the shadow module is regenerated from film.json.
+ * Inputs and outputs: sample-explainer video package fixture -> package validation test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

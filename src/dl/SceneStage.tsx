@@ -4,6 +4,8 @@
  * takes a strip through the middle of that square. Composing once on a square and windowing it per
  * format is what keeps the wide cut and the reel the same film rather than two edits of it, while
  * still giving the reel a genuinely vertical frame instead of a crop of the wide one.
+ * Inputs and outputs: film.scene, compiled clips, SVG sources, current frame -> one React SVG tree.
+ * Used by: src/dl/Film.tsx (Remotion render and the editor Player preview).
  */
 
 import React from "react";

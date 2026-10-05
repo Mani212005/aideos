@@ -3,6 +3,8 @@
  * Badge is the small outlined tag used for states, counts and channel labels; Stat is the
  * label/value row used by metric blocks; KeyHint renders a keyboard shortcut as a physical key.
  * All three lock numbers and technical labels to the mono face so readouts line up column-wise.
+ * Inputs and outputs: badge label and variant -> rendered badge UI element.
+ * Used by: editor/src/components/ui/index.ts, editor screens and inspectors.
  */
 
 import React from "react";

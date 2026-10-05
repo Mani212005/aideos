@@ -1,6 +1,8 @@
 /**
  * File Description: Defines the 12-criterion good-video quality rubric, gate classifications,
  * structured JSON schemas, prompt templates, and timestamp evidence validation for Gemini review.
+ * Inputs and outputs: criterion definitions -> structured rubric schema, prompt text, and weights.
+ * Used by: backend/geminiReview/geminiReview.ts.
  */
 
 import type { CriterionEvaluation } from "./types";

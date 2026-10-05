@@ -3,6 +3,8 @@
  * Deepgram's prerecorded "listen" API when DEEPGRAM_API_KEY is configured or a local Whisper CLI
  * fallback otherwise, in the same WordInfo shape voiceover_words.json already uses so downstream
  * caption and edit-context code needs no new parsing path.
+ * Inputs and outputs: audio or video file path -> TranscribedWord list and import_captions.vtt file.
+ * Used by: editor/vite.config.ts, backend/editContext/buildEditContext.ts.
  */
 
 import { execFileSync } from "child_process";

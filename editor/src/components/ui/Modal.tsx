@@ -3,6 +3,8 @@
  * Renders a hatched overlay plus an outlined slab dialog, and owns the modal interaction
  * contract: focus moves into the dialog on open, Tab is trapped inside it, Escape closes it,
  * and focus is restored to the element that opened it. Every editor modal uses this shell.
+ * Inputs and outputs: modal title, open state, and children -> accessible modal dialog overlay.
+ * Used by: editor/src/components/ui/index.ts, editor modals.
  */
 
 import React, { useCallback, useEffect, useRef } from "react";

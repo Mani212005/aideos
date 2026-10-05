@@ -2,6 +2,8 @@
  * File Description: Comprehensive end-to-end integration tests for the Aideos Bi-Directional Canvas & Edit Loop (Phase 4).
  * Verifies dispatch from the three canvas surfaces (Canvas node additions, On-Canvas AI Editor, Review Critique Studio),
  * real-time telemetry on the live TraceBus, instant studio hot-reload on film.json changes, and hybrid fallback execution.
+ * Inputs and outputs: canvas edit simulation and trace events -> test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

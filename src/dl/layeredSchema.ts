@@ -4,6 +4,8 @@
  * - Layer: User-created tracks with unique stored integer z-order (number).
  * - Clip: Universal timeline element with stored position, start (in), end (out), and derived duration.
  * - Discriminated clip payloads: 'animation' | 'video' | 'audio' | 'text' | 'subtitle' | 'image'.
+ * Inputs and outputs: raw layer/clip objects -> Zod validated Layer, Clip, and LayeredFilm data structures.
+ * Used by: src/dl/convertFilm.ts, backend/timeline/layer_manager.ts, editor/src/state/useLayeredTimeline.ts.
  */
 
 import { z } from "zod";

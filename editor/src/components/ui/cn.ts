@@ -2,6 +2,8 @@
  * File Description: Class-name helper for the editor UI primitives.
  * Merges conditional class lists and resolves conflicting Tailwind utilities so a primitive's
  * base classes can always be overridden by a caller's className prop.
+ * Inputs and outputs: class name values and conditionals -> concatenated CSS class string.
+ * Used by: editor/src/components/ui primitives and editor components.
  */
 
 import { clsx, type ClassValue } from "clsx";

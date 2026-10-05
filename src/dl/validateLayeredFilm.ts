@@ -8,6 +8,8 @@
  * Rule 5: linkedClipId resolves to an existing clip and is symmetric.
  * Rule 6: Source file references are valid non-empty strings.
  * Rule 7: opacity in [0,1], volume in [0,1].
+ * Inputs and outputs: LayeredFilm data structure -> validation error list for layers and clips.
+ * Used by: editor/src/state/useLayeredTimeline.ts, backend/timeline/layer_management.test.ts.
  */
 
 import fs from "fs";

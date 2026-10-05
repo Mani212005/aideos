@@ -2,6 +2,8 @@
  * File Description: Pure dead-air detection over transcribed word timings. Any inter-word gap
  * past a minimum duration is a silence window, inset by a keep margin on both sides so trimming
  * it can never clip the words that bound it.
+ * Inputs and outputs: word timings and silence threshold -> detected SilenceSpan array.
+ * Used by: backend/editContext/buildEditContext.ts, backend/editContext/editContext.test.ts.
  */
 
 import type { TranscribedWord } from "../transcribe";

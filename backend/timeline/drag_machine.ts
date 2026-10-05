@@ -4,6 +4,8 @@
  * playhead, marquee select, cancel, drop) without touching the DOM, so the transitions can be
  * regression tested directly. The editor drives it from pointer events and reads the resulting
  * candidate geometry to draw the drag ghost, the target lane and the active snap guide.
+ * Inputs and outputs: pointer events and drag state -> updated DragState and snap guides.
+ * Used by: editor/src/components/TimelineEditor.tsx, backend/timeline/drag_machine.test.ts.
  *
  * Invariants the machine guarantees:
  * - A gesture only becomes "moved" once the pointer passes the drag threshold, so a click that

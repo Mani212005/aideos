@@ -2,6 +2,8 @@
  * File Description: Regression tests for the voiceover provider chain. It pins the hosted failure:
  * on a 512 MB container the Kokoro model must never be loaded (it OOM-killed the server), the
  * chain must fall through to a configured cloud provider, and a total failure must say why.
+ * Inputs and outputs: voiceover provider options and mock synthesis -> provider fallback test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

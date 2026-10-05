@@ -8,6 +8,8 @@
  * - Deterministic non-overlapping collision resolution that never displaces the anchor the user
  *   just dropped, and ripples every other clip on the layer downstream.
  * - Transaction-grouped UpdateAction recording so one gesture is one undo step.
+ * Inputs and outputs: LayeredFilm and layer edit actions -> updated LayeredFilm with rippled collision resolution.
+ * Used by: backend/timeline/timeline.ts, editor/src/state/useLayeredTimeline.ts.
  */
 
 import type { LayeredFilm, Layer, Clip } from "../../src/dl/layeredSchema";

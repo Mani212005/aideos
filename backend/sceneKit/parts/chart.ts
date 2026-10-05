@@ -1,5 +1,7 @@
 /**
  * File Description: SVG 2D chart building block for line graphs with axes and progress dots.
+ * Inputs and outputs: chart data points, dimensions, and styling options -> SVG line chart markup.
+ * Used by: backend/sceneKit/parts/index.ts.
  */
 
 import { el, g, stroke, PAL, n } from "../svg";

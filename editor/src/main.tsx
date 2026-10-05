@@ -1,5 +1,7 @@
 /**
  * File Description: Browser entry for Aideos Studio: installs the owner-key header and mounts the app.
+ * Inputs and outputs: DOM root element -> mounted React application tree.
+ * Used by: editor/index.html (browser application entry point).
  */
 
 import { createRoot } from 'react-dom/client'

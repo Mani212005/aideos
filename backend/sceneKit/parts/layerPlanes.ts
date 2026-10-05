@@ -1,5 +1,7 @@
 /**
  * File Description: SVG isometric and flat layered planes building block for 3D multi-layer diagrams.
+ * Inputs and outputs: layer plane specifications, tilt angle, and count -> SVG isometric planes markup.
+ * Used by: backend/sceneKit/parts/index.ts, examples/diagram-parts/build.ts.
  */
 
 import { el, g, PAL, n } from "../svg";

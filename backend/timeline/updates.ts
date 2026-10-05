@@ -4,6 +4,8 @@
  * - Granular UpdateAction records recording JSON paths, old/new values, and transaction UUIDs.
  * - Single user gestures produce multiple actions grouped under one atomic transaction ID.
  * - Universal undo/redo pops and reverses transactions atomically.
+ * Inputs and outputs: granular UpdateAction mutations -> recorded transaction batch.
+ * Used by: backend/timeline/timeline.ts.
  */
 
 export type ActionType = "insert" | "update" | "delete";

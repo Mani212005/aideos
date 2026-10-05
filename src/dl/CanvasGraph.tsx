@@ -1,5 +1,7 @@
 /**
  * File Description: Interactive glassmorphic canvas graph renderer with camera perspective, glowing active states, and connection curves.
+ * Inputs and outputs: Film canvas node graph, active shot, and camera state -> 2D SVG canvas graph elements.
+ * Used by: src/dl/Film.tsx.
  */
 
 import React from "react";

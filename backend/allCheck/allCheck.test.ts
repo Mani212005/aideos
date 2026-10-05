@@ -3,6 +3,8 @@
  * one-run-per-video lock, starting a run (with a fake tmux), the round records and pass rules, the
  * verdict and finish side effects, waiting for a result, and the argv rewrite. No model, render or
  * tmux window is ever touched: every outside effect is injected.
+ * Inputs and outputs: mock review results and round loop state -> test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

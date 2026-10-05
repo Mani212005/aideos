@@ -1,6 +1,8 @@
 /**
  * File Description: Hermite Centripetal Catmull-Rom Spline interpolator for 1D joint angles and trajectories.
  * Guarantees exact C1 velocity continuity across multi-knot sequences with local support.
+ * Inputs and outputs: trajectory control knots and time parameter t -> interpolated position and C1 tangent.
+ * Used by: src/dl/scene/compile.ts.
  */
 
 export interface KnotPoint {

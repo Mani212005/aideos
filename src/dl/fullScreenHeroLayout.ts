@@ -1,6 +1,8 @@
 /**
  * File Description: Computes the format-safe media, scrim and caption geometry for full-screen B-roll heroes,
  * and owns the single definition of where the burned-in subtitle band starts so the two never collide.
+ * Inputs and outputs: frame width, height, and safe margins -> hero media, scrim, and subtitle layout bounding boxes.
+ * Used by: src/dl/Film.tsx, src/dl/devices.tsx, backend/fullScreenHeroLayout.test.ts.
  */
 
 import type { Format } from "./tokens";

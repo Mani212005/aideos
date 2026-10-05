@@ -4,6 +4,10 @@
  * 1920x1080 PNG with headless Chrome. Chrome is used rather than qlmanage because qlmanage ignores
  * the document's aspect ratio and emits a square thumbnail, which made every rendered still a
  * misleading record of what the scene actually looks like.
+ * Inputs and outputs: SVG markup, frame dimensions, and output path -> rendered PNG still via headless Chrome.
+ * Used by: backend/designCheck/stills.ts, backend/sceneKit/preview.ts, backend/visionJudge/sampler.ts.
+ * Inputs and outputs: SVG markup, frame dimensions, and output path -> rendered PNG still via headless Chrome.
+ * Used by: backend/designCheck/stills.ts, backend/sceneKit/preview.ts, backend/visionJudge/sampler.ts.
  */
 
 import React from "react";

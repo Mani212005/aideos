@@ -2,6 +2,10 @@
  * File Description: Tests for design specs: cue resolution, compiling a spec onto a film, and the
  * errors a designer gets back. The committed demo (test_fixtures/packages/speculative-decoding-designed) is the
  * fixture, so the test also proves that design keeps compiling and passing the design check.
+ * Inputs and outputs: design specification test cases and fixtures -> test assertions.
+ * Used by: npm test.
+ * Inputs and outputs: design specification test cases and fixtures -> test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

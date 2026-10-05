@@ -1,6 +1,8 @@
 /**
  * File Description: Implements Phase 3 segment-scoped visual brief generation
  * and the pre-render semantic sync gate using reasoned visual selection.
+ * Inputs and outputs: script segments -> visual briefs and sync gate verification.
+ * Used by: backend/sync.test.ts, backend/ideation/visualSelector.ts.
  */
 import type { Block } from "../../src/dl/schema";
 import type { SegmentAudioInfo } from "../audio";

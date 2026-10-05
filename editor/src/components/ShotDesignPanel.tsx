@@ -4,6 +4,8 @@
  * that decided), whether its chart data was drawn or refused, and offers two actions: swap to one
  * of Jev's runner-ups (redrawn through the same honest path, so a swap can be refused with the
  * reason) and ask the connected agent to redesign just this shot.
+ * Inputs and outputs: selected shot and block configurations -> shot visual block layout and design controls.
+ * Used by: editor/src/screens/StoryStage.tsx.
  */
 
 import { useMemo, useState } from "react";

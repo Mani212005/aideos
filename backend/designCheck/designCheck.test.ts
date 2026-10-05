@@ -2,6 +2,8 @@
  * File Description: Tests for the design check.
  * Still Talking, the reference scene film, must pass cleanly; a copy of it broken one way per rule
  * must fail with that rule named, so every standard-layer rule is proven to fire.
+ * Inputs and outputs: reference scene films and perturbed variants -> design check rule assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

@@ -5,6 +5,8 @@
  * exits so the user can watch or step in. Environment that decides which account and videos folder
  * the agent sees is passed with `tmux -e`, because a window inherits the tmux server's environment,
  * not the caller's. tmux itself is injectable so tests never open a window.
+ * Inputs and outputs: process arguments -> spawned background allCheck process.
+ * Used by: backend/allCheck/cli.ts.
  */
 
 import fs from "node:fs";

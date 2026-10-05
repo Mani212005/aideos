@@ -3,6 +3,8 @@
  * stillness from small decoded frames, and captions, text size, contrast, overlap and on-screen
  * numbers from OCR on full-resolution samples. Everything it returns is a number or a timestamp;
  * the criteria verdicts are decided elsewhere (criteria.ts) so thresholds live in one place.
+ * Inputs and outputs: video file path, fps, and duration -> computed RenderFacts (pixels and OCR).
+ * Used by: backend/review/review.ts.
  */
 
 import os from "node:os";

@@ -1,5 +1,7 @@
 /**
  * File Description: Retired paper-rip transition shim kept as a no-op for backward-compatible transition references.
+ * Inputs and outputs: paper rip styling props -> SVG paper rip edge graphics.
+ * Used by: src/dl/Film.tsx.
  */
 
 import React from "react";

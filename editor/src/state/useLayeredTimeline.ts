@@ -3,6 +3,8 @@
  * Derives a LayeredFilm from the Film, exposes every timeline edit as a single named operation
  * that folds the result back into the Film and commits exactly one undo step, and turns a rejected
  * edit (locked lane, media bounds, minimum duration) into a readable message instead of a crash.
+ * Inputs and outputs: base film and layer edit operations -> reactive LayeredFilm state and transaction actions.
+ * Used by: editor/src/screens/EditStage.tsx, editor/src/App.tsx.
  */
 
 import { useCallback, useMemo } from "react";

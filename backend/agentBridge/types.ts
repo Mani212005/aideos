@@ -1,5 +1,7 @@
 /**
  * File Description: Type definitions for the Aideos Agent Bridge Hub, task queue, and multi-channel dispatcher.
+ * Inputs and outputs: TypeScript definitions -> types for agent tasks, events, and bridge state.
+ * Used by: backend/agentBridge/contextBuilder.ts, backend/agentBridge/dispatcher.ts.
  */
 
 import type { Film } from "../../src/dl/schema";

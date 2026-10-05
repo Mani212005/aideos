@@ -4,6 +4,8 @@
  * rather than on encoded files. That removes the whole class of stitching defects (sample-rate
  * and channel-layout mismatches at a chunk boundary, container padding, re-encode drift) that
  * used to surface as stutter and clicks in the finished voiceover.
+ * Inputs and outputs: narration text segments and voice options -> raw Float32 PCM audio chunks.
+ * Used by: backend/audio.ts, backend/sceneKit/voiceover.ts.
  */
 
 import { execFileSync } from "child_process";

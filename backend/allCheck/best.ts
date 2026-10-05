@@ -3,6 +3,8 @@
  * the tools reported, restores film.json from a round's backup (rollback), rolls back automatically
  * when a round scores lower than the best so far, and spots files the background agent created
  * outside videos/<slug>/ (its one hard rule). Pure ranking plus small injectable file and git steps.
+ * Inputs and outputs: scored review rounds -> selects best round iteration and moves artifacts.
+ * Used by: backend/allCheck/finish.ts.
  */
 
 import fs from "node:fs";

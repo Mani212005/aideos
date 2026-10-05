@@ -2,6 +2,10 @@
  * File Description: Comprehensive test suite for Phase 3 Scene Compiler (C-1 through C-14).
  * Covers dense frame generation, layer sorting, deterministic compilation, C-6 hand-computed kinematics,
  * D1 rotating sub-groups, D5 depth crossing, C-14 rest-hold gap anchoring, and Phase 0 performance benchmarks.
+ * Inputs and outputs: scene graph structures and keyframes -> compile output test assertions.
+ * Used by: npm test.
+ * Inputs and outputs: scene graph structures and keyframes -> compile output test assertions.
+ * Used by: npm test.
  */
 
 import { test } from "node:test";

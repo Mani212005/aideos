@@ -2,6 +2,8 @@
  * File Description: Unit tests for the Claude screenplay intake parser/serializer, zero-leakage
  * narration extraction, and sub-shot compilation in backend/scriptIntake.ts, plus its wiring into
  * backend/audio.ts's segment splitting.
+ * Inputs and outputs: sample Claude screenplay scripts -> parser and serializer test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

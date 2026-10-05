@@ -1,6 +1,6 @@
-# Per-repo no-mistakes configuration for Aideos
-# lint runs the editor's production build too: it is what Vercel runs, and it type-checks the
-# backend modules the dev server reaches more strictly (erasable syntax only, ESM dynamic imports).
+# File Description: Per-repo no-mistakes configuration defining test and lint verification gates.
+# Inputs and outputs: repository source -> test and lint exit codes.
+# Used by: no-mistakes CLI during automated verification runs.
 commands:
   test: '(test -d node_modules || npm ci) && npm test && npm run validate && npm run smoke:studio'
-  lint: '(test -d node_modules || npm ci) && npx tsc --noEmit && (test -d editor/node_modules || npm --prefix editor ci) && npx tsc --noEmit -p editor/tsconfig.app.json && npm --prefix editor run build'
+  lint: '(test -d node_modules || npm ci) && npx tsx scripts/check_headers.ts && npx tsc --noEmit && (test -d editor/node_modules || npm --prefix editor ci) && npx tsc --noEmit -p editor/tsconfig.app.json && npm --prefix editor run build'

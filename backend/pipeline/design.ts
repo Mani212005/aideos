@@ -4,6 +4,8 @@
  * on-screen copy as TextReveal blocks, and stage/move choices that satisfy the runsheet rules in
  * src/dl/schema.ts (no device holding past 25s, never the same device twice running, a text beat
  * and a return to the bare canvas inside every 90 seconds, at most three accents per frame).
+ * Inputs and outputs: parsed screenplay and narration audio spine -> compiled, validated Film manifest.
+ * Used by: backend/pipeline/run.ts, backend/pipeline/pipeline.test.ts.
  *
  * Shots map one-to-one onto narration beats on purpose: that is the only mapping under which a
  * shot's screen time can be its narration's measured duration, which is what keeps picture and

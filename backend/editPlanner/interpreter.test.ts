@@ -3,6 +3,8 @@
  * Tests all EditOp primitives (text overlay, filler removal, dead air removal, trim, split, move,
  * volume, lane flags, accent, theme), verifying A/V synchronization, dependent overlay shifting,
  * and atomic rollback on error.
+ * Inputs and outputs: sample EditProgram and LayeredFilm -> execution assertions and rollback checks.
+ * Used by: npm test.
  */
 
 import test from "node:test";

@@ -2,6 +2,8 @@
  * File Description: Unified, intuitive Shot and Clip Inspector for Aideos Studio.
  * Replaces text-heavy stacked inspectors with a sleek, tabbed, visual control center
  * covering Render Mode, Numeric Timing, Camera, and Screenplay Narration.
+ * Inputs and outputs: selected shot and camera options -> shot timing, camera move, and visual settings inspector.
+ * Used by: editor/src/components/shell/InspectorPanel.tsx.
  */
 
 import React, { useState } from "react";

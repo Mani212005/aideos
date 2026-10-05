@@ -1,5 +1,7 @@
 /**
  * File Description: Voiceover synthesis for the studio's /api/generate-voiceover route.
+ * Inputs and outputs: narration text and voice preferences -> synthesized audio buffer via provider chain.
+ * Used by: editor/vite.config.ts (api/generate-voiceover).
  *
  * It tries providers in order (local Kokoro, Deepgram Aura, Google Cloud TTS, macOS `say`) and
  * returns one mono 16-bit WAV, or throws a VoiceSynthesisError that names why EVERY provider was

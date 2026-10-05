@@ -3,6 +3,8 @@
  * near-certain fillers ("um", "uh", ...) is always flagged; a second lexicon of words that are
  * only fillers in a mumbled aside ("like", "you know") is flagged only when the ASR backend's own
  * per-word confidence falls below a threshold, so an intentional "I like this" is never touched.
+ * Inputs and outputs: transcribed word array and confidence threshold -> detected FillerSpan array.
+ * Used by: backend/editContext/buildEditContext.ts, backend/editContext/editContext.test.ts.
  */
 
 import type { TranscribedWord } from "../transcribe";

@@ -3,6 +3,8 @@
  * synthesizes each through a pluggable TTS backend, assembles the result in the sample domain
  * (trim, fade, exact-offset concatenation, peak normalization), and emits voiceover.wav,
  * captions.vtt, voiceover_words.json and the shot duration spine the film timeline is locked to.
+ * Inputs and outputs: screenplay text and audio options -> voiceover.wav, captions.vtt, voiceover_words.json, and shot duration spine.
+ * Used by: backend/pipeline/run.ts, backend/cli.ts, editor/vite.config.ts.
  *
  * Assembly happens on samples rather than on encoded files on purpose: the old ffmpeg concat
  * path could stitch together chunks with different sample rates or channel layouts, left the

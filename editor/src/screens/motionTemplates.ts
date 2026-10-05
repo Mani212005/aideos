@@ -3,6 +3,8 @@
  * Each template is self-contained, scrub-exact SMIL animation so the studio's scrubber shows the
  * frame that will actually render. They exist so a user never faces an empty code box: every one is
  * a working animation that can be edited into something specific.
+ * Inputs and outputs: motion template parameters -> pre-built SVG animation clip definitions.
+ * Used by: editor/src/screens/MotionStage.tsx.
  */
 
 export interface MotionTemplate {

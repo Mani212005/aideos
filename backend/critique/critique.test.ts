@@ -4,6 +4,8 @@
  * deep-equal undo, deep-diff locality, explicit out-of-vocabulary critique rejection,
  * StatCounter precision, scene context fallback, dynamic diagram block targeting,
  * and conversational inquiries.
+ * Inputs and outputs: critique phrases and film fixtures -> test assertions.
+ * Used by: npm test.
  */
 
 import { test } from "node:test";

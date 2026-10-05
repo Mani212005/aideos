@@ -3,6 +3,8 @@
  * Emits every asset built by artwork.ts to videos/still-talking/visuals/ and checks each one parses
  * with the scene engine's own SVG parser before it lands, so a malformed document is caught here
  * rather than as a missing prop halfway through a render.
+ * Inputs and outputs: target visuals directory -> written SVG asset files for Still Talking.
+ * Used by: backend/stillTalking/buildFilm.ts.
  */
 
 import * as path from "path";

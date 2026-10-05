@@ -1,6 +1,8 @@
 /**
  * File Description: The agent link: how a studio (hosted or local) reaches the coding agent the
  * owner runs on their own machine. The machine dials out, so no port is ever opened on it.
+ * Inputs and outputs: pairing records and tokens -> persisted pairing store in .aideos/.
+ * Used by: editor/vite.config.ts, backend/agentLink/agentLink.test.ts.
  *
  * Two ways in, one identity model:
  *  - connector: `aideos connect <code>` claims a pairing and long-polls for tasks and runs each

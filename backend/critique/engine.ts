@@ -2,6 +2,8 @@
  * File Description: Unified Natural-Language Critique & Revision Engine (Phase B).
  * Routes natural language feedback to Scene PatchOps or Film PatchOps with strict validation gating,
  * deep-diff locality, atomic rollback, and explicit out-of-vocabulary rejection.
+ * Inputs and outputs: natural language feedback and film -> applied patch operations or rejection.
+ * Used by: editor/src/components/CritiqueStudio.tsx, backend/critique/critique.test.ts.
  */
 
 import type { Scene } from "../../src/dl/scene/types";

@@ -9,6 +9,8 @@
  * written by a passing design build (design check plus honesty check), never by this module; a
  * failed sample is returned with its exact error so synthesis can repair it. With no agent
  * connected, or under the Node test runner, the agent round is skipped and Jev judges the text alone.
+ * Inputs and outputs: film slug, scene definition, and narration -> visual critique findings and repaired scene.
+ * Used by: backend/designSpec/designer.ts.
  */
 
 import fs from "node:fs";

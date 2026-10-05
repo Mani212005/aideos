@@ -4,6 +4,8 @@
  * and is the drag source that feeds the timeline. Each row is a full drag handle carrying the asset
  * payload, so it can be dropped onto a specific lane at a specific time, and also offers a click
  * action that drops it at the playhead for users who would rather not drag.
+ * Inputs and outputs: media asset list, upload handler -> asset bin grid and drag sources.
+ * Used by: editor/src/screens/EditStage.tsx.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";

@@ -4,6 +4,8 @@
  * drafted by whatever generator is wired in (never a canned template), a rejected draft is retried
  * with the specific reason fed back to the model, an exhausted retry budget fails loudly rather than
  * falling back to a stub, and a passing draft is produced through the real pipeline end to end.
+ * Inputs and outputs: director prompts and draft iterations -> test assertions.
+ * Used by: npm test.
  */
 
 import test, { after, before } from "node:test";

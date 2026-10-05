@@ -6,6 +6,8 @@
  * parse against the film schema, and every word and number it shows must come from what the beat
  * says. A block that fails is dropped and the beat keeps its text card, so a film never shows
  * made-up data - there are no canned stand-ins.
+ * Inputs and outputs: chart beat narration and device type -> structured chart datasets.
+ * Used by: backend/pipeline/design.ts.
  */
 
 import { generateText, isGoogleAiConfigured } from "../modelClient";

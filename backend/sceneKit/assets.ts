@@ -3,6 +3,8 @@
  * Every document is parsed with the scene engine's own SVG parser and checked for duplicate element
  * ids before it lands, so a malformed asset is caught at write time rather than as a missing prop
  * halfway through a render.
+ * Inputs and outputs: asset files and target directory -> validated, written SVG asset files.
+ * Used by: backend/stillTalking/writeAssets.ts.
  */
 
 import * as fs from "fs";

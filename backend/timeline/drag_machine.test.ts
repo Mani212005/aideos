@@ -4,6 +4,8 @@
  * with a preserved grab offset, dragging across lanes, trimming either edge, scrubbing, marquee
  * selection, snap bypass, Escape restoring the exact prior geometry, and the guarantee that a
  * gesture always returns to idle no matter how it ends.
+ * Inputs and outputs: simulated pointer gestures and state transitions -> state machine test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

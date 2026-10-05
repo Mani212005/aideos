@@ -4,6 +4,8 @@
  * batched request, confidence and heuristic fallbacks), the reframed primitive pick (job rubric,
  * named spoken phrase, no repeat), and the whole judge on a temporary copy of the demo film with a
  * fake renderer, fake dispatch and fake Jev client, so nothing needs Chrome, a live agent or the network.
+ * Inputs and outputs: sampled frames and simulated Jev verdicts -> test assertions.
+ * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

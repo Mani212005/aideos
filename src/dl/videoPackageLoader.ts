@@ -3,6 +3,8 @@
  * Discovers and dynamically loads self-contained video packages from videos/<slug>/film.json.
  * The videos directory is personal and gitignored (AIDEOS_VIDEOS_DIR moves it anywhere); the
  * committed examples/ directory is a read-only fallback so a fresh clone always has a film.
+ * Inputs and outputs: slug identifier and filesystem paths -> loaded video package manifest and asset paths.
+ * Used by: backend/pipeline/filmStore.ts, editor/vite.config.ts, backend/pipeline/run.ts.
  */
 
 import fs from "node:fs";

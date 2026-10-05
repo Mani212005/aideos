@@ -2,6 +2,8 @@
  * File Description: Standalone CLI validator for arbitrary Aideos film.json files.
  * Validates against all 19 cinematic invariants in src/dl/schema.ts and prints a rich runsheet.
  * Usage: tsx scripts/validate_film.ts <path/to/film.json> [--skip-assets]
+ * Inputs and outputs: path to film.json -> validation verdict and formatted runsheet.
+ * Used by: npm run validate:film.
  */
 
 import fs from "fs";

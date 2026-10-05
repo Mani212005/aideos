@@ -2,6 +2,8 @@
  * File Description: Parses and validates the command line of `aideos all-check <slug>
  * [--reference <mp4>] [--rounds <n>] [--target <score>] [--agent claude|agy] [--model <id>] [--allow-forbidden-model]` into typed options,
  * failing with one clear line per mistake. Pure apart from the reference file existence check.
+ * Inputs and outputs: raw argv strings -> parsed AllCheckOptions.
+ * Used by: backend/allCheck/cli.ts, backend/allCheck/index.ts.
  */
 
 import fs from "node:fs";

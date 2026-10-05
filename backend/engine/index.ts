@@ -2,6 +2,8 @@
  * File Description: Engine registry for Aideos. Maps an engine name to a
  * VideoEngine instance so callers (CLI, future pipeline stages) never import
  * concrete adapters directly.
+ * Inputs and outputs: engine name -> registered VideoEngine instance.
+ * Used by: backend/pipeline/run.ts, backend/cli.ts.
  */
 import { NullEngine } from "./nullEngine";
 import { SshWanGPEngine } from "./sshWanGPEngine";

@@ -3,6 +3,8 @@
  * Shows what is being rendered, how far along the render is, and which pipeline stage it is in, so
  * a long export never looks like a frozen application. It reports an estimate honestly as an
  * estimate, and turns into a download handoff the moment the file exists.
+ * Inputs and outputs: render progress facts and status -> export modal with progress indicators.
+ * Used by: editor/src/App.tsx.
  */
 
 import React, { useEffect, useState } from "react";

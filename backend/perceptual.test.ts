@@ -1,6 +1,8 @@
 /**
  * File Description: Perceptual frame diffing test suite for Aideos.
  * Renders canonical proof frames and asserts visual consistency and palette integrity.
+ * Inputs and outputs: proof frames and reference images -> perceptual diff test assertions.
+ * Used by: npm test.
  */
 
 import test from "node:test";

@@ -4,6 +4,8 @@
  * Implements atomic execution with full rollback on validation or runtime failure,
  * adhering to Axiom 1 (pure data) and the single-commit undo contract.
  * Phase 3 additions: add_lower_third op for broadcast-style lower-third overlays.
+ * Inputs and outputs: EditProgram and LayeredFilm -> applied edit operations or atomic rollback.
+ * Used by: backend/editPlanner/index.ts, backend/mcp/server.ts.
  */
 
 import type { LayeredFilm, Clip, Layer } from "../../src/dl/layeredSchema";

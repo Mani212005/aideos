@@ -5,6 +5,8 @@
  * request, the resolved EditOp[] program, the plan summary, timestamps, and whether
  * the result was a dry-run preview or an applied commit. No record is ever mutated -
  * the log is append-only and is the durable audit trail for agent-driven batch edits.
+ * Inputs and outputs: edit event record and slug -> appended edit_log.jsonl file.
+ * Used by: backend/editPlanner/interpreter.ts.
  */
 
 import fs from "node:fs";

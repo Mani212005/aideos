@@ -1,9 +1,6 @@
-# ==============================================================================
-# AIDEOS STUDIO & VIDEO COMPILER - RENDER DOCKERFILE
-# ==============================================================================
-# Containerizes the Aideos Vite Studio Editor, Google GenAI agent compiler,
-# and Remotion video rendering pipeline with pre-installed Chromium and FFmpeg.
-# ==============================================================================
+# File Description: Container for the hosted studio API and renderer, with Chromium and ffmpeg.
+# Inputs and outputs: repository source -> image that serves the editor and its API on port 8080.
+# Used by: render.yaml (Render web service).
 
 FROM node:20-bookworm-slim
 

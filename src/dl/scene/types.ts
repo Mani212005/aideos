@@ -3,6 +3,8 @@
  * Defines serializable scene hierarchy (background, props, actors), tracks, keyframes,
  * rotating subgroups (D1), custom SVG animation timelines, camera tracks, actions, model sheets (D2),
  * and scene root. (Axiom 1: pure data).
+ * Inputs and outputs: TypeScript definitions -> types for scenes, actors, props, cameras, and animation clips.
+ * Used by: src/dl/scene/compile.ts, src/dl/schema.ts, backend/sceneKit/timeline.ts.
  */
 
 import type { SvgAnimationTimeline } from "./svgAnimation";

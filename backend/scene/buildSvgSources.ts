@@ -4,6 +4,8 @@
  * videos/<slug>/visuals/ and examples/<slug>/visuals/ is written into a generated, gitignored module the Remotion bundle imports directly.
  * Inlining rather than fetching keeps the render synchronous and reproducible: a frame can never be
  * drawn before its artwork has arrived, because the artwork is part of the bundle.
+ * Inputs and outputs: video package visuals/ directories -> generated svgSources.generated.ts source map.
+ * Used by: backend/pipeline/generatedFiles.ts.
  */
 
 import fs from "node:fs";

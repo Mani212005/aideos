@@ -4,6 +4,8 @@
  * source for procedural art, and small string builders (attributes, elements, groups, text) that
  * produce the markup the scene engine animates. Pure and free of Node imports, so it is safe in
  * any bundle that reaches the kit.
+ * Inputs and outputs: SVG element tags, attributes, and children -> formatted SVG XML markup strings.
+ * Used by: backend/sceneKit/canvas.ts, backend/stillTalking/artwork.ts.
  */
 
 import { escapeXmlText } from "../../src/dl/scene/svgDocument";
