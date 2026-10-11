@@ -4,6 +4,7 @@
  * Used by: npm test.
  */
 
+import "../testSupport/fixtureVideosDir";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -191,6 +192,24 @@ test("checker rule: duplicate cast ids are rejected", () => {
   const f = report.findings.find((x) => x.rule === "cast");
   assert.ok(f, "should flag duplicate cast id");
   assert.ok(f?.message.includes("duplicate cast id"));
+});
+
+test("checker rule: duplicate shot ids are rejected", () => {
+  const plan = JSON.parse(JSON.stringify(VALID_LOOK_PLAN));
+  plan.shots.push({
+    id: "beat-01",
+    treatment: "scene",
+    carries: ["disk"],
+    cue: "duplicate",
+    criterion: "1-mechanism",
+    why: "duplicate beat id",
+  });
+
+  const report = checkLookPlan(plan, "dup-shot-film");
+  assert.equal(report.ok, false);
+  const f = report.findings.find((x) => x.rule === "shot");
+  assert.ok(f, "should flag duplicate shot id");
+  assert.ok(f?.message.includes("duplicate shot id"));
 });
 
 test("checker rule: carried object must exist in declared cast", () => {
@@ -388,7 +407,19 @@ test("checker rule: camera poses must start wide and end wide", () => {
   assert.ok(f2, "should require final wide payoff pose");
 });
 
-test("checker rule: captions must be bottom and kineticColumn false", () => {
+test("schema reject: captions position must be bottom", () => {
+  const badPos = {
+    ...VALID_LOOK_PLAN,
+    film: {
+      ...VALID_LOOK_PLAN.film,
+      captions: { position: "top" as any, kineticColumn: false },
+    },
+  };
+  const res = safeParseLookPlan(badPos);
+  assert.equal(res.success, false);
+});
+
+test("checker rule: captions kineticColumn must be false", () => {
   const planBadCaps = JSON.parse(JSON.stringify(VALID_LOOK_PLAN));
   planBadCaps.film.captions.kineticColumn = true;
   const report = checkLookPlan(planBadCaps, "bad-captions");

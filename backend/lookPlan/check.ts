@@ -1,5 +1,5 @@
 /**
- * File Description: Checker for look.json plans enforcing semantic rules: treatments, unique cast IDs, valid carries references, device rules, camera wide establishing and payoff, bottom captions, and carry-over transformation clarity.
+ * File Description: Checker for look.json plans enforcing semantic rules: treatments, unique shot IDs, unique cast IDs, valid carries references, device rules, camera wide establishing and payoff, bottom captions, and carry-over transformation clarity.
  * Inputs and outputs: LookPlan object or raw JSON (and optional Film context) -> LookCheckReport with pass/fail and findings.
  * Used by: backend/cli.ts, backend/lookPlan/index.ts.
  */
@@ -12,6 +12,7 @@ import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 export type LookCheckRule =
   | "schema"
   | "treatment"
+  | "shot"
   | "cast"
   | "carries"
   | "carry-over"
@@ -116,15 +117,7 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed"): LookCh
     }
   }
 
-  // 3. Check captions: must be position "bottom" and kineticColumn must be false
-  if (look.film.captions.position !== "bottom") {
-    findings.push({
-      rule: "captions",
-      severity: "error",
-      where: "film.captions.position",
-      message: `captions position must be "bottom".`,
-    });
-  }
+  // 3. Check captions: kineticColumn must be false
   if (look.film.captions.kineticColumn) {
     findings.push({
       rule: "captions",
@@ -135,12 +128,23 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed"): LookCh
   }
 
   // 4. Check shots: treatments, carries validity, device rules, spacing rules
+  const shotIds = new Set<string>();
   let consecutiveDeviceCount = 0;
   let totalDeviceCount = 0;
   const shotCount = look.shots.length;
 
   for (let i = 0; i < shotCount; i++) {
     const shot = look.shots[i];
+
+    if (shotIds.has(shot.id)) {
+      findings.push({
+        rule: "shot",
+        severity: "error",
+        where: `shots[${i}] (${shot.id})`,
+        message: `duplicate shot id "${shot.id}"; shot ids must be unique.`,
+      });
+    }
+    shotIds.add(shot.id);
 
     // Treatment checks
     if (shot.treatment === "footage") {
