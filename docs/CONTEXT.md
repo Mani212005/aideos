@@ -436,11 +436,12 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ### `backend/designSpec/` (Bespoke Film Design Specification & Compiler)
 * `renderDesignBrief(film)`, `writeDesignBrief(filmId)` (`brief.ts`): Generates designer briefs (`design/BRIEF.md`) containing film contracts, shot narration, and asset specifications.
-* `compileDesign(film, spec, options)` (`compile.ts`): Compiles a `DesignSpec` and narration timing into a validated scene film.
+* `compileDesign(film, spec, options)` (`compile.ts`): Compiles a `DesignSpec` and narration timing into a validated scene film, compiling camera poses through `Timeline.camera()`.
 * `buildDesign(filmId, source)` (`build.ts`): Compiles design specifications, executes design checks, and writes passing films.
 * `resolveCue(cue, cues)` (`cues.ts`): Resolves cue strings and frame offsets against narration timing cues.
 * `designFilm(filmId, options)` (`designer.ts`): Orchestrates agent-based and server-model film design workflows with validation retry loops.
 * `requestShotMotion(filmId, request)` (`motionRequests.ts`): Manages shot-level motion design tasks and history snapshots.
+* `designSpecSchema`, `specCameraSchema`, `specClipSchema`, `specAssetSchema` (`spec.ts`): Zod schemas and TypeScript types for bespoke film designs (brief, accent, background, assets, cue-timed clips, camera poses, and shot block overrides).
 
 ### `backend/transcribe.ts` (Audio & Video Transcription)
 * `transcribe(src, options, deps)`: Transcribes audio or video media into word-level timings (`TranscribedWord[]`) with confidence scores, using Deepgram with local Whisper CLI fallback.

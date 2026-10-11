@@ -1,11 +1,9 @@
 /**
  * File Description: The design spec - the data a bespoke film design is written as.
  * An agent (or the server-model fallback) designs a film by writing videos/<id>/design/design.json
- * plus the SVG artwork it names. Frames are never written by hand: every clip is timed with a cue
- * that names a shot or a spoken phrase, and `aideos design build` resolves the cues against the
- * measured narration, holds the continuity rules and runs the design check before anything ships.
- * Inputs and outputs: TypeScript definitions -> types and schemas for DesignSpec and visual cues.
- * Used by: backend/designSpec/designer.ts, backend/designSpec/compile.ts.
+ * plus the SVG artwork it names. Frames are never written by hand: every clip and camera pose is
+ * timed with a cue that names a shot or a spoken phrase, and `aideos design build` resolves the cues
+ * against the measured narration, holds the continuity rules and runs the design check before anything ships.
  * Inputs and outputs: TypeScript definitions -> types and schemas for DesignSpec and visual cues.
  * Used by: backend/designSpec/designer.ts, backend/designSpec/compile.ts.
  *

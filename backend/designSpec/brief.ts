@@ -5,8 +5,6 @@
  * the whole contract, so a designer needs nothing else to produce a passing bespoke design.
  * Inputs and outputs: script text and shot count -> structured DesignBrief with visual constraints.
  * Used by: backend/designSpec/designer.ts.
- * Inputs and outputs: script text and shot count -> structured DesignBrief with visual constraints.
- * Used by: backend/designSpec/designer.ts.
  */
 
 import fs from "node:fs";

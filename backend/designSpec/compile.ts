@@ -1,11 +1,10 @@
 /**
  * File Description: Compiles a design spec into the film's scene.
- * Cues are resolved against the film's measured narration, clips are added through the kit's
- * Timeline (so a snap or a second origin is refused with the clip named), and the result is the
- * film with its `scene`, `accent`, `design` provenance and any per-shot block overrides applied.
+ * Cues are resolved against the film's measured narration, clips and camera poses are added
+ * through the kit's Timeline (so a snap, camera discontinuity or second origin is refused with
+ * the element named), and the result is the film with its `scene`, `accent`, `design` provenance
+ * and any per-shot block overrides applied.
  * Pure: it reads nothing from disk, so the build step and the tests share it.
- * Inputs and outputs: shot specifications, visual cues, and layout geometry -> compiled scene and shot timelines.
- * Used by: backend/designSpec/designer.ts, backend/designSpec/designSpec.test.ts.
  * Inputs and outputs: shot specifications, visual cues, and layout geometry -> compiled scene and shot timelines.
  * Used by: backend/designSpec/designer.ts, backend/designSpec/designSpec.test.ts.
  */
