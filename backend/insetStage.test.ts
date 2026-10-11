@@ -1,7 +1,7 @@
 /**
  * File Description: Tests for the inset stage: the SVG geometry the inset rule measures with, the film schema's
- * `stage: "inset"` rules, and the guarantee that the editor preview and the Remotion export share one render tree.
- * Inputs and outputs: SVG snippets, film fixtures and source files -> inset stage assertions.
+ * stage: "inset" rules, and the guarantee that the editor preview and the Remotion export share one render tree.
+ * Inputs and outputs: SVG snippets, film fixtures and rendered markup -> inset stage assertions.
  * Used by: npm test.
  */
 
@@ -9,17 +9,36 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import React from "react";
+import ReactDOMServer from "react-dom/server";
+import { Thumbnail } from "@remotion/player";
 import { TEST_VIDEOS_DIR } from "./testSupport/fixtureVideosDir";
 import { parseFilm } from "../src/dl/schema";
+import { buildTimeline } from "../src/dl/camera";
+import { getInsetRegion } from "../src/dl/fullScreenHeroLayout";
 import { parseSvgDocument } from "../src/dl/scene/svgDocument";
+import { FilmView } from "../src/dl/Film";
+import { Video } from "../src/dl/Video";
 import { apply, leafBounds, parseTransform } from "./designCheck/svgBounds";
-
-const ROOT = path.resolve(__dirname, "..");
 
 // Parses one SVG element out of a snippet and returns its local bounding box.
 function boundsOf(markup: string) {
   const doc = parseSvgDocument(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`);
   return leafBounds(doc.children[0]);
+}
+
+// Extracts the panel rectangle from rendered HTML for an inset device container.
+function extractInsetRect(html: string): { x: number; y: number; w: number; h: number } | null {
+  const match = html.match(
+    /style="[^"]*position:absolute;left:([0-9.]+)px;top:([0-9.]+)px;width:([0-9.]+)px;height:([0-9.]+)px;[^"]*background:#141416[^"]*"/,
+  );
+  if (!match) return null;
+  return {
+    x: Number(match[1]),
+    y: Number(match[2]),
+    w: Number(match[3]),
+    h: Number(match[4]),
+  };
 }
 
 test("svg bounds: shapes are measured from their attributes, stroke included", () => {
@@ -55,11 +74,76 @@ test("film schema: a scene film accepts a one-device inset, and stage still defa
 });
 
 test("render tree: the editor preview and the export both render FilmView, and FilmView draws the inset", () => {
-  const read = (rel: string) => fs.readFileSync(path.join(ROOT, rel), "utf8");
-  assert.match(read("src/dl/Video.tsx"), /import \{ FilmView \} from "\.\/Film"/);
-  assert.match(read("editor/src/screens/EditStage.tsx"), /import \{ FilmView \} from "\.\.\/\.\.\/\.\.\/src\/dl\/Film"/);
-  assert.match(read("editor/src/components/DescribeMotion.tsx"), /import \{ FilmView \} from "\.\.\/\.\.\/\.\.\/src\/dl\/Film"/);
-  const film = read("src/dl/Film.tsx");
-  assert.match(film, /getInsetRegion\(/);
-  assert.match(film, /shot\.stage === "inset"/);
+  const film = parseFilm(JSON.parse(fs.readFileSync(path.join(TEST_VIDEOS_DIR, "inset-stage/film.json"), "utf8")));
+  const timeline = buildTimeline(film);
+  const frameInsideInsetShot = 150;
+
+  for (const [format, width, height] of [["long", 1920, 1080], ["reel", 1080, 1920]] as const) {
+    const expected = getInsetRegion(format, width, height);
+
+    const previewHtml = ReactDOMServer.renderToStaticMarkup(
+      React.createElement(Thumbnail, {
+        component: FilmView,
+        compositionWidth: width,
+        compositionHeight: height,
+        frameToDisplay: frameInsideInsetShot,
+        durationInFrames: 300,
+        fps: 30,
+        inputProps: {
+          film,
+          timeline,
+          accent: film.accent,
+          showGrid: false,
+          showRail: true,
+          includeAudio: false,
+        },
+      }),
+    );
+
+    const exportHtml = ReactDOMServer.renderToStaticMarkup(
+      React.createElement(Thumbnail, {
+        component: Video,
+        compositionWidth: width,
+        compositionHeight: height,
+        frameToDisplay: frameInsideInsetShot,
+        durationInFrames: 300,
+        fps: 30,
+        inputProps: {
+          film,
+          timeline,
+          accent: film.accent,
+          showGrid: false,
+          showRail: true,
+        },
+      }),
+    );
+
+    const previewRect = extractInsetRect(previewHtml);
+    const exportRect = extractInsetRect(exportHtml);
+
+    assert.ok(previewRect, `Preview must render an inset device panel for format ${format}`);
+    assert.ok(exportRect, `Export must render an inset device panel for format ${format}`);
+
+    assert.ok(Math.abs(previewRect.x - expected.x) < 1e-4, `preview x matches getInsetRegion for ${format}`);
+    assert.ok(Math.abs(previewRect.y - expected.y) < 1e-4, `preview y matches getInsetRegion for ${format}`);
+    assert.ok(Math.abs(previewRect.w - expected.w) < 1e-4, `preview width matches getInsetRegion for ${format}`);
+    assert.ok(Math.abs(previewRect.h - expected.h) < 1e-4, `preview height matches getInsetRegion for ${format}`);
+
+    assert.deepEqual(previewRect, exportRect, `Preview and export must produce identical panel geometry for ${format}`);
+
+    for (const [name, html] of [["preview", previewHtml], ["export", exportHtml]] as const) {
+      assert.ok(html.includes("<svg") && html.includes('id="entity-rack"'), `${name} must include the scene stage markup`);
+      const svgTagIndex = html.indexOf("<svg");
+      const immediateSvgContainer = html.slice(Math.max(0, svgTagIndex - 300), svgTagIndex);
+      assert.ok(!immediateSvgContainer.includes("opacity:"), `${name} scene stage must not be wrapped in an opacity dimming layer`);
+
+      const margin = format === "reel" ? { left: 64, right: 64, top: 160, bottom: 384 } : { left: 96, right: 96, top: 96, bottom: 96 };
+      const targetSafeW = width - margin.left - margin.right;
+      const targetSafeH = height - margin.top - margin.bottom;
+      assert.ok(
+        !html.includes(`left:${margin.left}px;top:${margin.top}px;width:${targetSafeW}px;height:${targetSafeH}px`),
+        `${name} must not render a full-frame panel covering the target safe area for ${format}`,
+      );
+    }
+  }
 });
