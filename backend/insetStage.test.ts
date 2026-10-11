@@ -82,7 +82,7 @@ test("render tree: the editor preview and the export both render FilmView, and F
     const expected = getInsetRegion(format, width, height);
 
     const previewHtml = ReactDOMServer.renderToStaticMarkup(
-      React.createElement(Thumbnail, {
+      React.createElement(Thumbnail as React.ComponentType<any>, {
         component: FilmView,
         compositionWidth: width,
         compositionHeight: height,
@@ -101,7 +101,7 @@ test("render tree: the editor preview and the export both render FilmView, and F
     );
 
     const exportHtml = ReactDOMServer.renderToStaticMarkup(
-      React.createElement(Thumbnail, {
+      React.createElement(Thumbnail as React.ComponentType<any>, {
         component: Video,
         compositionWidth: width,
         compositionHeight: height,
