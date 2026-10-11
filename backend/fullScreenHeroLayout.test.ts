@@ -1,6 +1,6 @@
 /**
- * File Description: Regression coverage for full-screen B-roll framing and for the reel hero caption
- * never colliding with the burned-in subtitle card.
+ * File Description: Regression coverage for full-screen B-roll framing, reel hero caption subtitle
+ * clearance, and device inset regions.
  * Inputs and outputs: hero layout fixtures and screen geometries -> layout test assertions.
  * Used by: npm test.
  */
