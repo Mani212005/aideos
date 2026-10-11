@@ -7,9 +7,11 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { CAPTION_SAFE_SQUARE, FORMAT_WINDOWS } from "./sceneKit";
 import {
   SUBTITLE_BAND_TOP_RATIO,
   getFullScreenHeroLayout,
+  subtitleCardBottom,
   heroScrimGradient,
 } from "../src/dl/fullScreenHeroLayout";
 
@@ -119,4 +121,28 @@ test("the hero scrim gradient is built from the supplied canvas colour", () => {
   assert.match(gradient, /^linear-gradient\(to bottom, /);
   assert.match(gradient, /rgba\(10, 10, 11, 0\.52\) 0%/);
   assert.match(gradient, /rgba\(10, 10, 11, 0\.72\) 100%/);
+});
+
+// Verifies the caption band sits a bit higher than the old 0.82 yet still in the bottom quarter the review measures.
+test("the subtitle band was raised but is still a bottom caption", () => {
+  assert.ok(SUBTITLE_BAND_TOP_RATIO < 0.82, `band top ${SUBTITLE_BAND_TOP_RATIO} was not raised from 0.82`);
+  assert.ok(SUBTITLE_BAND_TOP_RATIO >= 0.75, "the band left the bottom quarter, so review no longer reads it as bottom captions");
+});
+
+// Verifies the tallest caption card keeps clear of the bottom edge in both formats.
+for (const [name, w, h] of [["long", 1920, 1080], ["reel", 1080, 1920]] as const) {
+  test(`a two-line ${name} caption card keeps at least 6% of the frame below it`, () => {
+    const clearance = (h - subtitleCardBottom(w, h)) / h;
+    assert.ok(clearance >= 0.06, `only ${(clearance * 100).toFixed(1)}% of the frame is left under the caption card`);
+  });
+}
+
+// Verifies the scene engine's caption-safe line sits at the band top in both format windows.
+test("the scene caption-safe square ends where the subtitle band starts", () => {
+  const wide = FORMAT_WINDOWS.wide;
+  const reel = FORMAT_WINDOWS.reel;
+  const wideBandTop = wide.y0 + (wide.y1 - wide.y0) * SUBTITLE_BAND_TOP_RATIO;
+  const reelBandTop = reel.y0 + (reel.y1 - reel.y0) * SUBTITLE_BAND_TOP_RATIO;
+  assert.ok(Math.abs(wideBandTop - CAPTION_SAFE_SQUARE.y1) <= 4, `wide band starts at scene y=${wideBandTop}`);
+  assert.ok(reelBandTop >= CAPTION_SAFE_SQUARE.y1, `reel band starts at scene y=${reelBandTop}, above the safe line`);
 });

@@ -2,7 +2,7 @@
  * File Description: Computes the format-safe media, scrim and caption geometry for full-screen B-roll heroes,
  * and owns the single definition of where the burned-in subtitle band starts so the two never collide.
  * Inputs and outputs: frame width, height, and safe margins -> hero media, scrim, and subtitle layout bounding boxes.
- * Used by: src/dl/Film.tsx, src/dl/devices.tsx, backend/fullScreenHeroLayout.test.ts.
+ * Used by: src/dl/Film.tsx, src/dl/KineticSubtitles.tsx, src/dl/devices.tsx, backend/fullScreenHeroLayout.test.ts.
  */
 
 import type { Format } from "./tokens";
@@ -13,7 +13,25 @@ import type { Format } from "./tokens";
  * captions out of the same band, so the two layouts are derived from one number
  * rather than independently guessed (see src/dl/README.md on the reel safe area).
  */
-export const SUBTITLE_BAND_TOP_RATIO = 0.82;
+export const SUBTITLE_BAND_TOP_RATIO = 0.78;
+
+/** Caption font size as a fraction of the frame's short side, shared by `Film` and the card-height maths. */
+export const SUBTITLE_FONT_RATIO = 0.042;
+/** Line height (a multiple of font size) and vertical padding (px, each side) of the burned-in subtitle card. */
+export const SUBTITLE_LINE_HEIGHT = 1.35;
+export const SUBTITLE_CARD_PADDING_Y = 12;
+/** A phrase is at most seven words, which never wraps past two lines at the card's width in either format. */
+export const SUBTITLE_MAX_LINES = 2;
+
+/** Bottom edge (render px) of the tallest subtitle card a frame of this size can draw, to check it clears the frame edge. */
+export const subtitleCardBottom = (width: number, height: number): number => {
+  const fontSize = Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO);
+  return (
+    height * SUBTITLE_BAND_TOP_RATIO +
+    SUBTITLE_CARD_PADDING_Y * 2 +
+    fontSize * SUBTITLE_LINE_HEIGHT * SUBTITLE_MAX_LINES
+  );
+};
 
 export type FullScreenHeroLayoutInput = {
   format: Format;

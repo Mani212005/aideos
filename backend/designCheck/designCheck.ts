@@ -15,6 +15,7 @@ import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import type { EnvironmentAsset, Scene } from "../../src/dl/scene/types";
 import type { SvgAnimationClip } from "../../src/dl/scene/svgAnimation";
+import { compileCameraTrack, measureCameraMotion } from "../../src/dl/scene/cameraTrack";
 import { parseSvgDocument, walkSvgNodes } from "../../src/dl/scene/svgDocument";
 import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNode";
 import { narrationSupportsVisual, numbersIn } from "../shotVisualCues";
@@ -288,6 +289,11 @@ function checkHonestData(film: Film, findings: DesignFinding[]): void {
   }
 }
 
+/** Largest zoom change allowed in a single frame, as a fraction of the zoom (0.8% a frame is about 24% a second at 30 fps). */
+export const MAX_CAMERA_ZOOM_STEP = 0.008;
+/** Largest pan acceleration allowed, as a fraction of the scene width per second squared (a stop-and-burst move is several times this). */
+export const MAX_CAMERA_PAN_ACCEL_WIDTHS = 0.3;
+
 // Checks the scene camera keyframes for valid speed limits and motion.
 function checkCamera(scene: Scene, findings: DesignFinding[]): void {
   if (!scene.camera || !scene.camera.keyframes || scene.camera.keyframes.length === 0) return;
@@ -324,6 +330,20 @@ function checkCamera(scene: Scene, findings: DesignFinding[]): void {
   
   if (!hasMove) {
     findings.push({ rule: "camera", severity: "error", where: "scene.camera", message: "declares a camera but has no moves." });
+    return;
+  }
+
+  // The compiled curve is what the viewer sees: an eased move can stay under the average speed cap and still burst.
+  const fps = scene.fps || FPS;
+  const sceneW = scene.sceneSize?.w ?? 1920;
+  const stats = measureCameraMotion(compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize ?? { w: sceneW, h: sceneW }), fps);
+  const hint = "Leave `easing` off the keyframes so the camera flows through them, or give the move more frames.";
+  if (stats.peakZoomStep > MAX_CAMERA_ZOOM_STEP) {
+    findings.push({ rule: "camera", severity: "error", where: "scene.camera", message: `camera zoom changes ${(stats.peakZoomStep * 100).toFixed(2)}% in a single frame, above the ${(MAX_CAMERA_ZOOM_STEP * 100).toFixed(1)}% limit, which reads as a jerk. ${hint}` });
+  }
+  const maxAccel = sceneW * MAX_CAMERA_PAN_ACCEL_WIDTHS;
+  if (stats.peakPanAccel > maxAccel) {
+    findings.push({ rule: "camera", severity: "error", where: "scene.camera", message: `camera pan accelerates at ${stats.peakPanAccel.toFixed(0)} px/s^2, above the limit of ${maxAccel.toFixed(0)} px/s^2, which reads as a jerk. ${hint}` });
   }
 }
 

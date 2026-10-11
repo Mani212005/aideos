@@ -150,6 +150,27 @@ test("DesignCheck: camera moves must be present and speed-capped", () => {
   assert.ok(unsortedFast.findings.some(f => f.rule === "camera" && f.message.includes("speed limit")));
 });
 
+test("DesignCheck: a camera eased at every keyframe is caught as a jerk, the same poses un-eased pass", () => {
+  const film = { ...JSON.parse(JSON.stringify(stillTalking())), id: "camera-jerk-test" };
+  // The look-first proof film's poses: peak speed stays under the 384 px/s cap but each move bursts then stops.
+  const poses: Array<[number, number, number, number]> = [
+    [0, 960, 960, 1.0], [120, 840, 980, 1.22], [286, 845, 985, 1.25], [382, 960, 960, 1.0],
+    [481, 960, 900, 1.15], [616, 960, 960, 1.0], [777, 975, 965, 1.02], [1017, 1000, 990, 1.05],
+    [1095, 1070, 1020, 1.35], [1166, 1075, 1025, 1.37], [1226, 1030, 1010, 1.22], [1328, 960, 960, 1.02],
+  ];
+  const withEasing = (easing?: string) => ({
+    keyframes: poses.map(([frame, x, y, zoom]) => ({ frame, center: { x, y }, zoom, ...(easing ? { easing } : {}) })),
+  });
+
+  film.scene.camera = withEasing("expoInOut");
+  const jerky = checkFilmDesign(film).findings.filter((f) => f.rule === "camera");
+  assert.ok(jerky.some((f) => f.message.includes("single frame")), "zoom burst not caught");
+  assert.ok(jerky.some((f) => f.message.includes("accelerates")), "pan acceleration not caught");
+
+  film.scene.camera = withEasing();
+  assert.deepEqual(checkFilmDesign(film).findings.filter((f) => f.rule === "camera"), []);
+});
+
 test("DesignCheck: scene camera survives parseFilm in schema", () => {
   const film = { ...JSON.parse(JSON.stringify(stillTalking())), id: "camera-schema-test" };
   film.scene.camera = {
