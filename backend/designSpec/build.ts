@@ -125,7 +125,7 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
       const showsCard = fallback && (fallback.stage === "frame" || fallback.stage === "none") &&
         fallback.blocks.every((b) => b.c === "TextReveal" || b.c === "Body");
       if (refusalMatches && showsCard) continue;
-      if (!override?.blocks.some((b) => b.c === shot.device) || (override.stage as string) !== "inset") {
+      if (!override?.blocks.some((b) => b.c === shot.device) || override.stage !== "inset") {
         errors.push(`look device shot "${shot.id}" needs a matching "${shot.device}" shots override with stage "inset"`);
       }
     }

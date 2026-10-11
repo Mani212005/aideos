@@ -28,6 +28,7 @@ import {
   FILMS_DIR,
 } from "./filmStore";
 import { buildTimeline, totalFrames } from "../../src/dl/camera";
+import { parseFilm } from "../../src/dl/schema";
 import type { SegmentAudioInfo } from "../audio";
 import { clearMockShotVisualHandler, heuristicShotVisualSelection, setMockShotVisualHandler } from "../jev";
 import type { LookPlan } from "../lookPlan/schema";
@@ -806,5 +807,58 @@ test("runProduction: an honesty-refused planned device completes as scene+card w
     assert.ok(result.warnings.some((w) => /beat-04:.*using scene\+card/.test(w)));
     assert.equal(readFilm(slug)?.design?.source, "agent");
     assert.deepEqual(readFilm(slug)?.shots[3].blocks, []);
+  } finally { cleanProbe(slug); }
+});
+
+test("Compile: a 120-second scene-only plan passes while a non-scene film retains the text-beat gate", async () => {
+  const slug = `probe-long-scene-${Date.now().toString(36)}`;
+  try {
+    const narration = spine([20, 20, 20, 20, 20, 20], 0);
+    const template = await compileFilmFromScreenplayAsync(SCRIPT, narration.segments, narration.shotDurations,
+      { title: "Long Scene", slug, maxFootageShots: 0 }, { apiKey: "" });
+    writeFilm(slug, template.film);
+    const compiled = await compileFilmFromScreenplayAsync(SCRIPT, narration.segments, narration.shotDurations,
+      { title: "Long Scene", slug, lookPlan: probeLook(slug), deviceCaller: null }, { apiKey: "" });
+    assert.equal(compiled.film.voiceover?.durationSec, 120);
+    assert.ok(compiled.film.scene);
+    assert.ok(compiled.film.shots.every((shot) => shot.stage === "none" && shot.blocks.length === 0));
+    assert.doesNotThrow(() => parseFilm(compiled.film));
+    assert.throws(() => parseFilm({ ...compiled.film, scene: undefined }), /without a text beat/);
+  } finally { cleanProbe(slug); }
+});
+
+test("runProduction: the named device compiles and builds as an inset over the carried scene", async () => {
+  const slug = `probe-inset-device-${Date.now().toString(36)}`;
+  try {
+    const request = inlineRequest(slug);
+    await runProduction(request);
+    writeProbeDesign(slug);
+    const pkg = path.join(VIDEOS_DIR, slug);
+    const plan = probeLook(slug);
+    plan.shots[2].treatment = "device";
+    plan.shots[2].device = "StatCounter";
+    fs.writeFileSync(path.join(pkg, "design/look.json"), JSON.stringify(plan));
+    const specFile = path.join(pkg, "design/design.json");
+    const spec = JSON.parse(fs.readFileSync(specFile, "utf8"));
+    spec.shots["beat-03"] = { stage: "inset", blocks: [{ c: "StatCounter", to: 70, suffix: "billion", label: "parameters", format: "plain" }] };
+    fs.writeFileSync(specFile, JSON.stringify(spec));
+    const result = await runProduction(request);
+    assert.equal(result.stoppedAfter, "assemble", JSON.stringify(result.warnings));
+    const film = readFilm(slug)!;
+    assert.equal(film.design?.source, "agent");
+    assert.equal(film.shots[2].stage, "inset");
+    assert.equal(film.shots[2].blocks[0].c, "StatCounter");
+    assert.equal(film.scene?.props[0].assetId, "carrier");
+    assert.equal(film.shots[1].stage, "none");
+    const choices = JSON.parse(fs.readFileSync(path.join(pkg, "design/visual-choices.json"), "utf8"));
+    assert.deepEqual(choices.shots["beat-03"].shown, ["StatCounter"]);
+    const resumed: ProductionProgress[] = [];
+    await runProduction(request, (e) => resumed.push(e));
+    assert.ok(resumed.some((e) => e.stage === "design" && e.status === "skipped"));
+    spec.shots["beat-03"].stage = "frame";
+    fs.writeFileSync(specFile, JSON.stringify(spec));
+    const refused = await runProduction(request);
+    assert.equal(refused.status, "needs_design");
+    assert.match(refused.warnings.join("\n"), /matching "StatCounter" shots override with stage "inset"/);
   } finally { cleanProbe(slug); }
 });

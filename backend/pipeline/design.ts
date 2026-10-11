@@ -590,7 +590,7 @@ export async function compileFilmFromScreenplayAsync(
       blocks = planned.treatment === "scene" ? [] : textBlocks;
       if (planned.treatment === "device") {
         if (deviceBlocks) {
-          stage = "inset" as Shot["stage"];
+          stage = "inset";
           blocks = deviceBlocks;
         } else {
           const reason = deviceReports.get(shotId)?.reason ?? "the named device has no honest narrated data";
