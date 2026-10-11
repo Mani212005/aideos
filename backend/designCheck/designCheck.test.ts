@@ -198,3 +198,79 @@ test("DesignCheck: placing an asset in the caption band of a captioned film is a
   film.captions = "bottom";
   assert.ok(errorRules(film).includes("safe-area"));
 });
+
+// Loads a fresh deep copy of the inset fixture: a scene film whose middle shot is a counter inset.
+function insetStage(): any {
+  return JSON.parse(fs.readFileSync(path.join(TEST_VIDEOS_DIR, "inset-stage/film.json"), "utf8"));
+}
+
+// Returns the inset-rule error messages a film trips.
+function insetErrors(film: unknown): string[] {
+  return checkFilmDesign(film).findings.filter((f) => f.rule === "inset" && f.severity === "error").map((f) => f.message);
+}
+
+test("DesignCheck: an inset shot over a stage that keeps clear of the region passes", () => {
+  const report = checkFilmDesignById("inset-stage");
+  assert.equal(report.ok, true, JSON.stringify(report.findings));
+  assert.deepEqual(report.findings.filter((f) => f.severity === "error"), []);
+});
+
+test("DesignCheck: art in the inset region during an inset shot fails, naming the format", () => {
+  // Scene (1500, 700) is the wide cut's right third, and outside the reel's window.
+  const wide = insetStage();
+  wide.scene.props[0].position = { x: 1500, y: 700 };
+  const wideErrors = insetErrors(wide);
+  assert.ok(wideErrors.length > 0 && wideErrors.every((m) => /wide cut/.test(m) && /inset region/.test(m)), wideErrors.join("\n"));
+  assert.equal(checkFilmDesign(wide).findings.find((f) => f.rule === "inset")!.where, "shot counter");
+
+  // Scene (700, 1250) puts the rack in the reel's lower-middle band as well as the wide cut's right third.
+  const reel = insetStage();
+  reel.scene.props[0].position = { x: 960, y: 1250 };
+  assert.ok(insetErrors(reel).some((m) => /reel cut/.test(m)), insetErrors(reel).join("\n"));
+});
+
+test("DesignCheck: the inset rule counts only art that is visible while the inset shot plays", () => {
+  // Same offending placement, but the shot is a plain spine shot, so nothing is shared with a device.
+  const spine = insetStage();
+  spine.scene.props[0].position = { x: 1500, y: 700 };
+  spine.shots[1].stage = "none";
+  spine.shots[1].blocks = [];
+  assert.deepEqual(insetErrors(spine), []);
+
+  // Art that is faded out before the inset shot starts (frame 90) no longer occupies the region.
+  const hidden = insetStage();
+  hidden.scene.props[0].position = { x: 1500, y: 700 };
+  hidden.scene.props[0].animation.clips.push({ clipId: "rack-out", targets: ["rack"], property: "opacity", from: 1, to: 0, startFrame: 80, durationFrames: 8, easing: "expoOut" });
+  hidden.scene.props[0].animation.clips.push({ clipId: "rack-back", targets: ["rack"], property: "opacity", from: 0, to: 1, startFrame: 215, durationFrames: 8, easing: "expoOut" });
+  assert.deepEqual(insetErrors(hidden), []);
+});
+
+test("DesignCheck: a camera that pushes art into the inset region is caught", () => {
+  const film = insetStage();
+  // The rack sits clear at the identity camera; a held zoom centred left of it slides it into the wide cut's right third.
+  film.scene.camera = {
+    keyframes: [
+      { frame: 0, center: { x: 960, y: 960 }, zoom: 1 },
+      { frame: 90, center: { x: 960, y: 960 }, zoom: 1 },
+      { frame: 150, center: { x: 600, y: 960 }, zoom: 1.5 },
+      { frame: 300, center: { x: 600, y: 960 }, zoom: 1.5 },
+    ],
+  };
+  assert.ok(insetErrors(film).some((m) => /wide cut/.test(m)), "the zoomed rack should reach the region");
+});
+
+test("DesignCheck: stage inset is a scene-film device stage, not a card stage", () => {
+  const cardInset = insetStage();
+  cardInset.shots[1].blocks = [{ c: "TextReveal", text: "Three servers", size: "headline" }];
+  assert.ok(errorRules(cardInset).includes("schema"));
+
+  const twoDevices = insetStage();
+  twoDevices.shots[1].blocks = [...twoDevices.shots[1].blocks, { c: "StatCounter", to: 3, label: "again" }];
+  assert.ok(errorRules(twoDevices).includes("schema"));
+
+  const nodeGraph = JSON.parse(fs.readFileSync(path.join(TEST_VIDEOS_DIR, "sample-explainer/film.json"), "utf8"));
+  nodeGraph.shots[0].stage = "inset";
+  nodeGraph.shots[0].blocks = [{ c: "StatCounter", to: 3, label: "x" }];
+  const report = checkFilmDesign(nodeGraph);
+  assert.ok(report.findings.some((f) => f.rule === "schema" && /only a scene film/.test(f.message)), JSON.stringify(report.findings).slice(0, 400));
+});

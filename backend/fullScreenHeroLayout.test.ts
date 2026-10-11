@@ -11,6 +11,7 @@ import { CAPTION_SAFE_SQUARE, FORMAT_WINDOWS } from "./sceneKit";
 import {
   SUBTITLE_BAND_TOP_RATIO,
   getFullScreenHeroLayout,
+  getInsetRegion,
   subtitleCardBottom,
   heroScrimGradient,
 } from "../src/dl/fullScreenHeroLayout";
@@ -145,4 +146,34 @@ test("the scene caption-safe square ends where the subtitle band starts", () => 
   const reelBandTop = reel.y0 + (reel.y1 - reel.y0) * SUBTITLE_BAND_TOP_RATIO;
   assert.ok(Math.abs(wideBandTop - CAPTION_SAFE_SQUARE.y1) <= 4, `wide band starts at scene y=${wideBandTop}`);
   assert.ok(reelBandTop >= CAPTION_SAFE_SQUARE.y1, `reel band starts at scene y=${reelBandTop}, above the safe line`);
+});
+
+// The inset region is fixed per format, clear of the margins and the caption band, and big enough to hold a device.
+test("the inset region sits inside the margins and above the caption band in both formats", () => {
+  for (const frame of [LONG, REEL]) {
+    const region = getInsetRegion(frame.format, frame.width, frame.height);
+    const bandTop = frame.height * SUBTITLE_BAND_TOP_RATIO;
+    assert.ok(region.x >= frame.margin.left - 1e-6, `${frame.format} left edge ${region.x}`);
+    assert.ok(region.x + region.w <= frame.width - frame.margin.right + 1e-6, `${frame.format} right edge`);
+    assert.ok(region.y >= frame.margin.top - 1e-6, `${frame.format} top edge ${region.y}`);
+    assert.ok(region.y + region.h <= bandTop - frame.height * 0.03, `${frame.format} floor clears the caption band by a visible gap`);
+    assert.ok(region.w >= frame.width * 0.3 && region.h >= frame.height * 0.2, `${frame.format} holds a device: ${region.w}x${region.h}`);
+  }
+});
+
+// The wide cut gives the device the right third and the reel gives it the lower-middle band.
+test("the inset region is the right third in the long cut and the lower-middle band in the reel", () => {
+  const long = getInsetRegion("long", LONG.width, LONG.height);
+  assert.ok(long.x >= LONG.width * 0.55 && long.x + long.w <= LONG.width, "long cut region hugs the right side");
+  assert.ok(long.w < LONG.width / 2, "long cut region leaves most of the stage uncovered");
+  const reel = getInsetRegion("reel", REEL.width, REEL.height);
+  assert.ok(reel.y >= REEL.height * 0.45, "reel region starts below the middle of the frame");
+  assert.ok(reel.w > REEL.width * 0.8, "reel region spans the safe width");
+});
+
+// The region is derived from the frame, so the reference sizes scale to any render size.
+test("the inset region scales linearly with the frame", () => {
+  const a = getInsetRegion("long", 1920, 1080);
+  const b = getInsetRegion("long", 960, 540);
+  for (const key of ["x", "y", "w", "h"] as const) assert.ok(Math.abs(a[key] / 2 - b[key]) < 1e-6, key);
 });

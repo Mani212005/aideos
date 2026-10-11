@@ -4,8 +4,8 @@
  * templates), it has to pass this before it ships. Each finding names the rule, where it is, and
  * what to change, so an agent can be handed the report verbatim and repair its own design.
  * Rules: schema, scene engine validity, static self-contained artwork, palette, typography,
- * continuity (no motion snaps while visible, one origin per element), audio lock, and honest
- * on-screen data.
+ * continuity (no motion snaps while visible, one origin per element), audio lock, honest
+ * on-screen data, and a clear inset region while a device shot shares the stage.
  * Inputs and outputs: Film or Scene data -> standard-layer design rule violations and warnings.
  * Used by: backend/cli.ts, backend/pipeline/run.ts.
  */
@@ -22,6 +22,7 @@ import { narrationSupportsVisual, numbersIn } from "../shotVisualCues";
 import type { ShotVisual } from "../jev";
 import { FPS, CAPTION_SAFE_SQUARE } from "../sceneKit";
 import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { checkInsetRegions } from "./insetRegion";
 
 /** The standard layer rules a finding can belong to. */
 export type DesignRule =
@@ -35,7 +36,8 @@ export type DesignRule =
   | "origin"
   | "audio-lock"
   | "honest-data"
-  | "safe-area";
+  | "safe-area"
+  | "inset";
 
 /** One problem found in a film's design. Errors block shipping; warnings are worth a look. */
 export interface DesignFinding {
@@ -376,6 +378,10 @@ export function checkFilmDesign(raw: unknown): DesignReport {
       clips += checkContinuity(asset, findings);
     }
     checkCamera(scene, findings);
+    // The inset rule reads the compiled scene, which only exists when the scene itself is valid.
+    if (result.errors.length === 0) {
+      for (const f of checkInsetRegions(film, scene)) findings.push({ rule: "inset", severity: "error", ...f });
+    }
   }
   checkAudioLock(film, findings);
   checkHonestData(film, findings);

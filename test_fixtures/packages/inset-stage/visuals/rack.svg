@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
+<g id="rack">
+<rect id="shelf-1" x="-260" y="-150" width="520" height="64" rx="8" fill="#101013" stroke="#F5F5F5" stroke-width="2"/>
+<rect id="shelf-2" x="-260" y="-32" width="520" height="64" rx="8" fill="#101013" stroke="#F5F5F5" stroke-width="2"/>
+<rect id="shelf-3" x="-260" y="86" width="520" height="64" rx="8" fill="#101013" stroke="#F5F5F5" stroke-width="2"/>
+<rect id="tile-a" x="-240" y="-136" width="52" height="36" rx="6" fill="#635BFF"/>
+<rect id="tile-b" x="-240" y="-18" width="52" height="36" rx="6" fill="#635BFF"/>
+<rect id="tile-c" x="-240" y="100" width="52" height="36" rx="6" fill="#F5F5F5"/>
+<text id="rack-label" x="0" y="190" font-family="JetBrains Mono" font-size="16" font-weight="500" fill="#8A8A8E" text-anchor="middle">ONE RACK</text>
+</g>
+</svg>

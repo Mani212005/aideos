@@ -242,6 +242,9 @@ export const DEVICE_BLOCKS = [
 const isDevice = (b: Block) =>
   (DEVICE_BLOCKS as readonly string[]).includes(b.c);
 
+/** Blocks an inset shot may carry: the device library plus the counter (a precise number the narrator says). */
+export const INSET_BLOCKS = [...DEVICE_BLOCKS, "StatCounter"] as const;
+
 /** Blocks that spend one of the frame's three accents. */
 const accentCost = (b: Block): number => {
   if (b.c === "TextReveal") return b.accentWord ? 1 : 0;
@@ -333,7 +336,13 @@ export const sceneSchema = z.object({
 
 export type FilmScene = z.infer<typeof sceneSchema>;
 
-export const stageSchema = z.enum(["anchor", "frame", "none"]).default("anchor");
+/**
+ * How a shot's blocks sit on the film's canvas. `anchor` grows a panel out of a node, `frame` prints
+ * text straight onto the canvas, `none` shows the bare canvas, and `inset` (scene films only) puts
+ * one device in the format's fixed inset region (`getInsetRegion`) while the scene stays at full
+ * strength around it.
+ */
+export const stageSchema = z.enum(["anchor", "frame", "none", "inset"]).default("anchor");
 export const lookSchema = z.union([z.string(), z.array(z.string()).min(1), z.literal("all")]);
 export const moveSchema = z.enum(["pan", "zoom-in", "zoom-out", "hold", "cut"]).default("pan");
 
@@ -726,6 +735,30 @@ export const filmSchema = filmBaseSchema.superRefine((film, ctx) => {
           path: [...at, "blocks"],
           message: `stage "${shot.stage}" with no blocks renders an empty panel`,
         });
+
+      if (shot.stage === "inset") {
+        if (!film.scene)
+          ctx.addIssue({
+            code: "custom",
+            path: [...at, "stage"],
+            message: 'stage "inset" shares a scene stage, so only a scene film can use it',
+          });
+        const bad = shot.blocks.find(
+          (b) => !(INSET_BLOCKS as readonly string[]).includes(b.c) || (b.c === "AnalogyInset" && b.fullScreenHero),
+        );
+        if (bad)
+          ctx.addIssue({
+            code: "custom",
+            path: [...at, "blocks"],
+            message: `${bad.c} cannot sit in the inset region: an inset carries one device or counter, never a card or a full-screen hero`,
+          });
+        if (shot.blocks.length > 1)
+          ctx.addIssue({
+            code: "custom",
+            path: [...at, "blocks"],
+            message: "an inset shot carries exactly one device; split the beat or use the scene itself",
+          });
+      }
 
       if (shot.stage === "anchor" && shot.look === "all")
         ctx.addIssue({
