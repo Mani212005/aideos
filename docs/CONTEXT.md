@@ -442,6 +442,12 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `designFilm(filmId, options)` (`designer.ts`): Orchestrates agent-based and server-model film design workflows with validation retry loops.
 * `requestShotMotion(filmId, request)` (`motionRequests.ts`): Manages shot-level motion design tasks and history snapshots.
 
+### `backend/lookPlan/` (Look Plan Specification, Semantic Checker, Briefing & Renderer)
+* `lookPlanSchema`, `lookFilmSchema`, `lookCastItemSchema`, `lookChangeSchema`, `lookCameraPoseSchema`, `lookCaptionsSchema`, `lookShotSchema`, `lookApprovalSchema`, `parseLookPlan(data)`, `safeParseLookPlan(data)` (`schema.ts`): Zod schemas for `look.json` (`aideos.look/1`), defining stage, persistent cast transformations, camera poses, palette, captions, and per-shot beat treatments (`scene`, `scene+card`, `device`, `footage`).
+* `checkLookPlan(plan, filmId)`, `checkLookPlanById(filmId)`, `formatLookReport(report)` (`check.ts`): Semantic checker enforcing unique cast and shot IDs, valid carries references, non-minor carry-over changes, initial and final wide camera framing, bottom captions without kinetic columns, device naming, no consecutive device shots, and at most 1 device shot per 4 shots.
+* `renderLookBrief(film)`, `writeLookBrief(filmId)` (`brief.ts`): Generates designer look briefs (`design/LOOK_BRIEF.md`) detailing the 6 look questions, shot treatment decision rules, example look plan, and timed script beats.
+* `renderLookMd(plan, filmTitle, shotTimings)`, `writeLookMd(filmId)` (`render.ts`): Renders and writes human-readable look plans (`design/LOOK.md`) from validated `look.json`.
+
 ### `backend/transcribe.ts` (Audio & Video Transcription)
 * `transcribe(src, options, deps)`: Transcribes audio or video media into word-level timings (`TranscribedWord[]`) with confidence scores, using Deepgram with local Whisper CLI fallback.
 * `writeImportWords(packageDir, words)`: Writes `import_words.json` and phrase-grouped `import_captions.vtt` sidecars into the package directory.

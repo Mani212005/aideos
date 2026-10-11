@@ -83,6 +83,24 @@ if [ "$#" -gt 0 ]; then
           ;;
       esac
       ;;
+    look)
+      # aideos look brief|check <film>
+      SUB="${1:-}"
+      shift || true
+      case "$SUB" in
+        brief)
+          cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts "look-brief" "$@"
+          ;;
+        check)
+          cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts "look-check" "$@"
+          ;;
+        *)
+          echo "Usage: aideos look brief <film>" >&2
+          echo "       aideos look check <film> [--json]" >&2
+          exit 1
+          ;;
+      esac
+      ;;
     render)
       cd "$AIDEOS_DIR" && npm run render "$@"
       exit 0
