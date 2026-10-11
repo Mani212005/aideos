@@ -93,6 +93,12 @@ export const THRESHOLDS = {
     minShiftWidth: 0.04,
     minZoomRatio: 1.05,
   },
+  planAdherence: {
+    /** Plan-directed scene motion must start this close to its spoken cue. */
+    cueToleranceSec: 0.4,
+    /** A visible object must remain present for at least this opacity. */
+    visibleOpacityMin: 0.05,
+  },
   grounding: {
     /** On-screen numbers not said in the narration that still pass (the rubric allows zero). */
     ungroundedMax: 0,

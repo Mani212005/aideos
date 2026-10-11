@@ -695,6 +695,8 @@ test("brief: states the hard rules, the settings and the long-reel-final order",
   assert.match(brief, /not done until `finish` has written result\.json/);
   assert.match(brief, /all-check\/scratch\//, "scratch files have one allowed home inside the package");
   assert.match(brief, /ROLLED BACK/);
+  assert.match(brief, /Read `design\/LOOK\.md` first/);
+  assert.match(brief, /changing a shot's treatment or the cast means editing `look\.json` and passing `aideos look check`/);
   assert.ok(!NO_DASH.test(brief));
   assert.doesNotMatch(buildBrief({ ...config, reference: undefined }, "/repo"), /cross-review against the reference/);
 });

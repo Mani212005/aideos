@@ -12,6 +12,8 @@ Final acceptance requires a Gemini 3.8 Flash review score of 9.0 or higher (out 
 
 ## Rubric
 
+When a film has `design/look.json`, `aideos review` reports plan adherence as a non-gating score until it has been calibrated on the proof and two or three more films.
+
 | # | Criterion | How to measure | Pass target | Method |
 |---|---|---|---|---|
 | 1 G | **One persistent stage** | element-level: of the elements visible at the end of beat k, share still visible (possibly transformed) in beat k+1; pixel-level fallback: layout correlation over 2 s | stage-clear events <= 1 per 30 s; median 2 s layout correlation >= 0.75 | deterministic (data and pixels) |

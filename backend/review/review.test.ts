@@ -21,7 +21,8 @@ import { parseEbur128, parseSilences } from "./media";
 import { analyzeSample, parseTsv, type OcrWord } from "./ocr";
 import { correlation, frameFeatures, hardCuts, layoutPersistence, percentile, stageClears, staticRuns } from "./pixels";
 import { findSlugVideo, reviewVideo } from "./review";
-import { readFilmFacts } from "./source";
+import { loadFilmFacts, readFilmFacts, type FilmFacts } from "./source";
+import type { LookPlan } from "../lookPlan/schema";
 import { captionMatch, chanceNearWordStarts, cutsThroughWords, loadNarration, pauses, shareNearWordStarts, spokenNumbers, wordsPerMinute, type Narration } from "./speech";
 import type { RenderFacts } from "./renderFacts";
 import type { VideoFacts } from "./types";
@@ -291,6 +292,14 @@ test("source: scene elements that stay and transform across a boundary count as 
   assert.ok(kept.clipStarts.includes(5), "a clip starting at frame 150 is a cue at 5 s");
 });
 
+test("source: the designed fixture package loads its plan and per-shot scene facts", () => {
+  const packageDir = path.join(process.cwd(), "test_fixtures/packages/speculative-decoding-designed");
+  const loaded = loadFilmFacts(path.join(packageDir, "film.json"));
+  assert.equal(loaded.facts.lookPlan?.schema, "aideos.look/1");
+  assert.equal(loaded.facts.planShots?.length, loaded.film.shots.length);
+  assert.ok(loaded.facts.cameraKeyframes && loaded.facts.cameraKeyframes.length > 0);
+});
+
 // ---- criteria --------------------------------------------------------------------------------------
 
 const VIDEO: VideoFacts = { path: "x.mp4", durationSec: 60, width: 1920, height: 1080, fps: 30, hasAudio: true, audioDurationSec: 60 };
@@ -351,6 +360,63 @@ test("criteria: camera comes from film data and fails a scene film without one",
   assert.equal(ok.status, "pass");
   const tooFast = { ...moving, camera: { ...moving.camera, maxSpeed: 0.9 } };
   assert.equal(byKey(evaluateCriteria(inputs({ film: tooFast, video: { ...VIDEO, durationSec: 24, audioDurationSec: 24 } })), "camera").status, "fail");
+});
+
+test("criteria: look plan adherence passes matching scene data and fails measured mismatches without gating", () => {
+  const lookPlan: LookPlan = {
+    schema: "aideos.look/1",
+    decidedBy: { agent: "test", model: "test", at: "now" },
+    film: {
+      mode: "scene", stage: "one stage", cast: [{ id: "object", what: "object", enters: "shot-1", changes: [] }],
+      camera: [
+        { at: "shot-1", pose: "wide establishing view", why: "establish" },
+        { at: "shot-2", pose: "wide payoff view", why: "payoff" },
+      ],
+      palette: { bg: "#000000", accent: "#ffffff", extra: {} }, captions: { position: "bottom", kineticColumn: false }, headlines: "none",
+    },
+    shots: [
+      { id: "shot-1", treatment: "scene", carries: ["object"], cue: "moves", criterion: "mechanism", why: "object moves" },
+      { id: "shot-2", treatment: "scene", carries: ["object"], cue: "turns", criterion: "mechanism", why: "object turns" },
+    ],
+  };
+  const filmFacts: FilmFacts = {
+    filmId: "plan-fixture", kind: "scene", durationSec: 10, fps: 30, shotBoundaries: [5], shotDurations: [5, 5],
+    camera: { available: true, kind: "scene-track", moves: [], driftOnly: 0, maxSpeed: 0 },
+    boundaries: [], clipStarts: [], nodeOverlaps: [], voiceoverSec: 10, lookPlan,
+    cameraKeyframes: [1, 6],
+    planShots: [
+      { id: "shot-1", startSec: 0, endSec: 5, stage: "none", visibleAtStart: ["object"], visibleAtEnd: ["object"], motions: [{ castId: "object", startSec: 1 }] },
+      { id: "shot-2", startSec: 5, endSec: 10, stage: "none", visibleAtStart: ["object"], visibleAtEnd: ["object"], motions: [{ castId: "object", startSec: 6 }] },
+    ],
+  };
+  const narration: Narration = { words: [
+    { word: "moves", start: 1, end: 1.3 }, { word: "object", start: 2, end: 2.3 },
+    { word: "turns", start: 6, end: 6.3 }, { word: "again", start: 7, end: 7.3 },
+  ], text: "moves object turns again", timed: true };
+  const result = byKey(evaluateCriteria(inputs({ film: filmFacts, narration })), "plan-adherence");
+  assert.equal(result.status, "pass");
+  assert.equal(result.gate, false);
+  assert.equal(result.metrics.visibleCarriedObjects, 1);
+  assert.equal(result.metrics.cameraPoses, 2);
+
+  const failedFacts: FilmFacts = {
+    ...filmFacts,
+    cameraKeyframes: [],
+    planShots: filmFacts.planShots!.map((shot, index) => ({
+      ...shot,
+      stage: index === 0 ? "anchor" : shot.stage,
+      visibleAtStart: index === 1 ? [] : shot.visibleAtStart,
+      visibleAtEnd: shot.visibleAtEnd,
+      motions: [],
+    })),
+  };
+  const failed = byKey(evaluateCriteria(inputs({ film: failedFacts, narration })), "plan-adherence");
+  assert.equal(failed.status, "fail");
+  assert.equal(failed.gate, false);
+  assert.match(failed.summary, /within 0.4s of its cue/);
+  assert.match(failed.summary, /clears the scene/);
+  assert.match(failed.summary, /not visible on both sides/);
+  assert.match(failed.summary, /no ordered camera keyframe/);
 });
 
 test("criteria: audio sync catches a length mismatch and a shot boundary through a word", () => {

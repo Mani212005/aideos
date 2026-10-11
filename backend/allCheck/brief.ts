@@ -107,5 +107,6 @@ with the time. Issues are work for the next round. Be strict; the reviewer will 
 - Fix the cause named in the feedback, not the symptom, and change as little as needed so a fix for one finding does not break another.
 - After editing, the next \`round\` re-generates the render shadows itself; you do not need to run anything else.
 - Keep the narration and its timing intact unless a finding is about audio.
+- Read \`design/LOOK.md\` first; a fix may change motion freely, but changing a shot's treatment or the cast means editing \`look.json\` and passing \`aideos look check\` before the next round.
 `;
 }

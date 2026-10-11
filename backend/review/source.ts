@@ -16,6 +16,8 @@ import { MS } from "../../src/dl/motion";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
 import type { SvgAnimationClip } from "../../src/dl/scene/svgAnimation";
+import type { LookPlan } from "../lookPlan/schema";
+import { safeParseLookPlan } from "../lookPlan/schema";
 import { THRESHOLDS } from "./thresholds";
 
 /** One camera move found in the film data. */
@@ -68,6 +70,20 @@ export interface FilmFacts {
   /** Canvas nodes whose boxes overlap, as "a / b". */
   nodeOverlaps: string[];
   voiceoverSec: number | null;
+  /** Optional plan loaded beside film.json for the non-gating plan-adherence criterion. */
+  lookPlan?: LookPlan | null;
+  /** Per-shot stage and scene motion facts used to compare the rendered design with its plan. */
+  planShots?: Array<{
+    id: string;
+    startSec: number;
+    endSec: number;
+    stage: string;
+    visibleAtStart: string[];
+    visibleAtEnd: string[];
+    motions: Array<{ castId: string; startSec: number }>;
+  }>;
+  /** Scene camera keyframe times in film seconds. */
+  cameraKeyframes?: number[];
 }
 
 const FRAME = { width: 1920, height: 1080 };
@@ -97,6 +113,48 @@ function sceneCameraMoves(scene: Scene, fps: number): CameraFacts {
     } else driftOnly++;
   }
   return { available: true, kind: "scene-track", moves, driftOnly, maxSpeed: Math.max(0, ...moves.map((m) => m.speed)) };
+}
+
+// Finds the scene-frame time where a keyframed track first changes value.
+function changingTrackStarts(tracks: Array<{ trackId?: string; keyframes: Array<{ frame: number; value: number }> }> | undefined, fromFrame: number, toFrame: number): number[] {
+  const starts: number[] = [];
+  for (const track of tracks ?? []) {
+    if (track.trackId === "opacity") continue;
+    for (let index = 1; index < track.keyframes.length; index++) {
+      const previous = track.keyframes[index - 1];
+      const current = track.keyframes[index];
+      if (previous.value !== current.value && previous.frame >= fromFrame && previous.frame < toFrame && current.frame >= fromFrame) starts.push(previous.frame);
+    }
+  }
+  return starts;
+}
+
+// Reads the opacity of a scene asset at a frame, honoring its explicit opacity track.
+function sceneAssetOpacityAt(asset: Scene["background"], frame: number): number {
+  const track = asset.tracks?.find((candidate) => candidate.trackId === "opacity");
+  if (!track?.keyframes.length) return asset.opacity;
+  const nextIndex = track.keyframes.findIndex((keyframe) => keyframe.frame >= frame);
+  if (nextIndex === -1) return track.keyframes[track.keyframes.length - 1].value;
+  const next = track.keyframes[nextIndex];
+  if (nextIndex === 0) return next.value;
+  const previous = track.keyframes[nextIndex - 1];
+  const progress = (frame - previous.frame) / Math.max(1, next.frame - previous.frame);
+  return previous.value + (next.value - previous.value) * progress;
+}
+
+// Reads one animated SVG target's opacity at a scene frame.
+function sceneTargetOpacityAt(asset: Scene["background"], target: string, frame: number): number {
+  let opacity = 1;
+  for (const clip of asset.animation?.clips ?? []) {
+    if (clip.property !== "opacity") continue;
+    const targetIndex = clip.targets.indexOf(target);
+    if (targetIndex < 0) continue;
+    const start = clip.startFrame + (clip.staggerFrames ?? 0) * targetIndex;
+    if (frame < start) continue;
+    const progress = Math.min(1, (frame - start) / clip.durationFrames);
+    opacity = clip.from + (clip.to - clip.from) * progress;
+  }
+  return opacity;
 }
 
 // Solves the framing of every shot of a node-graph film and lists the moves between them.
@@ -199,7 +257,41 @@ export function readFilmFacts(film: Film): FilmFacts {
   if (scene) {
     const boundaryFrames = shotBoundaries.map((t) => Math.round(t * fps));
     const { carry, clipStarts } = sceneBoundaries(scene, boundaryFrames, fps);
-    return { filmId: film.id, kind: "scene", durationSec: total, fps, shotBoundaries, shotDurations: durations, camera: sceneCameraMoves(scene, fps), boundaries: carry, clipStarts, nodeOverlaps: [], voiceoverSec };
+    const assets = [...(scene.background ? [scene.background] : []), ...(scene.props ?? [])];
+    let shotStart = 0;
+    const planShots = film.shots.map((shot, index) => {
+      const startSec = shotStart;
+      const endSec = startSec + durations[index];
+      shotStart = endSec;
+      const startFrame = Math.round(startSec * fps);
+      const endFrame = Math.round(endSec * fps);
+      // Lists visible asset and SVG target ids at one scene frame.
+      const visibleFor = (frame: number) => assets.flatMap((asset) => {
+        if (sceneAssetOpacityAt(asset, frame) <= THRESHOLDS.planAdherence.visibleOpacityMin) return [];
+        const targets = [...new Set((asset.animation?.clips ?? []).flatMap((clip) => clip.targets))];
+        const visibleTargets = targets.filter((target) => sceneTargetOpacityAt(asset, target, frame) > THRESHOLDS.planAdherence.visibleOpacityMin);
+        return targets.length > 0 && visibleTargets.length === 0 ? visibleTargets : [asset.assetId, ...visibleTargets];
+      });
+      const visibleAtStart = visibleFor(startFrame);
+      const visibleAtEnd = visibleFor(Math.max(startFrame, endFrame - 1));
+      const motions = assets.flatMap((asset) => {
+        const castIds = [asset.assetId, ...(asset.animation?.clips ?? []).flatMap((clip) => clip.targets)];
+        const clipMotions = (asset.animation?.clips ?? [])
+          .filter((clip) => clip.property !== "opacity" && clip.from !== clip.to)
+          .flatMap((clip) => [asset.assetId, ...clip.targets].map((castId) => ({ castId, frame: clip.startFrame })));
+        const assetTrackMotions = changingTrackStarts(asset.tracks?.filter((track) => ["x", "y", "scale", "rotation"].includes(track.trackId)) ?? [], startFrame, endFrame)
+          .flatMap((frame) => castIds.map((castId) => ({ castId, frame })));
+        return [...clipMotions, ...assetTrackMotions]
+          .filter((motion) => motion.frame >= startFrame && motion.frame < endFrame)
+          .map((motion) => ({ castId: motion.castId, startSec: motion.frame / fps }));
+      });
+      const actorMotions = (scene.actors ?? []).flatMap((actor) => changingTrackStarts([
+        ...(actor.positionTracks ?? []), ...Object.values(actor.jointTracks ?? {}),
+      ], startFrame, endFrame).filter((frame) => frame >= startFrame && frame < endFrame).map((frame) => ({ castId: actor.instanceId, startSec: frame / fps })));
+      return { id: shot.id, startSec, endSec, stage: shot.stage, visibleAtStart, visibleAtEnd, motions: [...motions, ...actorMotions] };
+    });
+    const cameraKeyframes = scene.camera?.keyframes.map((keyframe) => keyframe.frame / fps) ?? [];
+    return { filmId: film.id, kind: "scene", durationSec: total, fps, shotBoundaries, shotDurations: durations, camera: sceneCameraMoves(scene, fps), boundaries: carry, clipStarts, nodeOverlaps: [], voiceoverSec, planShots, cameraKeyframes };
   }
   const { camera, starts, durations: timedDurations } = nodeGraphCamera(film, voiceoverSec);
   // A node-graph film keeps its canvas up while consecutive shots are anchored on it; a framed or spine shot closes it.
@@ -216,7 +308,17 @@ export function readFilmFacts(film: Film): FilmFacts {
 // Loads and parses a film.json, returning the facts and the parsed film.
 export function loadFilmFacts(filmJson: string): { film: Film; facts: FilmFacts } {
   const film = parseFilm(JSON.parse(fs.readFileSync(filmJson, "utf8")));
-  return { film, facts: readFilmFacts(film) };
+  const facts = readFilmFacts(film);
+  const lookPath = path.join(path.dirname(filmJson), "design", "look.json");
+  if (fs.existsSync(lookPath)) {
+    try {
+      const parsed = safeParseLookPlan(JSON.parse(fs.readFileSync(lookPath, "utf8")));
+      facts.lookPlan = parsed.success ? parsed.data : null;
+    } catch {
+      facts.lookPlan = null;
+    }
+  }
+  return { film, facts };
 }
 
 // Resolves a file next to a film's folder (voiceover words), or null when it is not there.

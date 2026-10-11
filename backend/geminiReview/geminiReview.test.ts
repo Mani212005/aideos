@@ -415,6 +415,45 @@ test("geminiReview: prompt includes video file path and local inspection directi
   assert.ok(watchPromptNoPath.includes("12-criterion quality rubric"));
 });
 
+test("geminiReview: emitted prompt includes the per-shot look plan strip and unscored mismatch question", () => {
+  const strip = "=== LOOK PLAN SHOTS (from design/LOOK.md) ===\n- 0:00-0:05 `beat-01` **scene** [carries: memory]: on \"trickles\"";
+  const prompt = buildSingleVideoReviewPrompt("/tmp/render.mp4", undefined, undefined, strip);
+  assert.ok(prompt.includes(strip));
+  assert.ok(prompt.includes("For each listed shot, does the video show what the plan says carries the beat? Cite timestamps for every mismatch."));
+  assert.ok(prompt.includes("Do not add a criterion or change any of the 12 criterion scores"));
+});
+
+test("geminiReview: reviewVideo loads LOOK.md shot facts from the film package before calling the reviewer", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-look-facts-test-"));
+  const video = path.join(tmpDir, "render.mp4");
+  const film = path.join(tmpDir, "film.json");
+  const designDir = path.join(tmpDir, "design");
+  const stripLine = "- 0:00-0:05 `beat-01` **scene** [carries: memory]: on \"trickles\"";
+  fs.writeFileSync(video, Buffer.alloc(100, 1));
+  fs.writeFileSync(film, "{}");
+  fs.mkdirSync(designDir);
+  fs.writeFileSync(path.join(designDir, "LOOK.md"), `# Look Plan\n\n## Shots & Beat Treatments\n\n${stripLine}\n`);
+  let receivedPrompt = "";
+  // Captures the emitted review prompt while returning a valid fixture report.
+  const runner: AgyRunner = async (prompt) => {
+    receivedPrompt = prompt;
+    return JSON.stringify({
+      overallScore: 8,
+      verdict: "REVISE",
+      summary: "Review completed.",
+      criteria: createMockCriteria(),
+      feedback: [],
+    });
+  };
+  try {
+    await reviewVideo(video, { runner, filmPath: film, skipFacts: true });
+    assert.ok(receivedPrompt.includes(stripLine));
+    assert.ok(receivedPrompt.includes("For each listed shot, does the video show what the plan says carries the beat?"));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test("geminiReview: supports client injection via AgyReviewClient", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-client-inject-test-"));
   const testVideo = path.join(tmpDir, "test.mp4");

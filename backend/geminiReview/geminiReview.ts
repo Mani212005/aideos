@@ -57,6 +57,25 @@ export interface PairwiseReviewOptions {
   onProgress?: (message: string) => void;
 }
 
+// Reads the per-shot look section when a video can be tied to a film package.
+function readLookPlanStrip(videoPath: string, explicitFilmPath?: string): string | null {
+  const candidates = explicitFilmPath ? [path.resolve(explicitFilmPath)] : [
+    path.join(path.dirname(videoPath), "film.json"),
+    path.join(path.dirname(videoPath), "..", "film.json"),
+  ];
+  const filmPath = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!filmPath) return null;
+  const lookPath = path.join(path.dirname(filmPath), "design", "LOOK.md");
+  if (!fs.existsSync(lookPath)) return null;
+  try {
+    const markdown = fs.readFileSync(lookPath, "utf8");
+    const section = markdown.split(/^## Shots & Beat Treatments\s*$/m)[1];
+    return section ? section.split(/^##\s+/m)[0].trim() || null : null;
+  } catch {
+    return null;
+  }
+}
+
 // Executes agy CLI non-interactively in print mode with structured JSON schema.
 export async function defaultAgyRunner(
   prompt: string,
@@ -327,6 +346,7 @@ export async function reviewVideo(
   const modelName =
     reviewerModel(options?.model);
   const maxAttempts = options?.maxValidationAttempts ?? 3;
+  const lookPlanStrip = readLookPlanStrip(resolvedPath, options?.filmPath);
 
   onProgress(`Extracting deterministic facts for ${path.basename(resolvedPath)}...`);
   const facts =
@@ -375,7 +395,7 @@ export async function reviewVideo(
         workspace.videoPaths["video.mp4"],
         reAskNote,
         deterministicReviewContext,
-        facts?.rawSummaryText,
+        [facts?.rawSummaryText, lookPlanStrip ? `=== LOOK PLAN SHOTS (from design/LOOK.md) ===\n${lookPlanStrip}` : null].filter(Boolean).join("\n\n"),
       );
 
       const rawResult = await runner(prompt, {
@@ -545,6 +565,11 @@ export async function reviewPairwise(
   const wsB = createIsolatedVideoWorkspace({ "video.mp4": resolvedB });
 
   try {
+    const lookA = readLookPlanStrip(resolvedA);
+    const lookB = readLookPlanStrip(resolvedB);
+    const bothLookPlans = lookA && lookB
+      ? `LOOK PLAN SHOTS FOR BOTH VIDEOS\nVideo A:\n${lookA}\n\nVideo B:\n${lookB}`
+      : undefined;
     const promptWatchA = buildPairwiseWatchPrompt(wsA.videoPaths["video.mp4"]);
     onProgress(`Watching Video A (${path.basename(resolvedA)})...`);
     const rawWatchA = await runner(promptWatchA, {
@@ -573,7 +598,7 @@ export async function reviewPairwise(
     ) as WatchReport & { conversation_id?: string };
     const convB = parsedWatchB.conversation_id;
 
-    const promptExA = buildPairwiseExchangePrompt("Video B", parsedWatchB);
+    const promptExA = buildPairwiseExchangePrompt("Video B", parsedWatchB, bothLookPlans);
     onProgress(`Exchange Phase: Agent A rating Video B...`);
     const rawExA = await runner(promptExA, {
       cwd: wsA.dir,
@@ -588,7 +613,7 @@ export async function reviewPairwise(
     ) as { otherVideoRating: number; reasoning: string };
     const ratingB_byA = parsedExA.otherVideoRating;
 
-    const promptExB = buildPairwiseExchangePrompt("Video A", parsedWatchA);
+    const promptExB = buildPairwiseExchangePrompt("Video A", parsedWatchA, bothLookPlans);
     onProgress(`Exchange Phase: Agent B rating Video A...`);
     const rawExB = await runner(promptExB, {
       cwd: wsB.dir,

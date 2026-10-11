@@ -11,7 +11,7 @@
 import type { Loudness, Silence } from "./media";
 import type { RenderFacts } from "./renderFacts";
 import type { FilmFacts } from "./source";
-import { captionMatch, chanceNearWordStarts, cutsThroughWords, pauses, shareNearWordStarts, spokenNumbers, wordsPerMinute, type Narration } from "./speech";
+import { captionMatch, chanceNearWordStarts, cutsThroughWords, normalizeWord, pauses, shareNearWordStarts, spokenNumbers, wordsPerMinute, type Narration } from "./speech";
 import { THRESHOLDS as T } from "./thresholds";
 import type { CriterionKey, CriterionResult, Evidence, VideoFacts } from "./types";
 
@@ -97,6 +97,126 @@ function carryOver(i: ReviewInputs): CriterionResult {
     threshold: { per20sMin: 1 },
     evidence: spread(hits.map((b) => b.t), 3).map((t) => ({ t: t + 0.5, note: "an element persists across this boundary and is transformed" })),
     fix: ok ? undefined : "At each beat boundary keep at least one named element and change its position, scale, shape or role (a graph that slides aside and shrinks into a flowchart card).",
+  };
+}
+
+// Finds the start time of a cue phrase in timed narration, using normalized word tokens.
+function cueStartSec(narration: Narration | null, cue: string): number | null {
+  if (!narration?.timed) return null;
+  const cueWords = cue.split(/\s+/).map(normalizeWord).filter(Boolean);
+  if (!cueWords.length) return null;
+  for (let i = 0; i <= narration.words.length - cueWords.length; i++) {
+    if (cueWords.every((word, offset) => normalizeWord(narration.words[i + offset].word) === word)) return narration.words[i].start;
+  }
+  return null;
+}
+
+// Compares measured scene facts with the authored look plan without making it a review gate.
+function planAdherence(i: ReviewInputs): CriterionResult {
+  const { film, narration, video } = i;
+  const lookPlan = film?.lookPlan;
+  if (!film || !lookPlan) return skipped(13, "plan-adherence", "Look plan adherence", false, "needs film data with a valid design/look.json");
+  if (!narration?.timed) return skipped(13, "plan-adherence", "Look plan adherence", false, "needs word timings to verify plan cues");
+
+  const failures: string[] = [];
+  const evidence: Evidence[] = [];
+  const planShots = lookPlan.shots;
+  const measuredShots = film.planShots ?? [];
+  const measuredById = new Map(measuredShots.map((shot) => [shot.id, shot]));
+  let motionShots = 0;
+  let carriedObjects = 0;
+  let visibleCarriedObjects = 0;
+  let cameraPoses = 0;
+  let deviceShots = 0;
+
+  if (film.kind !== "scene" || measuredShots.length === 0) {
+    failures.push("the look plan requires a measurable scene film");
+  }
+
+  for (const shot of planShots) {
+    const measured = measuredById.get(shot.id);
+    if (!measured) {
+      failures.push(`planned shot "${shot.id}" is missing from film data`);
+      continue;
+    }
+    if (measured.stage === "anchor") {
+      failures.push(`shot "${shot.id}" uses an opaque anchor stage that clears the scene`);
+      evidence.push({ t: measured.startSec, note: `shot ${shot.id} clears the planned scene stage` });
+    }
+    if (shot.treatment === "device") {
+      deviceShots++;
+      if (measured.stage !== "inset") {
+        failures.push(`device shot "${shot.id}" is not placed in the inset stage`);
+        evidence.push({ t: measured.startSec, note: `device shot ${shot.id} does not preserve the scene inset` });
+      }
+    }
+
+    if (shot.treatment === "scene") {
+      const cue = cueStartSec(narration, shot.cue);
+      const candidates = measured.motions.filter((motion) => shot.carries.includes(motion.castId));
+      const timely = cue === null ? [] : candidates.filter((motion) => Math.abs(motion.startSec - cue) <= T.planAdherence.cueToleranceSec);
+      if (cue === null || timely.length === 0) {
+        failures.push(cue === null
+          ? `scene shot "${shot.id}" cue "${shot.cue}" was not found in word timings`
+          : `scene shot "${shot.id}" has no motion on a carried cast object within ${T.planAdherence.cueToleranceSec}s of its cue`);
+        evidence.push({ t: cue ?? measured.startSec, note: `planned motion cue for ${shot.id}: ${shot.cue}` });
+      } else {
+        motionShots++;
+      }
+    }
+  }
+
+  for (let index = 0; index < planShots.length - 1; index++) {
+    const outgoing = planShots[index];
+    const incoming = planShots[index + 1];
+    const before = measuredById.get(outgoing.id);
+    const after = measuredById.get(incoming.id);
+    for (const castId of outgoing.carries.filter((id) => incoming.carries.includes(id))) {
+      carriedObjects++;
+      if (before?.visibleAtEnd.includes(castId) && after?.visibleAtStart.includes(castId)) visibleCarriedObjects++;
+      else {
+        failures.push(`carried object "${castId}" is not visible on both sides of ${outgoing.id}/${incoming.id}`);
+        evidence.push({ t: before?.endSec ?? 0, note: `planned carry-over ${castId} at ${outgoing.id}/${incoming.id}` });
+      }
+    }
+  }
+
+  const poses = lookPlan.film.camera;
+  const cameraFrames = film.cameraKeyframes ?? [];
+  let previousFrame = -1;
+  for (const pose of poses) {
+    const shot = planShots.find((candidate) => candidate.id === pose.at || candidate.cue === pose.at);
+    const cueTime = shot ? cueStartSec(narration, shot.cue) : cueStartSec(narration, pose.at);
+    const measuredShot = shot ? measuredById.get(shot.id) : undefined;
+    const frame = cameraFrames.map((time) => ({ time, frame: Math.round(time * film.fps) }))
+      .find((keyframe) => keyframe.frame > previousFrame && (measuredShot
+        ? keyframe.time >= measuredShot.startSec && keyframe.time <= measuredShot.endSec
+        : cueTime !== null && Math.abs(keyframe.time - cueTime) <= T.planAdherence.cueToleranceSec));
+    if (!frame) {
+      failures.push(`planned camera pose at "${pose.at}" has no ordered camera keyframe`);
+      if (cueTime !== null) evidence.push({ t: cueTime, note: `planned camera pose: ${pose.pose}` });
+    } else {
+      cameraPoses++;
+      previousFrame = frame.frame;
+    }
+  }
+
+  const deviceIndexes = planShots.map((shot, index) => shot.treatment === "device" ? index : -1).filter((index) => index >= 0);
+  const maxDevices = Math.max(1, Math.ceil(planShots.length / 4));
+  if (deviceIndexes.some((index, position) => position > 0 && index === deviceIndexes[position - 1] + 1)) failures.push("device shots are adjacent; at least one scene shot must separate them");
+  if (deviceShots > maxDevices) failures.push(`device count ${deviceShots} exceeds the one-in-four limit of ${maxDevices}`);
+
+  const checks = planShots.length + carriedObjects + poses.length + 2;
+  const passedChecks = Math.max(0, checks - failures.length);
+  const adherence = checks ? passedChecks / checks : 0;
+  return {
+    id: 13, key: "plan-adherence", name: "Look plan adherence", gate: false,
+    status: failures.length ? "fail" : "pass", score: score(adherence, 0, 1),
+    summary: failures.length ? failures.join("; ") : `all ${planShots.length} planned shots, ${carriedObjects} carried objects and ${poses.length} camera poses match the plan`,
+    metrics: { plannedShots: planShots.length, sceneMotionShots: motionShots, carriedObjects, visibleCarriedObjects, cameraPoses, cameraPosesPlanned: poses.length, deviceShots, devicesAllowed: maxDevices, stageClears: failures.filter((failure) => failure.includes("clears the scene")).length, adherence: round(adherence), durationSec: round(video.durationSec) },
+    threshold: { cueToleranceSec: T.planAdherence.cueToleranceSec, visibleOpacityMin: T.planAdherence.visibleOpacityMin, gate: "non-gate until calibrated on proof and two or three more films" },
+    evidence: evidence.slice(0, 6),
+    fix: failures.length ? "Bring scene motion, carry-over, camera poses, device spacing and stage treatment back into line with design/look.json." : undefined,
   };
 }
 
@@ -327,5 +447,5 @@ function loudness(i: ReviewInputs): CriterionResult {
 
 // Computes every criterion's verdict from the measured inputs, in rubric order.
 export function evaluateCriteria(i: ReviewInputs): CriterionResult[] {
-  return [persistentStage(i), carryOver(i), cueTiming(i), camera(i), captions(i), readability(i), overlap(i), audioSync(i), pacing(i), grounding(i), loudness(i)];
+  return [persistentStage(i), carryOver(i), planAdherence(i), cueTiming(i), camera(i), captions(i), readability(i), overlap(i), audioSync(i), pacing(i), grounding(i), loudness(i)];
 }

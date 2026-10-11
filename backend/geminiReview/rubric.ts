@@ -207,6 +207,7 @@ SCORING AND VERDICT RULES:
    - Otherwise, the verdict is "REVISE". Be strict, objective, and decisive.
 4. Provide prioritized, constructive, and concrete feedback in "feedback":
    - For each issue, specify priority ("high", "medium", "low"), approximate timestamp, the specific issue observed, and the concrete recommended action for the AI animator/agent.
+LOOK PLAN CHECK (unscored): If the deterministic facts include a LOOK PLAN SHOTS strip, compare each listed shot's planned treatment, carried objects, and cue with what you see. Ask: "For each listed shot, does the video show what the plan says carries the beat? Cite timestamps for every mismatch." Put each observed mismatch in feedback with a timestamp. Do not add a criterion or change any of the 12 criterion scores or the verdict based on the plan.
 ${factsNote}${deterministicNote}${reAskNote}
 Return ONLY valid JSON matching this schema:
 {
@@ -245,8 +246,9 @@ export function buildPairwiseWatchPrompt(videoPath?: string): string {
 }
 
 // Builds the exchange phase prompt for scoring the other video based on its evaluation report.
-export function buildPairwiseExchangePrompt(otherVideoName: string, otherReport: object): string {
-  return `You have watched your video. Here is the evaluation report for the OTHER video (${otherVideoName}):\n${JSON.stringify(otherReport, null, 2)}\n\nCompare the other video's report to the video you watched. Give the OTHER video a rating (0-10) and brief reasoning.`;
+export function buildPairwiseExchangePrompt(otherVideoName: string, otherReport: object, bothLookPlans?: string): string {
+  const planNote = bothLookPlans ? `\n\n${bothLookPlans}\nUse the plans as context for comparing intended shot treatment. Only rate what the videos show.` : "";
+  return `You have watched your video. Here is the evaluation report for the OTHER video (${otherVideoName}):\n${JSON.stringify(otherReport, null, 2)}${planNote}\n\nCompare the other video's report to the video you watched. Give the OTHER video a rating (0-10) and brief reasoning.`;
 }
 
 export const SINGLE_REVIEW_JSON_SCHEMA = {
