@@ -102,7 +102,7 @@ A single continuous camera view and duration window on the timeline.
 * `id: string` (Unique shot identifier, e.g. "shot-intro")
 * `ch?: string` (Chapter assignment for chapter rail tracking)
 * `dur: number` (Authored duration in seconds; locked by master audio clock +/- 50ms)
-* `stage: "anchor" | "frame" | "none"` (Visual staging: "frame"=Hero center stage, "anchor"=grows from canvas node, "none"=empty canvas)
+* `stage: "anchor" | "frame" | "none" | "inset"` (Visual staging: "frame"=Hero center stage, "anchor"=grows from canvas node, "none"=empty canvas, "inset"=one device in the format's fixed inset region over a scene stage)
 * `look: string | string[] | "all"` (Node ID(s) targeted by the camera viewport)
 * `move: "cut" | "pan" | "zoom-in" | "zoom-out" | "hold"` (Camera motion transition)
 * `zoom?: number` (Camera optical zoom multiplier, default 1.0)
@@ -143,6 +143,7 @@ Interactive, complex visual containers that spend 1 accent token:
 * **`LayerStack`**: 3D isometric neural network layer cards (`count`, `bottomLabel`, `topLabel`).
 * **`VectorSpace`**: 2D embedding space with vector points and arrows (`points`, `arrow`, `xLabel`, `yLabel`).
 * **`AnalogyInset`**: Full-bleed cinematic video b-roll overlay (`caption`, `framesDir`, `totalFrames`).
+* **`INSET_BLOCKS`**: Blocks permitted in a `stage: "inset"` shot (`[...DEVICE_BLOCKS, "StatCounter"]`): exactly one device or numeric counter, never a text card or full-screen hero.
 
 ### B. Text Beats & Animated Primitives (`TEXT_BEATS`, `src/dl/primitives.tsx`)
 Typography, code, metrics, and cards that spend 0 accent tokens (including the 7 design system animated primitives: `TextReveal`, `StatCounter`, `CodeBlock`, `Card`, `Divider`, `IconLabel`, `ProgressBar`):
@@ -203,6 +204,12 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ### `EXPO` Motion Token (`src/dl/motion.ts`)
 * `EXPO = [0.16, 1, 0.3, 1]`: Native ease-out-expo cubic-bezier easing curve ensuring high initial velocity and soft, organic landing.
+
+### `src/dl/fullScreenHeroLayout.ts` (Frame Safe Areas, Hero Layout & Inset Regions)
+* `SUBTITLE_BAND_TOP_RATIO`: Single definition of the burned-in caption card top ratio (0.78), aligned with scene engine `CAPTION_SAFE_SQUARE`.
+* `getFullScreenHeroLayout(format, width, height)`: Media, scrim, and caption bounding box geometry for full-screen B-roll heroes.
+* `getInsetRegion(format, width, height)`: Fixed frame rectangle (`InsetRect`) for `stage: "inset"` device beats (right third in long cut, lower-middle band in reel, clearing subtitle band and margins).
+* `INSET_FORMAT_FRAMES`: Reference frame sizes (`long`: 1920x1080, `reel`: 1080x1920) windowed against the square scene.
 
 ---
 
@@ -428,9 +435,11 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `displayWords(lines, extra)`, `unmeasuredWords(words, table)`, `measureWords(words, file)` (`measureWords.ts`): Measures unmeasured words in headless Chrome and merges them into `wordWidths.json`.
 
 ### `backend/designCheck/` (Deterministic Design Standard Checker)
-* `checkFilmDesign(raw)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, scene engine validity, static self-contained artwork, locked palette, typography, motion continuity, single transform origin, picture locked to narration, honest data / grounded numbers, and smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration).
+* `checkFilmDesign(raw)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, scene engine validity, static self-contained artwork, locked palette, typography, motion continuity, single transform origin, picture locked to narration, honest data / grounded numbers, smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration), and a clear inset region while a device shot shares the stage.
 * `MAX_CAMERA_ZOOM_STEP`, `MAX_CAMERA_PAN_ACCEL_WIDTHS` (`designCheck.ts`): Scene camera limits on single-frame zoom change (0.8%) and pan acceleration (0.3 scene widths/s^2).
 * `checkFilmDesignById(filmId)` (`designCheck.ts`): Loads a film by package slug and executes design validation.
+* `checkInsetRegions(film)` (`insetRegion.ts`): Verifies that no visible scene artwork occupies the format-specific inset region during `stage: "inset"` shots across both wide and reel formats.
+* `leafBounds(node)`, `parseTransform(value)` (`svgBounds.ts`): Conservative 2D bounding box and affine transform calculations for SVG elements without rasterization.
 * `formatDesignReport(report)` (`designCheck.ts`): Formats validation findings and recommendations into a terminal report.
 * `offPaletteColours(svgText, accent)` (`designCheck.ts`): Finds colour literals in SVG markup that violate the locked palette and chosen accent.
 

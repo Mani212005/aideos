@@ -7,7 +7,7 @@
 import React from "react";
 import { AbsoluteFill, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
 import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO } from "./tokens";
-import { SUBTITLE_FONT_RATIO, getFullScreenHeroLayout, heroScrimGradient } from "./fullScreenHeroLayout";
+import { SUBTITLE_FONT_RATIO, getFullScreenHeroLayout, getInsetRegion, heroScrimGradient } from "./fullScreenHeroLayout";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext, useAccent } from "./accent";
 import { BlockView } from "./Block";
@@ -259,15 +259,22 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
         h: height - layout.margin.top - layout.margin.bottom,
       };
 
-  let rect = target;
+  // An inset device lives in the format's fixed region and shares the stage: the scene around it is
+  // neither dimmed nor covered, and the region itself is kept free of art by the design check.
+  const isInset = shot.stage === "inset";
+  let rect = isInset ? getInsetRegion(layout.format, width, height) : target;
   const opacity = isCut
     ? 1
     : Math.max(0, Math.min(1, open * 1.4)) * (1 - Math.max(0, Math.min(1, close)));
 
   if (shot.stage === "anchor") {
-    // The node this panel grew out of, in screen pixels under the shot's camera.
+    // The node this panel grew out of, in screen pixels under the shot's camera. A scene film has
+    // no visible node graph (its canvas is the scene), so a seed projected from the hidden nodes
+    // would grow the panel from an empty spot; there the panel grows from its own centre instead.
     const cam = camAt(film, timeline, current.to - 1, { width, height });
-    const seed = projectBox(lookBox(film, shot), cam, { width, height });
+    const seed = film.scene
+      ? { x: target.x + target.w * 0.04, y: target.y + target.h * 0.04, w: target.w * 0.92, h: target.h * 0.92 }
+      : projectBox(lookBox(film, shot), cam, { width, height });
     const grow = Math.max(0, Math.min(1, open)) * (1 - Math.max(0, Math.min(1, close)));
     const mix = (a: number, b: number) => a + (b - a) * grow;
     rect = {
@@ -300,7 +307,7 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
         borderRadius: hasHero ? 0 : layout.radius.card,
         background:
           shot.stage === "frame" || hasHero ? "transparent" : bgTheme.surface,
-        boxShadow: shot.stage === "frame" || hasHero ? "none" : "0 16px 40px rgba(0, 0, 0, 0.35)",
+        boxShadow: shot.stage === "frame" || hasHero || isInset ? "none" : "0 16px 40px rgba(0, 0, 0, 0.35)",
         opacity,
         overflow: "hidden",
         display: "flex",
@@ -310,7 +317,7 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
           landing on a glyph reads as a broken character. The film-level scrim sets the mood but
           is far too light to suppress one; this band is local to the type, so the picture stays
           visible around the card while nothing shows through the letters themselves. */}
-      {film.scene && shot.blocks.length > 0 ? (
+      {film.scene && shot.blocks.length > 0 && !isInset ? (
         <div
           style={{
             position: "absolute",
@@ -328,7 +335,7 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
         style={{
           flex: 1,
           position: "relative",
-          padding: shot.stage === "frame" || hasHero ? 0 : layout.grid * 5,
+          padding: shot.stage === "frame" || hasHero ? 0 : layout.grid * (isInset ? 3 : 5),
           display: "flex",
           flexDirection: "column",
           // Centred, always. Spreading two blocks to the top and bottom of a full-frame

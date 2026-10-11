@@ -88,8 +88,12 @@ export const designSpecSchema = z.object({
       z.string(),
       z.object({
         blocks: z.array(blockSchema).max(4),
-        /** Defaults to "frame" for text cards, "none" for no blocks, and the shot's own stage when a chart remains. */
-        stage: z.enum(["frame", "anchor", "none"]).optional(),
+        /**
+         * Defaults to "frame" for text cards, "none" for no blocks, and the shot's own stage when a chart remains.
+         * "inset" puts one device in the format's fixed inset region (`getInsetRegion`) with the scene still in view;
+         * the design check fails any scene art visible inside that region while the shot plays.
+         */
+        stage: z.enum(["frame", "anchor", "none", "inset"]).optional(),
       }),
     )
     .optional(),

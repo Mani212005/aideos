@@ -15,7 +15,19 @@ import { LOCKED_PALETTE, MAX_CAMERA_PAN_ACCEL_WIDTHS, MAX_CAMERA_ZOOM_STEP } fro
 import { designDir } from "./build";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { getInsetRegion, INSET_FORMAT_FRAMES } from "../../src/dl/fullScreenHeroLayout";
 
+
+// Writes the inset region of each format in scene units, the coordinates artwork is placed in.
+function insetRegionNote(): string {
+  const wide = getInsetRegion("long", INSET_FORMAT_FRAMES.long.width, INSET_FORMAT_FRAMES.long.height);
+  const reel = getInsetRegion("reel", INSET_FORMAT_FRAMES.reel.width, INSET_FORMAT_FRAMES.reel.height);
+  const span = (a: number, b: number) => `${Math.round(a)}-${Math.round(b)}`;
+  return (
+    `wide cut: scene x ${span(wide.x, wide.x + wide.w)}, y ${span(wide.y + FORMAT_WINDOWS.wide.y0, wide.y + wide.h + FORMAT_WINDOWS.wide.y0)}; ` +
+    `reel: scene x ${span(reel.x + FORMAT_WINDOWS.reel.x0, reel.x + reel.w + FORMAT_WINDOWS.reel.x0)}, y ${span(reel.y, reel.y + reel.h)}`
+  );
+}
 
 /** A small but complete design.json, shown to the designer as the shape to follow. */
 export const EXAMPLE_SPEC = {
@@ -82,7 +94,10 @@ ${RUBRIC_SUMMARY}
 - **Shots:** follow the treatment in \`design/look.json\`. A precise device such as StatCounter or
   TokenStrip must be an inset with the stage still visible, or be redrawn as SVG parts on the stage.
   Never use a full panel or card that covers the stage, and use \`shots\` to replace any chart whose
-  numbers the narration does not say.
+  numbers the narration does not say. To show one device beside the scene, stage the shot \`"inset"\`
+  (one device or counter, never a card): it sits in a fixed region (${insetRegionNote()}, with the
+  camera at rest; a camera move shifts what falls inside) and the build fails any artwork visible
+  in that region while the shot plays, so keep it clear or fade it out first.
 - **Continuity:** one scene for the whole film. Base elements stay on screen and evolve; new elements build on what is there (no disconnected frames). A clip must start from the value the previous clip on that element and property left (the build names the clip when it does not). To jump, hide the element first and set \`allowJump\`. One element keeps one transform \`origin\` for the whole film.
 - **Camera:** \`camera\` lists poses (centre and zoom) in time order; the camera flows from each pose to the next, so repeat a pose to hold it. Start wide, push in on what the beat is about, end on a wide payoff pose, and move at least once every 20 seconds. Keep moves slow: at most 20% of the scene width per second (${Math.round(SCENE_SIZE.w * 0.2)} px/s), zoom change under ${(MAX_CAMERA_ZOOM_STEP * 100).toFixed(1)}% a frame and pan acceleration under ${Math.round(SCENE_SIZE.w * MAX_CAMERA_PAN_ACCEL_WIDTHS)} px/s^2 (the build checks all three). **Leave \`easing\` off**: the camera then runs smoothly through its poses, while an easing stops at both ends of its move and reads as a jitter. Give a move several seconds, not a beat.
 - **Camera framing:** a pose at centre (cx, cy) and zoom z shows scene x cx +/- 960/z by y cy +/- 960/z, then each format crops that view: the wide cut keeps the middle 1080 rows (y +/- 540/z) and the reel the middle 1080 columns (x +/- 540/z). So at zoom 1.25 the reel sees only 864 scene columns. Pose so everything a beat needs stays inside both crops, and do not push in so far that artwork at the edge of the safe square is cut off.

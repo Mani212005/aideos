@@ -1,8 +1,9 @@
 /**
  * File Description: Computes the format-safe media, scrim and caption geometry for full-screen B-roll heroes,
- * and owns the single definition of where the burned-in subtitle band starts so the two never collide.
- * Inputs and outputs: frame width, height, and safe margins -> hero media, scrim, and subtitle layout bounding boxes.
- * Used by: src/dl/Film.tsx, src/dl/KineticSubtitles.tsx, src/dl/devices.tsx, backend/fullScreenHeroLayout.test.ts.
+ * owns the single definition of where the burned-in subtitle band starts so the two never collide,
+ * and owns the fixed inset region a device beat occupies over a scene stage in each format.
+ * Inputs and outputs: frame width, height, and safe margins -> hero media, scrim, and subtitle layout bounding boxes; format -> inset region rectangle.
+ * Used by: src/dl/Film.tsx, src/dl/devices.tsx, src/dl/KineticSubtitles.tsx, backend/designCheck/insetRegion.ts, backend/designSpec/brief.ts, backend/fullScreenHeroLayout.test.ts, backend/insetStage.test.ts.
  */
 
 import type { Format } from "./tokens";
@@ -111,3 +112,37 @@ export const heroScrimGradient = (
   `linear-gradient(to bottom, ${stops
     .map((stop) => `${toRgba(stop.alpha)} ${Math.round(stop.offset * 100)}%`)
     .join(", ")})`;
+
+/** A rectangle in render pixels (or, for the scene-space variant, scene units). */
+export type InsetRect = { x: number; y: number; w: number; h: number };
+
+/**
+ * The fixed region a `stage: "inset"` device occupies, as fractions of the frame. A device beat
+ * shares the stage instead of covering it, so the region is a constant per format and the design
+ * check keeps scene art out of it while an inset shot plays. Both edges that face captions and
+ * chrome derive from the margins in `useLayout` (long: 96 px all round; reel: 120 top, 64 sides)
+ * and from `SUBTITLE_BAND_TOP_RATIO`, so moving the caption band moves the region's floor with it.
+ * - long: the right third, between the top margin and the caption band.
+ * - reel: the lower-middle band, between the middle of the frame and the caption band.
+ */
+const INSET_CAPTION_GAP_RATIO = 0.04;
+
+const INSET_RATIOS: Record<Format, { left: number; right: number; top: number }> = {
+  long: { left: 0.6, right: 1 - 96 / 1920, top: 96 / 1080 },
+  reel: { left: 64 / 1080, right: 1 - 64 / 1080, top: 0.5 },
+};
+
+// Returns the inset region for a format in the pixels of a frame of the given size.
+export const getInsetRegion = (format: Format, width: number, height: number): InsetRect => {
+  const r = INSET_RATIOS[format];
+  const bottom = height * (SUBTITLE_BAND_TOP_RATIO - INSET_CAPTION_GAP_RATIO);
+  const x = width * r.left;
+  const y = height * r.top;
+  return { x, y, w: width * r.right - x, h: bottom - y };
+};
+
+/** Reference frame size of each format, which is what the scene square is windowed against. */
+export const INSET_FORMAT_FRAMES: Record<Format, { width: number; height: number }> = {
+  long: { width: 1920, height: 1080 },
+  reel: { width: 1080, height: 1920 },
+};
