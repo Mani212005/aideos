@@ -133,6 +133,11 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos` | Launches and opens interactive web studio | `http://localhost:3001/` |
 | `aideos exit` | Gracefully stops the local dev server | Terminal output |
 | `aideos validate` | Runs strict schema & pacing validation | Runsheet & status in terminal |
+| `aideos look brief <film>` | Writes look planning brief answering the 6 look questions | `videos/<film>/design/LOOK_BRIEF.md` |
+| `aideos look check <film> [--json]` | Validates look.json against schema and semantic rules; writes LOOK.md on PASS | `videos/<film>/design/LOOK.md` |
+| `aideos design brief <film>` | Writes bespoke design brief for scene compilation | `videos/<film>/design/BRIEF.md` |
+| `aideos design check <film>` | Validates bespoke film design and renders review stills | Terminal report, `.frames/<film>/` |
+| `aideos design build <film>` | Compiles bespoke design and writes film on PASS | `videos/<film>/film.json`, `design/status.json` |
 | `aideos render` | Renders long-form landscape video | `videos/<slug>/renders/long.mp4` (1920x1080) |
 | `aideos reel` | Renders vertical reel video | `videos/<slug>/renders/reel.mp4` (1080x1920) |
 | `aideos studio` | Opens native Remotion Studio UI | Remotion Studio browser tab |

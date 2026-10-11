@@ -1,5 +1,5 @@
 /**
- * File Description: Command-line interface for producing, directing, designing, reviewing, and rendering Aideos films.
+ * File Description: Command-line interface for producing, directing, look planning, designing, reviewing, and rendering Aideos films.
  * Inputs and outputs: CLI arguments and subcommands -> runs production pipeline, review, or inspection commands.
  * Used by: bin/aideos, npm run backend (entry point).
  */
