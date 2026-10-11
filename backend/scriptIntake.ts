@@ -939,7 +939,7 @@ As the Creative Director, your mission is to transform this structure into a cap
      inset or redraw its parts as custom animated SVGs under \`videos/${opts.projectId}/visuals/\`.
    - Never cover the stage with a full panel or card.
 2. **Camera Rhythm & Spatial Flow**:
-   - Use slow, purposeful \`pan\`, \`zoom-in\`, and \`zoom-out\) moves across the persistent stage.
+   - Use slow, purposeful \`pan\`, \`zoom-in\`, and \`zoom-out\` moves across the persistent stage.
 3. **Pacing Invariants**:
    - Keep the stage visible and evolving; device treatments are secondary to the stage.
    - Maintain audio sync (shot durations lock to narration audio).
