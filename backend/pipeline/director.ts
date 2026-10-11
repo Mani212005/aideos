@@ -28,8 +28,9 @@ Write the screenplay as a Claude-style screenplay in markdown:
 - Start with a single "# <Film Title>" line naming the film.
 - Follow it with several "## <Section Title>" headers, each opening one chapter of the argument.
 - Under each section, write one or more beats as bracket tags, each on its own line followed by its
-  text: [VISUAL] a one-line direction for what the frame shows or the b-roll to shoot; [ON SCREEN]
-  a short on-screen phrase (optional); [NARRATION] the sentence(s) the narrator speaks for the beat.
+  text: [VISUAL] a one-line direction for what changes on the one persistent scene stage, including
+  an inset or SVG parts when a device is needed; [ON SCREEN] a short on-screen phrase (optional);
+  [NARRATION] the sentence(s) the narrator speaks for the beat.
 - Every section must carry at least one [NARRATION] beat: that is the only text a viewer ever hears.
 - Do not include timestamps, camera moves, shot durations, or JSON. The production pipeline measures
   the narration audio and derives all of that automatically; the screenplay only supplies the story.
