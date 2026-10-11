@@ -8,17 +8,18 @@ Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos
 
 ## Making a video: look first
 
-Decide the look before making any picture. Read `docs/GOOD_VIDEO.md` and the look criteria in
-`backend/lookPlan/LOOK_BRIEF.md` when present, then write or inspect `videos/<slug>/design/look.json`
-before authoring `design.json` or SVGs. New explainers are scene films: keep one visible stage,
-name the objects that carry between shots, and choose each shot's treatment from the plan.
-Prefer scene motion. A precise device belongs in an inset that leaves the stage visible, or is
-redrawn as SVG parts on that stage; never paint a full panel or card over the stage. When a run
-reports `needs_look` or `needs_design`, complete the named plan or design and rerun the same
-command. Do not use `--design templates` unless a template film was explicitly requested.
-The look plan owns treatment and cast; `docs/DIRECTOR_GUIDE.md` owns screenplay direction; the
-look checker owns plan validity. Proof taste notes to preserve: make camera motion smoother and
-move captions slightly upward.
+Decide the look before making any picture. Read `docs/GOOD_VIDEO.md`. The per-package brief is
+written at `design/LOOK_BRIEF.md` by `aideos look brief`, arriving with the look-plan checker
+phase; until then follow the six questions and criteria in the plan docs. Write or inspect
+`videos/<slug>/design/look.json` before authoring `design.json` or SVGs. New explainers are
+scene films: keep one visible stage, name the objects that carry between shots, and choose each
+shot's treatment from the plan. Prefer scene motion. A precise device belongs in an inset that
+leaves the stage visible, or is redrawn as SVG parts on that stage; never paint a full panel or
+card over the stage. When a run reports `needs_look` or `needs_design`, complete the named plan
+or design and rerun the same command. Do not use `--design templates` unless a template film
+was explicitly requested. The look plan owns treatment and cast; `docs/DIRECTOR_GUIDE.md` owns
+screenplay direction; the look checker owns plan validity. Proof taste notes to preserve: make
+camera motion smoother and move captions slightly upward.
 
 ## Core Rules
 
