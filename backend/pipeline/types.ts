@@ -13,6 +13,7 @@ import type { TtsBackendName } from "../tts";
 export const PRODUCTION_STAGES = [
   "intake",
   "narrate",
+  "look",
   "design",
   "broll",
   "assemble",
@@ -24,6 +25,10 @@ export type ProductionStage = (typeof PRODUCTION_STAGES)[number];
 
 /** Which deliverable formats a run can produce. */
 export type ProductionFormat = "long" | "reel";
+
+/** Explicit delivery policies for look planning and picture design. */
+export const DESIGN_MODES = ["inline", "agent", "server", "templates"] as const;
+export type DesignMode = (typeof DESIGN_MODES)[number];
 
 /** Everything a caller can ask the pipeline for. */
 export interface ProductionRequest {
@@ -66,15 +71,15 @@ export interface ProductionRequest {
    * are resolved directly from videos/<slug>/ via the public/videos symlink).
    */
   syncToPreview?: boolean;
-  /**
-   * Give the film a bespoke design after the template compile: the connected coding agent first,
-   * then the server model, then the template design flagged as a fallback. Default on, except
-   * under the Node test runner, where a run must never message a live agent session.
-   */
+  /** Look and design delivery policy; defaults to inline with resumable needs-input results. */
+  design?: DesignMode;
+  /** Legacy alias: false selects templates. True uses the default inline policy. */
   bespoke?: boolean;
+  /** Skip live agent delivery, including from deterministic tests. */
+  skipAgent?: boolean;
   /** How long the design stage waits for the connected agent (default 20 minutes). */
   designAgentTimeoutMs?: number;
-  /** Model for the server-model design fallback; null disables it. Omit to use Gemini when configured. */
+  /** Caller for server-mode look and design; null disables it. Defaults to videoModels.generation. */
   designLlmCaller?: import("../designSpec/designer").DesignLlmCaller | null;
   /** Writes chart contents from the narration; defaults to Gemini when configured, null for none. */
   deviceCaller?: import("./deviceData").DeviceLlmCaller | null;
@@ -84,7 +89,7 @@ export interface ProductionRequest {
 
 
 /** Lifecycle of one stage within a run. */
-export type StageStatus = "pending" | "running" | "done" | "skipped" | "failed";
+export type StageStatus = "pending" | "running" | "done" | "skipped" | "failed" | "needs_input";
 
 /** A progress event emitted as the run advances. */
 export interface ProductionProgress {
@@ -135,6 +140,9 @@ export interface BrollClip {
 
 /** Everything a finished run produced. */
 export interface ProductionResult {
+  status: "completed" | "stopped" | "needs_look" | "needs_design";
+  /** Exact brief, authoring and check steps for a resumable stop. */
+  nextSteps?: string[];
   slug: string;
   title: string;
   packageDir: string;

@@ -1,6 +1,6 @@
 /**
  * File Description: The single programmatic entry point for producing an Aideos film. runProduction
- * takes a script and returns finished, verified mp4s, moving through intake, narration, design,
+ * takes a script and returns authoring next steps or verified mp4s, moving through intake, narration, look, design,
  * B-roll, assembly, render and verification. Each stage records a fingerprint of its inputs in the
  * package's run state, so a failure partway through resumes from the last good stage instead of
  * restarting from zero, and every failure is reported with the stage that produced it.
@@ -8,7 +8,11 @@
  * Used by: backend/cli.ts, backend/mcp/server.ts.
  */
 
-import { designFilm } from "../designSpec/designer";
+import { designFilm, planFilmLook } from "../designSpec/designer";
+import { buildDesign, designDir, formatBuildStatus, readCheckedLookPlan } from "../designSpec/build";
+import { designSpecSchema } from "../designSpec/spec";
+import type { LookPlan } from "../lookPlan/schema";
+import { writeLookMd } from "../lookPlan/render";
 import crypto from "crypto";
 import fs from "fs";
 import fsp from "fs/promises";
@@ -35,6 +39,7 @@ import {
 import { analyseAudio, contactSheet, describeVideo, renderFormat, FORMAT_SPECS } from "./render";
 import {
   PRODUCTION_STAGES,
+  DESIGN_MODES,
   ProductionError,
   type BrollClip,
   type ProductionFormat,
@@ -47,12 +52,40 @@ import {
   type StageRecord,
 } from "./types";
 
+/** A resumable authoring stop, kept distinct from a production failure. */
+class NeedsInput extends Error {
+  readonly status: "needs_look" | "needs_design";
+  readonly nextSteps: string[];
+  // Carries the missing authoring stage and exact continuation instructions.
+  constructor(status: "needs_look" | "needs_design", nextSteps: string[], message: string) {
+    super(message);
+    this.status = status;
+    this.nextSteps = nextSteps;
+  }
+}
+
 /** Called for every progress event a run emits. */
 export type ProgressHandler = (event: ProductionProgress) => void;
 
 /** Short stable hash of a stage's inputs, used to invalidate a cached stage on resume. */
 function fingerprint(...parts: unknown[]): string {
   return crypto.createHash("sha1").update(JSON.stringify(parts)).digest("hex").slice(0, 16);
+}
+
+// Hashes authored design inputs so a valid SVG or spec edit also reopens downstream production.
+function designFilesFingerprint(slug: string): string | null {
+  const specFile = path.join(designDir(slug), "design.json");
+  if (!fs.existsSync(specFile)) return null;
+  const raw = fs.readFileSync(specFile, "utf8");
+  try {
+    const parsed = designSpecSchema.safeParse(JSON.parse(raw));
+    if (!parsed.success) return fingerprint(raw);
+    const files = [...parsed.data.assets.map((a) => a.file), ...(parsed.data.background ? [parsed.data.background.file] : [])];
+    return fingerprint(raw, files.map((file) => {
+      const absolute = path.join(packageDir(slug), file);
+      return [file, fs.existsSync(absolute) ? fs.readFileSync(absolute, "utf8") : null];
+    }));
+  } catch { return fingerprint(raw); }
 }
 
 /** Where the run state for a package lives. */
@@ -151,8 +184,8 @@ async function renderOneClip(
 /**
  * Produces a complete film from a script.
  *
- * Returns only once both requested formats exist on disk and have been probed, so a caller that
- * gets a result back can trust every path in it.
+ * Stops with actionable authoring steps when look/design needs input, or returns probed outputs
+ * after both requested formats have been rendered. stopAfter supports partial authoring runs.
  */
 export async function runProduction(
   request: ProductionRequest,
@@ -168,6 +201,13 @@ export async function runProduction(
   const outDir = request.outDir ? path.resolve(ROOT, request.outDir) : path.join(pkgDir, "renders");
   const resume = request.resume ?? true;
   const forced = new Set(request.force ?? []);
+  const mode = request.bespoke === false ? "templates" : request.design ?? "inline";
+  if (!(DESIGN_MODES as readonly string[]).includes(mode)) throw new ProductionError("look", `invalid design mode "${mode}"; use ${DESIGN_MODES.join(", ")}`);
+  const delivery = {
+    mode, skipAgent: request.skipAgent ?? Boolean(process.env.NODE_TEST_CONTEXT),
+    agentTimeoutMs: request.designAgentTimeoutMs, llmCaller: request.designLlmCaller,
+    ...(request.ownerKey ? { ownerKey: request.ownerKey } : {}),
+  };
 
   // B-roll is opt-in, and deliberately so: a clip costs roughly ten minutes of shared GPU
   // time. Treating an unset flag as consent meant any caller that simply did not mention
@@ -186,6 +226,7 @@ export async function runProduction(
 
   /** Assembles the result object from whatever the run has produced so far. */
   const buildResult = (stoppedAfter?: ProductionStage): ProductionResult => ({
+    status: stoppedAfter ? "stopped" : "completed",
     slug,
     title,
     packageDir: pkgDir,
@@ -269,6 +310,12 @@ export async function runProduction(
       }
     }
 
+    // A stage that runs again invalidates every later stage, even if its output hashes identically.
+    // Forced narration/design must not leave a completed assembly or render attached to old inputs.
+    for (const later of state.stages) {
+      if (PRODUCTION_STAGES.indexOf(later.stage) > PRODUCTION_STAGES.indexOf(stage)) later.status = "pending";
+    }
+    if (PRODUCTION_STAGES.indexOf(stage) < PRODUCTION_STAGES.indexOf("render")) state.outputs = [];
     record.status = "running";
     record.startedAt = new Date().toISOString();
     record.fingerprint = inputFingerprint;
@@ -284,11 +331,12 @@ export async function runProduction(
       emit(stage, "done", `${stage} complete`);
       return result;
     } catch (err) {
-      record.status = "failed";
+      record.status = err instanceof NeedsInput ? "needs_input" : "failed";
       record.finishedAt = new Date().toISOString();
       record.error = err instanceof Error ? err.message : String(err);
       saveState(state);
-      emit(stage, "failed", record.error);
+      emit(stage, record.status, record.error);
+      if (err instanceof NeedsInput) throw err;
       throw err instanceof ProductionError ? err : new ProductionError(stage, record.error, err);
     }
   };
@@ -326,9 +374,13 @@ export async function runProduction(
       "narrate",
       narrationFingerprint,
       () => {
-        if (!fs.existsSync(narrationCachePath) || !fs.existsSync(path.join(pkgDir, "voiceover.wav"))) return null;
+        if (![narrationCachePath, ...["voiceover.wav", "captions.vtt", "voiceover_words.json"].map((file) => path.join(pkgDir, file))].every((file) => fs.existsSync(file))) return null;
         try {
-          return JSON.parse(fs.readFileSync(narrationCachePath, "utf8")) as ProduceAudioResult;
+          const cached = JSON.parse(fs.readFileSync(narrationCachePath, "utf8")) as ProduceAudioResult;
+          const words = JSON.parse(fs.readFileSync(path.join(pkgDir, "voiceover_words.json"), "utf8"));
+          return Array.isArray(cached.segments) && Array.isArray(cached.shotDurations) &&
+            cached.segments.length === cached.shotDurations.length && cached.segments.length > 0 &&
+            Array.isArray(words.words) && cached.totalAudioDuration > 0 ? cached : null;
         } catch {
           return null;
         }
@@ -354,55 +406,109 @@ export async function runProduction(
     narrationResult = narration;
     if (shouldStop("narrate")) return buildResult("narrate");
 
-    // ---- design: compile the screenplay and the timing spine into a film ---------------------
-    // A run must never message a live agent session from inside the test runner.
-    const bespoke = request.bespoke ?? !process.env.NODE_TEST_CONTEXT;
-    const designFingerprint = fingerprint(script, narration.shotDurations, request.music ?? null, wantsBroll, bespoke);
+    // ---- look: measured beats are available before the first picture is authored -------------
+    const compileOptions = {
+      title, slug,
+      maxFootageShots: wantsBroll ? (request.brollMaxClips ?? 4) : 0,
+      maxFootageSec: request.brollSeconds ?? 8,
+      ...(request.music ? { music: { src: request.music, volume: 0.5, duckUnderVoiceover: true } } : {}),
+    };
+    const lookFingerprint = fingerprint(script, narration.shotDurations, title, mode);
+    const look = await runStage<LookPlan | false>(
+      "look", lookFingerprint,
+      () => {
+        if (mode === "templates") return false;
+        const film = readFilm(slug);
+        const plan = film ? readCheckedLookPlan(film).plan : undefined;
+        if (plan) writeLookMd(slug);
+        return plan ?? null;
+      },
+      async () => {
+        if (mode === "templates") return false;
+        const skeleton = await compileFilmFromScreenplayAsync(script, narration.segments, narration.shotDurations, {
+          ...compileOptions, textOnly: true, maxFootageShots: 0,
+        });
+        writeFilm(slug, skeleton.film);
+        filmResult = skeleton.film;
+        const outcome = await planFilmLook(slug, { ...delivery, onProgress: (message) => emit("look", "running", message) });
+        if (!outcome.plan) {
+          warnings.push(outcome.note, ...outcome.errors);
+          throw new NeedsInput("needs_look", [
+            `Read ${path.join(designDir(slug), "LOOK_BRIEF.md")}`,
+            `Write ${path.join(designDir(slug), "look.json")}`,
+            `Run aideos look check ${slug}`,
+            "Re-run the same command to continue.",
+          ], outcome.note);
+        }
+        return outcome.plan;
+      },
+    );
+    filmResult = readFilm(slug);
+    if (shouldStop("look")) return buildResult("look");
+
+    // ---- design: the accepted plan controls treatments and invalidates changed designs -------
+    const lookHash = look ? fingerprint(fs.readFileSync(path.join(designDir(slug), "look.json"), "utf8")) : null;
+    const designFingerprint = () => fingerprint(script, narration.shotDurations, request.music ?? null,
+      wantsBroll, mode, lookHash, mode === "templates" ? null : designFilesFingerprint(slug));
 
     const design = await runStage(
       "design",
-      designFingerprint,
+      designFingerprint(),
       () => {
+        if (mode !== "templates") {
+          try {
+            const status = buildDesign(slug, readFilm(slug)?.design?.source === "server-model" ? "server-model" : "agent");
+            if (status.state !== "passed") return null;
+          } catch { return null; }
+        }
         const film = readFilm(slug);
-        return film ? { film, footage: [] as FootageRequest[] } : null;
+        return film && (mode === "templates" || (film.scene && film.design?.source !== "templates"))
+          ? { film, footage: [] as FootageRequest[] } : null;
       },
       async () => {
         const compiled = await compileFilmFromScreenplayAsync(script, narration.segments, narration.shotDurations, {
-          title,
-          slug,
-          maxFootageShots: wantsBroll ? (request.brollMaxClips ?? 4) : 0,
-          maxFootageSec: request.brollSeconds ?? 8,
-          ...(request.music ? { music: { src: request.music, volume: 0.5, duckUnderVoiceover: true } } : {}),
-          deviceCaller:
-            request.deviceCaller !== undefined
-              ? request.deviceCaller
-              : process.env.NODE_TEST_CONTEXT
-                ? null
-                : await defaultDeviceCaller(),
+          ...compileOptions,
+          ...(look ? { lookPlan: look } : {}),
+          deviceCaller: request.deviceCaller !== undefined ? request.deviceCaller : process.env.NODE_TEST_CONTEXT ? null : await defaultDeviceCaller(),
         });
         writeFilm(slug, compiled.film);
+        // Every new compile becomes the build's base. A stale first-build snapshot must never
+        // resurrect narration, timing or treatments from an earlier run.
+        fs.mkdirSync(designDir(slug), { recursive: true });
+        fs.writeFileSync(path.join(designDir(slug), "base-film.json"), JSON.stringify(compiled.film, null, 2) + "\n");
         writeVisualChoices(slug, compiled.film, compiled.shotVisuals, compiled.deviceReports);
+        for (const [shotId, report] of compiled.deviceReports) {
+          if (look && report.state !== "authored") warnings.push(`${shotId}: ${report.reason}`);
+        }
         emit(
           "design",
           "running",
           `${compiled.film.shots.length} shots, ${compiled.film.canvas.nodes.length} nodes, ` +
             `${compiled.footage.length} shot(s) flagged for footage`,
         );
-        if (bespoke) {
-          const outcome = await designFilm(slug, {
-            agentTimeoutMs: request.designAgentTimeoutMs,
-            llmCaller: request.designLlmCaller,
-            ...(request.ownerKey ? { ownerKey: request.ownerKey } : {}),
-            onProgress: (message) => emit("design", "running", message),
-          });
-          emit("design", "running", `design: ${outcome.note}`);
-          if (outcome.source === "templates") warnings.push(outcome.note);
-          const designed = readFilm(slug);
-          if (designed) return { ...compiled, film: designed };
+        const outcome = await designFilm(slug, {
+          ...delivery, onProgress: (message) => emit("design", "running", message),
+        });
+        emit("design", "running", `design: ${outcome.note}`);
+        if (outcome.source === "needs_design") {
+          warnings.push(outcome.note);
+          if (outcome.status) warnings.push(formatBuildStatus(slug, outcome.status));
+          throw new NeedsInput("needs_design", [
+            `Read ${path.join(designDir(slug), "BRIEF.md")}`,
+            `Write ${path.join(designDir(slug), "design.json")} and its visuals/*.svg assets`,
+            `Run aideos design build ${slug}`,
+            "Re-run the same command to continue.",
+          ], outcome.note);
         }
-        return compiled;
+        const designed = readFilm(slug);
+        if (!designed || (mode !== "templates" && !designed.scene)) throw new Error("design did not produce a scene film");
+        return { ...compiled, film: designed };
       },
     );
+    // Agent/server work writes authoring files during the stage. Cache their resulting hashes,
+    // so an unchanged rerun reuses them while a later authoring edit invalidates the stage.
+    stageRecord(state, "design").fingerprint = designFingerprint();
+    saveState(state);
     filmResult = design.film;
     if (shouldStop("design")) return buildResult("design");
 
@@ -426,7 +532,8 @@ export async function runProduction(
     const brollClips = await runStage<BrollClip[]>(
       "broll",
       fingerprint(footageRequests, wantsBroll, request.brollEngine ?? "ssh-wangp"),
-      () => (state.brollClips.length > 0 && state.brollClips.every((c) => fs.existsSync(c.path)) ? state.brollClips : null),
+      () => !wantsBroll || footageRequests.length === 0 ? [] :
+        state.brollClips.length > 0 && state.brollClips.every((c) => fs.existsSync(c.path)) ? state.brollClips : null,
       async () => {
         if (!wantsBroll || footageRequests.length === 0) {
           emit("broll", "running", "no footage requested");
@@ -459,10 +566,11 @@ export async function runProduction(
             height: probe.height,
           });
         }
-        state.brollClips = clips;
         return clips;
       },
     );
+    state.brollClips = brollClips;
+    saveState(state);
     clipResults = brollClips;
     if (shouldStop("broll")) return buildResult("broll");
 
@@ -602,6 +710,10 @@ export async function runProduction(
     return buildResult();
   } catch (err) {
     saveState(state);
+    if (err instanceof NeedsInput) {
+      filmResult = readFilm(slug);
+      return { ...buildResult(), status: err.status, nextSteps: err.nextSteps };
+    }
     throw err instanceof ProductionError
       ? err
       : new ProductionError(current, err instanceof Error ? err.message : String(err), err);
