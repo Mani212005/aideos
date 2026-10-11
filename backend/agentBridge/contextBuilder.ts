@@ -186,15 +186,17 @@ ${wordTimingInfo}
 ${RUBRIC_SUMMARY}
 
 🎯 Directing Mission for Agent:
-1. Review docs/DIRECTOR_GUIDE.md for creative direction and visual storytelling craft.
-2. Read the screenplay in ${ctx.scriptPath} and inspect scene layouts in ${ctx.filmPath}.
-3. Architect the visual scenes:
-   - Design evocative visual devices (TokenStrip, MatrixGrid, LayerStack, Plot, ScaleBar, Distribution, or AnalogyInset GPU B-roll).
-   - If specialized diagrams or metaphors are needed, author animated SVGs under videos/${ctx.filmId}/visuals/.
-   - Ensure dynamic camera movement (cut on chapter changes, pan, zoom-in, zoom-out) across 2D canvas stations.
-   - Maintain pacing: rotate visual devices (never hold >25s, no back-to-back repeats, return to canvas spine every 60-90s).
-   - Keep shot durations locked to narration audio.
-4. Run \`npm run validate:film ${ctx.filmPath}\` to verify with zero violations.
-5. If using MCP, call \`aideos_claim_task\` to acknowledge and \`aideos_complete_task\` when done.
-6. The live studio at http://localhost:3001 hot-reloads automatically as you edit.`;
+1. Read \`videos/${ctx.filmId}/design/LOOK_BRIEF.md\` and write or update
+   \`videos/${ctx.filmId}/design/look.json\` first. Run the look check before making pictures.
+2. Review docs/DIRECTOR_GUIDE.md, then read the screenplay in ${ctx.scriptPath} and inspect
+   ${ctx.filmPath}.
+3. Build one persistent scene stage. Choose each shot's treatment from the look plan and make
+   carried objects visibly change with the narration.
+4. Use an inset for a precise device (TokenStrip, MatrixGrid, LayerStack, Plot, ScaleBar, or
+   Distribution) only when the stage remains visible, or redraw its parts as SVG under
+   videos/${ctx.filmId}/visuals/. Never paint a full panel or card over the stage.
+5. Keep shot durations locked to narration audio, then run \`aideos design build ${ctx.filmId}\`
+   and \`npm run validate:film ${ctx.filmPath}\` until both pass.
+6. If using MCP, call \`aideos_claim_task\` to acknowledge and \`aideos_complete_task\` when done.
+7. The live studio at http://localhost:3001 hot-reloads automatically as you edit.`;
 }

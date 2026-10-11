@@ -12,7 +12,10 @@ You have complete creative autonomy. The browser canvas is your viewport; the de
 - **Show, Don't Tell**: Favor pictionary, spatial analogies, and visual clarity over wall-of-text verbal exposition. If a concept can be drawn, animated, or visualized, give it the frame.
 - **Narrative Arc**: Every film is a story. Open with a high-energy hook that creates curiosity, build tension around the core problem, guide the viewer step-by-step through the breakthrough, and resolve with an empowering visual payoff.
 - **Visual Art & SVG Creation**: You are not limited to fixed templates. Author custom animated SVGs, evocative geometric motion, abstract vector scenes, and expressive spatial layouts to explain mechanisms intuitively.
-- **Cinematic B-Roll**: Use photoreal GPU footage ([`AnalogyInset`](../src/dl/devices.tsx) with `needsFootage`) for visceral real-world metaphors, tactile machinery, and atmospheric depth.
+- **One Persistent Stage**: New explainers are scene films. Keep one visible stage throughout,
+  with named objects that carry between beats and change as the narration advances. A device beat
+  may sit in an inset beside that stage, or be redrawn as SVG parts on it; never cover the stage
+  with a full panel or card.
 - **Rhythm & Breathing**: Film is music for the eyes. Alternate between tight analytical focus shots and wide canvas camera pull-backs to let the viewer breathe and re-anchor the big picture.
 - **Good Video Standard**: Every film must satisfy the authoritative quality rubric in [`docs/GOOD_VIDEO.md`](GOOD_VIDEO.md) (persistent stage, carry-over with transformation, visible cause and effect, camera movement, bottom captions, and honest data).
 
@@ -22,11 +25,15 @@ You have complete creative autonomy. The browser canvas is your viewport; the de
 
 While your artistic choices are completely free, your screenplay must respect the fundamental cinematic pacing invariants defined in [`src/dl/schema.ts`](../src/dl/schema.ts):
 
-1. **Structure**: 1 to 12 story chapters; 2 to 24 canvas stations connected logically on a 2D map.
-2. **Camera Transitions**: Open chapter transitions with `move: "cut"`; use dynamic `pan`, `zoom-in`, and `zoom-out` to guide visual focus across stations.
+1. **Structure**: 1 to 12 story chapters on one persistent scene stage, with carried objects
+   connected logically in space.
+2. **Camera Transitions**: Use slow, purposeful pans and zooms to guide focus across the stage;
+   do not clear the stage or switch to a disconnected visual world.
 3. **Pacing Rhythm**:
-   - Never hold any visual device past 25 seconds; rotate devices and visuals so no visual repeats back-to-back.
-   - Return camera to the bare canvas spine (`stage: "none"`) and anchor with key text beats (`stage: "frame"`) at least once every 60-90 seconds.
+   - Let the stage and its objects evolve continuously. A precise device is secondary to the
+     stage and must remain an inset or become SVG parts on the stage.
+   - Use a small text treatment only when the stage still remains visible; never use a full-panel
+     or stage-covering card as a device.
    - Limit visual density to at most 3 focal accents per frame to avoid cognitive overload.
 4. **Audio Sync**: Every shot duration (`dur`) locks to the measured narration audio timing (+-50ms).
 

@@ -6,6 +6,20 @@ File Description: This file defines the core guidelines, coding principles, and 
 
 Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos review <slug>` and attach `review.json` to your handoff.
 
+## Making a video: look first
+
+Decide the look before making any picture. Read `docs/GOOD_VIDEO.md` and the look criteria in
+`backend/lookPlan/LOOK_BRIEF.md` when present, then write or inspect `videos/<slug>/design/look.json`
+before authoring `design.json` or SVGs. New explainers are scene films: keep one visible stage,
+name the objects that carry between shots, and choose each shot's treatment from the plan.
+Prefer scene motion. A precise device belongs in an inset that leaves the stage visible, or is
+redrawn as SVG parts on that stage; never paint a full panel or card over the stage. When a run
+reports `needs_look` or `needs_design`, complete the named plan or design and rerun the same
+command. Do not use `--design templates` unless a template film was explicitly requested.
+The look plan owns treatment and cast; `docs/DIRECTOR_GUIDE.md` owns screenplay direction; the
+look checker owns plan validity. Proof taste notes to preserve: make camera motion smoother and
+move captions slightly upward.
+
 ## Core Rules
 
 1. **File Header Description**: Every code file created or updated must have a header comment at the very top containing three fields: "File Description: <description>", "Inputs and outputs: <inputs> -> <outputs>", and "Used by: <callers or entry point>".
@@ -319,7 +333,5 @@ Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.
 - Keep it concise. Prefer pointers to authoritative files over copying details.
 - When updating, check if this section exists and add it if missing.
-
-
 
 

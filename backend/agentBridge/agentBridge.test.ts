@@ -180,6 +180,7 @@ test("buildDirectingPrompt formats structured markdown with package refs and rul
   assert.ok(prompt.includes("videos/why-dit-replaced-unet/voiceover.wav"));
   assert.ok(prompt.includes("docs/DIRECTOR_GUIDE.md"));
   assert.ok(prompt.includes("npm run validate:film videos/why-dit-replaced-unet/film.json"));
+  assert.doesNotMatch(prompt, /canvas stations/);
 });
 
 // Test 7: Firstmate steering inbox sequential message writer

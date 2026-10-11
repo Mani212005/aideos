@@ -934,13 +934,14 @@ As the Creative Director, your mission is to transform this structure into a cap
 
 ## 🎯 Directing Objectives:
 1. **Visual Metaphors & Show Don't Tell**:
-   - Replace generic text with evocative visual devices: \`TokenStrip\`, \`MatrixGrid\`, \`LayerStack\`, \`Plot\`, \`ScaleBar\`, \`Distribution\`, or \`AnalogyInset\` (B-roll footage).
-   - Author custom animated SVGs under \`videos/${opts.projectId}/visuals/\` if needed.
+   - Write \`videos/${opts.projectId}/design/look.json\` from the look brief before authoring pictures.
+   - Keep one persistent scene stage and animate carried objects; use a device only as a visible
+     inset or redraw its parts as custom animated SVGs under \`videos/${opts.projectId}/visuals/\`.
+   - Never cover the stage with a full panel or card.
 2. **Camera Rhythm & Spatial Flow**:
-   - Ensure dynamic camera movement (\`cut\`, \`pan\`, \`zoom-in\`, \`zoom-out\`) between 2D canvas stations.
-   - Return to canvas spine (\`stage: "none"\`) or frame milestones (\`stage: "frame"\`) every 60-90s.
+   - Use slow, purposeful \`pan\`, \`zoom-in\`, and \`zoom-out\) moves across the persistent stage.
 3. **Pacing Invariants**:
-   - Never hold a visual device past 25s; rotate devices so no visual repeats back-to-back.
+   - Keep the stage visible and evolving; device treatments are secondary to the stage.
    - Maintain audio sync (shot durations lock to narration audio).
 
 ---
@@ -954,4 +955,3 @@ As the Creative Director, your mission is to transform this structure into a cap
   Check hot-reloaded canvas and timeline on \`http://localhost:3001\`
 `;
 }
-

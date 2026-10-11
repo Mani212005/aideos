@@ -58,8 +58,9 @@ export function renderDesignBrief(film: Film): string {
 
   return `# Design brief: ${film.title} (\`${film.id}\`)
 
-Design this film's picture from scratch, as one continuous vector scene unique to this film. Write
-\`videos/${film.id}/design/design.json\` and the SVG artwork it names in \`videos/${film.id}/visuals/\`,
+Design this film's picture from \`videos/${film.id}/design/look.json\`, as one continuous vector
+scene unique to this film. Keep the planned stage and carried objects visible as the story builds.
+Write \`videos/${film.id}/design/design.json\` and the SVG artwork it names in \`videos/${film.id}/visuals/\`,
 then run \`aideos design build ${film.id}\` and fix whatever it reports until it prints PASS. A failing
 build never touches the film, so iterate freely. The smallest worked example of a scene film is
 \`examples/hello-scene/\`; a full-length one is \`test_fixtures/packages/still-talking/\` (built by
@@ -74,7 +75,10 @@ ${RUBRIC_SUMMARY}
 - **Type:** Geist for words, JetBrains Mono for numbers, code and labels. No other typeface.
 - **Artwork:** each asset is a static SVG with \`viewBox="-300 -200 600 400"\` and \`preserveAspectRatio="xMidYMid meet"\`, drawn centred on 0,0. No \`<script>\`, \`<animate>\`, \`<foreignObject>\`, CSS animation or remote links. Give an \`id\` to every element you will move. Motion lives only in clips.
 - **Stage:** the scene is ${SCENE_SIZE.w} x ${SCENE_SIZE.h}; \`position\` is where an asset's centre sits. The wide cut sees y ${FORMAT_WINDOWS.wide.y0}-${FORMAT_WINDOWS.wide.y1}; the reel sees x ${FORMAT_WINDOWS.reel.x0}-${FORMAT_WINDOWS.reel.x1}. Everything essential lives in the safe square (${SAFE_SQUARE.x0}-${SAFE_SQUARE.x1} on both axes). Headlines (TextReveal cards) are drawn centred across the middle of the frame, roughly scene y 860-1060 in the wide cut, so keep that band free of artwork and labels. Keep the bottom band clear of detail that fights the captions.
-- **Shots:** a shot staged "anchor" (a chart such as StatCounter or TokenStrip) draws an opaque panel over your scene. Prefer text cards so the scene stays in view, and use \`shots\` to replace any chart whose numbers the narration does not say.
+- **Shots:** follow the treatment in \`design/look.json\`. A precise device such as StatCounter or
+  TokenStrip must be an inset with the stage still visible, or be redrawn as SVG parts on the stage.
+  Never use a full panel or card that covers the stage, and use \`shots\` to replace any chart whose
+  numbers the narration does not say.
 - **Continuity:** one scene for the whole film. Base elements stay on screen and evolve; new elements build on what is there (no disconnected frames). A clip must start from the value the previous clip on that element and property left (the build names the clip when it does not). To jump, hide the element first and set \`allowJump\`. One element keeps one transform \`origin\` for the whole film.
 - **Timing:** never write frames. Cue every clip to the narration: \`"shot"\`, \`"shot@0.4"\`, \`"shot@end"\`, \`'shot:"spoken phrase"'\`, \`'shot:"spoken phrase"@end'\`, \`"end"\`, each optionally \`+N\`/\`-N\` frames. Aim at the word being said: every visual depicts what is spoken at that moment. A cue naming a phrase that is not spoken in that shot fails the build.
 - **Honest data:** any number, label or chart on screen must come from the narration. A counter must show a number that is actually said.
