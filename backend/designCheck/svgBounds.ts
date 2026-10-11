@@ -2,7 +2,7 @@
  * File Description: Conservative 2D geometry for SVG artwork: affine transforms and the bounding box of one drawn element.
  * Shapes are measured from their attributes and path control points, never rasterized, so the result is an upper bound that errs toward "this element reaches there".
  * Inputs and outputs: an SVG node's attributes or a transform string -> an affine matrix or a local bounding box.
- * Used by: backend/designCheck/insetRegion.ts, backend/designCheck/svgBounds.test.ts.
+ * Used by: backend/designCheck/insetRegion.ts, backend/insetStage.test.ts.
  */
 
 import type { SvgNode } from "../../src/dl/scene/svgDocument";
