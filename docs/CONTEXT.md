@@ -95,7 +95,7 @@ A discrete camera position and framing keyframe on the scene timeline.
 * `center: { x: number, y: number }` (Scene center coordinate)
 * `zoom: number` (Camera zoom multiplier, positive number)
 * `rotation?: number` (Camera rotation angle in degrees)
-* `easing?: string` (Optional transition easing curve name, e.g. "expoInOut")
+* `easing?: string` (Optional transition easing curve name; leave omitted so monotone spline flows smoothly through keyframes without jitter)
 
 ### `Shot`
 A single continuous camera view and duration window on the timeline.
@@ -404,7 +404,8 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `SceneClip.tsx`: Remotion composition entry point with single compilation and current frame selection.
 * `sceneTiming.ts`: Audio-first retiming helpers (`framesForAudioMs`, `audioSyncDriftMs`, `alignSceneToAudio`, `retimeSvgTimeline`).
 * `SceneView.tsx`: Pure browser-safe SVG scene renderer with camera transform support and no filesystem imports.
-* `compile.ts`: Pure deterministic compiler (`compileScene`) threading keyframes, actions, custom animation timelines, and camera tracks onto frames.
+* `compile.ts`: Pure deterministic compiler (`compileScene`) threading keyframes, actions, and custom animation timelines onto frames (delegating camera compilation to `cameraTrack.ts`).
+* `cameraTrack.ts`: Camera track compiler (`compileCameraTrack`) and motion stats (`measureCameraMotion`) measuring peak pan speed, per-frame zoom step, and pan acceleration.
 * `validateScene.ts`: Phase 1 semantic and physical integrity validator (`validateScene`) including Rule 20 timeline consistency.
 * `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`).
 
@@ -427,7 +428,8 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `displayWords(lines, extra)`, `unmeasuredWords(words, table)`, `measureWords(words, file)` (`measureWords.ts`): Measures unmeasured words in headless Chrome and merges them into `wordWidths.json`.
 
 ### `backend/designCheck/` (Deterministic Design Standard Checker)
-* `checkFilmDesign(raw)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, scene engine validity, static self-contained artwork, locked palette, typography, motion continuity, single transform origin, picture locked to narration, honest data / grounded numbers, and speed-capped continuous camera moves (max 20% frame width per second, no zero-duration jumps).
+* `checkFilmDesign(raw)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, scene engine validity, static self-contained artwork, locked palette, typography, motion continuity, single transform origin, picture locked to narration, honest data / grounded numbers, and smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration).
+* `MAX_CAMERA_ZOOM_STEP`, `MAX_CAMERA_PAN_ACCEL_WIDTHS` (`designCheck.ts`): Scene camera limits on single-frame zoom change (0.8%) and pan acceleration (0.3 scene widths/s^2).
 * `checkFilmDesignById(filmId)` (`designCheck.ts`): Loads a film by package slug and executes design validation.
 * `formatDesignReport(report)` (`designCheck.ts`): Formats validation findings and recommendations into a terminal report.
 * `offPaletteColours(svgText, accent)` (`designCheck.ts`): Finds colour literals in SVG markup that violate the locked palette and chosen accent.

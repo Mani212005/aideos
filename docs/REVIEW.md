@@ -38,7 +38,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 1 | **One persistent stage** | pixels (ink layout correlation with 2 s earlier, stage-clear events) and film data (beats that keep the previous elements on stage) | median correlation >= 0.75, <= 2.2 stage clears per 30 s, >= 60% of beat boundaries keep their elements |
 | 2 | Carry-over with transformation | film data only: an element stays across a beat boundary and is transformed | >= 1 per 20 s |
 | 3 | Cues aimed at spoken words | film clips against word timings, compared with chance | clip starts land on word starts clearly more often than chance |
-| 4 | **Camera that does something** | film data only (the solved framing of each shot, or a scene camera track) | >= 1 move per 20 s, none faster than 20% of the frame width per second |
+| 4 | **Camera that does something** | film data only (the solved framing of each shot, or a scene camera track) | >= 1 move per 20 s, none faster than 20% of the frame width per second (a scene camera also fails the design check on a zoom jump over 0.8% a frame or a pan acceleration over 0.3 widths per second squared) |
 | 5 | **Bottom captions** | OCR of full-resolution frames every 2 s | caption band in the bottom quarter in >= 60% of narrated moments, <= 2 lines, words match the narration |
 | 6 | **Readability** | OCR box height (normalised to a 1080 short side) and pixel contrast | <= 58% of words under 18 px, <= 10% under 3:1 contrast |
 | 7 | **No overlap or clipping** | OCR boxes overlapping, text inside the edge margin, canvas node overlap | <= 10% of sampled frames affected |

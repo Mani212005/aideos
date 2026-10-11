@@ -6,7 +6,11 @@
 
 import React, { useMemo } from "react";
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
-import { SUBTITLE_BAND_TOP_RATIO } from "./fullScreenHeroLayout";
+import {
+  SUBTITLE_BAND_TOP_RATIO,
+  SUBTITLE_CARD_PADDING_Y,
+  SUBTITLE_LINE_HEIGHT,
+} from "./fullScreenHeroLayout";
 import { SANS } from "./tokens";
 import { frames } from "./motion";
 
@@ -144,7 +148,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
       <div
         style={{
           background: backgroundColor,
-          padding: "12px 28px",
+          padding: `${SUBTITLE_CARD_PADDING_Y}px 28px`,
           borderRadius: "16px",
           backdropFilter: "blur(16px)",
           boxShadow: "0 12px 32px rgba(0, 0, 0, 0.45)",
@@ -158,7 +162,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
             fontSize: `${fontSize}px`,
             fontFamily,
             fontWeight: 700,
-            lineHeight: 1.35,
+            lineHeight: SUBTITLE_LINE_HEIGHT,
             display: "block",
             textAlign: "center",
             textWrap: "balance",

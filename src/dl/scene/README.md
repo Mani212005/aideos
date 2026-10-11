@@ -26,7 +26,8 @@ CompiledFrame.camera              dense per-frame camera state
 | Clip format, easing, compiler, validator | `svgAnimation.ts` |
 | SVG parser (element identity, id discovery) | `svgDocument.ts` |
 | Parsed tree to React elements, id namespacing | `svgReact.tsx` |
-| Scene compiler (threads timelines onto frames, compiles camera) | `compile.ts` |
+| Scene compiler (threads timelines onto frames) | `compile.ts` |
+| Camera track compiler and motion stats | `cameraTrack.ts` |
 | Scene data types (hierarchy, tracks, camera track) | `types.ts` |
 | Renderer (with camera transform) | `SceneView.tsx` |
 | Remotion entry point | `SceneClip.tsx` |
@@ -118,7 +119,7 @@ disconnected shots.
 scene.camera = {
   keyframes: [
     { frame: 0, center: { x: 960, y: 960 }, zoom: 1 },
-    { frame: 90, center: { x: 500, y: 500 }, zoom: 1.8, easing: "expoInOut" },
+    { frame: 90, center: { x: 500, y: 500 }, zoom: 1.8 },
     { frame: 180, center: { x: 500, y: 500 }, zoom: 1.8 },
   ],
 };
@@ -127,10 +128,14 @@ scene.camera = {
 **Keyframe properties.** `frame`, `center` (`{ x, y }` in scene space), `zoom` (scale factor > 0),
 `rotation` (degrees, optional), `easing` (optional).
 
-**Interpolation.** When `easing` is omitted, the compiler interpolates trajectory coordinates via
-Catmull-Rom splines across keyframes for smooth continuous motion, while preserving exact coordinates
-during hold intervals (where `from` equals `to`) to avoid drift. When `easing` is specified, the
-named curve (`expoOut`, `expoInOut`, `linear`, etc.) governs the transition between adjacent keyframes.
+**Interpolation.** Leave `easing` off, which is the default for a camera. The compiler
+(`cameraTrack.ts`) then runs a monotone cubic spline through the keyframes: it never overshoots a
+keyframe, a move flows straight through the keyframes it passes, and it comes to rest only where a
+value holds or turns (the exact coordinates are kept during a hold, so there is no drift). When
+`easing` is specified, the named curve (`expoOut`, `expoInOut`, `linear`, etc.) governs the segment
+after that keyframe and the camera stops at both of its ends. Easing every keyframe of a camera track
+with `expoInOut` makes each move a short burst between stops, which reads as jitter even when the
+peak speed is under the cap; the design check rejects it.
 
 **Authoring with sceneKit.** The scene-film kit's `Timeline` builder provides `Timeline.camera(...)`
 and `Timeline.buildCamera()`:
@@ -143,7 +148,6 @@ timeline
     to: { center: { x: 500, y: 500 }, zoom: 1.8 },
     start: 0,
     end: 90,
-    easing: "expoInOut",
   })
   .camera({
     id: "cam-focus",
@@ -161,7 +165,10 @@ exact center, zoom, and rotation where the prior camera clip ended, unless expli
 **Speed limits & validation.** `checkFilmDesign` (`backend/designCheck/`) validates that declared
 camera tracks contain at least two keyframes, exhibit actual motion, have no zero-duration jumps,
 and keep translation speed below 20% of the scene frame width per second (384 px/s for 1920-wide scenes)
-to prevent disorienting camera shifts.
+to prevent disorienting camera shifts. It also measures the compiled per-frame curve: zoom may change at
+most 0.8% in a single frame (`MAX_CAMERA_ZOOM_STEP`) and pan may accelerate at most 0.3 scene widths per
+second squared (`MAX_CAMERA_PAN_ACCEL_WIDTHS`, 576 px/s^2 for 1920), so a track that bursts between stops is
+caught the way an over-fast one is.
 
 ## Rendering
 

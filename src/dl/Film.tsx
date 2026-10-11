@@ -7,7 +7,7 @@
 import React from "react";
 import { AbsoluteFill, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
 import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO } from "./tokens";
-import { getFullScreenHeroLayout, heroScrimGradient } from "./fullScreenHeroLayout";
+import { SUBTITLE_FONT_RATIO, getFullScreenHeroLayout, heroScrimGradient } from "./fullScreenHeroLayout";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext, useAccent } from "./accent";
 import { BlockView } from "./Block";
@@ -763,7 +763,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
           <KineticSubtitles
             words={captionWords}
             maxWidth={width * 0.86}
-            fontSize={Math.round(Math.min(width, height) * 0.042)}
+            fontSize={Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO)}
             highlightColor={accent}
             position="bottom"
           />
