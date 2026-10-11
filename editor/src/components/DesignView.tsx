@@ -8,7 +8,7 @@
  */
 
 import { useState } from "react";
-import { Bot, Image as ImageIcon, RefreshCw, Sparkles } from "lucide-react";
+import { Bot, Check, FileText, Image as ImageIcon, RefreshCw, Sparkles } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import { Badge, Button, EmptyState, Note, Panel, PanelBody, PanelHeader, Spinner } from "./ui";
 import { postDesignAction, useDesignOverview, type DesignOverview } from "../state/useDesignOverview";
@@ -54,6 +54,9 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
   const { overview, error, refresh } = useDesignOverview(film.id, film.design?.source ?? null);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [approvalError, setApprovalError] = useState<{ filmId: string; message: string } | null>(null);
+  const [localApproval, setLocalApproval] = useState<{ filmId: string; approvedBy: string } | null>(null);
 
   if (error) return <Note tone="danger" className="m-4">Could not load the design: {error}</Note>;
   if (!overview) {
@@ -79,8 +82,11 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
       shown: shot.blocks.map((b) => b.c),
       motion: known?.motion ?? [],
       choice: known?.choice,
+      treatment: overview.look?.plan.shots.find((planned) => planned.id === shot.id)?.treatment,
     };
   });
+  const currentApproval =
+    (localApproval?.filmId === film.id ? localApproval.approvedBy : null) ?? overview.look?.plan.approval?.captain ?? null;
   const bespoke = design && design.source !== "templates" && overview.artwork.length > 0;
 
   const designWithAgent = async () => {
@@ -95,8 +101,22 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
     }
   };
 
+  // Persists the captain's approval in the package look plan.
+  const approveLook = async () => {
+    setApproving(true);
+    setApprovalError(null);
+    try {
+      const out = await postDesignAction<{ approval: string }>(`${film.id}/approve-look`, {});
+      setLocalApproval({ filmId: film.id, approvedBy: out.approval });
+    } catch (err) {
+      setApprovalError({ filmId: film.id, message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setApproving(false);
+    }
+  };
+
   return (
-    <div className="grid h-full min-h-0 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:overflow-hidden">
+    <div className="grid h-full min-h-0 auto-rows-max grid-cols-1 gap-3 overflow-y-auto p-3 lg:auto-rows-auto lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:overflow-hidden">
       <div className="flex min-h-0 min-w-0 flex-col gap-3 lg:overflow-y-auto">
         <Panel>
           <PanelHeader
@@ -164,6 +184,62 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
         </Panel>
 
         <Panel>
+          <PanelHeader title="Look plan" icon={<FileText className="h-3.5 w-3.5" />}>
+            <Badge tone={overview.look ? "success" : "quiet"}>{overview.look ? "Ready" : "Not written"}</Badge>
+          </PanelHeader>
+          <PanelBody scroll={false} className="flex flex-col gap-3">
+            {overview.lookError ? (
+              <Note tone="danger">Could not read look.json: {overview.lookError}</Note>
+            ) : overview.look ? (
+              <>
+                <div className="border-2 border-ink bg-paper-2 p-2.5">
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-ink-soft">Stage</p>
+                  <p className="mt-1 break-words font-sans text-[12px] leading-snug text-ink">{overview.look.plan.film.stage}</p>
+                </div>
+                <div>
+                  <h3 className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-ink-soft">Cast</h3>
+                  <ul className="flex flex-col gap-1.5">
+                    {overview.look.plan.film.cast.map((member) => (
+                      <li key={member.id} className="flex min-w-0 items-start gap-2 border-2 border-ink bg-paper-3 px-2 py-1.5">
+                        <Badge tone="neutral">{member.id}</Badge>
+                        <span className="min-w-0 break-words font-sans text-[11px] leading-snug text-ink">{member.what}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {currentApproval ? (
+                    <Badge tone="success"><Check className="mr-1 inline h-3 w-3" />Approved by {currentApproval}</Badge>
+                  ) : (
+                    <Button tone="primary" size="xs" onClick={() => void approveLook()} disabled={approving}>
+                      <Check className="h-3 w-3" />
+                      {approving ? "Approving..." : "Approve look"}
+                    </Button>
+                  )}
+                  {approvalError?.filmId === film.id ? <Note tone="danger">Approval failed: {approvalError.message}</Note> : null}
+                </div>
+                {overview.look.markdown ? (
+                  <details className="group border-2 border-ink bg-paper-2">
+                    <summary className="cursor-pointer px-2.5 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-ink hover:bg-paper-3">
+                      Read LOOK.md
+                    </summary>
+                    <pre className="max-h-64 overflow-auto border-t-2 border-ink p-2.5 font-mono text-[10px] leading-relaxed text-ink whitespace-pre-wrap break-words">{overview.look.markdown}</pre>
+                  </details>
+                ) : (
+                  <Note tone="warn">LOOK.md has not been generated yet.</Note>
+                )}
+              </>
+            ) : (
+              <EmptyState
+                title="No look plan yet"
+                description="This film has no design/look.json. Its stage, cast and shot treatments will appear here after a look plan is written."
+                className="min-h-28 p-4"
+              />
+            )}
+          </PanelBody>
+        </Panel>
+
+        <Panel>
           <PanelHeader title="Artwork" icon={<ImageIcon className="h-3.5 w-3.5" />}>
             <Badge tone="quiet">{overview.artwork.length}</Badge>
           </PanelHeader>
@@ -207,6 +283,7 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
                       <div>
                         {clock(shot.startSec)}-{clock(shot.endSec)}
                       </div>
+                      {shot.treatment ? <Badge tone={shot.treatment === "device" ? "warn" : "info"}>{shot.treatment}</Badge> : null}
                     </div>
                     <div className="flex min-w-0 flex-col gap-1.5">
                       <p className="font-sans text-[12px] leading-snug text-ink">{shot.says || "(no narration)"}</p>
