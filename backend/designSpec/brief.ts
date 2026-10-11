@@ -5,15 +5,13 @@
  * the whole contract, so a designer needs nothing else to produce a passing bespoke design.
  * Inputs and outputs: script text and shot count -> structured DesignBrief with visual constraints.
  * Used by: backend/designSpec/designer.ts.
- * Inputs and outputs: script text and shot count -> structured DesignBrief with visual constraints.
- * Used by: backend/designSpec/designer.ts.
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { FORMAT_WINDOWS, SAFE_SQUARE, SCENE_SIZE } from "../sceneKit";
-import { LOCKED_PALETTE } from "../designCheck/designCheck";
+import { LOCKED_PALETTE, MAX_CAMERA_PAN_ACCEL_WIDTHS, MAX_CAMERA_ZOOM_STEP } from "../designCheck/designCheck";
 import { designDir } from "./build";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
@@ -36,6 +34,12 @@ export const EXAMPLE_SPEC = {
     { id: "beam-draw", asset: "lamp", targets: ["beam"], property: "drawOn", from: 0, to: 1, start: 'intro:"attention"', end: 'intro:"attention"@end+12', easing: "expoOut" },
     { id: "tiles-in", asset: "tiles", targets: ["tile-1", "tile-2", "tile-3"], property: "opacity", from: 0, to: 1, start: "how-it-works", end: "how-it-works@0.3", stagger: 6 },
     { id: "beam-swing", asset: "lamp", targets: ["beam"], property: "rotate", from: 0, to: 24, start: 'how-it-works:"next word"', end: "how-it-works@end", origin: [0, -40], easing: "expoInOut" },
+  ],
+  camera: [
+    { id: "wide", at: "intro", center: [960, 960], zoom: 1 },
+    { id: "lamp-close", at: 'intro:"attention"@end+30', center: [900, 1100], zoom: 1.25 },
+    { id: "lamp-hold", at: "how-it-works", center: [900, 1100], zoom: 1.25 },
+    { id: "payoff", at: "end", center: [960, 960], zoom: 1 },
   ],
 };
 
@@ -76,6 +80,8 @@ ${RUBRIC_SUMMARY}
 - **Stage:** the scene is ${SCENE_SIZE.w} x ${SCENE_SIZE.h}; \`position\` is where an asset's centre sits. The wide cut sees y ${FORMAT_WINDOWS.wide.y0}-${FORMAT_WINDOWS.wide.y1}; the reel sees x ${FORMAT_WINDOWS.reel.x0}-${FORMAT_WINDOWS.reel.x1}. Everything essential lives in the safe square (${SAFE_SQUARE.x0}-${SAFE_SQUARE.x1} on both axes). Headlines (TextReveal cards) are drawn centred across the middle of the frame, roughly scene y 860-1060 in the wide cut, so keep that band free of artwork and labels. Keep the bottom band clear of detail that fights the captions.
 - **Shots:** a shot staged "anchor" (a chart such as StatCounter or TokenStrip) draws an opaque panel over your scene. Prefer text cards so the scene stays in view, and use \`shots\` to replace any chart whose numbers the narration does not say.
 - **Continuity:** one scene for the whole film. Base elements stay on screen and evolve; new elements build on what is there (no disconnected frames). A clip must start from the value the previous clip on that element and property left (the build names the clip when it does not). To jump, hide the element first and set \`allowJump\`. One element keeps one transform \`origin\` for the whole film.
+- **Camera:** \`camera\` lists poses (centre and zoom) in time order; the camera flows from each pose to the next, so repeat a pose to hold it. Start wide, push in on what the beat is about, end on a wide payoff pose, and move at least once every 20 seconds. Keep moves slow: at most 20% of the scene width per second (${Math.round(SCENE_SIZE.w * 0.2)} px/s), zoom change under ${(MAX_CAMERA_ZOOM_STEP * 100).toFixed(1)}% a frame and pan acceleration under ${Math.round(SCENE_SIZE.w * MAX_CAMERA_PAN_ACCEL_WIDTHS)} px/s^2 (the build checks all three). **Leave \`easing\` off**: the camera then runs smoothly through its poses, while an easing stops at both ends of its move and reads as a jitter. Give a move several seconds, not a beat.
+- **Camera framing:** a pose at centre (cx, cy) and zoom z shows scene x cx +/- 960/z by y cy +/- 960/z, then each format crops that view: the wide cut keeps the middle 1080 rows (y +/- 540/z) and the reel the middle 1080 columns (x +/- 540/z). So at zoom 1.25 the reel sees only 864 scene columns. Pose so everything a beat needs stays inside both crops, and do not push in so far that artwork at the edge of the safe square is cut off.
 - **Timing:** never write frames. Cue every clip to the narration: \`"shot"\`, \`"shot@0.4"\`, \`"shot@end"\`, \`'shot:"spoken phrase"'\`, \`'shot:"spoken phrase"@end'\`, \`"end"\`, each optionally \`+N\`/\`-N\` frames. Aim at the word being said: every visual depicts what is spoken at that moment. A cue naming a phrase that is not spoken in that shot fails the build.
 - **Honest data:** any number, label or chart on screen must come from the narration. A counter must show a number that is actually said.
 - **Quality review gate:** Every rendered video must pass the Gemini 3.8 Flash quality review (\`aideos all-check ${film.id}\` for the long cut and the reel, or \`aideos gemini-review\` for one rendered mp4). The model evaluates the real video and audio against the 12-criterion rubric. An agent may only claim done once Gemini rates the video 9.0 or higher with all 6 hard gates passing (verdict: ACCEPT).
@@ -90,6 +96,7 @@ ${JSON.stringify(EXAMPLE_SPEC, null, 2)}
 - \`background\` (optional): \`{ "file": "visuals/<name>.svg", "scale": 4.8 }\` fills the stage; omit for the plain canvas.
 - \`assets[]\`: \`id\`, \`file\`, \`position\` [x, y], \`scale\`, optional \`layer\` (higher draws on top), \`rotation\`, \`opacity\`.
 - \`clips[]\`: \`property\` is one of translateX, translateY, scale, scaleX, scaleY, rotate, opacity, drawOn. \`stagger\` delays each further target by N frames. \`origin\` is [x, y] in the asset's own coordinates.
+- \`camera\` (optional, at least two poses): \`at\` is a cue (same grammar as clips), \`center\` [x, y] in the scene, \`zoom\` (0.5 to 4). A cue on the film's end lands on its last frame. Poses must be in time order and at least one frame apart; an \`id\` names a pose in build errors. \`easing\` is rarely wanted (see Camera above).
 - \`shots\` (optional): \`{ "<shot id>": { "blocks": [...], "stage": "frame" } }\` replaces the cards drawn over the scene for that shot (film schema blocks, at most 4). Text-only blocks default to stage "frame" (scene stays visible), no blocks to "none". Use it to remove a chart the narration does not support or to write your own card.
 
 ## What the film says

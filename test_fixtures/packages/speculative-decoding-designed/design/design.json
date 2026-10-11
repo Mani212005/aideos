@@ -584,5 +584,88 @@
         }
       ]
     }
-  }
+  },
+  "camera": [
+    {
+      "id": "wide",
+      "at": "beat-01",
+      "center": [
+        960,
+        960
+      ],
+      "zoom": 1.0
+    },
+    {
+      "id": "wide-hold",
+      "at": "beat-03",
+      "center": [
+        960,
+        960
+      ],
+      "zoom": 1.0
+    },
+    {
+      "id": "push-road",
+      "at": "beat-04@0.85",
+      "center": [
+        960,
+        1130
+      ],
+      "zoom": 1.1
+    },
+    {
+      "id": "road-hold",
+      "at": "beat-06",
+      "center": [
+        960,
+        1130
+      ],
+      "zoom": 1.1
+    },
+    {
+      "id": "pull-back",
+      "at": "beat-09@0.5",
+      "center": [
+        960,
+        960
+      ],
+      "zoom": 1.0
+    },
+    {
+      "id": "push-draft",
+      "at": "beat-12@0.7",
+      "center": [
+        960,
+        1040
+      ],
+      "zoom": 1.1
+    },
+    {
+      "id": "draft-hold",
+      "at": "beat-15",
+      "center": [
+        960,
+        1040
+      ],
+      "zoom": 1.1
+    },
+    {
+      "id": "wide-again",
+      "at": "beat-19",
+      "center": [
+        960,
+        960
+      ],
+      "zoom": 1.0
+    },
+    {
+      "id": "payoff",
+      "at": "end",
+      "center": [
+        960,
+        960
+      ],
+      "zoom": 0.96
+    }
+  ]
 }

@@ -128,6 +128,91 @@
       "w": 1920,
       "h": 1920
     },
+    "camera": {
+      "keyframes": [
+        {
+          "frame": 0,
+          "center": {
+            "x": 960,
+            "y": 960
+          },
+          "zoom": 1,
+          "rotation": 0
+        },
+        {
+          "frame": 372,
+          "center": {
+            "x": 960,
+            "y": 960
+          },
+          "zoom": 1,
+          "rotation": 0
+        },
+        {
+          "frame": 891,
+          "center": {
+            "x": 960,
+            "y": 1130
+          },
+          "zoom": 1.1,
+          "rotation": 0
+        },
+        {
+          "frame": 1356,
+          "center": {
+            "x": 960,
+            "y": 1130
+          },
+          "zoom": 1.1,
+          "rotation": 0
+        },
+        {
+          "frame": 2229,
+          "center": {
+            "x": 960,
+            "y": 960
+          },
+          "zoom": 1,
+          "rotation": 0
+        },
+        {
+          "frame": 3058,
+          "center": {
+            "x": 960,
+            "y": 1040
+          },
+          "zoom": 1.1,
+          "rotation": 0
+        },
+        {
+          "frame": 3589,
+          "center": {
+            "x": 960,
+            "y": 1040
+          },
+          "zoom": 1.1,
+          "rotation": 0
+        },
+        {
+          "frame": 4480,
+          "center": {
+            "x": 960,
+            "y": 960
+          },
+          "zoom": 1,
+          "rotation": 0
+        },
+        {
+          "frame": 5649,
+          "center": {
+            "x": 960,
+            "y": 960
+          },
+          "zoom": 0.96,
+          "rotation": 0
+        }
+      ]
+    },
     "background": {
       "assetId": "background",
       "svgSource": "videos/speculative-decoding-designed/visuals/canvas.svg",

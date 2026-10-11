@@ -1,20 +1,19 @@
 /**
  * File Description: Compiles a design spec into the film's scene.
- * Cues are resolved against the film's measured narration, clips are added through the kit's
- * Timeline (so a snap or a second origin is refused with the clip named), and the result is the
- * film with its `scene`, `accent`, `design` provenance and any per-shot block overrides applied.
+ * Cues are resolved against the film's measured narration, clips and camera poses are added
+ * through the kit's Timeline (so a snap, camera discontinuity or second origin is refused with
+ * the element named), and the result is the film with its `scene`, `accent`, `design` provenance
+ * and any per-shot block overrides applied.
  * Pure: it reads nothing from disk, so the build step and the tests share it.
- * Inputs and outputs: shot specifications, visual cues, and layout geometry -> compiled scene and shot timelines.
- * Used by: backend/designSpec/designer.ts, backend/designSpec/designSpec.test.ts.
  * Inputs and outputs: shot specifications, visual cues, and layout geometry -> compiled scene and shot timelines.
  * Used by: backend/designSpec/designer.ts, backend/designSpec/designSpec.test.ts.
  */
 
 import { DEVICE_BLOCKS, type Film } from "../../src/dl/schema";
-import type { EnvironmentAsset, Scene } from "../../src/dl/scene/types";
-import { FPS, SCENE_SIZE, Timeline, createCues, type NarrationTiming } from "../sceneKit";
+import type { CameraTrack, EnvironmentAsset, Scene } from "../../src/dl/scene/types";
+import { FPS, SCENE_SIZE, Timeline, createCues, type Cues, type NarrationTiming } from "../sceneKit";
 import { resolveCue } from "./cues";
-import type { DesignSpec } from "./spec";
+import type { DesignSpec, SpecCamera } from "./spec";
 
 /** One narrated word with its offsets in seconds, as voiceover_words.json stores it. */
 export interface TimedWord {
@@ -48,6 +47,53 @@ export function narrationTimingForFilm(film: Film, words: TimedWord[]): Narratio
 
 /** Who produced a design, recorded on the film. */
 export type DesignSource = "agent" | "server-model" | "hand-built";
+
+// Compiles camera poses into a keyframe track: each pose becomes a Timeline.camera() move from the previous one.
+function compileCamera(poses: SpecCamera[], cues: Cues, errors: string[]): CameraTrack | undefined {
+  const timeline = new Timeline("camera", cues.durationFrames);
+  const lastFrame = cues.durationFrames - 1;
+  const seen = new Set<string>();
+  let prev: { id: string; frame: number; pose: SpecCamera } | undefined;
+  poses.forEach((pose, i) => {
+    const id = pose.id ?? `camera-${i}`;
+    if (seen.has(id)) errors.push(`camera pose "${id}" is declared twice`);
+    seen.add(id);
+    let frame: number;
+    try {
+      // A cue on the film's end resolves one past the last frame; the camera must arrive on a real one.
+      frame = Math.min(resolveCue(pose.at, cues), lastFrame);
+    } catch (err) {
+      errors.push(`camera "${id}": ${err instanceof Error ? err.message : String(err)}`);
+      return;
+    }
+    if (frame < 0) {
+      errors.push(`camera "${id}": cue "${pose.at}" resolves to frame ${frame}, before the film starts`);
+      return;
+    }
+    if (!prev) {
+      if (pose.easing) errors.push(`camera "${id}": the first pose has no move to arrive by, so remove its easing`);
+    } else {
+      if (frame <= prev.frame) {
+        errors.push(`camera "${id}": cue "${pose.at}" is frame ${frame}, not after "${prev.id}" at frame ${prev.frame}; list poses in time order, each at least one frame apart`);
+      } else {
+        try {
+          timeline.camera({
+            id,
+            from: { center: { x: prev.pose.center[0], y: prev.pose.center[1] }, zoom: prev.pose.zoom },
+            to: { center: { x: pose.center[0], y: pose.center[1] }, zoom: pose.zoom },
+            start: prev.frame,
+            end: frame,
+            ...(pose.easing ? { easing: pose.easing } : {}),
+          });
+        } catch (err) {
+          errors.push(`camera "${id}": ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+    }
+    prev = { id, frame, pose };
+  });
+  return timeline.buildCamera();
+}
 
 // Compiles a spec onto a film. Returns the new film, or every error found (never a partial film).
 export function compileDesign(
@@ -108,6 +154,8 @@ export function compileDesign(
     };
   });
 
+  const camera = spec.camera ? compileCamera(spec.camera, cues, errors) : undefined;
+
   if (errors.length) return { errors };
 
   const background: EnvironmentAsset = {
@@ -127,6 +175,7 @@ export function compileDesign(
     audioSource: film.voiceover?.src ?? "",
     audioDurationMs: Math.round((film.voiceover?.durationSec ?? cues.durationFrames / fps) * 1000),
     sceneSize: { ...SCENE_SIZE },
+    ...(camera ? { camera } : {}),
     background,
     props,
     actors: [],

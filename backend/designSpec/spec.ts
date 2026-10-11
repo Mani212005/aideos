@@ -1,11 +1,9 @@
 /**
  * File Description: The design spec - the data a bespoke film design is written as.
  * An agent (or the server-model fallback) designs a film by writing videos/<id>/design/design.json
- * plus the SVG artwork it names. Frames are never written by hand: every clip is timed with a cue
- * that names a shot or a spoken phrase, and `aideos design build` resolves the cues against the
- * measured narration, holds the continuity rules and runs the design check before anything ships.
- * Inputs and outputs: TypeScript definitions -> types and schemas for DesignSpec and visual cues.
- * Used by: backend/designSpec/designer.ts, backend/designSpec/compile.ts.
+ * plus the SVG artwork it names. Frames are never written by hand: every clip and camera pose is
+ * timed with a cue that names a shot or a spoken phrase, and `aideos design build` resolves the cues
+ * against the measured narration, holds the continuity rules and runs the design check before anything ships.
  * Inputs and outputs: TypeScript definitions -> types and schemas for DesignSpec and visual cues.
  * Used by: backend/designSpec/designer.ts, backend/designSpec/compile.ts.
  *
@@ -18,6 +16,7 @@
 
 import { z } from "zod";
 import { blockSchema } from "../../src/dl/schema";
+import { SCENE_SIZE } from "../sceneKit/stage";
 
 const vec2 = z.tuple([z.number(), z.number()]);
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "an accent is a #rrggbb colour");
@@ -53,6 +52,21 @@ export const specClipSchema = z.object({
   allowJump: z.boolean().optional(),
 });
 
+/**
+ * One camera pose, timed by a cue. The camera flows from the previous pose to this one, arriving at
+ * `at`; repeat a pose to hold it. `easing` shapes that arrival: leave it off so the camera runs
+ * smoothly through its poses (a named easing stops at both ends of the move, which reads as a jerk).
+ */
+export const specCameraSchema = z.object({
+  /** Names this pose in build errors; defaults to "camera-<n>" (its position in the list). */
+  id: z.string().regex(/^[a-z0-9-]+$/, "camera ids are lowercase letters, digits and dashes").optional(),
+  at: cue,
+  /** Where the camera looks, in the 1920 x 1920 scene. */
+  center: vec2.refine(([x, y]) => x >= 0 && x <= SCENE_SIZE.w && y >= 0 && y <= SCENE_SIZE.h, "the camera looks at a point inside the scene"),
+  zoom: z.number().min(0.5).max(4),
+  easing: z.enum(["linear", "expoOut", "expoIn", "expoInOut", "hold"]).optional(),
+});
+
 /** The whole design of one film. */
 export const designSpecSchema = z.object({
   brief: z.object({
@@ -66,6 +80,8 @@ export const designSpecSchema = z.object({
   background: z.object({ file: specAssetSchema.shape.file, scale: z.number().positive().default(4.8) }).optional(),
   assets: z.array(specAssetSchema).max(40),
   clips: z.array(specClipSchema).max(1500),
+  /** Optional camera poses in time order (at least two). Omit for a fixed, centred camera. */
+  camera: z.array(specCameraSchema).min(2).max(60).optional(),
   /** Optional per-shot overrides of the on-screen blocks drawn over the scene. */
   shots: z
     .record(
@@ -81,3 +97,4 @@ export const designSpecSchema = z.object({
 
 export type DesignSpec = z.infer<typeof designSpecSchema>;
 export type SpecClip = z.infer<typeof specClipSchema>;
+export type SpecCamera = z.infer<typeof specCameraSchema>;
