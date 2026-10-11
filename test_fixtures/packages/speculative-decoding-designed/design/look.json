@@ -1,0 +1,292 @@
+{
+  "schema": "aideos.look/1",
+  "decidedBy": {
+    "agent": "claude",
+    "model": "claude-sonnet-5-5",
+    "at": "2026-10-11T16:00:00Z",
+    "how": "authored for speculative-decoding fixture package"
+  },
+  "film": {
+    "mode": "scene",
+    "stage": "A single dark motherboard with a memory bank on the left and an accelerator chip on the right connected by a wide data bus road.",
+    "cast": [
+      {
+        "id": "memory",
+        "what": "high bandwidth memory stack on the left",
+        "enters": "beat-01",
+        "changes": [
+          {
+            "at": "beat-04",
+            "how": "lights up its read scan line as weights are pulled",
+            "magnitude": "moderate"
+          },
+          {
+            "at": "beat-11",
+            "how": "streams large blocks of weights across the bus road",
+            "magnitude": "major"
+          }
+        ]
+      },
+      {
+        "id": "chip",
+        "what": "accelerator processor die on the right",
+        "enters": "beat-01",
+        "changes": [
+          {
+            "at": "beat-03",
+            "how": "dims its activity indicator to show idle waiting state",
+            "magnitude": "moderate"
+          },
+          {
+            "at": "beat-14",
+            "how": "runs verification in parallel across multiple candidate tokens",
+            "magnitude": "major"
+          }
+        ]
+      },
+      {
+        "id": "road",
+        "what": "bus lanes between memory and accelerator",
+        "enters": "beat-01",
+        "changes": [
+          {
+            "at": "beat-05",
+            "how": "transports a tiny single-token cargo packet across the wide lanes",
+            "magnitude": "moderate"
+          },
+          {
+            "at": "beat-15",
+            "how": "fills completely with a train of five speculative tokens",
+            "magnitude": "major"
+          }
+        ]
+      },
+      {
+        "id": "draft-model",
+        "what": "small compact draft model engine above the road",
+        "enters": "beat-09",
+        "changes": [
+          {
+            "at": "beat-10",
+            "how": "rapidly emits five speculative candidate tokens ahead of verification",
+            "magnitude": "major"
+          }
+        ]
+      }
+    ],
+    "camera": [
+      {
+        "at": "beat-01",
+        "pose": "wide establishing view of the memory and accelerator board",
+        "why": "establish the physical distance between memory and computation"
+      },
+      {
+        "at": "beat-04",
+        "pose": "push in to memory bank",
+        "why": "the massive weight transfer bottleneck"
+      },
+      {
+        "at": "beat-10",
+        "pose": "pan to draft model above the road",
+        "why": "observe fast speculative token generation"
+      },
+      {
+        "at": "beat-14",
+        "pose": "push in to the accelerator verification core",
+        "why": "single-pass parallel verification of draft candidates"
+      },
+      {
+        "at": "beat-21",
+        "pose": "wide payoff showing the full system running at 3x throughput",
+        "why": "payoff shows the full path with full bus saturation"
+      }
+    ],
+    "palette": {
+      "bg": "#0A0A0B",
+      "accent": "#635BFF",
+      "extra": {
+        "#3DDC97": "accepted speculative tokens",
+        "#FF5C5C": "rejected speculative tokens"
+      }
+    },
+    "captions": {
+      "position": "bottom",
+      "kineticColumn": false
+    },
+    "headlines": "none"
+  },
+  "shots": [
+    {
+      "id": "beat-01",
+      "treatment": "scene",
+      "carries": ["memory", "chip", "road"],
+      "cue": "trickles",
+      "criterion": "1-mechanism",
+      "why": "the slow single token trickle is established on the road"
+    },
+    {
+      "id": "beat-02",
+      "treatment": "scene",
+      "carries": ["memory", "chip", "road"],
+      "cue": "cannot buy",
+      "criterion": "1-mechanism",
+      "why": "tokens crawl across the empty highway"
+    },
+    {
+      "id": "beat-03",
+      "treatment": "scene",
+      "carries": ["chip"],
+      "cue": "idle",
+      "criterion": "1-mechanism",
+      "why": "chip activity indicator dims down to cold"
+    },
+    {
+      "id": "beat-04",
+      "treatment": "scene",
+      "carries": ["memory"],
+      "cue": "weights",
+      "criterion": "1-mechanism",
+      "why": "scan line moves across seventy billion parameters"
+    },
+    {
+      "id": "beat-05",
+      "treatment": "scene",
+      "carries": ["memory", "road"],
+      "cue": "bandwidth",
+      "criterion": "1-mechanism",
+      "why": "one word costs a hundred gigabytes of transfer"
+    },
+    {
+      "id": "beat-06",
+      "treatment": "scene",
+      "carries": ["memory", "chip", "road"],
+      "cue": "waiting",
+      "criterion": "1-mechanism",
+      "why": "road is quiet while the chip waits"
+    },
+    {
+      "id": "beat-07",
+      "treatment": "scene",
+      "carries": ["chip"],
+      "cue": "asymmetry",
+      "criterion": "1-mechanism",
+      "why": "checking multiple tokens costs the same memory pass as one"
+    },
+    {
+      "id": "beat-08",
+      "treatment": "scene",
+      "carries": ["chip"],
+      "cue": "one pass",
+      "criterion": "1-mechanism",
+      "why": "matrix multiplication checks parallel candidates"
+    },
+    {
+      "id": "beat-09",
+      "treatment": "scene",
+      "carries": ["draft-model"],
+      "cue": "draft model",
+      "criterion": "1-mechanism",
+      "why": "small compact draft model appears above the bus"
+    },
+    {
+      "id": "beat-10",
+      "treatment": "scene",
+      "carries": ["draft-model", "road"],
+      "cue": "speculative",
+      "criterion": "1-mechanism",
+      "why": "draft model emits speculative tokens along the road"
+    },
+    {
+      "id": "beat-11",
+      "treatment": "scene",
+      "carries": ["memory", "road"],
+      "cue": "cargo",
+      "criterion": "1-mechanism",
+      "why": "memory weights are pulled once for all five candidates"
+    },
+    {
+      "id": "beat-12",
+      "treatment": "scene",
+      "carries": ["road", "chip"],
+      "cue": "train",
+      "criterion": "1-mechanism",
+      "why": "candidate train enters accelerator queue"
+    },
+    {
+      "id": "beat-13",
+      "treatment": "scene",
+      "carries": ["chip"],
+      "cue": "verification",
+      "criterion": "1-mechanism",
+      "why": "parallel verification activates inside chip"
+    },
+    {
+      "id": "beat-14",
+      "treatment": "scene",
+      "carries": ["chip"],
+      "cue": "accepted",
+      "criterion": "1-mechanism",
+      "why": "first four candidates turn green and get accepted"
+    },
+    {
+      "id": "beat-15",
+      "treatment": "scene",
+      "carries": ["road", "chip"],
+      "cue": "rejected",
+      "criterion": "1-mechanism",
+      "why": "fifth token is replaced seamlessly"
+    },
+    {
+      "id": "beat-16",
+      "treatment": "scene",
+      "carries": ["chip"],
+      "cue": "identical",
+      "criterion": "1-mechanism",
+      "why": "mathematical guarantee of exact output equality"
+    },
+    {
+      "id": "beat-17",
+      "treatment": "scene",
+      "carries": ["chip"],
+      "cue": "distribution",
+      "criterion": "1-mechanism",
+      "why": "output distribution matches the original model bit for bit"
+    },
+    {
+      "id": "beat-18",
+      "treatment": "scene",
+      "carries": ["chip"],
+      "cue": "same model",
+      "criterion": "1-mechanism",
+      "why": "no drift and no quality degradation"
+    },
+    {
+      "id": "beat-19",
+      "treatment": "device",
+      "device": "StatCounter",
+      "carries": ["road", "chip"],
+      "cue": "times faster",
+      "criterion": "3-precise-number",
+      "why": "narrator explicitly cites two to three times throughput"
+    },
+    {
+      "id": "beat-20",
+      "treatment": "scene",
+      "carries": ["road", "chip"],
+      "cue": "predictable",
+      "criterion": "1-mechanism",
+      "why": "acceptance rate depends on entropy of text"
+    },
+    {
+      "id": "beat-21",
+      "treatment": "scene",
+      "carries": ["memory", "chip", "road"],
+      "cue": "carry more",
+      "criterion": "1-mechanism",
+      "why": "wide bus road is filled with cargo for maximum efficiency"
+    }
+  ],
+  "approval": {
+    "captain": null
+  }
+}

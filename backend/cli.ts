@@ -437,6 +437,44 @@ program
   );
 
 program
+  .command("look-brief")
+  .description("Write videos/<film>/design/LOOK_BRIEF.md: everything a designer needs to plan the film look")
+  .argument("<film>", "film id under videos/")
+  .action(async (film: string) => {
+    const { writeLookBrief } = await import("./lookPlan/brief");
+    console.log(writeLookBrief(film));
+  });
+
+program
+  .command("look-check")
+  .description("Check videos/<film>/design/look.json against the look plan schema and semantic rules")
+  .argument("<film>", "film id under videos/")
+  .option("--json", "print the report as JSON for an agent to consume")
+  .action(async (film: string, options: { json?: boolean }) => {
+    const { checkLookPlanById, formatLookReport } = await import("./lookPlan/check");
+    const { writeLookMd } = await import("./lookPlan/render");
+    const report = checkLookPlanById(film);
+    if (options.json) {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      console.log(formatLookReport(report));
+    }
+    if (report.ok) {
+      try {
+        const mdPath = writeLookMd(film);
+        if (!options.json) {
+          console.log(`[look-check] generated ${mdPath}`);
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[look-check] warning: failed to write LOOK.md: ${msg}`);
+      }
+    } else {
+      process.exitCode = 1;
+    }
+  });
+
+program
   .command("design-brief")
   .description("Write videos/<film>/design/BRIEF.md: everything a designer needs to design the film")
   .argument("<film>", "film id under videos/")
