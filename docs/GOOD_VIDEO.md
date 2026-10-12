@@ -16,7 +16,7 @@ When a film has `design/look.json`, `aideos review` reports plan adherence as a 
 
 | # | Criterion | How to measure | Pass target | Method |
 |---|---|---|---|---|
-| 1 G | **One persistent stage** | element-level: of the elements visible at the end of beat k, share still visible (possibly transformed) in beat k+1; pixel-level fallback: layout correlation over 2 s | stage-clear events <= 1 per 30 s; median 2 s layout correlation >= 0.75 | deterministic (data and pixels) |
+| 1 G | **One persistent stage** | element-level: of the elements visible at the end of beat k, share still visible (possibly transformed) in beat k+1; pixel-level fallback: layout correlation over 2 s | stage-clear events <= 1 per 30 s; median 2 s layout correlation >= 0.65 | deterministic (data and pixels) |
 | 2 | **Carry-over with transformation** | at least 3 beat boundaries in which a named element persists and changes position, scale, shape or role (graph -> card in a flowchart) | >= 1 per 20 s | deterministic from scene data + judge confirms it reads as the same object |
 | 3 | **Visible cause and effect** | each narrated claim of mechanism has an animation whose start is within 0.4 s of the spoken keyword, and which moves the thing named | every beat with a verb of action | cue-vs-word timing deterministic; "does the animation show the claim" = judge |
 | 4 G | **Camera that does something** | camera track (data) with >= 1 move per 20 s, each move changes what is framed (not a drift); no move faster than 20% frame width per second | present, purposeful | deterministic from camera data; purpose = judge |

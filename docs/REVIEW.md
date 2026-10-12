@@ -100,12 +100,13 @@ the others with margin, and the rubric's 95% caption target is not met even by A
 aideos gemini-review videos/hnsw-explainer/renders/long.mp4
 aideos gemini-review videos/hnsw-explainer/renders/reel.mp4 --film videos/hnsw-explainer/film.json
 aideos gemini-review videoA.mp4 --pairwise videoB.mp4
-npm run --silent backend -- gemini-review video.mp4 --json > review.json
+aideos gemini-review video.mp4 --json > review.json
 ```
 
 With `--json`, stdout contains only the JSON report; progress is sent to stderr. Exit code `0` means
-`ACCEPT`; exit code `1` means `REVISE` or that the review command could not complete. Use
-`npm run --silent` when invoking through npm so npm's lifecycle banner does not precede the JSON document.
+`ACCEPT`; exit code `1` means `REVISE` or that the review command could not complete. When invoking
+through npm (`npm run backend -- gemini-review`), use `npm run --silent` so npm's lifecycle banner does
+not precede the JSON document.
 
 ### How it works
 1. **Direct Video Inspection in Isolated Workspace via agy CLI**: Invokes the agy CLI agent running Gemini 3.8 Flash (e.g. `gemini-3.8-flash-high`) non-interactively in print mode with `--sandbox` within an isolated temporary directory using neutral filenames (`video.mp4` for single review and pairwise comparisons) and explicit directives to evaluate only the visual and audio stream without writing scripts, extracting frames, or accessing repository files.

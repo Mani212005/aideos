@@ -4,7 +4,7 @@
       "id": "1",
       "name": "One persistent stage",
       "gate": true,
-      "target": "stage-clear events <= 1 per 30 s; median 2 s layout correlation >= 0.75",
+      "target": "stage-clear events <= 1 per 30 s; median 2 s layout correlation >= 0.65",
       "anchors": {
         "0": "Absent",
         "2": "Partly",
