@@ -256,11 +256,10 @@ async function judgeDesign(filmId: string, outcome: DesignOutcome, opts: DesignF
     return (await tryServerModel(filmId, opts.llmCaller, opts, `The vision judge ruled these frames wrong. Fix each one, exactly as reported:\n${errors}`)).state === "passed";
   };
   const judge = await judgeAndRepair(filmId, { ...judgeOptions, repair });
-  const note = judge.skipped
-    ? `${outcome.note}; vision judge skipped: ${judge.skipped}`
-    : judge.passed
-      ? `${outcome.note}; vision judge: ${judge.samples.length} frames match`
-      : `${outcome.note}; vision judge: ${judge.failures.length} of ${judge.samples.length} frames still fail`;
+  if (judge.skipped) return { ...outcome, judge };
+  const note = judge.passed
+    ? `${outcome.note}; vision judge: ${judge.samples.length} frames match`
+    : `${outcome.note}; vision judge: ${judge.failures.length} of ${judge.samples.length} frames still fail`;
   opts.onProgress?.(note);
   return { ...outcome, note, judge };
 }

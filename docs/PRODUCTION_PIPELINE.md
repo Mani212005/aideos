@@ -44,12 +44,16 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 | `design`   | Compiles treatments from the accepted look and builds a checked scene design | `design/BRIEF.md`, `base-film.json`, `status.json`, `film.json` and its shadow |
 | `broll`    | Renders GPU footage for the flagged shots and fetches the clips                       | `videos/<slug>/footage/<shotId>.mp4`                |
 | `assemble` | Wires each clip into its shot as a full-screen inset                                 | `film.json` and its `src/dl/films/<slug>.ts` shadow |
-| `render`   | Installs the film as active and drives Remotion for each requested format            | `src/dl/activeFilm.ts`, `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` |
+| `render`   | Installs the film as active and drives Remotion for each requested format            | `src/dl/activeFilm.ts`, `videos/<slug>/renders/<format>.mp4` by default |
 | `verify`   | Probes the rendered files and writes contact sheets across the whole duration         | `videos/<slug>/review/<format>-sheet.jpg`          |
 
 Progress arrives through the second argument to `runProduction`: one `ProductionProgress` per
 event, carrying the stage, its status, a human-readable message, an optional 0..1 fraction within
 the stage, and milliseconds since the run began.
+
+Rendered paths are returned in `result.outputs`. By default they are written inside the video
+package at `videos/<slug>/renders/<format>.mp4`. When `ProductionRequest.outDir` is set, each file
+is written as `<outDir>/<slug>-<format>.mp4` instead.
 
 A failure throws a `ProductionError` whose `stage` field names where it happened, so a caller
 never has to guess which part of the chain broke. An authoring stop returns a result instead:
@@ -78,8 +82,9 @@ and records a warning in `design/visual-choices.json`.
 
 `aideos design build` checks a package's look when one exists: shot coverage, declared cast in artwork,
 changing clips on carried objects inside scene shots, matching inset device overrides and camera
-keyframes. Older packages without a look can still build directly; new production runs require
-one before design.
+keyframes. Builds record provenance in `design/status.json`, defaulting CLI builds to `hand-built`
+(`--source <who>` overrides). Older packages without a look can still build directly; new production
+runs require one before design.
 
 ## Resuming
 
@@ -119,12 +124,16 @@ for the details; the plan is always model-driven, so there is no canned screenpl
 `backend/audio.ts` synthesizes each shot's narration, assembles the pieces in the sample domain,
 and returns the exact timing spine the film is built from. Trimming, boundary fades, gap insertion
 and peak normalization all happen on samples rather than on encoded files, so the reported segment
-offsets are exact and nothing is stitched across a sample-rate or channel-layout mismatch. See
+offsets are exact and nothing is stitched across a sample-rate or channel-layout mismatch. The
+assembled audio is then normalized to -16 integrated LUFS with -1 dB true-peak headroom via FFmpeg
+loudnorm to satisfy the review loudness standard without changing its duration. See
 `backend/pcm.ts` for the sample-domain helpers and `backend/voiceover_stutter.test.ts` for the
 defect classes that are held closed by regression tests.
 
 Backends live in `backend/tts.ts`. Kokoro-82M runs locally through ONNX with no API key and is the
-default; `AIDEOS_TTS` or the `ttsBackend` option pins `google`, `say` or the offline `tone`
+default, configured with a default pace multiplier of 0.75 (`DEFAULT_KOKORO_SPEED`) to keep explainer
+narration within the measured review pacing limit (`AIDEOS_TTS_SPEED` or `--speed` overrides);
+`AIDEOS_TTS` or the `ttsBackend` option pins `google`, `say` or the offline `tone`
 placeholder instead. Kokoro runs in a separate process (`backend/kokoroWorker.mjs`) because it
 resolves its voice files relative to its own module directory and because the ONNX thread pool
 aborts the process on teardown when loaded inside the TypeScript loader.

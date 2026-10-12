@@ -1,7 +1,7 @@
 /**
  * File Description: Command-line interface for producing, directing, look planning, designing, reviewing, and rendering Aideos films.
  * Inputs and outputs: CLI arguments and subcommands -> runs production pipeline, review, or inspection commands.
- * Used by: bin/aideos, npm run backend (entry point).
+ * Used by: bin/aideos, npm run backend (entry point), backend/pipeline/pipeline.test.ts.
  */
 
 import { Command, Option } from "commander";
@@ -13,8 +13,8 @@ import type { Film } from "../src/dl/schema";
 import { produceAudioPipeline, buildFilmFromAudioResult } from "./audio";
 import { createEngine } from "./engine";
 import { runProduction } from "./pipeline/run";
-import { runDirector } from "./pipeline/director";
-import type { DesignMode, ProductionFormat, ProductionProgress, ProductionStage } from "./pipeline/types";
+import type { DesignMode, ProductionFormat, ProductionProgress, ProductionStage, ProductionRequest } from "./pipeline/types";
+import { runDirector, type DirectorRequest } from "./pipeline/director";
 import type { TtsBackendName } from "./tts";
 import { registerAllCheckCommands, rewriteAllCheckArgv } from "./allCheck/cli";
 
@@ -184,6 +184,64 @@ function formatProgress(event: ProductionProgress): string {
   return `[${seconds}s] ${event.stage.padEnd(9)} ${event.status.padEnd(8)}${pct} ${event.message}`;
 }
 
+export interface FilmCliOptions {
+  script?: string;
+  scriptFile?: string;
+  title?: string;
+  slug?: string;
+  formats: string;
+  out: string;
+  broll?: boolean;
+  brollEngine: string;
+  brollClips: string;
+  brollSeconds: string;
+  tts?: TtsBackendName;
+  voice?: string;
+  speed?: string;
+  music?: string;
+  resume: boolean;
+  force?: string;
+  stopAfter?: ProductionStage;
+  skipVerify?: boolean;
+  bespoke?: boolean;
+  design: DesignMode;
+  designTimeout: string;
+}
+
+// Builds the production request from screenplay text and CLI options.
+export function buildFilmProductionRequest(
+  script: string,
+  options: FilmCliOptions,
+): ProductionRequest {
+  const title =
+    options.title ??
+    script.match(/^#\s+(.+)$/m)?.[1]?.trim() ??
+    "Untitled Aideos Film";
+
+  return {
+    script,
+    title,
+    slug: options.slug,
+    formats: options.formats.split(",").map((f) => f.trim()).filter(Boolean) as ProductionFormat[],
+    outDir: options.out,
+    broll: Boolean(options.broll),
+    brollEngine: options.brollEngine,
+    brollMaxClips: Number(options.brollClips),
+    brollSeconds: Number(options.brollSeconds),
+    ttsBackend: options.tts,
+    voice: options.voice,
+    speed: options.speed !== undefined ? Number(options.speed) : undefined,
+    music: options.music,
+    resume: options.resume,
+    force: options.force?.split(",").map((s) => s.trim()) as ProductionStage[] | undefined,
+    stopAfter: options.stopAfter,
+    skipVerify: options.skipVerify,
+    bespoke: options.bespoke,
+    design: options.design,
+    designAgentTimeoutMs: Number(options.designTimeout) * 60_000,
+  };
+}
+
 program
   .command("film")
   .description(
@@ -201,7 +259,7 @@ program
   .option("--broll-seconds <n>", "length of each b-roll clip in seconds", "8")
   .option("--tts <backend>", "pin the speech synthesizer (kokoro, google, say, tone)")
   .option("--voice <voice>", "voice id for the chosen synthesizer")
-  .option("--speed <n>", "narration pace multiplier; below 1 slows delivery", "1")
+  .option("--speed <n>", "narration pace multiplier; below 1 slows delivery")
   .option("--music <src>", "background music filename inside public/")
   .option("--no-resume", "ignore cached stage results and run everything again")
   .option("--force <stages>", "comma-separated stages to re-run even when resuming")
@@ -211,62 +269,14 @@ program
   .option("--no-bespoke", "alias for --design templates")
   .option("--design-timeout <minutes>", "how long to wait for the connected agent's design", "20")
   .action(
-    async (options: {
-      script?: string;
-      scriptFile?: string;
-      title?: string;
-      slug?: string;
-      formats: string;
-      out: string;
-      broll?: boolean;
-      brollEngine: string;
-      brollClips: string;
-      brollSeconds: string;
-      tts?: TtsBackendName;
-      voice?: string;
-      speed: string;
-      music?: string;
-      resume: boolean;
-      force?: string;
-      stopAfter?: ProductionStage;
-      skipVerify?: boolean;
-      bespoke?: boolean;
-      design: DesignMode;
-      designTimeout: string;
-    }) => {
+    async (options: FilmCliOptions) => {
       const script = options.scriptFile
         ? await fs.readFile(path.resolve(ROOT, options.scriptFile), "utf-8")
         : options.script;
       if (!script) throw new Error("pass either --script or --script-file");
 
-      const title =
-        options.title ??
-        script.match(/^#\s+(.+)$/m)?.[1]?.trim() ??
-        "Untitled Aideos Film";
-
       const result = await runProduction(
-        {
-          script,
-          title,
-          slug: options.slug,
-          formats: options.formats.split(",").map((f) => f.trim()).filter(Boolean) as ProductionFormat[],
-          outDir: options.out,
-          broll: Boolean(options.broll),
-          brollEngine: options.brollEngine,
-          brollMaxClips: Number(options.brollClips),
-          brollSeconds: Number(options.brollSeconds),
-          ttsBackend: options.tts,
-          voice: options.voice,
-          speed: Number(options.speed),
-          music: options.music,
-          resume: options.resume,
-          force: options.force?.split(",").map((s) => s.trim()) as ProductionStage[] | undefined,
-          stopAfter: options.stopAfter,
-          skipVerify: options.skipVerify,
-          bespoke: options.bespoke,
-          design: options.design,
-          designAgentTimeoutMs: Number(options.designTimeout) * 60_000,
-        },
+        buildFilmProductionRequest(script, options),
         (event) => console.log(formatProgress(event)),
       );
 
@@ -298,6 +308,59 @@ program
     },
   );
 
+export interface DirectCliOptions {
+  title?: string;
+  slug?: string;
+  formats: string;
+  out: string;
+  broll?: boolean;
+  brollEngine: string;
+  brollClips: string;
+  brollSeconds: string;
+  tts?: TtsBackendName;
+  voice?: string;
+  speed?: string;
+  music?: string;
+  maxAttempts: string;
+  resume: boolean;
+  force?: string;
+  stopAfter?: ProductionStage;
+  skipVerify?: boolean;
+  bespoke?: boolean;
+  design: DesignMode;
+  designTimeout: string;
+}
+
+// Builds the director request from creative prompt and CLI options.
+export function buildDirectorRequest(
+  prompt: string,
+  options: DirectCliOptions,
+): DirectorRequest {
+  return {
+    prompt,
+    title: options.title,
+    slug: options.slug,
+    formats: options.formats.split(",").map((f) => f.trim()).filter(Boolean) as ProductionFormat[],
+    outDir: options.out,
+    broll: Boolean(options.broll),
+    brollEngine: options.brollEngine,
+    brollMaxClips: Number(options.brollClips),
+    brollSeconds: Number(options.brollSeconds),
+    ttsBackend: options.tts,
+    voice: options.voice,
+    speed: options.speed !== undefined ? Number(options.speed) : undefined,
+    music: options.music,
+    maxAttempts: Number(options.maxAttempts),
+    resume: options.resume,
+    force: options.force?.split(",").map((s) => s.trim()) as ProductionStage[] | undefined,
+    stopAfter: options.stopAfter,
+    skipVerify: options.skipVerify,
+    bespoke: options.bespoke,
+    design: options.design,
+    designAgentTimeoutMs: Number(options.designTimeout) * 60_000,
+  };
+}
+
 program
   .command("direct")
   .description(
@@ -314,7 +377,7 @@ program
   .option("--broll-seconds <n>", "length of each b-roll clip in seconds", "8")
   .option("--tts <backend>", "pin the speech synthesizer (kokoro, google, say, tone)")
   .option("--voice <voice>", "voice id for the chosen synthesizer")
-  .option("--speed <n>", "narration pace multiplier; below 1 slows delivery", "1")
+  .option("--speed <n>", "narration pace multiplier; below 1 slows delivery")
   .option("--music <src>", "background music filename inside public/")
   .option("--max-attempts <n>", "how many screenplay drafts the director may attempt", "3")
   .option("--no-resume", "ignore cached stage results and run everything again")
@@ -327,53 +390,10 @@ program
   .action(
     async (
       prompt: string,
-      options: {
-        title?: string;
-        slug?: string;
-        formats: string;
-        out: string;
-        broll?: boolean;
-        brollEngine: string;
-        brollClips: string;
-        brollSeconds: string;
-        tts?: TtsBackendName;
-        voice?: string;
-        speed: string;
-        music?: string;
-        maxAttempts: string;
-        resume: boolean;
-        force?: string;
-        stopAfter?: ProductionStage;
-        skipVerify?: boolean;
-        bespoke?: boolean;
-        design: DesignMode;
-        designTimeout: string;
-      },
+      options: DirectCliOptions,
     ) => {
       const result = await runDirector(
-        {
-          prompt,
-          title: options.title,
-          slug: options.slug,
-          formats: options.formats.split(",").map((f) => f.trim()).filter(Boolean) as ProductionFormat[],
-          outDir: options.out,
-          broll: Boolean(options.broll),
-          brollEngine: options.brollEngine,
-          brollMaxClips: Number(options.brollClips),
-          brollSeconds: Number(options.brollSeconds),
-          ttsBackend: options.tts,
-          voice: options.voice,
-          speed: Number(options.speed),
-          music: options.music,
-          maxAttempts: Number(options.maxAttempts),
-          resume: options.resume,
-          force: options.force?.split(",").map((s) => s.trim()) as ProductionStage[] | undefined,
-          stopAfter: options.stopAfter,
-          skipVerify: options.skipVerify,
-          bespoke: options.bespoke,
-          design: options.design,
-          designAgentTimeoutMs: Number(options.designTimeout) * 60_000,
-        },
+        buildDirectorRequest(prompt, options),
         (event) => console.log(formatProgress(event)),
       );
 
@@ -507,7 +527,7 @@ program
   .command("design-build")
   .description("Compile videos/<film>/design/design.json into the film; writes it only when the design check passes")
   .argument("<film>", "film id under videos/")
-  .option("--source <who>", "who made the design: agent, server-model or hand-built", "agent")
+  .option("--source <who>", "who made the design: agent, server-model or hand-built", "hand-built")
   .action(async (film: string, options: { source: string }) => {
     const { buildDesign, formatBuildStatus } = await import("./designSpec/build");
     const source = options.source as "agent" | "server-model" | "hand-built";
@@ -631,9 +651,16 @@ program
 
 registerAllCheckCommands(program);
 
-// parseAsync, so a rejected action surfaces as a one-line CLI error rather than
-// an unhandled rejection with a raw stack trace, and exits non-zero.
-program.parseAsync(rewriteAllCheckArgv(process.argv)).catch((err: unknown) => {
-  console.error(err instanceof Error ? err.message : String(err));
-  process.exit(1);
-});
+export { program };
+
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === path.resolve(__filename)
+) {
+  // parseAsync, so a rejected action surfaces as a one-line CLI error rather than
+  // an unhandled rejection with a raw stack trace, and exits non-zero.
+  program.parseAsync(rewriteAllCheckArgv(process.argv)).catch((err: unknown) => {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  });
+}

@@ -7,8 +7,8 @@
  * ever sees text, is the final judge: it rules on each frame (Match, WrongData, LayoutDefect,
  * Unreadable) and rates each suggestion (accept, accept-with-change, reject). A film is only ever
  * written by a passing design build (design check plus honesty check), never by this module; a
- * failed sample is returned with its exact error so synthesis can repair it. With no agent
- * connected, or under the Node test runner, the agent round is skipped and Jev judges the text alone.
+ * failed sample is returned with its exact error so synthesis can repair it. When image reviews
+ * and embeddings are absent, the vision judge skips cleanly without evaluating text alone.
  * Inputs and outputs: film slug, scene definition, and narration -> visual critique findings and repaired scene.
  * Used by: backend/designSpec/designer.ts.
  */
@@ -121,7 +121,6 @@ async function agentRound(
     ...(options.ownerKey ? { ownerKey: options.ownerKey } : {}),
   });
   if (!reachedAgent(dispatch)) {
-    options.onProgress?.("no coding agent is connected; judging from the text alone");
     return { round: "no-agent", reviews: [] };
   }
   options.onProgress?.(`frame review sent to the coding agent (${dispatch.channels.join(", ")}); waiting for its report`);
@@ -165,10 +164,21 @@ export async function judgeFilm(filmId: string, options: JudgeOptions = {}, inst
     return empty(err instanceof Error ? err.message : String(err));
   }
   writeManifest(filmId, samples, stride);
-  options.onProgress?.(`rendered ${samples.length} review stills (every ${stride} frames)`);
 
   const filmBefore = JSON.stringify(before);
   const { round, reviews } = await agentRound(filmId, samples, stride, options, instruction);
+  if (reviews.length === 0 && !options.embed) {
+    const reason =
+      round === "timed-out"
+        ? "the coding agent did not report on the frames in time"
+        : round === "no-agent"
+          ? "no image-capable agent is connected"
+          : "agent review was skipped and no image embedder was provided";
+    const message = `vision judge skipped: ${reason}`;
+    options.onProgress?.(message);
+    return empty(reason);
+  }
+  options.onProgress?.(`rendered ${samples.length} review stills (every ${stride} frames)`);
   // The agent repairs in the same round, so what it looked at may have changed: restill the final film.
   const after = readFilm(filmId);
   if (round === "reported" && after && JSON.stringify(after) !== filmBefore) {
