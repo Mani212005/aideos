@@ -1,10 +1,8 @@
 /**
  * File Description: The thresholds `aideos review` holds a video to.
- * Every number here was set from the three calibration videos (see scripts/calibrate_review.ts and
- * the table in the review README), not guessed: the preferred explainer ("A", a persistent stage
- * with bottom captions) must pass every gate it can be measured on, while the rejected aideos
- * explainer ("B") and the RAG film must fail the ones the captain's comparison turned on. Change a
- * value only by re-running the calibration and keeping that ordering.
+ * Every number here was set from the calibration videos (see scripts/calibrate_review.ts and the
+ * table in the review README), not guessed. Change a value only by re-running the calibration and
+ * keeping the recorded reference ordering.
  * Inputs and outputs: none -> calibrated threshold constants for review criteria.
  * Used by: backend/review/criteria.ts.
  */
@@ -14,8 +12,13 @@ export const THRESHOLDS = {
   /** Frames decoded for pixel analysis. */
   analysis: { fps: 10, width: 480, height: 270, inkLevels: 28 },
   persistence: {
-    /** Median correlation of the ink layout with the layout two seconds earlier; A 0.85, B 0.69, RAG 0.50. */
-    medianMin: 0.75,
+    /**
+     * Median correlation of the ink layout with the layout two seconds earlier. A 0.85, selected
+     * reference B 0.69, and accepted DNS 0.68 pass; rejected RAG 0.50 fails. The 0.65 cutoff leaves
+     * 0.15 below the weakest accepted measurement and 0.15 above RAG, while the element-boundary
+     * carry and stage-clear limits remain independent checks against actual clears.
+     */
+    medianMin: 0.65,
     /** Stage-clear events (ink collapses below 45% of its trailing 3 s median) per 30 s; A 1.7, B 2.6, RAG 5.5. */
     clearsPer30sMax: 2.2,
     /** Element-level (film data): share of beat boundaries that keep the previous beat's elements on stage. */

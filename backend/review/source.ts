@@ -92,17 +92,22 @@ const FRAME = { width: 1920, height: 1080 };
 function sceneCameraMoves(scene: Scene, fps: number): CameraFacts {
   const raw = (scene as unknown as { camera?: unknown }).camera;
   const keys = (Array.isArray(raw) ? raw : (raw as { keys?: unknown; keyframes?: unknown } | undefined)?.keys ?? (raw as { keyframes?: unknown } | undefined)?.keyframes) as
-    | Array<{ frame: number; x?: number; y?: number; cx?: number; cy?: number; zoom?: number; scale?: number }>
+    | Array<{ frame: number; center?: { x?: number; y?: number }; x?: number; y?: number; cx?: number; cy?: number; zoom?: number; scale?: number }>
     | undefined;
   if (!Array.isArray(keys) || keys.length < 2) return { available: false, kind: "none", moves: [], driftOnly: 0, maxSpeed: 0 };
-  const windowWidth = FRAME.width;
+  const sceneWidth = (scene as { sceneSize?: { w?: unknown } }).sceneSize?.w;
+  const windowWidth = typeof sceneWidth === "number" && sceneWidth > 0 ? sceneWidth : FRAME.width;
   const moves: CameraMove[] = [];
   let driftOnly = 0;
   for (let i = 1; i < keys.length; i++) {
     const a = keys[i - 1];
     const b = keys[i];
-    const dx = (b.x ?? b.cx ?? 0) - (a.x ?? a.cx ?? 0);
-    const dy = (b.y ?? b.cy ?? 0) - (a.y ?? a.cy ?? 0);
+    const ax = a.center?.x ?? a.x ?? a.cx ?? 0;
+    const ay = a.center?.y ?? a.y ?? a.cy ?? 0;
+    const bx = b.center?.x ?? b.x ?? b.cx ?? 0;
+    const by = b.center?.y ?? b.y ?? b.cy ?? 0;
+    const dx = bx - ax;
+    const dy = by - ay;
     const shiftWidth = Math.hypot(dx, dy) / windowWidth;
     const za = a.zoom ?? a.scale ?? 1;
     const zb = b.zoom ?? b.scale ?? 1;
@@ -303,7 +308,9 @@ export function readFilmFacts(film: Film): FilmFacts {
       ], startFrame, endFrame).filter((frame) => frame >= startFrame && frame < endFrame).map((frame) => ({ castId: actor.instanceId, startSec: frame / fps })));
       return { id: shot.id, startSec, endSec, stage: shot.stage, visibleAtStart, visibleAtEnd, motions: [...motions, ...actorMotions] };
     });
-    const cameraKeyframes = scene.camera?.keyframes.map((keyframe) => keyframe.frame / fps) ?? [];
+    const rawCam = scene.camera as { keys?: unknown; keyframes?: unknown } | unknown[] | undefined;
+    const keyList = (Array.isArray(rawCam) ? rawCam : rawCam?.keyframes ?? rawCam?.keys) as Array<{ frame: number }> | undefined;
+    const cameraKeyframes = Array.isArray(keyList) ? keyList.map((keyframe) => keyframe.frame / fps) : [];
     return { filmId: film.id, kind: "scene", durationSec: total, fps, shotBoundaries, shotDurations: durations, camera: sceneCameraMoves(scene, fps), boundaries: carry, clipStarts, nodeOverlaps: [], voiceoverSec, planShots, cameraKeyframes };
   }
   const { camera, starts, durations: timedDurations } = nodeGraphCamera(film, voiceoverSec);

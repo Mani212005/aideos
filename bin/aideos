@@ -55,6 +55,10 @@ if [ "$#" -gt 0 ]; then
       # Exits 1 when a gate of the good-video rubric fails, 2 when the review could not run.
       cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts review "$@"
       ;;
+    gemini-review)
+      # gemini-review --json must keep npm lifecycle banners off stdout.
+      cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts gemini-review "$@"
+      ;;
     all-check)
       # aideos all-check <slug> [--reference <mp4>] [--rounds <n>] [--target <score>] [--agent claude|agy] [--model <id>] [--allow-forbidden-model] [--wait]
       # Runs the whole video check (render long and reel, measured and Gemini review, fix, repeat) in a
@@ -125,7 +129,7 @@ if [ "$#" -gt 0 ]; then
       cd "$AIDEOS_DIR" && npm run lint "$@"
       exit 0
       ;;
-    produce|engine-test|film|direct|mcp|gemini-review)
+    produce|engine-test|film|direct|mcp)
       cd "$AIDEOS_DIR" && npm run backend -- "$CMD" "$@"
       exit 0
       ;;
