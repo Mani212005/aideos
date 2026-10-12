@@ -207,6 +207,7 @@ SCORING AND VERDICT RULES:
    - Otherwise, the verdict is "REVISE". Be strict, objective, and decisive.
 4. Provide prioritized, constructive, and concrete feedback in "feedback":
    - For each issue, specify priority ("high", "medium", "low"), approximate timestamp, the specific issue observed, and the concrete recommended action for the AI animator/agent.
+LOOK PLAN CHECK (unscored): If the deterministic facts include a LOOK PLAN SHOTS strip, compare each listed shot's planned treatment, carried objects, and cue with what you see. Ask: "For each listed shot, does the video show what the plan says carries the beat? Cite timestamps for every mismatch." Put each observed mismatch in feedback with a timestamp. Do not add a criterion or change any of the 12 criterion scores or the verdict based on the plan.
 ${factsNote}${deterministicNote}${reAskNote}
 Return ONLY valid JSON matching this schema:
 {
