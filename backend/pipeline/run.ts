@@ -19,6 +19,7 @@ import fsp from "fs/promises";
 import path from "path";
 import type { Film } from "../../src/dl/schema";
 import { ensureRetimedAudio, produceAudioPipeline, type ProduceAudioResult } from "../audio";
+import { DEFAULT_KOKORO_SPEED } from "../tts";
 import { hasScreenplayTags, parseClaudeScript } from "../scriptIntake";
 import { createEngine } from "../engine";
 import { traceBus } from "../agentBridge";
@@ -367,7 +368,7 @@ export async function runProduction(
     if (shouldStop("intake")) return buildResult("intake");
 
     // ---- narrate: synthesize the voiceover and derive the timing spine -----------------------
-    const narrationFingerprint = fingerprint(script, request.ttsBackend ?? "auto", request.voice ?? "default", request.speed ?? 1);
+    const narrationFingerprint = fingerprint(script, request.ttsBackend ?? "auto", request.voice ?? "default", request.speed ?? DEFAULT_KOKORO_SPEED);
     const narrationCachePath = path.join(pkgDir, "narration.json");
 
     const narration = await runStage<ProduceAudioResult>(

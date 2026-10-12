@@ -1,7 +1,7 @@
 /**
  * File Description: Audio-first narration pipeline. Splits a script into shot-scoped segments,
  * synthesizes each through a pluggable TTS backend, assembles the result in the sample domain
- * (trim, fade, exact-offset concatenation, peak normalization), and emits voiceover.wav,
+ * (trim, fade, exact-offset concatenation, loudness and peak normalization), and emits voiceover.wav,
  * captions.vtt, voiceover_words.json and the shot duration spine the film timeline is locked to.
  * Inputs and outputs: screenplay text and audio options -> voiceover.wav, captions.vtt, voiceover_words.json, and shot duration spine.
  * Used by: backend/pipeline/run.ts, backend/cli.ts, editor/vite.config.ts.
@@ -89,6 +89,18 @@ export interface ProduceAudioOptions {
    * are resolved directly from videos/<slug>/ via the public/videos symlink).
    */
   syncToPreview?: boolean;
+}
+
+/** Loudness target inside the measured review window, with safe true-peak headroom. */
+export const NARRATION_LOUDNESS_TARGET = { integratedLufs: -16, truePeakDb: -1 } as const;
+
+/** Normalizes a narration WAV to the review loudness target without changing its duration. */
+export function normalizeNarrationLoudness(inputPath: string, outputPath: string): void {
+  execFileSync("ffmpeg", [
+    "-hide_banner", "-loglevel", "error", "-y", "-i", inputPath,
+    "-af", `loudnorm=I=${NARRATION_LOUDNESS_TARGET.integratedLufs}:TP=${NARRATION_LOUDNESS_TARGET.truePeakDb}:LRA=11`,
+    "-ar", String(PCM_SAMPLE_RATE), "-ac", "1", "-c:a", "pcm_s16le", outputPath,
+  ], { stdio: "pipe" });
 }
 
 /** Shots shorter than the schema's floor get merged into their neighbour. */
@@ -330,6 +342,13 @@ export async function produceAudioPipeline(
 
   const voiceoverPath = path.join(outDir, "voiceover.wav");
   await fs.writeFile(voiceoverPath, encodeWav(normalized, assembled.sampleRate));
+  const normalizedVoiceoverPath = `${voiceoverPath}.loudnorm.wav`;
+  try {
+    normalizeNarrationLoudness(voiceoverPath, normalizedVoiceoverPath);
+    await fs.rename(normalizedVoiceoverPath, voiceoverPath);
+  } finally {
+    await fs.rm(normalizedVoiceoverPath, { force: true });
+  }
 
   // Shot durations run boundary to boundary so every shot starts exactly where its narration
   // does, and the final shot absorbs the tail. Summing them reproduces the audio length exactly.

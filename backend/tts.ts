@@ -16,6 +16,9 @@ import path from "path";
 /** The one sample rate every backend normalizes to before assembly. Kokoro's native rate. */
 export const PCM_SAMPLE_RATE = 24000;
 
+/** Kokoro default chosen to keep explainer narration within the measured pacing limit. */
+export const DEFAULT_KOKORO_SPEED = 0.75;
+
 /** A synthesis backend: text in, mono Float32 PCM at PCM_SAMPLE_RATE out. */
 export interface TtsBackend {
   name: string;
@@ -265,7 +268,7 @@ export async function createTtsBackend(options?: {
   const requested = (options?.backend ?? (process.env.AIDEOS_TTS as TtsBackendName | undefined)) || undefined;
   const voice = options?.voice ?? process.env.AIDEOS_TTS_VOICE ?? "af_heart";
   const envSpeed = Number(process.env.AIDEOS_TTS_SPEED);
-  const requestedSpeed = options?.speed ?? (Number.isFinite(envSpeed) && envSpeed > 0 ? envSpeed : 1);
+  const requestedSpeed = options?.speed ?? (Number.isFinite(envSpeed) && envSpeed > 0 ? envSpeed : DEFAULT_KOKORO_SPEED);
   const speed = Math.min(2, Math.max(0.5, requestedSpeed));
 
   if (requested === "tone") return createToneBackend();

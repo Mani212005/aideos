@@ -507,7 +507,7 @@ program
   .command("design-build")
   .description("Compile videos/<film>/design/design.json into the film; writes it only when the design check passes")
   .argument("<film>", "film id under videos/")
-  .option("--source <who>", "who made the design: agent, server-model or hand-built", "agent")
+  .option("--source <who>", "who made the design: agent, server-model or hand-built", "hand-built")
   .action(async (film: string, options: { source: string }) => {
     const { buildDesign, formatBuildStatus } = await import("./designSpec/build");
     const source = options.source as "agent" | "server-model" | "hand-built";

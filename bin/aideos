@@ -1,11 +1,23 @@
 #!/usr/bin/env bash
-# File Description: Global CLI launcher for Aideos. Running 'aideos' starts the interactive
-# visual studio on localhost:3001, opens the browser, connects the AI coding agent in tmux,
-# and activates the bi-directional Auto-Prompter.
+# File Description: Aideos command dispatcher and interactive Studio launcher.
 # Inputs and outputs: command-line arguments -> runs the studio, a render, a review or a CLI command.
 # Used by: the `bin` field of package.json (entry point on the user's PATH).
 
 set -e
+
+# Reject unknown commands before resolving a checkout or touching Studio state.
+if [ "$#" -gt 0 ]; then
+  case "$1" in
+    exit|stop|down|kill|validate|review|all-check|connect|design|look|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|help|--help|-h)
+      ;;
+    *)
+      echo "Error: unknown aideos command '$1'." >&2
+      echo "Commands: exit (stop/down/kill), validate, review, all-check, connect, design, look, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, help" >&2
+      echo "Run 'aideos help' for usage." >&2
+      exit 2
+      ;;
+  esac
+fi
 
 # Detect Aideos project directory: check current directory first, then default repo path
 AIDEOS_DIR=""
@@ -155,11 +167,10 @@ if [ "$#" -gt 0 ]; then
       exit 0
       ;;
     *)
-      # Any other subcommand is a backend CLI command (e.g. mcp, or one added later);
-      # forward it rather than silently falling through to the interactive launcher below,
-      # which would otherwise swallow the command and start the Studio dev server instead.
-      cd "$AIDEOS_DIR" && npm run backend -- "$CMD" "$@"
-      exit 0
+      echo "Error: unknown aideos command '$CMD'." >&2
+      echo "Commands: exit (stop/down/kill), validate, review, all-check, connect, design, look, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, help" >&2
+      echo "Run 'aideos help' for usage." >&2
+      exit 2
       ;;
   esac
 fi

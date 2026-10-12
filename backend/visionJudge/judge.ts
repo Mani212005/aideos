@@ -121,7 +121,6 @@ async function agentRound(
     ...(options.ownerKey ? { ownerKey: options.ownerKey } : {}),
   });
   if (!reachedAgent(dispatch)) {
-    options.onProgress?.("no coding agent is connected; judging from the text alone");
     return { round: "no-agent", reviews: [] };
   }
   options.onProgress?.(`frame review sent to the coding agent (${dispatch.channels.join(", ")}); waiting for its report`);
@@ -165,10 +164,15 @@ export async function judgeFilm(filmId: string, options: JudgeOptions = {}, inst
     return empty(err instanceof Error ? err.message : String(err));
   }
   writeManifest(filmId, samples, stride);
-  options.onProgress?.(`rendered ${samples.length} review stills (every ${stride} frames)`);
 
   const filmBefore = JSON.stringify(before);
   const { round, reviews } = await agentRound(filmId, samples, stride, options, instruction);
+  if (round === "no-agent") {
+    const message = "vision judge skipped: no image-capable agent is connected";
+    options.onProgress?.(message);
+    return empty("no image-capable agent is connected");
+  }
+  options.onProgress?.(`rendered ${samples.length} review stills (every ${stride} frames)`);
   // The agent repairs in the same round, so what it looked at may have changed: restill the final film.
   const after = readFilm(filmId);
   if (round === "reported" && after && JSON.stringify(after) !== filmBefore) {

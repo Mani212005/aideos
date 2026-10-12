@@ -8,6 +8,7 @@
  */
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
@@ -105,6 +106,26 @@ test("Designer: server failure stops for design and never falls through to templ
     assert.equal(calls, 2);
     assert.equal(outcome.source, "needs_design");
     assert.notEqual(readFilm(ID)?.design?.source, "templates");
+  } finally {
+    cleanup();
+  }
+});
+
+// Manual design builds must record hand-built provenance unless the caller names another source.
+test("Designer CLI: design build defaults its source to hand-built", () => {
+  freshPackage();
+  try {
+    fs.copyFileSync(path.join(DEMO, "design/design.json"), path.join(PKG, "design/design.json"));
+    fs.cpSync(path.join(DEMO, "visuals"), path.join(PKG, "visuals"), { recursive: true });
+    const result = spawnSync(process.execPath, ["--import", "tsx", "backend/cli.ts", "design-build", ID], {
+      cwd: ROOT,
+      env: { ...process.env, AIDEOS_VIDEOS_DIR: TEST_VIDEOS_DIR },
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    const status = JSON.parse(fs.readFileSync(path.join(PKG, "design/status.json"), "utf8"));
+    assert.equal(status.source, "hand-built");
+    assert.match(result.stdout, new RegExp(`PASS design build ${ID} \\(hand-built\\)`));
   } finally {
     cleanup();
   }

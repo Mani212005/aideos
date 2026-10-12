@@ -288,13 +288,20 @@ test("Judge: the agent's critique and scores reach Jev, and a failed frame carri
   }
 });
 
-test("Judge: with no agent connected the round degrades to the text fallback", async () => {
+// A text-only Jev response cannot review pixels and must not create null-score verdict artifacts.
+test("Judge: with no image-capable agent the vision pass skips cleanly", async () => {
   freshPackage();
   try {
+    const progress: string[] = [];
     const dispatch = async () => ({ ok: true, taskId: "t", channels: ["mcp_queue", "file_inbox"], prompt: "", fallbackScheduled: false, fallbackTimeoutMs: 0, message: "" }) as any;
-    const result = await judgeFilm(ID, { skipAgent: false, dispatch, renderStill: fakeRender, maxSamples: 2, jevOptions: { apiKey: "" } });
-    assert.equal(result.agentRound, "no-agent");
+    const result = await judgeFilm(ID, { skipAgent: false, dispatch, renderStill: fakeRender, maxSamples: 2, onProgress: (line) => progress.push(line), jevOptions: { apiKey: "" } });
+    assert.equal(result.agentRound, "skipped");
+    assert.match(result.skipped ?? "", /no image-capable agent/);
+    assert.equal(result.samples.length, 0);
     assert.equal(result.passed, true);
+    assert.deepEqual(progress, ["vision judge skipped: no image-capable agent is connected"]);
+    assert.equal(fs.existsSync(path.join(PKG, "design/judge/embedding-log.jsonl")), false);
+    assert.equal(fs.existsSync(path.join(PKG, "design/judge/verdicts.json")), false);
   } finally {
     cleanup();
   }

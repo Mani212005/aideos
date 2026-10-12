@@ -44,12 +44,16 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 | `design`   | Compiles treatments from the accepted look and builds a checked scene design | `design/BRIEF.md`, `base-film.json`, `status.json`, `film.json` and its shadow |
 | `broll`    | Renders GPU footage for the flagged shots and fetches the clips                       | `videos/<slug>/footage/<shotId>.mp4`                |
 | `assemble` | Wires each clip into its shot as a full-screen inset                                 | `film.json` and its `src/dl/films/<slug>.ts` shadow |
-| `render`   | Installs the film as active and drives Remotion for each requested format            | `src/dl/activeFilm.ts`, `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` |
+| `render`   | Installs the film as active and drives Remotion for each requested format            | `src/dl/activeFilm.ts`, `videos/<slug>/renders/<format>.mp4` by default |
 | `verify`   | Probes the rendered files and writes contact sheets across the whole duration         | `videos/<slug>/review/<format>-sheet.jpg`          |
 
 Progress arrives through the second argument to `runProduction`: one `ProductionProgress` per
 event, carrying the stage, its status, a human-readable message, an optional 0..1 fraction within
 the stage, and milliseconds since the run began.
+
+Rendered paths are returned in `result.outputs`. By default they are written inside the video
+package at `videos/<slug>/renders/<format>.mp4`. When `ProductionRequest.outDir` is set, each file
+is written as `<outDir>/<slug>-<format>.mp4` instead.
 
 A failure throws a `ProductionError` whose `stage` field names where it happened, so a caller
 never has to guess which part of the chain broke. An authoring stop returns a result instead:

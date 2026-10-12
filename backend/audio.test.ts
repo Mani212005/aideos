@@ -8,6 +8,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs/promises";
 import fsSync from "fs";
+import os from "os";
 import path from "path";
 import dotenv from "dotenv";
 dotenv.config({ quiet: true });
@@ -22,9 +23,13 @@ import {
   ensureRetimedAudio,
   buildAtempoFilter,
   resolveAudioSourcePath,
+  normalizeNarrationLoudness,
+  NARRATION_LOUDNESS_TARGET,
 } from "./audio";
+import { DEFAULT_KOKORO_SPEED } from "./tts";
+import { measureLoudness } from "./review/media";
 import { getRetimedAudioFilename, getRetimedAudioRelPath } from "../src/dl/audio/retime";
-import { encodeWav } from "./pcm";
+import { decodeWav, encodeWav } from "./pcm";
 
 const fixtureDir = path.resolve(process.cwd(), "test_fixtures");
 const testAudioPath = path.join(fixtureDir, "test_audio.wav");
@@ -171,6 +176,24 @@ test("buildAtempoFilter builds valid single and chained atempo filters", () => {
   assert.equal(buildAtempoFilter(0.4), "atempo=0.5,atempo=0.8000");
   assert.throws(() => buildAtempoFilter(0), /Invalid speed/);
   assert.throws(() => buildAtempoFilter(-1), /Invalid speed/);
+});
+
+// Checks loudness normalization and the Kokoro default on a short WAV, without synthesizing or rendering a film.
+test("narration normalization reaches the review LUFS window and preserves duration", async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "aideos-loudness-test-"));
+  const outputPath = path.join(tmpDir, "normalized.wav");
+  try {
+    normalizeNarrationLoudness(testAudioPath, outputPath);
+    const measured = measureLoudness(outputPath);
+    assert.ok(measured, "the normalized fixture must have measurable audio");
+    assert.ok(measured.integratedLufs >= -18 && measured.integratedLufs <= -14, `LUFS ${measured.integratedLufs} outside review window`);
+    assert.ok(measured.truePeakDb <= NARRATION_LOUDNESS_TARGET.truePeakDb + 0.2, `true peak ${measured.truePeakDb} exceeds target`);
+    const normalizedWav = decodeWav(await fs.readFile(outputPath));
+    assert.equal(normalizedWav.samples.length / normalizedWav.sampleRate, 2);
+    assert.equal(DEFAULT_KOKORO_SPEED, 0.75);
+  } finally {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  }
 });
 
 test("resolveAudioSourcePath resolves files across packages and public directories", () => {
