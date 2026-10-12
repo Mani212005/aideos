@@ -1,11 +1,11 @@
 /**
  * File Description: Local calibration of `aideos review` against the three reference videos.
  * Reads the paths from environment variables (the videos are the captain's and are never committed):
- * AIDEOS_CALIBRATION_A (the preferred explainer), AIDEOS_CALIBRATION_B (the rejected aideos
+ * AIDEOS_CALIBRATION_A (the preferred explainer), AIDEOS_CALIBRATION_B (the selected comparison
  * explainer) and AIDEOS_CALIBRATION_RAG (the RAG film), plus optional AIDEOS_CALIBRATION_A_WORDS,
  * AIDEOS_CALIBRATION_B_FILM and AIDEOS_CALIBRATION_B_WORDS. Prints the measured table and exits 1
  * unless the tool still reproduces A > B > RAG on stage persistence, A above both on captions, A
- * passing every gate it can be measured on, and B and RAG failing the gates the comparison turned on.
+ * passing every gate it can be measured on, and B and RAG failing their documented comparison gates.
  * Re-run it after changing any threshold in backend/review/thresholds.ts.
  * Inputs and outputs: environment variable video paths -> prints calibration metrics and exit code.
  * Used by: npm run calibrate:review.
@@ -65,7 +65,7 @@ async function main(): Promise<void> {
     ["stage clears per 30 s A < B < RAG", metric(a, "persistent-stage", "stageClearsPer30s") < metric(b, "persistent-stage", "stageClearsPer30s") && metric(b, "persistent-stage", "stageClearsPer30s") < metric(rag, "persistent-stage", "stageClearsPer30s")],
     ["caption coverage A above B and RAG", metric(a, "captions", "coverage") > Math.max(metric(b, "captions", "coverage"), metric(rag, "captions", "coverage"))],
     ["A passes every measurable gate", a.passed],
-    ["B fails the persistence and captions gates", b.gateFailures.includes("persistent-stage") && b.gateFailures.includes("captions")],
+    ["B fails the captions and readability gates", b.gateFailures.includes("captions") && b.gateFailures.includes("readability")],
     ["RAG fails the persistence and captions gates", rag.gateFailures.includes("persistent-stage") && rag.gateFailures.includes("captions")],
   ];
   for (const [name, ok] of checks) console.log(`${ok ? "ok  " : "FAIL"} ${name}`);

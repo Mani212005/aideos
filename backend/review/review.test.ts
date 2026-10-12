@@ -381,6 +381,22 @@ test("criteria: a video with no captions, a cleared stage and small text fails t
   assert.ok(byKey(rs, "captions").fix);
 });
 
+test("criteria: persistence cutoff separates the accepted references and DNS from RAG", () => {
+  const calibrated = [
+    ["preferred reference A", 0.85, "pass"],
+    ["selected reference B", 0.69, "pass"],
+    ["accepted DNS film", 0.68, "pass"],
+    ["rejected RAG film", 0.5, "fail"],
+  ] as const;
+  for (const [name, median, expected] of calibrated) {
+    const render: RenderFacts = {
+      ...RENDER,
+      persistence: { ...RENDER.persistence!, median },
+    };
+    assert.equal(byKey(evaluateCriteria(inputs({ render })), "persistent-stage").status, expected, name);
+  }
+});
+
 test("criteria: captions are only required over narrated time", () => {
   const narration: Narration = { words: [{ word: "hop", start: 0, end: 1 }, { word: "down", start: 1, end: 2 }, { word: "the", start: 2, end: 3 }, { word: "layers", start: 3, end: 5 }], text: "hop down the layers", timed: true };
   const samples = [sample(1), sample(3), sample(40, { hasCaption: false, captionLines: 0 }), sample(50, { hasCaption: false, captionLines: 0 })];

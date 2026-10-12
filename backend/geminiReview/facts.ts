@@ -11,6 +11,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { DeterministicVideoFacts } from "./types";
+import { THRESHOLDS } from "../review/thresholds";
 
 export interface FactsOptions {
   sampleCount?: number;
@@ -304,6 +305,31 @@ export function inspectCamera(
 
       if (film.camera && Array.isArray(film.camera.moves)) {
         moves = Math.max(moves, film.camera.moves.length);
+      }
+
+      const scene = film.scene as {
+        sceneSize?: { w?: unknown };
+        camera?: { keyframes?: Array<{ center?: { x?: unknown; y?: unknown }; zoom?: unknown }> };
+      } | undefined;
+      const keyframes = scene?.camera?.keyframes;
+      if (Array.isArray(keyframes) && keyframes.length > 1) {
+        const sceneWidth = scene?.sceneSize?.w;
+        const frameWidth = typeof sceneWidth === "number" && sceneWidth > 0 ? sceneWidth : 1920;
+        let sceneMoves = 0;
+        for (let i = 1; i < keyframes.length; i++) {
+          const from = keyframes[i - 1];
+          const to = keyframes[i];
+          const x1 = typeof from.center?.x === "number" ? from.center.x : 0;
+          const y1 = typeof from.center?.y === "number" ? from.center.y : 0;
+          const x2 = typeof to.center?.x === "number" ? to.center.x : 0;
+          const y2 = typeof to.center?.y === "number" ? to.center.y : 0;
+          const z1 = typeof from.zoom === "number" && from.zoom > 0 ? from.zoom : 1;
+          const z2 = typeof to.zoom === "number" && to.zoom > 0 ? to.zoom : 1;
+          const shiftWidth = Math.hypot(x2 - x1, y2 - y1) / frameWidth;
+          const zoomRatio = Math.max(z1 / z2, z2 / z1);
+          if (shiftWidth >= THRESHOLDS.camera.minShiftWidth || zoomRatio >= THRESHOLDS.camera.minZoomRatio) sceneMoves++;
+        }
+        moves = Math.max(moves, sceneMoves);
       }
 
       const hasMoves = moves >= neededMoves;

@@ -7,6 +7,7 @@
  */
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -134,6 +135,66 @@ test("facts: inspectCamera handles missing film.json without hardcoded path heur
   const nonExistent = inspectCamera("/path/to/nonexistent/film.json", 60);
   assert.equal(nonExistent.measured, false);
   assert.equal(nonExistent.moveCount, 0);
+});
+
+test("facts: inspectCamera counts meaningful scene.camera keyframe moves", () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-scene-camera-facts-"));
+  const filmPath = path.join(tmpDir, "film.json");
+  fs.writeFileSync(filmPath, JSON.stringify({
+    scene: {
+      sceneSize: { w: 1920, h: 1920 },
+      camera: {
+        keyframes: [
+          { frame: 0, center: { x: 960, y: 960 }, zoom: 1 },
+          { frame: 30, center: { x: 1100, y: 960 }, zoom: 1 },
+          { frame: 60, center: { x: 1100, y: 960 }, zoom: 1.1 },
+        ],
+      },
+    },
+  }));
+
+  try {
+    const result = inspectCamera(filmPath, 40);
+    assert.equal(result.measured, true);
+    assert.equal(result.moveCount, 2);
+    assert.equal(result.hasCameraMoves, true);
+    assert.match(result.summary, /2 camera moves verified/);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("CLI: gemini-review --json writes parseable JSON to stdout without npm banners", () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-gemini-json-cli-"));
+  const binDir = path.join(tmpDir, "bin");
+  const videoPath = path.join(tmpDir, "video.mp4");
+  const agyPath = path.join(binDir, "agy");
+  fs.mkdirSync(binDir);
+  fs.writeFileSync(videoPath, Buffer.alloc(512, 1));
+  const response = {
+    overallScore: 9.2,
+    verdict: "ACCEPT",
+    summary: "All gates pass.",
+    criteria: createMockCriteria(),
+    feedback: [],
+  };
+  const agyOutput = JSON.stringify({ status: "SUCCESS", response: JSON.stringify(response) });
+  fs.writeFileSync(agyPath, `#!/bin/sh\nprintf '%s\\n' '${agyOutput}'\n`, { mode: 0o755 });
+
+  try {
+    const result = spawnSync("bash", [path.join(process.cwd(), "bin/aideos"), "gemini-review", videoPath, "--no-facts", "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: { ...process.env, PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}` },
+      timeout: 30000,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stdout, /^> aideos/m);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.verdict, "ACCEPT");
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 });
 
 test("facts: measureBottomCaptions handles short duration safely", async () => {
