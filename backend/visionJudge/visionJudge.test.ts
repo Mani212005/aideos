@@ -224,18 +224,35 @@ test("AgentReview: a malformed review is refused and a stored one is only read w
   }
 });
 
-test("Judge: skipped agent round, text-only ruling, a per-frame embedding log and no film write", async () => {
+test("Judge: when agent review is skipped without an embedder the vision pass skips cleanly", async () => {
+  freshPackage();
+  try {
+    const progress: string[] = [];
+    const result = await judgeFilm(ID, { skipAgent: true, renderStill: fakeRender, maxSamples: 2, onProgress: (line) => progress.push(line), jevOptions: { apiKey: "" } });
+    assert.equal(result.agentRound, "skipped");
+    assert.match(result.skipped ?? "", /agent review was skipped/);
+    assert.equal(result.samples.length, 0);
+    assert.equal(result.passed, true);
+    assert.deepEqual(progress, ["vision judge skipped: agent review was skipped and no image embedder was provided"]);
+    assert.equal(fs.existsSync(path.join(PKG, "design/judge/embedding-log.jsonl")), false);
+    assert.equal(fs.existsSync(path.join(PKG, "design/judge/verdicts.json")), false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("Judge: with an injected embedder judging proceeds without an agent", async () => {
   freshPackage();
   try {
     const filmBefore = fs.readFileSync(path.join(PKG, "film.json"), "utf8");
     setMockFrameVerdictHandler((s) => ({ choice: "Match", confidence: 0.9, probabilities: {}, suggestions: (s.suggestions ?? []).map(() => ({ choice: "accept", confidence: 0.9 })) }));
-    const result = await judgeFilm(ID, { skipAgent: true, renderStill: fakeRender, maxSamples: 5, jevOptions: { apiKey: "" } });
+    const result = await judgeFilm(ID, { skipAgent: true, embed: () => 0.8, renderStill: fakeRender, maxSamples: 5, jevOptions: { apiKey: "" } });
     assert.equal(result.agentRound, "skipped");
     assert.equal(result.samples.length, 5);
     assert.equal(result.passed, true);
     const log = fs.readFileSync(path.join(PKG, "design/judge/embedding-log.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
     assert.equal(log.length, 5);
-    assert.ok(log.every((e) => e.threshold === 0.5 && e.score === null && e.source === "none"));
+    assert.ok(log.every((e) => e.threshold === 0.5 && e.score === 0.8 && e.source === "injected"));
     assert.equal(fs.readFileSync(path.join(PKG, "film.json"), "utf8"), filmBefore);
     assert.ok(fs.existsSync(path.join(PKG, "design/judge/verdicts.json")));
     assert.ok(fs.existsSync(path.join(PKG, "design/judge/manifest.json")));
@@ -307,6 +324,24 @@ test("Judge: with no image-capable agent the vision pass skips cleanly", async (
   }
 });
 
+test("Judge: when the coding agent times out the vision pass skips cleanly", async () => {
+  freshPackage();
+  try {
+    const progress: string[] = [];
+    const dispatch = async () => ({ ok: true, taskId: "t", channels: ["firstmate_inbox"], prompt: "", fallbackScheduled: false, fallbackTimeoutMs: 0, message: "" }) as any;
+    const result = await judgeFilm(ID, { skipAgent: false, dispatch, renderStill: fakeRender, maxSamples: 2, agentTimeoutMs: 10, pollMs: 5, onProgress: (line) => progress.push(line), jevOptions: { apiKey: "" } });
+    assert.equal(result.agentRound, "skipped");
+    assert.match(result.skipped ?? "", /did not report on the frames in time/);
+    assert.equal(result.samples.length, 0);
+    assert.equal(result.passed, true);
+    assert.ok(progress.some((p) => p.includes("vision judge skipped: the coding agent did not report on the frames in time")));
+    assert.equal(fs.existsSync(path.join(PKG, "design/judge/embedding-log.jsonl")), false);
+    assert.equal(fs.existsSync(path.join(PKG, "design/judge/verdicts.json")), false);
+  } finally {
+    cleanup();
+  }
+});
+
 test("Judge: a missing rasterizer skips the pass instead of failing the film", async () => {
   freshPackage();
   try {
@@ -329,6 +364,7 @@ test("Judge: failed samples go back to synthesis with their exact errors, bounde
     const errors: string[] = [];
     const result = await judgeAndRepair(ID, {
       skipAgent: true,
+      embed: () => 0.8,
       renderStill: fakeRender,
       maxSamples: 2,
       maxRepairRounds: 2,
