@@ -64,7 +64,6 @@ export const lookFilmSchema = z.object({
   palette: z.object({
     bg: hexColor,
     accent: hexColor,
-    extra: z.record(z.string(), z.string()).default({}),
   }),
   captions: lookCaptionsSchema,
   headlines: z.enum(["none", "few", "all"]).default("none"),

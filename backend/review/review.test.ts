@@ -457,7 +457,7 @@ test("criteria: look plan adherence passes matching scene data and fails measure
         { at: "shot-1", pose: "wide establishing view", why: "establish" },
         { at: "shot-2", pose: "wide payoff view", why: "payoff" },
       ],
-      palette: { bg: "#000000", accent: "#ffffff", extra: {} }, captions: { position: "bottom", kineticColumn: false }, headlines: "none",
+      palette: { bg: "#000000", accent: "#ffffff" }, captions: { position: "bottom", kineticColumn: false }, headlines: "none",
     },
     shots: [
       { id: "shot-1", treatment: "scene", carries: ["object"], cue: "moves", criterion: "mechanism", why: "object moves" },

@@ -404,6 +404,17 @@ test("runProduction: a run that stops before rendering leaves the active film al
 // Makes a look plan for the actual synthesized beats, with one persistent cast object.
 function probeLook(slug: string): LookPlan {
   const film = readFilm(slug)!;
+  const wordsFile = path.join(VIDEOS_DIR, slug, "voiceover_words.json");
+  const words = fs.existsSync(wordsFile)
+    ? JSON.parse(fs.readFileSync(wordsFile, "utf8")).words as Array<{ word?: string; punctuated_word?: string; start: number }>
+    : [];
+  let startSec = 0;
+  const cues = film.shots.map((shot) => {
+    const cue = words.find((word) => word.start >= startSec && word.start < startSec + shot.dur &&
+      (word.punctuated_word ?? word.word ?? "").replace(/[^a-z0-9]/gi, "").length >= 3);
+    startSec += shot.dur;
+    return cue?.punctuated_word ?? cue?.word ?? shot.scriptText!.split(/\s+/)[0];
+  });
   return {
     schema: "aideos.look/1", decidedBy: { agent: "fixture", model: "fake", at: new Date().toISOString() },
     film: {
@@ -413,10 +424,10 @@ function probeLook(slug: string): LookPlan {
         { at: film.shots[0].id, pose: "wide establishing view", why: "establish" },
         { at: film.shots[film.shots.length - 1].id, pose: "wide payoff view", why: "payoff" },
       ],
-      palette: { bg: "#0A0A0B", accent: "#635BFF", extra: {} },
+      palette: { bg: "#0A0A0B", accent: "#635BFF" },
       captions: { position: "bottom", kineticColumn: false }, headlines: "none",
     },
-    shots: film.shots.map((shot) => ({ id: shot.id, treatment: "scene", carries: ["carrier"], cue: shot.scriptText!.split(/\s+/)[0], criterion: "1-mechanism", why: "the carried object moves" })),
+    shots: film.shots.map((shot, index) => ({ id: shot.id, treatment: "scene", carries: ["carrier"], cue: cues[index], criterion: "1-mechanism", why: "the carried object moves" })),
   };
 }
 
@@ -431,7 +442,7 @@ function writeProbeDesign(slug: string): void {
   fs.writeFileSync(path.join(pkg, "design/design.json"), JSON.stringify({
     brief: { concept: look.film.stage }, accent: look.film.palette.accent,
     assets: [{ id: "carrier", file: "visuals/carrier.svg", position: [960, 760], scale: 1 }],
-    clips: look.shots.map((shot, i) => ({ id: `motion-${i}`, asset: "carrier", targets: ["carrier"], property: "translateX", from: i % 2 ? 20 : 0, to: i % 2 ? 0 : 20, start: shot.id, end: `${shot.id}@end`, easing: "expoOut" })),
+    clips: look.shots.map((shot, i) => ({ id: `motion-${i}`, asset: "carrier", targets: ["carrier"], property: "translateX", from: i % 2 ? 20 : 0, to: i % 2 ? 0 : 20, start: `${shot.id}:"${shot.cue}"`, end: `${shot.id}@end`, easing: "expoOut" })),
     camera: [{ at: look.shots[0].id, center: [960, 960], zoom: 1 }, { at: "end", center: [980, 960], zoom: 1 }],
     shots: Object.fromEntries(look.shots.map((s) => [s.id, { blocks: [], stage: "none" }])),
   }));
@@ -704,7 +715,7 @@ test("Design build: the look's cast, motion, device override and camera are enfo
     const originalLook = JSON.parse(fs.readFileSync(lookFile, "utf8"));
     const cases = [
       { name: "missing cast", change: () => { const plan = structuredClone(originalLook); plan.film.cast.push({ id: "ghost", what: "missing object", enters: "beat-01", changes: [] }); fs.writeFileSync(lookFile, JSON.stringify(plan)); }, error: /look cast "ghost" has no asset/ },
-      { name: "missing carried motion", change: () => { fs.writeFileSync(specFile, JSON.stringify({ ...originalSpec, clips: [] })); }, error: /look scene shot "beat-01" needs a changing clip/ },
+      { name: "missing carried motion", change: () => { fs.writeFileSync(specFile, JSON.stringify({ ...originalSpec, clips: [] })); }, error: /look scene shot "beat-01" cue ".*" needs a changing clip/ },
       { name: "missing device override", change: () => { const plan = structuredClone(originalLook); plan.shots[0].treatment = "device"; plan.shots[0].device = "StatCounter"; fs.writeFileSync(lookFile, JSON.stringify(plan)); }, error: /look device shot "beat-01" needs a matching "StatCounter" shots override/ },
       { name: "missing camera", change: () => { const design = { ...originalSpec }; delete design.camera; fs.writeFileSync(specFile, JSON.stringify(design)); }, error: /look camera poses require camera keyframes/ },
       { name: "invalid look camera cue", change: () => { const plan = structuredClone(originalLook); plan.film.camera[0].at = "nonexistent-shot"; fs.writeFileSync(lookFile, JSON.stringify(plan)); }, error: /look\.json camera|camera cue resolution/ },

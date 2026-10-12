@@ -4,7 +4,9 @@
  * Used by: npm test.
  */
 
-import "../testSupport/fixtureVideosDir";
+import fs from "node:fs";
+import path from "node:path";
+import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -85,9 +87,6 @@ const VALID_LOOK_PLAN: LookPlan = {
     palette: {
       bg: "#0A0A0B",
       accent: "#635BFF",
-      extra: {
-        "#3DDC97": "cached hits",
-      },
     },
     captions: {
       position: "bottom",
@@ -143,8 +142,50 @@ test("schema accept: accepts a valid look.json plan", () => {
 
   const report = checkLookPlan(VALID_LOOK_PLAN, "test-film");
   assert.equal(report.ok, true);
-  assert.equal(report.findings.length, 0);
+  assert.equal(report.findings.filter((finding) => finding.severity === "error").length, 0);
   assert.equal(report.stats.shots, 4);
+});
+
+test("schema: legacy extra palette values are ignored and not retained", () => {
+  const legacy = JSON.parse(JSON.stringify(VALID_LOOK_PLAN));
+  legacy.film.palette.extra = { "#3DDC97": "cached hits" };
+  const parsed = parseLookPlan(legacy);
+  assert.deepEqual(parsed.film.palette, { bg: "#0A0A0B", accent: "#635BFF" });
+});
+
+test("context check: validates film shots, spoken cues, and cast design targets", () => {
+  const film = {
+    shots: [
+      { id: "beat-01", scriptText: "The disk is spinning." },
+      { id: "beat-02", scriptText: "The bottleneck slows the cache." },
+      { id: "beat-03", scriptText: "The cache is accelerated." },
+      { id: "beat-04", scriptText: "One hundred times faster." },
+    ],
+  } as Film;
+  const passing = checkLookPlan(VALID_LOOK_PLAN, "context-film", {
+    film,
+    castTargets: new Set(["disk", "cache"]),
+  });
+  assert.equal(passing.ok, true, JSON.stringify(passing.findings));
+
+  const invalid = JSON.parse(JSON.stringify(VALID_LOOK_PLAN));
+  invalid.shots[0].id = "beat-99";
+  invalid.shots[0].cue = "never spoken";
+  invalid.film.cast[0].enters = "beat-99";
+  const failing = checkLookPlan(invalid, "context-film", {
+    film,
+    castTargets: new Set(["cache"]),
+  });
+  assert.equal(failing.ok, false);
+  assert.ok(failing.findings.some((finding) => finding.message.includes('unknown film shot "beat-99"')));
+  assert.ok(failing.findings.some((finding) => finding.message.includes('cue "never spoken"')));
+  assert.ok(failing.findings.some((finding) => finding.message.includes('cast id "disk"')));
+});
+
+test("context check: reports unavailable inputs in plain language", () => {
+  const report = checkLookPlan(VALID_LOOK_PLAN, "early-look");
+  assert.ok(report.findings.some((finding) => finding.message.includes("not checked yet: shot and cast beat ids need film.json")));
+  assert.ok(report.findings.some((finding) => finding.message.includes("not checked yet: cast ids need design.json")));
 });
 
 test("schema accept: accepts EXAMPLE_LOOK_PLAN from brief", () => {
@@ -192,7 +233,7 @@ test("checker rule: duplicate cast ids are rejected", () => {
 
   const report = checkLookPlan(plan, "dup-cast-film");
   assert.equal(report.ok, false);
-  const f = report.findings.find((x) => x.rule === "cast");
+  const f = report.findings.find((x) => x.rule === "cast" && x.severity === "error");
   assert.ok(f, "should flag duplicate cast id");
   assert.ok(f?.message.includes("duplicate cast id"));
 });
@@ -210,7 +251,7 @@ test("checker rule: duplicate shot ids are rejected", () => {
 
   const report = checkLookPlan(plan, "dup-shot-film");
   assert.equal(report.ok, false);
-  const f = report.findings.find((x) => x.rule === "shot");
+  const f = report.findings.find((x) => x.rule === "shot" && x.severity === "error");
   assert.ok(f, "should flag duplicate shot id");
   assert.ok(f?.message.includes("duplicate shot id"));
 });
@@ -491,6 +532,9 @@ test("brief: renderLookBrief produces complete briefing markdown", () => {
   assert.ok(briefMd.includes("# Look Brief: Fake Film (`fake-film`)"));
   assert.ok(briefMd.includes("The 6 Look Questions to Answer"));
   assert.ok(briefMd.includes("Shot Treatment Decision Rules"));
+  assert.ok(briefMd.includes("Cast ID Rule"));
+  assert.ok(briefMd.includes("SVG element id"));
+  assert.ok(!briefMd.includes("optional labeled semantic colours"));
   assert.ok(briefMd.includes("beat-01"));
   assert.ok(briefMd.includes("This is the first narrated sentence."));
 });
@@ -505,4 +549,94 @@ test("integration: fixture package speculative-decoding-designed passes look che
 
   const formatted = formatLookReport(report);
   assert.ok(formatted.startsWith("PASS speculative-decoding-designed"));
+});
+
+test("spoken cue matching: normalizes typographic and straight apostrophes", () => {
+  const film = {
+    shots: [
+      { id: "beat-01", scriptText: "That’s why the disk is spinning." },
+      { id: "beat-02", scriptText: "Here's the bottleneck." },
+      { id: "beat-03", scriptText: "The cache is accelerated." },
+      { id: "beat-04", scriptText: "One hundred times faster." },
+    ],
+  } as Film;
+  const plan = JSON.parse(JSON.stringify(VALID_LOOK_PLAN));
+  plan.shots[0].cue = "that's why";
+  plan.shots[1].cue = "here’s the";
+
+  const report = checkLookPlan(plan, "apostrophe-film", {
+    film,
+    castTargets: new Set(["disk", "cache"]),
+  });
+  assert.equal(report.ok, true, JSON.stringify(report.findings));
+});
+
+test("context check: warns when film has no narration text", () => {
+  const filmNoNarration = {
+    shots: [
+      { id: "beat-01", scriptText: "" },
+      { id: "beat-02" },
+      { id: "beat-03", scriptText: "   " },
+      { id: "beat-04" },
+    ],
+  } as Film;
+  const report = checkLookPlan(VALID_LOOK_PLAN, "no-narration-film", {
+    film: filmNoNarration,
+    castTargets: new Set(["disk", "cache"]),
+  });
+  assert.ok(report.findings.some((f) => f.rule === "shot" && f.where === "film.shots[].scriptText" && f.severity === "warning"));
+});
+
+test("checkLookPlanById: reports auxiliary film, design, and SVG parse errors against correct file", () => {
+  const testPkg = path.join(TEST_VIDEOS_DIR, "auxiliary-errors-pkg");
+  fs.mkdirSync(path.join(testPkg, "design"), { recursive: true });
+  fs.mkdirSync(path.join(testPkg, "visuals"), { recursive: true });
+
+  fs.writeFileSync(path.join(testPkg, "design", "look.json"), JSON.stringify(VALID_LOOK_PLAN, null, 2));
+
+  fs.writeFileSync(path.join(testPkg, "film.json"), "{ invalid json");
+  const filmReport = checkLookPlanById("auxiliary-errors-pkg");
+  assert.equal(filmReport.ok, false);
+  const filmErr = filmReport.findings.find((f) => f.where === "film.json");
+  assert.ok(filmErr, "should report error against film.json");
+  assert.ok(filmErr?.message.includes("failed to parse film.json"));
+  assert.ok(!filmReport.findings.some((f) => f.where === "design/look.json" && f.message.includes("failed to parse look.json")));
+
+  const validFilm: Film = {
+    schemaVersion: "1.0.0",
+    id: "auxiliary-errors-pkg",
+    title: "Aux Test",
+    fps: 30,
+    accent: "#635BFF",
+    theme: { background: "smooth-dark", fontFamily: "geist", accent: "#635BFF" },
+    chapters: ["Intro"],
+    canvas: { nodes: [], edges: [] },
+    shots: [
+      { id: "beat-01", ch: "Intro", dur: 1, stage: "frame", look: "intro", move: "cut", drift: false, zoom: 1, scriptText: "spinning", blocks: [] },
+      { id: "beat-02", ch: "Intro", dur: 1, stage: "frame", look: "intro", move: "cut", drift: false, zoom: 1, scriptText: "bottleneck", blocks: [] },
+      { id: "beat-03", ch: "Intro", dur: 1, stage: "frame", look: "intro", move: "cut", drift: false, zoom: 1, scriptText: "accelerated", blocks: [] },
+      { id: "beat-04", ch: "Intro", dur: 1, stage: "frame", look: "intro", move: "cut", drift: false, zoom: 1, scriptText: "count", blocks: [] },
+    ],
+  };
+  fs.writeFileSync(path.join(testPkg, "film.json"), JSON.stringify(validFilm, null, 2));
+  fs.writeFileSync(path.join(testPkg, "design", "design.json"), "{ bad json");
+  const designReport = checkLookPlanById("auxiliary-errors-pkg");
+  assert.equal(designReport.ok, false);
+  const designErr = designReport.findings.find((f) => f.where === "design/design.json");
+  assert.ok(designErr, "should report error against design/design.json");
+  assert.ok(designErr?.message.includes("failed to parse design/design.json"));
+  assert.ok(!designReport.findings.some((f) => f.where === "design/look.json" && f.message.includes("failed to parse look.json")));
+
+  fs.writeFileSync(path.join(testPkg, "design", "design.json"), JSON.stringify({
+    assets: [{ id: "disk", file: "visuals/broken.svg" }, { id: "cache", file: "visuals/broken.svg" }],
+  }, null, 2));
+  fs.writeFileSync(path.join(testPkg, "visuals", "broken.svg"), "<svg><unclosed>");
+  const svgReport = checkLookPlanById("auxiliary-errors-pkg");
+  assert.equal(svgReport.ok, false);
+  const svgErr = svgReport.findings.find((f) => f.where === "visuals/broken.svg");
+  assert.ok(svgErr, "should report error against visuals/broken.svg");
+  assert.ok(svgErr?.message.includes("failed to parse visuals/broken.svg"));
+  assert.ok(!svgReport.findings.some((f) => f.where === "design/look.json" && f.message.includes("failed to parse look.json")));
+
+  fs.rmSync(testPkg, { recursive: true, force: true });
 });

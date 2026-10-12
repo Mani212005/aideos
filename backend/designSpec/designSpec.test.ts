@@ -19,6 +19,8 @@ import { checkFilmDesign } from "../designCheck/designCheck";
 import { compileDesign, narrationTimingForFilm, type TimedWord } from "./compile";
 import { resolveCue } from "./cues";
 import { designSpecSchema, type DesignSpec } from "./spec";
+import { checkDesignAgainstLook } from "./build";
+import { parseLookPlan } from "../lookPlan/schema";
 
 const PKG = path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed");
 const base = () => parseFilm(JSON.parse(fs.readFileSync(path.join(PKG, "design/base-film.json"), "utf8")));
@@ -50,6 +52,32 @@ test("DesignSpec: the demo design compiles into a scene film that passes the des
   assert.equal(film.shots.find((s) => s.id === "beat-04")?.stage, "frame", "a text override takes the chart panel off the scene");
   const report = checkFilmDesign(film);
   assert.equal(report.ok, true, JSON.stringify(report.findings.filter((f) => f.severity === "error")));
+});
+
+test("DesignSpec: planned scene motion must start within 0.4s of its spoken cue", () => {
+  const plan = parseLookPlan(JSON.parse(fs.readFileSync(path.join(PKG, "design/look.json"), "utf8")));
+  const shot = plan.shots.find((candidate) => candidate.treatment === "scene")!;
+  const focusedPlan = { ...plan, film: { ...plan.film, camera: [] }, shots: [shot] };
+  const design = spec();
+  design.clips = [];
+  const failed = checkDesignAgainstLook(base(), design, words(), PKG, focusedPlan);
+  assert.ok(failed.some((error) => error.includes(`look scene shot "${shot.id}" cue "${shot.cue}"`)), failed.join("\n"));
+
+  const castId = shot.carries[0];
+  const sourceAsset = design.assets.find((asset) => asset.id === castId)!;
+  design.assets.push({ ...sourceAsset, id: `alt-${castId}` });
+  design.clips = [{
+    id: "cue-motion",
+    asset: `alt-${castId}`,
+    targets: [castId],
+    property: "translateX",
+    from: 0,
+    to: 8,
+    start: `${shot.id}:"${shot.cue}"`,
+    end: `${shot.id}@0.5`,
+  }];
+  const passed = checkDesignAgainstLook(base(), design, words(), PKG, focusedPlan);
+  assert.deepEqual(passed, []);
 });
 
 test("DesignSpec: every mistake comes back named, and no partial film is produced", () => {

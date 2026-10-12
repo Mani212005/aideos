@@ -88,6 +88,7 @@ ${RUBRIC_SUMMARY}
 ## The standard layer (enforced by the build)
 
 - **Palette:** only ${LOCKED_PALETTE.join(", ")} (and their alpha versions) plus the film's one \`accent\`. Greys, black and white are fine. The accent is used sparingly: at most three accented things per frame.
+- **Cast IDs:** every \`film.cast[].id\` from \`design/look.json\` must be lowercase letters, digits, or hyphens, and must match a \`design.json\` asset id or an SVG element id. Several assets may contain elements with the same cast id when the planned object spans multiple SVG files.
 - **Type:** Geist for words, JetBrains Mono for numbers, code and labels. No other typeface.
 - **Artwork:** each asset is a static SVG with \`viewBox="-300 -200 600 400"\` and \`preserveAspectRatio="xMidYMid meet"\`, drawn centred on 0,0. No \`<script>\`, \`<animate>\`, \`<foreignObject>\`, CSS animation or remote links. Give an \`id\` to every element you will move. Motion lives only in clips.
 - **Stage:** the scene is ${SCENE_SIZE.w} x ${SCENE_SIZE.h}; \`position\` is where an asset's centre sits. The wide cut sees y ${FORMAT_WINDOWS.wide.y0}-${FORMAT_WINDOWS.wide.y1}; the reel sees x ${FORMAT_WINDOWS.reel.x0}-${FORMAT_WINDOWS.reel.x1}. Everything essential lives in the safe square (${SAFE_SQUARE.x0}-${SAFE_SQUARE.x1} on both axes). Headlines (TextReveal cards) are drawn centred across the middle of the frame, roughly scene y 860-1060 in the wide cut, so keep that band free of artwork and labels. Keep the bottom band clear of detail that fights the captions.
