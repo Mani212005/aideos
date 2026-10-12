@@ -309,9 +309,20 @@ export function inspectCamera(
 
       const scene = film.scene as {
         sceneSize?: { w?: unknown };
-        camera?: { keyframes?: Array<{ center?: { x?: unknown; y?: unknown }; zoom?: unknown }> };
+        camera?: unknown;
       } | undefined;
-      const keyframes = scene?.camera?.keyframes;
+      const rawCam = scene?.camera as { keys?: unknown; keyframes?: unknown } | unknown[] | undefined;
+      const keyframes = (Array.isArray(rawCam) ? rawCam : rawCam?.keyframes ?? rawCam?.keys) as
+        | Array<{
+            center?: { x?: unknown; y?: unknown };
+            x?: unknown;
+            y?: unknown;
+            cx?: unknown;
+            cy?: unknown;
+            zoom?: unknown;
+            scale?: unknown;
+          }>
+        | undefined;
       if (Array.isArray(keyframes) && keyframes.length > 1) {
         const sceneWidth = scene?.sceneSize?.w;
         const frameWidth = typeof sceneWidth === "number" && sceneWidth > 0 ? sceneWidth : 1920;
@@ -319,12 +330,12 @@ export function inspectCamera(
         for (let i = 1; i < keyframes.length; i++) {
           const from = keyframes[i - 1];
           const to = keyframes[i];
-          const x1 = typeof from.center?.x === "number" ? from.center.x : 0;
-          const y1 = typeof from.center?.y === "number" ? from.center.y : 0;
-          const x2 = typeof to.center?.x === "number" ? to.center.x : 0;
-          const y2 = typeof to.center?.y === "number" ? to.center.y : 0;
-          const z1 = typeof from.zoom === "number" && from.zoom > 0 ? from.zoom : 1;
-          const z2 = typeof to.zoom === "number" && to.zoom > 0 ? to.zoom : 1;
+          const x1 = typeof from.center?.x === "number" ? from.center.x : typeof from.x === "number" ? from.x : typeof from.cx === "number" ? from.cx : 0;
+          const y1 = typeof from.center?.y === "number" ? from.center.y : typeof from.y === "number" ? from.y : typeof from.cy === "number" ? from.cy : 0;
+          const x2 = typeof to.center?.x === "number" ? to.center.x : typeof to.x === "number" ? to.x : typeof to.cx === "number" ? to.cx : 0;
+          const y2 = typeof to.center?.y === "number" ? to.center.y : typeof to.y === "number" ? to.y : typeof to.cy === "number" ? to.cy : 0;
+          const z1 = typeof from.zoom === "number" && from.zoom > 0 ? from.zoom : typeof from.scale === "number" && from.scale > 0 ? from.scale : 1;
+          const z2 = typeof to.zoom === "number" && to.zoom > 0 ? to.zoom : typeof to.scale === "number" && to.scale > 0 ? to.scale : 1;
           const shiftWidth = Math.hypot(x2 - x1, y2 - y1) / frameWidth;
           const zoomRatio = Math.max(z1 / z2, z2 / z1);
           if (shiftWidth >= THRESHOLDS.camera.minShiftWidth || zoomRatio >= THRESHOLDS.camera.minZoomRatio) sceneMoves++;

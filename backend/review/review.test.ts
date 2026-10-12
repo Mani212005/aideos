@@ -292,6 +292,39 @@ test("source: scene elements that stay and transform across a boundary count as 
   assert.ok(kept.clipStarts.includes(5), "a clip starting at frame 150 is a cue at 5 s");
 });
 
+test("source: scene camera detects constant-zoom pans from canonical and loose keyframes", () => {
+  const film = sceneFilm(true);
+  const canonicalScene = {
+    ...film.scene,
+    camera: {
+      keyframes: [
+        { frame: 0, center: { x: 960, y: 960 }, zoom: 1 },
+        { frame: 30, center: { x: 1100, y: 960 }, zoom: 1 },
+      ],
+    },
+  };
+  const facts = readFilmFacts({ ...film, scene: canonicalScene as unknown as Film["scene"] });
+  assert.equal(facts.camera.available, true);
+  assert.equal(facts.camera.moves.length, 1);
+  assert.equal(facts.camera.moves[0].zoomRatio, 1);
+  assert.ok(facts.camera.moves[0].shiftWidth >= 0.04);
+  assert.deepEqual(facts.cameraKeyframes, [0, 1]);
+
+  const looseScene = {
+    ...film.scene,
+    camera: {
+      keys: [
+        { frame: 0, cx: 960, cy: 960, scale: 1 },
+        { frame: 30, cx: 1100, cy: 960, scale: 1 },
+      ],
+    },
+  };
+  const looseFacts = readFilmFacts({ ...film, scene: looseScene as unknown as Film["scene"] });
+  assert.equal(looseFacts.camera.available, true);
+  assert.equal(looseFacts.camera.moves.length, 1);
+  assert.deepEqual(looseFacts.cameraKeyframes, [0, 1]);
+});
+
 test("source: entering scene targets hold initial opacity and articulated actors stay visible", () => {
   const clip = (clipId: string, target: string, property: string, from: number, to: number, startFrame: number, durationFrames: number) => ({ clipId, targets: [target], property, from, to, startFrame, durationFrames });
   const film = parseFilm({

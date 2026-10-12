@@ -164,6 +164,31 @@ test("facts: inspectCamera counts meaningful scene.camera keyframe moves", () =>
   }
 });
 
+test("facts: inspectCamera supports loosely shaped camera tracks with constant-zoom pan", () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-loose-camera-facts-"));
+  const filmPath = path.join(tmpDir, "film.json");
+  fs.writeFileSync(filmPath, JSON.stringify({
+    scene: {
+      sceneSize: { w: 1920, h: 1920 },
+      camera: {
+        keys: [
+          { frame: 0, x: 960, y: 960, scale: 1 },
+          { frame: 30, cx: 1100, cy: 960, scale: 1 },
+        ],
+      },
+    },
+  }));
+
+  try {
+    const result = inspectCamera(filmPath, 20);
+    assert.equal(result.measured, true);
+    assert.equal(result.moveCount, 1);
+    assert.equal(result.hasCameraMoves, true);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test("CLI: gemini-review --json writes parseable JSON to stdout without npm banners", () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-gemini-json-cli-"));
   const binDir = path.join(tmpDir, "bin");
