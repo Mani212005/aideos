@@ -5,7 +5,7 @@
  * across each beat boundary: for a node-graph film that is whether the canvas stays up, for a scene
  * film it is which opacity-driven elements stay visible. Also: node overlap on the canvas and the
  * times shots and animation clips start. Pure functions over a parsed Film.
- * Inputs and outputs: Film manifest -> FilmFacts on camera moves, node arrivals, and stage persistence.
+ * Inputs and outputs: Film manifest and optional look plan -> FilmFacts on camera moves, node arrivals, stage persistence, and plan adherence.
  * Used by: backend/review/review.ts.
  */
 

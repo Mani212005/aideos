@@ -333,8 +333,8 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `reviewVideo(options)` (`backend/review/review.ts`): Orchestrates measuring the rendered video (picture, text, audio) plus film data and narration where available, evaluating rubric criteria, extracting evidence stills for failed criteria, and writing `review.json`.
 * `formatReview(report)` (`backend/review/review.ts`): Formats a `ReviewReport` into a human-readable terminal summary with passing/failing gates.
 * `measureRenderFacts(videoPath, options)` (`backend/review/renderFacts.ts`): Measures layout persistence, stage clears, cuts, stillness, captions, text size, contrast, overlap, and on-screen numbers from decoded frames and OCR.
-* `evaluateCriteria(inputs, thresholds)` (`backend/review/criteria.ts`): Pure evaluation of rubric criteria from measured facts against calibrated thresholds.
-* `deriveFilmFacts(film, words)` (`backend/review/source.ts`): Derives camera motion, element persistence, and carry-over transformations from aideos film data.
+* `evaluateCriteria(inputs)` (`backend/review/criteria.ts`): Pure evaluation of rubric criteria (criteria 1 to 12 plus supplemental criterion 13 `plan-adherence`) from measured facts against calibrated thresholds.
+* `readFilmFacts(film)`, `loadFilmFacts(filmJson)` (`backend/review/source.ts`): Derives camera motion, element persistence, carry-over transformations, per-shot stage and motion facts (`planShots`), scene camera keyframes, and optional look plan (`design/look.json`) from aideos film data.
 * `deriveNarrationFacts(words, duration)` (`backend/review/speech.ts`): Derives pace, dead air, narrated moments, and sync alignment from word timings or narration text.
 
 ### `backend/aideosConfig.ts` (Video Model Policy & Config Loader)
@@ -343,7 +343,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `forbiddenGenerationMatch(model, policy)`: Checks if a model ID matches any configured forbidden generation models (e.g. `gemini-3.1-pro`).
 
 ### `backend/geminiReview/` (Gemini 3.8 Flash Video Quality Review & Rubric)
-* `reviewVideo(videoPath, options)` (`backend/geminiReview/geminiReview.ts`): Evaluates rendered mp4 video and audio against the 12-criterion rubric via the agy CLI agent running Gemini 3.8 Flash (`gemini-3.8-flash-high`) in an isolated workspace with neutral `video.mp4`, with deterministic facts extraction, timestamp evidence validation, and pairwise comparison support.
+* `reviewVideo(videoPath, options)` (`backend/geminiReview/geminiReview.ts`): Evaluates rendered mp4 video and audio against the 12-criterion rubric via the agy CLI agent running Gemini 3.8 Flash (`gemini-3.8-flash-high`) in an isolated workspace with neutral `video.mp4`, with deterministic facts extraction (including `design/LOOK.md` shot treatments for unscored plan checking), timestamp evidence validation, and pairwise comparison support.
 * `reviewPairwise(pathA, pathB, options)` (`backend/geminiReview/geminiReview.ts`): Executes a cross-review pairwise evaluation where two independent agy CLI agents in isolated workspaces first evaluate their respective videos, then exchange text-based evaluation reports to score each other, avoiding multimodal position bias.
 * `createIsolatedVideoWorkspace(videos)` (`backend/geminiReview/geminiReview.ts`): Creates an isolated temporary directory containing hardlinks or copies of video files under neutral names (`video.mp4`, `video_1.mp4`, `video_2.mp4`) with automatic cleanup to prevent model agents from inspecting repository source files.
 * `defaultAgyRunner(prompt, options)` (`backend/geminiReview/geminiReview.ts`): Non-interactive agy CLI runner executing in print mode (`-p`) with `--sandbox`, structured JSON schema output, and strict error handling.

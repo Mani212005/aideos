@@ -96,13 +96,14 @@ aideos gemini-review videoA.mp4 --pairwise videoB.mp4
 
 ### How it works
 1. **Direct Video Inspection in Isolated Workspace via agy CLI**: Invokes the agy CLI agent running Gemini 3.8 Flash (e.g. `gemini-3.8-flash-high`) non-interactively in print mode with `--sandbox` within an isolated temporary directory using neutral filenames (`video.mp4` for single review and pairwise comparisons) and explicit directives to evaluate only the visual and audio stream without writing scripts, extracting frames, or accessing repository files.
-2. **Deterministic Facts Extraction**: Gathers ground-truth data (bottom captions OCR coverage, audio LUFS loudness, duration, framerate, camera track from `film.json`) and feeds them into the model prompt to prevent hallucinations.
+2. **Deterministic Facts Extraction**: Gathers ground-truth data (bottom captions OCR coverage, audio LUFS loudness, duration, framerate, camera track from `film.json`, and per-shot look plan facts from `design/LOOK.md` when present) and feeds them into the model prompt to prevent hallucinations.
 3. **Structured Rubric Evaluation**: Grades all 12 criteria on a 0.0 to 10.0 scale, checking the 6 hard gates (persistent stage, camera purpose, bottom captions, readability, no overlap/clipping, audio sync).
 4. **Timestamp Evidence Enforcement**: Validates that every criterion score includes concrete timestamp citations (e.g. `00:14`, `01:02`) within the video bounds.
 5. **Verdict Decision**:
    - `ACCEPT`: Overall score >= 9.0 and all 6 hard gates passed.
    - `REVISE`: Overall score < 9.0 or any hard gate failed.
 6. **Prioritized Feedback**: Generates actionable, timestamped recommendations (high, medium, low priority) on how to improve the video.
+7. **Look Plan Check (unscored)**: If `design/LOOK.md` is present in the film package, Gemini compares each shot's planned treatment, carried objects, and cue against the video, logging any mismatch with timestamps in feedback without changing the 12 criterion scores or the verdict.
 
 ### Cross-Review Pairwise Comparison (`--pairwise`)
 To eliminate model position bias and multimodal cross-alignment hallucinations when comparing two videos (e.g. comparing Aideos output against an external benchmark), `--pairwise` runs a dual-agent cross-review process:
@@ -177,6 +178,8 @@ not contain the video). A fix that needs aideos code (`src/`, `backend/`, `edito
 and a PR, never edits on main. Scratch files (patch scripts, notes) belong in `all-check/scratch/`, never the repo
 root: `launch` records the repo's dirty paths in `all-check/repo-baseline.json`, and each `round` and `finish`
 lists anything new outside the package as a rule violation (in the round output, `report.md` and `result.json`).
+Read `design/LOOK.md` first: a fix may change motion freely, but changing a shot's treatment or the cast means
+editing `look.json` and passing `aideos look check` before the next round.
 
 ### The skill
 
@@ -204,6 +207,8 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 10 | storyline | No | Clear problem statement, logical progression where beats build on previous content, satisfying payoff beat. |
 | 11 | accuracy_honesty | No | Every number, chart, and label is grounded in the narration; zero fabricated numbers or misleading visuals. |
 | 12 | loudness_mix | No | Audio loudness normalized to -14 to -18 LUFS integrated, true peak <= -1 dBFS, background music ducked cleanly. |
+
+Supplemental: When `design/look.json` is available, `aideos review` also reports supplemental criterion 13 (`plan-adherence`: Look plan adherence) as a non-gating check (non-gate until calibrated on the proof and two or three more films).
 
 ## 5. Video model policy (`aideos.config.json`)
 
