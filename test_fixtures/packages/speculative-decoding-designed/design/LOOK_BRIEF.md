@@ -21,10 +21,6 @@ Write `videos/speculative-decoding-designed/design/look.json` and run `aideos lo
 
 ## Shot Treatment Decision Rules
 
-## Cast ID Rule
-
-Each `film.cast[].id` must use lowercase letters, digits, and hyphens. In the design, every cast id must match a `design.json` asset id or an SVG element id. Multiple assets may use elements with the same cast id when one planned object is drawn across several SVG files.
-
 For each shot, pick exactly one treatment:
 - **`scene`** (Default): the stage moves; a carried object demonstrates what the narration says.
 - **`scene+card`**: the stage stays visible with slow motion; a short text card sits over it.
@@ -33,6 +29,10 @@ For each shot, pick exactly one treatment:
   - No two `device` shots in a row.
   - Limit: at most 1 `device` shot per 4 shots.
 - **`footage`**: RESERVED. The checker will reject this.
+
+## Cast ID Rule
+
+Each `film.cast[].id` must use lowercase letters, digits, and hyphens. In the design, every cast id must match a `design.json` asset id or an SVG element id. Multiple assets may use elements with the same cast id when one planned object is drawn across several SVG files.
 
 ## Look Plan Schema (look.json)
 

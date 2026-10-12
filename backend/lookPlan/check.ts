@@ -43,14 +43,13 @@ export interface LookCheckReport {
 /** Package inputs that let the checker validate ids and spoken cues before design authoring. */
 export interface LookCheckContext {
   film?: Film;
-  narrationAvailable?: boolean;
   castTargets?: Set<string>;
-  designAvailable?: boolean;
 }
 
 // Normalizes spoken text into punctuation-free lowercase words for reliable phrase matching.
 function spokenTokens(text: string): string[] {
-  return text.toLowerCase().match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu) ?? [];
+  const normalized = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
+  return normalized.match(/[\p{L}\p{N}]+(?:'[\p{L}\p{N}]+)*/gu) ?? [];
 }
 
 // Checks whether a cue's normalized word sequence appears in the narration text.
@@ -103,7 +102,7 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed", context
         }
       }
     }
-    const narrationAvailable = context.narrationAvailable ?? context.film.shots.some((shot) => Boolean(shot.scriptText?.trim()));
+    const narrationAvailable = context.film.shots.some((shot) => Boolean(shot.scriptText?.trim()));
     if (!narrationAvailable) {
       findings.push({ rule: "shot", severity: "warning", where: "film.shots[].scriptText", message: "not checked yet: cue words and phrases need narration text." });
     } else {
@@ -117,7 +116,7 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed", context
     }
   }
 
-  if (context.designAvailable === false || context.castTargets === undefined) {
+  if (context.castTargets === undefined) {
     findings.push({ rule: "cast", severity: "warning", where: "design/design.json", message: "not checked yet: cast ids need design.json assets and their SVG element ids." });
   } else {
     for (const item of look.film.cast) {
@@ -333,32 +332,9 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
     };
   }
 
+  let raw: unknown;
   try {
-    const raw = JSON.parse(fs.readFileSync(lookFile, "utf8"));
-    const context: LookCheckContext = {};
-    const filmFile = path.join(pkgDir, "film.json");
-    if (fs.existsSync(filmFile)) {
-      context.film = parseFilm(JSON.parse(fs.readFileSync(filmFile, "utf8")));
-      context.narrationAvailable = context.film.shots.some((shot) => Boolean(shot.scriptText?.trim()));
-    }
-    const designFile = path.join(pkgDir, "design", "design.json");
-    if (fs.existsSync(designFile)) {
-      context.designAvailable = true;
-      const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as { assets?: Array<{ id?: string; file?: string }> };
-      const castTargets = new Set<string>();
-      for (const asset of design.assets ?? []) {
-        if (asset.id) castTargets.add(asset.id);
-        if (!asset.file) continue;
-        const assetFile = path.join(pkgDir, asset.file);
-        if (fs.existsSync(assetFile)) {
-          for (const id of collectSvgElementIds(parseSvgDocument(fs.readFileSync(assetFile, "utf8")))) castTargets.add(id);
-        }
-      }
-      context.castTargets = castTargets;
-    } else {
-      context.designAvailable = false;
-    }
-    return checkLookPlan(raw, filmId, context);
+    raw = JSON.parse(fs.readFileSync(lookFile, "utf8"));
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return {
@@ -375,6 +351,72 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
       stats: { shots: 0, castCount: 0, cameraPoses: 0 },
     };
   }
+
+  const auxiliaryFindings: LookCheckFinding[] = [];
+  const context: LookCheckContext = {};
+
+  const filmFile = path.join(pkgDir, "film.json");
+  if (fs.existsSync(filmFile)) {
+    try {
+      context.film = parseFilm(JSON.parse(fs.readFileSync(filmFile, "utf8")));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      auxiliaryFindings.push({
+        rule: "shot",
+        severity: "error",
+        where: "film.json",
+        message: `failed to parse film.json: ${msg}`,
+      });
+    }
+  }
+
+  const designFile = path.join(pkgDir, "design", "design.json");
+  if (fs.existsSync(designFile)) {
+    try {
+      const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as { assets?: Array<{ id?: string; file?: string }> };
+      const castTargets = new Set<string>();
+      for (const asset of design.assets ?? []) {
+        if (asset.id) castTargets.add(asset.id);
+        if (!asset.file) continue;
+        const assetFile = path.join(pkgDir, asset.file);
+        if (fs.existsSync(assetFile)) {
+          try {
+            for (const id of collectSvgElementIds(parseSvgDocument(fs.readFileSync(assetFile, "utf8")))) {
+              castTargets.add(id);
+            }
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            auxiliaryFindings.push({
+              rule: "cast",
+              severity: "error",
+              where: asset.file,
+              message: `failed to parse ${asset.file}: ${msg}`,
+            });
+          }
+        }
+      }
+      context.castTargets = castTargets;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      auxiliaryFindings.push({
+        rule: "cast",
+        severity: "error",
+        where: "design/design.json",
+        message: `failed to parse design/design.json: ${msg}`,
+      });
+    }
+  }
+
+  const report = checkLookPlan(raw, filmId, context);
+  if (auxiliaryFindings.length > 0) {
+    const errorPaths = new Set(auxiliaryFindings.map((f) => f.where));
+    report.findings = [
+      ...auxiliaryFindings,
+      ...report.findings.filter((f) => !(f.severity === "warning" && errorPaths.has(f.where))),
+    ];
+    report.ok = !report.findings.some((f) => f.severity === "error");
+  }
+  return report;
 }
 
 // Formats a LookCheckReport for display.
