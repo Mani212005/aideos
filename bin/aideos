@@ -166,12 +166,6 @@ if [ "$#" -gt 0 ]; then
       echo ""
       exit 0
       ;;
-    *)
-      echo "Error: unknown aideos command '$CMD'." >&2
-      echo "Commands: exit (stop/down/kill), validate, review, all-check, connect, design, look, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, help" >&2
-      echo "Run 'aideos help' for usage." >&2
-      exit 2
-      ;;
   esac
 fi
 

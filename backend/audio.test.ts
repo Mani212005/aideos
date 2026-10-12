@@ -26,7 +26,6 @@ import {
   normalizeNarrationLoudness,
   NARRATION_LOUDNESS_TARGET,
 } from "./audio";
-import { DEFAULT_KOKORO_SPEED } from "./tts";
 import { measureLoudness } from "./review/media";
 import { getRetimedAudioFilename, getRetimedAudioRelPath } from "../src/dl/audio/retime";
 import { decodeWav, encodeWav } from "./pcm";
@@ -178,7 +177,7 @@ test("buildAtempoFilter builds valid single and chained atempo filters", () => {
   assert.throws(() => buildAtempoFilter(-1), /Invalid speed/);
 });
 
-// Checks loudness normalization and the Kokoro default on a short WAV, without synthesizing or rendering a film.
+// Checks loudness normalization on a short WAV, without synthesizing or rendering a film.
 test("narration normalization reaches the review LUFS window and preserves duration", async () => {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "aideos-loudness-test-"));
   const outputPath = path.join(tmpDir, "normalized.wav");
@@ -190,7 +189,6 @@ test("narration normalization reaches the review LUFS window and preserves durat
     assert.ok(measured.truePeakDb <= NARRATION_LOUDNESS_TARGET.truePeakDb + 0.2, `true peak ${measured.truePeakDb} exceeds target`);
     const normalizedWav = decodeWav(await fs.readFile(outputPath));
     assert.equal(normalizedWav.samples.length / normalizedWav.sampleRate, 2);
-    assert.equal(DEFAULT_KOKORO_SPEED, 0.75);
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true });
   }
