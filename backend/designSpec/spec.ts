@@ -64,6 +64,8 @@ export const specCameraSchema = z.object({
   /** Where the camera looks, in the 1920 x 1920 scene. */
   center: vec2.refine(([x, y]) => x >= 0 && x <= SCENE_SIZE.w && y >= 0 && y <= SCENE_SIZE.h, "the camera looks at a point inside the scene"),
   zoom: z.number().min(0.5).max(4),
+  /** The named look-plan cast object this pose is meant to keep in focus. */
+  focus: z.string().regex(/^[a-z0-9-]+$/).optional(),
   easing: z.enum(["linear", "expoOut", "expoIn", "expoInOut", "hold"]).optional(),
 });
 

@@ -75,6 +75,14 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed"): LookCh
     // Check carry-over change descriptions
     for (let cIdx = 0; cIdx < item.changes.length; cIdx++) {
       const change = item.changes[cIdx];
+      if (!change.state?.trim()) {
+        findings.push({
+          rule: "carry-over",
+          severity: "error",
+          where: `film.cast.${item.id}.changes[${cIdx}]`,
+          message: `carry-over change for "${item.id}" at "${change.at}" needs a distinct resulting state so the change can be staged and checked.`,
+        });
+      }
       if (change.magnitude === "minor") {
         findings.push({
           rule: "carry-over",
@@ -90,6 +98,25 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed"): LookCh
           message: `carry-over change description for "${item.id}" ("${change.how}") is too brief to verify visible transformation; describe how the object visibly changes, moves, or transforms.`,
         });
       }
+    }
+  }
+
+  for (let i = 0; i < look.film.camera.length; i++) {
+    const focus = look.film.camera[i].focus;
+    if (focus && !castIds.has(focus)) {
+      findings.push({
+        rule: "camera",
+        severity: "error",
+        where: `film.camera[${i}].focus`,
+        message: `camera focus names unknown cast object "${focus}".`,
+      });
+    } else if (i > 0 && i < look.film.camera.length - 1 && !focus) {
+      findings.push({
+        rule: "camera",
+        severity: "warning",
+        where: `film.camera[${i}].focus`,
+        message: `name the cast object this move lands on, so the design check can verify that the camera arrives near its subject.`,
+      });
     }
   }
 

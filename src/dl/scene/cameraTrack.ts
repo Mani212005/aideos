@@ -30,9 +30,19 @@ export interface CameraMotionStats {
   restSeconds: number;
   /** Seconds the camera is moving. */
   moveSeconds: number;
+  /** Fraction of the film spent at rest, between zero and one. */
+  holdShare: number;
+  /** Longest uninterrupted run of camera motion, in seconds. */
+  maxContinuousMoveSeconds: number;
 }
 
 const HOLD_EPSILON = 1e-6;
+/** Minimum fraction of a film that should let the viewer read a settled composition. */
+export const MIN_CAMERA_HOLD_SHARE = 0.3;
+/** Maximum uninterrupted camera motion before the composition needs another hold. */
+export const MAX_CAMERA_CONTINUOUS_MOVE_SECONDS = 6;
+/** Maximum gap between a camera arrival and its planned narration cue. */
+export const CAMERA_CUE_LANDING_TOLERANCE_SECONDS = 1.5;
 
 /** Compiles keyframes into one camera state per frame (a constant centred camera when there are none). */
 export function compileCameraTrack(
@@ -116,6 +126,8 @@ export function measureCameraMotion(curves: CompiledCameraState[], fps: number):
   let peakPanAccel = 0;
   let rest = 0;
   let moving = 0;
+  let longestMovingRun = 0;
+  let movingRun = 0;
   let prevSpeed = 0;
   for (let i = 1; i < curves.length; i++) {
     const a = curves[i - 1];
@@ -126,9 +138,25 @@ export function measureCameraMotion(curves: CompiledCameraState[], fps: number):
     peakPanSpeed = Math.max(peakPanSpeed, speed);
     peakZoomStep = Math.max(peakZoomStep, zoomStep);
     if (i > 1) peakPanAccel = Math.max(peakPanAccel, Math.abs(speed - prevSpeed) * fps);
-    if (speed < 0.3 && zoomStep < 1e-4 && turn < 1e-3) rest++;
-    else moving++;
+    if (speed < 0.3 && zoomStep < 1e-4 && turn < 1e-3) {
+      rest++;
+      longestMovingRun = Math.max(longestMovingRun, movingRun);
+      movingRun = 0;
+    } else {
+      moving++;
+      movingRun++;
+    }
     prevSpeed = speed;
   }
-  return { peakPanSpeed, peakZoomStep, peakPanAccel, restSeconds: rest / fps, moveSeconds: moving / fps };
+  longestMovingRun = Math.max(longestMovingRun, movingRun);
+  const intervals = Math.max(0, curves.length - 1);
+  return {
+    peakPanSpeed,
+    peakZoomStep,
+    peakPanAccel,
+    restSeconds: rest / fps,
+    moveSeconds: moving / fps,
+    holdShare: intervals ? rest / intervals : 1,
+    maxContinuousMoveSeconds: longestMovingRun / fps,
+  };
 }

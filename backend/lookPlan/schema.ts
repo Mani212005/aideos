@@ -24,6 +24,8 @@ export const lookDecidedBySchema = z.object({
 export const lookChangeSchema = z.object({
   at: z.string().min(1),
   how: z.string().min(1),
+  /** Names the distinct visible state the object reaches after the change. */
+  state: z.string().min(1).optional(),
   magnitude: z.enum(["major", "moderate", "minor"]).optional(),
 });
 export type LookChange = z.infer<typeof lookChangeSchema>;
@@ -42,6 +44,8 @@ export const lookCameraPoseSchema = z.object({
   at: z.string().min(1),
   pose: z.string().min(1),
   why: z.string().min(1),
+  /** Cast object this pose should frame after its move. */
+  focus: z.string().regex(/^[a-z0-9-]+$/).optional(),
 });
 export type LookCameraPose = z.infer<typeof lookCameraPoseSchema>;
 
