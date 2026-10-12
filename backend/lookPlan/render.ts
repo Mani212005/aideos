@@ -30,14 +30,14 @@ export function renderLookMd(plan: LookPlan, filmTitle?: string, shotTimings?: {
   const castTableRows = plan.film.cast
     .map((c) => {
       const changesText = c.changes.length > 0
-        ? c.changes.map((ch) => `${ch.at}: ${ch.how}${ch.magnitude ? ` (${ch.magnitude})` : ""}`).join("; ")
+        ? c.changes.map((ch) => `${ch.at}: ${ch.how}${ch.state ? ` -> ${ch.state}` : ""}${ch.magnitude ? ` (${ch.magnitude})` : ""}`).join("; ")
         : "None";
       return `| \`${c.id}\` | ${c.what} | ${c.enters} | ${changesText} |`;
     })
     .join("\n");
 
   const cameraRows = plan.film.camera
-    .map((cam) => `- **${cam.at}**: ${cam.pose} (${cam.why})`)
+    .map((cam) => `- **${cam.at}**: ${cam.pose}${cam.focus ? ` [focus: ${cam.focus}]` : ""} (${cam.why})`)
     .join("\n");
 
   const extraPalette = Object.entries(plan.film.palette.extra || {})

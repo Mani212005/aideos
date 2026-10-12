@@ -18,12 +18,14 @@
           {
             "at": "beat-04",
             "how": "lights up its read scan line as weights are pulled",
-            "magnitude": "moderate"
+            "magnitude": "moderate",
+            "state": "scan line lit as the first weight arrives"
           },
           {
             "at": "beat-11",
             "how": "streams large blocks of weights across the bus road",
-            "magnitude": "major"
+            "magnitude": "major",
+            "state": "large weight blocks streaming along the bus"
           }
         ]
       },
@@ -35,12 +37,14 @@
           {
             "at": "beat-03",
             "how": "dims its activity indicator to show idle waiting state",
-            "magnitude": "moderate"
+            "magnitude": "moderate",
+            "state": "verification lamp dimmed during idle waiting"
           },
           {
             "at": "beat-14",
             "how": "runs verification in parallel across multiple candidate tokens",
-            "magnitude": "major"
+            "magnitude": "major",
+            "state": "several candidate tokens verified in parallel"
           }
         ]
       },
@@ -52,12 +56,14 @@
           {
             "at": "beat-05",
             "how": "transports a tiny single-token cargo packet across the wide lanes",
-            "magnitude": "moderate"
+            "magnitude": "moderate",
+            "state": "one tiny token packet on the road"
           },
           {
             "at": "beat-15",
             "how": "fills completely with a train of five speculative tokens",
-            "magnitude": "major"
+            "magnitude": "major",
+            "state": "road filled by a train of five speculative tokens"
           }
         ]
       },
@@ -69,7 +75,8 @@
           {
             "at": "beat-10",
             "how": "rapidly emits five speculative candidate tokens ahead of verification",
-            "magnitude": "major"
+            "magnitude": "major",
+            "state": "five candidate tokens emitted ahead of verification"
           }
         ]
       }
@@ -83,17 +90,20 @@
       {
         "at": "beat-04",
         "pose": "push in to memory bank",
-        "why": "the massive weight transfer bottleneck"
+        "why": "the massive weight transfer bottleneck",
+        "focus": "memory"
       },
       {
         "at": "beat-10",
         "pose": "pan to draft model above the road",
-        "why": "observe fast speculative token generation"
+        "why": "observe fast speculative token generation",
+        "focus": "draft-model"
       },
       {
         "at": "beat-14",
         "pose": "push in to the accelerator verification core",
-        "why": "single-pass parallel verification of draft candidates"
+        "why": "single-pass parallel verification of draft candidates",
+        "focus": "chip"
       },
       {
         "at": "beat-21",

@@ -36,6 +36,7 @@ export const EXAMPLE_LOOK_PLAN = {
           {
             at: "beat-03",
             how: "dims and slides left as the cache takes over",
+            state: "disk dimmed on the left while cache serves requests",
             magnitude: "moderate",
           },
         ],
@@ -48,6 +49,7 @@ export const EXAMPLE_LOOK_PLAN = {
           {
             at: "beat-05",
             how: "becomes the cache card in the final flowchart",
+            state: "cache card occupies the center of the final flow",
             magnitude: "major",
           },
         ],
@@ -55,7 +57,7 @@ export const EXAMPLE_LOOK_PLAN = {
     ],
     camera: [
       { at: "beat-01", pose: "wide, establishing the server rack", why: "show the whole rack" },
-      { at: "beat-02", pose: "push in to disk and memory bus", why: "focus on the slow read" },
+      { at: "beat-02", pose: "push in to disk and memory bus", why: "focus on the slow read", focus: "disk" },
       { at: "beat-06", pose: "wide payoff showing the full data path", why: "payoff shows the whole path" },
     ],
     palette: {
@@ -115,9 +117,9 @@ Write \`videos/${film.id}/design/look.json\` and run \`aideos look check ${film.
    One sentence naming the world the whole film lives in. Every new explainer is a scene film on one persistent 2D spatial canvas. Never clear or jump between disconnected stages.
 2. **What carries over?**
    A cast list of named objects. For each: what it is, when it enters, and how it transforms across beats.
-   *Important*: carry-over changes must be visibly obvious (magnitude "moderate" or "major"). Minor or imperceptible changes break continuity.
+   *Important*: describe each change as a distinct resulting state. It must be large enough to recognize (magnitude "moderate" or "major"), finish while the camera holds on that object, and remain visible for at least about 2 seconds. Minor or imperceptible changes break continuity.
 3. **The camera.**
-   Must start wide (establishing view) and end wide (payoff view), with slow, purposeful moves (at most 20% frame width per second) in between.
+   Must start wide (establishing view) and end wide (payoff view). Use move-then-hold: make each move a short, deliberate turn toward the object the narration is about to discuss, arrive about one beat before its cue word, then hold that subject for about 3 to 5 seconds. Name the focused cast object on each close pose. Do not let the camera drift continuously between subjects. Keep moves under 20% of frame width per second.
 4. **The palette.**
    Background (e.g. \`#0A0A0B\`), ink/text, the film's one primary accent (e.g. \`#635BFF\`), and optional labeled semantic colours.
 5. **Captions.**

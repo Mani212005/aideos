@@ -186,18 +186,32 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   if (!compiled.film) return fail(compiled.errors);
 
   // Legacy packages without a plan still build; new production runs always require one first.
+  let lookPlan: LookPlan | undefined;
   if (fs.existsSync(path.join(designDir(filmId), "look.json"))) {
     const look = readCheckedLookPlan(film);
     if (!look.plan) return fail(look.errors);
+    lookPlan = look.plan;
     try {
-      const errors = checkDesignAgainstLook(film, spec, words, pkg, look.plan);
+      const errors = checkDesignAgainstLook(film, spec, words, pkg, lookPlan);
       if (errors.length) return fail(errors);
     } catch (err) {
       return fail([`look/design check: ${err instanceof Error ? err.message : String(err)}`]);
     }
   }
 
-  const report = checkFilmDesign(compiled.film);
+  const cues = createCues(narrationTimingForFilm(film, words), film.fps);
+  const authoredPoses = (spec.camera ?? []).map((pose) => ({ frame: resolveCue(pose.at, cues), focus: pose.focus }));
+  const cameraTargets = (lookPlan?.film.camera ?? []).map((pose) => {
+    const frame = resolveCue(pose.at, cues);
+    const authoredPose = authoredPoses.length ? authoredPoses.reduce((nearest, candidate) =>
+      Math.abs(candidate.frame - frame) < Math.abs(nearest.frame - frame) ? candidate : nearest,
+    ) : undefined;
+    return { frame, focus: pose.focus, authoredFocus: authoredPose?.focus };
+  });
+  const report = checkFilmDesign(compiled.film, {
+    ...(cameraTargets.length ? { cameraTargets } : {}),
+    ...(lookPlan ? { lookPlan } : {}),
+  });
   if (!report.ok) return fail([], report.findings);
 
   writeFilm(filmId, compiled.film);

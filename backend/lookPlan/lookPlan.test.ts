@@ -45,6 +45,7 @@ const VALID_LOOK_PLAN: LookPlan = {
           {
             at: "beat-02",
             how: "spins down and dims as the cache takes over",
+            state: "disk dimmed while the cache serves requests",
             magnitude: "moderate",
           },
         ],
@@ -57,6 +58,7 @@ const VALID_LOOK_PLAN: LookPlan = {
           {
             at: "beat-04",
             how: "lights up and routes requests directly to the chip",
+            state: "cache lit and routing requests to the chip",
             magnitude: "major",
           },
         ],
@@ -72,6 +74,7 @@ const VALID_LOOK_PLAN: LookPlan = {
         at: "beat-02",
         pose: "push in to the slow disk",
         why: "highlight the bottleneck",
+        focus: "disk",
       },
       {
         at: "beat-04",
@@ -230,6 +233,7 @@ test("checker rule: carry-over change must not be minor or too brief", () => {
     {
       at: "beat-02",
       how: "a faint pixel shift",
+      state: "disk shifted left in its settled state",
       magnitude: "minor",
     },
   ];
@@ -245,6 +249,7 @@ test("checker rule: carry-over change must not be minor or too brief", () => {
     {
       at: "beat-02",
       how: "tiny shift",
+      state: "disk shifted a visible distance left",
     },
   ];
   const report2 = checkLookPlan(planBrief, "brief-change-film");
@@ -252,6 +257,13 @@ test("checker rule: carry-over change must not be minor or too brief", () => {
   const f2 = report2.findings.find((x) => x.rule === "carry-over");
   assert.ok(f2, "should flag overly brief carry-over description");
   assert.ok(f2?.message.includes("too brief"));
+});
+
+test("checker rule: each carry-over change names a distinct resulting state", () => {
+  const plan = JSON.parse(JSON.stringify(VALID_LOOK_PLAN));
+  delete plan.film.cast[0].changes[0].state;
+  const report = checkLookPlan(plan, "unnamed-result-state");
+  assert.ok(report.findings.some((f) => f.rule === "carry-over" && /distinct resulting state/.test(f.message)));
 });
 
 test("checker rule: device shot must name a template device", () => {
@@ -429,7 +441,9 @@ test("checker rule: captions kineticColumn must be false", () => {
 });
 
 test("render: renderLookMd produces markdown with stage, cast, camera and shots", () => {
-  const md = renderLookMd(VALID_LOOK_PLAN, "Test Film Title");
+  const plan = JSON.parse(JSON.stringify(VALID_LOOK_PLAN));
+  plan.film.camera[1].focus = "disk";
+  const md = renderLookMd(plan, "Test Film Title");
   assert.ok(md.includes("# Look Plan: Test Film Title"));
   assert.ok(md.includes("## Stage"));
   assert.ok(md.includes("## Cast (Persistent Elements)"));
@@ -437,6 +451,8 @@ test("render: renderLookMd produces markdown with stage, cast, camera and shots"
   assert.ok(md.includes("`cache`"));
   assert.ok(md.includes("## Camera"));
   assert.ok(md.includes("wide establishing view"));
+  assert.ok(md.includes("[focus: disk]"));
+  assert.ok(md.includes("disk dimmed while the cache serves requests"));
   assert.ok(md.includes("## Shots & Beat Treatments"));
   assert.ok(md.includes("`beat-01` **scene**"));
   assert.ok(md.includes("`beat-04` **device** (StatCounter)"));

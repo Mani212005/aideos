@@ -49,8 +49,8 @@ export const EXAMPLE_SPEC = {
   ],
   camera: [
     { id: "wide", at: "intro", center: [960, 960], zoom: 1 },
-    { id: "lamp-close", at: 'intro:"attention"@end+30', center: [900, 1100], zoom: 1.25 },
-    { id: "lamp-hold", at: "how-it-works", center: [900, 1100], zoom: 1.25 },
+    { id: "lamp-close", at: 'intro:"attention"@end+30', center: [900, 1100], zoom: 1.25, focus: "lamp" },
+    { id: "lamp-hold", at: "how-it-works", center: [900, 1100], zoom: 1.25, focus: "lamp" },
     { id: "payoff", at: "end", center: [960, 960], zoom: 1 },
   ],
 };
@@ -99,7 +99,8 @@ ${RUBRIC_SUMMARY}
   camera at rest; a camera move shifts what falls inside) and the build fails any artwork visible
   in that region while the shot plays, so keep it clear or fade it out first.
 - **Continuity:** one scene for the whole film. Base elements stay on screen and evolve; new elements build on what is there (no disconnected frames). A clip must start from the value the previous clip on that element and property left (the build names the clip when it does not). To jump, hide the element first and set \`allowJump\`. One element keeps one transform \`origin\` for the whole film.
-- **Camera:** \`camera\` lists poses (centre and zoom) in time order; the camera flows from each pose to the next, so repeat a pose to hold it. Start wide, push in on what the beat is about, end on a wide payoff pose, and move at least once every 20 seconds. Keep moves slow: at most 20% of the scene width per second (${Math.round(SCENE_SIZE.w * 0.2)} px/s), zoom change under ${(MAX_CAMERA_ZOOM_STEP * 100).toFixed(1)}% a frame and pan acceleration under ${Math.round(SCENE_SIZE.w * MAX_CAMERA_PAN_ACCEL_WIDTHS)} px/s^2 (the build checks all three). **Leave \`easing\` off**: the camera then runs smoothly through its poses, while an easing stops at both ends of its move and reads as a jitter. Give a move several seconds, not a beat.
+- **Camera:** \`camera\` lists poses (centre and zoom) in time order; the camera flows from each pose to the next, so repeat a pose to hold it. Start wide, end on a wide payoff, and use move-then-hold: make each move a short deliberate turn toward the object the narration is about to discuss, arrive about one beat before its cue word, then hold that subject for about 3 to 5 seconds. Set \`focus\` to the cast id for each close pose, and place the camera centre on that object's scene position. Do not drift continuously between subjects. Keep moves under 20% of scene width per second (${Math.round(SCENE_SIZE.w * 0.2)} px/s), zoom change under ${(MAX_CAMERA_ZOOM_STEP * 100).toFixed(1)}% a frame and pan acceleration under ${Math.round(SCENE_SIZE.w * MAX_CAMERA_PAN_ACCEL_WIDTHS)} px/s^2 (the build checks these).
+- **Carry-over changes:** every planned change needs a distinct resulting state in \`look.json\`. Animate a substantial change, finish it while the camera is holding on that object, then keep the object framed and readable for at least about 2 seconds.
 - **Camera framing:** a pose at centre (cx, cy) and zoom z shows scene x cx +/- 960/z by y cy +/- 960/z, then each format crops that view: the wide cut keeps the middle 1080 rows (y +/- 540/z) and the reel the middle 1080 columns (x +/- 540/z). So at zoom 1.25 the reel sees only 864 scene columns. Pose so everything a beat needs stays inside both crops, and do not push in so far that artwork at the edge of the safe square is cut off.
 - **Timing:** never write frames. Cue every clip to the narration: \`"shot"\`, \`"shot@0.4"\`, \`"shot@end"\`, \`'shot:"spoken phrase"'\`, \`'shot:"spoken phrase"@end'\`, \`"end"\`, each optionally \`+N\`/\`-N\` frames. Aim at the word being said: every visual depicts what is spoken at that moment. A cue naming a phrase that is not spoken in that shot fails the build.
 - **Honest data:** any number, label or chart on screen must come from the narration. A counter must show a number that is actually said.
@@ -115,7 +116,7 @@ ${JSON.stringify(EXAMPLE_SPEC, null, 2)}
 - \`background\` (optional): \`{ "file": "visuals/<name>.svg", "scale": 4.8 }\` fills the stage; omit for the plain canvas.
 - \`assets[]\`: \`id\`, \`file\`, \`position\` [x, y], \`scale\`, optional \`layer\` (higher draws on top), \`rotation\`, \`opacity\`.
 - \`clips[]\`: \`property\` is one of translateX, translateY, scale, scaleX, scaleY, rotate, opacity, drawOn. \`stagger\` delays each further target by N frames. \`origin\` is [x, y] in the asset's own coordinates.
-- \`camera\` (optional, at least two poses): \`at\` is a cue (same grammar as clips), \`center\` [x, y] in the scene, \`zoom\` (0.5 to 4). A cue on the film's end lands on its last frame. Poses must be in time order and at least one frame apart; an \`id\` names a pose in build errors. \`easing\` is rarely wanted (see Camera above).
+- \`camera\` (optional, at least two poses): \`at\` is a cue (same grammar as clips), \`center\` [x, y] in the scene, \`zoom\` (0.5 to 4), and optional \`focus\` naming the focused cast id from look.json. A cue on the film's end lands on its last frame. Poses must be in time order and at least one frame apart; an \`id\` names a pose in build errors.
 - \`shots\` (optional): \`{ "<shot id>": { "blocks": [...], "stage": "frame" } }\` replaces the cards drawn over the scene for that shot (film schema blocks, at most 4). Text-only blocks default to stage "frame" (scene stays visible), no blocks to "none". Use it to remove a chart the narration does not support or to write your own card.
 
 ## What the film says

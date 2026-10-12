@@ -15,14 +15,23 @@ import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import type { EnvironmentAsset, Scene } from "../../src/dl/scene/types";
 import type { SvgAnimationClip } from "../../src/dl/scene/svgAnimation";
-import { compileCameraTrack, measureCameraMotion } from "../../src/dl/scene/cameraTrack";
+import {
+  compileCameraTrack,
+  measureCameraMotion,
+  CAMERA_CUE_LANDING_TOLERANCE_SECONDS,
+  MIN_CAMERA_HOLD_SHARE,
+  MAX_CAMERA_CONTINUOUS_MOVE_SECONDS,
+} from "../../src/dl/scene/cameraTrack";
 import { parseSvgDocument, walkSvgNodes } from "../../src/dl/scene/svgDocument";
 import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNode";
 import { narrationSupportsVisual, numbersIn } from "../shotVisualCues";
 import type { ShotVisual } from "../jev";
-import { FPS, CAPTION_SAFE_SQUARE } from "../sceneKit";
 import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { checkInsetRegions } from "./insetRegion";
+import { safeParseLookPlan, type LookPlan } from "../lookPlan/schema";
+import { createCues, FPS, CAPTION_SAFE_SQUARE } from "../sceneKit";
+import { narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
+import { resolveCue } from "../designSpec/cues";
 
 /** The standard layer rules a finding can belong to. */
 export type DesignRule =
@@ -37,7 +46,8 @@ export type DesignRule =
   | "audio-lock"
   | "honest-data"
   | "safe-area"
-  | "inset";
+  | "inset"
+  | "carry-over";
 
 /** One problem found in a film's design. Errors block shipping; warnings are worth a look. */
 export interface DesignFinding {
@@ -53,6 +63,12 @@ export interface DesignReport {
   ok: boolean;
   findings: DesignFinding[];
   stats: { shots: number; assets: number; clips: number };
+}
+
+/** Optional approved look data used to check authored camera and carry-over intent. */
+export interface DesignCheckContext {
+  lookPlan?: LookPlan;
+  cameraTargets?: Array<{ frame: number; focus?: string; authoredFocus?: string }>;
 }
 
 /** The locked design-system palette (src/dl/README.md); a film may add its own accent. */
@@ -297,7 +313,7 @@ export const MAX_CAMERA_ZOOM_STEP = 0.008;
 export const MAX_CAMERA_PAN_ACCEL_WIDTHS = 0.3;
 
 // Checks the scene camera keyframes for valid speed limits and motion.
-function checkCamera(scene: Scene, findings: DesignFinding[]): void {
+function checkCamera(scene: Scene, findings: DesignFinding[], targets: DesignCheckContext["cameraTargets"] = []): void {
   if (!scene.camera || !scene.camera.keyframes || scene.camera.keyframes.length === 0) return;
   const kfs = [...scene.camera.keyframes].sort((a, b) => a.frame - b.frame);
   if (kfs.length < 2) {
@@ -347,10 +363,93 @@ function checkCamera(scene: Scene, findings: DesignFinding[]): void {
   if (stats.peakPanAccel > maxAccel) {
     findings.push({ rule: "camera", severity: "error", where: "scene.camera", message: `camera pan accelerates at ${stats.peakPanAccel.toFixed(0)} px/s^2, above the limit of ${maxAccel.toFixed(0)} px/s^2, which reads as a jerk. ${hint}` });
   }
+  if (stats.holdShare < MIN_CAMERA_HOLD_SHARE) {
+    findings.push({ rule: "camera", severity: "warning", where: "scene.camera", message: `camera holds for ${(stats.holdShare * 100).toFixed(0)}% of the film; aim for at least ${(MIN_CAMERA_HOLD_SHARE * 100).toFixed(0)}% so viewers can read each composition.` });
+  }
+  if (stats.maxContinuousMoveSeconds > MAX_CAMERA_CONTINUOUS_MOVE_SECONDS) {
+    findings.push({ rule: "camera", severity: "warning", where: "scene.camera", message: `camera moves continuously for as long as ${stats.maxContinuousMoveSeconds.toFixed(1)}s; break the move with a settled hold within ${MAX_CAMERA_CONTINUOUS_MOVE_SECONDS}s.` });
+  }
+  const maxLandingGap = CAMERA_CUE_LANDING_TOLERANCE_SECONDS * fps;
+  for (let i = 0; i < (targets?.length ?? 0); i++) {
+    const target = targets![i];
+    const keyframe = kfs.reduce((nearest, candidate) =>
+      Math.abs(candidate.frame - target.frame) < Math.abs(nearest.frame - target.frame) ? candidate : nearest,
+    );
+    const gap = Math.abs(keyframe.frame - target.frame);
+    if (gap > maxLandingGap) {
+      findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${i + 1}`, message: `move lands ${(gap / fps).toFixed(1)}s from its planned cue; aim to arrive about one beat before the narration cue.` });
+    }
+    if (target.focus) {
+      if (target.authoredFocus !== target.focus) {
+        findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${i + 1}`, message: `look plan focuses on "${target.focus}" but the design pose does not name that object as its focus.` });
+      }
+      const subject = scene.props.find((prop) => prop.assetId === target.focus || prop.animation?.clips.some((clip) => clip.targets.includes(target.focus!)));
+      if (!subject) {
+        findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${i + 1}`, message: `planned focus "${target.focus}" has no scene object to frame.` });
+      } else if (Math.hypot(keyframe.center.x - subject.position.x, keyframe.center.y - subject.position.y) > 360) {
+        findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${i + 1}`, message: `camera pose does not land near focused object "${target.focus}"; move the pose toward the subject.` });
+      }
+    }
+  }
+}
+
+const MIN_VISIBLE_CHANGE_DELTA: Record<string, number> = {
+  opacity: 0.25,
+  scale: 0.2,
+  scaleX: 0.2,
+  scaleY: 0.2,
+  translateX: 40,
+  translateY: 40,
+  rotate: 15,
+  drawOn: 0.25,
+};
+
+// Checks declared carry-over changes for a substantial animation that settles in a visible camera hold.
+function checkCarryChangeHolds(film: Film, scene: Scene, plan: LookPlan | undefined, findings: DesignFinding[]): void {
+  if (!plan) return;
+  const fps = scene.fps || FPS;
+  const holdFrames = 2 * fps;
+  const camera = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize ?? { w: 1920, h: 1920 });
+  const shotFrames = new Map<string, { start: number; end: number }>();
+  let shotTime = 0;
+  for (const shot of film.shots) {
+    const start = Math.round(shotTime * fps);
+    shotTime += shot.dur;
+    const end = Math.round(shotTime * fps);
+    shotFrames.set(shot.id, { start, end });
+  }
+  for (const cast of plan.film.cast) {
+    const prop = scene.props.find((item) => item.assetId === cast.id || item.animation?.clips.some((clip) => clip.targets.includes(cast.id)));
+    for (const change of cast.changes) {
+      const window = shotFrames.get(change.at);
+      const where = `scene.camera / ${cast.id} at ${change.at}`;
+      if (!prop || !window) {
+        findings.push({ rule: "carry-over", severity: "warning", where, message: `cannot verify the planned state change "${change.state ?? change.how}" against a scene object and shot timing.` });
+        continue;
+      }
+      const clips = (prop.animation?.clips ?? []).filter((clip) =>
+        (prop.assetId === cast.id || clip.targets.includes(cast.id)) &&
+        clip.startFrame < window.end && clip.startFrame + clip.durationFrames >= window.start &&
+        Math.abs(clip.to - clip.from) >= (MIN_VISIBLE_CHANGE_DELTA[clip.property] ?? Number.POSITIVE_INFINITY),
+      );
+      const finish = clips.length ? Math.max(...clips.map((clip) => clip.startFrame + clip.durationFrames)) : -1;
+      const aimedAndHeld = finish >= 0 && finish + holdFrames < camera.length && Array.from({ length: holdFrames }, (_, i) => camera[finish + i]).every((pose) => {
+        const pan = Math.hypot(camera[finish].center.x - pose.center.x, camera[finish].center.y - pose.center.y);
+        const zoom = Math.abs(camera[finish].zoom - pose.zoom);
+        const inFrame = Math.abs(pose.center.x - prop.position.x) <= 540 / pose.zoom && Math.abs(pose.center.y - prop.position.y) <= 540 / pose.zoom;
+        return pan < 0.3 && zoom < 1e-4 && inFrame;
+      });
+      if (!clips.length) {
+        findings.push({ rule: "carry-over", severity: "warning", where, message: `planned state "${change.state ?? change.how}" has no large visible animation on this object during the change shot.` });
+      } else if (!aimedAndHeld) {
+        findings.push({ rule: "carry-over", severity: "warning", where, message: `planned state "${change.state ?? change.how}" must finish while the camera holds on the object, then stay framed for at least 2 seconds.` });
+      }
+    }
+  }
 }
 
 // Runs every standard-layer rule over a parsed film manifest.
-export function checkFilmDesign(raw: unknown): DesignReport {
+export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}): DesignReport {
   const findings: DesignFinding[] = [];
   const filmId = (raw as { id?: string })?.id ?? "unknown";
   let film: Film;
@@ -377,7 +476,8 @@ export function checkFilmDesign(raw: unknown): DesignReport {
       checkAsset(asset, film.accent, findings);
       clips += checkContinuity(asset, findings);
     }
-    checkCamera(scene, findings);
+    checkCamera(scene, findings, context.cameraTargets);
+    checkCarryChangeHolds(film, scene, context.lookPlan, findings);
     // The inset rule reads the compiled scene, which only exists when the scene itself is valid.
     if (result.errors.length === 0) {
       for (const f of checkInsetRegions(film, scene)) findings.push({ rule: "inset", severity: "error", ...f });
@@ -398,7 +498,39 @@ export function checkFilmDesign(raw: unknown): DesignReport {
 export function checkFilmDesignById(filmId: string): DesignReport {
   const file = path.join(resolvePackageDir(filmId), "film.json");
   if (!fs.existsSync(file)) throw new Error(`no film at ${path.relative(REPO_ROOT, file)}`);
-  return checkFilmDesign(JSON.parse(fs.readFileSync(file, "utf8")));
+  const film = parseFilm(JSON.parse(fs.readFileSync(file, "utf8")));
+  const pkg = resolvePackageDir(filmId);
+  const lookFile = path.join(pkg, "design", "look.json");
+  if (!fs.existsSync(lookFile)) return checkFilmDesign(film);
+  const parsed = safeParseLookPlan(JSON.parse(fs.readFileSync(lookFile, "utf8")));
+  if (!parsed.success) return checkFilmDesign(film);
+  const wordsFile = path.join(pkg, "voiceover_words.json");
+  const words: TimedWord[] = fs.existsSync(wordsFile) ? JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? [] : [];
+  const designFile = path.join(pkg, "design", "design.json");
+  let designCamera: Array<{ at: string | number; focus?: string }> = [];
+  try {
+    designCamera = fs.existsSync(designFile) ? JSON.parse(fs.readFileSync(designFile, "utf8")).camera ?? [] : [];
+  } catch {
+    designCamera = [];
+  }
+  const cues = createCues(narrationTimingForFilm(film, words), film.fps);
+  let cameraTargets: DesignCheckContext["cameraTargets"] = [];
+  try {
+    const authoredPoses = designCamera.map((pose) => ({
+      frame: resolveCue(pose.at, cues),
+      focus: typeof pose.focus === "string" ? pose.focus : undefined,
+    }));
+    cameraTargets = parsed.data.film.camera.map((pose) => {
+      const frame = resolveCue(pose.at, cues);
+      const authoredPose = authoredPoses.length ? authoredPoses.reduce((nearest, candidate) =>
+        Math.abs(candidate.frame - frame) < Math.abs(nearest.frame - frame) ? candidate : nearest,
+      ) : undefined;
+      return { frame, focus: pose.focus, authoredFocus: authoredPose?.focus };
+    });
+  } catch {
+    cameraTargets = [];
+  }
+  return checkFilmDesign(film, { lookPlan: parsed.data, cameraTargets });
 }
 
 // Formats a report as plain text an agent or a person can act on.

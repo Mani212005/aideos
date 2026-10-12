@@ -150,6 +150,77 @@ test("DesignCheck: camera moves must be present and speed-capped", () => {
   assert.ok(unsortedFast.findings.some(f => f.rule === "camera" && f.message.includes("speed limit")));
 });
 
+test("DesignCheck: an always-moving camera warns, while short moves separated by holds pass the motion-shape check", () => {
+  const film = { ...JSON.parse(JSON.stringify(stillTalking())), id: "camera-hold-test" };
+  const end = film.scene.durationFrames - 1;
+  film.scene.camera = {
+    keyframes: [
+      { frame: 0, center: { x: 500, y: 500 }, zoom: 1 },
+      { frame: Math.floor(end / 2), center: { x: 900, y: 500 }, zoom: 1.1 },
+      { frame: end, center: { x: 1300, y: 500 }, zoom: 1.2 },
+    ],
+  };
+  const alwaysMoving = checkFilmDesign(film).findings.filter((f) => f.rule === "camera");
+  assert.ok(alwaysMoving.some((f) => /holds for/.test(f.message)), JSON.stringify(alwaysMoving));
+  assert.ok(alwaysMoving.some((f) => /moves continuously/.test(f.message)), JSON.stringify(alwaysMoving));
+
+  film.scene.camera = {
+    keyframes: [
+      { frame: 0, center: { x: 500, y: 500 }, zoom: 1 },
+      { frame: 45, center: { x: 540, y: 500 }, zoom: 1.02 },
+      { frame: 300, center: { x: 540, y: 500 }, zoom: 1.02 },
+      { frame: 345, center: { x: 580, y: 500 }, zoom: 1.04 },
+      { frame: end, center: { x: 580, y: 500 }, zoom: 1.04 },
+    ],
+  };
+  const moveThenHold = checkFilmDesign(film).findings.filter((f) => f.rule === "camera" && /holds for|moves continuously/.test(f.message));
+  assert.deepEqual(moveThenHold, []);
+});
+
+test("DesignCheck: camera arrivals warn when they miss the planned cue or framed object", () => {
+  const film = stillTalking();
+  film.scene.camera = { keyframes: [
+    { frame: 0, center: { x: 500, y: 500 }, zoom: 1 },
+    { frame: 100, center: { x: 510, y: 500 }, zoom: 1 },
+  ] };
+  const report = checkFilmDesign(film, { cameraTargets: [
+    { frame: 0 },
+    { frame: 300, focus: "probe", authoredFocus: "probe" },
+  ] });
+  assert.ok(report.findings.some((f) => f.rule === "camera" && /planned cue/.test(f.message)));
+  assert.ok(report.findings.some((f) => f.rule === "camera" && /does not land near focused object/.test(f.message)));
+});
+
+test("DesignCheck: a planned carry-over change warns when it is brief or outside the held frame", () => {
+  const film = stillTalking();
+  const prop = film.scene.props.find((item: any) => item.assetId === "probe");
+  const original = prop.animation.clips[0];
+  const plan: any = {
+    film: { cast: [{ id: "probe", what: "probe", enters: film.shots[0].id, changes: [{ at: film.shots[0].id, how: "moves clearly to the right", state: "probe settled on the right", magnitude: "major" }] }] },
+    shots: film.shots.map((shot: any) => ({ id: shot.id })),
+  };
+  const end = film.scene.durationFrames - 1;
+  // Makes a fixed camera track centered on the selected test subject.
+  const camera = (center: { x: number; y: number }) => ({ keyframes: [
+    { frame: 0, center, zoom: 1 },
+    { frame: end, center, zoom: 1 },
+  ] });
+  prop.animation.clips = [{ ...original, clipId: "test-change", targets: [original.targets[0]], property: "translateX", from: 0, to: 140, startFrame: 10, durationFrames: 1 }];
+  film.scene.camera = camera(prop.position);
+  const passes = checkFilmDesign(film, { lookPlan: plan });
+  assert.equal(passes.findings.some((f) => f.rule === "carry-over"), false, JSON.stringify(passes.findings));
+
+  plan.film.cast[0].changes[0].at = film.shots[film.shots.length - 1].id;
+  prop.animation.clips[0].startFrame = end - 40;
+  const brief = checkFilmDesign(film, { lookPlan: plan });
+  assert.ok(brief.findings.some((f) => f.rule === "carry-over" && /at least 2 seconds/.test(f.message)), JSON.stringify(brief.findings));
+
+  prop.animation.clips[0].startFrame = end - 40;
+  film.scene.camera = camera({ x: 0, y: 0 });
+  const offCamera = checkFilmDesign(film, { lookPlan: plan });
+  assert.ok(offCamera.findings.some((f) => f.rule === "carry-over" && /at least 2 seconds/.test(f.message)), JSON.stringify(offCamera.findings));
+});
+
 test("DesignCheck: a camera eased at every keyframe is caught as a jerk, the same poses un-eased pass", () => {
   const film = { ...JSON.parse(JSON.stringify(stillTalking())), id: "camera-jerk-test" };
   // The look-first proof film's poses: peak speed stays under the 384 px/s cap but each move bursts then stops.
@@ -168,7 +239,7 @@ test("DesignCheck: a camera eased at every keyframe is caught as a jerk, the sam
   assert.ok(jerky.some((f) => f.message.includes("accelerates")), "pan acceleration not caught");
 
   film.scene.camera = withEasing();
-  assert.deepEqual(checkFilmDesign(film).findings.filter((f) => f.rule === "camera"), []);
+  assert.deepEqual(checkFilmDesign(film).findings.filter((f) => f.rule === "camera" && f.severity === "error"), []);
 });
 
 test("DesignCheck: scene camera survives parseFilm in schema", () => {
