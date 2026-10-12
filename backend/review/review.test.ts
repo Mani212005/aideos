@@ -474,8 +474,8 @@ test("criteria: look plan adherence passes matching scene data and fails measure
   const repeatedPlan: LookPlan = {
     ...lookPlan,
     shots: [
-      { id: "shot-1", treatment: "scene", carries: ["object"], cue: "data", whyThisTreatment: "stage" },
-      { id: "shot-2", treatment: "scene", carries: ["object"], cue: "data", whyThisTreatment: "stage" },
+      { id: "shot-1", treatment: "scene", carries: ["object"], cue: "data", criterion: "mechanism", why: "stage" },
+      { id: "shot-2", treatment: "scene", carries: ["object"], cue: "data", criterion: "mechanism", why: "stage" },
     ],
   };
   const repeatedFacts: FilmFacts = {
