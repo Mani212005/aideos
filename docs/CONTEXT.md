@@ -488,6 +488,18 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `validateFilmAudioAndAssets(film, options)`: Validates duration sum invariant and time-sampled anchor card geometry.
 * `scripts/validate_film.ts`: Standalone CLI validator (`npm run validate:film <path/to/film.json>`) validating arbitrary `film.json` files against cinematic schema and pacing constraints and printing a runsheet.
 
+### `src/dl/performance/` & `backend/performance/` (Sparse Constrained Performances)
+* Deep reference documentation in [`src/dl/performance/README.md`](../src/dl/performance/README.md).
+* `types.ts`: TypeScript contracts for sparse actions, rigs, phases, limb constraints, contact attachment, and absolute-frame evaluator state (`PerformanceRig`, `ReceiveAction`, `PerformanceState`, `PerformanceEvaluator`).
+* `math.ts`: Pure dependency-free vector, quaternion, slerp, smoothstep, and two-bone IK solver (`solveTwoBone`).
+* `evaluate.ts`: Absolute-frame receive evaluator (`createPerformanceEvaluator`, `validatePerformance`) enforcing rigid limbs, world-space planted feet, and palm-glider contact attachment without simulation history or external dependencies.
+* `receive.ts`: Sparse choreography recovered from the approved Iona catch (`createReceiveAction`, `IONA_CONTACT_ROTATION`, `IONA_FLIGHT_ROTATION`).
+* `iona.ts`: Approved Iona bind hierarchy and fixed limb proportions (`IONA_RIG`).
+* `critique.ts`: Independent numerical obligations checker (`critiquePerformance`) measuring bone length, planted feet, grip path, attachment, contact cue, seams, seek-order equality, and active motion windows.
+* `backend/performance/bindReceive.ts`: Authoring boundary binding contact to narration word cues (`bindReceive`).
+* `scripts/performance_check.ts`: CLI script (`npm run performance:check`) evaluating numerical obligations against the illustrative fixture timing.
+* `scripts/performance_filmstrip.ts`: Isolated comparison filmstrip generator (`npm run performance:filmstrip`) for fixed-camera cel pixel verification.
+
 ---
 
 ## 6. Non-Linear Layer Engine & Timeline Tools (`backend/timeline/`, `src/dl/convertFilm.ts`)
