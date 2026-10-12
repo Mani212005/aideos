@@ -144,17 +144,24 @@ function sceneAssetOpacityAt(asset: Scene["background"], frame: number): number 
 
 // Reads one animated SVG target's opacity at a scene frame.
 function sceneTargetOpacityAt(asset: Scene["background"], target: string, frame: number): number {
-  let opacity = 1;
+  const clips: Array<{ start: number; duration: number; from: number; to: number }> = [];
   for (const clip of asset.animation?.clips ?? []) {
     if (clip.property !== "opacity") continue;
     const targetIndex = clip.targets.indexOf(target);
     if (targetIndex < 0) continue;
     const start = clip.startFrame + (clip.staggerFrames ?? 0) * targetIndex;
-    if (frame < start) continue;
-    const progress = Math.min(1, (frame - start) / clip.durationFrames);
-    opacity = clip.from + (clip.to - clip.from) * progress;
+    clips.push({ start, duration: clip.durationFrames, from: clip.from, to: clip.to });
   }
-  return opacity;
+  if (!clips.length) return 1;
+  clips.sort((a, b) => a.start - b.start);
+  if (frame < clips[0].start) return clips[0].from;
+  let governing = clips[0];
+  for (const clip of clips) {
+    if (clip.start <= frame) governing = clip;
+  }
+  if (frame >= governing.start + governing.duration) return governing.to;
+  const progress = Math.min(1, Math.max(0, (frame - governing.start) / Math.max(1, governing.duration)));
+  return governing.from + (governing.to - governing.from) * progress;
 }
 
 // Solves the framing of every shot of a node-graph film and lists the moves between them.
@@ -185,9 +192,11 @@ function nodeGraphCamera(film: Film, voiceSec: number | null): { camera: CameraF
   return { camera: { available: true, kind: "node-graph", moves, driftOnly, maxSpeed: Math.max(0, ...moves.map((m) => m.speed)) }, starts, durations };
 }
 
-// The opacity a target holds at a frame from its ordered opacity clips (1 before any clip touches it).
+// The opacity a target holds at a frame from its ordered opacity clips (first clip's start value before any clip touches it).
 function opacityAt(clips: Array<{ start: number; end: number; from: number; to: number }>, frame: number): number {
-  let value = 1;
+  if (!clips.length) return 1;
+  if (frame < clips[0].start) return clips[0].from;
+  let value = clips[0].from;
   for (const c of clips) {
     if (c.start > frame) break;
     value = frame >= c.end ? c.to : c.from + ((c.to - c.from) * (frame - c.start)) / Math.max(1, c.end - c.start);
@@ -265,13 +274,17 @@ export function readFilmFacts(film: Film): FilmFacts {
       shotStart = endSec;
       const startFrame = Math.round(startSec * fps);
       const endFrame = Math.round(endSec * fps);
-      // Lists visible asset and SVG target ids at one scene frame.
-      const visibleFor = (frame: number) => assets.flatMap((asset) => {
-        if (sceneAssetOpacityAt(asset, frame) <= THRESHOLDS.planAdherence.visibleOpacityMin) return [];
-        const targets = [...new Set((asset.animation?.clips ?? []).flatMap((clip) => clip.targets))];
-        const visibleTargets = targets.filter((target) => sceneTargetOpacityAt(asset, target, frame) > THRESHOLDS.planAdherence.visibleOpacityMin);
-        return targets.length > 0 && visibleTargets.length === 0 ? visibleTargets : [asset.assetId, ...visibleTargets];
-      });
+      // Lists visible asset, SVG target, and actor ids at one scene frame.
+      const visibleFor = (frame: number) => {
+        const visibleFromAssets = assets.flatMap((asset) => {
+          if (sceneAssetOpacityAt(asset, frame) <= THRESHOLDS.planAdherence.visibleOpacityMin) return [];
+          const targets = [...new Set((asset.animation?.clips ?? []).flatMap((clip) => clip.targets))];
+          const visibleTargets = targets.filter((target) => sceneTargetOpacityAt(asset, target, frame) > THRESHOLDS.planAdherence.visibleOpacityMin);
+          return targets.length > 0 && visibleTargets.length === 0 ? visibleTargets : [asset.assetId, ...visibleTargets];
+        });
+        const visibleActors = (scene.actors ?? []).map((actor) => actor.instanceId);
+        return [...visibleFromAssets, ...visibleActors];
+      };
       const visibleAtStart = visibleFor(startFrame);
       const visibleAtEnd = visibleFor(Math.max(startFrame, endFrame - 1));
       const motions = assets.flatMap((asset) => {

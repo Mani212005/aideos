@@ -292,6 +292,51 @@ test("source: scene elements that stay and transform across a boundary count as 
   assert.ok(kept.clipStarts.includes(5), "a clip starting at frame 150 is a cue at 5 s");
 });
 
+test("source: entering scene targets hold initial opacity and articulated actors stay visible", () => {
+  const clip = (clipId: string, target: string, property: string, from: number, to: number, startFrame: number, durationFrames: number) => ({ clipId, targets: [target], property, from, to, startFrame, durationFrames });
+  const film = parseFilm({
+    id: "t-scene-entering",
+    title: "T",
+    fps: 30,
+    chapters: ["One"],
+    canvas: { nodes: [{ id: "a", label: "A", x: 0, y: 0 }, { id: "b", label: "B", x: 400, y: 0 }], edges: [{ from: "a", to: "b" }] },
+    scene: {
+      schemaVersion: "1.0.0", sceneId: "s", fps: 30, durationFrames: 360, audioSource: "x.wav", audioDurationMs: 12000, sceneSize: { w: 1920, h: 1920 },
+      background: {
+        assetId: "bg", svgSource: "videos/x/visuals/bg.svg", position: { x: 0, y: 0 }, scale: 1, rotation: 0, opacity: 1,
+        animation: {
+          timelineId: "t",
+          clips: [
+            clip("a-in", "a", "opacity", 0, 1, 0, 10),
+            clip("b-in", "b", "opacity", 0, 1, 180, 10),
+          ],
+        },
+      },
+      props: [],
+      actors: [{
+        instanceId: "actor-hero",
+        rigId: "rig-1",
+        position: { x: 100, y: 100 },
+        scale: 1,
+        facing: "right",
+      }],
+    },
+    shots: [
+      { id: "s0", dur: 6, look: "a", move: "cut", blocks: [{ c: "TextReveal", text: "One" }] },
+      { id: "s1", dur: 6, look: "b", blocks: [{ c: "TextReveal", text: "Two" }] },
+    ],
+  });
+  const facts = readFilmFacts(film);
+  const shot0 = facts.planShots![0];
+  const shot1 = facts.planShots![1];
+  assert.equal(shot0.visibleAtStart.includes("b"), false);
+  assert.equal(shot0.visibleAtEnd.includes("b"), false);
+  assert.equal(shot0.visibleAtStart.includes("actor-hero"), true);
+  assert.equal(shot0.visibleAtEnd.includes("actor-hero"), true);
+  assert.equal(shot1.visibleAtEnd.includes("b"), true);
+  assert.equal(shot1.visibleAtStart.includes("actor-hero"), true);
+});
+
 test("source: the designed fixture package loads its plan and per-shot scene facts", () => {
   const packageDir = path.join(process.cwd(), "test_fixtures/packages/speculative-decoding-designed");
   const loaded = loadFilmFacts(path.join(packageDir, "film.json"));
@@ -417,6 +462,33 @@ test("criteria: look plan adherence passes matching scene data and fails measure
   assert.match(failed.summary, /clears the scene/);
   assert.match(failed.summary, /not visible on both sides/);
   assert.match(failed.summary, /no ordered camera keyframe/);
+
+  const repeatedCueNarration: Narration = {
+    words: [
+      { word: "data", start: 1, end: 1.3 }, { word: "moves", start: 2, end: 2.3 },
+      { word: "turns", start: 6, end: 6.3 }, { word: "data", start: 8, end: 8.3 },
+    ],
+    text: "data moves turns data",
+    timed: true,
+  };
+  const repeatedPlan: LookPlan = {
+    ...lookPlan,
+    shots: [
+      { id: "shot-1", treatment: "scene", carries: ["object"], cue: "data", whyThisTreatment: "stage" },
+      { id: "shot-2", treatment: "scene", carries: ["object"], cue: "data", whyThisTreatment: "stage" },
+    ],
+  };
+  const repeatedFacts: FilmFacts = {
+    ...filmFacts,
+    lookPlan: repeatedPlan,
+    planShots: [
+      { id: "shot-1", startSec: 0, endSec: 5, stage: "none", visibleAtStart: ["object"], visibleAtEnd: ["object"], motions: [{ castId: "object", startSec: 1 }] },
+      { id: "shot-2", startSec: 5, endSec: 10, stage: "none", visibleAtStart: ["object"], visibleAtEnd: ["object"], motions: [{ castId: "object", startSec: 8 }] },
+    ],
+  };
+  const repeatedResult = byKey(evaluateCriteria(inputs({ film: repeatedFacts, narration: repeatedCueNarration })), "plan-adherence");
+  assert.equal(repeatedResult.status, "pass");
+  assert.equal(repeatedResult.metrics.sceneMotionShots, 2);
 });
 
 test("criteria: audio sync catches a length mismatch and a shot boundary through a word", () => {

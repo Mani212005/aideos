@@ -100,15 +100,33 @@ function carryOver(i: ReviewInputs): CriterionResult {
   };
 }
 
-// Finds the start time of a cue phrase in timed narration, using normalized word tokens.
-function cueStartSec(narration: Narration | null, cue: string): number | null {
+// Finds the start time of a cue phrase in timed narration, prioritizing a shot temporal range.
+function cueStartSec(
+  narration: Narration | null,
+  cue: string,
+  range?: { startSec?: number; endSec?: number },
+): number | null {
   if (!narration?.timed) return null;
   const cueWords = cue.split(/\s+/).map(normalizeWord).filter(Boolean);
   if (!cueWords.length) return null;
+  const matches: number[] = [];
   for (let i = 0; i <= narration.words.length - cueWords.length; i++) {
-    if (cueWords.every((word, offset) => normalizeWord(narration.words[i + offset].word) === word)) return narration.words[i].start;
+    if (cueWords.every((word, offset) => normalizeWord(narration.words[i + offset].word) === word)) {
+      matches.push(narration.words[i].start);
+    }
   }
-  return null;
+  if (!matches.length) return null;
+  if (!range || (range.startSec === undefined && range.endSec === undefined)) {
+    return matches[0];
+  }
+  const min = range.startSec ?? 0;
+  const max = range.endSec ?? Infinity;
+  const inRange = matches.filter((t) => t >= min && t <= max);
+  if (inRange.length > 0) return inRange[0];
+  const nearRange = matches.filter((t) => t >= min - 0.5 && t <= max + 0.5);
+  if (nearRange.length > 0) return nearRange[0];
+  const mid = max === Infinity ? min : (min + max) / 2;
+  return matches.reduce((best, t) => (Math.abs(t - mid) < Math.abs(best - mid) ? t : best), matches[0]);
 }
 
 // Compares measured scene facts with the authored look plan without making it a review gate.
@@ -152,7 +170,7 @@ function planAdherence(i: ReviewInputs): CriterionResult {
     }
 
     if (shot.treatment === "scene") {
-      const cue = cueStartSec(narration, shot.cue);
+      const cue = cueStartSec(narration, shot.cue, { startSec: measured.startSec, endSec: measured.endSec });
       const candidates = measured.motions.filter((motion) => shot.carries.includes(motion.castId));
       const timely = cue === null ? [] : candidates.filter((motion) => Math.abs(motion.startSec - cue) <= T.planAdherence.cueToleranceSec);
       if (cue === null || timely.length === 0) {
@@ -186,8 +204,10 @@ function planAdherence(i: ReviewInputs): CriterionResult {
   let previousFrame = -1;
   for (const pose of poses) {
     const shot = planShots.find((candidate) => candidate.id === pose.at || candidate.cue === pose.at);
-    const cueTime = shot ? cueStartSec(narration, shot.cue) : cueStartSec(narration, pose.at);
     const measuredShot = shot ? measuredById.get(shot.id) : undefined;
+    const shotRange = measuredShot ? { startSec: measuredShot.startSec, endSec: measuredShot.endSec } : undefined;
+    const poseRange = shotRange ?? (previousFrame >= 0 ? { startSec: previousFrame / film.fps, endSec: film.durationSec } : undefined);
+    const cueTime = shot ? cueStartSec(narration, shot.cue, poseRange) : cueStartSec(narration, pose.at, poseRange);
     const frame = cameraFrames.map((time) => ({ time, frame: Math.round(time * film.fps) }))
       .find((keyframe) => keyframe.frame > previousFrame && (measuredShot
         ? keyframe.time >= measuredShot.startSec && keyframe.time <= measuredShot.endSec
