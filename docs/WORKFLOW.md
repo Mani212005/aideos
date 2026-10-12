@@ -75,8 +75,8 @@ Aideos is engineered around 4 strict architectural invariants:
 
 ### Stage 2: Audio Synthesis & Alignment (`backend/audio.ts`, `backend/pcm.ts`, `backend/tts.ts`)
 1. **Shot-Scoped Segmentation**: Splits script text by Claude screenplay tags (`[NARRATION]`), paragraphs, or explicit shot arrays into discrete shot-scoped narration segments without slicing internal sentence punctuation or leaking visual tags.
-2. **TTS Synthesis & Chunking**: Synthesizes speech per shot segment via Kokoro-82M ONNX (offline default), Google Cloud Neural Audio, or macOS say using sentence-boundary splitting.
-3. **Sample-Domain Assembly & Normalization**: Trims silence samples from Float32 buffers, applies short boundary fades to eliminate stitch clicks, inserts exact whole-sample pauses between shot boundaries, normalizes peak amplitude, and writes `voiceover.wav`.
+2. **TTS Synthesis & Chunking**: Synthesizes speech per shot segment via Kokoro-82M ONNX (offline default, default speed 0.75 for measured explainer pacing), Google Cloud Neural Audio, or macOS say using sentence-boundary splitting.
+3. **Sample-Domain Assembly & Normalization**: Trims silence samples from Float32 buffers, applies short boundary fades to eliminate stitch clicks, inserts exact whole-sample pauses between shot boundaries, normalizes peak amplitude, applies loudness normalization to -16 integrated LUFS (-1 dB true peak), and writes `voiceover.wav`.
 4. **Alignment & Cues**: Derives exact word-level millisecond start/end timestamps, written to `captions.vtt` and `voiceover_words.json`.
 
 ### Stage 3: Semantic Visual Choice (`backend/pipeline/design.ts`, `backend/jev.ts`)
@@ -143,10 +143,11 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos studio` | Opens native Remotion Studio UI | Remotion Studio browser tab |
 | `aideos test` | Executes full automated verification suite | Test TAP results |
 | `aideos produce` | Runs audio-first produce pipeline | `voiceover.wav`, `captions.vtt`, `film.ts` |
-| `aideos direct "<prompt>"` | Auto-prompt: LLM director plans and produces a complete film from a prompt | `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` |
+| `aideos direct "<prompt>"` | Auto-prompt: LLM director plans and produces a complete film from a prompt | `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` (or `<outDir>/<slug>-<format>.mp4` when `--out` is set) |
 | `aideos review <slug\|mp4>` | Runs deterministic quality review checks | `<out>/review.json`, evidence stills |
 | `aideos gemini-review <mp4>` | Evaluates video against 12-criterion rubric via Gemini 3.8 Flash (agy) | Terminal score & verdict, JSON |
 | `aideos all-check <slug>` | Full check and repair in background agent (long and reel, 9.0+ bar) | `videos/<slug>/all-check/`, final MP4s |
-| `npm run backend -- film` | Autonomous pipeline (intake, narrate, look, design, b-roll, assemble, render, verify) | `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` |
+| `aideos film` (or `npm run backend -- film`) | Autonomous pipeline (intake, narrate, look, design, b-roll, assemble, render, verify) | `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` (or `<outDir>/<slug>-<format>.mp4` when `--out` is set) |
+| `aideos connect` | Connects local coding agent via one-time pairing code | Connected agent session |
 | `npm run validate:film <path>` | Standalone invariant validator for arbitrary film manifests | Runsheet & status in terminal |
 | `npm run backend -- mcp` | Starts Model Context Protocol (MCP) server over stdio | MCP stdio interface |

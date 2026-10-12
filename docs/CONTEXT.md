@@ -227,6 +227,8 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `splitScriptIntoSegments(script)`: Splits a narration script into distinct shot-scoped segments (strictly by narration beats for Claude-tagged scripts, or blank-line paragraphs for untagged prose).
 * `measureAudioDuration(filePath)`: Measures exact audio file duration using ffprobe.
 * `produceAudioPipeline(script, outDir, options)`: Synthesizes script into sample-domain audio timing spine, emitting `voiceover.wav`, `captions.vtt`, and `voiceover_words.json`.
+* `normalizeNarrationLoudness(inputPath, outputPath)`: Normalizes a narration WAV to the review loudness target (-16 integrated LUFS, -1 dB true peak) without changing duration.
+* `NARRATION_LOUDNESS_TARGET`: Loudness target (`{ integratedLufs: -16, truePeakDb: -1 }`) inside the review window with safe true-peak headroom.
 * `buildCaptionsVtt(words)`: Builds phrase-grouped WebVTT caption tracks from absolute word timings.
 * `buildFilmFromAudioResult(title, audioResult, options)`: Compiles verified audio durations into a structured `Film` object.
 * `buildAtempoFilter(speed)`: Builds a cascaded FFmpeg atempo filter chain for arbitrary playback speed factors.
@@ -250,6 +252,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `decodeWav(buffer)`: Decodes a WAV buffer into normalized Float32Array samples.
 
 ### `backend/tts.ts`
+* `DEFAULT_KOKORO_SPEED`: Kokoro default pace multiplier (0.75) chosen to keep explainer narration within the review pacing limit.
 * `createTtsBackend(options)`: Instantiates pluggable TTS engine (`kokoro` via worker process, `google`, `say`, `tone`).
 * `KokoroTtsBackend`: Local offline ONNX synthesizer using Kokoro-82M (default).
 
@@ -322,7 +325,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `PRIMITIVE_CRITERIA`: Rubric criteria for the 7 animated primitives written by communicative job (JOB, WHEN, WHEN NOT).
 
 ### `backend/visionJudge/` (Rendered Frame Vision Judge & Embedding Review Loop)
-* `judgeFilm(filmId, options)` (`backend/visionJudge/judge.ts`): Judges a designed scene film's rendered frames through 5-7 frame sampling, coding agent critique and image-text similarity scoring, per-frame embedding logging, and text-only Jev rulings.
+* `judgeFilm(filmId, options)` (`backend/visionJudge/judge.ts`): Judges a designed scene film's rendered frames through 5-7 frame sampling, coding agent critique and image-text similarity scoring, and per-frame embedding logging; skips cleanly when image reviews and embeddings are absent, otherwise querying Jev for frame verdicts.
 * `judgeAndRepair(filmId, options)` (`backend/visionJudge/judge.ts`): Bounded repair loop handing exact failure errors back to synthesis for automated fixing.
 * `describeFailure(sample, narration)` (`backend/visionJudge/judge.ts`): Formats exact error string from a failed sample and suggestions for synthesis retry.
 * `renderSamples(filmId, film, options)` (`backend/visionJudge/sampler.ts`): Samples every 5-7th frame and rasterizes each once to a verified 1920x1080 PNG via headless Chrome.

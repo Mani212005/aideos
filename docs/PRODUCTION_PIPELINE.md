@@ -82,8 +82,9 @@ and records a warning in `design/visual-choices.json`.
 
 `aideos design build` checks a package's look when one exists: shot coverage, declared cast in artwork,
 changing clips on carried objects inside scene shots, matching inset device overrides and camera
-keyframes. Older packages without a look can still build directly; new production runs require
-one before design.
+keyframes. Builds record provenance in `design/status.json`, defaulting CLI builds to `hand-built`
+(`--source <who>` overrides). Older packages without a look can still build directly; new production
+runs require one before design.
 
 ## Resuming
 
@@ -123,12 +124,16 @@ for the details; the plan is always model-driven, so there is no canned screenpl
 `backend/audio.ts` synthesizes each shot's narration, assembles the pieces in the sample domain,
 and returns the exact timing spine the film is built from. Trimming, boundary fades, gap insertion
 and peak normalization all happen on samples rather than on encoded files, so the reported segment
-offsets are exact and nothing is stitched across a sample-rate or channel-layout mismatch. See
+offsets are exact and nothing is stitched across a sample-rate or channel-layout mismatch. The
+assembled audio is then normalized to -16 integrated LUFS with -1 dB true-peak headroom via FFmpeg
+loudnorm to satisfy the review loudness standard without changing its duration. See
 `backend/pcm.ts` for the sample-domain helpers and `backend/voiceover_stutter.test.ts` for the
 defect classes that are held closed by regression tests.
 
 Backends live in `backend/tts.ts`. Kokoro-82M runs locally through ONNX with no API key and is the
-default; `AIDEOS_TTS` or the `ttsBackend` option pins `google`, `say` or the offline `tone`
+default, configured with a default pace multiplier of 0.75 (`DEFAULT_KOKORO_SPEED`) to keep explainer
+narration within the measured review pacing limit (`AIDEOS_TTS_SPEED` or `--speed` overrides);
+`AIDEOS_TTS` or the `ttsBackend` option pins `google`, `say` or the offline `tone`
 placeholder instead. Kokoro runs in a separate process (`backend/kokoroWorker.mjs`) because it
 resolves its voice files relative to its own module directory and because the ONNX thread pool
 aborts the process on teardown when loaded inside the TypeScript loader.
