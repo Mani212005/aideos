@@ -1,10 +1,11 @@
 /**
- * File Description: The Look stage's Design view: the film's own design rather than a theme.
- * Shows who designed it and the idea behind it, the artwork its scene is drawn from, and shot by
- * shot what is said, what is on screen, why that visual was chosen and which motion lands there.
- * A film still on the template design gets one action instead: send it to the connected agent.
+ * File Description: The Look stage's Design view: the film's own design and look plan rather than a theme.
+ * Shows who designed it, the idea behind it, the look plan (stage, cast, treatments, captain approval),
+ * the artwork its scene is drawn from, and shot by shot what is said, what is on screen, why that visual
+ * was chosen and which motion lands there. A film still on the template design gets one action instead:
+ * send it to the connected agent.
  * Inputs and outputs: active film canvas and shots -> visual preview panel and design surface.
- * Used by: editor/src/screens/StoryStage.tsx.
+ * Used by: editor/src/screens/LookStage.tsx, editor/src/components/ShotDesignPanel.tsx.
  */
 
 import { useState } from "react";

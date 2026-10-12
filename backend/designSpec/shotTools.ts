@@ -6,8 +6,6 @@
  * the connected agent a design task focused on one shot.
  * Inputs and outputs: shot tool command and parameters -> tool execution result.
  * Used by: backend/agentBridge/dispatcher.ts, editor/vite.config.ts.
- * Inputs and outputs: shot tool command and parameters -> tool execution result.
- * Used by: backend/agentBridge/dispatcher.ts, editor/vite.config.ts.
  */
 
 import type { Block, Film, Shot } from "../../src/dl/schema";

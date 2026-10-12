@@ -74,9 +74,12 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 - **Purpose**: Interactive 2D spatial canvas rendering the underlying graph topology (`CanvasNode` and `CanvasEdge`).
 - **Features**: Allows creators to drag spatial anchors in 2D space, connect directed edges, edit concept card properties, preview camera pan/zoom trajectories, and automatically dispatches spatial actions (`add_node`, `add_edge`, `add_shot`) to connected coding agents via `/api/canvas/event`.
 
-### 3. Look Stage (`LookStage.tsx` / `Styleboard.tsx` / `CustomizationEditor.tsx`)
-- **Purpose**: Visual styling and storyboard gallery combining theme customization with keyframe inspection.
-- **Features**: Allows background canvas texture selection (`paper-white`, `blueprint`, `charcoal`, `parchment`), accent color customization, and typography configuration (`geist`, `mono`, `space-grotesk`).
+### 3. Look Stage (`LookStage.tsx` / `DesignView.tsx` / `Styleboard.tsx` / `CustomizationEditor.tsx`)
+- **Purpose**: Visual styling, look planning, and storyboard gallery combining bespoke design/look inspection, theme customization, and keyframe inspection.
+- **Features**:
+  - **Design View (`DesignView.tsx`)**: Inspects the film's look plan (`design/look.json`, `LOOK.md` preview), stage, persistent cast, per-shot treatments (`scene`, `scene+card`, `device`, `footage`), captain look approval (`approveLookPlan`), scene artwork, motion timeline, and honest visual swaps (`POST /api/design/:id/shots/:shot/visual`).
+  - **Theme Customization (`CustomizationEditor.tsx`)**: Allows background canvas texture selection (`paper-white`, `blueprint`, `charcoal`, `parchment`), accent color customization, and typography configuration (`geist`, `mono`, `space-grotesk`).
+  - **Styleboard Gallery (`Styleboard.tsx`)**: Per-shot storyboard cards with direct keyframe inspection.
 
 ### 4. Motion Stage (`MotionStage.tsx`)
 - **Purpose**: Dedicated authoring studio for custom SVG movie animations and element-level keyframing.

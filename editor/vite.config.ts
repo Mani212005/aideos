@@ -2293,6 +2293,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           }
         }
 
+        // Handle /api/design/:id/approve-look (Look stage: captain approval recorded to look.json)
         // Handle /api/design/:id[/shots/:shotId/(visual|redesign)] (the Look stage's design view,
         // "why this visual" swaps and per-shot redesign requests to the connected agent)
         // Handle /api/design/:id/motion (the Motion stage: described motions, their outcomes, revert)
