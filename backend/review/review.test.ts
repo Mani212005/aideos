@@ -325,7 +325,7 @@ test("source: scene camera detects constant-zoom pans from canonical and loose k
   assert.deepEqual(looseFacts.cameraKeyframes, [0, 1]);
 });
 
-test("source: entering scene targets hold initial opacity and articulated actors stay visible", () => {
+test("source: entering scene targets hold initial opacity and SVG assets stay visible", () => {
   const clip = (clipId: string, target: string, property: string, from: number, to: number, startFrame: number, durationFrames: number) => ({ clipId, targets: [target], property, from, to, startFrame, durationFrames });
   const film = parseFilm({
     id: "t-scene-entering",
@@ -346,13 +346,7 @@ test("source: entering scene targets hold initial opacity and articulated actors
         },
       },
       props: [],
-      actors: [{
-        instanceId: "actor-hero",
-        rigId: "rig-1",
-        position: { x: 100, y: 100 },
-        scale: 1,
-        facing: "right",
-      }],
+      actors: [],
     },
     shots: [
       { id: "s0", dur: 6, look: "a", move: "cut", blocks: [{ c: "TextReveal", text: "One" }] },
@@ -364,10 +358,7 @@ test("source: entering scene targets hold initial opacity and articulated actors
   const shot1 = facts.planShots![1];
   assert.equal(shot0.visibleAtStart.includes("b"), false);
   assert.equal(shot0.visibleAtEnd.includes("b"), false);
-  assert.equal(shot0.visibleAtStart.includes("actor-hero"), true);
-  assert.equal(shot0.visibleAtEnd.includes("actor-hero"), true);
   assert.equal(shot1.visibleAtEnd.includes("b"), true);
-  assert.equal(shot1.visibleAtStart.includes("actor-hero"), true);
 });
 
 test("source: the designed fixture package loads its plan and per-shot scene facts", () => {

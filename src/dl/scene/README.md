@@ -109,6 +109,9 @@ conflict with no correct answer, so it fails rather than picking a winner.
 an id the document does not declare. Pass `loadSceneAssets(scene).elementIdsByAssetId` to
 `compileScene` as `assetElementIds` to get the same check at compile time.
 
+`validateScene` also rejects any scene containing actors (Rule 21): character rigs are not
+supported by the renderer, which currently supports SVG backgrounds and props only.
+
 ## Scene camera
 
 A scene can define a declarative camera track (`scene.camera = { keyframes: CameraKeyframe[] }`)
@@ -178,8 +181,9 @@ and close poses must declare their focused cast object (`focus`) and frame that 
 
 ## Rendering
 
-`SceneView` needs the asset source text, because it is a pure browser-safe component with no
-filesystem access:
+`SceneView` renders sorted compiled background and prop assets in layer order with camera transformation
+applied (character rigs are not supported). It needs the asset source text, because it is a pure
+browser-safe component with no filesystem access:
 
 ```ts
 const assets = loadSceneAssets(scene);                    // Node side

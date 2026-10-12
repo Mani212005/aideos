@@ -1,7 +1,7 @@
 /**
  * File Description: Comprehensive semantic validator for Aideos Scene Graph data (Phase 1).
- * Enforces 18 strict error validation rules, custom SVG animation timeline rules (Rule 20),
- * and normalized median scale warnings (W1).
+ * Rejects unsupported actor rigs before applying scene integrity rules, custom SVG animation
+ * timeline rules (Rule 20), and normalized median scale warnings (W1).
  * 100% pure TypeScript validator with zero Node runtime dependencies.
  * Inputs and outputs: Scene data object -> validation diagnostics and errors.
  * Used by: src/dl/scene/validateSceneNode.ts, backend/scene/scene.test.ts.
@@ -29,9 +29,10 @@ export interface ValidationResult {
 }
 
 export const SUPPORTED_SCHEMA_VERSION = "1.0.0";
+const UNSUPPORTED_ACTOR_RULE = 21;
 
 /**
- * Validates a Scene data object against the 18 Phase 1 schema and physical integrity rules.
+ * Validates a Scene data object against the supported schema and physical integrity rules.
  * @param scene Complete Scene data object.
  * @returns ValidationResult with list of errors and warnings.
  */
@@ -47,11 +48,24 @@ export function validateScene(scene: Scene): ValidationResult {
     });
   }
 
+  // Actor tracks have no renderer yet, so reject them before validating or compiling the rest of the scene.
+  if (Array.isArray(scene.actors) && scene.actors.length > 0) {
+    return {
+      isValid: false,
+      errors: scene.actors.map((actor) => ({
+        rule: UNSUPPORTED_ACTOR_RULE,
+        entityId: actor.instanceId,
+        message: `Actor "${actor.instanceId || "(missing instanceId)"}" cannot be rendered: character rigs are not supported; scene rendering currently supports SVG backgrounds and props only.`,
+      })),
+      warnings,
+    };
+  }
+
   // Rule 2: actors.length <= 15
   if (!Array.isArray(scene.actors) || scene.actors.length > 15) {
     errors.push({
       rule: 2,
-      message: `Scene contains ${scene.actors?.length ?? 0} actors. Maximum allowed articulated actors per scene is 15.`,
+      message: `Scene contains ${scene.actors?.length ?? 0} actors. Maximum allowed actors per scene is 15.`,
     });
   }
 

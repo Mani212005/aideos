@@ -279,7 +279,7 @@ export function readFilmFacts(film: Film): FilmFacts {
       shotStart = endSec;
       const startFrame = Math.round(startSec * fps);
       const endFrame = Math.round(endSec * fps);
-      // Lists visible asset, SVG target, and actor ids at one scene frame.
+      // Lists rendered SVG assets and targets at one scene frame; actor rigs are not rendered.
       const visibleFor = (frame: number) => {
         const visibleFromAssets = assets.flatMap((asset) => {
           if (sceneAssetOpacityAt(asset, frame) <= THRESHOLDS.planAdherence.visibleOpacityMin) return [];
@@ -287,8 +287,7 @@ export function readFilmFacts(film: Film): FilmFacts {
           const visibleTargets = targets.filter((target) => sceneTargetOpacityAt(asset, target, frame) > THRESHOLDS.planAdherence.visibleOpacityMin);
           return targets.length > 0 && visibleTargets.length === 0 ? visibleTargets : [asset.assetId, ...visibleTargets];
         });
-        const visibleActors = (scene.actors ?? []).map((actor) => actor.instanceId);
-        return [...visibleFromAssets, ...visibleActors];
+        return visibleFromAssets;
       };
       const visibleAtStart = visibleFor(startFrame);
       const visibleAtEnd = visibleFor(Math.max(startFrame, endFrame - 1));
@@ -303,10 +302,7 @@ export function readFilmFacts(film: Film): FilmFacts {
           .filter((motion) => motion.frame >= startFrame && motion.frame < endFrame)
           .map((motion) => ({ castId: motion.castId, startSec: motion.frame / fps }));
       });
-      const actorMotions = (scene.actors ?? []).flatMap((actor) => changingTrackStarts([
-        ...(actor.positionTracks ?? []), ...Object.values(actor.jointTracks ?? {}),
-      ], startFrame, endFrame).filter((frame) => frame >= startFrame && frame < endFrame).map((frame) => ({ castId: actor.instanceId, startSec: frame / fps })));
-      return { id: shot.id, startSec, endSec, stage: shot.stage, visibleAtStart, visibleAtEnd, motions: [...motions, ...actorMotions] };
+      return { id: shot.id, startSec, endSec, stage: shot.stage, visibleAtStart, visibleAtEnd, motions };
     });
     const rawCam = scene.camera as { keys?: unknown; keyframes?: unknown } | unknown[] | undefined;
     const keyList = (Array.isArray(rawCam) ? rawCam : rawCam?.keyframes ?? rawCam?.keys) as Array<{ frame: number }> | undefined;

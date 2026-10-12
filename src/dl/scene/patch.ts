@@ -264,7 +264,7 @@ export function applyPatch(scene: Scene, ops: PatchOp[]): PatchResult {
           if (workingScene.actors.length >= 15) {
             rejected.push({
               op,
-              reason: `Cannot add actor: scene already at maximum ceiling of 15 articulated actors`,
+              reason: `Cannot add actor: scene already at maximum of 15 actors`,
             });
             continue;
           }

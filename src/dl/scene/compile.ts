@@ -1,10 +1,8 @@
 /**
  * File Description: Pure deterministic compiler for the Aideos 2D Scene Graph (Phase 3).
- * Compiles high-level scenes, actions, and tracks into dense, verified per-frame execution data.
- * Implements joint-mask blending, Catmull-Rom spline interpolation, rest-hold gap anchoring (C-14),
- * hierarchical kinematic transform composition (C-6), environment sub-rotation (D1), custom
- * element-level SVG animation timelines, per-frame derived layering (D5), and camera track compilation.
- * Inputs and outputs: raw Scene data and action tracks -> compiled dense per-frame animation state.
+ * Compiles background and prop assets, environment sub-rotation (D1), custom
+ * element-level SVG animation timelines, per-frame derived layering (D5), and camera tracks into dense execution data. Character rigs are not supported.
+ * Inputs and outputs: raw Scene data and animation tracks -> compiled dense per-frame animation state.
  * Used by: src/dl/scene/SceneClip.tsx, backend/scene/compile.test.ts, editor/src/screens/MotionStage.tsx.
  */
 

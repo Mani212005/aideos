@@ -80,7 +80,8 @@ export interface JudgeResult {
   agentRound: "reported" | "skipped" | "no-agent" | "timed-out";
   samples: JudgedSample[];
   failures: JudgeFailure[];
-  passed: boolean;
+  /** True or false when image evidence was judged, null when visual judgment was unavailable. */
+  passed: boolean | null;
 }
 
 // True when the dispatch actually reached a listening agent (the queue and task file alone mean nobody is).
@@ -152,7 +153,7 @@ export function describeFailure(sample: JudgedSample, narration: string): string
 export async function judgeFilm(filmId: string, options: JudgeOptions = {}, instruction?: string): Promise<JudgeResult> {
   const threshold = options.threshold ?? DEFAULT_EMBEDDING_THRESHOLD;
   const stride = clampStride(options.stride);
-  const empty = (skipped: string): JudgeResult => ({ filmId, skipped, agentRound: "skipped", samples: [], failures: [], passed: true });
+  const empty = (skipped: string, agentRound: JudgeResult["agentRound"] = "skipped"): JudgeResult => ({ filmId, skipped, agentRound, samples: [], failures: [], passed: null });
   const before = readFilm(filmId);
   if (!before?.scene) return empty("the film has no scene to sample stills from");
 
@@ -177,6 +178,15 @@ export async function judgeFilm(filmId: string, options: JudgeOptions = {}, inst
     const message = `vision judge skipped: ${reason}`;
     options.onProgress?.(message);
     return empty(reason);
+  }
+  if (!options.embed) {
+    const reviewedFrames = new Set(reviews.map((review) => review.frame));
+    const missingFrames = samples.filter((sample) => !reviewedFrames.has(sample.frame)).map((sample) => sample.frame);
+    if (missingFrames.length > 0) {
+      const reason = `the coding agent did not review sampled frames ${missingFrames.join(", ")}`;
+      options.onProgress?.(`vision judge skipped: ${reason}`);
+      return empty(reason, round);
+    }
   }
   options.onProgress?.(`rendered ${samples.length} review stills (every ${stride} frames)`);
   // The agent repairs in the same round, so what it looked at may have changed: restill the final film.
@@ -249,7 +259,7 @@ export async function judgeAndRepair(
 ): Promise<JudgeResult> {
   let result = await judgeFilm(filmId, options);
   const rounds = options.maxRepairRounds ?? 2;
-  for (let round = 1; !result.passed && options.repair && round <= rounds; round++) {
+  for (let round = 1; result.passed === false && options.repair && round <= rounds; round++) {
     options.onProgress?.(`${result.failures.length} frame(s) failed the vision judge; repair round ${round}/${rounds}`);
     const errors = result.failures.map((f) => f.error).join("\n");
     if (!(await options.repair(errors))) break;

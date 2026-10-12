@@ -56,30 +56,7 @@ function makeValidScene(): Scene {
         ],
       },
     ],
-    actors: [
-      {
-        instanceId: "actor-astro-1",
-        rigId: "astronaut",
-        position: { x: 960, y: 540 },
-        scale: 1.0,
-        facing: "right",
-        actions: [
-          {
-            actionId: "walk",
-            startFrame: 0,
-            durationFrames: 45,
-            intensity: 1.0,
-          },
-          {
-            actionId: "wave",
-            startFrame: 45,
-            durationFrames: 30,
-            intensity: 1.0,
-            side: "right",
-          },
-        ],
-      },
-    ],
+    actors: [],
   };
 }
 
