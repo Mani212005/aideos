@@ -19,7 +19,7 @@ function planFor(id: string, treatment: LookTreatment): LookPlan {
       stage: "A single service rack where requests move between servers.",
       cast: [{ id: "server", what: "a server", enters: "start", changes: [] }],
       camera: [{ at: "start", pose: "wide establishing view", why: "show the whole stage" }],
-      palette: { bg: "#0A0A0B", accent: "#635BFF", extra: {} },
+      palette: { bg: "#0A0A0B", accent: "#635BFF" },
       captions: { position: "bottom", kineticColumn: false },
       headlines: "none",
     },
