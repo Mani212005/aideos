@@ -170,6 +170,12 @@ most 0.8% in a single frame (`MAX_CAMERA_ZOOM_STEP`) and pan may accelerate at m
 second squared (`MAX_CAMERA_PAN_ACCEL_WIDTHS`, 576 px/s^2 for 1920), so a track that bursts between stops is
 caught the way an over-fast one is.
 
+**Pacing & focus validation.** Camera motion must follow move-then-hold pacing: the camera must hold
+at rest for at least 30% of the film (`MIN_CAMERA_HOLD_SHARE`), and continuous moves cannot exceed 6 seconds
+(`MAX_CAMERA_CONTINUOUS_MOVE_SECONDS`) without settling into a hold. When checked against look-plan targets,
+moves must arrive within 1.5 seconds of their planned narration cue (`CAMERA_CUE_LANDING_TOLERANCE_SECONDS`),
+and close poses must declare their focused cast object (`focus`) and frame that subject in scene space.
+
 ## Rendering
 
 `SceneView` needs the asset source text, because it is a pure browser-safe component with no

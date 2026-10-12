@@ -4,8 +4,9 @@
  * templates), it has to pass this before it ships. Each finding names the rule, where it is, and
  * what to change, so an agent can be handed the report verbatim and repair its own design.
  * Rules: schema, scene engine validity, static self-contained artwork, palette, typography,
- * continuity (no motion snaps while visible, one origin per element), audio lock, honest
- * on-screen data, and a clear inset region while a device shot shares the stage.
+ * continuity (no motion snaps while visible, one origin per element), camera (speed limits,
+ * move-then-hold pacing, cue landing, and subject focus framing), carry-over change holds,
+ * audio lock, honest on-screen data, and a clear inset region while a device shot shares the stage.
  * Inputs and outputs: Film or Scene data -> standard-layer design rule violations and warnings.
  * Used by: backend/cli.ts, backend/pipeline/run.ts.
  */
