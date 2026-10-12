@@ -1,0 +1,120 @@
+[
+  {
+    "id": "lb-01-balance",
+    "source": "look-proof captain picked the six-shot scene film; proof script describes the balancer handing requests to servers",
+    "beat": {
+      "narration": "The load balancer hands each request to one of the servers.",
+      "mechanism": true,
+      "spokenNumber": false,
+      "carriesOver": true
+    },
+    "right": ["scene"],
+    "wrong": [
+      { "treatment": "scene+card", "reason": "The look-plan rules select scene for a mechanism, and the captain picked the no-card scene film over the template-card film." },
+      { "treatment": "device", "reason": "The look-plan rules select scene for a mechanism; a template device is not the beat's treatment." }
+    ]
+  },
+  {
+    "id": "lb-02-health-check",
+    "source": "look-proof captain picked the six-shot scene film; proof script describes a health check marking a server down",
+    "beat": {
+      "narration": "A health check marks one server as down, so requests move to the others.",
+      "mechanism": true,
+      "spokenNumber": false,
+      "carriesOver": true
+    },
+    "right": ["scene"],
+    "wrong": [
+      { "treatment": "scene+card", "reason": "The look-plan rules select scene for a mechanism, and the captain picked the no-card scene film over the template-card film." },
+      { "treatment": "device", "reason": "The look-plan rules select scene for a mechanism; a template device is not the beat's treatment." }
+    ]
+  },
+  {
+    "id": "lb-03-recovery",
+    "source": "look-proof captain picked the six-shot scene film; proof script says the failed server comes back",
+    "beat": {
+      "narration": "The server recovers and rejoins the pool.",
+      "mechanism": true,
+      "spokenNumber": false,
+      "carriesOver": true
+    },
+    "right": ["scene"],
+    "wrong": [
+      { "treatment": "scene+card", "reason": "The look-plan rules select scene for a mechanism, and the captain picked the no-card scene film over the template-card film." },
+      { "treatment": "device", "reason": "The look-plan rules select scene for a mechanism; a template device is not the beat's treatment." }
+    ]
+  },
+  {
+    "id": "lb-04-routing-counter",
+    "source": "proof question 6: the captain said the counter card painted over the picture broke the story",
+    "beat": {
+      "narration": "Three servers share the work as the balancer routes requests.",
+      "mechanism": true,
+      "spokenNumber": true,
+      "carriesOver": true
+    },
+    "right": ["scene"],
+    "wrong": [
+      {
+        "treatment": "device",
+        "reason": "The look-plan rules select scene for a mechanism; this label follows that rule and does not generalize the proof's frame-stage counter rejection to inset devices."
+      }
+    ]
+  },
+  {
+    "id": "lb-05-throughput",
+    "source": "look-proof captain picked the six-shot scene film; its six shots all use scene treatment, including the spoken throughput figure",
+    "beat": {
+      "narration": "The balancer can handle ten thousand requests a second.",
+      "mechanism": false,
+      "spokenNumber": true,
+      "carriesOver": true
+    },
+    "right": ["scene"],
+    "wrong": []
+  },
+  {
+    "id": "rule-exact-number-device",
+    "source": "look-plan section 3b and backend/lookPlan/brief.ts: device is permitted for an exact number when an inset keeps the stage visible",
+    "beat": {
+      "narration": "The system processes 240 requests each second.",
+      "mechanism": false,
+      "spokenNumber": true,
+      "carriesOver": false
+    },
+    "right": ["device"],
+    "wrong": []
+  },
+  {
+    "id": "lb-06-fourth-server",
+    "source": "look-proof captain picked the six-shot scene film; proof script says a fourth server joins the pool",
+    "beat": {
+      "narration": "A fourth server joins the pool and takes its place beside the others.",
+      "mechanism": true,
+      "spokenNumber": true,
+      "carriesOver": true
+    },
+    "right": ["scene"],
+    "wrong": [
+      { "treatment": "scene+card", "reason": "The look-plan rules select scene for a mechanism, and the captain picked the no-card scene film over the template-card film." },
+      { "treatment": "device", "reason": "The look-plan rules select scene for a mechanism; a template device is not the beat's treatment." }
+    ]
+  },
+  {
+    "id": "rule-claim-card",
+    "source": "look-plan section 3b and backend/lookPlan/brief.ts: scene+card is for claims, summaries or questions with nothing to move",
+    "beat": {
+      "narration": "That is why the service stays available during a failure.",
+      "mechanism": false,
+      "spokenNumber": false,
+      "carriesOver": false
+    },
+    "right": ["scene+card"],
+    "wrong": [
+      {
+        "treatment": "device",
+        "reason": "The look-plan rule reserves devices for exact numbers, token streams or code, none of which this claim contains."
+      }
+    ]
+  }
+]
