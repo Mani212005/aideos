@@ -1,8 +1,7 @@
 /**
  * File Description: Pure TypeScript data contract for the Aideos 2D Scene Graph.
- * Defines serializable scene hierarchy (background, props, actors), tracks, keyframes,
- * rotating subgroups (D1), custom SVG animation timelines, camera tracks, actions, model sheets (D2),
- * and scene root. (Axiom 1: pure data).
+ * Defines serializable scene hierarchy (background, props, actors schema), tracks, keyframes,
+ * rotating subgroups (D1), custom SVG animation timelines, camera tracks, and scene root. Character rigs are not implemented or rendered.
  * Inputs and outputs: TypeScript definitions -> types for scenes, actors, props, cameras, and animation clips.
  * Used by: src/dl/scene/compile.ts, src/dl/schema.ts, backend/sceneKit/timeline.ts.
  */
@@ -68,6 +67,10 @@ export interface ScheduledAction {
   side?: "left" | "right";
 }
 
+/**
+ * Actor instance schema definition.
+ * Note: Character rigs are not implemented or rendered; validateScene explicitly rejects scenes with actors.
+ */
 export interface ActorInstance {
   instanceId: string; // unique within scene. NEVER regenerated.
   rigId: string; // rig identifier
@@ -84,7 +87,10 @@ export interface ActorInstance {
   actions?: ScheduledAction[];
 }
 
-/** D2: Canonical record per cast member. Lives beside the rig file. */
+/**
+ * D2: Canonical record per cast member. Lives beside the rig file.
+ * Note: Character rigs are not implemented or rendered.
+ */
 export interface ModelSheet {
   rigId: string;
   canonicalHeight: number; // scene-space pixels at scale 1.0

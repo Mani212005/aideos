@@ -325,8 +325,8 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `PRIMITIVE_CRITERIA`: Rubric criteria for the 7 animated primitives written by communicative job (JOB, WHEN, WHEN NOT).
 
 ### `backend/visionJudge/` (Rendered Frame Vision Judge & Embedding Review Loop)
-* `judgeFilm(filmId, options)` (`backend/visionJudge/judge.ts`): Judges a designed scene film's rendered frames through 5-7 frame sampling, coding agent critique and image-text similarity scoring, and per-frame embedding logging; skips cleanly when image reviews and embeddings are absent, otherwise querying Jev for frame verdicts.
-* `judgeAndRepair(filmId, options)` (`backend/visionJudge/judge.ts`): Bounded repair loop handing exact failure errors back to synthesis for automated fixing.
+* `judgeFilm(filmId, options)` (`backend/visionJudge/judge.ts`): Judges a designed scene film's rendered frames through 5-7 frame sampling, coding agent critique and image-text similarity scoring, and per-frame embedding logging; skips cleanly with `passed: null` when image reviews and embeddings are absent or incomplete (distinguishing unavailable visual judgment from pass or fail), otherwise querying Jev for frame verdicts.
+* `judgeAndRepair(filmId, options)` (`backend/visionJudge/judge.ts`): Bounded repair loop handing exact failure errors back to synthesis for automated fixing when visual judgment has failed (`passed === false`), leaving unavailable reviews intact.
 * `describeFailure(sample, narration)` (`backend/visionJudge/judge.ts`): Formats exact error string from a failed sample and suggestions for synthesis retry.
 * `renderSamples(filmId, film, options)` (`backend/visionJudge/sampler.ts`): Samples every 5-7th frame and rasterizes each once to a verified 1920x1080 PNG via headless Chrome.
 * `sampleFrameNumbers(totalFrames, options)`, `clampStride(stride)`, `describeFrame(film, frame)` (`backend/visionJudge/sampler.ts`): Frame index sampling helpers with 5-7 stride clamping and frame narration/on-screen metadata extraction.
@@ -338,7 +338,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `formatReview(report)` (`backend/review/review.ts`): Formats a `ReviewReport` into a human-readable terminal summary with passing/failing gates.
 * `measureRenderFacts(videoPath, options)` (`backend/review/renderFacts.ts`): Measures layout persistence, stage clears, cuts, stillness, captions, text size, contrast, overlap, and on-screen numbers from decoded frames and OCR.
 * `evaluateCriteria(inputs)` (`backend/review/criteria.ts`): Pure evaluation of rubric criteria (criteria 1 to 12 plus supplemental criterion 13 `plan-adherence`) from measured facts against calibrated thresholds.
-* `readFilmFacts(film)`, `loadFilmFacts(filmJson)` (`backend/review/source.ts`): Derives camera motion, element persistence, carry-over transformations, per-shot stage and motion facts (`planShots`), scene camera keyframes, and optional look plan (`design/look.json`) from aideos film data.
+* `readFilmFacts(film)`, `loadFilmFacts(filmJson)` (`backend/review/source.ts`): Derives camera motion, element persistence, carry-over transformations, per-shot stage and motion facts (`planShots`, tracking rendered SVG assets and targets while omitting unrendered actor rigs), scene camera keyframes, and optional look plan (`design/look.json`) from aideos film data.
 * `deriveNarrationFacts(words, duration)` (`backend/review/speech.ts`): Derives pace, dead air, narrated moments, and sync alignment from word timings or narration text.
 
 ### `backend/aideosConfig.ts` (Video Model Policy & Config Loader)
@@ -354,7 +354,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `defaultAgyRunner(prompt, options)` (`backend/geminiReview/geminiReview.ts`): Non-interactive agy CLI runner executing in print mode (`-p`) with `--sandbox`, structured JSON schema output, and strict error handling.
 * `formatReviewSummary(report)` (`backend/geminiReview/geminiReview.ts`): Formats a review report as the plain-text breakdown `aideos gemini-review` prints and `aideos all-check` saves.
 * `renderVideoForSlug(slug, format)` (`backend/geminiReview/render.ts`): Renders a film package to `videos/<slug>/renders/<format>.mp4` through the Remotion CLI for `aideos all-check`.
-* `extractDeterministicFacts(videoPath, options)` (`backend/geminiReview/facts.ts`): Extracts OCR captions coverage, audio loudness LUFS, duration, framerate, and camera tracks for ground-truth review prompt context.
+* `extractDeterministicFacts(videoPath, options)` (`backend/geminiReview/facts.ts`): Extracts OCR captions coverage, audio loudness LUFS, duration, framerate, and camera tracks (inspecting canvas moves and declared `scene.camera` keyframes) for ground-truth review prompt context.
 * `RUBRIC_CRITERIA`, `RUBRIC_SYSTEM_PROMPT`, `SINGLE_REVIEW_JSON_SCHEMA`, `PAIRWISE_WATCH_JSON_SCHEMA`, `PAIRWISE_EXCHANGE_JSON_SCHEMA` (`backend/geminiReview/rubric.ts`): The 12-criterion rubric definitions, structured JSON schemas, and review prompts enforcing the 6 hard gates.
 
 ### `backend/allCheck/` (End-to-End Review & Repair Background Agent)
@@ -409,16 +409,16 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ### `src/dl/scene/` (Custom SVG Animation & Scene Graph)
 * Deep reference documentation in [`src/dl/scene/README.md`](../src/dl/scene/README.md).
-* `types.ts`: TypeScript contracts for scene hierarchy, actors, environment assets, custom SVG animation timelines, and camera tracks (`CameraKeyframe`, `CameraTrack`).
+* `types.ts`: TypeScript contracts for scene hierarchy, actors schema, environment assets, custom SVG animation timelines, and camera tracks (`CameraKeyframe`, `CameraTrack`); character rigs are not implemented.
 * `svgAnimation.ts`: Declarative timeline types (`SvgAnimationClip`, `SvgAnimationTimeline`), easing curves, stagger calculations, validator (`validateSvgTimeline`), and compiler (`compileSvgTimeline`).
 * `svgDocument.ts`: Pure dependency-free SVG document parser (`parseSvgDocument`), element ID discovery (`collectSvgElementIds`), and bounds calculation.
 * `svgReact.tsx`: React SVG renderer (`renderSvgDocumentToReact`) with instance namespacing and per-frame element state transforms.
 * `SceneClip.tsx`: Remotion composition entry point with single compilation and current frame selection.
 * `sceneTiming.ts`: Audio-first retiming helpers (`framesForAudioMs`, `audioSyncDriftMs`, `alignSceneToAudio`, `retimeSvgTimeline`).
-* `SceneView.tsx`: Pure browser-safe SVG scene renderer with camera transform support and no filesystem imports.
-* `compile.ts`: Pure deterministic compiler (`compileScene`) threading keyframes, actions, and custom animation timelines onto frames (delegating camera compilation to `cameraTrack.ts`).
+* `SceneView.tsx`: Pure browser-safe SVG scene renderer for background and prop assets with camera transform support and no filesystem imports; character rigs are not supported.
+* `compile.ts`: Pure deterministic compiler (`compileScene`) threading custom animation timelines and camera tracks onto frames for environment assets (background and props).
 * `cameraTrack.ts`: Camera track compiler (`compileCameraTrack`) and motion stats (`measureCameraMotion`) measuring peak pan speed, per-frame zoom step, pan acceleration, hold share, and continuous move duration, exporting pacing constants (`MIN_CAMERA_HOLD_SHARE`, `MAX_CAMERA_CONTINUOUS_MOVE_SECONDS`, `CAMERA_CUE_LANDING_TOLERANCE_SECONDS`).
-* `validateScene.ts`: Phase 1 semantic and physical integrity validator (`validateScene`) including Rule 20 timeline consistency.
+* `validateScene.ts`: Semantic and physical integrity validator (`validateScene`) rejecting unsupported actor rigs (Rule 21) before enforcing scene integrity rules and Rule 20 timeline consistency.
 * `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`).
 
 ### `backend/sceneKit/` (Scene-Film Authoring & Stage Kit)
