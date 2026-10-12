@@ -76,13 +76,15 @@ selected comparison explainer) and `AIDEOS_CALIBRATION_RAG` at them, optionally 
 | caption coverage | 81% | 0% | 0% |
 | words under 18 px | 51% | 66% | 62% |
 | hard cuts | 0 | 0 | 8 |
-| gates | all pass | camera, captions, readability fail | persistence, captions, readability fail |
+| gates | all pass | persistence (stage clears), camera, captions, readability fail | persistence, captions, readability fail |
 
 The persistence pixel cutoff is 0.65: A (0.85), selected reference B (0.69), and the captain-
-accepted DNS film (0.68 on the final render; 0.69 in the independent recomputation) pass, while RAG
-(0.50) fails. This leaves a measured 0.15 gap on either side of the cutoff. Stage-clear and element-
-boundary carry thresholds still independently catch clears and lost film objects. The DNS reading
-comes from the 2026-10-12 production report, sections 4 and 5.
+accepted DNS film (0.68 on the final render; 0.69 in the independent recomputation) pass the layout
+correlation cutoff, while RAG (0.50) fails. This leaves a measured 0.15 gap on either side of the
+cutoff. While reference B passes the layout correlation cutoff (0.69 >= 0.65), it still fails the
+persistent-stage gate on stage clears per 30 s (2.6 > 2.2). Stage-clear and element-boundary carry
+thresholds still independently catch clears and lost film objects. The DNS reading comes from the
+2026-10-12 production report, sections 4 and 5.
 
 Re-run it after changing any threshold or the pixel analysis; the thresholds were set between A and
 the others with margin, and the rubric's 95% caption target is not met even by A at 2 s sampling
