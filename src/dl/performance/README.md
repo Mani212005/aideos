@@ -1,3 +1,7 @@
+<!--
+File Description: Architecture and verification reference for sparse constrained character performances.
+-->
+
 # Sparse performances
 
 This is the first renderer-independent action experiment: Iona receives the approved
