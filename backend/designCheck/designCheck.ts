@@ -312,6 +312,23 @@ export const MAX_CAMERA_ZOOM_STEP = 0.008;
 /** Largest pan acceleration allowed, as a fraction of the scene width per second squared (a stop-and-burst move is several times this). */
 export const MAX_CAMERA_PAN_ACCEL_WIDTHS = 0.3;
 
+// Resolves the scene-space position of a prop or animated element at a given frame, accounting for translations.
+function objectPositionAt(prop: EnvironmentAsset, targetId: string | undefined, frame: number): { x: number; y: number } {
+  const clips = prop.animation?.clips ?? [];
+  if (!clips.length) return { x: prop.position.x, y: prop.position.y };
+  const slots = perTargetSlots(clips);
+  const target = targetId && (slots.has(`${targetId}::translateX`) || slots.has(`${targetId}::translateY`))
+    ? targetId
+    : (clips.flatMap((c) => c.targets).find((t) => slots.has(`${t}::translateX`) || slots.has(`${t}::translateY`)) ?? targetId);
+  const scale = prop.scale ?? 1;
+  const dx = target ? valueAt(slots.get(`${target}::translateX`), "translateX", frame) : 0;
+  const dy = target ? valueAt(slots.get(`${target}::translateY`), "translateY", frame) : 0;
+  return {
+    x: prop.position.x + dx * scale,
+    y: prop.position.y + dy * scale,
+  };
+}
+
 // Checks the scene camera keyframes for valid speed limits and motion.
 function checkCamera(scene: Scene, findings: DesignFinding[], targets: DesignCheckContext["cameraTargets"] = []): void {
   if (!scene.camera || !scene.camera.keyframes || scene.camera.keyframes.length === 0) return;
@@ -375,19 +392,23 @@ function checkCamera(scene: Scene, findings: DesignFinding[], targets: DesignChe
     const keyframe = kfs.reduce((nearest, candidate) =>
       Math.abs(candidate.frame - target.frame) < Math.abs(nearest.frame - target.frame) ? candidate : nearest,
     );
+    const keyframeIndex = kfs.indexOf(keyframe) + 1;
     const gap = Math.abs(keyframe.frame - target.frame);
     if (gap > maxLandingGap) {
-      findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${i + 1}`, message: `move lands ${(gap / fps).toFixed(1)}s from its planned cue; aim to arrive about one beat before the narration cue.` });
+      findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${keyframeIndex}`, message: `move lands ${(gap / fps).toFixed(1)}s from its planned cue; aim to arrive about one beat before the narration cue.` });
     }
     if (target.focus) {
       if (target.authoredFocus !== target.focus) {
-        findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${i + 1}`, message: `look plan focuses on "${target.focus}" but the design pose does not name that object as its focus.` });
+        findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${keyframeIndex}`, message: `look plan focuses on "${target.focus}" but the design pose does not name that object as its focus.` });
       }
       const subject = scene.props.find((prop) => prop.assetId === target.focus || prop.animation?.clips.some((clip) => clip.targets.includes(target.focus!)));
       if (!subject) {
-        findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${i + 1}`, message: `planned focus "${target.focus}" has no scene object to frame.` });
-      } else if (Math.hypot(keyframe.center.x - subject.position.x, keyframe.center.y - subject.position.y) > 360) {
-        findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${i + 1}`, message: `camera pose does not land near focused object "${target.focus}"; move the pose toward the subject.` });
+        findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${keyframeIndex}`, message: `planned focus "${target.focus}" has no scene object to frame.` });
+      } else {
+        const subjectPos = objectPositionAt(subject, target.focus, keyframe.frame);
+        if (Math.hypot(keyframe.center.x - subjectPos.x, keyframe.center.y - subjectPos.y) > 360) {
+          findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${keyframeIndex}`, message: `camera pose does not land near focused object "${target.focus}"; move the pose toward the subject.` });
+        }
       }
     }
   }
@@ -433,10 +454,11 @@ function checkCarryChangeHolds(film: Film, scene: Scene, plan: LookPlan | undefi
         Math.abs(clip.to - clip.from) >= (MIN_VISIBLE_CHANGE_DELTA[clip.property] ?? Number.POSITIVE_INFINITY),
       );
       const finish = clips.length ? Math.max(...clips.map((clip) => clip.startFrame + clip.durationFrames)) : -1;
-      const aimedAndHeld = finish >= 0 && finish + holdFrames < camera.length && Array.from({ length: holdFrames }, (_, i) => camera[finish + i]).every((pose) => {
+      const aimedAndHeld = finish >= 0 && finish + holdFrames <= camera.length && Array.from({ length: holdFrames }, (_, i) => camera[finish + i]).every((pose, i) => {
         const pan = Math.hypot(camera[finish].center.x - pose.center.x, camera[finish].center.y - pose.center.y);
         const zoom = Math.abs(camera[finish].zoom - pose.zoom);
-        const inFrame = Math.abs(pose.center.x - prop.position.x) <= 540 / pose.zoom && Math.abs(pose.center.y - prop.position.y) <= 540 / pose.zoom;
+        const targetPos = objectPositionAt(prop, cast.id, finish + i);
+        const inFrame = Math.abs(pose.center.x - targetPos.x) <= 540 / pose.zoom && Math.abs(pose.center.y - targetPos.y) <= 540 / pose.zoom;
         return pan < 0.3 && zoom < 1e-4 && inFrame;
       });
       if (!clips.length) {

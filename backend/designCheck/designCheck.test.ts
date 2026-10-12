@@ -191,6 +191,20 @@ test("DesignCheck: camera arrivals warn when they miss the planned cue or framed
   assert.ok(report.findings.some((f) => f.rule === "camera" && /does not land near focused object/.test(f.message)));
 });
 
+test("DesignCheck: camera arrival warnings report the matched keyframe index, not target index", () => {
+  const film = stillTalking();
+  film.scene.camera = { keyframes: [
+    { frame: 0, center: { x: 500, y: 500 }, zoom: 1 },
+    { frame: 100, center: { x: 510, y: 500 }, zoom: 1 },
+  ] };
+  const report = checkFilmDesign(film, { cameraTargets: [
+    { frame: 300, focus: "probe", authoredFocus: "probe" },
+  ] });
+  const arrival = report.findings.find((f) => f.rule === "camera" && /planned cue/.test(f.message));
+  assert.ok(arrival);
+  assert.equal(arrival.where, "scene.camera keyframe 2");
+});
+
 test("DesignCheck: a planned carry-over change warns when it is brief or outside the held frame", () => {
   const film = stillTalking();
   const prop = film.scene.props.find((item: any) => item.assetId === "probe");
@@ -219,6 +233,53 @@ test("DesignCheck: a planned carry-over change warns when it is brief or outside
   film.scene.camera = camera({ x: 0, y: 0 });
   const offCamera = checkFilmDesign(film, { lookPlan: plan });
   assert.ok(offCamera.findings.some((f) => f.rule === "carry-over" && /at least 2 seconds/.test(f.message)), JSON.stringify(offCamera.findings));
+});
+
+test("DesignCheck: a planned carry-over change finishing exactly 2 seconds before film end passes", () => {
+  const film = stillTalking();
+  const prop = film.scene.props.find((item: any) => item.assetId === "probe");
+  const original = prop.animation.clips[0];
+  const lastShot = film.shots[film.shots.length - 1];
+  const plan: any = {
+    film: { cast: [{ id: "probe", what: "probe", enters: film.shots[0].id, changes: [{ at: lastShot.id, how: "moves right", state: "probe on right", magnitude: "major" }] }] },
+    shots: film.shots.map((shot: any) => ({ id: shot.id })),
+  };
+  const fps = film.scene.fps || 30;
+  const holdFrames = 2 * fps;
+  const finish = film.scene.durationFrames - holdFrames;
+  prop.animation.clips = [{ ...original, clipId: "boundary-change", targets: [original.targets[0]], property: "translateX", from: 0, to: 140, startFrame: finish - 10, durationFrames: 10 }];
+  film.scene.camera = { keyframes: [
+    { frame: 0, center: prop.position, zoom: 1 },
+    { frame: film.scene.durationFrames - 1, center: prop.position, zoom: 1 },
+  ] };
+  const report = checkFilmDesign(film, { lookPlan: plan });
+  assert.equal(report.findings.some((f) => f.rule === "carry-over" && /at least 2 seconds/.test(f.message)), false);
+});
+
+test("DesignCheck: a carried change that translates across the stage passes when the camera holds on the new position", () => {
+  const film = stillTalking();
+  const prop = film.scene.props.find((item: any) => item.assetId === "probe");
+  const original = prop.animation.clips[0];
+  const plan: any = {
+    film: { cast: [{ id: "probe", what: "probe", enters: film.shots[0].id, changes: [{ at: film.shots[0].id, how: "moves 600px right", state: "probe on far right", magnitude: "major" }] }] },
+    shots: film.shots.map((shot: any) => ({ id: shot.id })),
+  };
+  const end = film.scene.durationFrames - 1;
+  const deltaX = 600;
+  prop.animation.clips = [{ ...original, clipId: "test-large-move", targets: [original.targets[0]], property: "translateX", from: 0, to: deltaX, startFrame: 10, durationFrames: 10 }];
+  film.scene.camera = { keyframes: [
+    { frame: 0, center: { x: prop.position.x + deltaX, y: prop.position.y }, zoom: 1 },
+    { frame: end, center: { x: prop.position.x + deltaX, y: prop.position.y }, zoom: 1 },
+  ] };
+  const tracked = checkFilmDesign(film, { lookPlan: plan });
+  assert.equal(tracked.findings.some((f) => f.rule === "carry-over"), false, JSON.stringify(tracked.findings));
+
+  film.scene.camera = { keyframes: [
+    { frame: 0, center: prop.position, zoom: 1 },
+    { frame: end, center: prop.position, zoom: 1 },
+  ] };
+  const leftBehind = checkFilmDesign(film, { lookPlan: plan });
+  assert.ok(leftBehind.findings.some((f) => f.rule === "carry-over" && /at least 2 seconds/.test(f.message)));
 });
 
 test("DesignCheck: a camera eased at every keyframe is caught as a jerk, the same poses un-eased pass", () => {

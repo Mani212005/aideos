@@ -200,14 +200,19 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   }
 
   const cues = createCues(narrationTimingForFilm(film, words), film.fps);
-  const authoredPoses = (spec.camera ?? []).map((pose) => ({ frame: resolveCue(pose.at, cues), focus: pose.focus }));
-  const cameraTargets = (lookPlan?.film.camera ?? []).map((pose) => {
-    const frame = resolveCue(pose.at, cues);
-    const authoredPose = authoredPoses.length ? authoredPoses.reduce((nearest, candidate) =>
-      Math.abs(candidate.frame - frame) < Math.abs(nearest.frame - frame) ? candidate : nearest,
-    ) : undefined;
-    return { frame, focus: pose.focus, authoredFocus: authoredPose?.focus };
-  });
+  let cameraTargets: DesignCheckContext["cameraTargets"] = [];
+  try {
+    const authoredPoses = (spec.camera ?? []).map((pose) => ({ frame: resolveCue(pose.at, cues), focus: pose.focus }));
+    cameraTargets = (lookPlan?.film.camera ?? []).map((pose) => {
+      const frame = resolveCue(pose.at, cues);
+      const authoredPose = authoredPoses.length ? authoredPoses.reduce((nearest, candidate) =>
+        Math.abs(candidate.frame - frame) < Math.abs(nearest.frame - frame) ? candidate : nearest,
+      ) : undefined;
+      return { frame, focus: pose.focus, authoredFocus: authoredPose?.focus };
+    });
+  } catch (err) {
+    return fail([`camera cue resolution: ${err instanceof Error ? err.message : String(err)}`]);
+  }
   const report = checkFilmDesign(compiled.film, {
     ...(cameraTargets.length ? { cameraTargets } : {}),
     ...(lookPlan ? { lookPlan } : {}),

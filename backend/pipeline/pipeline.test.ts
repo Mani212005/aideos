@@ -640,6 +640,7 @@ test("Design build: the look's cast, motion, device override and camera are enfo
       { name: "missing carried motion", change: () => { fs.writeFileSync(specFile, JSON.stringify({ ...originalSpec, clips: [] })); }, error: /look scene shot "beat-01" needs a changing clip/ },
       { name: "missing device override", change: () => { const plan = structuredClone(originalLook); plan.shots[0].treatment = "device"; plan.shots[0].device = "StatCounter"; fs.writeFileSync(lookFile, JSON.stringify(plan)); }, error: /look device shot "beat-01" needs a matching "StatCounter" shots override/ },
       { name: "missing camera", change: () => { const design = { ...originalSpec }; delete design.camera; fs.writeFileSync(specFile, JSON.stringify(design)); }, error: /look camera poses require camera keyframes/ },
+      { name: "invalid look camera cue", change: () => { const plan = structuredClone(originalLook); plan.film.camera[0].at = "nonexistent-shot"; fs.writeFileSync(lookFile, JSON.stringify(plan)); }, error: /look\.json camera|camera cue resolution/ },
     ];
     for (const fixture of cases) {
       fs.writeFileSync(specFile, JSON.stringify(originalSpec));
