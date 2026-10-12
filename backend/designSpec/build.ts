@@ -15,7 +15,7 @@ import { parseFilm, type Film } from "../../src/dl/schema";
 import { collectSvgElementIds, parseSvgDocument } from "../../src/dl/scene/svgDocument";
 import { writeFilm } from "../pipeline/filmStore";
 import { buildSvgSources } from "../scene/buildSvgSources";
-import { checkFilmDesign, type DesignFinding } from "../designCheck/designCheck";
+import { checkFilmDesign, type DesignFinding, type DesignCheckContext } from "../designCheck/designCheck";
 import { compileDesign, DEFAULT_BACKGROUND_FILE, narrationTimingForFilm, type DesignSource, type TimedWord } from "./compile";
 import { designSpecSchema, type DesignSpec } from "./spec";
 import { checkLookPlan, parseLookPlan, type LookPlan } from "../lookPlan";
