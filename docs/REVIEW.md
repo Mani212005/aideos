@@ -210,7 +210,7 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 
 Supplemental: When `design/look.json` is available, `aideos review` also reports supplemental criterion 13 (`plan-adherence`: Look plan adherence) as a non-gating check (non-gate until calibrated on the proof and two or three more films).
 
-Run `npm run eval:look -- --plans <look.json-or-directory>` before changing look-treatment criteria wording.
+Run `npm run eval:look -- --plans <look.json-or-directory> [--min percent]` before changing look-treatment criteria wording.
 
 ## 5. Video model policy (`aideos.config.json`)
 

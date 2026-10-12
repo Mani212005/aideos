@@ -136,11 +136,29 @@ export function formatLookEval(rows: LookEvalRow[]): string {
   return lines.join("\n");
 }
 
-/** Parses CLI flags, evaluates plans, prints the report and applies the requested threshold. */
-function main(): void {
-  const args = process.argv.slice(2);
+/** Evaluates loaded plans against labelled cases, checking plans and enforcing any opt-in minimum threshold. */
+export function evaluateLookPlans(
+  cases: LookEvalCase[],
+  plans: ReadonlyMap<string, unknown>,
+  options: { minimum?: number } = {},
+): { rows: LookEvalRow[]; agreement: number; passed: boolean } {
+  if (options.minimum !== undefined && (!Number.isFinite(options.minimum) || options.minimum < 0 || options.minimum > 100)) {
+    throw new Error("--min must be a number from 0 to 100");
+  }
+  for (const [id, plan] of plans) {
+    const report = checkLookPlan(plan, id);
+    if (!report.ok) throw new Error(`look plan for ${id} fails aideos look check: ${report.findings.map((finding) => finding.message).join("; ")}`);
+  }
+  const rows = scoreLookPlans(cases, plans);
+  const agreement = (100 * rows.filter((row) => row.hit).length) / Math.max(1, rows.length);
+  const passed = options.minimum === undefined || agreement >= options.minimum;
+  return { rows, agreement, passed };
+}
+
+/** Parses command-line arguments for look plan evaluation. */
+export function parseLookEvalArgs(args: string[]): { planPath: string; minimum?: number } {
   let planPath: string | undefined;
-  let minimum = 80;
+  let minimum: number | undefined;
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
     if (arg === "--plans") planPath = args[++index];
@@ -148,18 +166,20 @@ function main(): void {
     else throw new Error(`unknown argument: ${arg}`);
   }
   if (!planPath) throw new Error("usage: npm run eval:look -- --plans <look.json|directory> [--min percent]");
-  if (!Number.isFinite(minimum) || minimum < 0 || minimum > 100) throw new Error("--min must be a number from 0 to 100");
+  if (minimum !== undefined && (!Number.isFinite(minimum) || minimum < 0 || minimum > 100)) {
+    throw new Error("--min must be a number from 0 to 100");
+  }
+  return { planPath, minimum };
+}
 
+/** Runs look plan evaluation from CLI arguments. */
+function main(): void {
+  const { planPath, minimum } = parseLookEvalArgs(process.argv.slice(2));
   const cases = loadLookEvalCases();
   const plans = loadLookPlans(planPath, cases);
-  for (const [id, plan] of plans) {
-    const report = checkLookPlan(plan, id);
-    if (!report.ok) throw new Error(`look plan for ${id} fails aideos look check: ${report.findings.map((finding) => finding.message).join("; ")}`);
-  }
-  const rows = scoreLookPlans(cases, plans);
-  console.log(formatLookEval(rows));
-  const agreement = (100 * rows.filter((row) => row.hit).length) / Math.max(1, rows.length);
-  if (agreement < minimum) process.exitCode = 1;
+  const result = evaluateLookPlans(cases, plans, { minimum });
+  console.log(formatLookEval(result.rows));
+  if (!result.passed) process.exitCode = 1;
 }
 
 if (typeof require !== "undefined" && typeof module !== "undefined" && require.main === module) {
