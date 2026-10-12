@@ -211,7 +211,7 @@ The committed `aideos.config.json` at the repo root is the one place the video m
 
 | Role | Agent | Model | Read by |
 |---|---|---|---|
-| Generation and fixing | `claude` | `claude-sonnet-5-5` | `aideos all-check` (the background agent's launch command) |
+| Generation and fixing | `claude` | `claude-sonnet-5-5` | `aideos all-check` (background agent launch command), server look and design (`backend/aideosConfig.ts`) |
 | Reviewer | `agy` | `gemini-3.8-flash-high` | `aideos gemini-review`, `aideos all-check`, `--pairwise` (an explicit `--model`, then `AIDEOS_GEMINI_REVIEW_MODEL` / `GEMINI_MODEL`, still win) |
 
 Gemini 3.1 Pro is not part of this: `forbiddenGenerationModels` lists `gemini-3.1-pro`, and `all-check` refuses it

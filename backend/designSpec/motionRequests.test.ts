@@ -24,10 +24,10 @@ const ID = "zz-motion-requests-test";
 const PKG = path.join(TEST_VIDEOS_DIR, ID);
 const SHADOW = path.join(ROOT, "src/dl/films", `${ID}.ts`);
 
-// Copies the designed demo film into a throwaway package.
+// Copies the legacy designed demo without the separate look-checker example plan.
 function setup() {
   fs.rmSync(PKG, { recursive: true, force: true });
-  fs.cpSync(SRC, PKG, { recursive: true, filter: (f) => !f.endsWith(".wav") && !f.includes(`${path.sep}history`) && !f.endsWith("motion-requests.json") && !f.endsWith("status.json") });
+  fs.cpSync(SRC, PKG, { recursive: true, filter: (f) => !f.endsWith(".wav") && !f.includes(`${path.sep}history`) && !f.endsWith("motion-requests.json") && !f.endsWith("status.json") && !f.endsWith("look.json") });
   const film = JSON.parse(fs.readFileSync(path.join(PKG, "film.json"), "utf8"));
   film.id = ID;
   const base = JSON.parse(fs.readFileSync(path.join(PKG, "design/base-film.json"), "utf8"));

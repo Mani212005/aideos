@@ -264,7 +264,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ### Production Pipeline, Auto-Prompt Director & MCP Server (`backend/pipeline/`, `backend/mcp/`)
 * Deep reference documentation in [`docs/PRODUCTION_PIPELINE.md`](PRODUCTION_PIPELINE.md) and [`docs/DIRECTOR_GUIDE.md`](DIRECTOR_GUIDE.md).
-* `runProduction(request, onProgress)` (`backend/pipeline/run.ts`): Single typed programmatic entry point driving `intake`, `narrate`, `design`, `broll`, `assemble`, `render`, `verify`.
+* `runProduction(request, onProgress)` (`backend/pipeline/run.ts`): Single typed programmatic entry point driving `intake`, `narrate`, `look`, `design`, `broll`, `assemble`, `render`, `verify`.
 * `runDirector(request, onProgress)` (`backend/pipeline/director.ts`): Auto-prompt entry point above `runProduction` that drafts a Claude screenplay from a raw prompt with an LLM and produces it end to end.
 * `draftScreenplay(prompt, options)` (`backend/pipeline/director.ts`): Drafts and validates a Claude screenplay from a natural language prompt, retrying rejected drafts with feedback.
 * `transformProseToScreenplay(prose, options)` (`backend/pipeline/director.ts`): Automatically transforms raw untagged prose into a structured Claude screenplay with visual and narration beats via LLM with validation retries and code fence stripping.
@@ -341,6 +341,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `loadAideosConfig(file?)`: Loads and validates `aideos.config.json` containing the committed video model policy (generation agent/model, reviewer agent/model, forbidden generation models).
 * `reviewerModel(explicit?, env?, file?)`: Resolves the active reviewer model from explicit options, environment variables (`AIDEOS_GEMINI_REVIEW_MODEL`, `GEMINI_MODEL`), or `aideos.config.json`.
 * `forbiddenGenerationMatch(model, policy)`: Checks if a model ID matches any configured forbidden generation models (e.g. `gemini-3.1-pro`).
+* `generationCaller(file?, runner?)`: Creates the server text generation caller from `videoModels.generation`, enforcing an allowed Claude model.
 
 ### `backend/geminiReview/` (Gemini 3.8 Flash Video Quality Review & Rubric)
 * `reviewVideo(videoPath, options)` (`backend/geminiReview/geminiReview.ts`): Evaluates rendered mp4 video and audio against the 12-criterion rubric via the agy CLI agent running Gemini 3.8 Flash (`gemini-3.8-flash-high`) in an isolated workspace with neutral `video.mp4`, with deterministic facts extraction, timestamp evidence validation, and pairwise comparison support.
@@ -447,8 +448,9 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `renderDesignBrief(film)`, `writeDesignBrief(filmId)` (`brief.ts`): Generates designer briefs (`design/BRIEF.md`) containing film contracts, shot narration, and asset specifications.
 * `compileDesign(film, spec, options)` (`compile.ts`): Compiles a `DesignSpec` and narration timing into a validated scene film, compiling camera poses through `Timeline.camera()`.
 * `buildDesign(filmId, source)` (`build.ts`): Compiles design specifications, executes design checks, and writes passing films.
+* `readCheckedLookPlan(film)`, `checkDesignAgainstLook(film, spec, words, pkg, plan)` (`build.ts`): Validates look plan completeness and checks design cast, carried motion, inset device overrides, and camera against the accepted look.
 * `resolveCue(cue, cues)` (`cues.ts`): Resolves cue strings and frame offsets against narration timing cues.
-* `designFilm(filmId, options)` (`designer.ts`): Orchestrates agent-based and server-model film design workflows with validation retry loops.
+* `planFilmLook(filmId, options)`, `designFilm(filmId, options)` (`designer.ts`): Delivers look planning and scene design through inline, agent, server, or templates policies.
 * `requestShotMotion(filmId, request)` (`motionRequests.ts`): Manages shot-level motion design tasks and history snapshots.
 * `designOverview(film)`, `approveLookPlan(filmId)`, `swapShotVisual(film, shotId, visual, caller)`, `requestShotRedesign(film, shotId, note, options)` (`shotTools.ts`): Gathers design and look plan overview (`look.json`, `LOOK.md`, stage, cast, shot treatments) for the Studio Look stage, records captain look approval, executes honest chart visual swaps, and dispatches per-shot redesign requests.
 * `designSpecSchema`, `specCameraSchema`, `specClipSchema`, `specAssetSchema` (`spec.ts`): Zod schemas and TypeScript types for bespoke film designs (brief, accent, background, assets, cue-timed clips, camera poses, and shot block overrides).

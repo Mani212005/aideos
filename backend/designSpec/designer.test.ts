@@ -1,10 +1,8 @@
 /**
- * File Description: Tests for the designer's fallback chain.
+ * File Description: Tests for explicit server design and authoring stops without template fallback.
  * A temporary copy of the demo film is designed by a fake server model (first try, and after a
- * repair), and falls back to flagged templates when no model is available. The agent path is
+ * repair), and stops for authoring when no model is available. The agent path is
  * skipped: a test must never message a live agent session.
- * Inputs and outputs: design synthesis pipeline fixtures -> test assertions.
- * Used by: npm test.
  * Inputs and outputs: design synthesis pipeline fixtures -> test assertions.
  * Used by: npm test.
  */
@@ -55,7 +53,7 @@ test("Designer: the server model's design is built, checked and written", async 
       assert.match(system, /## What the film says/);
       return "```json\n" + JSON.stringify(demoReply()) + "\n```";
     };
-    const outcome = await designFilm(ID, { skipAgent: true, llmCaller: caller });
+    const outcome = await designFilm(ID, { mode: "server", skipAgent: true, llmCaller: caller });
     assert.equal(outcome.source, "server-model");
     assert.equal(prompts.length, 1);
     const film = readFilm(ID);
@@ -76,7 +74,7 @@ test("Designer: build errors are fed back and the repaired design passes", async
       if (prompts.length === 1) (reply.design as { clips: Array<{ start: unknown }> }).clips[0].start = 'beat-01:"never said"';
       return JSON.stringify(reply);
     };
-    const outcome = await designFilm(ID, { skipAgent: true, llmCaller: caller });
+    const outcome = await designFilm(ID, { mode: "server", skipAgent: true, llmCaller: caller });
     assert.equal(outcome.source, "server-model");
     assert.equal(prompts.length, 2);
     assert.match(prompts[1], /"never said" is not spoken in shot "beat-01"/);
@@ -85,13 +83,13 @@ test("Designer: build errors are fed back and the repaired design passes", async
   }
 });
 
-test("Designer: with no model the film keeps its template design and is flagged", async () => {
+test("Designer: inline with no listener stops for design without calling a server model", async () => {
   freshPackage();
   try {
     const outcome = await designFilm(ID, { skipAgent: true, llmCaller: null });
-    assert.equal(outcome.source, "templates");
+    assert.equal(outcome.source, "needs_design");
     const film = readFilm(ID);
-    assert.equal(film?.design?.source, "templates");
+    assert.notEqual(film?.design?.source, "templates");
     assert.equal(film?.scene, undefined);
     assert.ok(fs.existsSync(path.join(PKG, "design/BRIEF.md")), "the brief is still written for a later design");
   } finally {
@@ -99,14 +97,14 @@ test("Designer: with no model the film keeps its template design and is flagged"
   }
 });
 
-test("Designer: a model that never returns a passing design ends in flagged templates", async () => {
+test("Designer: server failure stops for design and never falls through to templates", async () => {
   freshPackage();
   try {
     let calls = 0;
-    const outcome = await designFilm(ID, { skipAgent: true, maxServerAttempts: 2, llmCaller: async () => (calls++, "not json") });
+    const outcome = await designFilm(ID, { mode: "server", skipAgent: true, maxServerAttempts: 2, llmCaller: async () => (calls++, "not json") });
     assert.equal(calls, 2);
-    assert.equal(outcome.source, "templates");
-    assert.match(outcome.note, /failed the design check/);
+    assert.equal(outcome.source, "needs_design");
+    assert.notEqual(readFilm(ID)?.design?.source, "templates");
   } finally {
     cleanup();
   }

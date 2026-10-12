@@ -7,18 +7,21 @@
  * videos/<id>/design/status.json, which is how the pipeline learns an agent has finished.
  * Inputs and outputs: film slug and design specification -> built video package with assets and film.json.
  * Used by: backend/designSpec/designer.ts.
- * Inputs and outputs: film slug and design specification -> built video package with assets and film.json.
- * Used by: backend/designSpec/designer.ts.
  */
 
 import fs from "node:fs";
 import path from "node:path";
-import { parseFilm } from "../../src/dl/schema";
+import { parseFilm, type Film } from "../../src/dl/schema";
+import { collectSvgElementIds, parseSvgDocument } from "../../src/dl/scene/svgDocument";
 import { writeFilm } from "../pipeline/filmStore";
 import { buildSvgSources } from "../scene/buildSvgSources";
 import { checkFilmDesign, type DesignFinding } from "../designCheck/designCheck";
-import { compileDesign, DEFAULT_BACKGROUND_FILE, type DesignSource, type TimedWord } from "./compile";
-import { designSpecSchema } from "./spec";
+import { compileDesign, DEFAULT_BACKGROUND_FILE, narrationTimingForFilm, type DesignSource, type TimedWord } from "./compile";
+import { designSpecSchema, type DesignSpec } from "./spec";
+import { checkLookPlan, parseLookPlan, type LookPlan } from "../lookPlan";
+import { createCues } from "../sceneKit";
+import { readVisualChoices } from "../pipeline/visualChoices";
+import { resolveCue } from "./cues";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 
 
@@ -45,7 +48,90 @@ export function designDir(filmId: string): string {
 // Reads a film's last build status, or null when it has never been built.
 export function readDesignStatus(filmId: string): DesignBuildStatus | null {
   const file = path.join(designDir(filmId), "status.json");
-  return fs.existsSync(file) ? (JSON.parse(fs.readFileSync(file, "utf8")) as DesignBuildStatus) : null;
+  try {
+    if (!fs.existsSync(file)) return null;
+    const status = JSON.parse(fs.readFileSync(file, "utf8")) as DesignBuildStatus | null;
+    return status && (status.state === "passed" || status.state === "failed") &&
+      ["agent", "server-model", "hand-built"].includes(status.source) && typeof status.at === "string" &&
+      Array.isArray(status.errors) && Array.isArray(status.findings) ? status : null;
+  } catch {
+    return null;
+  }
+}
+
+// Reads and checks the look against the actual narrated film, including complete shot coverage.
+export function readCheckedLookPlan(film: Film): { plan?: LookPlan; errors: string[] } {
+  try {
+    const raw: unknown = JSON.parse(fs.readFileSync(path.join(designDir(film.id), "look.json"), "utf8"));
+    const report = checkLookPlan(raw, film.id);
+    if (!report.ok) return { errors: report.findings.map((f) => `look.json ${f.where}: ${f.message}`) };
+    const plan = parseLookPlan(raw);
+    const errors: string[] = [];
+    const ids = new Set(film.shots.map((s) => s.id));
+    for (const shot of film.shots) {
+      if (!plan.shots.some((s) => s.id === shot.id)) errors.push(`look.json missing treatment for shot "${shot.id}"`);
+    }
+    for (const shot of plan.shots) {
+      if (!ids.has(shot.id)) errors.push(`look.json names unknown shot "${shot.id}"`);
+    }
+    for (const item of plan.film.cast) {
+      for (const at of [item.enters, ...item.changes.map((c) => c.at)]) {
+        if (!ids.has(at)) errors.push(`look.json cast "${item.id}" names unknown shot "${at}"`);
+      }
+    }
+    const wordsFile = path.join(resolvePackageDir(film.id), "voiceover_words.json");
+    const words: TimedWord[] = fs.existsSync(wordsFile) ? JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? [] : [];
+    const cues = createCues(narrationTimingForFilm(film, words), film.fps);
+    for (const pose of plan.film.camera) {
+      try { resolveCue(pose.at, cues); }
+      catch (err) { errors.push(`look.json camera: ${err instanceof Error ? err.message : String(err)}`); }
+    }
+    return errors.length ? { errors } : { plan, errors };
+  } catch (err) {
+    return { errors: [`look.json: ${err instanceof Error ? err.message : String(err)}`] };
+  }
+}
+
+// Checks the design's cast, carried motion, device overrides and camera against its look plan.
+export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: TimedWord[], pkg: string, plan: LookPlan): string[] {
+  const errors: string[] = [];
+  const idsByAsset = new Map(spec.assets.map((a) => [a.id,
+    collectSvgElementIds(parseSvgDocument(fs.readFileSync(path.join(pkg, a.file), "utf8"))),
+  ]));
+  for (const item of plan.film.cast) {
+    if (!idsByAsset.has(item.id) && ![...idsByAsset.values()].some((ids) => ids.includes(item.id))) {
+      errors.push(`look cast "${item.id}" has no asset or SVG element in design.json`);
+    }
+  }
+  const cues = createCues(narrationTimingForFilm(film, words), film.fps);
+  for (const shot of plan.shots) {
+    if (shot.treatment === "scene") {
+      const start = cues.from(shot.id);
+      const end = cues.to(shot.id);
+      const hasMotion = spec.clips.some((clip) => {
+        const frame = resolveCue(clip.start, cues);
+        const carried = shot.carries.some((id) => id === clip.asset ||
+          (idsByAsset.get(clip.asset)?.includes(id) && clip.targets.some((target) => target === id || target === "*")));
+        return carried && clip.from !== clip.to && frame >= start && frame < end;
+      });
+      if (!hasMotion) errors.push(`look scene shot "${shot.id}" needs a changing clip on a carried object starting inside the shot`);
+    }
+    if (shot.treatment === "device") {
+      const override = spec.shots?.[shot.id];
+      const refused = readVisualChoices(film.id)?.shots[shot.id];
+      const refusalMatches = refused?.device?.state === "refused" &&
+        (refused.rawChoice ?? refused.visual) === shot.device;
+      const fallback = override ?? film.shots.find((s) => s.id === shot.id);
+      const showsCard = fallback && (fallback.stage === "frame" || fallback.stage === "none") &&
+        fallback.blocks.every((b) => b.c === "TextReveal" || b.c === "Body");
+      if (refusalMatches && showsCard) continue;
+      if (!override?.blocks.some((b) => b.c === shot.device) || override.stage !== "inset") {
+        errors.push(`look device shot "${shot.id}" needs a matching "${shot.device}" shots override with stage "inset"`);
+      }
+    }
+  }
+  if (plan.film.camera.length && !spec.camera?.length) errors.push("look camera poses require camera keyframes in design.json");
+  return errors;
 }
 
 // Writes the status file and returns it.
@@ -98,6 +184,18 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
 
   const compiled = compileDesign(film, spec, words, source);
   if (!compiled.film) return fail(compiled.errors);
+
+  // Legacy packages without a plan still build; new production runs always require one first.
+  if (fs.existsSync(path.join(designDir(filmId), "look.json"))) {
+    const look = readCheckedLookPlan(film);
+    if (!look.plan) return fail(look.errors);
+    try {
+      const errors = checkDesignAgainstLook(film, spec, words, pkg, look.plan);
+      if (errors.length) return fail(errors);
+    } catch (err) {
+      return fail([`look/design check: ${err instanceof Error ? err.message : String(err)}`]);
+    }
+  }
 
   const report = checkFilmDesign(compiled.film);
   if (!report.ok) return fail([], report.findings);

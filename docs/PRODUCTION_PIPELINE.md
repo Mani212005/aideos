@@ -6,7 +6,8 @@ the MCP tool surface that exposes the same thing to an agent.
 
 # Production pipeline
 
-One call turns a narration script into a finished film in both deliverable formats.
+A production run plans the look, builds a scene film and renders both deliverable formats.
+The default inline mode returns actionable authoring stops when no coding agent is listening.
 
 ```ts
 import { runProduction } from "./backend/pipeline/run";
@@ -16,6 +17,7 @@ const result = await runProduction(
   (event) => console.log(event.stage, event.status, event.message, event.progress),
 );
 
+// Inspect result.status before consuming outputs; needs_look / needs_design include nextSteps.
 result.outputs; // [{ format: "long", path: "videos/speculative-decoding/renders/long.mp4", ... }, ...]
 ```
 
@@ -38,7 +40,8 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 | ---------- | ----------------------------------------------------------------------------------- | -------------------------------------------------- |
 | `intake`   | Parses the screenplay, rejects an empty or unparseable one                            | `videos/<slug>/script.md`                           |
 | `narrate`  | Synthesizes narration and derives the timing spine every later stage is locked to     | `voiceover.wav`, `captions.vtt`, `voiceover_words.json`, `narration.json` |
-| `design`   | Compiles the screenplay plus the spine into a validated film, picking each shot's visual with Jev (heuristic fallback) | `film.json` and its `src/dl/films/<slug>.ts` shadow |
+| `look`     | Writes the measured look brief and validates the plan through the selected delivery mode | `design/LOOK_BRIEF.md`, `look.json`, `LOOK.md` |
+| `design`   | Compiles treatments from the accepted look and builds a checked scene design | `design/BRIEF.md`, `base-film.json`, `status.json`, `film.json` and its shadow |
 | `broll`    | Renders GPU footage for the flagged shots and fetches the clips                       | `videos/<slug>/footage/<shotId>.mp4`                |
 | `assemble` | Wires each clip into its shot as a full-screen inset                                 | `film.json` and its `src/dl/films/<slug>.ts` shadow |
 | `render`   | Installs the film as active and drives Remotion for each requested format            | `src/dl/activeFilm.ts`, `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` |
@@ -49,7 +52,34 @@ event, carrying the stage, its status, a human-readable message, an optional 0..
 the stage, and milliseconds since the run began.
 
 A failure throws a `ProductionError` whose `stage` field names where it happened, so a caller
-never has to guess which part of the chain broke.
+never has to guess which part of the chain broke. An authoring stop returns a result instead:
+`status: "needs_look"` or `"needs_design"`, with `nextSteps` naming the brief, the file to write,
+the check command, and the instruction to rerun. Both `film` and `direct` exit with code 3.
+
+## Look and design delivery
+
+`ProductionRequest.design` and `--design <mode>` use the same policy for look and design:
+
+| Mode | Behavior |
+| --- | --- |
+| `inline` (default) | Deliver through agent link, tmux or steering inbox and wait for validated output. With no listener or a timeout, return the authoring stop to the invoking agent. |
+| `agent` | Require a delivered coding agent; missing delivery or a timeout fails the stage. |
+| `server` | Ask the configured Claude generation model (`aideos.config.json`'s `videoModels.generation`) for JSON, validate, and feed errors back for bounded retries. An exhausted retry returns an authoring stop. |
+| `templates` | Explicitly compile a node-graph template film, stamped `design.source = "templates"`. |
+
+`--no-bespoke` and `bespoke: false` select templates. Other modes never fall through to templates.
+Server generation uses the Claude CLI in text-only print mode, with tools disabled. The injected
+`designLlmCaller` handles both look and design for deterministic tests; `skipAgent` disables live delivery.
+
+Every explainer gets a persistent scene. The look's scene shots suppress cards, scene+card shots
+keep short copy over the stage, and device shots use the named device in an inset. Device data
+still has to pass the narration honesty checks; a refused device keeps the scene plus its card copy
+and records a warning in `design/visual-choices.json`.
+
+`aideos design build` checks a package's look when one exists: shot coverage, declared cast in artwork,
+changing clips on carried objects inside scene shots, matching inset device overrides and camera
+keyframes. Older packages without a look can still build directly; new production runs require
+one before design.
 
 ## Resuming
 
@@ -57,9 +87,16 @@ Every stage records a fingerprint of its inputs in `videos/<slug>/run-state.json
 with the same slug, a stage whose fingerprint still matches and whose outputs are still on disk is
 skipped. Change the script and narration re-runs; change nothing and a crashed run picks up where
 it stopped. `resume: false` ignores the cache entirely, and `force: ["design"]` re-runs one stage
-while reusing the rest.
+while reusing earlier stages and invalidating every later stage.
 
-`stopAfter` ends a run cleanly after a named stage, which is how you inspect the film design before
+The look fingerprint includes script and measured durations. The design fingerprint includes the
+look.json content hash plus the design spec and its artwork, so authoring edits reopen design and
+invalidate later stages. Resuming also revalidates the plan
+and rebuilds existing design.json: a missing or invalid artifact cannot reuse a completed stage.
+Whenever design recompiles, it refreshes base-film.json so a prior snapshot cannot restore old
+narration, timing or treatments.
+
+`stopAfter` returns `status: "stopped"` after a named stage, which is how you inspect the film design before
 paying for GPU time or a render.
 
 ## Auto-prompt: producing from a raw prompt
@@ -94,7 +131,7 @@ aborts the process on teardown when loaded inside the TypeScript loader.
 
 ## B-roll
 
-Shots are flagged for footage by a `[VISUAL]` beat containing a footage marker (`B-roll:`,
+In explicit templates mode, shots are flagged for footage by a `[VISUAL]` beat containing a footage marker (`B-roll:`,
 `footage`, `live action`, `cinematic plate`). The design stage only accepts a beat whose narration
 fits inside one clip with a second to spare - a clip shorter than its shot renders black for the
 remainder - and spreads the remaining budget across the film rather than bunching clips together.
@@ -105,6 +142,8 @@ the loop before a full run:
 ```bash
 npm run backend -- engine-test "<prompt>" --engine ssh-wangp --seconds 5
 ```
+
+Look-planned films reserve the footage treatment until framed b-roll is supported; their stage stays visible.
 
 The assemble stage drops any clip that came back shorter than its shot and records a warning rather
 than shipping a black tail.

@@ -770,7 +770,8 @@ export const filmSchema = filmBaseSchema.superRefine((film, ctx) => {
       sinceBeat = isBeat ? 0 : sinceBeat + shot.dur;
       sinceCanvas = isSpine ? 0 : sinceCanvas + shot.dur;
 
-      if (sinceBeat > 90)
+      // A persistent scene carries the beat through motion without requiring a text card.
+      if (!film.scene && sinceBeat > 90)
         ctx.addIssue({
           code: "custom",
           path: [...at, "dur"],

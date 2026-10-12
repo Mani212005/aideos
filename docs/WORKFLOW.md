@@ -107,7 +107,7 @@ Aideos is engineered around 4 strict architectural invariants:
    - Kinetic Subtitles: Synchronized word-level karaoke text reveal across both Long and Reel formats positioned in the bottom safe area with active theme accent color (default "bottom", or disabled via "off").
 
 3. **Autonomous Production Pipeline (`backend/pipeline/run.ts`, `backend/pipeline/director.ts`)**:
-   - See [docs/PRODUCTION_PIPELINE.md](PRODUCTION_PIPELINE.md) and [docs/DIRECTOR_GUIDE.md](DIRECTOR_GUIDE.md) for the unified entry points coordinating intake, narrate, design, b-roll, assemble, render, and verify, or auto-prompting a film directly from a natural language topic.
+   - See [docs/PRODUCTION_PIPELINE.md](PRODUCTION_PIPELINE.md) and [docs/DIRECTOR_GUIDE.md](DIRECTOR_GUIDE.md) for the unified entry points coordinating intake, narrate, look, design, b-roll, assemble, render, and verify, or auto-prompting a film directly from a natural language topic.
 
 ---
 
@@ -147,6 +147,6 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos review <slug\|mp4>` | Runs deterministic quality review checks | `<out>/review.json`, evidence stills |
 | `aideos gemini-review <mp4>` | Evaluates video against 12-criterion rubric via Gemini 3.8 Flash (agy) | Terminal score & verdict, JSON |
 | `aideos all-check <slug>` | Full check and repair in background agent (long and reel, 9.0+ bar) | `videos/<slug>/all-check/`, final MP4s |
-| `npm run backend -- film` | Autonomous pipeline (intake, narrate, design, b-roll, assemble, render, verify) | `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` |
+| `npm run backend -- film` | Autonomous pipeline (intake, narrate, look, design, b-roll, assemble, render, verify) | `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` |
 | `npm run validate:film <path>` | Standalone invariant validator for arbitrary film manifests | Runsheet & status in terminal |
 | `npm run backend -- mcp` | Starts Model Context Protocol (MCP) server over stdio | MCP stdio interface |

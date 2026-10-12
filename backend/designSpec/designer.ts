@@ -1,31 +1,23 @@
 /**
- * File Description: Gets every new film a bespoke design, in order of preference.
- * 1. The connected coding agent: it is sent the design task and given time to write design.json
- *    and the artwork and to get `aideos design build` to PASS (watched through design/status.json).
- * 2. The server model: it is given the same brief and returns the spec and artwork as JSON, which
- *    goes through the same build; the build's errors are fed back for a bounded number of repairs.
- * 3. Templates: the film keeps its compiled template design, marked so the studio flags it.
- * Every path passes the same design check; nothing reaches the film without it.
- * A passing design is then sampled and ruled on by the vision judge (backend/visionJudge); a frame
- * it fails goes back to the same synthesis paths with the exact error attached, and the repair
- * still has to pass the design build to reach the film. The judge never calls Gemini: the server
- * model repairs only when a caller was passed in.
- * Inputs and outputs: DesignBrief and film assets -> complete generated Scene and Film design.
- * Used by: backend/pipeline/run.ts.
- * Inputs and outputs: DesignBrief and film assets -> complete generated Scene and Film design.
- * Used by: backend/pipeline/run.ts.
+ * File Description: Delivers look planning and scene design through explicit inline, agent, server
+ * or templates policies. Inline stops for the invoking agent when nobody listens; server uses the
+ * configured generation model. Every authored design passes the shared build before reaching film.json.
+ * Inputs and outputs: Film, briefs and delivery policy -> validated look plan or scene design outcome.
+ * Used by: backend/pipeline/run.ts, backend/designSpec/motionRequests.ts.
  */
 
-import { generateText, isGoogleAiConfigured } from "../modelClient";
+import { generationCaller } from "../aideosConfig";
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm } from "../../src/dl/schema";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { dispatchTask } from "../agentBridge/dispatcher";
-import { buildDesign, designDir, formatBuildStatus, readDesignStatus, type DesignBuildStatus } from "./build";
+import { buildDesign, designDir, formatBuildStatus, readDesignStatus, readCheckedLookPlan, type DesignBuildStatus } from "./build";
 import { renderDesignBrief, writeDesignBrief } from "./brief";
 import { judgeAndRepair, type JudgeOptions, type JudgeResult } from "../visionJudge/judge";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { renderLookBrief, writeLookBrief, writeLookMd, type LookPlan } from "../lookPlan";
+import type { DesignMode } from "../pipeline/types";
 
 
 /** Asks a text model for a completion; injectable so tests never reach a real model. */
@@ -33,7 +25,7 @@ export type DesignLlmCaller = (prompt: string, systemInstruction: string) => Pro
 
 /** How a film's design was finally made. */
 export interface DesignOutcome {
-  source: "agent" | "server-model" | "templates";
+  source: "agent" | "server-model" | "templates" | "needs_design";
   note: string;
   status?: DesignBuildStatus;
   /** The vision judge's ruling on the finished design, when it ran. */
@@ -42,13 +34,15 @@ export interface DesignOutcome {
 
 /** Options for designing one film. */
 export interface DesignFilmOptions {
-  /** How long to wait for the connected agent before falling back (default 20 minutes). */
+  /** Delivery mode; defaults to inline, with no implicit server or template fallback. */
+  mode?: DesignMode;
+  /** How long to wait for a delivered agent (default 20 minutes). */
   agentTimeoutMs?: number;
   /** How often to look for the agent's result (default 5 seconds). */
   pollMs?: number;
   /** Skip the agent even when one is connected. */
   skipAgent?: boolean;
-  /** Model used for the server fallback; omit to use Gemini when it is configured. */
+  /** Model used in server mode; omit to use videoModels.generation. */
   llmCaller?: DesignLlmCaller | null;
   /** Server-model attempts, counting repairs (default 3). */
   maxServerAttempts?: number;
@@ -60,34 +54,97 @@ export interface DesignFilmOptions {
   judge?: JudgeOptions | false;
 }
 
-// Sends the design task to the connected agent and waits for a passing build or the timeout.
-async function tryAgent(filmId: string, opts: DesignFilmOptions, instruction?: string): Promise<DesignBuildStatus | null> {
-  const requestedAt = new Date().toISOString();
-  const film = readFilm(filmId);
-  const dispatch = await dispatchTask({
-    eventType: "design_film",
-    filmId,
-    filmTitle: film?.title,
-    enableFallback: false,
-    ...(instruction ? { customInstruction: instruction } : {}),
-    ...(opts.ownerKey ? { ownerKey: opts.ownerKey } : {}),
-  });
-  // The prompt only reaches an agent through a connector, tmux or a steering inbox; the queue and
-  // the task file are written regardless, so on their own they mean nobody is listening.
-  const delivered = dispatch.channels.some((c) => c === "agent_link" || c === "tmux" || c === "firstmate_inbox");
-  if (!delivered) {
-    opts.onProgress?.("no coding agent is connected; skipping to the server model");
+// Delivers a look or design task through the same channel ladder and waits for validated output.
+async function tryAgent<T>(
+  filmId: string, opts: DesignFilmOptions, kind: "look" | "design", inspect: () => T | null, instruction?: string,
+): Promise<T | null> {
+  if (opts.skipAgent || process.env.NODE_TEST_CONTEXT) {
+    if (opts.mode === "agent") throw new Error("agent mode requires a delivered coding agent; delivery is disabled");
     return null;
   }
-  opts.onProgress?.(`design task sent to the coding agent (${dispatch.channels.join(", ")}); waiting for a passing build`);
+  const requestedAt = Date.now();
+  const film = readFilm(filmId);
+  const task = kind === "look"
+    ? `Plan the look before making any picture. Read ${path.join(designDir(filmId), "LOOK_BRIEF.md")}, write design/look.json, and run aideos look check ${filmId}. Do not build the design yet.`
+    : `Build the picture from design/look.json and design/BRIEF.md. Run aideos design build ${filmId} until PASS.`;
+  const dispatch = await dispatchTask({
+    eventType: "design_film", filmId, filmTitle: film?.title, enableFallback: false,
+    customInstruction: `${task}${instruction ? `\n${instruction}` : ""}`,
+    ...(opts.ownerKey ? { ownerKey: opts.ownerKey } : {}),
+  });
+  const delivered = dispatch.channels.some((c) => c === "agent_link" || c === "tmux" || c === "firstmate_inbox");
+  if (!delivered) {
+    if (opts.mode === "agent") throw new Error("agent mode requires a delivered coding agent; no agent is listening");
+    opts.onProgress?.(`no coding agent is listening; ${kind} needs work from the invoking agent`);
+    return null;
+  }
+  opts.onProgress?.(`${kind} task delivered (${dispatch.channels.join(", ")}); waiting for validated output`);
+  const output = path.join(designDir(filmId), kind === "look" ? "look.json" : "status.json");
   const deadline = Date.now() + (opts.agentTimeoutMs ?? 20 * 60 * 1000);
   while (Date.now() < deadline) {
-    const status = readDesignStatus(filmId);
-    if (status && status.at > requestedAt && status.state === "passed") return status;
-    await new Promise((r) => setTimeout(r, opts.pollMs ?? 5000));
+    if (fs.existsSync(output) && fs.statSync(output).mtimeMs >= requestedAt) {
+      try {
+        const result = inspect();
+        if (result) return result;
+      } catch (err) {
+        opts.onProgress?.(`${kind} output is not ready: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, opts.pollMs ?? 5000));
   }
-  opts.onProgress?.("the coding agent did not produce a passing design in time");
+  if (opts.mode === "agent") throw new Error(`the delivered coding agent did not produce a valid ${kind} in time`);
+  opts.onProgress?.(`the coding agent did not produce a valid ${kind} in time`);
   return null;
+}
+
+// Parses a model's JSON output, including a surrounding Markdown fence.
+function parseJsonReply(text: string): unknown {
+  const body = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  const start = body.indexOf("{");
+  const end = body.lastIndexOf("}");
+  return JSON.parse(body.slice(start, end + 1));
+}
+
+/** A passing look plan or actionable errors for the invoking agent. */
+export interface LookOutcome { plan?: LookPlan; note: string; errors: string[] }
+
+// Writes the look brief and obtains a valid plan through the requested delivery policy.
+export async function planFilmLook(filmId: string, opts: DesignFilmOptions = {}): Promise<LookOutcome> {
+  writeLookBrief(filmId);
+  const film = readFilm(filmId);
+  if (!film) throw new Error(`no film for look planning: ${filmId}`);
+  let checked = readCheckedLookPlan(film);
+  if (!checked.plan && (opts.mode ?? "inline") !== "server") {
+    const plan = await tryAgent(filmId, opts, "look", () => readCheckedLookPlan(film).plan ?? null);
+    checked = plan ? { plan, errors: [] } : readCheckedLookPlan(film);
+  }
+  if (!checked.plan && opts.mode === "server") {
+    try {
+      const caller = opts.llmCaller === undefined ? await defaultCaller() : opts.llmCaller;
+      if (!caller) return { note: "server look caller is disabled", errors: checked.errors };
+      const system = renderLookBrief(film) + "\nReply with the complete look.json object and nothing else.";
+      let prompt = `Plan the look of "${film.title}".`;
+      for (let attempt = 1; attempt <= (opts.maxServerAttempts ?? 3); attempt++) {
+        opts.onProgress?.(`server model look attempt ${attempt}`);
+        try {
+          const raw = parseJsonReply(await caller(prompt, system));
+          fs.writeFileSync(path.join(designDir(filmId), "look.json"), JSON.stringify(raw, null, 2) + "\n");
+          checked = readCheckedLookPlan(film);
+          if (checked.plan) break;
+        } catch (err) {
+          checked = { errors: [err instanceof Error ? err.message : String(err)] };
+        }
+        prompt = `Fix the look plan and return the complete JSON object:\n${checked.errors.join("\n")}`;
+      }
+    } catch (err) {
+      checked = { errors: [err instanceof Error ? err.message : String(err)] };
+    }
+  }
+  if (checked.plan) {
+    writeLookMd(filmId);
+    return { ...checked, note: "look plan validated" };
+  }
+  return { errors: checked.errors, note: "look plan needs work; read LOOK_BRIEF.md and write a valid look.json" };
 }
 
 /** What the server model must return. */
@@ -98,11 +155,10 @@ interface ServerDesignReply {
 
 // Pulls the JSON object out of a model reply, tolerating a code fence around it.
 function parseReply(text: string): ServerDesignReply {
-  const body = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  const start = body.indexOf("{");
-  const end = body.lastIndexOf("}");
-  const parsed = JSON.parse(body.slice(start, end + 1)) as ServerDesignReply;
-  if (!parsed || typeof parsed !== "object" || !parsed.design || !parsed.svgs) {
+  const parsed = parseJsonReply(text) as ServerDesignReply;
+  if (!parsed || typeof parsed !== "object" || !parsed.design || !parsed.svgs ||
+    typeof parsed.svgs !== "object" || Array.isArray(parsed.svgs) ||
+    Object.values(parsed.svgs).some((svg) => typeof svg !== "string")) {
     throw new Error('the reply must be {"design": {...}, "svgs": {"visuals/<name>.svg": "<svg ...>"}}');
   }
   return parsed;
@@ -114,10 +170,11 @@ async function tryServerModel(
   caller: DesignLlmCaller,
   opts: DesignFilmOptions,
   instruction?: string,
-): Promise<DesignBuildStatus | null> {
+): Promise<DesignBuildStatus> {
   const film = parseFilm(JSON.parse(fs.readFileSync(path.join(resolvePackageDir(filmId), "film.json"), "utf8")));
   const system =
     renderDesignBrief(film) +
+    `\n## Accepted look plan\n${fs.existsSync(path.join(designDir(filmId), "look.json")) ? fs.readFileSync(path.join(designDir(filmId), "look.json"), "utf8") : "Legacy film without a look plan."}\n` +
     `\n## Reply format\n\nReply with one JSON object and nothing else: {"design": <the design.json object>, "svgs": {"visuals/<name>.svg": "<complete svg document>", ...}}. Every file named in design.json must be in svgs.\n`;
   // A change to an existing design edits it rather than starting over.
   const specFile = path.join(designDir(filmId), "design.json");
@@ -126,13 +183,15 @@ async function tryServerModel(
     ? `${current ? `The current design.json is:\n${current}\n\nKeep everything it does, and make this change: ` : `Design "${film.title}", and make sure of this: `}${instruction}\nReturn the whole JSON object${current ? " (every svg it names, including unchanged ones)" : ""}.`
     : `Design "${film.title}". Return the JSON object.`;
   const attempts = opts.maxServerAttempts ?? 3;
+  let lastFailure: DesignBuildStatus = { state: "failed", source: "server-model", at: new Date().toISOString(), errors: ["server design made no attempt"], findings: [] };
   for (let attempt = 1; attempt <= attempts; attempt++) {
     opts.onProgress?.(`server model design attempt ${attempt}/${attempts}`);
     let reply: ServerDesignReply;
     try {
       reply = parseReply(await caller(prompt, system));
     } catch (err) {
-      prompt = `Your last reply could not be used: ${err instanceof Error ? err.message : String(err)}. Return the JSON object again.`;
+      lastFailure = { state: "failed", source: "server-model", at: new Date().toISOString(), errors: [err instanceof Error ? err.message : String(err)], findings: [] };
+      prompt = `Your last reply could not be used: ${lastFailure.errors.join("; ")}. Return the JSON object again.`;
       continue;
     }
     const pkg = resolvePackageDir(filmId);
@@ -144,11 +203,18 @@ async function tryServerModel(
       fs.mkdirSync(path.join(pkg, "visuals"), { recursive: true });
       fs.writeFileSync(path.join(pkg, file), svg);
     }
-    const status = buildDesign(filmId, "server-model");
+    let status: DesignBuildStatus;
+    try { status = buildDesign(filmId, "server-model"); }
+    catch (err) {
+      lastFailure = { state: "failed", source: "server-model", at: new Date().toISOString(), errors: [err instanceof Error ? err.message : String(err)], findings: [] };
+      prompt = `Fix the design: ${lastFailure.errors.join("; ")}`;
+      continue;
+    }
     if (status.state === "passed") return status;
+    lastFailure = status;
     prompt = `The build failed. Fix these problems and return the whole corrected JSON object:\n${formatBuildStatus(filmId, status)}`;
   }
-  return null;
+  return lastFailure;
 }
 
 /**
@@ -161,10 +227,11 @@ export async function designWithServerModel(
   caller: DesignLlmCaller,
   onProgress?: (message: string) => void,
 ): Promise<DesignBuildStatus | null> {
-  return tryServerModel(filmId, caller, { onProgress }, instruction);
+  const status = await tryServerModel(filmId, caller, { onProgress }, instruction);
+  return status.state === "passed" ? status : null;
 }
 
-/** The server model the design fallback uses (Gemini when configured), or null. */
+/** The configured generation model used for explicit server design. */
 export async function serverDesignCaller(): Promise<DesignLlmCaller | null> {
   return defaultCaller();
 }
@@ -181,9 +248,12 @@ async function judgeDesign(filmId: string, outcome: DesignOutcome, opts: DesignF
   if (opts.judge === false || (opts.judge === undefined && process.env.NODE_TEST_CONTEXT)) return outcome;
   const judgeOptions: JudgeOptions = { skipAgent: opts.skipAgent, ownerKey: opts.ownerKey, onProgress: opts.onProgress, ...(opts.judge ?? {}) };
   const repair = async (errors: string): Promise<boolean> => {
-    if (outcome.source === "agent") return (await tryAgent(filmId, opts, errors)) !== null;
+    if (outcome.source === "agent") return (await tryAgent(filmId, opts, "design", () => {
+      const status = readDesignStatus(filmId);
+      return status?.state === "passed" ? status : null;
+    }, errors)) !== null;
     if (!opts.llmCaller) return false;
-    return (await tryServerModel(filmId, opts.llmCaller, opts, `The vision judge ruled these frames wrong. Fix each one, exactly as reported:\n${errors}`)) !== null;
+    return (await tryServerModel(filmId, opts.llmCaller, opts, `The vision judge ruled these frames wrong. Fix each one, exactly as reported:\n${errors}`)).state === "passed";
   };
   const judge = await judgeAndRepair(filmId, { ...judgeOptions, repair });
   const note = judge.skipped
@@ -195,28 +265,48 @@ async function judgeDesign(filmId: string, outcome: DesignOutcome, opts: DesignF
   return { ...outcome, note, judge };
 }
 
-// Gives a film a bespoke design: the agent first, then the server model, then flagged templates.
+// Builds existing authoring data, or requests it through the explicit mode without silent templates.
 export async function designFilm(filmId: string, opts: DesignFilmOptions = {}): Promise<DesignOutcome> {
+  const mode = opts.mode ?? "inline";
+  if (mode === "templates") {
+    const note = "template design explicitly requested";
+    markTemplates(filmId, note);
+    return { source: "templates", note };
+  }
   writeDesignBrief(filmId);
-  if (!opts.skipAgent) {
-    const status = await tryAgent(filmId, opts);
+  if (fs.existsSync(path.join(designDir(filmId), "design.json"))) {
+    const source = readDesignStatus(filmId)?.source ?? "agent";
+    try {
+      const status = buildDesign(filmId, source);
+      if (status.state === "passed") return judgeDesign(filmId, { source: source === "server-model" ? source : "agent", note: "existing design rebuilt and validated", status }, opts);
+    } catch (err) {
+      opts.onProgress?.(`existing design could not be built: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  if (mode !== "server") {
+    const status = await tryAgent(filmId, opts, "design", () => {
+      const built = buildDesign(filmId, "agent");
+      return built.state === "passed" ? built : null;
+    });
     if (status) return judgeDesign(filmId, { source: "agent", note: "designed by the connected coding agent", status }, opts);
+  } else {
+    try {
+      const caller = opts.llmCaller === undefined ? await defaultCaller() : opts.llmCaller;
+      if (caller) {
+        const status = await tryServerModel(filmId, caller, opts);
+        if (status.state === "passed") return judgeDesign(filmId, { source: "server-model", note: "designed by the configured generation model", status }, { ...opts, llmCaller: caller });
+        return { source: "needs_design", note: "server design exhausted its validation attempts", status };
+      }
+    } catch (err) {
+      return { source: "needs_design", note: `server design failed: ${err instanceof Error ? err.message : String(err)}`, status: readDesignStatus(filmId) ?? undefined };
+    }
   }
-  const caller = opts.llmCaller === undefined ? await defaultCaller() : opts.llmCaller;
-  if (caller) {
-    const status = await tryServerModel(filmId, caller, opts);
-    if (status) return judgeDesign(filmId, { source: "server-model", note: "designed by the server model", status }, opts);
-  }
-  const note = caller
-    ? "bespoke design failed the design check; kept the template design"
-    : "no coding agent connected and no server model configured; kept the template design";
-  markTemplates(filmId, note);
+  const note = "design needs work; read BRIEF.md, write design.json and SVGs, and run design build";
   opts.onProgress?.(note);
-  return { source: "templates", note };
+  return { source: "needs_design", note, status: readDesignStatus(filmId) ?? undefined };
 }
 
-// Uses Gemini for the server fallback when it is configured, or nothing.
-async function defaultCaller(): Promise<DesignLlmCaller | null> {
-  if (!isGoogleAiConfigured()) return null;
-  return (prompt, systemInstruction) => generateText(prompt, { systemInstruction, temperature: 0.4 });
+// Uses the committed generation policy for server mode, with no implicit reviewer fallback.
+async function defaultCaller(): Promise<DesignLlmCaller> {
+  return generationCaller();
 }

@@ -14,7 +14,7 @@ import { produceAudioPipeline, buildFilmFromAudioResult } from "./audio";
 import { createEngine } from "./engine";
 import { runProduction } from "./pipeline/run";
 import { runDirector } from "./pipeline/director";
-import type { ProductionFormat, ProductionProgress, ProductionStage } from "./pipeline/types";
+import type { DesignMode, ProductionFormat, ProductionProgress, ProductionStage } from "./pipeline/types";
 import type { TtsBackendName } from "./tts";
 import { registerAllCheckCommands, rewriteAllCheckArgv } from "./allCheck/cli";
 
@@ -207,7 +207,8 @@ program
   .option("--force <stages>", "comma-separated stages to re-run even when resuming")
   .option("--stop-after <stage>", "stop cleanly after this stage")
   .option("--skip-verify", "skip the closing frame and audio inspection pass")
-  .option("--no-bespoke", "keep the template design instead of designing the film with the agent or server model")
+  .option("--design <mode>", "look and design delivery: inline, agent, server, templates", "inline")
+  .option("--no-bespoke", "alias for --design templates")
   .option("--design-timeout <minutes>", "how long to wait for the connected agent's design", "20")
   .action(
     async (options: {
@@ -229,8 +230,9 @@ program
       force?: string;
       stopAfter?: ProductionStage;
       skipVerify?: boolean;
-        bespoke?: boolean;
-        designTimeout: string;
+      bespoke?: boolean;
+      design: DesignMode;
+      designTimeout: string;
     }) => {
       const script = options.scriptFile
         ? await fs.readFile(path.resolve(ROOT, options.scriptFile), "utf-8")
@@ -262,11 +264,19 @@ program
           stopAfter: options.stopAfter,
           skipVerify: options.skipVerify,
           bespoke: options.bespoke,
+          design: options.design,
           designAgentTimeoutMs: Number(options.designTimeout) * 60_000,
         },
         (event) => console.log(formatProgress(event)),
       );
 
+      if (result.status === "needs_look" || result.status === "needs_design") {
+        console.log(`\n${result.status}: ${result.title} (${result.slug})`);
+        for (const step of result.nextSteps ?? []) console.log(`  ${step}`);
+        for (const warning of result.warnings) console.log(`  ${warning}`);
+        process.exitCode = 3;
+        return;
+      }
       console.log(`\n${result.title} (${result.slug})`);
       console.log(`  ${result.shotCount} shots · ${result.durationSec.toFixed(2)}s · narrated by ${result.ttsBackend}`);
       console.log(`  film manifest: ${path.relative(ROOT, result.filmPath)}`);
@@ -311,7 +321,8 @@ program
   .option("--force <stages>", "comma-separated stages to re-run even when resuming")
   .option("--stop-after <stage>", "stop cleanly after this stage")
   .option("--skip-verify", "skip the closing frame and audio inspection pass")
-  .option("--no-bespoke", "keep the template design instead of designing the film with the agent or server model")
+  .option("--design <mode>", "look and design delivery: inline, agent, server, templates", "inline")
+  .option("--no-bespoke", "alias for --design templates")
   .option("--design-timeout <minutes>", "how long to wait for the connected agent's design", "20")
   .action(
     async (
@@ -335,6 +346,7 @@ program
         stopAfter?: ProductionStage;
         skipVerify?: boolean;
         bespoke?: boolean;
+        design: DesignMode;
         designTimeout: string;
       },
     ) => {
@@ -359,11 +371,19 @@ program
           stopAfter: options.stopAfter,
           skipVerify: options.skipVerify,
           bespoke: options.bespoke,
+          design: options.design,
           designAgentTimeoutMs: Number(options.designTimeout) * 60_000,
         },
         (event) => console.log(formatProgress(event)),
       );
 
+      if (result.status === "needs_look" || result.status === "needs_design") {
+        console.log(`\n${result.status}: ${result.title} (${result.slug})`);
+        for (const step of result.nextSteps ?? []) console.log(`  ${step}`);
+        for (const warning of result.warnings) console.log(`  ${warning}`);
+        process.exitCode = 3;
+        return;
+      }
       console.log(`\n${result.title} (${result.slug})`);
       console.log(
         `  drafted in ${result.draftAttempts} attempt(s) · ${result.shotCount} shots · ` +

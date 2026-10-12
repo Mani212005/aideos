@@ -1,9 +1,7 @@
 /**
  * File Description: The design stage. Turns a parsed screenplay plus the measured narration timing
- * spine into a validated Film: one canvas node per screenplay section, one shot per narration beat,
- * on-screen copy as TextReveal blocks, and stage/move choices that satisfy the runsheet rules in
- * src/dl/schema.ts (no device holding past 25s, never the same device twice running, a text beat
- * and a return to the bare canvas inside every 90 seconds, at most three accents per frame).
+ * spine into a validated Film: one shot per narration beat, accepted look treatments on a scene,
+ * named devices checked against the narration, and template pacing when explicitly requested.
  * Inputs and outputs: parsed screenplay and narration audio spine -> compiled, validated Film manifest.
  * Used by: backend/pipeline/run.ts, backend/pipeline/pipeline.test.ts.
  *
@@ -18,9 +16,10 @@
  * beat keeps its text card rather than showing stand-in numbers.
  */
 
+import type { LookPlan } from "../lookPlan/schema";
 import type { Block, CanvasEdge, CanvasNode, Film, Shot } from "../../src/dl/schema";
 import { blockSchema, DEVICE_BLOCKS, parseFilm } from "../../src/dl/schema";
-import { parseClaudeScript, type ScriptSegment } from "../scriptIntake";
+import { parseClaudeScript, buildBlocksForPrimitive, type ScriptSegment } from "../scriptIntake";
 import { generateRelationshipAwareCanvas, type ConceptEntity } from "../ideation/graphLayout";
 import type { SegmentAudioInfo } from "../audio";
 import { slugify } from "./filmStore";
@@ -36,6 +35,7 @@ import {
 } from "../jev";
 import { narrationSupportsVisual, readQuantity } from "../shotVisualCues";
 import { authorDeviceData, AUTHORED_DEVICES, type AuthoredDevices, type DeviceLlmCaller, type DeviceReport } from "./deviceData";
+import { DEFAULT_BACKGROUND_FILE } from "../designSpec/compile";
 
 /** One narration beat with the visual and on-screen directions that surround it. */
 export interface NarrationBeat {
@@ -164,6 +164,10 @@ export interface DesignOptions {
   music?: { src: string; volume?: number; duckUnderVoiceover?: boolean };
   /** Writes chart contents from the narration. Without one, only a StatCounter can be drawn. */
   deviceCaller?: DeviceLlmCaller | null;
+  /** Accepted look controls treatments instead of automatic visual selection. */
+  lookPlan?: LookPlan;
+  /** Bootstrap only: compile timing and copy without asking Jev or a chart model. */
+  textOnly?: boolean;
 }
 
 /** Beats flagged for footage, in the order the B-roll stage should render them. */
@@ -283,6 +287,11 @@ function spineLook(nodes: CanvasNode[], index: number, reach: number): string[] 
 }
 
 
+// Maps planned primitive names outside Jev's chart set to its text report discriminator.
+function choiceKindForReport(name?: string): ShotVisual {
+  return (["StatCounter", ...AUTHORED_DEVICES] as readonly string[]).includes(name ?? "") ? name as ShotVisual : "Text";
+}
+
 // Builds one device block for a shot visual, or null when the narration does not carry its data.
 // A StatCounter is read from the narration; any other chart must come with authored, checked data.
 function chooseDeviceForVisual(visual: ShotVisual, narration: string, authored?: Block): Block | null {
@@ -299,6 +308,19 @@ function chooseDeviceForVisual(visual: ShotVisual, narration: string, authored?:
     };
   }
   return authored?.c === visual ? authored : null;
+}
+
+// Builds the plan's named device through the existing narration and block-schema honesty checks.
+function buildPlannedDevice(name: string | undefined, beat: NarrationBeat, authored?: Block): Block[] {
+  const primitive = name === "CodeBlock" || name === "ProgressBar" ? name : undefined;
+  const device = primitive
+    ? buildBlocksForPrimitive(primitive, {
+      narration: beat.narration, visual: beat.visual,
+      onscreen: primitive === "ProgressBar" ? [] : beat.onscreen,
+    }, beat.sectionTitle).find((b) => b.c === primitive)
+    : chooseDeviceForVisual(choiceKindForReport(name), beat.narration, authored);
+  const parsed = device && blockSchema.safeParse(device);
+  return parsed?.success ? [parsed.data] : [];
 }
 
 /**
@@ -321,11 +343,9 @@ export function buildBlocksForShotVisual(visual: ShotVisual, narration: string, 
 /**
  * Compiles a screenplay and its measured narration into a validated film.
  *
- * The runsheet rules are satisfied by construction rather than by retrying against the validator:
- * the stage of each shot is chosen while walking the timeline with the clock the rules are written
- * against, so a text beat and a canvas return are placed before either deadline can be missed.
- * Jev is asked for a beat's visual only when that beat could actually take a device, so footage
- * beats and beats the runsheet keeps off a device never cost a model call.
+ * A look plan owns shot treatments and device names. Jev's gated alternatives are kept only for
+ * device shots, and every device still needs honest data. Explicit template films retain the
+ * node-graph runsheet rotation, with text beats and canvas returns placed before their deadlines.
  */
 export async function compileFilmFromScreenplayAsync(
   script: string,
@@ -434,7 +454,8 @@ export async function compileFilmFromScreenplayAsync(
   const { nodes, edges } = layoutCanvas(concepts);
   const nodeIds = nodes.map((n) => n.id);
 
-  const footageIndices = new Set(chooseFootageBeats(beats, shotDurations, maxFootageSec, maxFootageShots));
+  const footageIndices = new Set(options.lookPlan || options.textOnly ? [] : chooseFootageBeats(beats, shotDurations, maxFootageSec, maxFootageShots));
+  const plannedShots = new Map(options.lookPlan?.shots.map((s) => [s.id, s]));
 
   const shots: Shot[] = [];
   const footage: FootageRequest[] = [];
@@ -454,7 +475,12 @@ export async function compileFilmFromScreenplayAsync(
   const candidateStates = new Map<number, ShotVisualState>();
   beats.forEach((beat, i) => {
     const dur = shotDurations[i];
-    if (footageIndices.has(i) || buildTextBlocks(beat.onscreen).length === 0 || dur < 4 || dur > 25) return;
+    if (options.textOnly) return;
+    if (options.lookPlan) {
+      const planned = plannedShots.get(`beat-${String(i + 1).padStart(2, "0")}`);
+      if (planned?.treatment !== "device") return;
+    }
+    if (!options.lookPlan && (footageIndices.has(i) || buildTextBlocks(beat.onscreen).length === 0 || dur < 4 || dur > 25)) return;
     candidateStates.set(i, {
       visual: beat.visual,
       narration: beat.narration,
@@ -479,7 +505,7 @@ export async function compileFilmFromScreenplayAsync(
       narration: beats[i].narration,
       onscreen: beats[i].onscreen,
       sceneTitle: beats[i].sectionTitle,
-      kinds: AUTHORED_DEVICES.filter((v) => narrationSupportsVisual(v, beats[i].narration)),
+      kinds: AUTHORED_DEVICES.filter((v) => (!options.lookPlan || plannedShots.get(beatShotId(i))?.device === v) && narrationSupportsVisual(v, beats[i].narration)),
     }))
     .filter((r) => r.kinds.length > 0);
   const authoredDevices: AuthoredDevices =
@@ -506,8 +532,10 @@ export async function compileFilmFromScreenplayAsync(
     const textBeatDue = sinceTextBeat + dur > 70;
     const canvasDue = sinceCanvas + dur > 70;
 
-    const deviceEligible =
-      !wantsFootage && textBlocks.length > 0 && dur >= 4 && dur <= 25 && devicesUsed < maxDevices && !canvasDue;
+    const planned = plannedShots.get(shotId);
+    if (options.lookPlan && !planned) throw new Error(`look plan has no treatment for ${shotId}`);
+    const deviceEligible = !options.textOnly && (options.lookPlan ? planned?.treatment === "device" :
+      !wantsFootage && textBlocks.length > 0 && dur >= 4 && dur <= 25 && devicesUsed < maxDevices && !canvasDue);
 
     let deviceBlocks: Block[] | null = null;
     if (deviceEligible) {
@@ -521,15 +549,21 @@ export async function compileFilmFromScreenplayAsync(
         wantsFootage,
       };
       const slot = prefetched ? candidateOrder.indexOf(i) : -1;
-      const decision =
-        prefetched && slot >= 0
-          ? resolveShotVisual(prefetched[slot], state, jevOptions)
-          : await selectShotVisual(state, jevOptions);
+      const namedVisual = planned?.device;
+      const selected = prefetched && slot >= 0
+        ? resolveShotVisual(prefetched[slot], state, jevOptions)
+        : await selectShotVisual(state, jevOptions);
+      // Keep Jev's gated runner-ups for inspection, while the accepted plan owns the device shown.
+      const decision: ShotVisualResult = options.lookPlan
+        ? { ...selected, rawChoice: namedVisual, visual: choiceKindForReport(namedVisual), source: "heuristic-fallback", fallbackReason: "device named by look plan" }
+        : selected;
       shotVisuals.set(shotId, decision);
       const choice = decision.visual;
       const repeatsLast = lastDeviceKind !== null && choice.toLowerCase() === lastDeviceKind.toLowerCase();
       const data = authoredDevices.blocks.get(`${shotId}:${choice}`);
-      const authored = repeatsLast ? [] : buildBlocksForShotVisual(choice, beat.narration, beat.onscreen, data);
+      const authored = options.lookPlan
+        ? buildPlannedDevice(namedVisual, beat, data)
+        : repeatsLast ? [] : buildBlocksForShotVisual(choice, beat.narration, beat.onscreen, data);
       if (AUTHORED_DEVICES.includes(choice)) {
         const refusal = authoredDevices.refusals.get(`${shotId}:${choice}`);
         deviceReports.set(shotId, repeatsLast
@@ -540,7 +574,7 @@ export async function compileFilmFromScreenplayAsync(
             ? { kind: choice, state: "refused", reason: refusal }
             : { kind: choice, state: "not-authored", reason: options.deviceCaller ? "the narration has no cue for this chart" : "no chart data model is configured" });
       }
-      if (authored.some((b) => (SHOT_COMPLEX_VISUALS as readonly string[]).includes(b.c))) {
+      if (authored.some((b) => (SHOT_COMPLEX_VISUALS as readonly string[]).includes(b.c) || (options.lookPlan && (b.c === "CodeBlock" || b.c === "ProgressBar")))) {
         deviceBlocks = authored;
         devicesUsed += 1;
         activeVisuals.push(choice);
@@ -551,7 +585,20 @@ export async function compileFilmFromScreenplayAsync(
     let stage: Shot["stage"];
     let blocks: Block[];
 
-    if (wantsFootage) {
+    if (planned) {
+      stage = planned.treatment === "scene" ? "none" : "frame";
+      blocks = planned.treatment === "scene" ? [] : textBlocks;
+      if (planned.treatment === "device") {
+        if (deviceBlocks) {
+          stage = "inset";
+          blocks = deviceBlocks;
+        } else {
+          const reason = deviceReports.get(shotId)?.reason ?? "the named device has no honest narrated data";
+          deviceReports.set(shotId, { kind: choiceKindForReport(planned.device), state: "refused", reason: `${reason}; using scene+card` });
+        }
+      }
+      if (!blocks.length) stage = "none";
+    } else if (wantsFootage) {
       stage = "frame";
       blocks = [
         {
@@ -614,14 +661,24 @@ export async function compileFilmFromScreenplayAsync(
   }
 
   const totalSec = shotDurations.reduce((a, b) => a + b, 0);
+  // Planned films start on a scene, even while their artwork is still waiting for the designer.
+  const scene = options.lookPlan ? {
+    schemaVersion: "1.0.0", sceneId: slug, fps, durationFrames: Math.round(totalSec * fps),
+    audioSource: `videos/${slug}/voiceover.wav`, audioDurationMs: Math.round(totalSec * 1000),
+    sceneSize: { w: 1920, h: 1920 },
+    background: { assetId: "background", svgSource: `videos/${slug}/${DEFAULT_BACKGROUND_FILE}`,
+      position: { x: 960, y: 960 }, scale: 4.8, rotation: 0, opacity: 1 },
+    props: [], actors: [],
+  } : undefined;
   const film = parseFilm({
     id: slug,
     title: options.title,
     fps,
-    accent: "#635BFF",
-    theme: { background: "smooth-dark", fontFamily: "geist", accent: "#635BFF" },
+    accent: options.lookPlan?.film.palette.accent ?? "#635BFF",
+    theme: { background: "smooth-dark", fontFamily: "geist", accent: options.lookPlan?.film.palette.accent ?? "#635BFF" },
     chapters: uniqueChapters,
     canvas: { nodes, edges },
+    ...(scene ? { scene } : {}),
     shots,
     voiceover: { src: `videos/${slug}/voiceover.wav`, volume: 1, durationSec: totalSec },
     captions: "bottom",

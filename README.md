@@ -70,7 +70,7 @@ npm run render:reel
 # 6. Auto-prompt a complete film from a prompt (LLM director plans and produces end to end)
 npm run backend -- direct "Why attention scales quadratically" --broll --formats long,reel
 
-# 7. Run end-to-end production pipeline from an existing screenplay (intake -> narrate -> design -> b-roll -> assemble -> render -> verify)
+# 7. Run end-to-end production pipeline from an existing screenplay (intake -> narrate -> look -> design -> b-roll -> assemble -> render -> verify)
 npm run backend -- film --script-file videos/my-video/script.md --title "My Video" --slug my-video --broll --formats long,reel
 
 # 8. Start Model Context Protocol (MCP) server

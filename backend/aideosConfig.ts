@@ -5,11 +5,12 @@
  * refused unless a run passes an explicit override. Node-only, dependency-free, with the file path
  * injectable so tests never read the real config.
  * Inputs and outputs: config file on disk or environment variables -> loaded AideosConfig object.
- * Used by: backend/modelClient.ts, backend/jev.ts, backend/geminiReview/geminiReview.ts.
+ * Used by: backend/modelClient.ts, backend/jev.ts, backend/geminiReview/geminiReview.ts, backend/designSpec/designer.ts.
  */
 
 import fs from "node:fs";
 import path from "node:path";
+import { execFile } from "node:child_process";
 
 /** An agent CLI plus the model id it is run with. */
 export interface AgentModel {
@@ -87,4 +88,31 @@ export function forbiddenGenerationMatch(model: string, policy: VideoModelPolicy
 // The reviewer model: an explicit value, else AIDEOS_GEMINI_REVIEW_MODEL / GEMINI_MODEL, else the config.
 export function reviewerModel(explicit?: string, env: NodeJS.ProcessEnv = process.env, file?: string): string {
   return explicit || env.AIDEOS_GEMINI_REVIEW_MODEL || env.GEMINI_MODEL || loadAideosConfig(file).videoModels.reviewer.model;
+}
+
+/** Executes a text-only model command; injectable without launching a real agent in tests. */
+export type GenerationRunner = (command: string, args: string[]) => Promise<string>;
+
+// Runs the configured model without tools, workspace edits or persistent sessions.
+function runGeneration(command: string, args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(command, args, { timeout: 20 * 60_000, maxBuffer: 20 * 1024 * 1024 }, (error, stdout) => {
+      if (error) reject(error);
+      else resolve(stdout.trim());
+    });
+  });
+}
+
+// Creates the server text caller from the committed generation policy, never the reviewer model.
+export function generationCaller(file?: string, runner: GenerationRunner = runGeneration): (prompt: string, system: string) => Promise<string> {
+  const policy = loadAideosConfig(file).videoModels;
+  const { agent, model } = policy.generation;
+  if (agent !== "claude" || /gemini/i.test(model) || forbiddenGenerationMatch(model, policy)) {
+    throw new AideosConfigError(`server design requires an allowed Claude generation model; configured ${agent} ${model}`);
+  }
+  return (prompt, system) => runner("claude", [
+    "--print", "--model", model, "--output-format", "text", "--tools", "",
+    "--strict-mcp-config", "--setting-sources", "", "--no-session-persistence",
+    "--system-prompt", system, prompt,
+  ]);
 }
