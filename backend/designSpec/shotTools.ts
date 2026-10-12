@@ -1,17 +1,18 @@
 /**
  * File Description: The studio's per-shot design actions.
- * `designOverview` gathers what the Look stage shows about a film's design: who made it, the idea,
- * the artwork, each asset's motion grouped by the shot it happens in, and why every shot got its
- * visual. `swapShotVisual` redraws one shot as another visual kind through the same honest path the
- * design stage uses (a StatCounter read from the narration, any other chart authored and checked).
- * `requestShotRedesign` sends the connected agent a design task focused on one shot.
- * Inputs and outputs: shot tool command and parameters -> tool execution result.
- * Used by: backend/agentBridge/dispatcher.ts, editor/vite.config.ts.
+ * `designOverview` gathers the film's design, look plan, artwork, motion and shot visuals for the
+ * Look stage. `approveLookPlan` records the captain's approval. `swapShotVisual` redraws one shot as
+ * another visual kind through the design stage's honest authoring path. `requestShotRedesign` sends
+ * the connected agent a design task focused on one shot.
  * Inputs and outputs: shot tool command and parameters -> tool execution result.
  * Used by: backend/agentBridge/dispatcher.ts, editor/vite.config.ts.
  */
 
 import type { Block, Film, Shot } from "../../src/dl/schema";
+import fs from "node:fs";
+import path from "node:path";
+import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { parseLookPlan, type LookPlan } from "../lookPlan/schema";
 import { SHOT_VISUALS, type ShotVisual } from "../jev";
 import { buildBlocksForShotVisual } from "../pipeline/design";
 import { authorDeviceData, AUTHORED_DEVICES, type DeviceLlmCaller, type DeviceReport } from "../pipeline/deviceData";
@@ -36,12 +37,42 @@ export interface DesignOverview {
   design: Film["design"] | null;
   accent: string;
   artwork: Array<{ id: string; src: string }>;
+  look: { plan: LookPlan; markdown: string | null } | null;
+  lookError: string | null;
   shots: Array<{ id: string; startSec: number; endSec: number; says: string; shown: string[]; motion: MotionBeat[]; choice?: VisualChoice }>;
   status: DesignBuildStatus | null;
 }
 
+// Loads the checked look plan and its human-readable companion from the film package.
+function readLookOverview(filmId: string): { look: DesignOverview["look"]; lookError: string | null } {
+  const designDir = path.join(resolvePackageDir(filmId), "design");
+  const planFile = path.join(designDir, "look.json");
+  if (!fs.existsSync(planFile)) return { look: null, lookError: null };
+  try {
+    const plan = parseLookPlan(JSON.parse(fs.readFileSync(planFile, "utf8")));
+    const markdownFile = path.join(designDir, "LOOK.md");
+    return {
+      look: { plan, markdown: fs.existsSync(markdownFile) ? fs.readFileSync(markdownFile, "utf8") : null },
+      lookError: null,
+    };
+  } catch (err) {
+    return { look: null, lookError: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+// Records the captain's approval in the authoritative look.json file.
+export function approveLookPlan(filmId: string): LookPlan {
+  const planFile = path.join(resolvePackageDir(filmId), "design", "look.json");
+  if (!fs.existsSync(planFile)) throw new Error(`film "${filmId}" has no design/look.json`);
+  const plan = parseLookPlan(JSON.parse(fs.readFileSync(planFile, "utf8")));
+  const approved = parseLookPlan({ ...plan, approval: { ...plan.approval, captain: "Captain" } });
+  fs.writeFileSync(planFile, `${JSON.stringify(approved, null, 2)}\n`, "utf8");
+  return approved;
+}
+
 // Collects a film's design overview for the Look stage.
 export function designOverview(film: Film): DesignOverview {
+  const lookResult = readLookOverview(film.id);
   const fps = film.scene?.fps ?? film.fps ?? 30;
   const motion: MotionBeat[] = [];
   for (const prop of film.scene?.props ?? []) {
@@ -75,6 +106,7 @@ export function designOverview(film: Film): DesignOverview {
     design: film.design ?? null,
     accent: film.accent ?? "#635BFF",
     artwork: (film.scene?.props ?? []).map((p) => ({ id: p.assetId, src: p.svgSource })),
+    ...lookResult,
     shots,
     status: readDesignStatus(film.id),
   };

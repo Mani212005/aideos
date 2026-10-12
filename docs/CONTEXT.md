@@ -450,6 +450,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `resolveCue(cue, cues)` (`cues.ts`): Resolves cue strings and frame offsets against narration timing cues.
 * `designFilm(filmId, options)` (`designer.ts`): Orchestrates agent-based and server-model film design workflows with validation retry loops.
 * `requestShotMotion(filmId, request)` (`motionRequests.ts`): Manages shot-level motion design tasks and history snapshots.
+* `designOverview(film)`, `approveLookPlan(filmId)`, `swapShotVisual(film, shotId, visual, caller)`, `requestShotRedesign(film, shotId, note, options)` (`shotTools.ts`): Gathers design and look plan overview (`look.json`, `LOOK.md`, stage, cast, shot treatments) for the Studio Look stage, records captain look approval, executes honest chart visual swaps, and dispatches per-shot redesign requests.
 * `designSpecSchema`, `specCameraSchema`, `specClipSchema`, `specAssetSchema` (`spec.ts`): Zod schemas and TypeScript types for bespoke film designs (brief, accent, background, assets, cue-timed clips, camera poses, and shot block overrides).
 
 ### `backend/lookPlan/` (Look Plan Specification, Semantic Checker, Briefing & Renderer)
@@ -501,7 +502,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 ### 7 Sequential Editing Stages (`editor/src/screens/`)
 * **`ScriptStage.tsx` (`ScriptEditor.tsx`)**: Screenplay markdown editor with tag parsing, Visual Studio segment cards, and Kokoro ONNX TTS voiceover synthesis.
 * **`StoryStage.tsx` (`MindMap.tsx`, `NodeEditor.tsx`)**: 2D infinite spatial canvas for dragging nodes, editing labels, and connecting directed edges; dispatches spatial actions (`add_node`, `add_edge`, `add_shot`) to the Agent Bridge Hub via `/api/canvas/event`.
-* **`LookStage.tsx` (`Styleboard.tsx`, `CustomizationEditor.tsx`)**: Storyboard keyframe gallery, canvas texture selection, and typography styling.
+* **`LookStage.tsx` (`DesignView.tsx`, `Styleboard.tsx`, `CustomizationEditor.tsx`)**: Look stage sub-views for bespoke design and look plan inspection (stage, cast, treatments, LOOK.md preview, captain approval, artwork, motion, and visual swaps), canvas texture presets, typography controls, and storyboard keyframe gallery.
 * **`MotionStage.tsx` (`motionTemplates.ts`)**: Custom SVG animation authoring studio with element-level timeline keyframing, motion templates, and live scrubbing.
 * **`EditStage.tsx` (`TimelineEditor.tsx`, `InspectorPanel.tsx`, `AssetBin.tsx`, `OnCanvasAiEditor.tsx`)**: Non-linear multi-track timeline with clip dragging, sticky snapping, magnetic ripple editing (R), linked audio-video trimming, waveform preview, track mute/hide/lock, clip/shot inspector, and model-driven AI edit panel (`OnCanvasAiEditor.tsx`) dispatching validated edit programs to Agent Bridge with live trace telemetry.
 * **`CaptionsStage.tsx` (`KineticCaptionEditor.tsx`)**: Word-level subtitle karaoke editor powered by `@chenglou/pretext`.

@@ -2293,9 +2293,23 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           }
         }
 
+        // Handle /api/design/:id/approve-look (Look stage: captain approval recorded to look.json)
         // Handle /api/design/:id[/shots/:shotId/(visual|redesign)] (the Look stage's design view,
         // "why this visual" swaps and per-shot redesign requests to the connected agent)
         // Handle /api/design/:id/motion (the Motion stage: described motions, their outcomes, revert)
+        const approveLookRoute = url.match(/^\/api\/design\/([a-z0-9-]+)\/approve-look$/);
+        if (approveLookRoute) {
+          if (req.method !== 'POST') {
+            sendJson(res, 405, { error: `${req.method} ${url} is not allowed` });
+            return;
+          }
+          void import('../backend/designSpec/shotTools.ts').then(({ approveLookPlan }) => {
+            const plan = approveLookPlan(approveLookRoute[1]);
+            sendJson(res, 200, { ok: true, approval: plan.approval?.captain ?? null });
+          }).catch(err => sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) }));
+          return;
+        }
+
         const motionRoute = url.match(/^\/api\/design\/([a-z0-9-]+)\/(?:motion(?:\/([A-Za-z0-9-]+)\/revert)?|shots\/([A-Za-z0-9_-]+)\/motion)$/);
         if (motionRoute) {
           const [, filmId, revertId, shotId] = motionRoute;
