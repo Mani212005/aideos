@@ -108,13 +108,22 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
     if (shot.treatment === "scene") {
       const start = cues.from(shot.id);
       const end = cues.to(shot.id);
-      const hasMotion = spec.clips.some((clip) => {
+      let cueFrame: number | null = null;
+      try {
+        cueFrame = cues.word(shot.id, shot.cue);
+      } catch {
+        errors.push(`look scene shot "${shot.id}" cue "${shot.cue}" was not found in narration word timings`);
+      }
+      const hasTimelyMotion = cueFrame !== null && spec.clips.some((clip) => {
         const frame = resolveCue(clip.start, cues);
         const carried = shot.carries.some((id) => id === clip.asset ||
           (idsByAsset.get(clip.asset)?.includes(id) && clip.targets.some((target) => target === id || target === "*")));
-        return carried && clip.from !== clip.to && frame >= start && frame < end;
+        return carried && clip.from !== clip.to && frame >= start && frame < end &&
+          Math.abs(frame - cueFrame) / film.fps <= 0.4;
       });
-      if (!hasMotion) errors.push(`look scene shot "${shot.id}" needs a changing clip on a carried object starting inside the shot`);
+      if (cueFrame !== null && !hasTimelyMotion) {
+        errors.push(`look scene shot "${shot.id}" cue "${shot.cue}" needs a changing clip on a carried object starting within 0.4s of the cue`);
+      }
     }
     if (shot.treatment === "device") {
       const override = spec.shots?.[shot.id];

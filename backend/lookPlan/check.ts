@@ -8,6 +8,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { safeParseLookPlan } from "./schema";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { parseFilm, type Film } from "../../src/dl/schema";
+import { collectSvgElementIds, parseSvgDocument } from "../../src/dl/scene/svgDocument";
 
 export type LookCheckRule =
   | "schema"
@@ -38,8 +40,28 @@ export interface LookCheckReport {
   };
 }
 
+/** Package inputs that let the checker validate ids and spoken cues before design authoring. */
+export interface LookCheckContext {
+  film?: Film;
+  narrationAvailable?: boolean;
+  castTargets?: Set<string>;
+  designAvailable?: boolean;
+}
+
+// Normalizes spoken text into punctuation-free lowercase words for reliable phrase matching.
+function spokenTokens(text: string): string[] {
+  return text.toLowerCase().match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu) ?? [];
+}
+
+// Checks whether a cue's normalized word sequence appears in the narration text.
+function containsSpokenCue(narration: string, cue: string): boolean {
+  const words = spokenTokens(narration);
+  const phrase = spokenTokens(cue);
+  return phrase.length > 0 && words.some((_, index) => phrase.every((word, offset) => words[index + offset] === word));
+}
+
 // Checks a LookPlan against all deterministic look-plan rules.
-export function checkLookPlan(plan: unknown, filmId: string = "unnamed"): LookCheckReport {
+export function checkLookPlan(plan: unknown, filmId: string = "unnamed", context: LookCheckContext = {}): LookCheckReport {
   const parsed = safeParseLookPlan(plan);
   if (!parsed.success) {
     const findings: LookCheckFinding[] = parsed.error.issues.map((iss) => ({
@@ -58,6 +80,52 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed"): LookCh
 
   const look = parsed.data;
   const findings: LookCheckFinding[] = [];
+
+  if (!context.film) {
+    findings.push({ rule: "shot", severity: "warning", where: "film.json", message: "not checked yet: shot and cast beat ids need film.json." });
+  } else {
+    const filmShotIds = new Set(context.film.shots.map((shot) => shot.id));
+    const planShotIds = new Set(look.shots.map((shot) => shot.id));
+    for (const shot of look.shots) {
+      if (!filmShotIds.has(shot.id)) {
+        findings.push({ rule: "shot", severity: "error", where: `shots.${shot.id}`, message: `look plan names unknown film shot "${shot.id}".` });
+      }
+    }
+    for (const shot of context.film.shots) {
+      if (!planShotIds.has(shot.id)) {
+        findings.push({ rule: "shot", severity: "error", where: `shots.${shot.id}`, message: `look plan is missing film shot "${shot.id}".` });
+      }
+    }
+    for (const item of look.film.cast) {
+      for (const shotId of [item.enters, ...item.changes.map((change) => change.at)]) {
+        if (!filmShotIds.has(shotId)) {
+          findings.push({ rule: "cast", severity: "error", where: `film.cast.${item.id}`, message: `cast "${item.id}" references unknown film shot "${shotId}".` });
+        }
+      }
+    }
+    const narrationAvailable = context.narrationAvailable ?? context.film.shots.some((shot) => Boolean(shot.scriptText?.trim()));
+    if (!narrationAvailable) {
+      findings.push({ rule: "shot", severity: "warning", where: "film.shots[].scriptText", message: "not checked yet: cue words and phrases need narration text." });
+    } else {
+      for (const shot of look.shots) {
+        const filmShot = context.film.shots.find((candidate) => candidate.id === shot.id);
+        const narration = filmShot?.scriptText?.trim() ?? "";
+        if (!containsSpokenCue(narration, shot.cue)) {
+          findings.push({ rule: "shot", severity: "error", where: `shots.${shot.id}.cue`, message: `cue "${shot.cue}" is not found in the narration for shot "${shot.id}".` });
+        }
+      }
+    }
+  }
+
+  if (context.designAvailable === false || context.castTargets === undefined) {
+    findings.push({ rule: "cast", severity: "warning", where: "design/design.json", message: "not checked yet: cast ids need design.json assets and their SVG element ids." });
+  } else {
+    for (const item of look.film.cast) {
+      if (!context.castTargets.has(item.id)) {
+        findings.push({ rule: "cast", severity: "error", where: `film.cast.${item.id}`, message: `cast id "${item.id}" does not match a design asset id or SVG element id.` });
+      }
+    }
+  }
 
   // 1. Check cast uniqueness
   const castIds = new Set<string>();
@@ -267,7 +335,30 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
 
   try {
     const raw = JSON.parse(fs.readFileSync(lookFile, "utf8"));
-    return checkLookPlan(raw, filmId);
+    const context: LookCheckContext = {};
+    const filmFile = path.join(pkgDir, "film.json");
+    if (fs.existsSync(filmFile)) {
+      context.film = parseFilm(JSON.parse(fs.readFileSync(filmFile, "utf8")));
+      context.narrationAvailable = context.film.shots.some((shot) => Boolean(shot.scriptText?.trim()));
+    }
+    const designFile = path.join(pkgDir, "design", "design.json");
+    if (fs.existsSync(designFile)) {
+      context.designAvailable = true;
+      const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as { assets?: Array<{ id?: string; file?: string }> };
+      const castTargets = new Set<string>();
+      for (const asset of design.assets ?? []) {
+        if (asset.id) castTargets.add(asset.id);
+        if (!asset.file) continue;
+        const assetFile = path.join(pkgDir, asset.file);
+        if (fs.existsSync(assetFile)) {
+          for (const id of collectSvgElementIds(parseSvgDocument(fs.readFileSync(assetFile, "utf8")))) castTargets.add(id);
+        }
+      }
+      context.castTargets = castTargets;
+    } else {
+      context.designAvailable = false;
+    }
+    return checkLookPlan(raw, filmId, context);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return {

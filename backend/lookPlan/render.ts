@@ -40,10 +40,6 @@ export function renderLookMd(plan: LookPlan, filmTitle?: string, shotTimings?: {
     .map((cam) => `- **${cam.at}**: ${cam.pose}${cam.focus ? ` [focus: ${cam.focus}]` : ""} (${cam.why})`)
     .join("\n");
 
-  const extraPalette = Object.entries(plan.film.palette.extra || {})
-    .map(([col, note]) => `\`${col}\`: ${note}`)
-    .join(", ");
-
   const shotLines = plan.shots.map((s, idx) => {
     const timing = timingMap.get(s.id);
     let timeStr = "";
@@ -79,7 +75,7 @@ ${cameraRows}
 
 - **Background**: \`${plan.film.palette.bg}\`
 - **Accent**: \`${plan.film.palette.accent}\`
-${extraPalette ? `- **Extra Colours**: ${extraPalette}\n` : ""}- **Captions**: Position ${plan.film.captions.position} (kinetic column: ${plan.film.captions.kineticColumn ? "yes" : "no"})
+- **Captions**: Position ${plan.film.captions.position} (kinetic column: ${plan.film.captions.kineticColumn ? "yes" : "no"})
 - **Headlines**: ${plan.film.headlines}
 
 ## Shots & Beat Treatments

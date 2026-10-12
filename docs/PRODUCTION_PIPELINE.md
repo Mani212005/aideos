@@ -80,6 +80,12 @@ keep short copy over the stage, and device shots use the named device in an inse
 still has to pass the narration honesty checks; a refused device keeps the scene plus its card copy
 and records a warning in `design/visual-choices.json`.
 
+`aideos look check` checks look shot and cast beat ids against `film.json`, cue phrases against each
+shot's narration, and cast ids against `design.json` asset ids or SVG element ids when those inputs
+exist. It reports which checks are waiting on inputs that are not available yet. Cast ids use
+lowercase letters, digits, and hyphens, and one id can be represented by elements across several
+design assets. The palette allows the locked colours plus the film's one accent.
+
 `aideos design build` checks a package's look when one exists: shot coverage, declared cast in artwork,
 changing clips on carried objects inside scene shots, matching inset device overrides and camera
 keyframes. Builds record provenance in `design/status.json`, defaulting CLI builds to `hand-built`

@@ -138,7 +138,7 @@
       "id": "beat-02",
       "treatment": "scene",
       "carries": ["memory", "chip", "road"],
-      "cue": "cannot buy",
+      "cue": "One word",
       "criterion": "1-mechanism",
       "why": "tokens crawl across the empty highway"
     },
@@ -162,7 +162,7 @@
       "id": "beat-05",
       "treatment": "scene",
       "carries": ["memory", "road"],
-      "cue": "bandwidth",
+      "cue": "waits again",
       "criterion": "1-mechanism",
       "why": "one word costs a hundred gigabytes of transfer"
     },
@@ -170,7 +170,7 @@
       "id": "beat-06",
       "treatment": "scene",
       "carries": ["memory", "chip", "road"],
-      "cue": "waiting",
+      "cue": "same whether",
       "criterion": "1-mechanism",
       "why": "road is quiet while the chip waits"
     },
@@ -186,7 +186,7 @@
       "id": "beat-08",
       "treatment": "scene",
       "carries": ["chip"],
-      "cue": "one pass",
+      "cue": "single pass",
       "criterion": "1-mechanism",
       "why": "matrix multiplication checks parallel candidates"
     },
@@ -194,7 +194,7 @@
       "id": "beat-09",
       "treatment": "scene",
       "carries": ["draft-model"],
-      "cue": "draft model",
+      "cue": "grade one",
       "criterion": "1-mechanism",
       "why": "small compact draft model appears above the bus"
     },
@@ -202,7 +202,7 @@
       "id": "beat-10",
       "treatment": "scene",
       "carries": ["draft-model", "road"],
-      "cue": "speculative",
+      "cue": "small one",
       "criterion": "1-mechanism",
       "why": "draft model emits speculative tokens along the road"
     },
@@ -210,7 +210,7 @@
       "id": "beat-11",
       "treatment": "scene",
       "carries": ["memory", "road"],
-      "cue": "cargo",
+      "cue": "those right",
       "criterion": "1-mechanism",
       "why": "memory weights are pulled once for all five candidates"
     },
@@ -218,7 +218,7 @@
       "id": "beat-12",
       "treatment": "scene",
       "carries": ["road", "chip"],
-      "cue": "train",
+      "cue": "runs ahead",
       "criterion": "1-mechanism",
       "why": "candidate train enters accelerator queue"
     },
@@ -226,7 +226,7 @@
       "id": "beat-13",
       "treatment": "scene",
       "carries": ["chip"],
-      "cue": "verification",
+      "cue": "five drafted tokens",
       "criterion": "1-mechanism",
       "why": "parallel verification activates inside chip"
     },
@@ -234,7 +234,7 @@
       "id": "beat-14",
       "treatment": "scene",
       "carries": ["chip"],
-      "cue": "accepted",
+      "cue": "compares each",
       "criterion": "1-mechanism",
       "why": "first four candidates turn green and get accepted"
     },
@@ -242,7 +242,7 @@
       "id": "beat-15",
       "treatment": "scene",
       "carries": ["road", "chip"],
-      "cue": "rejected",
+      "cue": "first disagreement",
       "criterion": "1-mechanism",
       "why": "fifth token is replaced seamlessly"
     },
@@ -250,7 +250,7 @@
       "id": "beat-16",
       "treatment": "scene",
       "carries": ["chip"],
-      "cue": "identical",
+      "cue": "correct token",
       "criterion": "1-mechanism",
       "why": "mathematical guarantee of exact output equality"
     },
@@ -258,7 +258,7 @@
       "id": "beat-17",
       "treatment": "scene",
       "carries": ["chip"],
-      "cue": "distribution",
+      "cue": "speed-ups",
       "criterion": "1-mechanism",
       "why": "output distribution matches the original model bit for bit"
     },
@@ -275,7 +275,7 @@
       "treatment": "device",
       "device": "StatCounter",
       "carries": ["road", "chip"],
-      "cue": "times faster",
+      "cue": "two to three times",
       "criterion": "3-precise-number",
       "why": "narrator explicitly cites two to three times throughput"
     },

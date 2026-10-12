@@ -13,13 +13,17 @@ Write `videos/speculative-decoding-designed/design/look.json` and run `aideos lo
 3. **The camera.**
    Must start wide (establishing view) and end wide (payoff view), with slow, purposeful moves (at most 20% frame width per second) in between.
 4. **The palette.**
-   Background (e.g. `#0A0A0B`), ink/text, the film's one primary accent (e.g. `#635BFF`), and optional labeled semantic colours.
+   Background (e.g. `#0A0A0B`), ink/text, and the film's one primary accent (e.g. `#635BFF`). Use only the locked palette and this accent; do not declare extra colours.
 5. **Captions.**
    Burned-in at the bottom band (`position: "bottom"`, `kineticColumn: false`). Never use kinetic text columns over the artwork.
 6. **Headlines.**
    Headline cards over the stage (`"none"`, `"few"`, or `"all"`). Prefer `"none"` so the stage carries the story.
 
 ## Shot Treatment Decision Rules
+
+## Cast ID Rule
+
+Each `film.cast[].id` must use lowercase letters, digits, and hyphens. In the design, every cast id must match a `design.json` asset id or an SVG element id. Multiple assets may use elements with the same cast id when one planned object is drawn across several SVG files.
 
 For each shot, pick exactly one treatment:
 - **`scene`** (Default): the stage moves; a carried object demonstrates what the narration says.

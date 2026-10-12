@@ -63,7 +63,6 @@ export const EXAMPLE_LOOK_PLAN = {
     palette: {
       bg: "#0A0A0B",
       accent: "#635BFF",
-      extra: { "#3DDC97": "cached data" },
     },
     captions: {
       position: "bottom",
@@ -121,7 +120,7 @@ Write \`videos/${film.id}/design/look.json\` and run \`aideos look check ${film.
 3. **The camera.**
    Must start wide (establishing view) and end wide (payoff view). Use move-then-hold: make each move a short, deliberate turn toward the object the narration is about to discuss, arrive about one beat before its cue word, then hold that subject for about 3 to 5 seconds. Name the focused cast object on each close pose. Do not let the camera drift continuously between subjects. Keep moves under 20% of frame width per second.
 4. **The palette.**
-   Background (e.g. \`#0A0A0B\`), ink/text, the film's one primary accent (e.g. \`#635BFF\`), and optional labeled semantic colours.
+   Background (e.g. \`#0A0A0B\`), ink/text, and the film's one primary accent (e.g. \`#635BFF\`). Use only the locked palette and this accent; do not declare extra colours.
 5. **Captions.**
    Burned-in at the bottom band (\`position: "bottom"\`, \`kineticColumn: false\`). Never use kinetic text columns over the artwork.
 6. **Headlines.**
@@ -137,6 +136,10 @@ For each shot, pick exactly one treatment:
   - No two \`device\` shots in a row.
   - Limit: at most 1 \`device\` shot per 4 shots.
 - **\`footage\`**: RESERVED. The checker will reject this.
+
+## Cast ID Rule
+
+Each \`film.cast[].id\` must be a lowercase id using letters, digits, and hyphens. In the design, every cast id must match a \`design.json\` asset id or an SVG element id. Multiple assets may use elements with the same cast id when one planned object is drawn across several SVG files.
 
 ## Look Plan Schema (look.json)
 

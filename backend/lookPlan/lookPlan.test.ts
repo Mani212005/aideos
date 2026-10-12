@@ -85,9 +85,6 @@ const VALID_LOOK_PLAN: LookPlan = {
     palette: {
       bg: "#0A0A0B",
       accent: "#635BFF",
-      extra: {
-        "#3DDC97": "cached hits",
-      },
     },
     captions: {
       position: "bottom",
@@ -143,8 +140,54 @@ test("schema accept: accepts a valid look.json plan", () => {
 
   const report = checkLookPlan(VALID_LOOK_PLAN, "test-film");
   assert.equal(report.ok, true);
-  assert.equal(report.findings.length, 0);
+  assert.equal(report.findings.filter((finding) => finding.severity === "error").length, 0);
   assert.equal(report.stats.shots, 4);
+});
+
+test("schema: legacy extra palette values are ignored and not retained", () => {
+  const legacy = JSON.parse(JSON.stringify(VALID_LOOK_PLAN));
+  legacy.film.palette.extra = { "#3DDC97": "cached hits" };
+  const parsed = parseLookPlan(legacy);
+  assert.deepEqual(parsed.film.palette, { bg: "#0A0A0B", accent: "#635BFF" });
+});
+
+test("context check: validates film shots, spoken cues, and cast design targets", () => {
+  const film = {
+    shots: [
+      { id: "beat-01", scriptText: "The disk is spinning." },
+      { id: "beat-02", scriptText: "The bottleneck slows the cache." },
+      { id: "beat-03", scriptText: "The cache is accelerated." },
+      { id: "beat-04", scriptText: "One hundred times faster." },
+    ],
+  } as Film;
+  const passing = checkLookPlan(VALID_LOOK_PLAN, "context-film", {
+    film,
+    narrationAvailable: true,
+    castTargets: new Set(["disk", "cache"]),
+    designAvailable: true,
+  });
+  assert.equal(passing.ok, true, JSON.stringify(passing.findings));
+
+  const invalid = JSON.parse(JSON.stringify(VALID_LOOK_PLAN));
+  invalid.shots[0].id = "beat-99";
+  invalid.shots[0].cue = "never spoken";
+  invalid.film.cast[0].enters = "beat-99";
+  const failing = checkLookPlan(invalid, "context-film", {
+    film,
+    narrationAvailable: true,
+    castTargets: new Set(["cache"]),
+    designAvailable: true,
+  });
+  assert.equal(failing.ok, false);
+  assert.ok(failing.findings.some((finding) => finding.message.includes('unknown film shot "beat-99"')));
+  assert.ok(failing.findings.some((finding) => finding.message.includes('cue "never spoken"')));
+  assert.ok(failing.findings.some((finding) => finding.message.includes('cast id "disk"')));
+});
+
+test("context check: reports unavailable inputs in plain language", () => {
+  const report = checkLookPlan(VALID_LOOK_PLAN, "early-look");
+  assert.ok(report.findings.some((finding) => finding.message.includes("not checked yet: shot and cast beat ids need film.json")));
+  assert.ok(report.findings.some((finding) => finding.message.includes("not checked yet: cast ids need design.json")));
 });
 
 test("schema accept: accepts EXAMPLE_LOOK_PLAN from brief", () => {
@@ -192,7 +235,7 @@ test("checker rule: duplicate cast ids are rejected", () => {
 
   const report = checkLookPlan(plan, "dup-cast-film");
   assert.equal(report.ok, false);
-  const f = report.findings.find((x) => x.rule === "cast");
+  const f = report.findings.find((x) => x.rule === "cast" && x.severity === "error");
   assert.ok(f, "should flag duplicate cast id");
   assert.ok(f?.message.includes("duplicate cast id"));
 });
@@ -210,7 +253,7 @@ test("checker rule: duplicate shot ids are rejected", () => {
 
   const report = checkLookPlan(plan, "dup-shot-film");
   assert.equal(report.ok, false);
-  const f = report.findings.find((x) => x.rule === "shot");
+  const f = report.findings.find((x) => x.rule === "shot" && x.severity === "error");
   assert.ok(f, "should flag duplicate shot id");
   assert.ok(f?.message.includes("duplicate shot id"));
 });
@@ -491,6 +534,9 @@ test("brief: renderLookBrief produces complete briefing markdown", () => {
   assert.ok(briefMd.includes("# Look Brief: Fake Film (`fake-film`)"));
   assert.ok(briefMd.includes("The 6 Look Questions to Answer"));
   assert.ok(briefMd.includes("Shot Treatment Decision Rules"));
+  assert.ok(briefMd.includes("Cast ID Rule"));
+  assert.ok(briefMd.includes("SVG element id"));
+  assert.ok(!briefMd.includes("optional labeled semantic colours"));
   assert.ok(briefMd.includes("beat-01"));
   assert.ok(briefMd.includes("This is the first narrated sentence."));
 });
