@@ -55,30 +55,7 @@ function makeValidScene(): Scene {
         ],
       },
     ],
-    actors: [
-      {
-        instanceId: "actor-astro-1",
-        rigId: "astronaut",
-        position: { x: 960, y: 540 },
-        scale: 1.0,
-        facing: "right",
-        actions: [
-          {
-            actionId: "walk",
-            startFrame: 0,
-            durationFrames: 45,
-            intensity: 1.0,
-          },
-          {
-            actionId: "wave",
-            startFrame: 45,
-            durationFrames: 30,
-            intensity: 1.0,
-            side: "right",
-          },
-        ],
-      },
-    ],
+    actors: [],
   };
 }
 
@@ -90,6 +67,19 @@ test("S-1: A valid scene produces zero errors", () => {
   assert.equal(res.errors.length, 0, `Expected 0 errors, got: ${JSON.stringify(res.errors)}`);
 });
 
+test("Scene actors fail explicitly because character rigs are not rendered", () => {
+  const scene = makeValidScene();
+  scene.props[0].svgSource = "";
+  scene.actors = [{ instanceId: "courier", rigId: "anime-courier", position: { x: 960, y: 540 }, scale: 1, facing: "right" }];
+  const result = validateScene(scene);
+  assert.equal(result.isValid, false);
+  assert.equal(result.errors.length, 1);
+  assert.equal(result.errors[0].entityId, "courier");
+  assert.match(result.errors[0].message, /Actor "courier" cannot be rendered/);
+  assert.match(result.errors[0].message, /character rigs are not supported/);
+  assert.match(result.errors[0].message, /SVG backgrounds and props only/);
+});
+
 // S-2: 18 Separate Negative Cases for Every Validation Rule
 test("S-2 Negative Case 1: Rule 1 rejects unsupported schemaVersion", () => {
   const scene = makeValidScene();
@@ -99,7 +89,7 @@ test("S-2 Negative Case 1: Rule 1 rejects unsupported schemaVersion", () => {
   assert.ok(res.errors.some((e) => e.rule === 1));
 });
 
-test("S-2 Negative Case 2 (S-3): Rule 2 rejects > 15 actors", () => {
+test("Scene with more than 15 actors still fails on unsupported character rigs", () => {
   const scene = makeValidScene();
   scene.actors = Array.from({ length: 16 }, (_, i) => ({
     instanceId: `actor-${i + 1}`,
@@ -110,13 +100,14 @@ test("S-2 Negative Case 2 (S-3): Rule 2 rejects > 15 actors", () => {
   }));
   const res = validateScene(scene);
   assert.equal(res.isValid, false);
-  assert.ok(res.errors.some((e) => e.rule === 2));
+  assert.equal(res.errors.length, 16);
+  assert.ok(res.errors.every((e) => e.rule === 21));
 });
 
-test("S-2 Negative Case 3 (S-4): Rule 3 rejects duplicate instanceId and names the entity", () => {
+test("S-2 Negative Case 3: Unsupported actor validation names the actor", () => {
   const scene = makeValidScene();
   scene.actors.push({
-    instanceId: "actor-astro-1", // duplicate
+    instanceId: "actor-astro-1",
     rigId: "developer",
     position: { x: 500, y: 500 },
     scale: 1.0,
@@ -124,7 +115,7 @@ test("S-2 Negative Case 3 (S-4): Rule 3 rejects duplicate instanceId and names t
   });
   const res = validateScene(scene);
   assert.equal(res.isValid, false);
-  const err = res.errors.find((e) => e.rule === 3);
+  const err = res.errors.find((e) => e.rule === 21);
   assert.ok(err);
   assert.equal(err.entityId, "actor-astro-1");
 });
@@ -263,14 +254,13 @@ test("W1 Confirmation: Single-actor scene produces exactly ZERO warnings (median
     },
   ];
   const res = validateScene(scene);
-  assert.equal(res.isValid, true);
-  assert.equal(res.errors.length, 0);
-  assert.equal(res.warnings.length, 0, "Solo actor should produce 0 warnings regardless of absolute scale");
+  assert.equal(res.isValid, false);
+  assert.equal(res.errors.length, 1);
+  assert.match(res.errors[0].message, /character rigs are not supported/);
 });
 
 test("Rule 5 Confirmation: Absent layer is valid and permits D5 derived layer resolution", () => {
   const scene = makeValidScene();
-  delete scene.actors[0].layer;
   delete scene.props[0].layer;
   const res = validateScene(scene);
   assert.equal(res.isValid, true);

@@ -1,10 +1,9 @@
 /**
  * File Description: Remotion and React DOM Renderer for Compiled Aideos Scenes (Phase 3/13).
- * Renders sorted scene entities in layer order with camera transformation applied: environment assets are drawn from their own parsed
- * SVG documents with full transform, per-instance id namespacing and compiled element-level custom
- * animation applied; actors are drawn as articulated vector rigs with hierarchical skeletal
- * transforms and rotating subgroups (D1). Pure React with no Node imports, so the same component
- * renders inside Remotion's browser bundle and in server-side stills.
+ * Renders sorted compiled background and prop assets in layer order with camera transformation applied.
+ * Assets use their own parsed SVG documents with full transform, per-instance id namespacing, and
+ * compiled element-level custom animation. Actor rigs are not supported. Pure React with no Node
+ * imports, so the same component renders inside Remotion's browser bundle and in server-side stills.
  * Inputs and outputs: compiled scene state and SVG assets -> rendered hierarchical SVG elements with transforms.
  * Used by: src/dl/scene/SceneClip.tsx, editor/src/screens/MotionStage.tsx.
  */

@@ -232,7 +232,7 @@ test("Judge: when agent review is skipped without an embedder the vision pass sk
     assert.equal(result.agentRound, "skipped");
     assert.match(result.skipped ?? "", /agent review was skipped/);
     assert.equal(result.samples.length, 0);
-    assert.equal(result.passed, true);
+    assert.equal(result.passed, null);
     assert.deepEqual(progress, ["vision judge skipped: agent review was skipped and no image embedder was provided"]);
     assert.equal(fs.existsSync(path.join(PKG, "design/judge/embedding-log.jsonl")), false);
     assert.equal(fs.existsSync(path.join(PKG, "design/judge/verdicts.json")), false);
@@ -272,23 +272,27 @@ test("Judge: the agent's critique and scores reach Jev, and a failed frame carri
         ? { choice: "WrongData", confidence: 0.9, probabilities: {}, suggestions: (s.suggestions ?? []).map(() => ({ choice: "accept-with-change" as const, confidence: 0.9 })) }
         : { choice: "Match", confidence: 0.9, probabilities: {}, suggestions: [] };
     });
+    const film = readFilm(ID)!;
+    const sampledFrames = sampleFrameNumbers(
+      film.shots.reduce((total, shot) => total + Math.round(shot.dur * film.fps), 0),
+      { maxSamples: 3 },
+    );
     const dispatched: any[] = [];
     const dispatch = async (opts: any) => {
       dispatched.push(opts);
       // The agent answers a moment after the task is sent, scoring the first sample low.
       setTimeout(() => {
         writeAgentReview(ID, {
-          samples: [
-            { frame: 3, note: "the picture shows the wrong chart", suggestions: ["swap the token strip for a single growing bar"], similarity: 0.2 },
-            { frame: 9, note: "fine", similarity: 0.9 },
-          ],
+          samples: sampledFrames.map((frame, index) => index === 0
+            ? { frame, note: "the picture shows the wrong chart", suggestions: ["swap the token strip for a single growing bar"], similarity: 0.2 }
+            : { frame, note: "fine", similarity: 0.9 }),
         });
       }, 10);
       return { ok: true, taskId: "t", channels: ["mcp_queue", "firstmate_inbox"], prompt: "", fallbackScheduled: false, fallbackTimeoutMs: 0, message: "" } as any;
     };
-    const result = await judgeFilm(ID, { skipAgent: false, dispatch, renderStill: fakeRender, maxSamples: 3, pollMs: 20, agentTimeoutMs: 3000 });
+    const result = await judgeFilm(ID, { skipAgent: false, dispatch, renderStill: fakeRender, maxSamples: 2, pollMs: 20, agentTimeoutMs: 3000 });
     assert.equal(dispatched[0].eventType, "frame_review");
-    assert.equal(dispatched[0].metadata.stills.length, 3);
+    assert.equal(dispatched[0].metadata.stills.length, 2);
     assert.equal(result.agentRound, "reported");
     assert.equal(result.passed, false);
     assert.equal(result.failures.length, 1);
@@ -315,10 +319,27 @@ test("Judge: with no image-capable agent the vision pass skips cleanly", async (
     assert.equal(result.agentRound, "skipped");
     assert.match(result.skipped ?? "", /no image-capable agent/);
     assert.equal(result.samples.length, 0);
-    assert.equal(result.passed, true);
+    assert.equal(result.passed, null);
     assert.deepEqual(progress, ["vision judge skipped: no image-capable agent is connected"]);
     assert.equal(fs.existsSync(path.join(PKG, "design/judge/embedding-log.jsonl")), false);
     assert.equal(fs.existsSync(path.join(PKG, "design/judge/verdicts.json")), false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("Judge: a partial image review cannot accept frames the agent did not review", async () => {
+  freshPackage();
+  try {
+    const dispatch = async () => {
+      setTimeout(() => writeAgentReview(ID, { samples: [{ frame: 3, note: "looks fine" }] }), 10);
+      return { ok: true, taskId: "t", channels: ["firstmate_inbox"], prompt: "", fallbackScheduled: false, fallbackTimeoutMs: 0, message: "" } as any;
+    };
+    const result = await judgeFilm(ID, { skipAgent: false, dispatch, renderStill: fakeRender, maxSamples: 2, pollMs: 20, agentTimeoutMs: 3000 });
+    assert.equal(result.agentRound, "reported");
+    assert.match(result.skipped ?? "", /did not review sampled frames/);
+    assert.equal(result.passed, null);
+    assert.equal(result.samples.length, 0);
   } finally {
     cleanup();
   }
@@ -333,7 +354,7 @@ test("Judge: when the coding agent times out the vision pass skips cleanly", asy
     assert.equal(result.agentRound, "skipped");
     assert.match(result.skipped ?? "", /did not report on the frames in time/);
     assert.equal(result.samples.length, 0);
-    assert.equal(result.passed, true);
+    assert.equal(result.passed, null);
     assert.ok(progress.some((p) => p.includes("vision judge skipped: the coding agent did not report on the frames in time")));
     assert.equal(fs.existsSync(path.join(PKG, "design/judge/embedding-log.jsonl")), false);
     assert.equal(fs.existsSync(path.join(PKG, "design/judge/verdicts.json")), false);
@@ -350,7 +371,7 @@ test("Judge: a missing rasterizer skips the pass instead of failing the film", a
     };
     const result = await judgeFilm(ID, { skipAgent: true, renderStill: broken, maxSamples: 2 });
     assert.match(result.skipped ?? "", /STILL_RASTERIZER_UNAVAILABLE/);
-    assert.equal(result.passed, true);
+    assert.equal(result.passed, null);
   } finally {
     cleanup();
   }
