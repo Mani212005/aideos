@@ -1,10 +1,11 @@
 /**
- * File Description: MCP tools for designing a film without a shell or a checkout.
- * A connected agent (local or reaching a hosted studio through `aideos connect`) reads the brief,
- * writes design.json and its SVG artwork, then builds and checks, all through these tools. Writes
- * are confined to a film's design spec and visuals folder, so an agent can never touch anything
- * else on the studio server; the build still refuses any design that fails the design check.
- * Inputs and outputs: MCP tool calls for design and brief -> updated design.json and SVG files.
+ * File Description: MCP tools for planning the look and designing a film without a shell or a checkout.
+ * A connected agent (local or reaching a hosted studio through `aideos connect`) reads the look brief,
+ * writes and checks look.json, reads the design brief, writes design.json and its SVG artwork, then
+ * builds and checks, all through these tools. Writes are confined to a film's look plan, design spec
+ * and visuals folder, so an agent can never touch anything else on the studio server; the build still
+ * refuses any design that fails the design check.
+ * Inputs and outputs: MCP tool calls for look plan, design and brief -> updated look.json, design.json and SVG files.
  * Used by: backend/mcp/server.ts.
  */
 
