@@ -102,5 +102,8 @@ test("ShotTools: a shot redesign prompt names the shot and keeps the rest of the
   assert.match(prompt, /Redesign shot beat-04/);
   assert.match(prompt, /make the road feel longer/);
   assert.match(prompt, /Keep every other shot as it is/);
+  assert.match(prompt, /Look plan for this shot: treatment is/);
+  assert.match(prompt, /carried cast:/);
+  assert.match(prompt, /treatment may change only by editing videos\/speculative-decoding-designed\/design\/look\.json/);
   assert.match(prompt, /aideos design build speculative-decoding-designed/);
 });

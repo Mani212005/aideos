@@ -16,7 +16,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { runProduction } from "../pipeline/run";
 import { FILM_ID, readFilm, writeFilm, ROOT, VIDEOS_DIR } from "../pipeline/filmStore";
-import { PRODUCTION_STAGES, type ProductionProgress, type ProductionRequest, type ProductionResult } from "../pipeline/types";
+import { DESIGN_MODES, PRODUCTION_STAGES, type ProductionProgress, type ProductionRequest, type ProductionResult } from "../pipeline/types";
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
 import { buildEditContext } from "../editContext/buildEditContext";
 import { detectFillers } from "../editContext/detectFillers";
@@ -109,6 +109,8 @@ function describeRun(record: RunRecord, eventLimit: number) {
     ...(record.result
       ? {
           result: {
+            status: record.result.status,
+            nextSteps: record.result.nextSteps,
             slug: record.result.slug,
             durationSec: record.result.durationSec,
             shotCount: record.result.shotCount,
@@ -164,7 +166,8 @@ export interface McpServerOptions {
 /** Instructions a remote agent reads: it has no shell, only these tools. */
 const REMOTE_INSTRUCTIONS =
   "You are connected to an Aideos studio through `aideos connect`. You have no shell and no checkout of the studio: " +
-  "work only through these tools. To design a film: aideos_design_brief, then aideos_write_file for design/design.json " +
+  "work only through these tools. To design a film: aideos_look_brief, write design/look.json, call aideos_look_check, " +
+  "then aideos_design_brief and aideos_write_file for design/design.json " +
   "and visuals/<name>.svg, then aideos_design_build until it prints PASS, and aideos_design_check to review. " +
   "Report progress with aideos_report_step and finish the task you were given with aideos_complete_task. " +
   "If aideos_wait_for_task is available, call it repeatedly to receive the studio's tasks.";
@@ -181,7 +184,11 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
         "because a full render takes tens of minutes. Poll aideos_run_status with that runId " +
         "until its state is 'done' or 'failed', then read the output paths from the result. " +
         "Runs are resumable: calling aideos_produce_film again with the same slug reuses every " +
-        "stage whose inputs have not changed.",
+        "stage whose inputs have not changed. The design mode defaults to inline. If a result has " +
+        "status needs_look, read design/LOOK_BRIEF.md, write design/look.json with aideos_write_file, " +
+        "call aideos_look_check, then call aideos_produce_film again with the same slug. If status " +
+        "is needs_design, read design/BRIEF.md, write design/design.json and its SVGs, build the design, " +
+        "then call aideos_produce_film again with the same slug.",
     },
   );
 
@@ -194,7 +201,10 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
       description:
         "Start a background production run: synthesize narration from the script, compile the film " +
         "design, optionally render GPU b-roll, render the requested formats, and verify the output. " +
-        "Returns a runId right away; poll aideos_run_status to follow it.",
+        "Returns a runId right away; poll aideos_run_status to follow it. The design mode defaults " +
+        "to inline. For needs_look, write look.json following LOOK_BRIEF.md, call aideos_look_check, " +
+        "then call this tool again with the same slug. For needs_design, complete the design brief " +
+        "and build, then call this tool again with the same slug.",
       inputSchema: {
         script: z
           .string()
@@ -214,6 +224,7 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
           .array(z.enum(["long", "reel"]))
           .optional()
           .describe("Which deliverables to render: long is 1920x1080, reel is 1080x1920. Defaults to both."),
+        design: z.enum(DESIGN_MODES).default("inline").describe("Look and design delivery policy. Defaults to inline and returns needs_look/needs_design steps when authoring is needed."),
         broll: z
           .boolean()
           .optional()

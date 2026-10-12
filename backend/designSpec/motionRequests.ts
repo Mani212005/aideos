@@ -17,6 +17,7 @@ import crypto from "node:crypto";
 import type { Film } from "../../src/dl/schema";
 import { dispatchTask } from "../agentBridge/dispatcher";
 import { taskQueue } from "../agentBridge/taskQueue";
+import { shotLookContext } from "../agentBridge/contextBuilder";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { buildDesign, designDir, readDesignStatus } from "./build";
 import { writeDesignBrief } from "./brief";
@@ -140,6 +141,7 @@ export async function requestMotion(film: Film, shotId: string, prompt: string, 
   if (hadDesign) fs.copyFileSync(spec, snapshotFile(film.id, id));
 
   const prev = readFilm(film.id)?.design?.source;
+  const look = shotLookContext(film.id, shotId);
   const request: MotionRequest = {
     id,
     filmId: film.id,
@@ -157,7 +159,7 @@ export async function requestMotion(film: Film, shotId: string, prompt: string, 
     filmId: film.id,
     filmTitle: film.title,
     customInstruction: request.prompt,
-    metadata: { shotId, says: shot.scriptText ?? "", motion: true },
+    metadata: { shotId, says: shot.scriptText ?? "", motion: true, ...(look ? { treatment: look.treatment, cast: look.cast } : {}) },
     enableFallback: false,
     ...(options.ownerKey ? { ownerKey: options.ownerKey } : {}),
   });
@@ -187,7 +189,8 @@ export async function requestMotion(film: Film, shotId: string, prompt: string, 
     (async (filmId: string, instruction: string, c: DesignLlmCaller) => {
       return designWithServerModel(filmId, instruction, c);
     });
-  const instruction = `In shot ${shotId} (it says: "${shot.scriptText ?? ""}"): ${request.prompt}. Change only what that shot shows.`;
+  const treatment = look ? ` Its planned treatment is "${look.treatment}" and its carried cast is ${look.cast.map((item) => `${item.id} (${item.what})`).join(", ") || "none"}.` : " The shot's checked look-plan treatment and cast are not available, so inspect look.json before changing the design.";
+  const instruction = `In shot ${shotId} (it says: "${shot.scriptText ?? ""}"):${treatment} ${request.prompt}. Change only what that shot shows. Keep its planned treatment. A treatment may change only by editing design/look.json and passing aideos look check first.`;
   void run(film.id, instruction, caller)
     .then((status) =>
       update(film.id, id, status?.state === "passed" ? { state: "passed", message: "built and passed the design check (server model)" } : { state: "failed", message: status?.errors[0] ?? "the server model could not produce a passing design" }),

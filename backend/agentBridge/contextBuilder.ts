@@ -10,6 +10,7 @@ import { FILM_ID, readFilm, ROOT } from "../pipeline/filmStore";
 import type { AgentTaskContext, DispatchOptions } from "./types";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { parseLookPlan } from "../lookPlan/schema";
 
 /** Core design invariants enforced across the Aideos explainer video standard. */
 export const DESIGN_INVARIANTS: string[] = [
@@ -17,11 +18,27 @@ export const DESIGN_INVARIANTS: string[] = [
   "Typography: Geist for voice/narrative, JetBrains Mono for all system/code/numbers.",
   "Motion Easing: Ease-out-expo cubic-bezier(0.16, 1, 0.3, 1) for all transitions.",
   "7 Animated Primitives: TextReveal, StatCounter, CodeBlock, Card, Divider, IconLabel, ProgressBar.",
-  "Single Canvas Model: 2D infinite spatial canvas with continuous camera motion and wide payoff zooms.",
-  "Pacing Rhythm: Rotate visual devices (never hold >25s, no back-to-back repeats, return to canvas spine every 60-90s).",
+  "Single Scene Stage: one persistent 2D stage carries objects across shots with continuous camera motion and a wide payoff.",
+  "Look-First Flow: write and check look.json before design.json or SVG artwork; use the planned treatment for each shot.",
   "Audio-Visual Sync: Lock shot durations strictly to voiceover audio narration timestamps.",
   "No Long Dashes: Zero em dashes or en dashes; use standard hyphens, colons, or parentheses.",
 ];
+
+/** Reads the checked look plan's treatment and cast objects for one shot. */
+export function shotLookContext(filmId: string, shotId: string, rootDir: string = ROOT): { treatment: string; cast: Array<{ id: string; what: string }> } | null {
+  try {
+    const file = path.join(rootDir === ROOT ? getVideosDir() : path.join(rootDir, "videos"), filmId, "design", "look.json");
+    const plan = parseLookPlan(JSON.parse(fs.readFileSync(file, "utf8")));
+    const shot = plan.shots.find((item) => item.id === shotId);
+    if (!shot) return null;
+    return {
+      treatment: shot.treatment,
+      cast: plan.film.cast.filter((item) => shot.carries.includes(item.id)).map(({ id, what }) => ({ id, what })),
+    };
+  } catch {
+    return null;
+  }
+}
 
 /** Assembles the full working context payload for a video package. */
 export function buildTaskContext(opts: DispatchOptions, rootDir: string = ROOT): AgentTaskContext {
@@ -116,14 +133,19 @@ export function buildDirectingPrompt(opts: DispatchOptions, context?: AgentTaskC
     // The brief is the whole contract; the prompt only points at it and at the one gate.
     const shotId = typeof opts.metadata?.shotId === "string" ? opts.metadata.shotId : null;
     if (shotId) {
+      const look = shotLookContext(ctx.filmId, shotId);
+      const lookText = look
+        ? `Look plan for this shot: treatment is \`${look.treatment}\`; carried cast: ${look.cast.length ? look.cast.map((item) => `\`${item.id}\` (${item.what})`).join(", ") : "none listed"}.\n`
+        : "No valid look-plan entry is available for this shot yet. Read LOOK_BRIEF.md and resolve the look plan before changing the design.\n";
       return `🎬 [Aideos Studio] Redesign shot ${shotId} of "${title}" (${ctx.filmId})
 
 The human asked for a new design for this one shot${opts.customInstruction ? `: "${opts.customInstruction}"` : "."}
 ${opts.metadata?.says ? `It says: ${opts.metadata.says}\n` : ""}
-1. Read videos/${ctx.filmId}/design/BRIEF.md (refreshed just now) for the standard layer, the format and the commands.
-2. If videos/${ctx.filmId}/design/design.json exists, change only what ${shotId} shows: its clips (cued to its words) and, if needed, its \`shots.${shotId}\` cards. Keep every other shot as it is.
+${lookText}1. Read videos/${ctx.filmId}/design/LOOK_BRIEF.md and design/LOOK.md for the treatment and cast contract, then read videos/${ctx.filmId}/design/BRIEF.md for the standard layer and commands.
+2. Keep this shot's treatment and carried cast as planned. A treatment may change only by editing videos/${ctx.filmId}/design/look.json and passing \`aideos_look_check\` (or \`aideos look check ${ctx.filmId}\`) first.
+3. If videos/${ctx.filmId}/design/design.json exists, change only what ${shotId} shows: its clips (cued to its words) and, if needed, its \`shots.${shotId}\` cards. Keep every other shot as it is.
    If there is no design.json yet, design the whole film as the brief describes, giving ${shotId} particular care.
-3. Run \`aideos design build ${ctx.filmId}\` until it prints PASS, then \`aideos design check ${ctx.filmId} --stills\` and look at ${shotId}'s still.
+4. Run \`aideos design build ${ctx.filmId}\` until it prints PASS, then \`aideos design check ${ctx.filmId} --stills\` and look at ${shotId}'s still.
 The studio reloads the film on its own once a build passes.`;
     }
     return `🎬 [Aideos Studio] Design the picture for "${title}" (${ctx.filmId})
@@ -186,17 +208,8 @@ ${wordTimingInfo}
 ${RUBRIC_SUMMARY}
 
 🎯 Directing Mission for Agent:
-1. Read \`videos/${ctx.filmId}/design/LOOK_BRIEF.md\` and write or update
-   \`videos/${ctx.filmId}/design/look.json\` first. Run the look check before making pictures.
-2. Review docs/DIRECTOR_GUIDE.md, then read the screenplay in ${ctx.scriptPath} and inspect
-   ${ctx.filmPath}.
-3. Build one persistent scene stage. Choose each shot's treatment from the look plan and make
-   carried objects visibly change with the narration.
-4. Use an inset for a precise device (TokenStrip, MatrixGrid, LayerStack, Plot, ScaleBar, or
-   Distribution) only when the stage remains visible, or redraw its parts as SVG under
-   videos/${ctx.filmId}/visuals/. Never paint a full panel or card over the stage.
-5. Keep shot durations locked to narration audio, then run \`aideos design build ${ctx.filmId}\`
-   and \`npm run validate:film ${ctx.filmPath}\` until both pass.
-6. If using MCP, call \`aideos_claim_task\` to acknowledge and \`aideos_complete_task\` when done.
-7. The live studio at http://localhost:3001 hot-reloads automatically as you edit.`;
+1. **Look task first:** read \`videos/${ctx.filmId}/design/LOOK_BRIEF.md\`, the screenplay and film, then write \`videos/${ctx.filmId}/design/look.json\`. Run \`aideos look check ${ctx.filmId}\` until PASS.
+2. **Design task second:** read \`videos/${ctx.filmId}/design/LOOK.md\` and \`design/BRIEF.md\`, then write \`design/design.json\` and its SVG assets to follow the checked treatment and cast. Keep the scene stage visible.
+3. Run \`aideos design build ${ctx.filmId}\`, then \`npm run validate:film ${ctx.filmPath}\`, and repair findings until both pass.
+4. If using MCP, call \`aideos_claim_task\` to acknowledge and \`aideos_complete_task\` when done. The live studio at http://localhost:3001 hot-reloads automatically as you edit.`;
 }
