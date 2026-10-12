@@ -246,9 +246,8 @@ export function buildPairwiseWatchPrompt(videoPath?: string): string {
 }
 
 // Builds the exchange phase prompt for scoring the other video based on its evaluation report.
-export function buildPairwiseExchangePrompt(otherVideoName: string, otherReport: object, bothLookPlans?: string): string {
-  const planNote = bothLookPlans ? `\n\n${bothLookPlans}\nUse the plans as context for comparing intended shot treatment. Only rate what the videos show.` : "";
-  return `You have watched your video. Here is the evaluation report for the OTHER video (${otherVideoName}):\n${JSON.stringify(otherReport, null, 2)}${planNote}\n\nCompare the other video's report to the video you watched. Give the OTHER video a rating (0-10) and brief reasoning.`;
+export function buildPairwiseExchangePrompt(otherVideoName: string, otherReport: object): string {
+  return `You have watched your video. Here is the evaluation report for the OTHER video (${otherVideoName}):\n${JSON.stringify(otherReport, null, 2)}\n\nCompare the other video's report to the video you watched. Give the OTHER video a rating (0-10) and brief reasoning.`;
 }
 
 export const SINGLE_REVIEW_JSON_SCHEMA = {

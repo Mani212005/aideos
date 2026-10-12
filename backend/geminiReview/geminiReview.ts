@@ -565,11 +565,6 @@ export async function reviewPairwise(
   const wsB = createIsolatedVideoWorkspace({ "video.mp4": resolvedB });
 
   try {
-    const lookA = readLookPlanStrip(resolvedA);
-    const lookB = readLookPlanStrip(resolvedB);
-    const bothLookPlans = lookA && lookB
-      ? `LOOK PLAN SHOTS FOR BOTH VIDEOS\nVideo A:\n${lookA}\n\nVideo B:\n${lookB}`
-      : undefined;
     const promptWatchA = buildPairwiseWatchPrompt(wsA.videoPaths["video.mp4"]);
     onProgress(`Watching Video A (${path.basename(resolvedA)})...`);
     const rawWatchA = await runner(promptWatchA, {
@@ -598,7 +593,7 @@ export async function reviewPairwise(
     ) as WatchReport & { conversation_id?: string };
     const convB = parsedWatchB.conversation_id;
 
-    const promptExA = buildPairwiseExchangePrompt("Video B", parsedWatchB, bothLookPlans);
+    const promptExA = buildPairwiseExchangePrompt("Video B", parsedWatchB);
     onProgress(`Exchange Phase: Agent A rating Video B...`);
     const rawExA = await runner(promptExA, {
       cwd: wsA.dir,
@@ -613,7 +608,7 @@ export async function reviewPairwise(
     ) as { otherVideoRating: number; reasoning: string };
     const ratingB_byA = parsedExA.otherVideoRating;
 
-    const promptExB = buildPairwiseExchangePrompt("Video A", parsedWatchA, bothLookPlans);
+    const promptExB = buildPairwiseExchangePrompt("Video A", parsedWatchA);
     onProgress(`Exchange Phase: Agent B rating Video A...`);
     const rawExB = await runner(promptExB, {
       cwd: wsB.dir,
