@@ -108,6 +108,29 @@ test("MotionRequests: with no agent it uses the server model, or says it was not
   }
 });
 
+test("MotionRequests: the described-motion task carries the checked shot treatment and cast", async () => {
+  const film = setup();
+  try {
+    fs.copyFileSync(path.join(SRC, "design/look.json"), path.join(PKG, "design/look.json"));
+    let told = "";
+    const r = await requestMotion(film, "beat-02", "pulse the cache", {
+      dispatch: nobody,
+      llmCaller: async () => "{}",
+      runServerModel: async (_id, instruction) => {
+        told = instruction;
+        return { state: "passed", errors: [] };
+      },
+    });
+    assert.equal(r.by, "server-model");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.match(told, /planned treatment is/);
+    assert.match(told, /carried cast is/);
+    assert.match(told, /editing design\/look\.json and passing aideos look check first/);
+  } finally {
+    teardown();
+  }
+});
+
 test("MotionRequests: revert puts the replaced design back and rebuilds the film", async () => {
   const film = setup();
   try {

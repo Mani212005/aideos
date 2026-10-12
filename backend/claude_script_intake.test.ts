@@ -400,6 +400,8 @@ test("generateAgentPrompt formats concise, actionable agent prompt for terminal 
 
   assert.ok(prompt.includes('Direct the explainer video for "KV Cache Explainer" (kv-cache):'));
   assert.ok(prompt.includes("docs/DIRECTOR_GUIDE.md"));
+  assert.ok(prompt.indexOf("Look task first") < prompt.indexOf("Design task second"));
+  assert.ok(prompt.includes("aideos look check kv-cache"));
   assert.ok(prompt.includes("videos/kv-cache/film.json"));
   assert.ok(prompt.includes("npm run validate:film videos/kv-cache/film.json"));
 });

@@ -16,13 +16,16 @@ import { FILM_ID, VIDEOS_DIR } from "../pipeline/filmStore";
 import { buildDesign, formatBuildStatus } from "../designSpec/build";
 import { writeDesignBrief } from "../designSpec/brief";
 import { checkFilmDesignById, formatDesignReport } from "../designCheck/designCheck";
+import { writeLookBrief } from "../lookPlan/brief";
+import { checkLookPlanById, formatLookReport } from "../lookPlan/check";
+import { writeLookMd } from "../lookPlan/render";
 import { frameReviewSchema, writeAgentReview } from "../visionJudge/agentReview";
 import { judgeFramesDir } from "../visionJudge/sampler";
 
 /** Files an agent may read inside a film package. */
-const READABLE = /^(design\/(design|status|visual-choices|base-film)\.json|design\/BRIEF\.md|visuals\/[a-z0-9-]+\.svg|film\.json)$/;
+const READABLE = /^(design\/(design|look|status|visual-choices|base-film)\.json|design\/(BRIEF|LOOK_BRIEF|LOOK)\.md|visuals\/[a-z0-9-]+\.svg|film\.json)$/;
 /** Files an agent may write inside a film package. */
-const WRITABLE = /^(design\/design\.json|visuals\/[a-z0-9-]+\.svg)$/;
+const WRITABLE = /^(design\/(design|look)\.json|visuals\/[a-z0-9-]+\.svg)$/;
 /** Largest file an agent may write. */
 const MAX_WRITE_BYTES = 300_000;
 
@@ -43,6 +46,44 @@ export function resolveFilmFile(filmId: string, rel: string, rule: RegExp): stri
 
 /** Registers the design tools on a server. */
 export function registerDesignTools(server: McpServer): void {
+  server.registerTool(
+    "aideos_look_brief",
+    {
+      title: "Get a film's look brief",
+      description: "Write and return the brief for design/look.json. Do this before creating any picture assets, then call aideos_look_check.",
+      inputSchema: { filmId: z.string().describe("Film id, e.g. speculative-decoding") },
+    },
+    async ({ filmId }) => {
+      try {
+        const file = writeLookBrief(filmId);
+        return text(fs.readFileSync(file, "utf8"));
+      } catch (err) {
+        return text(err instanceof Error ? err.message : String(err), true);
+      }
+    },
+  );
+
+  server.registerTool(
+    "aideos_look_check",
+    {
+      title: "Check a film's look plan",
+      description: "Validate design/look.json. On PASS, writes design/LOOK.md; fix every finding before calling aideos_produce_film again.",
+      inputSchema: { filmId: z.string().describe("Film id, e.g. speculative-decoding") },
+    },
+    async ({ filmId }) => {
+      if (!FILM_ID.test(filmId)) return text(`"${filmId}" is not a film id`, true);
+      const report = checkLookPlanById(filmId);
+      if (report.ok) {
+        try {
+          writeLookMd(filmId);
+        } catch (err) {
+          return text(`${formatLookReport(report)}\nCould not write LOOK.md: ${err instanceof Error ? err.message : String(err)}`, true);
+        }
+      }
+      return text(formatLookReport(report), !report.ok);
+    },
+  );
+
   server.registerTool(
     "aideos_design_brief",
     {

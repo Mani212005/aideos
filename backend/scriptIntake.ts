@@ -905,10 +905,9 @@ export interface DirectorTaskOptions {
 export function generateAgentPrompt(opts: DirectorTaskOptions): string {
   const title = opts.filmTitle || opts.projectId;
   return `Direct the explainer video for "${title}" (${opts.projectId}):
-1. Review docs/DIRECTOR_GUIDE.md for creative direction and visual invariants.
-2. Inspect videos/${opts.projectId}/film.json and videos/${opts.projectId}/script.md.
-3. Refine scene layouts, camera moves, and visual devices (TokenStrip, MatrixGrid, LayerStack, Plot, ScaleBar, custom SVGs, or B-roll).
-4. Run \`npm run validate:film videos/${opts.projectId}/film.json\` to verify with 0 errors.`;
+1. **Look task first:** read videos/${opts.projectId}/design/LOOK_BRIEF.md, docs/DIRECTOR_GUIDE.md, the screenplay and film. Write design/look.json and run \`aideos look check ${opts.projectId}\` until PASS.
+2. **Design task second:** read design/LOOK.md and design/BRIEF.md, then author design/design.json and its SVG artwork to follow the checked treatment and cast on one persistent scene stage.
+3. Run \`aideos design build ${opts.projectId}\`, then \`npm run validate:film videos/${opts.projectId}/film.json\` until both pass.`;
 }
 
 /** Formats a full markdown directive task document to be written to videos/<id>/director_task.md and root .aideos_task.md */
@@ -933,11 +932,11 @@ As the Creative Director, your mission is to transform this structure into a cap
 ---
 
 ## 🎯 Directing Objectives:
-1. **Visual Metaphors & Show Don't Tell**:
-   - Write \`videos/${opts.projectId}/design/look.json\` from the look brief before authoring pictures.
-   - Keep one persistent scene stage and animate carried objects; use a device only as a visible
-     inset or redraw its parts as custom animated SVGs under \`videos/${opts.projectId}/visuals/\`.
-   - Never cover the stage with a full panel or card.
+1. **Look task, then design task**:
+   - Read \`videos/${opts.projectId}/design/LOOK_BRIEF.md\`, then write \`design/look.json\` and run
+     \`aideos look check ${opts.projectId}\` until PASS before creating any picture assets.
+   - Read the generated \`design/LOOK.md\` and \`design/BRIEF.md\`; make \`design/design.json\` and
+     artwork follow the checked shot treatments and cast on one persistent scene stage.
 2. **Camera Rhythm & Spatial Flow**:
    - Use slow, purposeful \`pan\`, \`zoom-in\`, and \`zoom-out\` moves across the persistent stage.
 3. **Pacing Invariants**:
