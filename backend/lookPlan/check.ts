@@ -1,6 +1,6 @@
 /**
- * File Description: Checker for look.json plans enforcing semantic rules: treatments, unique shot IDs, unique cast IDs, valid carries references, device rules, camera wide establishing and payoff, bottom captions, and carry-over transformation clarity.
- * Inputs and outputs: LookPlan object or raw JSON (and optional Film context) -> LookCheckReport with pass/fail and findings.
+ * File Description: Checker for look.json plans enforcing semantic rules: treatments, unique shot IDs, unique cast IDs, valid carries references, device rules, camera wide establishing and payoff, bottom captions, carry-over transformation clarity, shot IDs, spoken cues, and cast asset targets.
+ * Inputs and outputs: LookPlan object or raw JSON (and optional LookCheckContext) -> LookCheckReport with pass/fail and findings.
  * Used by: backend/cli.ts, backend/lookPlan/index.ts.
  */
 

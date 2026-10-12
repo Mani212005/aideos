@@ -87,10 +87,10 @@ lowercase letters, digits, and hyphens, and one id can be represented by element
 design assets. The palette allows the locked colours plus the film's one accent.
 
 `aideos design build` checks a package's look when one exists: shot coverage, declared cast in artwork,
-changing clips on carried objects inside scene shots, matching inset device overrides and camera
-keyframes. Builds record provenance in `design/status.json`, defaulting CLI builds to `hand-built`
-(`--source <who>` overrides). Older packages without a look can still build directly; new production
-runs require one before design.
+changing clips on carried objects inside scene shots starting within 0.4s of their spoken cue,
+matching inset device overrides and camera keyframes. Builds record provenance in `design/status.json`,
+defaulting CLI builds to `hand-built` (`--source <who>` overrides). Older packages without a look can
+still build directly; new production runs require one before design.
 
 ## Resuming
 
