@@ -34,6 +34,7 @@ import { clearMockShotVisualHandler, heuristicShotVisualSelection, setMockShotVi
 import type { LookPlan } from "../lookPlan/schema";
 import { buildDesign, readCheckedLookPlan } from "../designSpec/build";
 import { generationCaller } from "../aideosConfig";
+import { buildDirectorRequest, buildFilmProductionRequest, program } from "../cli";
 import { spawnSync } from "node:child_process";
 import type { ProductionProgress, ProductionRequest } from "./types";
 
@@ -599,6 +600,72 @@ test("CLI: the direct executable and launcher preserve exit 3 and continuation i
       assert.match(resumed.stdout, /Run aideos design build/);
     } finally { cleanProbe(slug); }
   }
+});
+
+test("CLI: omitted --speed passes undefined to runProduction and falls through to defaults", () => {
+  const filmCmd = program.commands.find((c) => c.name() === "film");
+  assert.ok(filmCmd);
+  const filmSpeedOpt = filmCmd.options.find((o) => o.attributeName() === "speed");
+  assert.ok(filmSpeedOpt);
+  assert.equal(filmSpeedOpt.defaultValue, undefined);
+
+  const directCmd = program.commands.find((c) => c.name() === "direct");
+  assert.ok(directCmd);
+  const directSpeedOpt = directCmd.options.find((o) => o.attributeName() === "speed");
+  assert.ok(directSpeedOpt);
+  assert.equal(directSpeedOpt.defaultValue, undefined);
+
+  const filmReqOmitted = buildFilmProductionRequest("## Title\n[NARRATION] Hello", {
+    formats: "long,reel",
+    out: "out",
+    brollEngine: "ssh-wangp",
+    brollClips: "4",
+    brollSeconds: "8",
+    resume: true,
+    design: "inline",
+    designTimeout: "20",
+  });
+  assert.equal(filmReqOmitted.speed, undefined);
+
+  const filmReqExplicit = buildFilmProductionRequest("## Title\n[NARRATION] Hello", {
+    formats: "long,reel",
+    out: "out",
+    brollEngine: "ssh-wangp",
+    brollClips: "4",
+    brollSeconds: "8",
+    speed: "0.8",
+    resume: true,
+    design: "inline",
+    designTimeout: "20",
+  });
+  assert.equal(filmReqExplicit.speed, 0.8);
+
+  const directReqOmitted = buildDirectorRequest("prompt", {
+    formats: "long,reel",
+    out: "out",
+    brollEngine: "ssh-wangp",
+    brollClips: "4",
+    brollSeconds: "8",
+    maxAttempts: "3",
+    resume: true,
+    design: "inline",
+    designTimeout: "20",
+  });
+  assert.equal(directReqOmitted.speed, undefined);
+
+  const directReqExplicit = buildDirectorRequest("prompt", {
+    formats: "long,reel",
+    out: "out",
+    brollEngine: "ssh-wangp",
+    brollClips: "4",
+    brollSeconds: "8",
+    speed: "0.8",
+    maxAttempts: "3",
+    resume: true,
+    design: "inline",
+    designTimeout: "20",
+  });
+  assert.equal(directReqExplicit.speed, 0.8);
 });
 
 test("generationCaller: server text uses the configured Claude model and propagates command failure", async () => {
