@@ -579,7 +579,8 @@ export const FilmView: React.FC<FilmViewProps> = ({
     0,
     Math.min(1, (frame - current.from) / Math.max(1, current.durationInFrames)),
   );
-  const drift = current.shot.drift
+  // The stage camera owns all Three framing so runtime pixels agree with projected geometry.
+  const drift = current.shot.drift && film.scene?.renderer !== "three"
     ? 1 + (DRIFT - 1) * driftProgress
     : 1;
 

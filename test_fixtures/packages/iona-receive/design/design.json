@@ -1,0 +1,46 @@
+{
+  "schema": "aideos.design/2",
+  "renderer": "three",
+  "brief": {
+    "concept": "A glider illustrates message receipt, with Iona as its receiver."
+  },
+  "assets": [
+    {
+      "id": "iona",
+      "renderer": "three",
+      "kind": "character",
+      "asset": "iona-art-v1",
+      "rig": "iona-v1",
+      "position": [
+        940,
+        1210
+      ],
+      "unitsToStage": 85,
+      "treatment": "cel-v1"
+    },
+    {
+      "id": "glider",
+      "renderer": "three",
+      "kind": "prop",
+      "asset": "paper-glider-v1",
+      "treatment": "cel-v1"
+    }
+  ],
+  "clips": [],
+  "performances": [
+    {
+      "id": "receive-message",
+      "action": "receive-v1",
+      "actor": "iona",
+      "prop": "glider",
+      "start": "approach",
+      "decisive": {
+        "shotId": "catch",
+        "phrase": "catches",
+        "edge": "start",
+        "event": "contact"
+      },
+      "afterState": "message-received"
+    }
+  ]
+}

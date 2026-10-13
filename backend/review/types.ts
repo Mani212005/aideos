@@ -8,6 +8,7 @@
  * Inputs and outputs: TypeScript definitions -> ReviewReport, CriterionResult, and Facts interfaces.
  * Used by: backend/review/review.ts, backend/review/criteria.ts.
  */
+import type { FilmFacts } from "./source";
 
 /** A spoken word with its measured offsets in seconds. */
 export interface ReviewWord {
@@ -88,6 +89,8 @@ export interface ReviewSources {
 
 /** The whole review. */
 export interface ReviewReport {
+  /** Format-indexed stage facts distinguish projected geometry from unmeasured visual craft. */
+  stage?: FilmFacts["stage"];
   schema: "aideos.review/1";
   subject: string;
   createdAt: string;

@@ -9,6 +9,7 @@
 
 import type { Scene, EnvironmentAsset, Track } from "./types";
 import { validateSvgTimeline } from "./svgAnimation";
+import { validateStage } from "./validateStage";
 
 export interface ValidationError {
   rule: number;
@@ -62,6 +63,8 @@ export function validateScene(scene: Scene): ValidationResult {
   }
 
   // Rule 2: actors.length <= 15
+  errors.push(...validateStage(scene).map((message) => ({ rule: 22, message })));
+
   if (!Array.isArray(scene.actors) || scene.actors.length > 15) {
     errors.push({
       rule: 2,

@@ -16,7 +16,7 @@
  * beat keeps its text card rather than showing stand-in numbers.
  */
 
-import type { LookPlan } from "../lookPlan/schema";
+import type { LookPlan, LookShot } from "../lookPlan/schema";
 import type { Block, CanvasEdge, CanvasNode, Film, Shot } from "../../src/dl/schema";
 import { blockSchema, DEVICE_BLOCKS, parseFilm } from "../../src/dl/schema";
 import { parseClaudeScript, buildBlocksForPrimitive, type ScriptSegment } from "../scriptIntake";
@@ -455,7 +455,7 @@ export async function compileFilmFromScreenplayAsync(
   const nodeIds = nodes.map((n) => n.id);
 
   const footageIndices = new Set(options.lookPlan || options.textOnly ? [] : chooseFootageBeats(beats, shotDurations, maxFootageSec, maxFootageShots));
-  const plannedShots = new Map(options.lookPlan?.shots.map((s) => [s.id, s]));
+  const plannedShots = new Map<string, LookShot>(options.lookPlan?.shots.map((s): [string, LookShot] => [s.id, s]));
 
   const shots: Shot[] = [];
   const footage: FootageRequest[] = [];

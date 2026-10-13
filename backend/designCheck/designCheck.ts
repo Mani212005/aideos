@@ -33,6 +33,8 @@ import { safeParseLookPlan, type LookPlan } from "../lookPlan/schema";
 import { createCues, FPS, CAPTION_SAFE_SQUARE } from "../sceneKit";
 import { narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
 import { resolveCue } from "../designSpec/cues";
+import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
+import { SUBTITLE_BAND_TOP_RATIO } from "../../src/dl/fullScreenHeroLayout";
 
 /** The standard layer rules a finding can belong to. */
 export type DesignRule =
@@ -441,6 +443,7 @@ function checkCarryChangeHolds(film: Film, scene: Scene, plan: LookPlan | undefi
     shotFrames.set(shot.id, { start, end });
   }
   for (const cast of plan.film.cast) {
+    if (scene.renderer === "three" && scene.cast?.some((item) => item.id === cast.id)) continue; // P0 reports stage craft separately from SVG change evidence.
     const prop = scene.props.find((item) => item.assetId === cast.id || item.animation?.clips.some((clip) => clip.targets.includes(cast.id)));
     for (const change of cast.changes) {
       const window = shotFrames.get(change.at);
@@ -492,6 +495,24 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
       findings.push({ rule: "scene", severity: "error", where: e.entityId ?? "scene", message: e.message });
     }
     const hasCaptions = film.captions !== "off";
+    if (scene.renderer === "three" && result.errors.length === 0) {
+      for (const [format, width, height] of [["long", 1920, 1080], ["reel", 1080, 1920]] as const) {
+        const facts = prepareStageFacts(scene, width, height);
+        try {
+          const found = new Set<string>();
+          for (let frame = 0; frame < scene.durationFrames; frame++) {
+            for (const pose of facts.at(frame)) for (const [id, box] of [[pose.actor, pose.actorBounds], [pose.prop, pose.propBounds]] as const) {
+              if (box.x0 < 0 || box.y0 < 0 || box.x1 > width || box.y1 > (hasCaptions ? height * SUBTITLE_BAND_TOP_RATIO : height)) {
+                if (!found.has(id)) findings.push({ rule: "safe-area", severity: "error", where: `${format} ${id} frame ${frame}`, message: "posed mesh bounds including outlines cross output crop or caption band; move or scale the cast" });
+                found.add(id);
+              }
+            }
+          }
+        } finally { facts.dispose(); }
+      }
+      findings.push({ rule: "scene", severity: "warning", where: "three stage", message: "numerical action and conservative posed geometry measured in both crops; facial appeal, finger contact, raster presence and depth occlusion unmeasured (P0)" });
+      if (film.shots.some((s) => s.stage === "inset")) findings.push({ rule: "inset", severity: "error", where: "three stage", message: "P0 Three stage does not support device insets; stage-aware inset geometry is deferred" });
+    }
     for (const asset of assets) {
       if (hasCaptions && asset.position.y > CAPTION_SAFE_SQUARE.y1 && asset.assetId !== "background") {
         findings.push({ rule: "safe-area", severity: "error", where: asset.assetId, message: `placed at y=${asset.position.y}, which is inside the caption band (y > ${CAPTION_SAFE_SQUARE.y1}); move it up to keep it readable.` });

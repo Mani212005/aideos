@@ -12,6 +12,7 @@ import { validateScene as pureValidateScene, type ValidationResult } from "./val
 import type { EnvironmentAsset, Scene } from "./types";
 import { collectSvgElementIds, parseSvgDocument } from "./svgDocument";
 import { resolveRepoAssetPath } from "../videoPackageLoader";
+import { validateStageResources } from "../../../backend/performance/resources";
 
 /**
  * Resolves an asset svgSource: absolute, relative to the working directory, or relative to the
@@ -35,6 +36,10 @@ export function readAssetElementIds(svgSource: string): string[] | null {
 /** Validates a scene including every filesystem-backed check the pure validator cannot make. */
 export function validateSceneWithNodeAssets(sceneInput: Scene): ValidationResult {
   const result = pureValidateScene(sceneInput);
+  if (sceneInput.renderer === "three") {
+    result.errors.push(...validateStageResources().map((message) => ({ rule: 22, message })));
+    result.isValid = result.errors.length === 0;
+  }
 
   const assets: EnvironmentAsset[] = [];
   if (sceneInput.background) assets.push(sceneInput.background);

@@ -119,6 +119,10 @@ camera motion smoother and move captions slightly upward.
 
 ## Scene films (a film whose canvas is a scene)
 
+- For Three stage contracts, resource freezes, cue binding or stage review evidence, read
+  `docs/THREE_STAGE_P0.md`. Rendering and fixture tests must run sequentially because both rewrite
+  the generated active-film module.
+
 - A film's canvas is either the node graph (`film.canvas`) or a vector scene (`film.scene`), never
   both: `src/dl/Film.tsx` renders `SceneStage` in place of `CanvasGraph` when `scene` is present.
   `examples/hello-scene/` is the tiny worked example (see its [README](examples/hello-scene/README.md))

@@ -7,6 +7,7 @@
  */
 
 import type { SvgAnimationTimeline } from "./svgAnimation";
+import type { StageCast, StagePerformance } from "./stageContract";
 
 export type SchemaVersion = string; // e.g. "1.0.0"
 
@@ -40,6 +41,7 @@ export interface RotatingSubGroup {
 }
 
 export interface EnvironmentAsset {
+  plane?: "background" | "foreground";
   assetId: string; // unique within scene
   svgSource: string; // path to committed SVG file
   /** D5: omit to derive from position.y per frame. Present = explicit override. */
@@ -112,6 +114,9 @@ export interface CameraTrack {
 }
 
 export interface Scene {
+  renderer?: "svg" | "three";
+  cast?: StageCast[];
+  performances?: StagePerformance[];
   schemaVersion: SchemaVersion;
   sceneId: string;
   fps: number; // 30

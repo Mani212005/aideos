@@ -95,8 +95,8 @@ export function readCheckedLookPlan(film: Film): { plan?: LookPlan; errors: stri
 // Checks the design's cast, carried motion, device overrides and camera against its look plan.
 export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: TimedWord[], pkg: string, plan: LookPlan): string[] {
   const errors: string[] = [];
-  const idsByAsset = new Map(spec.assets.map((a) => [a.id,
-    collectSvgElementIds(parseSvgDocument(fs.readFileSync(path.join(pkg, a.file), "utf8"))),
+  const idsByAsset = new Map<string, string[]>(spec.assets.map((a): [string, string[]] => [a.id,
+    "file" in a ? collectSvgElementIds(parseSvgDocument(fs.readFileSync(path.join(pkg, a.file), "utf8"))) : [],
   ]));
   for (const item of plan.film.cast) {
     if (!idsByAsset.has(item.id) && ![...idsByAsset.values()].some((ids) => ids.includes(item.id))) {
@@ -104,8 +104,23 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
     }
   }
   const cues = createCues(narrationTimingForFilm(film, words), film.fps);
+  if (plan.schema === "aideos.look/2") {
+    if (!("performances" in spec)) return ["Three look requires aideos.design/2 performances."];
+    for (const intended of plan.film.performances) {
+      const delivered = spec.performances.find((p) => p.id === intended.id);
+      if (!delivered || ["action", "actor", "prop", "start", "afterState"].some((key) => delivered[key as keyof typeof delivered] !== intended[key as keyof typeof intended]) || JSON.stringify(delivered.decisive) !== JSON.stringify(intended.decisive)) errors.push(`look performance ${intended.id}: design differs from action, actor, prop, start, decisive cue or after-state intention`);
+      for (const id of [intended.actor, intended.prop]) {
+        const authored = spec.assets.find((a) => a.id === id);
+        const planned = plan.film.cast.find((a) => a.id === id);
+        if (!authored || !("renderer" in authored) || authored.renderer !== "three" || !planned || planned.renderer !== "three" || authored.asset !== planned.asset || authored.treatment !== planned.treatment || (authored.kind === "character" && authored.rig !== planned.rig)) errors.push(`look cast ${id}: design identity or treatment mismatch`);
+      }
+      try { cues.word(intended.decisive.shotId, intended.decisive.phrase, intended.decisive.edge); resolveCue(intended.start, cues); }
+      catch (err) { errors.push(`look performance ${intended.id}: ${String(err)}`); }
+    }
+  }
   for (const shot of plan.shots) {
     if (shot.treatment === "scene") {
+      if (plan.schema === "aideos.look/2" && "performances" in shot && shot.performances.length) continue;
       const start = cues.from(shot.id);
       const end = cues.to(shot.id);
       let cueFrame: number | null = null;
@@ -139,7 +154,7 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
       }
     }
   }
-  if (plan.film.camera.length && !spec.camera?.length) errors.push("look camera poses require camera keyframes in design.json");
+  if (plan.schema !== "aideos.look/2" && plan.film.camera.length && !spec.camera?.length) errors.push("look camera poses require camera keyframes in design.json");
   return errors;
 }
 
@@ -174,7 +189,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   }
   const spec = parsed.data;
 
-  const missing = [...spec.assets.map((a) => a.file), ...(spec.background ? [spec.background.file] : [])].filter(
+  const missing = [...spec.assets.flatMap((a) => "file" in a ? [a.file] : []), ...(spec.background ? [spec.background.file] : [])].filter(
     (f) => !fs.existsSync(path.join(pkg, f)),
   );
   if (missing.length) return fail(missing.map((f) => `artwork ${f} is named in design.json but does not exist`));

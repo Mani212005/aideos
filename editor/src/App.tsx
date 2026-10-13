@@ -225,6 +225,10 @@ export default function App() {
 
   /** Render the film to an MP4 through the dev server and hand the user the download. */
   const handleExport = useCallback(async () => {
+    if (!timelineApi.hasVisibleVisuals) {
+      notify("warn", "Show a visual lane before exporting.");
+      return;
+    }
     if (pendingBrollCount > 0) {
       notify("warn", `${pendingBrollCount} shot(s) still need generated footage. Generate B-roll before exporting.`);
       return;
@@ -248,7 +252,7 @@ export default function App() {
       setExportError(message);
       notify("danger", `Export failed: ${message}`);
     }
-  }, [format, notify, pendingBrollCount, timelineApi.renderFilm]);
+  }, [format, notify, pendingBrollCount, timelineApi.hasVisibleVisuals, timelineApi.renderFilm]);
 
   const hasVoiceover = Boolean(film.voiceover?.src);
 

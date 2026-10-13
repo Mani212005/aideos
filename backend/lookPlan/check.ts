@@ -80,6 +80,22 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed", context
   const look = parsed.data;
   const findings: LookCheckFinding[] = [];
 
+  if (look.schema === "aideos.look/2") {
+    const performanceIds = new Set<string>();
+    for (const p of look.film.performances) {
+      if (performanceIds.has(p.id)) findings.push({ rule: "cast", severity: "error", where: p.id, message: "duplicate performance id" });
+      performanceIds.add(p.id);
+      const actor = look.film.cast.find((c) => c.id === p.actor);
+      const prop = look.film.cast.find((c) => c.id === p.prop);
+      if (actor?.renderer !== "three" || actor.asset !== "iona-art-v1" || actor.rig !== "iona-v1" || actor.treatment !== "cel-v1" || prop?.renderer !== "three" || prop.asset !== "paper-glider-v1" || prop.treatment !== "cel-v1") findings.push({ rule: "cast", severity: "error", where: p.id, message: "receive-v1 needs approved Iona and glider with cel-v1" });
+      for (const shotId of p.carries) if (!look.shots.some((s) => s.id === shotId && s.performances.includes(p.id) && s.carries.includes(p.actor) && s.carries.includes(p.prop))) findings.push({ rule: "carries", severity: "error", where: p.id, message: `performance carry ${shotId} must retain actor and prop and reference the performance` });
+      const decisiveShot = context.film?.shots.find((s) => s.id === p.decisive.shotId);
+      if (context.film && !containsSpokenCue(decisiveShot?.scriptText ?? "", p.decisive.phrase)) findings.push({ rule: "shot", severity: "error", where: p.id, message: "decisive phrase is absent from its narrated shot" });
+    }
+    for (const shot of look.shots) for (const id of shot.performances) if (!performanceIds.has(id)) findings.push({ rule: "cast", severity: "error", where: shot.id, message: `unknown performance ${id}` });
+    findings.push({ rule: "cast", severity: "warning", where: "three stage", message: "projected geometry checks deferred to design build; facial appeal, finger contact and raster occlusion unmeasured" });
+  }
+
   if (!context.film) {
     findings.push({ rule: "shot", severity: "warning", where: "film.json", message: "not checked yet: shot and cast beat ids need film.json." });
   } else {

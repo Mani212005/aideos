@@ -40,6 +40,10 @@ export interface ProductionRequest {
   slug?: string;
   /** Which formats to render. Defaults to both. */
   formats?: ProductionFormat[];
+  /** Maximum concurrent render workers per sequential export. */
+  renderConcurrency?: number;
+  /** Optional local Chrome executable, allowing hosts to render without downloading another browser. */
+  browserExecutable?: string;
   /** Where the finished mp4s land. Defaults to the video package's renders/ directory (videos/<slug>/renders/). */
   outDir?: string;
   /** Generate B-roll footage on the GPU and wire it into the film. */

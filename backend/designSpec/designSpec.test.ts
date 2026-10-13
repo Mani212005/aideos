@@ -18,14 +18,14 @@ import { Timeline, createCues } from "../sceneKit";
 import { checkFilmDesign } from "../designCheck/designCheck";
 import { compileDesign, narrationTimingForFilm, type TimedWord } from "./compile";
 import { resolveCue } from "./cues";
-import { designSpecSchema, type DesignSpec } from "./spec";
+import { designSpecSchema, type LegacyDesignSpec } from "./spec";
 import { checkDesignAgainstLook } from "./build";
-import { parseLookPlan } from "../lookPlan/schema";
+import { type LegacyLookPlan, parseLookPlan } from "../lookPlan/schema";
 
 const PKG = path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed");
 const base = () => parseFilm(JSON.parse(fs.readFileSync(path.join(PKG, "design/base-film.json"), "utf8")));
 const words = (): TimedWord[] => JSON.parse(fs.readFileSync(path.join(PKG, "voiceover_words.json"), "utf8")).words;
-const spec = (): DesignSpec => designSpecSchema.parse(JSON.parse(fs.readFileSync(path.join(PKG, "design/design.json"), "utf8")));
+const spec = (): LegacyDesignSpec => designSpecSchema.parse(JSON.parse(fs.readFileSync(path.join(PKG, "design/design.json"), "utf8"))) as LegacyDesignSpec;
 
 test("DesignSpec: cues resolve shots, fractions, phrases, the end and offsets", () => {
   const cues = createCues(narrationTimingForFilm(base(), words()));
@@ -55,7 +55,7 @@ test("DesignSpec: the demo design compiles into a scene film that passes the des
 });
 
 test("DesignSpec: planned scene motion must start within 0.4s of its spoken cue", () => {
-  const plan = parseLookPlan(JSON.parse(fs.readFileSync(path.join(PKG, "design/look.json"), "utf8")));
+  const plan = parseLookPlan(JSON.parse(fs.readFileSync(path.join(PKG, "design/look.json"), "utf8"))) as LegacyLookPlan;
   const shot = plan.shots.find((candidate) => candidate.treatment === "scene")!;
   const focusedPlan = { ...plan, film: { ...plan.film, camera: [] }, shots: [shot] };
   const design = spec();
@@ -103,7 +103,7 @@ test("DesignSpec: the schema keeps artwork inside the package and accents to one
   assert.ok(paths.includes("accent") && paths.includes("assets.0.file"), paths.join(","));
 });
 
-const withCamera = (camera: DesignSpec["camera"]): DesignSpec => ({ ...spec(), camera });
+const withCamera = (camera: LegacyDesignSpec["camera"]): LegacyDesignSpec => ({ ...spec(), camera });
 const pose = (id: string, at: string, x: number, y: number, zoom: number) => ({ id, at, center: [x, y] as [number, number], zoom });
 
 test("DesignSpec camera: poses resolve through the cues into a continuous keyframe track", () => {
@@ -131,7 +131,7 @@ test("DesignSpec camera: an easing shapes the move into its pose", () => {
 });
 
 test("DesignSpec camera: mistakes come back naming the pose, with no partial film", () => {
-  const cases: Array<[string, DesignSpec["camera"], RegExp]> = [
+  const cases: Array<[string, LegacyDesignSpec["camera"], RegExp]> = [
     ["out of order", [pose("a", "beat-03", 960, 960, 1), pose("b", "beat-02", 960, 960, 1.1)], /camera "b": cue "beat-02" is frame \d+, not after "a"/],
     ["same frame", [pose("a", "beat-02", 960, 960, 1), pose("b", "beat-02", 900, 960, 1)], /camera "b": cue "beat-02" is frame \d+, not after "a"/],
     ["phrase not spoken", [pose("a", "beat-01", 960, 960, 1), pose("ghost", 'beat-02:"never said"', 960, 960, 1.1)], /camera "ghost": "never said" is not spoken in shot "beat-02"/],

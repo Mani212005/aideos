@@ -14,6 +14,11 @@ import type { CameraTrack, EnvironmentAsset, Scene } from "../../src/dl/scene/ty
 import { FPS, SCENE_SIZE, Timeline, createCues, type Cues, type NarrationTiming } from "../sceneKit";
 import { resolveCue } from "./cues";
 import type { DesignSpec, SpecCamera } from "./spec";
+import { bindReceiveSpan } from "../performance/bindReceive";
+import { STAGE_RESOURCE_HASH } from "../../src/dl/scene/rigs/registry";
+import { validateStage } from "../../src/dl/scene/validateStage";
+import { receiveSchema } from "../../src/dl/scene/stageContract";
+import { captionWordsToVtt } from "../../src/dl/captionsParser";
 
 /** One narrated word with its offsets in seconds, as voiceover_words.json stores it. */
 export interface TimedWord {
@@ -120,7 +125,8 @@ export function compileDesign(
     if (!shotIds.has(id)) errors.push(`shots."${id}" overrides a shot the film does not have (shots: ${[...shotIds].join(", ")})`);
   }
 
-  const props: EnvironmentAsset[] = spec.assets.map((a) => {
+  const props: EnvironmentAsset[] = spec.assets.filter((a) => "file" in a).map((a) => {
+    if (!("file" in a)) throw new Error("SVG asset requires a file");
     const timeline = new Timeline(`${a.id}-motion`, cues.durationFrames);
     for (const clip of spec.clips.filter((c) => c.asset === a.id)) {
       try {
@@ -144,6 +150,7 @@ export function compileDesign(
     const built = timeline.build();
     return {
       assetId: a.id,
+      ...("plane" in a ? { plane: a.plane } : {}),
       svgSource: `${pkg}/${a.file}`,
       ...(a.layer !== undefined ? { layer: a.layer } : {}),
       position: { x: a.position[0], y: a.position[1] },
@@ -180,6 +187,20 @@ export function compileDesign(
     props,
     actors: [],
   };
+  if ("performances" in spec) {
+    scene.renderer = "three";
+    scene.cast = spec.assets.flatMap((a) => a.renderer === "three" ? [{ ...a, resourceHash: STAGE_RESOURCE_HASH }] : []);
+    scene.performances = [];
+    for (const p of spec.performances) {
+      try {
+        const frame = cues.word(p.decisive.shotId, p.decisive.phrase, p.decisive.edge);
+        const data = bindReceiveSpan(frame, resolveCue(p.start, cues), cues.durationFrames, fps, p.targetOffset);
+        scene.performances.push({ id: p.id, action: p.action, actor: p.actor, prop: p.prop, decisive: { ...p.decisive, frame }, afterState: p.afterState, data: receiveSchema.parse(data) });
+      } catch (err) { errors.push(`performance ${p.id} cue ${p.decisive.shotId}:"${p.decisive.phrase}": ${err instanceof Error ? err.message : String(err)}`); }
+    }
+    errors.push(...validateStage(scene));
+    if (errors.length) return { errors };
+  }
 
   const shots = film.shots.map((shot) => {
     const override = spec.shots?.[shot.id];
@@ -193,6 +214,7 @@ export function compileDesign(
   return {
     film: {
       ...film,
+      ...("performances" in spec && film.captions !== "off" ? { captions: captionWordsToVtt(words.map((w) => ({ text: w.punctuated_word ?? w.word, startFrame: Math.round(w.start * fps), endFrame: Math.round(w.end * fps) })), fps, 1) } : {}),
       ...(spec.accent ? { accent: spec.accent } : {}),
       scene,
       shots,

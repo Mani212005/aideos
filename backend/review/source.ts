@@ -15,6 +15,7 @@ import { buildTimeline, lookBox, nodeBox, solveCam } from "../../src/dl/camera";
 import { MS } from "../../src/dl/motion";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
+import { stageEvidence, prepareStageFacts } from "../../src/dl/scene/stageFacts";
 import type { SvgAnimationClip } from "../../src/dl/scene/svgAnimation";
 import type { LookPlan } from "../lookPlan/schema";
 import { safeParseLookPlan } from "../lookPlan/schema";
@@ -56,6 +57,7 @@ export interface BoundaryCarry {
 
 /** Facts read from film data. */
 export interface FilmFacts {
+  stage?: ReturnType<typeof stageEvidence>;
   filmId: string;
   kind: "node-graph" | "scene";
   durationSec: number;
@@ -271,6 +273,16 @@ export function readFilmFacts(film: Film): FilmFacts {
   if (scene) {
     const boundaryFrames = shotBoundaries.map((t) => Math.round(t * fps));
     const { carry, clipStarts } = sceneBoundaries(scene, boundaryFrames, fps);
+    const stage = scene.renderer === "three" ? stageEvidence(scene, boundaryFrames) : undefined;
+    const projection = scene.renderer === "three" ? prepareStageFacts(scene, 1080, 1920) : undefined;
+    // Uses projected posed geometry as presence evidence; this is not an occlusion measurement.
+    const stageVisible = (frame: number) => projection?.at(frame).flatMap((p) => ([[p.actor, p.actorBounds], [p.prop, p.propBounds]] as const).filter(([, b]) => b.x0 >= 0 && b.x1 <= 1080 && b.y0 >= 0 && b.y1 <= 1920).map(([id]) => id)) ?? [];
+    if (projection) boundaryFrames.forEach((frame, i) => {
+      const before = stageVisible(frame - 1), after = stageVisible(frame);
+      const kept = before.filter((id) => after.includes(id)).length;
+      carry[i].outgoing += before.length; carry[i].kept += kept;
+      carry[i].transformed += scene.performances!.some((p) => p.data.fromFrame < frame && p.data.holdFromFrame >= frame) ? kept : 0;
+    });
     const assets = [...(scene.background ? [scene.background] : []), ...(scene.props ?? [])];
     let shotStart = 0;
     const planShots = film.shots.map((shot, index) => {
@@ -287,7 +299,7 @@ export function readFilmFacts(film: Film): FilmFacts {
           const visibleTargets = targets.filter((target) => sceneTargetOpacityAt(asset, target, frame) > THRESHOLDS.planAdherence.visibleOpacityMin);
           return targets.length > 0 && visibleTargets.length === 0 ? visibleTargets : [asset.assetId, ...visibleTargets];
         });
-        return visibleFromAssets;
+        return [...visibleFromAssets, ...stageVisible(frame)];
       };
       const visibleAtStart = visibleFor(startFrame);
       const visibleAtEnd = visibleFor(Math.max(startFrame, endFrame - 1));
@@ -302,12 +314,16 @@ export function readFilmFacts(film: Film): FilmFacts {
           .filter((motion) => motion.frame >= startFrame && motion.frame < endFrame)
           .map((motion) => ({ castId: motion.castId, startSec: motion.frame / fps }));
       });
+      for (const p of scene.performances ?? []) if (p.decisive.frame >= startFrame && p.decisive.frame < endFrame) {
+        for (const castId of [p.actor, p.prop]) motions.push({ castId, startSec: p.decisive.frame / fps });
+      }
       return { id: shot.id, startSec, endSec, stage: shot.stage, visibleAtStart, visibleAtEnd, motions };
     });
     const rawCam = scene.camera as { keys?: unknown; keyframes?: unknown } | unknown[] | undefined;
     const keyList = (Array.isArray(rawCam) ? rawCam : rawCam?.keyframes ?? rawCam?.keys) as Array<{ frame: number }> | undefined;
     const cameraKeyframes = Array.isArray(keyList) ? keyList.map((keyframe) => keyframe.frame / fps) : [];
-    return { filmId: film.id, kind: "scene", durationSec: total, fps, shotBoundaries, shotDurations: durations, camera: sceneCameraMoves(scene, fps), boundaries: carry, clipStarts, nodeOverlaps: [], voiceoverSec, planShots, cameraKeyframes };
+    projection?.dispose();
+    return { filmId: film.id, kind: "scene", durationSec: total, fps, shotBoundaries, shotDurations: durations, camera: sceneCameraMoves(scene, fps), boundaries: carry, clipStarts: [...clipStarts, ...(scene.performances ?? []).map((p) => p.decisive.frame / fps)], nodeOverlaps: [], voiceoverSec, planShots, cameraKeyframes, ...(stage ? { stage } : {}) };
   }
   const { camera, starts, durations: timedDurations } = nodeGraphCamera(film, voiceoverSec);
   // A node-graph film keeps its canvas up while consecutive shots are anchored on it; a framed or spine shot closes it.

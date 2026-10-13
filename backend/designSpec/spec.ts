@@ -17,6 +17,7 @@
 import { z } from "zod";
 import { blockSchema } from "../../src/dl/schema";
 import { SCENE_SIZE } from "../sceneKit/stage";
+import { decisiveSchema, vec3Schema } from "../../src/dl/scene/stageContract";
 
 const vec2 = z.tuple([z.number(), z.number()]);
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "an accent is a #rrggbb colour");
@@ -70,7 +71,7 @@ export const specCameraSchema = z.object({
 });
 
 /** The whole design of one film. */
-export const designSpecSchema = z.object({
+const legacyDesignSchema = z.object({
   brief: z.object({
     concept: z.string().min(1).max(600),
     throughLine: z.string().max(300).optional(),
@@ -101,6 +102,17 @@ export const designSpecSchema = z.object({
     .optional(),
 });
 
+/** V2 assets declare exactly which renderer and plane owns their pixels. */
+const stageAsset = z.union([
+  specAssetSchema.extend({ renderer: z.literal("svg"), plane: z.enum(["background", "foreground"]) }).strict(),
+  z.strictObject({ id: specAssetSchema.shape.id, renderer: z.literal("three"), kind: z.literal("character"), asset: z.literal("iona-art-v1"), rig: z.literal("iona-v1"), position: vec2, unitsToStage: z.number().positive().max(500), depth: z.number().default(0), treatment: z.literal("cel-v1") }),
+  z.strictObject({ id: specAssetSchema.shape.id, renderer: z.literal("three"), kind: z.literal("prop"), asset: z.literal("paper-glider-v1"), treatment: z.literal("cel-v1") }),
+]);
+export const authoredPerformanceSchema = z.strictObject({ id: specAssetSchema.shape.id, action: z.literal("receive-v1"), actor: z.string().min(1), prop: z.string().min(1), start: cue, decisive: decisiveSchema, targetOffset: vec3Schema.default([0, 0, 0]), afterState: z.string().min(1) });
+export const stageDesignSchema = legacyDesignSchema.extend({ schema: z.literal("aideos.design/2"), renderer: z.literal("three"), assets: z.array(stageAsset).max(40), performances: z.array(authoredPerformanceSchema).length(1) }).strict();
+export const designSpecSchema = z.union([stageDesignSchema, legacyDesignSchema.extend({ schema: z.literal("aideos.design/1").optional(), renderer: z.literal("svg").optional() })]);
+
 export type DesignSpec = z.infer<typeof designSpecSchema>;
+export type LegacyDesignSpec = z.infer<typeof legacyDesignSchema>;
 export type SpecClip = z.infer<typeof specClipSchema>;
 export type SpecCamera = z.infer<typeof specCameraSchema>;

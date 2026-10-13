@@ -16,6 +16,7 @@ import { parseSvgDocument, type SvgDocument } from "./svgDocument";
 import { renderSvgNodes } from "./svgReact";
 
 export interface SceneViewProps {
+  transparentBackground?: boolean;
   frame: CompiledFrame;
   /** Output width in pixels. */
   width?: number;
@@ -61,6 +62,7 @@ function getParsedDocument(source: string): SvgDocument | null {
  */
 export const SceneView: React.FC<SceneViewProps> = ({
   frame,
+  transparentBackground,
   width = 1920,
   height = 1080,
   sceneSize,
@@ -180,7 +182,7 @@ export const SceneView: React.FC<SceneViewProps> = ({
       width={width}
       height={height}
       style={{
-        backgroundColor: palette.canvas,
+        backgroundColor: transparentBackground ? "transparent" : palette.canvas,
         overflow: "hidden",
       }}
     >

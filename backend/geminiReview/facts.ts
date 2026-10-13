@@ -12,6 +12,8 @@ import os from "node:os";
 import path from "node:path";
 import type { DeterministicVideoFacts } from "./types";
 import { THRESHOLDS } from "../review/thresholds";
+import { parseFilm } from "../../src/dl/schema";
+import { readFilmFacts } from "../review/source";
 
 export interface FactsOptions {
   sampleCount?: number;
@@ -295,7 +297,7 @@ export function inspectCamera(
       const film = JSON.parse(raw);
       let moves = 0;
 
-      if (Array.isArray(film.shots)) {
+      if (film.scene?.renderer !== "three" && Array.isArray(film.shots)) {
         for (const shot of film.shots) {
           if (shot.move && shot.move !== "none" && shot.move !== "cut") {
             moves++;
@@ -411,11 +413,13 @@ export async function extractDeterministicFacts(
   }
 
   const camera = inspectCamera(filmPath, durationSec);
+  const stage = filmPath && fs.existsSync(filmPath) ? readFilmFacts(parseFilm(JSON.parse(fs.readFileSync(filmPath, "utf8")))).stage : undefined;
 
   const rawSummaryText = [
     `=== PRE-MEASURED GROUND TRUTH FACTS (DETERMINISTIC FACTS) ===`,
     `- Exact Video Duration: ${durationSec.toFixed(1)}s (do NOT hallucinate a different duration such as 120s)`,
     metadata.width && metadata.height ? `- Dimensions: ${metadata.width}x${metadata.height}` : null,
+    stage ? `- Stage evidence for this output (geometry is projected, pixel visibility and craft unmeasured): ${JSON.stringify(stage[metadata.height! > metadata.width! ? "reel" : "long"])}` : null,
     audio.measured ? `- Audio Mix: ${audio.summary}` : `- Audio: Not measured`,
     bottomCaptions.measured
       ? `- Bottom Captions: ${bottomCaptions.summary} -> Gate Status: ${bottomCaptions.hasCaptions ? "PASS" : "FAIL (0% captions)"}`
@@ -435,6 +439,7 @@ export async function extractDeterministicFacts(
 
   return {
     durationSec,
+    ...(stage ? { stage } : {}),
     width: metadata.width,
     height: metadata.height,
     fps: metadata.fps,

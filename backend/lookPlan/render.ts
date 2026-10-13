@@ -61,6 +61,8 @@ export function renderLookMd(plan: LookPlan, filmTitle?: string, shotTimings?: {
 
 ${plan.film.stage}
 
+${plan.schema === "aideos.look/2" ? `Renderer: three (orthographic, cel-v1).\n\n${plan.film.performances.map((p) => `${p.id}: ${p.actor} receives ${p.prop}; start ${p.start}; ${p.decisive.event} on ${p.decisive.shotId}:"${p.decisive.phrase}" (${p.decisive.edge}); after-state ${p.afterState}; carried in ${p.carries.join(", ")}.`).join("\n")}\n\nArt references: src/dl/scene/rigs/NOTICE.md. Geometry deferred to build; facial appeal and finger contact unmeasured.` : ""}
+
 ## Cast (Persistent Elements)
 
 | ID | What | Enters | Changes Across Beats |

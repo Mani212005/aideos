@@ -44,7 +44,7 @@ export type RenderLogger = (message: string, progress?: number) => void;
 export function renderFormat(
   format: ProductionFormat,
   outPath: string,
-  options?: { concurrency?: number; onLog?: RenderLogger },
+  options?: { concurrency?: number; browserExecutable?: string; onLog?: RenderLogger },
 ): Promise<RenderedOutput> {
   const spec = FORMAT_SPECS[format];
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
@@ -56,6 +56,7 @@ export function renderFormat(
     outPath,
     ...ENCODE_FLAGS,
     ...(options?.concurrency ? [`--concurrency=${options.concurrency}`] : []),
+    ...(options?.browserExecutable ? [`--browser-executable=${options.browserExecutable}`] : []),
   ];
 
   return new Promise<RenderedOutput>((resolve, reject) => {

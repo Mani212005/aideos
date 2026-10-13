@@ -1,0 +1,129 @@
+{
+  "schema": "aideos.look/2",
+  "decidedBy": {
+    "agent": "fixture",
+    "model": "none",
+    "at": "2026-10-13"
+  },
+  "film": {
+    "mode": "scene",
+    "renderer": "three",
+    "stage": "One orthographic persistent stage with approved Iona receiving a paper glider.",
+    "cast": [
+      {
+        "id": "iona",
+        "renderer": "three",
+        "asset": "iona-art-v1",
+        "rig": "iona-v1",
+        "treatment": "cel-v1",
+        "what": "Iona is the receiver",
+        "enters": "approach",
+        "changes": [
+          {
+            "at": "catch",
+            "how": "Iona reaches, catches and recoils into a settled hold.",
+            "state": "message-received",
+            "magnitude": "major"
+          }
+        ]
+      },
+      {
+        "id": "glider",
+        "renderer": "three",
+        "asset": "paper-glider-v1",
+        "treatment": "cel-v1",
+        "what": "Paper glider, an illustrative message",
+        "enters": "approach",
+        "changes": [
+          {
+            "at": "catch",
+            "how": "The airborne glider becomes attached to Iona's grip.",
+            "state": "message-received",
+            "magnitude": "major"
+          }
+        ]
+      }
+    ],
+    "performances": [
+      {
+        "id": "receive-message",
+        "action": "receive-v1",
+        "actor": "iona",
+        "prop": "glider",
+        "start": "approach",
+        "decisive": {
+          "shotId": "catch",
+          "phrase": "catches",
+          "edge": "start",
+          "event": "contact"
+        },
+        "afterState": "message-received",
+        "carries": [
+          "approach",
+          "catch",
+          "receipt"
+        ]
+      }
+    ],
+    "camera": [
+      {
+        "at": "approach",
+        "pose": "wide fixed establishing view",
+        "why": "isolate performance integration"
+      }
+    ],
+    "palette": {
+      "bg": "#0A0A0B",
+      "accent": "#635BFF"
+    },
+    "captions": {
+      "position": "bottom",
+      "kineticColumn": false
+    },
+    "headlines": "none"
+  },
+  "shots": [
+    {
+      "id": "approach",
+      "treatment": "scene",
+      "carries": [
+        "iona",
+        "glider"
+      ],
+      "performances": [
+        "receive-message"
+      ],
+      "cue": "travels",
+      "criterion": "visible receive",
+      "why": "A persistent illustrative action"
+    },
+    {
+      "id": "catch",
+      "treatment": "scene",
+      "carries": [
+        "iona",
+        "glider"
+      ],
+      "performances": [
+        "receive-message"
+      ],
+      "cue": "catches",
+      "criterion": "visible receive",
+      "why": "A persistent illustrative action"
+    },
+    {
+      "id": "receipt",
+      "treatment": "scene",
+      "carries": [
+        "iona",
+        "glider"
+      ],
+      "performances": [
+        "receive-message"
+      ],
+      "cue": "acknowledgment",
+      "criterion": "visible receive",
+      "why": "A persistent illustrative action"
+    }
+  ]
+}

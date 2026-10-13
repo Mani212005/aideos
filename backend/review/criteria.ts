@@ -134,6 +134,7 @@ function planAdherence(i: ReviewInputs): CriterionResult {
   const { film, narration, video } = i;
   const lookPlan = film?.lookPlan;
   if (!film || !lookPlan) return skipped(13, "plan-adherence", "Look plan adherence", false, "needs film data with a valid design/look.json");
+  if (lookPlan.schema === "aideos.look/2") return skipped(13, "plan-adherence", "Look plan adherence", false, "P0 stage: full v2 look adherence and visual craft unmeasured; format-indexed stage facts report numerical action, independent cue and projected geometry. SVG motion-start evidence does not establish stage adherence.");
   if (!narration?.timed) return skipped(13, "plan-adherence", "Look plan adherence", false, "needs word timings to verify plan cues");
 
   const failures: string[] = [];
