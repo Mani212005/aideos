@@ -154,6 +154,7 @@ export async function reviewVideo(req: ReviewRequest): Promise<ReviewReport> {
     subject: target.subject,
     createdAt: new Date().toISOString(),
     video,
+    ...(film?.stage ? { stage: film.stage } : {}),
     sources: { film: target.film, words: target.words, narrationTextOnly: Boolean(narration && !narration.timed) },
     criteria,
     gateFailures,

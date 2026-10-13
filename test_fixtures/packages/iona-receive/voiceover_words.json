@@ -1,0 +1,79 @@
+{
+  "words": [
+    {
+      "word": "A",
+      "start": 0.1,
+      "end": 0.41999999999999993
+    },
+    {
+      "word": "message",
+      "start": 0.7,
+      "end": 1.02
+    },
+    {
+      "word": "travels",
+      "start": 1.3,
+      "end": 1.6200000000000003
+    },
+    {
+      "word": "toward",
+      "start": 1.9000000000000001,
+      "end": 2.22
+    },
+    {
+      "word": "Iona.",
+      "start": 2.5,
+      "end": 2.8200000000000003
+    },
+    {
+      "word": "She",
+      "start": 3.1,
+      "end": 3.42
+    },
+    {
+      "word": "catches",
+      "start": 3.7,
+      "end": 4.02
+    },
+    {
+      "word": "the",
+      "start": 4.3,
+      "end": 4.62
+    },
+    {
+      "word": "illustrative",
+      "start": 4.8999999999999995,
+      "end": 5.220000000000001
+    },
+    {
+      "word": "message.",
+      "start": 5.5,
+      "end": 5.82
+    },
+    {
+      "word": "Receipt",
+      "start": 6.1,
+      "end": 6.56
+    },
+    {
+      "word": "still",
+      "start": 6.8999999999999995,
+      "end": 7.359999999999999
+    },
+    {
+      "word": "needs",
+      "start": 7.699999999999999,
+      "end": 8.16
+    },
+    {
+      "word": "an",
+      "start": 8.5,
+      "end": 8.96
+    },
+    {
+      "word": "acknowledgment.",
+      "start": 9.299999999999999,
+      "end": 9.76
+    }
+  ]
+}

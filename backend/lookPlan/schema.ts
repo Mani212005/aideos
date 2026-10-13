@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { decisiveSchema } from "../../src/dl/scene/stageContract";
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "colours must be #rrggbb hex");
 
@@ -87,7 +88,7 @@ export const lookApprovalSchema = z.object({
 });
 
 /** The authoritative look plan schema (aideos.look/1). */
-export const lookPlanSchema = z.object({
+const legacyLookSchema = z.object({
   schema: z.literal("aideos.look/1"),
   decidedBy: lookDecidedBySchema,
   film: lookFilmSchema,
@@ -95,7 +96,21 @@ export const lookPlanSchema = z.object({
   approval: lookApprovalSchema.optional(),
 });
 
+/** Cue-level acting intention, independent of sparse poses and mesh geometry. */
+export const lookPerformanceSchema = z.strictObject({ id: z.string().min(1), action: z.literal("receive-v1"), actor: z.string().min(1), prop: z.string().min(1), start: z.string().min(1), decisive: decisiveSchema, afterState: z.string().min(1), carries: z.array(z.string()).min(1) });
+const stageLookSchema = legacyLookSchema.extend({
+  schema: z.literal("aideos.look/2"),
+  film: lookFilmSchema.extend({
+    renderer: z.literal("three"),
+    cast: z.array(lookCastItemSchema.extend({ renderer: z.enum(["svg", "three"]), asset: z.enum(["iona-art-v1", "paper-glider-v1"]).optional(), rig: z.literal("iona-v1").optional(), treatment: z.literal("cel-v1").optional() }).strict()).min(1),
+    performances: z.array(lookPerformanceSchema).length(1),
+  }).strict(),
+  shots: z.array(lookShotSchema.extend({ performances: z.array(z.string()).default([]) }).strict()).min(1),
+}).strict();
+export const lookPlanSchema = z.union([stageLookSchema, legacyLookSchema]);
+
 export type LookPlan = z.infer<typeof lookPlanSchema>;
+export type LegacyLookPlan = z.infer<typeof legacyLookSchema>;
 
 // Parses and validates a raw look plan object.
 export function parseLookPlan(data: unknown): LookPlan {

@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "iona-receive",
+  "title": "An illustrative receipt",
+  "fps": 30,
+  "accent": "#635BFF",
+  "theme": {
+    "background": "smooth-dark",
+    "fontFamily": "geist",
+    "accent": "#635BFF"
+  },
+  "chapters": [
+    "Receipt"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "hello",
+        "label": "Hello",
+        "x": 160,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      },
+      {
+        "id": "scene",
+        "label": "Scene",
+        "x": 590,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      }
+    ],
+    "edges": [
+      {
+        "from": "hello",
+        "to": "scene"
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "approach",
+      "ch": "Receipt",
+      "dur": 3,
+      "stage": "none",
+      "look": "hello",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "A message travels toward Iona.",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "catch",
+      "ch": "Receipt",
+      "dur": 3,
+      "stage": "none",
+      "look": "hello",
+      "move": "hold",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "She catches the illustrative message.",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "receipt",
+      "ch": "Receipt",
+      "dur": 4,
+      "stage": "none",
+      "look": "hello",
+      "move": "hold",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Receipt still needs an acknowledgment.",
+      "speed": 1,
+      "blocks": []
+    }
+  ],
+  "captions": "kinetic",
+  "voiceover": {
+    "src": "videos/iona-receive/voiceover.wav",
+    "durationSec": 10
+  }
+}

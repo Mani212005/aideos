@@ -245,6 +245,7 @@ function markTemplates(filmId: string, note: string): void {
 
 // Runs the vision judge on a finished design and sends failed frames back through the path that made it.
 async function judgeDesign(filmId: string, outcome: DesignOutcome, opts: DesignFilmOptions): Promise<DesignOutcome> {
+  if (readFilm(filmId)?.scene?.renderer === "three") return { ...outcome, note: `${outcome.note}; Three craft unmeasured by SVG-only vision judge. Review actual FilmView renders.` };
   if (opts.judge === false || (opts.judge === undefined && process.env.NODE_TEST_CONTEXT)) return outcome;
   const judgeOptions: JudgeOptions = { skipAgent: opts.skipAgent, ownerKey: opts.ownerKey, onProgress: opts.onProgress, ...(opts.judge ?? {}) };
   const repair = async (errors: string): Promise<boolean> => {

@@ -11,6 +11,8 @@
 import { designFilm, planFilmLook } from "../designSpec/designer";
 import { buildDesign, designDir, formatBuildStatus, readCheckedLookPlan } from "../designSpec/build";
 import { designSpecSchema } from "../designSpec/spec";
+import { STAGE_RESOURCES, STAGE_RESOURCE_HASH, CEL_TREATMENT } from "../../src/dl/scene/rigs/registry";
+import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import type { LookPlan } from "../lookPlan/schema";
 import { writeLookMd } from "../lookPlan/render";
 import crypto from "crypto";
@@ -81,8 +83,14 @@ function designFilesFingerprint(slug: string): string | null {
   try {
     const parsed = designSpecSchema.safeParse(JSON.parse(raw));
     if (!parsed.success) return fingerprint(raw);
-    const files = [...parsed.data.assets.map((a) => a.file), ...(parsed.data.background ? [parsed.data.background.file] : [])];
-    return fingerprint(raw, files.map((file) => {
+    const files = [...parsed.data.assets.flatMap((a) => "file" in a ? [a.file] : []), ...(parsed.data.background ? [parsed.data.background.file] : [])];
+    const resources = "performances" in parsed.data ? Object.keys(STAGE_RESOURCES).map((file) => {
+      const absolute = resolveRepoAssetPath(file);
+      return [file, fs.existsSync(absolute) ? fs.readFileSync(absolute, "utf8") : null];
+    }) : null;
+    const wordsFile = path.join(packageDir(slug), "voiceover_words.json");
+    const timing = "performances" in parsed.data && fs.existsSync(wordsFile) ? fs.readFileSync(wordsFile, "utf8") : null;
+    return fingerprint(raw, resources, timing, STAGE_RESOURCE_HASH, CEL_TREATMENT, files.map((file) => {
       const absolute = path.join(packageDir(slug), file);
       return [file, fs.existsSync(absolute) ? fs.readFileSync(absolute, "utf8") : null];
     }));
@@ -646,6 +654,8 @@ export async function runProduction(
           const outPath = request.outDir ? path.join(outDir, `${slug}-${format}.mp4`) : path.join(outDir, `${format}.mp4`);
           emit("render", "running", `rendering ${format} (${FORMAT_SPECS[format].width}x${FORMAT_SPECS[format].height})`);
           const output = await renderFormat(format, outPath, {
+            concurrency: request.renderConcurrency,
+            browserExecutable: request.browserExecutable,
             onLog: (message, progress) => emit("render", "running", message, progress),
           });
           produced.push(output);

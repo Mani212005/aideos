@@ -151,10 +151,11 @@ function formatVttTime(seconds: number): string {
 }
 
 // Converts structured CaptionWord array into standard WebVTT cue string.
-export function captionWordsToVtt(words: CaptionWord[], fps = 30): string {
+export function captionWordsToVtt(words: CaptionWord[], fps = 30, wordsPerCue = 5): string {
+  if (!Number.isInteger(wordsPerCue) || wordsPerCue < 1) throw new Error("Caption cue word count must be a positive integer");
   if (!words || words.length === 0) return "";
   let vtt = "WEBVTT\n\n";
-  const chunkSize = 5;
+  const chunkSize = wordsPerCue;
   for (let i = 0; i < words.length; i += chunkSize) {
     const chunk = words.slice(i, i + chunkSize);
     const startSec = (chunk[0].startFrame ?? 0) / fps;

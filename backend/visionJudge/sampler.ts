@@ -109,6 +109,7 @@ export function judgeFramesDir(filmId: string): string {
 export function renderSamples(filmId: string, film: Film, options: SampleOptions = {}): SampleStill[] {
   const scene = film.scene as Scene | undefined;
   if (!scene) throw new Error(`film "${filmId}" has no scene, so there is nothing to sample stills from`);
+  if (scene.renderer === "three") throw new Error("Three stage craft is unmeasured by the SVG sampler; review actual FilmView renders instead.");
   const { svgSources, elementIdsByAssetId } = loadSceneAssets(scene);
   const compiled = compileScene(scene, { assetElementIds: elementIdsByAssetId });
   const outDir = options.outDir ?? judgeFramesDir(filmId);

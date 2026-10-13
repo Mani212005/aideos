@@ -16,6 +16,7 @@ import { compileScene } from "./compile";
 import { SceneView } from "./SceneView";
 
 export interface SceneClipProps {
+  transparentBackground?: boolean;
   scene: Scene;
   /** SVG source text per asset svgSource path. Without it, assets fall back to placeholders. */
   svgSources?: Record<string, string>;
@@ -53,6 +54,7 @@ export const SceneClip: React.FC<SceneClipProps> = ({
   accent,
   compileOptions,
   onCompiled,
+  transparentBackground,
 }) => {
   const frame = useSafeCurrentFrame();
 
@@ -77,6 +79,7 @@ export const SceneClip: React.FC<SceneClipProps> = ({
       sceneSize={scene.sceneSize}
       accent={accent}
       svgSources={svgSources}
+      transparentBackground={transparentBackground}
     />
   );
 };

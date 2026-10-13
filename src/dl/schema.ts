@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { castSchema, performanceSchema } from "./scene/stageContract";
 
 /**
  * ---------------------------------------------------------------------------
@@ -295,6 +296,7 @@ export const svgAnimationTimelineSchema = z.object({
 });
 
 export const environmentAssetSchema = z.object({
+  plane: z.enum(["background", "foreground"]).optional(),
   assetId: z.string().min(1),
   svgSource: z.string().min(1).endsWith(".svg"),
   layer: z.number().int().optional(),
@@ -321,6 +323,9 @@ export type CameraKeyframe = z.infer<typeof cameraKeyframeSchema>;
 export type CameraTrack = z.infer<typeof cameraTrackSchema>;
 
 export const sceneSchema = z.object({
+  renderer: z.enum(["svg", "three"]).optional(),
+  cast: z.array(castSchema).optional(),
+  performances: z.array(performanceSchema).optional(),
   schemaVersion: z.string().min(1),
   sceneId: z.string().min(1),
   fps: z.number().int().positive(),
@@ -332,7 +337,7 @@ export const sceneSchema = z.object({
   background: environmentAssetSchema,
   props: z.array(environmentAssetSchema),
   actors: z.array(z.unknown()).default([]),
-});
+}).strict();
 
 export type FilmScene = z.infer<typeof sceneSchema>;
 

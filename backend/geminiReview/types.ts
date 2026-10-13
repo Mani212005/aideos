@@ -23,6 +23,7 @@ export interface ReviewFeedbackItem {
 }
 
 export interface DeterministicVideoFacts {
+  stage?: unknown;
   durationSec: number;
   width?: number;
   height?: number;

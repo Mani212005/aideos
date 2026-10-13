@@ -14,6 +14,12 @@ Final acceptance requires a Gemini 3.8 Flash review score of 9.0 or higher (out 
 
 When a film has `design/look.json`, `aideos review` reports plan adherence as a non-gating score until it has been calibrated on the proof and two or three more films.
 
+For a declared performance, anticipation may precede its narrated decisive word. Contact is bound
+exactly to the measured word cue, with preparation and recovery checked separately. Approved
+physical-action interpolation stays in `src/dl/performance/`; camera and UI motion retain their
+existing easing rules. The short P0 Three integration slice uses a fixed camera and reports the
+full camera/pacing rubric honestly. It is engineering evidence, not an accepted full explainer.
+
 | # | Criterion | How to measure | Pass target | Method |
 |---|---|---|---|---|
 | 1 G | **One persistent stage** | element-level: of the elements visible at the end of beat k, share still visible (possibly transformed) in beat k+1; pixel-level fallback: layout correlation over 2 s | stage-clear events <= 1 per 30 s; median 2 s layout correlation >= 0.65 | deterministic (data and pixels) |
