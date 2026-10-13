@@ -38,9 +38,9 @@ history, random calls, disk reads or camera input. Values hold at both span endp
 
 We chose typed plain records under `src/dl/performance/` because the existing scene engine
 keeps deterministic frame math under `src/dl/` and filesystem/authoring work in `backend/`.
-This supplies an action data format without expanding design-spec or introducing a stage.
-The recovered geometry lives only in `test_fixtures/performance/iona/`; its browser adapter
-is an isolated verification tool. It never enters Film, Studio, or the SVG scene engine.
+The recovered geometry lives in `test_fixtures/performance/iona/`; for the opt-in Three
+stage integration (P0) mounting Iona in FilmView, see `docs/THREE_STAGE_P0.md`.
+The standalone browser adapter remains an isolated verification tool.
 
 ## Validation
 
