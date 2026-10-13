@@ -95,7 +95,7 @@ export function readCheckedLookPlan(film: Film): { plan?: LookPlan; errors: stri
 // Checks the design's cast, carried motion, device overrides and camera against its look plan.
 export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: TimedWord[], pkg: string, plan: LookPlan): string[] {
   const errors: string[] = [];
-  const idsByAsset = new Map(spec.assets.map((a) => [a.id,
+  const idsByAsset = new Map<string, string[]>(spec.assets.map((a): [string, string[]] => [a.id,
     "file" in a ? collectSvgElementIds(parseSvgDocument(fs.readFileSync(path.join(pkg, a.file), "utf8"))) : [],
   ]));
   for (const item of plan.film.cast) {

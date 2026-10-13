@@ -24,6 +24,7 @@ import { bindReceiveSpan } from "./bindReceive";
 import { validateStageResources } from "./resources";
 import { validateScene } from "../../src/dl/scene/validateScene";
 import { validateStageSvgResources } from "../../src/dl/scene/validateStage";
+import { receiveSchema } from "../../src/dl/scene/stageContract";
 import { prepareStageFacts, stageEvidence } from "../../src/dl/scene/stageFacts";
 import { projectStagePoint, stageViewport } from "../../src/dl/scene/projection";
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
@@ -68,6 +69,16 @@ test("strict serialization preserves performance and rejects unknown v2 fields a
   assert.equal(caption?.startFrame, film.scene!.performances![0].decisive.frame);
   assert.throws(() => parseFilm({ ...film, scene: { ...film.scene, poseHistory: [] } }));
   assert.throws(() => stageDesignSchema.parse({ ...read("design/design.json"), mixer: {} }));
+  const data = film.scene!.performances![0].data;
+  for (const value of [[], [1, 2], [1, 2, 3, 4], [1, 2, NaN], [1, 2, Infinity], ["1", 2, 3]]) {
+    assert.throws(() => receiveSchema.parse({ ...data, root: { ...data.root, position: [{ frame: 0, value }] } }));
+  }
+  for (const propRotation of [[], [0, 0, 0], [0, 0, 0, 1, 2], [0, 0, 0, NaN], [0, 0, 0, Infinity], [0, 0, 0, "1"]]) {
+    assert.throws(() => receiveSchema.parse({ ...data, contact: { ...data.contact, propRotation } }));
+  }
+  for (const flight of [[], [data.contact.flight[0]], [...data.contact.flight, [0, 0, 0]], [[0, 0], [0, 0, 0]]]) {
+    assert.throws(() => receiveSchema.parse({ ...data, contact: { ...data.contact, flight } }));
+  }
   const actorScene = { ...film.scene, actors: [{ instanceId: "legacy" }] } as unknown as Scene;
   assert.equal(validateScene(actorScene).errors[0].rule, 21);
   assert.equal(validateScene({ ...film.scene, renderer: "svg" } as Scene).isValid, false);

@@ -13,6 +13,8 @@ The approved procedural Iona was promoted unchanged in geometry/face paint/cel s
 - Final full-composite parity uses firstmate's approved fallback: direct FilmView with the editor's input props rendered as Remotion stills, compared to Video export stills. Both wide and reel have zero different pixels. This is not a claim that the final full-composite PNG came from the editor Player. Browser AXI refs/canvas were disrupted by Vite and test-generated reloads; two recovery attempts were used.
 - Initial real full-Player versus render comparison before drift/caption repairs had RGB MAE 0.06193/255, including rail/driver differences. The final fallback uses identical Chrome/ANGLE and exact equality, without a broad tolerance.
 
+The fresh validation gate exposed a compiler-context gap: root TypeScript 5.9 checks the editor project through `npx tsc --noEmit -p editor/tsconfig.app.json`, while the editor build uses its own TypeScript 6.0. The gate's older compiler inferred optional tuple fields with the editor configuration. Required tuple type predicates and explicit Map entry types now preserve the existing runtime contracts under both configurations. Regression assertions reject wrong tuple lengths, nonnumeric values, NaN and Infinity. Root and editor dependencies are installed locally from their lockfiles for the final checks. The frozen rig and rendered performance are unchanged.
+
 ## Mac baseline
 
 macOS 15.6 (24G84), Mac16,12, 10 CPUs, 16 GiB RAM. Installed Google Chrome with ANGLE; exact Three 0.180.0, Fiber 9.4.0, Remotion/ThreeCanvas 4.0.499. Sequential formats, concurrency 2, PNG frames, H.264 CRF 16.
