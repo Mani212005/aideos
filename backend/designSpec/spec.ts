@@ -115,8 +115,8 @@ const stageAsset = z.union([
   legacyIonaAssetSchema,
   z.strictObject({ id: specAssetSchema.shape.id, renderer: z.literal("three"), kind: z.literal("prop"), asset: z.literal("paper-glider-v1"), treatment: z.literal("cel-v1") }),
 ]);
-/** reach: "fail" refuses a character that cannot reach within its limits; "clamp" pulls the grip in and records a warning. */
-export const authoredPerformanceSchema = z.strictObject({ id: specAssetSchema.shape.id, action: z.literal("receive-v1"), actor: z.string().min(1), prop: z.string().min(1), start: cue, decisive: decisiveSchema, targetOffset: vec3Schema.default([0, 0, 0]), reach: z.enum(["fail", "clamp"]).default("fail"), afterState: z.string().min(1) });
+/** limits: "fail" refuses a character whose reach, hinge or rotation limits cannot hold the action; "clamp" fits the action inside them and records each change. */
+export const authoredPerformanceSchema = z.strictObject({ id: specAssetSchema.shape.id, action: z.literal("receive-v1"), actor: z.string().min(1), prop: z.string().min(1), start: cue, decisive: decisiveSchema, targetOffset: vec3Schema.default([0, 0, 0]), limits: z.enum(["fail", "clamp"]).default("fail"), afterState: z.string().min(1) });
 export const stageDesignSchema = legacyDesignSchema.extend({ schema: z.literal("aideos.design/2"), renderer: z.literal("three"), assets: z.array(stageAsset).max(40), performances: z.array(authoredPerformanceSchema).min(1).max(8) }).strict();
 export const designSpecSchema = z.union([stageDesignSchema, legacyDesignSchema.extend({ schema: z.literal("aideos.design/1").optional(), renderer: z.literal("svg").optional() })]);
 

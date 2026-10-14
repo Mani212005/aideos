@@ -47,12 +47,12 @@ export function addCelLights(host: Group): void {
 }
 
 // Builds a primitive's geometry.
-function geometryFor(part: ResolvedPart): BufferGeometry {
+function geometryFor(part: ResolvedPart, faceSpan: number): BufferGeometry {
   const g = part.geometry;
   if (g.kind === "panel") return panelGeometry(g.surface, g.a, g.b, g.lift, g.steps);
   if (g.kind === "facets") return facetsGeometry(g.triangles);
   const tube = tubeGeometry(g.points, g.radii, g.origin, g.segments, g.radial, g.caps);
-  return g.kind === "head" ? addHeadUv(tube) : tube;
+  return g.kind === "head" ? addHeadUv(tube, faceSpan) : tube;
 }
 
 // Creates geometry, materials and a private face texture for one character; an absent canvas permits CPU-only measurement.
@@ -77,7 +77,7 @@ export function buildCharacter(spec: CharacterSpec, faceCanvas?: HTMLCanvasEleme
   const parts: CharacterArt["parts"] = { meshes: {}, geometries: [], inks: [], resolved };
   const inkColor = palette[spec.outline.color];
   for (const part of resolved) {
-    const geometry = geometryFor(part);
+    const geometry = geometryFor(part, spec.face.span);
     const side = part.doubleSided ? DoubleSide : FrontSide;
     let material: Material;
     if (part.geometry.kind === "head") material = new MeshBasicMaterial({ map: tex });

@@ -5,7 +5,7 @@
  */
 import { characterSpecSchema, type CharacterSpec } from "./schema";
 import { characterHash } from "./hash";
-import { expandParts, type CharacterIssue, type ResolvedPart } from "./expand";
+import { expandParts, triangleCount, type CharacterIssue, type ResolvedPart } from "./expand";
 import { restPositions, rigFromCharacter } from "./rig";
 import type { CharacterRig } from "../performance/types";
 
@@ -13,6 +13,10 @@ export type { CharacterIssue } from "./expand";
 
 /** Largest rest-pose gap between a sole socket and the ground before the spec is rejected. */
 export const GROUND_TOLERANCE = 1e-6;
+/** Most triangles one character may draw, keeping several performers inside a 16 GB render worker. */
+export const TRIANGLE_BUDGET = 120_000;
+/** Most meshes one character may create (each outlined mesh is a second draw call). */
+export const PART_BUDGET = 160;
 
 // Formats a Zod or semantic issue path as a readable field reference such as parts[3].joint.
 export function formatPath(path: ReadonlyArray<PropertyKey>): string {
@@ -95,6 +99,9 @@ export function validateCharacterSemantics(spec: CharacterSpec): { rig: Characte
     if (part.geometry.kind === "head") heads++;
   }
   if (heads !== 1) errors.push({ path: "parts", message: `needs exactly one head part for the painted face, found ${heads}` });
+  const triangles = expanded.parts.reduce((sum, part) => sum + triangleCount(part), 0);
+  if (triangles > TRIANGLE_BUDGET) errors.push({ path: "parts", message: `draws ${triangles} triangles, over the ${TRIANGLE_BUDGET} budget; lower segments or radial on the largest parts` });
+  if (expanded.parts.length > PART_BUDGET) errors.push({ path: "parts", message: `creates ${expanded.parts.length} meshes, over the ${PART_BUDGET} budget` });
   spec.secondary.forEach((swing, i) => swing.parts.forEach((piece, j) => {
     if (!partIds.has(piece.part)) errors.push({ path: `secondary[${i}].parts[${j}].part`, message: `unknown part "${piece.part}"` });
   }));

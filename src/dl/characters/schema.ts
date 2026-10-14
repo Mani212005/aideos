@@ -152,6 +152,8 @@ export const characterSpecSchema = z.strictObject({
   surfaces: z.record(token, z.strictObject({ y: z.array(z.number()).min(2), rx: z.array(z.number().positive()).min(2), rz: z.array(z.number().positive()).min(2) })).default({}),
   face: z.strictObject({
     size: z.number().int().min(256).max(2048).default(1024),
+    /** Head-local width the face texture spans (uv = x / span + 0.5); widen it for a larger head. */
+    span: z.number().positive().default(1),
     base: hex, skin: token, oval: z.tuple([z.number(), z.number(), z.number().positive(), z.number().positive()]).refine((v): v is [number, number, number, number] => v.length === 4),
     ovalLine: z.strictObject({ color: hex, alpha: z.number().min(0).max(1), width: z.number().positive() }).optional(),
     blush: z.strictObject({ color: hex, alpha: z.number().min(0).max(1), at: vec2, size: vec2 }).optional(),

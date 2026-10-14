@@ -38,10 +38,10 @@ export function tubeGeometry(pts: readonly Num3[], radii: readonly Radius[], o: 
   return g;
 }
 
-// Adds the head's planar front UV map (x, y + 0.5) so the painted face texture lands on the sculpted surface.
-export function addHeadUv(geometry: BufferGeometry): BufferGeometry {
+// Adds the head's planar front UV map (x / span + 0.5, y / span + 0.5) so the painted face lands on the sculpted surface.
+export function addHeadUv(geometry: BufferGeometry, span = 1): BufferGeometry {
   const pa = geometry.attributes.position, uv: number[] = [];
-  for (let i = 0; i < pa.count; i++) uv.push(pa.getX(i) + .5, pa.getY(i) + .5);
+  for (let i = 0; i < pa.count; i++) uv.push(pa.getX(i) / span + .5, pa.getY(i) / span + .5);
   geometry.setAttribute("uv", new Float32BufferAttribute(uv, 2));
   return geometry;
 }

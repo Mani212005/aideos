@@ -138,3 +138,11 @@ export function expandParts(spec: CharacterSpec): { parts: ResolvedPart[]; issue
   });
   return { parts, issues };
 }
+
+// Counts the triangles one resolved part draws (outlines double the draw cost, not the count).
+export function triangleCount(part: ResolvedPart): number {
+  const g = part.geometry;
+  if (g.kind === "panel") return (g.a.length - 1) * g.steps * 2;
+  if (g.kind === "facets") return Math.floor(g.triangles.length / 3);
+  return g.segments * g.radial * 2 + 2 * g.radial;
+}
