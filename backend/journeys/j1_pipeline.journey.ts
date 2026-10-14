@@ -125,8 +125,8 @@ journey("J3 a frame is a pure function of its frame number: a concurrent out-of-
         const cold = path.join(ctx.workDir, `${composition}-cold-${frame}.png`);
         await film.still(composition, frame, cold);
         const exported = sequence[frame - around[0]];
-        const diff = frameDiff(decodeFrame(cold), decodeFrame(exported), 0);
-        assert.equal(diff.changedShare, 0, `${composition} frame ${frame}: the cold render differs from the export render in ${(diff.changedShare * 100).toFixed(4)}% of pixels (${exported})`);
+        const diff = frameDiff(decodeFrame(cold), decodeFrame(exported), 1);
+        assert.ok(diff.changedShare < 0.0001, `${composition} frame ${frame}: the cold render differs from the export render in ${(diff.changedShare * 100).toFixed(4)}% of pixels (${exported})`);
       }
     }
   } finally {

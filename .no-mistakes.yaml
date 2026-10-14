@@ -2,5 +2,5 @@
 # Inputs and outputs: repository source -> test and lint exit codes.
 # Used by: no-mistakes CLI during automated verification runs.
 commands:
-  test: '(test -d node_modules || npm ci) && npm run ci -- unit journeys'
+  test: '(test -d node_modules || npm ci) && (test -d editor/node_modules || npm --prefix editor ci) && npm run ci -- unit journeys'
   lint: '(test -d node_modules || npm ci) && (test -d editor/node_modules || npm --prefix editor ci) && npm run ci -- static'

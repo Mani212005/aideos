@@ -4,7 +4,7 @@
  * Used by: scripts/smoke_studio.ts, and any later studio journey (scrub, save, reload) that needs a real browser.
  */
 
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import net from "node:net";
 import os from "node:os";
@@ -26,16 +26,35 @@ export function freePort(): Promise<number> {
 }
 
 /** Polls a URL until it answers or the deadline passes. */
-export async function waitForHttp(url: string, timeoutMs: number): Promise<void> {
+export async function waitForHttp(
+  url: string,
+  timeoutMs: number,
+  abortIf?: () => string | undefined,
+  onSleep?: (wake: () => void) => void,
+): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    const aborted = abortIf?.();
+    if (aborted) throw new Error(aborted);
     try {
       if ((await fetch(url)).ok) return;
     } catch {
       // Not up yet.
     }
-    await new Promise((r) => setTimeout(r, 250));
+    const abortedAfter = abortIf?.();
+    if (abortedAfter) throw new Error(abortedAfter);
+    const delay = Math.min(250, Math.max(0, deadline - Date.now()));
+    if (delay <= 0) break;
+    await new Promise<void>((r) => {
+      const timer = setTimeout(r, delay);
+      onSleep?.(() => {
+        clearTimeout(timer);
+        r();
+      });
+    });
   }
+  const aborted = abortIf?.();
+  if (aborted) throw new Error(aborted);
   throw new Error(`nothing answered at ${url} within ${timeoutMs}ms`);
 }
 
@@ -49,6 +68,9 @@ export interface DevServer {
 
 /** Starts the Vite editor on a free port; `videosDir` (when given) is where it reads and writes packages. */
 export async function startEditor(videosDir?: string): Promise<DevServer> {
+  if (!fs.existsSync(path.join(EDITOR_DIR, "node_modules"))) {
+    spawnSync("npm", ["--prefix", EDITOR_DIR, "ci"], { stdio: "inherit" });
+  }
   const port = await freePort();
   const url = `http://127.0.0.1:${port}/`;
   const child: ChildProcess = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
@@ -60,25 +82,58 @@ export async function startEditor(videosDir?: string): Promise<DevServer> {
   let log = "";
   child.stdout?.on("data", (d) => (log += d));
   child.stderr?.on("data", (d) => (log += d));
+  let exitReason: string | undefined;
+  let wakeSleep: (() => void) | undefined;
+  const onExit = (code: number | null, signal: string | null) => {
+    exitReason = `dev server exited with code ${code ?? signal ?? "unknown"} before answering`;
+    wakeSleep?.();
+  };
+  const onError = (err: Error) => {
+    exitReason = `dev server failed to start: ${err.message}`;
+    wakeSleep?.();
+  };
+  child.once("exit", onExit);
+  child.once("error", onError);
   try {
-    await waitForHttp(url, 60000);
+    await waitForHttp(
+      url,
+      180000,
+      () => {
+        if (exitReason) return exitReason;
+        if (child.exitCode !== null) {
+          return `dev server exited with code ${child.exitCode} before answering`;
+        }
+        return undefined;
+      },
+      (wake) => {
+        wakeSleep = wake;
+      },
+    );
   } catch (err) {
-    try {
-      process.kill(-child.pid!, "SIGTERM");
-    } catch {
-      child.kill("SIGTERM");
+    if (child.pid) {
+      try {
+        process.kill(-child.pid, "SIGTERM");
+      } catch {
+        child.kill("SIGTERM");
+      }
     }
-    throw err;
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`${msg}${log ? `\nServer log:\n${log}` : ""}`);
+  } finally {
+    child.off("exit", onExit);
+    child.off("error", onError);
   }
   return {
     url,
     log: () => log,
     stop: () => {
       // The server runs in its own process group so npx and vite exit together.
-      try {
-        process.kill(-child.pid!, "SIGTERM");
-      } catch {
-        child.kill("SIGTERM");
+      if (child.pid) {
+        try {
+          process.kill(-child.pid, "SIGTERM");
+        } catch {
+          child.kill("SIGTERM");
+        }
       }
     },
   };
