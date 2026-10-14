@@ -3,13 +3,13 @@
  * Inputs and outputs: registry constants -> finite approved identities and resource fingerprints.
  * Used by: stage validation, compilation, Node resource integrity checks and scripts/freeze_stage_resources.ts.
  */
-export const STAGE_RESOURCE_HASH = "fa3c7a182e759dd23b3ef0ae2efc839b29473ce514ce6c171efdb241da73fcfa";
+export const STAGE_RESOURCE_HASH = "2d4846d862f6fb8606384d96aed5d03df07e3877959a7476a2ee7bfd346bb6ae";
 export const STAGE_RESOURCES = {
   "src/dl/characters/expand.ts": "777bd07b050d09c20f70b63fc03edf91e5131fecbdbf19d86ac0f56bf4cec37e",
   "src/dl/characters/rig.ts": "995e4d2c3bbde609f39153d8edf749b00bf4711e7cc5f9d791e2c62dc093a95f",
   "src/dl/scene/characters/geometry.ts": "1be9146b2172e5cd4e3c1c7dae163095801c0b19717d19f6b72c423365451f09",
-  "src/dl/scene/characters/face.ts": "4757e97280f90414e74b397b286166e5b93369594c95a5aa278832bb553df9d8",
-  "src/dl/scene/characters/build.ts": "0f5d625375cd4facbd261b99a256f498f10bb16f6fb65eb7f9806f5e447f0162",
+  "src/dl/scene/characters/face.ts": "7f722aaa03c5c59ec6b7c6d578e6d3ab08f955a321b0608d6495ee67703b8f0f",
+  "src/dl/scene/characters/build.ts": "5fbc08bcff0352581aa87003d60e87e1f312a348720402f6450e8116ca14caa5",
   "src/dl/scene/characters/apply.ts": "e5e1581b64a83ad3925a75328b264ff39831ab4979ff14a5e2a410024598b4b9",
   "src/dl/scene/props/paperGlider.ts": "ff44b6a9ecbc6dcd395a87bc28b254b1d3bf65c8a2c713c64a4989d65e442528",
   "src/dl/performance/iona.ts": "78a3ea5666b2e4c6b393b0a541b60e8d9124683fd16c0989a07e58937295566c",

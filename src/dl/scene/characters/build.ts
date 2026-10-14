@@ -13,7 +13,7 @@ import type { CharacterSpec } from "../../characters/schema";
 import type { ExpressionBlend } from "../../performance/types";
 import { CEL_TREATMENT } from "../rigs/registry";
 import { addHeadUv, facetsGeometry, panelGeometry, tubeGeometry } from "./geometry";
-import { faceValues, paintFace, type FaceValues } from "./face";
+import { faceValues, paintFace, type FaceCanvas, type FaceValues } from "./face";
 
 /** One character's private Three resources. Never share an instance between characters or contexts. */
 export interface CharacterArt {
@@ -56,12 +56,12 @@ function geometryFor(part: ResolvedPart, faceSpan: number): BufferGeometry {
 }
 
 // Creates geometry, materials and a private face texture for one character; an absent canvas permits CPU-only measurement.
-export function buildCharacter(spec: CharacterSpec, faceCanvas?: HTMLCanvasElement): CharacterArt {
+export function buildCharacter(spec: CharacterSpec, faceCanvas?: FaceCanvas): CharacterArt {
   const palette = Object.fromEntries(Object.entries(spec.palette).map(([token, hex]) => [token, parseInt(hex.slice(1), 16)]));
   const fc = faceCanvas;
   if (fc) fc.width = fc.height = spec.face.size;
   const fx = fc?.getContext("2d") ?? undefined;
-  const tex = fc ? new CanvasTexture(fc) : new Texture();
+  const tex = fc ? new CanvasTexture(fc as unknown as ConstructorParameters<typeof CanvasTexture>[0]) : new Texture();
   tex.colorSpace = SRGBColorSpace;
   tex.minFilter = tex.magFilter = LinearFilter;
   tex.generateMipmaps = false;

@@ -5,6 +5,39 @@
  */
 import type { ExpressionPreset, FaceSpec } from "../../characters/schema";
 
+/** The slice of a 2D canvas context the painter uses; declared structurally so Node-side compiles need no DOM library. */
+export interface FaceContext {
+  fillStyle: unknown;
+  strokeStyle: unknown;
+  lineWidth: number;
+  lineCap: string;
+  lineJoin: string;
+  globalAlpha: number;
+  setTransform(a: number, b: number, c: number, d: number, e: number, f: number): void;
+  fillRect(x: number, y: number, w: number, h: number): void;
+  beginPath(): void;
+  moveTo(x: number, y: number): void;
+  lineTo(x: number, y: number): void;
+  quadraticCurveTo(cx: number, cy: number, x: number, y: number): void;
+  bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number): void;
+  ellipse(x: number, y: number, rx: number, ry: number, rotation: number, start: number, end: number): void;
+  arc(x: number, y: number, r: number, start: number, end: number): void;
+  fill(): void;
+  stroke(): void;
+  clip(): void;
+  save(): void;
+  restore(): void;
+  scale(x: number, y: number): void;
+  translate(x: number, y: number): void;
+  createLinearGradient(x0: number, y0: number, x1: number, y1: number): { addColorStop(offset: number, color: string): void };
+}
+/** A canvas the face can be painted into (an HTMLCanvasElement in the browser). */
+export interface FaceCanvas {
+  width: number;
+  height: number;
+  getContext(contextId: "2d"): FaceContext | null;
+}
+
 /** Blended expression values in painter units: eye openness, brow tilt and raise, mouth curve and opening. */
 export interface FaceValues { o: number; bt: number; br: number; mc: number; mo: number }
 
@@ -18,7 +51,7 @@ function rgba(color: string, alpha: number): string {
 }
 
 // Draws the approved almond eye: lidded sclera, gradient iris, pupil, highlights, lash flick and crease.
-function almondEye(c: CanvasRenderingContext2D, face: FaceSpec, e: FaceValues, h: number): void {
+function almondEye(c: FaceContext, face: FaceSpec, e: FaceValues, h: number): void {
   if (e.o < .4) { c.lineWidth = .016; c.beginPath(); c.moveTo(-.09, 0); c.bezierCurveTo(-.04, .055, .05, .06, .105, .01); c.stroke(); return; }
   const lo = .035 * Math.min(e.o, 1), up = () => { c.beginPath(); c.moveTo(-.09, 0); c.bezierCurveTo(-.05, h * 1.15, .05, h * 1.25, .105, .02); };
   up(); c.bezierCurveTo(.06, -lo, -.04, -lo, -.09, 0); c.save(); c.clip(); c.fillStyle = face.eyes.sclera; c.fillRect(-.1, -.1, .25, .2);
@@ -31,7 +64,7 @@ function almondEye(c: CanvasRenderingContext2D, face: FaceSpec, e: FaceValues, h
 }
 
 // Draws a large round mascot eye: outlined sclera, big gradient iris, pupil and two catch lights; closed reads as a smiling arc.
-function roundEye(c: CanvasRenderingContext2D, face: FaceSpec, e: FaceValues): void {
+function roundEye(c: FaceContext, face: FaceSpec, e: FaceValues): void {
   if (e.o < .4) { c.lineWidth = .02; c.beginPath(); c.moveTo(-.07, -.01); c.quadraticCurveTo(0, .05, .07, -.01); c.stroke(); return; }
   const rx = .07, ry = .088 * Math.min(e.o, 1.25);
   c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, 7); c.fillStyle = face.eyes.sclera; c.fill();
@@ -45,7 +78,7 @@ function roundEye(c: CanvasRenderingContext2D, face: FaceSpec, e: FaceValues): v
 }
 
 // Repaints the whole face for one expression without touching geometry, pose or camera.
-export function paintFace(c: CanvasRenderingContext2D, face: FaceSpec, palette: Readonly<Record<string, string>>, e: FaceValues): void {
+export function paintFace(c: FaceContext, face: FaceSpec, palette: Readonly<Record<string, string>>, e: FaceValues): void {
   c.setTransform(face.size, 0, 0, -face.size, face.size / 2, face.size / 2); c.lineCap = c.lineJoin = "round";
   c.fillStyle = face.base; c.fillRect(-.5, -.5, 1, 1);
   c.fillStyle = palette[face.skin]; c.beginPath(); c.ellipse(face.oval[0], face.oval[1], face.oval[2], face.oval[3], 0, 0, 7); c.fill();
