@@ -12,7 +12,7 @@ import { createPerformanceEvaluator } from "../performance/evaluate";
 import { IONA_RIG } from "../performance/iona";
 import { createIona, applyIona } from "./rigs/iona";
 import { compileCameraTrack } from "./cameraTrack";
-import { stageViewport } from "./projection";
+import { applyStageCamera } from "./projection";
 import { validateStage } from "./validateStage";
 import { CEL_TREATMENT } from "./rigs/registry";
 import type { Scene } from "./types";
@@ -86,13 +86,8 @@ function FrameCommit({ scene: manifest, frame, width, height, ready }: Props & {
       try {
         const res = resources.current ?? (resources.current = createResources());
         const pose = res.cameraFrames[frame];
-        const viewport = stageViewport(width, height, manifest.sceneSize);
         const cam = res.camera;
-        cam.left = -viewport.halfWidth / pose.zoom; cam.right = -cam.left;
-        cam.top = viewport.halfHeight / pose.zoom; cam.bottom = -cam.top;
-        cam.position.set(pose.center.x - manifest.sceneSize.w / 2, manifest.sceneSize.h / 2 - pose.center.y, 2000);
-        cam.rotation.set(0, 0, pose.rotation * Math.PI / 180);
-        cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
+        applyStageCamera(cam, pose, width, height, manifest.sceneSize);
         for (const entry of res.entries) applyIona(entry.art, entry.evaluate(frame));
         world.updateMatrixWorld(true);
         if (!res.compiled) { await gl.compileAsync(world, cam); res.compiled = true; }

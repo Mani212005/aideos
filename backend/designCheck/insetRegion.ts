@@ -4,8 +4,8 @@
  * shot is on screen. Art is measured per drawn element (never per asset, whose box would cover the whole stage),
  * through the compiled scene so authored transforms, element animation, asset placement and the scene camera all count,
  * then through each format's window onto the square scene, in both the wide cut and the reel.
- * Inputs and outputs: a parsed film with a scene and inset shots -> inset-region findings naming shot, asset, element, format and frame.
- * Used by: backend/designCheck/designCheck.ts, backend/designCheck/designCheck.test.ts.
+ * Inputs and outputs: a parsed scene or film -> projected SVG parts and inset findings naming shot, asset, element, format and frame.
+ * Used by: backend/designCheck/designCheck.ts, threeStage.ts and designCheck.test.ts.
  */
 
 import fs from "node:fs";
@@ -14,6 +14,7 @@ import type { Film } from "../../src/dl/schema";
 import { getInsetRegion, INSET_FORMAT_FRAMES, type InsetRect } from "../../src/dl/fullScreenHeroLayout";
 import { compileScene, type CompiledEntity, type CompiledFrame } from "../../src/dl/scene/compile";
 import type { Scene } from "../../src/dl/scene/types";
+import { stageProjection } from "../../src/dl/scene/projection";
 import { parseSvgDocument, type SvgNode } from "../../src/dl/scene/svgDocument";
 import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import {
@@ -110,12 +111,7 @@ function sceneToFrame(frame: CompiledFrame, scene: Scene, width: number, height:
   const sw = scene.sceneSize.w;
   const sh = scene.sceneSize.h;
   const cam = frame.camera ?? { center: { x: sw / 2, y: sh / 2 }, zoom: 1, rotation: 0 };
-  let m = translation(sw / 2, sh / 2);
-  m = multiply(m, rotation(cam.rotation));
-  m = multiply(m, scaling(cam.zoom, cam.zoom));
-  m = multiply(m, translation(-cam.center.x, -cam.center.y));
-  const fit = Math.max(width / sw, height / sh);
-  return multiply(multiply(translation((width - sw * fit) / 2, (height - sh * fit) / 2), scaling(fit, fit)), m);
+  return stageProjection(cam, width, height, scene.sceneSize);
 }
 
 // Measures how far an axis-aligned box reaches into a region, or null when it only touches or misses.
@@ -126,12 +122,12 @@ function overlapOf(box: Box, region: InsetRect): { w: number; h: number } | null
 }
 
 // Finds the visible element of one entity that reaches into the region at one frame, if any.
-function offender(
+export function projectedSvgParts(
   entity: CompiledEntity,
   frameToPx: Affine,
-  region: InsetRect,
-): { name: string } | null {
-  if (!entity.svgSource || entity.transform.opacity <= INSET_ART_MIN_OPACITY) return null;
+): Array<{ name: string; bounds: Box }> {
+  if (!entity.svgSource || entity.transform.opacity <= INSET_ART_MIN_OPACITY) return [];
+  const parts: Array<{ name: string; bounds: Box }> = [];
   const placed = multiply(
     frameToPx,
     multiply(multiply(translation(entity.transform.x, entity.transform.y), scaling(entity.transform.scale, entity.transform.scale)), rotation(entity.transform.rotation)),
@@ -161,9 +157,20 @@ function offender(
       x1: Math.max(...corners.map((c) => c[0])),
       y1: Math.max(...corners.map((c) => c[1])),
     };
-    if (overlapOf(box, region)) return { name: leaf.name };
+    parts.push({ name: leaf.name, bounds: box });
   }
-  return null;
+  return parts;
+}
+
+// Prepares SVG plane geometry using the runtime compiler and the canonical projector.
+export function prepareSvgProjection(scene: Scene, width: number, height: number) {
+  const compiled = compileScene(scene, { clockMs: 0, skipContinuityVerification: true });
+  // Returns the drawn parts at exactly this frame, preserving element animation and authored opacity.
+  return (frame: number) => {
+    const current = compiled.frames[Math.max(0, Math.min(compiled.frames.length - 1, frame))];
+    const matrix = sceneToFrame(current, scene, width, height);
+    return current.entities.filter((e) => e.kind !== "background").map((e) => ({ id: e.entityId, parts: projectedSvgParts(e, matrix) }));
+  };
 }
 
 // Checks every inset shot of a scene film keeps the inset region free of visible scene art in both formats.
@@ -192,7 +199,7 @@ export function checkInsetRegions(film: Film, scene: Scene): InsetFinding[] {
         const toPx = sceneToFrame(frame, scene, size.width, size.height);
         for (const entity of frame.entities) {
           if (entity.kind === "background" || reported.has(entity.entityId)) continue;
-          const hit = offender(entity, toPx, region);
+          const hit = projectedSvgParts(entity, toPx).find((part) => overlapOf(part.bounds, region));
           if (!hit) continue;
           reported.add(entity.entityId);
           const cut = format === "long" ? "wide" : "reel";

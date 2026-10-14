@@ -33,8 +33,7 @@ import { safeParseLookPlan, type LookPlan } from "../lookPlan/schema";
 import { createCues, FPS, CAPTION_SAFE_SQUARE } from "../sceneKit";
 import { narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
 import { resolveCue } from "../designSpec/cues";
-import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
-import { SUBTITLE_BAND_TOP_RATIO } from "../../src/dl/fullScreenHeroLayout";
+import { checkThreeStage } from "./threeStage";
 
 /** The standard layer rules a finding can belong to. */
 export type DesignRule =
@@ -50,7 +49,8 @@ export type DesignRule =
   | "honest-data"
   | "safe-area"
   | "inset"
-  | "carry-over";
+  | "carry-over"
+  | "occlusion";
 
 /** One problem found in a film's design. Errors block shipping; warnings are worth a look. */
 export interface DesignFinding {
@@ -404,6 +404,7 @@ function checkCamera(scene: Scene, findings: DesignFinding[], targets: DesignChe
       if (target.authoredFocus !== target.focus) {
         findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${keyframeIndex}`, message: `look plan focuses on "${target.focus}" but the design pose does not name that object as its focus.` });
       }
+      if (scene.renderer === "three" && scene.cast?.some((item) => item.id === target.focus)) continue;
       const subject = scene.props.find((prop) => prop.assetId === target.focus || prop.animation?.clips.some((clip) => clip.targets.includes(target.focus!)));
       if (!subject) {
         findings.push({ rule: "camera", severity: "warning", where: `scene.camera keyframe ${keyframeIndex}`, message: `planned focus "${target.focus}" has no scene object to frame.` });
@@ -443,7 +444,7 @@ function checkCarryChangeHolds(film: Film, scene: Scene, plan: LookPlan | undefi
     shotFrames.set(shot.id, { start, end });
   }
   for (const cast of plan.film.cast) {
-    if (scene.renderer === "three" && scene.cast?.some((item) => item.id === cast.id)) continue; // P0 reports stage craft separately from SVG change evidence.
+    if (scene.renderer === "three" && scene.cast?.some((item) => item.id === cast.id)) continue; // Three carry holds are measured over evaluated geometry by checkThreeStage.
     const prop = scene.props.find((item) => item.assetId === cast.id || item.animation?.clips.some((clip) => clip.targets.includes(cast.id)));
     for (const change of cast.changes) {
       const window = shotFrames.get(change.at);
@@ -496,22 +497,8 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
     }
     const hasCaptions = film.captions !== "off";
     if (scene.renderer === "three" && result.errors.length === 0) {
-      for (const [format, width, height] of [["long", 1920, 1080], ["reel", 1080, 1920]] as const) {
-        const facts = prepareStageFacts(scene, width, height);
-        try {
-          const found = new Set<string>();
-          for (let frame = 0; frame < scene.durationFrames; frame++) {
-            for (const pose of facts.at(frame)) for (const [id, box] of [[pose.actor, pose.actorBounds], [pose.prop, pose.propBounds]] as const) {
-              if (box.x0 < 0 || box.y0 < 0 || box.x1 > width || box.y1 > (hasCaptions ? height * SUBTITLE_BAND_TOP_RATIO : height)) {
-                if (!found.has(id)) findings.push({ rule: "safe-area", severity: "error", where: `${format} ${id} frame ${frame}`, message: "posed mesh bounds including outlines cross output crop or caption band; move or scale the cast" });
-                found.add(id);
-              }
-            }
-          }
-        } finally { facts.dispose(); }
-      }
-      findings.push({ rule: "scene", severity: "warning", where: "three stage", message: "numerical action and conservative posed geometry measured in both crops; facial appeal, finger contact, raster presence and depth occlusion unmeasured (P0)" });
-      if (film.shots.some((s) => s.stage === "inset")) findings.push({ rule: "inset", severity: "error", where: "three stage", message: "P0 Three stage does not support device insets; stage-aware inset geometry is deferred" });
+      findings.push(...checkThreeStage(film, scene, context));
+      findings.push({ rule: "scene", severity: "warning", where: "three stage", message: "posed vertices, outlines and sampled mesh depth measured in both crops; facial appeal, finger contact, raster presence and unsampled occlusion remain unmeasured" });
     }
     for (const asset of assets) {
       if (hasCaptions && asset.position.y > CAPTION_SAFE_SQUARE.y1 && asset.assetId !== "background") {

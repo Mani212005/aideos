@@ -11,6 +11,7 @@ import { loadFont as loadSerif } from "@remotion/google-fonts/SourceSerif4";
 import { loadFont as loadSpaceGrotesk } from "@remotion/google-fonts/SpaceGrotesk";
 import { loadFont as loadInter } from "@remotion/google-fonts/Inter";
 import { useVideoConfig } from "remotion";
+import { getFrameMargins } from "./fullScreenHeroLayout";
 import type { BackgroundPreset, FontPreset } from "./schema";
 
 /**
@@ -319,10 +320,7 @@ export const useLayout = (): DLLayout => {
   // Long-form is even on all four sides. A reel is not: the bottom fifth of a
   // Reels/Shorts frame is covered by the caption, the handle and the CTA, so
   // nothing that must be read is allowed to live there.
-  const margin =
-    format === "long"
-      ? { top: px(96), right: px(96), bottom: px(96), left: px(96) }
-      : { top: px(120), right: px(64), bottom: px(240), left: px(64) };
+  const margin = getFrameMargins(format, width);
 
   return {
     format,

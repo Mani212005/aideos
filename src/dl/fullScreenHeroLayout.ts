@@ -2,11 +2,29 @@
  * File Description: Computes the format-safe media, scrim and caption geometry for full-screen B-roll heroes,
  * owns the single definition of where the burned-in subtitle band starts so the two never collide,
  * and owns the fixed inset region a device beat occupies over a scene stage in each format.
- * Inputs and outputs: frame width, height, and safe margins -> hero media, scrim, and subtitle layout bounding boxes; format -> inset region rectangle.
- * Used by: src/dl/Film.tsx, src/dl/devices.tsx, src/dl/KineticSubtitles.tsx, backend/designCheck/insetRegion.ts, backend/designSpec/brief.ts, backend/fullScreenHeroLayout.test.ts, backend/insetStage.test.ts.
+ * Inputs and outputs: format, frame size and caption presence -> shared margins, stage safe region, hero and inset rectangles.
+ * Used by: Film, devices, KineticSubtitles, tokens, stage design checks and layout tests.
  */
 
 import type { Format } from "./tokens";
+import { projectStagePoint, SAFE_SQUARE, type SceneRect } from "./scene/projection";
+
+// Returns the shared format chrome margins, scaled from each format's reference width.
+export function getFrameMargins(format: Format, width: number) {
+  const scale = width / (format === "long" ? 1920 : 1080);
+  return format === "long"
+    ? { top: 96 * scale, right: 96 * scale, bottom: 96 * scale, left: 96 * scale }
+    : { top: 120 * scale, right: 64 * scale, bottom: 240 * scale, left: 64 * scale };
+}
+
+// Intersects the common stage square with output margins and the actual caption band.
+export function getStageSafeRegion(format: Format, width: number, height: number, captions: boolean): SceneRect {
+  const pose = { center: { x: 960, y: 960 }, zoom: 1, rotation: 0 };
+  const start = projectStagePoint({ x: SAFE_SQUARE.x0, y: SAFE_SQUARE.y0 }, pose, width, height);
+  const end = projectStagePoint({ x: SAFE_SQUARE.x1, y: SAFE_SQUARE.y1 }, pose, width, height);
+  const margin = getFrameMargins(format, width);
+  return { x0: Math.max(start.x, margin.left), y0: Math.max(start.y, margin.top), x1: Math.min(end.x, width - margin.right), y1: Math.min(end.y, height - margin.bottom, captions ? height * SUBTITLE_BAND_TOP_RATIO : height) };
+}
 
 /**
  * Top edge of the burned-in subtitle card, as a fraction of frame height.
