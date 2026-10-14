@@ -8,12 +8,49 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { JOBS, PR_JOBS, resolveRuff, runJobs, runStep, summaryTable } from "./ci";
+import YAML from "yaml";
+import { JOBS, PR_JOBS, notLinux, resolveRuff, runJobs, runStep, summaryTable } from "./ci";
 
 const ROOT = path.resolve(__dirname, "..");
 const scripts = (JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")) as { scripts: Record<string, string> }).scripts;
 const workflowDir = path.join(ROOT, ".github/workflows");
 const workflows = fs.existsSync(workflowDir) ? fs.readdirSync(workflowDir).filter((f) => f.endsWith(".yml")) : [];
+
+interface WorkflowStep {
+  name?: string;
+  run?: string;
+  uses?: string;
+  "continue-on-error"?: boolean;
+}
+
+interface WorkflowJob {
+  name?: string;
+  "runs-on"?: string;
+  permissions?: unknown;
+  "continue-on-error"?: boolean;
+  steps?: WorkflowStep[];
+}
+
+interface WorkflowDocument {
+  name?: string;
+  permissions?: unknown;
+  jobs?: Record<string, WorkflowJob>;
+}
+
+/** Extracts job IDs from a step's run command string when it invokes npm run ci. */
+function extractCiJobIds(cmd: string): string[] {
+  const ids: string[] = [];
+  for (const line of cmd.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("#")) continue;
+    const match = trimmed.match(/^npm run ci\b(?:\s+--\s+([^\n|&]+))?/);
+    if (match) {
+      const args = (match[1] ?? "").trim().split(/\s+/).filter((a) => a && !a.startsWith("-"));
+      ids.push(...args);
+    }
+  }
+  return ids;
+}
 
 test("every npm script a job runs exists in package.json", () => {
   for (const job of JOBS) {
@@ -36,27 +73,51 @@ test("every workflow runs CI through `npm run ci -- <job>` with known jobs only"
   assert.ok(workflows.length > 0, "expected at least one workflow under .github/workflows");
   const known = new Set(JOBS.map((j) => j.id));
   for (const file of workflows) {
-    // Comments describe the command; only the steps that run it count.
-    const text = fs.readFileSync(path.join(workflowDir, file), "utf8").split("\n").filter((l) => !l.trim().startsWith("#")).join("\n");
-    for (const m of text.matchAll(/npm run ci(?: -- ([^\n|&]+))?/g)) {
-      for (const id of (m[1] ?? "").trim().split(/\s+/).filter((a) => a && !a.startsWith("--"))) {
-        assert.ok(known.has(id), `${file} runs unknown ci job "${id}"`);
+    const doc = YAML.parse(fs.readFileSync(path.join(workflowDir, file), "utf8")) as WorkflowDocument;
+    for (const [jobKey, job] of Object.entries(doc.jobs ?? {})) {
+      for (const step of job.steps ?? []) {
+        if (!step.run) continue;
+        for (const id of extractCiJobIds(step.run)) {
+          assert.ok(known.has(id), `${file} job ${jobKey} runs unknown ci job "${id}"`);
+        }
       }
     }
   }
 });
 
 test("each job is run by at least one workflow, so nothing in the table is dead", () => {
-  const all = workflows.map((f) => fs.readFileSync(path.join(workflowDir, f), "utf8").split("\n").filter((l) => !l.trim().startsWith("#")).join("\n")).join("\n");
-  for (const job of JOBS) assert.match(all, new RegExp(`npm run ci -- ${job.id}\\b`), `no workflow runs job ${job.id}`);
+  const invoked = new Set<string>();
+  for (const file of workflows) {
+    const doc = YAML.parse(fs.readFileSync(path.join(workflowDir, file), "utf8")) as WorkflowDocument;
+    for (const job of Object.values(doc.jobs ?? {})) {
+      for (const step of job.steps ?? []) {
+        if (!step.run) continue;
+        for (const id of extractCiJobIds(step.run)) invoked.add(id);
+      }
+    }
+  }
+  for (const job of JOBS) assert.ok(invoked.has(job.id), `no workflow runs job ${job.id}`);
 });
 
 test("workflows are least-privilege and pin a runner image", () => {
   for (const file of workflows) {
-    const text = fs.readFileSync(path.join(workflowDir, file), "utf8");
-    assert.match(text, /^permissions:/m, `${file} must declare permissions`);
-    assert.match(text, /runs-on: ubuntu-24\.04/, `${file} must pin ubuntu-24.04`);
-    assert.doesNotMatch(text, /--yes|continue-on-error: true/, `${file} must not hide failures`);
+    const doc = YAML.parse(fs.readFileSync(path.join(workflowDir, file), "utf8")) as WorkflowDocument;
+    assert.ok(doc.permissions, `${file} must declare top-level permissions`);
+    for (const [jobKey, job] of Object.entries(doc.jobs ?? {})) {
+      assert.equal(job["runs-on"], "ubuntu-24.04", `${file} job ${jobKey} must pin ubuntu-24.04`);
+      assert.ok(!job["continue-on-error"], `${file} job ${jobKey} must not set continue-on-error`);
+      for (const step of job.steps ?? []) {
+        assert.ok(!step["continue-on-error"], `${file} job ${jobKey} step "${step.name ?? "unnamed"}" must not set continue-on-error`);
+      }
+    }
+  }
+});
+
+test("golden comparison skips on non-Linux platforms with a clear message and has no force flag", () => {
+  if (process.platform !== "linux") {
+    assert.equal(notLinux(), "golden frames are verified on the Linux CI platform only");
+  } else {
+    assert.equal(notLinux(), null);
   }
 });
 

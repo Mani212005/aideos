@@ -43,41 +43,50 @@ export async function openFilm(slug: string): Promise<OpenFilm> {
   setActiveFilm(slug);
   await ensureBrowser();
   const staged = stagePublicDir();
-  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-journey-bundle-"));
-  const serveUrl = await bundle({ entryPoint: path.join(ROOT, "src/index.ts"), outDir, ...(staged ? { publicDir: staged.dir } : {}) });
-  const chromiumOptions = { gl: glName() };
-  const browser: HeadlessBrowser = await openBrowser("chrome", { chromiumOptions });
-  const composition = (id: CompositionId) => selectComposition({ serveUrl, id, inputProps: {}, puppeteerInstance: browser, chromiumOptions });
-  const probe = await composition("Long");
+  let outDir: string | undefined;
+  let browser: HeadlessBrowser | undefined;
+  try {
+    outDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-journey-bundle-"));
+    const serveUrl = await bundle({ entryPoint: path.join(ROOT, "src/index.ts"), outDir, ...(staged ? { publicDir: staged.dir } : {}) });
+    const chromiumOptions = { gl: glName() };
+    browser = await openBrowser("chrome", { chromiumOptions });
+    const composition = (id: CompositionId) => selectComposition({ serveUrl, id, inputProps: {}, puppeteerInstance: browser!, chromiumOptions });
+    const probe = await composition("Long");
 
-  return {
-    durationInFrames: probe.durationInFrames,
-    still: async (id, frame, out, scale = 1) => {
-      fs.mkdirSync(path.dirname(out), { recursive: true });
-      await renderStill({ composition: await composition(id), serveUrl, frame, output: out, imageFormat: "png", scale, puppeteerInstance: browser, chromiumOptions, overwrite: true });
-      if (!fs.existsSync(out) || fs.statSync(out).size < 200) throw new Error(`still ${id} frame ${frame} of ${slug} produced no usable PNG`);
-    },
-    sequence: async (id, range, dir, concurrency) => {
-      fs.mkdirSync(dir, { recursive: true });
-      await renderFrames({
-        composition: await composition(id),
-        serveUrl,
-        outputDir: dir,
-        frameRange: range,
-        imageFormat: "png",
-        concurrency,
-        inputProps: {},
-        onStart: () => undefined,
-        onFrameUpdate: () => undefined,
-        puppeteerInstance: browser,
-        chromiumOptions,
-      });
-      return fs.readdirSync(dir).filter((f) => f.endsWith(".png")).sort().map((f) => path.join(dir, f));
-    },
-    close: async () => {
-      await browser.close({ silent: true }).catch(() => undefined);
-      fs.rmSync(outDir, { recursive: true, force: true });
-      staged?.cleanup();
-    },
-  };
+    return {
+      durationInFrames: probe.durationInFrames,
+      still: async (id, frame, out, scale = 1) => {
+        fs.mkdirSync(path.dirname(out), { recursive: true });
+        await renderStill({ composition: await composition(id), serveUrl, frame, output: out, imageFormat: "png", scale, puppeteerInstance: browser!, chromiumOptions, overwrite: true });
+        if (!fs.existsSync(out) || fs.statSync(out).size < 200) throw new Error(`still ${id} frame ${frame} of ${slug} produced no usable PNG`);
+      },
+      sequence: async (id, range, dir, concurrency) => {
+        fs.mkdirSync(dir, { recursive: true });
+        await renderFrames({
+          composition: await composition(id),
+          serveUrl,
+          outputDir: dir,
+          frameRange: range,
+          imageFormat: "png",
+          concurrency,
+          inputProps: {},
+          onStart: () => undefined,
+          onFrameUpdate: () => undefined,
+          puppeteerInstance: browser!,
+          chromiumOptions,
+        });
+        return fs.readdirSync(dir).filter((f) => f.endsWith(".png")).sort().map((f) => path.join(dir, f));
+      },
+      close: async () => {
+        await browser?.close({ silent: true }).catch(() => undefined);
+        if (outDir) fs.rmSync(outDir, { recursive: true, force: true });
+        staged?.cleanup();
+      },
+    };
+  } catch (err) {
+    if (browser) await browser.close({ silent: true }).catch(() => undefined);
+    if (outDir) fs.rmSync(outDir, { recursive: true, force: true });
+    staged?.cleanup();
+    throw err;
+  }
 }

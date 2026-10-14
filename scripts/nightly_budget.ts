@@ -62,8 +62,10 @@ async function main(): Promise<void> {
   let peakRss = 0;
   let peakTemp = 0;
   const sampler = setInterval(() => {
-    peakRss = Math.max(peakRss, treeRssMB());
-    peakTemp = Math.max(peakTemp, tempBytes());
+    try {
+      peakRss = Math.max(peakRss, treeRssMB());
+      peakTemp = Math.max(peakTemp, tempBytes());
+    } catch {}
   }, 500);
   const started = Date.now();
   try {

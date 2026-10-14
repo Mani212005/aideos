@@ -70,10 +70,16 @@ export function tempEntries(prefixes: string[] = TEMP_PREFIXES, dir = os.tmpdir(
 
 /** Total size in bytes of a file or directory tree (0 when it is gone). */
 export function sizeOf(target: string): number {
-  if (!fs.existsSync(target)) return 0;
-  const stat = fs.lstatSync(target);
-  if (!stat.isDirectory()) return stat.size;
-  return fs.readdirSync(target).reduce((sum, name) => sum + sizeOf(path.join(target, name)), 0);
+  try {
+    const stat = fs.lstatSync(target);
+    if (!stat.isDirectory()) return stat.size;
+    const entries = fs.readdirSync(target);
+    return entries.reduce((sum, name) => sum + sizeOf(path.join(target, name)), 0);
+  } catch (err: unknown) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code === "ENOENT" || code === "ENOTDIR") return 0;
+    throw err;
+  }
 }
 
 /** Facts about a rendered video, read with ffprobe. */

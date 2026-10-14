@@ -81,10 +81,10 @@ function ruffStep(name: string, args: string[]): CiStep {
 const softwareGl = (): Record<string, string> => ({ AIDEOS_GL: process.env.AIDEOS_GL ?? "swangle" });
 
 /** Goldens are generated on the CI platform; a laptop render is not comparable, so legacy runs on Linux only. */
-const notLinux = (): string | null =>
-  process.platform === "linux" || process.env.AIDEOS_GOLDEN_FORCE === "1"
+export const notLinux = (): string | null =>
+  process.platform === "linux"
     ? null
-    : "golden frames are generated and compared on the Linux CI platform only (set AIDEOS_GOLDEN_FORCE=1 to compare here)";
+    : "golden frames are verified on the Linux CI platform only";
 
 /** Every job. Add a step here and it runs in CI, in the local validation tool and for contributors. */
 export const JOBS: CiJob[] = [

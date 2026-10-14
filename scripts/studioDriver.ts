@@ -60,7 +60,16 @@ export async function startEditor(videosDir?: string): Promise<DevServer> {
   let log = "";
   child.stdout?.on("data", (d) => (log += d));
   child.stderr?.on("data", (d) => (log += d));
-  await waitForHttp(url, 60000);
+  try {
+    await waitForHttp(url, 60000);
+  } catch (err) {
+    try {
+      process.kill(-child.pid!, "SIGTERM");
+    } catch {
+      child.kill("SIGTERM");
+    }
+    throw err;
+  }
   return {
     url,
     log: () => log,
@@ -119,38 +128,59 @@ export class StudioPage {
   /** Launches Chrome headless at a fixed 1440x900 window and connects to its first page. */
   static async open(chrome: string): Promise<StudioPage> {
     const profile = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-smoke-"));
-    const debugPort = await freePort();
-    const browser = spawn(
-      chrome,
-      [
-        "--headless=new",
-        "--disable-gpu",
-        "--no-first-run",
-        "--no-default-browser-check",
-        "--disable-extensions",
-        "--window-size=1440,900",
-        // A CI runner is a disposable container: Chrome's sandbox needs privileges it does not grant.
-        ...(process.env.CI === "true" ? ["--no-sandbox", "--disable-dev-shm-usage"] : []),
-        `--user-data-dir=${profile}`,
-        `--remote-debugging-port=${debugPort}`,
-        "about:blank",
-      ],
-      // Its own process group, so closing can kill Chrome's helper processes along with it.
-      { stdio: "ignore", detached: true },
-    );
-    await waitForHttp(`http://127.0.0.1:${debugPort}/json/version`, 30000);
-    const targets = (await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json()) as Array<{ type: string; webSocketDebuggerUrl: string }>;
-    const page = targets.find((t) => t.type === "page");
-    if (!page) throw new Error("headless Chrome exposed no page target");
-    const ws = new WebSocket(page.webSocketDebuggerUrl);
-    await new Promise<void>((resolve, reject) => {
-      ws.onopen = () => resolve();
-      ws.onerror = () => reject(new Error("could not connect to headless Chrome"));
-    });
-    const studio = new StudioPage(ws, browser, profile);
-    await studio.send("Runtime.enable");
-    await studio.send("Page.enable");
-    return studio;
+    let browser: ChildProcess | undefined;
+    let ws: WebSocket | undefined;
+    try {
+      const debugPort = await freePort();
+      browser = spawn(
+        chrome,
+        [
+          "--headless=new",
+          "--disable-gpu",
+          "--no-first-run",
+          "--no-default-browser-check",
+          "--disable-extensions",
+          "--window-size=1440,900",
+          // A CI runner is a disposable container: Chrome's sandbox needs privileges it does not grant.
+          ...(process.env.CI === "true" ? ["--no-sandbox", "--disable-dev-shm-usage"] : []),
+          `--user-data-dir=${profile}`,
+          `--remote-debugging-port=${debugPort}`,
+          "about:blank",
+        ],
+        // Its own process group, so closing can kill Chrome's helper processes along with it.
+        { stdio: "ignore", detached: true },
+      );
+      await waitForHttp(`http://127.0.0.1:${debugPort}/json/version`, 30000);
+      const targets = (await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json()) as Array<{ type: string; webSocketDebuggerUrl: string }>;
+      const page = targets.find((t) => t.type === "page");
+      if (!page) throw new Error("headless Chrome exposed no page target");
+      ws = new WebSocket(page.webSocketDebuggerUrl);
+      await new Promise<void>((resolve, reject) => {
+        ws!.onopen = () => resolve();
+        ws!.onerror = () => reject(new Error("could not connect to headless Chrome"));
+      });
+      const studio = new StudioPage(ws, browser, profile);
+      await studio.send("Runtime.enable");
+      await studio.send("Page.enable");
+      return studio;
+    } catch (err) {
+      if (ws) {
+        try {
+          ws.close();
+        } catch {}
+      }
+      if (browser) {
+        try {
+          process.kill(-browser.pid!, "SIGKILL");
+        } catch {
+          browser.kill("SIGKILL");
+        }
+      }
+      try {
+        fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+      } catch {}
+      throw err;
+    }
   }
 
   /** Sends one DevTools command and waits for its result. */

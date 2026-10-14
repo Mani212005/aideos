@@ -69,7 +69,11 @@ async function renderAll(outDir: string): Promise<Map<string, string>> {
   return out;
 }
 
-test("J9 legacy films render the same frames as the committed goldens", { timeout: 15 * 60 * 1000 }, async () => {
+test("J9 legacy films render the same frames as the committed goldens", { timeout: 15 * 60 * 1000 }, async (t) => {
+  if (process.platform !== "linux") {
+    t.skip("golden frames are verified on the Linux CI platform only");
+    return;
+  }
   assertDiskHeadroom();
   const restore = holdActiveFilm();
   const work = fs.mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "aideos-golden-"));
@@ -103,7 +107,7 @@ test("J9 legacy films render the same frames as the committed goldens", { timeou
       fs.cpSync(path.join(work, "a"), candidates, { recursive: true });
       const message = "no CI-made goldens yet (backend/journeys/goldens/MANIFEST.json is absent): rendered frames were saved as candidates only. Run the update-goldens workflow to create them.";
       console.log(`::warning title=legacy goldens not bootstrapped::${message}`);
-      assert.ok(process.env.CI === "true" || process.env.AIDEOS_GOLDEN_FORCE === "1", `${message} (compare skipped; goldens are not made on a laptop)`);
+      assert.ok(process.env.CI === "true", `${message} (compare skipped; goldens are not made on a laptop)`);
       return;
     }
 
