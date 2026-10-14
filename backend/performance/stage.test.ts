@@ -14,7 +14,7 @@ import { parseFilm } from "../../src/dl/schema";
 import { designSpecSchema, stageDesignSchema } from "../designSpec/spec";
 import { compileDesign } from "../designSpec/compile";
 import { checkFilmDesign } from "../designCheck/designCheck";
-import { buildDesign } from "../designSpec/build";
+import { buildDesign, resolveDesignCharacters } from "../designSpec/build";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { createReceiveAction } from "../../src/dl/performance/receive";
 import { shiftReceive } from "../../src/dl/performance/span";
@@ -39,7 +39,10 @@ const pkg = resolvePackageDir("iona-receive");
 const read = (file: string) => JSON.parse(fs.readFileSync(path.join(pkg, file), "utf8"));
 // Compiles the same v2 design consumed by production builds.
 function compiled() {
-  const result = compileDesign(parseFilm(read("film.json")), designSpecSchema.parse(read("design/design.json")), read("voiceover_words.json").words, "hand-built");
+  const spec = designSpecSchema.parse(read("design/design.json"));
+  const { characters, errors } = resolveDesignCharacters(spec, pkg);
+  assert.deepEqual(errors, []);
+  const result = compileDesign(parseFilm(read("film.json")), spec, read("voiceover_words.json").words, "hand-built", { characters });
   assert.deepEqual(result.errors, []);
   return result.film!;
 }

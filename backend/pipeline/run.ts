@@ -13,6 +13,7 @@ import { buildDesign, designDir, formatBuildStatus, readCheckedLookPlan } from "
 import { designSpecSchema } from "../designSpec/spec";
 import { STAGE_RESOURCES, STAGE_RESOURCE_HASH, CEL_TREATMENT } from "../../src/dl/scene/rigs/registry";
 import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { characterCandidates } from "../characters/library";
 import type { LookPlan } from "../lookPlan/schema";
 import { writeLookMd } from "../lookPlan/render";
 import crypto from "crypto";
@@ -91,7 +92,12 @@ function designFilesFingerprint(slug: string): string | null {
     }) : null;
     const wordsFile = path.join(packageDir(slug), "voiceover_words.json");
     const timing = "performances" in parsed.data && fs.existsSync(wordsFile) ? fs.readFileSync(wordsFile, "utf8") : null;
-    return fingerprint(raw, resources, timing, STAGE_RESOURCE_HASH, CEL_TREATMENT, files.map((file) => {
+    // A changed character spec (rig, material, face, parts) reopens design even when design.json is unchanged.
+    const characters = parsed.data.assets.flatMap((a) => ("kind" in a && a.kind === "character" ? [a.character] : [])).map((id) => {
+      const file = characterCandidates(id, packageDir(slug)).find((candidate) => fs.existsSync(candidate));
+      return [id, file ? fs.readFileSync(file, "utf8") : null];
+    });
+    return fingerprint(raw, resources, timing, STAGE_RESOURCE_HASH, CEL_TREATMENT, ...(characters.length ? [characters] : []), files.map((file) => {
       const absolute = path.join(packageDir(slug), file);
       return [file, fs.existsSync(absolute) ? fs.readFileSync(absolute, "utf8") : null];
     }));

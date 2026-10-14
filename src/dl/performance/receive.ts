@@ -1,10 +1,19 @@
 /**
  * File Description: Sparse receive choreography recovered from the approved five-second Iona catch.
  * Inputs and outputs: resolved decisive frame and target offset -> typed constrained action data.
- * Used by: backend/performance/bindReceive.ts, tests and isolated fixture preview.
+ * Used by: backend/performance/bindReceive.ts, the retargeter, character compatibility checks, tests and isolated fixture preview.
  */
 import { add, euler, multiply } from "./math";
 import type { ReceiveAction, Vec3, VectorTrack } from "./types";
+
+/** Expressions the receive plays; a character must have a preset for each. */
+export const RECEIVE_EXPRESSIONS = ["neutral", "surprised", "determined", "relieved"] as const;
+/**
+ * Secondary channels the receive drives. Each is a semantic follow-through signal a character binds
+ * its own swinging pieces to: coat trails from the hips (coat tails, skirt, tail), tuft trails behind
+ * the head (ponytail, ears), side swings beside the head (side lock, earring).
+ */
+export const RECEIVE_SECONDARY_CHANNELS = ["coat", "tuft", "side"] as const;
 
 // The reference is in seconds; retiming preserves its sparse anchors around the decisive contact.
 const REFERENCE: Record<string, readonly (readonly [number, Vec3])[]> = {

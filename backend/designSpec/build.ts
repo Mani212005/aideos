@@ -23,6 +23,9 @@ import { createCues } from "../sceneKit";
 import { readVisualChoices } from "../pipeline/visualChoices";
 import { resolveCue } from "./cues";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { formatIssues } from "../../src/dl/characters/validate";
+import type { CharacterSpec } from "../../src/dl/characters/schema";
+import { loadCharacter } from "../characters/library";
 
 
 /** The outcome of one build, as written to design/status.json. */
@@ -92,6 +95,23 @@ export function readCheckedLookPlan(film: Film): { plan?: LookPlan; errors: stri
   }
 }
 
+// Names the character a look cast item plans: its character id, or Iona for the P0 fixture asset.
+function lookCharacterId(item: { character?: string; asset?: string }): string | undefined {
+  return item.character ?? (item.asset === "iona-art-v1" ? "iona" : undefined);
+}
+
+// Resolves every character a design names to a verified spec, package characters first, then the library.
+export function resolveDesignCharacters(spec: DesignSpec, pkg: string): { characters: Record<string, CharacterSpec>; errors: string[] } {
+  const characters: Record<string, CharacterSpec> = {}, errors: string[] = [];
+  for (const a of spec.assets) {
+    if (!("kind" in a) || a.kind !== "character" || characters[a.character]) continue;
+    const loaded = loadCharacter(a.character, pkg);
+    if (loaded.spec && !loaded.errors.length) characters[a.character] = loaded.spec;
+    else errors.push(...formatIssues(loaded.errors, `asset "${a.id}" character ${a.character} (${path.relative(pkg, loaded.file).startsWith("..") ? loaded.file : path.relative(pkg, loaded.file)}) `));
+  }
+  return { characters, errors };
+}
+
 // Checks the design's cast, carried motion, device overrides and camera against its look plan.
 export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: TimedWord[], pkg: string, plan: LookPlan): string[] {
   const errors: string[] = [];
@@ -112,7 +132,9 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
       for (const id of [intended.actor, intended.prop]) {
         const authored = spec.assets.find((a) => a.id === id);
         const planned = plan.film.cast.find((a) => a.id === id);
-        if (!authored || !("renderer" in authored) || authored.renderer !== "three" || !planned || planned.renderer !== "three" || authored.asset !== planned.asset || authored.treatment !== planned.treatment || (authored.kind === "character" && authored.rig !== planned.rig)) errors.push(`look cast ${id}: design identity or treatment mismatch`);
+        const sameIdentity = authored && "renderer" in authored && authored.renderer === "three" && planned?.renderer === "three" && authored.treatment === planned.treatment &&
+          (authored.kind === "character" ? authored.character === lookCharacterId(planned) : authored.asset === planned.asset);
+        if (!sameIdentity) errors.push(`look cast ${id}: design identity or treatment mismatch`);
       }
       try { cues.word(intended.decisive.shotId, intended.decisive.phrase, intended.decisive.edge); resolveCue(intended.start, cues); }
       catch (err) { errors.push(`look performance ${intended.id}: ${String(err)}`); }
@@ -206,7 +228,9 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   const wordsFile = path.join(pkg, "voiceover_words.json");
   const words: TimedWord[] = fs.existsSync(wordsFile) ? (JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? []) : [];
 
-  const compiled = compileDesign(film, spec, words, source);
+  const resolved = resolveDesignCharacters(spec, pkg);
+  if (resolved.errors.length) return fail(resolved.errors);
+  const compiled = compileDesign(film, spec, words, source, { characters: resolved.characters });
   if (!compiled.film) return fail(compiled.errors);
 
   // Legacy packages without a plan still build; new production runs always require one first.

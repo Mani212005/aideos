@@ -1,8 +1,9 @@
 /**
  * File Description: Numerical performance obligations, measured independently from the solved targets.
  * Inputs and outputs: rig, action, expected cue and evaluator -> measured checks with explicit failures.
- * Used by: receive regression fixtures and npm run performance:check; no image-quality claim.
+ * Used by: receive regression fixtures, character rigs and npm run performance:check; no image-quality claim.
  */
+import { limbRange, rotationExcess } from "./limits";
 import { distance, euler, length, point, sample, scale, sub } from "./math";
 import type {
   PerformanceEvaluator,
@@ -294,6 +295,20 @@ export function critiquePerformance(
     if (motion < 1e-4) frozen++;
   }
   check("frozen-pose", frozen, 0, "active half-second windows");
+  const limits = rig.limits;
+  if (limits) {
+    // Character rigs also prove every solved limb stayed inside its reach and hinge range.
+    let excess = 0;
+    for (const [limb, def] of Object.entries(rig.limbs)) {
+      const range = limbRange({ ...rig, limits }, limb);
+      for (const s of states) {
+        const d = distance(s.joints[def.base].position, s.joints[def.tip].position);
+        excess = Math.max(excess, d - range.max, range.min - d);
+      }
+    }
+    check("reach-limit", Math.max(0, excess), 1e-9, "rig units");
+    check("joint-limits", Math.max(0, rotationExcess({ ...rig, limits }, action)), 1e-12, "radians");
+  }
   return {
     passed: checks.every((c) => c.passed),
     samples: states.length,

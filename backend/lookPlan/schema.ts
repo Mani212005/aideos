@@ -102,7 +102,7 @@ const stageLookSchema = legacyLookSchema.extend({
   schema: z.literal("aideos.look/2"),
   film: lookFilmSchema.extend({
     renderer: z.literal("three"),
-    cast: z.array(lookCastItemSchema.extend({ renderer: z.enum(["svg", "three"]), asset: z.enum(["iona-art-v1", "paper-glider-v1"]).optional(), rig: z.literal("iona-v1").optional(), treatment: z.literal("cel-v1").optional() }).strict()).min(1),
+    cast: z.array(lookCastItemSchema.extend({ renderer: z.enum(["svg", "three"]), character: z.string().regex(/^[a-z][a-z0-9-]*$/).optional(), asset: z.enum(["iona-art-v1", "paper-glider-v1"]).optional(), rig: z.literal("iona-v1").optional(), treatment: z.literal("cel-v1").optional() }).strict()).min(1),
     performances: z.array(lookPerformanceSchema).length(1),
   }).strict(),
   shots: z.array(lookShotSchema.extend({ performances: z.array(z.string()).default([]) }).strict()).min(1),

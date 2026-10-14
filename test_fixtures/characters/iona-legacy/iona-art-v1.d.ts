@@ -4,7 +4,7 @@
  * Used by: Iona adapter and geometry measurement.
  */
 import type { BufferGeometry, Group, Mesh, ShaderMaterial } from "three";
-import type { ExpressionBlend } from "../../performance/types";
+import type { ExpressionBlend } from "../../../src/dl/performance/types";
 export interface IonaArt {
   rig: Record<string, Group>;
   parts: { meshes: Record<string, Mesh>; geometries: BufferGeometry[]; inks: Array<[ShaderMaterial, number]> };

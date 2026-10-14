@@ -4,7 +4,8 @@
  * through the kit's Timeline (so a snap, camera discontinuity or second origin is refused with
  * the element named), and the result is the film with its `scene`, `accent`, `design` provenance
  * and any per-shot block overrides applied.
- * Pure: it reads nothing from disk, so the build step and the tests share it.
+ * Pure: it reads nothing from disk, so the build step and the tests share it. Characters arrive already
+ * resolved and verified (see resolveDesignCharacters in build.ts); the compiled film embeds each spec.
  * Inputs and outputs: shot specifications, visual cues, and layout geometry -> compiled scene and shot timelines.
  * Used by: backend/designSpec/designer.ts, backend/designSpec/designSpec.test.ts.
  */
@@ -14,7 +15,9 @@ import type { CameraTrack, EnvironmentAsset, Scene } from "../../src/dl/scene/ty
 import { FPS, SCENE_SIZE, Timeline, createCues, type Cues, type NarrationTiming } from "../sceneKit";
 import { resolveCue } from "./cues";
 import type { DesignSpec, SpecCamera } from "./spec";
-import { bindReceiveSpan } from "../performance/bindReceive";
+import { fitReceiveSpan } from "../performance/bindReceive";
+import { rigFromCharacter } from "../../src/dl/characters/rig";
+import type { CharacterSpec } from "../../src/dl/characters/schema";
 import { STAGE_RESOURCE_HASH } from "../../src/dl/scene/rigs/registry";
 import { validateStage } from "../../src/dl/scene/validateStage";
 import { receiveSchema } from "../../src/dl/scene/stageContract";
@@ -106,6 +109,7 @@ export function compileDesign(
   spec: DesignSpec,
   words: TimedWord[],
   source: DesignSource,
+  options: { characters?: Readonly<Record<string, CharacterSpec>> } = {},
 ): { film?: Film; errors: string[] } {
   const errors: string[] = [];
   const fps = film.fps ?? FPS;
@@ -189,13 +193,24 @@ export function compileDesign(
   };
   if ("performances" in spec) {
     scene.renderer = "three";
-    scene.cast = spec.assets.flatMap((a) => a.renderer === "three" ? [{ ...a, resourceHash: STAGE_RESOURCE_HASH }] : []);
+    scene.cast = [];
+    for (const a of spec.assets) {
+      if (a.renderer !== "three") continue;
+      if (a.kind === "prop") { scene.cast.push({ ...a, resourceHash: STAGE_RESOURCE_HASH }); continue; }
+      const { character: characterId, ...placement } = a;
+      const character = options.characters?.[characterId];
+      if (!character) { errors.push(`asset "${a.id}": character "${characterId}" was not resolved; build designs through buildDesign, which loads verified specs`); continue; }
+      scene.cast.push({ ...placement, character, resourceHash: STAGE_RESOURCE_HASH });
+    }
     scene.performances = [];
     for (const p of spec.performances) {
       try {
+        const actor = scene.cast.find((c) => c.id === p.actor);
+        const character = actor && "character" in actor ? actor.character : undefined;
+        if (!character) throw new Error(`actor "${p.actor}" is not a resolved character asset`);
         const frame = cues.word(p.decisive.shotId, p.decisive.phrase, p.decisive.edge);
-        const data = bindReceiveSpan(frame, resolveCue(p.start, cues), cues.durationFrames, fps, p.targetOffset);
-        scene.performances.push({ id: p.id, action: p.action, actor: p.actor, prop: p.prop, decisive: { ...p.decisive, frame }, afterState: p.afterState, data: receiveSchema.parse(data) });
+        const fitted = fitReceiveSpan(frame, resolveCue(p.start, cues), cues.durationFrames, fps, p.targetOffset, { rig: rigFromCharacter(character), policy: p.reach });
+        scene.performances.push({ id: p.id, action: p.action, actor: p.actor, prop: p.prop, decisive: { ...p.decisive, frame }, afterState: p.afterState, data: receiveSchema.parse(fitted.action), retarget: { from: fitted.from, to: fitted.action.rigId, policy: p.reach, warnings: fitted.warnings.map((w) => `${w.field}: ${w.message}`) } });
       } catch (err) { errors.push(`performance ${p.id} cue ${p.decisive.shotId}:"${p.decisive.phrase}": ${err instanceof Error ? err.message : String(err)}`); }
     }
     errors.push(...validateStage(scene));
