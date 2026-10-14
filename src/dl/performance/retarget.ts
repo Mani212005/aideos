@@ -175,6 +175,36 @@ function enforceReach(action: ReceiveAction, rig: CharacterRig, policy: ReachPol
   return current;
 }
 
+// Re-aims every free limb's pole keys so each key keeps the reference's designed bend direction about the limb's new axis.
+// Raw pole vectors are tuned to the reference axis; once proportions, offsets or clamps move the hand target, two
+// neighbouring keys can otherwise imply a fast elbow roll. Transporting the bend direction keeps the roll as designed.
+function reaimPoles(reference: ReceiveAction, source: CharacterRig, action: ReceiveAction, target: CharacterRig): ReceiveAction {
+  const referenceAt = createPerformanceEvaluator(source, reference), actionAt = createPerformanceEvaluator(target, action);
+  // Returns the unit component of v perpendicular to unit axis u, or null when v lies along it.
+  const across = (v: Vec3, u: Vec3): Vec3 | null => {
+    const p = sub(v, scale(u, v[0] * u[0] + v[1] * u[1] + v[2] * u[2])), n = Math.hypot(...p);
+    return n > 1e-6 ? scale(p, 1 / n) : null;
+  };
+  // Returns a limb's root-space base point and unit base-to-target axis in one evaluated state.
+  const axisOf = (state: PerformanceState, base: string, limb: string): { base: Vec3; axis: Vec3 } | null => {
+    const b = toRoot(state.root, state.joints[base].position), a = sub(toRoot(state.root, state.targets[limb]), b), n = Math.hypot(...a);
+    return n > 1e-9 ? { base: b, axis: scale(a, 1 / n) } : null;
+  };
+  return { ...action, constraints: action.constraints.map((c) => {
+    if (c.planted) return c;
+    const refLimb = source.limbs[c.limb], limb = target.limbs[c.limb];
+    const pole = c.pole.map((key) => {
+      const r = referenceAt(key.frame), t = actionAt(key.frame);
+      const from = axisOf(r, refLimb.base, c.limb), to = axisOf(t, limb.base, c.limb);
+      if (!from || !to) return key;
+      const bend = across(sub(toRoot(r.root, r.joints[refLimb.middle].position), from.base), from.axis);
+      const aimed = bend && across(bend, to.axis);
+      return aimed ? { frame: key.frame, value: scale(aimed, Math.hypot(...key.value)) } : key;
+    });
+    return { ...c, pole };
+  }) };
+}
+
 /**
  * Retargets a receive authored on `source` onto `target`, adds the authored root-space grip offset,
  * and enforces the target's reach, hinge and rotation limits. Retargeting onto the source rig itself
@@ -200,6 +230,9 @@ export function retargetReceive(
   const warnings: RetargetWarning[] = [];
   enforceRotations(action, target, policy, warnings);
   action = enforceReach(action, target, policy, warnings);
+  // The approved action on its own rig keeps its authored poles; any moved hand target gets its bend directions re-aimed.
+  const moved = JSON.stringify(action.constraints.map((c) => c.target)) !== JSON.stringify(reference.constraints.map((c) => c.target));
+  if (moved || !sameRig(source, target)) action = reaimPoles(reference, source, action, target);
   validatePerformance(target, action);
   return { action, warnings };
 }

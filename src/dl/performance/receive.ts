@@ -74,16 +74,35 @@ const REFERENCE: Record<string, readonly (readonly [number, Vec3])[]> = {
     [3.3, [0.5, 4.1, 0.7]],
     [3.7, [0.3, 4, 0.78]],
   ],
+  // Elbow poles. The in-between keys roll each elbow at an even rate between the approved keys:
+  // the original poles passed within a few degrees of the arm's own axis, which flipped the left
+  // elbow's bend plane by about 160 degrees in two frames during the reach and again in the recoil
+  // (a visible snap), and whipped the right elbow at 29 degrees per frame. Approved keys are unchanged.
   poleR: [
     [0, [-0.6, -0.3, -0.7]],
     [1.5, [-1, 0.4, -0.6]],
+    [1.6, [-0.11, 1.14, -0.35]],
+    [1.7, [0.24, 0.91, -0.74]],
+    [1.8, [0.13, 0.65, -1]],
+    [1.9, [-0.36, 0.32, -1.1]],
+    [2, [-0.82, 0, -0.88]],
+    [2.1, [-1.01, -0.23, -0.61]],
+    [2.2, [-1.04, -0.44, -0.41]],
     [2.3, [-0.7, -0.6, -0.4]],
     [3.1, [-1, -0.7, -0.2]],
   ],
   poleL: [
     [0, [0.6, -0.3, -0.7]],
     [1.5, [1, -0.2, -0.6]],
+    [1.7, [0.72, 0.96, 0.02]],
+    [1.9, [0.69, 0.55, 0.81]],
+    [2.1, [0.5, -0.28, 1.06]],
     [2.3, [1, -0.5, -0.5]],
+    [2.45, [0.38, -0.55, 1]],
+    [2.6, [0.59, 0.03, 1.04]],
+    [2.75, [0.69, 0.58, 0.79]],
+    [2.9, [0.78, 0.9, 0.18]],
+    [3, [0.92, 0.69, -0.32]],
     [3.1, [1, -0.7, -0.2]],
   ],
   wrR: [

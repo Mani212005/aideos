@@ -78,7 +78,7 @@ function fingerprint(...parts: unknown[]): string {
 }
 
 // Hashes authored design inputs so a valid SVG or spec edit also reopens downstream production.
-function designFilesFingerprint(slug: string): string | null {
+export function designFilesFingerprint(slug: string): string | null {
   const specFile = path.join(designDir(slug), "design.json");
   if (!fs.existsSync(specFile)) return null;
   const raw = fs.readFileSync(specFile, "utf8");

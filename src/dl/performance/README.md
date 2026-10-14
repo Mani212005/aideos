@@ -10,6 +10,9 @@ proportions, `receive.ts` owns sparse choreography, `evaluate.ts` owns the absol
 constraint solve, and `critique.ts` measures numerical obligations. Nothing here imports
 Three.js, Node, Remotion, the production film schema, or the editor.
 
+The receive is authored once on Iona and retargeted onto any `aideos.character/1` rig by
+`retarget.ts` (see `docs/CHARACTER_ENGINE.md`); limits geometry is shared in `limits.ts`.
+
 Use `backend/performance/bindReceive.ts` at the authoring boundary. It calls
 `backend/sceneKit/timing.ts`'s existing `createCues().word()` resolver, then places contact
 at that absolute frame. There is no second phrase parser or timing authority. The small
@@ -76,10 +79,16 @@ Tolerances are listed in every report. The cue must be independently resolved by
 not copied from an action being checked. `visualQuality: "unmeasured"` prevents a numerical
 pass from claiming art, deformation, acting, occlusion or finger-contact acceptance.
 
-The fixture preserves the approved key poses, rig, artwork, camera and attachment. Two
+The fixture preserves the approved key poses, rig, artwork, camera and attachment. Three
 interpolation repairs are deliberate: C1 smoothstep replaces the proof's ease-out starts
-which jump in velocity, and the flight twist decays smoothly to zero at attachment. This
-is a constrained reproduction of the catch, not a pixel-identical recreation of its timing.
+which jump in velocity, the flight twist decays smoothly to zero at attachment, and
+in-between elbow pole keys roll each elbow at an even rate. The original left pole ran within
+2 degrees of the arm's axis at frame 61, flipping the elbow's bend plane by about 160 degrees
+in two frames (0.80 rig units in one frame) and again in the recoil; the `pole-clearance`
+obligation now fails any limb whose pole comes within about 7 degrees of its axis. Peak joint
+speed fell from 27.8 to 7.9 units per second; the approved keys, contact pose and settled
+hold are unchanged. This is a constrained reproduction of the catch, not a pixel-identical
+recreation of its timing.
 At the inspected anchor frames, maximum joint-position difference from the unchanged
 source was below 3e-15 world units. The midpoint at frame 57 differs by up to 0.840264
 world units because the new reach starts smoothly. Contact is still frame 69; the planted
