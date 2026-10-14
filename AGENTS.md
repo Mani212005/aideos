@@ -119,6 +119,10 @@ camera motion smoother and move captions slightly upward.
 
 ## Scene films (a film whose canvas is a scene)
 
+- Characters are data (`aideos.character/1`): author, check and draw them with `characters/README.md` and
+  `aideos character check|sheet`; architecture and the retargeted receive are in `docs/CHARACTER_ENGINE.md`.
+  After any spec edit re-stamp its hash (`--stamp`); after editing an engine file listed in
+  `src/dl/scene/rigs/registry.ts` run `npx tsx scripts/freeze_stage_resources.ts`.
 - For Three stage contracts, resource freezes, cue binding or stage review evidence, read
   `docs/THREE_STAGE_P0.md`. Rendering and fixture tests must run sequentially because both rewrite
   the generated active-film module.

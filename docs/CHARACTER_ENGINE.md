@@ -59,13 +59,88 @@ Journeys the brief's list missed, added here:
 
 ## Test layers
 
-Static: file headers, eslint, root and editor type-checks, editor build. Unit and property:
-`backend/characters/characters.test.ts` (spec, hash, rig, limits, retarget, property runs).
-Feature: good and bad fixture specs, compile and design check through the fixture package.
-Journey: `backend/characters/journeys.test.ts` (J5, J8, J10, J14) plus the existing stage tests.
-Regression: every defect found gets a named test. Browser: `backend/characters/pixels.test.ts`
-(A/B equality and golden), skipped without Chrome. Visual: sheets reviewed by eye.
+Static: file headers, eslint, root and editor type-checks, editor build. Unit and feature:
+`backend/characters/characters.test.ts` (schema, hash, rig, expansion, field-named errors, budgets,
+Iona exactness, outward normals, seek-order independence, library resolution, `check --stamp`).
+Property and regression: `backend/characters/retarget.test.ts` (every character, fail and clamp
+policies, unreachable targets, planted feet, J2 rebinding, 180 random proportions, the elbow snap).
+Journey: `backend/characters/journeys.test.ts` (J3, J5, J6, J7, J8, J10, J14, several characters on
+one stage) plus the existing stage tests. Browser: `backend/characters/pixels.test.ts` (legacy versus
+spec pixels, golden, both crops, sheets), skipped without Chrome unless
+`AIDEOS_BROWSER_TESTS_REQUIRED=1`; refresh the golden with `AIDEOS_UPDATE_GOLDENS=1`. Visual: sheets
+reviewed by eye.
+
+## How it fits together
+
+| Layer | Module | Contract |
+|---|---|---|
+| Spec | `src/dl/characters/schema.ts`, `validate.ts`, `hash.ts`, `sha256.ts` | strict Zod schema; semantic issues with field paths; canonical JSON and a synchronous SHA-256 that runs in Node and the browser |
+| Rig | `src/dl/characters/rig.ts` | humanoid joints in the approved rig's order, four limbs, sockets and limits (`CharacterRig`) |
+| Parts | `src/dl/characters/expand.ts`, `src/dl/scene/characters/` | mirror groups and limb, torso and hand generators expand into tube, head, panel and facets primitives; the builder makes cel geometry, ink outlines and the painted face; `applyCharacter` assigns every channel per frame |
+| Action | `src/dl/performance/retarget.ts`, `limits.ts`, `critique.ts` | the receive authored on Iona is fitted to any rig and checked by the independent critique, now including reach, joint limits and pole clearance |
+| Film | `backend/designSpec/{spec,compile,build}.ts`, `src/dl/scene/stageContract.ts` | design names `character: <id>`; build resolves package then library, verifies the hash and embeds the spec in `scene.cast`; P0 `asset: iona-art-v1` designs still build |
+| Stage | `ThreeStage.tsx`, `stageFacts.ts`, `validateStage.ts` | any number of performing characters, one receive and one glider each; the embedded spec is re-verified before any geometry is allocated |
+| Tools | `backend/characters/{library,cli,sheet}.ts` | `aideos character check|sheet` |
+
+Retargeting (`retargetReceive`): the hips crouch and sway scale by leg length so knees bend through
+the same angles; planted ankles stand at the target's rest stance with the sole socket on the
+ground; grip keys keep their offset from the moving shoulder scaled by arm reach, so the arm uses
+the same fraction of its length; the glider's flight keeps its shape and is translated to the new
+contact; every elbow pole key is re-aimed to keep the reference's designed bend direction about the
+new arm axis. Then rotation limits clamp or refuse authored keys, and reach and hinge limits pull
+sparse grip keys in (clamp) or throw `ReceiveRetargetError` naming the field, limb and frame
+(fail). A planted foot that cannot stay planted is always refused. Retargeting onto Iona herself
+returns the reference unchanged.
+
+## Decisions
+
+- **Embed the resolved spec in the compiled film** rather than generating a browser module of the
+  library: the film stays self-contained, review and editor read exactly what renders, and the
+  stage can re-verify the hash. A spec is 10 to 20 KB.
+- **Fixed humanoid joint names with mirrored left-side proportions**, plus optional extra joints:
+  the receive needs semantic arms and legs, and mirroring removes a whole class of authoring error.
+  Non-humanoid rigs would be a new schema id.
+- **Two part layers**: exact primitives (Iona's spec is written in them, bit-identical to the legacy
+  module) and skeleton-driven generators (limb, torso, hand) so new characters follow their own
+  proportions without hand-placed points.
+- **Hash the defaulted spec**: changing a schema default changes identity, which is what it does
+  to the rendered art.
+- **Policy is authored per performance** (`limits: "fail" | "clamp"`, default `fail`), so a clamp is a
+  visible decision recorded in the compiled film and reported by the design check.
+- **Elbow repair in the reference action.** The approved receive's left pole ran within 2 degrees of
+  the arm axis, snapping the elbow 0.80 rig units in one frame; the key-seam critique could not see
+  it. In-between pole keys now roll each elbow evenly (approved keys, contact pose and hold
+  unchanged) and `pole-clearance` guards it.
+
+## What is general now, and what is still Iona-specific
+
+General: the character format, the part builder, the face painter (two eye styles), materials and
+outlines, expressions, swing channels, rigs, limits, the retargeted receive, stage rendering,
+stage facts, validation, the design and film character reference, resume fingerprints and the
+authoring tools. Three characters prove it; random proportions are property-tested.
+
+Still Iona-specific, by design: `receive-v1` itself is authored on Iona's rig (`IONA_RIG` is the
+retarget source, and the library spec must derive it exactly); its expression names and its three
+swing channels are the action's vocabulary; the glider is the only prop; the cel treatment is the
+only treatment; there is one action. Look-plan adherence and review truth for characters beyond
+identity belong to part 4.
 
 ## Verification record
 
-Filled in as the work lands.
+- `npm test`: 861 pass, 0 fail, 3 pre-existing intentional skips. New suites:
+  `characters.test.ts` (15), `retarget.test.ts` (10, including 120 + 60 random-proportion cases),
+  `journeys.test.ts` (10), `pixels.test.ts` (2, headless Chrome on software GL).
+- Lint gate: headers, eslint, root and editor type-checks, editor build; `smoke:studio` and the
+  example `validate` pass.
+- Iona promotion: CPU geometry, materials, outlines, hierarchy and mesh order are bit-identical to
+  the frozen P0 module; spec-built and legacy Iona are pixel-identical in the same browser; the real
+  P0 film rebuilt through the new engine renders byte-identical production stills (frames 0, 60,
+  108 and 200, wide and reel) to the merged slice.
+- New characters through production: the narrated P0 package with Marlo (and Pip) swapped in builds,
+  passes the both-crop design check and renders through FilmView. Marlo wide and reel rendered at
+  concurrency 2 (25.8 s and 25.6 s, about 1.05 MB each); the measured review passes every gate except
+  the fixed camera, the same profile as the merged P0 slice.
+- Craft for the captain's eye: model sheets, expression sheets and receive stills from
+  `aideos character sheet`. Observed: Pip's catch lands at eye level, so the glider passes in front
+  of the face at contact (a small upward `targetOffset` lifts it); limbs remain rigid tube sections
+  like Iona's.

@@ -502,9 +502,20 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `math.ts`: Pure dependency-free vector, quaternion, slerp, smoothstep, and two-bone IK solver (`solveTwoBone`).
 * `evaluate.ts`: Absolute-frame receive evaluator (`createPerformanceEvaluator`, `validatePerformance`) enforcing rigid limbs, world-space planted feet, and palm-glider contact attachment without simulation history or external dependencies.
 * `receive.ts`: Sparse choreography recovered from the approved Iona catch (`createReceiveAction`, `IONA_CONTACT_ROTATION`, `IONA_FLIGHT_ROTATION`).
-* `iona.ts`: Approved Iona bind hierarchy and fixed limb proportions (`IONA_RIG`).
-* `critique.ts`: Independent numerical obligations checker (`critiquePerformance`) measuring bone length, planted feet, grip path, attachment, contact cue, seams, seek-order equality, and active motion windows.
-* `backend/performance/bindReceive.ts`: Authoring boundary binding contact to narration word cues (`bindReceive`).
+* `iona.ts`: The rig the receive reference was authored on (`IONA_RIG`); the library spec `characters/iona.character.json` must derive it exactly.
+* `retarget.ts`: Fits the receive to any character rig (`retargetReceive`, `ReceiveRetargetError`): hips crouch by leg length, plants from the rest stance and sole socket, grips relative to the moving shoulder by arm reach, re-aimed elbow poles, then reach, hinge and rotation limits under a `fail` or `clamp` policy.
+* `limits.ts`: Shared limit geometry (`limbRange`, `rotationExcess`).
+* `critique.ts`: Independent numerical obligations checker (`critiquePerformance`) measuring bone length, planted feet, grip path, attachment, contact cue, seams, seek-order equality, active motion windows, pole clearance and, on character rigs, reach and joint limits.
+* `backend/performance/bindReceive.ts`: Authoring boundary binding contact to narration word cues (`bindReceive`, `fitReceiveSpan`).
+
+### `src/dl/characters/`, `src/dl/scene/characters/` & `backend/characters/` (Characters as data)
+* Architecture, journeys and risks: [`docs/CHARACTER_ENGINE.md`](CHARACTER_ENGINE.md); authoring guide: [`characters/README.md`](../characters/README.md).
+* `schema.ts`: Strict `aideos.character/1` Zod schema (`characterSpecSchema`, `CharacterSpec`).
+* `validate.ts`: `parseCharacter` and `validateCharacterSemantics` return issues naming the field; `actionCompatibility` checks expressions and swing channels against an action.
+* `hash.ts` & `sha256.ts`: Canonical JSON and a synchronous SHA-256 that runs in Node and the browser bundle (`characterHash`, `characterRigId`).
+* `rig.ts` & `expand.ts`: `rigFromCharacter` (humanoid rig, sockets, limits) and `expandParts` (mirror groups and limb, torso and hand generators into tube, head, panel and facets primitives).
+* `scene/characters/{build,apply,geometry,face}.ts`: `buildCharacter` (cel geometry, outlines, painted face) and `applyCharacter` (absolute per-frame assignment); `scene/props/paperGlider.ts` builds the glider.
+* `backend/characters/library.ts`: Resolves ids (package `characters/` first, then the repo library) to hash-verified specs. `cli.ts`: `aideos character check|sheet`. `sheet.ts`: headless Chrome sheet renderer.
 * `scripts/performance_check.ts`: CLI script (`npm run performance:check`) evaluating numerical obligations against the illustrative fixture timing.
 * `scripts/performance_filmstrip.ts`: Isolated comparison filmstrip generator (`npm run performance:filmstrip`) for fixed-camera cel pixel verification.
 
