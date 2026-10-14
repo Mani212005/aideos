@@ -40,10 +40,18 @@ import { renderSvgNodes } from "../../src/dl/scene/svgReact";
 import React from "react";
 import ReactDOMServer from "react-dom/server";
 import { SceneClip } from "../../src/dl/scene/SceneClip";
+import { SceneView } from "../../src/dl/scene/SceneView";
 import { alignSceneToAudio, audioSyncDriftMs, framesForAudioMs } from "../../src/dl/scene/sceneTiming";
 
 const DIAGRAM_SVG = path.resolve("test_fixtures/svg/pipeline_diagram.svg");
 const OUT_STRIP_DIR = path.resolve("out/svg_movie");
+
+test("transparent SVG foreground paints only its artwork; legacy scene keeps its canvas fill", () => {
+  const scene = makeDemoScene(), frame = compileScene(scene, { clockMs: 0 }).frames[0];
+  const render = (transparentBackground: boolean) => parseSvgDocument(ReactDOMServer.renderToStaticMarkup(React.createElement(SceneView, { frame, transparentBackground })));
+  assert.equal(render(false).children.filter((node) => node.tag === "rect" && node.attrs.width === "100%" && node.attrs.height === "100%").length, 1);
+  assert.equal(render(true).children.filter((node) => node.tag === "rect" && node.attrs.width === "100%" && node.attrs.height === "100%").length, 0);
+});
 
 /** Builds the demo timeline: nodes stage in, edges draw on, a token travels, a caption lands. */
 function makeDemoTimeline(): SvgAnimationTimeline {

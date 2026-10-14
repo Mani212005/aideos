@@ -33,6 +33,7 @@ CompiledFrame.camera              dense per-frame camera state
 | Remotion entry point | `SceneClip.tsx` |
 | Whole-film stage | `../SceneStage.tsx` |
 | Audio-first retiming | `sceneTiming.ts` |
+| Stage camera projection & output viewports | `projection.ts` |
 | Scene-film kit (Canvas, Timeline builder, camera authoring) | `../../../backend/sceneKit/` |
 | Node-side asset loading | `../../../backend/scene/loadSceneAssets.ts` |
 | Browser-bundle SVG source map builder | `../../../backend/scene/buildSvgSources.ts` |
@@ -171,7 +172,8 @@ and keep translation speed below 20% of the scene frame width per second (384 px
 to prevent disorienting camera shifts. It also measures the compiled per-frame curve: zoom may change at
 most 0.8% in a single frame (`MAX_CAMERA_ZOOM_STEP`) and pan may accelerate at most 0.3 scene widths per
 second squared (`MAX_CAMERA_PAN_ACCEL_WIDTHS`, 576 px/s^2 for 1920), so a track that bursts between stops is
-caught the way an over-fast one is.
+caught the way an over-fast one is. For Three stage scenes, camera pan/zoom/rotation speed and acceleration
+are verified through `projection.ts` in projected output pixels across both wide and reel viewports.
 
 **Pacing & focus validation.** Camera motion must follow move-then-hold pacing: the camera must hold
 at rest for at least 30% of the film (`MIN_CAMERA_HOLD_SHARE`), and continuous moves cannot exceed 6 seconds

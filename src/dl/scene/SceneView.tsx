@@ -187,7 +187,7 @@ export const SceneView: React.FC<SceneViewProps> = ({
       }}
     >
       {/* Background canvas fill */}
-      <rect width="100%" height="100%" fill={palette.canvas} />
+      {!transparentBackground && <rect width="100%" height="100%" fill={palette.canvas} />}
 
       <g transform={cameraTransform || undefined}>
         {/* Render all entities strictly in ascending resolvedLayer order */}
