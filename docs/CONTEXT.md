@@ -424,7 +424,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`).
 * `projection.ts`: Canonical orthographic projection, cover-fit viewport calculation (`stageViewport`, `stageProjection`), Three.js camera pose assignment (`applyStageCamera`), and stage rect geometry helpers (`projectStagePoint`, `rectInside`, `overlaps`, `SAFE_SQUARE`).
 * `stageGeometry.ts`: Character-independent posed mesh bounds with outline allowance (`projectMeshParts`, `unionPartBounds`), material declarations (`undeclaredMaterialColours`), and sampled depth evidence (`sampleMeshDepth`).
-* `stageMaterials.ts`: Finite material palette declaration for approved art assets (`STAGE_MATERIAL_PALETTES`).
+* `stageMaterials.ts`: Character-owned material declarations (`declaredMaterialPalette`: the spec palette, the face texture base and the prop's `PROP_MATERIAL_PALETTES`).
 * `stageFacts.ts`: Shared CPU geometry projection and numerical evidence for the opt-in Three stage, reporting visibility provenance.
 * `ThreeStage.tsx`: Persistent opt-in Three.js stage canvas with orthographic camera, delayRender readiness barriers, and transparent foreground/background SVG compositing.
 

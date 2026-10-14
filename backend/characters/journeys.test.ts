@@ -84,8 +84,8 @@ test("J5: a stiff character under the default fail policy is refused with the li
 test("J5: several characters share one stage, each with its own receive, glider and verified spec", () => {
   const pkg = packageWith("marlo", (design) => {
     design.assets = [
-      { id: "iona", renderer: "three", kind: "character", character: "iona", position: [760, 1215], unitsToStage: 52, treatment: "cel-v1" },
-      { id: "marlo", renderer: "three", kind: "character", character: "marlo", position: [1190, 1215], unitsToStage: 52, treatment: "cel-v1" },
+      { id: "iona", renderer: "three", kind: "character", character: "iona", position: [800, 1215], unitsToStage: 44, treatment: "cel-v1" },
+      { id: "marlo", renderer: "three", kind: "character", character: "marlo", position: [1200, 1215], unitsToStage: 44, treatment: "cel-v1" },
       { id: "glider", renderer: "three", kind: "prop", asset: "paper-glider-v1", treatment: "cel-v1" },
       { id: "glider-two", renderer: "three", kind: "prop", asset: "paper-glider-v1", treatment: "cel-v1" },
     ];

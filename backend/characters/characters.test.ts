@@ -25,6 +25,9 @@ import { createIonaArt } from "../../test_fixtures/characters/iona-legacy/iona-a
 import { CHARACTER_FILES, loadSpec, rawSpec, type FixtureCharacter } from "../testSupport/characters";
 import { characterCandidates, loadCharacter, requireCharacter } from "./library";
 import { checkCharacterFile } from "./cli";
+import { declaredMaterialPalette } from "../../src/dl/scene/stageMaterials";
+import { undeclaredMaterialColours } from "../../src/dl/scene/stageGeometry";
+import { buildProp } from "../../src/dl/scene/props/paperGlider";
 import { fitReceiveSpan } from "../performance/bindReceive";
 
 const NAMES = Object.keys(CHARACTER_FILES) as FixtureCharacter[];
@@ -235,4 +238,18 @@ test("character check stamps only an otherwise valid spec and reports the rig, b
     assert.match(refused.errors.join("\n"), /^palette\.pine: a colour is #rrggbb/m);
     assert.match(checkCharacterFile(path.join(dir, "missing.json")).errors[0], /missing or unreadable/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("material declarations are character-owned: every mesh colour is in the spec palette, the face base or the prop's colours", () => {
+  for (const name of NAMES) {
+    const spec = loadSpec(name), art = buildCharacter(spec), prop = buildProp("paper-glider-v1");
+    try {
+      const palette = declaredMaterialPalette(spec, "paper-glider-v1");
+      assert.ok(palette.includes("#f2e8d0") && palette.includes("#b5532f") && palette.includes("#ffffff"));
+      const meshes: Mesh[] = [];
+      for (const root of [art.rig.root, prop.root]) root.traverse((node) => { if ((node as Mesh).isMesh) meshes.push(node as Mesh); });
+      assert.deepEqual(undeclaredMaterialColours(meshes, palette), [], name);
+      assert.notDeepEqual(undeclaredMaterialColours(meshes, palette.filter((c) => c !== spec.palette[spec.outline.color])), [], `${name}: removing the ink colour must be caught`);
+    } finally { art.dispose(); prop.dispose(); }
+  }
 });

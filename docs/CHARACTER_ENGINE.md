@@ -79,7 +79,7 @@ reviewed by eye.
 | Parts | `src/dl/characters/expand.ts`, `src/dl/scene/characters/` | mirror groups and limb, torso and hand generators expand into tube, head, panel and facets primitives; the builder makes cel geometry, ink outlines and the painted face; `applyCharacter` assigns every channel per frame |
 | Action | `src/dl/performance/retarget.ts`, `limits.ts`, `critique.ts` | the receive authored on Iona is fitted to any rig and checked by the independent critique, now including reach, joint limits and pole clearance |
 | Film | `backend/designSpec/{spec,compile,build}.ts`, `src/dl/scene/stageContract.ts` | design names `character: <id>`; build resolves package then library, verifies the hash and embeds the spec in `scene.cast`; P0 `asset: iona-art-v1` designs still build |
-| Stage | `ThreeStage.tsx`, `stageFacts.ts`, `validateStage.ts` | any number of performing characters, one receive and one glider each; the embedded spec is re-verified before any geometry is allocated |
+| Stage | `ThreeStage.tsx`, `stageFacts.ts`, `stageMaterials.ts`, `validateStage.ts` | any number of performing characters, one receive and one glider each; the embedded spec is re-verified before any geometry is allocated; each performer's declared material colours come from its own spec palette plus its prop's |
 | Tools | `backend/characters/{library,cli,sheet}.ts` | `aideos character check|sheet` |
 
 Retargeting (`retargetReceive`): the hips crouch and sway scale by leg length so knees bend through
@@ -127,8 +127,8 @@ identity belong to part 4.
 
 ## Verification record
 
-- `npm test`: 861 pass, 0 fail, 3 pre-existing intentional skips. New suites:
-  `characters.test.ts` (15), `retarget.test.ts` (10, including 120 + 60 random-proportion cases),
+- `npm test` (rebased on the part 2 stage design gates): 874 pass, 0 fail, 3 pre-existing
+  intentional skips. New suites: `characters.test.ts` (16), `retarget.test.ts` (10, including 120 + 60 random-proportion cases),
   `journeys.test.ts` (10), `pixels.test.ts` (2, headless Chrome on software GL).
 - Lint gate: headers, eslint, root and editor type-checks, editor build; `smoke:studio` and the
   example `validate` pass.
@@ -137,7 +137,10 @@ identity belong to part 4.
   P0 film rebuilt through the new engine renders byte-identical production stills (frames 0, 60,
   108 and 200, wide and reel) to the merged slice.
 - New characters through production: the narrated P0 package with Marlo (and Pip) swapped in builds,
-  passes the both-crop design check and renders through FilmView. Marlo wide and reel rendered at
+  passes the both-crop design check and renders through FilmView. Pip and Marlo also pass the part 2
+  stage gates (every-frame safe region with margin, prop depth evidence, held carry, character-owned
+  palette); two characters share one stage in a journey test. A stale P0-compiled film is refused by
+  the real renderer with the named rebuild error instead of drawing a blank. Marlo wide and reel rendered at
   concurrency 2 (25.8 s and 25.6 s, about 1.05 MB each); the measured review passes every gate except
   the fixed camera, the same profile as the merged P0 slice.
 - Craft for the captain's eye: model sheets, expression sheets and receive stills from
