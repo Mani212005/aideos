@@ -210,6 +210,8 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `getFullScreenHeroLayout(format, width, height)`: Media, scrim, and caption bounding box geometry for full-screen B-roll heroes.
 * `getInsetRegion(format, width, height)`: Fixed frame rectangle (`InsetRect`) for `stage: "inset"` device beats (right third in long cut, lower-middle band in reel, clearing subtitle band and margins).
 * `INSET_FORMAT_FRAMES`: Reference frame sizes (`long`: 1920x1080, `reel`: 1080x1920) windowed against the square scene.
+* `getFrameMargins(format, width)`: Shared format chrome margins (long: 96px, reel: top 120px, left/right 64px, bottom 240px, scaled from format reference width), consumed by `useLayout()` and stage safe regions.
+* `getStageSafeRegion(format, width, height, captions)`: Safe scene rectangle intersecting the shared 1080 square with output margins and optional caption band.
 
 ---
 
@@ -420,6 +422,11 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `cameraTrack.ts`: Camera track compiler (`compileCameraTrack`) and motion stats (`measureCameraMotion`) measuring peak pan speed, per-frame zoom step, pan acceleration, hold share, and continuous move duration, exporting pacing constants (`MIN_CAMERA_HOLD_SHARE`, `MAX_CAMERA_CONTINUOUS_MOVE_SECONDS`, `CAMERA_CUE_LANDING_TOLERANCE_SECONDS`).
 * `validateScene.ts`: Semantic and physical integrity validator (`validateScene`) rejecting unsupported actor rigs (Rule 21) before enforcing scene integrity rules and Rule 20 timeline consistency.
 * `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`).
+* `projection.ts`: Canonical orthographic projection, cover-fit viewport calculation (`stageViewport`, `stageProjection`), Three.js camera pose assignment (`applyStageCamera`), and stage rect geometry helpers (`projectStagePoint`, `rectInside`, `overlaps`, `SAFE_SQUARE`).
+* `stageGeometry.ts`: Character-independent posed mesh bounds with outline allowance (`projectMeshParts`, `unionPartBounds`), material declarations (`undeclaredMaterialColours`), and sampled depth evidence (`sampleMeshDepth`).
+* `stageMaterials.ts`: Finite material palette declaration for approved art assets (`STAGE_MATERIAL_PALETTES`).
+* `stageFacts.ts`: Shared CPU geometry projection and numerical evidence for the opt-in Three stage, reporting visibility provenance.
+* `ThreeStage.tsx`: Persistent opt-in Three.js stage canvas with orthographic camera, delayRender readiness barriers, and transparent foreground/background SVG compositing.
 
 ### `backend/sceneKit/` (Scene-Film Authoring & Stage Kit)
 * `stage.ts`: Scene geometry constants (`SCENE_SIZE`, `SAFE_SQUARE`, `FORMAT_WINDOWS`, `FPS`).
@@ -440,10 +447,11 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `displayWords(lines, extra)`, `unmeasuredWords(words, table)`, `measureWords(words, file)` (`measureWords.ts`): Measures unmeasured words in headless Chrome and merges them into `wordWidths.json`.
 
 ### `backend/designCheck/` (Deterministic Design Standard Checker)
-* `checkFilmDesign(raw, context)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, scene engine validity, static self-contained artwork, locked palette, typography, motion continuity, single transform origin, picture locked to narration, honest data / grounded numbers, smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration), move-then-hold pacing (>= 30% hold share, <= 6s continuous moves, cue landing, and subject focus framing), carry-over change holds (substantial visible animation settling in a camera hold and remaining framed for >= 2s), and a clear inset region while a device shot shares the stage.
+* `checkFilmDesign(raw, context)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, scene engine validity, static self-contained artwork, locked palette, typography, motion continuity, single transform origin, picture locked to narration, honest data / grounded numbers, smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration), move-then-hold pacing (>= 30% hold share, <= 6s continuous moves, cue landing, and subject focus framing), carry-over change holds (substantial visible animation settling in a camera hold and remaining framed for >= 2s), a clear inset region while a device shot shares the stage, and Three.js stage geometry gates (`checkThreeStage`) including occlusion checks.
+* `checkThreeStage(film, scene, context)` (`threeStage.ts`): Evaluates Three stage designs against geometry-driven gates across wide and reel formats: posed mesh vertex extents and outlines within stage safe region and caption clearance, device inset clearance during inset shots, foreground SVG and sampled mesh depth occlusion, 2s settled aftermath carry holds, camera speed (<= 20% width/s) and acceleration (<= 0.3 widths/s^2), cast focus framing, duplicate performance writers, and finite character material palettes.
 * `MAX_CAMERA_ZOOM_STEP`, `MAX_CAMERA_PAN_ACCEL_WIDTHS` (`designCheck.ts`): Scene camera limits on single-frame zoom change (0.8%) and pan acceleration (0.3 scene widths/s^2).
 * `checkFilmDesignById(filmId)` (`designCheck.ts`): Loads a film by package slug and executes design validation against optional look plan and camera target cues.
-* `checkInsetRegions(film)` (`insetRegion.ts`): Verifies that no visible scene artwork occupies the format-specific inset region during `stage: "inset"` shots across both wide and reel formats.
+* `checkInsetRegions(film)`, `projectedSvgParts(entity, frameToPx)`, `prepareSvgProjection(scene, width, height)` (`insetRegion.ts`): Verifies that no visible scene artwork occupies the format-specific inset region during `stage: "inset"` shots across both wide and reel formats, and extracts projected SVG parts for stage occlusion checks.
 * `leafBounds(node)`, `parseTransform(value)` (`svgBounds.ts`): Conservative 2D bounding box and affine transform calculations for SVG elements without rasterization.
 * `formatDesignReport(report)` (`designCheck.ts`): Formats validation findings and recommendations into a terminal report.
 * `offPaletteColours(svgText, accent)` (`designCheck.ts`): Finds colour literals in SVG markup that violate the locked palette and chosen accent.
