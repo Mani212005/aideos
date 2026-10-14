@@ -1,6 +1,6 @@
-# File Description: Per-repo no-mistakes configuration defining test and lint verification gates.
+# File Description: Per-repo no-mistakes configuration defining test and lint verification gates; both delegate to scripts/ci.ts so the local gate runs exactly the commands CI runs.
 # Inputs and outputs: repository source -> test and lint exit codes.
 # Used by: no-mistakes CLI during automated verification runs.
 commands:
-  test: '(test -d node_modules || npm ci) && npm test && npm run validate -- examples/hello-scene/film.json && npm run smoke:studio'
-  lint: '(test -d node_modules || npm ci) && npx tsx scripts/check_headers.ts && npx tsc --noEmit && (test -d editor/node_modules || npm --prefix editor ci) && npx tsc --noEmit -p editor/tsconfig.app.json && npm --prefix editor run build'
+  test: '(test -d node_modules || npm ci) && npm run ci -- unit journeys'
+  lint: '(test -d node_modules || npm ci) && (test -d editor/node_modules || npm --prefix editor ci) && npm run ci -- static'

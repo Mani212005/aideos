@@ -1,0 +1,14 @@
+# File Description: Minimal ruff configuration for the repository's Python files (currently backend/sceneKit/whisperWords.py).
+# Inputs and outputs: Python sources -> ruff lint and format verdicts.
+# Used by: npm run ci (static job), .github/workflows/ci.yml.
+
+# The code comments in this repo run long; match the existing style rather than reflowing them.
+line-length = 120
+target-version = "py39"
+extend-exclude = ["**/*.md", "node_modules", "editor/node_modules", "videos", ".frames", "out"]
+
+[lint]
+# pycodestyle, pyflakes, import order, bugbear: the small set that catches real mistakes.
+select = ["E", "F", "I", "B", "W"]
+# The formatter owns code line length; the three-field file headers run long by repo convention.
+ignore = ["E501"]

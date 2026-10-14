@@ -1,0 +1,72 @@
+# File Description: Regenerates the golden frames of the legacy films on the CI platform (Linux, software GL) and commits them to the branch it ran on; goldens are never made on a developer laptop because 3D and text rasterization differ between machines.
+# Inputs and outputs: a manual run on a branch, or the label `update-goldens` on a pull request -> a commit of backend/journeys/goldens/ (PNGs and MANIFEST.json) on that branch, then a fresh CI run.
+# Used by: GitHub Actions. Documented in docs/CI.md.
+name: Update goldens
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+env:
+  CI: "true"
+  AIDEOS_GL: swangle
+
+jobs:
+  update:
+    name: update-goldens
+    # Only the label by that name, only for branches of this repository (a fork's token cannot push), and never the default branch.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref_name != github.event.repository.default_branch) ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'update-goldens' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            editor/package-lock.json
+      - name: Install ffmpeg and browser libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg libnss3 libdbus-1-3 libatk1.0-0 libgbm-dev libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2
+      - name: Install dependencies
+        run: npm ci
+      - name: Download the Remotion browser
+        run: npx remotion browser ensure
+      - name: Render the goldens (twice, to prove this platform reproduces them)
+        run: npm run goldens:update
+      - name: Commit the goldens
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/journeys/goldens
+          if git diff --cached --quiet; then
+            echo "goldens already match this platform; nothing to commit"
+          else
+            git commit -m "test: regenerate golden frames on the CI platform"
+            git push origin "HEAD:${BRANCH}"
+          fi
+      - name: Start a fresh CI run on the new commit
+        # A push made with GITHUB_TOKEN does not trigger workflows by itself; dispatching one explicitly does.
+        run: gh workflow run ci.yml --ref "${BRANCH}" || echo "could not dispatch ci.yml; re-run CI by hand"
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Drop the label so it can be used again
+        if: github.event_name == 'pull_request'
+        run: gh pr edit "${{ github.event.pull_request.number }}" --remove-label update-goldens
+        env:
+          GH_TOKEN: ${{ github.token }}

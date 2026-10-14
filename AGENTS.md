@@ -253,8 +253,8 @@ camera motion smoother and move captions slightly upward.
 - `backend/timeline/voiceover_engine.ts` is imported by the browser bundle and must stay free of Node
   built-ins. ffmpeg-based waveform extraction lives in `backend/timeline/waveform.ts`; the editor
   fetches peaks via `/api/audio/peaks` and falls back to in-browser decoding (`editor/src/components/timeline/useAudioPeaks.ts`).
-- Every `backend/timeline/*.test.ts` file is wired into the root `npm test` script. Keep it that way:
-  suites that are not listed there silently rot.
+- `npm test` discovers every `backend/**/*.test.ts` and `scripts/**/*.test.ts` by glob, so a new suite is run
+  without wiring; `scripts/check_tests_wired.ts` (CI static job) fails for a test file no script would run.
 
 ## Frame safe areas and the palette guard
 
@@ -339,6 +339,10 @@ camera motion smoother and move captions slightly upward.
 - An agent may only claim done once Gemini rates the video 9.0 or higher with all 6 hard gates passing (verdict: ACCEPT).
 - If the verdict is REVISE, the agent must inspect the constructive feedback and timestamp citations, iterate on the film or design, and re-render.
 - Review rounds and reports are persisted under `videos/<slug>/gemini-review/` (`round-N.json`, `latest.json`), which is gitignored.
+
+## CI and tests
+
+- `npm run ci` is the one list of CI commands (`scripts/ci.ts`; jobs `static`, `unit`, `journeys`, `legacy`, `nightly`): GitHub Actions, `.no-mistakes.yaml` and contributors all run it, and a new check goes into that table. Journey tests (`backend/journeys/*.journey.ts`, real pipeline and render) and golden frames are described in [docs/CI.md](docs/CI.md), which also says how to add a journey; goldens are made only by the update-goldens workflow, never on a Mac.
 
 ## Maintaining this file
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.

@@ -213,7 +213,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [project, stage]);
+  }, [project, stage, setStage]);
 
   const pendingBrollCount = useMemo(
     () =>

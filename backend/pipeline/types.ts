@@ -42,6 +42,8 @@ export interface ProductionRequest {
   formats?: ProductionFormat[];
   /** Maximum concurrent render workers per sequential export. */
   renderConcurrency?: number;
+  /** Render only this inclusive frame range of each format (a short clip for CI and previews). Omit for the whole film. */
+  renderFrames?: [number, number];
   /** Optional local Chrome executable, allowing hosts to render without downloading another browser. */
   browserExecutable?: string;
   /** Where the finished mp4s land. Defaults to the video package's renders/ directory (videos/<slug>/renders/). */

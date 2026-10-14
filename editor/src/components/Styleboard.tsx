@@ -296,7 +296,6 @@ export function Styleboard({
 
   // Poll B-roll status on mount and periodically while in Styleboard
   useEffect(() => {
-    let timer: any;
     const fetchStatus = async () => {
       try {
         const res = await fetch(`/api/broll/status?filmId=${film.id}`);
@@ -350,7 +349,7 @@ export function Styleboard({
     };
 
     fetchStatus();
-    timer = setInterval(fetchStatus, 4000);
+    const timer = setInterval(fetchStatus, 4000);
     return () => clearInterval(timer);
   }, [film]);
 
