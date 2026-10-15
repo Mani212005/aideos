@@ -54,6 +54,9 @@ The Aideos Timeline & Trimmer implements industry-standard non-linear editing ge
 To install this checkout's dispatcher as the global `aideos` command, run
 `./scripts/install_aideos.sh`. It creates `~/.local/bin/aideos` as a symlink to `bin/aideos`.
 Add `~/.local/bin` to `PATH` if it is not already there, and rerun the installer after moving the checkout.
+The command runs the checkout it is linked to, from any directory: `bin/aideos` follows its own
+symlink to find its checkout. Run it inside a different aideos checkout or worktree (or any
+subdirectory of one) and that checkout is used instead; there is no other fallback.
 
 ```bash
 # 1. Install dependencies

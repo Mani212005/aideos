@@ -19,18 +19,65 @@ if [ "$#" -gt 0 ]; then
   esac
 fi
 
-# Detect Aideos project directory: check current directory first, then default repo path
+# Project resolution precedence (the one place this is documented):
+#   1. The checkout containing the current directory (it or any ancestor holds remotion.config.ts and editor/),
+#      so working inside another checkout or worktree runs that checkout's code.
+#   2. Otherwise the installation root: the checkout this dispatcher itself lives in, found by following
+#      its own symlinks (the global ~/.local/bin/aideos link), so the command works from any directory.
+# There is no other fallback: a stale hardcoded clone must never be run by accident.
+
+# Returns success when the directory is an Aideos checkout.
+is_aideos_checkout() {
+  [ -f "$1/remotion.config.ts" ] && [ -d "$1/editor" ]
+}
+
+# Prints the absolute real path of a file, following symlinks (portable: no GNU readlink -f).
+resolve_real_path() {
+  local target="$1" dir link
+  while [ -L "$target" ]; do
+    dir="$(cd "$(dirname "$target")" && pwd -P)"
+    link="$(readlink "$target")"
+    case "$link" in
+      /*) target="$link" ;;
+      *) target="$dir/$link" ;;
+    esac
+  done
+  printf '%s/%s\n' "$(cd "$(dirname "$target")" && pwd -P)" "$(basename "$target")"
+}
+
 AIDEOS_DIR=""
-if [ -f "./remotion.config.ts" ] && [ -d "./editor" ]; then
-  AIDEOS_DIR="$(pwd)"
-elif [ -f "../remotion.config.ts" ] && [ -d "../editor" ]; then
-  AIDEOS_DIR="$(cd .. && pwd)"
-elif [ -d "/Users/manijoshi/firstmate/projects/aideos" ]; then
-  AIDEOS_DIR="/Users/manijoshi/firstmate/projects/aideos"
-else
-  echo "Error: Could not locate Aideos project directory." >&2
-  exit 1
+SEARCH_DIR="$(pwd -P)"
+while true; do
+  if is_aideos_checkout "$SEARCH_DIR"; then
+    AIDEOS_DIR="$SEARCH_DIR"
+    break
+  fi
+  [ "$SEARCH_DIR" = "/" ] && break
+  SEARCH_DIR="$(dirname "$SEARCH_DIR")"
+done
+if [ -z "$AIDEOS_DIR" ]; then
+  SELF_PATH="$(resolve_real_path "${BASH_SOURCE[0]}")"
+  INSTALL_ROOT="$(cd "$(dirname "$SELF_PATH")/.." && pwd -P)"
+  if is_aideos_checkout "$INSTALL_ROOT"; then
+    AIDEOS_DIR="$INSTALL_ROOT"
+  else
+    echo "Error: Could not locate the Aideos checkout for $SELF_PATH (expected remotion.config.ts and editor/ in $INSTALL_ROOT)." >&2
+    exit 1
+  fi
 fi
+
+# Prints the usage of `aideos design`.
+design_usage() {
+  echo "Usage: aideos design check <film...> [--all] [--stills] [--json]"
+  echo "       aideos design brief <film>"
+  echo "       aideos design build <film> [--source agent|server-model|hand-built]"
+}
+
+# Prints the usage of `aideos look`.
+look_usage() {
+  echo "Usage: aideos look brief <film>"
+  echo "       aideos look check <film> [--json]"
+}
 
 CONFIG_DIR="${HOME}/.config/aideos"
 CONFIG_FILE="${CONFIG_DIR}/agent"
@@ -91,10 +138,12 @@ if [ "$#" -gt 0 ]; then
         check|build|brief)
           cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts "design-$SUB" "$@"
           ;;
+        --help|-h|help)
+          design_usage
+          exit 0
+          ;;
         *)
-          echo "Usage: aideos design check <film...> [--all] [--stills] [--json]" >&2
-          echo "       aideos design brief <film>" >&2
-          echo "       aideos design build <film> [--source agent|server-model|hand-built]" >&2
+          design_usage >&2
           exit 1
           ;;
       esac
@@ -125,9 +174,12 @@ if [ "$#" -gt 0 ]; then
         check)
           cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts "look-check" "$@"
           ;;
+        --help|-h|help)
+          look_usage
+          exit 0
+          ;;
         *)
-          echo "Usage: aideos look brief <film>" >&2
-          echo "       aideos look check <film> [--json]" >&2
+          look_usage >&2
           exit 1
           ;;
       esac
@@ -180,6 +232,13 @@ if [ "$#" -gt 0 ]; then
       echo "  aideos review <slug|mp4>    Measured (deterministic) review of a rendered video"
       echo "  aideos character check <spec>  Validate a character spec, naming bad fields (--stamp writes its hash)"
       echo "  aideos character sheet <spec>  Render its model sheet, expression sheet and receive stills"
+      echo "  aideos look brief|check <film>      Write or check a film's look plan (aideos look --help)"
+      echo "  aideos design check|brief|build <film>  Check, brief or build a film's bespoke design (aideos design --help)"
+      echo "  aideos connect <code>       Link the studio to the coding agent in this terminal"
+      echo "  aideos mcp                  Serve the production tools over MCP (stdio)"
+      echo "  aideos engine-test          Run the backend engine self-test"
+      echo "  aideos lint                 Run the lint gate"
+      echo "  aideos exit                 Stop the local editor dev server (also: stop, down, kill)"
       echo ""
       exit 0
       ;;
