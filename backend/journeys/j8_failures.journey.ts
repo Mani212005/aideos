@@ -107,7 +107,7 @@ test("J10 an unknown field in design.json is reported by field name", { todo: "p
   assert.match(status.errors.join("\n"), /bogusField/);
 });
 
-test("J8 a cue phrase spoken twice in one shot is rejected as ambiguous", { todo: "part 2 (gates): createCues().word() silently takes the first match" }, async () => {
+test("J8 a cue phrase spoken twice in one shot is rejected as ambiguous", async () => {
   const pkg = await preparedPackage("j8-dup-phrase");
   // "toward" occurs twice in the narration of beat-01; look and design name the same phrase so only the ambiguity can fail the build.
   const { status } = buildBroken(

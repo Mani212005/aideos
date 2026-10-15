@@ -87,7 +87,7 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 | preview versus export drift | studio picture equality on return (smoke); export-vs-cold equality (J3); a Player-vs-export pixel comparison is open (needs the Player at composition size) |
 | checks that pass on SVG-only evidence | J4 reads the projected 3D mesh bounds, not SVG; J7: review presence, contact and camera come from the stage measured per output, never from SVG clips or the recorded cue |
 | unreachable targets giving NaN | J8: finite numbers and a failed critique by name |
-| cue binding, missing or duplicate phrase | J8: missing phrase and unknown shot are named; duplicate phrase is `todo` (it silently binds the first match) |
+| cue binding, missing or duplicate phrase | J8: missing phrase, unknown shot and duplicate phrase are rejected with named errors |
 | render weight and memory | nightly budget: measured 313 s, 2.2 GB RSS, 0.5 GB temp on a Mac |
 | CI slowness, logins | four parallel jobs, caches, no login-only reviewer in CI |
 
@@ -191,8 +191,6 @@ annotation and job-summary note.
 
 * `J10 an unknown field in design.json is reported by field name` currently receives the generic
   `design.json (root): Invalid input` error.
-* `J8 a cue phrase spoken twice in one shot is rejected as ambiguous` currently binds the first
-  occurrence.
 * `J8 rendering with no WebGL ends in a named error, never a blank frame` needs a stage-level
   readiness error that a test can provoke because Remotion's CLI has no WebGL-disabled flag.
 * `J3 the Studio Player preview frame matches the exported frame` needs the Player drawn at

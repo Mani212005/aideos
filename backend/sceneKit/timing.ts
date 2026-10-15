@@ -69,11 +69,17 @@ export function createCues(timing: NarrationTiming, fps: number = FPS): Cues {
     if (!segment) throw new Error(`No shot "${shotId}" in the measured narration.`);
     const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
     const wanted = phrase.split(/\s+/).map(normalize).filter(Boolean);
-    for (let i = 0; i + wanted.length <= segment.words.length; i++) {
+    let match = -1;
+    for (let i = 0; wanted.length > 0 && i + wanted.length <= segment.words.length; i++) {
       if (wanted.every((w, k) => normalize(segment.words[i + k].word) === w)) {
-        const hit = edge === "start" ? segment.words[i] : segment.words[i + wanted.length - 1];
-        return Math.round((edge === "start" ? hit.startSec : hit.endSec) * fps);
+        if (match >= 0) throw new Error(`"${phrase}" is spoken more than once in shot "${shotId}"; the cue is ambiguous.`);
+        match = i;
       }
+    }
+    if (match >= 0) {
+      const i = match;
+      const hit = edge === "start" ? segment.words[i] : segment.words[i + wanted.length - 1];
+      return Math.round((edge === "start" ? hit.startSec : hit.endSec) * fps);
     }
     throw new Error(`"${phrase}" is not spoken in shot "${shotId}": ${segment.text}`);
   };

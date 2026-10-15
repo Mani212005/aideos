@@ -227,8 +227,8 @@
       "property": "opacity",
       "from": 1,
       "to": 0.25,
-      "start": "beat-05:\"then it waits\"",
-      "end": "beat-05:\"then it waits\"@end+10",
+      "start": "beat-05:\"fraction of the time and then it waits\"",
+      "end": "beat-05:\"fraction of the time and then it waits\"@end+10",
       "easing": "expoOut"
     },
     {
