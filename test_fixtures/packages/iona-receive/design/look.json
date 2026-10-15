@@ -48,6 +48,11 @@
         "id": "receive-message",
         "action": "receive-v1",
         "actor": "iona",
+        "character": {
+          "id": "iona",
+          "version": 1,
+          "hash": "ab657d689f18b93a0983ad0fc568dce849380a42358af989651eac3976687cc8"
+        },
         "prop": "glider",
         "start": "approach",
         "decisive": {

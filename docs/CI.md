@@ -64,12 +64,12 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 | Journey | Protected by | Layer |
 | --- | --- | --- |
 | J1 make a film with a character end to end | `j1_pipeline.journey.ts`: the PR journey runs the real `runProduction` with the iona-receive fixture, renders wide and reel around the contact frame, and checks output metadata and a drawn frame; nightly renders the full film with budgets | journey, nightly |
-| J2 narration changes after design, stale work not reused | `backend/pipeline/pipeline.test.ts` (existing: retime refreshes base-film, forced upstream reopens downstream) | feature |
+| J2 narration changes after design, stale work not reused | `j2_retime.journey.ts`: the real pipeline re-narrates with words inserted before "catches", the compiled contact follows the new word, design and render rerun into a new reel and the measured review finds the contact on the word; `backend/review/stageTruth.test.ts` (a contact off its word fails adherence even if the recorded cue frame is edited); `backend/pipeline/pipeline.test.ts` (retime refreshes base-film, forced upstream reopens downstream) | journey, feature |
 | J3 scrub, save, reload, preview equals export | `scripts/smoke_studio.ts` (keyboard scrub forwards and back with exact frame readout, same picture on return, split, autosave, reload keeps the edit); export-versus-cold equality (wide and reel); Player-versus-export pixel comparison is a named `todo` journey | journey, todo |
 | J4 reel crop keeps character and prop clear of captions | `j1_pipeline.journey.ts`: projected character and prop bounds, every frame from approach to recovery, inside the frame and above the caption band in wide and reel; glider attached at the decisive frame | journey |
 | J5 second and third character, same action | `backend/characters/journeys.test.ts` and `backend/characters/retarget.test.ts` exercise multiple data-defined characters through the same action; details in [the character-engine test plan](CHARACTER_ENGINE.md#test-layers) | unit |
-| J6 resume reopens exactly the right stages | `pipeline.test.ts` (existing); `renderFrames` is part of the render fingerprint | feature |
-| J7 reviews see the 3D stage truthfully | `stage.test.ts` and `review.test.ts` (existing) | feature |
+| J6 resume reopens exactly the right stages | `j6_resume.journey.ts`: an unchanged rerun reuses every production stage and the reel byte for byte, a package character edit reruns design through verify and the new art is in the pixels; `backend/pipeline/characterResume.test.ts` (look hash and design fingerprint carry the character); `pipeline.test.ts`; `renderFrames` is part of the render fingerprint | journey, feature |
+| J7 reviews see the 3D stage truthfully | `j7_review_truth.journey.ts`: on real wide and reel renders the measured review and the Gemini facts describe that output's own stage (characters, contact on the word, camera in that crop, unmeasured craft) and a reply without evidence is not accepted; `backend/review/stageTruth.test.ts` (per-format presence and camera, hidden cast, plain-word facts); `stage.test.ts`; `geminiReview.test.ts` | journey, feature |
 | J8 failures give a named error | `j8_failures.journey.ts`: a phrase not spoken, an unknown shot and missing artwork are each named and write no film; a failed design stops the run with no mp4; an unreachable hand target gives finite numbers and a failed grip check; two J8 cases are `todo` (below) | journey |
 | J9 existing SVG and template films render unchanged | `j9_template.journey.ts` (real pipeline, templates), `j9_svg_repeatability.journey.ts` (exact cold-render equality of Still Talking frame 2773), and `legacy.golden.ts` (golden frames of four films; **NOT COVERED until the baselines are committed**) | journey, golden |
 | J10 an agent authors from the docs, bad input names the field | `j8_failures.journey.ts` todo: an unknown design field is reported as `Invalid input` at root | todo |
@@ -85,7 +85,7 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 | out-of-order frame rendering | J3 seek-order test: concurrent export frames equal cold single-frame renders |
 | blank first frame / resource races | J1 asserts the contact frame is drawn (luma spread), not flat; unit `J8` cases name the missing resource |
 | preview versus export drift | studio picture equality on return (smoke); export-vs-cold equality (J3); a Player-vs-export pixel comparison is open (needs the Player at composition size) |
-| checks that pass on SVG-only evidence | J4 reads the projected 3D mesh bounds, not SVG; part 4 owns review truth |
+| checks that pass on SVG-only evidence | J4 reads the projected 3D mesh bounds, not SVG; J7: review presence, contact and camera come from the stage measured per output, never from SVG clips or the recorded cue |
 | unreachable targets giving NaN | J8: finite numbers and a failed critique by name |
 | cue binding, missing or duplicate phrase | J8: missing phrase and unknown shot are named; duplicate phrase is `todo` (it silently binds the first match) |
 | render weight and memory | nightly budget: measured 313 s, 2.2 GB RSS, 0.5 GB temp on a Mac |
@@ -120,6 +120,8 @@ journey("J99 what the user does, in words", async (ctx) => {
   and design, with an edit hook for breaking them) and `retargetShotIds`.
 * For exact pixels use `openFilm(slug)` from `remotionFrames.ts`: cold `still()` per frame and a
   concurrent `sequence()`, both lossless PNG.
+* Renders use Remotion's downloaded headless shell; on a host without it, set
+  `AIDEOS_BROWSER_EXECUTABLE` to a local Chrome and `journeyRequest` passes it to the render.
 * Prefer structural assertions (bounds, ownership, counts, error text naming the field) over image
   comparisons. A pixel assertion needs a deterministic reason to be equal.
 * Declare a known gap as `test("...", { todo: "who owns it and why" }, ...)`: it runs in every CI

@@ -11,7 +11,7 @@
 import type { Loudness, Silence } from "./media";
 import type { RenderFacts } from "./renderFacts";
 import type { FilmFacts } from "./source";
-import { captionMatch, chanceNearWordStarts, cutsThroughWords, normalizeWord, pauses, shareNearWordStarts, spokenNumbers, wordsPerMinute, type Narration } from "./speech";
+import { captionMatch, chanceNearWordStarts, cutsThroughWords, normalizeWord, pauses, phraseFrame, shareNearWordStarts, spokenNumbers, wordsPerMinute, type Narration } from "./speech";
 import { THRESHOLDS as T } from "./thresholds";
 import type { CriterionKey, CriterionResult, Evidence, VideoFacts } from "./types";
 
@@ -129,13 +129,60 @@ function cueStartSec(
   return matches.reduce((best, t) => (Math.abs(t - mid) < Math.abs(best - mid) ? t : best), matches[0]);
 }
 
+// Checks one planned stage performance against the measured film in this output: identity, contact on its decisive word, and presence.
+function performanceAdherence(
+  planned: Extract<NonNullable<FilmFacts["lookPlan"]>, { schema: "aideos.look/2" }>["film"]["performances"][number],
+  film: FilmFacts,
+  narration: Narration | null,
+  shot: { id: string; startSec: number; endSec: number; visibleAtStart: string[]; visibleAtEnd: string[] },
+): { failures: string[]; evidence: Evidence[] } {
+  const failures: string[] = [], evidence: Evidence[] = [];
+  const where = film.format ? ` in the ${film.format} output` : "";
+  const measured = film.performances?.find((p) => p.id === planned.id);
+  if (!measured) return { failures: [`planned performance "${planned.id}" is missing from the film`], evidence: [{ t: shot.startSec, note: `planned performance ${planned.id}` }] };
+  if (measured.action !== planned.action || measured.actor !== planned.actor || measured.prop !== planned.prop) {
+    failures.push(`performance "${planned.id}" is ${measured.actor} doing ${measured.action} with ${measured.prop}, but the plan says ${planned.actor} doing ${planned.action} with ${planned.prop}`);
+  }
+  if (!measured.character || measured.character.id !== planned.character.id || measured.character.version !== planned.character.version) {
+    failures.push(`performance "${planned.id}" draws ${measured.character ? `${measured.character.id} v${measured.character.version}` : "an unverified character"}, but the plan names ${planned.character.id} v${planned.character.version}`);
+  }
+  if (planned.decisive.shotId === shot.id) {
+    const cue = phraseFrame(narration, planned.decisive.phrase, planned.decisive.edge, shot, film.fps);
+    if (cue === null) {
+      failures.push(`performance "${planned.id}": decisive phrase "${planned.decisive.phrase}" was not found in the word timings of shot "${shot.id}"`);
+      evidence.push({ t: shot.startSec, note: `decisive cue of ${planned.id}: ${planned.decisive.phrase}` });
+    } else if (measured.contactFrame === null) {
+      failures.push(`performance "${planned.id}" never makes contact; its decisive word "${planned.decisive.phrase}" is at ${round(cue / film.fps)} s`);
+      evidence.push({ t: cue / film.fps, note: `${planned.id} should make contact on "${planned.decisive.phrase}"` });
+    } else {
+      const offset = measured.contactFrame - cue;
+      if (Math.abs(offset) > T.planAdherence.contactCueToleranceFrames) {
+        failures.push(`performance "${planned.id}" makes contact at frame ${measured.contactFrame}, ${Math.abs(offset)} frames ${offset > 0 ? "after" : "before"} its decisive word "${planned.decisive.phrase}" at frame ${cue}`);
+        evidence.push({ t: measured.contactFrame / film.fps, note: `${planned.id} contact, ${offset} frames from "${planned.decisive.phrase}"` });
+      }
+      const unseen = [planned.actor, planned.prop].filter((id) => !measured.presentAtContact.includes(id));
+      if (unseen.length) {
+        failures.push(`at the contact of "${planned.id}" ${unseen.join(" and ")} ${unseen.length > 1 ? "are" : "is"} not on stage${where} (hidden or mostly outside the frame)`);
+        evidence.push({ t: measured.contactFrame / film.fps, note: `${unseen.join(", ")} not in frame at ${planned.id} contact` });
+      }
+    }
+  } else {
+    const missing = [planned.actor, planned.prop].filter((id) => !shot.visibleAtStart.includes(id) && !shot.visibleAtEnd.includes(id));
+    if (missing.length) {
+      failures.push(`shot "${shot.id}" carries performance "${planned.id}" but ${missing.join(" and ")} ${missing.length > 1 ? "are" : "is"} not on stage${where} at its start or end`);
+      evidence.push({ t: shot.startSec, note: `${missing.join(", ")} absent from ${shot.id}` });
+    }
+  }
+  return { failures, evidence };
+}
+
 // Compares measured scene facts with the authored look plan without making it a review gate.
 function planAdherence(i: ReviewInputs): CriterionResult {
   const { film, narration, video } = i;
   const lookPlan = film?.lookPlan;
   if (!film || !lookPlan) return skipped(13, "plan-adherence", "Look plan adherence", false, "needs film data with a valid design/look.json");
-  if (lookPlan.schema === "aideos.look/2") return skipped(13, "plan-adherence", "Look plan adherence", false, "P0 stage: full v2 look adherence and visual craft unmeasured; format-indexed stage facts report numerical action, independent cue and projected geometry. SVG motion-start evidence does not establish stage adherence.");
   if (!narration?.timed) return skipped(13, "plan-adherence", "Look plan adherence", false, "needs word timings to verify plan cues");
+  const stagePlan = lookPlan.schema === "aideos.look/2" ? lookPlan : null;
 
   const failures: string[] = [];
   const evidence: Evidence[] = [];
@@ -147,10 +194,12 @@ function planAdherence(i: ReviewInputs): CriterionResult {
   let visibleCarriedObjects = 0;
   let cameraPoses = 0;
   let deviceShots = 0;
+  let performanceShots = 0;
 
   if (film.kind !== "scene" || measuredShots.length === 0) {
     failures.push("the look plan requires a measurable scene film");
   }
+  if (stagePlan && !film.performances) failures.push("the look plans a Three stage film but the film has no stage performances");
 
   for (const shot of planShots) {
     const measured = measuredById.get(shot.id);
@@ -170,7 +219,17 @@ function planAdherence(i: ReviewInputs): CriterionResult {
       }
     }
 
-    if (shot.treatment === "scene") {
+    const shotPerformances = stagePlan && "performances" in shot ? stagePlan.film.performances.filter((p) => shot.performances.includes(p.id)) : [];
+    if (shot.treatment === "scene" && shotPerformances.length) {
+      // A performance shot is judged by its action: contact on the decisive word, actor and prop on stage. Anticipation may start before the cue.
+      const before = failures.length;
+      for (const planned of shotPerformances) {
+        const result = performanceAdherence(planned, film, narration, measured);
+        failures.push(...result.failures);
+        evidence.push(...result.evidence);
+      }
+      if (failures.length === before) performanceShots++;
+    } else if (shot.treatment === "scene") {
       const cue = cueStartSec(narration, shot.cue, { startSec: measured.startSec, endSec: measured.endSec });
       const candidates = measured.motions.filter((motion) => shot.carries.includes(motion.castId));
       const timely = cue === null ? [] : candidates.filter((motion) => Math.abs(motion.startSec - cue) <= T.planAdherence.cueToleranceSec);
@@ -203,7 +262,10 @@ function planAdherence(i: ReviewInputs): CriterionResult {
   const poses = lookPlan.film.camera;
   const cameraFrames = film.cameraKeyframes ?? [];
   let previousFrame = -1;
+  // A stage film without camera keyframes holds the centred wide camera; that fixed camera is the plan's wide pose.
+  const fixedWideStage = Boolean(stagePlan) && cameraFrames.length === 0 && film.camera.moves.length === 0;
   for (const pose of poses) {
+    if (fixedWideStage && /\bwide\b/i.test(pose.pose)) { cameraPoses++; continue; }
     const shot = planShots.find((candidate) => candidate.id === pose.at || candidate.cue === pose.at);
     const measuredShot = shot ? measuredById.get(shot.id) : undefined;
     const shotRange = measuredShot ? { startSec: measuredShot.startSec, endSec: measuredShot.endSec } : undefined;
@@ -233,11 +295,11 @@ function planAdherence(i: ReviewInputs): CriterionResult {
   return {
     id: 13, key: "plan-adherence", name: "Look plan adherence", gate: false,
     status: failures.length ? "fail" : "pass", score: score(adherence, 0, 1),
-    summary: failures.length ? failures.join("; ") : `all ${planShots.length} planned shots, ${carriedObjects} carried objects and ${poses.length} camera poses match the plan`,
-    metrics: { plannedShots: planShots.length, sceneMotionShots: motionShots, carriedObjects, visibleCarriedObjects, cameraPoses, cameraPosesPlanned: poses.length, deviceShots, devicesAllowed: maxDevices, stageClears: failures.filter((failure) => failure.includes("clears the scene")).length, adherence: round(adherence), durationSec: round(video.durationSec) },
-    threshold: { cueToleranceSec: T.planAdherence.cueToleranceSec, visibleOpacityMin: T.planAdherence.visibleOpacityMin, gate: "non-gate until calibrated on proof and two or three more films" },
+    summary: failures.length ? failures.join("; ") : `all ${planShots.length} planned shots, ${carriedObjects} carried objects and ${poses.length} camera poses match the plan${stagePlan ? ` in the ${film.format ?? "reviewed"} output (presence from projected geometry; raster visibility unmeasured)` : ""}`,
+    metrics: { plannedShots: planShots.length, sceneMotionShots: motionShots, ...(stagePlan ? { performanceShots, performancesPlanned: stagePlan.film.performances.length } : {}), carriedObjects, visibleCarriedObjects, cameraPoses, cameraPosesPlanned: poses.length, deviceShots, devicesAllowed: maxDevices, stageClears: failures.filter((failure) => failure.includes("clears the scene")).length, adherence: round(adherence), durationSec: round(video.durationSec) },
+    threshold: { cueToleranceSec: T.planAdherence.cueToleranceSec, visibleOpacityMin: T.planAdherence.visibleOpacityMin, ...(stagePlan ? { contactCueToleranceFrames: T.planAdherence.contactCueToleranceFrames, stagePresentShareMin: T.planAdherence.stagePresentShareMin } : {}), gate: "non-gate until calibrated on proof and two or three more films" },
     evidence: evidence.slice(0, 6),
-    fix: failures.length ? "Bring scene motion, carry-over, camera poses, device spacing and stage treatment back into line with design/look.json." : undefined,
+    fix: failures.length ? "Bring scene motion, performance contacts, carry-over, camera poses, device spacing and stage treatment back into line with design/look.json." : undefined,
   };
 }
 

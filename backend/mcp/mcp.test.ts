@@ -42,12 +42,15 @@ test("MCP look tools expose an executable look-first contract and produce defaul
     assert.ok(produce);
     assert.match(brief.description ?? "", /before creating any picture assets/);
     assert.match(check.description ?? "", /aideos_produce_film again/);
+    assert.match(brief.description ?? "", /aideos character check --stamp and aideos character sheet/);
+    assert.match(check.description ?? "", /character resolves to its checked spec/);
     assert.equal((produce.inputSchema.properties as Record<string, { default?: string }>).design.default, "inline");
     assert.match(produce.description ?? "", /write look\.json following LOOK_BRIEF\.md/);
 
     const filmId = "speculative-decoding-designed";
     const briefResult = await client.callTool({ name: "aideos_look_brief", arguments: { filmId } });
     assert.match(toolText(briefResult), /The 6 Look Questions to Answer/);
+    assert.match(toolText(briefResult), /\| `iona` \| 1 \| `[0-9a-f]{64}` \| library \|/, "the brief lists the characters a film can name");
     const checkResult = await client.callTool({ name: "aideos_look_check", arguments: { filmId } });
     assert.match(toolText(checkResult), /^PASS speculative-decoding-designed/m);
     assert.ok(fs.existsSync(path.join(TEST_VIDEOS_DIR, filmId, "design/LOOK.md")));

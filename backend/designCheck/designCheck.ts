@@ -50,7 +50,8 @@ export type DesignRule =
   | "safe-area"
   | "inset"
   | "carry-over"
-  | "occlusion";
+  | "occlusion"
+  | "look";
 
 /** One problem found in a film's design. Errors block shipping; warnings are worth a look. */
 export interface DesignFinding {

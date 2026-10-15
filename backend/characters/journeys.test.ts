@@ -22,6 +22,7 @@ import type { Scene } from "../../src/dl/scene/types";
 import { CHARACTER_FILES, rawSpec, type FixtureCharacter } from "../testSupport/characters";
 import { checkCharacterFile } from "./cli";
 import { checkLookPlanById } from "../lookPlan/check";
+import { loadCharacter } from "./library";
 import { characterHash } from "../../src/dl/characters/hash";
 import { characterSpecSchema, type CharacterSpec } from "../../src/dl/characters/schema";
 import { LEGACY_P0_RESOURCE_HASH } from "../../src/dl/scene/stageContract";
@@ -48,9 +49,18 @@ function packageWith(character: FixtureCharacter | "iona-library", edit: (design
   design.assets.find((a: Json) => a.kind === "character").character = id;
   look.film.cast.find((c: Json) => c.id === "iona").character = id;
   edit(design, look);
+  pinLookCharacters(look, dir);
   fs.writeFileSync(designFile, JSON.stringify(design, null, 2));
   fs.writeFileSync(lookFile, JSON.stringify(look, null, 2));
   return { slug, dir };
+}
+// Pins each look performance to the spec its actor's cast item names, as an author copies it from the look brief.
+function pinLookCharacters(look: Json, dir: string): void {
+  for (const performance of look.film.performances ?? []) {
+    const id = look.film.cast.find((item: Json) => item.id === performance.actor)?.character;
+    const spec = id ? loadCharacter(id, dir).spec : undefined;
+    if (spec?.hash) performance.character = { id: spec.id, version: spec.version, hash: spec.hash };
+  }
 }
 // Builds a package and returns its status and written film.
 function build(slug: string) {
@@ -229,6 +239,7 @@ test("J5: constructor is resolved as a package character id through design build
   fs.writeFileSync(designFile, JSON.stringify(design, null, 2));
   const lookFile = path.join(pkg.dir, "design", "look.json"), look = JSON.parse(fs.readFileSync(lookFile, "utf8"));
   look.film.cast.find((item: Json) => item.id === "iona").character = "constructor";
+  look.film.performances[0].character = { id: "constructor", version: spec.version, hash: spec.hash };
   fs.writeFileSync(lookFile, JSON.stringify(look, null, 2));
   const { status, film } = build(pkg.slug);
   assert.equal(status.state, "passed", why(status));

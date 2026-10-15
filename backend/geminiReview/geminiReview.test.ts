@@ -757,3 +757,50 @@ test("geminiReview: reviewPairwise executes in isolated workspaces with neutral 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+
+test("geminiReview: a reply still missing timestamp evidence after the last attempt is never an ACCEPT", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-review-noevidence-test-"));
+  const testVideo = path.join(tmpDir, "test.mp4");
+  fs.writeFileSync(testVideo, Buffer.alloc(512, 1));
+  try {
+    const criteria = createMockCriteria({ gateScore: 9.5, gatePassed: true, withTimestamps: true });
+    // The craft criterion arrives without any timestamp, every time it is asked.
+    const storyline = criteria.find((c) => c.name === "storyline")!;
+    storyline.evidenceTimestamps = [];
+    storyline.reason = "Looks fine.";
+    let calls = 0;
+    const mockRunner: AgyRunner = async () => { calls++; return JSON.stringify({ overallScore: 9.6, verdict: "ACCEPT", summary: "Great.", criteria, feedback: [] }); };
+    const report = await reviewVideo(testVideo, { runner: mockRunner, skipFacts: true, maxValidationAttempts: 2 });
+    assert.equal(calls, 2, "the reviewer is asked again for the evidence first");
+    assert.equal(report.verdict, "REVISE");
+    const crit = report.criteria.find((c) => c.name === "storyline")!;
+    assert.equal(crit.passed, false);
+    assert.match(crit.reason, /^Unmeasured: the reviewer gave no timestamp evidence/);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("geminiReview: measured captions cite the sampled frames OCR read them in, never placeholder times", async () => {
+  const tmpVideo = path.join(os.tmpdir(), `test-caption-evidence-${Date.now()}.mp4`);
+  fs.writeFileSync(tmpVideo, Buffer.alloc(1024, 0));
+  try {
+    const criteria = createMockCriteria({ gateScore: 9.5, gatePassed: true, withTimestamps: true });
+    const captions = criteria.find((c) => c.name === "bottom_captions")!;
+    captions.evidenceTimestamps = [];
+    captions.reason = "Captions look fine.";
+    const facts = {
+      durationSec: 80,
+      audio: { measured: false, hasAudio: false, integratedLufs: -99, truePeakDb: -99, summary: "not measured" },
+      bottomCaptions: { measured: true, hasCaptions: true, coverageRatio: 1, sampledFrames: 2, captionFrames: 2, captionTimesSec: [12.4, 75.2], score: 9.5, summary: "Burned-in bottom captions detected in 100% of sampled frames (2/2)" },
+      camera: { measured: false, hasCameraMoves: false, moveCount: 0, score: 0, summary: "not measured" },
+      readability: { measured: true, summary: "ok" },
+      rawSummaryText: "facts",
+    };
+    const report = await reviewVideo(tmpVideo, { runner: async () => JSON.stringify({ overallScore: 9.4, verdict: "ACCEPT", summary: "ok", criteria, feedback: [] }), facts, maxValidationAttempts: 1 });
+    assert.deepEqual(report.criteria.find((c) => c.name === "bottom_captions")!.evidenceTimestamps, ["0:12", "1:15"]);
+    assert.equal(report.verdict, "ACCEPT");
+  } finally {
+    fs.rmSync(tmpVideo, { force: true });
+  }
+});

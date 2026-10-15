@@ -314,6 +314,7 @@ camera motion smoother and move captions slightly upward.
 ## Review (deterministic checks on the rendered video)
 
 - `aideos review <slug|mp4>` (`backend/review/`, [docs/REVIEW.md](docs/REVIEW.md)) measures a rendered mp4 against the measurable rubric criteria (persistent stage, captions, readability, overlap, audio sync, pacing, number grounding, loudness, plus camera and carry-over from film data) and writes `review.json` with evidence frames. Exit 1 on a failed gate, 2 when it cannot run. Run it on any video you make and attach the report.
+- A character film (Three stage) is reviewed in each output's own crop: presence, camera and each performance's evaluated contact against its decisive word come from `backend/review/source.ts`, and `backend/review/stageTruth.ts` is the one per-output summary both `review.json` and the Gemini facts read. A look performance pins `character: {id, version, hash}` (see `docs/THREE_STAGE_P3.md`).
 - Camera comes from film data and carry-over from element identity, never from pixels (global phase correlation and overlap in place both mislead, see the audit lessons in docs/REVIEW.md). A criterion with missing inputs is `skipped`, never a pass. Every threshold is in `backend/review/thresholds.ts` and was set from the three reference videos: re-run `npm run calibrate:review` (paths in env vars, the mp4s are never committed) after changing one.
 
 ## All-check (the whole review in one background agent)

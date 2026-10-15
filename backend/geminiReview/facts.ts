@@ -1,7 +1,10 @@
 /**
  * File Description: Deterministic video facts extractor for the Gemini review pipeline.
  * Measures hard ground-truth facts (duration, bottom-band captions via OCR, audio loudness,
- * and camera tracks) using ffprobe, ffmpeg, tesseract, and film metadata.
+ * and camera tracks) using ffprobe, ffmpeg, tesseract, and film metadata. For a Three stage film
+ * the camera and the stage (characters drawn, per-shot presence, contact against the decisive
+ * word, what is unmeasured) are measured in this video's own output through the measured review's
+ * film facts, so both reviewers read the same numbers.
  * Inputs and outputs: video mp4, transcript words, and film metadata -> deterministic GroundTruthFacts.
  * Used by: backend/geminiReview/geminiReview.ts.
  */
@@ -13,7 +16,9 @@ import path from "node:path";
 import type { DeterministicVideoFacts } from "./types";
 import { THRESHOLDS } from "../review/thresholds";
 import { parseFilm } from "../../src/dl/schema";
-import { readFilmFacts } from "../review/source";
+import { readFilmFacts, type FilmFacts, type ReviewViewport } from "../review/source";
+import { loadNarration } from "../review/speech";
+import { stageTruth, stageTruthText, type StageTruth } from "../review/stageTruth";
 
 export interface FactsOptions {
   sampleCount?: number;
@@ -162,6 +167,8 @@ export async function measureBottomCaptions(
   coverageRatio: number;
   sampledFrames: number;
   captionFrames: number;
+  /** Seconds of the sampled frames that showed a caption band, for evidence. */
+  captionTimesSec?: number[];
   score: number;
   summary: string;
 }> {
@@ -201,6 +208,7 @@ export async function measureBottomCaptions(
 
   let captionFrames = 0;
   let sampledFrames = 0;
+  const captionTimesSec: number[] = [];
 
   try {
     for (let i = 0; i < sampleTimes.length; i++) {
@@ -233,6 +241,7 @@ export async function measureBottomCaptions(
             // A caption band carries >= 3 legible words of spoken narration text
             if (nonChapterWords.length >= 3) {
               captionFrames++;
+              captionTimesSec.push(t);
             }
           }
         }
@@ -273,15 +282,17 @@ export async function measureBottomCaptions(
     coverageRatio,
     sampledFrames,
     captionFrames,
+    captionTimesSec,
     score,
     summary,
   };
 }
 
-// Inspects film data to verify camera movement.
+// Inspects film data to verify camera movement; a Three stage's camera is read from facts measured in this output.
 export function inspectCamera(
   filmPath?: string,
   durationSec = 80,
+  stageFacts?: FilmFacts | null,
 ): {
   measured: boolean;
   hasCameraMoves: boolean;
@@ -296,6 +307,24 @@ export function inspectCamera(
       const raw = fs.readFileSync(filmPath, "utf8");
       const film = JSON.parse(raw);
       let moves = 0;
+
+      if (film.scene?.renderer === "three") {
+        // Scene-unit keyframes are not what a crop shows; only the projected camera of this output counts.
+        if (!stageFacts?.format) {
+          return { measured: false, hasCameraMoves: false, moveCount: 0, score: 0, summary: "Stage camera not measured: the output size of this video is unknown" };
+        }
+        const stageMoves = stageFacts.camera.moves.length;
+        const hasStageMoves = stageMoves >= neededMoves;
+        return {
+          measured: true,
+          hasCameraMoves: hasStageMoves,
+          moveCount: stageMoves,
+          score: hasStageMoves ? 9.0 : 0.0,
+          summary: hasStageMoves
+            ? `${stageMoves} camera moves in the ${stageFacts.format} output, measured from the compiled stage camera projected into this crop (meets requirement of >= ${neededMoves})`
+            : `Static camera in the ${stageFacts.format} output: ${stageMoves} moves of the compiled stage camera projected into this crop (needs >= ${neededMoves}); a moving character or prop is not a camera move`,
+        };
+      }
 
       if (film.scene?.renderer !== "three" && Array.isArray(film.shots)) {
         for (const shot of film.shots) {
@@ -412,14 +441,29 @@ export async function extractDeterministicFacts(
     }
   }
 
-  const camera = inspectCamera(filmPath, durationSec);
-  const stage = filmPath && fs.existsSync(filmPath) ? readFilmFacts(parseFilm(JSON.parse(fs.readFileSync(filmPath, "utf8")))).stage : undefined;
+  const viewport: ReviewViewport | null = metadata.width && metadata.height ? { width: metadata.width, height: metadata.height } : null;
+  let filmFacts: FilmFacts | null = null;
+  let stageNote: string | null = null;
+  if (filmPath && fs.existsSync(filmPath)) {
+    try {
+      const film = parseFilm(JSON.parse(fs.readFileSync(filmPath, "utf8")));
+      if (film.scene?.renderer === "three" && !viewport) stageNote = "- Stage facts: NOT measured, the output size of this video could not be probed; judge the stage only from the video.";
+      else filmFacts = readFilmFacts(film, viewport ?? undefined);
+    } catch (err) {
+      stageNote = `- Stage facts: NOT measured, the film data could not be read (${err instanceof Error ? err.message : String(err)}); judge the stage only from the video.`;
+    }
+  }
+  const camera = inspectCamera(filmPath, durationSec, filmFacts);
+  const wordsPath = filmPath ? path.join(path.dirname(filmPath), "voiceover_words.json") : null;
+  let narration: ReturnType<typeof loadNarration> | null = null;
+  try { narration = wordsPath && fs.existsSync(wordsPath) ? loadNarration(wordsPath) : null; } catch { narration = null; }
+  const stage: StageTruth | undefined = filmFacts ? stageTruth(filmFacts, narration) : undefined;
 
   const rawSummaryText = [
     `=== PRE-MEASURED GROUND TRUTH FACTS (DETERMINISTIC FACTS) ===`,
     `- Exact Video Duration: ${durationSec.toFixed(1)}s (do NOT hallucinate a different duration such as 120s)`,
     metadata.width && metadata.height ? `- Dimensions: ${metadata.width}x${metadata.height}` : null,
-    stage ? `- Stage evidence for this output (geometry is projected, pixel visibility and craft unmeasured): ${JSON.stringify(stage[metadata.height! > metadata.width! ? "reel" : "long"])}` : null,
+    stage ? `=== STAGE FACTS FOR THIS OUTPUT (projected geometry and action data; pixels and craft unmeasured) ===\n${stageTruthText(stage)}` : stageNote,
     audio.measured ? `- Audio Mix: ${audio.summary}` : `- Audio: Not measured`,
     bottomCaptions.measured
       ? `- Bottom Captions: ${bottomCaptions.summary} -> Gate Status: ${bottomCaptions.hasCaptions ? "PASS" : "FAIL (0% captions)"}`
@@ -433,6 +477,7 @@ export async function extractDeterministicFacts(
     `2. Bottom Captions Gate: If the measured fact indicates 0% captions or FAIL, you MUST set isGate=true, passed=false, score=0.0 for "bottom_captions". Do NOT pass captions when 0% are present.`,
     `3. Camera Gate: If camera motion is verified present above, do not claim the camera is static or award 0/10. Evaluate its framing purpose.`,
     `4. Duration and Pacing: Base all pacing and duration comments on the exact measured duration (${durationSec.toFixed(1)}s).`,
+    stage || stageNote ? `5. Stage: the stage facts say where geometry and contacts are, not what the pixels show. A character or prop counts only if you can see it in the video. Face appeal, finger contact and occlusion are unmeasured: judge them from the video, and never pass a criterion on these facts alone.` : null,
   ]
     .filter(Boolean)
     .join("\n");

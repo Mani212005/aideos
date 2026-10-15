@@ -18,7 +18,7 @@ import { buildSvgSources } from "../scene/buildSvgSources";
 import { checkFilmDesign, type DesignFinding, type DesignCheckContext } from "../designCheck/designCheck";
 import { compileDesign, DEFAULT_BACKGROUND_FILE, narrationTimingForFilm, type DesignSource, type TimedWord } from "./compile";
 import { designSpecSchema, type DesignSpec } from "./spec";
-import { checkLookPlan, parseLookPlan, type LookPlan } from "../lookPlan";
+import { checkLookPlan, packageCharacterResolver, parseLookPlan, plannedCharacterId, type LookPlan } from "../lookPlan";
 import { createCues } from "../sceneKit";
 import { readVisualChoices } from "../pipeline/visualChoices";
 import { resolveCue } from "./cues";
@@ -63,11 +63,13 @@ export function readDesignStatus(filmId: string): DesignBuildStatus | null {
 }
 
 // Reads and checks the look against the actual narrated film, including complete shot coverage.
-export function readCheckedLookPlan(film: Film): { plan?: LookPlan; errors: string[] } {
+export function readCheckedLookPlan(film: Film): { plan?: LookPlan; errors: string[]; warnings?: string[] } {
   try {
     const raw: unknown = JSON.parse(fs.readFileSync(path.join(designDir(film.id), "look.json"), "utf8"));
-    const report = checkLookPlan(raw, film.id);
-    if (!report.ok) return { errors: report.findings.map((f) => `look.json ${f.where}: ${f.message}`) };
+    const report = checkLookPlan(raw, film.id, { resolveCharacter: packageCharacterResolver(resolvePackageDir(film.id)) });
+    if (!report.ok) return { errors: report.findings.filter((f) => f.severity === "error").map((f) => `look.json ${f.where}: ${f.message}`) };
+    // Character warnings (art changed since the plan) travel with the plan; the rest are pre-design "not checked yet" notes.
+    const warnings = report.findings.filter((f) => f.severity === "warning" && f.rule === "character").map((f) => `look.json ${f.where}: ${f.message}`);
     const plan = parseLookPlan(raw);
     const errors: string[] = [];
     const ids = new Set(film.shots.map((s) => s.id));
@@ -89,15 +91,20 @@ export function readCheckedLookPlan(film: Film): { plan?: LookPlan; errors: stri
       try { resolveCue(pose.at, cues); }
       catch (err) { errors.push(`look.json camera: ${err instanceof Error ? err.message : String(err)}`); }
     }
-    return errors.length ? { errors } : { plan, errors };
+    if (plan.schema === "aideos.look/2") {
+      for (const p of plan.film.performances) {
+        // Anticipation may start before the decisive word, never on or after it.
+        try {
+          const decisive = cues.word(p.decisive.shotId, p.decisive.phrase, p.decisive.edge);
+          const start = resolveCue(p.start, cues);
+          if (start >= decisive) errors.push(`look.json film.performances.${p.id}.start: starts at frame ${start}, not before its decisive ${p.decisive.event} on "${p.decisive.phrase}" at frame ${decisive}`);
+        } catch (err) { errors.push(`look.json film.performances.${p.id}: ${err instanceof Error ? err.message : String(err)}`); }
+      }
+    }
+    return errors.length ? { errors } : { plan, errors, warnings };
   } catch (err) {
     return { errors: [`look.json: ${err instanceof Error ? err.message : String(err)}`] };
   }
-}
-
-// Names the character a look cast item plans: its character id, or Iona for the P0 fixture asset.
-function lookCharacterId(item: { character?: string; asset?: string }): string | undefined {
-  return item.character ?? (item.asset === "iona-art-v1" ? "iona" : undefined);
 }
 
 // Resolves every character a design names to a verified spec, package characters first, then the library.
@@ -139,7 +146,7 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
         const authored = spec.assets.find((a) => a.id === id);
         const planned = plan.film.cast.find((a) => a.id === id);
         const sameIdentity = authored && "renderer" in authored && authored.renderer === "three" && planned?.renderer === "three" && authored.treatment === planned.treatment &&
-          (authored.kind === "character" ? authored.character === lookCharacterId(planned) : authored.asset === planned.asset);
+          (authored.kind === "character" ? authored.character === plannedCharacterId(planned) : authored.asset === planned.asset);
         if (!sameIdentity) errors.push(`look cast ${id}: design identity or treatment mismatch`);
       }
       try { cues.word(intended.decisive.shotId, intended.decisive.phrase, intended.decisive.edge); resolveCue(intended.start, cues); }
@@ -242,10 +249,12 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
 
   // Legacy packages without a plan still build; new production runs always require one first.
   let lookPlan: LookPlan | undefined;
+  const lookFindings: DesignFinding[] = [];
   if (fs.existsSync(path.join(designDir(filmId), "look.json"))) {
     const look = readCheckedLookPlan(film);
     if (!look.plan) return fail(look.errors);
     lookPlan = look.plan;
+    lookFindings.push(...(look.warnings ?? []).map((message): DesignFinding => ({ rule: "look", severity: "warning", where: "design/look.json", message })));
     try {
       const errors = checkDesignAgainstLook(film, spec, words, pkg, lookPlan);
       if (errors.length) return fail(errors);
@@ -277,7 +286,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   writeFilm(filmId, compiled.film);
   // The browser bundle reads artwork through the generated source map, so refresh it.
   buildSvgSources();
-  return record(filmId, { state: "passed", source, at, errors: [], findings: report.findings });
+  return record(filmId, { state: "passed", source, at, errors: [], findings: [...lookFindings, ...report.findings] });
 }
 
 // Formats a build status for the terminal (and for an agent to read and act on).

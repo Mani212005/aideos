@@ -2,10 +2,11 @@
  * File Description: Pure facts about the narration for `aideos review`.
  * Loads word timings (an aideos voiceover_words.json, a plain `{words}` list or a bare array) or a
  * plain narration text, and derives pace, dead air, which moments are narrated, whether a cut lands
- * inside a spoken word, how far cues sit from word starts compared with chance, and whether caption
- * text matches what is said. No I/O besides reading the file named by the caller.
- * Inputs and outputs: voiceover words or script text -> SpeechFacts on pace, dead air, and cut alignment.
- * Used by: backend/review/review.ts.
+ * inside a spoken word, how far cues sit from word starts compared with chance, whether caption
+ * text matches what is said, and the frame a cue phrase lands on inside one shot. No I/O besides
+ * reading the file named by the caller.
+ * Inputs and outputs: voiceover words or script text -> SpeechFacts on pace, dead air, cut alignment and cue frames.
+ * Used by: backend/review/review.ts, backend/review/criteria.ts, backend/review/stageTruth.ts.
  */
 
 import fs from "node:fs";
@@ -154,4 +155,18 @@ export function spokenNumbers(text: string): number[] {
   });
   flush();
   return out;
+}
+
+// Finds the film frame a spoken phrase starts or ends on among the words that start inside one shot, as design build resolves a word cue.
+export function phraseFrame(narration: Narration | null, phrase: string, edge: "start" | "end", range: { startSec: number; endSec: number }, fps: number): number | null {
+  if (!narration?.timed) return null;
+  const want = phrase.split(/\s+/).map(normalizeWord).filter(Boolean);
+  if (!want.length) return null;
+  const words = narration.words.filter((w) => w.start >= range.startSec - 1e-6 && w.start < range.endSec - 1e-6);
+  for (let index = 0; index <= words.length - want.length; index++) {
+    if (want.every((word, offset) => normalizeWord(words[index + offset].word) === word)) {
+      return Math.round((edge === "start" ? words[index].start : words[index + want.length - 1].end) * fps);
+    }
+  }
+  return null;
 }

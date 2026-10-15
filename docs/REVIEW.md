@@ -37,7 +37,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 |---|---|---|---|
 | 1 | **One persistent stage** | pixels (ink layout correlation with 2 s earlier, stage-clear events) and film data (beats that keep the previous elements on stage) | median correlation >= 0.65, <= 2.2 stage clears per 30 s, >= 60% of beat boundaries keep their elements |
 | 2 | Carry-over with transformation | film data only: an element stays across a beat boundary and is transformed | >= 1 per 20 s |
-| 13 | Look plan adherence | when `design/look.json` is available, scene motion, carried objects, camera poses, device spacing and stage treatment are checked against the plan as a non-gate score | all planned shots follow the plan; this remains non-gating until calibrated on the proof and two or three more films |
+| 13 | Look plan adherence | when `design/look.json` is available, scene motion, carried objects, camera poses, device spacing and stage treatment are checked against the plan as a non-gate score; on a character film each planned performance is checked by its evaluated contact frame against its decisive word (anticipation may start earlier, no clip at the cue is needed), its character id and version, and its actor and prop on stage in this output | all planned shots follow the plan; this remains non-gating until calibrated on the proof and two or three more films |
 | 3 | Cues aimed at spoken words | film clips against word timings, compared with chance | clip starts land on word starts clearly more often than chance |
 | 4 | **Camera that does something** | film data only (the solved framing of each shot, or a scene camera track) | >= 1 move per 20 s, none faster than 20% of the frame width per second (a scene camera also fails the design check on a zoom jump over 0.8% a frame or a pan acceleration over 0.3 widths per second squared) |
 | 5 | **Bottom captions** | OCR of full-resolution frames every 2 s | caption band in the bottom quarter in >= 60% of narrated moments, <= 2 lines, words match the narration |
@@ -47,6 +47,16 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 9 | Pacing | frame difference (static holds, hard cuts), word timings or silence (dead air, pace) | no hold over 3 s, <= 2 hard cuts per minute, no pause over 0.7 s, 120 to 180 wpm |
 | 11 | Numbers grounded in narration | OCR numbers vs spoken numbers (digits and number words) | every on-screen number is said |
 | 12 | Loudness and mix | `ebur128` | -18 to -14 LUFS, true peak <= -1 dBFS |
+
+A character film (Three stage) is measured in the reviewed output's own crop: a cast member is on
+stage when at least half of its projected posed box (outline included) lies inside that output, a
+cast member no performance draws is hidden and never present, and the camera is the compiled track
+projected into that output, so a pan can be a move in the reel and drift in the wide cut. Each
+performance's contact is the first frame its own evaluator holds the prop; the recorded cue frame is
+never trusted. `review.json` carries `stageTruth` for that output (characters drawn with id, version
+and hash, hidden cast, per-shot presence, contact against the cue, camera, and the list of what is
+unmeasured: pixel visibility and final occlusion, face appeal, finger contact, silhouette and weight).
+Presence is projected geometry, not pixels.
 
 Criterion 10 (storyline) is not deterministic and is left to the model judge. A criterion whose
 inputs are missing is `skipped`, never `pass`: the camera is never guessed from pixels, carry-over is
@@ -112,12 +122,13 @@ not precede the JSON document.
 1. **Direct Video Inspection in Isolated Workspace via agy CLI**: Invokes the agy CLI agent running Gemini 3.8 Flash (e.g. `gemini-3.8-flash-high`) non-interactively in print mode with `--sandbox` within an isolated temporary directory using neutral filenames (`video.mp4` for single review and pairwise comparisons) and explicit directives to evaluate only the visual and audio stream without writing scripts, extracting frames, or accessing repository files.
 2. **Deterministic Facts Extraction**: Gathers ground-truth data (bottom captions OCR coverage, audio LUFS loudness, duration, framerate, camera track from `film.json` including declared `scene.camera` keyframes, and per-shot look plan facts from `design/LOOK.md` when present) and feeds them into the model prompt to prevent hallucinations.
 3. **Structured Rubric Evaluation**: Grades all 12 criteria on a 0.0 to 10.0 scale, checking the 6 hard gates (persistent stage, camera purpose, bottom captions, readability, no overlap/clipping, audio sync).
-4. **Timestamp Evidence Enforcement**: Validates that every criterion score includes concrete timestamp citations (e.g. `00:14`, `01:02`) within the video bounds.
+4. **Timestamp Evidence Enforcement**: Validates that every criterion score includes concrete timestamp citations (e.g. `00:14`, `01:02`) within the video bounds. A criterion still without evidence after the last attempt is failed as unmeasured and the verdict is `REVISE`: missing evidence is never a pass.
 5. **Verdict Decision**:
    - `ACCEPT`: Overall score >= 9.0 and all 6 hard gates passed.
    - `REVISE`: Overall score < 9.0 or any hard gate failed.
 6. **Prioritized Feedback**: Generates actionable, timestamped recommendations (high, medium, low priority) on how to improve the video.
-7. **Look Plan Check (unscored)**: If `design/LOOK.md` is present in the film package, Gemini compares each shot's planned treatment, carried objects, and cue against the video, logging any mismatch with timestamps in feedback without changing the 12 criterion scores or the verdict.
+7. **Stage facts (character films)**: the facts name the stage as the measured review sees this output, in plain words (`backend/review/stageTruth.ts`): characters drawn, hidden cast, what is projected in frame per shot, each contact against its decisive word, the camera in this crop, and what no tool measured. The prompt says those facts locate geometry, not pixels, and that face appeal, finger contact and occlusion are judged from the video or not at all. Without a probed output size the stage facts and the stage camera are reported as not measured.
+8. **Look Plan Check (unscored)**: If `design/LOOK.md` is present in the film package, Gemini compares each shot's planned treatment, carried objects, and cue against the video, logging any mismatch with timestamps in feedback without changing the 12 criterion scores or the verdict.
 
 ### Cross-Review Pairwise Comparison (`--pairwise`)
 To eliminate model position bias and multimodal cross-alignment hallucinations when comparing two videos (e.g. comparing Aideos output against an external benchmark), `--pairwise` runs a dual-agent cross-review process:

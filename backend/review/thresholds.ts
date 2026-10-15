@@ -101,6 +101,16 @@ export const THRESHOLDS = {
     cueToleranceSec: 0.4,
     /** A visible object must remain present for at least this opacity. */
     visibleOpacityMin: 0.05,
+    /**
+     * A drawn stage cast member counts as present in an output when at least this share of its
+     * projected posed box (outline included) lies inside that output's frame.
+     */
+    stagePresentShareMin: 0.5,
+    /**
+     * A performance's evaluated contact must land within this many frames of its decisive cue
+     * resolved from the timed words: one frame absorbs rounding a word time to a frame, nothing more.
+     */
+    contactCueToleranceFrames: 1,
   },
   grounding: {
     /** On-screen numbers not said in the narration that still pass (the rubric allows zero). */

@@ -16,6 +16,7 @@ import { detectSilences, extractStill, measureLoudness, probeVideo } from "./med
 import { measureRender } from "./renderFacts";
 import { loadFilmFacts, siblingFile, type FilmFacts } from "./source";
 import { loadNarration, type Narration } from "./speech";
+import { stageTruth } from "./stageTruth";
 import type { CriterionResult, ReviewReport } from "./types";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
@@ -133,13 +134,15 @@ export async function reviewVideo(req: ReviewRequest): Promise<ReviewReport> {
   let film: FilmFacts | null = null;
   if (target.film) {
     if (!fs.existsSync(target.film)) throw new Error(`no film data at ${target.film}`);
-    film = loadFilmFacts(target.film).facts;
+    // Stage presence and camera are measured in this video's own output, so a reel is never judged by the long crop.
+    film = loadFilmFacts(target.film, { width: video.width, height: video.height }).facts;
   }
   let narration: Narration | null = null;
   if (target.words) {
     if (!fs.existsSync(target.words)) throw new Error(`no narration at ${target.words}`);
     narration = loadNarration(target.words);
   }
+  const truth = film ? stageTruth(film, narration) : undefined;
   req.onProgress?.(`measuring ${path.basename(target.mp4)} (${video.width}x${video.height}, ${video.durationSec.toFixed(1)} s)`);
   const render = await measureRender(target.mp4, video, { skipOcr: req.skipOcr, onProgress: req.onProgress });
   const loudness = video.hasAudio ? measureLoudness(target.mp4) : null;
@@ -155,6 +158,7 @@ export async function reviewVideo(req: ReviewRequest): Promise<ReviewReport> {
     createdAt: new Date().toISOString(),
     video,
     ...(film?.stage ? { stage: film.stage } : {}),
+    ...(truth ? { stageTruth: truth } : {}),
     sources: { film: target.film, words: target.words, narrationTextOnly: Boolean(narration && !narration.timed) },
     criteria,
     gateFailures,
@@ -174,6 +178,12 @@ export async function reviewVideo(req: ReviewRequest): Promise<ReviewReport> {
 // Formats a report as plain text a person or an agent can act on.
 export function formatReview(report: ReviewReport): string {
   const lines = [`${report.passed ? "PASS" : "FAIL"} ${report.subject}: ${report.video.width}x${report.video.height}, ${report.video.durationSec.toFixed(1)} s, mean score ${report.meanScore ?? "n/a"}/4`];
+  const truth = report.stageTruth;
+  if (truth) {
+    lines.push(`  stage (${truth.format}): ${truth.characters.length} character(s) drawn, ${truth.hidden.length} hidden; camera ${truth.camera.summary}`);
+    for (const p of truth.performances) lines.push(`    ${p.id}: contact frame ${p.contactFrame ?? "none"}, cue "${p.decisive.phrase}" frame ${p.cueFrame ?? "not found"}${p.offsetFrames === null ? "" : ` (${p.offsetFrames >= 0 ? "+" : ""}${p.offsetFrames})`}`);
+    lines.push(`    unmeasured: ${truth.unmeasured.join("; ")}`);
+  }
   for (const c of report.criteria) {
     const mark = c.status === "pass" ? "pass" : c.status === "fail" ? "FAIL" : "skip";
     lines.push(`  ${mark} ${String(c.id).padStart(2)} ${c.gate ? "[gate] " : "       "}${c.name}${c.score === null ? "" : ` (${c.score}/4)`}: ${c.summary}`);

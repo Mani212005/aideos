@@ -131,8 +131,8 @@ retarget source, and the library spec must derive it exactly); its expression na
 swing channels are the action's vocabulary; the glider is the only prop; the cel treatment is the
 only treatment; there is one action. The exact P0 `iona-art-v1` cast record remains a browser-safe
 alias of the stamped Iona character spec so compiled films keep rendering; rebuilding its design
-picks up the repaired pole clearance. Part 4 still owns richer look-plan authoring guidance,
-adherence scoring, Gemini facts and review truth for characters.
+picks up the repaired pole clearance. Look-plan authoring, adherence scoring, Gemini facts and review truth for characters
+are part 4, documented in [THREE_STAGE_P3.md](THREE_STAGE_P3.md).
 
 The frozen stage identity covers the character, prop and receive engine files that determine
 rendered output and fitted actions, including evaluation and acceptance critique. It excludes

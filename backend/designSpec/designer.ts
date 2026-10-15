@@ -16,7 +16,7 @@ import { buildDesign, designDir, formatBuildStatus, readDesignStatus, readChecke
 import { renderDesignBrief, writeDesignBrief } from "./brief";
 import { judgeAndRepair, type JudgeOptions, type JudgeResult } from "../visionJudge/judge";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
-import { renderLookBrief, writeLookBrief, writeLookMd, type LookPlan } from "../lookPlan";
+import { availableCharacters, renderLookBrief, writeLookBrief, writeLookMd, type LookPlan } from "../lookPlan";
 import type { DesignMode } from "../pipeline/types";
 
 
@@ -65,7 +65,7 @@ async function tryAgent<T>(
   const requestedAt = Date.now();
   const film = readFilm(filmId);
   const task = kind === "look"
-    ? `Plan the look before making any picture. Read ${path.join(designDir(filmId), "LOOK_BRIEF.md")}, write design/look.json, and run aideos look check ${filmId}. Do not build the design yet.`
+    ? `Plan the look before making any picture. Read ${path.join(designDir(filmId), "LOOK_BRIEF.md")}, write design/look.json, and run aideos look check ${filmId}. For a character film, name a character the brief lists; a new character is authored first with aideos character check <file> --stamp and drawn with aideos character sheet <file>. Do not build the design yet.`
     : `Build the picture from design/look.json and design/BRIEF.md. Run aideos design build ${filmId} until PASS.`;
   const dispatch = await dispatchTask({
     eventType: "design_film", filmId, filmTitle: film?.title, enableFallback: false,
@@ -122,7 +122,7 @@ export async function planFilmLook(filmId: string, opts: DesignFilmOptions = {})
     try {
       const caller = opts.llmCaller === undefined ? await defaultCaller() : opts.llmCaller;
       if (!caller) return { note: "server look caller is disabled", errors: checked.errors };
-      const system = renderLookBrief(film) + "\nReply with the complete look.json object and nothing else.";
+      const system = renderLookBrief(film, availableCharacters(resolvePackageDir(filmId))) + "\nReply with the complete look.json object and nothing else.";
       let prompt = `Plan the look of "${film.title}".`;
       for (let attempt = 1; attempt <= (opts.maxServerAttempts ?? 3); attempt++) {
         opts.onProgress?.(`server model look attempt ${attempt}`);

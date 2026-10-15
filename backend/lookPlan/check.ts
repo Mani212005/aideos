@@ -1,7 +1,7 @@
 /**
- * File Description: Checker for look.json plans enforcing semantic rules: treatments, unique shot IDs, unique cast IDs, valid carries references, device rules, camera wide establishing and payoff, bottom captions, carry-over transformation clarity, shot IDs, spoken cues, and cast asset targets.
+ * File Description: Checker for look.json plans enforcing semantic rules: treatments, unique shot IDs, unique cast IDs, valid carries references, device rules, camera wide establishing and payoff, bottom captions, carry-over transformation clarity, shot IDs, spoken cues, cast asset targets, and for stage films each performance's character (resolved, version and hash), decisive shot and its one-to-one match with a design performance.
  * Inputs and outputs: LookPlan object or raw JSON (and optional LookCheckContext) -> LookCheckReport with pass/fail and findings.
- * Used by: backend/cli.ts, backend/lookPlan/index.ts.
+ * Used by: backend/cli.ts, backend/lookPlan/index.ts, backend/designSpec/build.ts, backend/mcp/designTools.ts.
  */
 
 import fs from "node:fs";
@@ -10,9 +10,11 @@ import { safeParseLookPlan } from "./schema";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { collectSvgElementIds, parseSvgDocument } from "../../src/dl/scene/svgDocument";
+import { loadCharacter } from "../characters/library";
 
 export type LookCheckRule =
   | "schema"
+  | "character"
   | "treatment"
   | "shot"
   | "cast"
@@ -40,11 +42,38 @@ export interface LookCheckReport {
   };
 }
 
+/** A character spec as the look check sees it: identity when it resolved, otherwise why not. */
+export interface ResolvedLookCharacter {
+  spec?: { id: string; version: number; hash: string; name: string };
+  errors: string[];
+}
+
 /** Package inputs that let the checker validate ids and spoken cues before design authoring. */
 export interface LookCheckContext {
   film?: Film;
   castTargets?: Set<string>;
   designPerformanceIds?: string[];
+  /** Character id each design performance's actor asset names, by performance id. */
+  designPerformanceCharacters?: Record<string, string | undefined>;
+  /** Resolves a character id the way design build does (package, then library). */
+  resolveCharacter?: (id: string) => ResolvedLookCharacter;
+}
+
+// Resolves characters for a package exactly as design build will, reporting identity or the reasons it failed.
+export function packageCharacterResolver(pkgDir: string): (id: string) => ResolvedLookCharacter {
+  return (id) => {
+    const loaded = loadCharacter(id, pkgDir);
+    if (!loaded.spec || loaded.errors.length || !loaded.spec.hash) {
+      const where = path.relative(pkgDir, loaded.file).startsWith("..") ? loaded.file : path.relative(pkgDir, loaded.file);
+      return { errors: loaded.errors.map((e) => `${where} ${e.path}: ${e.message}`) };
+    }
+    return { spec: { id: loaded.spec.id, version: loaded.spec.version, hash: loaded.spec.hash, name: loaded.spec.name }, errors: [] };
+  };
+}
+
+/** The character a stage cast item plans: its character id, or Iona for the P0 fixture asset. */
+export function plannedCharacterId(item: { character?: string; asset?: string; rig?: string } | undefined): string | undefined {
+  return item?.character ?? (item?.asset === "iona-art-v1" ? "iona" : undefined);
 }
 
 // Normalizes spoken text into punctuation-free lowercase words for reliable phrase matching.
@@ -90,9 +119,28 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed", context
       const prop = look.film.cast.find((c) => c.id === p.prop);
       const plannedCharacter = actor?.character ?? (actor?.asset === "iona-art-v1" && actor.rig === "iona-v1" ? "iona" : undefined);
       if (actor?.renderer !== "three" || !plannedCharacter || actor.treatment !== "cel-v1" || prop?.renderer !== "three" || prop.asset !== "paper-glider-v1" || prop.treatment !== "cel-v1") findings.push({ rule: "cast", severity: "error", where: p.id, message: "receive-v1 needs a three character (character: <id>) and the paper glider, both cel-v1" });
+      const where = `film.performances.${p.id}.character`;
+      if (plannedCharacter && p.character.id !== plannedCharacter) findings.push({ rule: "character", severity: "error", where, message: `names character "${p.character.id}" but its actor cast "${p.actor}" is character "${plannedCharacter}"; one performance plans one character.` });
+      if (!context.resolveCharacter) {
+        findings.push({ rule: "character", severity: "warning", where, message: `not checked yet: character "${p.character.id}" needs the film package to resolve.` });
+      } else {
+        const resolved = context.resolveCharacter(p.character.id);
+        if (!resolved.spec) {
+          findings.push({ rule: "character", severity: "error", where, message: `character "${p.character.id}" does not resolve to a checked spec: ${resolved.errors.join("; ") || "unknown reason"}. Author it with aideos character check --stamp, or name a library character.` });
+        } else if (resolved.spec.version !== p.character.version) {
+          findings.push({ rule: "character", severity: "error", where, message: `plans ${p.character.id} version ${p.character.version} but the spec is version ${resolved.spec.version}; a new version is a different character, so re-plan this performance and set version ${resolved.spec.version} and hash ${resolved.spec.hash}.` });
+        } else if (resolved.spec.hash !== p.character.hash) {
+          findings.push({ rule: "character", severity: "warning", where, message: `planned against ${p.character.id} hash ${p.character.hash.slice(0, 12)} but the spec now hashes to ${resolved.spec.hash.slice(0, 12)}; design and render rebuild with the changed art. Look at aideos character sheet ${p.character.id}, then set hash ${resolved.spec.hash} to record that the plan still holds.` });
+        }
+      }
+      const decisivePlan = look.shots.find((s) => s.id === p.decisive.shotId);
+      if (!decisivePlan) findings.push({ rule: "shot", severity: "error", where: `film.performances.${p.id}.decisive.shotId`, message: `names unknown look shot "${p.decisive.shotId}".` });
+      else if (!decisivePlan.performances.includes(p.id)) findings.push({ rule: "shot", severity: "error", where: `shots.${decisivePlan.id}.performances`, message: `must list performance "${p.id}", whose decisive ${p.decisive.event} lands in this shot.` });
       for (const shotId of p.carries) if (!look.shots.some((s) => s.id === shotId && s.performances.includes(p.id) && s.carries.includes(p.actor) && s.carries.includes(p.prop))) findings.push({ rule: "carries", severity: "error", where: p.id, message: `performance carry ${shotId} must retain actor and prop and reference the performance` });
       const decisiveShot = context.film?.shots.find((s) => s.id === p.decisive.shotId);
-      if (context.film && !containsSpokenCue(decisiveShot?.scriptText ?? "", p.decisive.phrase)) findings.push({ rule: "shot", severity: "error", where: p.id, message: "decisive phrase is absent from its narrated shot" });
+      if (context.film && !containsSpokenCue(decisiveShot?.scriptText ?? "", p.decisive.phrase)) findings.push({ rule: "shot", severity: "error", where: p.id, message: `decisive phrase "${p.decisive.phrase}" is absent from the narration of shot "${p.decisive.shotId}"` });
+      const designCharacter = context.designPerformanceCharacters?.[p.id];
+      if (context.designPerformanceCharacters && Object.prototype.hasOwnProperty.call(context.designPerformanceCharacters, p.id) && designCharacter !== p.character.id) findings.push({ rule: "character", severity: "error", where: `design.performances.${p.id}`, message: `the design performance's actor is character "${designCharacter ?? "(none)"}" but the look plans "${p.character.id}".` });
     }
     for (const shot of look.shots) for (const id of shot.performances) if (!performanceIds.has(id)) findings.push({ rule: "cast", severity: "error", where: shot.id, message: `unknown performance ${id}` });
     if (context.designPerformanceIds) {
@@ -377,7 +425,7 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
   }
 
   const auxiliaryFindings: LookCheckFinding[] = [];
-  const context: LookCheckContext = {};
+  const context: LookCheckContext = { resolveCharacter: packageCharacterResolver(pkgDir) };
   const parsedLook = safeParseLookPlan(raw);
   const lookPerformanceIds = parsedLook.success && parsedLook.data.schema === "aideos.look/2"
     ? parsedLook.data.film.performances.map((performance) => performance.id)
@@ -401,11 +449,14 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
   const designFile = path.join(pkgDir, "design", "design.json");
   if (fs.existsSync(designFile)) {
     try {
-      const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as { assets?: Array<{ id?: string; file?: string }>; performances?: unknown };
+      const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as { assets?: Array<{ id?: string; file?: string; character?: string; asset?: string }>; performances?: unknown };
       if (Array.isArray(design.performances)) {
         const performanceIds: string[] = [];
+        const performanceCharacters: Record<string, string | undefined> = {};
         design.performances.forEach((performance: unknown, index: number) => {
           const id = performance !== null && typeof performance === "object" ? (performance as { id?: unknown }).id : undefined;
+          const actor = performance !== null && typeof performance === "object" ? (performance as { actor?: unknown }).actor : undefined;
+          if (typeof id === "string" && id.trim()) performanceCharacters[id] = plannedCharacterId((design.assets ?? []).find((asset) => asset.id === actor));
           if (typeof id !== "string" || !id.trim()) {
             auxiliaryFindings.push({
               rule: "cast",
@@ -416,6 +467,7 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
           } else performanceIds.push(id);
         });
         context.designPerformanceIds = performanceIds;
+        context.designPerformanceCharacters = performanceCharacters;
       } else if (design.performances !== undefined) {
         auxiliaryFindings.push({
           rule: "cast",

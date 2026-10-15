@@ -37,7 +37,7 @@ export const RUBRIC_CRITERIA: RubricCriterionDefinition[] = [
     title: "Visible cause and effect",
     isGate: false,
     description:
-      "Every narrated mechanism or action verb is paired with an animation starting within 0.4s of the spoken keyword that visibly moves or transforms the named object.",
+      "Every narrated mechanism or action verb is paired with an animation starting within 0.4s of the spoken keyword that visibly moves or transforms the named object. A character performance may begin its anticipation earlier; its decisive moment (for a catch, the hand meeting the object) must land on the spoken keyword and its result must stay visible afterwards.",
     passTarget: "Animations directly depict the spoken action keywords in real time",
   },
   {

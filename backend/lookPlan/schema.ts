@@ -96,8 +96,21 @@ const legacyLookSchema = z.object({
   approval: lookApprovalSchema.optional(),
 });
 
+/**
+ * The character a performance plans, pinned by spec id, version and content hash (as printed by
+ * `aideos character check <id>`). The version is identity; a hash that changed within the same
+ * version is reported by the look check, and design and render rebuild with the new art.
+ */
+export const lookCharacterRefSchema = z.strictObject({
+  id: z.string().regex(/^[a-z][a-z0-9-]*$/, "a character id is lowercase letters, digits and hyphens"),
+  version: z.number().int().positive(),
+  hash: z.string().regex(/^[0-9a-f]{64}$/, "hash is the 64 lowercase hex characters `aideos character check` prints"),
+});
+export type LookCharacterRef = z.infer<typeof lookCharacterRefSchema>;
+
 /** Cue-level acting intention, independent of sparse poses and mesh geometry. */
-export const lookPerformanceSchema = z.strictObject({ id: z.string().min(1), action: z.literal("receive-v1"), actor: z.string().min(1), prop: z.string().min(1), start: z.union([z.string().min(1).max(120), z.number().int().min(0)]), decisive: decisiveSchema, afterState: z.string().min(1), carries: z.array(z.string()).min(1) });
+export const lookPerformanceSchema = z.strictObject({ id: z.string().min(1), action: z.literal("receive-v1"), actor: z.string().min(1), character: lookCharacterRefSchema, prop: z.string().min(1), start: z.union([z.string().min(1).max(120), z.number().int().min(0)]), decisive: decisiveSchema, afterState: z.string().min(1), carries: z.array(z.string()).min(1) });
+export type LookPerformance = z.infer<typeof lookPerformanceSchema>;
 const stageLookSchema = legacyLookSchema.extend({
   schema: z.literal("aideos.look/2"),
   film: lookFilmSchema.extend({
@@ -107,7 +120,8 @@ const stageLookSchema = legacyLookSchema.extend({
   }).strict(),
   shots: z.array(lookShotSchema.extend({ performances: z.array(z.string()).default([]) }).strict()).min(1),
 }).strict();
-export const lookPlanSchema = z.union([stageLookSchema, legacyLookSchema]);
+/** Discriminated on `schema`, so an error names the field of the version the plan declares rather than "Invalid input". */
+export const lookPlanSchema = z.discriminatedUnion("schema", [stageLookSchema, legacyLookSchema]);
 
 export type LookPlan = z.infer<typeof lookPlanSchema>;
 export type LegacyLookPlan = z.infer<typeof legacyLookSchema>;
