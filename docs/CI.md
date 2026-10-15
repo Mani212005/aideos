@@ -25,7 +25,7 @@ GitHub job summary), so one run reports every problem.
 | --- | --- | --- |
 | `static` | file headers, every test file is wired, eslint (src, backend, scripts, editor), `tsc` root, `tsc` editor app, oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
 | `unit` | `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
-| `journeys` | `npm run test:journeys` (real pipeline and real renders, below; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
+| `journeys` | `npm run test:journeys` (real pipeline and real renders, including browser journeys for AI edit apply and new-project script save; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
 | `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; compares committed Linux baselines | every PR and push to main, Linux only |
 | `nightly` | `scripts/nightly_budget.ts`: the whole Iona film, wide and reel, with budgets on wall time, peak memory, peak temp disk and bundle size | 03:17 UTC and on demand, never on a PR |
 | `all-green` | fails unless the four jobs above succeeded | the one check to require |
