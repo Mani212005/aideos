@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { ensureBrowser } from "@remotion/renderer";
-import { journey, decodeFrame, frameDiff, frameStats, probeVideo } from "./harness";
+import { journey, decodeFrame, frameDiff, probeVideo, type Rgb } from "./harness";
 import { produceIona, type Loose } from "./ionaFilm";
 import { openFilm } from "./remotionFrames";
 import { openPlayer } from "./playerFrames";
@@ -17,6 +17,29 @@ import { CHARACTER_FILES } from "../testSupport/characters";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
 import type { Scene } from "../../src/dl/scene/types";
+
+type PixelBounds = { x0: number; y0: number; x1: number; y1: number };
+
+// Counts changed pixels inside projected bounds, optionally excluding pixels changed by the actor.
+function attributablePixels(full: Rgb, hidden: Rgb, bounds: PixelBounds, actorHidden?: Rgb): number {
+  assert.deepEqual([full.width, full.height], [hidden.width, hidden.height]);
+  if (actorHidden) assert.deepEqual([full.width, full.height], [actorHidden.width, actorHidden.height]);
+  const x0 = Math.max(0, Math.ceil(bounds.x0)), x1 = Math.min(full.width, Math.floor(bounds.x1));
+  const y0 = Math.max(0, Math.ceil(bounds.y0)), y1 = Math.min(full.height, Math.floor(bounds.y1));
+  let changed = 0;
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    const i = (y * full.width + x) * 3;
+    const difference = (a: Rgb, b: Rgb) => Math.max(Math.abs(a.data[i] - b.data[i]), Math.abs(a.data[i + 1] - b.data[i + 1]), Math.abs(a.data[i + 2] - b.data[i + 2]));
+    if (actorHidden && difference(full, actorHidden) > 8) continue;
+    if (difference(full, hidden) > 8) changed++;
+  }
+  return changed;
+}
+
+// Requires raster changes attributable to the named object within its projected silhouette.
+function assertRasterPresence(name: string, changed: number): void {
+  assert.ok(changed > 5, `${name} missing from rendered projected bounds`);
+}
 
 const SLUG = "journey-three-characters";
 const CHARACTERS = ["iona", "pip", "marlo"] as const;
@@ -68,34 +91,43 @@ journey("J5 three distinct characters pass look, design, compile and short wide/
     try {
       const states = facts.at(contactFrame, "prop");
       assert.equal(states.length, 3);
-      const contact = decodeFrame(output.path, { frame: 6 });
+      const player = await openPlayer(SLUG, format === "long" ? "Long" : "Reel");
+      const fullPath = path.join(ctx.workDir, `${format}-all-visible.png`);
+      ctx.keep(fullPath);
+      try {
+        await player.snapshot(contactFrame, fullPath);
+        const full = decodeFrame(fullPath);
+        const hiddenActors = new Map<string, Rgb>();
+        const hiddenProps = new Map<string, Rgb>();
+        for (const state of states) {
+          const actorPath = path.join(ctx.workDir, `${format}-${state.actor}-hidden.png`);
+          const propPath = path.join(ctx.workDir, `${format}-${state.prop}-hidden.png`);
+          ctx.keep(actorPath); ctx.keep(propPath);
+          await player.setVisibility(contactFrame, { character: state.actor });
+          await player.snapshot(contactFrame, actorPath);
+          hiddenActors.set(state.actor, decodeFrame(actorPath));
+          await player.setVisibility(contactFrame, { prop: state.prop });
+          await player.snapshot(contactFrame, propPath);
+          hiddenProps.set(state.prop, decodeFrame(propPath));
+        }
       for (const state of states) {
         assert.equal(state.ownership, "attached");
         const box = state.actorBounds;
         assert.ok(box.x0 >= 0 && box.x1 <= width && box.y0 >= 0 && box.y1 < height * 0.78);
-        // Each projected character rectangle must contain actual drawn pixels, not just valid JSON.
-        const pixels: number[] = [];
-        for (let y = Math.ceil(box.y0); y < Math.floor(box.y1); y++) {
-          for (let x = Math.ceil(box.x0); x < Math.floor(box.x1); x++) {
-            const i = (y * width + x) * 3;
-            pixels.push(contact.data[i], contact.data[i + 1], contact.data[i + 2]);
-          }
-        }
-        assert.ok(frameStats({ width: pixels.length / 3, height: 1, data: Buffer.from(pixels) }).stddev > 8, `${format}: character bounds contain no drawn character`);
+        assertRasterPresence(`${format} character ${state.actor}`, attributablePixels(full, hiddenActors.get(state.actor)!, box));
         assert.equal(state.propVisibility?.status, "exposed", `${format}: ${state.prop} has no exposed mesh samples`);
         const prop = state.propBounds;
         assert.ok(prop.x0 >= 0 && prop.x1 <= width && prop.y0 >= 0 && prop.y1 < height * 0.78, `${format}: ${state.prop} prop bounds leave the visible frame: ${JSON.stringify(prop)}`);
-        const x0 = Math.max(0, Math.ceil(prop.x0)), x1 = Math.min(width, Math.floor(prop.x1));
-        const y0 = Math.max(0, Math.ceil(prop.y0)), y1 = Math.min(height, Math.floor(prop.y1));
-        const propPixels: number[] = [];
-        for (let y = y0; y < y1; y++) {
-          for (let x = x0; x < x1; x++) {
-            const i = (y * width + x) * 3;
-            propPixels.push(contact.data[i], contact.data[i + 1], contact.data[i + 2]);
-          }
+        assertRasterPresence(`${format} prop ${state.prop}`, attributablePixels(full, hiddenProps.get(state.prop)!, prop, hiddenActors.get(state.actor)!));
+        const actorOverlap = Math.max(0, Math.min(box.x1, prop.x1) - Math.max(box.x0, prop.x0)) * Math.max(0, Math.min(box.y1, prop.y1) - Math.max(box.y0, prop.y0));
+        if (state === states[0]) {
+          assert.ok(actorOverlap > 0, `${format}: the hidden-prop negative must overlap the actor bounds`);
+          assert.throws(() => assertRasterPresence(`${format} prop ${state.prop}`, attributablePixels(hiddenProps.get(state.prop)!, hiddenProps.get(state.prop)!, prop)), new RegExp(`${format} prop ${state.prop} missing`));
+          assert.ok(attributablePixels(hiddenProps.get(state.prop)!, hiddenActors.get(state.actor)!, prop) > 5, `${format}: actor pixels must overlap the hidden prop crop`);
+          assert.throws(() => assertRasterPresence(`${format} prop ${state.prop}`, attributablePixels(hiddenProps.get(state.prop)!, hiddenActors.get(state.actor)!, prop, hiddenActors.get(state.actor)!)), new RegExp(`${format} prop ${state.prop} missing`));
         }
-        assert.ok(frameStats({ width: propPixels.length / 3, height: 1, data: Buffer.from(propPixels) }).stddev > 8, `${format}: ${state.prop} projected bounds contain no drawn prop`);
       }
+      } finally { await player.close(); }
       const first = decodeFrame(output.path, { frame: 0 });
       const last = decodeFrame(output.path, { frame: 12 });
       assert.ok(frameDiff(first, last, 1).changedShare > 0.0001, `${format}: receive excerpt has no motion`);

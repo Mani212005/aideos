@@ -47,6 +47,14 @@ export async function openPlayer(slug: string, composition: CompositionId, optio
         const shot = await page._client().send("Page.captureScreenshot", { format: "png", clip: { x: 0, y: 0, width, height, scale: 1 } });
         fs.writeFileSync(output, Buffer.from(shot.value.data, "base64"));
       },
+      // Hides one named stage object and waits for its replacement frame to draw in the same Player.
+      setVisibility: async (frame: number, visibility: { character?: string; prop?: string }) => {
+        await page.evaluate((detail) => {
+          document.querySelector("canvas[data-stage-frame]")?.removeAttribute("data-stage-frame");
+          window.dispatchEvent(new CustomEvent("aideos-test-stage-visibility", { detail }));
+        }, visibility);
+        await waitFor(() => page.evaluate((f) => document.querySelector("canvas[data-stage-frame]")?.getAttribute("data-stage-frame") === String(f), frame), `redrawn frame ${frame} with test visibility override`);
+      },
       // Waits until context creation has failed visibly, avoiding a timing-dependent status assertion.
       waitForFailure: async () => {
         await waitFor(() => page.evaluate(() => /WebGL could not start/.test(document.querySelector('[role="status"]')?.textContent ?? "")), "named WebGL refusal");

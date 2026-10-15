@@ -13,6 +13,7 @@ import { getRetimedAudioRelPath } from "./audio/retime";
 import { generateWordsFromFilm } from "./captionsParser";
 import type { Film } from "./schema";
 import type { TimedShot } from "./camera";
+import type { TestStageVisibility } from "./SceneStage";
 
 /**
  * The film plus its soundtrack.
@@ -23,6 +24,7 @@ import type { TimedShot } from "./camera";
 export type VideoProps = FilmProps & {
   film?: Film;
   timeline?: TimedShot[];
+  testVisibility?: TestStageVisibility;
 };
 
 // Calculates narration volume level ramped at head and tail.
@@ -40,6 +42,7 @@ export const Video: React.FC<VideoProps> = ({
   musicVolume,
   showRail,
   showGrid,
+  testVisibility,
   film = FILM,
   timeline = TIMELINE,
 }) => {
@@ -148,6 +151,7 @@ export const Video: React.FC<VideoProps> = ({
         accent={accent}
         showGrid={showGrid}
         showRail={showRail}
+        testVisibility={testVisibility}
         captionWords={
           film.subtitles === false
             ? []

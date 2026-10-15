@@ -21,11 +21,17 @@ const captionWords = film.subtitles === false ? [] : generateWordsFromFilm(film 
 const width = query.get("format") === "Reel" ? 1080 : 1920;
 const height = query.get("format") === "Reel" ? 1920 : 1080;
 
-// Exposes an ordinary button for seeking while keeping test controls outside the captured picture.
+// Exposes seek and isolated visibility controls outside the captured picture.
 function FramePlayer() {
   const ref = React.useRef<PlayerRef>(null);
+  const [testVisibility, setTestVisibility] = React.useState<{ character?: string; prop?: string }>({});
+  React.useEffect(() => {
+    const update = (event: Event) => setTestVisibility((event as CustomEvent<{ character?: string; prop?: string }>).detail);
+    window.addEventListener("aideos-test-stage-visibility", update);
+    return () => window.removeEventListener("aideos-test-stage-visibility", update);
+  }, []);
   return <>
-    <Player ref={ref} component={FilmView} inputProps={{ film, timeline, accent: film.accent ?? PALETTE.accent, showRail: true, showGrid: false, captionWords }}
+    <Player ref={ref} component={FilmView} inputProps={{ film, timeline, accent: film.accent ?? PALETTE.accent, showRail: true, showGrid: false, captionWords, testVisibility }}
       durationInFrames={totalFrames(timeline)} fps={film.fps} compositionWidth={width} compositionHeight={height}
       style={{ width, height }} controls={false} acknowledgeRemotionLicense />
     <input id="frame" aria-label="Absolute frame" type="number" defaultValue={0} />
