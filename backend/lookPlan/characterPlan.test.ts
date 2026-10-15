@@ -94,7 +94,20 @@ test("J8: every nested object in look/2 rejects unknown fields while look/1 keep
     assert.match(issues, new RegExp(`${where.replaceAll(".", "\\.")}: Unrecognized key: "extra"`));
   }
 
-  const legacy: Json = structuredClone(VALID_LOOK_PLAN);
+  const legacy: Json = structuredClone(source);
+  legacy.schema = "aideos.look/1";
+  delete legacy.film.renderer;
+  delete legacy.film.performances;
+  for (const character of legacy.film.cast) {
+    delete character.renderer;
+    delete character.character;
+    delete character.asset;
+    delete character.rig;
+    delete character.treatment;
+  }
+  legacy.film.cast[0].changes = [{ at: "approach", how: "moves" }];
+  legacy.approval = { captain: null };
+  const expectedChange = structuredClone(legacy.film.cast[0].changes[0]);
   legacy.decidedBy.extra = true;
   legacy.film.cast[0].changes[0].extra = true;
   legacy.film.camera[0].extra = true;
@@ -103,10 +116,8 @@ test("J8: every nested object in look/2 rejects unknown fields while look/1 keep
   legacy.approval!.extra = true;
   const parsedLegacy = parseLookPlan(legacy);
   assert.equal(parsedLegacy.schema, "aideos.look/1");
-  assert.deepEqual(parsedLegacy.film.palette, { bg: "#0A0A0B", accent: "#635BFF" });
-  assert.deepEqual(parsedLegacy.film.cast[0].changes[0], {
-    at: "beat-02", how: "spins down and dims as the cache takes over", state: "disk dimmed while the cache serves requests", magnitude: "moderate",
-  });
+  assert.deepEqual(parsedLegacy.film.palette, source.film.palette);
+  assert.deepEqual(parsedLegacy.film.cast[0].changes[0], expectedChange);
 });
 
 test("J6 and J8: changed art within the same version is a warning naming both hashes, so the look still passes and design rebuilds", () => {
