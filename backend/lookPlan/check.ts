@@ -83,11 +83,16 @@ function spokenTokens(text: string): string[] {
   return normalized.match(/[\p{L}\p{N}]+(?:'[\p{L}\p{N}]+)*/gu) ?? [];
 }
 
-// Checks whether a cue's normalized word sequence appears in the narration text.
-function containsSpokenCue(narration: string, cue: string): boolean {
+// Counts how many times a cue's normalized word sequence is spoken in the narration text.
+function countSpokenCue(narration: string, cue: string): number {
   const words = spokenTokens(narration);
   const phrase = spokenTokens(cue);
-  return phrase.length > 0 && words.some((_, index) => phrase.every((word, offset) => words[index + offset] === word));
+  return phrase.length === 0 ? 0 : words.filter((_, index) => phrase.every((word, offset) => words[index + offset] === word)).length;
+}
+
+// Checks whether a cue's normalized word sequence appears in the narration text.
+function containsSpokenCue(narration: string, cue: string): boolean {
+  return countSpokenCue(narration, cue) > 0;
 }
 
 // Checks a LookPlan against all deterministic look-plan rules.
@@ -139,7 +144,9 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed", context
       else if (!decisivePlan.performances.includes(p.id)) findings.push({ rule: "shot", severity: "error", where: `shots.${decisivePlan.id}.performances`, message: `must list performance "${p.id}", whose decisive ${p.decisive.event} lands in this shot.` });
       for (const shotId of p.carries) if (!look.shots.some((s) => s.id === shotId && s.performances.includes(p.id) && s.carries.includes(p.actor) && s.carries.includes(p.prop))) findings.push({ rule: "carries", severity: "error", where: p.id, message: `performance carry ${shotId} must retain actor and prop and reference the performance` });
       const decisiveShot = context.film?.shots.find((s) => s.id === p.decisive.shotId);
-      if (context.film && !containsSpokenCue(decisiveShot?.scriptText ?? "", p.decisive.phrase)) findings.push({ rule: "shot", severity: "error", where: p.id, message: `decisive phrase "${p.decisive.phrase}" is absent from the narration of shot "${p.decisive.shotId}"` });
+      const spoken = context.film ? countSpokenCue(decisiveShot?.scriptText ?? "", p.decisive.phrase) : 1;
+      if (spoken === 0) findings.push({ rule: "shot", severity: "error", where: p.id, message: `decisive phrase "${p.decisive.phrase}" is absent from the narration of shot "${p.decisive.shotId}"` });
+      else if (spoken > 1) findings.push({ rule: "shot", severity: "error", where: p.id, message: `decisive phrase "${p.decisive.phrase}" is spoken ${spoken} times in shot "${p.decisive.shotId}" (ambiguous): use a longer phrase that is said only once` });
       const designCharacter = context.designPerformanceCharacters?.[p.id];
       if (context.designPerformanceCharacters && Object.prototype.hasOwnProperty.call(context.designPerformanceCharacters, p.id) && designCharacter !== p.character.id) findings.push({ rule: "character", severity: "error", where: `design.performances.${p.id}`, message: `the design performance's actor is character "${designCharacter ?? "(none)"}" but the look plans "${p.character.id}".` });
     }

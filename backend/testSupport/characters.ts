@@ -1,7 +1,7 @@
 /**
  * File Description: Shared fixtures for character tests: the committed specs, a seeded random source and random humanoid proportions.
  * Inputs and outputs: library and fixture spec files, a seed -> parsed specs and deterministic proportion variants that stand on the ground.
- * Used by: backend/characters/*.test.ts.
+ * Used by: backend/characters/*.test.ts and backend/journeys/*.journey.ts.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -20,6 +20,11 @@ export type FixtureCharacter = keyof typeof CHARACTER_FILES;
 export const rawSpec = (name: FixtureCharacter): Record<string, unknown> => JSON.parse(fs.readFileSync(CHARACTER_FILES[name], "utf8"));
 // Reads and parses a committed spec (defaults applied, hash kept).
 export const loadSpec = (name: FixtureCharacter): CharacterSpec => characterSpecSchema.parse(rawSpec(name));
+// Returns the pin a look plan performance uses to name a committed character: its id, version and stamped hash.
+export function characterPin(name: FixtureCharacter): { id: string; version: number; hash: string } {
+  const { id, version, hash } = rawSpec(name) as { id: string; version: number; hash: string };
+  return { id, version, hash };
+}
 
 // Returns a deterministic uniform random source (mulberry32) so a failing property case is reproducible by seed.
 export function seeded(seed: number): () => number {

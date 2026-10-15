@@ -105,6 +105,16 @@ test("J8: the decisive shot must list its performance, and the design performanc
   assert.match(findings(report, "error"), /design\.performances\.receive-message: the design performance's actor is character "marlo" but the look plans "iona"/);
 });
 
+test("J8: a decisive phrase spoken twice in its shot is refused by the look check, before design", () => {
+  const { slug, dir } = pkgWith();
+  const filmFile = path.join(dir, "film.json"), film = JSON.parse(fs.readFileSync(filmFile, "utf8"));
+  film.shots.find((s: Json) => s.id === "catch").scriptText = "She catches the message, then catches her breath.";
+  fs.writeFileSync(filmFile, JSON.stringify(film, null, 2));
+  const report = checkLookPlanById(slug);
+  assert.equal(report.ok, false);
+  assert.match(findings(report, "error"), /receive-message: decisive phrase "catches" is spoken 2 times in shot "catch" \(ambiguous\)/);
+});
+
 test("J8: anticipation must start before the decisive word, checked against the measured narration", () => {
   const { dir } = pkgWith((look) => { look.film.performances[0].start = "receipt"; });
   const film = parseFilm(JSON.parse(fs.readFileSync(path.join(dir, "film.json"), "utf8")));

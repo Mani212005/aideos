@@ -13,7 +13,7 @@ import { openFilm } from "./remotionFrames";
 import { openPlayer } from "./playerFrames";
 import { readFilm } from "../pipeline/filmStore";
 import { checkLookPlanById } from "../lookPlan/check";
-import { CHARACTER_FILES } from "../testSupport/characters";
+import { CHARACTER_FILES, characterPin } from "../testSupport/characters";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
 import type { Scene } from "../../src/dl/scene/types";
@@ -80,7 +80,7 @@ function produced() {
       const prop = look.film.cast.find((c: Loose) => c.id === "glider");
       const receive = look.film.performances[0];
       look.film.cast = CHARACTERS.flatMap((character) => [{ ...actor, id: character, character }, { ...prop, id: `glider-${character}` }]);
-      look.film.performances = CHARACTERS.map((actor) => ({ ...receive, id: `receive-${actor}`, actor, prop: `glider-${actor}` }));
+      look.film.performances = CHARACTERS.map((actor) => ({ ...receive, id: `receive-${actor}`, actor, character: characterPin(actor), prop: `glider-${actor}` }));
       for (const shot of look.shots) {
         shot.carries = look.film.cast.map((c: Loose) => c.id);
         shot.performances = look.film.performances.map((p: Loose) => p.id);
