@@ -38,7 +38,7 @@ function glName(): "angle" | "swangle" {
  * Points the generated active film at `slug`, bundles the project once and opens one headless
  * browser. The caller restores src/dl/activeFilm.ts (the journey harness does this for you).
  */
-export async function openFilm(slug: string): Promise<OpenFilm> {
+export async function openFilm(slug: string, options: { browserExecutable?: string } = {}): Promise<OpenFilm> {
   ensureGenerated();
   setActiveFilm(slug);
   await ensureBrowser();
@@ -49,7 +49,7 @@ export async function openFilm(slug: string): Promise<OpenFilm> {
     outDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-journey-bundle-"));
     const serveUrl = await bundle({ entryPoint: path.join(ROOT, "src/index.ts"), outDir, ...(staged ? { publicDir: staged.dir } : {}) });
     const chromiumOptions = { gl: glName() };
-    browser = await openBrowser("chrome", { chromiumOptions });
+    browser = await openBrowser("chrome", { chromiumOptions, browserExecutable: options.browserExecutable });
     const composition = (id: CompositionId) => selectComposition({ serveUrl, id, inputProps: {}, puppeteerInstance: browser!, chromiumOptions });
     const probe = await composition("Long");
 

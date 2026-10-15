@@ -141,20 +141,34 @@ export const ThreeStage: React.FC<Props> = ({ scene, width, height }) => {
   const { delayRender, continueRender, cancelRender } = useDelayRender();
   const [handle] = React.useState(() => delayRender(`Three stage ${scene.sceneId} initial readiness`));
   const [status, setStatus] = React.useState<string | null>("Loading scene...");
+  const [graphicsReady, setGraphicsReady] = React.useState(false);
   const { isPlayer } = useRemotionEnvironment();
   // Signals first complete draw and leaves explicit errors visible in the preview.
   const ready = React.useCallback((error?: string) => { setStatus(error ?? null); continueRender(handle); }, [handle, continueRender]);
   // Converts a canvas mount failure into a visible preview status or a named export error.
   const canvasFailed = React.useCallback((error: Error) => {
+    setGraphicsReady(false);
     reportThreeStageInitializationFailure(error, scene.sceneId, isPlayer, (message) => ready(message), cancelRender);
   }, [cancelRender, isPlayer, ready, scene.sceneId]);
+  // Refuses unavailable WebGL2 before R3F's asynchronous renderer creation can bypass React's error boundary.
+  React.useLayoutEffect(() => {
+    const probe = document.createElement("canvas");
+    try {
+      const context = probe.getContext("webgl2");
+      if (!context) throw new Error("WebGL2 context is unavailable; enable graphics support or use a render host with software GL");
+      context.getExtension("WEBGL_lose_context")?.loseContext();
+      setGraphicsReady(true);
+    } catch (error) {
+      canvasFailed(error instanceof Error ? error : new Error(String(error)));
+    }
+  }, [canvasFailed]);
   React.useEffect(() => () => continueRender(handle), [handle, continueRender]);
   return <AbsoluteFill>
-    <CanvasErrorBoundary onError={canvasFailed}>
+    {graphicsReady ? <CanvasErrorBoundary onError={canvasFailed}>
       <ThreeCanvas width={width} height={height} dpr={CEL_TREATMENT.dpr} frameloop="never" gl={{ antialias: CEL_TREATMENT.antialias, alpha: true, preserveDrawingBuffer: true }}>
         <FrameCommit scene={scene} frame={frame} width={width} height={height} ready={ready} />
       </ThreeCanvas>
-    </CanvasErrorBoundary>
+    </CanvasErrorBoundary> : null}
     {isPlayer && status ? <AbsoluteFill role="status" style={{ alignItems: "center", justifyContent: "center", color: "white" }}>{status}</AbsoluteFill> : null}
   </AbsoluteFill>;
 };

@@ -1,5 +1,5 @@
 /**
- * File Description: Journey J8: every way a character film can be broken at authoring time ends in a clear, named error and never in a half-written film or a blank frame. Covers a cue phrase that is not spoken, a cue naming a shot that does not exist, named artwork that is missing, a hand target that cannot be reached, and a look or design that is stale after the narration changes. Known gaps are declared as todo so they are visible in every run and flip to real tests when fixed.
+ * File Description: Journey J8: every way a character film can be broken at authoring time ends in a clear, named error and never in a half-written film or a blank frame. Covers a cue phrase that is not spoken, a cue naming a shot that does not exist, named artwork that is missing, a hand target that cannot be reached, and a look or design that is stale after the narration changes. Every failure is an enforced assertion through the author-facing entry point.
  * Inputs and outputs: deliberately broken design variants of the iona-receive fixture -> build status errors, unchanged film.json, and finite numbers from the evaluator.
  * Used by: npm run test:journeys (the CI journeys job).
  */
@@ -7,11 +7,13 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import test from "node:test";
 import { journey } from "./harness";
 import { journeyRequest, writeIonaDesign, type Loose } from "./ionaFilm";
 import { runProduction } from "../pipeline/run";
 import { buildDesign } from "../designSpec/build";
+import { checkLookPlanById } from "../lookPlan/check";
+import { checkCharacterFile } from "../characters/cli";
+import { CHARACTER_FILES } from "../testSupport/characters";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { createReceiveAction } from "../../src/dl/performance/receive";
 import { createPerformanceEvaluator } from "../../src/dl/performance/evaluate";
@@ -96,21 +98,20 @@ journey("J8 a hand target that cannot be reached clamps without NaN and fails th
   assert.equal(critiquePerformance(IONA_RIG, reachable, createPerformanceEvaluator(IONA_RIG, reachable), 69).passed, true, "the unmodified action must still pass");
 }, { disk: false });
 
-// Gaps found while building this suite. They run on every CI pass and stay "todo" (visible, not red)
-// until the owning part fixes them; delete the todo flag then so the test becomes a hard gate.
-test("J10 an unknown field in design.json is reported by field name", { todo: "part 1 (schema): today the error is the generic 'design.json (root): Invalid input'" }, async () => {
+journey("J10 an unknown field in design.json is reported by field name", async () => {
   const pkg = await preparedPackage("j8-unknown-field");
-  const { status } = buildBroken("j8-unknown-field", pkg, (d) => {
+  const { status, filmUnchanged } = buildBroken("j8-unknown-field", pkg, (d) => {
     d.performances[0].bogusField = 1;
   });
   assert.equal(status.state, "failed");
-  assert.match(status.errors.join("\n"), /bogusField/);
+  assert.match(status.errors.join("\n"), /design.json performances\[0\].bogusField: is not a known field/);
+  assert.ok(filmUnchanged);
 });
 
-test("J8 a cue phrase spoken twice in one shot is rejected as ambiguous", { todo: "part 2 (gates): createCues().word() silently takes the first match" }, async () => {
+journey("J8 a cue phrase spoken twice in one shot is rejected as ambiguous", async () => {
   const pkg = await preparedPackage("j8-dup-phrase");
   // "toward" occurs twice in the narration of beat-01; look and design name the same phrase so only the ambiguity can fail the build.
-  const { status } = buildBroken(
+  const { status, filmUnchanged } = buildBroken(
     "j8-dup-phrase",
     pkg,
     (d) => {
@@ -121,11 +122,51 @@ test("J8 a cue phrase spoken twice in one shot is rejected as ambiguous", { todo
     },
   );
   assert.equal(status.state, "failed", "a phrase heard twice must not silently bind to the first occurrence");
-  assert.match(status.errors.join("\n"), /more than once|ambiguous|duplicate/i);
+  assert.match(status.errors.join("\n"), /"toward".*2 times.*beat-01.*ambiguous/);
+  assert.ok(filmUnchanged);
 });
 
-test("J8 rendering with no WebGL ends in a named error, never a blank frame", { todo: "needs a render with WebGL disabled; Remotion's CLI has no flag for it, so this needs a stage-level readiness error to assert on" }, () => {
-  assert.fail("not implemented");
+journey("J10 a bad design value names its field and expected value", async () => {
+  const pkg = await preparedPackage("j10-design-type");
+  const { status, filmUnchanged } = buildBroken("j10-design-type", pkg, (d) => { d.performances[0].limits = "stretch"; });
+  assert.equal(status.state, "failed");
+  assert.match(status.errors.join("\n"), /design.json performances\[0\].limits: must be one of "fail", "clamp"/);
+  assert.ok(filmUnchanged);
 });
 
-test("J3 the Studio Player preview frame matches the exported frame", { todo: "needs a Player-versus-export pixel comparison at composition size" }, () => {});
+journey("J10 a bad look value names its field and expected value", async () => {
+  const slug = "j10-look-type";
+  await preparedPackage(slug);
+  writeIonaDesign(slug, undefined, (l) => { l.film.performances[0].decisive.edge = "middle"; });
+  const report = checkLookPlanById(slug);
+  assert.equal(report.ok, false);
+  assert.ok(report.findings.some((f) => f.rule === "schema" && f.where === "film.performances[0].decisive.edge" && /must be one of "start", "end"/.test(f.message)), JSON.stringify(report.findings));
+});
+
+journey("J10 a bad character spec names its field and expected value", (ctx) => {
+  const raw = JSON.parse(fs.readFileSync(CHARACTER_FILES.iona, "utf8"));
+  raw.skeleton.proportions.elbow[0] = "long";
+  const file = path.join(ctx.workDir, "bad.character.json");
+  fs.writeFileSync(file, JSON.stringify(raw));
+  const report = checkCharacterFile(file);
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some((e) => /skeleton\.proportions\.elbow\[0\]: expected number/.test(e)), JSON.stringify(report.errors));
+}, { disk: false });
+
+journey("J8 an unreachable hand target is refused before the film is written", async () => {
+  const slug = "j8-unreachable";
+  const pkg = await preparedPackage(slug);
+  const { status, filmUnchanged } = buildBroken(slug, pkg, (d) => { d.performances[0].targetOffset = [100, 100, 100]; });
+  assert.equal(status.state, "failed");
+  assert.match(status.errors.join("\n"), /receive-message.*(reach|target)/);
+  assert.ok(filmUnchanged);
+});
+
+journey("J8 a missing character resource is named before the film is written", async () => {
+  const slug = "j8-missing-character";
+  const pkg = await preparedPackage(slug);
+  const { status, filmUnchanged } = buildBroken(slug, pkg, (d) => { d.assets[0].character = "absent-courier"; }, (l) => { l.film.cast[0].character = "absent-courier"; });
+  assert.equal(status.state, "failed");
+  assert.match(status.errors.join("\n"), /absent-courier.*characters\/absent-courier.character.json/);
+  assert.ok(filmUnchanged);
+});

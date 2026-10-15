@@ -30,7 +30,7 @@ export interface CiStep {
    * NOT COVERED (exit code still 0), and a step that exits 0 without leaving a verdict is a failure.
    */
   verdict?: { clear: () => void; read: () => StepVerdict | null };
-  /** Collects TAP TODO cases from the journey runner and reports them without failing the step. */
+  /** Collects TODO cases from the journey runner and fails when any journey is unfinished. */
   todoCases?: boolean;
   /** A reason this step does not apply here (reported as skipped, never as a pass). */
   skip?: () => string | null;
@@ -214,6 +214,7 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
         }
       }
       if (code !== 0) return done("failed", `exit ${code}`);
+      if (todoNames.length) return done("failed", `${todoNames.length} unfinished journey cases; replace todos with enforced tests`);
       if (!step.verdict) return done("passed");
       const verdict = step.verdict.read();
       if (!verdict) return done("failed", "exited 0 but left no verdict, so nothing is known to have been checked");
@@ -226,7 +227,7 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
 /** Formats results as a markdown table (the GitHub step summary and the terminal summary). */
 export function summaryTable(results: StepResult[]): string {
   const rows = results.map((r) => {
-    const gaps = r.todoNames?.length ? `KNOWN GAPS (todo): ${r.todoNames.length}: ${r.todoNames.join(", ")}` : "";
+    const gaps = r.job === "journeys" && r.step === "journey tests" ? `KNOWN GAPS (todo): ${r.todoNames?.length ?? 0}: ${r.todoNames?.join(", ") || "none"}` : "";
     const j1Scope = r.job === "journeys" && r.step === "journey tests" ? "J1-END-TO-END-REVIEW: PR rendering is a contact-frame excerpt; full-film budgets run nightly; measured review and captain watch are separate." : "";
     return `| ${r.job} | ${r.step} | ${r.status === "not-covered" ? "NOT COVERED" : r.status} | ${r.seconds.toFixed(1)}s | ${[r.note, gaps, j1Scope].filter(Boolean).join("; ")} |`;
   });

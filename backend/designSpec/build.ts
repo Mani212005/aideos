@@ -19,6 +19,7 @@ import { checkFilmDesign, type DesignFinding, type DesignCheckContext } from "..
 import { compileDesign, DEFAULT_BACKGROUND_FILE, narrationTimingForFilm, type DesignSource, type TimedWord } from "./compile";
 import { designSpecSchema, type DesignSpec } from "./spec";
 import { checkLookPlan, parseLookPlan, type LookPlan } from "../lookPlan";
+import { fieldIssues } from "../../src/dl/schemaIssues";
 import { createCues } from "../sceneKit";
 import { readVisualChoices } from "../pipeline/visualChoices";
 import { resolveCue } from "./cues";
@@ -142,7 +143,7 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
           (authored.kind === "character" ? authored.character === lookCharacterId(planned) : authored.asset === planned.asset);
         if (!sameIdentity) errors.push(`look cast ${id}: design identity or treatment mismatch`);
       }
-      try { cues.word(intended.decisive.shotId, intended.decisive.phrase, intended.decisive.edge); resolveCue(intended.start, cues); }
+      try { cues.wordOnce(intended.decisive.shotId, intended.decisive.phrase, intended.decisive.edge); resolveCue(intended.start, cues); }
       catch (err) { errors.push(`look performance ${intended.id}: ${String(err)}`); }
     }
     for (const delivered of spec.performances) if (!lookIds.has(delivered.id)) errors.push(`design performance "${delivered.id}" has no matching look performance`);
@@ -214,7 +215,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   }
   const parsed = designSpecSchema.safeParse(rawSpec);
   if (!parsed.success) {
-    return fail(parsed.error.issues.map((i) => `design.json ${i.path.join(".") || "(root)"}: ${i.message}`));
+    return fail(fieldIssues(parsed.error, rawSpec).map((i) => `design.json ${i.path}: ${i.message}`));
   }
   const spec = parsed.data;
 
