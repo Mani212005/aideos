@@ -41,7 +41,9 @@ export function loadCharacter(id: string, packageDir?: string): LoadedCharacter 
   const candidates = characterCandidates(id, packageDir);
   const file = candidates.find((candidate) => fs.existsSync(candidate));
   if (!file) return { file: candidates[candidates.length - 1], errors: [{ path: "(file)", message: `no character "${id}"; looked for ${candidates.map((c) => path.relative(process.cwd(), c) || c).join(" and ")}` }] };
-  return loadCharacterFile(file);
+  const loaded = loadCharacterFile(file);
+  if (loaded.spec && loaded.spec.id !== id) loaded.errors.push({ path: "id", message: `the spec in ${file} is "${loaded.spec.id}" but the design asks for character "${id}"; rename the file or fix the id` });
+  return loaded;
 }
 
 // Resolves a character or throws one error listing every problem with its file and field.

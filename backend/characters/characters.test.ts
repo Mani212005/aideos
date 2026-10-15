@@ -261,6 +261,30 @@ test("character check stamps only an otherwise valid spec and reports the rig, b
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+test("character check returns the extra-joint parent error before building geometry", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-character-parent-"));
+  try {
+    const file = path.join(dir, "broken.character.json");
+    const raw = rawSpec("iona") as Record<string, any>;
+    raw.skeleton.extraJoints = [{ id: "tail", parent: "missing", offset: [0, 0, 0] }];
+    fs.writeFileSync(file, JSON.stringify(raw));
+    let report!: ReturnType<typeof checkCharacterFile>;
+    assert.doesNotThrow(() => { report = checkCharacterFile(file); });
+    assert.equal(report.ok, false);
+    assert.match(report.errors.join("\n"), /^skeleton\.extraJoints\[0\]\.parent:/m);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("character id lookup refuses a valid spec stored under another character id", () => {
+  const pkg = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-character-id-"));
+  try {
+    fs.mkdirSync(path.join(pkg, "characters"));
+    fs.writeFileSync(path.join(pkg, "characters", "iona.character.json"), JSON.stringify(rawSpec("marlo")));
+    const loaded = loadCharacter("iona", pkg);
+    assert.match(loaded.errors.map((issue) => `${issue.path}: ${issue.message}`).join("\n"), /^id: the spec in .* is "marlo" but the design asks for character "iona"/m);
+  } finally { fs.rmSync(pkg, { recursive: true, force: true }); }
+});
+
 test("material declarations are character-owned: every mesh colour is in the spec palette, the face base or the prop's colours", () => {
   for (const name of NAMES) {
     const spec = loadSpec(name), art = buildCharacter(spec), prop = buildProp("paper-glider-v1");

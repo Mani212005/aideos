@@ -136,6 +136,15 @@ test("J8: a missing character, a tampered spec and an unknown field each fail th
   assert.match(build(misspelt.slug).status.errors.join("\n"), /skeleton\.proportions: Unrecognized key/);
 });
 
+test("J8: design build refuses a character spec whose embedded id differs from the requested id", () => {
+  const pkg = packageWith("iona-library");
+  fs.mkdirSync(path.join(pkg.dir, "characters"), { recursive: true });
+  fs.writeFileSync(path.join(pkg.dir, "characters", "iona.character.json"), JSON.stringify(rawSpec("marlo")));
+  const status = build(pkg.slug).status;
+  assert.equal(status.state, "failed");
+  assert.match(status.errors.join("\n"), /asset "iona" character iona .* id: the spec in .* is "marlo" but the design asks for character "iona"/);
+});
+
 test("J8 and J14: a hand-edited or stale embedded spec still opens but is refused before the stage draws it", () => {
   const pkg = packageWith("iona-library");
   const film = build(pkg.slug).film!;

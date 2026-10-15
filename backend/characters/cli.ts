@@ -39,9 +39,10 @@ export function checkCharacterFile(file: string, options: { stamp?: boolean } = 
     parsed = parseCharacter(JSON.parse(fs.readFileSync(file, "utf8")), { requireHash: true });
   }
   report.errors.push(...formatIssues(parsed.errors));
-  if (!parsed.spec || !parsed.rig || !parsed.parts) return report;
+  if (!parsed.spec || !parsed.rig || !parsed.parts || report.errors.length) return report;
   const spec = parsed.spec;
   report.errors.push(...formatIssues(actionCompatibility(spec, RECEIVE_NEEDS)));
+  if (report.errors.length) return report;
   const art = buildCharacter(spec);
   try {
     const box = new Box3().setFromObject(art.rig.root);
