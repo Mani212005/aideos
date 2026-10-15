@@ -191,12 +191,9 @@ level. This route avoids responsive studio scaling and controls contaminating th
 separate studio smoke journey covers ordinary editing and persistence. It does not claim parity
 for audio mixing or every optional overlay/media combination.
 
-Unavailable WebGL is an explicit refusal. `ThreeStage` releases its readiness barrier with a visible
-"Scene graphics unavailable: WebGL could not start" status in the Player and cancels an export with
-"Three stage <scene>: WebGL could not start" before any image is emitted. The journey passes Chrome's
-real `--disable-webgl` flag through a temporary executable, so it tests context creation failure,
-not a mocked reporter. The normal three-character production proves rendering works when GL is
-available. There is no silent fallback to incomplete artwork.
+Unavailable WebGL is covered by the real Chrome `--disable-webgl` journey in
+`j3_j5_stage.journey.ts`; it checks the visible Player error and export refusal. The stage's
+readiness and failure contract is documented in [THREE_STAGE_P0.md](THREE_STAGE_P0.md).
 
 Remaining scope:
 
