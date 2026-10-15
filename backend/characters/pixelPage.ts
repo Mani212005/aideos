@@ -1,6 +1,6 @@
 /**
- * File Description: Browser test page comparing real cel pixels: legacy stage alias, spec-built Iona, committed character stills, and every character in both crops.
- * Inputs and outputs: window.__pixelRequest (specs, actions, legacy stage cast and still references) -> window.__pixels promise of pixel comparisons and PNG data URLs.
+ * File Description: Browser test page comparing real cel pixels: legacy stage alias, spec-built Iona, and production-rendered character stills.
+ * Inputs and outputs: window.__pixelRequest (specs, actions and production PNG references) -> window.__pixels promise of pixel comparisons and PNG data URLs.
  * Used by: backend/characters/pixels.test.ts, which bundles this file with esbuild for headless Chrome. Never part of production.
  */
 import { Euler, Group, NoToneMapping, OrthographicCamera, Quaternion, Scene, SRGBColorSpace, Vector3, WebGLRenderer } from "three";
@@ -11,7 +11,6 @@ import { applyProp, buildProp } from "../../src/dl/scene/props/paperGlider";
 import { createPerformanceEvaluator } from "../../src/dl/performance/evaluate";
 import { rigFromCharacter } from "../../src/dl/characters/rig";
 import { IONA_RIG } from "../../src/dl/performance/iona";
-import { stageViewport, SCENE_SIZE } from "../../src/dl/scene/projection";
 import { CEL_TREATMENT } from "../../src/dl/scene/rigs/registry";
 import { resolveCharacterSpec, type CharacterReference } from "../../src/dl/characters/resolve";
 import type { CharacterSpec } from "../../src/dl/characters/schema";
@@ -20,7 +19,7 @@ import type { PerformanceState, ReceiveAction } from "../../src/dl/performance/t
 export interface PixelRequest {
   iona: { spec: CharacterSpec; action: ReceiveAction; frames: number[] };
   golden: { frame: number; dataUrl: string | null };
-  cast: Array<{ spec: CharacterSpec; action: ReceiveAction; stillReferences: Partial<Record<"wide" | "reel", string>> }>;
+  cast: Array<{ id: string; stills: Array<{ format: "wide" | "reel"; rendered: string; reference: string }> }>;
   legacyAlias: { cast: CharacterReference; action: ReceiveAction; frame: number };
 }
 export interface PixelResult {
@@ -28,7 +27,7 @@ export interface PixelResult {
   golden: { png: string; differing: number; meanDelta: number; otherFrameDiffering: number } | null;
   goldenPng: string;
   legacyGolden: { differing: number; meanDelta: number } | null;
-  cast: Array<{ id: string; format: "wide" | "reel"; coverage: number; signature: string; png: string; stillDifference: number | null }>;
+  cast: Array<{ id: string; format: "wide" | "reel"; coverage: number; stillDifference: number; png: string }>;
 }
 
 const SIZE = 360;
@@ -118,24 +117,15 @@ async function run(request: PixelRequest): Promise<PixelResult> {
   aliasArt.dispose(); aliasProp.dispose();
   legacy.dispose(); art.dispose(); prop.dispose();
   const cast: PixelResult["cast"] = [];
-  for (const { spec, action } of request.cast) {
-    const actor = buildCharacter(spec, document.createElement("canvas")), glider = buildProp("paper-glider-v1");
-    const scene = new Scene(), root = new Group(), placement = new Group();
-    addCelLights(root); placement.position.set(940 - SCENE_SIZE.w / 2, SCENE_SIZE.h / 2 - 1210, 0); placement.scale.setScalar(85);
-    placement.add(actor.rig.root, glider.root); root.add(placement); scene.add(root);
-    const state = createPerformanceEvaluator(rigFromCharacter(spec), action)(action.contact.frame);
-    applyCharacter(actor, state); applyProp(glider, state); scene.updateMatrixWorld(true);
-    for (const [format, w, h] of [["wide", 480, 270], ["reel", 270, 480]] as const) {
-      const vp = stageViewport(w, h), cam = new OrthographicCamera(-vp.halfWidth, vp.halfWidth, vp.halfHeight, -vp.halfHeight, 0.1, 10000);
-      cam.position.set(0, 0, 2000); cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
-      const { pixels, png } = capture(renderer, scene, cam, w, h);
-      let drawn = 0, sig = 0;
-      for (let i = 0; i < pixels.length; i += 4) if (Math.abs(pixels[i] - 10) + Math.abs(pixels[i + 1] - 10) + Math.abs(pixels[i + 2] - 11) > 12) { drawn++; sig = (sig * 31 + pixels[i] + pixels[i + 1] * 7 + pixels[i + 2] * 13) % 1000000007; }
-      const stillReference = request.cast.find((entry) => entry.spec.id === spec.id)?.stillReferences[format];
-      const referencePixels = stillReference ? await decode(stillReference, w, h) : null;
-      cast.push({ id: spec.id, format, coverage: drawn / (w * h), signature: String(sig), png, stillDifference: referencePixels ? compare(referencePixels, pixels, 24).differing / (w * h) : null });
+  for (const entry of request.cast) {
+    for (const still of entry.stills) {
+      const dimensions = still.format === "wide" ? [1920, 1080] as const : [1080, 1920] as const;
+      const pixels = await decode(still.rendered, ...dimensions);
+      const referencePixels = await decode(still.reference, ...dimensions);
+      let drawn = 0;
+      for (let i = 0; i < pixels.length; i += 4) if (Math.abs(pixels[i] - 10) + Math.abs(pixels[i + 1] - 10) + Math.abs(pixels[i + 2] - 11) > 12) drawn++;
+      cast.push({ id: entry.id, format: still.format, coverage: drawn / (dimensions[0] * dimensions[1]), stillDifference: compare(referencePixels, pixels, 24).differing / (dimensions[0] * dimensions[1]), png: still.rendered });
     }
-    actor.dispose(); glider.dispose();
   }
   renderer.dispose();
   return { ab, golden, goldenPng, legacyGolden, cast };
