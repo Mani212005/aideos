@@ -41,6 +41,21 @@ function assertRasterPresence(name: string, changed: number): void {
   assert.ok(changed > 5, `${name} missing from rendered projected bounds`);
 }
 
+// Captures a real hidden-prop frame and fresh actor/prop ablations while that prop stays hidden.
+async function captureMissingProp(player: Awaited<ReturnType<typeof openPlayer>>, frame: number, format: string, actor: string, prop: string, workDir: string, keep: (file: string) => void) {
+  const fullPath = path.join(workDir, `${format}-${prop}-missing-full.png`);
+  const actorHiddenPath = path.join(workDir, `${format}-${prop}-missing-actor-hidden.png`);
+  const propHiddenPath = path.join(workDir, `${format}-${prop}-missing-prop-hidden.png`);
+  [fullPath, actorHiddenPath, propHiddenPath].forEach(keep);
+  await player.setVisibility(frame, { prop });
+  await player.snapshot(frame, fullPath);
+  await player.setVisibility(frame, { prop, character: actor });
+  await player.snapshot(frame, actorHiddenPath);
+  await player.setVisibility(frame, { prop });
+  await player.snapshot(frame, propHiddenPath);
+  return { full: decodeFrame(fullPath), actorHidden: decodeFrame(actorHiddenPath), propHidden: decodeFrame(propHiddenPath) };
+}
+
 const SLUG = "journey-three-characters";
 const CHARACTERS = ["iona", "pip", "marlo"] as const;
 let production: ReturnType<typeof produceIona> | undefined;
@@ -122,9 +137,11 @@ journey("J5 three distinct characters pass look, design, compile and short wide/
         const actorOverlap = Math.max(0, Math.min(box.x1, prop.x1) - Math.max(box.x0, prop.x0)) * Math.max(0, Math.min(box.y1, prop.y1) - Math.max(box.y0, prop.y0));
         if (state === states[0]) {
           assert.ok(actorOverlap > 0, `${format}: the hidden-prop negative must overlap the actor bounds`);
-          assert.throws(() => assertRasterPresence(`${format} prop ${state.prop}`, attributablePixels(hiddenProps.get(state.prop)!, hiddenProps.get(state.prop)!, prop)), new RegExp(`${format} prop ${state.prop} missing`));
-          assert.ok(attributablePixels(hiddenProps.get(state.prop)!, hiddenActors.get(state.actor)!, prop) > 5, `${format}: actor pixels must overlap the hidden prop crop`);
-          assert.throws(() => assertRasterPresence(`${format} prop ${state.prop}`, attributablePixels(hiddenProps.get(state.prop)!, hiddenActors.get(state.actor)!, prop, hiddenActors.get(state.actor)!)), new RegExp(`${format} prop ${state.prop} missing`));
+          const missing = await captureMissingProp(player, contactFrame, `${format}-missing`, state.actor, state.prop, ctx.workDir, ctx.keep);
+          assert.throws(() => assertRasterPresence(`${format} prop ${state.prop}`, attributablePixels(missing.full, missing.propHidden, prop, missing.actorHidden)), new RegExp(`${format} prop ${state.prop} missing`));
+          const overlap = await captureMissingProp(player, contactFrame, `${format}-overlap`, state.actor, state.prop, ctx.workDir, ctx.keep);
+          assert.ok(attributablePixels(overlap.full, overlap.actorHidden, prop) > 5, `${format}: hiding the actor must change pixels inside the prop crop while the prop stays absent`);
+          assert.throws(() => assertRasterPresence(`${format} prop ${state.prop}`, attributablePixels(overlap.full, overlap.propHidden, prop, overlap.actorHidden)), new RegExp(`${format} prop ${state.prop} missing`));
         }
       }
       } finally { await player.close(); }
