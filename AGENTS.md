@@ -340,10 +340,6 @@ camera motion smoother and move captions slightly upward.
 - If the verdict is REVISE, the agent must inspect the constructive feedback and timestamp citations, iterate on the film or design, and re-render.
 - Review rounds and reports are persisted under `videos/<slug>/gemini-review/` (`round-N.json`, `latest.json`), which is gitignored.
 
-## CI and tests
-
-- `npm run ci` is the one list of CI commands (`scripts/ci.ts`; jobs `static`, `unit`, `journeys`, `legacy`, `nightly`): GitHub Actions, `.no-mistakes.yaml` and contributors all run it, and a new check goes into that table. Journey tests (`backend/journeys/*.journey.ts`, real pipeline and render) and golden frames are described in [docs/CI.md](docs/CI.md), which also says how to add a journey; goldens are made only by the update-goldens workflow, never on a Mac.
-
 ## Maintaining this file
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.
 - Keep it concise. Prefer pointers to authoritative files over copying details.

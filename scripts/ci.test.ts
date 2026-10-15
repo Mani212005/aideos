@@ -184,7 +184,7 @@ test("nested TODOs from multiple Node test files reach the CI table and warning 
   const dir = fs.mkdtempSync(path.join(ROOT, ".ci-todo-report-"));
   const first = path.join(dir, "first.test.cjs");
   const second = path.join(dir, "second.test.cjs");
-  fs.writeFileSync(first, `const { test } = require("node:test"); test("J10 bad field name", { todo: "schema" }, () => {});`);
+  fs.writeFileSync(first, `const { test } = require("node:test"); const assert = require("node:assert/strict"); test("J10 bad field name", { todo: "schema" }, () => assert.fail("still a known gap"));`);
   fs.writeFileSync(second, `const { test } = require("node:test"); test("J8 duplicate cue", { todo: "ambiguity" }, () => {});`);
   const forwarded: string[] = [];
   const write = process.stdout.write;

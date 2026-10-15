@@ -206,7 +206,9 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
 export function todoNamesFromTap(report: string): string[] {
   const names: string[] = [];
   for (const line of report.split("\n")) {
-    const match = line.trimStart().match(/^ok \d+ - (.+?) # TODO(?: .*)?\r?$/);
+    // Node prints an unmet TODO assertion as `not ok ... # TODO`, while a TODO body
+    // that happens to pass is `ok ... # TODO`. Both are known gaps and must be reported.
+    const match = line.trimStart().match(/^(?:not )?ok \d+ - (.+?) # TODO(?: .*)?\r?$/);
     if (match) names.push(match[1]);
   }
   return names;
