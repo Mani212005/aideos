@@ -25,7 +25,7 @@ export function bindReceive(
   startFrame = 0,
 ): ReceiveAction {
   const cues = createCues(timing, fps);
-  return bindReceiveSpan(cues.word(cue.shotId, cue.phrase, cue.edge), startFrame, cues.durationFrames, fps, targetOffset);
+  return bindReceiveSpan(cues.wordOnce(cue.shotId, cue.phrase, cue.edge), startFrame, cues.durationFrames, fps, targetOffset);
 }
 
 // Binds preparation, exact contact and unchanged recovery to an absolute narration span on the approved Iona rig.

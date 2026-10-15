@@ -5,6 +5,7 @@
  */
 import { characterSpecSchema, type CharacterSpec } from "./schema";
 import { characterHash } from "./hash";
+import { fieldIssues } from "../schemaIssues";
 import { expandParts, triangleCount, type CharacterIssue, type ResolvedPart } from "./expand";
 import { restPositions, rigFromCharacter } from "./rig";
 import type { CharacterRig } from "../performance/types";
@@ -18,10 +19,8 @@ export const TRIANGLE_BUDGET = 120_000;
 /** Most meshes one character may create (each outlined mesh is a second draw call). */
 export const PART_BUDGET = 160;
 
-// Formats a Zod or semantic issue path as a readable field reference such as parts[3].joint.
-export function formatPath(path: ReadonlyArray<PropertyKey>): string {
-  return path.map((p, i) => (typeof p === "number" ? `[${p}]` : i === 0 ? String(p) : `.${String(p)}`)).join("") || "(root)";
-}
+// Retains the public character helper while sharing the authored-file path formatter.
+export { formatFieldPath as formatPath } from "../schemaIssues";
 
 // Renders issues as the one-line-per-field strings the CLI, compiler and stage print.
 export function formatIssues(issues: CharacterIssue[], prefix = ""): string[] {
@@ -134,7 +133,7 @@ export function validateCharacterSemantics(spec: CharacterSpec): { rig: Characte
 // Parses raw JSON, applies defaults, validates semantics and verifies the content hash when present or required.
 export function parseCharacter(raw: unknown, options: { requireHash?: boolean } = {}): ParsedCharacter {
   const parsed = characterSpecSchema.safeParse(raw);
-  if (!parsed.success) return { errors: parsed.error.issues.map((issue) => ({ path: formatPath(issue.path), message: issue.message })) };
+  if (!parsed.success) return { errors: fieldIssues(parsed.error, raw) };
   const spec = parsed.data;
   const { rig, parts, errors } = validateCharacterSemantics(spec);
   const actual = characterHash(spec);

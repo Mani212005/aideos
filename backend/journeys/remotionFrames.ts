@@ -38,7 +38,7 @@ function glName(): "angle" | "swangle" {
  * Points the generated active film at `slug`, bundles the project once and opens one headless
  * browser. The caller restores src/dl/activeFilm.ts (the journey harness does this for you).
  */
-export async function openFilm(slug: string): Promise<OpenFilm> {
+export async function openFilm(slug: string, options: { browserExecutable?: string; ownStillBrowser?: boolean } = {}): Promise<OpenFilm> {
   ensureGenerated();
   setActiveFilm(slug);
   await ensureBrowser();
@@ -49,7 +49,7 @@ export async function openFilm(slug: string): Promise<OpenFilm> {
     outDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-journey-bundle-"));
     const serveUrl = await bundle({ entryPoint: path.join(ROOT, "src/index.ts"), outDir, ...(staged ? { publicDir: staged.dir } : {}) });
     const chromiumOptions = { gl: glName() };
-    browser = await openBrowser("chrome", { chromiumOptions });
+    browser = await openBrowser("chrome", { chromiumOptions, browserExecutable: options.browserExecutable });
     const composition = (id: CompositionId) => selectComposition({ serveUrl, id, inputProps: {}, puppeteerInstance: browser!, chromiumOptions });
     const probe = await composition("Long");
 
@@ -57,7 +57,7 @@ export async function openFilm(slug: string): Promise<OpenFilm> {
       durationInFrames: probe.durationInFrames,
       still: async (id, frame, out, scale = 1) => {
         fs.mkdirSync(path.dirname(out), { recursive: true });
-        await renderStill({ composition: await composition(id), serveUrl, frame, output: out, imageFormat: "png", scale, puppeteerInstance: browser!, chromiumOptions, overwrite: true });
+        await renderStill({ composition: await composition(id), serveUrl, frame, output: out, imageFormat: "png", scale, ...(options.ownStillBrowser ? { browserExecutable: options.browserExecutable } : { puppeteerInstance: browser! }), chromiumOptions, overwrite: true });
         if (!fs.existsSync(out) || fs.statSync(out).size < 200) throw new Error(`still ${id} frame ${frame} of ${slug} produced no usable PNG`);
       },
       sequence: async (id, range, dir, concurrency) => {

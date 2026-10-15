@@ -179,7 +179,7 @@ test("runStep reports failed, passed and skipped honestly, and runJobs rejects a
   assert.match(summaryTable([{ job: "a", step: "b", status: "passed", seconds: 1.25 }]), /\| a \| b \| passed \| 1\.3s \|/);
 });
 
-test("structured TODO events from multiple Node test files reach the CI summary", async () => {
+test("unfinished journey TODO events fail CI and reach the summary", async () => {
   const job = { id: "journeys", title: "journeys", steps: [] };
   const dir = fs.mkdtempSync(path.join(ROOT, ".ci-todo-report-"));
   const first = path.join(dir, "first.test.cjs");
@@ -199,7 +199,8 @@ test("structured TODO events from multiple Node test files reach the CI summary"
       env: { NODE_TEST_CONTEXT: undefined },
       todoCases: true,
     });
-    assert.equal(result.status, "passed");
+    assert.equal(result.status, "failed");
+    assert.match(result.note!, /2 unfinished journey cases/);
     assert.deepEqual(result.todoNames, ["J10 bad field name", "J8 duplicate cue"]);
     assert.match(summaryTable([result]), /KNOWN GAPS \(todo\): 2: J10 bad field name, J8 duplicate cue/);
     assert.match(summaryTable([result]), /J1-END-TO-END-REVIEW/);

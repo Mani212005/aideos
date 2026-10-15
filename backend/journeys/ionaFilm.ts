@@ -93,12 +93,12 @@ export interface IonaProduction {
  */
 export async function produceIona(
   slug: string,
-  options: { request?: Partial<ProductionRequest>; windowFrames?: number; design?: (d: Loose) => void } = {},
+  options: { request?: Partial<ProductionRequest>; windowFrames?: number; design?: (d: Loose) => void; look?: (l: Loose) => void } = {},
 ): Promise<IonaProduction> {
   const request = journeyRequest(slug, options.request);
   const first = await runProduction({ ...request, stopAfter: "look" });
   if (first.status !== "needs_look") throw new Error(`expected the first run to stop at needs_look, got ${first.status}`);
-  writeIonaDesign(slug, options.design);
+  writeIonaDesign(slug, options.design, options.look);
   const built = buildDesign(slug, "hand-built");
   if (built.state !== "passed") throw new Error(`the fixture design did not pass its own checks: ${JSON.stringify(built)}`);
   const contactFrame = readFilm(slug)!.scene!.performances![0].decisive.frame;
