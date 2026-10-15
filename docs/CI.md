@@ -62,7 +62,7 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 
 | Journey | Protected by | Layer |
 | --- | --- | --- |
-| J1 make a film with a character end to end | `j1_pipeline.journey.ts`: the real `runProduction` (tone narration, null engine, no key or GPU), look and design authored from the iona-receive fixture, wide and reel rendered, size, fps, frame count, audio and a drawn (not flat) contact frame asserted | journey |
+| J1 make a film with a character end to end | `j1_pipeline.journey.ts`: the PR journey runs the real `runProduction` with the iona-receive fixture, renders wide and reel around the contact frame, and checks output metadata and a drawn frame; nightly renders the full film with budgets | journey, nightly |
 | J2 narration changes after design, stale work not reused | `backend/pipeline/pipeline.test.ts` (existing: retime refreshes base-film, forced upstream reopens downstream) | feature |
 | J3 scrub, save, reload, preview equals export | `scripts/smoke_studio.ts` (keyboard scrub forwards and back with exact frame readout, same picture on return, split, autosave, reload keeps the edit); export-versus-cold equality (wide and reel); Player-versus-export pixel comparison is a named `todo` journey | journey, todo |
 | J4 reel crop keeps character and prop clear of captions | `j1_pipeline.journey.ts`: projected character and prop bounds, every frame from approach to recovery, inside the frame and above the caption band in wide and reel; glider attached at the decisive frame | journey |
@@ -180,9 +180,11 @@ description and in the timing table at the end of every run.
 
 ## Known gaps (found while building this suite)
 
-CI does not fully cover J3, J5, J8 and J10 until these `todo` cases are fixed. `npm run ci` lists
-each case by name and count in the journey summary table and emits a warning annotation and
-job-summary note.
+CI does not fully cover J3, J5, J8 and J10 until these `todo` cases are fixed. The PR J1 journey is
+intentionally a contact-frame excerpt; full-film rendering and budgets run nightly. Measured review
+and the captain's watch are handled by the separate real-film task. `npm run ci` includes this named
+J1 scope note alongside the todo case count and names in the journey summary table, warning
+annotation and job-summary note.
 
 * `J10 an unknown field in design.json is reported by field name` currently receives the generic
   `design.json (root): Invalid input` error.
@@ -194,5 +196,7 @@ job-summary note.
   composition size for a pixel comparison.
 * `J5 the same action runs on second and third data-defined characters` needs the character data
   format and additional character fixtures.
+* `J1 full-film measured review and captain watch` are not part of the pull-request excerpt or
+  nightly budget job; the separate real-film task owns those checks.
 * About 70 `any` annotations remain in files listed in the `LEGACY_ANY` ledger in `eslint.config.mjs`
   (shrink-only: fix and delete the entry when you touch one).

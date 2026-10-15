@@ -186,6 +186,12 @@ test("nested TODOs from multiple Node test files reach the CI table and warning 
   const second = path.join(dir, "second.test.cjs");
   fs.writeFileSync(first, `const { test } = require("node:test"); test("J10 bad field name", { todo: "schema" }, () => {});`);
   fs.writeFileSync(second, `const { test } = require("node:test"); test("J8 duplicate cue", { todo: "ambiguity" }, () => {});`);
+  const forwarded: string[] = [];
+  const write = process.stdout.write;
+  process.stdout.write = ((chunk: string | Uint8Array) => {
+    forwarded.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"));
+    return true;
+  }) as typeof process.stdout.write;
   try {
     const result = await runStep(job, {
       name: "journey tests",
@@ -196,8 +202,11 @@ test("nested TODOs from multiple Node test files reach the CI table and warning 
     assert.equal(result.status, "passed");
     assert.deepEqual(result.todoNames, ["J10 bad field name", "J8 duplicate cue"]);
     assert.match(summaryTable([result]), /KNOWN GAPS \(todo\): 2: J10 bad field name, J8 duplicate cue/);
-    assert.deepEqual(knownGapNotices([result]), ["KNOWN GAPS (todo): 2: J10 bad field name, J8 duplicate cue"]);
+    assert.match(summaryTable([result]), /J1-END-TO-END-REVIEW/);
+    assert.match(knownGapNotices([result])[0], /KNOWN GAPS \(todo\): 2: J10 bad field name, J8 duplicate cue; J1-END-TO-END-REVIEW/);
+    assert.match(forwarded.join(""), /J10 bad field name/);
   } finally {
+    process.stdout.write = write;
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });

@@ -181,7 +181,10 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
       stdio: step.todoCases ? ["inherit", "pipe", "inherit"] : "inherit",
       env: { ...process.env, ...step.env },
     });
-    if (step.todoCases) child.stdout?.on("data", (chunk: Buffer) => { output += chunk.toString("utf8"); });
+    if (step.todoCases) child.stdout?.on("data", (chunk: Buffer) => {
+      output += chunk.toString("utf8");
+      process.stdout.write(chunk);
+    });
     const done = (status: StepResult["status"], note?: string) =>
       resolve({ job: job.id, step: step.name, status, seconds: (Date.now() - started) / 1000, note, ...(todoNames.length ? { todoNames } : {}) });
     child.on("error", (err) => done("failed", err.message));
@@ -213,7 +216,8 @@ export function todoNamesFromTap(report: string): string[] {
 export function summaryTable(results: StepResult[]): string {
   const rows = results.map((r) => {
     const gaps = r.todoNames?.length ? `KNOWN GAPS (todo): ${r.todoNames.length}: ${r.todoNames.join(", ")}` : "";
-    return `| ${r.job} | ${r.step} | ${r.status === "not-covered" ? "NOT COVERED" : r.status} | ${r.seconds.toFixed(1)}s | ${[r.note, gaps].filter(Boolean).join("; ")} |`;
+    const j1Scope = r.job === "journeys" && r.step === "journey tests" ? "J1-END-TO-END-REVIEW: PR rendering is a contact-frame excerpt; full-film budgets run nightly; measured review and captain watch are separate." : "";
+    return `| ${r.job} | ${r.step} | ${r.status === "not-covered" ? "NOT COVERED" : r.status} | ${r.seconds.toFixed(1)}s | ${[r.note, gaps, j1Scope].filter(Boolean).join("; ")} |`;
   });
   return ["| job | step | status | time | note |", "| --- | --- | --- | --- | --- |", ...rows].join("\n");
 }
@@ -225,7 +229,9 @@ export function notCoveredNotices(results: StepResult[]): string[] {
 
 /** Formats todo journey cases for the console, GitHub warning annotation and job summary. */
 export function knownGapNotices(results: StepResult[]): string[] {
-  return results.flatMap((r) => r.todoNames?.length ? [`KNOWN GAPS (todo): ${r.todoNames.length}: ${r.todoNames.join(", ")}`] : []);
+  return results.flatMap((r) => r.job === "journeys" && r.step === "journey tests" ? [
+    `KNOWN GAPS (todo): ${r.todoNames?.length ?? 0}: ${r.todoNames?.join(", ") || "none"}; J1-END-TO-END-REVIEW: PR rendering is a contact-frame excerpt; full-film budgets run nightly; measured review and captain watch are separate.`,
+  ] : []);
 }
 
 /** Prints a group header that GitHub Actions folds, and a plain banner elsewhere. */
