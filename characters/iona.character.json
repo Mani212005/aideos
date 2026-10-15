@@ -2,7 +2,7 @@
   "schema": "aideos.character/1",
   "id": "iona",
   "version": 1,
-  "hash": "f5bd640c3ff025bc78c424c8bf7ccbab54c4598d18c43a35a3121f1186e5b065",
+  "hash": "ab657d689f18b93a0983ad0fc568dce849380a42358af989651eac3976687cc8",
   "name": "Iona",
   "description": "Adult wind courier, about 6.5 heads tall: asymmetric navy bob with a short tied rear tuft, fitted teal jacket with cream opening and lapels, rust split tails, dark slim trousers, boots and curved gloved fingers. The approved cel-shaded quality bar.",
   "treatment": "cel-v1",
@@ -105,7 +105,17 @@
     "pants": "#252c3c",
     "boot": "#161b26",
     "glove": "#2b3a4a",
-    "nose": "#e0b092"
+    "nose": "#e0b092",
+    "faceBase": "#d9a687",
+    "faceOvalLine": "#b07056",
+    "faceBlush": "#e26e68",
+    "faceSclera": "#fbf8f0",
+    "faceIrisLight": "#5fd0c4",
+    "faceIrisMid": "#1fa7a4",
+    "faceIrisDark": "#0f5a63",
+    "facePupil": "#0a1c26",
+    "faceMouth": "#4a1f26",
+    "faceMouthInner": "#6a2630"
   },
   "outline": {
     "color": "ink",

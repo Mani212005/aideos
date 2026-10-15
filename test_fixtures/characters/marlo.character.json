@@ -2,7 +2,7 @@
   "schema": "aideos.character/1",
   "id": "marlo",
   "version": 1,
-  "hash": "4c3bbea9dcd095a8eb9b4c0fa2d972748cf5c800243361fa805027103d693aa3",
+  "hash": "c2108fab5fe9a58b8f831ea71efe4a69aefc83dca4ec7bf5150c324fcb3c4d97",
   "name": "Marlo",
   "description": "Tall, slim adult archivist about 7.7 heads tall: black hair swept back into a top bun with a loose lock, round glasses, pine-green frock coat with ochre lining and long swinging tails, a mustard scarf with a hanging end, charcoal trousers, umber boots and bare hands.",
   "treatment": "cel-v1",
@@ -103,7 +103,17 @@
     "shirt": "#efe6d4",
     "charcoal": "#2b2d33",
     "umber": "#5b3a29",
-    "frame": "#1a1612"
+    "frame": "#1a1612",
+    "faceBase": "#9a6345",
+    "faceOvalLine": "#7c4a32",
+    "faceBlush": "#c75c4c",
+    "faceSclera": "#f7f1e6",
+    "faceIrisLight": "#d9b77e",
+    "faceIrisMid": "#8a5a2b",
+    "faceIrisDark": "#3e2614",
+    "facePupil": "#1a0f08",
+    "faceMouth": "#4a2a20",
+    "faceMouthInner": "#6a2e28"
   },
   "outline": {
     "color": "ink",

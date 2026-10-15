@@ -2,7 +2,7 @@
   "schema": "aideos.character/1",
   "id": "pip",
   "version": 1,
-  "hash": "ba85da972f83189a4f01a89307e422871a7edf5237c2441484b3f6db187f6e97",
+  "hash": "f4598a20f7ff2a1e84a2d0864f4c4ca8fc2c2632af53cf3999a6523405845c12",
   "name": "Pip",
   "description": "Child-proportion mascot about three heads tall: big round head, red knit beanie with a bouncing pom-pom, sunflower raincoat with plum trim, short denim legs, red rain boots and mint mittens. Round cartoon eyes. A stiff little torso, so the receive's twist is clamped to its limits.",
   "treatment": "cel-v1",
@@ -104,7 +104,17 @@
     "denim": "#3e5c8a",
     "berry": "#c8443c",
     "berryDeep": "#9d2f2f",
-    "mint": "#7cc9a6"
+    "mint": "#7cc9a6",
+    "faceBase": "#e8b48f",
+    "faceOvalLine": "#c9875f",
+    "faceBlush": "#ff7a7a",
+    "faceSclera": "#ffffff",
+    "faceIrisLight": "#9be0ff",
+    "faceIrisMid": "#3a8fd9",
+    "faceIrisDark": "#1b4f8f",
+    "facePupil": "#0b1a2b",
+    "faceMouth": "#5a2a2a",
+    "faceMouthInner": "#8a3a3a"
   },
   "outline": {
     "color": "ink",

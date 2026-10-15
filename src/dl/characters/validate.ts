@@ -79,10 +79,22 @@ export function validateCharacterSemantics(spec: CharacterSpec): { rig: Characte
   const tokens = new Set(Object.keys(spec.palette));
   // Requires a palette token to exist, naming the field that used it.
   const needToken = (token: string, path: string) => { if (!tokens.has(token)) errors.push({ path, message: `unknown palette token "${token}" (palette: ${[...tokens].join(", ")})` }); };
+  const declaredColours = new Set(Object.values(spec.palette as Record<string, string>).map((colour) => colour.toLowerCase()));
+  // Requires a painted face colour to be declared in the character palette.
+  const needFaceColour = (colour: string, path: string) => { if (!declaredColours.has(colour.toLowerCase())) errors.push({ path, message: `${colour} is not in palette; add it as a palette token` }); };
   needToken(spec.outline.color, "outline.color");
   needToken(spec.face.skin, "face.skin");
   needToken(spec.face.brows.color, "face.brows.color");
   needToken(spec.face.eyes.line, "face.eyes.line");
+  needFaceColour(spec.face.base, "face.base");
+  if (spec.face.ovalLine) needFaceColour(spec.face.ovalLine.color, "face.ovalLine.color");
+  if (spec.face.blush) needFaceColour(spec.face.blush.color, "face.blush.color");
+  needFaceColour(spec.face.eyes.sclera, "face.eyes.sclera");
+  const irisColours = spec.face.eyes.iris as readonly string[];
+  irisColours.forEach((colour, index) => needFaceColour(colour, `face.eyes.iris[${index}]`));
+  needFaceColour(spec.face.eyes.pupil, "face.eyes.pupil");
+  needFaceColour(spec.face.mouth.line, "face.mouth.line");
+  needFaceColour(spec.face.mouth.inner, "face.mouth.inner");
   if (spec.face.hairline) needToken(spec.face.hairline.color, "face.hairline.color");
   if (spec.face.hairline && spec.face.hairline.path[0][0] !== "M") errors.push({ path: "face.hairline.path[0]", message: "a path starts with an M command" });
   if (!spec.expressions.neutral) errors.push({ path: "expressions.neutral", message: "every character needs a neutral expression" });

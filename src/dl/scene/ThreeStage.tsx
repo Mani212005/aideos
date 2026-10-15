@@ -18,9 +18,27 @@ import { compileCameraTrack } from "./cameraTrack";
 import { applyStageCamera } from "./projection";
 import { validateStage } from "./validateStage";
 import { CEL_TREATMENT } from "./rigs/registry";
+import { reportThreeStageInitializationFailure } from "./threeStageError";
 import type { Scene } from "./types";
 
 interface Props { scene: Scene; width: number; height: number }
+
+interface CanvasErrorBoundaryProps { onError: (error: Error) => void; children: React.ReactNode }
+interface CanvasErrorBoundaryState { failed: boolean }
+
+// Catches renderer creation failures without adding a wrapper to the successful canvas tree.
+class CanvasErrorBoundary extends React.Component<CanvasErrorBoundaryProps, CanvasErrorBoundaryState> {
+  state: CanvasErrorBoundaryState = { failed: false };
+
+  // Switches to the empty failure branch after a descendant throws during mounting.
+  static getDerivedStateFromError(): CanvasErrorBoundaryState { return { failed: true }; }
+
+  // Reports the caught failure to the stage's readiness and error path.
+  componentDidCatch(error: Error): void { this.props.onError(error); }
+
+  // Leaves successful children untouched and removes a failed canvas from the frame.
+  render(): React.ReactNode { return this.state.failed ? null : this.props.children; }
+}
 
 // Commits complete absolute state, prepares shaders and draws before releasing each frame's capture barrier.
 function FrameCommit({ scene: manifest, frame, width, height, ready }: Props & { frame: number; ready: (error?: string) => void }) {
@@ -120,17 +138,23 @@ function FrameCommit({ scene: manifest, frame, width, height, ready }: Props & {
 export const ThreeStage: React.FC<Props> = ({ scene, width, height }) => {
   const current = useCurrentFrame();
   const frame = Math.max(0, Math.min(scene.durationFrames - 1, current));
-  const { delayRender, continueRender } = useDelayRender();
+  const { delayRender, continueRender, cancelRender } = useDelayRender();
   const [handle] = React.useState(() => delayRender(`Three stage ${scene.sceneId} initial readiness`));
   const [status, setStatus] = React.useState<string | null>("Loading scene...");
   const { isPlayer } = useRemotionEnvironment();
   // Signals first complete draw and leaves explicit errors visible in the preview.
   const ready = React.useCallback((error?: string) => { setStatus(error ?? null); continueRender(handle); }, [handle, continueRender]);
+  // Converts a canvas mount failure into a visible preview status or a named export error.
+  const canvasFailed = React.useCallback((error: Error) => {
+    reportThreeStageInitializationFailure(error, scene.sceneId, isPlayer, (message) => ready(message), cancelRender);
+  }, [cancelRender, isPlayer, ready, scene.sceneId]);
   React.useEffect(() => () => continueRender(handle), [handle, continueRender]);
   return <AbsoluteFill>
-    <ThreeCanvas width={width} height={height} dpr={CEL_TREATMENT.dpr} frameloop="never" gl={{ antialias: CEL_TREATMENT.antialias, alpha: true, preserveDrawingBuffer: true }}>
-      <FrameCommit scene={scene} frame={frame} width={width} height={height} ready={ready} />
-    </ThreeCanvas>
+    <CanvasErrorBoundary onError={canvasFailed}>
+      <ThreeCanvas width={width} height={height} dpr={CEL_TREATMENT.dpr} frameloop="never" gl={{ antialias: CEL_TREATMENT.antialias, alpha: true, preserveDrawingBuffer: true }}>
+        <FrameCommit scene={scene} frame={frame} width={width} height={height} ready={ready} />
+      </ThreeCanvas>
+    </CanvasErrorBoundary>
     {isPlayer && status ? <AbsoluteFill role="status" style={{ alignItems: "center", justifyContent: "center", color: "white" }}>{status}</AbsoluteFill> : null}
   </AbsoluteFill>;
 };

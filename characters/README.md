@@ -68,7 +68,7 @@ and 1500 authored clips, which bound the package's stage workload.
 | `skeleton.extraJoints` | Accessory joints (`id`, `parent`, `offset`) after the humanoid ones. |
 | `sockets` | `gripL`/`gripR` on the wrists (the palm point that holds a prop) and `soleL`/`soleR` on the ankles (the point that touches the ground). The rest pose must put both soles at y = 0. |
 | `limits` | `reach` (largest fraction of a limb's length), `bend.arm`/`bend.leg` (hinge flexion range in radians, 0 is straight) and `rotation.<joint>` (Euler XYZ min and max). |
-| `palette`, `outline`, `silhouette` | Named `#rrggbb` material tokens; outline colour token and default width; silhouette fill for the sheet. |
+| `palette`, `outline`, `silhouette` | Named `#rrggbb` material tokens; every raw face texture colour must also equal a palette value, case-insensitively; outline colour token and default width; silhouette fill for the sheet. |
 | `views` | Model-sheet yaw in radians for `front`, `threequarter`, `side` and optional `back`. |
 | `surfaces` | Cross-section profiles (local `y`, half-widths `rx`, `rz`) that torso tubes and clothing panels share. |
 | `face` | The painted face: `base` and `skin` colours, `oval`, optional `ovalLine`, `blush` and `hairline` path, `brows`, `eyes` (`almond` or `round`, position, scale, iris gradient), `mouth`, and `span` (head width the texture covers; raise it for a big head). |
@@ -136,7 +136,7 @@ tests extract and verify it, so it cannot drift from the engine.
       "head": { "min": [-0.6, -0.9, -0.5], "max": [0.6, 0.9, 0.5] }
     }
   },
-  "palette": { "ink": "#141420", "skin": "#e8b996", "hair": "#2a2333", "plum": "#6a3d6e", "plumDeep": "#4e2b52", "grey": "#4a4f5c", "white": "#efeee8", "rose": "#c95f6f" },
+  "palette": { "ink": "#141420", "skin": "#e8b996", "hair": "#2a2333", "plum": "#6a3d6e", "plumDeep": "#4e2b52", "grey": "#4a4f5c", "white": "#efeee8", "rose": "#c95f6f", "faceBase": "#d29f7c", "faceOvalLine": "#b07056", "faceBlush": "#e07a70", "faceSclera": "#fbf8f0", "faceIrisLight": "#c49a6c", "faceIrisMid": "#6b4226", "faceIrisDark": "#2e1b10", "facePupil": "#120b07", "faceMouth": "#5a2630", "faceMouthInner": "#7a3040" },
   "outline": { "color": "ink", "width": 0.022 },
   "silhouette": { "fill": "#181622" },
   "views": { "front": 0, "threequarter": -0.62, "side": -1.5708 },

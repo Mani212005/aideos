@@ -34,6 +34,7 @@ import type { Scene } from "../../src/dl/scene/types";
 import { buildDesign } from "../designSpec/build";
 import { fitReceiveSpan } from "../performance/bindReceive";
 import { IONA_CHARACTER_SPEC, isLegacyIonaReference, resolveCharacterSpec } from "../../src/dl/characters/resolve";
+import { reportThreeStageInitializationFailure } from "../../src/dl/scene/threeStageError";
 
 const NAMES = Object.keys(CHARACTER_FILES) as FixtureCharacter[];
 // Parses a mutated copy of a committed spec and returns its issue lines.
@@ -77,6 +78,36 @@ test("the hash changes with any content change and survives reformatting", () =>
   assert.equal(characterHash(reparsed), characterHash(spec));
   assert.match(issuesFor("iona", (raw) => { raw.palette.teal = "#1f8a8d"; }).join("\n"), /^hash: content hash mismatch/m);
   assert.match(issuesFor("iona", (raw) => { delete raw.hash; }, true).join("\n"), /^hash: missing; stamp the spec/m);
+});
+
+// Rejects raw face texture colors that are absent from the character's finite palette.
+test("face texture colors must be declared palette values", () => {
+  const raw = rawSpec("iona") as Record<string, any>;
+  raw.face.eyes.iris[0] = "#ff00ff";
+  raw.hash = characterHash(characterSpecSchema.parse(raw));
+  assert.match(parseCharacter(raw).errors.map((issue) => `${issue.path}: ${issue.message}`).join("\n"), /^face\.eyes\.iris\[0\]: #ff00ff is not in palette; add it as a palette token$/m);
+
+  const caseVariant = rawSpec("iona") as Record<string, any>;
+  caseVariant.face.eyes.iris[0] = "#1F8A8C";
+  caseVariant.hash = characterHash(characterSpecSchema.parse(caseVariant));
+  assert.deepEqual(parseCharacter(caseVariant).errors, []);
+});
+
+// Routes WebGL initialization failures to the correct user-facing channel and releases readiness.
+test("Three stage initialization failures report Player status and cancel exports", () => {
+  const error = new Error("context creation failed");
+  const playerReady: string[] = [];
+  const playerCanceled: Error[] = [];
+  reportThreeStageInitializationFailure(error, "courier-scene", true, (message) => playerReady.push(message), (failure) => playerCanceled.push(failure));
+  assert.deepEqual(playerReady, ["Scene graphics unavailable: WebGL could not start (context creation failed)"]);
+  assert.deepEqual(playerCanceled, []);
+
+  const exportReady: string[] = [];
+  const exportCanceled: Error[] = [];
+  reportThreeStageInitializationFailure(error, "courier-scene", false, (message) => exportReady.push(message), (failure) => exportCanceled.push(failure));
+  assert.deepEqual(exportReady, ["Three stage courier-scene: WebGL could not start: context creation failed"]);
+  assert.equal(exportCanceled.length, 1);
+  assert.equal(exportCanceled[0].message, "Three stage courier-scene: WebGL could not start: context creation failed");
 });
 
 test("Iona's spec derives the frozen P0 rig exactly: joints, order, parents and offsets", () => {
