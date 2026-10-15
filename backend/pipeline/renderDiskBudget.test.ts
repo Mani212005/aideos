@@ -169,3 +169,35 @@ test("the in-flight watchdog stops rendering below reserve and removes its temp 
     fs.rmSync(parent, { recursive: true, force: true });
   }
 });
+
+test("the in-flight watchdog stops rendering and rejects when a free-space check fails", async () => {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-render-watchdog-error-test-"));
+  let renderTempDir = "";
+  const child = new EventEmitter() as EventEmitter & { stdout: PassThrough; stderr: PassThrough; kill: (signal: string) => boolean };
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  child.kill = (signal: string) => {
+    assert.equal(signal, "SIGTERM");
+    setImmediate(() => child.emit("close", 143));
+    return true;
+  };
+  try {
+    await assert.rejects(
+      renderFormat("long", path.join(parent, "out.mp4"), {}, {
+        spawn: ((_command: string, _args: string[], spawnOptions: { env: NodeJS.ProcessEnv }) => {
+          renderTempDir = spawnOptions.env.TMPDIR ?? "";
+          return child as never;
+        }) as never,
+        statfs: () => {
+          throw new Error("statfs denied");
+        },
+        pollIntervalMs: 5,
+      }),
+      /RENDER_DISK_CHECK_FAILED: could not check free space during render: statfs denied/,
+    );
+    assert.ok(renderTempDir);
+    assert.equal(fs.existsSync(renderTempDir), false, "the render-owned temp directory is removed");
+  } finally {
+    fs.rmSync(parent, { recursive: true, force: true });
+  }
+});

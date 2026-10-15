@@ -154,25 +154,36 @@ export function renderFormat(
     /** Stops the child as soon as either render disk approaches the protected reserve. */
     const pollDisk = () => {
       if (diskError) return;
-      for (const dir of [renderTempDir, path.dirname(outPath)]) {
-        let probe = dir;
-        while (!fs.existsSync(probe) && path.dirname(probe) !== probe) probe = path.dirname(probe);
-        const space = (deps.statfs ?? fs.statfsSync)(probe);
-        const freeBytes = Number(space.bavail) * Number(space.bsize);
-        if (freeBytes < RENDER_RESERVE_BYTES) {
-          diskError = new Error(`RENDER_DISK_LOW: render stopped because free space under ${dir} fell below the 3 GiB reserve`);
-          if (deps.killProcess) deps.killProcess(child);
-          else if (process.platform !== "win32" && child.pid) {
-            try {
-              process.kill(-child.pid, "SIGTERM");
-            } catch {
-              child.kill("SIGTERM");
-            }
-          } else child.kill("SIGTERM");
-          return;
+      try {
+        for (const dir of [renderTempDir, path.dirname(outPath)]) {
+          let probe = dir;
+          while (!fs.existsSync(probe) && path.dirname(probe) !== probe) probe = path.dirname(probe);
+          const space = (deps.statfs ?? fs.statfsSync)(probe);
+          const freeBytes = Number(space.bavail) * Number(space.bsize);
+          if (freeBytes < RENDER_RESERVE_BYTES) {
+            stopRender(new Error(`RENDER_DISK_LOW: render stopped because free space under ${dir} fell below the 3 GiB reserve`));
+            return;
+          }
         }
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        stopRender(new Error(`RENDER_DISK_CHECK_FAILED: could not check free space during render: ${reason}`));
       }
     };
+
+    /** Stops the renderer and records the first watchdog failure. */
+    const stopRender = (error: Error) => {
+      if (diskError) return;
+      diskError = error;
+      try {
+        if (deps.killProcess) deps.killProcess(child);
+        else if (process.platform !== "win32" && child.pid) process.kill(-child.pid, "SIGTERM");
+        else child.kill("SIGTERM");
+      } catch {
+        child.kill("SIGTERM");
+      }
+    };
+
     const watchdog = setInterval(pollDisk, deps.pollIntervalMs ?? 3000);
 
     /** Remotion prints "Rendered 120/5400" style lines; surface them as fractional progress. */
