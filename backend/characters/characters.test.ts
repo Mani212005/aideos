@@ -169,7 +169,7 @@ test("a missing extra-joint parent is reported through parsing and embedded-stag
   const scene = film.scene as Scene;
   const cast = scene.cast!.find((item) => item.id === "iona")!;
   assert.equal(cast.kind, "character");
-  if (cast.kind === "character") cast.character = parsed.spec;
+  if (cast.kind === "character" && "character" in cast) cast.character = parsed.spec;
   assert.ok(validateStage(scene).some((message) => message.includes("skeleton.extraJoints[0].parent")));
 });
 

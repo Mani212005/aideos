@@ -20,6 +20,7 @@ import { renderCharacterSheet } from "./sheet";
 import type { PixelRequest, PixelResult } from "./pixelPage";
 import { parseFilm } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
+import type { StageCast } from "../../src/dl/scene/stageContract";
 
 const GOLDEN = path.join(__dirname, "../../test_fixtures/characters/golden/iona-contact.png");
 const required = process.env.AIDEOS_BROWSER_TESTS_REQUIRED === "1";
@@ -46,7 +47,7 @@ test("pixels: spec-built Iona is pixel-identical to the frozen legacy art, match
   const update = process.env.AIDEOS_UPDATE_GOLDENS === "1";
   const legacyFilm = parseFilm(JSON.parse(fs.readFileSync(path.join(__dirname, "../../test_fixtures/packages/legacy-iona-p0/film.json"), "utf8")));
   const legacyScene = legacyFilm.scene as Scene;
-  const legacyActor = legacyScene.cast!.find((item) => item.id === "iona")!;
+  const legacyActor = legacyScene.cast!.find((item): item is Extract<StageCast, { kind: "character" }> => item.id === "iona" && item.kind === "character")!;
   const legacyPerformance = legacyScene.performances![0];
   const result = await runPixelPage({
     iona: { spec: iona, action: createReceiveAction(69), frames: [0, 40, 60, 69, 100, 111] },

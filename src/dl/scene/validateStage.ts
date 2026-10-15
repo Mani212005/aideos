@@ -97,7 +97,7 @@ export function validateStage(scene: Scene): string[] {
       const rig = rigFromCharacter(character);
       const evaluate = createPerformanceEvaluator(rig, p.data);
       const critique = critiquePerformance(rig, p.data, evaluate, p.decisive.frame);
-      for (const check of critique.checks.filter((c) => !c.passed && !(check.id === "pole-clearance" && legacyCharacters.some((cast) => cast.id === p.actor)))) errors.push(`performance ${p.id}: ${check.id} ${check.measured} exceeds ${check.limit} ${check.unit}.`);
+      for (const check of critique.checks.filter((item) => !item.passed && !(item.id === "pole-clearance" && legacyCharacters.some((cast) => cast.id === p.actor)))) errors.push(`performance ${p.id}: ${check.id} ${check.measured} exceeds ${check.limit} ${check.unit}.`);
     } catch (err) { errors.push(`performance ${p.id}: ${err instanceof Error ? err.message : String(err)}`); }
   }
   for (const item of scene.cast ?? []) {

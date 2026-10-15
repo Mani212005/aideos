@@ -23,7 +23,7 @@ import { CHARACTER_FILES, rawSpec, type FixtureCharacter } from "../testSupport/
 import { checkCharacterFile } from "./cli";
 import { checkLookPlanById } from "../lookPlan/check";
 import { characterHash } from "../../src/dl/characters/hash";
-import { characterSpecSchema } from "../../src/dl/characters/schema";
+import { characterSpecSchema, type CharacterSpec } from "../../src/dl/characters/schema";
 
 const SOURCE = path.join(TEST_VIDEOS_DIR, "iona-receive");
 let counter = 0;
@@ -268,7 +268,7 @@ test("J6: editing Iona's receive source rig reopens a Marlo-only design", () => 
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-receive-source-"));
   try {
     const sourceFile = path.join(dir, "iona.character.json");
-    const source = rawSpec("iona") as Json;
+    const source = rawSpec("iona") as CharacterSpec;
     fs.writeFileSync(sourceFile, JSON.stringify(source));
     const before = designFilesFingerprint(pkg.slug, { receiveSourceFile: sourceFile });
     source.palette.teal = "#197f80";
@@ -286,7 +286,9 @@ test("J9: a compiled P0 Three film parses and validates through the legacy Iona 
   assert.equal(validation.isValid, true, JSON.stringify(validation.errors));
   assert.deepEqual(validateStage(scene), []);
   const facts = stageEvidence(scene, [scene.performances![0].data.contact.frame]);
-  assert.equal(facts.long.cast.find((item: Json) => item.id === "iona").character.id, "iona");
+  const ionaCast = facts.long.cast.find((item) => item.id === "iona" && "character" in item);
+  assert.ok(ionaCast && "character" in ionaCast);
+  assert.equal(ionaCast.character.id, "iona");
 });
 
 test("J3: the editor's layer conversion and save/reload keep a non-Iona character's embedded spec intact", () => {

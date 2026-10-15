@@ -13,7 +13,7 @@ import { buildCharacter } from "./characters/build";
 import { applyCharacter } from "./characters/apply";
 import { applyProp, buildProp } from "./props/paperGlider";
 import type { StageCast } from "./stageContract";
-import { resolveCharacterSpec } from "../characters/resolve";
+import { resolveStageCharacter } from "../characters/resolve";
 import { projectMeshParts, unionPartBounds, sampleMeshDepth, stagePlacement } from "./stageGeometry";
 import { declaredMaterialPalette } from "./stageMaterials";
 import { compileCameraTrack } from "./cameraTrack";
@@ -28,9 +28,9 @@ export function characterIdentity(character: CharacterSpec) {
 /** Compact cast identity for facts and prompts. */
 export function castIdentity(cast: StageCast) {
   if (cast.kind !== "character") return cast;
-  const character = resolveCharacterSpec(cast);
-  if (!character) return cast;
-  return { id: cast.id, renderer: cast.renderer, treatment: cast.treatment, resourceHash: cast.resourceHash, kind: cast.kind, position: cast.position, unitsToStage: cast.unitsToStage, depth: cast.depth, character: characterIdentity(character) };
+  const resolved = resolveStageCharacter(cast);
+  if (!resolved) return cast;
+  return { id: resolved.cast.id, renderer: resolved.cast.renderer, treatment: resolved.cast.treatment, resourceHash: resolved.cast.resourceHash, kind: resolved.cast.kind, position: resolved.cast.position, unitsToStage: resolved.cast.unitsToStage, depth: resolved.cast.depth, character: characterIdentity(resolved.spec) };
 }
 
 // Prepares private CPU geometry and evaluators once, then projects the actual posed mesh bounds without WebGL.
@@ -38,18 +38,19 @@ export function prepareStageFacts(scene: Scene, width: number, height: number) {
   const camera = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize);
   const entries = (scene.performances ?? []).map((p) => {
     const actor = scene.cast?.find((c) => c.id === p.actor && c.kind === "character");
-    const character = actor?.kind === "character" ? resolveCharacterSpec(actor) : undefined;
-    if (!actor || !character) throw new Error(`performance ${p.id}: missing actor ${p.actor}`);
+    const resolved = actor?.kind === "character" ? resolveStageCharacter(actor) : undefined;
+    if (!resolved) throw new Error(`performance ${p.id}: missing actor ${p.actor}`);
+    const { cast: resolvedActor, spec: character } = resolved;
     const propCast = scene.cast?.find((c) => c.id === p.prop);
     if (!propCast || propCast.kind !== "prop") throw new Error(`performance ${p.id}: missing prop ${p.prop}`);
     const rig = rigFromCharacter(character);
     const evaluate = createPerformanceEvaluator(rig, p.data);
     const art = buildCharacter(character), prop = buildProp(propCast.asset), placement = new Group();
     placement.matrixAutoUpdate = false;
-    placement.matrix.copy(stagePlacement(actor.position[0], actor.position[1], actor.depth, actor.unitsToStage, scene.sceneSize));
+    placement.matrix.copy(stagePlacement(resolvedActor.position[0], resolvedActor.position[1], resolvedActor.depth, resolvedActor.unitsToStage, scene.sceneSize));
     placement.add(art.rig.root, prop.root);
     const actorMeshes = Object.values(art.parts.meshes), propMeshes = Object.values(prop.meshes);
-    return { p, actor, character, evaluate, art, prop, placement, actorMeshes, propMeshes, palette: declaredMaterialPalette(actor, propCast.asset), numerical: critiquePerformance(rig, p.data, evaluate, p.decisive.frame) };
+    return { p, actor: resolvedActor, character, evaluate, art, prop, placement, actorMeshes, propMeshes, palette: declaredMaterialPalette(resolvedActor, propCast.asset), numerical: critiquePerformance(rig, p.data, evaluate, p.decisive.frame) };
   });
   // Applies every private pose before measuring, so all characters share the same depth query.
   const at = (frame: number, depth: false | "prop" | "all" = false) => {
