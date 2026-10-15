@@ -143,7 +143,7 @@ test("golden updates run only from default-branch dispatch and keep write access
 
   for (const file of workflows) {
     const doc = YAML.parse(fs.readFileSync(path.join(workflowDir, file), "utf8")) as WorkflowDocument;
-    const onPullRequest = Object.hasOwn(doc.on ?? {}, "pull_request");
+    const onPullRequest = Object.prototype.hasOwnProperty.call(doc.on ?? {}, "pull_request");
     for (const [jobKey, job] of Object.entries(doc.jobs ?? {})) {
       const canWrite = hasWritePermission(job.permissions ?? doc.permissions);
       if (onPullRequest) assert.ok(!canWrite, `${file} job ${jobKey} has write access on a pull_request workflow`);
