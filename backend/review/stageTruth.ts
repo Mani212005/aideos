@@ -35,7 +35,7 @@ export interface StageTruth {
   fps: number;
   format: "long" | "reel";
   viewport: { width: number; height: number };
-  characters: Array<{ castId: string; id: string | null; version: number | null; hash: string | null; name: string | null }>;
+  characters: Array<{ castId: string; id: string | null; version: number | null; rig: string | null; hash: string | null; name: string | null }>;
   props: string[];
   /** Cast members no performance draws: never on screen. */
   hidden: string[];
@@ -90,7 +90,7 @@ export function stageTruth(facts: FilmFacts, narration: Narration | null): Stage
   };
   return {
     renderer: "three", fps: facts.fps, format: facts.format, viewport: facts.viewport,
-    characters: facts.stageCast.characters.map((c) => ({ castId: c.castId, id: c.character?.id ?? null, version: c.character?.version ?? null, hash: c.character?.hash ?? null, name: c.character?.name ?? null })),
+    characters: facts.stageCast.characters.map((c) => ({ castId: c.castId, id: c.character?.id ?? null, version: c.character?.version ?? null, rig: c.character?.rig ?? null, hash: c.character?.hash ?? null, name: c.character?.name ?? null })),
     props: facts.stageCast.props, hidden: facts.stageCast.hidden, shots, performances, camera,
     measured: STAGE_MEASURED, unmeasured: STAGE_UNMEASURED,
   };
@@ -107,7 +107,7 @@ const list = (ids: string[], none = "nothing") => (ids.length ? ids.join(", ") :
 // Says the stage truth in plain words for a reviewer prompt: counts, per-shot presence, contact against the word, camera, and what is unmeasured.
 export function stageTruthText(truth: StageTruth): string {
   const fps = truth.fps;
-  const characters = truth.characters.map((c) => c.id ? `${c.name ?? c.id} (cast "${c.castId}", character ${c.id} v${c.version}, hash ${c.hash?.slice(0, 12) ?? "none"})` : `cast "${c.castId}" (character spec did not verify)`);
+  const characters = truth.characters.map((c) => c.id ? `${c.name ?? c.id} (cast "${c.castId}", character ${c.id} v${c.version}, rig ${c.rig ?? "none"}, hash ${c.hash?.slice(0, 12) ?? "none"})` : `cast "${c.castId}" (character spec did not verify)`);
   const lines = [
     `- Stage: one persistent Three.js cel-shaded stage, seen in the ${truth.format} output (${truth.viewport.width}x${truth.viewport.height}).`,
     `- Characters drawn: ${truth.characters.length}${characters.length ? `: ${characters.join("; ")}` : ""}. Props drawn: ${list(truth.props)}. Cast never drawn (hidden): ${list(truth.hidden, "none")}.`,

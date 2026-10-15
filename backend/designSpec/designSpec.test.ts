@@ -13,6 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
+import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { parseFilm } from "../../src/dl/schema";
 import { Timeline, createCues } from "../sceneKit";
 import { checkFilmDesign } from "../designCheck/designCheck";
@@ -78,6 +79,19 @@ test("DesignSpec: planned scene motion must start within 0.4s of its spoken cue"
   }];
   const passed = checkDesignAgainstLook(base(), design, words(), PKG, focusedPlan);
   assert.deepEqual(passed, []);
+});
+
+test("DesignSpec: decisive cue matching ignores object key order", () => {
+  const pkg = resolvePackageDir("iona-receive");
+  const film = parseFilm(JSON.parse(fs.readFileSync(path.join(pkg, "film.json"), "utf8")));
+  const design = designSpecSchema.parse(JSON.parse(fs.readFileSync(path.join(pkg, "design/design.json"), "utf8")));
+  const timedWords = JSON.parse(fs.readFileSync(path.join(pkg, "voiceover_words.json"), "utf8")).words as TimedWord[];
+  const plan = parseLookPlan(JSON.parse(fs.readFileSync(path.join(pkg, "design/look.json"), "utf8")));
+  assert.equal(plan.schema, "aideos.look/2");
+  if (plan.schema !== "aideos.look/2" || !("performances" in design)) throw new Error("expected the Three performance fixture");
+  const cue = plan.film.performances[0].decisive;
+  plan.film.performances[0].decisive = { phrase: cue.phrase, edge: cue.edge, event: cue.event, shotId: cue.shotId };
+  assert.deepEqual(checkDesignAgainstLook(film, design, timedWords, pkg, plan), []);
 });
 
 test("DesignSpec: every mistake comes back named, and no partial film is produced", () => {

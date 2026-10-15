@@ -97,6 +97,8 @@ test("J7: stage truth reports evaluator ownership at action start, contact and a
   assert.deepEqual(ownership.atStart, { mode: "airborne", holder: null });
   assert.deepEqual(ownership.atContact, { mode: "attached", holder: "iona" });
   assert.deepEqual(ownership.afterState, { mode: "attached", holder: "iona" });
+  assert.equal(truth.characters[0].rig, "iona-v1");
+  assert.match(stageTruthText(truth), /rig iona-v1/);
   assert.match(stageTruthText(truth), /Ownership: start airborne, held by no character, contact attached, held by cast "iona", after-state attached, held by cast "iona"/);
 });
 
@@ -149,7 +151,7 @@ test("J7: the stage facts for Gemini name the characters, the contact against th
   assert.equal(truth.performances[0].offsetFrames, 0);
   assert.equal(truth.camera.moves, 0);
   const text = stageTruthText(truth);
-  assert.match(text, /Characters drawn: 1: Iona \(cast "iona", character iona v1, hash [0-9a-f]{12}\)/);
+  assert.match(text, /Characters drawn: 1: Iona \(cast "iona", character iona v1, rig iona-v1, hash [0-9a-f]{12}\)/);
   assert.match(text, /decisive word "catches" \(start\) in shot catch is at 3\.70 s \(frame 111\); contact at frame 111, on the word/);
   assert.match(text, /fixed: the compiled camera does not move in the reel output/);
   assert.match(text, /NOT measured by any tool: pixel visibility and final occlusion.*face appeal.*finger contact/);

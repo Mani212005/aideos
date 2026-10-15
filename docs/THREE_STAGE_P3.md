@@ -89,5 +89,5 @@ CI (part 3) keep their owners.
 - A remote MCP agent (`aideos connect`) has no shell and cannot write `characters/<id>.character.json`,
   so it can name library or package characters but not author new ones; authoring stays a shell task
   (`aideos character check|sheet`).
-- A decisive phrase spoken twice in one shot still binds the first match (the J8 `todo`, owned by the
-  gates part); plan adherence measures the same first match, so the two stay consistent.
+- A decisive phrase spoken more than once in its shot is refused by the look check and design build
+  (`wordOnce`), which names the ambiguous cue so the author can choose a phrase spoken once.

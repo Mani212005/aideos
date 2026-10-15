@@ -75,6 +75,40 @@ test("J8: an unresolvable character, a different version and a character the act
   assert.match(findings(mismatch, "error"), /names character "marlo" but its actor cast "iona" is character "iona"/);
 });
 
+test("J8: every nested object in look/2 rejects unknown fields while look/1 keeps legacy stripping", () => {
+  const source = JSON.parse(fs.readFileSync(path.join(SOURCE, "design/look.json"), "utf8"));
+  const cases: Array<{ where: string; edit: (look: Json) => void }> = [
+    { where: "decidedBy", edit: (look) => { look.decidedBy.extra = true; } },
+    { where: "film.cast.0.changes.0", edit: (look) => { look.film.cast[0].changes = [{ at: "approach", how: "moves", extra: true }]; } },
+    { where: "film.camera.0", edit: (look) => { look.film.camera[0].extra = true; } },
+    { where: "film.palette", edit: (look) => { look.film.palette.extra = true; } },
+    { where: "film.captions", edit: (look) => { look.film.captions.extra = true; } },
+    { where: "approval", edit: (look) => { look.approval = { captain: null, extra: true }; } },
+  ];
+  for (const { where, edit } of cases) {
+    const candidate = structuredClone(source);
+    edit(candidate);
+    const parsed = safeParseLookPlan(candidate);
+    if (parsed.success) assert.fail(`${where} unexpectedly accepted an unknown field`);
+    const issues = parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("\n");
+    assert.match(issues, new RegExp(`${where.replaceAll(".", "\\.")}: Unrecognized key: "extra"`));
+  }
+
+  const legacy: Json = structuredClone(VALID_LOOK_PLAN);
+  legacy.decidedBy.extra = true;
+  legacy.film.cast[0].changes[0].extra = true;
+  legacy.film.camera[0].extra = true;
+  legacy.film.palette.extra = true;
+  legacy.film.captions.extra = true;
+  legacy.approval!.extra = true;
+  const parsedLegacy = parseLookPlan(legacy);
+  assert.equal(parsedLegacy.schema, "aideos.look/1");
+  assert.deepEqual(parsedLegacy.film.palette, { bg: "#0A0A0B", accent: "#635BFF" });
+  assert.deepEqual(parsedLegacy.film.cast[0].changes[0], {
+    at: "beat-02", how: "spins down and dims as the cache takes over", state: "disk dimmed while the cache serves requests", magnitude: "moderate",
+  });
+});
+
 test("J6 and J8: changed art within the same version is a warning naming both hashes, so the look still passes and design rebuilds", () => {
   const { slug, dir } = pkgWith();
   const spec = characterSpecSchema.parse(rawSpec("iona"));

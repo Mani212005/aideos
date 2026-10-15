@@ -142,7 +142,8 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
     const lookIds = new Set(plan.film.performances.map((performance) => performance.id));
     for (const intended of plan.film.performances) {
       const delivered = spec.performances.find((p) => p.id === intended.id);
-      if (!delivered || ["action", "actor", "prop", "start", "afterState"].some((key) => delivered[key as keyof typeof delivered] !== intended[key as keyof typeof intended]) || JSON.stringify(delivered.decisive) !== JSON.stringify(intended.decisive)) errors.push(`look performance ${intended.id}: design differs from action, actor, prop, start, decisive cue or after-state intention`);
+      const sameDecisiveCue = delivered && delivered.decisive.shotId === intended.decisive.shotId && delivered.decisive.phrase === intended.decisive.phrase && delivered.decisive.edge === intended.decisive.edge && delivered.decisive.event === intended.decisive.event;
+      if (!delivered || ["action", "actor", "prop", "start", "afterState"].some((key) => delivered[key as keyof typeof delivered] !== intended[key as keyof typeof intended]) || !sameDecisiveCue) errors.push(`look performance ${intended.id}: design differs from action, actor, prop, start, decisive cue or after-state intention`);
       for (const id of [intended.actor, intended.prop]) {
         const authored = spec.assets.find((a) => a.id === id);
         const planned = plan.film.cast.find((a) => a.id === id);

@@ -113,12 +113,24 @@ export const lookPerformanceSchema = z.strictObject({ id: z.string().min(1), act
 export type LookPerformance = z.infer<typeof lookPerformanceSchema>;
 const stageLookSchema = legacyLookSchema.extend({
   schema: z.literal("aideos.look/2"),
+  decidedBy: lookDecidedBySchema.strict(),
   film: lookFilmSchema.extend({
     renderer: z.literal("three"),
-    cast: z.array(lookCastItemSchema.extend({ renderer: z.enum(["svg", "three"]), character: z.string().regex(/^[a-z][a-z0-9-]*$/).optional(), asset: z.enum(["iona-art-v1", "paper-glider-v1"]).optional(), rig: z.literal("iona-v1").optional(), treatment: z.literal("cel-v1").optional() }).strict()).min(1),
+    cast: z.array(lookCastItemSchema.extend({
+      changes: z.array(lookChangeSchema.strict()).default([]),
+      renderer: z.enum(["svg", "three"]),
+      character: z.string().regex(/^[a-z][a-z0-9-]*$/).optional(),
+      asset: z.enum(["iona-art-v1", "paper-glider-v1"]).optional(),
+      rig: z.literal("iona-v1").optional(),
+      treatment: z.literal("cel-v1").optional(),
+    }).strict()).min(1),
+    camera: z.array(lookCameraPoseSchema.strict()).min(1),
+    palette: z.strictObject({ bg: hexColor, accent: hexColor }),
+    captions: lookCaptionsSchema.strict(),
     performances: z.array(lookPerformanceSchema).min(1),
   }).strict(),
   shots: z.array(lookShotSchema.extend({ performances: z.array(z.string()).default([]) }).strict()).min(1),
+  approval: lookApprovalSchema.strict().optional(),
 }).strict();
 /** Discriminated on `schema`, so an error names the field of the version the plan declares rather than "Invalid input". */
 export const lookPlanSchema = z.discriminatedUnion("schema", [stageLookSchema, legacyLookSchema]);
