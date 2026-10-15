@@ -84,7 +84,7 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 | pixel tests flaky across machines | software GL everywhere in CI; goldens made only on the CI platform and validated by rendering twice; manifest records the platform and the test refuses a mismatch |
 | out-of-order frame rendering | J3 seek-order test: concurrent export frames equal cold single-frame renders |
 | blank first frame / resource races | J1 asserts the contact frame is drawn (luma spread), not flat; unit `J8` cases name the missing resource |
-| preview versus export drift | studio picture equality on return (smoke); export-vs-cold equality (J3); composition-sized Player-vs-export comparison in both formats, including a cold first contact frame and forward, reverse, repeated and permuted seeks (J3) |
+| preview versus export drift | studio picture equality on return (smoke); export-vs-cold equality, including scrambled repeated frame requests (J3); composition-sized Player-vs-export comparison in both formats, including a cold first contact frame and forward, reverse and repeated seeks (J3) |
 | checks that pass on SVG-only evidence | J4 reads the projected 3D mesh bounds, not SVG; part 4 owns review truth |
 | unreachable targets giving NaN | J8: finite numbers and a failed critique by name |
 | cue binding, missing or duplicate phrase | J8: missing phrase, unknown shot and duplicate decisive phrase name the cue and shot; a unique longer phrase resolves successfully |
