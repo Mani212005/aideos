@@ -25,3 +25,14 @@ Implemented in `backend/designCheck/threeStage.ts`: every-frame precise posed ve
 Validation: root `npm test` passed (836 passing, 3 intentional skips, no failures), root `npm run lint` passed, editor type-check and production build passed, `npm run validate -- examples/hello-scene/film.json` passed, and `AIDEOS_SMOKE_REQUIRED=1 npm run smoke:studio` passed in local Chrome. The editor build retains its existing bundle-size and browser-externalization warnings. PNG evidence is retained under `.frames/p2/`: contact and settled poses in both formats, plus the foreground compositor before/after. No full video or art acceptance is claimed.
 
 Character integration (part 1): `prepareStageFacts` builds each performer from its embedded, verified `aideos.character/1` spec and its prop, and `stageMaterials.ts` declares each performer's colours from that spec's palette plus the prop's colours, so the palette gate applies to any character; Iona, Pip and Marlo pass these gates in both formats (see `docs/CHARACTER_ENGINE.md`). No new character schema field was introduced by P2. The measurement helpers themselves accept arbitrary evaluated meshes, including Three's deformed vertex positions; 25 distinct proportions/transforms are checked against real camera matrices.
+
+Character follow-up: the deferred Pip and Marlo stage stills now live in
+`test_fixtures/characters/stage-stills/` and are compared by `backend/characters/pixels.test.ts`.
+`backend/journeys/j4_character_crops.journey.ts` runs the receive through the real design compiler
+for Iona, Pip and Marlo, checks each evaluated actor and prop silhouette through recovery in both
+caption-safe crops, and proves clear/overlapping inset and out-of-bounds cases. The character-owned
+palette is checked against actual builder materials, with an undeclared-color negative case in
+`backend/performance/stage.test.ts`. The PR description and its risk matrix are recorded in
+[`THREE_STAGE_CHARACTER_FOLLOWUP.md`](THREE_STAGE_CHARACTER_FOLLOWUP.md). This closes P2's deferred
+additional-character crop and still evidence; facial appeal, finger contact and exact raster
+visibility remain outside what projected geometry can prove.

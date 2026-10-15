@@ -1,6 +1,6 @@
 /**
- * File Description: Browser pixel tests: spec-built Iona equals the frozen legacy art in the same run, matches the committed golden, and every character draws in both crops; plus the sheet command end to end.
- * Inputs and outputs: committed specs, legacy stage performances and the golden PNG -> headless Chrome (software GL) pixel comparisons and sheet files.
+ * File Description: Browser pixel tests: spec-built Iona equals the frozen legacy art, every character draws in both crops, Pip and Marlo match committed stage stills, and the sheet command works end to end.
+ * Inputs and outputs: committed specs, legacy stage performances and PNG evidence -> headless Chrome (software GL) pixel comparisons and sheet files.
  * Used by: npm test. Skips when no Chrome is installed unless AIDEOS_BROWSER_TESTS_REQUIRED=1.
  */
 import "../testSupport/fixtureVideosDir";
@@ -23,6 +23,7 @@ import type { Scene } from "../../src/dl/scene/types";
 import type { StageCast } from "../../src/dl/scene/stageContract";
 
 const GOLDEN = path.join(__dirname, "../../test_fixtures/characters/golden/iona-contact.png");
+const STAGE_STILLS = path.join(__dirname, "../../test_fixtures/characters/stage-stills");
 const required = process.env.AIDEOS_BROWSER_TESTS_REQUIRED === "1";
 const skip = !chromeAvailable() && !required ? "no Chrome or Chromium installed (set AIDEOS_CHROME_PATH, or AIDEOS_BROWSER_TESTS_REQUIRED=1 to fail instead)" : false;
 
@@ -42,7 +43,13 @@ test("pixels: spec-built Iona is pixel-identical to the frozen legacy art, match
   const iona = loadSpec("iona");
   const cast = (["iona", "pip", "marlo"] as const).map((name) => {
     const spec = loadSpec(name);
-    return { spec, action: fitReceiveSpan(69, 0, 160, 30, [0, 0, 0], { rig: rigFromCharacter(spec), policy: "clamp" }).action };
+    const stillReferences = Object.fromEntries((["wide", "reel"] as const).flatMap((format) => {
+      const file = path.join(STAGE_STILLS, `${name}-${format}.png`);
+      return name !== "iona" && fs.existsSync(file) && process.env.AIDEOS_UPDATE_CHARACTER_STAGE_STILLS !== "1"
+        ? [[format, `data:image/png;base64,${fs.readFileSync(file).toString("base64")}`]]
+        : [];
+    })) as Partial<Record<"wide" | "reel", string>>;
+    return { spec, action: fitReceiveSpan(69, 0, 160, 30, [0, 0, 0], { rig: rigFromCharacter(spec), policy: "clamp" }).action, stillReferences };
   });
   const update = process.env.AIDEOS_UPDATE_GOLDENS === "1";
   const legacyFilm = parseFilm(JSON.parse(fs.readFileSync(path.join(__dirname, "../../test_fixtures/packages/legacy-iona-p0/film.json"), "utf8")));
@@ -66,7 +73,19 @@ test("pixels: spec-built Iona is pixel-identical to the frozen legacy art, match
     assert.ok(result.golden!.otherFrameDiffering > 0.02, "the golden tolerance must reject a different pose");
     assert.ok(result.legacyGolden && result.legacyGolden.differing < 0.005 && result.legacyGolden.meanDelta < 1, "the compiled legacy performance must match the contact golden");
   }
-  for (const entry of result.cast) assert.ok(entry.coverage > 0.004, `${entry.id} ${entry.format}: only ${(entry.coverage * 100).toFixed(2)}% drawn`);
+  for (const entry of result.cast) {
+    assert.ok(entry.coverage > 0.004, `${entry.id} ${entry.format}: only ${(entry.coverage * 100).toFixed(2)}% drawn`);
+    if (entry.id === "pip" || entry.id === "marlo") {
+      const file = path.join(STAGE_STILLS, `${entry.id}-${entry.format}.png`);
+      if (process.env.AIDEOS_UPDATE_CHARACTER_STAGE_STILLS === "1") {
+        fs.mkdirSync(STAGE_STILLS, { recursive: true });
+        fs.writeFileSync(file, Buffer.from(entry.png.split(",")[1], "base64"));
+      } else {
+        assert.ok(fs.existsSync(file), `missing ${entry.id} ${entry.format} stage still ${file}; create with AIDEOS_UPDATE_CHARACTER_STAGE_STILLS=1`);
+        assert.ok(entry.stillDifference !== null && entry.stillDifference < 0.005, `${entry.id} ${entry.format} still drift ${(100 * (entry.stillDifference ?? 1)).toFixed(3)}%`);
+      }
+    }
+  }
   const signatures = new Set(result.cast.filter((c) => c.format === "wide").map((c) => c.signature));
   assert.equal(signatures.size, 3, "each character draws different pixels");
 });

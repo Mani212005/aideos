@@ -1,6 +1,6 @@
 /**
- * File Description: Browser test page comparing real cel pixels: legacy stage alias, spec-built Iona, the committed golden, and every character in both crops.
- * Inputs and outputs: window.__pixelRequest (specs, actions, legacy stage cast and golden data URL) -> window.__pixels promise of pixel comparisons and PNG data URLs.
+ * File Description: Browser test page comparing real cel pixels: legacy stage alias, spec-built Iona, committed character stills, and every character in both crops.
+ * Inputs and outputs: window.__pixelRequest (specs, actions, legacy stage cast and still references) -> window.__pixels promise of pixel comparisons and PNG data URLs.
  * Used by: backend/characters/pixels.test.ts, which bundles this file with esbuild for headless Chrome. Never part of production.
  */
 import { Euler, Group, NoToneMapping, OrthographicCamera, Quaternion, Scene, SRGBColorSpace, Vector3, WebGLRenderer } from "three";
@@ -20,7 +20,7 @@ import type { PerformanceState, ReceiveAction } from "../../src/dl/performance/t
 export interface PixelRequest {
   iona: { spec: CharacterSpec; action: ReceiveAction; frames: number[] };
   golden: { frame: number; dataUrl: string | null };
-  cast: Array<{ spec: CharacterSpec; action: ReceiveAction }>;
+  cast: Array<{ spec: CharacterSpec; action: ReceiveAction; stillReferences: Partial<Record<"wide" | "reel", string>> }>;
   legacyAlias: { cast: CharacterReference; action: ReceiveAction; frame: number };
 }
 export interface PixelResult {
@@ -28,7 +28,7 @@ export interface PixelResult {
   golden: { png: string; differing: number; meanDelta: number; otherFrameDiffering: number } | null;
   goldenPng: string;
   legacyGolden: { differing: number; meanDelta: number } | null;
-  cast: Array<{ id: string; format: "wide" | "reel"; coverage: number; signature: string }>;
+  cast: Array<{ id: string; format: "wide" | "reel"; coverage: number; signature: string; png: string; stillDifference: number | null }>;
 }
 
 const SIZE = 360;
@@ -128,10 +128,12 @@ async function run(request: PixelRequest): Promise<PixelResult> {
     for (const [format, w, h] of [["wide", 480, 270], ["reel", 270, 480]] as const) {
       const vp = stageViewport(w, h), cam = new OrthographicCamera(-vp.halfWidth, vp.halfWidth, vp.halfHeight, -vp.halfHeight, 0.1, 10000);
       cam.position.set(0, 0, 2000); cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
-      const { pixels } = capture(renderer, scene, cam, w, h);
+      const { pixels, png } = capture(renderer, scene, cam, w, h);
       let drawn = 0, sig = 0;
       for (let i = 0; i < pixels.length; i += 4) if (Math.abs(pixels[i] - 10) + Math.abs(pixels[i + 1] - 10) + Math.abs(pixels[i + 2] - 11) > 12) { drawn++; sig = (sig * 31 + pixels[i] + pixels[i + 1] * 7 + pixels[i + 2] * 13) % 1000000007; }
-      cast.push({ id: spec.id, format, coverage: drawn / (w * h), signature: String(sig) });
+      const stillReference = request.cast.find((entry) => entry.spec.id === spec.id)?.stillReferences[format];
+      const referencePixels = stillReference ? await decode(stillReference, w, h) : null;
+      cast.push({ id: spec.id, format, coverage: drawn / (w * h), signature: String(sig), png, stillDifference: referencePixels ? compare(referencePixels, pixels, 24).differing / (w * h) : null });
     }
     actor.dispose(); glider.dispose();
   }

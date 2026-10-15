@@ -66,7 +66,7 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 | J1 make a film with a character end to end | `j1_pipeline.journey.ts`: the PR journey runs the real `runProduction` with the iona-receive fixture, renders wide and reel around the contact frame, and checks output metadata and a drawn frame; nightly renders the full film with budgets | journey, nightly |
 | J2 narration changes after design, stale work not reused | `backend/pipeline/pipeline.test.ts` (existing: retime refreshes base-film, forced upstream reopens downstream) | feature |
 | J3 scrub, save, reload, preview equals export | `scripts/smoke_studio.ts` (keyboard scrub forwards and back with exact frame readout, same picture on return, split, autosave, reload keeps the edit); export-versus-cold equality (wide and reel); Player-versus-export pixel comparison is a named `todo` journey | journey, todo |
-| J4 reel crop keeps character and prop clear of captions | `j1_pipeline.journey.ts`: projected character and prop bounds, every frame from approach to recovery, inside the frame and above the caption band in wide and reel; glider attached at the decisive frame | journey |
+| J4 reel crop keeps character and prop clear of captions | `j1_pipeline.journey.ts` checks the rendered Iona production; `j4_character_crops.journey.ts` compiles Iona, Pip and Marlo and checks every posed frame through recovery against both safe crops, plus inset and out-of-bounds negatives; committed Pip and Marlo wide/reel stills are checked by `backend/characters/pixels.test.ts` | journey, browser pixels |
 | J5 second and third character, same action | `backend/characters/journeys.test.ts` and `backend/characters/retarget.test.ts` exercise multiple data-defined characters through the same action; details in [the character-engine test plan](CHARACTER_ENGINE.md#test-layers) | unit |
 | J6 resume reopens exactly the right stages | `pipeline.test.ts` (existing); `renderFrames` is part of the render fingerprint | feature |
 | J7 reviews see the 3D stage truthfully | `stage.test.ts` and `review.test.ts` (existing) | feature |
@@ -80,7 +80,7 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 
 | Risk | Check |
 | --- | --- |
-| overfitting to Iona | `backend/characters/retarget.test.ts` checks named characters and randomized proportions through the same action (J5); see [the character-engine risk plan](CHARACTER_ENGINE.md#risks-this-part-must-hold) |
+| overfitting to Iona | `backend/characters/retarget.test.ts` checks named characters and randomized proportions through the same action (J5); the J4 crop journey checks full evaluated silhouettes for Iona, Pip and Marlo; see [the character-engine risk plan](CHARACTER_ENGINE.md#risks-this-part-must-hold) |
 | pixel tests flaky across machines | software GL everywhere in CI; goldens made only on the CI platform and validated by rendering twice; manifest records the platform and the test refuses a mismatch |
 | out-of-order frame rendering | J3 seek-order test: concurrent export frames equal cold single-frame renders |
 | blank first frame / resource races | J1 asserts the contact frame is drawn (luma spread), not flat; unit `J8` cases name the missing resource |
