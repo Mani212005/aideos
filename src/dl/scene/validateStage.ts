@@ -7,6 +7,7 @@ import { castSchema, LEGACY_P0_RESOURCE_HASH, performanceSchema, type StageCast 
 import { STAGE_RESOURCE_HASH } from "./rigs/registry";
 import { createPerformanceEvaluator } from "../performance/evaluate";
 import { critiquePerformance } from "../performance/critique";
+import { IONA_RIG } from "../performance/iona";
 import { RECEIVE_EXPRESSIONS, RECEIVE_SECONDARY_CHANNELS } from "../performance/receive";
 import { actionCompatibility, formatIssues, parseCharacter } from "../characters/validate";
 import { characterRigId } from "../characters/hash";
@@ -99,6 +100,12 @@ export function validateStage(scene: Scene): string[] {
       continue;
     }
     if (p.data.rigId !== characterRigId(character)) { errors.push(`performance ${p.id}: the action was fitted to rig ${p.data.rigId} but ${p.actor} is ${characterRigId(character)}; rebuild the design.`); continue; }
+    if (p.retarget) {
+      const targetRigId = characterRigId(character);
+      if (p.retarget.to !== p.data.rigId || p.retarget.to !== targetRigId) errors.push(`performance ${p.id}: retarget record says to ${p.retarget.to} but the action and actor are ${p.data.rigId} and ${targetRigId}; rebuild the design.`);
+      if (p.retarget.from !== IONA_RIG.id) errors.push(`performance ${p.id}: retarget record says from ${p.retarget.from} but receive-v1 is authored on ${IONA_RIG.id}; rebuild the design.`);
+      if (p.retarget.policy === "fail" && p.retarget.warnings.length) errors.push(`performance ${p.id}: retarget policy fail cannot carry warnings; rebuild the design.`);
+    }
     try {
       const rig = rigFromCharacter(character);
       const evaluate = createPerformanceEvaluator(rig, p.data);

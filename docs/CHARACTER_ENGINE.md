@@ -112,6 +112,8 @@ the character or add a design-build warning.
   to the rendered art.
 - **Policy is authored per performance** (`limits: "fail" | "clamp"`, default `fail`), so a clamp is a
   visible decision recorded in the compiled film and reported by the design check.
+Compiled retarget warnings are provenance: stage validation checks their consistency with the
+recorded policy, including that a `fail` policy cannot carry warnings, before review facts are published.
 - **Elbow repair in the reference action.** The approved receive's left pole ran within 2 degrees of
   the arm axis, snapping the elbow 0.80 rig units in one frame; the key-seam critique could not see
   it. In-between pole keys now roll each elbow evenly (approved keys, contact pose and hold

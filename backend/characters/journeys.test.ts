@@ -170,6 +170,20 @@ test("look check names a design performance with no id", () => {
   assert.ok(report.findings.some((finding) => finding.where === "design/design.json performances[1].id" && /missing/.test(finding.message)));
 });
 
+// Reports the missing design mapping when the look plan names a performance.
+test("look check refuses missing design performances named by the look plan", () => {
+  const pkg = packageWith("iona-library", (design) => { delete design.performances; });
+  const report = checkLookPlanById(pkg.slug);
+  assert.equal(report.ok, false);
+  assert.ok(report.findings.some((finding) => finding.where === "design/design.json performances" && /missing; the look plan names performances receive-message/.test(finding.message)));
+
+  const missingFile = packageWith("iona-library");
+  fs.unlinkSync(path.join(missingFile.dir, "design", "design.json"));
+  const missingFileReport = checkLookPlanById(missingFile.slug);
+  assert.equal(missingFileReport.ok, false);
+  assert.ok(missingFileReport.findings.some((finding) => finding.where === "design/design.json performances" && /missing; the look plan names performances receive-message/.test(finding.message)));
+});
+
 test("J7: stage facts name each character by id, version, rig and hash, never by pasting the whole spec into a prompt", () => {
   const pkg = packageWith("marlo", (design) => { design.assets[0].unitsToStage = 70; design.assets[0].position = [960, 1220]; });
   const film = build(pkg.slug).film!;

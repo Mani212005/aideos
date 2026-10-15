@@ -378,6 +378,10 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
 
   const auxiliaryFindings: LookCheckFinding[] = [];
   const context: LookCheckContext = {};
+  const parsedLook = safeParseLookPlan(raw);
+  const lookPerformanceIds = parsedLook.success && parsedLook.data.schema === "aideos.look/2"
+    ? parsedLook.data.film.performances.map((performance) => performance.id)
+    : [];
 
   const filmFile = path.join(pkgDir, "film.json");
   if (fs.existsSync(filmFile)) {
@@ -419,6 +423,13 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
           where: "design/design.json performances",
           message: "must be an array of performances with nonempty ids.",
         });
+      } else if (lookPerformanceIds.length) {
+        auxiliaryFindings.push({
+          rule: "cast",
+          severity: "error",
+          where: "design/design.json performances",
+          message: `missing; the look plan names performances ${lookPerformanceIds.join(", ")}.`,
+        });
       }
       const castTargets = new Set<string>();
       for (const asset of design.assets ?? []) {
@@ -451,6 +462,13 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
         message: `failed to parse design/design.json: ${msg}`,
       });
     }
+  } else if (lookPerformanceIds.length) {
+    auxiliaryFindings.push({
+      rule: "cast",
+      severity: "error",
+      where: "design/design.json performances",
+      message: `missing; the look plan names performances ${lookPerformanceIds.join(", ")}.`,
+    });
   }
 
   const report = checkLookPlan(raw, filmId, context);
