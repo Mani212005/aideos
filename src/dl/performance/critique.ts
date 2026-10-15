@@ -1,9 +1,10 @@
 /**
  * File Description: Numerical performance obligations, measured independently from the solved targets.
  * Inputs and outputs: rig, action, expected cue and evaluator -> measured checks with explicit failures.
- * Used by: receive regression fixtures and npm run performance:check; no image-quality claim.
+ * Used by: receive regression fixtures, character rigs and npm run performance:check; no image-quality claim.
  */
-import { distance, euler, length, point, sample, scale, sub } from "./math";
+import { limbRange, rotationExcess } from "./limits";
+import { distance, dot, euler, length, point, rotate, sample, scale, sub } from "./math";
 import type {
   PerformanceEvaluator,
   PerformanceRig,
@@ -26,6 +27,9 @@ export interface PerformanceCritique {
   checks: PerformanceCheck[];
   visualQuality: "unmeasured";
 }
+
+/** Smallest sine of the angle between a limb's pole and its base-to-target axis (about 7 degrees). */
+export const POLE_CLEARANCE = 0.12;
 
 // Measures the shortest rotation angle between two orientations.
 function angle(a: Quat, b: Quat): number {
@@ -294,6 +298,29 @@ export function critiquePerformance(
     if (motion < 1e-4) frozen++;
   }
   check("frozen-pose", frozen, 0, "active half-second windows");
+  // A pole nearly parallel to its limb's axis leaves the bend plane undefined, so the elbow or knee
+  // can swing round it in a frame or two even though every seam is smooth.
+  let clearance = 1;
+  for (const s of states) for (const c of action.constraints) {
+    const axis = sub(s.targets[c.limb], s.joints[rig.limbs[c.limb].base].position), pole = rotate(sample(c.pole, s.frame), s.root.rotation);
+    const along = length(axis) > 1e-9 ? dot(pole, axis) / length(axis) : 0;
+    clearance = Math.min(clearance, Math.sqrt(Math.max(0, dot(pole, pole) - along * along)) / length(pole));
+  }
+  check("pole-clearance", Math.max(0, POLE_CLEARANCE - clearance), 0, `sine short of the ${POLE_CLEARANCE} pole-to-axis minimum`);
+  const limits = rig.limits;
+  if (limits) {
+    // Character rigs also prove every solved limb stayed inside its reach and hinge range.
+    let excess = 0;
+    for (const [limb, def] of Object.entries(rig.limbs)) {
+      const range = limbRange({ ...rig, limits }, limb);
+      for (const s of states) {
+        const d = distance(s.joints[def.base].position, s.joints[def.tip].position);
+        excess = Math.max(excess, d - range.max, range.min - d);
+      }
+    }
+    check("reach-limit", Math.max(0, excess), 1e-9, "rig units");
+    check("joint-limits", Math.max(0, rotationExcess({ ...rig, limits }, action)), 1e-12, "radians");
+  }
   return {
     passed: checks.every((c) => c.passed),
     samples: states.length,

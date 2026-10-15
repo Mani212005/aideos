@@ -9,12 +9,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { BoxGeometry, Color, Mesh, MeshBasicMaterial, OrthographicCamera, PlaneGeometry, ShaderMaterial, Vector3 } from "three";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { parseFilm } from "../../src/dl/schema";
 import { designSpecSchema, stageDesignSchema } from "../designSpec/spec";
 import { compileDesign } from "../designSpec/compile";
 import { checkFilmDesign } from "../designCheck/designCheck";
-import { buildDesign } from "../designSpec/build";
+import { buildDesign, resolveDesignCharacters } from "../designSpec/build";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { createReceiveAction } from "../../src/dl/performance/receive";
 import { shiftReceive } from "../../src/dl/performance/span";
@@ -39,7 +39,10 @@ const pkg = resolvePackageDir("iona-receive");
 const read = (file: string) => JSON.parse(fs.readFileSync(path.join(pkg, file), "utf8"));
 // Compiles the same v2 design consumed by production builds.
 function compiled() {
-  const result = compileDesign(parseFilm(read("film.json")), designSpecSchema.parse(read("design/design.json")), read("voiceover_words.json").words, "hand-built");
+  const spec = designSpecSchema.parse(read("design/design.json"));
+  const { characters, errors } = resolveDesignCharacters(spec, pkg);
+  assert.deepEqual(errors, []);
+  const result = compileDesign(parseFilm(read("film.json")), spec, read("voiceover_words.json").words, "hand-built", { characters });
   assert.deepEqual(result.errors, []);
   return result.film!;
 }
@@ -97,6 +100,14 @@ test("missing or changed approved resources fail, and unsupported secondary chan
   assert.match(validateScene(scene).errors.map((e) => e.message).join(" "), /secondary channel/);
   scene.performances![0].data.fps = 60;
   assert.match(validateScene(scene).errors.map((e) => e.message).join(" "), /FPS mismatch/);
+});
+
+// Detects edits to receive fitting and acceptance modules through the real frozen-resource validator.
+test("fitting and critique source changes invalidate the frozen stage resources", () => {
+  for (const changedFile of ["src/dl/performance/limits.ts", "src/dl/performance/critique.ts"]) {
+    const errors = validateStageResources((file) => file === changedFile ? Buffer.from("changed") : fs.readFileSync(resolveRepoAssetPath(file)));
+    assert.ok(errors.includes(`stage resource ${changedFile}: hash differs from frozen version`), errors.join("\n"));
+  }
 });
 
 test("projection agrees with actual orthographic camera matrices in both crops, including rotation and zoom", () => {

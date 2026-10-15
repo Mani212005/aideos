@@ -8,11 +8,11 @@ set -e
 # Reject unknown commands before resolving a checkout or touching Studio state.
 if [ "$#" -gt 0 ]; then
   case "$1" in
-    exit|stop|down|kill|validate|review|all-check|connect|design|look|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|help|--help|-h)
+    exit|stop|down|kill|validate|review|all-check|connect|design|look|character|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|help|--help|-h)
       ;;
     *)
       echo "Error: unknown aideos command '$1'." >&2
-      echo "Commands: exit (stop/down/kill), validate, review, all-check, connect, design, look, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, help" >&2
+      echo "Commands: exit (stop/down/kill), validate, review, all-check, connect, design, look, character, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, help" >&2
       echo "Run 'aideos help' for usage." >&2
       exit 2
       ;;
@@ -99,6 +99,21 @@ if [ "$#" -gt 0 ]; then
           ;;
       esac
       ;;
+    character)
+      # aideos character check|sheet <spec...>
+      SUB="${1:-}"
+      shift || true
+      case "$SUB" in
+        check|sheet)
+          cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts character "$SUB" "$@"
+          ;;
+        *)
+          echo "Usage: aideos character check <spec-or-id...> [--stamp] [--json]" >&2
+          echo "       aideos character sheet <spec-or-id> [--out dir] [--placement x,y,units] [--clamp]" >&2
+          exit 1
+          ;;
+      esac
+      ;;
     look)
       # aideos look brief|check <film>
       SUB="${1:-}"
@@ -163,6 +178,8 @@ if [ "$#" -gt 0 ]; then
       echo "  aideos gemini-review <mp4>  Gemini 3.8 Flash native video quality review"
       echo "  aideos all-check <slug>     Full check of long cut and reel in a background agent (see docs/REVIEW.md)"
       echo "  aideos review <slug|mp4>    Measured (deterministic) review of a rendered video"
+      echo "  aideos character check <spec>  Validate a character spec, naming bad fields (--stamp writes its hash)"
+      echo "  aideos character sheet <spec>  Render its model sheet, expression sheet and receive stills"
       echo ""
       exit 0
       ;;

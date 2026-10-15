@@ -1,0 +1,576 @@
+{
+  "schema": "aideos.character/1",
+  "id": "marlo",
+  "version": 1,
+  "hash": "c2108fab5fe9a58b8f831ea71efe4a69aefc83dca4ec7bf5150c324fcb3c4d97",
+  "name": "Marlo",
+  "description": "Tall, slim adult archivist about 7.7 heads tall: black hair swept back into a top bun with a loose lock, round glasses, pine-green frock coat with ochre lining and long swinging tails, a mustard scarf with a hanging end, charcoal trousers, umber boots and bare hands.",
+  "treatment": "cel-v1",
+  "skeleton": {
+    "type": "humanoid",
+    "proportions": {
+      "hips": [0, 4.15, 0],
+      "spine": [0, 0.8, 0],
+      "chest": [0, 0.85, 0],
+      "neck": [0, 0.5, 0],
+      "head": [0, 0.45, 0],
+      "shoulder": [0.52, 0.43, 0],
+      "elbow": [0.3, -1.3, 0],
+      "wrist": [0.24, -1.2, 0.02],
+      "fingers": [0.03, -0.38, 0],
+      "thumb": [-0.06, -0.13, 0.03],
+      "hip": [0.22, -0.12, 0],
+      "knee": [0.03, -1.95, 0.01],
+      "ankle": [0, -1.8, 0]
+    }
+  },
+  "sockets": {
+    "gripL": {
+      "joint": "wristL",
+      "offset": [0, -0.45, 0.08]
+    },
+    "gripR": {
+      "joint": "wristR",
+      "offset": [0, -0.45, 0.08]
+    },
+    "soleL": {
+      "joint": "ankleL",
+      "offset": [0, -0.28, 0]
+    },
+    "soleR": {
+      "joint": "ankleR",
+      "offset": [0, -0.28, 0]
+    }
+  },
+  "limits": {
+    "reach": 0.995,
+    "bend": {
+      "arm": [0, 2.8],
+      "leg": [0, 2.4]
+    },
+    "rotation": {
+      "hips": {
+        "min": [-0.4, -0.6, -0.3],
+        "max": [0.4, 0.6, 0.3]
+      },
+      "spine": {
+        "min": [-0.5, -0.8, -0.4],
+        "max": [0.6, 0.8, 0.4]
+      },
+      "neck": {
+        "min": [-0.5, -0.7, -0.4],
+        "max": [0.5, 0.7, 0.4]
+      },
+      "head": {
+        "min": [-0.6, -0.9, -0.5],
+        "max": [0.6, 0.9, 0.5]
+      },
+      "wristL": {
+        "min": [-1, -1, -1],
+        "max": [1, 1, 1]
+      },
+      "wristR": {
+        "min": [-1, -1, -1],
+        "max": [1, 1, 1]
+      },
+      "fingersL": {
+        "min": [-1.6, -0.3, -0.3],
+        "max": [0.3, 0.3, 0.3]
+      },
+      "fingersR": {
+        "min": [-1.6, -0.3, -0.3],
+        "max": [0.3, 0.3, 0.3]
+      },
+      "thumbL": {
+        "min": [-1.2, -0.4, -0.4],
+        "max": [0.4, 0.4, 0.4]
+      },
+      "thumbR": {
+        "min": [-1.2, -0.4, -0.4],
+        "max": [0.4, 0.4, 0.4]
+      }
+    }
+  },
+  "palette": {
+    "ink": "#121014",
+    "skin": "#b77d59",
+    "skinShade": "#a06a4a",
+    "hair": "#16161b",
+    "pine": "#2e5e4e",
+    "pineDeep": "#244a3e",
+    "ochre": "#c9973a",
+    "mustard": "#e2ae47",
+    "shirt": "#efe6d4",
+    "charcoal": "#2b2d33",
+    "umber": "#5b3a29",
+    "frame": "#1a1612",
+    "faceBase": "#9a6345",
+    "faceOvalLine": "#7c4a32",
+    "faceBlush": "#c75c4c",
+    "faceSclera": "#f7f1e6",
+    "faceIrisLight": "#d9b77e",
+    "faceIrisMid": "#8a5a2b",
+    "faceIrisDark": "#3e2614",
+    "facePupil": "#1a0f08",
+    "faceMouth": "#4a2a20",
+    "faceMouthInner": "#6a2e28"
+  },
+  "outline": {
+    "color": "ink",
+    "width": 0.022
+  },
+  "silhouette": {
+    "fill": "#15181a"
+  },
+  "views": {
+    "front": 0,
+    "threequarter": -0.62,
+    "side": -1.5707963267948966
+  },
+  "surfaces": {
+    "coatBody": {
+      "y": [-0.9, -0.2, 0.55, 1.2, 1.42],
+      "rx": [0.4, 0.31, 0.38, 0.5, 0.19],
+      "rz": [0.26, 0.21, 0.25, 0.25, 0.16]
+    }
+  },
+  "face": {
+    "base": "#9a6345",
+    "skin": "skin",
+    "oval": [0.02, 0.01, 0.33, 0.43],
+    "ovalLine": {
+      "color": "#7c4a32",
+      "alpha": 0.45,
+      "width": 0.008
+    },
+    "blush": {
+      "color": "#c75c4c",
+      "alpha": 0.12,
+      "at": [0.2, -0.15],
+      "size": [0.06, 0.03]
+    },
+    "hairline": {
+      "color": "hair",
+      "path": [["M", -0.5, 0.12], ["L", -0.36, 0.12], ["Q", -0.3, 0.3, -0.05, 0.33], ["Q", 0.2, 0.34, 0.34, 0.18], ["L", 0.5, 0.12], ["L", 0.5, 0.6], ["L", -0.5, 0.6]]
+    },
+    "brows": {
+      "color": "hair",
+      "y": 0.11,
+      "x": [0.07, 0.17, 0.29]
+    },
+    "eyes": {
+      "style": "almond",
+      "at": [0.17, -0.03],
+      "scale": 0.9,
+      "sclera": "#f7f1e6",
+      "iris": ["#d9b77e", "#8a5a2b", "#3e2614"],
+      "pupil": "#1a0f08",
+      "line": "ink"
+    },
+    "mouth": {
+      "y": -0.29,
+      "line": "#4a2a20",
+      "inner": "#6a2e28",
+      "scale": 0.95
+    }
+  },
+  "expressions": {
+    "neutral": {
+      "eyeOpen": 0.75,
+      "browTilt": 0.1,
+      "browRaise": 0,
+      "mouthCurve": 0.006,
+      "mouthOpen": 0
+    },
+    "surprised": {
+      "eyeOpen": 1.1,
+      "browTilt": -0.35,
+      "browRaise": 0.045,
+      "mouthCurve": 0,
+      "mouthOpen": 0.06
+    },
+    "determined": {
+      "eyeOpen": 0.58,
+      "browTilt": 0.55,
+      "browRaise": -0.012,
+      "mouthCurve": -0.014,
+      "mouthOpen": 0
+    },
+    "relieved": {
+      "eyeOpen": 0.32,
+      "browTilt": -0.2,
+      "browRaise": 0.02,
+      "mouthCurve": 0.03,
+      "mouthOpen": 0
+    },
+    "amused": {
+      "eyeOpen": 0.5,
+      "browTilt": -0.1,
+      "browRaise": 0.015,
+      "mouthCurve": 0.04,
+      "mouthOpen": 0
+    }
+  },
+  "secondary": [
+    {
+      "channel": "coat",
+      "parts": [
+        {
+          "part": "coatTailL",
+          "pivot": [0.2, -0.02, -0.16],
+          "gain": [[1.1, 0, 0], [0, 0, 0], [0, 1, 0]],
+          "bias": [0.02, 0, 0]
+        },
+        {
+          "part": "coatTailR",
+          "pivot": [-0.2, -0.02, -0.16],
+          "gain": [[1.1, 0, 0], [0, 0, 0], [0, -1, 0]],
+          "bias": [-0.02, 0, 0]
+        }
+      ]
+    },
+    {
+      "channel": "tuft",
+      "parts": [
+        {
+          "part": "lock",
+          "pivot": [0, 0.42, -0.4],
+          "gain": [[1, 0, 0], [0, 0, 0], [0, 1, 0]]
+        }
+      ]
+    },
+    {
+      "channel": "side",
+      "parts": [
+        {
+          "part": "scarfEnd",
+          "pivot": [0.12, 0.45, 0.24],
+          "gain": [[0, 0, 0], [0, 0, 0], [0.5, 1, 0]]
+        }
+      ]
+    }
+  ],
+  "parts": [
+    {
+      "type": "torso",
+      "id": "coat",
+      "joint": "spine",
+      "material": "pine",
+      "ink": 0.026,
+      "surface": "coatBody",
+      "center": [0, 0, 0]
+    },
+    {
+      "mirror": ["R", "L"],
+      "parts": [
+        {
+          "type": "tube",
+          "id": "coatTail{side}",
+          "joint": "hips",
+          "material": "pine",
+          "ink": 0.018,
+          "points": [[0.2, -0.02, -0.16], [0.3, -0.9, -0.3], [0.36, -1.75, -0.38]],
+          "radii": [[0.24, 0.08], [0.24, 0.07], [0.22, 0.05]]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "id": "shirt",
+      "joint": "spine",
+      "material": "shirt",
+      "ink": 0,
+      "doubleSided": true,
+      "surface": "coatBody",
+      "a": [[-0.18, 1.15], [-0.12, 0.8], [-0.06, 0.3], [-0.05, -0.2]],
+      "b": [[0.18, 1.15], [0.12, 0.8], [0.06, 0.3], [0.05, -0.2]],
+      "lift": 0.03
+    },
+    {
+      "mirror": ["L", "R"],
+      "parts": [
+        {
+          "type": "panel",
+          "id": "lining{side}",
+          "joint": "spine",
+          "material": "ochre",
+          "ink": 0,
+          "doubleSided": true,
+          "surface": "coatBody",
+          "a": [[0.18, 1.15], [0.12, 0.8], [0.06, 0.3]],
+          "b": [[0.26, 1.15], [0.2, 0.8], [0.06, 0.3]],
+          "lift": 0.04,
+          "steps": 3
+        },
+        {
+          "type": "panel",
+          "id": "lapel{side}",
+          "joint": "spine",
+          "material": "pineDeep",
+          "ink": 0,
+          "doubleSided": true,
+          "surface": "coatBody",
+          "a": [[0.26, 1.15], [0.2, 0.8], [0.06, 0.3]],
+          "b": [[0.44, 1.08], [0.39, 0.64], [0.06, 0.3]],
+          "lift": 0.055
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "id": "belt",
+      "joint": "spine",
+      "material": "umber",
+      "ink": 0,
+      "doubleSided": true,
+      "surface": "coatBody",
+      "a": [[-0.31, -0.1], [0, -0.1], [0.31, -0.1]],
+      "b": [[-0.31, -0.22], [0, -0.22], [0.31, -0.22]],
+      "lift": 0.075,
+      "steps": 3
+    },
+    {
+      "type": "tube",
+      "id": "neckSkin",
+      "joint": "neck",
+      "material": "skin",
+      "ink": 0.012,
+      "points": [[0, 0, 0], [0, 0.42, 0.02]],
+      "radii": [0.105, 0.1]
+    },
+    {
+      "type": "tube",
+      "id": "scarfWrap",
+      "joint": "neck",
+      "material": "mustard",
+      "ink": 0.02,
+      "points": [[0, -0.08, 0.02], [0, 0.14, 0.02]],
+      "radii": [[0.26, 0.24], [0.22, 0.21]],
+      "segments": 6,
+      "radial": 24
+    },
+    {
+      "type": "tube",
+      "id": "scarfEnd",
+      "joint": "chest",
+      "material": "mustard",
+      "ink": 0.016,
+      "points": [[0.12, 0.45, 0.24], [0.16, 0.1, 0.31], [0.18, -0.3, 0.32]],
+      "radii": [[0.1, 0.035], [0.095, 0.03], [0.09, 0.03]]
+    },
+    {
+      "type": "head",
+      "id": "head",
+      "joint": "head",
+      "ink": 0.02,
+      "points": [[0, -0.45, 0.22], [0, -0.396, 0.17], [0, -0.288, 0.1], [0, -0.135, 0.03], [0, 0.045, 0], [0, 0.225, -0.01], [0, 0.36, -0.02], [0, 0.45, -0.02], [0, 0.486, -0.02]],
+      "radii": [[0.045, 0.054], [0.126, 0.135], [0.225, 0.234], [0.306, 0.306], [0.351, 0.351], [0.36, 0.36], [0.324, 0.342], [0.189, 0.234], [0.027, 0.036]]
+    },
+    {
+      "type": "tube",
+      "id": "nose",
+      "joint": "head",
+      "material": "skinShade",
+      "shading": "flat",
+      "ink": 0.004,
+      "points": [[0, -0.02, 0.31], [0, -0.12, 0.38], [0, -0.17, 0.39]],
+      "radii": [[0.03, 0.026], [0.036, 0.03], [0.04, 0.034]],
+      "segments": 14,
+      "radial": 14,
+      "caps": [0.35, 0.5]
+    },
+    {
+      "mirror": ["L", "R"],
+      "parts": [
+        {
+          "type": "tube",
+          "id": "ear{side}",
+          "joint": "head",
+          "material": "skin",
+          "ink": 0.012,
+          "points": [[0.33, -0.04, -0.02], [0.38, -0.05, -0.04]],
+          "radii": [[0.08, 0.05], [0.065, 0.04]],
+          "segments": 4,
+          "radial": 12
+        },
+        {
+          "type": "tube",
+          "id": "glassRim{side}",
+          "joint": "head",
+          "material": "frame",
+          "ink": 0,
+          "points": [[0.255, -0.03, 0.35], [0.244, 0.005, 0.35], [0.213, 0.03, 0.35], [0.17, 0.04, 0.35], [0.128, 0.03, 0.35], [0.096, 0.005, 0.35], [0.085, -0.03, 0.35], [0.096, -0.065, 0.35], [0.127, -0.09, 0.35], [0.17, -0.1, 0.35], [0.213, -0.09, 0.35], [0.244, -0.065, 0.35], [0.255, -0.03, 0.35]],
+          "radii": [0.012],
+          "segments": 36,
+          "radial": 6
+        },
+        {
+          "type": "tube",
+          "id": "glassArm{side}",
+          "joint": "head",
+          "material": "frame",
+          "ink": 0,
+          "points": [[0.255, -0.02, 0.34], [0.35, -0.01, 0.15], [0.37, -0.02, -0.05]],
+          "radii": [0.01],
+          "segments": 10,
+          "radial": 6
+        }
+      ]
+    },
+    {
+      "type": "tube",
+      "id": "glassBridge",
+      "joint": "head",
+      "material": "frame",
+      "ink": 0,
+      "points": [[-0.09, -0.01, 0.36], [0, 0.005, 0.37], [0.09, -0.01, 0.36]],
+      "radii": [0.01],
+      "segments": 8,
+      "radial": 6
+    },
+    {
+      "type": "tube",
+      "id": "hairMass",
+      "joint": "head",
+      "material": "hair",
+      "ink": 0.022,
+      "points": [[0, -0.27, -0.12], [0, -0.108, -0.16], [0, 0.054, -0.16], [0, 0.216, -0.12], [0, 0.342, -0.08], [0, 0.423, -0.05], [0, 0.468, -0.04]],
+      "radii": [[0.25, 0.2], [0.34, 0.3], [0.37, 0.34], [0.37, 0.34], [0.33, 0.32], [0.22, 0.24], [0.03, 0.04]],
+      "segments": 28,
+      "radial": 28,
+      "caps": [1, 0.2]
+    },
+    {
+      "type": "tube",
+      "id": "bun",
+      "joint": "head",
+      "material": "hair",
+      "ink": 0.016,
+      "points": [[0, 0.36, -0.26], [0, 0.42, -0.3], [0, 0.5, -0.32], [0, 0.56, -0.31]],
+      "radii": [0.05, 0.14, 0.14, 0.05],
+      "segments": 12,
+      "radial": 18
+    },
+    {
+      "type": "tube",
+      "id": "bunTie",
+      "joint": "head",
+      "material": "mustard",
+      "ink": 0.008,
+      "points": [[0, 0.35, -0.22], [0, 0.38, -0.26]],
+      "radii": [[0.08, 0.07], [0.08, 0.07]],
+      "segments": 2,
+      "radial": 14
+    },
+    {
+      "type": "tube",
+      "id": "lock",
+      "joint": "head",
+      "material": "hair",
+      "ink": 0.012,
+      "points": [[0, 0.42, -0.4], [0.05, 0.22, -0.47], [0.12, 0.03, -0.49]],
+      "radii": [[0.06, 0.045], [0.05, 0.035], [0.01, 0.01]],
+      "segments": 12,
+      "radial": 10
+    },
+    {
+      "mirror": ["L", "R"],
+      "parts": [
+        {
+          "type": "limb",
+          "id": "upperArm{side}",
+          "joint": "shoulder{side}",
+          "to": "elbow{side}",
+          "material": "pine",
+          "ink": 0.02,
+          "start": [-0.03, 0.06, 0],
+          "radii": [[0.15, 0.14], [0.12, 0.115], [0.1, 0.095]]
+        },
+        {
+          "type": "limb",
+          "id": "foreArm{side}",
+          "joint": "elbow{side}",
+          "to": "wrist{side}",
+          "material": "pine",
+          "ink": 0.018,
+          "radii": [[0.1, 0.095], [0.085, 0.08], [0.075, 0.07]]
+        },
+        {
+          "type": "tube",
+          "id": "cuff{side}",
+          "joint": "elbow{side}",
+          "material": "ochre",
+          "ink": 0.012,
+          "points": [[0.19, -0.94, 0.015], [0.24, -1.2, 0.02]],
+          "radii": [[0.1, 0.095], [0.095, 0.09]],
+          "segments": 4,
+          "radial": 16
+        },
+        {
+          "type": "hand",
+          "joint": "wrist{side}",
+          "material": "skin",
+          "palm": {
+            "radii": [[0.075, 0.033], [0.068, 0.03]],
+            "ink": 0.012
+          },
+          "fingers": {
+            "count": 4,
+            "spacing": 0.038,
+            "lengths": [0.95, 1.08, 1.02, 0.82],
+            "curls": [0.45, 0.7, 0.9, 0.65],
+            "radii": [0.019, 0.016, 0.011],
+            "reach": [0.16, 0.29],
+            "depth": [0.03, 0.045, 0.065],
+            "fan": [1.2, 1.4],
+            "shift": [0.012, 0.02],
+            "ink": 0.008
+          },
+          "thumb": {
+            "points": [[0, 0, 0], [-0.045, -0.15, 0.04], [-0.025, -0.27, 0.07]],
+            "radii": [0.022, 0.019, 0.012],
+            "ink": 0.008
+          }
+        },
+        {
+          "type": "limb",
+          "id": "thigh{side}",
+          "joint": "hip{side}",
+          "to": "knee{side}",
+          "material": "charcoal",
+          "ink": 0.02,
+          "start": [0, 0.1, 0],
+          "radii": [[0.24, 0.22], [0.19, 0.18], [0.15, 0.14]]
+        },
+        {
+          "type": "limb",
+          "id": "shin{side}",
+          "joint": "knee{side}",
+          "to": "ankle{side}",
+          "material": "charcoal",
+          "ink": 0.018,
+          "radii": [[0.15, 0.14], [0.12, 0.12], [0.09, 0.09]]
+        },
+        {
+          "type": "tube",
+          "id": "boot{side}",
+          "joint": "knee{side}",
+          "material": "umber",
+          "ink": 0.016,
+          "points": [[0, -0.9, 0], [0, -1.8, 0]],
+          "radii": [[0.15, 0.15], [0.115, 0.115]],
+          "segments": 4
+        },
+        {
+          "type": "tube",
+          "id": "foot{side}",
+          "joint": "ankle{side}",
+          "material": "umber",
+          "ink": 0.018,
+          "points": [[0, -0.14, -0.1], [0, -0.18, 0.3], [0, -0.2, 0.62]],
+          "radii": [[0.12, 0.14], [0.11, 0.1], [0.065, 0.08]]
+        }
+      ]
+    }
+  ]
+}

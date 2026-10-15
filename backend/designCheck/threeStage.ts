@@ -8,7 +8,6 @@ import type { Scene } from "../../src/dl/scene/types";
 import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
 import { rectInside, projectStagePoint, SAFE_SQUARE, type SceneRect } from "../../src/dl/scene/projection";
 import { undeclaredMaterialColours } from "../../src/dl/scene/stageGeometry";
-import { STAGE_MATERIAL_PALETTES } from "../../src/dl/scene/stageMaterials";
 import { getInsetRegion, getStageSafeRegion } from "../../src/dl/fullScreenHeroLayout";
 import { buildTimeline } from "../../src/dl/camera";
 import { prepareSvgProjection } from "./insetRegion";
@@ -52,9 +51,7 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
       const foregroundIds = new Set(scene.props.filter((p) => p.plane === "foreground").map((p) => p.assetId));
       const safe = getStageSafeRegion(format, width, height, film.captions !== "off");
       for (const material of facts.materials) {
-        const palette = STAGE_MATERIAL_PALETTES[material.asset];
-        if (!palette) add("palette", 0, format, material.actor, `asset ${material.asset}: no declared material palette`);
-        else for (const colour of undeclaredMaterialColours(material.meshes, palette)) add("palette", 0, format, material.actor, `undeclared 3D material colour ${colour}; declare the material in the character resource`);
+        for (const colour of undeclaredMaterialColours(material.meshes, material.palette)) add("palette", 0, format, material.actor, `undeclared 3D material colour ${colour}; declare it in character ${material.character}'s palette`);
       }
       const held = new Map((scene.performances ?? []).map((p) => [p.id, 0]));
       const starts = new Map((scene.performances ?? []).map((p) => [p.id, Math.ceil(p.data.holdFromFrame)]));

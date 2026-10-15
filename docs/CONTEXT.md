@@ -411,20 +411,20 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ### `src/dl/scene/` (Custom SVG Animation & Scene Graph)
 * Deep reference documentation in [`src/dl/scene/README.md`](../src/dl/scene/README.md).
-* `types.ts`: TypeScript contracts for scene hierarchy, actors schema, environment assets, custom SVG animation timelines, and camera tracks (`CameraKeyframe`, `CameraTrack`); character rigs are not implemented.
+* `types.ts`: TypeScript contracts for scene hierarchy, actors schema, environment assets, custom SVG animation timelines, and camera tracks (`CameraKeyframe`, `CameraTrack`). Three.js character rigs use `src/dl/characters/` and are outside this SVG scene contract.
 * `svgAnimation.ts`: Declarative timeline types (`SvgAnimationClip`, `SvgAnimationTimeline`), easing curves, stagger calculations, validator (`validateSvgTimeline`), and compiler (`compileSvgTimeline`).
 * `svgDocument.ts`: Pure dependency-free SVG document parser (`parseSvgDocument`), element ID discovery (`collectSvgElementIds`), and bounds calculation.
 * `svgReact.tsx`: React SVG renderer (`renderSvgDocumentToReact`) with instance namespacing and per-frame element state transforms.
 * `SceneClip.tsx`: Remotion composition entry point with single compilation and current frame selection.
 * `sceneTiming.ts`: Audio-first retiming helpers (`framesForAudioMs`, `audioSyncDriftMs`, `alignSceneToAudio`, `retimeSvgTimeline`).
-* `SceneView.tsx`: Pure browser-safe SVG scene renderer for background and prop assets with camera transform support and no filesystem imports; character rigs are not supported.
+* `SceneView.tsx`: Pure browser-safe SVG scene renderer for background and prop assets with camera transform support and no filesystem imports; character rigs render through the separate Three stage.
 * `compile.ts`: Pure deterministic compiler (`compileScene`) threading custom animation timelines and camera tracks onto frames for environment assets (background and props).
 * `cameraTrack.ts`: Camera track compiler (`compileCameraTrack`) and motion stats (`measureCameraMotion`) measuring peak pan speed, per-frame zoom step, pan acceleration, hold share, and continuous move duration, exporting pacing constants (`MIN_CAMERA_HOLD_SHARE`, `MAX_CAMERA_CONTINUOUS_MOVE_SECONDS`, `CAMERA_CUE_LANDING_TOLERANCE_SECONDS`).
 * `validateScene.ts`: Semantic and physical integrity validator (`validateScene`) rejecting unsupported actor rigs (Rule 21) before enforcing scene integrity rules and Rule 20 timeline consistency.
 * `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`).
 * `projection.ts`: Canonical orthographic projection, cover-fit viewport calculation (`stageViewport`, `stageProjection`), Three.js camera pose assignment (`applyStageCamera`), and stage rect geometry helpers (`projectStagePoint`, `rectInside`, `overlaps`, `SAFE_SQUARE`).
 * `stageGeometry.ts`: Character-independent posed mesh bounds with outline allowance (`projectMeshParts`, `unionPartBounds`), material declarations (`undeclaredMaterialColours`), and sampled depth evidence (`sampleMeshDepth`).
-* `stageMaterials.ts`: Finite material palette declaration for approved art assets (`STAGE_MATERIAL_PALETTES`).
+* `stageMaterials.ts`: Character-owned material declarations (`declaredMaterialPalette`: the spec palette, the face texture base and the prop's `PROP_MATERIAL_PALETTES`).
 * `stageFacts.ts`: Shared CPU geometry projection and numerical evidence for the opt-in Three stage, reporting visibility provenance.
 * `ThreeStage.tsx`: Persistent opt-in Three.js stage canvas with orthographic camera, delayRender readiness barriers, and transparent foreground/background SVG compositing.
 
@@ -502,9 +502,20 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `math.ts`: Pure dependency-free vector, quaternion, slerp, smoothstep, and two-bone IK solver (`solveTwoBone`).
 * `evaluate.ts`: Absolute-frame receive evaluator (`createPerformanceEvaluator`, `validatePerformance`) enforcing rigid limbs, world-space planted feet, and palm-glider contact attachment without simulation history or external dependencies.
 * `receive.ts`: Sparse choreography recovered from the approved Iona catch (`createReceiveAction`, `IONA_CONTACT_ROTATION`, `IONA_FLIGHT_ROTATION`).
-* `iona.ts`: Approved Iona bind hierarchy and fixed limb proportions (`IONA_RIG`).
-* `critique.ts`: Independent numerical obligations checker (`critiquePerformance`) measuring bone length, planted feet, grip path, attachment, contact cue, seams, seek-order equality, and active motion windows.
-* `backend/performance/bindReceive.ts`: Authoring boundary binding contact to narration word cues (`bindReceive`).
+* `iona.ts`: The rig the receive reference was authored on (`IONA_RIG`); the library spec `characters/iona.character.json` must derive it exactly.
+* `retarget.ts`: Fits the receive to any character rig (`retargetReceive`, `ReceiveRetargetError`): hips crouch by leg length, plants from the rest stance and sole socket, grips relative to the moving shoulder by arm reach, re-aimed elbow poles, then reach, hinge and rotation limits under a `fail` or `clamp` policy.
+* `limits.ts`: Shared limit geometry (`limbRange`, `rotationExcess`).
+* `critique.ts`: Independent numerical obligations checker (`critiquePerformance`) measuring bone length, planted feet, grip path, attachment, contact cue, seams, seek-order equality, active motion windows, pole clearance and, on character rigs, reach and joint limits.
+* `backend/performance/bindReceive.ts`: Authoring boundary binding contact to narration word cues (`bindReceive`, `fitReceiveSpan`).
+
+### `src/dl/characters/`, `src/dl/scene/characters/` & `backend/characters/` (Characters as data)
+* Architecture, journeys and risks: [`docs/CHARACTER_ENGINE.md`](CHARACTER_ENGINE.md); authoring guide: [`characters/README.md`](../characters/README.md).
+* `schema.ts`: Strict `aideos.character/1` Zod schema (`characterSpecSchema`, `CharacterSpec`).
+* `validate.ts`: `parseCharacter` and `validateCharacterSemantics` return issues naming the field; `actionCompatibility` checks expressions and swing channels against an action.
+* `hash.ts` & `sha256.ts`: Canonical JSON and a synchronous SHA-256 that runs in Node and the browser bundle (`characterHash`, `characterRigId`).
+* `rig.ts` & `expand.ts`: `rigFromCharacter` (humanoid rig, sockets, limits) and `expandParts` (mirror groups and limb, torso and hand generators into tube, head, panel and facets primitives).
+* `scene/characters/{build,apply,geometry,face}.ts`: `buildCharacter` (cel geometry, outlines, painted face) and `applyCharacter` (absolute per-frame assignment); `scene/props/paperGlider.ts` builds the glider.
+* `backend/characters/library.ts`: Resolves ids (package `characters/` first, then the repo library) to hash-verified specs. `cli.ts`: `aideos character check|sheet`. `sheet.ts`: headless Chrome sheet renderer.
 * `scripts/performance_check.ts`: CLI script (`npm run performance:check`) evaluating numerical obligations against the illustrative fixture timing.
 * `scripts/performance_filmstrip.ts`: Isolated comparison filmstrip generator (`npm run performance:filmstrip`) for fixed-camera cel pixel verification.
 

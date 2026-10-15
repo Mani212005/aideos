@@ -67,7 +67,7 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 | J2 narration changes after design, stale work not reused | `backend/pipeline/pipeline.test.ts` (existing: retime refreshes base-film, forced upstream reopens downstream) | feature |
 | J3 scrub, save, reload, preview equals export | `scripts/smoke_studio.ts` (keyboard scrub forwards and back with exact frame readout, same picture on return, split, autosave, reload keeps the edit); export-versus-cold equality (wide and reel); Player-versus-export pixel comparison is a named `todo` journey | journey, todo |
 | J4 reel crop keeps character and prop clear of captions | `j1_pipeline.journey.ts`: projected character and prop bounds, every frame from approach to recovery, inside the frame and above the caption band in wide and reel; glider attached at the decisive frame | journey |
-| J5 second and third character, same action | named `todo` journey: part 1 owns the character data format and additional character fixtures | todo |
+| J5 second and third character, same action | `backend/characters/journeys.test.ts` and `backend/characters/retarget.test.ts` exercise multiple data-defined characters through the same action; details in [the character-engine test plan](CHARACTER_ENGINE.md#test-layers) | unit |
 | J6 resume reopens exactly the right stages | `pipeline.test.ts` (existing); `renderFrames` is part of the render fingerprint | feature |
 | J7 reviews see the 3D stage truthfully | `stage.test.ts` and `review.test.ts` (existing) | feature |
 | J8 failures give a named error | `j8_failures.journey.ts`: a phrase not spoken, an unknown shot and missing artwork are each named and write no film; a failed design stops the run with no mp4; an unreachable hand target gives finite numbers and a failed grip check; two J8 cases are `todo` (below) | journey |
@@ -80,7 +80,7 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 
 | Risk | Check |
 | --- | --- |
-| overfitting to Iona | open: part 1's second and third character through the same action (J5) |
+| overfitting to Iona | `backend/characters/retarget.test.ts` checks named characters and randomized proportions through the same action (J5); see [the character-engine risk plan](CHARACTER_ENGINE.md#risks-this-part-must-hold) |
 | pixel tests flaky across machines | software GL everywhere in CI; goldens made only on the CI platform and validated by rendering twice; manifest records the platform and the test refuses a mismatch |
 | out-of-order frame rendering | J3 seek-order test: concurrent export frames equal cold single-frame renders |
 | blank first frame / resource races | J1 asserts the contact frame is drawn (luma spread), not flat; unit `J8` cases name the missing resource |
@@ -181,7 +181,7 @@ description and in the timing table at the end of every run.
 
 ## Known gaps (found while building this suite)
 
-CI does not fully cover J3, J5, J8 and J10 until these `todo` cases are fixed. The PR J1 journey is
+CI does not fully cover J3, J8 and J10 until these `todo` cases are fixed. The PR J1 journey is
 intentionally a contact-frame excerpt; full-film rendering and budgets run nightly. Measured review
 and the captain's watch are handled by the separate real-film task. `npm run ci` includes this named
 J1 scope note alongside the todo case count and names in the journey summary table, warning
@@ -195,8 +195,6 @@ annotation and job-summary note.
   readiness error that a test can provoke because Remotion's CLI has no WebGL-disabled flag.
 * `J3 the Studio Player preview frame matches the exported frame` needs the Player drawn at
   composition size for a pixel comparison.
-* `J5 the same action runs on second and third data-defined characters` needs the character data
-  format and additional character fixtures.
 * `J1 full-film measured review and captain watch` are not part of the pull-request excerpt or
   nightly budget job; the separate real-film task owns those checks.
 * About 70 `any` annotations remain in files listed in the `LEGACY_ANY` ledger in `eslint.config.mjs`

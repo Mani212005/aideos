@@ -1,5 +1,5 @@
 /**
- * File Description: Command-line interface for producing, directing, look planning, designing, reviewing, and rendering Aideos films.
+ * File Description: Command-line interface for producing, directing, look planning, designing, reviewing, rendering Aideos films and checking characters.
  * Inputs and outputs: CLI arguments and subcommands -> runs production pipeline, review, or inspection commands.
  * Used by: bin/aideos, npm run backend (entry point), backend/pipeline/pipeline.test.ts.
  */
@@ -18,6 +18,7 @@ import type { DesignMode, ProductionFormat, ProductionProgress, ProductionStage,
 import { runDirector, type DirectorRequest } from "./pipeline/director";
 import type { TtsBackendName } from "./tts";
 import { registerAllCheckCommands, rewriteAllCheckArgv } from "./allCheck/cli";
+import { registerCharacterCommands } from "./characters/cli";
 
 dotenv.config({ quiet: true });
 
@@ -653,6 +654,7 @@ program
   });
 
 registerAllCheckCommands(program);
+registerCharacterCommands(program);
 
 export { program };
 

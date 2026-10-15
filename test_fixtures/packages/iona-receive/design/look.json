@@ -13,8 +13,6 @@
       {
         "id": "iona",
         "renderer": "three",
-        "asset": "iona-art-v1",
-        "rig": "iona-v1",
         "treatment": "cel-v1",
         "what": "Iona is the receiver",
         "enters": "approach",
@@ -25,7 +23,8 @@
             "state": "message-received",
             "magnitude": "major"
           }
-        ]
+        ],
+        "character": "iona"
       },
       {
         "id": "glider",

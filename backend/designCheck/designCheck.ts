@@ -499,6 +499,8 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
     if (scene.renderer === "three" && result.errors.length === 0) {
       findings.push(...checkThreeStage(film, scene, context));
       findings.push({ rule: "scene", severity: "warning", where: "three stage", message: "posed vertices, outlines and sampled mesh depth measured in both crops; facial appeal, finger contact, raster presence and unsampled occlusion remain unmeasured" });
+      // A receive clamped to fit its character's limits builds, but the change is reported, never silent.
+      for (const p of scene.performances ?? []) for (const warning of p.retarget?.warnings ?? []) findings.push({ rule: "scene", severity: "warning", where: `performance ${p.id}`, message: `retargeted onto ${p.retarget!.to} with clamp policy: ${warning}` });
     }
     for (const asset of assets) {
       if (hasCaptions && asset.position.y > CAPTION_SAFE_SQUARE.y1 && asset.assetId !== "background") {
