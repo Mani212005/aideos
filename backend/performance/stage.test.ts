@@ -282,6 +282,22 @@ test("P2 material palette rejects an undeclared base color and shader outline, i
   } finally { mesh.geometry.dispose(); material.dispose(); }
 });
 
+test("character-owned palette accepts its built materials and rejects an undeclared color", () => {
+  const film = compiled(), scene = film.scene as Scene, facts = prepareStageFacts(scene, 1080, 1920);
+  const actor = facts.materials.find((entry) => entry.character === "iona");
+  assert.ok(actor);
+  const invalidMesh = new Mesh(new BoxGeometry(), new MeshBasicMaterial({ color: "#00ffff" }));
+  invalidMesh.name = "undeclared-character-part";
+  try {
+    assert.deepEqual(undeclaredMaterialColours(actor.meshes, actor.palette), [], "the character's declared palette covers its builder output");
+    assert.deepEqual(undeclaredMaterialColours([invalidMesh], actor.palette), ["undeclared-character-part: #00ffff"]);
+  } finally {
+    invalidMesh.geometry.dispose();
+    (invalidMesh.material as MeshBasicMaterial).dispose();
+    facts.dispose();
+  }
+});
+
 test("P2 foreground obstruction blocks carry facts and honors exact element opacity", () => {
   const film = compiled(), scene = film.scene as Scene, file = path.join(pkg, "visuals/p2-obstructor.svg");
   fs.writeFileSync(file, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1920"><rect id="cover" x="0" y="0" width="1920" height="1920" fill="#0A0A0B"/></svg>');

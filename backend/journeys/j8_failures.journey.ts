@@ -129,5 +129,3 @@ test("J8 rendering with no WebGL ends in a named error, never a blank frame", { 
 });
 
 test("J3 the Studio Player preview frame matches the exported frame", { todo: "needs a Player-versus-export pixel comparison at composition size" }, () => {});
-
-test("J5 the same action runs on second and third data-defined characters", { todo: "depends on the general character data format and additional character fixtures" }, () => {});
