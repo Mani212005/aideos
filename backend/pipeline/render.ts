@@ -21,6 +21,13 @@ export const FORMAT_SPECS: Record<ProductionFormat, { composition: string; width
   reel: { composition: "Reel", width: 1080, height: 1920 },
 };
 
+/**
+ * The still-image format and quality Remotion writes every frame in before it stitches them. The
+ * disk guard samples frames with exactly these settings (backend/pipeline/renderDiskBudget.ts), so
+ * changing them here changes the estimate with them. `jpegQuality` only applies to "jpeg".
+ */
+export const RENDER_IMAGE: { format: "png" | "jpeg"; jpegQuality: number } = { format: "png", jpegQuality: 80 };
+
 /** Encoder settings shared by both formats. Tuned for text legibility, not for file size. */
 const ENCODE_FLAGS = [
   "--codec=h264",
@@ -30,7 +37,8 @@ const ENCODE_FLAGS = [
   // deprecated full-range variant, which players that assume limited range render with
   // crushed blacks - and this film is almost entirely black. Measured cost is under two
   // minutes on a three-minute film.
-  "--image-format=png",
+  `--image-format=${RENDER_IMAGE.format}`,
+  ...(RENDER_IMAGE.format === "jpeg" ? [`--jpeg-quality=${RENDER_IMAGE.jpegQuality}`] : []),
   "--crf=16",
   "--pixel-format=yuv420p",
   "--audio-codec=aac",
@@ -95,51 +103,6 @@ export function stagePublicDir(
       fs.rmSync(dir, { recursive: true, force: true });
     },
   };
-}
-
-/** Free space a render must leave untouched, in bytes. The same 3 GiB floor the journeys use. */
-export const RENDER_RESERVE_BYTES = 3 * 1024 ** 3;
-/**
- * Remotion keeps every PNG frame of one format in the temp dir until it has stitched them. A flat
- * film measured about 0.85 MB per 1080p frame (the nightly render budget), but PNG size depends on
- * the picture: full-frame, high-entropy imagery (film grain, footage, dense textures) approaches 3
- * bytes per pixel. The guard uses that worst case, so it can refuse a render that would have fit
- * but can never admit one that fills the disk. A three-minute 1080p film therefore needs about 30
- * GiB free; render a shorter range (renderFrames) or free space when it refuses.
- */
-export const PNG_WORST_CASE_BYTES_PER_PIXEL = 3;
-
-/** Worst-case temp bytes a render of `frames` frames at this size can write. */
-export function estimateRenderTempBytes(frames: number, width: number, height: number): number {
-  return Math.ceil(frames * width * height * PNG_WORST_CASE_BYTES_PER_PIXEL);
-}
-
-/** Thrown, with RENDER_DISK_LOW in the message, when a render would eat into the reserve. */
-export class RenderDiskError extends Error {
-  /** Names the folder, what the render needs and what is free. */
-  constructor(dir: string, needGiB: number, freeGiB: number) {
-    super(`RENDER_DISK_LOW: rendering needs about ${needGiB.toFixed(1)} GiB under ${dir} plus a ${(RENDER_RESERVE_BYTES / 1024 ** 3).toFixed(0)} GiB reserve but only ${freeGiB.toFixed(1)} GiB is free; free some space or render a shorter range (renderFrames)`);
-    this.name = "RenderDiskError";
-  }
-}
-
-/** Refuses to start a render whose temp frames would fill the disk; `statfs` is injectable for tests. */
-export function assertRenderDiskBudget(
-  frames: number,
-  width: number,
-  height: number,
-  dirs: string[] = [os.tmpdir()],
-  statfs: (p: string) => { bavail: number | bigint; bsize: number | bigint } = fs.statfsSync,
-): void {
-  const need = estimateRenderTempBytes(frames, width, height);
-  for (const dir of dirs) {
-    // The output folder may not exist yet; the disk it will be created on is the nearest folder that does.
-    let probe = dir;
-    while (!fs.existsSync(probe) && path.dirname(probe) !== probe) probe = path.dirname(probe);
-    const stat = statfs(probe);
-    const free = Number(stat.bavail) * Number(stat.bsize);
-    if (free < need + RENDER_RESERVE_BYTES) throw new RenderDiskError(dir, need / 1024 ** 3, free / 1024 ** 3);
-  }
 }
 
 /** Anything the render or verify stage wants to say while it works. */

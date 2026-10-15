@@ -11,7 +11,7 @@ import path from "node:path";
 import test from "node:test";
 import { DiskHeadroomError, assertDiskHeadroom, frameDiff, frameStats, freeGiB, saveArtifacts, sizeOf, tempEntries, ARTIFACT_DIR, type Rgb } from "./harness";
 import { retargetShotIds } from "./ionaFilm";
-import { RenderDiskError, assertRenderDiskBudget, estimateRenderTempBytes, glFlag, stagePublicDir } from "../pipeline/render";
+import { glFlag, stagePublicDir } from "../pipeline/render";
 
 /** A flat RGB frame of one colour. */
 function solid(width: number, height: number, rgb: [number, number, number]): Rgb {
@@ -101,18 +101,4 @@ test("stagePublicDir serves moved packages through symlinks and its cleanup neve
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
-});
-
-test("assertRenderDiskBudget uses the PNG worst case and refuses a render that could fill the disk, naming folder and numbers", () => {
-  const gib = 1024 ** 3;
-  const free = (g: number) => () => ({ bavail: g, bsize: gib });
-  // A three-minute 1080p film is 5400 frames; at 3 bytes per pixel that is about 31 GiB of temp PNGs.
-  const need = estimateRenderTempBytes(5400, 1920, 1080);
-  assert.ok(need > 30 * gib && need < 33 * gib, `worst case for 5400 frames of 1080p should be about 31 GiB, got ${(need / gib).toFixed(1)}`);
-  assert.throws(() => assertRenderDiskBudget(5400, 1920, 1080, ["/tmp"], free(20)), (err: unknown) => err instanceof RenderDiskError && /RENDER_DISK_LOW: .* under \/tmp .* only 20\.0 GiB is free/.test(err.message));
-  assert.throws(() => assertRenderDiskBudget(5400, 1920, 1080, ["/tmp"], free(33)), RenderDiskError, "free space under the need plus the 3 GiB reserve is refused");
-  assert.doesNotThrow(() => assertRenderDiskBudget(5400, 1920, 1080, ["/tmp"], free(40)));
-  assert.doesNotThrow(() => assertRenderDiskBudget(31, 1920, 1080, ["/tmp"], free(4)), "a one-second clip fits in a small headroom");
-  // The renders folder does not exist before the first render; the disk it will live on is what counts.
-  assert.doesNotThrow(() => assertRenderDiskBudget(31, 1920, 1080, ["/tmp/aideos-not-created-yet/renders"], free(4)));
 });
