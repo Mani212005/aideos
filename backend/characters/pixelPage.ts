@@ -120,8 +120,8 @@ async function run(request: PixelRequest): Promise<PixelResult> {
   for (const entry of request.cast) {
     for (const still of entry.stills) {
       const dimensions = still.format === "wide" ? [1920, 1080] as const : [1080, 1920] as const;
-      const pixels = await decode(still.rendered, ...dimensions);
-      const referencePixels = await decode(still.reference, ...dimensions);
+      const pixels = await decode(still.rendered, dimensions[0], dimensions[1]);
+      const referencePixels = await decode(still.reference, dimensions[0], dimensions[1]);
       let drawn = 0;
       for (let i = 0; i < pixels.length; i += 4) if (Math.abs(pixels[i] - 10) + Math.abs(pixels[i + 1] - 10) + Math.abs(pixels[i + 2] - 11) > 12) drawn++;
       cast.push({ id: entry.id, format: still.format, coverage: drawn / (dimensions[0] * dimensions[1]), stillDifference: compare(referencePixels, pixels, 24).differing / (dimensions[0] * dimensions[1]), png: still.rendered });
