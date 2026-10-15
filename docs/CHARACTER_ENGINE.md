@@ -80,7 +80,7 @@ reviewed by eye.
 | Action | `src/dl/performance/retarget.ts`, `limits.ts`, `critique.ts`, `evaluate.ts`, `math.ts`, `span.ts` | frozen receive fitting, evaluation, geometry and acceptance logic; changes reopen design through the stage identity |
 | Film | `backend/designSpec/{spec,compile,build}.ts`, `src/dl/scene/stageContract.ts` | design names `character: <id>`; build resolves package then library, verifies the hash, embeds the spec in `scene.cast` and records `retarget.characterHash` on each fitted receive; stage validation refuses a receive fitted to different character content; P0 `asset: iona-art-v1` designs still build |
 | Stage | `ThreeStage.tsx`, `stageFacts.ts`, `stageMaterials.ts`, `validateStage.ts` | no separate performance-count cap; the design allows up to 40 total stage assets and 1500 authored clips; the embedded spec is re-verified before any geometry is allocated; each performer's declared material colours come from its own spec palette plus its prop's |
-| Tools | `backend/characters/{library,cli,sheet}.ts` | `aideos character check|sheet` |
+| Tools | `backend/characters/{library,cli,sheet}.ts` | `aideos character check|sheet`; check reports receive channels without accessory bindings as informational rest notes |
 
 Retargeting (`retargetReceive`): the hips crouch and sway scale by leg length so knees bend through
 the same angles; planted ankles stand at the target's rest stance with the sole socket on the
@@ -91,6 +91,11 @@ new arm axis. Then rotation limits clamp or refuse authored keys, and reach and 
 sparse grip keys in (clamp) or throw `ReceiveRetargetError` naming the field, limb and frame
 (fail). A planted foot that cannot stay planted is always refused. Retargeting onto Iona herself
 returns the reference unchanged.
+
+Accessory follow-through is optional. When a character has no piece bound to a receive channel,
+`applyCharacter` maps that channel to zero motion and bound pieces remain at their authored pose.
+`aideos character check` reports each unbound channel as an informational note; it does not block
+the character or add a design-build warning.
 
 ## Decisions
 
@@ -126,6 +131,12 @@ only treatment; there is one action. The exact P0 `iona-art-v1` cast record rema
 alias of the stamped Iona character spec so compiled films keep rendering; rebuilding its design
 picks up the repaired pole clearance. Part 4 still owns richer look-plan authoring guidance,
 adherence scoring, Gemini facts and review truth for characters.
+
+The frozen stage identity covers the character, prop and receive engine files that determine
+rendered output and fitted actions, including evaluation and acceptance critique. It excludes
+`validateStage.ts`, `stageMaterials.ts` declarations and design-check rules: those checks run at
+every build and render, while compiled films carry the frozen stage hash. This avoids invalidating
+every compiled film for a rule change; stale films are refused with a named error before drawing.
 
 The separate CI part owns the GitHub workflow and pull request checks. This part contributes its
 character suites to `npm test` for that workflow to run.

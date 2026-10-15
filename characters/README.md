@@ -73,7 +73,11 @@ and 1500 authored clips, which bound the package's stage workload.
 | `surfaces` | Cross-section profiles (local `y`, half-widths `rx`, `rz`) that torso tubes and clothing panels share. |
 | `face` | The painted face: `base` and `skin` colours, `oval`, optional `ovalLine`, `blush` and `hairline` path, `brows`, `eyes` (`almond` or `round`, position, scale, iris gradient), `mouth`, and `span` (head width the texture covers; raise it for a big head). |
 | `expressions` | Named presets: `eyeOpen`, `browTilt`, `browRaise`, `mouthCurve`, `mouthOpen`. `neutral` is required; `receive-v1` also plays `surprised`, `determined` and `relieved`. |
-| `secondary` | Swinging pieces bound to an action channel: `rotation = gain x channel + bias` about `pivot`. `receive-v1` drives `coat` (trails from the hips: tails, skirt, tail), `tuft` (trails behind the head: ponytail, pom-pom) and `side` (beside the head: side lock, scarf end). |
+| `secondary` | Swinging pieces bound to an action channel: `rotation = gain x channel + bias` about `pivot`. `receive-v1` drives `coat` (trails from the hips: tails, skirt, tail), `tuft` (trails behind the head: ponytail, pom-pom) and `side` (beside the head: side lock, scarf end). An unbound channel rests at its authored pose. |
+
+Accessory follow-through is optional. A receive channel with no bound piece maps to zero motion,
+leaving bound pieces at their authored pose. `aideos character check` reports each unbound channel
+as an informational note, for example `receive-v1: channel coat rests (no swinging piece bound)`.
 
 ## Parts
 

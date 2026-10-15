@@ -14,4 +14,11 @@ and how the receive is fitted to it, including `src/dl/performance/limits.ts`,
 Editing one of them changes every character's identity, so it needs an explicit re-freeze:
 `npx tsx scripts/freeze_stage_resources.ts`. Each character spec carries its own content hash.
 
+The frozen stage identity covers character, prop and receive-engine files that determine rendered
+output and fitted actions, including evaluation and acceptance critique. It excludes
+`src/dl/scene/validateStage.ts`, `src/dl/scene/stageMaterials.ts` declarations and design-check
+rules. Compiled films carry the frozen stage hash, and those validation and design-check rules are
+re-applied at every build and render. This avoids invalidating every compiled film for a rule change;
+stale films are refused with a named error before drawing.
+
 Three.js is installed from npm at 0.180.0 (MIT); its licence is included by the package.

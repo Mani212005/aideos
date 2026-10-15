@@ -24,7 +24,7 @@ import { createPerformanceEvaluator } from "../../src/dl/performance/evaluate";
 import { createIonaArt } from "../../test_fixtures/characters/iona-legacy/iona-art-v1.js";
 import { CHARACTER_FILES, loadSpec, rawSpec, type FixtureCharacter } from "../testSupport/characters";
 import { characterCandidates, loadCharacter, requireCharacter } from "./library";
-import { checkCharacterFile } from "./cli";
+import { checkCharacterFile, formatCharacterReport } from "./cli";
 import { declaredMaterialPalette } from "../../src/dl/scene/stageMaterials";
 import { undeclaredMaterialColours } from "../../src/dl/scene/stageGeometry";
 import { buildProp } from "../../src/dl/scene/props/paperGlider";
@@ -282,6 +282,25 @@ test("character check stamps only an otherwise valid spec and reports the rig, b
     assert.equal(refused.stamped, false);
     assert.match(refused.errors.join("\n"), /^palette\.pine: a colour is #rrggbb/m);
     assert.match(checkCharacterFile(path.join(dir, "missing.json")).errors[0], /missing or unreadable/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// Reports unbound receive channels as resting while preserving a passing check.
+test("character check reports unbound receive channels as resting", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-character-resting-"));
+  try {
+    const file = path.join(dir, "resting.character.json");
+    const spec = characterSpecSchema.parse(rawSpec("marlo"));
+    spec.id = "resting";
+    spec.secondary = [];
+    spec.hash = characterHash(spec);
+    fs.writeFileSync(file, JSON.stringify(spec));
+    const report = checkCharacterFile(file);
+    const expected = ["receive-v1: channel coat rests (no swinging piece bound)", "receive-v1: channel tuft rests (no swinging piece bound)", "receive-v1: channel side rests (no swinging piece bound)"];
+    assert.equal(report.ok, true, report.errors.join("\n"));
+    assert.equal(report.receive?.ok, true);
+    assert.deepEqual(report.notes, expected);
+    assert.ok(expected.every((line) => formatCharacterReport(report).includes(`note  ${line}`)));
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 

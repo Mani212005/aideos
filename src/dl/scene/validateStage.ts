@@ -30,7 +30,8 @@ export function validateCastCharacter(cast: Extract<StageCast, { kind: "characte
   const where = `cast ${cast.id} character ${character.id}`;
   const parsed = parseCharacter(character, { requireHash: true });
   if (!parsed.spec) return formatIssues(parsed.errors, `${where}: `);
-  return [...formatIssues(parsed.errors, `${where}: `), ...formatIssues(actionCompatibility(parsed.spec, RECEIVE_NEEDS), `${where}: `)];
+  const compatibility = actionCompatibility(parsed.spec, RECEIVE_NEEDS);
+  return [...formatIssues(parsed.errors, `${where}: `), ...formatIssues(compatibility.errors, `${where}: `)];
 }
 
 // Validates the stage's cast, every performer's verified character and each receive's numerical obligations.

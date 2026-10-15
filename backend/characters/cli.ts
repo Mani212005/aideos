@@ -23,13 +23,14 @@ export interface CharacterReport {
   stamped: boolean;
   errors: string[];
   warnings: string[];
+  notes: string[];
   summary?: { id: string; rig: string; hash: string; joints: number; meshes: number; triangles: number; drawCalls: number; heightUnits: number; headsTall: number; expressions: string[] };
   receive?: { ok: boolean; warnings: string[]; error?: string };
 }
 
 // Validates one spec file (stamping its hash when asked), measures its geometry and tries the receive under the fail policy.
 export function checkCharacterFile(file: string, options: { stamp?: boolean } = {}): CharacterReport {
-  const report: CharacterReport = { file, ok: false, stamped: false, errors: [], warnings: [] };
+  const report: CharacterReport = { file, ok: false, stamped: false, errors: [], warnings: [], notes: [] };
   let raw: Record<string, unknown>;
   try { raw = JSON.parse(fs.readFileSync(file, "utf8")); } catch (err) { report.errors.push(`(file): ${fs.existsSync(file) ? `not valid JSON: ${err instanceof Error ? err.message : String(err)}` : "missing or unreadable"}`); return report; }
   let parsed = parseCharacter(raw, { requireHash: true });
@@ -41,7 +42,9 @@ export function checkCharacterFile(file: string, options: { stamp?: boolean } = 
   report.errors.push(...formatIssues(parsed.errors));
   if (!parsed.spec || !parsed.rig || !parsed.parts || report.errors.length) return report;
   const spec = parsed.spec;
-  report.errors.push(...formatIssues(actionCompatibility(spec, RECEIVE_NEEDS)));
+  const compatibility = actionCompatibility(spec, RECEIVE_NEEDS);
+  report.errors.push(...formatIssues(compatibility.errors));
+  report.notes.push(...compatibility.notes);
   if (report.errors.length) return report;
   const art = buildCharacter(spec);
   try {
@@ -72,6 +75,7 @@ export function formatCharacterReport(report: CharacterReport): string {
   const lines = [`${report.ok ? "PASS" : "FAIL"} character ${path.relative(process.cwd(), report.file) || report.file}${report.stamped ? " (hash stamped)" : ""}`];
   for (const e of report.errors) lines.push(`  error ${e}`);
   for (const w of report.warnings) lines.push(`  warn  ${w}`);
+  for (const note of report.notes) lines.push(`  note  ${note}`);
   const s = report.summary;
   if (s) lines.push(`  ${s.rig}  hash ${s.hash.slice(0, 16)}  ${s.joints} joints  ${s.meshes} meshes  ${s.triangles} triangles  ${s.drawCalls} draw calls  ${s.heightUnits} units tall (${s.headsTall} heads)`, `  expressions: ${s.expressions.join(", ")}`);
   if (report.receive?.ok) lines.push(`  receive-v1: retargets within limits${report.receive.warnings.length ? ` (${report.receive.warnings.join("; ")})` : ""}`);
@@ -96,7 +100,7 @@ export function registerCharacterCommands(program: Command): void {
     .option("--json", "print the reports as JSON")
     .action((specs: string[], options: { stamp?: boolean; json?: boolean }) => {
       const reports = specs.map((arg) => {
-        try { return checkCharacterFile(resolveSpecArgument(arg), options); } catch (err) { return { file: arg, ok: false, stamped: false, errors: [err instanceof Error ? err.message : String(err)], warnings: [] } satisfies CharacterReport; }
+        try { return checkCharacterFile(resolveSpecArgument(arg), options); } catch (err) { return { file: arg, ok: false, stamped: false, errors: [err instanceof Error ? err.message : String(err)], warnings: [], notes: [] } satisfies CharacterReport; }
       });
       console.log(options.json ? JSON.stringify(reports, null, 2) : reports.map(formatCharacterReport).join("\n\n"));
       if (reports.some((r) => !r.ok)) process.exitCode = 1;

@@ -137,12 +137,19 @@ export function parseCharacter(raw: unknown, options: { requireHash?: boolean } 
 /** What one action needs from a character. */
 export interface ActionNeeds { action: string; expressions: readonly string[]; channels: readonly string[] }
 
-// Reports what a character lacks for an action: expressions the action plays and swing channels it cannot drive.
-export function actionCompatibility(spec: CharacterSpec, needs: ActionNeeds): CharacterIssue[] {
+/** Blocking compatibility issues and informational channels that have no bound accessory. */
+export interface ActionCompatibility { errors: CharacterIssue[]; notes: string[] }
+
+// Reports missing expressions, unsupported bindings and unbound action channels.
+export function actionCompatibility(spec: CharacterSpec, needs: ActionNeeds): ActionCompatibility {
   const issues: CharacterIssue[] = [];
+  const notes: string[] = [];
   for (const name of needs.expressions) if (!spec.expressions[name]) issues.push({ path: `expressions.${name}`, message: `${needs.action} plays the "${name}" expression; add a preset for it` });
   spec.secondary.forEach((swing, i) => {
     if (!needs.channels.includes(swing.channel)) issues.push({ path: `secondary[${i}].channel`, message: `${needs.action} drives channels ${needs.channels.join(", ")}, not "${swing.channel}"` });
   });
-  return issues;
+  for (const channel of needs.channels) {
+    if (!spec.secondary.some((swing) => swing.channel === channel)) notes.push(`${needs.action}: channel ${channel} rests (no swinging piece bound)`);
+  }
+  return { errors: issues, notes };
 }
