@@ -215,7 +215,7 @@ test("J8: a missing character, a tampered spec and an unknown field each fail th
   const misspelt = packageWith("marlo");
   const raw = JSON.parse(fs.readFileSync(path.join(misspelt.dir, "characters", "marlo.character.json"), "utf8")); raw.skeleton.proportions.elbo = [0, 0, 0];
   fs.writeFileSync(path.join(misspelt.dir, "characters", "marlo.character.json"), JSON.stringify(raw));
-  assert.match(build(misspelt.slug).status.errors.join("\n"), /skeleton\.proportions: Unrecognized key/);
+  assert.match(build(misspelt.slug).status.errors.join("\n"), /skeleton\.proportions\.elbo: is not a known field/);
 });
 
 test("J8: design build refuses a character spec whose embedded id differs from the requested id", () => {

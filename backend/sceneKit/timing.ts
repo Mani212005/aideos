@@ -50,6 +50,8 @@ export interface Cues {
   to: (shotId: string) => number;
   /** Frame a phrase is spoken at in a named shot; throws when the phrase is not in that shot. */
   word: (shotId: string, phrase: string, edge?: "start" | "end") => number;
+  /** Like `word`, but throws when the phrase is spoken more than once in the shot, so a decisive moment never binds to a guess. */
+  wordOnce: (shotId: string, phrase: string, edge?: "start" | "end") => number;
   durationFrames: number;
 }
 
@@ -64,24 +66,36 @@ export function createCues(timing: NarrationTiming, fps: number = FPS): Cues {
   const bySegment = new Map(timing.segments.map((segment) => [segment.shotId, segment]));
   // Aiming a beat at a word rather than at a fraction of the shot keeps a cue on the thing being
   // said: the payoff word of a sentence is usually near its end, not its middle.
-  const word = (shotId: string, phrase: string, edge: "start" | "end" = "start"): number => {
+  // Finds every phrase occurrence so decisive cues can reject an ambiguous binding.
+  const matches = (shotId: string, phrase: string): { segment: NarrationTiming["segments"][number]; wanted: string[]; starts: number[] } => {
     const segment = bySegment.get(shotId);
     if (!segment) throw new Error(`No shot "${shotId}" in the measured narration.`);
     const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
     const wanted = phrase.split(/\s+/).map(normalize).filter(Boolean);
-    let match = -1;
-    for (let i = 0; wanted.length > 0 && i + wanted.length <= segment.words.length; i++) {
-      if (wanted.every((w, k) => normalize(segment.words[i + k].word) === w)) {
-        if (match >= 0) throw new Error(`"${phrase}" is spoken more than once in shot "${shotId}"; the cue is ambiguous.`);
-        match = i;
-      }
+    if (!wanted.length) throw new Error(`Cue phrase "${phrase}" in shot "${shotId}" must contain a spoken word.`);
+    const starts: number[] = [];
+    for (let i = 0; i + wanted.length <= segment.words.length; i++) {
+      if (wanted.every((w, k) => normalize(segment.words[i + k].word) === w)) starts.push(i);
     }
-    if (match >= 0) {
-      const i = match;
-      const hit = edge === "start" ? segment.words[i] : segment.words[i + wanted.length - 1];
-      return Math.round((edge === "start" ? hit.startSec : hit.endSec) * fps);
-    }
-    throw new Error(`"${phrase}" is not spoken in shot "${shotId}": ${segment.text}`);
+    return { segment, wanted, starts };
   };
-  return { at, from: (id) => at(id, 0), to: (id) => at(id, 1), word, durationFrames };
+  // Resolves the selected occurrence against measured word time at either edge.
+  const frameOf = (segment: NarrationTiming["segments"][number], wanted: string[], start: number, edge: "start" | "end"): number => {
+    const hit = edge === "start" ? segment.words[start] : segment.words[start + wanted.length - 1];
+    return Math.round((edge === "start" ? hit.startSec : hit.endSec) * fps);
+  };
+  // Preserves first-match behavior for ordinary visual cues that are not decisive events.
+  const word = (shotId: string, phrase: string, edge: "start" | "end" = "start"): number => {
+    const { segment, wanted, starts } = matches(shotId, phrase);
+    if (starts.length === 0) throw new Error(`"${phrase}" is not spoken in shot "${shotId}": ${segment.text}`);
+    return frameOf(segment, wanted, starts[0], edge);
+  };
+  // Requires a unique spoken phrase for an exact decisive event.
+  const wordOnce = (shotId: string, phrase: string, edge: "start" | "end" = "start"): number => {
+    const { segment, wanted, starts } = matches(shotId, phrase);
+    if (starts.length === 0) throw new Error(`"${phrase}" is not spoken in shot "${shotId}": ${segment.text}`);
+    if (starts.length > 1) throw new Error(`"${phrase}" is spoken ${starts.length} times in shot "${shotId}" (ambiguous, at words ${starts.map((i) => i + 1).join(", ")}): use a longer phrase that is said only once`);
+    return frameOf(segment, wanted, starts[0], edge);
+  };
+  return { at, from: (id) => at(id, 0), to: (id) => at(id, 1), word, wordOnce, durationFrames };
 }

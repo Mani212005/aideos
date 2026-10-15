@@ -20,8 +20,9 @@ import { validateStage } from "./validateStage";
 import { CEL_TREATMENT } from "./rigs/registry";
 import { reportThreeStageInitializationFailure } from "./threeStageError";
 import type { Scene } from "./types";
+import type { TestStageVisibility } from "../SceneStage";
 
-interface Props { scene: Scene; width: number; height: number }
+interface Props { scene: Scene; width: number; height: number; testVisibility?: TestStageVisibility }
 
 interface CanvasErrorBoundaryProps { onError: (error: Error) => void; children: React.ReactNode }
 interface CanvasErrorBoundaryState { failed: boolean }
@@ -41,7 +42,7 @@ class CanvasErrorBoundary extends React.Component<CanvasErrorBoundaryProps, Canv
 }
 
 // Commits complete absolute state, prepares shaders and draws before releasing each frame's capture barrier.
-function FrameCommit({ scene: manifest, frame, width, height, ready }: Props & { frame: number; ready: (error?: string) => void }) {
+function FrameCommit({ scene: manifest, frame, width, height, ready, testVisibility }: Props & { frame: number; ready: (error?: string) => void }) {
   const { gl, scene: world, set } = useThree();
   const { delayRender, continueRender, cancelRender } = useDelayRender();
   const { delayPlayback } = useBufferState();
@@ -70,7 +71,7 @@ function FrameCommit({ scene: manifest, frame, width, height, ready }: Props & {
       placement.scale.setScalar(resolvedActor.unitsToStage);
       placement.add(art.rig.root, prop.root);
       root.add(placement);
-      return { art, prop, evaluate: createPerformanceEvaluator(rigFromCharacter(character), p.data) };
+      return { actorId: p.actor, propId: p.prop, art, prop, evaluate: createPerformanceEvaluator(rigFromCharacter(character), p.data) };
     });
     world.add(root);
     set({ camera });
@@ -113,7 +114,14 @@ function FrameCommit({ scene: manifest, frame, width, height, ready }: Props & {
         const pose = res.cameraFrames[frame];
         const cam = res.camera;
         applyStageCamera(cam, pose, width, height, manifest.sceneSize);
-        for (const entry of res.entries) { const state = entry.evaluate(frame); applyCharacter(entry.art, state); applyProp(entry.prop, state); }
+        for (const entry of res.entries) {
+          const state = entry.evaluate(frame);
+          entry.art.rig.root.visible = true;
+          applyCharacter(entry.art, state);
+          applyProp(entry.prop, state);
+          if (testVisibility?.character === entry.actorId) entry.art.rig.root.visible = false;
+          if (testVisibility?.prop === entry.propId) entry.prop.root.visible = false;
+        }
         world.updateMatrixWorld(true);
         if (!res.compiled) { await gl.compileAsync(world, cam); res.compiled = true; }
         if (generation.current !== token) return;
@@ -130,31 +138,45 @@ function FrameCommit({ scene: manifest, frame, width, height, ready }: Props & {
     };
     void draw();
     return release;
-  }, [frame, manifest, width, height, gl, world, delayRender, continueRender, cancelRender, delayPlayback, ready, createResources]);
+  }, [frame, manifest, width, height, gl, world, delayRender, continueRender, cancelRender, delayPlayback, ready, createResources, testVisibility]);
   return null;
 }
 
 // Reads film time once and keeps the host outside shot sequences with canonical DPR and viewport.
-export const ThreeStage: React.FC<Props> = ({ scene, width, height }) => {
+export const ThreeStage: React.FC<Props> = ({ scene, width, height, testVisibility }) => {
   const current = useCurrentFrame();
   const frame = Math.max(0, Math.min(scene.durationFrames - 1, current));
   const { delayRender, continueRender, cancelRender } = useDelayRender();
   const [handle] = React.useState(() => delayRender(`Three stage ${scene.sceneId} initial readiness`));
   const [status, setStatus] = React.useState<string | null>("Loading scene...");
+  const [graphicsReady, setGraphicsReady] = React.useState(false);
   const { isPlayer } = useRemotionEnvironment();
   // Signals first complete draw and leaves explicit errors visible in the preview.
   const ready = React.useCallback((error?: string) => { setStatus(error ?? null); continueRender(handle); }, [handle, continueRender]);
   // Converts a canvas mount failure into a visible preview status or a named export error.
   const canvasFailed = React.useCallback((error: Error) => {
+    setGraphicsReady(false);
     reportThreeStageInitializationFailure(error, scene.sceneId, isPlayer, (message) => ready(message), cancelRender);
   }, [cancelRender, isPlayer, ready, scene.sceneId]);
+  // Refuses unavailable WebGL2 before R3F's asynchronous renderer creation can bypass React's error boundary.
+  React.useLayoutEffect(() => {
+    const probe = document.createElement("canvas");
+    try {
+      const context = probe.getContext("webgl2");
+      if (!context) throw new Error("WebGL2 context is unavailable; enable graphics support or use a render host with software GL");
+      context.getExtension("WEBGL_lose_context")?.loseContext();
+      setGraphicsReady(true);
+    } catch (error) {
+      canvasFailed(error instanceof Error ? error : new Error(String(error)));
+    }
+  }, [canvasFailed]);
   React.useEffect(() => () => continueRender(handle), [handle, continueRender]);
   return <AbsoluteFill>
-    <CanvasErrorBoundary onError={canvasFailed}>
+    {graphicsReady ? <CanvasErrorBoundary onError={canvasFailed}>
       <ThreeCanvas width={width} height={height} dpr={CEL_TREATMENT.dpr} frameloop="never" gl={{ antialias: CEL_TREATMENT.antialias, alpha: true, preserveDrawingBuffer: true }}>
-        <FrameCommit scene={scene} frame={frame} width={width} height={height} ready={ready} />
+        <FrameCommit scene={scene} frame={frame} width={width} height={height} ready={ready} testVisibility={testVisibility} />
       </ThreeCanvas>
-    </CanvasErrorBoundary>
+    </CanvasErrorBoundary> : null}
     {isPlayer && status ? <AbsoluteFill role="status" style={{ alignItems: "center", justifyContent: "center", color: "white" }}>{status}</AbsoluteFill> : null}
   </AbsoluteFill>;
 };

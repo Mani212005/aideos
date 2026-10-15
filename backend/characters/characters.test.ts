@@ -145,7 +145,7 @@ test("schema errors name the exact field to fix", () => {
   const cases: Array<[(raw: Record<string, any>) => void, RegExp]> = [
     [(raw) => { raw.skeleton.proportions.knee = [0, -1.45]; }, /^skeleton\.proportions\.knee/m],
     [(raw) => { raw.palette.teal = "teal"; }, /^palette\.teal: a colour is #rrggbb/m],
-    [(raw) => { raw.limbs = {}; }, /^\(root\): Unrecognized key/m],
+    [(raw) => { raw.limbs = {}; }, /^limbs: is not a known field/m],
     [(raw) => { raw.expressions.neutral.eyeOpen = 9; }, /^expressions\.neutral\.eyeOpen/m],
     [(raw) => { raw.schema = "aideos.character/2"; }, /^schema/m],
     [(raw) => { raw.parts[0].points = [[0, 1, 0]]; }, /^parts\[0\]\.points/m],

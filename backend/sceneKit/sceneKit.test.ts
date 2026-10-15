@@ -68,7 +68,7 @@ test("sceneKit: a spoken phrase cue must identify one occurrence in its shot", (
   };
   const cues = createCues(timing);
   assert.equal(cues.word("repeat", "the edge"), 9);
-  assert.throws(() => cues.word("repeat", "toward"), /spoken more than once.*ambiguous/);
+  assert.throws(() => cues.wordOnce("repeat", "toward"), /spoken 2 times.*ambiguous/);
 });
 
 test("sceneKit: the safe square is inside both format windows", () => {
@@ -99,4 +99,19 @@ test("sceneKit: camera track is exported in buildCamera()", () => {
   assert.equal(cam.keyframes.length, 2);
   assert.equal(cam.keyframes[0].frame, 10);
   assert.equal(cam.keyframes[1].frame, 20);
+});
+
+test("sceneKit: decisive cues reject every duplicate including overlaps, but accept a longer unique phrase", () => {
+  const timing = structuredClone(TIMING);
+  const segment = timing.segments[0];
+  segment.words = ["Go", "go,", "go", "home."].map((word, i) => ({ word, startSec: i * 0.4, endSec: i * 0.4 + 0.3 }));
+  segment.text = "Go go, go home.";
+  const cues = createCues(timing);
+  assert.throws(() => cues.wordOnce("one", "GO go"), /spoken 2 times.*one.*ambiguous.*words 1, 2/);
+  assert.equal(cues.wordOnce("one", "go home"), 24);
+  assert.equal(cues.wordOnce("one", "go home", "end"), 45);
+  assert.equal(cues.word("one", "go"), 0, "ordinary visual cues preserve their existing first-match behavior");
+  assert.throws(() => cues.wordOnce("one", "..."), /must contain a spoken word/);
+  assert.throws(() => cues.wordOnce("one", "missing"), /not spoken.*one/);
+  assert.throws(() => cues.wordOnce("missing", "go"), /No shot "missing"/);
 });

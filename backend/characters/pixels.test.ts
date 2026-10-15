@@ -1,6 +1,6 @@
 /**
- * File Description: Browser pixel tests: spec-built Iona equals the frozen legacy art in the same run, matches the committed golden, and every character draws in both crops; plus the sheet command end to end.
- * Inputs and outputs: committed specs, legacy stage performances and the golden PNG -> headless Chrome (software GL) pixel comparisons and sheet files.
+ * File Description: Browser pixel tests: spec-built Iona equals the frozen legacy art, every character draws in both crops, Pip and Marlo match committed stage stills, and the sheet command works end to end.
+ * Inputs and outputs: committed specs, legacy stage performances and PNG evidence -> headless Chrome (software GL) pixel comparisons and sheet files.
  * Used by: npm test. Skips when no Chrome is installed unless AIDEOS_BROWSER_TESTS_REQUIRED=1.
  */
 import "../testSupport/fixtureVideosDir";
@@ -10,10 +10,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { build } from "esbuild";
-import { rigFromCharacter } from "../../src/dl/characters/rig";
 import { createReceiveAction } from "../../src/dl/performance/receive";
 import { readPngDimensions } from "../scene/renderStill";
-import { fitReceiveSpan } from "../performance/bindReceive";
 import { CHARACTER_FILES, loadSpec } from "../testSupport/characters";
 import { chromeAvailable, evaluatePage } from "./browser";
 import { renderCharacterSheet } from "./sheet";
@@ -21,10 +19,73 @@ import type { PixelRequest, PixelResult } from "./pixelPage";
 import { parseFilm } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
 import type { StageCast } from "../../src/dl/scene/stageContract";
+import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
+import { buildDesign } from "../designSpec/build";
+import { readFilm } from "../pipeline/filmStore";
+import { holdActiveFilm } from "../journeys/harness";
+import { openFilm } from "../journeys/remotionFrames";
 
 const GOLDEN = path.join(__dirname, "../../test_fixtures/characters/golden/iona-contact.png");
+const STAGE_STILLS = path.join(__dirname, "../../test_fixtures/characters/stage-stills");
 const required = process.env.AIDEOS_BROWSER_TESTS_REQUIRED === "1";
 const skip = !chromeAvailable() && !required ? "no Chrome or Chromium installed (set AIDEOS_CHROME_PATH, or AIDEOS_BROWSER_TESTS_REQUIRED=1 to fail instead)" : false;
+let stageFixtureSerial = 0;
+
+// Builds the receive package with one selected character and returns its isolated slug.
+function packageWithCharacter(character: "pip" | "marlo"): string {
+  const slug = `pixels-stage-${character}-${++stageFixtureSerial}`;
+  const source = path.join(TEST_VIDEOS_DIR, "iona-receive"), directory = path.join(TEST_VIDEOS_DIR, slug);
+  fs.cpSync(source, directory, { recursive: true });
+  for (const file of ["film.json", "design/base-film.json"]) {
+    const target = path.join(directory, file);
+    if (fs.existsSync(target)) fs.writeFileSync(target, JSON.stringify({ ...JSON.parse(fs.readFileSync(target, "utf8")), id: slug }, null, 2));
+  }
+  fs.mkdirSync(path.join(directory, "characters"), { recursive: true });
+  fs.copyFileSync(CHARACTER_FILES[character], path.join(directory, "characters", `${character}.character.json`));
+  const designFile = path.join(directory, "design/design.json"), lookFile = path.join(directory, "design/look.json");
+  const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as { assets: Array<Record<string, unknown>>; performances: Array<Record<string, unknown>> };
+  const look = JSON.parse(fs.readFileSync(lookFile, "utf8")) as { film: { cast: Array<Record<string, unknown>> } };
+  const asset = design.assets.find((item) => item.kind === "character"), cast = look.film.cast.find((item) => item.id === "iona");
+  if (!asset || !cast) throw new Error("iona-receive fixture is missing its character asset or look cast entry");
+  asset.character = character;
+  cast.character = character;
+  if (character === "pip") {
+    design.performances[0].limits = "clamp";
+    asset.unitsToStage = 110;
+  } else {
+    asset.unitsToStage = 70;
+    asset.position = [960, 1220];
+  }
+  fs.writeFileSync(designFile, JSON.stringify(design, null, 2));
+  fs.writeFileSync(lookFile, JSON.stringify(look, null, 2));
+  return slug;
+}
+
+// Renders each compiled character performance at contact through the production Remotion stage.
+async function productionCharacterStills(outDir: string): Promise<Array<PixelRequest["cast"][number]>> {
+  const results: Array<PixelRequest["cast"][number]> = [];
+  for (const character of ["pip", "marlo"] as const) {
+    const slug = packageWithCharacter(character);
+    const built = buildDesign(slug, "hand-built");
+    assert.equal(built.state, "passed", `${character}: ${JSON.stringify({ errors: built.errors, findings: built.findings })}`);
+    const scene = readFilm(slug)!.scene as Scene;
+    const frame = scene.performances![0].decisive.frame;
+    const stills: PixelRequest["cast"][number]["stills"] = [];
+    const opened = await openFilm(slug);
+    try {
+      for (const [format, composition] of [["wide", "Long"], ["reel", "Reel"]] as const) {
+        const file = path.join(outDir, `${character}-${format}.png`);
+        await opened.still(composition, frame, file);
+        const reference = path.join(STAGE_STILLS, `${character}-${format}.png`);
+        stills.push({ format, rendered: `data:image/png;base64,${fs.readFileSync(file).toString("base64")}`, reference: `data:image/png;base64,${fs.readFileSync(reference).toString("base64")}` });
+      }
+    } finally {
+      await opened.close();
+    }
+    results.push({ id: character, stills });
+  }
+  return results;
+}
 
 // Bundles the pixel page with a request and returns its results from headless Chrome.
 async function runPixelPage(request: PixelRequest): Promise<PixelResult> {
@@ -38,12 +99,12 @@ async function runPixelPage(request: PixelRequest): Promise<PixelResult> {
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
 
-test("pixels: spec-built Iona is pixel-identical to the frozen legacy art, matches the golden, and every character draws in both crops", { skip }, async () => {
+test("pixels: spec-built Iona matches legacy pixels and compiled Pip and Marlo stage stills in both crops", { skip }, async () => {
+  const restoreActiveFilm = holdActiveFilm();
+  const renderDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-production-character-stills-"));
+  try {
   const iona = loadSpec("iona");
-  const cast = (["iona", "pip", "marlo"] as const).map((name) => {
-    const spec = loadSpec(name);
-    return { spec, action: fitReceiveSpan(69, 0, 160, 30, [0, 0, 0], { rig: rigFromCharacter(spec), policy: "clamp" }).action };
-  });
+  const cast = await productionCharacterStills(renderDir);
   const update = process.env.AIDEOS_UPDATE_GOLDENS === "1";
   const legacyFilm = parseFilm(JSON.parse(fs.readFileSync(path.join(__dirname, "../../test_fixtures/packages/legacy-iona-p0/film.json"), "utf8")));
   const legacyScene = legacyFilm.scene as Scene;
@@ -66,9 +127,23 @@ test("pixels: spec-built Iona is pixel-identical to the frozen legacy art, match
     assert.ok(result.golden!.otherFrameDiffering > 0.02, "the golden tolerance must reject a different pose");
     assert.ok(result.legacyGolden && result.legacyGolden.differing < 0.005 && result.legacyGolden.meanDelta < 1, "the compiled legacy performance must match the contact golden");
   }
-  for (const entry of result.cast) assert.ok(entry.coverage > 0.004, `${entry.id} ${entry.format}: only ${(entry.coverage * 100).toFixed(2)}% drawn`);
-  const signatures = new Set(result.cast.filter((c) => c.format === "wide").map((c) => c.signature));
-  assert.equal(signatures.size, 3, "each character draws different pixels");
+  for (const entry of result.cast) {
+    assert.ok(entry.coverage > 0.004, `${entry.id} ${entry.format}: only ${(entry.coverage * 100).toFixed(2)}% drawn`);
+    if (entry.id === "pip" || entry.id === "marlo") {
+      const file = path.join(STAGE_STILLS, `${entry.id}-${entry.format}.png`);
+      if (process.env.AIDEOS_UPDATE_CHARACTER_STAGE_STILLS === "1") {
+        fs.mkdirSync(STAGE_STILLS, { recursive: true });
+        fs.writeFileSync(file, Buffer.from(entry.png.split(",")[1], "base64"));
+      } else {
+        assert.ok(fs.existsSync(file), `missing ${entry.id} ${entry.format} stage still ${file}; create with AIDEOS_UPDATE_CHARACTER_STAGE_STILLS=1`);
+        assert.ok(entry.stillDifference !== null && entry.stillDifference < 0.005, `${entry.id} ${entry.format} still drift ${(100 * (entry.stillDifference ?? 1)).toFixed(3)}%`);
+      }
+    }
+  }
+  } finally {
+    restoreActiveFilm();
+    fs.rmSync(renderDir, { recursive: true, force: true });
+  }
 });
 
 test("sheet: aideos character sheet writes model, expression and receive stills at the expected sizes", { skip }, async () => {

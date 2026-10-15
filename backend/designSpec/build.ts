@@ -19,6 +19,7 @@ import { checkFilmDesign, type DesignFinding, type DesignCheckContext } from "..
 import { compileDesign, DEFAULT_BACKGROUND_FILE, narrationTimingForFilm, type DesignSource, type TimedWord } from "./compile";
 import { designSpecSchema, type DesignSpec } from "./spec";
 import { checkLookPlan, packageCharacterResolver, parseLookPlan, plannedCharacterId, type LookPlan } from "../lookPlan";
+import { fieldIssues } from "../../src/dl/schemaIssues";
 import { createCues } from "../sceneKit";
 import { readVisualChoices } from "../pipeline/visualChoices";
 import { resolveCue } from "./cues";
@@ -95,7 +96,7 @@ export function readCheckedLookPlan(film: Film): { plan?: LookPlan; errors: stri
       for (const p of plan.film.performances) {
         // Anticipation may start before the decisive word, never on or after it.
         try {
-          const decisive = cues.word(p.decisive.shotId, p.decisive.phrase, p.decisive.edge);
+          const decisive = cues.wordOnce(p.decisive.shotId, p.decisive.phrase, p.decisive.edge);
           const start = resolveCue(p.start, cues);
           if (start >= decisive) errors.push(`look.json film.performances.${p.id}.start: starts at frame ${start}, not before its decisive ${p.decisive.event} on "${p.decisive.phrase}" at frame ${decisive}`);
         } catch (err) { errors.push(`look.json film.performances.${p.id}: ${err instanceof Error ? err.message : String(err)}`); }
@@ -149,7 +150,7 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
           (authored.kind === "character" ? authored.character === plannedCharacterId(planned) : authored.asset === planned.asset);
         if (!sameIdentity) errors.push(`look cast ${id}: design identity or treatment mismatch`);
       }
-      try { cues.word(intended.decisive.shotId, intended.decisive.phrase, intended.decisive.edge); resolveCue(intended.start, cues); }
+      try { cues.wordOnce(intended.decisive.shotId, intended.decisive.phrase, intended.decisive.edge); resolveCue(intended.start, cues); }
       catch (err) { errors.push(`look performance ${intended.id}: ${String(err)}`); }
     }
     for (const delivered of spec.performances) if (!lookIds.has(delivered.id)) errors.push(`design performance "${delivered.id}" has no matching look performance`);
@@ -221,21 +222,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   }
   const parsed = designSpecSchema.safeParse(rawSpec);
   if (!parsed.success) {
-    const issues = [...parsed.error.issues];
-    const unrecognized: typeof issues = [];
-    for (let index = 0; index < issues.length; index++) {
-      const issue = issues[index];
-      if (issue.code === "unrecognized_keys") unrecognized.push(issue);
-      if (issue.code === "invalid_union") issues.push(...issue.errors.flat());
-    }
-    const reported = unrecognized.length ? unrecognized : parsed.error.issues;
-    return fail(reported.map((i) => {
-      const path = i.path.join(".") || "(root)";
-      const message = i.code === "unrecognized_keys"
-        ? `unrecognized field${i.keys.length === 1 ? "" : "s"}: ${i.keys.join(", ")}`
-        : i.message;
-      return `design.json ${path}: ${message}`;
-    }));
+    return fail(fieldIssues(parsed.error, rawSpec).map((i) => `design.json ${i.path}: ${i.message}`));
   }
   const spec = parsed.data;
 

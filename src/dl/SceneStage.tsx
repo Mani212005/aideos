@@ -18,6 +18,8 @@ import { ThreeStage } from "./scene/ThreeStage";
 import { stageViewport } from "./scene/projection";
 import { validateStageSvgResources } from "./scene/validateStage";
 
+export interface TestStageVisibility { character?: string; prop?: string }
+
 /**
  * The strip each format takes through the square stage, as a fraction of the square's height.
  * A 16:9 frame takes a horizontal band through the centre; a 9:16 frame takes a vertical column.
@@ -30,12 +32,13 @@ export interface SceneStageProps {
   /** Composition height in pixels. */
   height: number;
   accent?: string;
+  testVisibility?: TestStageVisibility;
 }
 
 const PINNED_COMPILE_OPTIONS = { clockMs: 0 };
 
 /** Draws the scene square centred in the frame, clipped to whatever the format can show of it. */
-export const SceneStage: React.FC<SceneStageProps> = ({ scene, width, height, accent }) => {
+export const SceneStage: React.FC<SceneStageProps> = ({ scene, width, height, accent, testVisibility }) => {
   // Cover, never contain: the scene is drawn large enough that the frame is always full, and the
   // frame is a window centred on it. Letterboxing a scene would put the design language's one
   // forbidden thing on screen, a black bar, and would waste the vertical room a reel exists for.
@@ -57,7 +60,7 @@ export const SceneStage: React.FC<SceneStageProps> = ({ scene, width, height, ac
   );
   if (three) return <AbsoluteFill style={{ overflow: "hidden" }}>
     {plane(ground)}
-    <ThreeStage scene={scene as unknown as Scene} width={width} height={height} />
+    <ThreeStage scene={scene as unknown as Scene} width={width} height={height} testVisibility={testVisibility} />
     {foreground?.props.length ? plane(foreground, true) : null}
   </AbsoluteFill>;
   return (

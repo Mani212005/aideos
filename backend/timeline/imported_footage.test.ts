@@ -23,6 +23,7 @@ import {
   type MediaAssetInput,
 } from "./layer_engine";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
+import { validateLayeredFilmWithAssets } from "./layerAssetCheck";
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
 import type { LayeredFilm } from "../../src/dl/layeredSchema";
 import type { Film } from "../../src/dl/schema";
@@ -247,7 +248,7 @@ test("L3-8: Missing source file fails validation by name", () => {
   film.clips.push({
     id: "clip-missing-video",
     layerId: "layer-anim-main",
-    position: 0,
+    position: 20,
     start: 0,
     end: 5.0,
     kind: "video",
@@ -257,7 +258,7 @@ test("L3-8: Missing source file fails validation by name", () => {
   });
 
   assert.throws(
-    () => validateLayeredFilm(film, { checkAssetsOnDisk: true }),
+    () => validateLayeredFilmWithAssets(film),
     /Source asset file missing: "media\/nonexistent_file_xyz\.mp4"/
   );
 });

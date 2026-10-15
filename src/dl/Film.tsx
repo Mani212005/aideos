@@ -12,7 +12,7 @@ import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext, useAccent } from "./accent";
 import { BlockView } from "./Block";
 import { CanvasGraph } from "./CanvasGraph";
-import { SceneStage } from "./SceneStage";
+import { SceneStage, type TestStageVisibility } from "./SceneStage";
 import { PaperRip } from "./PaperRip";
 import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
 import { getRetimedAudioRelPath } from "./audio/retime";
@@ -479,6 +479,7 @@ export type FilmViewProps = {
   captionWords?: CaptionWord[];
   transitionType?: string;
   includeAudio?: boolean;
+  testVisibility?: TestStageVisibility;
 };
 
 /**
@@ -565,6 +566,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
   captionWords,
   transitionType,
   includeAudio = true,
+  testVisibility,
 }) => {
   const frame = useCurrentFrame();
   const { width, height, fps } = useVideoConfig();
@@ -679,7 +681,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
               its own continuous motion and raises its own scrim under text, so it is not dimmed
               by the panel the way a diagram is: dimming it would stop the film mid-shot. */}
           {film.scene ? (
-            <SceneStage scene={film.scene} width={width} height={height} accent={accent} />
+            <SceneStage scene={film.scene} width={width} height={height} accent={accent} testVisibility={testVisibility} />
           ) : (
             <AbsoluteFill style={{ opacity: canvasOpacity }}>
               <CanvasGraph film={film} timeline={timeline} cam={cam} />

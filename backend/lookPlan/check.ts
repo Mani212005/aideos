@@ -7,6 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { safeParseLookPlan } from "./schema";
+import { fieldIssues } from "../../src/dl/schemaIssues";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { collectSvgElementIds, parseSvgDocument } from "../../src/dl/scene/svgDocument";
@@ -93,10 +94,10 @@ function containsSpokenCue(narration: string, cue: string): boolean {
 export function checkLookPlan(plan: unknown, filmId: string = "unnamed", context: LookCheckContext = {}): LookCheckReport {
   const parsed = safeParseLookPlan(plan);
   if (!parsed.success) {
-    const findings: LookCheckFinding[] = parsed.error.issues.map((iss) => ({
+    const findings: LookCheckFinding[] = fieldIssues(parsed.error, plan).map((iss) => ({
       rule: "schema",
       severity: "error",
-      where: iss.path.join(".") || "root",
+      where: iss.path,
       message: iss.message,
     }));
     return {

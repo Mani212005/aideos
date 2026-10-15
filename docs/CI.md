@@ -25,8 +25,8 @@ GitHub job summary), so one run reports every problem.
 | --- | --- | --- |
 | `static` | file headers, every test file is wired, eslint (src, backend, scripts, editor), `tsc` root, `tsc` editor app, oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
 | `unit` | `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
-| `journeys` | `npm run test:journeys` (real pipeline and real renders, below; todo cases are listed as known gaps) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
-| `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; reports **NOT COVERED** until baselines are committed | every PR and push to main, Linux only |
+| `journeys` | `npm run test:journeys` (real pipeline and real renders, including browser journeys for AI edit apply and new-project script save; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
+| `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; compares committed Linux baselines | every PR and push to main, Linux only |
 | `nightly` | `scripts/nightly_budget.ts`: the whole Iona film, wide and reel, with budgets on wall time, peak memory, peak temp disk and bundle size | 03:17 UTC and on demand, never on a PR |
 | `all-green` | fails unless the four jobs above succeeded | the one check to require |
 
@@ -65,14 +65,14 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 | --- | --- | --- |
 | J1 make a film with a character end to end | `j1_pipeline.journey.ts`: the PR journey runs the real `runProduction` with the iona-receive fixture, renders wide and reel around the contact frame, and checks output metadata and a drawn frame; nightly renders the full film with budgets | journey, nightly |
 | J2 narration changes after design, stale work not reused | `j2_retime.journey.ts`: the real pipeline re-narrates with words inserted before "catches", the compiled contact follows the new word, design and render rerun into a new reel and the measured review finds the contact on the word; `backend/review/stageTruth.test.ts` (a contact off its word fails adherence even if the recorded cue frame is edited); `backend/pipeline/pipeline.test.ts` (retime refreshes base-film, forced upstream reopens downstream) | journey, feature |
-| J3 scrub, save, reload, preview equals export | `scripts/smoke_studio.ts` (keyboard scrub forwards and back with exact frame readout, same picture on return, split, autosave, reload keeps the edit); export-versus-cold equality (wide and reel); Player-versus-export pixel comparison is a named `todo` journey | journey, todo |
-| J4 reel crop keeps character and prop clear of captions | `j1_pipeline.journey.ts`: projected character and prop bounds, every frame from approach to recovery, inside the frame and above the caption band in wide and reel; glider attached at the decisive frame | journey |
-| J5 second and third character, same action | `backend/characters/journeys.test.ts` and `backend/characters/retarget.test.ts` exercise multiple data-defined characters through the same action; details in [the character-engine test plan](CHARACTER_ENGINE.md#test-layers) | unit |
+| J3 scrub, save, reload, preview equals export | `scripts/smoke_studio.ts` (keyboard scrub forwards and back with exact frame readout, same picture on return, split, autosave, reload keeps the edit); `j3_studio_edit.journey.ts` (real Chrome: the AI edit Apply Edits gesture applies, saves, is logged and survives a reload, with only the model-backed `/api/ai-edit` answered by the test; a new project's script saves and survives a reload); `backend/editPlanner/browserSafety.test.ts` (the apply path bundles for a browser and runs with no Node built-ins, and the real studio bundle has no externalized Node module); export-versus-cold equality (wide and reel); `j3_j5_stage.journey.ts` compares a fresh Remotion Player's first contact-frame draw and later seeks with exported PNGs in both formats | journey |
+| J4 reel crop keeps character and prop clear of captions | `j1_pipeline.journey.ts`: projected character and prop bounds, every frame from approach to recovery, inside the frame and above the caption band in wide and reel; glider attached at the decisive frame; `j4_character_crops.journey.ts` covers Iona, Pip and Marlo with inset and out-of-bounds negatives, and committed Pip and Marlo wide/reel stills are checked by `backend/characters/pixels.test.ts` | journey, browser pixels |
+| J5 second and third character, same action | `j3_j5_stage.journey.ts` runs Iona, Pip and Marlo together through look check, design build, compilation and 13-frame wide/reel production renders; same-frame Player captures hide each object in turn and require attributable pixel changes inside its projected bounds in both formats. Negative checks reject missing props and actor pixels that overlap a hidden prop crop. Unit/property coverage remains in `backend/characters/` | unit, journey |
 | J6 resume reopens exactly the right stages | `j6_resume.journey.ts`: an unchanged rerun reuses every production stage and the reel byte for byte, a package character edit reruns design through verify and the new art is in the pixels; `backend/pipeline/characterResume.test.ts` (look hash and design fingerprint carry the character); `pipeline.test.ts`; `renderFrames` is part of the render fingerprint | journey, feature |
-| J7 reviews see the 3D stage truthfully | `j7_review_truth.journey.ts`: on real wide and reel renders the measured review and the Gemini facts describe that output's own stage (characters, contact on the word, camera in that crop, unmeasured craft) and a reply without evidence is not accepted; `backend/review/stageTruth.test.ts` (per-format presence and camera, hidden cast, plain-word facts); `stage.test.ts`; `geminiReview.test.ts` | journey, feature |
-| J8 failures give a named error | `j8_failures.journey.ts`: a phrase not spoken, an unknown shot and missing artwork are each named and write no film; a failed design stops the run with no mp4; an unreachable hand target gives finite numbers and a failed grip check; two J8 cases are `todo` (below) | journey |
-| J9 existing SVG and template films render unchanged | `j9_template.journey.ts` (real pipeline, templates), `j9_svg_repeatability.journey.ts` (exact cold-render equality of Still Talking frame 2773), and `legacy.golden.ts` (golden frames of four films; **NOT COVERED until the baselines are committed**) | journey, golden |
-| J10 an agent authors from the docs, bad input names the field | `j8_failures.journey.ts`: an unknown design field is reported by name through the real design build | journey |
+| J7 reviews see the 3D stage truthfully | `j7_review_truth.journey.ts`: on real wide and reel renders the measured review and Gemini facts describe that output's own stage (characters, contact on the word, camera in that crop, unmeasured craft) and a reply without evidence is not accepted; `backend/review/stageTruth.test.ts` (per-format presence and camera, hidden cast, plain-word facts); `stage.test.ts`; `geminiReview.test.ts` | journey, feature |
+| J8 failures give a named error | `j8_failures.journey.ts`: a phrase not spoken, an unknown shot and missing artwork are each named and write no film; a failed design stops the run with no mp4; unreachable targets fail the build and leave finite evaluator output; missing character resources and duplicate decisive phrases are refused by name; `j3_j5_stage.journey.ts` disables WebGL in real Chrome and checks export refusal and visible Player status | journey |
+| J9 existing SVG and template films render unchanged | `j9_template.journey.ts` (real pipeline, templates), `j9_svg_repeatability.journey.ts` (exact cold-render equality of Still Talking frame 2773), and `legacy.golden.ts` (golden frames of four films; committed Linux baselines) | journey, golden |
+| J10 an agent authors from the docs, bad input names the field | `j8_failures.journey.ts` checks bad values in design.json, look.json and character specs through their public validators; `schemaIssues.test.ts` covers nested unions, unknown fields, required values and version tags | unit, journey |
 | J11 a contributor opens a PR and the suite reproduces locally | `npm run ci`, `scripts/ci.test.ts` (workflows only call real jobs, every job is run by a workflow, least privilege) | static |
 | J12 a long render never fills the disk | `assertRenderDiskBudget` (`harness.test.ts`), temp-leak and size assertions in `j1_pipeline.journey.ts`, `stagePublicDir` cleanup never follows a symlink (`harness.test.ts`), nightly peak-temp budget | unit, journey, nightly |
 
@@ -80,14 +80,14 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 
 | Risk | Check |
 | --- | --- |
-| overfitting to Iona | `backend/characters/retarget.test.ts` checks named characters and randomized proportions through the same action (J5); see [the character-engine risk plan](CHARACTER_ENGINE.md#risks-this-part-must-hold) |
+| overfitting to Iona | `backend/characters/retarget.test.ts` checks named characters and randomized proportions through the same action (J5); the J4 crop journey checks full evaluated silhouettes for Iona, Pip and Marlo; see [the character-engine risk plan](CHARACTER_ENGINE.md#risks-this-part-must-hold) |
 | pixel tests flaky across machines | software GL everywhere in CI; goldens made only on the CI platform and validated by rendering twice; manifest records the platform and the test refuses a mismatch |
 | out-of-order frame rendering | J3 seek-order test: concurrent export frames equal cold single-frame renders |
 | blank first frame / resource races | J1 asserts the contact frame is drawn (luma spread), not flat; unit `J8` cases name the missing resource |
-| preview versus export drift | studio picture equality on return (smoke); export-vs-cold equality (J3); a Player-vs-export pixel comparison is open (needs the Player at composition size) |
-| checks that pass on SVG-only evidence | J4 reads the projected 3D mesh bounds, not SVG; J7: review presence, contact and camera come from the stage measured per output, never from SVG clips or the recorded cue |
+| preview versus export drift | studio picture equality on return (smoke); export-vs-cold equality, including scrambled repeated frame requests (J3); composition-sized Player-vs-export comparison in both formats, including a cold first contact frame and forward, reverse and repeated seeks (J3) |
+| checks that pass on SVG-only evidence | J4 reads the projected 3D mesh bounds, not SVG; J7 review presence, contact and camera come from the stage measured per output, never from SVG clips or the recorded cue |
 | unreachable targets giving NaN | J8: finite numbers and a failed critique by name |
-| cue binding, missing or duplicate phrase | J8: missing phrase, unknown shot and duplicate phrase are rejected with named errors |
+| cue binding, missing or duplicate phrase | J8: missing phrase, unknown shot and duplicate decisive phrase name the cue and shot; a unique longer phrase resolves successfully |
 | render weight and memory | nightly budget: measured 313 s, 2.2 GB RSS, 0.5 GB temp on a Mac |
 | CI slowness, logins | four parallel jobs, caches, no login-only reviewer in CI |
 
@@ -124,19 +124,20 @@ journey("J99 what the user does, in words", async (ctx) => {
   `AIDEOS_BROWSER_EXECUTABLE` to a local Chrome and `journeyRequest` passes it to the render.
 * Prefer structural assertions (bounds, ownership, counts, error text naming the field) over image
   comparisons. A pixel assertion needs a deterministic reason to be equal.
-* Declare a known gap as `test("...", { todo: "who owns it and why" }, ...)`: it runs in every CI
-  pass, shows as todo, and becomes a hard gate when its owner removes the flag.
+* Journey todos are forbidden: the structured reporter lists them by name and fails the job.
+  Record intentionally excluded scope in this document instead of adding a passing placeholder.
 * Studio journeys use `scripts/studioDriver.ts` (`startEditor`, `StudioPage`: real key presses,
-  clicks, element screenshots, error collection) and live next to `scripts/smoke_studio.ts`.
+  clicks, typing, element screenshots, `intercept` to answer a model-backed `/api/*` call from the test,
+  error collection) and live next to `scripts/smoke_studio.ts` or in `backend/journeys/` (a studio journey
+  fails instead of skipping when `AIDEOS_SMOKE_REQUIRED=1`, which CI sets).
 * Never paste a real narration, key or personal video into a fixture; add small fixtures under
   `test_fixtures/`.
 
 ## Golden frames (legacy regression)
 
-> **J9 (existing SVG and template films render unchanged) is NOT COVERED at pixel level until the
-> baselines are committed.** `backend/journeys/goldens/` is empty on purpose: goldens can only be
-> made on the CI platform. The legacy job says **NOT COVERED** (see below), never "passed".
-> The real-pipeline template journey (`j9_template.journey.ts`) still runs.
+The committed `backend/journeys/goldens/MANIFEST.json` and PNGs protect J9 on Linux. Baselines
+are generated only on the CI platform. If the manifest is ever absent, the legacy job says
+**NOT COVERED**, never "passed". The real-pipeline template journey also runs.
 
 `backend/journeys/legacy.golden.ts` renders quarter-size PNGs of four films that predate the
 character work (`hello-scene`, `sample-explainer`, `inset-stage`, `still-talking`) and compares
@@ -183,19 +184,25 @@ description and in the timing table at the end of every run.
 
 ## Known gaps (found while building this suite)
 
-CI does not fully cover J3, J8 and J10 until these `todo` cases are fixed. The PR J1 journey is
-intentionally a contact-frame excerpt; full-film rendering and budgets run nightly. Measured review
-and the captain's watch are handled by the separate real-film task. `npm run ci` includes this named
-J1 scope note alongside the todo case count and names in the journey summary table, warning
-annotation and job-summary note.
+The journey suite has **zero todo cases**. CI enforces that count and includes it in the timing
+summary. J3, J5, J8 and J10 are enforced by the journeys above.
 
-* `J10 an unknown field in design.json is reported by field name` currently receives the generic
-  `design.json (root): Invalid input` error.
-* `J8 rendering with no WebGL ends in a named error, never a blank frame` needs a stage-level
-  readiness error that a test can provoke because Remotion's CLI has no WebGL-disabled flag.
-* `J3 the Studio Player preview frame matches the exported frame` needs the Player drawn at
-  composition size for a pixel comparison.
+The Player comparison uses `editor/journeys/player.html`, a real Remotion Player rendering the
+editor's `FilmView` at composition size. The test seeks via an ordinary button, waits for the
+exact absolute stage frame and fonts, and captures at DPR 1 with the export browser and GL backend.
+It compares full-frame lossless PNGs with at most 0.01% of pixels differing by more than one channel
+level. This route avoids responsive studio scaling and controls contaminating the picture; the
+separate studio smoke journey covers ordinary editing and persistence. It does not claim parity
+for audio mixing or every optional overlay/media combination.
+
+Unavailable WebGL is covered by the real Chrome `--disable-webgl` journey in
+`j3_j5_stage.journey.ts`; it checks the visible Player error and export refusal. The stage's
+readiness and failure contract is documented in [THREE_STAGE_P0.md](THREE_STAGE_P0.md).
+
+Remaining scope:
+
 * `J1 full-film measured review and captain watch` are not part of the pull-request excerpt or
   nightly budget job; the separate real-film task owns those checks.
-* About 70 `any` annotations remain in files listed in the `LEGACY_ANY` ledger in `eslint.config.mjs`
-  (shrink-only: fix and delete the entry when you touch one).
+* Legacy `any` annotations remain in the shrink-only `LEGACY_ANY` ledger in `eslint.config.mjs`.
+  The editor eslint step covers `editor/src`; expanding it to the legacy `editor/vite.config.ts`
+  (which also carries existing `any` diagnostics) is outside this journey follow-up.
