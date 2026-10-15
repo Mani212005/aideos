@@ -43,8 +43,9 @@ gets its own test, plus golden frames), and the captain's eye for art, which no 
 * Every workflow job uses Node 22 and `npm ci` (npm cache keyed on both lockfiles). Jobs that render
   install `ffmpeg` and the Remotion browser libraries, and cache `node_modules/.remotion`.
 * Renders use **software GL** (`AIDEOS_GL=swangle`, read by `backend/pipeline/render.ts`'s `glFlag`).
-  A CI runner has no GPU, and the software rasterizer draws the same pixels on every machine,
-  which is what makes frame comparisons meaningful. On a Mac the default stays `angle`.
+  This avoids GPU-dependent rendering on CI. Goldens remain pinned to the CI platform, and the
+  update workflow renders them twice on that platform before accepting them. On a Mac the default
+  stays `angle`.
 * `ruff` is pinned (`RUFF_VERSION` in `scripts/ci.ts` and in `ci.yml`); locally the step uses an
   installed `ruff`, `python3 -m ruff` or `uvx ruff@<pinned>`, and is skipped with a reason (never
   silently passed) when none exists. CI always runs it.
