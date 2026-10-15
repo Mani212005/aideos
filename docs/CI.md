@@ -43,8 +43,9 @@ gets its own test, plus golden frames), and the captain's eye for art, which no 
 * Every workflow job uses Node 22 and `npm ci` (npm cache keyed on both lockfiles). Jobs that render
   install `ffmpeg` and the Remotion browser libraries, and cache `node_modules/.remotion`.
 * Renders use **software GL** (`AIDEOS_GL=swangle`, read by `backend/pipeline/render.ts`'s `glFlag`).
-  A CI runner has no GPU, and the software rasterizer draws the same pixels on every machine,
-  which is what makes frame comparisons meaningful. On a Mac the default stays `angle`.
+  This avoids GPU-dependent rendering on CI. Goldens remain pinned to the CI platform, and the
+  update workflow renders them twice on that platform before accepting them. On a Mac the default
+  stays `angle`.
 * `ruff` is pinned (`RUFF_VERSION` in `scripts/ci.ts` and in `ci.yml`); locally the step uses an
   installed `ruff`, `python3 -m ruff` or `uvx ruff@<pinned>`, and is skipped with a reason (never
   silently passed) when none exists. CI always runs it.
@@ -70,7 +71,7 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 | J6 resume reopens exactly the right stages | `pipeline.test.ts` (existing); `renderFrames` is part of the render fingerprint | feature |
 | J7 reviews see the 3D stage truthfully | `stage.test.ts` and `review.test.ts` (existing) | feature |
 | J8 failures give a named error | `j8_failures.journey.ts`: a phrase not spoken, an unknown shot and missing artwork are each named and write no film; a failed design stops the run with no mp4; an unreachable hand target gives finite numbers and a failed grip check; two J8 cases are `todo` (below) | journey |
-| J9 existing SVG and template films render unchanged | `j9_template.journey.ts` (real pipeline, templates) and `legacy.golden.ts` (golden frames of four films; **NOT COVERED until the baselines are committed**) | journey, golden |
+| J9 existing SVG and template films render unchanged | `j9_template.journey.ts` (real pipeline, templates), `j9_svg_repeatability.journey.ts` (exact cold-render equality of Still Talking frame 2773), and `legacy.golden.ts` (golden frames of four films; **NOT COVERED until the baselines are committed**) | journey, golden |
 | J10 an agent authors from the docs, bad input names the field | `j8_failures.journey.ts` todo: an unknown design field is reported as `Invalid input` at root | todo |
 | J11 a contributor opens a PR and the suite reproduces locally | `npm run ci`, `scripts/ci.test.ts` (workflows only call real jobs, every job is run by a workflow, least privilege) | static |
 | J12 a long render never fills the disk | `assertRenderDiskBudget` (`harness.test.ts`), temp-leak and size assertions in `j1_pipeline.journey.ts`, `stagePublicDir` cleanup never follows a symlink (`harness.test.ts`), nightly peak-temp budget | unit, journey, nightly |
