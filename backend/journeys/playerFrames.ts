@@ -11,7 +11,7 @@ import { startEditor } from "../../scripts/studioDriver";
 import type { CompositionId } from "./remotionFrames";
 
 // Opens a native-size Player with real seek controls and waits for the stage's committed absolute frame.
-export async function openPlayer(slug: string, composition: CompositionId, options: { browserExecutable?: string } = {}) {
+export async function openPlayer(slug: string, composition: CompositionId, options: { browserExecutable?: string; initialFrame?: number } = {}) {
   const server = await startEditor(getVideosDir());
   let browser: Awaited<ReturnType<typeof openBrowser>> | undefined;
   try {
@@ -21,7 +21,7 @@ export async function openPlayer(slug: string, composition: CompositionId, optio
     page.on("error", (error) => { errors.push(error.message); });
     const [width, height] = composition === "Long" ? [1920, 1080] : [1080, 1920];
     await page.setViewport({ width, height, deviceScaleFactor: 1 });
-    await page.goto({ url: `${server.url}journeys/player.html?film=${encodeURIComponent(slug)}&format=${composition}`, timeout: 60000 });
+    await page.goto({ url: `${server.url}journeys/player.html?film=${encodeURIComponent(slug)}&format=${composition}&frame=${options.initialFrame ?? 0}`, timeout: 60000 });
     // Polls readiness, preserving the browser's actual error rather than capturing an incomplete canvas.
     const waitFor = async (predicate: () => Promise<boolean>, what: string) => {
       const end = Date.now() + 60000;
@@ -37,8 +37,8 @@ export async function openPlayer(slug: string, composition: CompositionId, optio
       // Reads the visible Player failure; this is the same status the studio user sees.
       status: () => page.evaluate(() => document.querySelector('[role="status"]')?.textContent ?? ""),
       // Seeks using the fixture button and captures only after the exact requested stage frame and fonts are ready.
-      snapshot: async (frame: number, output: string) => {
-        await page.evaluate((f) => {
+      snapshot: async (frame: number, output: string, seek = true) => {
+        if (seek) await page.evaluate((f) => {
           (document.getElementById("frame") as HTMLInputElement).value = String(f);
           document.getElementById("seek")!.click();
         }, frame);

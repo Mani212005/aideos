@@ -157,6 +157,17 @@ journey("J3 the real Remotion Player matches exported pixels at the same absolut
   const exported = await openFilm(SLUG);
   try {
     for (const composition of ["Long", "Reel"] as const) {
+      const coldPlayer = await openPlayer(SLUG, composition, { initialFrame: contactFrame });
+      try {
+        const preview = path.join(ctx.workDir, `${composition}-player-cold-${contactFrame}.png`);
+        const output = path.join(ctx.workDir, `${composition}-export-cold-${contactFrame}.png`);
+        ctx.keep(preview); ctx.keep(output);
+        await coldPlayer.snapshot(contactFrame, preview, false);
+        await exported.still(composition, contactFrame, output);
+        const diff = frameDiff(decodeFrame(preview), decodeFrame(output), 1);
+        assert.ok(diff.changedShare < 0.0001, `${composition} cold absolute frame ${contactFrame}: Player/export differ in ${(diff.changedShare * 100).toFixed(5)}% of pixels`);
+        assert.deepEqual(coldPlayer.errors, []);
+      } finally { await coldPlayer.close(); }
       const player = await openPlayer(SLUG, composition);
       try {
         // Seek forwards, backwards, then repeat contact; the Player remains mounted throughout.

@@ -20,6 +20,7 @@ const timeline = buildTimeline(film);
 const captionWords = film.subtitles === false ? [] : generateWordsFromFilm(film as unknown as Record<string, unknown>);
 const width = query.get("format") === "Reel" ? 1080 : 1920;
 const height = query.get("format") === "Reel" ? 1920 : 1080;
+const initialFrame = Number(query.get("frame") ?? "0");
 
 // Exposes seek and isolated visibility controls outside the captured picture.
 function FramePlayer() {
@@ -33,8 +34,8 @@ function FramePlayer() {
   return <>
     <Player ref={ref} component={FilmView} inputProps={{ film, timeline, accent: film.accent ?? PALETTE.accent, showRail: true, showGrid: false, captionWords, testVisibility }}
       durationInFrames={totalFrames(timeline)} fps={film.fps} compositionWidth={width} compositionHeight={height}
-      style={{ width, height }} controls={false} acknowledgeRemotionLicense />
-    <input id="frame" aria-label="Absolute frame" type="number" defaultValue={0} />
+      initialFrame={initialFrame} style={{ width, height }} controls={false} acknowledgeRemotionLicense />
+    <input id="frame" aria-label="Absolute frame" type="number" defaultValue={initialFrame} />
     <button id="seek" onClick={() => ref.current?.seekTo(Number((document.getElementById("frame") as HTMLInputElement).value))}>Seek to frame</button>
   </>;
 }
