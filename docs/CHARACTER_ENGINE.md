@@ -30,7 +30,7 @@ part 1 changes, with the tests that hold each one closed.
 | J3 preview frame equals export frame | generic apply assigns every channel absolutely | applying frames in permuted order gives identical world matrices; Iona's FilmView stills are byte-identical to the merged slice |
 | J4 reel crop keeps character and prop inside the safe area | posed bounds come from the real character geometry | both-crop design check passes for all three characters; a misplaced character fails |
 | J6 a changed rig, material or action reopens the right stages | the resolved character spec joins the design fingerprint | editing a referenced spec changes the design fingerprint; an unrelated library spec does not |
-| J7 reviews see the stage truthfully | stage facts name character id, version and hash | stage evidence carries character identity; numerical result stays separate from unmeasured craft |
+| J7 reviews see the stage truthfully | stage facts name character and resolved rig identity | stage evidence carries character and rig identity; numerical result stays separate from unmeasured craft (see [REVIEW.md](REVIEW.md)) |
 | J9 existing SVG and template films unchanged | no change to the SVG path | full existing suite; legacy design.json with `asset`/`rig` still builds |
 
 Journeys the brief's list missed, added here:

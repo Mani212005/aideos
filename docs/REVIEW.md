@@ -53,8 +53,8 @@ stage when at least half of its projected posed box (outline included) lies insi
 cast member no performance draws is hidden and never present, and the camera is the compiled track
 projected into that output, so a pan can be a move in the reel and drift in the wide cut. Each
 performance's contact is the first frame its own evaluator holds the prop; the recorded cue frame is
-never trusted. `review.json` carries `stageTruth` for that output (characters drawn with id, version
-and hash, hidden cast, per-shot presence, contact against the cue, camera, and the list of what is
+never trusted. `review.json` carries `stageTruth` for that output (characters drawn with id, version,
+rig, and hash, hidden cast, per-shot presence, contact against the cue, camera, and the list of what is
 unmeasured: pixel visibility and final occlusion, face appeal, finger contact, silhouette and weight).
 Presence is projected geometry, not pixels.
 
