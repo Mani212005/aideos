@@ -22,6 +22,7 @@ import { inspectCamera } from "../geminiReview/facts";
 import type { Narration } from "./speech";
 import type { RenderFacts } from "./renderFacts";
 import type { Scene } from "../../src/dl/scene/types";
+import { receiveSchema } from "../../src/dl/scene/stageContract";
 
 const pkg = resolvePackageDir("iona-receive");
 // Reads one JSON file of the fixture package.
@@ -101,7 +102,7 @@ test("J7: stage carry-over counts named identities only when evaluator ownership
   const action = bindReceiveSpan(111, 45, scene.durationFrames);
   action.holdFromFrame = 135;
   action.anchors[5].frame = 135;
-  performance.data = action;
+  performance.data = receiveSchema.parse(action);
   film.shots[0].dur = 2.5;
   film.shots[1].dur = 1.2;
   film.shots[2].dur = 6.3;
