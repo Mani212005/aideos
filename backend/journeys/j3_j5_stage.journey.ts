@@ -66,7 +66,7 @@ journey("J5 three distinct characters pass look, design, compile and short wide/
     assert.deepEqual([probe.width, probe.height, probe.frames], [width, height, 13]);
     const facts = prepareStageFacts(scene, width, height);
     try {
-      const states = facts.at(contactFrame);
+      const states = facts.at(contactFrame, "prop");
       assert.equal(states.length, 3);
       const contact = decodeFrame(output.path, { frame: 6 });
       for (const state of states) {
@@ -82,6 +82,19 @@ journey("J5 three distinct characters pass look, design, compile and short wide/
           }
         }
         assert.ok(frameStats({ width: pixels.length / 3, height: 1, data: Buffer.from(pixels) }).stddev > 8, `${format}: character bounds contain no drawn character`);
+        assert.equal(state.propVisibility?.status, "exposed", `${format}: ${state.prop} has no exposed mesh samples`);
+        const prop = state.propBounds;
+        assert.ok(prop.x0 >= 0 && prop.x1 <= width && prop.y0 >= 0 && prop.y1 < height * 0.78, `${format}: ${state.prop} prop bounds leave the visible frame: ${JSON.stringify(prop)}`);
+        const x0 = Math.max(0, Math.ceil(prop.x0)), x1 = Math.min(width, Math.floor(prop.x1));
+        const y0 = Math.max(0, Math.ceil(prop.y0)), y1 = Math.min(height, Math.floor(prop.y1));
+        const propPixels: number[] = [];
+        for (let y = y0; y < y1; y++) {
+          for (let x = x0; x < x1; x++) {
+            const i = (y * width + x) * 3;
+            propPixels.push(contact.data[i], contact.data[i + 1], contact.data[i + 2]);
+          }
+        }
+        assert.ok(frameStats({ width: propPixels.length / 3, height: 1, data: Buffer.from(propPixels) }).stddev > 8, `${format}: ${state.prop} projected bounds contain no drawn prop`);
       }
       const first = decodeFrame(output.path, { frame: 0 });
       const last = decodeFrame(output.path, { frame: 12 });
