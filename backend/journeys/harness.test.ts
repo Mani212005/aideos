@@ -103,12 +103,14 @@ test("stagePublicDir serves moved packages through symlinks and its cleanup neve
   }
 });
 
-test("assertRenderDiskBudget refuses a render whose temp frames would eat the reserve, naming folder and numbers", () => {
+test("assertRenderDiskBudget uses the PNG worst case and refuses a render that could fill the disk, naming folder and numbers", () => {
   const gib = 1024 ** 3;
   const free = (g: number) => () => ({ bavail: g, bsize: gib });
-  // A three-minute 1080p film is 5400 frames: several GiB of temp PNGs before any mp4 exists.
-  assert.ok(estimateRenderTempBytes(5400, 1920, 1080) > 4 * gib, "the estimate must reflect the measured 0.85 MB per 1080p frame");
-  assert.throws(() => assertRenderDiskBudget(5400, 1920, 1080, ["/tmp"], free(6)), (err: unknown) => err instanceof RenderDiskError && /RENDER_DISK_LOW: .* under \/tmp .* only 6\.0 GiB is free/.test(err.message));
+  // A three-minute 1080p film is 5400 frames; at 3 bytes per pixel that is about 31 GiB of temp PNGs.
+  const need = estimateRenderTempBytes(5400, 1920, 1080);
+  assert.ok(need > 30 * gib && need < 33 * gib, `worst case for 5400 frames of 1080p should be about 31 GiB, got ${(need / gib).toFixed(1)}`);
+  assert.throws(() => assertRenderDiskBudget(5400, 1920, 1080, ["/tmp"], free(20)), (err: unknown) => err instanceof RenderDiskError && /RENDER_DISK_LOW: .* under \/tmp .* only 20\.0 GiB is free/.test(err.message));
+  assert.throws(() => assertRenderDiskBudget(5400, 1920, 1080, ["/tmp"], free(33)), RenderDiskError, "free space under the need plus the 3 GiB reserve is refused");
   assert.doesNotThrow(() => assertRenderDiskBudget(5400, 1920, 1080, ["/tmp"], free(40)));
   assert.doesNotThrow(() => assertRenderDiskBudget(31, 1920, 1080, ["/tmp"], free(4)), "a one-second clip fits in a small headroom");
   // The renders folder does not exist before the first render; the disk it will live on is what counts.

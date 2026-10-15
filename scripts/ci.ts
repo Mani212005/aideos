@@ -11,6 +11,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { clearGoldenOutcome, readGoldenOutcome } from "../backend/journeys/goldenResult";
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -23,6 +24,12 @@ export interface CiStep {
   resolve?: (cmd: string[]) => string[];
   /** Extra environment for this step only. */
   env?: Record<string, string>;
+  /**
+   * For steps whose exit code cannot say whether anything was actually checked (the golden frames):
+   * cleared before the step runs, read after it exits 0. A "not-covered" verdict is reported as
+   * NOT COVERED (exit code still 0), and a step that exits 0 without leaving a verdict is a failure.
+   */
+  verdict?: { clear: () => void; read: () => StepVerdict | null };
   /** A reason this step does not apply here (reported as skipped, never as a pass). */
   skip?: () => string | null;
 }
@@ -34,11 +41,14 @@ export interface CiJob {
   steps: CiStep[];
 }
 
+/** What a step that checks something conditionally reports beyond its exit code. */
+export type StepVerdict = { status: "passed" | "failed" } | { status: "not-covered"; reason: string };
+
 /** The outcome of one step. */
 export interface StepResult {
   job: string;
   step: string;
-  status: "passed" | "failed" | "skipped";
+  status: "passed" | "failed" | "skipped" | "not-covered";
   seconds: number;
   note?: string;
 }
@@ -86,6 +96,16 @@ export const notLinux = (): string | null =>
     ? null
     : "golden frames are verified on the Linux CI platform only";
 
+/** Lets the runner read what the golden test concluded; see backend/journeys/goldenResult.ts. */
+const goldenVerdict: CiStep["verdict"] = {
+  clear: clearGoldenOutcome,
+  read: () => {
+    const outcome = readGoldenOutcome();
+    if (!outcome) return null;
+    return outcome.status === "not-covered" ? { status: "not-covered", reason: outcome.reason } : { status: outcome.status };
+  },
+};
+
 /** Every job. Add a step here and it runs in CI, in the local validation tool and for contributors. */
 export const JOBS: CiJob[] = [
   {
@@ -131,7 +151,7 @@ export const JOBS: CiJob[] = [
   {
     id: "legacy",
     title: "Legacy regression: golden frames of existing SVG and template films",
-    steps: [{ name: "golden frames", cmd: ["npm", "run", "test:legacy"], env: softwareGl(), skip: notLinux }],
+    steps: [{ name: "golden frames", cmd: ["npm", "run", "test:legacy"], env: softwareGl(), skip: notLinux, verdict: goldenVerdict }],
   },
   {
     id: "nightly",
@@ -147,6 +167,7 @@ export const PR_JOBS = ["static", "unit", "journeys", "legacy"];
 export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
   const reason = step.skip?.() ?? null;
   if (reason) return Promise.resolve({ job: job.id, step: step.name, status: "skipped", seconds: 0, note: reason });
+  step.verdict?.clear();
   const started = Date.now();
   return new Promise((resolve) => {
     const cmd = step.resolve ? step.resolve(step.cmd) : step.cmd;
@@ -155,17 +176,29 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
       stdio: "inherit",
       env: { ...process.env, ...step.env },
     });
-    const done = (status: "passed" | "failed", note?: string) =>
+    const done = (status: StepResult["status"], note?: string) =>
       resolve({ job: job.id, step: step.name, status, seconds: (Date.now() - started) / 1000, note });
     child.on("error", (err) => done("failed", err.message));
-    child.on("close", (code) => done(code === 0 ? "passed" : "failed", code === 0 ? undefined : `exit ${code}`));
+    child.on("close", (code) => {
+      if (code !== 0) return done("failed", `exit ${code}`);
+      if (!step.verdict) return done("passed");
+      const verdict = step.verdict.read();
+      if (!verdict) return done("failed", "exited 0 but left no verdict, so nothing is known to have been checked");
+      if (verdict.status === "not-covered") return done("not-covered", verdict.reason);
+      return done(verdict.status);
+    });
   });
 }
 
 /** Formats results as a markdown table (the GitHub step summary and the terminal summary). */
 export function summaryTable(results: StepResult[]): string {
-  const rows = results.map((r) => `| ${r.job} | ${r.step} | ${r.status} | ${r.seconds.toFixed(1)}s | ${r.note ?? ""} |`);
+  const rows = results.map((r) => `| ${r.job} | ${r.step} | ${r.status === "not-covered" ? "NOT COVERED" : r.status} | ${r.seconds.toFixed(1)}s | ${r.note ?? ""} |`);
   return ["| job | step | status | time | note |", "| --- | --- | --- | --- | --- |", ...rows].join("\n");
+}
+
+/** One sentence per step that compared nothing, for the warning annotation and the job summary. */
+export function notCoveredNotices(results: StepResult[]): string[] {
+  return results.filter((r) => r.status === "not-covered").map((r) => `${r.job} / ${r.step} is NOT COVERED: ${r.note}`);
 }
 
 /** Prints a group header that GitHub Actions folds, and a plain banner elsewhere. */
@@ -185,7 +218,7 @@ export async function runJobs(ids: string[], options: { bail?: boolean } = {}): 
       const result = await runStep(job, step);
       banner("", false);
       results.push(result);
-      console.log(`[ci] ${job.id} / ${step.name}: ${result.status}${result.note ? ` (${result.note})` : ""} in ${result.seconds.toFixed(1)}s`);
+      console.log(`[ci] ${job.id} / ${step.name}: ${result.status === "not-covered" ? "NOT COVERED" : result.status}${result.note ? ` (${result.note})` : ""} in ${result.seconds.toFixed(1)}s`);
       if (result.status === "failed" && options.bail) return results;
     }
   }
@@ -208,6 +241,12 @@ async function main(): Promise<void> {
   const table = summaryTable(results);
   console.log(`\n${table}\n`);
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${table}\n`);
+  // A check that compared nothing is never a pass line: a warning annotation, a note in the job summary, exit code still 0.
+  for (const text of notCoveredNotices(results)) {
+    if (process.env.GITHUB_ACTIONS === "true") console.log(`::warning title=NOT COVERED::${text}`);
+    else console.warn(`[ci] WARNING ${text}`);
+    if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `> **NOT COVERED** - ${text}\n`);
+  }
   const failed = results.filter((r) => r.status === "failed");
   if (failed.length) {
     console.error(`[ci] ${failed.length} step(s) failed: ${failed.map((r) => `${r.job}/${r.step}`).join(", ")}`);

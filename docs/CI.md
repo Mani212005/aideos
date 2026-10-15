@@ -26,7 +26,7 @@ GitHub job summary), so one run reports every problem.
 | `static` | file headers, every test file is wired, eslint (src, backend, scripts, editor), `tsc` root, `tsc` editor app, oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
 | `unit` | `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
 | `journeys` | `npm run test:journeys` (real pipeline and real renders, below) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
-| `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work | every PR and push to main, Linux only |
+| `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; reports **NOT COVERED** until baselines are committed | every PR and push to main, Linux only |
 | `nightly` | `scripts/nightly_budget.ts`: the whole Iona film, wide and reel, with budgets on wall time, peak memory, peak temp disk and bundle size | 03:17 UTC and on demand, never on a PR |
 | `all-green` | fails unless the four jobs above succeeded | the one check to require |
 
@@ -54,7 +54,9 @@ gets its own test, plus golden frames), and the captain's eye for art, which no 
 Rendering tests rewrite the generated `src/dl/activeFilm.ts`, so they run sequentially
 (`--test-concurrency=1`) and every harness restores the file afterwards. Check disk first: the
 journey harness refuses to start below 3 GiB free (`AIDEOS_JOURNEY_MIN_FREE_GIB`), and the pipeline
-refuses a render whose temp frames would eat that reserve (`RENDER_DISK_LOW`).
+refuses a render whose temp frames could eat that reserve (`RENDER_DISK_LOW`). The guard assumes the
+PNG worst case of 3 bytes per pixel, so a three-minute 1080p film needs about 34 GiB free before it
+starts; render a shorter range (`renderFrames`) or free space when it refuses.
 
 ## User journeys and what protects each
 
@@ -68,7 +70,7 @@ refuses a render whose temp frames would eat that reserve (`RENDER_DISK_LOW`).
 | J6 resume reopens exactly the right stages | `pipeline.test.ts` (existing); `renderFrames` is part of the render fingerprint | feature |
 | J7 reviews see the 3D stage truthfully | `stage.test.ts` and `review.test.ts` (existing); part 4 adds journey cases | feature |
 | J8 failures give a named error | `j8_failures.journey.ts`: a phrase not spoken, an unknown shot and missing artwork are each named and write no film; a failed design stops the run with no mp4; an unreachable hand target gives finite numbers and a failed grip check; three known gaps are `todo` (below) | journey |
-| J9 existing SVG and template films render unchanged | `j9_template.journey.ts` (real pipeline, templates) and `legacy.golden.ts` (golden frames of four films) | journey, golden |
+| J9 existing SVG and template films render unchanged | `j9_template.journey.ts` (real pipeline, templates) and `legacy.golden.ts` (golden frames of four films; **NOT COVERED until the baselines are committed**) | journey, golden |
 | J10 an agent authors from the docs, bad input names the field | `j8_failures.journey.ts` todo: an unknown design field is reported as `Invalid input` at root | todo |
 | J11 a contributor opens a PR and the suite reproduces locally | `npm run ci`, `scripts/ci.test.ts` (workflows only call real jobs, every job is run by a workflow, least privilege) | static |
 | J12 a long render never fills the disk | `assertRenderDiskBudget` (`harness.test.ts`), temp-leak and size assertions in `j1_pipeline.journey.ts`, `stagePublicDir` cleanup never follows a symlink (`harness.test.ts`), nightly peak-temp budget | unit, journey, nightly |
@@ -128,19 +130,44 @@ journey("J99 what the user does, in words", async (ctx) => {
 
 ## Golden frames (legacy regression)
 
+> **J9 (existing SVG and template films render unchanged) is NOT COVERED at pixel level until the
+> baselines are committed.** `backend/journeys/goldens/` is empty on purpose: goldens can only be
+> made on the CI platform, and the workflow that makes them can only be dispatched once it exists on
+> the default branch. Until then the legacy job says **NOT COVERED** (see below), never "passed".
+> The real-pipeline template journey (`j9_template.journey.ts`) still runs.
+
 `backend/journeys/legacy.golden.ts` renders quarter-size PNGs of four films that predate the
 character work (`hello-scene`, `sample-explainer`, `inset-stage`, `still-talking`) and compares
 them with `backend/journeys/goldens/`. A golden made on a Mac would not match Linux, so goldens are
-**only** produced by the **Update goldens** workflow on the CI platform:
+**only** produced by the **Update goldens** workflow on the CI platform, and the comparison is
+skipped (with a message saying so, never a pass) on any other platform.
 
-* Add the label `update-goldens` to a pull request (or run the workflow on a branch). It renders
-  every frame twice, refuses any frame the platform does not reproduce exactly, commits the PNGs
-  and `MANIFEST.json` to the branch and starts a fresh CI run. It never runs on the default branch.
-* Until `MANIFEST.json` exists the legacy job passes with a visible warning and uploads the frames
-  it rendered as `candidate-goldens`; once it exists the job is strict. A failure uploads
-  `golden.png`, `actual.png` and `diff.png` for the frame that changed.
-* When a legitimate rendering change moves pixels, regenerate with the same workflow and review
-  the changed PNGs in the diff like any other change.
+What the legacy job reports:
+
+| Situation | Status in the `npm run ci` output and job summary | Exit code |
+| --- | --- | --- |
+| no `MANIFEST.json` committed | **NOT COVERED**: a `NOT COVERED` line in the table, a GitHub warning annotation and a note in the job summary; the frames it rendered are uploaded as `candidate-goldens` | 0, so the first PR can merge |
+| manifest present, every frame matches | `passed` | 0 |
+| manifest present and a frame changed, a listed golden is missing, the frame set differs or the platform differs | `failed`, with `golden.png`, `actual.png` and `diff.png` for each changed frame | 1 |
+| the golden test exits 0 but leaves no verdict | `failed` (nothing is known to have been checked) | 1 |
+
+The golden test leaves its verdict in `.ci-artifacts/legacy/result.json` (`backend/journeys/goldenResult.ts`),
+which `scripts/ci.ts` reads; a result from an earlier run is cleared first.
+
+### Bootstrap (do this once, after this suite is merged)
+
+1. On a new branch off the default branch, dispatch the workflow on it (it refuses the default
+   branch): `gh workflow run update-goldens.yml --ref <branch>`. It renders every frame twice on
+   Linux with software GL, refuses any frame the platform does not reproduce exactly, and commits
+   the PNGs and `MANIFEST.json` to that branch.
+2. Review the generated PNGs (look at each one: layout, type, colour) and open a pull request with
+   them.
+3. Merge it. From then on a missing or changed golden is a **hard failure** on CI, and the legacy
+   job no longer reports NOT COVERED.
+
+After bootstrap, when a legitimate rendering change moves pixels, add the label `update-goldens` to
+the pull request (or dispatch the workflow on its branch) and review the changed PNGs in the diff
+like any other change.
 
 ## Branch protection (proposal, not applied)
 

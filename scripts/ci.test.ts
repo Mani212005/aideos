@@ -7,9 +7,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import YAML from "yaml";
-import { JOBS, PR_JOBS, notLinux, resolveRuff, runJobs, runStep, summaryTable } from "./ci";
+import { JOBS, PR_JOBS, notCoveredNotices, notLinux, resolveRuff, runJobs, runStep, summaryTable } from "./ci";
 
 const ROOT = path.resolve(__dirname, "..");
 const scripts = (JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")) as { scripts: Record<string, string> }).scripts;
@@ -136,4 +137,39 @@ test("runStep reports failed, passed and skipped honestly, and runJobs rejects a
 test("resolveRuff picks the first launcher that answers and returns null when none does", () => {
   assert.deepEqual(resolveRuff((cmd) => cmd[0] === "python3"), ["python3", "-m", "ruff"]);
   assert.equal(resolveRuff(() => false), null);
+});
+
+test("the legacy step reports NOT COVERED (exit 0), passed or failed from what the golden test wrote, and a silent exit 0 is a failure", async () => {
+  const legacy = JOBS.find((j) => j.id === "legacy")!;
+  const real = legacy.steps[0];
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-ci-verdict-"));
+  const before = process.env.AIDEOS_CI_ARTIFACTS;
+  process.env.AIDEOS_CI_ARTIFACTS = dir;
+  /** The real step with its command replaced by one that writes the given outcome (or nothing) and exits 0, off any platform. */
+  const stepWriting = (outcome: unknown) => ({
+    ...real,
+    skip: undefined,
+    cmd: ["node", "-e", `const fs=require("fs");const f=${JSON.stringify(path.join(dir, "legacy", "result.json"))};${outcome === undefined ? "" : `fs.mkdirSync(require("path").dirname(f),{recursive:true});fs.writeFileSync(f,${JSON.stringify(JSON.stringify(outcome))});`}`],
+  });
+  try {
+    const stale = path.join(dir, "legacy", "result.json");
+    fs.mkdirSync(path.dirname(stale), { recursive: true });
+    fs.writeFileSync(stale, JSON.stringify({ status: "passed", frames: 9 }));
+    const silent = await runStep(legacy, stepWriting(undefined));
+    assert.equal(silent.status, "failed", "an old result must never be mistaken for this run's");
+    assert.match(silent.note ?? "", /left no verdict/);
+
+    const notCovered = await runStep(legacy, stepWriting({ status: "not-covered", reason: "no goldens committed" }));
+    assert.equal(notCovered.status, "not-covered");
+    assert.match(summaryTable([notCovered]), /\| legacy \| golden frames \| NOT COVERED \|/);
+    assert.deepEqual(notCoveredNotices([notCovered]), ["legacy / golden frames is NOT COVERED: no goldens committed"]);
+    assert.doesNotMatch(summaryTable([notCovered]), /\| passed \|/);
+
+    assert.equal((await runStep(legacy, stepWriting({ status: "passed", frames: 3 }))).status, "passed");
+    assert.equal((await runStep(legacy, stepWriting({ status: "failed", failures: ["x"] }))).status, "failed");
+  } finally {
+    if (before === undefined) delete process.env.AIDEOS_CI_ARTIFACTS;
+    else process.env.AIDEOS_CI_ARTIFACTS = before;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

@@ -100,13 +100,18 @@ export function stagePublicDir(
 /** Free space a render must leave untouched, in bytes. The same 3 GiB floor the journeys use. */
 export const RENDER_RESERVE_BYTES = 3 * 1024 ** 3;
 /**
- * Measured on the Iona fixture (nightly render budget): Remotion keeps every PNG frame of one
- * format in the temp dir until it has stitched them, about 0.85 MB per 1080p frame, so a
- * three-minute film needs several GiB before it writes a byte of mp4. 0.45 bytes per pixel with a
- * 25% margin covers that.
+ * Remotion keeps every PNG frame of one format in the temp dir until it has stitched them. A flat
+ * film measured about 0.85 MB per 1080p frame (the nightly render budget), but PNG size depends on
+ * the picture: full-frame, high-entropy imagery (film grain, footage, dense textures) approaches 3
+ * bytes per pixel. The guard uses that worst case, so it can refuse a render that would have fit
+ * but can never admit one that fills the disk. A three-minute 1080p film therefore needs about 30
+ * GiB free; render a shorter range (renderFrames) or free space when it refuses.
  */
+export const PNG_WORST_CASE_BYTES_PER_PIXEL = 3;
+
+/** Worst-case temp bytes a render of `frames` frames at this size can write. */
 export function estimateRenderTempBytes(frames: number, width: number, height: number): number {
-  return Math.ceil(frames * width * height * 0.45 * 1.25);
+  return Math.ceil(frames * width * height * PNG_WORST_CASE_BYTES_PER_PIXEL);
 }
 
 /** Thrown, with RENDER_DISK_LOW in the message, when a render would eat into the reserve. */
