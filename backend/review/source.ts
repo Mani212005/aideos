@@ -113,8 +113,10 @@ export interface FilmFacts {
   shotDurations: number[];
   camera: CameraFacts;
   boundaries: BoundaryCarry[];
-  /** Seconds at which scene animation clips start (empty for node-graph films). */
+  /** Seconds at which SVG scene animation clips start (empty for node-graph films). */
   clipStarts: number[];
+  /** Seconds at which evaluated Three performances contact their props. */
+  performanceContacts: number[];
   /** Canvas nodes whose boxes overlap, as "a / b". */
   nodeOverlaps: string[];
   voiceoverSec: number | null;
@@ -485,7 +487,7 @@ export function readFilmFacts(film: Film, viewport: ReviewViewport = FRAME): Fil
     return {
       filmId: film.id, kind: "scene", durationSec: total, fps, shotBoundaries, shotDurations: durations,
       camera: three ? projectedCameraMoves(scene, fps, viewport) : sceneCameraMoves(scene, fps), boundaries: carry,
-      clipStarts: [...clipStarts, ...contactStarts], nodeOverlaps: [], voiceoverSec, planShots, cameraKeyframes,
+      clipStarts, performanceContacts: contactStarts, nodeOverlaps: [], voiceoverSec, planShots, cameraKeyframes,
       ...(stage ? { stage } : {}),
       ...(three ? { format: formatOfViewport(viewport), viewport, performances, stageCast } : {}),
     };
@@ -499,7 +501,7 @@ export function readFilmFacts(film: Film, viewport: ReviewViewport = FRAME): Fil
     const moved = camera.moves.some((m) => Math.abs(m.t - t) < 0.01);
     return { t, outgoing, kept, transformed: kept && moved ? kept : 0 };
   });
-  return { filmId: film.id, kind: "node-graph", durationSec: timedDurations.reduce((a, b) => a + b, 0), fps, shotBoundaries: starts, shotDurations: timedDurations, camera, boundaries, clipStarts: [], nodeOverlaps: overlappingNodes(film), voiceoverSec };
+  return { filmId: film.id, kind: "node-graph", durationSec: timedDurations.reduce((a, b) => a + b, 0), fps, shotBoundaries: starts, shotDurations: timedDurations, camera, boundaries, clipStarts: [], performanceContacts: [], nodeOverlaps: overlappingNodes(film), voiceoverSec };
 }
 
 // Loads and parses a film.json, returning the facts (measured in the given output) and the parsed film.

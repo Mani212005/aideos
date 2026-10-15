@@ -59,6 +59,14 @@ test("J7: plan adherence passes a performance whose contact lands on its decisiv
   for (const viewport of [LONG, REEL]) {
     const measured = facts(film, viewport);
     assert.equal(measured.performances![0].contactFrame, Math.round(3.7 * 30), "contact is read from the action itself, on \"catches\"");
+    assert.deepEqual(measured.clipStarts, [], "the fixture has no SVG clip starts");
+    assert.deepEqual(measured.performanceContacts, [3.7]);
+    const cueTiming = criterion(measured, "cue-timing");
+    assert.equal(cueTiming.status, "pass", cueTiming.summary);
+    assert.equal(cueTiming.metrics.clipStarts, 0);
+    assert.equal(cueTiming.metrics.performanceContacts, 1);
+    assert.equal(cueTiming.metrics.cueEvents, 1);
+    assert.match(cueTiming.summary, /0 SVG clip starts and 1 performance contact/);
     const result = criterion(measured, "plan-adherence");
     assert.equal(result.status, "pass", result.summary);
     assert.equal(result.metrics.performanceShots, 3);

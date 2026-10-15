@@ -306,19 +306,21 @@ function planAdherence(i: ReviewInputs): CriterionResult {
 // Criterion 3: animation cues land on spoken words more often than chance.
 function cueTiming(i: ReviewInputs): CriterionResult {
   const { film, narration } = i;
-  if (!film || film.clipStarts.length === 0) return skipped(3, "cue-timing", "Cues aimed at spoken words", false, "needs a scene film with animation clips");
+  if (!film || (film.clipStarts.length === 0 && film.performanceContacts.length === 0)) return skipped(3, "cue-timing", "Cues aimed at spoken words", false, "needs a scene film with animation clips or evaluated performances");
   if (!narration?.timed) return skipped(3, "cue-timing", "Cues aimed at spoken words", false, "needs word timings");
   const tol = T.audioSync.cueToleranceSec;
-  const starts = [...new Set(film.clipStarts.map((t) => Math.round(t * 1000) / 1000))];
-  const share = shareNearWordStarts(narration.words, starts, tol);
+  const clipStarts = [...new Set(film.clipStarts.map((t) => Math.round(t * 1000) / 1000))];
+  const performanceContacts = film.performanceContacts.length;
+  const cueEvents = [...new Set([...clipStarts, ...film.performanceContacts.map((t) => Math.round(t * 1000) / 1000)])];
+  const share = shareNearWordStarts(narration.words, cueEvents, tol);
   const chance = chanceNearWordStarts(narration.words, tol);
   const lift = share - chance;
   const ok = lift >= 0.15;
   return {
     id: 3, key: "cue-timing", name: "Cues aimed at spoken words", gate: false,
     status: ok ? "pass" : "fail", score: score(lift, 0, 0.4),
-    summary: `${Math.round(share * 100)}% of ${starts.length} clip starts sit within ${Math.round(tol * 1000)} ms of a word start; chance alone gives ${Math.round(chance * 100)}%`,
-    metrics: { clipStarts: starts.length, shareNearWordStart: round(share), chanceShare: round(chance), lift: round(lift) },
+    summary: `${Math.round(share * 100)}% of ${cueEvents.length} cue events (${clipStarts.length} SVG clip starts and ${performanceContacts} performance contacts) sit within ${Math.round(tol * 1000)} ms of a word start; chance alone gives ${Math.round(chance * 100)}%`,
+    metrics: { clipStarts: clipStarts.length, performanceContacts, cueEvents: cueEvents.length, shareNearWordStart: round(share), chanceShare: round(chance), lift: round(lift) },
     threshold: { liftMin: 0.15, toleranceSec: tol },
     evidence: [],
     fix: ok ? undefined : "Aim each cue at the spoken word it depicts (createCues(timing).word(shot, phrase)) instead of at a fraction of the shot.",
