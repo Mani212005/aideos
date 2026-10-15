@@ -13,7 +13,7 @@ import { rigFromCharacter } from "../characters/rig";
 import { addCelLights, buildCharacter } from "./characters/build";
 import { applyCharacter } from "./characters/apply";
 import { applyProp, buildProp } from "./props/paperGlider";
-import { isCharacterCast } from "./stageContract";
+import { resolveCharacterSpec } from "../characters/resolve";
 import { compileCameraTrack } from "./cameraTrack";
 import { applyStageCamera } from "./projection";
 import { validateStage } from "./validateStage";
@@ -40,17 +40,18 @@ function FrameCommit({ scene: manifest, frame, width, height, ready }: Props & {
     const entries = manifest.performances!.map((p) => {
       const actor = manifest.cast!.find((c) => c.id === p.actor);
       const propCast = manifest.cast!.find((c) => c.id === p.prop);
-      if (!actor || !isCharacterCast(actor)) throw new Error(`Missing character ${p.actor}`);
+      const character = actor?.kind === "character" ? resolveCharacterSpec(actor) : undefined;
+      if (!actor || !character) throw new Error(`Missing character ${p.actor}`);
       if (!propCast || propCast.kind !== "prop") throw new Error(`Missing prop ${p.prop}`);
-      // Each performer owns private geometry and face texture built from its verified, embedded spec.
-      const art = buildCharacter(actor.character, document.createElement("canvas"));
+      // Each performer owns private geometry and face texture built from its verified spec.
+      const art = buildCharacter(character, document.createElement("canvas"));
       const prop = buildProp(propCast.asset);
       const placement = new Group();
       placement.position.set(actor.position[0] - manifest.sceneSize.w / 2, manifest.sceneSize.h / 2 - actor.position[1], actor.depth);
       placement.scale.setScalar(actor.unitsToStage);
       placement.add(art.rig.root, prop.root);
       root.add(placement);
-      return { art, prop, evaluate: createPerformanceEvaluator(rigFromCharacter(actor.character), p.data) };
+      return { art, prop, evaluate: createPerformanceEvaluator(rigFromCharacter(character), p.data) };
     });
     world.add(root);
     set({ camera });

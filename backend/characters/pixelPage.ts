@@ -1,6 +1,6 @@
 /**
- * File Description: Browser test page comparing real cel pixels: the frozen legacy Iona against the spec-built Iona, the committed golden, and every character in both crops.
- * Inputs and outputs: window.__pixelRequest (specs, actions, golden data URL) -> window.__pixels promise of pixel comparisons and PNG data URLs.
+ * File Description: Browser test page comparing real cel pixels: legacy stage alias, spec-built Iona, the committed golden, and every character in both crops.
+ * Inputs and outputs: window.__pixelRequest (specs, actions, legacy stage cast and golden data URL) -> window.__pixels promise of pixel comparisons and PNG data URLs.
  * Used by: backend/characters/pixels.test.ts, which bundles this file with esbuild for headless Chrome. Never part of production.
  */
 import { Euler, Group, NoToneMapping, OrthographicCamera, Quaternion, Scene, SRGBColorSpace, Vector3, WebGLRenderer } from "three";
@@ -13,6 +13,7 @@ import { rigFromCharacter } from "../../src/dl/characters/rig";
 import { IONA_RIG } from "../../src/dl/performance/iona";
 import { stageViewport, SCENE_SIZE } from "../../src/dl/scene/projection";
 import { CEL_TREATMENT } from "../../src/dl/scene/rigs/registry";
+import { resolveCharacterSpec, type CharacterReference } from "../../src/dl/characters/resolve";
 import type { CharacterSpec } from "../../src/dl/characters/schema";
 import type { PerformanceState, ReceiveAction } from "../../src/dl/performance/types";
 
@@ -20,11 +21,13 @@ export interface PixelRequest {
   iona: { spec: CharacterSpec; action: ReceiveAction; frames: number[] };
   golden: { frame: number; dataUrl: string | null };
   cast: Array<{ spec: CharacterSpec; action: ReceiveAction }>;
+  legacyAlias: { cast: CharacterReference; action: ReceiveAction; frame: number };
 }
 export interface PixelResult {
   ab: Array<{ frame: number; differing: number; maxDelta: number }>;
   golden: { png: string; differing: number; meanDelta: number; otherFrameDiffering: number } | null;
   goldenPng: string;
+  legacyGolden: { differing: number; meanDelta: number } | null;
   cast: Array<{ id: string; format: "wide" | "reel"; coverage: number; signature: string }>;
 }
 
@@ -81,7 +84,7 @@ async function run(request: PixelRequest): Promise<PixelResult> {
   const specScene = new Scene(), lightsB = new Group(); addCelLights(lightsB); specScene.add(lightsB, art.rig.root, prop.root);
   const evaluate = createPerformanceEvaluator(rigFromCharacter(request.iona.spec), request.iona.action);
   const ab: PixelResult["ab"] = [];
-  let goldenPng = "", golden: PixelResult["golden"] = null, firstFrame: Uint8ClampedArray | null = null;
+  let goldenPng = "", golden: PixelResult["golden"] = null, legacyGolden: PixelResult["legacyGolden"] = null, firstFrame: Uint8ClampedArray | null = null;
   for (const frame of request.iona.frames) {
     const state = evaluate(frame);
     applyLegacy(legacy, state);
@@ -101,6 +104,18 @@ async function run(request: PixelRequest): Promise<PixelResult> {
       }
     }
   }
+  const aliasCharacter = resolveCharacterSpec(request.legacyAlias.cast);
+  if (!aliasCharacter) throw new Error("legacy stage cast did not resolve to a character spec");
+  const aliasArt = buildCharacter(aliasCharacter, document.createElement("canvas")), aliasProp = buildProp("paper-glider-v1");
+  const aliasScene = new Scene(), aliasLights = new Group(); addCelLights(aliasLights); aliasScene.add(aliasLights, aliasArt.rig.root, aliasProp.root);
+  const aliasState = createPerformanceEvaluator(rigFromCharacter(aliasCharacter), request.legacyAlias.action)(request.legacyAlias.frame);
+  applyCharacter(aliasArt, aliasState); applyProp(aliasProp, aliasState);
+  const aliasImage = capture(renderer, aliasScene, camera, SIZE, SIZE);
+  if (request.golden.dataUrl) {
+    const reference = await decode(request.golden.dataUrl, SIZE, SIZE), diff = compare(reference, aliasImage.pixels, 24);
+    legacyGolden = { differing: diff.differing / (SIZE * SIZE), meanDelta: diff.meanDelta };
+  }
+  aliasArt.dispose(); aliasProp.dispose();
   legacy.dispose(); art.dispose(); prop.dispose();
   const cast: PixelResult["cast"] = [];
   for (const { spec, action } of request.cast) {
@@ -121,7 +136,7 @@ async function run(request: PixelRequest): Promise<PixelResult> {
     actor.dispose(); glider.dispose();
   }
   renderer.dispose();
-  return { ab, golden, goldenPng, cast };
+  return { ab, golden, goldenPng, legacyGolden, cast };
 }
 
 declare global { interface Window { __pixelRequest?: PixelRequest; __pixels?: Promise<PixelResult> } }

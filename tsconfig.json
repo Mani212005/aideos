@@ -6,6 +6,7 @@
     "strict": true,
     "noEmit": true,
     "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "lib": ["es2020", "dom"],
     "esModuleInterop": true,
     "skipLibCheck": true,

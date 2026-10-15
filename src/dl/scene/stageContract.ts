@@ -31,7 +31,7 @@ const identity = { id: z.string().regex(/^[a-z0-9-]+$/), renderer: z.literal("th
 const placement = { position: z.tuple([z.number(), z.number()]), unitsToStage: z.number().positive().max(500), depth: z.number().default(0) };
 /** A character cast member carries its resolved, hash-stamped spec, so the film renders without any library lookup. */
 export const characterCastSchema = z.strictObject({ ...identity, kind: z.literal("character"), character: characterSpecSchema, ...placement });
-/** P0 films compiled before characters were data; parsed so they open, refused by validateStage until rebuilt. */
+/** P0 films compiled before character specs were embedded. */
 export const legacyCharacterCastSchema = z.strictObject({ ...identity, kind: z.literal("character"), asset: z.literal("iona-art-v1"), rig: z.literal("iona-v1"), ...placement });
 export const propCastSchema = z.strictObject({ ...identity, kind: z.literal("prop"), asset: z.literal("paper-glider-v1") });
 export const castSchema = z.union([characterCastSchema, legacyCharacterCastSchema, propCastSchema]);
@@ -43,8 +43,7 @@ export const performanceSchema = z.strictObject({
   afterState: z.string().min(1), data: receiveSchema, retarget: retargetRecordSchema.optional(),
 });
 export type StageCast = z.infer<typeof castSchema>;
-export type CharacterCast = z.infer<typeof characterCastSchema>;
+export type LegacyCharacterCast = z.infer<typeof legacyCharacterCastSchema>;
 export type StagePerformance = z.infer<typeof performanceSchema>;
 
-// Narrows a cast member to a character that carries its own spec.
-export const isCharacterCast = (cast: StageCast): cast is CharacterCast => cast.kind === "character" && "character" in cast;
+export const LEGACY_P0_RESOURCE_HASH = "675cb9030633a2350ad9da0dbf18cb1055a06c81178ad02946b63e302dbb98c0";

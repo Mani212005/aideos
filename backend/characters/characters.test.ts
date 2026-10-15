@@ -33,6 +33,7 @@ import { readFilm } from "../pipeline/filmStore";
 import type { Scene } from "../../src/dl/scene/types";
 import { buildDesign } from "../designSpec/build";
 import { fitReceiveSpan } from "../performance/bindReceive";
+import { IONA_CHARACTER_SPEC, isLegacyIonaReference, resolveCharacterSpec } from "../../src/dl/characters/resolve";
 
 const NAMES = Object.keys(CHARACTER_FILES) as FixtureCharacter[];
 // Parses a mutated copy of a committed spec and returns its issue lines.
@@ -49,6 +50,15 @@ test("every committed character parses, verifies its stamped hash and passes sem
     assert.equal(parsed.spec!.hash, characterHash(parsed.spec!), name);
     assert.equal(parsed.rig!.id, `${name}-v1`);
   }
+});
+
+test("the browser-safe legacy Iona alias resolves to the committed stamped character spec", () => {
+  const source = JSON.parse(fs.readFileSync(path.join(__dirname, "../../characters/iona.character.json"), "utf8"));
+  assert.deepEqual(IONA_CHARACTER_SPEC, characterSpecSchema.parse(source));
+  const legacy = { id: "iona", kind: "character" as const, asset: "iona-art-v1", rig: "iona-v1" };
+  assert.equal(isLegacyIonaReference(legacy), true);
+  assert.equal(resolveCharacterSpec(legacy), IONA_CHARACTER_SPEC);
+  assert.equal(resolveCharacterSpec({ ...legacy, id: "marlo" }), undefined);
 });
 
 test("the pure SHA-256 matches node:crypto, and canonical JSON ignores key order", () => {

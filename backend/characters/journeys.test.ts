@@ -22,6 +22,7 @@ import type { Scene } from "../../src/dl/scene/types";
 import { CHARACTER_FILES, rawSpec, type FixtureCharacter } from "../testSupport/characters";
 import { checkCharacterFile } from "./cli";
 import { checkLookPlanById } from "../lookPlan/check";
+import { characterHash } from "../../src/dl/characters/hash";
 
 const SOURCE = path.join(TEST_VIDEOS_DIR, "iona-receive");
 let counter = 0;
@@ -183,6 +184,32 @@ test("J6: editing a film's character spec reopens design on resume; an unchanged
   const specFile = path.join(pkg.dir, "characters", "marlo.character.json");
   fs.writeFileSync(specFile, fs.readFileSync(specFile, "utf8").replace('"mustard": "#e2ae47"', '"mustard": "#e2ae48"'));
   assert.notEqual(designFilesFingerprint(pkg.slug), before);
+});
+
+test("J6: editing Iona's receive source rig reopens a Marlo-only design", () => {
+  const pkg = packageWith("marlo");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-receive-source-"));
+  try {
+    const sourceFile = path.join(dir, "iona.character.json");
+    const source = rawSpec("iona") as Json;
+    fs.writeFileSync(sourceFile, JSON.stringify(source));
+    const before = designFilesFingerprint(pkg.slug, { receiveSourceFile: sourceFile });
+    source.palette.teal = "#197f80";
+    source.hash = characterHash(source);
+    fs.writeFileSync(sourceFile, JSON.stringify(source));
+    assert.notEqual(designFilesFingerprint(pkg.slug, { receiveSourceFile: sourceFile }), before);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("J9: a compiled P0 Three film parses and validates through the legacy Iona alias", () => {
+  const file = path.join(__dirname, "../../test_fixtures/packages/legacy-iona-p0/film.json");
+  const film = parseFilm(JSON.parse(fs.readFileSync(file, "utf8")));
+  const scene = film.scene as Scene;
+  const validation = validateScene(scene);
+  assert.equal(validation.isValid, true, JSON.stringify(validation.errors));
+  assert.deepEqual(validateStage(scene), []);
+  const facts = stageEvidence(scene, [scene.performances![0].data.contact.frame]);
+  assert.equal(facts.long.cast.find((item: Json) => item.id === "iona").character.id, "iona");
 });
 
 test("J3: the editor's layer conversion and save/reload keep a non-Iona character's embedded spec intact", () => {

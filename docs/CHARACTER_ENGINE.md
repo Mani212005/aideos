@@ -122,7 +122,9 @@ authoring tools. Three characters prove it; random proportions are property-test
 Still Iona-specific, by design: `receive-v1` itself is authored on Iona's rig (`IONA_RIG` is the
 retarget source, and the library spec must derive it exactly); its expression names and its three
 swing channels are the action's vocabulary; the glider is the only prop; the cel treatment is the
-only treatment; there is one action. Part 4 still owns richer look-plan authoring guidance,
+only treatment; there is one action. The exact P0 `iona-art-v1` cast record remains a browser-safe
+alias of the stamped Iona character spec so compiled films keep rendering; rebuilding its design
+picks up the repaired pole clearance. Part 4 still owns richer look-plan authoring guidance,
 adherence scoring, Gemini facts and review truth for characters.
 
 ## Verification record
