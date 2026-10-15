@@ -129,6 +129,18 @@ test("J10: the look brief explains performances, lists every character with id, 
   assert.ok(!report.findings.some((f) => f.rule === "character"));
 });
 
+test("an invalid package character hides the library character with the same id", () => {
+  const dir = fs.mkdtempSync(path.join(process.cwd(), ".look-character-shadow-"));
+  try {
+    const charactersDir = path.join(dir, "characters");
+    fs.mkdirSync(charactersDir);
+    fs.writeFileSync(path.join(charactersDir, "iona.character.json"), "not json");
+    assert.equal(availableCharacters(dir).some((character) => character.id === "iona"), false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("J10: LOOK.md says each performance in plain words and marks the decisive shot", () => {
   const { slug, dir } = pkgWith();
   const md = fs.readFileSync(writeLookMd(slug), "utf8");

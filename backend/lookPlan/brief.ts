@@ -24,13 +24,17 @@ export interface AvailableCharacter {
 // Lists every character a film can resolve (package first, so a package spec hides a library spec of the same id), skipping specs that fail their checks.
 export function availableCharacters(pkgDir?: string): AvailableCharacter[] {
   const found = new Map<string, AvailableCharacter>();
+  const claimed = new Set<string>();
   const dirs: Array<[string, AvailableCharacter["source"]]> = [...(pkgDir ? [[path.join(pkgDir, "characters"), "package"] as [string, AvailableCharacter["source"]]] : []), [resolveRepoAssetPath(CHARACTER_LIBRARY), "library"]];
   for (const [dir, source] of dirs) {
     if (!fs.existsSync(dir)) continue;
     for (const file of fs.readdirSync(dir).filter((name) => name.endsWith(".character.json")).sort()) {
+      const id = file.slice(0, -".character.json".length);
+      if (claimed.has(id)) continue;
+      claimed.add(id);
       const loaded = loadCharacterFile(path.join(dir, file));
       const spec = loaded.spec;
-      if (!spec?.hash || loaded.errors.length || found.has(spec.id) || file !== `${spec.id}.character.json`) continue;
+      if (!spec?.hash || loaded.errors.length || spec.id !== id) continue;
       found.set(spec.id, { id: spec.id, version: spec.version, hash: spec.hash, name: spec.name, description: spec.description ?? "", source });
     }
   }
