@@ -55,9 +55,19 @@ gets its own test, plus golden frames), and the captain's eye for art, which no 
 Rendering tests rewrite the generated `src/dl/activeFilm.ts`, so they run sequentially
 (`--test-concurrency=1`) and every harness restores the file afterwards. Check disk first: the
 journey harness refuses to start below 3 GiB free (`AIDEOS_JOURNEY_MIN_FREE_GIB`), and the pipeline
-refuses a render whose temp frames could eat that reserve (`RENDER_DISK_LOW`). The guard assumes the
-PNG worst case of 3 bytes per pixel, so a three-minute 1080p film needs about 34 GiB free before it
-starts; render a shorter range (`renderFrames`) or free space when it refuses.
+refuses a render that would eat into that reserve (`RENDER_DISK_LOW`). Remotion writes every frame of a
+format to the temp dir as a PNG and deletes them only after stitching the mp4, so the guard
+(`backend/pipeline/renderDiskBudget.ts`) measures real frames in a child process. Scene films sample an
+even spread plus the densest shot and tightest camera zoom. Films with full-bleed footage sample about
+every two seconds, capped at 40 frames. The estimate uses `frames x the largest sampled frame x 2`, an
+encoded output estimate of 25% of that frame estimate capped at 8 GiB, and 128 MiB of fixed bundle and
+browser temp. The render starts only if that plus the 3 GiB reserve fits in the free space of the temp
+and output folders. During rendering, a watchdog stops the process and removes its owned temp directory
+if either disk falls below the reserve. The guard keeps typical scene films within the measured range:
+a 54 second 1080p film with 0.1 to 0.3 MB sampled frames is estimated below 1.5 GiB. The error names
+the heaviest sampled frame, estimate, free space and reserve; render a shorter range (`renderFrames`)
+or free space when it refuses. Sampling costs one extra bundle and browser start per format (about 15
+seconds). There is no override variable: tests inject a fake sampler and `statfs`.
 
 ## User journeys and what protects each
 
@@ -74,7 +84,7 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 | J9 existing SVG and template films render unchanged | `j9_template.journey.ts` (real pipeline, templates), `j9_svg_repeatability.journey.ts` (exact cold-render equality of Still Talking frame 2773), and `legacy.golden.ts` (golden frames of four films; committed Linux baselines) | journey, golden |
 | J10 an agent authors from the docs, bad input names the field | `j8_failures.journey.ts` checks bad values in design.json, look.json and character specs through their public validators; `schemaIssues.test.ts` covers nested unions, unknown fields, required values and version tags | unit, journey |
 | J11 a contributor opens a PR and the suite reproduces locally | `npm run ci`, `scripts/ci.test.ts` (workflows only call real jobs, every job is run by a workflow, least privilege) | static |
-| J12 a long render never fills the disk | `assertRenderDiskBudget` (`harness.test.ts`), temp-leak and size assertions in `j1_pipeline.journey.ts`, `stagePublicDir` cleanup never follows a symlink (`harness.test.ts`), nightly peak-temp budget | unit, journey, nightly |
+| J12 a long render never fills the disk | `assertRenderDiskBudget` and `checkRenderDiskBudget` (`renderDiskBudget.test.ts`), the estimate against a real render's peak temp (`j12_render_disk.journey.ts`), temp-leak and size assertions in `j1_pipeline.journey.ts`, `stagePublicDir` cleanup never follows a symlink (`harness.test.ts`), nightly peak-temp budget | unit, journey, nightly |
 
 ### Risks and the check that watches them
 

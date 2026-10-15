@@ -41,7 +41,8 @@ import {
   wireFootageIntoFilm,
   writeFilm,
 } from "./filmStore";
-import { analyseAudio, assertRenderDiskBudget, contactSheet, describeVideo, renderFormat, FORMAT_SPECS } from "./render";
+import { analyseAudio, contactSheet, describeVideo, renderFormat, FORMAT_SPECS } from "./render";
+import { checkRenderDiskBudget } from "./renderDiskBudget";
 import {
   PRODUCTION_STAGES,
   DESIGN_MODES,
@@ -687,9 +688,11 @@ export async function runProduction(
             throw new Error(`Invalid format "${format}". Supported formats are: ${Object.keys(FORMAT_SPECS).join(", ")}`);
           }
           const outPath = request.outDir ? path.join(outDir, `${slug}-${format}.mp4`) : path.join(outDir, `${format}.mp4`);
-          // Remotion holds every frame of a format in the temp dir until it stitches them.
-          const frameCount = request.renderFrames ? request.renderFrames[1] - request.renderFrames[0] + 1 : Math.ceil(narration.totalAudioDuration * assembled.fps);
-          assertRenderDiskBudget(frameCount, FORMAT_SPECS[format].width, FORMAT_SPECS[format].height, [os.tmpdir(), outDir]);
+          // Remotion holds every frame of a format in the temp dir until it stitches them, so the
+          // guard renders a few real frames, measures them and refuses only a render that cannot fit.
+          const frameRange: [number, number] = request.renderFrames ?? [0, Math.ceil(narration.totalAudioDuration * assembled.fps) - 1];
+          emit("render", "running", `measuring ${format} frame sizes for the disk budget`);
+          await checkRenderDiskBudget({ film: assembled, format, range: frameRange, dirs: [os.tmpdir(), outDir], browserExecutable: request.browserExecutable });
           emit("render", "running", `rendering ${format} (${FORMAT_SPECS[format].width}x${FORMAT_SPECS[format].height})`);
           const output = await renderFormat(format, outPath, {
             concurrency: request.renderConcurrency,
