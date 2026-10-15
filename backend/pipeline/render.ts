@@ -177,7 +177,9 @@ export function renderFormat(
       diskError = error;
       try {
         if (deps.killProcess) deps.killProcess(child);
-        else if (process.platform !== "win32" && child.pid) process.kill(-child.pid, "SIGTERM");
+        else if (process.platform === "win32" && child.pid) {
+          execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+        } else if (child.pid) process.kill(-child.pid, "SIGTERM");
         else child.kill("SIGTERM");
       } catch {
         child.kill("SIGTERM");
