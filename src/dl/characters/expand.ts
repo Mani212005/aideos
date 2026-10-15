@@ -32,6 +32,17 @@ export interface CharacterIssue { path: string; message: string }
 // Distinguishes a mirror group from a single part.
 const isMirrorGroup = (entry: CharacterPart | MirrorGroup): entry is MirrorGroup => "mirror" in entry;
 
+// Measures edit distance to suggest the declared part key closest to a typo.
+function editDistance(a: string, b: string): number {
+  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j++) current[j] = Math.min(current[j - 1] + 1, previous[j] + 1, previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    previous = current;
+  }
+  return previous[b.length];
+}
+
 // Substitutes the side into an id or joint template, or reports a template used outside a mirror group.
 function sided(template: string, side: Side | null, path: string, issues: CharacterIssue[]): string {
   if (!template.includes("{side}")) return template;
@@ -122,6 +133,19 @@ export function expandParts(spec: CharacterSpec): { parts: ResolvedPart[]; issue
 
   spec.parts.forEach((entry, i) => {
     if (!isMirrorGroup(entry)) { resolve(entry, null, `parts[${i}]`); return; }
+    const keys = new Set(entry.parts.map((part) => "id" in part ? part.id : part.joint));
+    for (const [side, overrides] of Object.entries(entry.overrides)) {
+      if (!(entry.mirror as readonly string[]).includes(side)) {
+        issues.push({ path: `parts[${i}].overrides.${side}`, message: `side "${side}" is not listed in mirror [${entry.mirror.join(", ")}]` });
+        continue;
+      }
+      for (const key of Object.keys(overrides)) {
+        if (keys.has(key)) continue;
+        const closest = [...keys].sort((a, b) => editDistance(key, a) - editDistance(key, b))[0];
+        const suggestion = closest && editDistance(key, closest) <= 2 ? `; did you mean "${closest}"?` : "";
+        issues.push({ path: `parts[${i}].overrides.${side}.${key}`, message: `unknown mirror override key "${key}"${suggestion}` });
+      }
+    }
     for (const side of entry.mirror as readonly Side[]) {
       entry.parts.forEach((part, j) => {
         const key = "id" in part ? part.id : part.joint;

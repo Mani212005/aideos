@@ -142,6 +142,20 @@ test("semantic errors name the field: joints, materials, sockets, ground contact
   for (const [name, mutate, expected] of cases) assert.match(issuesFor(name, mutate).join("\n"), expected);
 });
 
+// Reports an ignored mirror override typo with its field path and nearest declared key.
+test("mirror override typos are rejected with the closest declared part key", () => {
+  const errors = issuesFor("iona", (raw) => { raw.parts[5].overrides = { R: { "lapell{side}": { b: [[0, 0], [1, 1]] } } }; });
+  assert.match(errors.join("\n"), /^parts\[5\]\.overrides\.R\.lapell\{side\}: unknown mirror override key "lapell\{side\}"; did you mean "lapel\{side\}"\?/m);
+});
+
+// Rejects secondary transform ownership duplicates within one entry and across entries.
+test("a secondary part has only one transform owner", () => {
+  const acrossEntries = issuesFor("iona", (raw) => { raw.secondary[1].parts[1].part = "coatTailL"; });
+  assert.match(acrossEntries.join("\n"), /^secondary\[1\]\.parts\[1\]\.part: "coatTailL" is already driven by secondary\[0\]\.parts\[0\]\.part/m);
+  const withinEntry = issuesFor("iona", (raw) => { raw.secondary[0].parts[1].part = "coatTailL"; });
+  assert.match(withinEntry.join("\n"), /^secondary\[0\]\.parts\[1\]\.part: "coatTailL" is already driven by secondary\[0\]\.parts\[0\]\.part/m);
+});
+
 test("a missing extra-joint parent is reported through parsing and embedded-stage validation", () => {
   const raw = rawSpec("iona") as Record<string, any>;
   raw.skeleton.extraJoints = [{ id: "tail", parent: "missing", offset: [0, 0, 0] }];

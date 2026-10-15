@@ -127,6 +127,9 @@ alias of the stamped Iona character spec so compiled films keep rendering; rebui
 picks up the repaired pole clearance. Part 4 still owns richer look-plan authoring guidance,
 adherence scoring, Gemini facts and review truth for characters.
 
+The separate CI part owns the GitHub workflow and pull request checks. This part contributes its
+character suites to `npm test` for that workflow to run.
+
 ## Verification record
 
 - `npm test` (rebased on the part 2 stage design gates): 874 pass, 0 fail, 3 pre-existing

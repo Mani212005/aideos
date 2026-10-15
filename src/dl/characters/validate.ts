@@ -108,8 +108,12 @@ export function validateCharacterSemantics(spec: CharacterSpec): { rig: Characte
     const triangles = parts.reduce((sum, part) => sum + triangleCount(part), 0);
     if (triangles > TRIANGLE_BUDGET) errors.push({ path: "parts", message: `draws ${triangles} triangles, over the ${TRIANGLE_BUDGET} budget; lower segments or radial on the largest parts` });
     if (parts.length > PART_BUDGET) errors.push({ path: "parts", message: `creates ${parts.length} meshes, over the ${PART_BUDGET} budget` });
+    const secondaryOwners = new Map<string, string>();
     spec.secondary.forEach((swing, i) => swing.parts.forEach((piece, j) => {
-      if (!partIds.has(piece.part)) errors.push({ path: `secondary[${i}].parts[${j}].part`, message: `unknown part "${piece.part}"` });
+      const path = `secondary[${i}].parts[${j}].part`;
+      if (!partIds.has(piece.part)) errors.push({ path, message: `unknown part "${piece.part}"` });
+      else if (secondaryOwners.has(piece.part)) errors.push({ path, message: `"${piece.part}" is already driven by ${secondaryOwners.get(piece.part)}` });
+      else secondaryOwners.set(piece.part, path);
     }));
   }
   return { rig, parts, errors };

@@ -3,9 +3,9 @@
  * Inputs and outputs: registry constants -> finite approved identities and resource fingerprints.
  * Used by: stage validation, compilation, Node resource integrity checks and scripts/freeze_stage_resources.ts.
  */
-export const STAGE_RESOURCE_HASH = "181b962ee4a8fd128fdf8242dbead1b5185646eb93e59974c8d36f83e9421805";
+export const STAGE_RESOURCE_HASH = "781dda66ebba7afb689b05b1894b97466835f39494531d4241730005dd981d2d";
 export const STAGE_RESOURCES = {
-  "src/dl/characters/expand.ts": "777bd07b050d09c20f70b63fc03edf91e5131fecbdbf19d86ac0f56bf4cec37e",
+  "src/dl/characters/expand.ts": "7a3e4e2c29a3c2b0012b3294f2b54a7c5995f466719f7497d81517b1b8ed9ff7",
   "src/dl/characters/rig.ts": "995e4d2c3bbde609f39153d8edf749b00bf4711e7cc5f9d791e2c62dc093a95f",
   "src/dl/scene/characters/geometry.ts": "1be9146b2172e5cd4e3c1c7dae163095801c0b19717d19f6b72c423365451f09",
   "src/dl/scene/characters/face.ts": "7f722aaa03c5c59ec6b7c6d578e6d3ab08f955a321b0608d6495ee67703b8f0f",
