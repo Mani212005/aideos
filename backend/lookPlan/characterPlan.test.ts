@@ -222,6 +222,8 @@ test("J10: LOOK.md says each performance in plain words and marks the decisive s
   assert.match(md, /\*\*receive-message\*\* \(receive-v1\): Iona \(character `iona` v1, hash `[0-9a-f]{12}`\) plays cast `iona` and catches `glider`/);
   assert.match(md, /the hand meets the glider on "catches" \(start of the word\) in shot `catch`/);
   assert.match(md, /`catch` \*\*scene\*\* \[carries: iona, glider\] \[performs: receive-message, contact on "catches"\]/);
+  assert.match(md, /Look check completed: schema, shot and cast ids, cast and character resolution, decisive phrases spoken once in their shots, and performance starts before decisive words\./);
+  assert.match(md, /Pending at design build: verify contact lands on the decisive word and projected geometry clears the wide and reel crops, caption band and inset\./);
   assert.match(md, /Not measured by any tool: face appeal, finger contact and final on-screen occlusion/);
   const plan = parseLookPlan(JSON.parse(fs.readFileSync(path.join(dir, "design/look.json"), "utf8")));
   assert.match(renderLookMd(plan), /character `iona` v1 \(hash `[0-9a-f]{12}`\)/, "without names it still says the id, version and hash");

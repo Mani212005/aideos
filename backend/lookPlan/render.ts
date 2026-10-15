@@ -23,7 +23,7 @@ function stageSection(plan: Extract<LookPlan, { schema: "aideos.look/2" }>, name
 
 ${plan.film.performances.map((p) => `- ${describePerformance(p, names)}`).join("\n")}
 
-Checked by tools: the character resolves to its checked spec, the decisive phrase is spoken in its shot, the contact frame lands on that word and posed geometry stays clear of the crop and captions in both formats. Not measured by any tool: face appeal, finger contact and final on-screen occlusion; judge those by eye with \`aideos character sheet\` and the rendered stills. Art references: src/dl/scene/rigs/NOTICE.md.`;
+Look check completed: schema, shot and cast ids, cast and character resolution, decisive phrases spoken once in their shots, and performance starts before decisive words. Pending at design build: verify contact lands on the decisive word and projected geometry clears the wide and reel crops, caption band and inset. Not measured by any tool: face appeal, finger contact and final on-screen occlusion; judge those by eye with \`aideos character sheet\` and the rendered stills. Art references: src/dl/scene/rigs/NOTICE.md.`;
 }
 
 // Formats seconds into m:ss clock format.
