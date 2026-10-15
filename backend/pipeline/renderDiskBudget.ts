@@ -177,7 +177,6 @@ export function sampleRenderFrames(
     composition: FORMAT_SPECS[format].composition,
     frames,
     gl: glFlag().replace("--gl=", ""),
-    imageFormat: "png",
     publicDir: publicDir?.dir ?? null,
     browserExecutable: options.browserExecutable ?? null,
   };
