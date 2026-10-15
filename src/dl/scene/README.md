@@ -210,6 +210,10 @@ appear twice in one frame without id collisions.
 ## Determinism
 
 - No `Date`, no `Math.random`, no CSS transitions, no SMIL. The frame index is the only time input.
+- `SceneClip.tsx` holds Remotion capture readiness across an SVG paint boundary after each frame
+  commit. Identical SVG DOM was insufficient for a cold capture: Still Talking frame 2773 could
+  rasterize its thin plate border differently before the first paint settled. Keep this barrier;
+  `backend/journeys/j9_svg_repeatability.journey.ts` exercises the original cold-render failure.
 - All emitted numbers are quantized to 4 decimal places, and `-0` is normalized to `0`.
 - `compileScene({ clockMs })` pins the diagnostic `meta.compiledAt` / `meta.compileTimeMs`, which
   makes the whole `CompiledScene` byte-identical across runs. Without it only `meta` differs.

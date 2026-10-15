@@ -9,7 +9,7 @@
  */
 
 import React from "react";
-import { useCurrentFrame } from "remotion";
+import { useCurrentFrame, useDelayRender } from "remotion";
 import type { Scene } from "./types";
 import type { CompileOptions, CompiledScene } from "./compile";
 import { compileScene } from "./compile";
@@ -38,6 +38,28 @@ function useSafeCurrentFrame(): number {
   } catch {
     return 0;
   }
+}
+
+/** Keeps captures behind a completed SVG paint, including cold mounts and frame changes. */
+function useSvgPaintReady(frame: number, scene: Scene, width?: number, height?: number): void {
+  const { delayRender, continueRender } = useDelayRender();
+  const [initial] = React.useState(() => delayRender(`SVG scene ${scene.sceneId} initial paint`));
+  React.useLayoutEffect(() => {
+    const handle = delayRender(`SVG scene ${scene.sceneId} frame ${frame} painted`);
+    // A frame callback runs before paint. The second callback crosses the first paint boundary;
+    // DOM commit alone let Chrome capture two raster variants of identical Still Talking SVG.
+    let pending = requestAnimationFrame(() => {
+      pending = requestAnimationFrame(() => {
+        continueRender(handle);
+        continueRender(initial);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(pending);
+      continueRender(handle);
+      continueRender(initial);
+    };
+  }, [frame, scene, width, height, delayRender, continueRender, initial]);
 }
 
 /**
@@ -70,6 +92,8 @@ export const SceneClip: React.FC<SceneClipProps> = ({
     compiled.durationFrames - 1,
     Math.max(0, frame - startFrame),
   );
+
+  useSvgPaintReady(localFrame, scene, width, height);
 
   return (
     <SceneView
