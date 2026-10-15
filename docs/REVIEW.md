@@ -18,6 +18,7 @@ rubric and writes `review.json` plus evidence frames. It is deterministic (same 
 needs only `ffmpeg`, `ffprobe` and `tesseract`, and works on any mp4, not just aideos films. It is
 the numbers layer: the Gemini review loop reads the same JSON as context and judges what numbers
 cannot (story, whether two things are the same object, whether an animation shows its claim).
+When film data is supplied, review expects the full-length rendered film; stage facts describe the whole timeline.
 
 ```bash
 aideos review hnsw-explainer                       # slug: finds videos/<slug>/renders/long.mp4 (or out/ fallback), film.json, voiceover_words.json

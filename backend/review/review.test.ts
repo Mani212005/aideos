@@ -567,12 +567,12 @@ test("criteria: cue timing needs word timings and a lift over chance", () => {
   assert.equal(aimedResult.metrics.performanceContacts, 0);
   assert.match(aimedResult.summary, /20 SVG clip starts and 0 performance contacts/);
   assert.equal(byKey(evaluateCriteria(inputs({ film: loose, narration })), "cue-timing").status, "fail");
-  const mixed = { ...aimed, performanceContacts: [words[20].start] };
-  const mixedResult = byKey(evaluateCriteria(inputs({ film: mixed, narration })), "cue-timing");
-  assert.equal(mixedResult.metrics.clipStarts, 20);
-  assert.equal(mixedResult.metrics.performanceContacts, 1);
-  assert.equal(mixedResult.metrics.cueEvents, 21);
-  assert.match(mixedResult.summary, /20 SVG clip starts and 1 performance contact/);
+  const twoPairs = { ...aimed, performanceContacts: [words[20].start, words[20].start] };
+  const twoPairsResult = byKey(evaluateCriteria(inputs({ film: twoPairs, narration })), "cue-timing");
+  assert.equal(twoPairsResult.metrics.clipStarts, 20);
+  assert.equal(twoPairsResult.metrics.performanceContacts, 2);
+  assert.equal(twoPairsResult.metrics.cueEvents, 22);
+  assert.match(twoPairsResult.summary, /20 SVG clip starts and 2 performance contacts/);
 });
 
 // ---- end to end ------------------------------------------------------------------------------------

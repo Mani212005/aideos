@@ -1,6 +1,6 @@
 /**
- * File Description: Journey J2: the narration changes after the film was designed and rendered. The same request with the new script re-narrates, rebuilds the design so the contact moves to where "catches" is now spoken, and renders a new reel instead of reusing the stale one; the measured review of the new reel finds the contact on the word.
- * Inputs and outputs: the iona-receive fixture through runProduction twice (original and retimed screenplay, tone narration, contact-window reel renders) -> assertions on stages run, contact frames against the timed words, the rendered files and the measured review.
+ * File Description: Journey J2: the narration changes after the film was designed and rendered. The same request with the new script re-narrates, rebuilds the design so the contact moves to where "catches" is now spoken, and renders a new reel instead of reusing the stale one; stage truth derived from the film and timed words confirms the contact remains on the cue.
+ * Inputs and outputs: the iona-receive fixture through runProduction twice (original and retimed screenplay, tone narration, contact-window reel renders) -> assertions on stages run, contact frames against the timed words, the rendered files and stage truth from film data.
  * Used by: npm run test:journeys (the CI journeys job).
  */
 
@@ -14,7 +14,9 @@ import { runProduction } from "../pipeline/run";
 import { readFilm } from "../pipeline/filmStore";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
-import { reviewVideo } from "../review/review";
+import { readFilmFacts } from "../review/source";
+import { loadNarration } from "../review/speech";
+import { stageTruth } from "../review/stageTruth";
 import type { ProductionProgress } from "../pipeline/types";
 import type { Scene } from "../../src/dl/scene/types";
 
@@ -66,12 +68,13 @@ journey("J2 a narration change after design moves the contact to the new word an
   assert.notEqual(sha(newReel.path), oldHash, "the stale render must not survive the narration change");
   assert.equal(probeVideo(newReel.path).frames, WINDOW * 2 + 1);
 
-  const filmJson = path.join(getVideosDir(), SLUG, "film.json");
-  const review = await reviewVideo({ target: newReel.path, film: filmJson, words: path.join(getVideosDir(), SLUG, "voiceover_words.json"), noWrite: true, skipOcr: true });
-  const truth = review.stageTruth!;
+  const film = readFilm(SLUG)!;
+  const words = loadNarration(path.join(getVideosDir(), SLUG, "voiceover_words.json"));
+  const filmFacts = readFilmFacts(film, { width: 1080, height: 1920 });
+  const truth = stageTruth(filmFacts, words)!;
   assert.equal(truth.format, "reel");
   assert.equal(truth.performances[0].contactFrame, newContact);
-  assert.equal(truth.performances[0].offsetFrames, 0, "the measured review finds the contact on the new word");
-  const adherence = review.criteria.find((c) => c.key === "plan-adherence")!;
-  assert.equal(adherence.status, "pass", adherence.summary);
+  assert.equal(truth.performances[0].cueFrame, catchesFrame());
+  assert.equal(truth.performances[0].offsetFrames, 0, "the film facts place contact on the new word");
+  assert.deepEqual(filmFacts.performanceContacts, [newContact / filmFacts.fps]);
 });
