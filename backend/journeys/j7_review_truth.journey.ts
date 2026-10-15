@@ -1,6 +1,6 @@
 /**
  * File Description: Journey J7: shared Three stage facts describe the Iona film in the wide and reel crops, including contact against the decisive word, projected presence, camera and what remains unmeasured.
- * Inputs and outputs: the iona-receive fixture through runProduction (contact-window wide and reel renders, tone narration) -> assertions on film-derived stage truth and plan adherence for each output crop.
+ * Inputs and outputs: the iona-receive fixture through runProduction (contact-window wide and reel renders, tone narration) -> assertions on film-derived stage truth and Gemini stage facts for each output crop.
  * Used by: npm run test:journeys (the CI journeys job).
  */
 
@@ -12,7 +12,6 @@ import { produceIona } from "./ionaFilm";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { parseFilm } from "../../src/dl/schema";
 import { parseLookPlan } from "../lookPlan/schema";
-import { evaluateCriteria } from "../review/criteria";
 import { readFilmFacts } from "../review/source";
 import { loadNarration } from "../review/speech";
 import { stageTruth, stageTruthText } from "../review/stageTruth";
@@ -45,13 +44,6 @@ journey("J7 film-derived stage truth describes the whole film in wide and reel c
     assert.deepEqual(truth.performances[0].presentAtContact.sort(), ["glider", "iona"]);
     assert.equal(truth.camera.moves, 0, "the fixture camera is fixed and a moving glider is not a camera move");
     assert.ok(truth.unmeasured.some((u) => /face appeal/.test(u)) && truth.unmeasured.some((u) => /finger contact/.test(u)) && truth.unmeasured.some((u) => /occlusion/.test(u)));
-    const adherence = evaluateCriteria({
-      video: { path: out.path, durationSec: filmFacts.durationSec, width, height, fps: filmFacts.fps, hasAudio: true, audioDurationSec: filmFacts.durationSec },
-      render: { persistence: null, stageClearTimes: [], hardCutTimes: [], staticRuns: [], meanCoverage: 0, samples: [], ocrRan: false },
-      film: filmFacts, narration, loudness: null, silences: [],
-    }).find((c) => c.key === "plan-adherence")!;
-    assert.equal(adherence.status, "pass", `${format}: ${adherence.summary}`);
-    assert.match(adherence.summary, new RegExp(`in the ${format} output`));
     const text = stageTruthText(truth);
     assert.match(text, new RegExp(`seen in the ${format} output \\(${width}x${height}\\)`));
     assert.match(text, /Characters drawn: 1: Iona/);

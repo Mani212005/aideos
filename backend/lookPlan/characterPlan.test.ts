@@ -151,6 +151,22 @@ test("J8: the decisive shot must list its performance, and the design performanc
   assert.match(findings(report, "error"), /design\.performances\.receive-message: the design performance's actor is character "marlo" but the look plans "iona"/);
 });
 
+test("J8: a prototype-named performance id still compares its design character", () => {
+  const designed = pkgWith((look) => {
+    const performance = look.film.performances[0];
+    const oldId = performance.id;
+    performance.id = "__proto__";
+    for (const shot of look.shots) shot.performances = shot.performances.map((id: string) => id === oldId ? performance.id : id);
+  }, (design) => {
+    design.assets.push({ id: "marlo", renderer: "three", kind: "character", character: "marlo", position: [1200, 1210], unitsToStage: 60, treatment: "cel-v1" });
+    design.performances[0].id = "__proto__";
+    design.performances[0].actor = "marlo";
+  });
+  const report = checkLookPlanById(designed.slug);
+  assert.equal(report.ok, false);
+  assert.match(findings(report, "error"), /design\.performances\.__proto__: the design performance's actor is character "marlo" but the look plans "iona"/);
+});
+
 test("J8: look performances cannot share an actor or a prop", () => {
   const sharedActor = pkgWith((look) => {
     const first = look.film.performances[0];

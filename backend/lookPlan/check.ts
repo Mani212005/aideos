@@ -60,7 +60,7 @@ export interface LookCheckContext {
   castTargets?: Set<string>;
   designPerformanceIds?: string[];
   /** Character id each design performance's actor asset names, by performance id. */
-  designPerformanceCharacters?: Record<string, string | undefined>;
+  designPerformanceCharacters?: Map<string, string | undefined>;
   /** Resolves a character id the way design build does (package, then library). */
   resolveCharacter?: (id: string) => ResolvedLookCharacter;
 }
@@ -175,8 +175,8 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed", context
           findings.push({ rule: "shot", severity: "error", where: `film.performances.${p.id}`, message: err instanceof Error ? err.message : String(err) });
         }
       }
-      const designCharacter = context.designPerformanceCharacters?.[p.id];
-      if (context.designPerformanceCharacters && Object.prototype.hasOwnProperty.call(context.designPerformanceCharacters, p.id) && designCharacter !== p.character.id) findings.push({ rule: "character", severity: "error", where: `design.performances.${p.id}`, message: `the design performance's actor is character "${designCharacter ?? "(none)"}" but the look plans "${p.character.id}".` });
+      const designCharacter = context.designPerformanceCharacters?.get(p.id);
+      if (context.designPerformanceCharacters?.has(p.id) && designCharacter !== p.character.id) findings.push({ rule: "character", severity: "error", where: `design.performances.${p.id}`, message: `the design performance's actor is character "${designCharacter ?? "(none)"}" but the look plans "${p.character.id}".` });
     }
     for (const shot of look.shots) for (const id of shot.performances) if (!performanceIds.has(id)) findings.push({ rule: "cast", severity: "error", where: shot.id, message: `unknown performance ${id}` });
     if (context.designPerformanceIds) {
@@ -499,11 +499,11 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
       const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as { assets?: Array<{ id?: string; file?: string; character?: string; asset?: string }>; performances?: unknown };
       if (Array.isArray(design.performances)) {
         const performanceIds: string[] = [];
-        const performanceCharacters: Record<string, string | undefined> = {};
+        const performanceCharacters = new Map<string, string | undefined>();
         design.performances.forEach((performance: unknown, index: number) => {
           const id = performance !== null && typeof performance === "object" ? (performance as { id?: unknown }).id : undefined;
           const actor = performance !== null && typeof performance === "object" ? (performance as { actor?: unknown }).actor : undefined;
-          if (typeof id === "string" && id.trim()) performanceCharacters[id] = plannedCharacterId((design.assets ?? []).find((asset) => asset.id === actor));
+          if (typeof id === "string" && id.trim()) performanceCharacters.set(id, plannedCharacterId((design.assets ?? []).find((asset) => asset.id === actor)));
           if (typeof id !== "string" || !id.trim()) {
             auxiliaryFindings.push({
               rule: "cast",
