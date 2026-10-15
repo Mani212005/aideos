@@ -118,7 +118,7 @@ test("Designer brief: a Three look's performance maps into a worked design/2 exa
     assert.deepEqual(example.performances[0], {
       id: "receive-message", action: "receive-v1", actor: "iona", prop: "glider", start: "approach",
       decisive: { shotId: "catch", phrase: "catches", edge: "start", event: "contact" },
-      targetOffset: [0, 0, 0], limits: "fail", afterState: "holding the message",
+      targetOffset: [0, 0, 0], limits: "fail", afterState: "message-received",
     });
     assert.match(section, /Keep `id`, `action`, `actor`, `prop`, `start`, `decisive` and `afterState` identical/);
   } finally {
