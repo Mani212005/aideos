@@ -91,7 +91,7 @@ test("J8: every nested object in look/2 rejects unknown fields while look/1 keep
     const parsed = safeParseLookPlan(candidate);
     if (parsed.success) assert.fail(`${where} unexpectedly accepted an unknown field`);
     const issues = parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("\n");
-    assert.match(issues, new RegExp(`${where.replaceAll(".", "\\.")}: Unrecognized key: "extra"`));
+    assert.match(issues, new RegExp(`${where.replace(/\./g, "\\.")}: Unrecognized key: "extra"`));
   }
 
   const legacy: Json = structuredClone(source);
