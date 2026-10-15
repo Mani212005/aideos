@@ -10,6 +10,7 @@ import path from "path";
 import { execSync } from "child_process";
 import dotenv from "dotenv";
 import type { Film } from "../src/dl/schema";
+import { getVideosDir } from "../src/dl/videoPackageLoader";
 import { produceAudioPipeline, buildFilmFromAudioResult } from "./audio";
 import { createEngine } from "./engine";
 import { runProduction } from "./pipeline/run";
@@ -103,7 +104,7 @@ program
 
       // Build transition SFX track if requested
       const sfxTrack = options.sfx
-        ? audioResult.segments.slice(1).map((seg, idx) => ({
+        ? audioResult.segments.slice(1).map((seg) => ({
             timeSec: Number(seg.startOffset.toFixed(3)),
             src: "transition.wav",
             volume: 0.8,
@@ -547,7 +548,7 @@ program
   .action(async (films: string[], options: { all?: boolean; stills?: boolean; json?: boolean }) => {
     const { checkFilmDesignById, formatDesignReport } = await import("./designCheck/designCheck");
     const { readdirSync, existsSync } = await import("node:fs");
-    const videosDir = path.join(__dirname, "../videos");
+    const videosDir = getVideosDir();
     const ids = options.all ? readdirSync(videosDir).filter((d) => existsSync(path.join(videosDir, d, "film.json"))) : films;
     if (ids.length === 0) throw new Error("name at least one film id, or pass --all");
     const reports = ids.map((id) => checkFilmDesignById(id));
@@ -604,7 +605,8 @@ program
 
     if (options.pairwise) {
       const logMsg = `Starting pairwise review: Video A (${video}) vs Video B (${options.pairwise})...`;
-      options.json ? console.error(logMsg) : console.log(logMsg);
+      if (options.json) console.error(logMsg);
+      else console.log(logMsg);
       const report = await reviewPairwise(video, options.pairwise, {
         onProgress: (msg) => options.json ? console.error(`  ${msg}`) : console.log(`  ${msg}`),
       });
@@ -631,7 +633,8 @@ program
     }
 
     const logMsg = `Reviewing video with Gemini 3.8 Flash: ${video}...`;
-    options.json ? console.error(logMsg) : console.log(logMsg);
+    if (options.json) console.error(logMsg);
+    else console.log(logMsg);
     const report = await reviewVideo(video, {
       filmPath: options.film,
       skipFacts: !options.facts,

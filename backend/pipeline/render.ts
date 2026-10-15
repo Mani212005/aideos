@@ -9,9 +9,11 @@
 
 import { execFileSync, spawn, spawnSync } from "child_process";
 import fs from "fs";
+import os from "os";
 import path from "path";
 import type { ProductionFormat, RenderedOutput } from "./types";
 import { ROOT } from "./filmStore";
+import { getExamplesDir, getVideosDir } from "../../src/dl/videoPackageLoader";
 
 /** Composition id and frame size for each deliverable format. */
 export const FORMAT_SPECS: Record<ProductionFormat, { composition: string; width: number; height: number }> = {
@@ -33,9 +35,112 @@ const ENCODE_FLAGS = [
   "--pixel-format=yuv420p",
   "--audio-codec=aac",
   "--audio-bitrate=320k",
-  "--gl=angle",
   "--log=error",
 ];
+
+/**
+ * The GL backend Remotion's headless Chrome uses. ANGLE is right on a Mac with a GPU. A CI runner
+ * has no GPU, so `AIDEOS_GL=swangle` selects the software rasterizer, which draws the same pixels
+ * on every machine and is what makes a rendered 3D frame comparable between runs.
+ */
+export function glFlag(env: NodeJS.ProcessEnv = process.env): string {
+  const gl = env.AIDEOS_GL?.trim() || "angle";
+  if (!/^[a-z-]+$/.test(gl)) throw new Error(`AIDEOS_GL must be a Remotion --gl value such as angle or swangle, got "${gl}"`);
+  return `--gl=${gl}`;
+}
+
+/**
+ * A Remotion public dir that serves `videos/<slug>/...` from wherever the packages really are.
+ * The tracked `public/videos` symlink only reaches `<repo>/videos`, so a run that moved its
+ * packages with AIDEOS_VIDEOS_DIR (every test, and anyone keeping videos elsewhere) rendered 404s
+ * for its own narration. Returns null when the default layout already works.
+ */
+export function stagePublicDir(
+  videosDir = getVideosDir(),
+  examplesDir = getExamplesDir(),
+  repoPublic = path.join(ROOT, "public"),
+): { dir: string; cleanup: () => void } | null {
+  const defaultVideos = path.join(ROOT, "videos");
+  if (path.resolve(videosDir) === path.resolve(defaultVideos)) return null;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-public-"));
+  const link = (target: string, name: string) => {
+    fs.rmSync(path.join(dir, name), { force: true });
+    fs.symlinkSync(target, path.join(dir, name));
+  };
+  if (fs.existsSync(repoPublic)) {
+    for (const entry of fs.readdirSync(repoPublic)) if (entry !== "videos") link(path.join(repoPublic, entry), entry);
+  }
+  // Packages in the moved dir win over the committed examples, the same precedence the loader uses.
+  const videosRoot = path.join(dir, "videos");
+  fs.mkdirSync(videosRoot);
+  for (const pool of [examplesDir, videosDir]) {
+    if (!fs.existsSync(pool)) continue;
+    for (const slug of fs.readdirSync(pool)) {
+      if (!fs.existsSync(path.join(pool, slug, "film.json"))) continue;
+      fs.rmSync(path.join(videosRoot, slug), { force: true });
+      fs.symlinkSync(path.join(pool, slug), path.join(videosRoot, slug));
+    }
+  }
+  return {
+    dir,
+    // Only symlinks live here, so each is unlinked rather than followed into the real folders.
+    cleanup: () => {
+      for (const sub of [videosRoot, dir]) {
+        for (const entry of fs.existsSync(sub) ? fs.readdirSync(sub) : []) {
+          const p = path.join(sub, entry);
+          if (fs.lstatSync(p).isSymbolicLink()) fs.unlinkSync(p);
+        }
+      }
+      fs.rmSync(videosRoot, { recursive: true, force: true });
+      fs.rmSync(dir, { recursive: true, force: true });
+    },
+  };
+}
+
+/** Free space a render must leave untouched, in bytes. The same 3 GiB floor the journeys use. */
+export const RENDER_RESERVE_BYTES = 3 * 1024 ** 3;
+/**
+ * Remotion keeps every PNG frame of one format in the temp dir until it has stitched them. A flat
+ * film measured about 0.85 MB per 1080p frame (the nightly render budget), but PNG size depends on
+ * the picture: full-frame, high-entropy imagery (film grain, footage, dense textures) approaches 3
+ * bytes per pixel. The guard uses that worst case, so it can refuse a render that would have fit
+ * but can never admit one that fills the disk. A three-minute 1080p film therefore needs about 30
+ * GiB free; render a shorter range (renderFrames) or free space when it refuses.
+ */
+export const PNG_WORST_CASE_BYTES_PER_PIXEL = 3;
+
+/** Worst-case temp bytes a render of `frames` frames at this size can write. */
+export function estimateRenderTempBytes(frames: number, width: number, height: number): number {
+  return Math.ceil(frames * width * height * PNG_WORST_CASE_BYTES_PER_PIXEL);
+}
+
+/** Thrown, with RENDER_DISK_LOW in the message, when a render would eat into the reserve. */
+export class RenderDiskError extends Error {
+  /** Names the folder, what the render needs and what is free. */
+  constructor(dir: string, needGiB: number, freeGiB: number) {
+    super(`RENDER_DISK_LOW: rendering needs about ${needGiB.toFixed(1)} GiB under ${dir} plus a ${(RENDER_RESERVE_BYTES / 1024 ** 3).toFixed(0)} GiB reserve but only ${freeGiB.toFixed(1)} GiB is free; free some space or render a shorter range (renderFrames)`);
+    this.name = "RenderDiskError";
+  }
+}
+
+/** Refuses to start a render whose temp frames would fill the disk; `statfs` is injectable for tests. */
+export function assertRenderDiskBudget(
+  frames: number,
+  width: number,
+  height: number,
+  dirs: string[] = [os.tmpdir()],
+  statfs: (p: string) => { bavail: number | bigint; bsize: number | bigint } = fs.statfsSync,
+): void {
+  const need = estimateRenderTempBytes(frames, width, height);
+  for (const dir of dirs) {
+    // The output folder may not exist yet; the disk it will be created on is the nearest folder that does.
+    let probe = dir;
+    while (!fs.existsSync(probe) && path.dirname(probe) !== probe) probe = path.dirname(probe);
+    const stat = statfs(probe);
+    const free = Number(stat.bavail) * Number(stat.bsize);
+    if (free < need + RENDER_RESERVE_BYTES) throw new RenderDiskError(dir, need / 1024 ** 3, free / 1024 ** 3);
+  }
+}
 
 /** Anything the render or verify stage wants to say while it works. */
 export type RenderLogger = (message: string, progress?: number) => void;
@@ -44,17 +149,21 @@ export type RenderLogger = (message: string, progress?: number) => void;
 export function renderFormat(
   format: ProductionFormat,
   outPath: string,
-  options?: { concurrency?: number; browserExecutable?: string; onLog?: RenderLogger },
+  options?: { concurrency?: number; browserExecutable?: string; frames?: [number, number]; onLog?: RenderLogger },
 ): Promise<RenderedOutput> {
   const spec = FORMAT_SPECS[format];
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
 
+  const publicDir = stagePublicDir();
   const args = [
     "remotion",
     "render",
     spec.composition,
     outPath,
     ...ENCODE_FLAGS,
+    ...(publicDir ? [`--public-dir=${publicDir.dir}`] : []),
+    glFlag(),
+    ...(options?.frames ? [`--frames=${options.frames[0]}-${options.frames[1]}`] : []),
     ...(options?.concurrency ? [`--concurrency=${options.concurrency}`] : []),
     ...(options?.browserExecutable ? [`--browser-executable=${options.browserExecutable}`] : []),
   ];
@@ -77,8 +186,12 @@ export function renderFormat(
 
     child.stdout.on("data", observe);
     child.stderr.on("data", observe);
-    child.on("error", reject);
+    child.on("error", (err) => {
+      publicDir?.cleanup();
+      reject(err);
+    });
     child.on("close", (code) => {
+      publicDir?.cleanup();
       if (code !== 0) {
         reject(new Error(`remotion render exited with code ${code}:\n${tail.trim()}`));
         return;
@@ -238,6 +351,9 @@ export function contactSheet(
       "-ss", t.toFixed(3),
       "-i", filePath,
       "-frames:v", "1",
+      // ffmpeg 7 and later refuse to write limited-range YUV (what yuv420p H.264 decodes to) as
+      // JPEG unless told the non-standard range is acceptable; the sheet is a viewing aid only.
+      "-strict", "unofficial",
       "-q:v", "2",
       framePath,
     ]);
@@ -249,6 +365,7 @@ export function contactSheet(
     "-i", path.join(dir, `${path.basename(outPath, path.extname(outPath))}-%02d.jpg`),
     "-filter_complex", `scale=${tileWidth}:-1,tile=${columns}x${rows}:margin=8:padding=8:color=0x1A1A1F`,
     "-frames:v", "1",
+    "-strict", "unofficial",
     "-q:v", "2",
     outPath,
   ]);

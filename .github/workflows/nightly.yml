@@ -1,0 +1,56 @@
+# File Description: Nightly heavier render of the Iona fixture film, wide and reel, with budgets on wall time, peak memory, temp disk and bundle size; runs on a schedule and on demand, never on pull requests.
+# Inputs and outputs: a cron schedule or a manual run -> a budget table in the job summary and the report as an artifact.
+# Used by: GitHub Actions. Documented in docs/CI.md.
+name: Nightly render budget
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CI: "true"
+  AIDEOS_GL: swangle
+
+jobs:
+  render-budget:
+    name: render-budget
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            editor/package-lock.json
+      - name: Install ffmpeg and browser libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg libnss3 libdbus-1-3 libatk1.0-0 libgbm-dev libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2
+      - name: Install dependencies
+        run: npm ci
+      - name: Restore the Remotion browser
+        id: remotion-browser
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.remotion
+          key: remotion-browser-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Download the Remotion browser
+        if: steps.remotion-browser.outputs.cache-hit != 'true'
+        run: npx remotion browser ensure
+      - name: Render within budget
+        run: npm run ci -- nightly
+      - name: Keep the budget report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-budget
+          path: .ci-artifacts/nightly
+          if-no-files-found: ignore
+          retention-days: 30

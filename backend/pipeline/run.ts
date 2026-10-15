@@ -18,6 +18,7 @@ import { writeLookMd } from "../lookPlan/render";
 import crypto from "crypto";
 import fs from "fs";
 import fsp from "fs/promises";
+import os from "os";
 import path from "path";
 import type { Film } from "../../src/dl/schema";
 import { ensureRetimedAudio, produceAudioPipeline, type ProduceAudioResult } from "../audio";
@@ -39,7 +40,7 @@ import {
   wireFootageIntoFilm,
   writeFilm,
 } from "./filmStore";
-import { analyseAudio, contactSheet, describeVideo, renderFormat, FORMAT_SPECS } from "./render";
+import { analyseAudio, assertRenderDiskBudget, contactSheet, describeVideo, renderFormat, FORMAT_SPECS } from "./render";
 import {
   PRODUCTION_STAGES,
   DESIGN_MODES,
@@ -629,6 +630,8 @@ export async function runProduction(
       assembled,
       formats,
       brollClips.map((c) => c.staticPath),
+      // Only a partial render changes the key, so every existing full-render cache stays valid.
+      ...(request.renderFrames ? [request.renderFrames] : []),
     );
 
     const outputs = await runStage<RenderedOutput[]>(
@@ -652,10 +655,14 @@ export async function runProduction(
             throw new Error(`Invalid format "${format}". Supported formats are: ${Object.keys(FORMAT_SPECS).join(", ")}`);
           }
           const outPath = request.outDir ? path.join(outDir, `${slug}-${format}.mp4`) : path.join(outDir, `${format}.mp4`);
+          // Remotion holds every frame of a format in the temp dir until it stitches them.
+          const frameCount = request.renderFrames ? request.renderFrames[1] - request.renderFrames[0] + 1 : Math.ceil(narration.totalAudioDuration * assembled.fps);
+          assertRenderDiskBudget(frameCount, FORMAT_SPECS[format].width, FORMAT_SPECS[format].height, [os.tmpdir(), outDir]);
           emit("render", "running", `rendering ${format} (${FORMAT_SPECS[format].width}x${FORMAT_SPECS[format].height})`);
           const output = await renderFormat(format, outPath, {
             concurrency: request.renderConcurrency,
             browserExecutable: request.browserExecutable,
+            frames: request.renderFrames,
             onLog: (message, progress) => emit("render", "running", message, progress),
           });
           produced.push(output);
@@ -687,7 +694,10 @@ export async function runProduction(
               `${output.format} rendered at ${output.width}x${output.height}, expected ${spec.width}x${spec.height}`,
             );
           }
-          const expected = narration.totalAudioDuration;
+          // A partial render (renderFrames) is only as long as the window it was asked for.
+          const expected = request.renderFrames
+            ? (request.renderFrames[1] - request.renderFrames[0] + 1) / assembled.fps
+            : narration.totalAudioDuration;
           if (Math.abs(output.durationSec - expected) > 1.0) {
             warnings.push(
               `${output.format} runs ${output.durationSec.toFixed(2)}s but the narration is ` +

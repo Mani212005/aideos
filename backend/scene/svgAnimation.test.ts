@@ -463,7 +463,7 @@ test("A-16: SceneClip renders the scene frame for the current composition frame"
   const scene = makeDemoScene();
   const assets = loadSceneAssets(scene);
 
-  const renderAt = (frame: number) =>
+  const renderAt = (_frame: number) =>
     ReactDOMServer.renderToStaticMarkup(
       React.createElement(SceneClip, {
         scene,

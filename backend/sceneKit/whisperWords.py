@@ -30,7 +30,13 @@ def main() -> None:
         words = []
         for segment in result["segments"]:
             for w in segment.get("words", []):
-                words.append({"word": w["word"].strip(), "start": round(start + float(w["start"]), 3), "end": round(start + float(w["end"]), 3)})
+                words.append(
+                    {
+                        "word": w["word"].strip(),
+                        "start": round(start + float(w["start"]), 3),
+                        "end": round(start + float(w["end"]), 3),
+                    }
+                )
         lines.append(words)
     with open(out_path, "w") as fh:
         json.dump(lines, fh)

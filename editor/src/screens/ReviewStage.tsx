@@ -102,7 +102,7 @@ export function ReviewStage({ film, project, api, onSelectShot, onSeekFrame }: R
     const pending = film.shots.filter((s) => s.needsFootage).length;
     if (pending > 0) list.push(`${pending} shot(s) are still waiting on generated B-roll footage.`);
     return list;
-  }, [coverage, drift, film.shots, project.validation]);
+  }, [coverage, drift, film.shots, film.voiceover?.src, project.validation]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 pb-6">

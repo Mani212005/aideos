@@ -94,3 +94,4 @@ examples/*/footage/
 # Gemini video review reports and round state
 videos/*/gemini-review/
 videos/*/review.json
+.ci-artifacts/

@@ -428,7 +428,7 @@ export function applyFilmPatch(film: Film, ops: FilmPatchOp[]): { film: Film; er
                 return { ...b, text: replaced !== b.text ? replaced : cleanNew };
               }
             } else if (b.c === "StatCounter") {
-              let updatedB = { ...b };
+              const updatedB = { ...b };
               let fieldModified = false;
               if (b.label && (b.label.toLowerCase().includes(oldLower) || oldLower.includes(b.label.toLowerCase()) || oldLower.includes("turning") || oldLower.includes("turing"))) {
                 fieldModified = true;

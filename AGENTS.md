@@ -253,8 +253,8 @@ camera motion smoother and move captions slightly upward.
 - `backend/timeline/voiceover_engine.ts` is imported by the browser bundle and must stay free of Node
   built-ins. ffmpeg-based waveform extraction lives in `backend/timeline/waveform.ts`; the editor
   fetches peaks via `/api/audio/peaks` and falls back to in-browser decoding (`editor/src/components/timeline/useAudioPeaks.ts`).
-- Every `backend/timeline/*.test.ts` file is wired into the root `npm test` script. Keep it that way:
-  suites that are not listed there silently rot.
+- `npm test` discovers every `backend/**/*.test.ts` and `scripts/**/*.test.ts` by glob, so a new suite is run
+  without wiring; `scripts/check_tests_wired.ts` (CI static job) fails for a test file no script would run.
 
 ## Frame safe areas and the palette guard
 
