@@ -12,12 +12,16 @@ import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { collectSvgElementIds, parseSvgDocument } from "../../src/dl/scene/svgDocument";
 import { loadCharacter } from "../characters/library";
+import { createCues, type Cues } from "../sceneKit";
+import { narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
+import { performanceStartIssue } from "../designSpec/cues";
 
 export type LookCheckRule =
   | "schema"
   | "character"
   | "treatment"
   | "shot"
+  | "timing"
   | "cast"
   | "carries"
   | "carry-over"
@@ -52,6 +56,7 @@ export interface ResolvedLookCharacter {
 /** Package inputs that let the checker validate ids and spoken cues before design authoring. */
 export interface LookCheckContext {
   film?: Film;
+  cues?: Cues;
   castTargets?: Set<string>;
   designPerformanceIds?: string[];
   /** Character id each design performance's actor asset names, by performance id. */
@@ -93,6 +98,11 @@ function countSpokenCue(narration: string, cue: string): number {
 // Checks whether a cue's normalized word sequence appears in the narration text.
 function containsSpokenCue(narration: string, cue: string): boolean {
   return countSpokenCue(narration, cue) > 0;
+}
+
+// An unmeasured performance start blocks PASS while remaining a warning.
+function lookCheckPassed(findings: LookCheckFinding[]): boolean {
+  return !findings.some((finding) => finding.severity === "error" || finding.rule === "timing");
 }
 
 // Checks a LookPlan against all deterministic look-plan rules.
@@ -147,6 +157,16 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed", context
       const spoken = context.film ? countSpokenCue(decisiveShot?.scriptText ?? "", p.decisive.phrase) : 1;
       if (spoken === 0) findings.push({ rule: "shot", severity: "error", where: p.id, message: `decisive phrase "${p.decisive.phrase}" is absent from the narration of shot "${p.decisive.shotId}"` });
       else if (spoken > 1) findings.push({ rule: "shot", severity: "error", where: p.id, message: `decisive phrase "${p.decisive.phrase}" is spoken ${spoken} times in shot "${p.decisive.shotId}" (ambiguous): use a longer phrase that is said only once` });
+      if (!context.cues) {
+        findings.push({ rule: "timing", severity: "warning", where: `film.performances.${p.id}.start`, message: `not checked yet: start-before-decisive timing for "${p.start}" needs measured narration word timings.` });
+      } else {
+        try {
+          const issue = performanceStartIssue(p, context.cues);
+          if (issue) findings.push({ rule: "shot", severity: "error", where: `film.performances.${p.id}.start`, message: issue });
+        } catch (err) {
+          findings.push({ rule: "shot", severity: "error", where: `film.performances.${p.id}`, message: err instanceof Error ? err.message : String(err) });
+        }
+      }
       const designCharacter = context.designPerformanceCharacters?.[p.id];
       if (context.designPerformanceCharacters && Object.prototype.hasOwnProperty.call(context.designPerformanceCharacters, p.id) && designCharacter !== p.character.id) findings.push({ rule: "character", severity: "error", where: `design.performances.${p.id}`, message: `the design performance's actor is character "${designCharacter ?? "(none)"}" but the look plans "${p.character.id}".` });
     }
@@ -382,7 +402,7 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed", context
 
   return {
     filmId,
-    ok: !findings.some((f) => f.severity === "error"),
+    ok: lookCheckPassed(findings),
     findings,
     stats: {
       shots: shotCount,
@@ -451,6 +471,17 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
         where: "film.json",
         message: `failed to parse film.json: ${msg}`,
       });
+    }
+  }
+
+  const wordsFile = path.join(pkgDir, "voiceover_words.json");
+  if (context.film && fs.existsSync(wordsFile)) {
+    try {
+      const words = (JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? []) as TimedWord[];
+      if (words.length) context.cues = createCues(narrationTimingForFilm(context.film, words), context.film.fps);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      auxiliaryFindings.push({ rule: "shot", severity: "error", where: "voiceover_words.json", message: `failed to parse timed narration: ${msg}` });
     }
   }
 
@@ -538,7 +569,7 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
       ...auxiliaryFindings,
       ...report.findings.filter((f) => !(f.severity === "warning" && errorPaths.has(f.where))),
     ];
-    report.ok = !report.findings.some((f) => f.severity === "error");
+    report.ok = lookCheckPassed(report.findings);
   }
   return report;
 }

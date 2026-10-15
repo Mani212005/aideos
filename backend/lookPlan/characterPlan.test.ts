@@ -8,7 +8,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { checkLookPlan, checkLookPlanById, packageCharacterResolver, type LookCheckReport } from "./check";
+import { checkLookPlan, checkLookPlanById, formatLookReport, packageCharacterResolver, type LookCheckReport } from "./check";
 import { availableCharacters, exampleStageLookPlan, renderLookBrief } from "./brief";
 import { renderLookMd, writeLookMd } from "./render";
 import { parseLookPlan, safeParseLookPlan } from "./schema";
@@ -17,6 +17,7 @@ import { parseFilm } from "../../src/dl/schema";
 import { characterHash } from "../../src/dl/characters/hash";
 import { characterSpecSchema } from "../../src/dl/characters/schema";
 import { rawSpec } from "../testSupport/characters";
+import { createCues } from "../sceneKit";
 
 const SOURCE = path.join(TEST_VIDEOS_DIR, "iona-receive");
 type Json = Record<string, any>;
@@ -161,11 +162,23 @@ test("J8: a decisive phrase spoken twice in its shot is refused by the look chec
 });
 
 test("J8: anticipation must start before the decisive word, checked against the measured narration", () => {
-  const { dir } = pkgWith((look) => { look.film.performances[0].start = "receipt"; });
+  const { slug, dir } = pkgWith((look) => { look.film.performances[0].start = "receipt"; });
+  const report = checkLookPlanById(slug);
+  assert.equal(report.ok, false);
+  assert.match(findings(report, "error"), /film\.performances\.receive-message\.start: starts at frame 180 on "receipt", not before its decisive contact on "catches" in shot "catch" at frame 111/);
   const film = parseFilm(JSON.parse(fs.readFileSync(path.join(dir, "film.json"), "utf8")));
   const checked = readCheckedLookPlan(film);
   assert.equal(checked.plan, undefined);
-  assert.match(checked.errors.join("\n"), /film\.performances\.receive-message\.start: starts at frame 180, not before its decisive contact on "catches" at frame 111/);
+  assert.match(checked.errors.join("\n"), /film\.performances\.receive-message\.start: starts at frame 180 on "receipt", not before its decisive contact on "catches" in shot "catch" at frame 111/);
+});
+
+test("J8: performance start timing stays unverified without measured narration words", () => {
+  const { slug, dir } = pkgWith((look) => { look.film.performances[0].start = "receipt"; });
+  fs.rmSync(path.join(dir, "voiceover_words.json"));
+  const report = checkLookPlanById(slug);
+  assert.equal(report.ok, false);
+  assert.match(findings(report, "warning"), /film\.performances\.receive-message\.start: not checked yet: start-before-decisive timing .*needs measured narration word timings/);
+  assert.match(formatLookReport(report), /^FAIL /);
 });
 
 test("J10: the look brief explains performances, lists every character with id, version and hash, and names the character commands", () => {
@@ -179,7 +192,14 @@ test("J10: the look brief explains performances, lists every character with id, 
   assert.match(brief, /Face appeal, finger contact and final on-screen occlusion are not measured/);
   // The worked example in the brief is itself a valid plan that pins a real character.
   const example = exampleStageLookPlan(iona());
-  const report = checkLookPlan(example, "example", { resolveCharacter: packageCharacterResolver(SOURCE) });
+  const report = checkLookPlan(example, "example", {
+    resolveCharacter: packageCharacterResolver(SOURCE),
+    cues: createCues({ totalDurationSec: 3, segments: [
+      { shotId: "beat-01", text: "travels", startSec: 0, durationSec: 1, words: [{ word: "travels", startSec: 0.2, endSec: 0.5 }] },
+      { shotId: "beat-02", text: "catches", startSec: 1, durationSec: 1, words: [{ word: "catches", startSec: 1.4, endSec: 1.7 }] },
+      { shotId: "beat-03", text: "acknowledgment", startSec: 2, durationSec: 1, words: [{ word: "acknowledgment", startSec: 2.2, endSec: 2.7 }] },
+    ] }, film.fps),
+  });
   assert.equal(report.ok, true, findings(report, "error"));
   assert.ok(!report.findings.some((f) => f.rule === "character"));
 });
