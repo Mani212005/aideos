@@ -411,13 +411,13 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ### `src/dl/scene/` (Custom SVG Animation & Scene Graph)
 * Deep reference documentation in [`src/dl/scene/README.md`](../src/dl/scene/README.md).
-* `types.ts`: TypeScript contracts for scene hierarchy, actors schema, environment assets, custom SVG animation timelines, and camera tracks (`CameraKeyframe`, `CameraTrack`); character rigs are not implemented.
+* `types.ts`: TypeScript contracts for scene hierarchy, actors schema, environment assets, custom SVG animation timelines, and camera tracks (`CameraKeyframe`, `CameraTrack`). Three.js character rigs use `src/dl/characters/` and are outside this SVG scene contract.
 * `svgAnimation.ts`: Declarative timeline types (`SvgAnimationClip`, `SvgAnimationTimeline`), easing curves, stagger calculations, validator (`validateSvgTimeline`), and compiler (`compileSvgTimeline`).
 * `svgDocument.ts`: Pure dependency-free SVG document parser (`parseSvgDocument`), element ID discovery (`collectSvgElementIds`), and bounds calculation.
 * `svgReact.tsx`: React SVG renderer (`renderSvgDocumentToReact`) with instance namespacing and per-frame element state transforms.
 * `SceneClip.tsx`: Remotion composition entry point with single compilation and current frame selection.
 * `sceneTiming.ts`: Audio-first retiming helpers (`framesForAudioMs`, `audioSyncDriftMs`, `alignSceneToAudio`, `retimeSvgTimeline`).
-* `SceneView.tsx`: Pure browser-safe SVG scene renderer for background and prop assets with camera transform support and no filesystem imports; character rigs are not supported.
+* `SceneView.tsx`: Pure browser-safe SVG scene renderer for background and prop assets with camera transform support and no filesystem imports; character rigs render through the separate Three stage.
 * `compile.ts`: Pure deterministic compiler (`compileScene`) threading custom animation timelines and camera tracks onto frames for environment assets (background and props).
 * `cameraTrack.ts`: Camera track compiler (`compileCameraTrack`) and motion stats (`measureCameraMotion`) measuring peak pan speed, per-frame zoom step, pan acceleration, hold share, and continuous move duration, exporting pacing constants (`MIN_CAMERA_HOLD_SHARE`, `MAX_CAMERA_CONTINUOUS_MOVE_SECONDS`, `CAMERA_CUE_LANDING_TOLERANCE_SECONDS`).
 * `validateScene.ts`: Semantic and physical integrity validator (`validateScene`) rejecting unsupported actor rigs (Rule 21) before enforcing scene integrity rules and Rule 20 timeline consistency.
