@@ -46,7 +46,7 @@ Journeys the brief's list missed, added here:
 
 | Risk | Mitigation and test |
 |---|---|
-| Overfitting to Iona: hardcoded joints, proportions, reach | the engine derives every length, reach, stance and grip from the spec; property tests retarget onto 200 randomly proportioned skeletons and check fixed bone lengths, planted soles, reach under the limit, joint limits, contact on the cue, seam continuity and seek order |
+| Overfitting to Iona: hardcoded joints, proportions, reach | the engine derives every length, reach, stance and grip from the spec; property tests retarget onto 180 randomly proportioned skeletons and check fixed bone lengths, planted soles, reach under the limit, joint limits, contact on the cue, seam continuity and seek order |
 | Iona's look drifts during promotion | CPU geometry equality between the spec build and the frozen legacy module (positions, normals, indices, UVs, materials, outline widths, hierarchy); in-browser pixel A/B between the two in the same run; production FilmView stills byte-identical to the merged slice |
 | Pixel tests differ between machines | the CPU geometry tests are the platform-independent gate; pixel comparisons run A/B inside one browser run, and the committed golden uses SwiftShader and a measured tolerance; browser tests skip when no Chrome is installed |
 | Unreachable target gives NaN or a pop | limits are enforced on the action before runtime so the solver's hard clamp never engages; fail policy throws a named error with limb, frame and distances; clamp policy edits sparse keys so motion stays C1; property tests assert finite states and continuous seams |
