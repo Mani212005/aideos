@@ -146,8 +146,8 @@ function enforceReach(action: ReceiveAction, rig: CharacterRig, policy: ReachPol
         if (d <= range.max + EPSILON && d >= range.min - EPSILON) continue;
         const kind = d > range.max && range.max >= range.reachMax - EPSILON ? "reach" : "bend";
         const field = kind === "reach" ? "limits.reach" : `limits.bend.${c.limb.startsWith("arm") ? "arm" : "leg"}`;
-        if (policy === "fail" || c.planted || iteration === CLAMP_ITERATIONS) {
-          const why = iteration === CLAMP_ITERATIONS ? " and clamping did not converge" : c.planted ? "; a planted foot cannot move, so change the proportions or the action" : "";
+        if (policy === "fail" || c.planted || iteration === CLAMP_ITERATIONS || d <= EPSILON) {
+          const why = d <= EPSILON ? `; target coincides with ${rig.limbs[c.limb].base}, so no finite clamp direction exists` : iteration === CLAMP_ITERATIONS ? " and clamping did not converge" : c.planted ? "; a planted foot cannot move, so change the proportions or the action" : "";
           throw new ReceiveRetargetError(field, `${c.limb} needs ${d.toFixed(4)} rig units from ${rig.limbs[c.limb].base} to its target at frame ${frame.toFixed(1)}, outside the allowed ${range.min.toFixed(4)} to ${range.max.toFixed(4)}${why}`);
         }
         const goal = d > range.max ? range.max * (1 - CLAMP_MARGIN) : range.min * (1 + CLAMP_MARGIN);

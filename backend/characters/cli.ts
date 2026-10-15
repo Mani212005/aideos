@@ -108,9 +108,8 @@ export function registerCharacterCommands(program: Command): void {
     .option("--out <dir>", "output directory (default .frames/characters/<id>)")
     .option("--placement <x,y,units>", "stage placement for the receive stills", placementOption)
     .option("--clamp", "clamp the receive to the character's limits instead of refusing it")
-    .option("--gpu", "use the GPU instead of software GL (faster, not reproducible across machines)")
-    .action(async (spec: string, options: { out?: string; placement?: { position: [number, number]; unitsToStage: number }; clamp?: boolean; gpu?: boolean }) => {
-      const result = await renderCharacterSheet(resolveSpecArgument(spec), { outDir: options.out, placement: options.placement, policy: options.clamp ? "clamp" : "fail", gpu: options.gpu });
+    .action(async (spec: string, options: { out?: string; placement?: { position: [number, number]; unitsToStage: number }; clamp?: boolean }) => {
+      const result = await renderCharacterSheet(resolveSpecArgument(spec), { outDir: options.out, placement: options.placement, policy: options.clamp ? "clamp" : "fail" });
       console.log(`${result.hashStatus}`);
       if (!result.retarget.ok) console.log(`receive-v1 not drawn: ${result.retarget.error}`);
       for (const w of result.retarget.warnings) console.log(`warn  ${w}`);

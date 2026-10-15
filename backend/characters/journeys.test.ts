@@ -113,6 +113,53 @@ test("J5: look plan and design build carry two characters through the same recei
   assert.match(validateStage(doubled).join("\n"), /prop glider is already owned by another performance/);
 });
 
+// Runs nine independent cast identities through look validation and the production design compiler.
+test("J5: nine performances across two character specs pass look check, design build and compile", () => {
+  const pkg = packageWith("marlo", (design, look) => {
+    const positions = [[650, 650], [960, 650], [1270, 650], [650, 930], [960, 930], [1270, 930], [650, 1210], [960, 1210], [1270, 1210]];
+    const assets: Json[] = [], performances: Json[] = [], cast: Json[] = [];
+    for (let i = 0; i < 9; i++) {
+      const actor = `actor-${i + 1}`, prop = `glider-${i + 1}`, character = i % 2 ? "iona" : "marlo";
+      assets.push({ id: actor, renderer: "three", kind: "character", character, position: positions[i], unitsToStage: 15, treatment: "cel-v1" });
+      assets.push({ id: prop, renderer: "three", kind: "prop", asset: "paper-glider-v1", treatment: "cel-v1" });
+      performances.push({ ...design.performances[0], id: `receive-${i + 1}`, actor, prop });
+      cast.push({ id: actor, renderer: "three", treatment: "cel-v1", what: `${character} performs receive ${i + 1}`, enters: "approach", changes: [{ at: "catch", how: `${character} catches and holds a glider in receive ${i + 1}.`, state: "message-received", magnitude: "major" }], character });
+      cast.push({ id: prop, renderer: "three", treatment: "cel-v1", asset: "paper-glider-v1", what: `Glider ${i + 1}`, enters: "approach", changes: [{ at: "catch", how: `Glider ${i + 1} becomes attached to its receiver.`, state: "message-received", magnitude: "major" }] });
+    }
+    design.assets = assets;
+    design.performances = performances;
+    look.film.stage = "Nine receives share an orthographic stage across two character specs.";
+    look.film.cast = cast;
+    look.film.performances = performances.map((performance) => ({ ...performance, carries: ["approach", "catch", "receipt"] }));
+    for (const shot of look.shots) {
+      shot.performances = performances.map((performance) => performance.id);
+      shot.carries = cast.map((item) => item.id);
+    }
+  });
+  const lookReport = checkLookPlanById(pkg.slug);
+  assert.equal(lookReport.ok, true, JSON.stringify(lookReport.findings));
+  const { status, film } = build(pkg.slug);
+  assert.equal(status.state, "passed", why(status));
+  const scene = film!.scene as Scene;
+  assert.equal(scene.performances!.length, 9);
+  assert.equal(new Set(scene.performances!.map((performance) => performance.actor)).size, 9);
+  assert.equal(new Set(scene.performances!.map((performance) => performance.prop)).size, 9);
+  assert.deepEqual(new Set(scene.cast!.filter((item) => item.kind === "character").map((item) => "character" in item ? item.character.id : "")), new Set(["iona", "marlo"]));
+  assert.equal(checkFilmDesign(film).ok, true);
+});
+
+// Exercises numeric frame cues through look validation and the production design compiler.
+test("numeric frame starts match between the look plan and design build", () => {
+  const pkg = packageWith("iona-library", (design, look) => {
+    design.performances[0].start = 60;
+    look.film.performances[0].start = 60;
+  });
+  const lookReport = checkLookPlanById(pkg.slug);
+  assert.equal(lookReport.ok, true, JSON.stringify(lookReport.findings));
+  const { status } = build(pkg.slug);
+  assert.equal(status.state, "passed", why(status));
+});
+
 test("J7: stage facts name each character by id, version, rig and hash, never by pasting the whole spec into a prompt", () => {
   const pkg = packageWith("marlo", (design) => { design.assets[0].unitsToStage = 70; design.assets[0].position = [960, 1220]; });
   const film = build(pkg.slug).film!;

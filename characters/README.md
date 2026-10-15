@@ -56,6 +56,9 @@ browser re-verifies that embedded copy before it draws anything, so a hand-edite
 refused rather than rendered. A P0 design that names `"asset": "iona-art-v1"` still builds and
 resolves to Iona.
 
+There is no separate performance-count cap. The design schema bounds a stage to 40 total assets
+and 1500 authored clips, which bound the package's stage workload.
+
 ## Field reference
 
 | Field | Meaning |

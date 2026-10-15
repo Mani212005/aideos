@@ -12,7 +12,7 @@ import { createPerformanceEvaluator } from "../../src/dl/performance/evaluate";
 import { critiquePerformance } from "../../src/dl/performance/critique";
 import { retargetReceive, ReceiveRetargetError } from "../../src/dl/performance/retarget";
 import { limbRange } from "../../src/dl/performance/limits";
-import { distance, point } from "../../src/dl/performance/math";
+import { distance, inverse, point, rotate, sub } from "../../src/dl/performance/math";
 import { rigFromCharacter } from "../../src/dl/characters/rig";
 import { validateCharacterSemantics } from "../../src/dl/characters/validate";
 import type { CharacterRig, PerformanceState, ReceiveAction } from "../../src/dl/performance/types";
@@ -99,6 +99,23 @@ test("an unreachable hand target fails with a named error, or clamps smoothly wi
   assert.ok(states.every((s) => Object.values(s.joints).every((t) => [...t.position, ...t.rotation].every(Number.isFinite))));
   const clean = frames(fitReceiveSpan(69, 0, 160, 30, [0, 0, 0], { rig, policy: "fail" }).action);
   assert.ok(maxStep(states, rig) <= maxStep(clean, rig) * 2, `clamped motion pops: ${maxStep(states, rig)} vs ${maxStep(clean, rig)}`);
+});
+
+// Reproduces the zero-distance clamp input through the public retarget function.
+test("a free hand target at its shoulder is refused by clamp with a named bend limit", () => {
+  const reference = createReceiveAction(69), frame = 45;
+  const state = createPerformanceEvaluator(IONA, reference)(frame);
+  const shoulder = state.joints.shoulderR.position;
+  const shoulderRoot = rotate(sub(shoulder, state.root.position), inverse(state.root.rotation));
+  const key = reference.constraints.find((constraint) => constraint.limb === "armR")!.target.find((target) => target.frame === frame)!;
+  const targetOffset = sub(shoulderRoot, key.value);
+  assert.throws(() => retargetReceive(reference, IONA, IONA, { policy: "clamp", targetOffset }), (err: unknown) => {
+    assert.ok(err instanceof ReceiveRetargetError);
+    assert.equal(err.field, "limits.bend.arm");
+    assert.match(err.message, /armR needs .* shoulderR to its target at frame 45\.0/);
+    assert.match(err.message, /target coincides with shoulderR, so no finite clamp direction exists/);
+    return true;
+  });
 });
 
 test("a planted foot that cannot stay planted is refused even under clamp, naming the limit", () => {

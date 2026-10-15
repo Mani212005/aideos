@@ -79,7 +79,7 @@ reviewed by eye.
 | Parts | `src/dl/characters/expand.ts`, `src/dl/scene/characters/` | mirror groups and limb, torso and hand generators expand into tube, head, panel and facets primitives; the builder makes cel geometry, ink outlines and the painted face; `applyCharacter` assigns every channel per frame |
 | Action | `src/dl/performance/retarget.ts`, `limits.ts`, `critique.ts` | the receive authored on Iona is fitted to any rig and checked by the independent critique, now including reach, joint limits and pole clearance |
 | Film | `backend/designSpec/{spec,compile,build}.ts`, `src/dl/scene/stageContract.ts` | design names `character: <id>`; build resolves package then library, verifies the hash and embeds the spec in `scene.cast`; P0 `asset: iona-art-v1` designs still build |
-| Stage | `ThreeStage.tsx`, `stageFacts.ts`, `stageMaterials.ts`, `validateStage.ts` | any number of performing characters, one receive and one glider each; the embedded spec is re-verified before any geometry is allocated; each performer's declared material colours come from its own spec palette plus its prop's |
+| Stage | `ThreeStage.tsx`, `stageFacts.ts`, `stageMaterials.ts`, `validateStage.ts` | no separate performance-count cap; the design allows up to 40 total stage assets and 1500 authored clips; the embedded spec is re-verified before any geometry is allocated; each performer's declared material colours come from its own spec palette plus its prop's |
 | Tools | `backend/characters/{library,cli,sheet}.ts` | `aideos character check|sheet` |
 
 Retargeting (`retargetReceive`): the hips crouch and sway scale by leg length so knees bend through

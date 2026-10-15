@@ -97,13 +97,13 @@ const legacyLookSchema = z.object({
 });
 
 /** Cue-level acting intention, independent of sparse poses and mesh geometry. */
-export const lookPerformanceSchema = z.strictObject({ id: z.string().min(1), action: z.literal("receive-v1"), actor: z.string().min(1), prop: z.string().min(1), start: z.string().min(1), decisive: decisiveSchema, afterState: z.string().min(1), carries: z.array(z.string()).min(1) });
+export const lookPerformanceSchema = z.strictObject({ id: z.string().min(1), action: z.literal("receive-v1"), actor: z.string().min(1), prop: z.string().min(1), start: z.union([z.string().min(1).max(120), z.number().int().min(0)]), decisive: decisiveSchema, afterState: z.string().min(1), carries: z.array(z.string()).min(1) });
 const stageLookSchema = legacyLookSchema.extend({
   schema: z.literal("aideos.look/2"),
   film: lookFilmSchema.extend({
     renderer: z.literal("three"),
     cast: z.array(lookCastItemSchema.extend({ renderer: z.enum(["svg", "three"]), character: z.string().regex(/^[a-z][a-z0-9-]*$/).optional(), asset: z.enum(["iona-art-v1", "paper-glider-v1"]).optional(), rig: z.literal("iona-v1").optional(), treatment: z.literal("cel-v1").optional() }).strict()).min(1),
-    performances: z.array(lookPerformanceSchema).min(1).max(8),
+    performances: z.array(lookPerformanceSchema).min(1),
   }).strict(),
   shots: z.array(lookShotSchema.extend({ performances: z.array(z.string()).default([]) }).strict()).min(1),
 }).strict();
