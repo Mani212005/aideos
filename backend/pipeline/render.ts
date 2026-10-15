@@ -15,18 +15,14 @@ import type { ProductionFormat, RenderedOutput } from "./types";
 import { ROOT } from "./filmStore";
 import { getExamplesDir, getVideosDir } from "../../src/dl/videoPackageLoader";
 
+/** Free space a render must leave untouched, in bytes. */
+export const RENDER_RESERVE_BYTES = 3 * 1024 ** 3;
+
 /** Composition id and frame size for each deliverable format. */
 export const FORMAT_SPECS: Record<ProductionFormat, { composition: string; width: number; height: number }> = {
   long: { composition: "Long", width: 1920, height: 1080 },
   reel: { composition: "Reel", width: 1080, height: 1920 },
 };
-
-/**
- * The still-image format and quality Remotion writes every frame in before it stitches them. The
- * disk guard samples frames with exactly these settings (backend/pipeline/renderDiskBudget.ts), so
- * changing them here changes the estimate with them. `jpegQuality` only applies to "jpeg".
- */
-export const RENDER_IMAGE: { format: "png" | "jpeg"; jpegQuality: number } = { format: "png", jpegQuality: 80 };
 
 /** Encoder settings shared by both formats. Tuned for text legibility, not for file size. */
 const ENCODE_FLAGS = [
@@ -37,8 +33,7 @@ const ENCODE_FLAGS = [
   // deprecated full-range variant, which players that assume limited range render with
   // crushed blacks - and this film is almost entirely black. Measured cost is under two
   // minutes on a three-minute film.
-  `--image-format=${RENDER_IMAGE.format}`,
-  ...(RENDER_IMAGE.format === "jpeg" ? [`--jpeg-quality=${RENDER_IMAGE.jpegQuality}`] : []),
+  "--image-format=png",
   "--crf=16",
   "--pixel-format=yuv420p",
   "--audio-codec=aac",
@@ -108,16 +103,23 @@ export function stagePublicDir(
 /** Anything the render or verify stage wants to say while it works. */
 export type RenderLogger = (message: string, progress?: number) => void;
 
-/** Renders one composition to an mp4, streaming Remotion's progress back to the caller. */
+/** Renders one composition to an mp4, streaming progress and stopping if the disk reserve is threatened. */
 export function renderFormat(
   format: ProductionFormat,
   outPath: string,
   options?: { concurrency?: number; browserExecutable?: string; frames?: [number, number]; onLog?: RenderLogger },
+  deps: {
+    spawn?: typeof spawn;
+    statfs?: (p: string) => { bavail: number | bigint; bsize: number | bigint };
+    pollIntervalMs?: number;
+    killProcess?: (child: ReturnType<typeof spawn>) => void;
+  } = {},
 ): Promise<RenderedOutput> {
   const spec = FORMAT_SPECS[format];
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
 
   const publicDir = stagePublicDir();
+  const renderTempDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-render-"));
   const args = [
     "remotion",
     "render",
@@ -132,8 +134,46 @@ export function renderFormat(
   ];
 
   return new Promise<RenderedOutput>((resolve, reject) => {
-    const child = spawn("npx", args, { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] });
+    const child = (deps.spawn ?? spawn)("npx", args, {
+      cwd: ROOT,
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: process.platform !== "win32",
+      env: { ...process.env, TMPDIR: renderTempDir, TMP: renderTempDir, TEMP: renderTempDir },
+    });
     let tail = "";
+    let diskError: Error | undefined;
+    let settled = false;
+
+    /** Removes only the temp directory created for this render and the staged public directory. */
+    const cleanup = () => {
+      clearInterval(watchdog);
+      publicDir?.cleanup();
+      fs.rmSync(renderTempDir, { recursive: true, force: true });
+    };
+
+    /** Stops the child as soon as either render disk approaches the protected reserve. */
+    const pollDisk = () => {
+      if (diskError) return;
+      for (const dir of [renderTempDir, path.dirname(outPath)]) {
+        let probe = dir;
+        while (!fs.existsSync(probe) && path.dirname(probe) !== probe) probe = path.dirname(probe);
+        const space = (deps.statfs ?? fs.statfsSync)(probe);
+        const freeBytes = Number(space.bavail) * Number(space.bsize);
+        if (freeBytes < RENDER_RESERVE_BYTES) {
+          diskError = new Error(`RENDER_DISK_LOW: render stopped because free space under ${dir} fell below the 3 GiB reserve`);
+          if (deps.killProcess) deps.killProcess(child);
+          else if (process.platform !== "win32" && child.pid) {
+            try {
+              process.kill(-child.pid, "SIGTERM");
+            } catch {
+              child.kill("SIGTERM");
+            }
+          } else child.kill("SIGTERM");
+          return;
+        }
+      }
+    };
+    const watchdog = setInterval(pollDisk, deps.pollIntervalMs ?? 3000);
 
     /** Remotion prints "Rendered 120/5400" style lines; surface them as fractional progress. */
     const observe = (chunk: Buffer) => {
@@ -150,11 +190,19 @@ export function renderFormat(
     child.stdout.on("data", observe);
     child.stderr.on("data", observe);
     child.on("error", (err) => {
-      publicDir?.cleanup();
+      if (settled) return;
+      settled = true;
+      cleanup();
       reject(err);
     });
     child.on("close", (code) => {
-      publicDir?.cleanup();
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (diskError) {
+        reject(diskError);
+        return;
+      }
       if (code !== 0) {
         reject(new Error(`remotion render exited with code ${code}:\n${tail.trim()}`));
         return;

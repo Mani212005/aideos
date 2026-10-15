@@ -1,6 +1,6 @@
 /**
- * File Description: The render disk guard. Remotion writes every frame of a format to the temp dir as an image file before it stitches the mp4 (measured: the frame count only ever grows until the render ends, then all of it is deleted), so a long render can fill the disk. The guard renders a few real frames of the actual film at its real size, image format and quality, measures the bytes each one wrote, and refuses the render only when frames x the largest sample x a safety factor, plus the encoded output, plus a 3 GiB reserve, would not fit in the free space.
- * Inputs and outputs: the film, a frame range, composition size, directories to check and (injectable) a sampler and statfs -> nothing when the render fits, or a RenderDiskError (RENDER_DISK_LOW) naming the sample, the estimate, the free space and the reserve.
+ * File Description: The render disk guard. Remotion writes every frame of a format to the temp dir as a PNG before it stitches the mp4, so a long render can fill the disk. The guard renders real PNG frames of the actual film, measures their bytes, and refuses the render only when frames x the largest sample x a safety factor, plus the encoded output estimate, plus a 3 GiB reserve, would not fit in the free space.
+ * Inputs and outputs: the film, a frame range, directories to check and (injectable) a sampler and statfs -> nothing when the render fits, or a RenderDiskError (RENDER_DISK_LOW) naming the sample, the estimate, the free space and the reserve.
  * Used by: backend/pipeline/run.ts (render stage), backend/journeys/harness.test.ts, backend/journeys/j12_render_disk.journey.ts, docs/CI.md.
  */
 
@@ -11,20 +11,17 @@ import path from "path";
 import { buildTimeline } from "../../src/dl/camera";
 import type { Film } from "../../src/dl/schema";
 import { ROOT } from "./filmStore";
-import { FORMAT_SPECS, RENDER_IMAGE, glFlag, stagePublicDir } from "./render";
+import { FORMAT_SPECS, RENDER_RESERVE_BYTES, glFlag, stagePublicDir } from "./render";
+export { RENDER_RESERVE_BYTES } from "./render";
 import type { ProductionFormat } from "./types";
 
 const GIB = 1024 ** 3;
 const MIB = 1024 ** 2;
 
-/** Free space a render must leave untouched, in bytes. A hard floor: no estimate may eat into it. */
-export const RENDER_RESERVE_BYTES = 3 * GIB;
-
 /**
  * Multiplier on the largest sampled frame. Frames differ (a dense shot, a full-zoom camera), and
- * five samples cannot see them all, so the frame term assumes every frame is twice the heaviest
- * one measured. Real films sit well under that: the heaviest sample is already picked from the
- * densest shot and the tightest camera zoom.
+ * samples cannot see them all, so the frame term assumes every frame is twice the heaviest one
+ * measured. Footage films sample across the timeline every two seconds, up to 40 frames.
  */
 export const RENDER_FRAME_SAFETY_FACTOR = 2;
 
@@ -36,12 +33,11 @@ export const RENDER_FRAME_SAFETY_FACTOR = 2;
 export const RENDER_FIXED_OVERHEAD_BYTES = 128 * MIB;
 
 /**
- * Ceiling for the encoded mp4 at 1080p x 1920 (the pixel count it is scaled by). The render uses
- * h264 at crf 16, which on this design language (flat fills, hairlines, type) lands at a few
- * Mbps; 20 Mbps is the busy-footage ceiling. Audio is AAC at 320 kbps.
+ * Encoded output estimate: one quarter of the estimated frame bytes, capped at 8 GiB. CRF has no
+ * bitrate ceiling, so this scales with measured image complexity instead of assuming one.
  */
-const ENCODED_VIDEO_BYTES_PER_SEC_1080P = (20_000_000 / 8);
-const ENCODED_AUDIO_BYTES_PER_SEC = 320_000 / 8;
+const OUTPUT_FRACTION_OF_FRAME_BYTES = 0.25;
+const OUTPUT_UPPER_BOUND_BYTES = 8 * GIB;
 
 /** Largest number of frames sampled: an even spread plus the densest shot plus the tightest zoom. */
 const SPREAD_SAMPLES = 5;
@@ -63,9 +59,6 @@ export interface RenderSample {
 export interface RenderEstimateInput {
   /** Frames the render will write. */
   frames: number;
-  fps: number;
-  width: number;
-  height: number;
   /** Bytes of the heaviest sampled frame. */
   maxFrameBytes: number;
 }
@@ -74,7 +67,7 @@ export interface RenderEstimateInput {
 export interface RenderEstimate {
   /** Frames x heaviest sampled frame x the safety factor. */
   frameBytes: number;
-  /** Ceiling for the encoded mp4. */
+  /** Estimated encoded mp4, capped at 8 GiB. */
   outputBytes: number;
   /** Bundle, browser profiles and other fixed temp. */
   overheadBytes: number;
@@ -85,9 +78,7 @@ export interface RenderEstimate {
 /** Estimated peak bytes of a render: every frame at the heaviest sampled size (times the safety factor), the mp4 and the fixed overhead. */
 export function estimateRenderTempBytes(input: RenderEstimateInput): RenderEstimate {
   const frameBytes = Math.ceil(input.frames * input.maxFrameBytes * RENDER_FRAME_SAFETY_FACTOR);
-  const seconds = input.frames / input.fps;
-  const pixelScale = (input.width * input.height) / (1920 * 1080);
-  const outputBytes = Math.ceil(seconds * (ENCODED_VIDEO_BYTES_PER_SEC_1080P * pixelScale + ENCODED_AUDIO_BYTES_PER_SEC));
+  const outputBytes = Math.min(OUTPUT_UPPER_BOUND_BYTES, Math.ceil(frameBytes * OUTPUT_FRACTION_OF_FRAME_BYTES));
   const overheadBytes = RENDER_FIXED_OVERHEAD_BYTES;
   return { frameBytes, outputBytes, overheadBytes, totalBytes: frameBytes + outputBytes + overheadBytes };
 }
@@ -121,16 +112,16 @@ export type StatFs = (p: string) => { bavail: number | bigint; bsize: number | b
 
 /**
  * Refuses a render whose estimated peak plus the reserve does not fit in the free space of every
- * directory it writes to. The estimate is compared in full against each directory, which
- * over-counts only when they are different disks and then by the small mp4 term.
+ * directory it writes to. The full estimate is compared against each directory, which is
+ * conservative when the temp and output folders are on different disks.
  */
 export function assertRenderDiskBudget(
-  input: { frames: number; fps: number; sample: RenderSample; dirs?: string[]; statfs?: StatFs },
+  input: { frames: number; sample: RenderSample; dirs?: string[]; statfs?: StatFs },
 ): RenderEstimate {
-  const { sample, frames, fps } = input;
+  const { sample, frames } = input;
   if (sample.frames.length === 0) throw new Error("RENDER_SAMPLE_FAILED: no frame was sampled, so the render's disk need cannot be measured");
   const maxFrameBytes = Math.max(...sample.frames.map((f) => f.bytes));
-  const estimate = estimateRenderTempBytes({ frames, fps, width: sample.width, height: sample.height, maxFrameBytes });
+  const estimate = estimateRenderTempBytes({ frames, maxFrameBytes });
   const statfs = input.statfs ?? fs.statfsSync;
   for (const dir of input.dirs ?? [os.tmpdir()]) {
     // The output folder may not exist yet; the disk it will be created on is the nearest folder that does.
@@ -145,13 +136,15 @@ export function assertRenderDiskBudget(
   return estimate;
 }
 
-/**
- * Picks the frames to sample inside `range`: an even spread across the timeline, the middle of the
- * shot with the most blocks (the densest picture) and the frame of the tightest camera zoom (a
- * scene camera keyframe, else the shot with the largest `zoom`). Sorted and without duplicates.
- */
+/** Picks spread frames, plus the densest shot and tightest zoom; footage uses a denser timeline sample. */
 export function pickSampleFrames(film: Film, range: [number, number], spread = SPREAD_SAMPLES): number[] {
   const [first, last] = range;
+  if (film.videoClips?.length) {
+    const interval = Math.max(1, Math.round(film.fps * 2));
+    const dense = Array.from({ length: Math.floor((last - first) / interval) + 1 }, (_, i) => first + i * interval);
+    if (dense.length <= 40) return dense;
+    return Array.from({ length: 40 }, (_, i) => dense[Math.round((i * (dense.length - 1)) / 39)]);
+  }
   const picks = new Set<number>();
   const clamp = (f: number) => Math.min(last, Math.max(first, Math.round(f)));
   for (let i = 0; i < spread; i++) picks.add(clamp(first + ((i + 0.5) / spread) * (last - first + 1)));
@@ -184,8 +177,7 @@ export function sampleRenderFrames(
     composition: FORMAT_SPECS[format].composition,
     frames,
     gl: glFlag().replace("--gl=", ""),
-    imageFormat: RENDER_IMAGE.format,
-    jpegQuality: RENDER_IMAGE.jpegQuality,
+    imageFormat: "png",
     publicDir: publicDir?.dir ?? null,
     browserExecutable: options.browserExecutable ?? null,
   };
@@ -234,7 +226,6 @@ export async function checkRenderDiskBudget(input: {
   const sample = await (input.sampler ?? ((f, frames) => sampleRenderFrames(f, frames, { browserExecutable: input.browserExecutable })))(input.format, picks);
   return assertRenderDiskBudget({
     frames: input.range[1] - input.range[0] + 1,
-    fps: input.film.fps,
     sample,
     dirs: input.dirs,
     statfs: input.statfs,

@@ -56,17 +56,18 @@ Rendering tests rewrite the generated `src/dl/activeFilm.ts`, so they run sequen
 (`--test-concurrency=1`) and every harness restores the file afterwards. Check disk first: the
 journey harness refuses to start below 3 GiB free (`AIDEOS_JOURNEY_MIN_FREE_GIB`), and the pipeline
 refuses a render that would eat into that reserve (`RENDER_DISK_LOW`). Remotion writes every frame of a
-format to the temp dir as an image file (PNG, see `RENDER_IMAGE` in `backend/pipeline/render.ts`) and
-deletes them only after stitching the mp4 (measured: the file count only grows until the render ends), so
-the guard (`backend/pipeline/renderDiskBudget.ts`) renders about seven real frames of the actual film at
-its real size, format and quality (an even spread, the densest shot and the tightest camera zoom) in a
-child process, and estimates the peak as `frames x the largest sampled frame x 2` plus a ceiling for the
-encoded mp4 plus 128 MiB of fixed bundle and browser temp. The render starts only if that plus the 3 GiB
-reserve fits in the free space of the temp and output folders. Real frames are 0.1 to 0.5 MB, so a
-54 second 1080p film needs under 2 GiB, not the 10 GiB a 3 bytes per pixel worst case implied. The
-error names the heaviest sampled frame, the estimate, the free space and the reserve; render a shorter
-range (`renderFrames`) or free space when it refuses. Sampling costs one extra bundle and browser start
-per format (about 15 seconds). There is no override variable: tests inject a fake sampler and `statfs`.
+format to the temp dir as a PNG and deletes them only after stitching the mp4, so the guard
+(`backend/pipeline/renderDiskBudget.ts`) measures real frames in a child process. Scene films sample an
+even spread plus the densest shot and tightest camera zoom. Films with full-bleed footage sample about
+every two seconds, capped at 40 frames. The estimate uses `frames x the largest sampled frame x 2`, an
+encoded output estimate of 25% of that frame estimate capped at 8 GiB, and 128 MiB of fixed bundle and
+browser temp. The render starts only if that plus the 3 GiB reserve fits in the free space of the temp
+and output folders. During rendering, a watchdog stops the process and removes its owned temp directory
+if either disk falls below the reserve. The guard keeps typical scene films within the measured range:
+a 54 second 1080p film with 0.1 to 0.3 MB sampled frames is estimated below 1.5 GiB. The error names
+the heaviest sampled frame, estimate, free space and reserve; render a shorter range (`renderFrames`)
+or free space when it refuses. Sampling costs one extra bundle and browser start per format (about 15
+seconds). There is no override variable: tests inject a fake sampler and `statfs`.
 
 ## User journeys and what protects each
 

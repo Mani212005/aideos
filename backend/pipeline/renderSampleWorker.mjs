@@ -1,6 +1,6 @@
 /**
- * File Description: Renders a few real frames of the active film with the same Remotion bundle, GL backend, image format and quality as the final render, and reports how many bytes each one wrote. It is a plain `node` ESM child, like kokoroWorker.mjs, so the editor dev server (which imports the pipeline) never bundles Remotion's bundler or renderer.
- * Inputs and outputs: one JSON request in argv[2] ({composition, frames, gl, imageFormat, jpegQuality, publicDir?, browserExecutable?}) -> one JSON line on stdout ({width, height, durationInFrames, frames: [{frame, bytes}]}); every temp bundle, still and browser is released before it exits.
+ * File Description: Renders a few real PNG frames of the active film with the same Remotion bundle and GL backend as the final render, and reports how many bytes each one wrote. It is a plain `node` ESM child, like kokoroWorker.mjs, so the editor dev server (which imports the pipeline) never bundles Remotion's bundler or renderer.
+ * Inputs and outputs: one JSON request in argv[2] ({composition, frames, gl, publicDir?, browserExecutable?}) -> one JSON line on stdout ({width, height, durationInFrames, frames: [{frame, bytes}]}); every temp bundle, still and browser is released before it exits.
  * Used by: backend/pipeline/renderDiskBudget.ts (sampleRenderFrames).
  */
 
@@ -31,14 +31,13 @@ async function main() {
     const frames = [];
     for (const requested of request.frames) {
       const frame = Math.min(Math.max(0, requested), composition.durationInFrames - 1);
-      const output = path.join(work, `frame-${frame}.${request.imageFormat === "jpeg" ? "jpg" : "png"}`);
+      const output = path.join(work, `frame-${frame}.png`);
       await renderStill({
         composition,
         serveUrl,
         frame,
         output,
-        imageFormat: request.imageFormat,
-        ...(request.imageFormat === "jpeg" ? { jpegQuality: request.jpegQuality } : {}),
+        imageFormat: "png",
         puppeteerInstance: browser,
         chromiumOptions,
         overwrite: true,
