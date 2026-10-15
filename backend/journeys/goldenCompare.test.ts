@@ -6,6 +6,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -30,7 +31,11 @@ function fixture(): { dir: string; goldenDir: string; manifestPath: string; rend
     png(path.join(renderedDir, name), color);
   }
   const manifestPath = path.join(goldenDir, "MANIFEST.json");
-  fs.writeFileSync(manifestPath, JSON.stringify({ platform: "linux-x64", frames: [{ name: "film/a.png" }, { name: "film/b.png" }] }));
+  const frames = ["film/a.png", "film/b.png"].map((name) => ({
+    name,
+    sha256: createHash("sha256").update(fs.readFileSync(path.join(goldenDir, name))).digest("hex"),
+  }));
+  fs.writeFileSync(manifestPath, JSON.stringify({ platform: "linux-x64", frames }));
   const rendered = new Map(["film/a.png", "film/b.png"].map((n) => [n, path.join(renderedDir, n)]));
   return { dir, goldenDir, manifestPath, rendered };
 }
@@ -65,6 +70,18 @@ test("once a manifest exists a changed frame fails, names the frame and hands it
     assert.equal(outcome.status, "failed");
     assert.match(outcome.status === "failed" ? outcome.failures.join("\n") : "", /film\/b\.png: .*% of pixels changed/);
     assert.deepEqual(changed, ["film/b.png"]);
+  } finally {
+    fs.rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("a golden whose bytes do not match its manifest hash fails by name", () => {
+  const f = fixture();
+  try {
+    png(path.join(f.goldenDir, "film/a.png"), "maroon");
+    const outcome = compareGoldens({ ...f, platform: "linux-x64" });
+    assert.equal(outcome.status, "failed");
+    assert.match(outcome.status === "failed" ? outcome.failures.join("\n") : "", /film\/a\.png: SHA-256 does not match manifest/);
   } finally {
     fs.rmSync(f.dir, { recursive: true, force: true });
   }

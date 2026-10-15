@@ -127,3 +127,7 @@ test("J8 a cue phrase spoken twice in one shot is rejected as ambiguous", { todo
 test("J8 rendering with no WebGL ends in a named error, never a blank frame", { todo: "needs a render with WebGL disabled; Remotion's CLI has no flag for it, so this needs a stage-level readiness error to assert on" }, () => {
   assert.fail("not implemented");
 });
+
+test("J3 the Studio Player preview frame matches the exported frame", { todo: "needs a Player-versus-export pixel comparison at composition size" }, () => {});
+
+test("J5 the same action runs on second and third data-defined characters", { todo: "depends on the general character data format and additional character fixtures" }, () => {});

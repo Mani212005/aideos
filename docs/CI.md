@@ -64,9 +64,9 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 | --- | --- | --- |
 | J1 make a film with a character end to end | `j1_pipeline.journey.ts`: the real `runProduction` (tone narration, null engine, no key or GPU), look and design authored from the iona-receive fixture, wide and reel rendered, size, fps, frame count, audio and a drawn (not flat) contact frame asserted | journey |
 | J2 narration changes after design, stale work not reused | `backend/pipeline/pipeline.test.ts` (existing: retime refreshes base-film, forced upstream reopens downstream) | feature |
-| J3 scrub, save, reload, preview equals export | `scripts/smoke_studio.ts` (keyboard scrub forwards and back with exact frame readout, same picture on return, split, autosave, reload keeps the edit); `j1_pipeline.journey.ts` (a frame rendered by a concurrent out-of-order export equals the same frame rendered cold, byte for byte, wide and reel) | journey |
+| J3 scrub, save, reload, preview equals export | `scripts/smoke_studio.ts` (keyboard scrub forwards and back with exact frame readout, same picture on return, split, autosave, reload keeps the edit); export-versus-cold equality (wide and reel); Player-versus-export pixel comparison is a named `todo` journey | journey, todo |
 | J4 reel crop keeps character and prop clear of captions | `j1_pipeline.journey.ts`: projected character and prop bounds, every frame from approach to recovery, inside the frame and above the caption band in wide and reel; glider attached at the decisive frame | journey |
-| J5 second and third character, same action | not yet: part 1 owns the character data format; add the cases to this harness | - |
+| J5 second and third character, same action | named `todo` journey: part 1 owns the character data format and additional character fixtures | todo |
 | J6 resume reopens exactly the right stages | `pipeline.test.ts` (existing); `renderFrames` is part of the render fingerprint | feature |
 | J7 reviews see the 3D stage truthfully | `stage.test.ts` and `review.test.ts` (existing); part 4 adds journey cases | feature |
 | J8 failures give a named error | `j8_failures.journey.ts`: a phrase not spoken, an unknown shot and missing artwork are each named and write no film; a failed design stops the run with no mp4; an unreachable hand target gives finite numbers and a failed grip check; three known gaps are `todo` (below) | journey |
@@ -180,17 +180,19 @@ description and in the timing table at the end of every run.
 
 ## Known gaps (found while building this suite)
 
-CI does not fully cover J8 and J10 until these `todo` cases are fixed. `npm run ci` lists each
-case by name and count in the journey summary table and emits a warning annotation and job-summary
-note.
+CI does not fully cover J3, J5, J8 and J10 until these `todo` cases are fixed. `npm run ci` lists
+each case by name and count in the journey summary table and emits a warning annotation and
+job-summary note.
 
 * `J10 an unknown field in design.json is reported by field name` currently receives the generic
   `design.json (root): Invalid input` error.
 * `J8 a cue phrase spoken twice in one shot is rejected as ambiguous` currently binds the first
   occurrence.
-* There is no way to run a render with WebGL disabled to assert a named error (Remotion's CLI has no
-  such flag); the stage needs a readiness error that a test can provoke. Its journey test is also
-  `todo` and appears in the same CI known-gap report.
-* A Player-vs-export pixel comparison (J3) needs the studio Player drawn at composition size.
+* `J8 rendering with no WebGL ends in a named error, never a blank frame` needs a stage-level
+  readiness error that a test can provoke because Remotion's CLI has no WebGL-disabled flag.
+* `J3 the Studio Player preview frame matches the exported frame` needs the Player drawn at
+  composition size for a pixel comparison.
+* `J5 the same action runs on second and third data-defined characters` needs the character data
+  format and additional character fixtures.
 * About 70 `any` annotations remain in files listed in the `LEGACY_ANY` ledger in `eslint.config.mjs`
   (shrink-only: fix and delete the entry when you touch one).

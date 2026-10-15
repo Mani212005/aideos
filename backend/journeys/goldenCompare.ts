@@ -6,6 +6,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { decodeFrame, frameDiff } from "./harness";
 import type { GoldenOutcome } from "./goldenResult";
 
@@ -29,7 +30,7 @@ export function compareGoldens(inputs: CompareInputs): GoldenOutcome {
   if (!fs.existsSync(inputs.manifestPath)) {
     return { status: "not-covered", reason: `no CI-made goldens are committed (${path.basename(inputs.manifestPath)} is absent), so no legacy frame was compared` };
   }
-  const manifest = JSON.parse(fs.readFileSync(inputs.manifestPath, "utf8")) as { platform: string; frames: Array<{ name: string }> };
+  const manifest = JSON.parse(fs.readFileSync(inputs.manifestPath, "utf8")) as { platform: string; frames: Array<{ name: string; sha256: string }> };
   const failures: string[] = [];
   if (manifest.platform !== inputs.platform) {
     return { status: "failed", failures: [`goldens were made on ${manifest.platform} but this is ${inputs.platform}; regenerate them with the update-goldens workflow on this platform`] };
@@ -43,6 +44,12 @@ export function compareGoldens(inputs: CompareInputs): GoldenOutcome {
     const golden = path.join(inputs.goldenDir, name);
     if (!fs.existsSync(golden)) {
       failures.push(`${name}: listed in the manifest but missing on disk`);
+      continue;
+    }
+    const expectedHash = manifest.frames.find((frame) => frame.name === name)?.sha256;
+    const actualHash = createHash("sha256").update(fs.readFileSync(golden)).digest("hex");
+    if (actualHash !== expectedHash) {
+      failures.push(`${name}: SHA-256 does not match manifest`);
       continue;
     }
     const actual = inputs.rendered.get(name)!;
