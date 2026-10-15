@@ -1,7 +1,7 @@
 /**
  * File Description: A small headless-Chrome driver for studio journeys, over the DevTools protocol with no extra dependency: it starts the editor dev server on a throwaway videos folder, opens the studio like a user would, and offers real keyboard, click, screenshot and wait calls while collecting every uncaught error and console.error.
  * Inputs and outputs: a videos directory and a Chrome binary -> a connected Studio page that journeys drive; stop() kills Chrome, the dev server and removes the temp profile.
- * Used by: scripts/smoke_studio.ts, and any later studio journey (scrub, save, reload) that needs a real browser.
+ * Used by: scripts/smoke_studio.ts and backend/journeys/j3_studio_edit.journey.ts (AI edit apply, new project, script save, reload).
  */
 
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
@@ -149,7 +149,27 @@ interface CdpMessage {
   id?: number;
   result?: CdpResult;
   method?: string;
-  params?: { type?: string; args?: Array<{ value?: unknown; description?: string }>; exceptionDetails?: CdpResult["exceptionDetails"] };
+  params?: {
+    type?: string;
+    args?: Array<{ value?: unknown; description?: string }>;
+    exceptionDetails?: CdpResult["exceptionDetails"];
+    requestId?: string;
+    request?: { url: string; method: string; postData?: string };
+  };
+}
+
+/** A request the page made that a journey answers itself instead of letting it reach the server. */
+export interface InterceptedRequest {
+  url: string;
+  method: string;
+  /** The request body, when it had one. */
+  body?: string;
+}
+
+/** What a journey answers an intercepted request with (JSON body). */
+export interface FakeResponse {
+  status?: number;
+  json: unknown;
 }
 
 /** One page of headless Chrome, driven like a user: keys, clicks, screenshots, waits. */
@@ -158,6 +178,8 @@ export class StudioPage {
   readonly errors: string[] = [];
   private nextId = 1;
   private readonly pending = new Map<number, (result: CdpResult) => void>();
+  /** Answers for intercepted requests, tried in order; a request no rule matches continues to the real server. */
+  private readonly interceptRules: Array<{ method: string; urlPath: string; respond: (req: InterceptedRequest) => FakeResponse }> = [];
 
   /** Wraps an open DevTools socket and starts collecting errors. */
   private constructor(
@@ -170,6 +192,8 @@ export class StudioPage {
       if (msg.id !== undefined) {
         this.pending.get(msg.id)?.(msg.result ?? {});
         this.pending.delete(msg.id);
+      } else if (msg.method === "Fetch.requestPaused" && msg.params?.requestId && msg.params.request) {
+        this.answerPausedRequest(msg.params.requestId, msg.params.request);
       } else if (msg.method === "Runtime.exceptionThrown") {
         const d = msg.params?.exceptionDetails;
         this.errors.push(`uncaught: ${d?.exception?.description ?? d?.text ?? "unknown exception"}`.split("\n")[0]);
@@ -285,11 +309,12 @@ export class StudioPage {
     await this.send("Input.dispatchKeyEvent", { type: "keyUp", ...base });
   }
 
-  /** Clicks the first visible button whose accessible text or title contains `label`. */
-  async clickButton(label: string): Promise<void> {
+  /** Clicks the first visible, enabled button whose accessible text or title contains `label` (or, with `exact`, whose trimmed text is `label`). */
+  async clickButton(label: string, options: { exact?: boolean } = {}): Promise<void> {
     const clicked = await this.eval<boolean>(`(() => {
       const wanted = ${JSON.stringify(label)}.toLowerCase();
-      const button = [...document.querySelectorAll('button')].find((b) => ((b.getAttribute('title') ?? '') + ' ' + (b.getAttribute('aria-label') ?? '') + ' ' + b.textContent).toLowerCase().includes(wanted) && b.offsetParent !== null && !b.disabled);
+      const exact = ${JSON.stringify(Boolean(options.exact))};
+      const button = [...document.querySelectorAll('button')].find((b) => (exact ? b.textContent.trim().toLowerCase() === wanted : ((b.getAttribute('title') ?? '') + ' ' + (b.getAttribute('aria-label') ?? '') + ' ' + b.textContent).toLowerCase().includes(wanted)) && b.offsetParent !== null && !b.disabled);
       if (!button) return false;
       button.click();
       return true;
@@ -305,6 +330,44 @@ export class StudioPage {
     if (!rect) throw new Error(`nothing on the page matches ${selector}`);
     const shot = await this.send("Page.captureScreenshot", { format: "png", clip: { ...rect, scale: 1 } });
     return Buffer.from(shot.data ?? "", "base64");
+  }
+
+  /**
+   * Answers every `method` request whose URL path is exactly `urlPath` with `respond`'s fake JSON instead of
+   * letting it reach the server, which is how a journey makes a model-backed endpoint deterministic while
+   * every other request (saves, reloads, the edit log) stays real.
+   */
+  async intercept(method: string, urlPath: string, respond: (req: InterceptedRequest) => FakeResponse): Promise<void> {
+    this.interceptRules.push({ method, urlPath, respond });
+    await this.send("Fetch.enable", { patterns: [{ urlPattern: "*/api/*", requestStage: "Request" }] });
+  }
+
+  /** Fulfils a paused request from the first matching rule, or lets it continue untouched. */
+  private answerPausedRequest(requestId: string, request: { url: string; method: string; postData?: string }): void {
+    const urlPath = new URL(request.url).pathname;
+    const rule = this.interceptRules.find((r) => r.method === request.method && r.urlPath === urlPath);
+    if (!rule) {
+      void this.send("Fetch.continueRequest", { requestId });
+      return;
+    }
+    const answer = rule.respond({ url: request.url, method: request.method, body: request.postData });
+    void this.send("Fetch.fulfillRequest", {
+      requestId,
+      responseCode: answer.status ?? 200,
+      responseHeaders: [{ name: "Content-Type", value: "application/json" }],
+      body: Buffer.from(JSON.stringify(answer.json)).toString("base64"),
+    });
+  }
+
+  /** Focuses the first element matching `selector` (a text field) so typing lands in it. */
+  async focus(selector: string): Promise<void> {
+    const ok = await this.eval<boolean>(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e) return false; e.focus(); return document.activeElement === e; })()`);
+    if (!ok) throw new Error(`could not focus ${selector}`);
+  }
+
+  /** Types text into the focused field the way a user's keyboard would (a real input event per insertion, so controlled React fields update). */
+  async typeText(text: string): Promise<void> {
+    await this.send("Input.insertText", { text });
   }
 
   /** Closes the page, kills Chrome and removes its profile. */
