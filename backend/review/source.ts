@@ -8,8 +8,8 @@
  * A Three stage film is measured in the reviewed output's own viewport: cast presence is the posed
  * geometry projected into that crop (a cast member no performance draws is hidden, one whose box lies
  * mostly outside the crop is off-frame), the camera is the compiled track projected into that output,
- * and each performance's contact frame is read from its own evaluator, not from the recorded cue.
- * Inputs and outputs: Film manifest, the reviewed viewport and optional look plan -> FilmFacts on camera moves, node arrivals, stage persistence, performances and plan adherence.
+ * and each performance's contact and ownership states are read from its own evaluator, not the recorded cue.
+ * Inputs and outputs: Film manifest, the reviewed viewport and optional look plan -> FilmFacts on camera moves, node arrivals, stage persistence, performance ownership and plan adherence.
  * Used by: backend/review/review.ts, backend/review/stageTruth.ts, backend/geminiReview/facts.ts.
  */
 
@@ -81,6 +81,12 @@ export interface PerformanceFacts {
   decisive: { shotId: string; phrase: string; edge: "start" | "end"; event: string; recordedFrame: number };
   /** First film frame the evaluated action holds the prop; null when it never does. */
   contactFrame: number | null;
+  /** Evaluator attachment and holder at action start, actual contact and settled hold. */
+  ownership: {
+    atStart: { mode: "airborne" | "attached"; holder: string | null } | null;
+    atContact: { mode: "airborne" | "attached"; holder: string | null } | null;
+    afterState: { mode: "airborne" | "attached"; holder: string | null } | null;
+  };
   startFrame: number;
   holdFromFrame: number;
   afterState: string;
@@ -178,16 +184,28 @@ function stagePerformances(scene: Scene): PerformanceFacts[] {
     const actor = scene.cast?.find((c) => c.id === p.actor);
     const resolved = actor?.kind === "character" ? resolveStageCharacter(actor) : undefined;
     let contactFrame: number | null = null;
+    let ownership: PerformanceFacts["ownership"] = { atStart: null, atContact: null, afterState: null };
     if (resolved) {
       const evaluate = createPerformanceEvaluator(rigFromCharacter(resolved.spec), p.data);
+      // Returns the evaluator's prop attachment state and holder at one action frame.
+      const ownershipAt = (frame: number) => {
+        const mode = evaluate(frame).contact.mode;
+        return { mode, holder: mode === "attached" ? p.actor : null };
+      };
+      ownership = { atStart: ownershipAt(p.data.fromFrame), atContact: null, afterState: ownershipAt(p.data.holdFromFrame) };
       for (let f = Math.max(0, Math.floor(p.data.fromFrame)); f <= Math.min(scene.durationFrames - 1, Math.ceil(p.data.toFrame)); f++) {
-        if (evaluate(f).contact.mode === "attached") { contactFrame = f; break; }
+        const state = evaluate(f);
+        if (state.contact.mode === "attached") {
+          contactFrame = f;
+          ownership.atContact = { mode: state.contact.mode, holder: p.actor };
+          break;
+        }
       }
     }
     return {
       id: p.id, action: p.action, actor: p.actor, prop: p.prop, character: resolved ? characterIdentity(resolved.spec) : null,
       decisive: { shotId: p.decisive.shotId, phrase: p.decisive.phrase, edge: p.decisive.edge, event: p.decisive.event, recordedFrame: p.decisive.frame },
-      contactFrame, startFrame: p.data.fromFrame, holdFromFrame: p.data.holdFromFrame, afterState: p.afterState, presentAtContact: [],
+      contactFrame, ownership, startFrame: p.data.fromFrame, holdFromFrame: p.data.holdFromFrame, afterState: p.afterState, presentAtContact: [],
     };
   });
 }

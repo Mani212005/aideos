@@ -1,5 +1,5 @@
 /**
- * File Description: Tests for explicit server design and authoring stops without template fallback.
+ * File Description: Tests for generated design briefs, explicit server design and authoring stops without template fallback.
  * A temporary copy of the demo film is designed by a fake server model (first try, and after a
  * repair), and stops for authoring when no model is available. The agent path is
  * skipped: a test must never message a live agent session.
@@ -15,12 +15,16 @@ import test from "node:test";
 import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import { buildSvgSources } from "../scene/buildSvgSources";
 import { readFilm } from "../pipeline/filmStore";
+import { writeDesignBrief } from "./brief";
 import { designFilm, type DesignLlmCaller } from "./designer";
 
 const ROOT = path.resolve(__dirname, "../..");
 const DEMO = path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed");
+const STAGE_DEMO = path.join(TEST_VIDEOS_DIR, "iona-receive");
 const ID = "tmp-designer-test";
 const PKG = path.join(TEST_VIDEOS_DIR, ID);
+const STAGE_BRIEF_ID = "tmp-stage-brief-test";
+const STAGE_BRIEF_PKG = path.join(TEST_VIDEOS_DIR, STAGE_BRIEF_ID);
 
 // Creates a fresh undesigned copy of the demo film under a temporary id.
 function freshPackage(): void {
@@ -95,6 +99,30 @@ test("Designer: inline with no listener stops for design without calling a serve
     assert.ok(fs.existsSync(path.join(PKG, "design/BRIEF.md")), "the brief is still written for a later design");
   } finally {
     cleanup();
+  }
+});
+
+test("Designer brief: a Three look's performance maps into a worked design/2 example", () => {
+  fs.rmSync(STAGE_BRIEF_PKG, { recursive: true, force: true });
+  fs.cpSync(STAGE_DEMO, STAGE_BRIEF_PKG, { recursive: true });
+  const filmFile = path.join(STAGE_BRIEF_PKG, "film.json");
+  fs.writeFileSync(filmFile, JSON.stringify({ ...JSON.parse(fs.readFileSync(filmFile, "utf8")), id: STAGE_BRIEF_ID }, null, 2));
+  try {
+    const brief = fs.readFileSync(writeDesignBrief(STAGE_BRIEF_ID), "utf8");
+    const section = brief.split("## Three-stage performances (")[1];
+    assert.ok(section, "Three-stage performance guidance is present");
+    const encoded = section.match(/```json\n([\s\S]*?)\n```/)?.[1];
+    assert.ok(encoded, "the worked performance example is valid JSON");
+    const example = JSON.parse(encoded);
+    assert.equal(example.schema, "aideos.design/2");
+    assert.deepEqual(example.performances[0], {
+      id: "receive-message", action: "receive-v1", actor: "iona", prop: "glider", start: "approach",
+      decisive: { shotId: "catch", phrase: "catches", edge: "start", event: "contact" },
+      targetOffset: [0, 0, 0], limits: "fail", afterState: "holding the message",
+    });
+    assert.match(section, /Keep `id`, `action`, `actor`, `prop`, `start`, `decisive` and `afterState` identical/);
+  } finally {
+    fs.rmSync(STAGE_BRIEF_PKG, { recursive: true, force: true });
   }
 });
 

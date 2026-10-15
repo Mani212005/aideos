@@ -1,5 +1,5 @@
 /**
- * File Description: Review truth for Three stage films (J2, J7, J9): presence and camera measured in the reviewed output, hidden and off-frame cast never counted, plan adherence judged by each performance's evaluated contact against its spoken decisive word (no dummy clip), plain-word facts for Gemini that name what is unmeasured, and SVG facts that do not depend on the output.
+ * File Description: Review truth for Three stage films (J2, J7, J9): presence, camera and ownership measured in the reviewed output, hidden and off-frame cast never counted, plan adherence judged by each performance's evaluated contact against its spoken decisive word (no dummy clip), plain-word facts for Gemini that name what is unmeasured, and SVG facts that do not depend on the output.
  * Inputs and outputs: the compiled iona-receive fixture and its timed words, edited per case -> FilmFacts, criterion verdicts, StageTruth and prompt text.
  * Used by: npm test.
  */
@@ -89,6 +89,15 @@ test("J7: presence is measured in the reviewed crop; a character outside the ree
   const reelResult = criterion(reel, "plan-adherence");
   assert.equal(reelResult.status, "fail");
   assert.match(reelResult.summary, /iona .*not on stage in the reel output/);
+});
+
+test("J7: stage truth reports evaluator ownership at action start, contact and after-state", () => {
+  const truth = stageTruth(facts(compiled()), narration())!;
+  const ownership = truth.performances[0].ownership;
+  assert.deepEqual(ownership.atStart, { mode: "airborne", holder: null });
+  assert.deepEqual(ownership.atContact, { mode: "attached", holder: "iona" });
+  assert.deepEqual(ownership.afterState, { mode: "attached", holder: "iona" });
+  assert.match(stageTruthText(truth), /Ownership: start airborne, held by no character, contact attached, held by cast "iona", after-state attached, held by cast "iona"/);
 });
 
 test("J7: a cast member no performance draws is hidden, never counted present", () => {

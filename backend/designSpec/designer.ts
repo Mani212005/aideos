@@ -66,7 +66,7 @@ async function tryAgent<T>(
   const film = readFilm(filmId);
   const task = kind === "look"
     ? `Plan the look before making any picture. Read ${path.join(designDir(filmId), "LOOK_BRIEF.md")}, write design/look.json, and run aideos look check ${filmId}. For a character film, name a character the brief lists; a new character is authored first with aideos character check <file> --stamp and drawn with aideos character sheet <file>. Do not build the design yet.`
-    : `Build the picture from design/look.json and design/BRIEF.md. Run aideos design build ${filmId} until PASS.`;
+    : `Build the picture from design/look.json and design/BRIEF.md. For a Three look, copy every look performance into design.json performances with the same id, action, actor, prop, start, decisive cue and afterState; follow the worked mapping in the brief. Run aideos design build ${filmId} until PASS.`;
   const dispatch = await dispatchTask({
     eventType: "design_film", filmId, filmTitle: film?.title, enableFallback: false,
     customInstruction: `${task}${instruction ? `\n${instruction}` : ""}`,
@@ -173,7 +173,7 @@ async function tryServerModel(
 ): Promise<DesignBuildStatus> {
   const film = parseFilm(JSON.parse(fs.readFileSync(path.join(resolvePackageDir(filmId), "film.json"), "utf8")));
   const system =
-    renderDesignBrief(film) +
+    renderDesignBrief(film, readCheckedLookPlan(film).plan) +
     `\n## Accepted look plan\n${fs.existsSync(path.join(designDir(filmId), "look.json")) ? fs.readFileSync(path.join(designDir(filmId), "look.json"), "utf8") : "Legacy film without a look plan."}\n` +
     `\n## Reply format\n\nReply with one JSON object and nothing else: {"design": <the design.json object>, "svgs": {"visuals/<name>.svg": "<complete svg document>", ...}}. Every file named in design.json must be in svgs.\n`;
   // A change to an existing design edits it rather than starting over.

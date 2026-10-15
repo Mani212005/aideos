@@ -1,8 +1,8 @@
 /**
  * File Description: The truthful, per-output description of a Three stage film that both reviewers read:
  * which characters and props are drawn (and which cast members no performance draws), what is projected
- * inside this output's frame per shot, each performance's evaluated contact against the decisive word
- * resolved from the timed narration, the camera as it moves in this crop, and the list of things no tool
+ * inside this output's frame per shot, each performance's evaluated ownership and contact against the
+ * decisive word resolved from the timed narration, the camera as it moves in this crop, and things no tool
  * measured (pixel visibility and final occlusion, face appeal, finger contact). Presence is posed geometry
  * projected into the output, never a claim that pixels show it.
  * Inputs and outputs: FilmFacts measured for one viewport plus timed narration -> StageTruth (for review.json) and plain words (for the Gemini prompt).
@@ -24,6 +24,7 @@ export const STAGE_UNMEASURED = [
 export const STAGE_MEASURED = [
   "presence: posed mesh bounds with outline allowance projected into this output",
   "contact: the first frame the action's own evaluator attaches the prop",
+  "ownership: the action evaluator's airborne or attached state and the holding cast member",
   "decisive cue: the phrase resolved from the timed narration words of its shot",
   "camera: the compiled camera track projected into this output",
 ] as const;
@@ -45,6 +46,7 @@ export interface StageTruth {
     /** Frame of the decisive word from the timed words, null when they are missing or do not contain it. */
     cueFrame: number | null;
     contactFrame: number | null;
+    ownership: NonNullable<FilmFacts["performances"]>[number]["ownership"];
     /** Contact minus cue, in frames; null when either is unknown. */
     offsetFrames: number | null;
     presentAtContact: string[];
@@ -74,6 +76,7 @@ export function stageTruth(facts: FilmFacts, narration: Narration | null): Stage
       id: p.id, action: p.action, actor: p.actor, prop: p.prop, character: p.character ? `${p.character.id} v${p.character.version}` : null,
       decisive: { shotId: p.decisive.shotId, phrase: p.decisive.phrase, edge: p.decisive.edge },
       cueFrame, contactFrame: p.contactFrame,
+      ownership: p.ownership,
       offsetFrames: cueFrame !== null && p.contactFrame !== null ? p.contactFrame - cueFrame : null,
       presentAtContact: p.presentAtContact, afterState: p.afterState,
     };
@@ -111,7 +114,8 @@ export function stageTruthText(truth: StageTruth): string {
     ...truth.performances.map((p) => {
       const cue = p.cueFrame === null ? `the word "${p.decisive.phrase}" was not found in the timed narration of shot ${p.decisive.shotId}` : `the decisive word "${p.decisive.phrase}" (${p.decisive.edge}) in shot ${p.decisive.shotId} is at ${(p.cueFrame / fps).toFixed(2)} s (frame ${p.cueFrame})`;
       const contact = p.contactFrame === null ? "the action never makes contact" : `contact at frame ${p.contactFrame}${p.offsetFrames === null ? "" : p.offsetFrames === 0 ? ", on the word" : `, ${Math.abs(p.offsetFrames)} frame(s) ${p.offsetFrames > 0 ? "after" : "before"} it`}`;
-      return `- Performance ${p.id}: ${p.actor}${p.character ? ` (${p.character})` : ""} ${p.action === "receive-v1" ? "catches" : p.action} ${p.prop}; ${cue}; ${contact}. Projected in frame at contact: ${list(p.presentAtContact)}. Afterwards: ${p.afterState}.`;
+      const ownership = (state: typeof p.ownership.atStart) => state === null ? "not measured" : `${state.mode}${state.holder ? `, held by cast "${state.holder}"` : ", held by no character"}`;
+      return `- Performance ${p.id}: ${p.actor}${p.character ? ` (${p.character})` : ""} ${p.action === "receive-v1" ? "catches" : p.action} ${p.prop}; ${cue}; ${contact}. Ownership: start ${ownership(p.ownership.atStart)}, contact ${ownership(p.ownership.atContact)}, after-state ${ownership(p.ownership.afterState)}. Projected in frame at contact: ${list(p.presentAtContact)}. Afterwards: ${p.afterState}.`;
     }),
     `- Projected in frame per shot (posed geometry in this output, not pixels): ${truth.shots.map((s) => `${s.id} ${s.startSec}-${s.endSec} s: start ${list(s.inFrameAtStart)}, end ${list(s.inFrameAtEnd)}${s.offFrameAtStart.length || s.offFrameAtEnd.length ? `, off-frame ${list([...new Set([...s.offFrameAtStart, ...s.offFrameAtEnd])])}` : ""}`).join("; ")}.`,
     `- Camera: ${truth.camera.summary}. A moving character or prop is not a camera move.`,
