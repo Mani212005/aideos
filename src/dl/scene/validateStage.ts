@@ -44,14 +44,20 @@ export function validateStage(scene: Scene): string[] {
   if (scene.sceneSize.w !== 1920 || scene.sceneSize.h !== 1920) errors.push("Three stage requires the shared 1920 square.");
   if (!scene.performances?.length) errors.push("Three stage requires at least one receive performance.");
   const ids = new Set([scene.background.assetId, ...scene.props.map((p) => p.assetId)]);
-  const legacyCharacters = (scene.cast ?? []).filter((item) => item.kind === "character" && isLegacyIonaReference(item));
+  const legacyCharacters = (scene.cast ?? []).filter((item) => item.kind === "character" && isLegacyIonaReference(item) && castSchema.safeParse(item).success);
+  const legacyCharacterIds = new Set(legacyCharacters.map((item) => item.id));
+  const legacyPropIds = new Set((scene.performances ?? []).flatMap((performance) => {
+    const parsed = performanceSchema.safeParse(performance);
+    return parsed.success && legacyCharacterIds.has(parsed.data.actor) ? [parsed.data.prop] : [];
+  }));
   const verified = new Map<string, CharacterSpec>();
   for (const item of scene.cast ?? []) {
     const parsed = castSchema.safeParse(item);
     if (!parsed.success) { errors.push(`cast ${item.id}: ${parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"} ${i.message}`).join("; ")}`); continue; }
     if (ids.has(item.id)) errors.push(`Duplicate cast/asset id ${item.id}.`);
     ids.add(item.id);
-    if (item.resourceHash !== STAGE_RESOURCE_HASH && !(legacyCharacters.length > 0 && item.resourceHash === LEGACY_P0_RESOURCE_HASH)) errors.push(`cast ${item.id}: missing or incompatible art/rig/material resource version.`);
+    const legacyP0Entry = parsed.data.kind === "character" ? legacyCharacterIds.has(item.id) : legacyPropIds.has(item.id);
+    if (item.resourceHash !== STAGE_RESOURCE_HASH && !(legacyP0Entry && item.resourceHash === LEGACY_P0_RESOURCE_HASH)) errors.push(`cast ${item.id}: missing or incompatible art/rig/material resource version.`);
     if (parsed.data.kind === "character") {
       const character = resolveCharacterSpec(parsed.data);
       if (!character) {

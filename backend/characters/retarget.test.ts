@@ -12,7 +12,7 @@ import { createPerformanceEvaluator } from "../../src/dl/performance/evaluate";
 import { critiquePerformance } from "../../src/dl/performance/critique";
 import { retargetReceive, ReceiveRetargetError } from "../../src/dl/performance/retarget";
 import { limbRange } from "../../src/dl/performance/limits";
-import { distance, inverse, point, rotate, sub } from "../../src/dl/performance/math";
+import { add, distance, inverse, point, rotate, scale, sub } from "../../src/dl/performance/math";
 import { rigFromCharacter } from "../../src/dl/characters/rig";
 import { validateCharacterSemantics } from "../../src/dl/characters/validate";
 import type { CharacterRig, PerformanceState, ReceiveAction } from "../../src/dl/performance/types";
@@ -99,6 +99,31 @@ test("an unreachable hand target fails with a named error, or clamps smoothly wi
   assert.ok(states.every((s) => Object.values(s.joints).every((t) => [...t.position, ...t.rotation].every(Number.isFinite))));
   const clean = frames(fitReceiveSpan(69, 0, 160, 30, [0, 0, 0], { rig, policy: "fail" }).action);
   assert.ok(maxStep(states, rig) <= maxStep(clean, rig) * 2, `clamped motion pops: ${maxStep(states, rig)} vs ${maxStep(clean, rig)}`);
+});
+
+// Clamps a target key when the sole sampled reach violation lands exactly on that key.
+test("a middle arm target key at contact is included in the clamp window for both arms", () => {
+  for (const limb of ["armL", "armR"] as const) {
+    const reference = createReceiveAction(69);
+    const constraint = reference.constraints.find((item) => item.limb === limb)!;
+    const key = constraint.target.find((item) => item.frame === reference.contact.frame)!;
+    const range = limbRange(IONA, limb);
+    const before = createPerformanceEvaluator(IONA, reference)(key.frame);
+    const shoulder = before.joints[IONA.limbs[limb].base].position;
+    const shoulderRoot = rotate(sub(shoulder, before.root.position), inverse(before.root.rotation));
+    key.value = add(shoulderRoot, scale(sub(key.value, shoulderRoot), (range.max + 0.005) / distance(key.value, shoulderRoot)));
+    const evaluate = createPerformanceEvaluator(IONA, reference);
+    const reachAt = (frame: number) => {
+      const state = evaluate(frame);
+      return distance(state.joints[IONA.limbs[limb].base].position, state.targets[limb]);
+    };
+    assert.ok(reachAt(key.frame) > range.max);
+    assert.ok(reachAt(key.frame - 1) < range.max && reachAt(key.frame + 1) < range.max);
+
+    const result = retargetReceive(reference, IONA, IONA, { policy: "clamp" });
+    assert.ok(result.warnings.some((warning) => warning.field === "limits.reach" && warning.message.includes(`${limb} target clamped`)));
+    assert.deepEqual(failures(IONA, result.action), []);
+  }
 });
 
 // Reproduces the zero-distance clamp input through the public retarget function.

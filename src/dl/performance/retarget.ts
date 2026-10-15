@@ -160,7 +160,7 @@ function enforceReach(action: ReceiveAction, rig: CharacterRig, policy: ReachPol
       // Each sparse key absorbs the strongest correction among frames it influences, so motion stays smooth.
       const target = c.target.map((key, i) => {
         const lo = i > 0 ? c.target[i - 1].frame : -Infinity, hi = i + 1 < c.target.length ? c.target[i + 1].frame : Infinity;
-        const near = ratios.filter((r) => r.frame > lo && r.frame < hi);
+        const near = ratios.filter((r) => (r.frame > lo && r.frame < hi) || r.frame === key.frame);
         if (!near.length) return key;
         const ratio = near.reduce((best, r) => (Math.abs(Math.log(r.ratio)) > Math.abs(Math.log(best)) ? r.ratio : best), 1);
         const state = evaluate(key.frame), shoulder = toRoot(state.root, state.joints[rig.limbs[c.limb].base].position);

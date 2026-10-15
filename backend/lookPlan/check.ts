@@ -397,8 +397,29 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
   const designFile = path.join(pkgDir, "design", "design.json");
   if (fs.existsSync(designFile)) {
     try {
-      const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as { assets?: Array<{ id?: string; file?: string }>; performances?: Array<{ id?: string }> };
-      context.designPerformanceIds = design.performances?.flatMap((performance) => performance.id ? [performance.id] : []);
+      const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as { assets?: Array<{ id?: string; file?: string }>; performances?: unknown };
+      if (Array.isArray(design.performances)) {
+        const performanceIds: string[] = [];
+        design.performances.forEach((performance: unknown, index: number) => {
+          const id = performance !== null && typeof performance === "object" ? (performance as { id?: unknown }).id : undefined;
+          if (typeof id !== "string" || !id.trim()) {
+            auxiliaryFindings.push({
+              rule: "cast",
+              severity: "error",
+              where: `design/design.json performances[${index}].id`,
+              message: "missing; every performance needs an id that matches a look-plan performance.",
+            });
+          } else performanceIds.push(id);
+        });
+        context.designPerformanceIds = performanceIds;
+      } else if (design.performances !== undefined) {
+        auxiliaryFindings.push({
+          rule: "cast",
+          severity: "error",
+          where: "design/design.json performances",
+          message: "must be an array of performances with nonempty ids.",
+        });
+      }
       const castTargets = new Set<string>();
       for (const asset of design.assets ?? []) {
         if (asset.id) castTargets.add(asset.id);

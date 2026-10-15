@@ -24,6 +24,7 @@ import { checkCharacterFile } from "./cli";
 import { checkLookPlanById } from "../lookPlan/check";
 import { characterHash } from "../../src/dl/characters/hash";
 import { characterSpecSchema, type CharacterSpec } from "../../src/dl/characters/schema";
+import { LEGACY_P0_RESOURCE_HASH } from "../../src/dl/scene/stageContract";
 
 const SOURCE = path.join(TEST_VIDEOS_DIR, "iona-receive");
 let counter = 0;
@@ -161,6 +162,14 @@ test("numeric frame starts match between the look plan and design build", () => 
   assert.equal(status.state, "passed", why(status));
 });
 
+// Refuses malformed design performances before look matching can omit them.
+test("look check names a design performance with no id", () => {
+  const pkg = packageWith("iona-library", (design) => { design.performances.push({}); });
+  const report = checkLookPlanById(pkg.slug);
+  assert.equal(report.ok, false);
+  assert.ok(report.findings.some((finding) => finding.where === "design/design.json performances[1].id" && /missing/.test(finding.message)));
+});
+
 test("J7: stage facts name each character by id, version, rig and hash, never by pasting the whole spec into a prompt", () => {
   const pkg = packageWith("marlo", (design) => { design.assets[0].unitsToStage = 70; design.assets[0].position = [960, 1220]; });
   const film = build(pkg.slug).film!;
@@ -289,6 +298,16 @@ test("J9: a compiled P0 Three film parses and validates through the legacy Iona 
   const ionaCast = facts.long.cast.find((item) => item.id === "iona" && "character" in item);
   assert.ok(ionaCast && "character" in ionaCast);
   assert.equal(ionaCast.character.id, "iona");
+});
+
+// Refuses the old P0 resource identity on a prop unrelated to the legacy performance.
+test("J9: the legacy P0 resource hash is limited to Iona and its owned prop", () => {
+  const file = path.join(__dirname, "../../test_fixtures/packages/legacy-iona-p0/film.json");
+  const film = parseFilm(JSON.parse(fs.readFileSync(file, "utf8")));
+  const scene = film.scene as Scene;
+  const prop = scene.cast!.find((item) => item.kind === "prop")!;
+  scene.cast!.push({ ...prop, id: "unowned-glider", resourceHash: LEGACY_P0_RESOURCE_HASH });
+  assert.ok(validateStage(scene).includes("cast unowned-glider: missing or incompatible art/rig/material resource version."));
 });
 
 test("J3: the editor's layer conversion and save/reload keep a non-Iona character's embedded spec intact", () => {
