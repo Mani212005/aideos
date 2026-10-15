@@ -442,8 +442,10 @@ export async function reviewVideo(
               ? Math.max(capCrit.score, facts.bottomCaptions.score)
               : facts.bottomCaptions.score;
             capCrit.reason = facts.bottomCaptions.summary;
+            // Evidence is the sampled frames OCR actually read a caption in, never a placeholder.
             if (capCrit.evidenceTimestamps.length === 0) {
-              capCrit.evidenceTimestamps = ["0:00-0:10", "0:25-0:35"];
+              capCrit.evidenceTimestamps = (facts.bottomCaptions.captionTimesSec ?? []).slice(0, 3)
+                .map((t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`);
             }
           }
         }
@@ -491,6 +493,15 @@ export async function reviewVideo(
         continue;
       }
 
+      // Missing evidence is never a pass: a criterion still without a timestamp after the last attempt fails.
+      if (!timestampCheck.valid) {
+        for (const crit of normalizedCriteria) {
+          if (!timestampCheck.missing.includes(crit.name)) continue;
+          crit.passed = false;
+          crit.reason = `Unmeasured: the reviewer gave no timestamp evidence after ${attempt} attempt(s). ${crit.reason}`;
+        }
+      }
+
       // Check hard gates: if any gate fails or scores below 6.0, gate fails
       const anyGateFailed = normalizedCriteria.some(
         (c) => c.isGate && (!c.passed || c.score < 6.0),
@@ -507,8 +518,8 @@ export async function reviewVideo(
         overallScore = 8.5;
       }
 
-      // Acceptance requires overallScore >= 9.0 AND all gates passing
-      const verdict = overallScore >= 9.0 && !anyGateFailed ? "ACCEPT" : "REVISE";
+      // Acceptance requires overallScore >= 9.0, all gates passing and evidence for every criterion
+      const verdict = overallScore >= 9.0 && !anyGateFailed && timestampCheck.valid ? "ACCEPT" : "REVISE";
 
       const normalizedReport: GeminiReviewReport = {
         overallScore,

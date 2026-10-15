@@ -1,9 +1,9 @@
 /**
  * File Description: Writes the design brief a designer (the connected agent or the server model)
  * works from: what the film says shot by shot, the standard layer every design must meet, the
- * design.json format with a worked example, and the commands that build and check it. The brief is
- * the whole contract, so a designer needs nothing else to produce a passing bespoke design.
- * Inputs and outputs: script text and shot count -> structured DesignBrief with visual constraints.
+ * design.json format with a worked example, Three-stage performance mapping when present, and the
+ * commands that build and check it. The brief is the whole contract, so a designer needs nothing else.
+ * Inputs and outputs: film, checked look plan and script -> structured DesignBrief with visual constraints.
  * Used by: backend/designSpec/designer.ts.
  */
 
@@ -12,10 +12,11 @@ import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { FORMAT_WINDOWS, SAFE_SQUARE, SCENE_SIZE } from "../sceneKit";
 import { LOCKED_PALETTE, MAX_CAMERA_PAN_ACCEL_WIDTHS, MAX_CAMERA_ZOOM_STEP } from "../designCheck/designCheck";
-import { designDir } from "./build";
+import { designDir, readCheckedLookPlan } from "./build";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { getInsetRegion, INSET_FORMAT_FRAMES } from "../../src/dl/fullScreenHeroLayout";
+import type { LookPlan } from "../lookPlan/schema";
 
 
 // Writes the inset region of each format in scene units, the coordinates artwork is placed in.
@@ -62,7 +63,7 @@ function clock(sec: number): string {
 }
 
 // Renders the brief markdown for a film.
-export function renderDesignBrief(film: Film): string {
+export function renderDesignBrief(film: Film, lookPlan?: LookPlan): string {
   let t = 0;
   const shots = film.shots
     .map((s) => {
@@ -71,6 +72,7 @@ export function renderDesignBrief(film: Film): string {
       return line;
     })
     .join("\n");
+  const performanceSection = lookPlan?.schema === "aideos.look/2" ? renderPerformanceSection(lookPlan) : "";
 
   return `# Design brief: ${film.title} (\`${film.id}\`)
 
@@ -120,6 +122,8 @@ ${JSON.stringify(EXAMPLE_SPEC, null, 2)}
 - \`camera\` (optional, at least two poses): \`at\` is a cue (same grammar as clips), \`center\` [x, y] in the scene, \`zoom\` (0.5 to 4), and optional \`focus\` naming the focused cast id from look.json. A cue on the film's end lands on its last frame. Poses must be in time order and at least one frame apart; an \`id\` names a pose in build errors.
 - \`shots\` (optional): \`{ "<shot id>": { "blocks": [...], "stage": "frame" } }\` replaces the cards drawn over the scene for that shot (film schema blocks, at most 4). Text-only blocks default to stage "frame" (scene stays visible), no blocks to "none". Use it to remove a chart the narration does not support or to write your own card.
 
+${performanceSection}
+
 ## What the film says
 
 ${shots}
@@ -132,12 +136,43 @@ ${shots}
 `;
 }
 
+// Explains and demonstrates how each checked look performance maps into the Three design spec.
+function renderPerformanceSection(plan: Extract<LookPlan, { schema: "aideos.look/2" }>): string {
+  const intended = plan.film.performances[0];
+  const mark = String.fromCharCode(96);
+  const fence = mark.repeat(3);
+  const example = {
+    schema: "aideos.design/2",
+    renderer: "three",
+    performances: [{
+      id: intended.id,
+      action: intended.action,
+      actor: intended.actor,
+      prop: intended.prop,
+      start: intended.start,
+      decisive: intended.decisive,
+      targetOffset: [0, 0, 0],
+      limits: "fail",
+      afterState: intended.afterState,
+    }],
+  };
+  return `## Three-stage performances (${mark}aideos.design/2${mark})
+
+This look has ${plan.film.performances.length} checked performance(s). Copy every ${mark}film.performances[]${mark} intention from ${mark}design/look.json${mark} into the design's top-level ${mark}performances[]${mark} array. Keep ${mark}id${mark}, ${mark}action${mark}, ${mark}actor${mark}, ${mark}prop${mark}, ${mark}start${mark}, ${mark}decisive${mark} and ${mark}afterState${mark} identical to the look. ${mark}actor${mark} and ${mark}prop${mark} are cast ids and must name the corresponding Three assets in ${mark}assets[]${mark}; the actor asset's ${mark}character${mark} names the character spec. Do not invent another cue or move the decisive event. Add ${mark}targetOffset${mark} to fit the hand to the prop and choose ${mark}limits${mark} (${mark}fail${mark} or ${mark}clamp${mark}) for retargeting. The compiler resolves the decisive phrase against the narration and authors the receive action from this record.
+
+Worked example from this look:
+
+${fence}json
+${JSON.stringify(example, null, 2)}
+${fence}`;
+}
+
 // Writes design/BRIEF.md for a film and returns its path.
 export function writeDesignBrief(filmId: string): string {
   const film = parseFilm(JSON.parse(fs.readFileSync(path.join(resolvePackageDir(filmId), "film.json"), "utf8")));
   const dir = designDir(filmId);
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, "BRIEF.md");
-  fs.writeFileSync(file, renderDesignBrief(film));
+  fs.writeFileSync(file, renderDesignBrief(film, readCheckedLookPlan(film).plan));
   return file;
 }

@@ -18,11 +18,11 @@ import { buildSvgSources } from "../scene/buildSvgSources";
 import { checkFilmDesign, type DesignFinding, type DesignCheckContext } from "../designCheck/designCheck";
 import { compileDesign, DEFAULT_BACKGROUND_FILE, narrationTimingForFilm, type DesignSource, type TimedWord } from "./compile";
 import { designSpecSchema, type DesignSpec } from "./spec";
-import { checkLookPlan, parseLookPlan, type LookPlan } from "../lookPlan";
+import { checkLookPlan, packageCharacterResolver, parseLookPlan, plannedCharacterId, type LookPlan } from "../lookPlan";
 import { fieldIssues } from "../../src/dl/schemaIssues";
 import { createCues } from "../sceneKit";
 import { readVisualChoices } from "../pipeline/visualChoices";
-import { resolveCue } from "./cues";
+import { performanceStartIssue, resolveCue } from "./cues";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { formatIssues } from "../../src/dl/characters/validate";
 import type { CharacterSpec } from "../../src/dl/characters/schema";
@@ -64,11 +64,20 @@ export function readDesignStatus(filmId: string): DesignBuildStatus | null {
 }
 
 // Reads and checks the look against the actual narrated film, including complete shot coverage.
-export function readCheckedLookPlan(film: Film): { plan?: LookPlan; errors: string[] } {
+export function readCheckedLookPlan(film: Film): { plan?: LookPlan; errors: string[]; warnings?: string[] } {
   try {
     const raw: unknown = JSON.parse(fs.readFileSync(path.join(designDir(film.id), "look.json"), "utf8"));
-    const report = checkLookPlan(raw, film.id);
-    if (!report.ok) return { errors: report.findings.map((f) => `look.json ${f.where}: ${f.message}`) };
+    const wordsFile = path.join(resolvePackageDir(film.id), "voiceover_words.json");
+    const words: TimedWord[] = fs.existsSync(wordsFile) ? JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? [] : [];
+    const cues = createCues(narrationTimingForFilm(film, words), film.fps);
+    const report = checkLookPlan(raw, film.id, { resolveCharacter: packageCharacterResolver(resolvePackageDir(film.id)), ...(words.length ? { cues } : {}) });
+    const warnings = report.findings.filter((f) => f.severity === "warning" && (f.rule === "character" || f.rule === "timing"))
+      .map((f) => `look.json ${f.where}: ${f.message}`);
+    if (!report.ok) return {
+      errors: report.findings.filter((f) => f.severity === "error").map((f) => `look.json ${f.where}: ${f.message}`),
+      warnings,
+    };
+    // Character warnings (art changed since the plan) travel with the plan; the rest are pre-design "not checked yet" notes.
     const plan = parseLookPlan(raw);
     const errors: string[] = [];
     const ids = new Set(film.shots.map((s) => s.id));
@@ -83,22 +92,14 @@ export function readCheckedLookPlan(film: Film): { plan?: LookPlan; errors: stri
         if (!ids.has(at)) errors.push(`look.json cast "${item.id}" names unknown shot "${at}"`);
       }
     }
-    const wordsFile = path.join(resolvePackageDir(film.id), "voiceover_words.json");
-    const words: TimedWord[] = fs.existsSync(wordsFile) ? JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? [] : [];
-    const cues = createCues(narrationTimingForFilm(film, words), film.fps);
     for (const pose of plan.film.camera) {
       try { resolveCue(pose.at, cues); }
       catch (err) { errors.push(`look.json camera: ${err instanceof Error ? err.message : String(err)}`); }
     }
-    return errors.length ? { errors } : { plan, errors };
+    return errors.length ? { errors } : { plan, errors, warnings };
   } catch (err) {
     return { errors: [`look.json: ${err instanceof Error ? err.message : String(err)}`] };
   }
-}
-
-// Names the character a look cast item plans: its character id, or Iona for the P0 fixture asset.
-function lookCharacterId(item: { character?: string; asset?: string }): string | undefined {
-  return item.character ?? (item.asset === "iona-art-v1" ? "iona" : undefined);
 }
 
 // Resolves every character a design names to a verified spec, package characters first, then the library.
@@ -135,15 +136,19 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
     const lookIds = new Set(plan.film.performances.map((performance) => performance.id));
     for (const intended of plan.film.performances) {
       const delivered = spec.performances.find((p) => p.id === intended.id);
-      if (!delivered || ["action", "actor", "prop", "start", "afterState"].some((key) => delivered[key as keyof typeof delivered] !== intended[key as keyof typeof intended]) || JSON.stringify(delivered.decisive) !== JSON.stringify(intended.decisive)) errors.push(`look performance ${intended.id}: design differs from action, actor, prop, start, decisive cue or after-state intention`);
+      const sameDecisiveCue = delivered && delivered.decisive.shotId === intended.decisive.shotId && delivered.decisive.phrase === intended.decisive.phrase && delivered.decisive.edge === intended.decisive.edge && delivered.decisive.event === intended.decisive.event;
+      if (!delivered || ["action", "actor", "prop", "start", "afterState"].some((key) => delivered[key as keyof typeof delivered] !== intended[key as keyof typeof intended]) || !sameDecisiveCue) errors.push(`look performance ${intended.id}: design differs from action, actor, prop, start, decisive cue or after-state intention`);
       for (const id of [intended.actor, intended.prop]) {
         const authored = spec.assets.find((a) => a.id === id);
         const planned = plan.film.cast.find((a) => a.id === id);
         const sameIdentity = authored && "renderer" in authored && authored.renderer === "three" && planned?.renderer === "three" && authored.treatment === planned.treatment &&
-          (authored.kind === "character" ? authored.character === lookCharacterId(planned) : authored.asset === planned.asset);
+          (authored.kind === "character" ? authored.character === plannedCharacterId(planned) : authored.asset === planned.asset);
         if (!sameIdentity) errors.push(`look cast ${id}: design identity or treatment mismatch`);
       }
-      try { cues.wordOnce(intended.decisive.shotId, intended.decisive.phrase, intended.decisive.edge); resolveCue(intended.start, cues); }
+      try {
+        const issue = performanceStartIssue(intended, cues);
+        if (issue) errors.push(`look performance ${intended.id}: ${issue}`);
+      }
       catch (err) { errors.push(`look performance ${intended.id}: ${String(err)}`); }
     }
     for (const delivered of spec.performances) if (!lookIds.has(delivered.id)) errors.push(`design performance "${delivered.id}" has no matching look performance`);
@@ -243,10 +248,12 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
 
   // Legacy packages without a plan still build; new production runs always require one first.
   let lookPlan: LookPlan | undefined;
+  const lookFindings: DesignFinding[] = [];
   if (fs.existsSync(path.join(designDir(filmId), "look.json"))) {
     const look = readCheckedLookPlan(film);
-    if (!look.plan) return fail(look.errors);
+    if (!look.plan) return fail(look.errors, (look.warnings ?? []).map((message): DesignFinding => ({ rule: "look", severity: "warning", where: "design/look.json", message })));
     lookPlan = look.plan;
+    lookFindings.push(...(look.warnings ?? []).map((message): DesignFinding => ({ rule: "look", severity: "warning", where: "design/look.json", message })));
     try {
       const errors = checkDesignAgainstLook(film, spec, words, pkg, lookPlan);
       if (errors.length) return fail(errors);
@@ -278,7 +285,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   writeFilm(filmId, compiled.film);
   // The browser bundle reads artwork through the generated source map, so refresh it.
   buildSvgSources();
-  return record(filmId, { state: "passed", source, at, errors: [], findings: report.findings });
+  return record(filmId, { state: "passed", source, at, errors: [], findings: [...lookFindings, ...report.findings] });
 }
 
 // Formats a build status for the terminal (and for an agent to read and act on).

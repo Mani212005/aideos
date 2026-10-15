@@ -56,6 +56,21 @@ test("sceneKit: shot spans and cues come from the measured narration", () => {
   assert.throws(() => cues.from("three"), /No shot "three"/);
 });
 
+// Exercises both successful unique phrase binding and the ambiguous repeated phrase failure.
+test("sceneKit: a spoken phrase cue must identify one occurrence in its shot", () => {
+  const timing: NarrationTiming = {
+    totalDurationSec: 2,
+    segments: [{ shotId: "repeat", text: "Toward the edge, then toward home.", startSec: 0, durationSec: 2, words: [
+      { word: "Toward", startSec: 0.1, endSec: 0.3 }, { word: "the", startSec: 0.3, endSec: 0.4 },
+      { word: "edge,", startSec: 0.4, endSec: 0.6 }, { word: "then", startSec: 0.7, endSec: 0.8 },
+      { word: "toward", startSec: 0.8, endSec: 1 }, { word: "home.", startSec: 1, endSec: 1.3 },
+    ] }],
+  };
+  const cues = createCues(timing);
+  assert.equal(cues.word("repeat", "the edge"), 9);
+  assert.throws(() => cues.wordOnce("repeat", "toward"), /spoken 2 times.*ambiguous/);
+});
+
 test("sceneKit: the safe square is inside both format windows", () => {
   assert.ok(rectInside(SAFE_SQUARE, FORMAT_WINDOWS.wide));
   assert.ok(rectInside(SAFE_SQUARE, FORMAT_WINDOWS.reel));

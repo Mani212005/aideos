@@ -107,6 +107,27 @@ export function designFilesFingerprint(slug: string, options: { receiveSourceFil
   } catch { return fingerprint(raw); }
 }
 
+// Hashes the look plan together with every character it names, so a character edit changes the design stage's look input.
+export function lookPlanFingerprint(slug: string): string | null {
+  const file = path.join(designDir(slug), "look.json");
+  if (!fs.existsSync(file)) return null;
+  const raw = fs.readFileSync(file, "utf8");
+  let ids: string[] = [];
+  try {
+    const plan = JSON.parse(raw) as { film?: { cast?: Array<{ character?: unknown; asset?: unknown }>; performances?: Array<{ character?: { id?: unknown } }> } };
+    ids = [
+      ...(plan.film?.cast ?? []).map((item) => item.character ?? (item.asset === "iona-art-v1" ? "iona" : undefined)),
+      ...(plan.film?.performances ?? []).map((p) => p.character?.id),
+    ].filter((id): id is string => typeof id === "string" && /^[a-z][a-z0-9-]*$/.test(id));
+  } catch { return fingerprint(raw); }
+  // A spec that no longer verifies still changes the key through its bytes, so a broken edit never reuses old work.
+  const characters = [...new Set(ids)].sort().map((id) => {
+    const candidate = characterCandidates(id, packageDir(slug)).find((c) => fs.existsSync(c));
+    return [id, candidate ? crypto.createHash("sha256").update(fs.readFileSync(candidate)).digest("hex") : null];
+  });
+  return fingerprint(raw, characters);
+}
+
 /** Where the run state for a package lives. */
 function statePath(slug: string): string {
   return path.join(packageDir(slug), "run-state.json");
@@ -466,7 +487,7 @@ export async function runProduction(
     if (shouldStop("look")) return buildResult("look");
 
     // ---- design: the accepted plan controls treatments and invalidates changed designs -------
-    const lookHash = look ? fingerprint(fs.readFileSync(path.join(designDir(slug), "look.json"), "utf8")) : null;
+    const lookHash = look ? lookPlanFingerprint(slug) : null;
     const designFingerprint = () => fingerprint(script, narration.shotDurations, request.music ?? null,
       wantsBroll, mode, lookHash, mode === "templates" ? null : designFilesFingerprint(slug));
 
@@ -476,7 +497,9 @@ export async function runProduction(
       () => {
         if (mode !== "templates") {
           try {
-            const status = buildDesign(slug, readFilm(slug)?.design?.source === "server-model" ? "server-model" : "agent");
+            // Rebuild under the source that made the film, so an unchanged design writes an identical film and later stages stay reused.
+            const source = readFilm(slug)?.design?.source;
+            const status = buildDesign(slug, source === "server-model" || source === "hand-built" ? source : "agent");
             if (status.state !== "passed") return null;
           } catch { return null; }
         }

@@ -697,6 +697,10 @@ test("brief: states the hard rules, the settings and the long-reel-final order",
   assert.match(brief, /ROLLED BACK/);
   assert.match(brief, /Read `design\/LOOK\.md` first/);
   assert.match(brief, /changing a shot's treatment or the cast means editing `look\.json` and passing `aideos look check`/);
+  assert.match(brief, /## Character films/);
+  assert.match(brief, /character check <id-or-file>` validates a spec and prints its version and hash/);
+  assert.match(brief, /character sheet <id-or-file>` draws its model sheet/);
+  assert.match(brief, /face appeal, finger contact and occlusion as unmeasured/);
   assert.ok(!NO_DASH.test(brief));
   assert.doesNotMatch(buildBrief({ ...config, reference: undefined }, "/repo"), /cross-review against the reference/);
 });

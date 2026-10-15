@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import { journey } from "./harness";
-import { CHARACTER_FILES, type FixtureCharacter } from "../testSupport/characters";
+import { CHARACTER_FILES, characterPin, type FixtureCharacter } from "../testSupport/characters";
 import { buildDesign } from "../designSpec/build";
 import { readFilm } from "../pipeline/filmStore";
 import { checkFilmDesign } from "../designCheck/designCheck";
@@ -22,7 +22,7 @@ const SOURCE = path.join(TEST_VIDEOS_DIR, "iona-receive");
 let serial = 0;
 type Json = Record<string, unknown>;
 type DesignFixture = Json & { assets: Json[]; performances: Json[] };
-type LookFixture = Json & { film: Json & { cast: Json[] } };
+type LookFixture = Json & { film: Json & { cast: Json[]; performances?: Json[] } };
 
 // Copies the real package fixture and changes only its selected character and fit policy.
 function packageWithCharacter(character: FixtureCharacter): string {
@@ -45,6 +45,7 @@ function packageWithCharacter(character: FixtureCharacter): string {
   if (!actor || !lookActor) throw new Error("iona-receive fixture is missing its character asset or look cast entry");
   actor.character = character;
   lookActor.character = character;
+  for (const performance of look.film.performances ?? []) if (performance.actor === "iona") performance.character = characterPin(character);
   if (character === "pip") {
     design.performances[0].limits = "clamp";
     design.assets[0].unitsToStage = 110;

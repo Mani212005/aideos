@@ -1,13 +1,102 @@
 /**
- * File Description: Writes LOOK_BRIEF.md for an Aideos film, instructing the agent or designer on the 6 look questions, the criteria for shot treatments, and the measured script beats.
- * Inputs and outputs: Film ID and package data -> LOOK_BRIEF.md markdown file in package design folder.
- * Used by: backend/cli.ts, backend/pipeline/run.ts.
+ * File Description: Writes LOOK_BRIEF.md for an Aideos film, instructing the agent or designer on the 6 look questions, the criteria for shot treatments, character films (performances, the characters available and how to author a new one), and the measured script beats.
+ * Inputs and outputs: Film ID and package data (film.json, package and library characters) -> LOOK_BRIEF.md markdown file in package design folder.
+ * Used by: backend/cli.ts, backend/designSpec/designer.ts, backend/mcp/designTools.ts.
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { CHARACTER_LIBRARY, loadCharacterFile } from "../characters/library";
+
+/** A character an author can name in a performance, as the brief lists it. */
+export interface AvailableCharacter {
+  id: string;
+  version: number;
+  hash: string;
+  name: string;
+  description: string;
+  /** "package" for videos/<slug>/characters, "library" for the committed characters/ folder. */
+  source: "package" | "library";
+}
+
+// Lists every character a film can resolve (package first, so a package spec hides a library spec of the same id), skipping specs that fail their checks.
+export function availableCharacters(pkgDir?: string): AvailableCharacter[] {
+  const found = new Map<string, AvailableCharacter>();
+  const claimed = new Set<string>();
+  const dirs: Array<[string, AvailableCharacter["source"]]> = [...(pkgDir ? [[path.join(pkgDir, "characters"), "package"] as [string, AvailableCharacter["source"]]] : []), [resolveRepoAssetPath(CHARACTER_LIBRARY), "library"]];
+  for (const [dir, source] of dirs) {
+    if (!fs.existsSync(dir)) continue;
+    for (const file of fs.readdirSync(dir).filter((name) => name.endsWith(".character.json")).sort()) {
+      const id = file.slice(0, -".character.json".length);
+      if (claimed.has(id)) continue;
+      claimed.add(id);
+      const loaded = loadCharacterFile(path.join(dir, file));
+      const spec = loaded.spec;
+      if (!spec?.hash || loaded.errors.length || spec.id !== id) continue;
+      found.set(spec.id, { id: spec.id, version: spec.version, hash: spec.hash, name: spec.name, description: spec.description ?? "", source });
+    }
+  }
+  return [...found.values()];
+}
+
+// Builds a worked aideos.look/2 plan for a receive performance, pinned to a real character's identity.
+export function exampleStageLookPlan(character: Pick<AvailableCharacter, "id" | "version" | "hash">) {
+  const shot = (id: string, cue: string) => ({ id, treatment: "scene", carries: ["receiver", "glider"], performances: ["receive-message"], cue, criterion: "1-mechanism", why: "the catch is the claim" });
+  return {
+    schema: "aideos.look/2",
+    decidedBy: { agent: "claude", model: "claude-sonnet-5-5", at: "2026-10-11T12:00:00Z" },
+    film: {
+      mode: "scene",
+      renderer: "three",
+      stage: "One persistent stage where a courier receives a paper glider standing in for a message.",
+      cast: [
+        { id: "receiver", renderer: "three", treatment: "cel-v1", character: character.id, what: "the receiver", enters: "beat-01", changes: [{ at: "beat-02", how: "reaches, catches the glider and settles holding it", state: "holding the message", magnitude: "major" }] },
+        { id: "glider", renderer: "three", asset: "paper-glider-v1", treatment: "cel-v1", what: "paper glider, an illustrative message", enters: "beat-01", changes: [{ at: "beat-02", how: "stops flying and stays in the receiver's hand", state: "holding the message", magnitude: "major" }] },
+      ],
+      performances: [{
+        id: "receive-message", action: "receive-v1", actor: "receiver", character: { id: character.id, version: character.version, hash: character.hash }, prop: "glider",
+        start: "beat-01", decisive: { shotId: "beat-02", phrase: "catches", edge: "start", event: "contact" }, afterState: "holding the message", carries: ["beat-01", "beat-02", "beat-03"],
+      }],
+      camera: [{ at: "beat-01", pose: "wide establishing view of the stage", why: "show where the message comes from" }, { at: "beat-03", pose: "wide payoff with the held glider", why: "the receipt is the payoff" }],
+      palette: { bg: "#0A0A0B", accent: "#635BFF" },
+      captions: { position: "bottom", kineticColumn: false },
+      headlines: "none",
+    },
+    shots: [shot("beat-01", "travels"), shot("beat-02", "catches"), shot("beat-03", "acknowledgment")],
+  };
+}
+
+// Renders the character-film section: what a performance is, which characters exist and how to make a new one.
+export function renderCharacterSection(characters: AvailableCharacter[]): string {
+  const rows = characters.length
+    ? characters.map((c) => `| \`${c.id}\` | ${c.version} | \`${c.hash}\` | ${c.source} | ${c.name}: ${c.description.split(/(?<=\.)\s/)[0] ?? ""} |`).join("\n")
+    : "| (none found) | | | | |";
+  const example = characters[0] ? `\n\`\`\`json\n${JSON.stringify(exampleStageLookPlan(characters[0]), null, 2)}\n\`\`\`\n` : "";
+  return `## Character films (\`aideos.look/2\`, renderer \`three\`)
+
+Use this when a character acts out the mechanism on a persistent cel-shaded stage. Everything else in this brief still applies.
+
+- **Cast.** The character and its prop are cast items with \`renderer: "three"\` and \`treatment: "cel-v1"\`. The character item names its spec with \`character: "<id>"\`; the prop is \`asset: "paper-glider-v1"\`.
+- **Performance.** \`film.performances[]\` says, in data, who does what on which word: \`id\`, \`action\` (\`receive-v1\`: the character catches the glider), \`actor\` (the cast id), \`character\` (\`{id, version, hash}\` copied from the table below), \`prop\`, \`start\` (the cue where anticipation begins), \`decisive\` (\`{shotId, phrase, edge, event: "contact"}\`: the spoken word the catch lands on), \`afterState\` (what is true afterwards) and \`carries\` (the shots that keep the actor and prop on stage).
+- **Timing.** The hand meets the glider exactly on the decisive word. Anticipation starts earlier (at \`start\`, before the word) and recovery settles after it, so a performance shot does not need a clip starting on its cue; the review measures the contact frame against the spoken word instead.
+- **Shots.** Every shot that shows the performance lists its id in \`shots[].performances\`; the decisive shot must. \`design/design.json\` repeats each performance once with the same id, action, actor, prop, start, decisive cue and after-state.
+- **What is checked.** The look check resolves each character (package, then library), refuses a different \`version\`, warns when the art \`hash\` changed since the plan (design and render then rebuild with the new art), and checks the decisive phrase is spoken exactly once in its shot and starts after \`start\`. Projected geometry is checked at design build. Face appeal, finger contact and final on-screen occlusion are not measured by any tool: look at the character sheet and the rendered stills.
+
+### Characters this film can use
+
+| id | version | hash | from | who |
+|---|---|---|---|---|
+${rows}
+
+### A new character, before the film
+
+1. Copy the closest spec into \`videos/<slug>/characters/<id>.character.json\` and edit it (guide: \`characters/README.md\`).
+2. \`aideos character check <file> --stamp\` until it reports PASS; it prints the version and hash to put in the performance.
+3. \`aideos character sheet <file>\` and look at every image (model sheet, expressions, the receive in wide and reel) before planning a film around it.
+${example}`;
+}
 
 // Formats seconds into m:ss clock format.
 function clock(sec: number): string {
@@ -94,8 +183,8 @@ export const EXAMPLE_LOOK_PLAN = {
   },
 };
 
-// Renders the LOOK_BRIEF.md markdown for a film.
-export function renderLookBrief(film: Film): string {
+// Renders the LOOK_BRIEF.md markdown for a film, including the characters it can name.
+export function renderLookBrief(film: Film, characters: AvailableCharacter[] = availableCharacters()): string {
   let t = 0;
   const shotList = film.shots
     .map((s) => {
@@ -147,6 +236,7 @@ Each \`film.cast[].id\` must be a lowercase id using letters, digits, and hyphen
 ${JSON.stringify(EXAMPLE_LOOK_PLAN, null, 2)}
 \`\`\`
 
+${renderCharacterSection(characters)}
 ## Script Beats
 
 ${shotList}
@@ -155,6 +245,7 @@ ${shotList}
 
 - Check the look plan: \`aideos look check ${film.id}\`
 - Render the human-readable plan: \`aideos look check ${film.id}\` automatically generates \`design/LOOK.md\` on PASS.
+- Check or draw a character: \`aideos character check <id-or-file>\`, \`aideos character sheet <id-or-file>\`.
 `;
 }
 
@@ -169,6 +260,6 @@ export function writeLookBrief(filmId: string): string {
   const dir = path.join(pkgDir, "design");
   fs.mkdirSync(dir, { recursive: true });
   const briefFile = path.join(dir, "LOOK_BRIEF.md");
-  fs.writeFileSync(briefFile, renderLookBrief(film), "utf8");
+  fs.writeFileSync(briefFile, renderLookBrief(film, availableCharacters(pkgDir)), "utf8");
   return briefFile;
 }

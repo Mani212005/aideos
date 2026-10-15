@@ -5,8 +5,12 @@
  * across each beat boundary: for a node-graph film that is whether the canvas stays up, for a scene
  * film it is which opacity-driven elements stay visible. Also: node overlap on the canvas and the
  * times shots and animation clips start. Pure functions over a parsed Film.
- * Inputs and outputs: Film manifest and optional look plan -> FilmFacts on camera moves, node arrivals, stage persistence, and plan adherence.
- * Used by: backend/review/review.ts.
+ * A Three stage film is measured in the reviewed output's own viewport: cast presence is the posed
+ * geometry projected into that crop (a cast member no performance draws is hidden, one whose box lies
+ * mostly outside the crop is off-frame), the camera is the compiled track projected into that output,
+ * and each performance's contact and ownership states are read from its own evaluator, not the recorded cue.
+ * Inputs and outputs: Film manifest, the reviewed viewport and optional look plan -> FilmFacts on camera moves, node arrivals, stage persistence, performance ownership and plan adherence.
+ * Used by: backend/review/review.ts, backend/review/stageTruth.ts, backend/geminiReview/facts.ts.
  */
 
 import fs from "node:fs";
@@ -15,7 +19,12 @@ import { buildTimeline, lookBox, nodeBox, solveCam } from "../../src/dl/camera";
 import { MS } from "../../src/dl/motion";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
-import { stageEvidence, prepareStageFacts } from "../../src/dl/scene/stageFacts";
+import { stageEvidence, prepareStageFacts, characterIdentity } from "../../src/dl/scene/stageFacts";
+import { compileCameraTrack } from "../../src/dl/scene/cameraTrack";
+import { projectStagePoint, SAFE_SQUARE } from "../../src/dl/scene/projection";
+import { createPerformanceEvaluator } from "../../src/dl/performance/evaluate";
+import { rigFromCharacter } from "../../src/dl/characters/rig";
+import { resolveStageCharacter } from "../../src/dl/characters/resolve";
 import type { SvgAnimationClip } from "../../src/dl/scene/svgAnimation";
 import type { LookPlan } from "../lookPlan/schema";
 import { safeParseLookPlan } from "../lookPlan/schema";
@@ -55,9 +64,46 @@ export interface BoundaryCarry {
   transformed: number;
 }
 
+/** The output a film's facts were measured for. */
+export interface ReviewViewport {
+  width: number;
+  height: number;
+}
+
+/** One stage performance as review measures it. */
+export interface PerformanceFacts {
+  id: string;
+  action: string;
+  actor: string;
+  prop: string;
+  /** The embedded character's identity, or null when the cast does not resolve to a verified spec. */
+  character: ReturnType<typeof characterIdentity> | null;
+  decisive: { shotId: string; phrase: string; edge: "start" | "end"; event: string; recordedFrame: number };
+  /** First film frame the evaluated action holds the prop; null when it never does. */
+  contactFrame: number | null;
+  /** Evaluator attachment and holder at action start, actual contact and settled hold. */
+  ownership: {
+    atStart: { mode: "airborne" | "attached"; holder: string | null } | null;
+    atContact: { mode: "airborne" | "attached"; holder: string | null } | null;
+    afterState: { mode: "airborne" | "attached"; holder: string | null } | null;
+  };
+  startFrame: number;
+  holdFromFrame: number;
+  afterState: string;
+  /** Cast ids projected inside the reviewed output at the contact frame. */
+  presentAtContact: string[];
+}
+
 /** Facts read from film data. */
 export interface FilmFacts {
   stage?: ReturnType<typeof stageEvidence>;
+  /** Output format the format-specific facts (presence, camera) were measured for. */
+  format?: "long" | "reel";
+  viewport?: ReviewViewport;
+  /** Stage performances with their evaluated contact frames (Three stage films only). */
+  performances?: PerformanceFacts[];
+  /** Stage cast: drawn characters and props, and cast members no performance draws. */
+  stageCast?: { characters: Array<{ castId: string; character: ReturnType<typeof characterIdentity> | null }>; props: string[]; hidden: string[] };
   filmId: string;
   kind: "node-graph" | "scene";
   durationSec: number;
@@ -67,8 +113,10 @@ export interface FilmFacts {
   shotDurations: number[];
   camera: CameraFacts;
   boundaries: BoundaryCarry[];
-  /** Seconds at which scene animation clips start (empty for node-graph films). */
+  /** Seconds at which SVG scene animation clips start (empty for node-graph films). */
   clipStarts: number[];
+  /** Seconds at which evaluated Three performances contact their props. */
+  performanceContacts: number[];
   /** Canvas nodes whose boxes overlap, as "a / b". */
   nodeOverlaps: string[];
   voiceoverSec: number | null;
@@ -83,12 +131,94 @@ export interface FilmFacts {
     visibleAtStart: string[];
     visibleAtEnd: string[];
     motions: Array<{ castId: string; startSec: number }>;
+    /** Drawn stage cast whose projected box lies mostly outside this output at the shot's start and end. */
+    offFrameAtStart?: string[];
+    offFrameAtEnd?: string[];
   }>;
   /** Scene camera keyframe times in film seconds. */
   cameraKeyframes?: number[];
 }
 
 const FRAME = { width: 1920, height: 1080 };
+
+// Names the format a viewport is: taller than wide is the reel.
+export function formatOfViewport(viewport: ReviewViewport): "long" | "reel" {
+  return viewport.height > viewport.width ? "reel" : "long";
+}
+
+// Lists the camera moves of a Three stage as they appear in one output: the compiled track projected into that viewport.
+function projectedCameraMoves(scene: Scene, fps: number, viewport: ReviewViewport): CameraFacts {
+  const track = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize);
+  const { width, height } = viewport;
+  const corners = [SAFE_SQUARE.x0, SAFE_SQUARE.x1].flatMap((x) => [SAFE_SQUARE.y0, SAFE_SQUARE.y1].map((y) => ({ x, y })));
+  // Largest on-screen distance any corner of the shared safe square travels between two poses, in output widths.
+  const shift = (a: (typeof track)[number], b: (typeof track)[number]) => Math.max(...corners.map((c) => {
+    const p = projectStagePoint(c, a, width, height, scene.sceneSize), q = projectStagePoint(c, b, width, height, scene.sceneSize);
+    return Math.hypot(q.x - p.x, q.y - p.y) / width;
+  }));
+  const moves: CameraMove[] = [];
+  let driftOnly = 0, runStart = -1;
+  // Closes one run of consecutive moving frames and records it as a move when it changes the framing enough.
+  const close = (end: number) => {
+    const start = track[runStart];
+    const poses = track.slice(runStart, end + 1);
+    const shiftWidth = Math.max(...poses.map((pose) => shift(start, pose)));
+    const zoomRatio = Math.max(...poses.map((pose) => pose.zoom)) / Math.min(...poses.map((pose) => pose.zoom));
+    let peak = 0;
+    for (let f = runStart + 1; f <= end; f++) peak = Math.max(peak, shift(track[f - 1], track[f]) * fps);
+    if (shiftWidth >= THRESHOLDS.camera.minShiftWidth || zoomRatio >= THRESHOLDS.camera.minZoomRatio) {
+      moves.push({ t: runStart / fps, shiftWidth, zoomRatio, speed: peak, note: `compiled stage camera projected into ${width}x${height}` });
+    } else driftOnly++;
+    runStart = -1;
+  };
+  for (let f = 1; f < track.length; f++) {
+    const moving = shift(track[f - 1], track[f]) > 1e-6;
+    if (moving && runStart < 0) runStart = f - 1;
+    if (!moving && runStart >= 0) close(f - 1);
+  }
+  if (runStart >= 0) close(track.length - 1);
+  return { available: true, kind: "scene-track", moves, driftOnly, maxSpeed: Math.max(0, ...moves.map((m) => m.speed)) };
+}
+
+// Reads each stage performance's identity and the first frame its own evaluator holds the prop.
+function stagePerformances(scene: Scene): PerformanceFacts[] {
+  return (scene.performances ?? []).map((p) => {
+    const actor = scene.cast?.find((c) => c.id === p.actor);
+    const resolved = actor?.kind === "character" ? resolveStageCharacter(actor) : undefined;
+    let contactFrame: number | null = null;
+    let ownership: PerformanceFacts["ownership"] = { atStart: null, atContact: null, afterState: null };
+    if (resolved) {
+      const evaluate = createPerformanceEvaluator(rigFromCharacter(resolved.spec), p.data);
+      // Returns the evaluator's prop attachment state and holder at one action frame.
+      const ownershipAt = (frame: number) => {
+        const mode = evaluate(frame).contact.mode;
+        return { mode, holder: mode === "attached" ? p.actor : null };
+      };
+      ownership = { atStart: ownershipAt(p.data.fromFrame), atContact: null, afterState: ownershipAt(p.data.holdFromFrame) };
+      for (let f = Math.max(0, Math.floor(p.data.fromFrame)); f <= Math.min(scene.durationFrames - 1, Math.ceil(p.data.toFrame)); f++) {
+        const state = evaluate(f);
+        if (state.contact.mode === "attached") {
+          contactFrame = f;
+          ownership.atContact = { mode: state.contact.mode, holder: p.actor };
+          break;
+        }
+      }
+    }
+    return {
+      id: p.id, action: p.action, actor: p.actor, prop: p.prop, character: resolved ? characterIdentity(resolved.spec) : null,
+      decisive: { shotId: p.decisive.shotId, phrase: p.decisive.phrase, edge: p.decisive.edge, event: p.decisive.event, recordedFrame: p.decisive.frame },
+      contactFrame, ownership, startFrame: p.data.fromFrame, holdFromFrame: p.data.holdFromFrame, afterState: p.afterState, presentAtContact: [],
+    };
+  });
+}
+
+// Share of a projected box's area that lies inside the output.
+function shareInside(box: { x0: number; y0: number; x1: number; y1: number }, viewport: ReviewViewport): number {
+  const area = Math.max(0, box.x1 - box.x0) * Math.max(0, box.y1 - box.y0);
+  if (area <= 0) return 0;
+  const w = Math.max(0, Math.min(box.x1, viewport.width) - Math.max(box.x0, 0)), h = Math.max(0, Math.min(box.y1, viewport.height) - Math.max(box.y0, 0));
+  return (w * h) / area;
+}
 
 // Reads a loosely shaped camera track from a scene (step 5 defines the real one): keyed frames with centre and zoom.
 function sceneCameraMoves(scene: Scene, fps: number): CameraFacts {
@@ -257,8 +387,8 @@ function overlappingNodes(film: Film): string[] {
   return out;
 }
 
-// Reads every film-data fact the review uses from a parsed film.
-export function readFilmFacts(film: Film): FilmFacts {
+// Reads every film-data fact the review uses from a parsed film, measuring stage presence and camera in the given output.
+export function readFilmFacts(film: Film, viewport: ReviewViewport = FRAME): FilmFacts {
   const fps = film.fps;
   const voiceoverSec = film.voiceover?.durationSec ?? null;
   const durations = film.shots.map((s) => s.dur);
@@ -273,15 +403,33 @@ export function readFilmFacts(film: Film): FilmFacts {
   if (scene) {
     const boundaryFrames = shotBoundaries.map((t) => Math.round(t * fps));
     const { carry, clipStarts } = sceneBoundaries(scene, boundaryFrames, fps);
-    const stage = scene.renderer === "three" ? stageEvidence(scene, boundaryFrames) : undefined;
-    const projection = scene.renderer === "three" ? prepareStageFacts(scene, 1080, 1920) : undefined;
-    // Uses projected posed geometry as presence evidence; this is not an occlusion measurement.
-    const stageVisible = (frame: number) => projection?.at(frame).flatMap((p) => ([[p.actor, p.actorBounds], [p.prop, p.propBounds]] as const).filter(([, b]) => b.x0 >= 0 && b.x1 <= 1080 && b.y0 >= 0 && b.y1 <= 1920).map(([id]) => id)) ?? [];
+    const three = scene.renderer === "three";
+    const stage = three ? stageEvidence(scene, boundaryFrames) : undefined;
+    const projection = three ? prepareStageFacts(scene, viewport.width, viewport.height) : undefined;
+    const performances = three ? stagePerformances(scene) : undefined;
+    // Uses projected posed geometry in this output as presence evidence; this is not an occlusion measurement.
+    // Lists every drawn cast member (each performance's actor and prop) with its projected box at a frame.
+    const drawn = (frame: number) => projection?.at(frame).flatMap((p) => [[p.actor, p.actorBounds], [p.prop, p.propBounds]] as const) ?? [];
+    // A drawn box is on stage when enough of it lies inside this output.
+    const present = (box: { x0: number; y0: number; x1: number; y1: number }) => shareInside(box, viewport) >= THRESHOLDS.planAdherence.stagePresentShareMin;
+    // Ids of drawn cast on stage at a frame.
+    const stageVisible = (frame: number) => drawn(frame).filter(([, b]) => present(b)).map(([id]) => id);
+    // Ids of drawn cast mostly outside this output at a frame.
+    const stageOffFrame = (frame: number) => drawn(frame).filter(([, b]) => !present(b)).map(([id]) => id);
     if (projection) boundaryFrames.forEach((frame, i) => {
       const before = stageVisible(frame - 1), after = stageVisible(frame);
       const kept = before.filter((id) => after.includes(id)).length;
       carry[i].outgoing += before.length; carry[i].kept += kept;
-      carry[i].transformed += scene.performances!.some((p) => p.data.fromFrame < frame && p.data.holdFromFrame >= frame) ? kept : 0;
+      const beforeStates = projection.at(frame - 1);
+      const afterStates = projection.at(frame);
+      const transformed = new Set<string>();
+      for (const prior of beforeStates) {
+        const current = afterStates.find((state) => state.id === prior.id);
+        if (!current || current.ownership === prior.ownership) continue;
+        if (before.includes(prior.actor) && after.includes(prior.actor)) transformed.add(prior.actor);
+        if (before.includes(prior.prop) && after.includes(prior.prop)) transformed.add(prior.prop);
+      }
+      carry[i].transformed += transformed.size;
     });
     const assets = [...(scene.background ? [scene.background] : []), ...(scene.props ?? [])];
     let shotStart = 0;
@@ -314,16 +462,35 @@ export function readFilmFacts(film: Film): FilmFacts {
           .filter((motion) => motion.frame >= startFrame && motion.frame < endFrame)
           .map((motion) => ({ castId: motion.castId, startSec: motion.frame / fps }));
       });
-      for (const p of scene.performances ?? []) if (p.decisive.frame >= startFrame && p.decisive.frame < endFrame) {
-        for (const castId of [p.actor, p.prop]) motions.push({ castId, startSec: p.decisive.frame / fps });
+      // A performance's motion is its evaluated contact, which is what the narration's decisive word should land on.
+      for (const p of performances ?? []) if (p.contactFrame !== null && p.contactFrame >= startFrame && p.contactFrame < endFrame) {
+        for (const castId of [p.actor, p.prop]) motions.push({ castId, startSec: p.contactFrame / fps });
       }
-      return { id: shot.id, startSec, endSec, stage: shot.stage, visibleAtStart, visibleAtEnd, motions };
+      return { id: shot.id, startSec, endSec, stage: shot.stage, visibleAtStart, visibleAtEnd, motions,
+        ...(three ? { offFrameAtStart: stageOffFrame(startFrame), offFrameAtEnd: stageOffFrame(Math.max(startFrame, endFrame - 1)) } : {}) };
     });
     const rawCam = scene.camera as { keys?: unknown; keyframes?: unknown } | unknown[] | undefined;
     const keyList = (Array.isArray(rawCam) ? rawCam : rawCam?.keyframes ?? rawCam?.keys) as Array<{ frame: number }> | undefined;
     const cameraKeyframes = Array.isArray(keyList) ? keyList.map((keyframe) => keyframe.frame / fps) : [];
+    for (const p of performances ?? []) if (p.contactFrame !== null) p.presentAtContact = stageVisible(p.contactFrame);
     projection?.dispose();
-    return { filmId: film.id, kind: "scene", durationSec: total, fps, shotBoundaries, shotDurations: durations, camera: sceneCameraMoves(scene, fps), boundaries: carry, clipStarts: [...clipStarts, ...(scene.performances ?? []).map((p) => p.decisive.frame / fps)], nodeOverlaps: [], voiceoverSec, planShots, cameraKeyframes, ...(stage ? { stage } : {}) };
+    const drawnIds = new Set((scene.performances ?? []).flatMap((p) => [p.actor, p.prop]));
+    const stageCast = three ? {
+      characters: (scene.cast ?? []).filter((c) => c.kind === "character" && drawnIds.has(c.id)).map((c) => {
+        const resolved = c.kind === "character" ? resolveStageCharacter(c) : undefined;
+        return { castId: c.id, character: resolved ? characterIdentity(resolved.spec) : null };
+      }),
+      props: (scene.cast ?? []).filter((c) => c.kind === "prop" && drawnIds.has(c.id)).map((c) => c.id),
+      hidden: (scene.cast ?? []).filter((c) => !drawnIds.has(c.id)).map((c) => c.id),
+    } : undefined;
+    const contactStarts = (performances ?? []).flatMap((p) => p.contactFrame === null ? [] : [p.contactFrame / fps]);
+    return {
+      filmId: film.id, kind: "scene", durationSec: total, fps, shotBoundaries, shotDurations: durations,
+      camera: three ? projectedCameraMoves(scene, fps, viewport) : sceneCameraMoves(scene, fps), boundaries: carry,
+      clipStarts, performanceContacts: contactStarts, nodeOverlaps: [], voiceoverSec, planShots, cameraKeyframes,
+      ...(stage ? { stage } : {}),
+      ...(three ? { format: formatOfViewport(viewport), viewport, performances, stageCast } : {}),
+    };
   }
   const { camera, starts, durations: timedDurations } = nodeGraphCamera(film, voiceoverSec);
   // A node-graph film keeps its canvas up while consecutive shots are anchored on it; a framed or spine shot closes it.
@@ -334,13 +501,13 @@ export function readFilmFacts(film: Film): FilmFacts {
     const moved = camera.moves.some((m) => Math.abs(m.t - t) < 0.01);
     return { t, outgoing, kept, transformed: kept && moved ? kept : 0 };
   });
-  return { filmId: film.id, kind: "node-graph", durationSec: timedDurations.reduce((a, b) => a + b, 0), fps, shotBoundaries: starts, shotDurations: timedDurations, camera, boundaries, clipStarts: [], nodeOverlaps: overlappingNodes(film), voiceoverSec };
+  return { filmId: film.id, kind: "node-graph", durationSec: timedDurations.reduce((a, b) => a + b, 0), fps, shotBoundaries: starts, shotDurations: timedDurations, camera, boundaries, clipStarts: [], performanceContacts: [], nodeOverlaps: overlappingNodes(film), voiceoverSec };
 }
 
-// Loads and parses a film.json, returning the facts and the parsed film.
-export function loadFilmFacts(filmJson: string): { film: Film; facts: FilmFacts } {
+// Loads and parses a film.json, returning the facts (measured in the given output) and the parsed film.
+export function loadFilmFacts(filmJson: string, viewport?: ReviewViewport): { film: Film; facts: FilmFacts } {
   const film = parseFilm(JSON.parse(fs.readFileSync(filmJson, "utf8")));
-  const facts = readFilmFacts(film);
+  const facts = readFilmFacts(film, viewport);
   const lookPath = path.join(path.dirname(filmJson), "design", "look.json");
   if (fs.existsSync(lookPath)) {
     try {

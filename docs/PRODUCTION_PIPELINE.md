@@ -81,14 +81,18 @@ still has to pass the narration honesty checks; a refused device keeps the scene
 and records a warning in `design/visual-choices.json`.
 
 `aideos look check` checks look shot and cast beat ids against `film.json`, cue phrases against each
-shot's narration, and cast ids against `design.json` asset ids or SVG element ids when those inputs
+shot's narration, each character performance's `character` (`{id, version, hash}`: it must resolve
+to a checked spec at that version; a changed hash within the version is a warning and design and
+render rebuild), its decisive shot and its one-to-one match with a design performance, and cast ids against `design.json` asset ids or SVG element ids when those inputs
 exist. It reports which checks are waiting on inputs that are not available yet. Cast ids use
 lowercase letters, digits, and hyphens, and one id can be represented by elements across several
 design assets. The palette allows the locked colours plus the film's one accent.
 
 `aideos design build` checks a package's look when one exists: shot coverage, declared cast in artwork,
-changing clips on carried objects inside scene shots starting within 0.4s of their spoken cue,
-matching inset device overrides and camera keyframes. Builds record provenance in `design/status.json`,
+changing SVG clips on carried objects inside scene shots starting within 0.4s of their spoken cue,
+matching inset device overrides and camera keyframes. For a declared Three performance, anticipation
+must start before its decisive word and the evaluated contact must land on that word; no clip at the
+cue is required. Builds record provenance in `design/status.json`,
 defaulting CLI builds to `hand-built` (`--source <who>` overrides). Older packages without a look can
 still build directly; new production runs require one before design.
 
@@ -101,8 +105,12 @@ it stopped. `resume: false` ignores the cache entirely, and `force: ["design"]` 
 while reusing earlier stages and invalidating every later stage.
 
 The look fingerprint includes script and measured durations. The design fingerprint includes the
-look.json content hash plus the design spec and its artwork, so authoring edits reopen design and
-invalidate later stages. Resuming also revalidates the plan
+look hash (look.json plus the content of every character it names, `lookPlanFingerprint`) plus the
+design spec, its artwork, the narration word timings of a stage design and each character spec it
+resolves, so authoring edits and character edits reopen design and invalidate later stages while
+intake, narration and look are reused. A cached design is rebuilt under the source recorded on the
+film (`agent`, `server-model` or `hand-built`), so an unchanged rerun writes the identical film and
+reuses assembly and the render. Verify always probes the outputs again. Resuming also revalidates the plan
 and rebuilds existing design.json: a missing or invalid artifact cannot reuse a completed stage.
 Whenever design recompiles, it refreshes base-film.json so a prior snapshot cannot restore old
 narration, timing or treatments.

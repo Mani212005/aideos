@@ -340,7 +340,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `formatReview(report)` (`backend/review/review.ts`): Formats a `ReviewReport` into a human-readable terminal summary with passing/failing gates.
 * `measureRenderFacts(videoPath, options)` (`backend/review/renderFacts.ts`): Measures layout persistence, stage clears, cuts, stillness, captions, text size, contrast, overlap, and on-screen numbers from decoded frames and OCR.
 * `evaluateCriteria(inputs)` (`backend/review/criteria.ts`): Pure evaluation of rubric criteria (criteria 1 to 12 plus supplemental criterion 13 `plan-adherence`) from measured facts against calibrated thresholds.
-* `readFilmFacts(film)`, `loadFilmFacts(filmJson)` (`backend/review/source.ts`): Derives camera motion, element persistence, carry-over transformations, per-shot stage and motion facts (`planShots`, tracking rendered SVG assets and targets while omitting unrendered actor rigs), scene camera keyframes, and optional look plan (`design/look.json`) from aideos film data.
+* `readFilmFacts(film, viewport)`, `loadFilmFacts(filmJson, viewport)` (`backend/review/source.ts`): Derives camera motion, element persistence, carry-over transformations, per-shot stage and motion facts (`planShots`), and optional look plan from film data. Three-stage presence, camera and evaluated performance contact are measured in the supplied output viewport; see [REVIEW.md](REVIEW.md) for the review contract.
 * `deriveNarrationFacts(words, duration)` (`backend/review/speech.ts`): Derives pace, dead air, narrated moments, and sync alignment from word timings or narration text.
 
 ### `backend/aideosConfig.ts` (Video Model Policy & Config Loader)
@@ -460,7 +460,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `renderDesignBrief(film)`, `writeDesignBrief(filmId)` (`brief.ts`): Generates designer briefs (`design/BRIEF.md`) containing film contracts, shot narration, and asset specifications.
 * `compileDesign(film, spec, options)` (`compile.ts`): Compiles a `DesignSpec` and narration timing into a validated scene film, compiling camera poses through `Timeline.camera()`.
 * `buildDesign(filmId, source)` (`build.ts`): Compiles design specifications, executes design checks, and writes passing films.
-* `readCheckedLookPlan(film)`, `checkDesignAgainstLook(film, spec, words, pkg, plan)` (`build.ts`): Validates look plan completeness and checks design cast (supporting cast IDs matching elements across multiple assets), carried motion starting within 0.4s of the spoken cue, inset device overrides, and camera against the accepted look.
+* `readCheckedLookPlan(film)`, `checkDesignAgainstLook(film, spec, words, pkg, plan)` (`build.ts`): Validates look plan completeness and checks design cast (supporting cast IDs matching elements across multiple assets), SVG carried motion starting within 0.4s of its cue, declared Three performance anticipation before its decisive word and contact on that word, inset device overrides, and camera against the accepted look.
 * `resolveCue(cue, cues)` (`cues.ts`): Resolves cue strings and frame offsets against narration timing cues.
 * `planFilmLook(filmId, options)`, `designFilm(filmId, options)` (`designer.ts`): Delivers look planning and scene design through inline, agent, server, or templates policies.
 * `requestShotMotion(filmId, request)` (`motionRequests.ts`): Manages shot-level motion design tasks and history snapshots.

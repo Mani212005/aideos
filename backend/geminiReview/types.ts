@@ -5,6 +5,8 @@
  * Used by: backend/geminiReview/geminiReview.ts, backend/geminiReview/facts.ts.
  */
 
+import type { StageTruth } from "../review/stageTruth";
+
 export interface CriterionEvaluation {
   name: string;
   title: string;
@@ -23,7 +25,8 @@ export interface ReviewFeedbackItem {
 }
 
 export interface DeterministicVideoFacts {
-  stage?: unknown;
+  /** A Three stage film measured in this video's own output (see backend/review/stageTruth.ts). */
+  stage?: StageTruth;
   durationSec: number;
   width?: number;
   height?: number;
@@ -41,6 +44,8 @@ export interface DeterministicVideoFacts {
     coverageRatio: number;
     sampledFrames: number;
     captionFrames: number;
+    /** Seconds of the sampled frames that showed a caption band. */
+    captionTimesSec?: number[];
     score: number;
     summary: string;
   };

@@ -51,7 +51,7 @@ export function registerDesignTools(server: McpServer): void {
     "aideos_look_brief",
     {
       title: "Get a film's look brief",
-      description: "Write and return the brief for design/look.json. Do this before creating any picture assets, then call aideos_look_check.",
+      description: "Write and return the brief for design/look.json. Do this before creating any picture assets, then call aideos_look_check. For a character film the brief explains performances and lists every character the film can name with its id, version and hash; a new character is authored before the film with the shell commands aideos character check --stamp and aideos character sheet.",
       inputSchema: { filmId: z.string().describe("Film id, e.g. speculative-decoding") },
     },
     async ({ filmId }) => {
@@ -68,7 +68,7 @@ export function registerDesignTools(server: McpServer): void {
     "aideos_look_check",
     {
       title: "Check a film's look plan",
-      description: "Validate design/look.json. On PASS, writes design/LOOK.md; fix every finding before calling aideos_produce_film again.",
+      description: "Validate design/look.json, including that each performance's character resolves to its checked spec at the planned version and that its decisive phrase is spoken in its shot. On PASS, writes design/LOOK.md; fix every finding before calling aideos_produce_film again.",
       inputSchema: { filmId: z.string().describe("Film id, e.g. speculative-decoding") },
     },
     async ({ filmId }) => {

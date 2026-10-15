@@ -186,7 +186,8 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
         "Runs are resumable: calling aideos_produce_film again with the same slug reuses every " +
         "stage whose inputs have not changed. The design mode defaults to inline. If a result has " +
         "status needs_look, read design/LOOK_BRIEF.md, write design/look.json with aideos_write_file, " +
-        "call aideos_look_check, then call aideos_produce_film again with the same slug. If status " +
+        "call aideos_look_check, then call aideos_produce_film again with the same slug. A character film names " +
+        "characters from the brief's list; author a new one first with aideos character check --stamp and aideos character sheet. If status " +
         "is needs_design, read design/BRIEF.md, write design/design.json and its SVGs, build the design, " +
         "then call aideos_produce_film again with the same slug.",
     },

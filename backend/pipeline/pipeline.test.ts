@@ -410,10 +410,17 @@ function probeLook(slug: string): LookPlan {
     : [];
   let startSec = 0;
   const cues = film.shots.map((shot) => {
-    const cue = words.find((word) => word.start >= startSec && word.start < startSec + shot.dur &&
-      (word.punctuated_word ?? word.word ?? "").replace(/[^a-z0-9]/gi, "").length >= 3);
+    const shotWords = words.filter((word) => word.start >= startSec && word.start < startSec + shot.dur);
+    // Normalizes one candidate cue word so its count can be checked in either narration source.
+    const normalize = (word: { word?: string; punctuated_word?: string }) =>
+      (word.punctuated_word ?? word.word ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const candidates = shotWords.length ? shotWords.map(normalize) : (shot.scriptText ?? "").split(/\s+/).map((word) => word.toLowerCase().replace(/[^a-z0-9]/g, ""));
+    const counts = new Map<string, number>();
+    for (const candidate of candidates) counts.set(candidate, (counts.get(candidate) ?? 0) + 1);
+    const cue = candidates.find((candidate) => candidate.length >= 3 && counts.get(candidate) === 1);
     startSec += shot.dur;
-    return cue?.punctuated_word ?? cue?.word ?? shot.scriptText!.split(/\s+/)[0];
+    assert.ok(cue, `shot ${shot.id} must contain a unique word cue`);
+    return cue;
   });
   return {
     schema: "aideos.look/1", decidedBy: { agent: "fixture", model: "fake", at: new Date().toISOString() },

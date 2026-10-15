@@ -59,7 +59,7 @@ export function writeIonaDesign(slug: string, edit: (design: Loose) => void = ()
   fs.copyFileSync(path.join(FIXTURE, "visuals/canvas.svg"), path.join(pkg, "visuals/canvas.svg"));
 }
 
-/** The request every journey shares (the Iona screenplay unless overridden): tone voice, no engine, no live agent, no server model. */
+/** The request every journey shares (the Iona screenplay unless overridden): tone voice, no engine, no live agent, no server model; AIDEOS_BROWSER_EXECUTABLE renders with a local Chrome. */
 export function journeyRequest(slug: string, overrides: Partial<ProductionRequest> = {}): ProductionRequest {
   return {
     script: ionaScript(),
@@ -75,6 +75,8 @@ export function journeyRequest(slug: string, overrides: Partial<ProductionReques
     },
     syncToPreview: false,
     renderConcurrency: 2,
+    // A host without Remotion's downloaded headless shell can point renders at a local Chrome.
+    ...(process.env.AIDEOS_BROWSER_EXECUTABLE ? { browserExecutable: process.env.AIDEOS_BROWSER_EXECUTABLE } : {}),
     ...overrides,
   };
 }

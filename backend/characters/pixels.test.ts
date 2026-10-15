@@ -12,7 +12,7 @@ import path from "node:path";
 import { build } from "esbuild";
 import { createReceiveAction } from "../../src/dl/performance/receive";
 import { readPngDimensions } from "../scene/renderStill";
-import { CHARACTER_FILES, loadSpec } from "../testSupport/characters";
+import { CHARACTER_FILES, characterPin, loadSpec } from "../testSupport/characters";
 import { chromeAvailable, evaluatePage } from "./browser";
 import { renderCharacterSheet } from "./sheet";
 import type { PixelRequest, PixelResult } from "./pixelPage";
@@ -44,11 +44,12 @@ function packageWithCharacter(character: "pip" | "marlo"): string {
   fs.copyFileSync(CHARACTER_FILES[character], path.join(directory, "characters", `${character}.character.json`));
   const designFile = path.join(directory, "design/design.json"), lookFile = path.join(directory, "design/look.json");
   const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as { assets: Array<Record<string, unknown>>; performances: Array<Record<string, unknown>> };
-  const look = JSON.parse(fs.readFileSync(lookFile, "utf8")) as { film: { cast: Array<Record<string, unknown>> } };
+  const look = JSON.parse(fs.readFileSync(lookFile, "utf8")) as { film: { cast: Array<Record<string, unknown>>; performances?: Array<Record<string, unknown>> } };
   const asset = design.assets.find((item) => item.kind === "character"), cast = look.film.cast.find((item) => item.id === "iona");
   if (!asset || !cast) throw new Error("iona-receive fixture is missing its character asset or look cast entry");
   asset.character = character;
   cast.character = character;
+  for (const performance of look.film.performances ?? []) if (performance.actor === "iona") performance.character = characterPin(character);
   if (character === "pip") {
     design.performances[0].limits = "clamp";
     asset.unitsToStage = 110;

@@ -9,6 +9,7 @@
  * Used by: backend/review/review.ts, backend/review/criteria.ts.
  */
 import type { FilmFacts } from "./source";
+import type { StageTruth } from "./stageTruth";
 
 /** A spoken word with its measured offsets in seconds. */
 export interface ReviewWord {
@@ -91,6 +92,8 @@ export interface ReviewSources {
 export interface ReviewReport {
   /** Format-indexed stage facts distinguish projected geometry from unmeasured visual craft. */
   stage?: FilmFacts["stage"];
+  /** The stage as measured in this video's own output: drawn cast, per-shot presence, contact against the cue, camera, and what is unmeasured. */
+  stageTruth?: StageTruth;
   schema: "aideos.review/1";
   subject: string;
   createdAt: string;

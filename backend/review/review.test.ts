@@ -290,6 +290,7 @@ test("source: scene elements that stay and transform across a boundary count as 
   const cleared = readFilmFacts(sceneFilm(false));
   assert.equal(cleared.boundaries[0].kept, 0);
   assert.ok(kept.clipStarts.includes(5), "a clip starting at frame 150 is a cue at 5 s");
+  assert.deepEqual(kept.performanceContacts, [], "SVG-only scene facts have no performance contacts");
 });
 
 test("source: scene camera detects constant-zoom pans from canonical and loose keyframes", () => {
@@ -467,7 +468,7 @@ test("criteria: look plan adherence passes matching scene data and fails measure
   const filmFacts: FilmFacts = {
     filmId: "plan-fixture", kind: "scene", durationSec: 10, fps: 30, shotBoundaries: [5], shotDurations: [5, 5],
     camera: { available: true, kind: "scene-track", moves: [], driftOnly: 0, maxSpeed: 0 },
-    boundaries: [], clipStarts: [], nodeOverlaps: [], voiceoverSec: 10, lookPlan,
+    boundaries: [], clipStarts: [], performanceContacts: [], nodeOverlaps: [], voiceoverSec: 10, lookPlan,
     cameraKeyframes: [1, 6],
     planShots: [
       { id: "shot-1", startSec: 0, endSec: 5, stage: "none", visibleAtStart: ["object"], visibleAtEnd: ["object"], motions: [{ castId: "object", startSec: 1 }] },
@@ -560,8 +561,18 @@ test("criteria: cue timing needs word timings and a lift over chance", () => {
   const aimed = { ...film, clipStarts: words.slice(0, 20).map((w) => w.start) };
   const loose = { ...film, clipStarts: words.slice(0, 20).map((w) => w.start + 0.15) };
   const narration: Narration = { words, text: "", timed: true };
-  assert.equal(byKey(evaluateCriteria(inputs({ film: aimed, narration })), "cue-timing").status, "pass");
+  const aimedResult = byKey(evaluateCriteria(inputs({ film: aimed, narration })), "cue-timing");
+  assert.equal(aimedResult.status, "pass");
+  assert.equal(aimedResult.metrics.clipStarts, 20);
+  assert.equal(aimedResult.metrics.performanceContacts, 0);
+  assert.match(aimedResult.summary, /20 SVG clip starts and 0 performance contacts/);
   assert.equal(byKey(evaluateCriteria(inputs({ film: loose, narration })), "cue-timing").status, "fail");
+  const twoPairs = { ...aimed, performanceContacts: [words[20].start, words[20].start] };
+  const twoPairsResult = byKey(evaluateCriteria(inputs({ film: twoPairs, narration })), "cue-timing");
+  assert.equal(twoPairsResult.metrics.clipStarts, 20);
+  assert.equal(twoPairsResult.metrics.performanceContacts, 2);
+  assert.equal(twoPairsResult.metrics.cueEvents, 22);
+  assert.match(twoPairsResult.summary, /20 SVG clip starts and 2 performance contacts/);
 });
 
 // ---- end to end ------------------------------------------------------------------------------------

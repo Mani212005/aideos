@@ -15,7 +15,9 @@ Final acceptance requires a Gemini 3.8 Flash review score of 9.0 or higher (out 
 When a film has `design/look.json`, `aideos review` reports plan adherence as a non-gating score until it has been calibrated on the proof and two or three more films.
 
 For a declared performance, anticipation may precede its narrated decisive word. Contact is bound
-exactly to the measured word cue, with preparation and recovery checked separately. Approved
+exactly to the measured word cue, with preparation and recovery checked separately. Criterion 3's
+"start within 0.4 s" applies to SVG clips; for a performance the decisive moment (the hand meeting
+the glider) is what must land on the word, and the review measures that contact frame. Approved
 physical-action interpolation stays in `src/dl/performance/`; camera and UI motion retain their
 existing easing rules. The short P0 Three integration slice uses a fixed camera and reports the
 full camera/pacing rubric honestly. It is engineering evidence, not an accepted full explainer.

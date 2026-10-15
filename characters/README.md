@@ -46,7 +46,11 @@ In `design/design.json` (schema `aideos.design/2`) a character asset names the s
 
 `position` is where the character's feet (the rig origin) stand on the 1920 square stage;
 `unitsToStage` is stage pixels per rig unit, so the same value keeps relative heights honest. In
-`design/look.json` the cast item carries `"character": "juno"` too. A performance may set
+`design/look.json` the cast item carries `"character": "juno"` too, and each performance pins the
+spec it was planned against with `"character": {"id": "juno", "version": 1, "hash": "<hash>"}` (the
+version and hash `aideos character check` prints; `aideos look brief` lists them for every character
+a film can use). A new version must be re-planned; a changed hash within a version is a warning, and
+design and render rebuild with the new art. A performance may set
 `"limits": "clamp"`; the default `"fail"` refuses a character whose reach, hinge or rotation
 limits cannot hold the action and names the limit, joint and frame. Clamping fits the action
 inside the limits by editing sparse keys and the build reports every clamp as a warning.

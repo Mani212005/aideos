@@ -3,7 +3,7 @@
  * file under videos/<slug>/all-check/ so a person can read exactly what the agent was told: the hard
  * rules (touch only videos/<slug>/, code changes go through a worktree and a PR, never self-score),
  * the settings of the run, the long-then-reel-then-final protocol and the exact commands to run.
- * Inputs and outputs: round metrics and review scores -> formatted markdown review brief for agent.
+ * Inputs and outputs: round metrics and review scores -> formatted markdown review brief for agent, including how character films are checked and fixed.
  * Used by: backend/allCheck/agent.ts.
  */
 
@@ -108,5 +108,15 @@ with the time. Issues are work for the next round. Be strict; the reviewer will 
 - After editing, the next \`round\` re-generates the render shadows itself; you do not need to run anything else.
 - Keep the narration and its timing intact unless a finding is about audio.
 - Read \`design/LOOK.md\` first; a fix may change motion freely, but changing a shot's treatment or the cast means editing \`look.json\` and passing \`aideos look check\` before the next round.
+
+## Character films
+
+If \`design/look.json\` is \`aideos.look/2\`, characters act on a 3D stage. Characters are data: a film's own specs live in
+\`videos/${slug}/characters/<id>.character.json\`, shared ones in \`characters/\` (repository code: change those only through a worktree and a PR).
+- \`${CLI} character check <id-or-file>\` validates a spec and prints its version and hash (\`--stamp\` writes the hash after an edit).
+- \`${CLI} character sheet <id-or-file>\` draws its model sheet, expressions and the receive in wide and reel into \`.frames/characters/<id>/\`; look at them.
+- Placement, camera and performance timing are motion: edit \`design/design.json\` and run \`${CLI} design build ${slug}\`. Each performance's contact must land on its decisive spoken word; the measured review prints contact and cue frames per format.
+- A different character or a new character version changes identity: edit \`look.json\` (the performance's \`character\` id, version and hash) and pass \`aideos look check\` first. Authoring a new character follows \`characters/README.md\`: check, stamp and sheet it before the film uses it.
+- The tools measure projected geometry, not pixels: the review's stage facts list face appeal, finger contact and occlusion as unmeasured. Check those in the frame check every round.
 `;
 }
