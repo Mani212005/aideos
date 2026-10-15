@@ -36,7 +36,7 @@ export const legacyCharacterCastSchema = z.strictObject({ ...identity, kind: z.l
 export const propCastSchema = z.strictObject({ ...identity, kind: z.literal("prop"), asset: z.literal("paper-glider-v1") });
 export const castSchema = z.union([characterCastSchema, legacyCharacterCastSchema, propCastSchema]);
 /** How the compiled receive was fitted to its actor: source rig, limit policy and any clamps applied. */
-export const retargetRecordSchema = z.strictObject({ from: rigIdSchema, to: rigIdSchema, policy: z.enum(["fail", "clamp"]), warnings: z.array(z.string()) });
+export const retargetRecordSchema = z.strictObject({ from: rigIdSchema, to: rigIdSchema, characterHash: z.string().regex(/^[0-9a-f]{64}$/).optional(), policy: z.enum(["fail", "clamp"]), warnings: z.array(z.string()) });
 export const performanceSchema = z.strictObject({
   id: z.string().min(1), action: z.literal("receive-v1"), actor: z.string(), prop: z.string(),
   decisive: decisiveSchema.extend({ frame: z.number().int().min(0) }),

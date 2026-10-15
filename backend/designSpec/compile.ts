@@ -210,7 +210,7 @@ export function compileDesign(
         if (!character) throw new Error(`actor "${p.actor}" is not a resolved character asset`);
         const frame = cues.word(p.decisive.shotId, p.decisive.phrase, p.decisive.edge);
         const fitted = fitReceiveSpan(frame, resolveCue(p.start, cues), cues.durationFrames, fps, p.targetOffset, { rig: rigFromCharacter(character), policy: p.limits });
-        scene.performances.push({ id: p.id, action: p.action, actor: p.actor, prop: p.prop, decisive: { ...p.decisive, frame }, afterState: p.afterState, data: receiveSchema.parse(fitted.action), retarget: { from: fitted.from, to: fitted.action.rigId, policy: p.limits, warnings: fitted.warnings.map((w) => `${w.field}: ${w.message}`) } });
+        scene.performances.push({ id: p.id, action: p.action, actor: p.actor, prop: p.prop, decisive: { ...p.decisive, frame }, afterState: p.afterState, data: receiveSchema.parse(fitted.action), retarget: { from: fitted.from, to: fitted.action.rigId, characterHash: character.hash, policy: p.limits, warnings: fitted.warnings.map((w) => `${w.field}: ${w.message}`) } });
       } catch (err) { errors.push(`performance ${p.id} cue ${p.decisive.shotId}:"${p.decisive.phrase}": ${err instanceof Error ? err.message : String(err)}`); }
     }
     errors.push(...validateStage(scene));

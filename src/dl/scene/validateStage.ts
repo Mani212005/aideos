@@ -82,6 +82,15 @@ export function validateStage(scene: Scene): string[] {
     if ([...tracks.flat(), ...p.data.expressions].some((k) => k.frame < p.data.fromFrame || k.frame > p.data.toFrame)) errors.push(`performance ${p.id}: timed channel escapes span.`);
     const character = verified.get(p.actor);
     if (!character) continue;
+    const legacyActor = legacyCharacters.some((cast) => cast.id === p.actor);
+    if (!p.retarget?.characterHash && !legacyActor) {
+      errors.push(`performance ${p.id}: missing fitted character hash; rebuild the design.`);
+      continue;
+    }
+    if (p.retarget?.characterHash && p.retarget.characterHash !== character.hash) {
+      errors.push(`performance ${p.id}: fitted to character ${character.id} hash ${p.retarget.characterHash} but the embedded spec hashes to ${character.hash}; rebuild the design.`);
+      continue;
+    }
     if (p.data.rigId !== characterRigId(character)) { errors.push(`performance ${p.id}: the action was fitted to rig ${p.data.rigId} but ${p.actor} is ${characterRigId(character)}; rebuild the design.`); continue; }
     try {
       const rig = rigFromCharacter(character);

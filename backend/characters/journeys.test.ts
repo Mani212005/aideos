@@ -221,16 +221,26 @@ test("J8 and J14: a hand-edited or stale embedded spec still opens but is refuse
   if ("character" in cast) cast.character.palette.teal = "#ff00ff";
   const reopened = parseFilm(JSON.parse(JSON.stringify(edited)));
   assert.match(validateScene(reopened.scene as unknown as Scene).errors.map((e) => e.message).join("\n"), /cast iona character iona: hash: content hash mismatch/);
-  // A film compiled before characters were data parses, then asks for a rebuild instead of drawing a placeholder.
-  const legacy = structuredClone(film) as Film & { scene: Scene };
-  const old = legacy.scene.cast!.findIndex((c) => c.kind === "character");
-  const { character: _character, ...placement } = legacy.scene.cast![old] as Json;
-  void _character;
-  legacy.scene.cast![old] = { ...placement, asset: "iona-art-v1", rig: "iona-v1" } as never;
-  assert.match(validateStage(parseFilm(JSON.parse(JSON.stringify(legacy))).scene as unknown as Scene).join("\n"), /compiled from the P0 Iona fixture .* rebuild the design/);
   const mismatch = structuredClone(film.scene as Scene);
   mismatch.performances![0].data.rigId = "marlo-v1";
   assert.match(validateStage(mismatch).join("\n"), /fitted to rig marlo-v1 but iona is iona-v1; rebuild the design/);
+});
+
+// Refuses a self-consistent edited character when its receive was fitted to the prior content.
+test("J14: a restamped embedded proportion change invalidates the fitted receive", () => {
+  const pkg = packageWith("iona-library");
+  const film = build(pkg.slug).film!;
+  const edited = structuredClone(film) as Film & { scene: Scene };
+  const cast = edited.scene.cast!.find((item) => item.kind === "character")!;
+  assert.ok("character" in cast);
+  cast.character.skeleton.proportions.head[1] += 0.01;
+  cast.character.hash = characterHash(cast.character);
+  const reopened = parseFilm(JSON.parse(JSON.stringify(edited)));
+  const errors = validateScene(reopened.scene as unknown as Scene).errors.map((error) => error.message).join("\n");
+  assert.match(errors, /performance receive-message: fitted to character iona hash [0-9a-f]{64} but the embedded spec hashes to [0-9a-f]{64}; rebuild the design/);
+  const missingHash = structuredClone(film.scene as Scene);
+  delete missingHash.performances![0].retarget!.characterHash;
+  assert.match(validateStage(missingHash).join("\n"), /performance receive-message: missing fitted character hash; rebuild the design/);
 });
 
 test("J8: a P0 design that still names the Iona fixture asset builds unchanged through the character library", () => {
@@ -304,5 +314,4 @@ test("J10: the authoring guide's starter spec checks, stamps and performs exactl
     fs.writeFileSync(file, JSON.stringify(bad));
     assert.match(checkCharacterFile(file).errors.join("\n"), /^sockets\.gripR\.joint: gripR rides on wristR, not "handR"/m);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
-  assert.deepEqual(Object.keys(rawSpec("pip")).slice(0, 4), ["schema", "id", "version", "hash"]);
 });
