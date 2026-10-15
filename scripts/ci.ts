@@ -147,7 +147,12 @@ export const JOBS: CiJob[] = [
     id: "journeys",
     title: "Headless user journeys: real pipeline, real render, real studio",
     steps: [
-      { name: "journey tests", cmd: ["npm", "run", "test:journeys"], env: { ...softwareGl(), npm_config_loglevel: "silent" }, todoCases: true },
+      {
+        name: "journey tests",
+        cmd: ["node", "--import", "tsx", "--import", "./backend/testSupport/fixtureVideosDir.ts", "--test", "--test-concurrency=1", "backend/journeys/**/*.journey.ts"],
+        env: { ...softwareGl(), npm_config_loglevel: "silent" },
+        todoCases: true,
+      },
       { name: "studio smoke and scrub", cmd: ["npm", "run", "smoke:studio"], env: inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {} },
     ],
   },
@@ -174,23 +179,39 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
   const started = Date.now();
   return new Promise((resolve) => {
     const cmd = step.resolve ? step.resolve(step.cmd) : step.cmd;
-    let output = "";
     let todoNames: string[] = [];
-    const child = spawn(cmd[0], cmd.slice(1), {
+    const reportDir = step.todoCases ? fs.mkdtempSync(path.join(ROOT, ".ci-todo-report-")) : null;
+    const reportPath = reportDir ? path.join(reportDir, "todos.json") : null;
+    const runCmd = reportPath
+      ? [
+          cmd[0],
+          "--test-reporter=tap",
+          "--test-reporter=./scripts/ciTodoReporter.cjs",
+          "--test-reporter-destination=stdout",
+          `--test-reporter-destination=${reportPath}`,
+          ...cmd.slice(1),
+        ]
+      : cmd;
+    const child = spawn(runCmd[0], runCmd.slice(1), {
       cwd: ROOT,
       stdio: step.todoCases ? ["inherit", "pipe", "inherit"] : "inherit",
       env: { ...process.env, ...step.env },
     });
     if (step.todoCases) child.stdout?.on("data", (chunk: Buffer) => {
-      output += chunk.toString("utf8");
       process.stdout.write(chunk);
     });
-    const done = (status: StepResult["status"], note?: string) =>
+    const done = (status: StepResult["status"], note?: string) => {
+      if (reportDir) fs.rmSync(reportDir, { recursive: true, force: true });
       resolve({ job: job.id, step: step.name, status, seconds: (Date.now() - started) / 1000, note, ...(todoNames.length ? { todoNames } : {}) });
+    };
     child.on("error", (err) => done("failed", err.message));
     child.on("close", (code) => {
-      if (step.todoCases) {
-        todoNames = todoNamesFromTap(output);
+      if (reportPath && reportDir) {
+        try {
+          todoNames = JSON.parse(fs.readFileSync(reportPath, "utf8")) as string[];
+        } catch (err) {
+          return done("failed", `could not read structured TODO report: ${err instanceof Error ? err.message : String(err)}`);
+        }
       }
       if (code !== 0) return done("failed", `exit ${code}`);
       if (!step.verdict) return done("passed");
@@ -200,18 +221,6 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
       return done(verdict.status);
     });
   });
-}
-
-/** Reads named TODO cases from Node's TAP protocol, including nested per-file subtests. */
-export function todoNamesFromTap(report: string): string[] {
-  const names: string[] = [];
-  for (const line of report.split("\n")) {
-    // Node prints an unmet TODO assertion as `not ok ... # TODO`, while a TODO body
-    // that happens to pass is `ok ... # TODO`. Both are known gaps and must be reported.
-    const match = line.trimStart().match(/^(?:not )?ok \d+ - (.+?) # TODO(?: .*)?\r?$/);
-    if (match) names.push(match[1]);
-  }
-  return names;
 }
 
 /** Formats results as a markdown table (the GitHub step summary and the terminal summary). */

@@ -179,7 +179,7 @@ test("runStep reports failed, passed and skipped honestly, and runJobs rejects a
   assert.match(summaryTable([{ job: "a", step: "b", status: "passed", seconds: 1.25 }]), /\| a \| b \| passed \| 1\.3s \|/);
 });
 
-test("nested TODOs from multiple Node test files reach the CI table and warning notice", async () => {
+test("structured TODO events from multiple Node test files reach the CI summary", async () => {
   const job = { id: "journeys", title: "journeys", steps: [] };
   const dir = fs.mkdtempSync(path.join(ROOT, ".ci-todo-report-"));
   const first = path.join(dir, "first.test.cjs");
@@ -195,7 +195,7 @@ test("nested TODOs from multiple Node test files reach the CI table and warning 
   try {
     const result = await runStep(job, {
       name: "journey tests",
-      cmd: [process.execPath, "--test", "--test-concurrency=1", "--test-reporter=tap", first, second],
+      cmd: [process.execPath, "--test", "--test-concurrency=1", first, second],
       env: { NODE_TEST_CONTEXT: undefined },
       todoCases: true,
     });
