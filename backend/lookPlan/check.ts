@@ -128,9 +128,17 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed", context
 
   if (look.schema === "aideos.look/2") {
     const performanceIds = new Set<string>();
+    const actorPerformances = new Map<string, string>();
+    const propPerformances = new Map<string, string>();
     for (const p of look.film.performances) {
       if (performanceIds.has(p.id)) findings.push({ rule: "cast", severity: "error", where: p.id, message: "duplicate performance id" });
       performanceIds.add(p.id);
+      const actorPerformance = actorPerformances.get(p.actor);
+      if (actorPerformance) findings.push({ rule: "cast", severity: "error", where: `film.performances.${p.id}.actor`, message: `performances "${actorPerformance}" and "${p.id}" share actor "${p.actor}"; each actor can perform only one receive.` });
+      else actorPerformances.set(p.actor, p.id);
+      const propPerformance = propPerformances.get(p.prop);
+      if (propPerformance) findings.push({ rule: "cast", severity: "error", where: `film.performances.${p.id}.prop`, message: `performances "${propPerformance}" and "${p.id}" share prop "${p.prop}"; each prop can belong to only one performance.` });
+      else propPerformances.set(p.prop, p.id);
       const actor = look.film.cast.find((c) => c.id === p.actor);
       const prop = look.film.cast.find((c) => c.id === p.prop);
       const plannedCharacter = actor?.character ?? (actor?.asset === "iona-art-v1" && actor.rig === "iona-v1" ? "iona" : undefined);

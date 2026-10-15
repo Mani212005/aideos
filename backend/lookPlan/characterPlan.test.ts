@@ -151,6 +151,42 @@ test("J8: the decisive shot must list its performance, and the design performanc
   assert.match(findings(report, "error"), /design\.performances\.receive-message: the design performance's actor is character "marlo" but the look plans "iona"/);
 });
 
+test("J8: look performances cannot share an actor or a prop", () => {
+  const sharedActor = pkgWith((look) => {
+    const first = look.film.performances[0];
+    const second = structuredClone(first);
+    second.id = "receive-message-2";
+    second.prop = "glider-2";
+    look.film.cast.push({ ...structuredClone(look.film.cast.find((item: Json) => item.id === first.prop)), id: second.prop });
+    look.film.performances.push(second);
+    for (const shot of look.shots) if (second.carries.includes(shot.id)) {
+      shot.performances.push(second.id);
+      shot.carries.push(second.prop);
+    }
+  });
+  const actorPlan = JSON.parse(fs.readFileSync(path.join(sharedActor.dir, "design/look.json"), "utf8"));
+  const actorReport = checkLookPlan(actorPlan);
+  assert.equal(actorReport.ok, false);
+  assert.match(findings(actorReport, "error"), /film\.performances\.receive-message-2\.actor: performances "receive-message" and "receive-message-2" share actor "iona"/);
+
+  const sharedProp = pkgWith((look) => {
+    const first = look.film.performances[0];
+    const second = structuredClone(first);
+    second.id = "receive-message-2";
+    second.actor = "receiver-2";
+    look.film.cast.push({ ...structuredClone(look.film.cast.find((item: Json) => item.id === first.actor)), id: second.actor });
+    look.film.performances.push(second);
+    for (const shot of look.shots) if (second.carries.includes(shot.id)) {
+      shot.performances.push(second.id);
+      shot.carries.push(second.actor);
+    }
+  });
+  const propPlan = JSON.parse(fs.readFileSync(path.join(sharedProp.dir, "design/look.json"), "utf8"));
+  const propReport = checkLookPlan(propPlan);
+  assert.equal(propReport.ok, false);
+  assert.match(findings(propReport, "error"), /film\.performances\.receive-message-2\.prop: performances "receive-message" and "receive-message-2" share prop "glider"/);
+});
+
 test("J8: a decisive phrase spoken twice in its shot is refused by the look check, before design", () => {
   const { slug, dir } = pkgWith();
   const filmFile = path.join(dir, "film.json"), film = JSON.parse(fs.readFileSync(filmFile, "utf8"));
