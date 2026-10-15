@@ -104,7 +104,7 @@ function lookCharacterId(item: { character?: string; asset?: string }): string |
 export function resolveDesignCharacters(spec: DesignSpec, pkg: string): { characters: Record<string, CharacterSpec>; errors: string[] } {
   const characters: Record<string, CharacterSpec> = {}, errors: string[] = [];
   for (const a of spec.assets) {
-    if (!("kind" in a) || a.kind !== "character" || characters[a.character]) continue;
+    if (!("kind" in a) || a.kind !== "character" || Object.hasOwn(characters, a.character)) continue;
     const loaded = loadCharacter(a.character, pkg);
     if (loaded.spec && !loaded.errors.length) characters[a.character] = loaded.spec;
     else errors.push(...formatIssues(loaded.errors, `asset "${a.id}" character ${a.character} (${path.relative(pkg, loaded.file).startsWith("..") ? loaded.file : path.relative(pkg, loaded.file)}) `));

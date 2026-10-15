@@ -198,7 +198,7 @@ export function compileDesign(
       if (a.renderer !== "three") continue;
       if (a.kind === "prop") { scene.cast.push({ ...a, resourceHash: STAGE_RESOURCE_HASH }); continue; }
       const { character: characterId, ...placement } = a;
-      const character = options.characters?.[characterId];
+      const character = options.characters && Object.hasOwn(options.characters, characterId) ? options.characters[characterId] : undefined;
       if (!character) { errors.push(`asset "${a.id}": character "${characterId}" was not resolved; build designs through buildDesign, which loads verified specs`); continue; }
       scene.cast.push({ ...placement, character, resourceHash: STAGE_RESOURCE_HASH });
     }

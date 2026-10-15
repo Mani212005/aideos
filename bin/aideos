@@ -109,7 +109,7 @@ if [ "$#" -gt 0 ]; then
           ;;
         *)
           echo "Usage: aideos character check <spec-or-id...> [--stamp] [--json]" >&2
-          echo "       aideos character sheet <spec-or-id> [--out dir] [--placement x,y,units] [--clamp] [--gpu]" >&2
+          echo "       aideos character sheet <spec-or-id> [--out dir] [--placement x,y,units] [--clamp]" >&2
           exit 1
           ;;
       esac

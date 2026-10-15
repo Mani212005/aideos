@@ -23,6 +23,7 @@ import { CHARACTER_FILES, rawSpec, type FixtureCharacter } from "../testSupport/
 import { checkCharacterFile } from "./cli";
 import { checkLookPlanById } from "../lookPlan/check";
 import { characterHash } from "../../src/dl/characters/hash";
+import { characterSpecSchema } from "../../src/dl/characters/schema";
 
 const SOURCE = path.join(TEST_VIDEOS_DIR, "iona-receive");
 let counter = 0;
@@ -191,6 +192,25 @@ test("J8: design build refuses a character spec whose embedded id differs from t
   const status = build(pkg.slug).status;
   assert.equal(status.state, "failed");
   assert.match(status.errors.join("\n"), /asset "iona" character iona .* id: the spec in .* is "marlo" but the design asks for character "iona"/);
+});
+
+// Builds a package-local character whose legal id collides with Object.prototype.
+test("J5: constructor is resolved as a package character id through design build", () => {
+  const pkg = packageWith("marlo", (design) => { design.assets[0].unitsToStage = 70; design.assets[0].position = [960, 1220]; });
+  const spec = characterSpecSchema.parse(rawSpec("marlo"));
+  spec.id = "constructor";
+  spec.hash = characterHash(spec);
+  fs.writeFileSync(path.join(pkg.dir, "characters", "constructor.character.json"), JSON.stringify(spec, null, 2));
+  const designFile = path.join(pkg.dir, "design", "design.json"), design = JSON.parse(fs.readFileSync(designFile, "utf8"));
+  design.assets.find((asset: Json) => asset.kind === "character").character = "constructor";
+  fs.writeFileSync(designFile, JSON.stringify(design, null, 2));
+  const lookFile = path.join(pkg.dir, "design", "look.json"), look = JSON.parse(fs.readFileSync(lookFile, "utf8"));
+  look.film.cast.find((item: Json) => item.id === "iona").character = "constructor";
+  fs.writeFileSync(lookFile, JSON.stringify(look, null, 2));
+  const { status, film } = build(pkg.slug);
+  assert.equal(status.state, "passed", why(status));
+  const cast = (film!.scene as Scene).cast!.find((item) => item.id === "iona")!;
+  assert.ok("character" in cast && cast.character.id === "constructor");
 });
 
 test("J8 and J14: a hand-edited or stale embedded spec still opens but is refused before the stage draws it", () => {
