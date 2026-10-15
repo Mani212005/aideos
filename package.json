@@ -39,9 +39,11 @@
     "@types/three": "0.180.0",
     "esbuild": "0.28.1",
     "eslint": "9.19.0",
+    "globals": "^14.0.0",
     "prettier": "3.8.1",
     "tsx": "^4.23.1",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "yaml": "^2.9.1"
   },
   "scripts": {
     "postinstall": "npm --prefix editor ci && tsx scripts/ensure_generated.ts",
@@ -57,6 +59,10 @@
     "calibrate:review": "tsx scripts/calibrate_review.ts",
     "validate:film": "tsx scripts/validate_film.ts",
     "test": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 \"backend/**/*.test.ts\" \"scripts/**/*.test.ts\"",
+    "test:journeys": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 --test-reporter=tap \"backend/journeys/**/*.journey.ts\"",
+    "test:legacy": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 \"backend/journeys/**/*.golden.ts\"",
+    "goldens:update": "AIDEOS_GOLDEN_UPDATE=1 node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 \"backend/journeys/**/*.golden.ts\"",
+    "ci": "tsx scripts/ci.ts",
     "performance:filmstrip": "tsx scripts/performance_filmstrip.ts",
     "performance:check": "tsx scripts/performance_check.ts",
     "design:check": "tsx backend/cli.ts design-check",
@@ -77,7 +83,13 @@
     "prerender:reel": "npm run ensure:generated --silent",
     "presmoke:studio": "npm run ensure:generated --silent",
     "prevalidate": "npm run ensure:generated --silent",
+    "pretest:journeys": "npm run ensure:generated --silent",
+    "pretest:legacy": "npm run ensure:generated --silent",
+    "pregoldens:update": "npm run ensure:generated --silent",
     "preframes": "npm run ensure:generated --silent",
-    "prebundle": "npm run ensure:generated --silent"
+    "prebundle": "npm run ensure:generated --silent",
+    "posttest:journeys": "npm run ensure:generated --silent",
+    "posttest:legacy": "npm run ensure:generated --silent",
+    "postgoldens:update": "npm run ensure:generated --silent"
   }
 }
