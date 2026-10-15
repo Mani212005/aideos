@@ -21,6 +21,7 @@ import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl
 import type { Scene } from "../../src/dl/scene/types";
 import { CHARACTER_FILES, rawSpec, type FixtureCharacter } from "../testSupport/characters";
 import { checkCharacterFile } from "./cli";
+import { checkLookPlanById } from "../lookPlan/check";
 
 const SOURCE = path.join(TEST_VIDEOS_DIR, "iona-receive");
 let counter = 0;
@@ -81,8 +82,9 @@ test("J5: a stiff character under the default fail policy is refused with the li
   assert.match(status.errors.join("\n"), /performance receive-message .*limits\.rotation\.spine: the receive turns spine to -0\.420 rad/);
 });
 
-test("J5: several characters share one stage, each with its own receive, glider and verified spec", () => {
-  const pkg = packageWith("marlo", (design) => {
+test("J5: look plan and design build carry two characters through the same receive", () => {
+  const pkg = packageWith("marlo", (design, look) => {
+    look.film.cast.find((item: Json) => item.id === "iona").character = "iona";
     design.assets = [
       { id: "iona", renderer: "three", kind: "character", character: "iona", position: [800, 1215], unitsToStage: 44, treatment: "cel-v1" },
       { id: "marlo", renderer: "three", kind: "character", character: "marlo", position: [1200, 1215], unitsToStage: 44, treatment: "cel-v1" },
@@ -90,8 +92,16 @@ test("J5: several characters share one stage, each with its own receive, glider 
       { id: "glider-two", renderer: "three", kind: "prop", asset: "paper-glider-v1", treatment: "cel-v1" },
     ];
     design.performances.push({ ...design.performances[0], id: "receive-two", actor: "marlo", prop: "glider-two" });
+    look.film.cast.push({ id: "marlo", renderer: "three", treatment: "cel-v1", what: "Marlo receives a second glider", enters: "approach", changes: [{ at: "catch", how: "Marlo catches and settles the second glider.", state: "message-received", magnitude: "major" }], character: "marlo" });
+    look.film.cast.push({ id: "glider-two", renderer: "three", treatment: "cel-v1", asset: "paper-glider-v1", what: "A second paper glider", enters: "approach", changes: [{ at: "catch", how: "The second glider becomes attached to Marlo's grip.", state: "message-received", magnitude: "major" }] });
+    look.film.performances.push({ ...look.film.performances[0], id: "receive-two", actor: "marlo", prop: "glider-two" });
+    for (const shot of look.shots) {
+      shot.performances.push("receive-two");
+      shot.carries.push("marlo", "glider-two");
+    }
   });
-  fs.rmSync(path.join(pkg.dir, "design", "look.json"));
+  const lookReport = checkLookPlanById(pkg.slug);
+  assert.equal(lookReport.ok, true, JSON.stringify(lookReport.findings));
   const { status, film } = build(pkg.slug);
   assert.equal(status.state, "passed", why(status));
   const scene = film!.scene as Scene;

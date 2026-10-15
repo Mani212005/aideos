@@ -28,6 +28,10 @@ import { checkCharacterFile } from "./cli";
 import { declaredMaterialPalette } from "../../src/dl/scene/stageMaterials";
 import { undeclaredMaterialColours } from "../../src/dl/scene/stageGeometry";
 import { buildProp } from "../../src/dl/scene/props/paperGlider";
+import { validateStage } from "../../src/dl/scene/validateStage";
+import { readFilm } from "../pipeline/filmStore";
+import type { Scene } from "../../src/dl/scene/types";
+import { buildDesign } from "../designSpec/build";
 import { fitReceiveSpan } from "../performance/bindReceive";
 
 const NAMES = Object.keys(CHARACTER_FILES) as FixtureCharacter[];
@@ -126,6 +130,23 @@ test("semantic errors name the field: joints, materials, sockets, ground contact
     ["iona", (raw) => { raw.parts[5].overrides.R["lapel{side}"].b = [[1, 2]]; }, /^parts\[5\]\.overrides\.R\.lapel\{side\}\.b/m],
   ];
   for (const [name, mutate, expected] of cases) assert.match(issuesFor(name, mutate).join("\n"), expected);
+});
+
+test("a missing extra-joint parent is reported through parsing and embedded-stage validation", () => {
+  const raw = rawSpec("iona") as Record<string, any>;
+  raw.skeleton.extraJoints = [{ id: "tail", parent: "missing", offset: [0, 0, 0] }];
+  const parsed = parseCharacter(raw);
+  assert.ok(parsed.spec);
+  assert.ok(parsed.errors.some((issue) => issue.path === "skeleton.extraJoints[0].parent"));
+  parsed.spec.hash = characterHash(parsed.spec);
+
+  assert.equal(buildDesign("iona-receive", "hand-built").state, "passed");
+  const film = structuredClone(readFilm("iona-receive")!);
+  const scene = film.scene as Scene;
+  const cast = scene.cast!.find((item) => item.id === "iona")!;
+  assert.equal(cast.kind, "character");
+  if (cast.kind === "character") cast.character = parsed.spec;
+  assert.ok(validateStage(scene).some((message) => message.includes("skeleton.extraJoints[0].parent")));
 });
 
 test("budgets stop a character that would be too heavy for the render worker", () => {

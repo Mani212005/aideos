@@ -44,6 +44,7 @@ export interface LookCheckReport {
 export interface LookCheckContext {
   film?: Film;
   castTargets?: Set<string>;
+  designPerformanceIds?: string[];
 }
 
 // Normalizes spoken text into punctuation-free lowercase words for reliable phrase matching.
@@ -94,6 +95,12 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed", context
       if (context.film && !containsSpokenCue(decisiveShot?.scriptText ?? "", p.decisive.phrase)) findings.push({ rule: "shot", severity: "error", where: p.id, message: "decisive phrase is absent from its narrated shot" });
     }
     for (const shot of look.shots) for (const id of shot.performances) if (!performanceIds.has(id)) findings.push({ rule: "cast", severity: "error", where: shot.id, message: `unknown performance ${id}` });
+    if (context.designPerformanceIds) {
+      const designIds = new Set(context.designPerformanceIds);
+      for (const id of designIds) if (context.designPerformanceIds.filter((candidate) => candidate === id).length > 1) findings.push({ rule: "cast", severity: "error", where: `design.performances.${id}`, message: `design performance "${id}" is duplicated.` });
+      for (const id of performanceIds) if (!designIds.has(id)) findings.push({ rule: "cast", severity: "error", where: `film.performances.${id}`, message: `look performance "${id}" has no matching design performance.` });
+      for (const id of designIds) if (!performanceIds.has(id)) findings.push({ rule: "cast", severity: "error", where: `design.performances.${id}`, message: `design performance "${id}" has no matching look performance.` });
+    }
     findings.push({ rule: "cast", severity: "warning", where: "three stage", message: "projected geometry checks deferred to design build; facial appeal, finger contact and raster occlusion unmeasured" });
   }
 
@@ -390,7 +397,8 @@ export function checkLookPlanById(filmId: string): LookCheckReport {
   const designFile = path.join(pkgDir, "design", "design.json");
   if (fs.existsSync(designFile)) {
     try {
-      const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as { assets?: Array<{ id?: string; file?: string }> };
+      const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as { assets?: Array<{ id?: string; file?: string }>; performances?: Array<{ id?: string }> };
+      context.designPerformanceIds = design.performances?.flatMap((performance) => performance.id ? [performance.id] : []);
       const castTargets = new Set<string>();
       for (const asset of design.assets ?? []) {
         if (asset.id) castTargets.add(asset.id);

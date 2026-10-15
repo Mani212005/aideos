@@ -126,6 +126,12 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
   const cues = createCues(narrationTimingForFilm(film, words), film.fps);
   if (plan.schema === "aideos.look/2") {
     if (!("performances" in spec)) return ["Three look requires aideos.design/2 performances."];
+    const designIds = new Set<string>();
+    for (const delivered of spec.performances) {
+      if (designIds.has(delivered.id)) errors.push(`design performance "${delivered.id}" is duplicated`);
+      designIds.add(delivered.id);
+    }
+    const lookIds = new Set(plan.film.performances.map((performance) => performance.id));
     for (const intended of plan.film.performances) {
       const delivered = spec.performances.find((p) => p.id === intended.id);
       if (!delivered || ["action", "actor", "prop", "start", "afterState"].some((key) => delivered[key as keyof typeof delivered] !== intended[key as keyof typeof intended]) || JSON.stringify(delivered.decisive) !== JSON.stringify(intended.decisive)) errors.push(`look performance ${intended.id}: design differs from action, actor, prop, start, decisive cue or after-state intention`);
@@ -139,6 +145,7 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
       try { cues.word(intended.decisive.shotId, intended.decisive.phrase, intended.decisive.edge); resolveCue(intended.start, cues); }
       catch (err) { errors.push(`look performance ${intended.id}: ${String(err)}`); }
     }
+    for (const delivered of spec.performances) if (!lookIds.has(delivered.id)) errors.push(`design performance "${delivered.id}" has no matching look performance`);
   }
   for (const shot of plan.shots) {
     if (shot.treatment === "scene") {

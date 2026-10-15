@@ -46,6 +46,7 @@ export function validateCharacterSemantics(spec: CharacterSpec): { rig: Characte
     if (joint.parent !== null && !jointIds.has(joint.parent)) errors.push({ path: `${path}.parent`, message: `parent "${joint.parent}" of "${joint.id}" must be declared earlier` });
     jointIds.add(joint.id);
   });
+  const validTopology = !errors.some((issue) => /^(?:skeleton\.proportions|skeleton\.extraJoints\[\d+\])\.(?:id|parent)$/.test(issue.path));
   for (const [name, limb] of Object.entries(rig.limbs)) {
     for (const id of [limb.middle, limb.tip]) {
       const offset = rig.joints.find((j) => j.id === id)!.offset;
@@ -57,12 +58,14 @@ export function validateCharacterSemantics(spec: CharacterSpec): { rig: Characte
     const socket = spec.sockets[name as keyof typeof expected];
     if (socket.joint !== joint) errors.push({ path: `sockets.${name}.joint`, message: `${name} rides on ${joint}, not "${socket.joint}"` });
   }
-  const rest = restPositions(rig);
-  for (const side of ["L", "R"] as const) {
-    const lift = rest[`ankle${side}`][1] + spec.sockets[`sole${side}`].offset[1];
-    if (Math.abs(lift) > GROUND_TOLERANCE) {
-      const fixed = spec.skeleton.proportions.hips[1] - lift;
-      errors.push({ path: "skeleton.proportions.hips", message: `the rest pose leaves sole${side} ${lift > 0 ? "above" : "below"} the ground by ${Math.abs(lift).toFixed(4)}; set hips y to ${Number(fixed.toFixed(6))} or move sockets.sole${side}` });
+  if (validTopology) {
+    const rest = restPositions(rig);
+    for (const side of ["L", "R"] as const) {
+      const lift = rest[`ankle${side}`][1] + spec.sockets[`sole${side}`].offset[1];
+      if (Math.abs(lift) > GROUND_TOLERANCE) {
+        const fixed = spec.skeleton.proportions.hips[1] - lift;
+        errors.push({ path: "skeleton.proportions.hips", message: `the rest pose leaves sole${side} ${lift > 0 ? "above" : "below"} the ground by ${Math.abs(lift).toFixed(4)}; set hips y to ${Number(fixed.toFixed(6))} or move sockets.sole${side}` });
+      }
     }
   }
   for (const kind of ["arm", "leg"] as const) {
@@ -87,25 +90,29 @@ export function validateCharacterSemantics(spec: CharacterSpec): { rig: Characte
     if (surface.rx.length !== surface.y.length || surface.rz.length !== surface.y.length) errors.push({ path: `surfaces.${name}`, message: "y, rx and rz need the same number of entries" });
     if (surface.y.some((y, i) => i > 0 && y <= surface.y[i - 1])) errors.push({ path: `surfaces.${name}.y`, message: "heights must strictly increase" });
   }
-  const expanded = expandParts(spec);
-  errors.push(...expanded.issues);
-  const partIds = new Map<string, string>();
-  let heads = 0;
-  for (const part of expanded.parts) {
-    if (partIds.has(part.id)) errors.push({ path: part.path, message: `part id "${part.id}" is also used at ${partIds.get(part.id)}` });
-    partIds.set(part.id, part.path);
-    if (!jointIds.has(part.joint)) errors.push({ path: `${part.path}.joint`, message: `unknown joint "${part.joint}"` });
-    if (part.material !== null) needToken(part.material, `${part.path}.material`);
-    if (part.geometry.kind === "head") heads++;
+  let parts: ResolvedPart[] = [];
+  if (validTopology) {
+    const expanded = expandParts(spec);
+    parts = expanded.parts;
+    errors.push(...expanded.issues);
+    const partIds = new Map<string, string>();
+    let heads = 0;
+    for (const part of parts) {
+      if (partIds.has(part.id)) errors.push({ path: part.path, message: `part id "${part.id}" is also used at ${partIds.get(part.id)}` });
+      partIds.set(part.id, part.path);
+      if (!jointIds.has(part.joint)) errors.push({ path: `${part.path}.joint`, message: `unknown joint "${part.joint}"` });
+      if (part.material !== null) needToken(part.material, `${part.path}.material`);
+      if (part.geometry.kind === "head") heads++;
+    }
+    if (heads !== 1) errors.push({ path: "parts", message: `needs exactly one head part for the painted face, found ${heads}` });
+    const triangles = parts.reduce((sum, part) => sum + triangleCount(part), 0);
+    if (triangles > TRIANGLE_BUDGET) errors.push({ path: "parts", message: `draws ${triangles} triangles, over the ${TRIANGLE_BUDGET} budget; lower segments or radial on the largest parts` });
+    if (parts.length > PART_BUDGET) errors.push({ path: "parts", message: `creates ${parts.length} meshes, over the ${PART_BUDGET} budget` });
+    spec.secondary.forEach((swing, i) => swing.parts.forEach((piece, j) => {
+      if (!partIds.has(piece.part)) errors.push({ path: `secondary[${i}].parts[${j}].part`, message: `unknown part "${piece.part}"` });
+    }));
   }
-  if (heads !== 1) errors.push({ path: "parts", message: `needs exactly one head part for the painted face, found ${heads}` });
-  const triangles = expanded.parts.reduce((sum, part) => sum + triangleCount(part), 0);
-  if (triangles > TRIANGLE_BUDGET) errors.push({ path: "parts", message: `draws ${triangles} triangles, over the ${TRIANGLE_BUDGET} budget; lower segments or radial on the largest parts` });
-  if (expanded.parts.length > PART_BUDGET) errors.push({ path: "parts", message: `creates ${expanded.parts.length} meshes, over the ${PART_BUDGET} budget` });
-  spec.secondary.forEach((swing, i) => swing.parts.forEach((piece, j) => {
-    if (!partIds.has(piece.part)) errors.push({ path: `secondary[${i}].parts[${j}].part`, message: `unknown part "${piece.part}"` });
-  }));
-  return { rig, parts: expanded.parts, errors };
+  return { rig, parts, errors };
 }
 
 // Parses raw JSON, applies defaults, validates semantics and verifies the content hash when present or required.
