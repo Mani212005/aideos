@@ -418,7 +418,16 @@ export function readFilmFacts(film: Film, viewport: ReviewViewport = FRAME): Fil
       const before = stageVisible(frame - 1), after = stageVisible(frame);
       const kept = before.filter((id) => after.includes(id)).length;
       carry[i].outgoing += before.length; carry[i].kept += kept;
-      carry[i].transformed += scene.performances!.some((p) => p.data.fromFrame < frame && p.data.holdFromFrame >= frame) ? kept : 0;
+      const beforeStates = projection.at(frame - 1);
+      const afterStates = projection.at(frame);
+      const transformed = new Set<string>();
+      for (const prior of beforeStates) {
+        const current = afterStates.find((state) => state.id === prior.id);
+        if (!current || current.ownership === prior.ownership) continue;
+        if (before.includes(prior.actor) && after.includes(prior.actor)) transformed.add(prior.actor);
+        if (before.includes(prior.prop) && after.includes(prior.prop)) transformed.add(prior.prop);
+      }
+      carry[i].transformed += transformed.size;
     });
     const assets = [...(scene.background ? [scene.background] : []), ...(scene.props ?? [])];
     let shotStart = 0;

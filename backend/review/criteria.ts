@@ -220,7 +220,7 @@ function planAdherence(i: ReviewInputs): CriterionResult {
     }
 
     const shotPerformances = stagePlan && "performances" in shot ? stagePlan.film.performances.filter((p) => shot.performances.includes(p.id)) : [];
-    if (shot.treatment === "scene" && shotPerformances.length) {
+    if (shotPerformances.length) {
       // A performance shot is judged by its action: contact on the decisive word, actor and prop on stage. Anticipation may start before the cue.
       const before = failures.length;
       for (const planned of shotPerformances) {

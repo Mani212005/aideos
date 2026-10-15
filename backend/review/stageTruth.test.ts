@@ -11,6 +11,7 @@ import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { designSpecSchema } from "../designSpec/spec";
+import { bindReceiveSpan } from "../performance/bindReceive";
 import { compileDesign } from "../designSpec/compile";
 import { resolveDesignCharacters } from "../designSpec/build";
 import { parseLookPlan } from "../lookPlan/schema";
@@ -75,6 +76,32 @@ test("J2 and J7: a contact that no longer lands on its word fails adherence and 
   const tampered = compiled();
   tampered.scene!.performances![0].decisive.frame = 126;
   assert.equal(criterion(facts(tampered), "plan-adherence", retimed).status, "fail", "editing the recorded frame cannot fake a contact");
+});
+
+test("J7: a scene+card shot with a listed performance still fails when contact misses its decisive cue", () => {
+  const measured = facts(compiled());
+  measured.lookPlan!.shots.find((shot) => shot.id === "catch")!.treatment = "scene+card";
+  const result = criterion(measured, "plan-adherence", narration(3.5, 0.5));
+  assert.equal(result.status, "fail");
+  assert.match(result.summary, /performance "receive-message" makes contact at frame 111, 15 frames before its decisive word "catches" at frame 126/);
+});
+
+test("J7: stage carry-over counts named identities only when evaluator ownership changes", () => {
+  const film = compiled();
+  const scene = film.scene as Scene;
+  const performance = scene.performances![0];
+  const action = bindReceiveSpan(111, 45, scene.durationFrames);
+  action.holdFromFrame = 135;
+  action.anchors[5].frame = 135;
+  performance.data = action;
+  film.shots[0].dur = 2.5;
+  film.shots[1].dur = 1.2;
+  film.shots[2].dur = 6.3;
+
+  const measured = readFilmFacts(film, LONG);
+  assert.deepEqual(measured.boundaries.map((boundary) => boundary.t), [2.5, 3.7]);
+  assert.equal(measured.boundaries[0].transformed, 0, "frame 75 is airborne on both sides");
+  assert.equal(measured.boundaries[1].transformed, 2, "frame 111 transforms only the present actor and prop as ownership changes");
 });
 
 test("J7: presence is measured in the reviewed crop; a character outside the reel column is present in the long output only", () => {
