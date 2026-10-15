@@ -221,7 +221,21 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   }
   const parsed = designSpecSchema.safeParse(rawSpec);
   if (!parsed.success) {
-    return fail(parsed.error.issues.map((i) => `design.json ${i.path.join(".") || "(root)"}: ${i.message}`));
+    const issues = [...parsed.error.issues];
+    const unrecognized: typeof issues = [];
+    for (let index = 0; index < issues.length; index++) {
+      const issue = issues[index];
+      if (issue.code === "unrecognized_keys") unrecognized.push(issue);
+      if (issue.code === "invalid_union") issues.push(...issue.errors.flat());
+    }
+    const reported = unrecognized.length ? unrecognized : parsed.error.issues;
+    return fail(reported.map((i) => {
+      const path = i.path.join(".") || "(root)";
+      const message = i.code === "unrecognized_keys"
+        ? `unrecognized field${i.keys.length === 1 ? "" : "s"}: ${i.keys.join(", ")}`
+        : i.message;
+      return `design.json ${path}: ${message}`;
+    }));
   }
   const spec = parsed.data;
 

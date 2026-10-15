@@ -98,7 +98,7 @@ journey("J8 a hand target that cannot be reached clamps without NaN and fails th
 
 // Gaps found while building this suite. They run on every CI pass and stay "todo" (visible, not red)
 // until the owning part fixes them; delete the todo flag then so the test becomes a hard gate.
-test("J10 an unknown field in design.json is reported by field name", { todo: "part 1 (schema): today the error is the generic 'design.json (root): Invalid input'" }, async () => {
+test("J10 an unknown field in design.json is reported by field name", async () => {
   const pkg = await preparedPackage("j8-unknown-field");
   const { status } = buildBroken("j8-unknown-field", pkg, (d) => {
     d.performances[0].bogusField = 1;
