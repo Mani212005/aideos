@@ -59,7 +59,7 @@
     "calibrate:review": "tsx scripts/calibrate_review.ts",
     "validate:film": "tsx scripts/validate_film.ts",
     "test": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 \"backend/**/*.test.ts\" \"scripts/**/*.test.ts\"",
-    "test:journeys": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 \"backend/journeys/**/*.journey.ts\"",
+    "test:journeys": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 --test-reporter=tap \"backend/journeys/**/*.journey.ts\"",
     "test:legacy": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 \"backend/journeys/**/*.golden.ts\"",
     "goldens:update": "AIDEOS_GOLDEN_UPDATE=1 node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 \"backend/journeys/**/*.golden.ts\"",
     "ci": "tsx scripts/ci.ts",

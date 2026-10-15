@@ -25,7 +25,7 @@ GitHub job summary), so one run reports every problem.
 | --- | --- | --- |
 | `static` | file headers, every test file is wired, eslint (src, backend, scripts, editor), `tsc` root, `tsc` editor app, oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
 | `unit` | `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
-| `journeys` | `npm run test:journeys` (real pipeline and real renders, below) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
+| `journeys` | `npm run test:journeys` (real pipeline and real renders, below; todo cases are listed as known gaps) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
 | `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; reports **NOT COVERED** until baselines are committed | every PR and push to main, Linux only |
 | `nightly` | `scripts/nightly_budget.ts`: the whole Iona film, wide and reel, with budgets on wall time, peak memory, peak temp disk and bundle size | 03:17 UTC and on demand, never on a PR |
 | `all-green` | fails unless the four jobs above succeeded | the one check to require |
@@ -132,8 +132,7 @@ journey("J99 what the user does, in words", async (ctx) => {
 
 > **J9 (existing SVG and template films render unchanged) is NOT COVERED at pixel level until the
 > baselines are committed.** `backend/journeys/goldens/` is empty on purpose: goldens can only be
-> made on the CI platform, and the workflow that makes them can only be dispatched once it exists on
-> the default branch. Until then the legacy job says **NOT COVERED** (see below), never "passed".
+> made on the CI platform. The legacy job says **NOT COVERED** (see below), never "passed".
 > The real-pipeline template journey (`j9_template.journey.ts`) still runs.
 
 `backend/journeys/legacy.golden.ts` renders quarter-size PNGs of four films that predate the
@@ -156,18 +155,16 @@ which `scripts/ci.ts` reads; a result from an earlier run is cleared first.
 
 ### Bootstrap (do this once, after this suite is merged)
 
-1. On a new branch off the default branch, dispatch the workflow on it (it refuses the default
-   branch): `gh workflow run update-goldens.yml --ref <branch>`. It renders every frame twice on
-   Linux with software GL, refuses any frame the platform does not reproduce exactly, and commits
-   the PNGs and `MANIFEST.json` to that branch.
-2. Review the generated PNGs (look at each one: layout, type, colour) and open a pull request with
-   them.
-3. Merge it. From then on a missing or changed golden is a **hard failure** on CI, and the legacy
-   job no longer reports NOT COVERED.
+1. Dispatch **Update goldens** on the default branch: `gh workflow run update-goldens.yml --ref main`.
+   The workflow rejects any other ref, renders every frame twice on Linux with software GL, refuses
+   any frame the platform does not reproduce exactly, then opens a pull request containing the PNGs
+   and `MANIFEST.json`.
+2. Review the generated PNGs (look at each one: layout, type, colour) and merge that pull request.
+3. Once the manifest is committed, a missing or changed golden is a **hard failure** on CI, and
+   the legacy job no longer reports NOT COVERED.
 
-After bootstrap, when a legitimate rendering change moves pixels, add the label `update-goldens` to
-the pull request (or dispatch the workflow on its branch) and review the changed PNGs in the diff
-like any other change.
+After bootstrap, when a legitimate rendering change moves pixels, dispatch the workflow on the
+default branch again. Review and merge its pull request like any other change.
 
 ## Branch protection (proposal, not applied)
 
@@ -183,10 +180,17 @@ description and in the timing table at the end of every run.
 
 ## Known gaps (found while building this suite)
 
-* A duplicate cue phrase silently binds to its first occurrence (`todo` in `j8_failures.journey.ts`).
-* An unknown field in `design.json` is reported as `design.json (root): Invalid input`, not by name.
+CI does not fully cover J8 and J10 until these `todo` cases are fixed. `npm run ci` lists each
+case by name and count in the journey summary table and emits a warning annotation and job-summary
+note.
+
+* `J10 an unknown field in design.json is reported by field name` currently receives the generic
+  `design.json (root): Invalid input` error.
+* `J8 a cue phrase spoken twice in one shot is rejected as ambiguous` currently binds the first
+  occurrence.
 * There is no way to run a render with WebGL disabled to assert a named error (Remotion's CLI has no
-  such flag); the stage needs a readiness error that a test can provoke.
+  such flag); the stage needs a readiness error that a test can provoke. Its journey test is also
+  `todo` and appears in the same CI known-gap report.
 * A Player-vs-export pixel comparison (J3) needs the studio Player drawn at composition size.
 * About 70 `any` annotations remain in files listed in the `LEGACY_ANY` ledger in `eslint.config.mjs`
   (shrink-only: fix and delete the entry when you touch one).

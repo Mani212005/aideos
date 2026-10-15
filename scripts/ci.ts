@@ -30,6 +30,8 @@ export interface CiStep {
    * NOT COVERED (exit code still 0), and a step that exits 0 without leaving a verdict is a failure.
    */
   verdict?: { clear: () => void; read: () => StepVerdict | null };
+  /** Collects TAP TODO cases from the journey runner and reports them without failing the step. */
+  todoCases?: boolean;
   /** A reason this step does not apply here (reported as skipped, never as a pass). */
   skip?: () => string | null;
 }
@@ -51,6 +53,7 @@ export interface StepResult {
   status: "passed" | "failed" | "skipped" | "not-covered";
   seconds: number;
   note?: string;
+  todoNames?: string[];
 }
 
 /** The ruff release CI installs; the uvx fallback pins the same one so laptop and CI agree on formatting. */
@@ -144,7 +147,7 @@ export const JOBS: CiJob[] = [
     id: "journeys",
     title: "Headless user journeys: real pipeline, real render, real studio",
     steps: [
-      { name: "journey tests", cmd: ["npm", "run", "test:journeys"], env: softwareGl() },
+      { name: "journey tests", cmd: ["npm", "run", "test:journeys"], env: softwareGl(), todoCases: true },
       { name: "studio smoke and scrub", cmd: ["npm", "run", "smoke:studio"], env: inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {} },
     ],
   },
@@ -171,16 +174,31 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
   const started = Date.now();
   return new Promise((resolve) => {
     const cmd = step.resolve ? step.resolve(step.cmd) : step.cmd;
+    const todoNames: string[] = [];
+    let pendingLine = "";
+    /** Streams test output and collects TAP TODO names without changing the child exit status. */
+    const parseOutput = (chunk: Buffer) => {
+      pendingLine += chunk.toString("utf8");
+      const lines = pendingLine.split("\n");
+      pendingLine = lines.pop() ?? "";
+      for (const line of lines) {
+        process.stdout.write(`${line}\n`);
+        const match = line.match(/^ok \d+ - (.+?) # TODO(?: .*)?\r?$/);
+        if (match) todoNames.push(match[1]);
+      }
+    };
     const child = spawn(cmd[0], cmd.slice(1), {
       cwd: ROOT,
-      stdio: "inherit",
+      stdio: step.todoCases ? ["inherit", "pipe", "inherit"] : "inherit",
       env: { ...process.env, ...step.env },
     });
+    if (step.todoCases) child.stdout?.on("data", parseOutput);
     const done = (status: StepResult["status"], note?: string) =>
-      resolve({ job: job.id, step: step.name, status, seconds: (Date.now() - started) / 1000, note });
+      resolve({ job: job.id, step: step.name, status, seconds: (Date.now() - started) / 1000, note, ...(todoNames.length ? { todoNames } : {}) });
     child.on("error", (err) => done("failed", err.message));
     child.on("close", (code) => {
       if (code !== 0) return done("failed", `exit ${code}`);
+      if (step.todoCases && pendingLine) parseOutput(Buffer.from("\n"));
       if (!step.verdict) return done("passed");
       const verdict = step.verdict.read();
       if (!verdict) return done("failed", "exited 0 but left no verdict, so nothing is known to have been checked");
@@ -192,13 +210,21 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
 
 /** Formats results as a markdown table (the GitHub step summary and the terminal summary). */
 export function summaryTable(results: StepResult[]): string {
-  const rows = results.map((r) => `| ${r.job} | ${r.step} | ${r.status === "not-covered" ? "NOT COVERED" : r.status} | ${r.seconds.toFixed(1)}s | ${r.note ?? ""} |`);
+  const rows = results.map((r) => {
+    const gaps = r.todoNames?.length ? `KNOWN GAPS (todo): ${r.todoNames.length}: ${r.todoNames.join(", ")}` : "";
+    return `| ${r.job} | ${r.step} | ${r.status === "not-covered" ? "NOT COVERED" : r.status} | ${r.seconds.toFixed(1)}s | ${[r.note, gaps].filter(Boolean).join("; ")} |`;
+  });
   return ["| job | step | status | time | note |", "| --- | --- | --- | --- | --- |", ...rows].join("\n");
 }
 
 /** One sentence per step that compared nothing, for the warning annotation and the job summary. */
 export function notCoveredNotices(results: StepResult[]): string[] {
   return results.filter((r) => r.status === "not-covered").map((r) => `${r.job} / ${r.step} is NOT COVERED: ${r.note}`);
+}
+
+/** Formats todo journey cases for the console, GitHub warning annotation and job summary. */
+export function knownGapNotices(results: StepResult[]): string[] {
+  return results.flatMap((r) => r.todoNames?.length ? [`KNOWN GAPS (todo): ${r.todoNames.length}: ${r.todoNames.join(", ")}`] : []);
 }
 
 /** Prints a group header that GitHub Actions folds, and a plain banner elsewhere. */
@@ -246,6 +272,11 @@ async function main(): Promise<void> {
     if (process.env.GITHUB_ACTIONS === "true") console.log(`::warning title=NOT COVERED::${text}`);
     else console.warn(`[ci] WARNING ${text}`);
     if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `> **NOT COVERED** - ${text}\n`);
+  }
+  for (const text of knownGapNotices(results)) {
+    if (process.env.GITHUB_ACTIONS === "true") console.log(`::warning title=KNOWN GAPS::${text}`);
+    else console.warn(`[ci] WARNING ${text}`);
+    if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `> **${text}**\n`);
   }
   const failed = results.filter((r) => r.status === "failed");
   if (failed.length) {

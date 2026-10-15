@@ -9,8 +9,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import YAML from "yaml";
-import { JOBS, PR_JOBS, notCoveredNotices, notLinux, resolveRuff, runJobs, runStep, summaryTable } from "./ci";
+import { JOBS, PR_JOBS, knownGapNotices, notCoveredNotices, notLinux, resolveRuff, runJobs, runStep, summaryTable } from "./ci";
 
 const ROOT = path.resolve(__dirname, "..");
 const scripts = (JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")) as { scripts: Record<string, string> }).scripts;
@@ -21,6 +22,8 @@ interface WorkflowStep {
   name?: string;
   run?: string;
   uses?: string;
+  with?: Record<string, unknown>;
+  env?: Record<string, string>;
   "continue-on-error"?: boolean;
 }
 
@@ -34,8 +37,16 @@ interface WorkflowJob {
 
 interface WorkflowDocument {
   name?: string;
+  on?: string[] | Record<string, unknown>;
+  env?: Record<string, unknown>;
   permissions?: unknown;
   jobs?: Record<string, WorkflowJob>;
+}
+
+/** Returns whether a workflow permission map grants any write capability. */
+function hasWritePermission(permissions: unknown): boolean {
+  if (!permissions || typeof permissions !== "object") return permissions === "write-all";
+  return Object.values(permissions).some((permission) => permission === "write");
 }
 
 /** Extracts job IDs from a step's run command string when it invokes npm run ci. */
@@ -114,6 +125,40 @@ test("workflows are least-privilege and pin a runner image", () => {
   }
 });
 
+test("golden updates run only from default-branch dispatch and keep write access away from PR code", () => {
+  assert.equal(hasWritePermission("write-all"), true);
+  assert.equal(hasWritePermission("read-all"), false);
+  assert.equal(hasWritePermission({ contents: "write" }), true);
+  const update = YAML.parse(fs.readFileSync(path.join(workflowDir, "update-goldens.yml"), "utf8")) as WorkflowDocument;
+  const triggers = Object.keys(update.on ?? {});
+  assert.deepEqual(triggers, ["workflow_dispatch"]);
+  const guard = update.jobs?.generate?.steps?.find((step) => step.name === "Require the default branch");
+  assert.ok(guard?.run && guard.env?.DEFAULT_BRANCH && guard.env.REF_NAME);
+  const runGuard = (ref: string) => spawnSync("bash", ["-e", "-c", guard.run!], {
+    env: { ...process.env, DEFAULT_BRANCH: "main", REF_NAME: ref },
+    stdio: "ignore",
+  }).status;
+  assert.equal(runGuard("main"), 0);
+  assert.notEqual(runGuard("feature"), 0);
+
+  for (const file of workflows) {
+    const doc = YAML.parse(fs.readFileSync(path.join(workflowDir, file), "utf8")) as WorkflowDocument;
+    const onPullRequest = Object.hasOwn(doc.on ?? {}, "pull_request");
+    for (const [jobKey, job] of Object.entries(doc.jobs ?? {})) {
+      const canWrite = hasWritePermission(job.permissions ?? doc.permissions);
+      if (onPullRequest) assert.ok(!canWrite, `${file} job ${jobKey} has write access on a pull_request workflow`);
+      if (!canWrite) continue;
+      for (const step of job.steps ?? []) {
+        if (step.uses?.startsWith("actions/checkout@")) {
+          const checkoutRef = String(step.with?.ref ?? "");
+          assert.doesNotMatch(checkoutRef, /github\.event\.pull_request\.(?:head|head\.ref)/, `${file} job ${jobKey} checks out a PR head with write access`);
+          assert.doesNotMatch(String(doc.env?.BRANCH ?? ""), /github\.event\.pull_request\.head\.ref/, `${file} job ${jobKey} resolves checkout through a PR head branch`);
+        }
+      }
+    }
+  }
+});
+
 test("golden comparison skips on non-Linux platforms with a clear message and has no force flag", () => {
   if (process.platform !== "linux") {
     assert.equal(notLinux(), "golden frames are verified on the Linux CI platform only");
@@ -132,6 +177,19 @@ test("runStep reports failed, passed and skipped honestly, and runJobs rejects a
   const skipped = await runStep(job, { name: "skip", cmd: ["node", "-e", "process.exit(1)"], skip: () => "not here" });
   assert.deepEqual([skipped.status, skipped.note], ["skipped", "not here"]);
   assert.match(summaryTable([{ job: "a", step: "b", status: "passed", seconds: 1.25 }]), /\| a \| b \| passed \| 1\.3s \|/);
+});
+
+test("journey TAP todos appear by name in the CI table and warning notice without failing", async () => {
+  const job = { id: "journeys", title: "journeys", steps: [] };
+  const result = await runStep(job, {
+    name: "journey tests",
+    cmd: ["node", "-e", "process.stdout.write('TAP version 13\\n1..2\\nok 1 - J10 bad field name # TODO schema\\nok 2 - J8 duplicate cue # TODO ambiguity\\n')"],
+    todoCases: true,
+  });
+  assert.equal(result.status, "passed");
+  assert.deepEqual(result.todoNames, ["J10 bad field name", "J8 duplicate cue"]);
+  assert.match(summaryTable([result]), /KNOWN GAPS \(todo\): 2: J10 bad field name, J8 duplicate cue/);
+  assert.deepEqual(knownGapNotices([result]), ["KNOWN GAPS (todo): 2: J10 bad field name, J8 duplicate cue"]);
 });
 
 test("resolveRuff picks the first launcher that answers and returns null when none does", () => {
