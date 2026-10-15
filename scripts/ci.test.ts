@@ -179,17 +179,27 @@ test("runStep reports failed, passed and skipped honestly, and runJobs rejects a
   assert.match(summaryTable([{ job: "a", step: "b", status: "passed", seconds: 1.25 }]), /\| a \| b \| passed \| 1\.3s \|/);
 });
 
-test("journey TAP todos appear by name in the CI table and warning notice without failing", async () => {
+test("nested TODOs from multiple Node test files reach the CI table and warning notice", async () => {
   const job = { id: "journeys", title: "journeys", steps: [] };
-  const result = await runStep(job, {
-    name: "journey tests",
-    cmd: ["node", "-e", "process.stdout.write('TAP version 13\\n1..2\\nok 1 - J10 bad field name # TODO schema\\nok 2 - J8 duplicate cue # TODO ambiguity\\n')"],
-    todoCases: true,
-  });
-  assert.equal(result.status, "passed");
-  assert.deepEqual(result.todoNames, ["J10 bad field name", "J8 duplicate cue"]);
-  assert.match(summaryTable([result]), /KNOWN GAPS \(todo\): 2: J10 bad field name, J8 duplicate cue/);
-  assert.deepEqual(knownGapNotices([result]), ["KNOWN GAPS (todo): 2: J10 bad field name, J8 duplicate cue"]);
+  const dir = fs.mkdtempSync(path.join(ROOT, ".ci-todo-report-"));
+  const first = path.join(dir, "first.test.cjs");
+  const second = path.join(dir, "second.test.cjs");
+  fs.writeFileSync(first, `const { test } = require("node:test"); test("J10 bad field name", { todo: "schema" }, () => {});`);
+  fs.writeFileSync(second, `const { test } = require("node:test"); test("J8 duplicate cue", { todo: "ambiguity" }, () => {});`);
+  try {
+    const result = await runStep(job, {
+      name: "journey tests",
+      cmd: [process.execPath, "--test", "--test-concurrency=1", "--test-reporter=tap", first, second],
+      env: { NODE_TEST_CONTEXT: undefined },
+      todoCases: true,
+    });
+    assert.equal(result.status, "passed");
+    assert.deepEqual(result.todoNames, ["J10 bad field name", "J8 duplicate cue"]);
+    assert.match(summaryTable([result]), /KNOWN GAPS \(todo\): 2: J10 bad field name, J8 duplicate cue/);
+    assert.deepEqual(knownGapNotices([result]), ["KNOWN GAPS (todo): 2: J10 bad field name, J8 duplicate cue"]);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("resolveRuff picks the first launcher that answers and returns null when none does", () => {

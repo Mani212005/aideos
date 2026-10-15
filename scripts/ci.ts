@@ -23,7 +23,7 @@ export interface CiStep {
   /** Rewrites the command just before it runs (used to find the right ruff launcher). */
   resolve?: (cmd: string[]) => string[];
   /** Extra environment for this step only. */
-  env?: Record<string, string>;
+  env?: Record<string, string | undefined>;
   /**
    * For steps whose exit code cannot say whether anything was actually checked (the golden frames):
    * cleared before the step runs, read after it exits 0. A "not-covered" verdict is reported as
@@ -147,7 +147,7 @@ export const JOBS: CiJob[] = [
     id: "journeys",
     title: "Headless user journeys: real pipeline, real render, real studio",
     steps: [
-      { name: "journey tests", cmd: ["npm", "run", "test:journeys"], env: softwareGl(), todoCases: true },
+      { name: "journey tests", cmd: ["npm", "run", "test:journeys"], env: { ...softwareGl(), npm_config_loglevel: "silent" }, todoCases: true },
       { name: "studio smoke and scrub", cmd: ["npm", "run", "smoke:studio"], env: inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {} },
     ],
   },
@@ -174,31 +174,22 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
   const started = Date.now();
   return new Promise((resolve) => {
     const cmd = step.resolve ? step.resolve(step.cmd) : step.cmd;
-    const todoNames: string[] = [];
-    let pendingLine = "";
-    /** Streams test output and collects TAP TODO names without changing the child exit status. */
-    const parseOutput = (chunk: Buffer) => {
-      pendingLine += chunk.toString("utf8");
-      const lines = pendingLine.split("\n");
-      pendingLine = lines.pop() ?? "";
-      for (const line of lines) {
-        process.stdout.write(`${line}\n`);
-        const match = line.match(/^ok \d+ - (.+?) # TODO(?: .*)?\r?$/);
-        if (match) todoNames.push(match[1]);
-      }
-    };
+    let output = "";
+    let todoNames: string[] = [];
     const child = spawn(cmd[0], cmd.slice(1), {
       cwd: ROOT,
       stdio: step.todoCases ? ["inherit", "pipe", "inherit"] : "inherit",
       env: { ...process.env, ...step.env },
     });
-    if (step.todoCases) child.stdout?.on("data", parseOutput);
+    if (step.todoCases) child.stdout?.on("data", (chunk: Buffer) => { output += chunk.toString("utf8"); });
     const done = (status: StepResult["status"], note?: string) =>
       resolve({ job: job.id, step: step.name, status, seconds: (Date.now() - started) / 1000, note, ...(todoNames.length ? { todoNames } : {}) });
     child.on("error", (err) => done("failed", err.message));
     child.on("close", (code) => {
+      if (step.todoCases) {
+        todoNames = todoNamesFromTap(output);
+      }
       if (code !== 0) return done("failed", `exit ${code}`);
-      if (step.todoCases && pendingLine) parseOutput(Buffer.from("\n"));
       if (!step.verdict) return done("passed");
       const verdict = step.verdict.read();
       if (!verdict) return done("failed", "exited 0 but left no verdict, so nothing is known to have been checked");
@@ -206,6 +197,16 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
       return done(verdict.status);
     });
   });
+}
+
+/** Reads named TODO cases from Node's TAP protocol, including nested per-file subtests. */
+export function todoNamesFromTap(report: string): string[] {
+  const names: string[] = [];
+  for (const line of report.split("\n")) {
+    const match = line.trimStart().match(/^ok \d+ - (.+?) # TODO(?: .*)?\r?$/);
+    if (match) names.push(match[1]);
+  }
+  return names;
 }
 
 /** Formats results as a markdown table (the GitHub step summary and the terminal summary). */
