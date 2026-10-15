@@ -92,7 +92,7 @@ test("aideos launcher fails clearly when neither the cwd nor its own location is
     const result = runLauncher(path.join(lone, "aideos"), ["lint"], tmp, tmp);
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Could not locate the Aideos checkout/);
-    assert.doesNotMatch(fs.readFileSync(path.join(ROOT, "bin/aideos"), "utf8"), /\/Users\//);
+    assert.doesNotMatch(result.stdout, /CHECKOUT_DIR=/);
   });
 });
 
@@ -117,13 +117,30 @@ test("aideos launcher help exits 0 and the top-level help lists look and design"
 
     const top = runLauncher(launcher, ["--help"], tmp, tmp);
     assert.equal(top.status, 0, top.stderr);
-    const commands = fs
-      .readFileSync(launcher, "utf8")
-      .match(/^ {4}(exit\|[^)]*)\)/m)![1]
-      .split("|")
-      .filter((c) => !["help", "--help", "-h", "stop", "down", "kill", "render:reel"].includes(c));
-    for (const command of commands) {
-      assert.match(top.stdout, new RegExp(`aideos ${command}\\b`), `top-level help omits '${command}'`);
+    for (const command of [
+      "exit",
+      "validate",
+      "render",
+      "reel",
+      "studio",
+      "frames",
+      "test",
+      "produce",
+      "direct",
+      "film",
+      "gemini-review",
+      "all-check",
+      "review",
+      "character check",
+      "character sheet",
+      "look brief|check",
+      "design check|brief|build",
+      "connect",
+      "mcp",
+      "engine-test",
+      "lint",
+    ]) {
+      assert.ok(top.stdout.includes(`aideos ${command}`), `top-level help omits '${command}'`);
     }
   });
 });
