@@ -8,27 +8,23 @@
  * Rule 5: linkedClipId resolves to an existing clip and is symmetric.
  * Rule 6: Source file references are valid non-empty strings.
  * Rule 7: opacity in [0,1], volume in [0,1].
+ * Browser-safe by contract: this module is bundled into the studio (the AI edit Apply gesture runs it
+ * in the page), so it must never import a Node built-in or read `process`. Whether a source file exists
+ * on disk is a Node-only question answered by backend/timeline/layerAssetCheck.ts.
  * Inputs and outputs: LayeredFilm data structure -> validation error list for layers and clips.
- * Used by: editor/src/state/useLayeredTimeline.ts, backend/timeline/layer_management.test.ts.
+ * Used by: backend/editPlanner/interpreter.ts, backend/editPlanner/validator.ts, backend/timeline/layerAssetCheck.ts, backend/timeline/layer_management.test.ts.
  */
 
-import fs from "fs";
-import path from "path";
 import { layeredFilmSchema, type LayeredFilm, type Clip } from "./layeredSchema";
 
-export interface LayeredValidationOptions {
-  checkAssetsOnDisk?: boolean;
-  baseDir?: string;
-}
-
-export function validateLayeredFilm(input: unknown, options?: LayeredValidationOptions): LayeredFilm {
+/** Validates a layered film structurally (Rules 1-7) and returns the parsed film, throwing on the first violation. */
+export function validateLayeredFilm(input: unknown): LayeredFilm {
   const parseRes = layeredFilmSchema.safeParse(input);
   if (!parseRes.success) {
     throw new Error(`Invalid layered film schema:\n${parseRes.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n")}`);
   }
 
   const film = parseRes.data;
-  const baseDir = options?.baseDir ?? path.resolve(process.cwd(), "public");
 
   // Rule 2: Every layer.number is a unique integer
   const layerNumbers = new Set<number>();
@@ -73,18 +69,6 @@ export function validateLayeredFilm(input: unknown, options?: LayeredValidationO
       const src = (clip.payload as { src?: string })?.src;
       if (!src || typeof src !== "string" || src.trim().length === 0) {
         throw new Error(`Rule 6 violation: clip "${clip.id}" has empty source path`);
-      }
-
-      if (options?.checkAssetsOnDisk) {
-        const candidates = [
-          path.resolve(baseDir, src),
-          path.resolve(baseDir, "..", src),
-          path.resolve(process.cwd(), "public", src),
-        ];
-        const exists = candidates.some((c) => fs.existsSync(c));
-        if (!exists) {
-          throw new Error(`Rule 6 violation: Source asset file missing: "${src}" for clip "${clip.id}"`);
-        }
       }
     }
   }

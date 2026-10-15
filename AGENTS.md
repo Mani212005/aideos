@@ -254,6 +254,11 @@ camera motion smoother and move captions slightly upward.
 - The editor must not import `src/dl/films/*`. Those modules are rewritten on every autosave, so
   importing them makes Vite hot-reload the whole page mid-edit. `editor/vite.config.ts` also lists
   them (and `videos/**`) under `server.watch.ignored` for the same reason.
+- `src/dl/validateLayeredFilm.ts` and `backend/editPlanner/interpreter.ts` run in the page (the AI edit Apply gesture), so they
+  must stay free of Node built-ins and `process`: the on-disk source check lives in `backend/timeline/layerAssetCheck.ts`.
+  A Node import on a browser path passes every Node test and only fails in Chrome, so `backend/editPlanner/browserSafety.test.ts`
+  bundles the apply path and the whole studio and fails on an externalized module, and `backend/journeys/j3_studio_edit.journey.ts`
+  clicks Apply Edits in a real browser.
 - `backend/timeline/voiceover_engine.ts` is imported by the browser bundle and must stay free of Node
   built-ins. ffmpeg-based waveform extraction lives in `backend/timeline/waveform.ts`; the editor
   fetches peaks via `/api/audio/peaks` and falls back to in-browser decoding (`editor/src/components/timeline/useAudioPeaks.ts`).

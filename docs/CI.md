@@ -65,7 +65,7 @@ starts; render a shorter range (`renderFrames`) or free space when it refuses.
 | --- | --- | --- |
 | J1 make a film with a character end to end | `j1_pipeline.journey.ts`: the PR journey runs the real `runProduction` with the iona-receive fixture, renders wide and reel around the contact frame, and checks output metadata and a drawn frame; nightly renders the full film with budgets | journey, nightly |
 | J2 narration changes after design, stale work not reused | `backend/pipeline/pipeline.test.ts` (existing: retime refreshes base-film, forced upstream reopens downstream) | feature |
-| J3 scrub, save, reload, preview equals export | `scripts/smoke_studio.ts` (keyboard scrub forwards and back with exact frame readout, same picture on return, split, autosave, reload keeps the edit); export-versus-cold equality (wide and reel); `j3_j5_stage.journey.ts` compares a fresh Remotion Player's first contact-frame draw and later seeks with exported PNGs in both formats | journey |
+| J3 scrub, save, reload, preview equals export | `scripts/smoke_studio.ts` (keyboard scrub forwards and back with exact frame readout, same picture on return, split, autosave, reload keeps the edit); `j3_studio_edit.journey.ts` (real Chrome: the AI edit Apply Edits gesture applies, saves, is logged and survives a reload, with only the model-backed `/api/ai-edit` answered by the test; a new project's script saves and survives a reload); `backend/editPlanner/browserSafety.test.ts` (the apply path bundles for a browser and runs with no Node built-ins, and the real studio bundle has no externalized Node module); export-versus-cold equality (wide and reel); `j3_j5_stage.journey.ts` compares a fresh Remotion Player's first contact-frame draw and later seeks with exported PNGs in both formats | journey |
 | J4 reel crop keeps character and prop clear of captions | `j1_pipeline.journey.ts`: projected character and prop bounds, every frame from approach to recovery, inside the frame and above the caption band in wide and reel; glider attached at the decisive frame; `j4_character_crops.journey.ts` covers Iona, Pip and Marlo with inset and out-of-bounds negatives, and committed Pip and Marlo wide/reel stills are checked by `backend/characters/pixels.test.ts` | journey, browser pixels |
 | J5 second and third character, same action | `j3_j5_stage.journey.ts` runs Iona, Pip and Marlo together through look check, design build, compilation and 13-frame wide/reel production renders; same-frame Player captures hide each object in turn and require attributable pixel changes inside its projected bounds in both formats. Negative checks reject missing props and actor pixels that overlap a hidden prop crop. Unit/property coverage remains in `backend/characters/` | unit, journey |
 | J6 resume reopens exactly the right stages | `pipeline.test.ts` (existing); `renderFrames` is part of the render fingerprint | feature |
@@ -125,7 +125,9 @@ journey("J99 what the user does, in words", async (ctx) => {
 * Journey todos are forbidden: the structured reporter lists them by name and fails the job.
   Record intentionally excluded scope in this document instead of adding a passing placeholder.
 * Studio journeys use `scripts/studioDriver.ts` (`startEditor`, `StudioPage`: real key presses,
-  clicks, element screenshots, error collection) and live next to `scripts/smoke_studio.ts`.
+  clicks, typing, element screenshots, `intercept` to answer a model-backed `/api/*` call from the test,
+  error collection) and live next to `scripts/smoke_studio.ts` or in `backend/journeys/` (a studio journey
+  fails instead of skipping when `AIDEOS_SMOKE_REQUIRED=1`, which CI sets).
 * Never paste a real narration, key or personal video into a fixture; add small fixtures under
   `test_fixtures/`.
 

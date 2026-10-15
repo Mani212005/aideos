@@ -150,7 +150,8 @@ export const JOBS: CiJob[] = [
       {
         name: "journey tests",
         cmd: ["node", "--import", "tsx", "--import", "./backend/testSupport/fixtureVideosDir.ts", "--test", "--test-concurrency=1", "backend/journeys/**/*.journey.ts"],
-        env: { ...softwareGl(), npm_config_loglevel: "silent" },
+        // The studio journeys (backend/journeys/j3_studio_edit.journey.ts) need Chrome: under CI a missing one fails, never skips.
+        env: { ...softwareGl(), npm_config_loglevel: "silent", ...(inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {}) },
         todoCases: true,
       },
       { name: "studio smoke and scrub", cmd: ["npm", "run", "smoke:studio"], env: inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {} },
