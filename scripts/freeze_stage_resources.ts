@@ -22,6 +22,11 @@ const ENGINE = [
   "src/dl/performance/iona.ts",
   "src/dl/performance/receive.ts",
   "src/dl/performance/retarget.ts",
+  "src/dl/performance/limits.ts",
+  "src/dl/performance/critique.ts",
+  "src/dl/performance/evaluate.ts",
+  "src/dl/performance/math.ts",
+  "src/dl/performance/span.ts",
 ];
 /** Approved evidence the engine is measured against. */
 const REFERENCES = [

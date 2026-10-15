@@ -3,7 +3,7 @@
  * Inputs and outputs: registry constants -> finite approved identities and resource fingerprints.
  * Used by: stage validation, compilation, Node resource integrity checks and scripts/freeze_stage_resources.ts.
  */
-export const STAGE_RESOURCE_HASH = "781dda66ebba7afb689b05b1894b97466835f39494531d4241730005dd981d2d";
+export const STAGE_RESOURCE_HASH = "009e5a36033530231636dfbb239477af3246fdb3efc6ee87a760362734db0dcc";
 export const STAGE_RESOURCES = {
   "src/dl/characters/expand.ts": "7a3e4e2c29a3c2b0012b3294f2b54a7c5995f466719f7497d81517b1b8ed9ff7",
   "src/dl/characters/rig.ts": "995e4d2c3bbde609f39153d8edf749b00bf4711e7cc5f9d791e2c62dc093a95f",
@@ -14,7 +14,12 @@ export const STAGE_RESOURCES = {
   "src/dl/scene/props/paperGlider.ts": "ff44b6a9ecbc6dcd395a87bc28b254b1d3bf65c8a2c713c64a4989d65e442528",
   "src/dl/performance/iona.ts": "78a3ea5666b2e4c6b393b0a541b60e8d9124683fd16c0989a07e58937295566c",
   "src/dl/performance/receive.ts": "5889683cd36ceb961c783fc726a59196de7a393ee7f4defeacb4f852928f4185",
-  "src/dl/performance/retarget.ts": "bbd89c35a4d08ca99d7c0f944e9cca096d51a63f60c8419a37db0b6897d5fc7c"
+  "src/dl/performance/retarget.ts": "bbd89c35a4d08ca99d7c0f944e9cca096d51a63f60c8419a37db0b6897d5fc7c",
+  "src/dl/performance/limits.ts": "5c3ebda1c4de491a8e2d772f89ca2cf805bcee5210841c1d38f24b5bae2b1bf0",
+  "src/dl/performance/critique.ts": "27ee9373605fd587eb3e20a43124af7337ec2229f3421f7a975de37f28c8a7dd",
+  "src/dl/performance/evaluate.ts": "1b75f59e7ff591089d28b1ec9253cd6db163400acba2792bb49820c088c84613",
+  "src/dl/performance/math.ts": "f4977ce20b0802644e673b9519aa35b095e6c22935d664c0bef8af8b884b9094",
+  "src/dl/performance/span.ts": "5f48c5851af003cd6732bdca3d2dbcde94fcc71441aac4aebd3d549350305aed"
 } as const;
 export const APPROVED_REFERENCES = {
   "test_fixtures/characters/iona-legacy/iona-art-v1.js": "e3ca9debc7df90774ac05a9d97939a2ed7b8fe5f0d5360c1184367ac374ac75c",

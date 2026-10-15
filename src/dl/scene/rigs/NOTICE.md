@@ -8,8 +8,10 @@ repository LICENSE. Iona's spec reproduces the approved P0 art exactly; the froz
 module that proves it lives in `test_fixtures/characters/iona-legacy/`.
 
 `registry.ts` freezes the source hashes of the engine files that decide how any spec renders
-and how the receive is fitted to it, plus the approved reference fixtures. Editing one of them
-changes every character's identity, so it needs an explicit re-freeze:
+and how the receive is fitted to it, including `src/dl/performance/limits.ts`,
+`src/dl/performance/critique.ts`, `src/dl/performance/evaluate.ts`,
+`src/dl/performance/math.ts` and `src/dl/performance/span.ts`, plus the approved reference fixtures.
+Editing one of them changes every character's identity, so it needs an explicit re-freeze:
 `npx tsx scripts/freeze_stage_resources.ts`. Each character spec carries its own content hash.
 
 Three.js is installed from npm at 0.180.0 (MIT); its licence is included by the package.
