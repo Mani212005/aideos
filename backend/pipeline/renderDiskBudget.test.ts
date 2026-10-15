@@ -132,11 +132,11 @@ test("checkRenderDiskBudget samples the picked frames of the film through the in
 test("footage samples span the range at about two-second intervals and cap at 40 frames", () => {
   const film = structuredClone(loadFixtureFilm("fixture-canvas-a")) as Film;
   film.videoClips = [{ id: "footage", src: "footage.mp4", position: 0, start: 0, end: 120 }];
-  const picks = pickSampleFrames(film, [0, 3599]);
+  const picks = pickSampleFrames(film, [0, 2399]);
   assert.ok(picks.length <= 40);
   assert.equal(picks[0], 0);
-  assert.equal(picks.at(-1), 3480);
-  assert.ok(picks.every((frame, i) => i === 0 || frame - picks[i - 1] === 120));
+  assert.equal(picks.at(-1), 2340);
+  assert.ok(picks.every((frame, i) => i === 0 || frame - picks[i - 1] === 60));
   assert.equal(pickSampleFrames(film, [0, 10_000]).length, 40);
 });
 
