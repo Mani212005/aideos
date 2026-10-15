@@ -124,6 +124,15 @@ test("J7: the stage camera is measured in each output; the same pan is a move in
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+test("J7: a there-and-back stage pan remains one projected camera move in the reel", () => {
+  const film = compiled();
+  const scene = film.scene as Scene;
+  scene.camera = { keyframes: [{ frame: 0, center: { x: 960, y: 960 }, zoom: 1 }, { frame: 45, center: { x: 1080, y: 960 }, zoom: 1 }, { frame: 90, center: { x: 960, y: 960 }, zoom: 1 }] } as Scene["camera"];
+  const reel = facts(film, REEL);
+  assert.equal(reel.camera.moves.length, 1);
+  assert.ok(reel.camera.moves[0].shiftWidth >= 0.04, `projected excursion was ${reel.camera.moves[0].shiftWidth}`);
+});
+
 test("J7: the stage facts for Gemini name the characters, the contact against the word and everything unmeasured, in plain words", () => {
   const truth = stageTruth(facts(compiled(), REEL), narration())!;
   assert.equal(truth.format, "reel");

@@ -152,8 +152,10 @@ function projectedCameraMoves(scene: Scene, fps: number, viewport: ReviewViewpor
   let driftOnly = 0, runStart = -1;
   // Closes one run of consecutive moving frames and records it as a move when it changes the framing enough.
   const close = (end: number) => {
-    const a = track[runStart], b = track[end];
-    const shiftWidth = shift(a, b), zoomRatio = Math.max(a.zoom / b.zoom, b.zoom / a.zoom);
+    const start = track[runStart];
+    const poses = track.slice(runStart, end + 1);
+    const shiftWidth = Math.max(...poses.map((pose) => shift(start, pose)));
+    const zoomRatio = Math.max(...poses.map((pose) => pose.zoom)) / Math.min(...poses.map((pose) => pose.zoom));
     let peak = 0;
     for (let f = runStart + 1; f <= end; f++) peak = Math.max(peak, shift(track[f - 1], track[f]) * fps);
     if (shiftWidth >= THRESHOLDS.camera.minShiftWidth || zoomRatio >= THRESHOLDS.camera.minZoomRatio) {
