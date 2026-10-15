@@ -194,7 +194,7 @@ journey("J8 no WebGL gives a named export refusal and visible Player error, neve
   const executable = path.join(ctx.workDir, "chrome-no-webgl");
   const quoted = `'${chrome.path.replace(/'/g, "'\\''")}'`;
   fs.writeFileSync(executable, `#!/bin/sh\nexec ${quoted} --disable-webgl "$@"\n`, { mode: 0o755 });
-  const exported = await openFilm(SLUG, { browserExecutable: executable });
+  const exported = await openFilm(SLUG, { browserExecutable: executable, ownStillBrowser: true });
   const output = path.join(ctx.workDir, "must-not-render.png");
   try {
     await assert.rejects(exported.still("Long", contactFrame, output), /Three stage .*WebGL could not start/);
