@@ -101,14 +101,16 @@ test does not establish that its visual weight matches cel.
 
 ## Verification
 
-The recorded full-suite run had 983 passing unit tests, one dots raster browser
-timeout, and three optional skips. A focused rerun of the raster scenario passed;
-all 29 browser journeys and studio smoke/scrub passed. The full configured Test
-and Lint verdict remains pending the required rerun after the timeout fix, so
-this evidence does not establish a passing CI run. The Iona legacy/spec pixel
-comparison and the Pip/Marlo committed cel stage still comparisons passed in both
-crops. The Linux legacy golden step was skipped by its platform guard, as
-recorded below.
+The initial full-suite attempt had 983 passing unit tests, one dots raster
+browser timeout, and three optional skips. After the timeout fix, the configured
+Test command passed: 984 unit tests passed with zero failures and three expected
+optional skips; all 29 browser journeys passed without TODOs. Studio smoke and
+scrub, fixture, evaluation and performance checks also passed. The live journey
+covered Iona in dots and a second character in cel in the same scene through
+Player and export, in wide and reel crops. Lint remains a separate outer-run
+phase and is not claimed here. The Iona legacy/spec pixel comparison and the
+Pip/Marlo committed cel stage still comparisons passed in both crops. The Linux
+legacy golden step was skipped by its platform guard, as recorded below.
 
 Cel's frozen resource identity is unchanged
 (`b93363ca740717e87af00bb1c2bbe0d4ecd7f6bc83a1639784e4000232219469`).
