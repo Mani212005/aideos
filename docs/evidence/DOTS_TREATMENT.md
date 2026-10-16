@@ -101,15 +101,14 @@ test does not establish that its visual weight matches cel.
 
 ## Verification
 
-`npm run ci` passed locally on the final material: static checks, 983 passing
-unit tests (three expected optional skips), fixture design checks, evals, action
-checks, all 29 browser journeys and studio smoke/scrub. There were no failures
-or unfinished journey cases. The raw log is `.frames/dots-evidence/final/ci.log`.
-This includes
-`npx tsc --noEmit -p editor/tsconfig.app.json` and
-`npm --prefix editor run build`. The Iona legacy/spec pixel comparison and the
-Pip/Marlo committed cel stage still comparisons passed in both crops. The Linux
-legacy golden step was skipped by its platform guard, as recorded below.
+The recorded full-suite run had 983 passing unit tests, one dots raster browser
+timeout, and three optional skips. A focused rerun of the raster scenario passed;
+all 29 browser journeys and studio smoke/scrub passed. The full configured Test
+and Lint verdict remains pending the required rerun after the timeout fix, so
+this evidence does not establish a passing CI run. The Iona legacy/spec pixel
+comparison and the Pip/Marlo committed cel stage still comparisons passed in both
+crops. The Linux legacy golden step was skipped by its platform guard, as
+recorded below.
 
 Cel's frozen resource identity is unchanged
 (`b93363ca740717e87af00bb1c2bbe0d4ecd7f6bc83a1639784e4000232219469`).

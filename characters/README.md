@@ -190,9 +190,10 @@ tests extract and verify it, so it cannot drift from the engine.
 
 Keep the same character spec, rig and receive action. In `aideos.look/2` set
 `film.treatment: "dots-v1"`, and in `aideos.design/2` set `treatment: "dots-v1"`.
-The default is `cel-v1`. For a shot use `stageTreatment: "dots-v1"` in the look
+The default is `cel-v1`. To choose per cast member, set `treatment` on that
+look cast item and matching design asset. For a shot use `stageTreatment: "dots-v1"` in the look
 shot and the matching design `shots.<id>` override. A shading-only override preserves the shot content.
-Shot overrides win over the film default, which wins over the cast treatment.
+Shot overrides win over cast treatments, which win over the film default.
 The existing shot `treatment: "scene"` still describes composition.
 
 `aideos character sheet iona --treatment dots-v1 --out .frames/iona-dots`
