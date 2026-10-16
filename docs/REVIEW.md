@@ -252,3 +252,21 @@ Gemini 3.1 Pro is not part of this: `forbiddenGenerationModels` lists `gemini-3.
 (exit 2, with the message naming the override) unless the run passes `--allow-forbidden-model`. Per-run overrides:
 `aideos all-check <slug> --agent agy --model <id>`. `--agent agy` without `--model` runs the configured reviewer model,
 never agy's own default. A missing or malformed config is an error, not a silent default.
+
+## Dots stage evidence
+
+`review.json` stage truth and its reviewer prompt name the effective treatment
+for every cast member in each shot. Review facts also include explicit treatment
+spans; `dots-v1` never implies a new rig or a different action. Captions and SVG
+planes remain outside the treatment. Unknown treatments fail with their field
+path, and a dots resource hash mismatch requires rebuilding the design.
+
+Compare the same action, camera, crop and absolute frames in cel and dots.
+Inspect the eyes, mouth, hands and prop edges at phone size. A held pose should
+have identical lossless frames and near-zero H.264 frame difference; moving
+surfaces must carry their samples without sparkle or hidden-surface leaks.
+The dots raster test, `backend/characters/dotsPixels.test.ts`, measures these
+properties; J3/J4 in `backend/journeys/j3_j4_dots.journey.ts` checks Player/export
+parity and both crops. These checks do not award facial appeal or turn short
+engineering excerpts into full-film review passes. Record render seconds per
+video second, peak process-tree memory and disk alongside the actual clips.

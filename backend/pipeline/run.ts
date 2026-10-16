@@ -11,7 +11,7 @@
 import { designFilm, planFilmLook } from "../designSpec/designer";
 import { buildDesign, designDir, formatBuildStatus, readCheckedLookPlan } from "../designSpec/build";
 import { designSpecSchema } from "../designSpec/spec";
-import { STAGE_RESOURCES, STAGE_RESOURCE_HASH, CEL_TREATMENT } from "../../src/dl/scene/rigs/registry";
+import { DOT_RESOURCES, STAGE_RESOURCES, STAGE_RESOURCE_HASH, CEL_TREATMENT } from "../../src/dl/scene/rigs/registry";
 import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { characterCandidates } from "../characters/library";
 import type { LookPlan } from "../lookPlan/schema";
@@ -87,7 +87,8 @@ export function designFilesFingerprint(slug: string, options: { receiveSourceFil
     const parsed = designSpecSchema.safeParse(JSON.parse(raw));
     if (!parsed.success) return fingerprint(raw);
     const files = [...parsed.data.assets.flatMap((a) => "file" in a ? [a.file] : []), ...(parsed.data.background ? [parsed.data.background.file] : [])];
-    const resources = "performances" in parsed.data ? Object.keys(STAGE_RESOURCES).map((file) => {
+    const dots = "performances" in parsed.data && (parsed.data.treatment === "dots-v1" || parsed.data.assets.some((asset) => "treatment" in asset && asset.treatment === "dots-v1") || Object.values(parsed.data.shots ?? {}).some((shot) => shot.stageTreatment === "dots-v1"));
+    const resources = "performances" in parsed.data ? Object.keys({ ...STAGE_RESOURCES, ...(dots ? DOT_RESOURCES : {}) }).map((file) => {
       const absolute = resolveRepoAssetPath(file);
       return [file, fs.existsSync(absolute) ? fs.readFileSync(absolute, "utf8") : null];
     }) : null;

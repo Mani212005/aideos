@@ -19,6 +19,8 @@ import { applyStageCamera } from "./projection";
 import { validateStage } from "./validateStage";
 import { CEL_TREATMENT } from "./rigs/registry";
 import { reportThreeStageInitializationFailure } from "./threeStageError";
+import { buildDots } from "./materials/dots";
+import { stageTreatmentAt } from "./materials/treatment";
 import type { Scene } from "./types";
 import type { TestStageVisibility } from "../SceneStage";
 
@@ -66,12 +68,15 @@ function FrameCommit({ scene: manifest, frame, width, height, ready, testVisibil
       // Each performer owns private geometry and face texture built from its verified spec.
       const art = buildCharacter(character, document.createElement("canvas"));
       const prop = buildProp(propCast.asset);
+      const usesDots = [resolvedActor.treatment, propCast.treatment, manifest.treatment, ...(manifest.treatments ?? []).map((span) => span.treatment)].includes("dots-v1");
+      const faceMeshes = new Set(art.parts.resolved.filter((part) => part.geometry.kind === "head").map((part) => art.parts.meshes[part.id]));
+      const dots = usesDots ? { actor: buildDots(art.rig.root, faceMeshes), prop: buildDots(prop.root, undefined, true) } : undefined;
       const placement = new Group();
       placement.position.set(resolvedActor.position[0] - manifest.sceneSize.w / 2, manifest.sceneSize.h / 2 - resolvedActor.position[1], resolvedActor.depth);
       placement.scale.setScalar(resolvedActor.unitsToStage);
       placement.add(art.rig.root, prop.root);
       root.add(placement);
-      return { actorId: p.actor, propId: p.prop, art, prop, evaluate: createPerformanceEvaluator(rigFromCharacter(character), p.data) };
+      return { actorId: p.actor, propId: p.prop, actorTreatment: resolvedActor.treatment, propTreatment: propCast.treatment, dots, art, prop, evaluate: createPerformanceEvaluator(rigFromCharacter(character), p.data) };
     });
     world.add(root);
     set({ camera });
@@ -94,7 +99,7 @@ function FrameCommit({ scene: manifest, frame, width, height, ready, testVisibil
       gl.domElement.removeEventListener("webglcontextlost", lost);
       if (resources.current) {
         world.remove(resources.current.root);
-        resources.current.entries.forEach(({ art, prop }) => { art.dispose(); prop.dispose(); });
+        resources.current.entries.forEach(({ art, prop, dots }) => { dots?.actor.dispose(); dots?.prop.dispose(); art.dispose(); prop.dispose(); });
         resources.current = null;
       }
     };
@@ -119,6 +124,8 @@ function FrameCommit({ scene: manifest, frame, width, height, ready, testVisibil
           entry.art.rig.root.visible = true;
           applyCharacter(entry.art, state);
           applyProp(entry.prop, state);
+          entry.dots?.actor.setEnabled(stageTreatmentAt(manifest, frame, entry.actorTreatment) === "dots-v1", height);
+          entry.dots?.prop.setEnabled(stageTreatmentAt(manifest, frame, entry.propTreatment) === "dots-v1", height);
           if (testVisibility?.character === entry.actorId) entry.art.rig.root.visible = false;
           if (testVisibility?.prop === entry.propId) entry.prop.root.visible = false;
         }

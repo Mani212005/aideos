@@ -18,7 +18,7 @@ import type { DesignSpec, SpecCamera } from "./spec";
 import { fitReceiveSpan } from "../performance/bindReceive";
 import { rigFromCharacter } from "../../src/dl/characters/rig";
 import type { CharacterSpec } from "../../src/dl/characters/schema";
-import { STAGE_RESOURCE_HASH } from "../../src/dl/scene/rigs/registry";
+import { DOT_RESOURCE_HASH, STAGE_RESOURCE_HASH } from "../../src/dl/scene/rigs/registry";
 import { validateStage } from "../../src/dl/scene/validateStage";
 import { receiveSchema } from "../../src/dl/scene/stageContract";
 import { captionWordsToVtt } from "../../src/dl/captionsParser";
@@ -193,15 +193,24 @@ export function compileDesign(
   };
   if ("performances" in spec) {
     scene.renderer = "three";
+    if (spec.treatment) scene.treatment = spec.treatment;
+    let shotFrame = 0;
+    for (const shot of film.shots) {
+      const startFrame = Math.round(shotFrame * fps);
+      shotFrame += shot.dur;
+      const treatment = spec.shots?.[shot.id]?.stageTreatment;
+      if (treatment) (scene.treatments ??= []).push({ startFrame, endFrame: Math.round(shotFrame * fps), treatment });
+    }
     scene.cast = [];
     for (const a of spec.assets) {
       if (a.renderer !== "three") continue;
-      if (a.kind === "prop") { scene.cast.push({ ...a, resourceHash: STAGE_RESOURCE_HASH }); continue; }
+      if (a.kind === "prop") { scene.cast.push({ ...a, treatment: a.treatment ?? spec.treatment ?? "cel-v1", resourceHash: STAGE_RESOURCE_HASH }); continue; }
       const { character: characterId, ...placement } = a;
       const character = options.characters && Object.prototype.hasOwnProperty.call(options.characters, characterId) ? options.characters[characterId] : undefined;
       if (!character) { errors.push(`asset "${a.id}": character "${characterId}" was not resolved; build designs through buildDesign, which loads verified specs`); continue; }
-      scene.cast.push({ ...placement, character, resourceHash: STAGE_RESOURCE_HASH });
+      scene.cast.push({ ...placement, treatment: a.treatment ?? spec.treatment ?? "cel-v1", character, resourceHash: STAGE_RESOURCE_HASH });
     }
+    if (scene.treatment === "dots-v1" || scene.treatments?.some((span) => span.treatment === "dots-v1") || scene.cast.some((c) => c.treatment === "dots-v1")) scene.treatmentResourceHash = DOT_RESOURCE_HASH;
     scene.performances = [];
     for (const p of spec.performances) {
       try {
@@ -220,6 +229,7 @@ export function compileDesign(
   const shots = film.shots.map((shot) => {
     const override = spec.shots?.[shot.id];
     if (!override) return shot;
+    if (!override.blocks) return override.stage ? { ...shot, stage: override.stage } : shot;
     // An anchor shot draws a panel over the scene; text cards keep the scene in view.
     const keepsChart = override.blocks.some((b) => b.c === "StatCounter" || (DEVICE_BLOCKS as readonly string[]).includes(b.c));
     const stage = override.stage ?? (override.blocks.length === 0 ? "none" : keepsChart ? shot.stage : "frame");

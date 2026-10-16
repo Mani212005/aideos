@@ -19,7 +19,10 @@ export function describePerformance(p: LookPerformance, names: Record<string, st
 
 // Renders the stage section of a v2 plan: the renderer, each performance and what no tool measures.
 function stageSection(plan: Extract<LookPlan, { schema: "aideos.look/2" }>, names: Record<string, string>): string {
-  return `Renderer: three (orthographic persistent stage, cel-v1). ${plan.film.performances.length} performance(s) by ${new Set(plan.film.performances.map((p) => p.character.id)).size} character(s).
+  const treatment = plan.film.treatment ?? "cel-v1";
+  return `Stage treatment: ${treatment} (captions excluded).
+
+Renderer: three (orthographic persistent stage, ${treatment}). ${plan.film.performances.length} performance(s) by ${new Set(plan.film.performances.map((p) => p.character.id)).size} character(s).
 
 ${plan.film.performances.map((p) => `- ${describePerformance(p, names)}`).join("\n")}
 
@@ -69,7 +72,7 @@ export function renderLookMd(plan: LookPlan, filmTitle?: string, shotTimings?: {
     const deviceStr = s.device ? ` (${s.device})` : "";
     const performances = plan.schema === "aideos.look/2" ? plan.film.performances.filter((p) => "performances" in s && s.performances.includes(p.id)) : [];
     const performsStr = performances.length ? ` [performs: ${performances.map((p) => p.decisive.shotId === s.id ? `${p.id}, contact on "${p.decisive.phrase}"` : p.id).join("; ")}]` : "";
-    return `- ${timeStr}\`${s.id}\` **${s.treatment}**${deviceStr}${carriesStr}${performsStr}: on "${s.cue}" (${s.why})`;
+    return `- ${timeStr}\`${s.id}\` **${s.treatment}**${"stageTreatment" in s && s.stageTreatment ? ` [shading: ${s.stageTreatment}]` : ""}${deviceStr}${carriesStr}${performsStr}: on "${s.cue}" (${s.why})`;
   }).join("\n");
 
   return `# Look Plan: ${title}

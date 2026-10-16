@@ -142,7 +142,7 @@ export function checkLookPlan(plan: unknown, filmId: string = "unnamed", context
       const actor = look.film.cast.find((c) => c.id === p.actor);
       const prop = look.film.cast.find((c) => c.id === p.prop);
       const plannedCharacter = actor?.character ?? (actor?.asset === "iona-art-v1" && actor.rig === "iona-v1" ? "iona" : undefined);
-      if (actor?.renderer !== "three" || !plannedCharacter || actor.treatment !== "cel-v1" || prop?.renderer !== "three" || prop.asset !== "paper-glider-v1" || prop.treatment !== "cel-v1") findings.push({ rule: "cast", severity: "error", where: p.id, message: "receive-v1 needs a three character (character: <id>) and the paper glider, both cel-v1" });
+      if (actor?.renderer !== "three" || !plannedCharacter || prop?.renderer !== "three" || prop.asset !== "paper-glider-v1") findings.push({ rule: "cast", severity: "error", where: p.id, message: "receive-v1 needs a three character (character: <id>) and the paper glider, with cel-v1 or dots-v1 treatment" });
       const where = `film.performances.${p.id}.character`;
       if (plannedCharacter && p.character.id !== plannedCharacter) findings.push({ rule: "character", severity: "error", where, message: `names character "${p.character.id}" but its actor cast "${p.actor}" is character "${plannedCharacter}"; one performance plans one character.` });
       if (!context.resolveCharacter) {

@@ -128,6 +128,8 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
   const cues = createCues(narrationTimingForFilm(film, words), film.fps);
   if (plan.schema === "aideos.look/2") {
     if (!("performances" in spec)) return ["Three look requires aideos.design/2 performances."];
+    if ((spec.treatment ?? "cel-v1") !== (plan.film.treatment ?? "cel-v1")) errors.push("design.treatment: differs from look film.treatment");
+    for (const shot of plan.shots) if ((spec.shots?.[shot.id]?.stageTreatment ?? spec.treatment ?? "cel-v1") !== (shot.stageTreatment ?? plan.film.treatment ?? "cel-v1")) errors.push(`design.shots.${shot.id}.stageTreatment: differs from look shot stageTreatment`);
     const designIds = new Set<string>();
     for (const delivered of spec.performances) {
       if (designIds.has(delivered.id)) errors.push(`design performance "${delivered.id}" is duplicated`);
@@ -141,7 +143,7 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
       for (const id of [intended.actor, intended.prop]) {
         const authored = spec.assets.find((a) => a.id === id);
         const planned = plan.film.cast.find((a) => a.id === id);
-        const sameIdentity = authored && "renderer" in authored && authored.renderer === "three" && planned?.renderer === "three" && authored.treatment === planned.treatment &&
+        const sameIdentity = authored && "renderer" in authored && authored.renderer === "three" && planned?.renderer === "three" && (authored.treatment ?? spec.treatment ?? "cel-v1") === (planned.treatment ?? plan.film.treatment ?? "cel-v1") &&
           (authored.kind === "character" ? authored.character === plannedCharacterId(planned) : authored.asset === planned.asset);
         if (!sameIdentity) errors.push(`look cast ${id}: design identity or treatment mismatch`);
       }
@@ -182,9 +184,9 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
         (refused.rawChoice ?? refused.visual) === shot.device;
       const fallback = override ?? film.shots.find((s) => s.id === shot.id);
       const showsCard = fallback && (fallback.stage === "frame" || fallback.stage === "none") &&
-        fallback.blocks.every((b) => b.c === "TextReveal" || b.c === "Body");
+        fallback.blocks?.every((b) => b.c === "TextReveal" || b.c === "Body");
       if (refusalMatches && showsCard) continue;
-      if (!override?.blocks.some((b) => b.c === shot.device) || override.stage !== "inset") {
+      if (!override?.blocks?.some((b) => b.c === shot.device) || override.stage !== "inset") {
         errors.push(`look device shot "${shot.id}" needs a matching "${shot.device}" shots override with stage "inset"`);
       }
     }

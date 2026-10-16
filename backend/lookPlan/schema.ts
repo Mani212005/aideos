@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { stageTreatmentSchema } from "../../src/dl/scene/materials/treatment";
 import { decisiveSchema } from "../../src/dl/scene/stageContract";
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "colours must be #rrggbb hex");
@@ -116,20 +117,21 @@ const stageLookSchema = legacyLookSchema.extend({
   decidedBy: lookDecidedBySchema.strict(),
   film: lookFilmSchema.extend({
     renderer: z.literal("three"),
+    treatment: stageTreatmentSchema.optional(),
     cast: z.array(lookCastItemSchema.extend({
       changes: z.array(lookChangeSchema.strict()).default([]),
       renderer: z.enum(["svg", "three"]),
       character: z.string().regex(/^[a-z][a-z0-9-]*$/).optional(),
       asset: z.enum(["iona-art-v1", "paper-glider-v1"]).optional(),
       rig: z.literal("iona-v1").optional(),
-      treatment: z.literal("cel-v1").optional(),
+      treatment: stageTreatmentSchema.optional(),
     }).strict()).min(1),
     camera: z.array(lookCameraPoseSchema.strict()).min(1),
     palette: z.strictObject({ bg: hexColor, accent: hexColor }),
     captions: lookCaptionsSchema.strict(),
     performances: z.array(lookPerformanceSchema).min(1),
   }).strict(),
-  shots: z.array(lookShotSchema.extend({ performances: z.array(z.string()).default([]) }).strict()).min(1),
+  shots: z.array(lookShotSchema.extend({ stageTreatment: stageTreatmentSchema.optional(), performances: z.array(z.string()).default([]) }).strict()).min(1),
   approval: lookApprovalSchema.strict().optional(),
 }).strict();
 /** Discriminated on `schema`, so an error names the field of the version the plan declares rather than "Invalid input". */

@@ -28,6 +28,8 @@ const ENGINE = [
   "src/dl/performance/math.ts",
   "src/dl/performance/span.ts",
 ];
+/** Dots have a separate freeze so adding a treatment never invalidates a compiled cel film. */
+const DOT_ENGINE = ["src/dl/scene/materials/dotSamples.ts", "src/dl/scene/materials/dots.ts", "src/dl/scene/materials/treatment.ts"];
 /** Approved evidence the engine is measured against. */
 const REFERENCES = [
   "test_fixtures/characters/iona-legacy/iona-art-v1.js",
@@ -49,7 +51,10 @@ function main(): void {
     .replace(/export const STAGE_RESOURCE_HASH = "[^"]*";/, `export const STAGE_RESOURCE_HASH = "${identity}";`)
     .replace(/export const STAGE_RESOURCES = \{[^}]*\} as const;/, `export const STAGE_RESOURCES = ${block(ENGINE)} as const;`)
     .replace(/export const APPROVED_REFERENCES = \{[^}]*\} as const;/, `export const APPROVED_REFERENCES = ${block(REFERENCES)} as const;`);
-  fs.writeFileSync(REGISTRY, source);
+  const dots = crypto.createHash("sha256").update(JSON.stringify(Object.fromEntries(DOT_ENGINE.map((f) => [f, sha(f)])))).digest("hex");
+  const dotSource = `export const DOT_RESOURCE_HASH = "${dots}";\nexport const DOT_RESOURCES = ${block(DOT_ENGINE)} as const;`;
+  const updated = source.includes("export const DOT_RESOURCE_HASH") ? source.replace(/export const DOT_RESOURCE_HASH = [\s\S]*$/, `${dotSource}\n`) : `${source}\n${dotSource}\n`;
+  fs.writeFileSync(REGISTRY, updated);
   console.log(`stage identity ${identity}`);
 }
 

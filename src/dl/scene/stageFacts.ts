@@ -18,6 +18,7 @@ import { projectMeshParts, unionPartBounds, sampleMeshDepth, stagePlacement } fr
 import { declaredMaterialPalette } from "./stageMaterials";
 import { compileCameraTrack } from "./cameraTrack";
 import type { Scene } from "./types";
+import { stageTreatmentAt } from "./materials/treatment";
 import { CEL_TREATMENT } from "./rigs/registry";
 
 /** Names a character by id, version, rig and content hash: what facts and prompts need, not its whole spec. */
@@ -90,7 +91,7 @@ export function stageEvidence(scene: Scene, boundaryFrames: number[]) {
   return Object.fromEntries(([ ["long", 1920, 1080], ["reel", 1080, 1920] ] as const).map(([format, width, height]) => {
     const facts = prepareStageFacts(scene, width, height);
     try {
-      return [format, { renderer: "three", viewport: { width, height }, cast: (scene.cast ?? []).map(castIdentity), performances: facts.performances, boundaries: boundaryFrames.map((frame) => ({ frame, before: facts.at(frame - 1, "all"), after: facts.at(frame, "all") })), visibilityProvenance: "projected geometry and sampled mesh depth; pixel presence and unsampled occlusion unmeasured; foreground obstruction requires the design gate", facialAppeal: "unmeasured", fingerContact: "unmeasured" }];
+      return [format, { renderer: "three", treatments: { default: scene.treatment ?? "cel-v1", spans: scene.treatments ?? [], cast: (scene.cast ?? []).map((c) => ({ id: c.id, treatment: stageTreatmentAt(scene, 0, c.treatment) })) }, viewport: { width, height }, cast: (scene.cast ?? []).map(castIdentity), performances: facts.performances, boundaries: boundaryFrames.map((frame) => ({ frame, before: facts.at(frame - 1, "all"), after: facts.at(frame, "all") })), visibilityProvenance: "projected geometry and sampled mesh depth; pixel presence and unsampled occlusion unmeasured; foreground obstruction requires the design gate", facialAppeal: "unmeasured", fingerContact: "unmeasured" }];
     } finally { facts.dispose(); }
   }));
 }

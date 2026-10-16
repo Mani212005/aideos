@@ -37,7 +37,7 @@ export function readAssetElementIds(svgSource: string): string[] | null {
 export function validateSceneWithNodeAssets(sceneInput: Scene): ValidationResult {
   const result = pureValidateScene(sceneInput);
   if (sceneInput.renderer === "three") {
-    result.errors.push(...validateStageResources().map((message) => ({ rule: 22, message })));
+    result.errors.push(...validateStageResources(undefined, sceneInput.treatment === "dots-v1" || Boolean(sceneInput.treatments?.some((span) => span.treatment === "dots-v1")) || Boolean(sceneInput.cast?.some((cast) => cast.treatment === "dots-v1"))).map((message) => ({ rule: 22, message })));
     result.isValid = result.errors.length === 0;
   }
 

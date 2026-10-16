@@ -4,6 +4,7 @@
  * Used by: film schema, design compiler, ThreeStage, stage facts and semantic validation.
  */
 import { z } from "zod";
+import { stageTreatmentSchema } from "./materials/treatment";
 import { characterSpecSchema } from "../characters/schema";
 import type { Quat, Vec3 } from "../performance/types";
 
@@ -27,7 +28,7 @@ export const receiveSchema = z.strictObject({
   constraints: z.array(z.strictObject({ limb: z.string(), target: track, pole: track, planted: z.boolean(), tipRotation: track.optional() })).min(1),
   contact: z.strictObject({ frame: z.number().int().min(0), joint: z.string(), gripOffset: vec3Schema, propOffset: vec3Schema, propScale: z.number().positive(), propRotation: quat, flightRotation: quat, flight }),
 });
-const identity = { id: z.string().regex(/^[a-z0-9-]+$/), renderer: z.literal("three"), treatment: z.literal("cel-v1"), resourceHash: z.string().regex(/^[0-9a-f]{64}$/) };
+const identity = { id: z.string().regex(/^[a-z0-9-]+$/), renderer: z.literal("three"), treatment: stageTreatmentSchema, resourceHash: z.string().regex(/^[0-9a-f]{64}$/) };
 const placement = { position: z.tuple([z.number(), z.number()]), unitsToStage: z.number().positive().max(500), depth: z.number().default(0) };
 /** A character cast member carries its resolved, hash-stamped spec, so the film renders without any library lookup. */
 export const characterCastSchema = z.strictObject({ ...identity, kind: z.literal("character"), character: characterSpecSchema, ...placement });

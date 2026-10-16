@@ -15,6 +15,7 @@
  */
 
 import { z } from "zod";
+import { stageTreatmentSchema } from "../../src/dl/scene/materials/treatment";
 import { blockSchema } from "../../src/dl/schema";
 import { SCENE_SIZE } from "../sceneKit/stage";
 import { decisiveSchema, vec3Schema } from "../../src/dl/scene/stageContract";
@@ -102,7 +103,7 @@ const legacyDesignSchema = z.object({
     .optional(),
 });
 
-const stagePlacement = { position: vec2, unitsToStage: z.number().positive().max(500), depth: z.number().default(0), treatment: z.literal("cel-v1") };
+const stagePlacement = { position: vec2, unitsToStage: z.number().positive().max(500), depth: z.number().default(0), treatment: stageTreatmentSchema.optional() };
 /** A character names an aideos.character/1 spec by id: the film package's characters/<id>.character.json, else the committed library. */
 export const stageCharacterAssetSchema = z.strictObject({ id: specAssetSchema.shape.id, renderer: z.literal("three"), kind: z.literal("character"), character: z.string().regex(/^[a-z][a-z0-9-]*$/, "a character id is lowercase letters, digits and hyphens"), ...stagePlacement });
 /** P0 designs named the Iona fixture directly; they still build and resolve to the Iona spec. Packages are never rewritten. */
@@ -113,11 +114,11 @@ const stageAsset = z.union([
   specAssetSchema.extend({ renderer: z.literal("svg"), plane: z.enum(["background", "foreground"]) }).strict(),
   stageCharacterAssetSchema,
   legacyIonaAssetSchema,
-  z.strictObject({ id: specAssetSchema.shape.id, renderer: z.literal("three"), kind: z.literal("prop"), asset: z.literal("paper-glider-v1"), treatment: z.literal("cel-v1") }),
+  z.strictObject({ id: specAssetSchema.shape.id, renderer: z.literal("three"), kind: z.literal("prop"), asset: z.literal("paper-glider-v1"), treatment: stageTreatmentSchema.optional() }),
 ]);
 /** limits: "fail" refuses a character whose reach, hinge or rotation limits cannot hold the action; "clamp" fits the action inside them and records each change. */
 export const authoredPerformanceSchema = z.strictObject({ id: specAssetSchema.shape.id, action: z.literal("receive-v1"), actor: z.string().min(1), prop: z.string().min(1), start: cue, decisive: decisiveSchema, targetOffset: vec3Schema.default([0, 0, 0]), limits: z.enum(["fail", "clamp"]).default("fail"), afterState: z.string().min(1) });
-export const stageDesignSchema = legacyDesignSchema.extend({ schema: z.literal("aideos.design/2"), renderer: z.literal("three"), assets: z.array(stageAsset).max(40), performances: z.array(authoredPerformanceSchema).min(1) }).strict();
+export const stageDesignSchema = legacyDesignSchema.extend({ schema: z.literal("aideos.design/2"), renderer: z.literal("three"), treatment: stageTreatmentSchema.optional(), shots: z.record(z.string(), z.strictObject({ blocks: z.array(blockSchema).max(4).optional(), stage: z.enum(["frame", "anchor", "none", "inset"]).optional(), stageTreatment: stageTreatmentSchema.optional() })).optional(), assets: z.array(stageAsset).max(40), performances: z.array(authoredPerformanceSchema).min(1) }).strict();
 export const designSpecSchema = z.union([stageDesignSchema, legacyDesignSchema.extend({ schema: z.literal("aideos.design/1").optional(), renderer: z.literal("svg").optional() })]);
 
 export type DesignSpec = z.infer<typeof designSpecSchema>;

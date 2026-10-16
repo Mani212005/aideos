@@ -167,3 +167,13 @@ character suites to `npm test` for that workflow to run.
   `aideos character sheet`. Observed: Pip's catch lands at eye level, so the glider passes in front
   of the face at contact (a small upward `targetOffset` lifts it); limbs remain rigid tube sections
   like Iona's.
+
+## Optional surface dots
+
+The stage can render the same embedded spec and action as `dots-v1`. Authoring
+fields and the dot sheet command are in `characters/README.md` (Optional dots
+treatment). `src/dl/scene/materials/dotSamples.ts` owns seeded Poisson rejection samples;
+`src/dl/scene/materials/dots.ts` attaches them to the existing rigid mesh hierarchy and
+retains depth, outlines and painted monochrome face features. The dots resource
+freeze is independent of the cel freeze. Treatment switches use absolute film
+frames and never alter the character specification or action evaluator.

@@ -21,6 +21,7 @@ export const MIN_FREE_BYTES = 3_000_000_000;
 const SHEET_CONTACT = 69, SHEET_FPS = 30;
 
 export interface SheetOptions {
+  treatment?: SheetRequest["treatment"];
   outDir?: string;
   placement?: { position: [number, number]; unitsToStage: number };
   policy?: ReachPolicy;
@@ -69,7 +70,7 @@ export async function renderCharacterSheet(specFile: string, options: SheetOptio
   const pageDir = path.join(outDir, "page");
   fs.mkdirSync(pageDir, { recursive: true });
   await build({ entryPoints: [path.join(__dirname, "sheetPage.ts")], outfile: path.join(pageDir, "sheet.js"), bundle: true, format: "iife", platform: "browser", logLevel: "silent" });
-  const request: SheetRequest = { spec, action, placement: options.placement ?? { position: [940, 1210], unitsToStage: 85 }, hashStatus: hashStatus(spec) };
+  const request: SheetRequest = { spec, action, ...(options.treatment ? { treatment: options.treatment } : {}), placement: options.placement ?? { position: [940, 1210], unitsToStage: 85 }, hashStatus: hashStatus(spec) };
   const html = path.join(pageDir, "index.html");
   fs.writeFileSync(html, `<!doctype html><html lang="en"><meta charset="utf-8"><title>${spec.name} sheets</title><body><script>window.__sheetRequest=${JSON.stringify(request).replace(/</g, "\\u003c")};</script><script src="sheet.js"></script></body></html>`);
   const { value, errors } = await evaluatePage<SheetImage[]>(html, "window.__sheet", { flags: SOFTWARE_GL_FLAGS });
