@@ -13,6 +13,7 @@
  * Used by: backend/review/review.ts, backend/review/stageTruth.ts, backend/geminiReview/facts.ts.
  */
 
+import { stageTreatmentAt, type StageTreatment, type TreatmentSpan } from "../../src/dl/scene/materials/treatment";
 import fs from "node:fs";
 import path from "node:path";
 import { buildTimeline, lookBox, nodeBox, solveCam } from "../../src/dl/camera";
@@ -103,6 +104,7 @@ export interface FilmFacts {
   /** Stage performances with their evaluated contact frames (Three stage films only). */
   performances?: PerformanceFacts[];
   /** Stage cast: drawn characters and props, and cast members no performance draws. */
+  stageTreatments?: { cast: Array<{ id: string; treatment: StageTreatment }>; shots: Array<{ id: string; cast: Array<{ id: string; treatment: StageTreatment }> }>; spans: TreatmentSpan[] };
   stageCast?: { characters: Array<{ castId: string; character: ReturnType<typeof characterIdentity> | null }>; props: string[]; hidden: string[] };
   filmId: string;
   kind: "node-graph" | "scene";
@@ -489,7 +491,13 @@ export function readFilmFacts(film: Film, viewport: ReviewViewport = FRAME): Fil
       camera: three ? projectedCameraMoves(scene, fps, viewport) : sceneCameraMoves(scene, fps), boundaries: carry,
       clipStarts, performanceContacts: contactStarts, nodeOverlaps: [], voiceoverSec, planShots, cameraKeyframes,
       ...(stage ? { stage } : {}),
-      ...(three ? { format: formatOfViewport(viewport), viewport, performances, stageCast } : {}),
+      ...(three ? { format: formatOfViewport(viewport), viewport, performances, stageCast,
+        stageTreatments: {
+          cast: (scene.cast ?? []).map((c) => ({ id: c.id, treatment: stageTreatmentAt(scene, 0, c.treatment) })),
+          shots: planShots.map((shot) => ({ id: shot.id, cast: (scene.cast ?? []).map((c) => ({ id: c.id, treatment: stageTreatmentAt(scene, Math.round(shot.startSec * fps), c.treatment) })) })),
+          spans: scene.treatments ?? [],
+        },
+      } : {}),
     };
   }
   const { camera, starts, durations: timedDurations } = nodeGraphCamera(film, voiceoverSec);

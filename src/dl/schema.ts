@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { stageTreatmentSchema, treatmentSpanSchema } from "./scene/materials/treatment";
 import { castSchema, performanceSchema } from "./scene/stageContract";
 
 /**
@@ -323,6 +324,9 @@ export type CameraKeyframe = z.infer<typeof cameraKeyframeSchema>;
 export type CameraTrack = z.infer<typeof cameraTrackSchema>;
 
 export const sceneSchema = z.object({
+  treatmentResourceHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+  treatment: stageTreatmentSchema.optional(),
+  treatments: z.array(treatmentSpanSchema).optional(),
   renderer: z.enum(["svg", "three"]).optional(),
   cast: z.array(castSchema).optional(),
   performances: z.array(performanceSchema).optional(),

@@ -185,3 +185,25 @@ tests extract and verify it, so it cannot drift from the engine.
   ]
 }
 ```
+
+## Optional dots treatment
+
+Keep the same character spec, rig and receive action. In `aideos.look/2` set
+`film.treatment: "dots-v1"`, and in `aideos.design/2` set `treatment: "dots-v1"`.
+The default is `cel-v1`. To choose per cast member, set `treatment` on that
+look cast item and matching design asset. For a shot use `stageTreatment: "dots-v1"` in the look
+shot and the matching design `shots.<id>` override. A shading-only override preserves the shot content.
+Shot overrides win over cast treatments, which win over the film default.
+The existing shot `treatment: "scene"` still describes composition.
+
+`aideos character sheet iona --treatment dots-v1 --out .frames/iona-dots`
+renders dot model, expression and receive sheets. Samples have deterministic
+Poisson spacing in mesh space and move with the original joints. Lighting bands
+and projected scale control their density and size. Opaque surfaces share depth;
+ink outlines, painted monochrome facial features and prop crease lines remain
+continuous. Authored light flat details retain white fills and dark outlines.
+SVG scenery and captions keep their authored rendering. Dots use no model or
+downloaded assets. Re-freeze dots resources with
+`npx tsx scripts/freeze_stage_resources.ts` after changing the material or sampler;
+its separate hash preserves the cel resource identity. Phone contrast tests are
+an engineering check; judge expression readability in the delivered crop too.

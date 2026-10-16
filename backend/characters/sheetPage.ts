@@ -3,7 +3,7 @@
  * Inputs and outputs: window.__sheetRequest (spec, retargeted receive, placement) -> window.__sheet promise of named PNG data URLs.
  * Used by: backend/characters/sheet.ts, which bundles this file with esbuild into a static page for headless Chrome.
  */
-import { Box3, Group, MeshBasicMaterial, NoToneMapping, OrthographicCamera, Scene, SRGBColorSpace, Vector3, WebGLRenderer, type Material } from "three";
+import { Box3, Group, MeshBasicMaterial, NoToneMapping, OrthographicCamera, Scene, SRGBColorSpace, Vector3, WebGLRenderer, Points, ShaderMaterial, type Material } from "three";
 import { buildCharacter, addCelLights, type CharacterArt } from "../../src/dl/scene/characters/build";
 import { applyCharacter } from "../../src/dl/scene/characters/apply";
 import { applyProp, buildProp } from "../../src/dl/scene/props/paperGlider";
@@ -12,10 +12,13 @@ import { rigFromCharacter } from "../../src/dl/characters/rig";
 import { characterRigId } from "../../src/dl/characters/hash";
 import { stageViewport, SCENE_SIZE } from "../../src/dl/scene/projection";
 import { CEL_TREATMENT } from "../../src/dl/scene/rigs/registry";
+import { buildDots } from "../../src/dl/scene/materials/dots";
+import type { StageTreatment } from "../../src/dl/scene/materials/treatment";
 import type { CharacterSpec } from "../../src/dl/characters/schema";
 import type { ReceiveAction } from "../../src/dl/performance/types";
 
 export interface SheetRequest {
+  treatment?: StageTreatment;
   spec: CharacterSpec;
   /** Retargeted receive, or null when the character cannot perform it. */
   action: ReceiveAction | null;
@@ -37,6 +40,7 @@ function createRenderer(): WebGLRenderer {
 
 // Renders a scene through an orthographic camera into a w x h canvas.
 function draw(renderer: WebGLRenderer, scene: Scene, camera: OrthographicCamera, w: number, h: number, clear: number | null): HTMLCanvasElement {
+  scene.traverse((node) => { if (node instanceof Points && node.material instanceof ShaderMaterial && node.material.uniforms.viewportHeight) node.material.uniforms.viewportHeight.value = h; });
   renderer.setSize(w, h, false);
   renderer.setClearColor(clear ?? 0, clear === null ? 0 : 1);
   renderer.render(scene, camera);
@@ -123,6 +127,8 @@ function receiveStills(renderer: WebGLRenderer, art: CharacterArt, request: Shee
   const action = request.action!;
   const evaluate = createPerformanceEvaluator(rigFromCharacter(request.spec), action);
   const prop = buildProp("paper-glider-v1");
+  const propDots = request.treatment === "dots-v1" ? buildDots(prop.root, undefined, true) : undefined;
+  propDots?.setEnabled(true, 1080);
   const scene = new Scene(), root = new Group(), placement = new Group();
   addCelLights(root);
   const [px, py] = request.placement.position, units = request.placement.unitsToStage;
@@ -153,6 +159,7 @@ function receiveStills(renderer: WebGLRenderer, art: CharacterArt, request: Shee
   });
   out.push(image("receive-strip", c.canvas));
   placement.remove(art.rig.root);
+  propDots?.dispose();
   prop.dispose();
   return out;
 }
@@ -161,11 +168,15 @@ function receiveStills(renderer: WebGLRenderer, art: CharacterArt, request: Shee
 async function renderSheets(request: SheetRequest): Promise<SheetImage[]> {
   const renderer = createRenderer();
   const art = buildCharacter(request.spec, document.createElement("canvas"));
+  const dots = request.treatment === "dots-v1" ? buildDots(art.rig.root, new Set(art.parts.resolved.filter((p) => p.geometry.kind === "head").map((p) => art.parts.meshes[p.id]))) : undefined;
+  dots?.setEnabled(true, 1080);
+  if (dots) for (const mesh of Object.values(art.parts.meshes)) mesh.userData.base = mesh.material;
   try {
     const images = [modelSheet(renderer, art, request), expressionSheet(renderer, art, request)];
     if (request.action) images.push(...receiveStills(renderer, art, request));
     return images;
   } finally {
+    dots?.dispose();
     art.dispose();
     renderer.dispose();
   }

@@ -7,6 +7,7 @@
  */
 
 import type { SvgAnimationTimeline } from "./svgAnimation";
+import type { StageTreatment, TreatmentSpan } from "./materials/treatment";
 import type { StageCast, StagePerformance } from "./stageContract";
 
 export type SchemaVersion = string; // e.g. "1.0.0"
@@ -114,6 +115,9 @@ export interface CameraTrack {
 }
 
 export interface Scene {
+  treatmentResourceHash?: string;
+  treatment?: StageTreatment;
+  treatments?: TreatmentSpan[];
   renderer?: "svg" | "three";
   cast?: StageCast[];
   performances?: StagePerformance[];

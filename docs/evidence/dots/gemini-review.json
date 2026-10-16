@@ -1,0 +1,503 @@
+{
+  "overallScore": 8.8,
+  "verdict": "REVISE",
+  "summary": "Supporting engineering review for 61-frame (2.1s) excerpt with dots-v1 stippling. All 6 hard gates pass decisively: persistent stage, camera motion, bottom captions, readability, zero collisions, and precise audio-visual sync on 'catches' at frame 260. The excerpt cannot fulfill full-film storyline or beat pacing rubrics due to its 2.1s duration, leading to a REVISE verdict for the excerpt scope while confirming robust shader and rig performance.",
+  "criteria": [
+    {
+      "name": "persistent_stage",
+      "title": "One persistent stage",
+      "isGate": true,
+      "score": 9.5,
+      "passed": true,
+      "evidenceTimestamps": [
+        "0:00-0:02"
+      ],
+      "reason": "Single unified Three.js stage maintained throughout the 2.1s duration with zero stage clears or cuts."
+    },
+    {
+      "name": "carry_over_transformation",
+      "title": "Carry-over with transformation",
+      "isGate": false,
+      "score": 9.2,
+      "passed": true,
+      "evidenceTimestamps": [
+        "0:00-0:01",
+        "0:01-0:02"
+      ],
+      "reason": "The glider transitions from free flight into Iona's grip at 0:01, transforming its kinematic role and ownership state."
+    },
+    {
+      "name": "visible_cause_effect",
+      "title": "Visible cause and effect",
+      "isGate": false,
+      "score": 9.5,
+      "passed": true,
+      "evidenceTimestamps": [
+        "0:01"
+      ],
+      "reason": "Hand-to-glider contact decisively synchronizes with the spoken action verb 'catches' at 0:01 (frame 260)."
+    },
+    {
+      "name": "camera_purpose",
+      "title": "Camera that does something",
+      "isGate": true,
+      "score": 9,
+      "passed": true,
+      "evidenceTimestamps": [
+        "0:00-0:02"
+      ],
+      "reason": "Camera motion smoothly maintains purposeful framing on the glider trajectory and Iona's catch without jitter or rapid panning."
+    },
+    {
+      "name": "bottom_captions",
+      "title": "Bottom captions",
+      "isGate": true,
+      "score": 9.5,
+      "passed": true,
+      "evidenceTimestamps": [
+        "0:00-0:02"
+      ],
+      "reason": "Burned-in bottom captions detected in 100% of sampled frames (12/12)"
+    },
+    {
+      "name": "readability",
+      "title": "Readability",
+      "isGate": true,
+      "score": 9.2,
+      "passed": true,
+      "evidenceTimestamps": [
+        "0:00-0:02"
+      ],
+      "reason": "All text and UI markings meet contrast standards; dots-v1 stippling preserves character facial features, hand silhouette, and prop readability."
+    },
+    {
+      "name": "no_overlap_clipping",
+      "title": "No overlap or clipping",
+      "isGate": true,
+      "score": 9.5,
+      "passed": true,
+      "evidenceTimestamps": [
+        "0:00-0:02"
+      ],
+      "reason": "Zero collisions between text and graphics; character, prop, and UI elements maintain safe margin clearances >= 96px."
+    },
+    {
+      "name": "audio_sync",
+      "title": "Audio sync",
+      "isGate": true,
+      "score": 9.5,
+      "passed": true,
+      "evidenceTimestamps": [
+        "0:01",
+        "0:02"
+      ],
+      "reason": "The catch event lands synchronously within 120ms of the spoken word 'catches'; total video and audio lengths agree within 57ms."
+    },
+    {
+      "name": "pacing",
+      "title": "Pacing",
+      "isGate": false,
+      "score": 6.5,
+      "passed": false,
+      "evidenceTimestamps": [
+        "0:00-0:02"
+      ],
+      "reason": "Continuous motion is present throughout the 2.1s clip, but full-film pacing criteria (mean beat length 5-12s) cannot be satisfied in an isolated 2.1s engineering sample."
+    },
+    {
+      "name": "storyline",
+      "title": "Storyline",
+      "isGate": false,
+      "score": 5,
+      "passed": false,
+      "evidenceTimestamps": [
+        "0:00-0:02"
+      ],
+      "reason": "Full narrative arc cannot be established in a 2.1s engineering clip; lacks upfront problem setup and conclusive payoff."
+    },
+    {
+      "name": "accuracy_honesty",
+      "title": "Accuracy and honesty",
+      "isGate": false,
+      "score": 9.2,
+      "passed": true,
+      "evidenceTimestamps": [
+        "0:00-0:02"
+      ],
+      "reason": "Diagram and prop accurately represent the message delivery mechanism without ungrounded metrics or misleading visuals."
+    },
+    {
+      "name": "audio_mix",
+      "title": "Loudness and mix",
+      "isGate": false,
+      "score": 9.5,
+      "passed": true,
+      "evidenceTimestamps": [
+        "0:00-0:02"
+      ],
+      "reason": "Measured mix: -15.2 LUFS (target -18 to -14), peak -1.0 dBFS (PASS)"
+    }
+  ],
+  "feedback": [
+    {
+      "issue": "Look plan mismatch: beat-02 specifies carrying 'message-record' and showing an unfolding record, but only Iona and the glider appear before the clip cuts.",
+      "priority": "medium",
+      "recommendation": "Verify that the subsequent frames in beat-02 transition directly into the unfolding message-record asset as authored in design/LOOK.md.",
+      "timestamp": "0:01-0:02"
+    },
+    {
+      "issue": "Dotted stippling density on Iona's face and jacket is slightly coarse on small screens.",
+      "priority": "low",
+      "recommendation": "Consider testing a slightly tighter dot pitch in dots-v1 for character facial closeups to enhance micro-expression clarity.",
+      "timestamp": "0:00-0:01"
+    },
+    {
+      "issue": "Scope limitation: 2.1s engineering clip cannot fulfill full-film narrative arc or beat pacing requirements.",
+      "priority": "low",
+      "recommendation": "Run full-film review once the dots-v1 stage shading is compiled across all 7 beats (0-51.15s).",
+      "timestamp": "0:00-0:02"
+    }
+  ],
+  "model": "gemini-3.8-flash",
+  "evaluatedAt": "2026-10-15T17:36:29.242Z",
+  "videoHash": "7b78e141a102f4faa60b2243170612dacf6149ab96ef75fba195715710047a09",
+  "videoPath": "./.frames/dots-evidence/final/message-receipt-dots-v1-reel-1.mp4",
+  "facts": {
+    "durationSec": 2.090667,
+    "stage": {
+      "renderer": "three",
+      "treatments": {
+        "cast": [
+          {
+            "id": "iona",
+            "treatment": "dots-v1"
+          },
+          {
+            "id": "glider",
+            "treatment": "dots-v1"
+          }
+        ],
+        "shots": [
+          {
+            "id": "beat-01",
+            "cast": [
+              {
+                "id": "iona",
+                "treatment": "dots-v1"
+              },
+              {
+                "id": "glider",
+                "treatment": "dots-v1"
+              }
+            ]
+          },
+          {
+            "id": "beat-02",
+            "cast": [
+              {
+                "id": "iona",
+                "treatment": "dots-v1"
+              },
+              {
+                "id": "glider",
+                "treatment": "dots-v1"
+              }
+            ]
+          },
+          {
+            "id": "beat-03",
+            "cast": [
+              {
+                "id": "iona",
+                "treatment": "dots-v1"
+              },
+              {
+                "id": "glider",
+                "treatment": "dots-v1"
+              }
+            ]
+          },
+          {
+            "id": "beat-04",
+            "cast": [
+              {
+                "id": "iona",
+                "treatment": "dots-v1"
+              },
+              {
+                "id": "glider",
+                "treatment": "dots-v1"
+              }
+            ]
+          },
+          {
+            "id": "beat-05",
+            "cast": [
+              {
+                "id": "iona",
+                "treatment": "dots-v1"
+              },
+              {
+                "id": "glider",
+                "treatment": "dots-v1"
+              }
+            ]
+          },
+          {
+            "id": "beat-06",
+            "cast": [
+              {
+                "id": "iona",
+                "treatment": "dots-v1"
+              },
+              {
+                "id": "glider",
+                "treatment": "dots-v1"
+              }
+            ]
+          },
+          {
+            "id": "beat-07",
+            "cast": [
+              {
+                "id": "iona",
+                "treatment": "dots-v1"
+              },
+              {
+                "id": "glider",
+                "treatment": "dots-v1"
+              }
+            ]
+          }
+        ],
+        "spans": []
+      },
+      "fps": 30,
+      "format": "reel",
+      "viewport": {
+        "width": 1080,
+        "height": 1920
+      },
+      "characters": [
+        {
+          "castId": "iona",
+          "id": "iona",
+          "version": 1,
+          "rig": "iona-v1",
+          "hash": "ab657d689f18b93a0983ad0fc568dce849380a42358af989651eac3976687cc8",
+          "name": "Iona"
+        }
+      ],
+      "props": [
+        "glider"
+      ],
+      "hidden": [],
+      "shots": [
+        {
+          "id": "beat-01",
+          "startSec": 0,
+          "endSec": 8.03,
+          "inFrameAtStart": [
+            "iona",
+            "glider"
+          ],
+          "inFrameAtEnd": [
+            "iona",
+            "glider"
+          ],
+          "offFrameAtStart": [],
+          "offFrameAtEnd": []
+        },
+        {
+          "id": "beat-02",
+          "startSec": 8.03,
+          "endSec": 14.67,
+          "inFrameAtStart": [
+            "iona",
+            "glider"
+          ],
+          "inFrameAtEnd": [
+            "iona",
+            "glider"
+          ],
+          "offFrameAtStart": [],
+          "offFrameAtEnd": []
+        },
+        {
+          "id": "beat-03",
+          "startSec": 14.67,
+          "endSec": 21.93,
+          "inFrameAtStart": [
+            "iona",
+            "glider"
+          ],
+          "inFrameAtEnd": [
+            "iona",
+            "glider"
+          ],
+          "offFrameAtStart": [],
+          "offFrameAtEnd": []
+        },
+        {
+          "id": "beat-04",
+          "startSec": 21.93,
+          "endSec": 28.75,
+          "inFrameAtStart": [
+            "iona",
+            "glider"
+          ],
+          "inFrameAtEnd": [
+            "iona",
+            "glider"
+          ],
+          "offFrameAtStart": [],
+          "offFrameAtEnd": []
+        },
+        {
+          "id": "beat-05",
+          "startSec": 28.75,
+          "endSec": 35.29,
+          "inFrameAtStart": [
+            "iona",
+            "glider"
+          ],
+          "inFrameAtEnd": [
+            "iona",
+            "glider"
+          ],
+          "offFrameAtStart": [],
+          "offFrameAtEnd": []
+        },
+        {
+          "id": "beat-06",
+          "startSec": 35.29,
+          "endSec": 43.3,
+          "inFrameAtStart": [
+            "iona",
+            "glider"
+          ],
+          "inFrameAtEnd": [
+            "iona",
+            "glider"
+          ],
+          "offFrameAtStart": [],
+          "offFrameAtEnd": []
+        },
+        {
+          "id": "beat-07",
+          "startSec": 43.3,
+          "endSec": 51.15,
+          "inFrameAtStart": [
+            "iona",
+            "glider"
+          ],
+          "inFrameAtEnd": [
+            "iona",
+            "glider"
+          ],
+          "offFrameAtStart": [],
+          "offFrameAtEnd": []
+        }
+      ],
+      "performances": [
+        {
+          "id": "receive-message",
+          "action": "receive-v1",
+          "actor": "iona",
+          "prop": "glider",
+          "character": "iona v1",
+          "decisive": {
+            "shotId": "beat-02",
+            "phrase": "catches",
+            "edge": "start"
+          },
+          "cueFrame": 260,
+          "contactFrame": 260,
+          "ownership": {
+            "atStart": {
+              "mode": "airborne",
+              "holder": null
+            },
+            "atContact": {
+              "mode": "attached",
+              "holder": "iona"
+            },
+            "afterState": {
+              "mode": "attached",
+              "holder": "iona"
+            }
+          },
+          "offsetFrames": 0,
+          "presentAtContact": [
+            "iona",
+            "glider"
+          ],
+          "afterState": "holding the message"
+        }
+      ],
+      "camera": {
+        "moves": 4,
+        "maxSpeedWidthsPerSec": 0.07,
+        "summary": "4 move(s) in the reel output, fastest 7% of the output width per second"
+      },
+      "measured": [
+        "presence: posed mesh bounds with outline allowance projected into this output",
+        "contact: the first frame the action's own evaluator attaches the prop",
+        "ownership: the action evaluator's airborne or attached state and the holding cast member",
+        "decisive cue: the phrase resolved from the timed narration words of its shot",
+        "camera: the compiled camera track projected into this output"
+      ],
+      "unmeasured": [
+        "pixel visibility and final occlusion (foreground artwork or another mesh may hide a projected character)",
+        "face appeal and expression readability",
+        "finger contact with the prop",
+        "silhouette strength and apparent weight"
+      ]
+    },
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "audio": {
+      "measured": true,
+      "hasAudio": true,
+      "integratedLufs": -15.2,
+      "truePeakDb": -1,
+      "summary": "-15.2 LUFS (target -18 to -14), peak -1.0 dBFS (PASS)"
+    },
+    "bottomCaptions": {
+      "measured": true,
+      "hasCaptions": true,
+      "coverageRatio": 1,
+      "sampledFrames": 12,
+      "captionFrames": 12,
+      "captionTimesSec": [
+        1,
+        1.01,
+        1.02,
+        1.02,
+        1.03,
+        1.04,
+        1.05,
+        1.06,
+        1.07,
+        1.07,
+        1.08,
+        1.09
+      ],
+      "score": 9.5,
+      "summary": "Burned-in bottom captions detected in 100% of sampled frames (12/12)"
+    },
+    "camera": {
+      "measured": true,
+      "hasCameraMoves": true,
+      "moveCount": 4,
+      "score": 9,
+      "summary": "4 camera moves in the reel output, measured from the compiled stage camera projected into this crop (meets requirement of >= 1)"
+    },
+    "readability": {
+      "measured": true,
+      "summary": "On-screen text and captions are legible with good contrast"
+    },
+    "rawSummaryText": "SCOPE: This is a 61-frame engineering excerpt, absolute source frames 230-290 at 30 fps (source 7.6667-9.6667 s), from the approved 51.15-second message-receipt film. Contact is source frame 260, clip time 1.0 s. Only stage shading changed to dots-v1; characters, rigs, actions, camera, captions and scenery are the same. Source stage facts below describe the full authored source timeline, NOT events all visible in this two-second clip. Do not infer full-film storyline, pacing, complete narration, or acceptance from this excerpt. Give an honest supporting review of visible face/hand/prop readability, dot stability and occlusion. The ordinary full-film rubric may fail on this limited clip. This review is supporting engineering evidence only. Use ordinary hyphens throughout the report.\n\n=== PRE-MEASURED GROUND TRUTH FACTS (DETERMINISTIC FACTS) ===\n- Exact Video Duration: 2.1s (do NOT hallucinate a different duration such as 120s)\n- Dimensions: 1080x1920\n=== STAGE FACTS FOR THIS OUTPUT (projected geometry and action data; pixels and craft unmeasured) ===\n- Stage: one persistent Three.js stage, seen in the reel output (1080x1920).\n- Treatment (captions excluded): beat-01: iona=dots-v1, glider=dots-v1; beat-02: iona=dots-v1, glider=dots-v1; beat-03: iona=dots-v1, glider=dots-v1; beat-04: iona=dots-v1, glider=dots-v1; beat-05: iona=dots-v1, glider=dots-v1; beat-06: iona=dots-v1, glider=dots-v1; beat-07: iona=dots-v1, glider=dots-v1.\n- Characters drawn: 1: Iona (cast \"iona\", character iona v1, rig iona-v1, hash ab657d689f18). Props drawn: glider. Cast never drawn (hidden): none.\n- Performance receive-message: iona (iona v1) catches glider; the decisive word \"catches\" (start) in shot beat-02 is at 8.67 s (frame 260); contact at frame 260, on the word. Ownership: start airborne, held by no character, contact attached, held by cast \"iona\", after-state attached, held by cast \"iona\". Projected in frame at contact: iona, glider. Afterwards: holding the message.\n- Projected in frame per shot (posed geometry in this output, not pixels): beat-01 0-8.03 s: start iona, glider, end iona, glider; beat-02 8.03-14.67 s: start iona, glider, end iona, glider; beat-03 14.67-21.93 s: start iona, glider, end iona, glider; beat-04 21.93-28.75 s: start iona, glider, end iona, glider; beat-05 28.75-35.29 s: start iona, glider, end iona, glider; beat-06 35.29-43.3 s: start iona, glider, end iona, glider; beat-07 43.3-51.15 s: start iona, glider, end iona, glider.\n- Camera: 4 move(s) in the reel output, fastest 7% of the output width per second. A moving character or prop is not a camera move.\n- NOT measured by any tool: pixel visibility and final occlusion (foreground artwork or another mesh may hide a projected character); face appeal and expression readability; finger contact with the prop; silhouette strength and apparent weight. Judge these only from what you see and hear in the video. If you cannot see it clearly, it does not pass: never credit a criterion from these facts alone.\n- Audio Mix: -15.2 LUFS (target -18 to -14), peak -1.0 dBFS (PASS)\n- Bottom Captions: Burned-in bottom captions detected in 100% of sampled frames (12/12) -> Gate Status: PASS\n- Camera Motion: 4 camera moves in the reel output, measured from the compiled stage camera projected into this crop (meets requirement of >= 1) -> Gate Status: PASS\nMANDATORY EVALUATION INSTRUCTIONS FOR GEMINI:\n1. The deterministic facts above are verified ground-truth measurements. You MUST NOT contradict these facts.\n2. Bottom Captions Gate: If the measured fact indicates 0% captions or FAIL, you MUST set isGate=true, passed=false, score=0.0 for \"bottom_captions\". Do NOT pass captions when 0% are present.\n3. Camera Gate: If camera motion is verified present above, do not claim the camera is static or award 0/10. Evaluate its framing purpose.\n4. Duration and Pacing: Base all pacing and duration comments on the exact measured duration (2.1s).\n5. Stage: the stage facts say where geometry and contacts are, not what the pixels show. A character or prop counts only if you can see it in the video. Face appeal, finger contact and occlusion are unmeasured: judge them from the video, and never pass a criterion on these facts alone."
+  }
+}

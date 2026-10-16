@@ -271,6 +271,7 @@ test("an invalid package character hides the library character with the same id"
 test("J10: LOOK.md says each performance in plain words and marks the decisive shot", () => {
   const { slug, dir } = pkgWith();
   const md = fs.readFileSync(writeLookMd(slug), "utf8");
+  assert.match(md, /Stage treatment: cel-v1 \(captions excluded\)\.\n\nRenderer: three \(orthographic persistent stage, cel-v1\)/);
   assert.match(md, /\*\*receive-message\*\* \(receive-v1\): Iona \(character `iona` v1, hash `[0-9a-f]{12}`\) plays cast `iona` and catches `glider`/);
   assert.match(md, /the hand meets the glider on "catches" \(start of the word\) in shot `catch`/);
   assert.match(md, /`catch` \*\*scene\*\* \[carries: iona, glider\] \[performs: receive-message, contact on "catches"\]/);
@@ -279,4 +280,10 @@ test("J10: LOOK.md says each performance in plain words and marks the decisive s
   assert.match(md, /Not measured by any tool: face appeal, finger contact and final on-screen occlusion/);
   const plan = parseLookPlan(JSON.parse(fs.readFileSync(path.join(dir, "design/look.json"), "utf8")));
   assert.match(renderLookMd(plan), /character `iona` v1 \(hash `[0-9a-f]{12}`\)/, "without names it still says the id, version and hash");
+});
+
+test("LOOK.md describes the dots stage treatment consistently", () => {
+  const { slug } = pkgWith((look) => { look.film.treatment = "dots-v1"; });
+  const md = fs.readFileSync(writeLookMd(slug), "utf8");
+  assert.match(md, /Stage treatment: dots-v1 \(captions excluded\)\.\n\nRenderer: three \(orthographic persistent stage, dots-v1\)/);
 });

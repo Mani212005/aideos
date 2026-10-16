@@ -33,3 +33,10 @@ export const CEL_TREATMENT = {
   outlineUnits: 0.04, ramp: [90, 175, 255], seed: 0,
   directionalIntensity: 2, ambientIntensity: Math.PI * 0.3,
 } as const;
+
+export const DOT_RESOURCE_HASH = "cbb918c71f9e27ca0f60f701abed418da775a3c934ffe4eaf8795f9bdd5f226f";
+export const DOT_RESOURCES = {
+  "src/dl/scene/materials/dotSamples.ts": "71966f6b767f6f8d0044028b5ec13f7a6135d1f48e01d6908151d9d69a185ba8",
+  "src/dl/scene/materials/dots.ts": "b2b638fed37244a884e5efe951df4cbf52cad04e783381a3673ddb755ecfa9c3",
+  "src/dl/scene/materials/treatment.ts": "0612d773b6195eb11900a51f73b7ad3a89000790a03e99580fd20e4d81660161"
+} as const;

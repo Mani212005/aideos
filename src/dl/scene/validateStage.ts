@@ -4,7 +4,7 @@
  * Used by: validateScene, design compiler and ThreeStage (which refuses to allocate geometry for an invalid stage).
  */
 import { castSchema, LEGACY_P0_RESOURCE_HASH, performanceSchema, type StageCast } from "./stageContract";
-import { STAGE_RESOURCE_HASH } from "./rigs/registry";
+import { DOT_RESOURCE_HASH, STAGE_RESOURCE_HASH } from "./rigs/registry";
 import { createPerformanceEvaluator } from "../performance/evaluate";
 import { critiquePerformance } from "../performance/critique";
 import { IONA_RIG } from "../performance/iona";
@@ -14,6 +14,7 @@ import { characterRigId } from "../characters/hash";
 import { rigFromCharacter } from "../characters/rig";
 import { isLegacyIonaReference, resolveCharacterSpec } from "../characters/resolve";
 import type { CharacterSpec } from "../characters/schema";
+import { stageTreatmentSchema, treatmentSpanSchema } from "./materials/treatment";
 import type { Scene } from "./types";
 
 /** What receive-v1 needs from any character that performs it. */
@@ -39,8 +40,18 @@ export function validateCastCharacter(cast: Extract<StageCast, { kind: "characte
 export function validateStage(scene: Scene): string[] {
   const errors: string[] = [];
   if (scene.renderer !== "three") {
-    if (scene.cast?.length || scene.performances?.length) errors.push("Three cast and performances require renderer three.");
+    if (scene.cast?.length || scene.performances?.length || scene.treatment || scene.treatments?.length || scene.treatmentResourceHash) errors.push("Three cast, performances and treatment require renderer three.");
     return errors;
+  }
+  if (scene.treatment !== undefined && !stageTreatmentSchema.safeParse(scene.treatment).success) errors.push("scene.treatment: expected cel-v1 or dots-v1.");
+  const usesDots = scene.treatment === "dots-v1" || scene.treatments?.some((span) => span.treatment === "dots-v1") || scene.cast?.some((c) => c.treatment === "dots-v1");
+  if (usesDots && scene.treatmentResourceHash !== DOT_RESOURCE_HASH) errors.push("scene.treatmentResourceHash: incompatible dots resources; rebuild the design.");
+  let previousEnd = 0;
+  for (const [i, span] of (scene.treatments ?? []).entries()) {
+    const parsed = treatmentSpanSchema.safeParse(span);
+    if (!parsed.success) errors.push(...parsed.error.issues.map((issue) => `scene.treatments.${i}.${issue.path.join(".")}: ${issue.message}`));
+    if (span.startFrame < previousEnd || span.endFrame <= span.startFrame || span.endFrame > scene.durationFrames) errors.push(`scene.treatments.${i}: spans must be ordered, nonoverlapping and inside the film.`);
+    previousEnd = span.endFrame;
   }
   if (scene.sceneSize.w !== 1920 || scene.sceneSize.h !== 1920) errors.push("Three stage requires the shared 1920 square.");
   if (!scene.performances?.length) errors.push("Three stage requires at least one receive performance.");

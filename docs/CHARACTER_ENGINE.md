@@ -130,17 +130,20 @@ authoring tools. Three characters prove it; random proportions are property-test
 
 Still Iona-specific, by design: `receive-v1` itself is authored on Iona's rig (`IONA_RIG` is the
 retarget source, and the library spec must derive it exactly); its expression names and its three
-swing channels are the action's vocabulary; the glider is the only prop; the cel treatment is the
-only treatment; there is one action. The exact P0 `iona-art-v1` cast record remains a browser-safe
+swing channels are the action's vocabulary; the glider is the only prop; there is one action.
+`cel-v1` remains the default shading, with optional dots documented in
+[`characters/README.md`](../characters/README.md#optional-dots-treatment). The exact P0 `iona-art-v1` cast record remains a browser-safe
 alias of the stamped Iona character spec so compiled films keep rendering; rebuilding its design
 picks up the repaired pole clearance. Look-plan authoring, adherence scoring, Gemini facts and review truth for characters
 are part 4, documented in [THREE_STAGE_P3.md](THREE_STAGE_P3.md).
 
 The frozen stage identity covers the character, prop and receive engine files that determine
-rendered output and fitted actions, including evaluation and acceptance critique. It excludes
-`validateStage.ts`, `stageMaterials.ts` declarations and design-check rules: those checks run at
-every build and render, while compiled films carry the frozen stage hash. This avoids invalidating
-every compiled film for a rule change; stale films are refused with a named error before drawing.
+rendered output and fitted actions, including evaluation and acceptance critique. The optional dots
+material and sampler have their own frozen hash, required only by films that use dots; changing them
+does not change the cel identity. Both identities exclude `validateStage.ts`, `stageMaterials.ts`
+declarations and design-check rules: those checks run at every build and render, while compiled films
+carry the relevant frozen hash. This avoids invalidating every compiled film for a rule change; stale
+films are refused with a named error before drawing.
 
 The separate CI part owns the GitHub workflow and pull request checks. This part contributes its
 character suites to `npm test` for that workflow to run.
@@ -167,3 +170,13 @@ character suites to `npm test` for that workflow to run.
   `aideos character sheet`. Observed: Pip's catch lands at eye level, so the glider passes in front
   of the face at contact (a small upward `targetOffset` lifts it); limbs remain rigid tube sections
   like Iona's.
+
+## Optional surface dots
+
+The stage can render the same embedded spec and action as `dots-v1`. Authoring
+fields and the dot sheet command are in `characters/README.md` (Optional dots
+treatment). `src/dl/scene/materials/dotSamples.ts` owns seeded Poisson rejection samples;
+`src/dl/scene/materials/dots.ts` attaches them to the existing rigid mesh hierarchy and
+retains depth, outlines and painted monochrome face features. The dots resource
+freeze is independent of the cel freeze. Treatment switches use absolute film
+frames and never alter the character specification or action evaluator.

@@ -14,6 +14,7 @@ import { buildCharacter } from "../../src/dl/scene/characters/build";
 import { RECEIVE_NEEDS } from "../../src/dl/scene/validateStage";
 import { fitReceiveSpan } from "../performance/bindReceive";
 import { formatSpecJson, withHash } from "./format";
+import { stageTreatmentSchema, type StageTreatment } from "../../src/dl/scene/materials/treatment";
 import { renderCharacterSheet, resolveSpecArgument } from "./sheet";
 
 /** Everything `aideos character check` learns about one spec. */
@@ -111,9 +112,10 @@ export function registerCharacterCommands(program: Command): void {
     .argument("<spec>", "spec file or library character id")
     .option("--out <dir>", "output directory (default .frames/characters/<id>)")
     .option("--placement <x,y,units>", "stage placement for the receive stills", placementOption)
+    .option("--treatment <id>", "cel-v1 (default) or dots-v1", (value: string) => stageTreatmentSchema.parse(value))
     .option("--clamp", "clamp the receive to the character's limits instead of refusing it")
-    .action(async (spec: string, options: { out?: string; placement?: { position: [number, number]; unitsToStage: number }; clamp?: boolean }) => {
-      const result = await renderCharacterSheet(resolveSpecArgument(spec), { outDir: options.out, placement: options.placement, policy: options.clamp ? "clamp" : "fail" });
+    .action(async (spec: string, options: { out?: string; placement?: { position: [number, number]; unitsToStage: number }; clamp?: boolean; treatment?: StageTreatment }) => {
+      const result = await renderCharacterSheet(resolveSpecArgument(spec), { outDir: options.out, treatment: options.treatment, placement: options.placement, policy: options.clamp ? "clamp" : "fail" });
       console.log(`${result.hashStatus}`);
       if (!result.retarget.ok) console.log(`receive-v1 not drawn: ${result.retarget.error}`);
       for (const w of result.retarget.warnings) console.log(`warn  ${w}`);

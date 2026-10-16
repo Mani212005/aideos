@@ -32,6 +32,7 @@ export const STAGE_MEASURED = [
 /** The truthful stage description for one output. */
 export interface StageTruth {
   renderer: "three";
+  treatments: FilmFacts["stageTreatments"];
   fps: number;
   format: "long" | "reel";
   viewport: { width: number; height: number };
@@ -89,7 +90,7 @@ export function stageTruth(facts: FilmFacts, narration: Narration | null): Stage
       : `${moves} move(s) in the ${facts.format} output, fastest ${Math.round(facts.camera.maxSpeed * 100)}% of the output width per second`,
   };
   return {
-    renderer: "three", fps: facts.fps, format: facts.format, viewport: facts.viewport,
+    renderer: "three", treatments: facts.stageTreatments, fps: facts.fps, format: facts.format, viewport: facts.viewport,
     characters: facts.stageCast.characters.map((c) => ({ castId: c.castId, id: c.character?.id ?? null, version: c.character?.version ?? null, rig: c.character?.rig ?? null, hash: c.character?.hash ?? null, name: c.character?.name ?? null })),
     props: facts.stageCast.props, hidden: facts.stageCast.hidden, shots, performances, camera,
     measured: STAGE_MEASURED, unmeasured: STAGE_UNMEASURED,
@@ -109,7 +110,8 @@ export function stageTruthText(truth: StageTruth): string {
   const fps = truth.fps;
   const characters = truth.characters.map((c) => c.id ? `${c.name ?? c.id} (cast "${c.castId}", character ${c.id} v${c.version}, rig ${c.rig ?? "none"}, hash ${c.hash?.slice(0, 12) ?? "none"})` : `cast "${c.castId}" (character spec did not verify)`);
   const lines = [
-    `- Stage: one persistent Three.js cel-shaded stage, seen in the ${truth.format} output (${truth.viewport.width}x${truth.viewport.height}).`,
+    `- Stage: one persistent Three.js stage, seen in the ${truth.format} output (${truth.viewport.width}x${truth.viewport.height}).`,
+    `- Treatment (captions excluded): ${truth.treatments ? truth.treatments.shots.map((s) => `${s.id}: ${s.cast.map((c) => `${c.id}=${c.treatment}`).join(", ")}`).join("; ") : "cel-v1"}.`,
     `- Characters drawn: ${truth.characters.length}${characters.length ? `: ${characters.join("; ")}` : ""}. Props drawn: ${list(truth.props)}. Cast never drawn (hidden): ${list(truth.hidden, "none")}.`,
     ...truth.performances.map((p) => {
       const cue = p.cueFrame === null ? `the word "${p.decisive.phrase}" was not found in the timed narration of shot ${p.decisive.shotId}` : `the decisive word "${p.decisive.phrase}" (${p.decisive.edge}) in shot ${p.decisive.shotId} is at ${(p.cueFrame / fps).toFixed(2)} s (frame ${p.cueFrame})`;
