@@ -92,6 +92,7 @@ test("look and design refuse unknown treatment at its field path", () => {
 
 test("dots film defaults, shot overrides, review truth and stage checks agree without changing cel defaults", () => {
   const raw = read("design/design.json");
+  for (const asset of raw.assets) delete asset.treatment;
   raw.treatment = "dots-v1";
   raw.shots = { catch: { stageTreatment: "cel-v1" } };
   const spec = designSpecSchema.parse(raw), film = parseFilm(read("film.json"));
@@ -102,6 +103,7 @@ test("dots film defaults, shot overrides, review truth and stage checks agree wi
   const scene = result.film.scene as Scene;
   assert.equal(stageTreatmentAt({}, 0), "cel-v1");
   assert.equal(stageTreatmentAt(scene, 0), "dots-v1");
+  assert.equal(stageTreatmentAt(scene, 0, "cel-v1"), "cel-v1");
   const span = scene.treatments![0];
   assert.equal(stageTreatmentAt(scene, span.startFrame), "cel-v1");
   assert.equal(stageTreatmentAt(scene, span.endFrame), "dots-v1");

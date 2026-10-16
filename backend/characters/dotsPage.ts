@@ -86,5 +86,5 @@ export function dotsPixels(request: DotsPixelRequest): DotsPixelResult {
   return result;
 }
 
-declare global { interface Window { __dotsRequest?: DotsPixelRequest; __dotsResult?: DotsPixelResult } }
-if (typeof window !== "undefined" && window.__dotsRequest) window.__dotsResult = dotsPixels(window.__dotsRequest);
+declare global { interface Window { __dotsRequest?: DotsPixelRequest[]; __dotsResult?: DotsPixelResult[] } }
+if (typeof window !== "undefined" && window.__dotsRequest) window.__dotsResult = window.__dotsRequest.map(dotsPixels);

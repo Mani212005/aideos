@@ -14,23 +14,43 @@ import { readFilm } from "../pipeline/filmStore";
 import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
 import { getStageSafeRegion } from "../../src/dl/fullScreenHeroLayout";
 import { rectInside } from "../../src/dl/scene/projection";
+import { stageTreatmentAt } from "../../src/dl/scene/materials/treatment";
 
 journey("J3/J4 dots: preview equals export including cold/reverse seeks and both crops retain the catch", async (ctx) => {
   const slug = "journey-j3-j4-dots";
   const { result, contactFrame } = await produceIona(slug, {
     windowFrames: 2,
-    design: (design) => { design.shots = { "beat-01": { stageTreatment: "cel-v1" } }; design.treatment = "dots-v1"; for (const asset of design.assets) if (asset.renderer === "three") asset.treatment = "dots-v1"; },
-    look: (look) => { look.shots[0].stageTreatment = "cel-v1"; look.film.treatment = "dots-v1"; for (const actor of look.film.cast) if (actor.renderer === "three") actor.treatment = "dots-v1"; },
+    design: (design) => {
+      const iona = design.assets.find((asset: { id: string }) => asset.id === "iona"); iona.treatment = "dots-v1";
+      design.assets.push({ id: "iona-copy", renderer: "three", kind: "character", character: "iona", position: [1200, 1215], unitsToStage: 44, treatment: "cel-v1" });
+      design.assets.push({ id: "glider-copy", renderer: "three", kind: "prop", asset: "paper-glider-v1", treatment: "cel-v1" });
+      design.performances.push({ ...design.performances[0], id: "receive-copy", actor: "iona-copy", prop: "glider-copy" });
+      design.treatment = "cel-v1";
+      delete design.shots;
+    },
+    look: (look) => {
+      const iona = look.film.cast.find((actor: { id: string }) => actor.id === "iona"); iona.treatment = "dots-v1";
+      look.film.cast.push({ id: "iona-copy", renderer: "three", treatment: "cel-v1", what: "A second Iona receives a glider", enters: "beat-01", changes: [{ at: "beat-02", how: "The second Iona catches and settles the glider.", state: "message-received", magnitude: "major" }], character: "iona" });
+      look.film.cast.push({ id: "glider-copy", renderer: "three", treatment: "cel-v1", asset: "paper-glider-v1", what: "A second paper glider", enters: "beat-01", changes: [{ at: "beat-02", how: "The second glider becomes attached to its receiver's grip.", state: "message-received", magnitude: "major" }] });
+      look.film.performances.push({ ...look.film.performances[0], id: "receive-copy", actor: "iona-copy", prop: "glider-copy" });
+      for (const shot of look.shots) { shot.performances.push("receive-copy"); shot.carries.push("iona-copy", "glider-copy"); }
+      look.film.treatment = "cel-v1";
+    },
   });
   assert.equal(result.status, "completed");
   assert.equal(result.outputs.length, 2);
-  const film = readFilm(slug)!; assert.ok(film.scene); assert.equal(film.scene.treatment, "dots-v1");
+  const film = readFilm(slug)!; assert.ok(film.scene); assert.equal(film.scene.treatment, "cel-v1");
+  const scene = film.scene as Scene;
+  const iona = scene.cast!.find((member) => member.id === "iona")!;
+  const celActor = scene.cast!.find((member) => member.id === "iona-copy")!;
+  assert.equal(stageTreatmentAt(scene, contactFrame, iona.treatment), "dots-v1");
+  assert.equal(stageTreatmentAt(scene, contactFrame, celActor.treatment), "cel-v1");
   const exported = await openFilm(slug);
   try {
     for (const [format, composition, width, height] of [["long", "Long", 1920, 1080], ["reel", "Reel", 1080, 1920]] as const) {
       const output = result.outputs.find((o) => o.format === format)!;
       assert.deepEqual([probeVideo(output.path).width, probeVideo(output.path).height, probeVideo(output.path).frames], [width, height, 5]);
-      const facts = prepareStageFacts(film.scene as Scene, width, height);
+      const facts = prepareStageFacts(scene, width, height);
       try {
         const safe = getStageSafeRegion(format, width, height, true);
         for (let frame = contactFrame - 2; frame <= contactFrame + 2; frame++) {

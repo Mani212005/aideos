@@ -24,14 +24,18 @@ const name = "dots raster: no hidden-surface leaks, reverse seek/worker equality
 if (!chromeAvailable() && process.env.AIDEOS_BROWSER_TESTS_REQUIRED !== "1") test(name, { skip: "no installed Chrome" }, () => undefined);
 else journey("dots raster: no hidden-surface leaks, reverse seek/worker equality, phone features and encoded held-pose shimmer", async (ctx) => {
   await build({ entryPoints: [path.join(__dirname, "dotsPage.ts")], outfile: path.join(ctx.workDir, "dots.js"), bundle: true, format: "iife", platform: "browser", logLevel: "silent" });
+  const requests: DotsPixelRequest[] = [];
   for (const id of ["iona", "pip", "marlo"] as const) {
     const spec = loadSpec(id);
     const request: DotsPixelRequest = { spec, action: fitReceiveSpan(69, 0, 160, 30, [0, 0, 0], { rig: rigFromCharacter(spec), policy: "clamp" }).action };
-    const html = path.join(ctx.workDir, `${id}.html`);
-    fs.writeFileSync(html, `<script>window.__dotsRequest=${JSON.stringify(request)}</script><script src="dots.js"></script>`);
-    const result = await evaluatePage<DotsPixelResult>(html, "window.__dotsResult");
-    assert.deepEqual(result.errors, []);
-    const pixels = result.value;
+    requests.push(request);
+  }
+  const html = path.join(ctx.workDir, "dots.html");
+  fs.writeFileSync(html, `<script>window.__dotsRequest=${JSON.stringify(requests)}</script><script src="dots.js"></script>`);
+  const result = await evaluatePage<DotsPixelResult[]>(html, "window.__dotsResult");
+  assert.deepEqual(result.errors, []);
+  for (const [index, id] of (["iona", "pip", "marlo"] as const).entries()) {
+    const pixels = result.value[index];
     assert.notEqual(pixels.dots, pixels.cel, `${id} treatment must change actual pixels`);
     assert.ok(pixels.dotPixels > 100, `${id} no visible pixels attributable to the dot layer`);
     for (const treatment of ["cel", "dots"] as const) { const file = path.join(ctx.workDir, `${id}-${treatment}-phone.png`); writePng(file, pixels[treatment]); ctx.keep(file); }
@@ -43,8 +47,8 @@ else journey("dots raster: no hidden-surface leaks, reverse seek/worker equality
     assert.equal(new Set(pixels.held).size, 1, `${id} held pose changed between absolute frames`);
     if (id === "iona") {
       assert.ok(pixels.noseLuma !== null && pixels.noseLuma > 180, `Iona nose became a dark block: ${pixels.noseLuma}`);
-      const independent = await evaluatePage<DotsPixelResult>(html, "window.__dotsResult");
-      assert.deepEqual(independent.errors, []); assert.equal(independent.value.dots, pixels.dots, "independent browser worker differs");
+      const independent = await evaluatePage<DotsPixelResult[]>(html, "window.__dotsResult");
+      assert.deepEqual(independent.errors, []); assert.equal(independent.value[index].dots, pixels.dots, "independent browser worker differs");
       const shimmer: Record<string, number> = {};
       for (const [label, frames] of [["dots", pixels.held], ["cel", pixels.heldCel]] as const) {
         assert.equal(new Set(frames).size, 1, `${label} held pose must be static`);

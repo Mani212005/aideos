@@ -11,6 +11,6 @@ export const treatmentSpanSchema = z.strictObject({ startFrame: z.number().int()
 export type TreatmentSpan = z.infer<typeof treatmentSpanSchema>;
 
 // Resolves an absolute frame without retaining playback or seek history.
-export function stageTreatmentAt(scene: { treatment?: StageTreatment; treatments?: TreatmentSpan[] }, frame: number, castTreatment: StageTreatment = "cel-v1"): StageTreatment {
-  return scene.treatments?.find((span) => frame >= span.startFrame && frame < span.endFrame)?.treatment ?? scene.treatment ?? castTreatment;
+export function stageTreatmentAt(scene: { treatment?: StageTreatment; treatments?: TreatmentSpan[] }, frame: number, castTreatment?: StageTreatment): StageTreatment {
+  return scene.treatments?.find((span) => frame >= span.startFrame && frame < span.endFrame)?.treatment ?? castTreatment ?? scene.treatment ?? "cel-v1";
 }
