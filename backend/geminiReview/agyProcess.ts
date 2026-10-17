@@ -26,7 +26,7 @@ async function groupCpuSeconds(group: number): Promise<number | undefined> {
 // Runs agy with a real wall-clock deadline, escalating SIGTERM even if its leader exits first.
 export function runAgyProcess(
   args: string[],
-  options: { cwd?: string; timeoutSeconds: number; idleTimeoutSeconds: number },
+  options: { cwd?: string; timeoutSeconds: number; idleTimeoutSeconds?: number },
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
   return new Promise((resolve, reject) => {
     const child = spawn("agy", args, {
@@ -104,7 +104,9 @@ export function runAgyProcess(
         stop(new Error(`agy appears wedged: no stdout or CPU growth for ${options.idleTimeoutSeconds}s; terminated its process group. See aideos issue #125.`));
       }
     };
-    const watchdog = setInterval(() => { void poll(); }, Math.min(30000, options.idleTimeoutSeconds * 500));
+    const watchdog = options.idleTimeoutSeconds === undefined
+      ? undefined
+      : setInterval(() => { void poll(); }, Math.min(30000, options.idleTimeoutSeconds! * 500));
 
     // Bounds captured output while counting stdout as progress for the idle watchdog.
     const observe = (chunk: Buffer, output: "stdout" | "stderr") => {

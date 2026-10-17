@@ -86,8 +86,9 @@ export async function defaultAgyRunner(
     options?.timeoutSeconds ??
     (Number(process.env.AIDEOS_AGY_TIMEOUT) || 1800);
   const printTimeoutArg = `${timeoutSec}s`;
-  const idleTimeoutSec = Number(process.env.AIDEOS_AGY_IDLE_TIMEOUT) || 300;
-  if (!Number.isFinite(timeoutSec) || timeoutSec <= 0 || !Number.isFinite(idleTimeoutSec) || idleTimeoutSec <= 0) {
+  const configuredIdleTimeout = process.env.AIDEOS_AGY_IDLE_TIMEOUT;
+  const idleTimeoutSec = configuredIdleTimeout === undefined ? undefined : Number(configuredIdleTimeout);
+  if (!Number.isFinite(timeoutSec) || timeoutSec <= 0 || (idleTimeoutSec !== undefined && (!Number.isFinite(idleTimeoutSec) || idleTimeoutSec <= 0))) {
     throw new Error("agy review timeouts must be finite positive seconds.");
   }
 

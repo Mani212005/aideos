@@ -112,7 +112,7 @@ test("agy timeout kills a SIGTERM-resistant process tree and removes parent hook
   }
 });
 
-test("agy idle watchdog reaps a quiet tree before its hard deadline", { skip: process.platform === "win32" }, async (t) => {
+test("agy idle watchdog reaps a quiet tree when explicitly enabled", { skip: process.platform === "win32" }, async (t) => {
   const dir = fakeAgy(t, stubbornTree);
   const savedIdle = process.env.AIDEOS_AGY_IDLE_TIMEOUT;
   process.env.AIDEOS_AGY_IDLE_TIMEOUT = "0.3";
@@ -125,6 +125,16 @@ test("agy idle watchdog reaps a quiet tree before its hard deadline", { skip: pr
     const pid = Number(fs.readFileSync(path.join(dir, name), "utf8"));
     await until(() => !alive(pid));
   }
+});
+
+test("agy runner lets a quiet model request continue by default", async (t) => {
+  fakeAgy(t, `setTimeout(() => console.log(JSON.stringify({status: 'SUCCESS', response: '{"rating":8}'})), 1500);`);
+  const savedIdle = process.env.AIDEOS_AGY_IDLE_TIMEOUT;
+  delete process.env.AIDEOS_AGY_IDLE_TIMEOUT;
+  t.after(() => {
+    if (savedIdle !== undefined) process.env.AIDEOS_AGY_IDLE_TIMEOUT = savedIdle;
+  });
+  assert.equal(JSON.parse(await defaultAgyRunner("Review", { timeoutSeconds: 5 })).rating, 8);
 });
 
 for (const activity of ["stdout", "CPU"]) {

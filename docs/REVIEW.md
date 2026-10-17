@@ -124,8 +124,9 @@ the isolated workspace, then watches `video.mp4`. JSON is requested in text beca
 `--json-schema` can return empty content. Empty successful replies fail immediately.
 The configured reviewer uses `gemini-3.8-flash-low` to avoid the full-rubric stall with high thinking.
 `AIDEOS_AGY_TIMEOUT` sets the hard deadline in seconds (default 1800). On POSIX,
-`AIDEOS_AGY_IDLE_TIMEOUT` sets the idle limit (default 300 seconds without stdout or process-group
-CPU growth). If CPU measurement is unavailable, the hard deadline still applies. A stopped review
+`AIDEOS_AGY_IDLE_TIMEOUT` optionally enables idle termination in seconds; it is disabled by default
+because a healthy remote model request can be quiet. When enabled, the idle check requires no stdout
+or process-group CPU growth. If CPU measurement is unavailable, the hard deadline still applies. A stopped review
 sends SIGTERM to the process group, then SIGKILL after one second; parent exit also kills the group.
 
 ### How it works
