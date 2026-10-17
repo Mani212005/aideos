@@ -122,12 +122,13 @@ not precede the JSON document.
 The single-video judge reads its rubric, measured facts and JSON format from `review-brief.md` in
 the isolated workspace, then watches `video.mp4`. JSON is requested in text because agy's
 `--json-schema` can return empty content. Empty successful replies fail immediately.
-The configured reviewer uses `gemini-3.8-flash-low` to avoid the full-rubric stall with high thinking.
+The default reviewer model and its override order are listed in [section 5](#5-video-model-policy).
 `AIDEOS_AGY_TIMEOUT` sets the hard deadline in seconds (default 1800). On POSIX,
 `AIDEOS_AGY_IDLE_TIMEOUT` optionally enables idle termination in seconds; it is disabled by default
 because a healthy remote model request can be quiet. When enabled, the idle check requires no stdout
 or process-group CPU growth. If CPU measurement is unavailable, the hard deadline still applies. A stopped review
-sends SIGTERM to the process group, then SIGKILL after one second; parent exit also kills the group.
+sends SIGTERM to the process group (or process tree on Windows), then SIGKILL after one second;
+parent exit also kills the remaining tree.
 
 ### How it works
 1. **Direct Video Inspection in Isolated Workspace via agy CLI**: Invokes the configured agy reviewer non-interactively in print mode with `--sandbox` within an isolated temporary directory using neutral filenames (`video.mp4` for single review and pairwise comparisons) and explicit directives to evaluate only the visual and audio stream without writing scripts, extracting frames, or accessing repository files.
