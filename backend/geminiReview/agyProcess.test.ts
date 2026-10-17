@@ -12,6 +12,12 @@ import path from "node:path";
 import test, { type TestContext } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { defaultAgyRunner, reviewVideo } from "./geminiReview";
+import { taskkillArgs } from "./agyProcess";
+
+test("Windows process-tree cleanup preserves staged termination", () => {
+  assert.deepEqual(taskkillArgs(123, "SIGTERM"), ["/PID", "123", "/T"]);
+  assert.deepEqual(taskkillArgs(123, "SIGKILL"), ["/PID", "123", "/T", "/F"]);
+});
 
 // Reports whether a fixture process is still alive.
 function alive(pid: number): boolean {

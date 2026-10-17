@@ -6,6 +6,11 @@
 
 import { execFile, execFileSync, spawn } from "node:child_process";
 
+// Builds the Windows tree-termination command, reserving force for final cleanup.
+export function taskkillArgs(pid: number, signal: NodeJS.Signals): string[] {
+  return ["/PID", String(pid), "/T", ...(signal === "SIGKILL" ? ["/F"] : [])];
+}
+
 // Measures CPU used by this process group; an unavailable ps disables only the idle heuristic.
 async function groupCpuSeconds(group: number): Promise<number | undefined> {
   return new Promise((resolve) => {
@@ -49,7 +54,7 @@ export function runAgyProcess(
       if (!child.pid) return;
       try {
         if (process.platform === "win32") {
-          execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore", timeout: 1000 });
+          execFileSync("taskkill", taskkillArgs(child.pid, signal), { stdio: "ignore", timeout: 1000 });
         } else process.kill(-child.pid, signal);
       } catch {
         child.kill(signal);
