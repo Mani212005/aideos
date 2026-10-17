@@ -6,7 +6,6 @@
  * Used by: backend/allCheck/round.ts, backend/geminiReview/index.ts.
  */
 
-import { execFile } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -14,11 +13,11 @@ import path from "node:path";
 import { reviewerModel } from "../aideosConfig";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { extractDeterministicFacts } from "./facts";
+import { runAgyProcess } from "./agyProcess";
 import {
   PAIRWISE_EXCHANGE_JSON_SCHEMA,
   PAIRWISE_WATCH_JSON_SCHEMA,
   RUBRIC_CRITERIA,
-  SINGLE_REVIEW_JSON_SCHEMA,
   buildPairwiseExchangePrompt,
   buildPairwiseWatchPrompt,
   buildSingleVideoReviewPrompt,
@@ -76,7 +75,7 @@ function readLookPlanStrip(videoPath: string, explicitFilmPath?: string): string
   }
 }
 
-// Executes agy CLI non-interactively in print mode with structured JSON schema.
+// Executes agy in print mode with prompt-requested JSON and a bounded process-group lifetime.
 export async function defaultAgyRunner(
   prompt: string,
   options?: AgyRunnerOptions,
@@ -87,6 +86,10 @@ export async function defaultAgyRunner(
     options?.timeoutSeconds ??
     (Number(process.env.AIDEOS_AGY_TIMEOUT) || 1800);
   const printTimeoutArg = `${timeoutSec}s`;
+  const idleTimeoutSec = Number(process.env.AIDEOS_AGY_IDLE_TIMEOUT) || 300;
+  if (!Number.isFinite(timeoutSec) || timeoutSec <= 0 || !Number.isFinite(idleTimeoutSec) || idleTimeoutSec <= 0) {
+    throw new Error("agy review timeouts must be finite positive seconds.");
+  }
 
   const args: string[] = [
     "-p",
@@ -101,79 +104,47 @@ export async function defaultAgyRunner(
     "--dangerously-skip-permissions",
   ];
 
-  if (options?.schema) {
-    args.push("--json-schema", JSON.stringify(options.schema));
-  }
+  // agy currently emits empty content with --json-schema; retain the response contract in the prompt.
+  if (options?.schema) args[1] += `\nReturn ONLY valid JSON matching this schema: ${JSON.stringify(options.schema)}`;
 
   if (options?.conversationId) {
     args.push("--conversation", options.conversationId);
   }
 
   return new Promise<string>((resolve, reject) => {
-    execFile(
-      "agy",
-      args,
-      {
-        cwd: options?.cwd,
-        maxBuffer: 50 * 1024 * 1024,
-        timeout: (timeoutSec + 30) * 1000,
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          if ((error as any).code === "ENOENT") {
-            return reject(
-              new Error(
-                "agy CLI not found on PATH. Please ensure agy is installed and accessible.",
-              ),
-            );
-          }
-
-          const combined = `${error.message}\n${stdout}\n${stderr}`;
-          if (
-            combined.includes("RESOURCE_EXHAUSTED") ||
-            combined.includes("quota") ||
-            combined.includes("429") ||
-            combined.includes("rate limit")
-          ) {
-            return reject(
-              new Error(
-                `agy review failed: Quota exceeded or rate limited. No silent fallback allowed. Details: ${combined.trim()}`,
-              ),
-            );
-          }
-          if (
-            combined.includes("not authenticated") ||
-            combined.includes("not signed in") ||
-            combined.includes("login") ||
-            combined.includes("auth")
-          ) {
-            return reject(
-              new Error(
-                `agy review failed: Not authenticated or signed in to agy. Details: ${combined.trim()}`,
-              ),
-            );
-          }
-
-          try {
-            const parsed = JSON.parse(stdout);
-            if (parsed.status === "ERROR") {
-              const errStr = parsed.error || stderr || error.message;
-              return reject(new Error(`agy review failed (${parsed.status}): ${errStr}`));
-            }
-          } catch {}
-
+    // Applies the CLI's envelope and diagnostic rules to the bounded subprocess result.
+    const complete = (error: NodeJS.ErrnoException | null, stdout: string, stderr: string) => {
+      if (error) {
+        if (error.code === "ENOENT") {
           return reject(
             new Error(
-              `agy execution failed (exit code ${error.code || "unknown"}): ${stderr || error.message}`,
+              "agy CLI not found on PATH. Please ensure agy is installed and accessible.",
             ),
           );
         }
 
-        const combinedOutput = `${stdout}\n${stderr}`;
-        if (combinedOutput.includes("print timeout after")) {
+        const combined = `${error.message}\n${stdout}\n${stderr}`;
+        if (
+          combined.includes("RESOURCE_EXHAUSTED") ||
+          combined.includes("quota") ||
+          combined.includes("429") ||
+          combined.includes("rate limit")
+        ) {
           return reject(
             new Error(
-              `agy review timed out: print timeout expired before agent completed review. Details: ${combinedOutput.trim()}`,
+              `agy review failed: Quota exceeded or rate limited. No silent fallback allowed. Details: ${combined.trim()}`,
+            ),
+          );
+        }
+        if (
+          combined.includes("not authenticated") ||
+          combined.includes("not signed in") ||
+          combined.includes("login") ||
+          combined.includes("auth")
+        ) {
+          return reject(
+            new Error(
+              `agy review failed: Not authenticated or signed in to agy. Details: ${combined.trim()}`,
             ),
           );
         }
@@ -181,80 +152,119 @@ export async function defaultAgyRunner(
         try {
           const parsed = JSON.parse(stdout);
           if (parsed.status === "ERROR") {
-            const errStr = parsed.error || stderr || "Unknown error";
-            if (
-              errStr.includes("RESOURCE_EXHAUSTED") ||
-              errStr.includes("quota") ||
-              errStr.includes("429") ||
-              errStr.includes("rate limit")
-            ) {
-              return reject(
-                new Error(
-                  `agy review failed: Quota exceeded or rate limited. No silent fallback allowed. Details: ${errStr}`,
-                ),
-              );
-            }
-            if (
-              errStr.includes("not authenticated") ||
-              errStr.includes("not signed in") ||
-              errStr.includes("login") ||
-              errStr.includes("auth")
-            ) {
-              return reject(
-                new Error(
-                  `agy review failed: Not authenticated or signed in to agy. Details: ${errStr}`,
-                ),
-              );
-            }
-            return reject(new Error(`agy review failed: ${errStr}`));
+            const errStr = parsed.error || stderr || error.message;
+            return reject(new Error(`agy review failed (${parsed.status}): ${errStr}`));
           }
+        } catch {}
 
-          if (parsed.structured_output && typeof parsed.structured_output === "object") {
-            if (parsed.conversation_id && !parsed.structured_output.conversation_id) {
-              parsed.structured_output.conversation_id = parsed.conversation_id;
-            }
-            return resolve(JSON.stringify(parsed.structured_output));
-          }
+        return reject(
+          new Error(
+            `agy execution failed (exit code ${error.code || "unknown"}): ${stderr || error.message}`,
+          ),
+        );
+      }
 
-          if (typeof parsed.response === "string" && parsed.response.trim().length > 0) {
-            const cleaned = cleanModelJsonResponse(parsed.response);
-            // Keep the conversation id on a text reply too: the pairwise exchange phase resumes the watcher's conversation by it.
-            try {
-              const obj = JSON.parse(cleaned);
-              if (obj && typeof obj === "object" && !Array.isArray(obj) && parsed.conversation_id && !obj.conversation_id) {
-                obj.conversation_id = parsed.conversation_id;
-                return resolve(JSON.stringify(obj));
-              }
-            } catch {}
-            return resolve(cleaned);
-          }
+      const combinedOutput = `${stdout}\n${stderr}`;
+      if (combinedOutput.includes("print timeout after")) {
+        return reject(
+          new Error(
+            `agy review timed out: print timeout expired before agent completed review. Details: ${combinedOutput.trim()}`,
+          ),
+        );
+      }
 
+      try {
+        const parsed = JSON.parse(stdout);
+        if (parsed.status === "ERROR") {
+          const errStr = parsed.error || stderr || "Unknown error";
           if (
-            parsed.status === "SUCCESS" &&
-            !parsed.structured_output &&
-            (!parsed.response || parsed.response.trim().length === 0)
+            errStr.includes("RESOURCE_EXHAUSTED") ||
+            errStr.includes("quota") ||
+            errStr.includes("429") ||
+            errStr.includes("rate limit")
           ) {
             return reject(
-              new Error("agy review failed: agent returned empty response without structured output."),
+              new Error(
+                `agy review failed: Quota exceeded or rate limited. No silent fallback allowed. Details: ${errStr}`,
+              ),
             );
           }
-
-          return resolve(stdout);
-        } catch {
-          return resolve(cleanModelJsonResponse(stdout));
+          if (
+            errStr.includes("not authenticated") ||
+            errStr.includes("not signed in") ||
+            errStr.includes("login") ||
+            errStr.includes("auth")
+          ) {
+            return reject(
+              new Error(
+                `agy review failed: Not authenticated or signed in to agy. Details: ${errStr}`,
+              ),
+            );
+          }
+          return reject(new Error(`agy review failed: ${errStr}`));
         }
-      },
-    );
+
+        if (parsed.structured_output && typeof parsed.structured_output === "object") {
+          if (parsed.conversation_id && !parsed.structured_output.conversation_id) {
+            parsed.structured_output.conversation_id = parsed.conversation_id;
+          }
+          return resolve(JSON.stringify(parsed.structured_output));
+        }
+
+        if (typeof parsed.response === "string" && parsed.response.trim().length > 0) {
+          const cleaned = cleanModelJsonResponse(parsed.response);
+          // Keep the conversation id on a text reply too: the pairwise exchange phase resumes the watcher's conversation by it.
+          try {
+            const obj = JSON.parse(cleaned);
+            if (obj && typeof obj === "object" && !Array.isArray(obj) && parsed.conversation_id && !obj.conversation_id) {
+              obj.conversation_id = parsed.conversation_id;
+              return resolve(JSON.stringify(obj));
+            }
+          } catch {}
+          return resolve(cleaned);
+        }
+
+        if (
+          parsed.status === "SUCCESS" &&
+          !parsed.structured_output &&
+          (!parsed.response || parsed.response.trim().length === 0)
+        ) {
+          return reject(
+            new Error("agy review failed: agent returned empty response without structured output."),
+          );
+        }
+
+        return resolve(stdout);
+      } catch {
+        return resolve(cleanModelJsonResponse(stdout));
+      }
+    };
+    runAgyProcess(args, {
+      cwd: options?.cwd,
+      timeoutSeconds: timeoutSec,
+      idleTimeoutSeconds: idleTimeoutSec,
+    }).then(({ code, stdout, stderr }) => {
+      complete(code === 0 ? null : Object.assign(new Error(`agy exited with code ${code}`), { code: String(code) }), stdout, stderr);
+    }, (error: NodeJS.ErrnoException) => complete(error, "", ""));
   });
 }
 
 // Resolves the active review runner function from options or default agy CLI.
 function resolveRunner(options?: { runner?: AgyRunner; client?: AgyReviewClient }): AgyRunner {
-  if (options?.runner) return options.runner;
-  if (options?.client?.runReviewPrompt) {
-    return (prompt, opts) => options.client!.runReviewPrompt(prompt, opts);
-  }
-  return defaultAgyRunner;
+  const runner = options?.runner ?? options?.client?.runReviewPrompt.bind(options.client) ?? defaultAgyRunner;
+  return async (prompt, opts) => {
+    const result = await runner(prompt, opts);
+    let envelope: unknown = result;
+    if (typeof result === "string") {
+      try { envelope = JSON.parse(result); } catch { return result; }
+    }
+    if (envelope && typeof envelope === "object" && "status" in envelope && envelope.status === "SUCCESS" &&
+      !("structured_output" in envelope && envelope.structured_output) &&
+      (!("response" in envelope) || typeof envelope.response !== "string" || !envelope.response.trim())) {
+      throw new Error("agy review failed: agent returned empty response without structured output.");
+    }
+    return result;
+  };
 }
 
 // Computes the SHA-256 hash of a file for change tracking and auditability.
@@ -391,18 +401,19 @@ export async function reviewVideo(
   const workspace = createIsolatedVideoWorkspace({ "video.mp4": resolvedPath });
   try {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const prompt = buildSingleVideoReviewPrompt(
+      const brief = buildSingleVideoReviewPrompt(
         workspace.videoPaths["video.mp4"],
         reAskNote,
         deterministicReviewContext,
         [facts?.rawSummaryText, lookPlanStrip ? `=== LOOK PLAN SHOTS (from design/LOOK.md) ===\n${lookPlanStrip}` : null].filter(Boolean).join("\n\n"),
       );
+      fs.writeFileSync(path.join(workspace.dir, "review-brief.md"), brief);
+      const prompt = 'Read review-brief.md for the rubric, measured facts and JSON response format. Then watch the complete video.mp4 with audio and return the JSON review with real timestamp evidence for all 12 criteria. Do not read any other files or source code. Do not write scripts or extract frames.';
 
       const rawResult = await runner(prompt, {
         model: modelName,
         cwd: workspace.dir,
         timeoutSeconds: options?.timeoutSeconds,
-        schema: SINGLE_REVIEW_JSON_SCHEMA,
         onProgress,
       });
 

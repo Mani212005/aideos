@@ -339,13 +339,13 @@ camera motion smoother and move captions slightly upward.
 
 ## Video model policy (`aideos.config.json`)
 
-- Generation and fixing is Claude Sonnet 5.5 (`claude`, `claude-sonnet-5-5`); review is Gemini 3.8 Flash (`agy`, `gemini-3.8-flash-high`). Gemini 3.1 Pro is out for generation unless the captain explicitly asks. Both live in the committed `aideos.config.json`, loaded by `backend/aideosConfig.ts`; never hard-code a video model elsewhere, read the config.
+- Generation and fixing is Claude Sonnet 5.5 (`claude`, `claude-sonnet-5-5`); review is Gemini 3.8 Flash (`agy`). Gemini 3.1 Pro is out for generation unless the captain explicitly asks. Both live in the committed `aideos.config.json`, loaded by `backend/aideosConfig.ts`; never hard-code a video model elsewhere, read the config.
 - `aideos all-check` launches its background agent from that config with an explicit `--model` regardless of which agent invoked it (the old "invoking agent / saved default" choice is gone); `backend/geminiReview` takes the reviewer model from it. Per-run `--agent`/`--model` override; a forbidden generation model needs `--allow-forbidden-model`. See [docs/REVIEW.md](docs/REVIEW.md) section 5.
 
 ## Gemini 3.8 Flash Video Quality Review Loop (9.0+ Bar)
 
 - Every rendered video must be validated through the Gemini 3.8 Flash quality review (`aideos all-check <slug>` or `aideos gemini-review <mp4>`).
-- The review runs via the agy CLI agent running gemini-3.8-flash (e.g. `gemini-3.8-flash-high`) non-interactively with native video and audio input watching the local mp4.
+- The review runs via the configured agy model non-interactively with native video and audio input watching the local mp4. `backend/geminiReview/agyProcess.ts` owns its bounded lifetime; the rubric and facts reach it through an isolated workspace brief rather than a long CLI prompt.
 - The model evaluates the video against the 12-criterion rubric with 6 hard gates (persistent stage, camera purpose, bottom captions, readability, no overlap/clipping, audio sync) and must supply timestamp evidence for every criterion.
 - An agent may only claim done once Gemini rates the video 9.0 or higher with all 6 hard gates passing (verdict: ACCEPT).
 - If the verdict is REVISE, the agent must inspect the constructive feedback and timestamp citations, iterate on the film or design, and re-render.

@@ -2,7 +2,7 @@
   "schema": "aideos.config/1",
   "videoModels": {
     "generation": { "agent": "claude", "model": "claude-sonnet-5-5" },
-    "reviewer": { "agent": "agy", "model": "gemini-3.8-flash-high" },
+    "reviewer": { "agent": "agy", "model": "gemini-3.8-flash-low" },
     "forbiddenGenerationModels": ["gemini-3.1-pro"]
   }
 }
