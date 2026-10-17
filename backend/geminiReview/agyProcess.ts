@@ -48,6 +48,7 @@ export function runAgyProcess(
     let lastCpu: number | undefined;
     let polling = false;
     let settled = false;
+    const idleTimeoutSeconds = options.idleTimeoutSeconds;
 
     // Signals the entire child tree, including descendants retaining the output pipes.
     const killGroup = (signal: NodeJS.Signals) => {
@@ -98,20 +99,20 @@ export function runAgyProcess(
 
     // Fails idle reviews early only when neither stdout nor group CPU has advanced.
     const poll = async () => {
-      if (polling || stopping || settled || !child.pid || process.platform === "win32") return;
+      if (idleTimeoutSeconds === undefined || polling || stopping || settled || !child.pid || process.platform === "win32") return;
       polling = true;
       const cpu = await groupCpuSeconds(child.pid);
       polling = false;
       if (stopping || settled || cpu === undefined) return;
       if (lastCpu === undefined || cpu > lastCpu) lastActivity = Date.now();
       lastCpu = cpu;
-      if (Date.now() - lastActivity >= options.idleTimeoutSeconds * 1000) {
-        stop(new Error(`agy appears wedged: no stdout or CPU growth for ${options.idleTimeoutSeconds}s; terminated its process group. See aideos issue #125.`));
+      if (Date.now() - lastActivity >= idleTimeoutSeconds * 1000) {
+        stop(new Error(`agy appears wedged: no stdout or CPU growth for ${idleTimeoutSeconds}s; terminated its process group. See aideos issue #125.`));
       }
     };
-    const watchdog = options.idleTimeoutSeconds === undefined
+    const watchdog = idleTimeoutSeconds === undefined
       ? undefined
-      : setInterval(() => { void poll(); }, Math.min(30000, options.idleTimeoutSeconds! * 500));
+      : setInterval(() => { void poll(); }, Math.min(30000, idleTimeoutSeconds * 500));
 
     // Bounds captured output while counting stdout as progress for the idle watchdog.
     const observe = (chunk: Buffer, output: "stdout" | "stderr") => {
