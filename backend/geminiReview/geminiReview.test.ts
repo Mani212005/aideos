@@ -317,9 +317,10 @@ test("geminiReview: defaultAgyRunner closes print-mode stdin so the CLI can fini
   }
 });
 
-test("geminiReview: defaultAgyRunner requests schema JSON without the hanging CLI schema mode", async () => {
+test("geminiReview: defaultAgyRunner consumes terminal stream results and stops a hanging CLI", async () => {
   const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-agy-schema-"));
-  const program = `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes("--json-schema") || !args[args.indexOf("-p") + 1].includes('"required":["rating"]')) process.exit(72);\nprocess.stdout.write(JSON.stringify({ status: "SUCCESS", response: '{"rating":9.1}' }));\n`;
+  const shutdownTimeout = path.join(binDir, "shutdown-timeout");
+  const program = `#!${process.execPath}\nconst args = process.argv.slice(2);\nconst prompt = args[args.indexOf("-p") + 1];\nif (args.includes("--json-schema") || args[args.indexOf("--output-format") + 1] !== "stream-json" || !prompt.includes('"required":["rating"]')) process.exit(72);\nconst result = prompt.startsWith("badstatus") ? { status: "ERROR", error: "review rejected" } : { status: "SUCCESS", response: '{"rating":9.1}' };\nprocess.stdout.write(JSON.stringify({ event: "step_update", step_update: { text_delta: "partial" } }) + "\\n");\nconst line = JSON.stringify({ event: "result", result }) + "\\n";\nprocess.stdout.write(line.slice(0, 15));\nsetTimeout(() => process.stdout.write(line.slice(15)), 20);\nsetTimeout(() => { require("node:fs").writeFileSync(${JSON.stringify(shutdownTimeout)}, "CLI was not stopped"); process.exit(73); }, 2000);\n`;
   fs.writeFileSync(path.join(binDir, "agy"), program, { mode: 0o755 });
   const savedPath = process.env.PATH;
   process.env.PATH = `${binDir}${path.delimiter}${savedPath}`;
@@ -329,6 +330,11 @@ test("geminiReview: defaultAgyRunner requests schema JSON without the hanging CL
       schema: { type: "object", properties: { rating: { type: "number" } }, required: ["rating"] },
     });
     assert.deepEqual(JSON.parse(raw), { rating: 9.1 });
+    await assert.rejects(defaultAgyRunner("badstatus", {
+      timeoutSeconds: 5,
+      schema: { type: "object", properties: { rating: { type: "number" } }, required: ["rating"] },
+    }), /review rejected/);
+    assert.equal(fs.existsSync(shutdownTimeout), false, "completed CLI was left running");
   } finally {
     process.env.PATH = savedPath;
     fs.rmSync(binDir, { recursive: true, force: true });

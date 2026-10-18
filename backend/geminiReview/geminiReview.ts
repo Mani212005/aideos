@@ -99,7 +99,7 @@ export async function defaultAgyRunner(
     "--print-timeout",
     printTimeoutArg,
     "--output-format",
-    "json",
+    "stream-json",
     "--sandbox",
     "--dangerously-skip-permissions",
   ];
@@ -109,6 +109,7 @@ export async function defaultAgyRunner(
   }
 
   return new Promise<string>((resolve, reject) => {
+    let terminalOutput: string | undefined;
     const child = execFile(
       "agy",
       args,
@@ -120,7 +121,14 @@ export async function defaultAgyRunner(
         killSignal: "SIGKILL",
       },
       (error, stdout, stderr) => {
-        if (error) {
+        let output = terminalOutput ?? stdout;
+        for (const line of stdout.split("\n")) {
+          try {
+            const event = JSON.parse(line) as { event?: string; result?: unknown };
+            if (event.event === "result" && event.result) output = JSON.stringify(event.result);
+          } catch {}
+        }
+        if (error && !terminalOutput) {
           if ((error as any).code === "ENOENT") {
             return reject(
               new Error(
@@ -156,7 +164,7 @@ export async function defaultAgyRunner(
           }
 
           try {
-            const parsed = JSON.parse(stdout);
+            const parsed = JSON.parse(output);
             if (parsed.status === "ERROR") {
               const errStr = parsed.error || stderr || error.message;
               return reject(new Error(`agy review failed (${parsed.status}): ${errStr}`));
@@ -180,7 +188,7 @@ export async function defaultAgyRunner(
         }
 
         try {
-          const parsed = JSON.parse(stdout);
+          const parsed = JSON.parse(output);
           if (parsed.status === "ERROR") {
             const errStr = parsed.error || stderr || "Unknown error";
             if (
@@ -240,12 +248,29 @@ export async function defaultAgyRunner(
             );
           }
 
-          return resolve(stdout);
+          return resolve(output);
         } catch {
-          return resolve(cleanModelJsonResponse(stdout));
+          return resolve(cleanModelJsonResponse(output));
         }
       },
     );
+    let pendingLine = "";
+    // Consume a complete terminal event before stopping the CLI's unrelated background tasks.
+    child.stdout?.on("data", (chunk: string | Buffer) => {
+      pendingLine += chunk.toString();
+      const lines = pendingLine.split("\n");
+      pendingLine = lines.pop() ?? "";
+      for (const line of lines) {
+        try {
+          const event = JSON.parse(line) as { event?: string; result?: { status?: string } };
+          if (event.event === "result" && (event.result?.status === "SUCCESS" || event.result?.status === "ERROR")) {
+            terminalOutput = JSON.stringify(event.result);
+            // The final result is complete; agy's background shutdown can hang after emitting it.
+            child.kill("SIGKILL");
+          }
+        } catch {}
+      }
+    });
     // Print mode has no stdin payload; EOF lets the CLI finish its input loop and exit.
     child.stdin?.end();
   });
