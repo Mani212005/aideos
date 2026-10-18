@@ -100,6 +100,30 @@ test("ocr: monospace counter pixels retain their actual digits", { skip: !HAVE_F
   }
 });
 
+test("ocr: currency-like icon detections require an unconstrained confirmation", async () => {
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-currency-ocr-"));
+  const savedPath = process.env.PATH;
+  process.env.PATH = `${binDir}${path.delimiter}${savedPath}`;
+  try {
+    for (const sample of [
+      { initial: "£98,", confirmed: "£03,", confidence: 58, numbers: [] },
+      { initial: "$98", confirmed: "$98", confidence: 95, numbers: ["98"] },
+    ]) {
+      const header = "level\ttext\tconf\tleft\ttop\twidth\theight\n";
+      const initial = `${header}5\t${sample.initial}\t63\t500\t700\t80\t72\n`;
+      const confirmed = `${header}5\t${sample.confirmed}\t${sample.confidence}\t0\t0\t80\t72\n`;
+      const program = `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes("-c")) process.exit(75);\nprocess.stdin.resume();\nprocess.stdin.on("end", () => process.stdout.write(args[args.indexOf("--psm") + 1] === "11" ? ${JSON.stringify(initial)} : ${JSON.stringify(confirmed)}));\n`;
+      fs.writeFileSync(path.join(binDir, "tesseract"), program, { mode: 0o755 });
+      const gray = new Uint8Array(1080 * 1920);
+      const words = await ocrFrame(gray, 1080, 1920);
+      assert.deepEqual(analyzeSample(words, null, 1080, 1920, 0).numbers, sample.numbers);
+    }
+  } finally {
+    process.env.PATH = savedPath;
+    fs.rmSync(binDir, { recursive: true, force: true });
+  }
+});
+
 test("ocr: parseTsv keeps word rows and drops empty text and layout rows", () => {
   const tsv = ["level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext", "5\t1\t1\t1\t1\t1\t10\t20\t30\t40\t96.5\tHello", "4\t1\t1\t1\t1\t0\t0\t0\t5\t5\t-1\t", "5\t1\t1\t1\t1\t2\t50\t20\t30\t40\t91\tworld"].join("\n");
   const words = parseTsv(tsv);
