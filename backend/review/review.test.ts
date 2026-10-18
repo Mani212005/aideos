@@ -18,7 +18,7 @@ import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { evaluateCriteria, type ReviewInputs } from "./criteria";
 import { parseEbur128, parseSilences } from "./media";
-import { analyzeSample, parseTsv, type OcrWord } from "./ocr";
+import { analyzeSample, ocrFrame, parseTsv, type OcrWord } from "./ocr";
 import { correlation, frameFeatures, hardCuts, layoutPersistence, percentile, stageClears, staticRuns } from "./pixels";
 import { findSlugVideo, reviewVideo } from "./review";
 import { loadFilmFacts, readFilmFacts, type FilmFacts } from "./source";
@@ -89,6 +89,17 @@ test("pixels: stage clears, hard cuts and static runs are found at the right tim
 
 const word = (text: string, left: number, top: number, width: number, height: number, conf = 95): OcrWord => ({ text, conf, left, top, width, height });
 
+test("ocr: monospace counter pixels retain their actual digits", { skip: !HAVE_FFMPEG || !HAVE_TESSERACT }, async () => {
+  for (const [fixture, expected] of [["2500", "2,500"], ["30000", "30,000"]]) {
+    const image = path.resolve(__dirname, `../../test_fixtures/ocr/monospace-${fixture}.png`);
+    const decoded = spawnSync("ffmpeg", ["-v", "error", "-i", image, "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "gray", "pipe:1"], { maxBuffer: 3 * 1024 * 1024 });
+    assert.equal(decoded.status, 0, decoded.stderr?.toString());
+    const words = await ocrFrame(decoded.stdout, 1080, 1920);
+    assert.deepEqual(words.map((word) => word.text), [expected]);
+    assert.ok(words[0].height >= 90, "numeric recheck retains the full-frame word box");
+  }
+});
+
 test("ocr: parseTsv keeps word rows and drops empty text and layout rows", () => {
   const tsv = ["level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext", "5\t1\t1\t1\t1\t1\t10\t20\t30\t40\t96.5\tHello", "4\t1\t1\t1\t1\t0\t0\t0\t5\t5\t-1\t", "5\t1\t1\t1\t1\t2\t50\t20\t30\t40\t91\tworld"].join("\n");
   const words = parseTsv(tsv);
@@ -127,6 +138,13 @@ test("ocr: overlapping words, edge crowding and numbers are reported; OCR artefa
   assert.equal(edge.offSafe, 1);
   const nums = analyzeSample([word("768", 100, 100, 70, 30), word("(95.5%)", 300, 100, 120, 30), word("words", 500, 100, 100, 30)], null, 1920, 1080, 0);
   assert.deepEqual(nums.numbers, ["768", "95.5%"]);
+});
+
+test("ocr: tiny footer chrome is not a numerical claim, while content numbers remain checked", () => {
+  const words = [word("61:", 130, 1760, 21, 9), word("64", 400, 1760, 60, 34), word("95", 500, 700, 24, 16)];
+  const sample = analyzeSample(words, null, 1080, 1920, 7);
+  assert.deepEqual(sample.numbers, ["64", "95"]);
+  assert.equal(sample.smallWords, 2, "small footer text still affects the readability measurement");
 });
 
 test("ocr: low contrast text is counted from the pixels under its box", () => {
