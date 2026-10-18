@@ -6,7 +6,7 @@
  * Used by: backend/allCheck/round.ts, backend/geminiReview/index.ts.
  */
 
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -117,6 +117,8 @@ export async function defaultAgyRunner(
         cwd: options?.cwd,
         maxBuffer: 50 * 1024 * 1024,
         timeout: (timeoutSec + 30) * 1000,
+        // agy ignores SIGTERM while it waits on its own background tasks, so a timed-out review must be killed outright.
+        killSignal: "SIGKILL",
       },
       (error, stdout, stderr) => {
         if (error) {
@@ -304,7 +306,31 @@ export function cleanModelJsonResponse(rawText: string): string {
   return candidate;
 }
 
-// Creates an isolated temporary directory containing hardlinks or copies of video files under neutral names.
+/** Largest video agy reads directly; above it the agent starts its own background ffmpeg job and waits on it, which can hang the review. */
+export const AGY_VIDEO_LIMIT_BYTES = 100_000_000;
+/** Size the review copy aims for, under the limit with room for the audio track and container overhead. */
+const REVIEW_COPY_TARGET_BYTES = 85_000_000;
+
+// Returns the video bitrate in kbit/s that fits a clip of this length into the target size next to a 96 kbit/s audio track.
+export function reviewVideoBitrateKbps(durationSec: number, targetBytes: number = REVIEW_COPY_TARGET_BYTES): number {
+  if (!(durationSec > 0)) return 1000;
+  const totalKbps = (targetBytes * 8) / 1000 / durationSec;
+  return Math.max(300, Math.floor(totalKbps - 96));
+}
+
+// Writes a smaller copy of an oversized video for the reviewer and returns whether it succeeded.
+function makeReviewCopy(srcPath: string, destPath: string): boolean {
+  try {
+    const out = execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", srcPath], { encoding: "utf8" });
+    const kbps = reviewVideoBitrateKbps(Number.parseFloat(out));
+    execFileSync("ffmpeg", ["-y", "-v", "error", "-i", srcPath, "-c:v", "libx264", "-preset", "veryfast", "-b:v", `${kbps}k`, "-maxrate", `${Math.round(kbps * 1.5)}k`, "-bufsize", `${kbps * 2}k`, "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", destPath], { stdio: "ignore" });
+    return fs.statSync(destPath).size <= AGY_VIDEO_LIMIT_BYTES;
+  } catch {
+    return false;
+  }
+}
+
+// Creates an isolated temporary directory containing hardlinks or copies of video files under neutral names; a video over agy's size limit is replaced by a smaller re-encode.
 export function createIsolatedVideoWorkspace(
   videos: Record<string, string>,
 ): { dir: string; videoPaths: Record<string, string>; cleanup: () => void } {
@@ -313,6 +339,10 @@ export function createIsolatedVideoWorkspace(
 
   for (const [neutralName, srcPath] of Object.entries(videos)) {
     const destPath = path.join(dir, neutralName);
+    if (fs.statSync(srcPath).size > AGY_VIDEO_LIMIT_BYTES && makeReviewCopy(srcPath, destPath)) {
+      videoPaths[neutralName] = destPath;
+      continue;
+    }
     try {
       fs.linkSync(srcPath, destPath);
     } catch {

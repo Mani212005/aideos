@@ -29,6 +29,7 @@ import {
   reviewPairwise,
   defaultAgyRunner,
   createIsolatedVideoWorkspace,
+  reviewVideoBitrateKbps,
   formatReviewSummary,
 } from "./geminiReview";
 import type {
@@ -803,4 +804,12 @@ test("geminiReview: measured captions cite the sampled frames OCR read them in, 
   } finally {
     fs.rmSync(tmpVideo, { force: true });
   }
+});
+
+test("geminiReview: reviewVideoBitrateKbps fits a long video under the agy size limit", () => {
+  const kbps = reviewVideoBitrateKbps(449);
+  assert.ok(kbps > 1000 && kbps < 1600);
+  assert.ok(((kbps + 96) * 1000 * 449) / 8 <= 100_000_000);
+  assert.equal(reviewVideoBitrateKbps(0), 1000);
+  assert.ok(reviewVideoBitrateKbps(100000) >= 300);
 });
