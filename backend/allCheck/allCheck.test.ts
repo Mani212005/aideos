@@ -98,7 +98,7 @@ const POLICY: AideosConfig = {
 test("config: the committed aideos.config.json holds the video model policy", () => {
   const cfg = loadAideosConfig();
   assert.deepEqual(cfg.videoModels.generation, { agent: "claude", model: "claude-sonnet-5-5" });
-  assert.deepEqual(cfg.videoModels.reviewer, { agent: "agy", model: "gemini-3.8-flash-high" });
+  assert.deepEqual(cfg.videoModels.reviewer, { agent: "agy", model: "gemini-3.8-flash-low" });
   assert.ok(forbiddenGenerationMatch("gemini-3.1-pro-high", cfg.videoModels));
   assert.ok(forbiddenGenerationMatch("Gemini-3-1-Pro", cfg.videoModels));
   assert.equal(forbiddenGenerationMatch("gemini-3.8-flash-high", cfg.videoModels), undefined);

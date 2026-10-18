@@ -521,8 +521,9 @@ test("geminiReview: reviewVideo loads LOOK.md shot facts from the film package b
   fs.writeFileSync(path.join(designDir, "LOOK.md"), `# Look Plan\n\n## Shots & Beat Treatments\n\n${stripLine}\n`);
   let receivedPrompt = "";
   // Captures the emitted review prompt while returning a valid fixture report.
-  const runner: AgyRunner = async (prompt) => {
-    receivedPrompt = prompt;
+  const runner: AgyRunner = async (prompt, opts) => {
+    assert.ok(prompt.length < 500, "the judge receives a short entry prompt");
+    receivedPrompt = fs.readFileSync(path.join(opts!.cwd!, "review-brief.md"), "utf8");
     return JSON.stringify({
       overallScore: 8,
       verdict: "REVISE",
@@ -685,7 +686,10 @@ test("geminiReview: reviewVideo executes in isolated workspace with neutral vide
     assert.ok(fs.existsSync(capturedCwd), "isolated cwd directory must exist during review");
     assert.ok(fs.existsSync(path.join(capturedCwd, "video.mp4")), "isolated video.mp4 must exist in cwd");
     assert.ok(prompt.includes("video.mp4"), "prompt must reference isolated video.mp4");
-    assert.ok(prompt.includes("do not look for, open, or read any other files or source code"));
+    assert.ok(prompt.includes("Do not read any other files or source code"));
+    const brief = fs.readFileSync(path.join(capturedCwd, "review-brief.md"), "utf8");
+    assert.ok(brief.includes("persistent_stage"));
+    assert.ok(brief.includes("evidenceTimestamps"));
     return JSON.stringify(mockReportPayload);
   };
 

@@ -119,8 +119,19 @@ With `--json`, stdout contains only the JSON report; progress is sent to stderr.
 through npm (`npm run backend -- gemini-review`), use `npm run --silent` so npm's lifecycle banner does
 not precede the JSON document.
 
+The single-video judge reads its rubric, measured facts and JSON format from `review-brief.md` in
+the isolated workspace, then watches `video.mp4`. JSON is requested in text because agy's
+`--json-schema` can return empty content. Empty successful replies fail immediately.
+The default reviewer model and its override order are listed in [section 5](#5-video-model-policy).
+`AIDEOS_AGY_TIMEOUT` sets the hard deadline in seconds (default 1800). On POSIX,
+`AIDEOS_AGY_IDLE_TIMEOUT` optionally enables idle termination in seconds; it is disabled by default
+because a healthy remote model request can be quiet. When enabled, the idle check requires no stdout
+or process-group CPU growth. If CPU measurement is unavailable, the hard deadline still applies. A stopped review
+sends SIGTERM to the process group (or process tree on Windows), then SIGKILL after one second;
+parent exit also kills the remaining tree.
+
 ### How it works
-1. **Direct Video Inspection in Isolated Workspace via agy CLI**: Invokes the agy CLI agent running Gemini 3.8 Flash (e.g. `gemini-3.8-flash-high`) non-interactively in print mode with `--sandbox` within an isolated temporary directory using neutral filenames (`video.mp4` for single review and pairwise comparisons) and explicit directives to evaluate only the visual and audio stream without writing scripts, extracting frames, or accessing repository files.
+1. **Direct Video Inspection in Isolated Workspace via agy CLI**: Invokes the configured agy reviewer non-interactively in print mode with `--sandbox` within an isolated temporary directory using neutral filenames (`video.mp4` for single review and pairwise comparisons) and explicit directives to evaluate only the visual and audio stream without writing scripts, extracting frames, or accessing repository files.
 2. **Deterministic Facts Extraction**: Gathers ground-truth data (bottom captions OCR coverage, audio LUFS loudness, duration, framerate, camera track from `film.json` including declared `scene.camera` keyframes, and per-shot look plan facts from `design/LOOK.md` when present) and feeds them into the model prompt to prevent hallucinations.
 3. **Structured Rubric Evaluation**: Grades all 12 criteria on a 0.0 to 10.0 scale, checking the 6 hard gates (persistent stage, camera purpose, bottom captions, readability, no overlap/clipping, audio sync).
 4. **Timestamp Evidence Enforcement**: Validates that every criterion score includes concrete timestamp citations (e.g. `00:14`, `01:02`) within the video bounds. A criterion still without evidence after the last attempt is failed as unmeasured and the verdict is `REVISE`: missing evidence is never a pass.
@@ -246,7 +257,7 @@ The committed `aideos.config.json` at the repo root is the one place the video m
 | Role | Agent | Model | Read by |
 |---|---|---|---|
 | Generation and fixing | `claude` | `claude-sonnet-5-5` | `aideos all-check` (background agent launch command), server look and design (`backend/aideosConfig.ts`) |
-| Reviewer | `agy` | `gemini-3.8-flash-high` | `aideos gemini-review`, `aideos all-check`, `--pairwise` (an explicit `--model`, then `AIDEOS_GEMINI_REVIEW_MODEL` / `GEMINI_MODEL`, still win) |
+| Reviewer | `agy` | `gemini-3.8-flash-low` | `aideos gemini-review`, `aideos all-check`, `--pairwise` (an explicit model option, then `AIDEOS_GEMINI_REVIEW_MODEL` / `GEMINI_MODEL`, still win) |
 
 Gemini 3.1 Pro is not part of this: `forbiddenGenerationModels` lists `gemini-3.1-pro`, and `all-check` refuses it
 (exit 2, with the message naming the override) unless the run passes `--allow-forbidden-model`. Per-run overrides:
