@@ -306,24 +306,24 @@ export function cleanModelJsonResponse(rawText: string): string {
   return candidate;
 }
 
-/** Largest video agy reads directly; above it the agent starts its own background ffmpeg job and waits on it, which can hang the review. */
-export const AGY_VIDEO_LIMIT_BYTES = 100_000_000;
+/** Keep inline review media under 20 MB: larger native-video requests repeatedly reset during full-film reviews. */
+export const AGY_VIDEO_LIMIT_BYTES = 20_000_000;
 /** Size the review copy aims for, under the limit with room for the audio track and container overhead. */
-const REVIEW_COPY_TARGET_BYTES = 85_000_000;
+const REVIEW_COPY_TARGET_BYTES = 18_000_000;
 
 // Returns the video bitrate in kbit/s that fits a clip of this length into the target size next to a 96 kbit/s audio track.
 export function reviewVideoBitrateKbps(durationSec: number, targetBytes: number = REVIEW_COPY_TARGET_BYTES): number {
   if (!(durationSec > 0)) return 1000;
   const totalKbps = (targetBytes * 8) / 1000 / durationSec;
-  return Math.max(300, Math.floor(totalKbps - 96));
+  return Math.max(80, Math.floor(totalKbps - 96));
 }
 
 // Writes a smaller copy of an oversized video for the reviewer and returns whether it succeeded.
 function makeReviewCopy(srcPath: string, destPath: string): boolean {
   try {
-    const out = execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", srcPath], { encoding: "utf8" });
+    const out = execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", srcPath], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
     const kbps = reviewVideoBitrateKbps(Number.parseFloat(out));
-    execFileSync("ffmpeg", ["-y", "-v", "error", "-i", srcPath, "-c:v", "libx264", "-preset", "veryfast", "-b:v", `${kbps}k`, "-maxrate", `${Math.round(kbps * 1.5)}k`, "-bufsize", `${kbps * 2}k`, "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", destPath], { stdio: "ignore" });
+    execFileSync("ffmpeg", ["-y", "-v", "error", "-i", srcPath, "-c:v", "libx264", "-preset", "medium", "-threads", "2", "-b:v", `${kbps}k`, "-maxrate", `${Math.round(kbps * 1.5)}k`, "-bufsize", `${kbps * 2}k`, "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", destPath], { stdio: "ignore" });
     return fs.statSync(destPath).size <= AGY_VIDEO_LIMIT_BYTES;
   } catch {
     return false;
@@ -339,7 +339,11 @@ export function createIsolatedVideoWorkspace(
 
   for (const [neutralName, srcPath] of Object.entries(videos)) {
     const destPath = path.join(dir, neutralName);
-    if (fs.statSync(srcPath).size > AGY_VIDEO_LIMIT_BYTES && makeReviewCopy(srcPath, destPath)) {
+    if (fs.statSync(srcPath).size > AGY_VIDEO_LIMIT_BYTES) {
+      if (!makeReviewCopy(srcPath, destPath)) {
+        fs.rmSync(dir, { recursive: true, force: true });
+        throw new Error(`Could not prepare a review copy under 20 MB for ${path.basename(srcPath)}; the original video was preserved.`);
+      }
       videoPaths[neutralName] = destPath;
       continue;
     }

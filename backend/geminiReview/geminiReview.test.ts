@@ -30,6 +30,7 @@ import {
   defaultAgyRunner,
   createIsolatedVideoWorkspace,
   reviewVideoBitrateKbps,
+  AGY_VIDEO_LIMIT_BYTES,
   formatReviewSummary,
 } from "./geminiReview";
 import type {
@@ -808,8 +809,23 @@ test("geminiReview: measured captions cite the sampled frames OCR read them in, 
 
 test("geminiReview: reviewVideoBitrateKbps fits a long video under the agy size limit", () => {
   const kbps = reviewVideoBitrateKbps(449);
-  assert.ok(kbps > 1000 && kbps < 1600);
-  assert.ok(((kbps + 96) * 1000 * 449) / 8 <= 100_000_000);
+  assert.equal(kbps, 224);
+  assert.ok(((kbps + 96) * 1000 * 449) / 8 <= AGY_VIDEO_LIMIT_BYTES);
   assert.equal(reviewVideoBitrateKbps(0), 1000);
-  assert.ok(reviewVideoBitrateKbps(100000) >= 300);
+  assert.ok(reviewVideoBitrateKbps(100000) >= 80);
+});
+
+
+test("geminiReview: a failed oversized transcode never falls back to the original payload", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-invalid-video-"));
+  const source = path.join(dir, "invalid.mp4");
+  try {
+    const file = fs.openSync(source, "w");
+    fs.ftruncateSync(file, AGY_VIDEO_LIMIT_BYTES + 1);
+    fs.closeSync(file);
+    assert.throws(() => createIsolatedVideoWorkspace({ "video.mp4": source }), /Could not prepare a review copy under 20 MB/);
+    assert.equal(fs.statSync(source).size, AGY_VIDEO_LIMIT_BYTES + 1, "the original video remains untouched");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
