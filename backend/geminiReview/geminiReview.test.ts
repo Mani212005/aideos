@@ -215,7 +215,7 @@ test("CLI: gemini-review --json writes parseable JSON to stdout without npm bann
       env: { ...process.env, PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}` },
       timeout: 30000,
     });
-    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}\n${result.error ?? ""}`);
     assert.doesNotMatch(result.stdout, /^> aideos/m);
     const parsed = JSON.parse(result.stdout);
     assert.equal(parsed.verdict, "ACCEPT");
@@ -311,6 +311,24 @@ test("geminiReview: defaultAgyRunner closes print-mode stdin so the CLI can fini
   try {
     const raw = await defaultAgyRunner("probe", { timeoutSeconds: 5 });
     assert.deepEqual(JSON.parse(raw), { probe: "EOF" });
+  } finally {
+    process.env.PATH = savedPath;
+    fs.rmSync(binDir, { recursive: true, force: true });
+  }
+});
+
+test("geminiReview: defaultAgyRunner requests schema JSON without the hanging CLI schema mode", async () => {
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-agy-schema-"));
+  const program = `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes("--json-schema") || !args[args.indexOf("-p") + 1].includes('"required":["rating"]')) process.exit(72);\nprocess.stdout.write(JSON.stringify({ status: "SUCCESS", response: '{"rating":9.1}' }));\n`;
+  fs.writeFileSync(path.join(binDir, "agy"), program, { mode: 0o755 });
+  const savedPath = process.env.PATH;
+  process.env.PATH = `${binDir}${path.delimiter}${savedPath}`;
+  try {
+    const raw = await defaultAgyRunner("Review this video.", {
+      timeoutSeconds: 5,
+      schema: { type: "object", properties: { rating: { type: "number" } }, required: ["rating"] },
+    });
+    assert.deepEqual(JSON.parse(raw), { rating: 9.1 });
   } finally {
     process.env.PATH = savedPath;
     fs.rmSync(binDir, { recursive: true, force: true });

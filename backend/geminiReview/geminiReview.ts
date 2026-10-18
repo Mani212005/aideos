@@ -88,9 +88,12 @@ export async function defaultAgyRunner(
     (Number(process.env.AIDEOS_AGY_TIMEOUT) || 1800);
   const printTimeoutArg = `${timeoutSec}s`;
 
+  // agy's schema flag can hang after completion; prompt for the schema and validate the reply in the review engine.
   const args: string[] = [
     "-p",
-    prompt,
+    options?.schema
+      ? `${prompt}\n\nReturn only JSON matching this schema:\n${JSON.stringify(options.schema)}`
+      : prompt,
     "--model",
     model,
     "--print-timeout",
@@ -100,10 +103,6 @@ export async function defaultAgyRunner(
     "--sandbox",
     "--dangerously-skip-permissions",
   ];
-
-  if (options?.schema) {
-    args.push("--json-schema", JSON.stringify(options.schema));
-  }
 
   if (options?.conversationId) {
     args.push("--conversation", options.conversationId);
