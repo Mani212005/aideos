@@ -301,6 +301,22 @@ test("geminiReview: defaultAgyRunner unwraps a fenced text reply and keeps the c
   }
 });
 
+test("geminiReview: defaultAgyRunner closes print-mode stdin so the CLI can finish", async () => {
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-agy-stdin-"));
+  const reply = JSON.stringify({ status: "SUCCESS", structured_output: { probe: "EOF" } });
+  const program = `#!${process.execPath}\nconst guard = setTimeout(() => { console.error("stdin remains open"); process.exit(71); }, 5000);\nprocess.stdin.resume();\nprocess.stdin.on("end", () => { clearTimeout(guard); process.stdout.write(${JSON.stringify(reply)}); });\n`;
+  fs.writeFileSync(path.join(binDir, "agy"), program, { mode: 0o755 });
+  const savedPath = process.env.PATH;
+  process.env.PATH = `${binDir}${path.delimiter}${savedPath}`;
+  try {
+    const raw = await defaultAgyRunner("probe", { timeoutSeconds: 5 });
+    assert.deepEqual(JSON.parse(raw), { probe: "EOF" });
+  } finally {
+    process.env.PATH = savedPath;
+    fs.rmSync(binDir, { recursive: true, force: true });
+  }
+});
+
 test("geminiReview: computeFileHash computes correct sha256 checksum", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-test-hash-"));
   const tmpFile = path.join(tmpDir, "sample.txt");

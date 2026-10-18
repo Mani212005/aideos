@@ -110,7 +110,7 @@ export async function defaultAgyRunner(
   }
 
   return new Promise<string>((resolve, reject) => {
-    execFile(
+    const child = execFile(
       "agy",
       args,
       {
@@ -247,6 +247,8 @@ export async function defaultAgyRunner(
         }
       },
     );
+    // Print mode has no stdin payload; EOF lets the CLI finish its input loop and exit.
+    child.stdin?.end();
   });
 }
 
