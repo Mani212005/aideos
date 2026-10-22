@@ -7,11 +7,13 @@
 import React, { useMemo } from "react";
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import {
-  SUBTITLE_BAND_TOP_RATIO,
   SUBTITLE_CARD_PADDING_Y,
   SUBTITLE_LINE_HEIGHT,
 } from "./fullScreenHeroLayout";
 import { SANS } from "./tokens";
+import { measureText } from "@remotion/layout-utils";
+import { buildCaptionPhrases } from "./captionPhrases";
+import type { CaptionPlacement } from "./schema";
 import { frames } from "./motion";
 
 export interface CaptionWord {
@@ -29,6 +31,7 @@ export interface KineticSubtitleProps {
   highlightColor?: string;
   backgroundColor?: string;
   position?: "top" | "center" | "bottom";
+  placementAt?: (frame: number) => CaptionPlacement;
 }
 
 export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
@@ -40,45 +43,17 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   highlightColor = "#635BFF",
   backgroundColor = "rgba(10, 15, 29, 0.88)",
   position = "bottom",
+  placementAt,
 }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width } = useVideoConfig();
 
-  // Group words into natural phrase chunks (punctuated phrases or 5-8 words max)
-  const phrases = useMemo(() => {
-    if (!words || words.length === 0) return [];
-    const list: Array<{
-      startIndex: number;
-      endIndex: number;
-      startFrame: number;
-      endFrame: number;
-      words: CaptionWord[];
-    }> = [];
-    let currentChunk: CaptionWord[] = [];
-    let chunkStartIndex = 0;
-
-    for (let i = 0; i < words.length; i++) {
-      const w = words[i];
-      currentChunk.push(w);
-      const isPunctuation = /[.,!?;:]$/.test(w.text);
-      const isLong = currentChunk.length >= 7;
-      const isLast = i === words.length - 1;
-      const nextWordGap = !isLast && words[i + 1].startFrame - w.endFrame > fps * 0.4;
-
-      if (isPunctuation || isLong || isLast || nextWordGap) {
-        list.push({
-          startIndex: chunkStartIndex,
-          endIndex: i,
-          startFrame: currentChunk[0].startFrame,
-          endFrame: currentChunk[currentChunk.length - 1].endFrame + Math.round(fps * 0.25),
-          words: currentChunk,
-        });
-        currentChunk = [];
-        chunkStartIndex = i + 1;
-      }
-    }
-    return list;
-  }, [words, fps]);
+  // Compute every phrase once so neither position nor wrapping can change during a phrase.
+  const phrases = useMemo(() => buildCaptionPhrases({
+    words, fps, fontSize, width,
+    placementAt: placementAt ?? (() => ({ x: 0.5, y: position === "top" ? 0.1 : position === "center" ? 0.45 : 0.78, w: maxWidth / width, locked: false })),
+    measure: (text) => measureText({ text, fontFamily, fontSize, fontWeight: 700 }).width,
+  }), [words, fps, fontSize, width, placementAt, position, maxWidth, fontFamily]);
 
   // If no words, don't render
   if (!words || words.length === 0) return null;
@@ -117,24 +92,15 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   });
   const opacity = phraseIn * phraseOut;
 
-  // The "bottom" band is shared with src/dl/fullScreenHeroLayout.ts so hero captions
-  // and this card are laid out against one number instead of two guesses.
-  const positionStyles: React.CSSProperties = {
-    top:
-      position === "top"
-        ? "10%"
-        : position === "center"
-          ? "45%"
-          : `${SUBTITLE_BAND_TOP_RATIO * 100}%`,
-  };
-
   return (
     <div
+      data-caption-phrase
       style={{
         position: "absolute",
-        left: "50%",
+        left: `${activePhrase.placement.x * 100}%`,
+        top: `${activePhrase.placement.y * 100}%`,
         transform: "translateX(-50%)",
-        width: maxWidth,
+        width: activePhrase.placement.w * width,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -142,10 +108,10 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
         pointerEvents: "none",
         zIndex: 50,
         opacity,
-        ...positionStyles,
       }}
     >
       <div
+        data-caption-card
         style={{
           background: backgroundColor,
           padding: `${SUBTITLE_CARD_PADDING_Y}px 28px`,
@@ -185,6 +151,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
 
             return (
               <React.Fragment key={`${globalIdx}-${w.text}`}>
+                {activePhrase.lineBreaks.includes(localIdx) ? <br /> : null}
                 <span
                   style={{
                     color: isActive ? highlightColor : isPast ? primaryColor : "rgba(255, 255, 255, 0.38)",

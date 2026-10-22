@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Film } from "../../../src/dl/schema";
+import { parseFilm, type Film } from "../../../src/dl/schema";
 import { buildTimeline, totalFrames } from "../../../src/dl/camera";
 import { validateFilmAudioAndAssets } from "../../../src/dl/validateFilm";
 import type { NoteTone, ToastMessage } from "../components/ui";
@@ -318,8 +318,8 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
           try {
             const data = JSON.parse(event.data);
             if (data.filmId === activeId && data.film) {
-              const incomingFilm = data.film as Film;
-              if (JSON.stringify(incomingFilm) !== JSON.stringify(filmRef.current)) {
+              const incomingFilm = parseFilm(data.film);
+              if (JSON.stringify(incomingFilm) !== JSON.stringify(parseFilm(filmRef.current))) {
                 commit(incomingFilm, "Live sync update");
                 notify("info", `⚡ Live update: ${incomingFilm.title || activeId} updated`);
               }

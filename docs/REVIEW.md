@@ -41,7 +41,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 13 | Look plan adherence | when `design/look.json` is available, scene motion, carried objects, camera poses, device spacing and stage treatment are checked against the plan as a non-gate score; on a character film each planned performance is checked by its evaluated contact frame against its decisive word (anticipation may start earlier, no clip at the cue is needed), its character id and version, and its actor and prop on stage in this output | all planned shots follow the plan; this remains non-gating until calibrated on the proof and two or three more films |
 | 3 | Cues aimed at spoken words | film clips against word timings, compared with chance; declared Three performances contribute their evaluated contact events | clip starts and performance contacts land on word starts clearly more often than chance |
 | 4 | **Camera that does something** | film data only (the solved framing of each shot, or a scene camera track) | >= 1 move per 20 s, none faster than 20% of the frame width per second (a scene camera also fails the design check on a zoom jump over 0.8% a frame or a pan acceleration over 0.3 widths per second squared) |
-| 5 | **Bottom captions** | OCR of full-resolution frames every 2 s | caption band in the bottom quarter in >= 60% of narrated moments, <= 2 lines, words match the narration |
+| 5 | **Captions at placed position (default bottom)** | OCR of full-resolution frames every 2 s | caption band in its declared rectangle (bottom quarter when absent) in >= 60% of narrated moments, <= 2 lines, words match the narration |
 | 6 | **Readability** | OCR box height (normalised to a 1080 short side) and pixel contrast | <= 58% of words under 18 px, <= 10% under 3:1 contrast |
 | 7 | **No overlap or clipping** | OCR boxes overlapping, text inside the edge margin, canvas node overlap | <= 10% of sampled frames affected |
 | 8 | **Audio sync** | audio vs video length, film length, shot boundaries vs word timings | lengths within 0.1 s, no shot boundary through a spoken word |
@@ -291,3 +291,16 @@ properties; J3/J4 in `backend/journeys/j3_j4_dots.journey.ts` checks Player/expo
 parity and both crops. These checks do not award facial appeal or turn short
 engineering excerpts into full-film review passes. Record render seconds per
 video second, peak process-tree memory and disk alongside the actual clips.
+
+### Owner-placed captions
+
+With film metadata, OCR checks the declared caption rectangle in each reviewed format. A phrase
+crossing a cut keeps its start placement. Without placement metadata, the existing bottom-quarter
+measurement and thresholds apply. Gemini facts list owner placements and locks, and its caption
+gate accepts their declared position with bottom as the default. The `bottom_captions` result key
+remains stable for existing report consumers.
+
+The design check reports out-of-bounds cards and inset collisions as `caption-placement` errors.
+Art intersecting an owner card produces a warning naming the art, format, shot and sampled frame;
+locked cards stay fixed. The Edit caption bar uses the same geometry check for its red warning.
+Automatic placement and suggestions are outside this feature.

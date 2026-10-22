@@ -4,6 +4,8 @@
  * Used by: src/dl/Video.tsx, src/Root.tsx, editor Remotion Player.
  */
 
+import { CaptionRegionContext } from "./captionRegionContext";
+import { captionCardRect, resolveCaptionPlacement } from "./captionPlacement";
 import React from "react";
 import { AbsoluteFill, Freeze, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
 import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO } from "./tokens";
@@ -496,6 +498,7 @@ const Dynamic3DHeroOverlay: React.FC<{ frame: number; timeline: ReturnType<typeo
   const heroLayout = getFullScreenHeroLayout({
     ...layout,
     labelHeight: Number(labelStyle.fontSize) * 1.6,
+    captionRect: React.useContext(CaptionRegionContext),
   });
 
   for (const t of timeline) {
@@ -633,12 +636,13 @@ export const FilmView: React.FC<FilmViewProps> = ({
 
   return (
     <ThemeContext.Provider value={bgTheme}>
-      <AccentContext.Provider value={accent}>
-        <Freeze frame={frame} active={inCard}>
-          <AbsoluteFill style={{ transform: `scale(${holdScale})` }}>
-            <ImportedVideoLayer film={film} fps={fps} />
-          </AbsoluteFill>
-        </Freeze>
+      <CaptionRegionContext.Provider value={film.subtitles !== false && film.captions !== "off" ? captionCardRect(width < height ? "reel" : "long", width, height, resolveCaptionPlacement(film, width < height ? "reel" : "long", current.shot.id)) : undefined}>
+        <AccentContext.Provider value={accent}>
+          <Freeze frame={frame} active={inCard}>
+            <AbsoluteFill style={{ transform: `scale(${holdScale})` }}>
+              <ImportedVideoLayer film={film} fps={fps} />
+            </AbsoluteFill>
+          </Freeze>
         <AbsoluteFill
           style={{
             backgroundColor: hasVideoBase ? "transparent" : bgTheme.canvas,
@@ -797,13 +801,13 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {card ? <EndCard card={card} cardWords={delivery.cardWords} /> : null}
 
         {/* Burned-in subtitles rendered after Rail and the end card */}
-        {film.captions !== "off" && subtitleWords.length > 0 ? (
+        {film.subtitles !== false && film.captions !== "off" && subtitleWords.length > 0 ? (
           <KineticSubtitles
             words={subtitleWords}
             maxWidth={width * 0.86}
             fontSize={Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO)}
             highlightColor={accent}
-            position="bottom"
+            placementAt={(startFrame) => resolveCaptionPlacement(film, width < height ? "reel" : "long", shotAt(timeline, startFrame)?.shot.id)}
           />
         ) : null}
 
@@ -816,6 +820,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
         />
       </AbsoluteFill>
     </AccentContext.Provider>
+    </CaptionRegionContext.Provider>
   </ThemeContext.Provider>
 );
 };

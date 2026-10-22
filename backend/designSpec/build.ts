@@ -9,6 +9,7 @@
  * Used by: backend/designSpec/designer.ts.
  */
 
+import { carryCaptionPlacement } from "../../src/dl/captionPlacement";
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
@@ -239,7 +240,10 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   // repeatable and removing an override from design.json really restores the original shot.
   const baseFile = path.join(pkg, "design", "base-film.json");
   if (!fs.existsSync(baseFile)) fs.copyFileSync(filmFile, baseFile);
-  const film = parseFilm(JSON.parse(fs.readFileSync(baseFile, "utf8")));
+  let film: Film;
+  try {
+    film = carryCaptionPlacement(parseFilm(JSON.parse(fs.readFileSync(filmFile, "utf8"))), parseFilm(JSON.parse(fs.readFileSync(baseFile, "utf8"))), { owner: false });
+  } catch (error) { return fail([error instanceof Error ? error.message : String(error)]); }
   const wordsFile = path.join(pkg, "voiceover_words.json");
   const words: TimedWord[] = fs.existsSync(wordsFile) ? (JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? []) : [];
 

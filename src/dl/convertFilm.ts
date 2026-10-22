@@ -297,6 +297,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
       kind: "animation",
       payload: {
         shotId: shot.id,
+        captionPlacement: shot.captionPlacement,
         ch: shot.ch,
         stage: shot.stage,
         look: shot.look,
@@ -347,6 +348,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
 
   return {
     id: film.id,
+    captionPlacement: film.captionPlacement,
     title: film.title,
     fps: film.fps,
     accent: film.accent ?? (typeof film.theme === "object" ? film.theme?.accent : undefined) ?? "#635BFF",
@@ -424,6 +426,7 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
       // Only shots dragged off the default scene lane need to record where they live, so an
       // ordinary edit does not rewrite every shot in the manifest.
       layerId: c.layerId === CONVERTED_LAYER_IDS.animation ? undefined : c.layerId,
+      captionPlacement: p.captionPlacement,
       ch: p.ch,
       position: c.position,
       startSec: c.position,
@@ -549,6 +552,7 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
   return {
     ...(base ?? {}),
     id: layeredFilm.id,
+    captionPlacement: layeredFilm.captionPlacement,
     title: layeredFilm.title,
     fps: layeredFilm.fps as 24 | 30 | 60,
     accent: layeredFilm.accent,

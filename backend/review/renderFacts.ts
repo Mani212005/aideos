@@ -7,6 +7,7 @@
  * Used by: backend/review/review.ts.
  */
 
+import type { CaptionRect } from "../../src/dl/captionPlacement";
 import os from "node:os";
 import { streamSampleFrames, streamSmallFrames } from "./media";
 import { analyzeSample, ocrFrame, type SampleAnalysis } from "./ocr";
@@ -33,6 +34,7 @@ export interface RenderFacts {
 export interface RenderOptions {
   /** Skip the OCR pass (pixel facts only). */
   skipOcr?: boolean;
+  captionRectAt?: (t: number) => CaptionRect;
   onProgress?: (message: string) => void;
 }
 
@@ -54,14 +56,14 @@ async function pixelPass(file: string) {
 }
 
 // Runs the OCR pass: one full-resolution frame per sample interval, several tesseract processes at once.
-async function ocrPass(file: string, video: VideoFacts, onProgress?: (m: string) => void): Promise<SampleAnalysis[]> {
+async function ocrPass(file: string, video: VideoFacts, onProgress?: (m: string) => void, captionRectAt?: (t: number) => CaptionRect): Promise<SampleAnalysis[]> {
   const out: SampleAnalysis[] = [];
   const limit = Math.max(1, Math.min(4, os.cpus().length - 1));
   const inflight = new Set<Promise<void>>();
   await streamSampleFrames(file, video, THRESHOLDS.captions.sampleEverySec, async (gray, index, t) => {
     if (t > video.durationSec) return;
     const job = ocrFrame(gray, video.width, video.height).then((words) => {
-      out.push(analyzeSample(words, gray, video.width, video.height, t));
+      out.push(analyzeSample(words, gray, video.width, video.height, t, captionRectAt?.(t)));
       if (index % 10 === 9) onProgress?.(`ocr ${out.length} samples`);
     });
     const tracked = job.finally(() => inflight.delete(tracked));
@@ -77,7 +79,7 @@ export async function measureRender(file: string, video: VideoFacts, opts: Rende
   opts.onProgress?.("analysing layout");
   const px = await pixelPass(file);
   const T = THRESHOLDS;
-  const samples = opts.skipOcr ? [] : await ocrPass(file, video, opts.onProgress);
+  const samples = opts.skipOcr ? [] : await ocrPass(file, video, opts.onProgress, opts.captionRectAt);
   return {
     persistence: layoutPersistence(px.grids, px.fps),
     stageClearTimes: stageClears(px.coverage, px.fps),

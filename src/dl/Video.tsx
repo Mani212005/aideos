@@ -12,7 +12,7 @@ import { EndCardVoice } from "./EndCard";
 import { TOTAL_FRAMES, FILM, TIMELINE, FPS, type FilmProps } from "./runtime";
 import { calculateDuckingVolume, type SpeechInterval } from "./audio/ducking";
 import { getRetimedAudioRelPath } from "./audio/retime";
-import { generateWordsFromFilm } from "./captionsParser";
+import { captionWordsForFilm } from "./captionsParser";
 import type { Film } from "./schema";
 import type { TimedShot } from "./camera";
 
@@ -166,9 +166,7 @@ export const Video: React.FC<VideoProps> = ({
         showGrid={showGrid}
         showRail={showRail}
         captionWords={
-          film.subtitles === false
-            ? []
-            : generateWordsFromFilm(film as unknown as Record<string, unknown>)
+          captionWordsForFilm(film)
         }
         includeAudio={false}
       />

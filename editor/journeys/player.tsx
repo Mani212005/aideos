@@ -9,7 +9,7 @@ import { Player, type PlayerRef } from "@remotion/player";
 import { FilmView } from "../../src/dl/Film";
 import { buildTimeline, totalFrames } from "../../src/dl/camera";
 import { parseFilm } from "../../src/dl/schema";
-import { generateWordsFromFilm } from "../../src/dl/captionsParser";
+import { captionWordsForFilm } from "../../src/dl/captionsParser";
 import { PALETTE } from "../../src/dl/tokens";
 
 const query = new URLSearchParams(location.search);
@@ -17,7 +17,7 @@ const response = await fetch(`/api/films/${encodeURIComponent(query.get("film") 
 if (!response.ok) throw new Error(`Player fixture film: HTTP ${response.status}`);
 const film = parseFilm((await response.json()).film);
 const timeline = buildTimeline(film);
-const captionWords = film.subtitles === false ? [] : generateWordsFromFilm(film as unknown as Record<string, unknown>);
+const captionWords = captionWordsForFilm(film);
 const width = query.get("format") === "Reel" ? 1080 : 1920;
 const height = query.get("format") === "Reel" ? 1920 : 1080;
 const initialFrame = Number(query.get("frame") ?? "0");

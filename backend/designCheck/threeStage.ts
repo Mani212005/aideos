@@ -3,6 +3,7 @@
  * Inputs and outputs: film, scene and camera intentions -> shot/rule diagnostics before design persistence.
  * Used by: checkFilmDesign; legacy SVG films keep their existing checks.
  */
+import { captionCardRect, resolveCaptionPlacement } from "../../src/dl/captionPlacement";
 import type { Film } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
 import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
@@ -49,7 +50,9 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
       dispose = facts.dispose;
       const svgAt = scene.props.some((p) => p.plane === "foreground") ? prepareSvgProjection(scene, width, height) : undefined;
       const foregroundIds = new Set(scene.props.filter((p) => p.plane === "foreground").map((p) => p.assetId));
-      const safe = getStageSafeRegion(format, width, height, film.captions !== "off");
+      const captions = film.captions !== "off" && film.subtitles !== false;
+      const placed = !!film.captionPlacement || film.shots.some((s) => !!s.captionPlacement);
+      const safe = getStageSafeRegion(format, width, height, captions && !placed);
       for (const material of facts.materials) {
         for (const colour of undeclaredMaterialColours(material.meshes, material.palette)) add("palette", 0, format, material.actor, `undeclared 3D material colour ${colour}; declare it in character ${material.character}'s palette`);
       }
@@ -59,6 +62,8 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
         checkedFrame = frame;
         const poses = facts.at(frame, "prop");
         const shot = timeline.find((s) => frame >= s.from && frame < s.to)?.shot;
+        const card = captionCardRect(format, width, height, resolveCaptionPlacement(film, format, shot?.id));
+        const captionBox = { x0: card.x, y0: card.y, x1: card.x + card.w, y1: card.y + card.h };
         const inset = getInsetRegion(format, width, height);
         const insetBox = { x0: inset.x, y0: inset.y, x1: inset.x + inset.w, y1: inset.y + inset.h };
         const foreground = svgAt?.(frame).filter((s) => foregroundIds.has(s.id)).flatMap((s) => s.parts.map((p) => ({ ...p, id: s.id }))) ?? [];
@@ -67,6 +72,10 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
           for (const [id, bounds, parts] of [[pose.actor, pose.actorBounds, pose.actorParts], [pose.prop, pose.propBounds, pose.propParts]] as const) {
             if (!rectInside(bounds, safe)) {
               add("safe-area", frame, format, id, "full posed silhouette including outlines crosses the shared safe square, output margin or caption band; move or scale the cast");
+              clear = false;
+            }
+            if (placed && captions && parts.some((p) => overlaps(p.bounds, captionBox))) {
+              add("caption-placement", frame, format, id, "posed art overlaps the owner caption card; move the cast clear of the card");
               clear = false;
             }
             if (shot?.stage === "inset" && parts.some((p) => overlaps(p.bounds, insetBox))) {

@@ -264,10 +264,15 @@ export class StudioPage {
 
   /** Sends one DevTools command and waits for its result. */
   send(method: string, params: Record<string, unknown> = {}): Promise<CdpResult> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const id = this.nextId++;
-      this.pending.set(id, resolve);
-      this.ws.send(JSON.stringify({ id, method, params }));
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`Studio DevTools command ${method} timed out after 30000ms`));
+      }, 30000);
+      this.pending.set(id, (result) => { clearTimeout(timer); resolve(result); });
+      try { this.ws.send(JSON.stringify({ id, method, params })); }
+      catch (error) { clearTimeout(timer); this.pending.delete(id); reject(error); }
     });
   }
 

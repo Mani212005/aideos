@@ -235,6 +235,13 @@ camera motion smoother and move captions slightly upward.
 - Template charts and visual blocks carry no canned data. `backend/pipeline/deviceData.ts` has a text model (Gemini, `AIDEOS_GEMINI_MODEL`) write each chart's contents from its beat in one batched request, and refuses any block that fails the schema or shows a word or number the beat never says; a refused chart leaves the beat on its text card. `buildBlocksForPrimitive` in `backend/scriptIntake.ts` never invents stand-ins (`StatCounter` requires narrated numbers, `CodeBlock` requires inline code, and `ProgressBar` requires explicit percentages, falling back to `TextReveal` otherwise). StatCounter is still read straight from the narration. Why each shot got its visual lands in `videos/<id>/design/visual-choices.json`.
 - The studio shows a film's design in Look > Design (`editor/src/components/DesignView.tsx`, from `/api/design/:id` in `backend/designSpec/shotTools.ts`). The shot inspector's "Why this visual" panel swaps a shot to one of Jev's runner-ups through the same authoring and honesty check (`POST /api/design/:id/shots/:shot/visual`) and sends a shot-focused `design_film` task to the connected agent (`.../redesign`). Tests may call `requestShotRedesign`/`dispatchTask`: the default tmux effect is disabled under tests. Inject a fake tmux runner to test pane delivery.
 
+## Owner caption placement
+
+Before changing captions, film writers, timeline conversion, or review bands, read the owner caption
+sections in `src/dl/README.md`, `docs/PRODUCTION_PIPELINE.md`, and `docs/REVIEW.md`.
+`src/dl/captionPlacement.ts` owns resolution, gesture bounds and carry-forward; use the checked
+`set_caption_placement` edit operation for agents. The J13 journey exercises both formats and scopes.
+
 ## Editor state and the timeline layer model
 
 - `editor/src/state/useFilmProject.ts` owns the open film, the single labelled undo history and

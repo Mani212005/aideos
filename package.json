@@ -20,6 +20,7 @@
     "@react-three/fiber": "9.4.0",
     "@remotion/cli": "4.0.499",
     "@remotion/google-fonts": "4.0.499",
+    "@remotion/layout-utils": "4.0.499",
     "@remotion/media": "4.0.499",
     "@remotion/three": "4.0.499",
     "@remotion/zod-types": "4.0.499",

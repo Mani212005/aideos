@@ -15,7 +15,7 @@ import { Bot, RotateCcw, Sparkles, Wand2 } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import { FilmView } from "../../../src/dl/Film";
 import { buildTimeline } from "../../../src/dl/camera";
-import { generateWordsFromFilm } from "../../../src/dl/captionsParser";
+import { captionWordsForFilm } from "../../../src/dl/captionsParser";
 import { Badge, Button, EmptyState, Note, Panel, PanelBody, PanelHeader, Select, Textarea, Toolbar, ToolbarGroup, ToolbarLabel, type NoteTone } from "./ui";
 
 /** Starting points: each fills the prompt, never code. */
@@ -86,7 +86,7 @@ export function DescribeMotion({ film, notify }: DescribeMotionProps) {
     }
   }, [film]);
   const timed = timeline?.find((t) => t.shot.id === shotId);
-  const captionWords = useMemo(() => generateWordsFromFilm(film as unknown as Record<string, unknown>), [film]);
+  const captionWords = useMemo(() => captionWordsForFilm(film), [film]);
   const fps = film.fps || 30;
 
   const loadRequests = useCallback(async () => {

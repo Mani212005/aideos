@@ -9,6 +9,7 @@
  * Used by: backend/review/renderFacts.ts.
  */
 
+import type { CaptionRect } from "../../src/dl/captionPlacement";
 import { spawn } from "node:child_process";
 import { THRESHOLDS } from "./thresholds";
 
@@ -158,12 +159,12 @@ function overlapping(a: OcrWord, b: OcrWord, ratio: number): boolean {
 }
 
 // Measures one sampled frame: caption band, small and faint words, overlaps, edge crowding, numbers.
-export function analyzeSample(words: OcrWord[], gray: Uint8Array | null, width: number, height: number, t: number): SampleAnalysis {
+export function analyzeSample(words: OcrWord[], gray: Uint8Array | null, width: number, height: number, t: number, captionRect?: CaptionRect): SampleAnalysis {
   const unit = Math.min(width, height) / 1080;
   const T = THRESHOLDS;
   const confident = words.filter((w) => w.conf >= T.readability.confidenceMin && w.text.length > 1 && /[A-Za-z0-9]/.test(w.text));
 
-  const band = confident.filter((w) => w.top > height * T.captions.bandTopRatio && w.height / unit >= T.captions.wordHeightMin);
+  const band = confident.filter((w) => (captionRect ? w.left >= captionRect.x && w.left + w.width <= captionRect.x + captionRect.w && w.top >= captionRect.y && w.top + w.height <= captionRect.y + captionRect.h : w.top > height * T.captions.bandTopRatio) && w.height / unit >= T.captions.wordHeightMin);
   const lines = new Map<number, OcrWord[]>();
   for (const w of band) {
     const key = Math.round(w.top / (20 * unit));

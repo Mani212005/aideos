@@ -6,6 +6,7 @@
  * Used by: Film, devices, KineticSubtitles, tokens, stage design checks and layout tests.
  */
 
+import type { CaptionRect } from "./captionPlacement";
 import type { Format } from "./tokens";
 import { projectStagePoint, SAFE_SQUARE, type SceneRect } from "./scene/projection";
 
@@ -48,7 +49,7 @@ export const subtitleCardBottom = (width: number, height: number): number => {
   return (
     height * SUBTITLE_BAND_TOP_RATIO +
     SUBTITLE_CARD_PADDING_Y * 2 +
-    fontSize * SUBTITLE_LINE_HEIGHT * SUBTITLE_MAX_LINES
+    (fontSize * SUBTITLE_LINE_HEIGHT + 8) * SUBTITLE_MAX_LINES + 2
   );
 };
 
@@ -59,6 +60,7 @@ export type FullScreenHeroLayoutInput = {
   margin: { top: number; right: number; bottom: number; left: number };
   /** Rendered height of one caption line, in render pixels. */
   labelHeight: number;
+  captionRect?: CaptionRect;
 };
 
 export type FullScreenHeroLayout = {
@@ -111,12 +113,14 @@ export const getFullScreenHeroLayout = ({
   height,
   margin,
   labelHeight,
+  captionRect,
 }: FullScreenHeroLayoutInput): FullScreenHeroLayout => {
+  const labelTop = captionRect && captionRect.y < height / 2 ? height - margin.bottom - labelHeight : margin.top;
   return {
     media: MEDIA,
     scrimStops: SCRIM_STOPS,
-    caption: { left: margin.left, top: margin.top },
-    captionBand: { top: margin.top, bottom: margin.top + labelHeight },
+    caption: { left: margin.left, top: labelTop },
+    captionBand: { top: labelTop, bottom: labelTop + labelHeight },
     subtitleBandTop: height * SUBTITLE_BAND_TOP_RATIO,
     frameHeight: height,
   };

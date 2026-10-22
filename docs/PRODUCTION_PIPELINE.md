@@ -224,3 +224,19 @@ more than two and a half seconds of silence before the end card.
 
 `analyseAudio` and `contactSheet` in `backend/pipeline/render.ts` are exported, so the same checks
 can be run against any file.
+
+## Preserve owner caption placement
+
+`film.captionPlacement` and `shot.captionPlacement` hold independent `long` and `reel` cards.
+Each card records normalized `x` (centre), `y` (top), `w` (width), and `locked`.
+Missing fields retain the legacy centred bottom card. A shot exception overrides its film-wide
+card only in the specified format. The renderer fixes placement and wrapping at each phrase's start.
+
+Both film writers use `carryCaptionPlacement` in `src/dl/captionPlacement.ts`. Rebuilds preserve
+omitted entries and cannot change locked entries. The studio's save endpoint is the owner writer,
+so owner reset, unlock, and undo can remove entries. A rebuild that removes a shot with an owner
+exception fails with `caption-placement` and names the shot instead of losing the exception.
+
+Agents and the MCP AI edit flow use `set_caption_placement` through the transactional edit
+interpreter. The operation takes `format`, `scope` (`{kind:"film"}` or `{kind:"shot",shotId}`),
+and `placement` (`{x,y,w}` or `{preset:"top"|"middle"|"bottom"}`). Locked targets are refused.

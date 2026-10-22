@@ -11,6 +11,8 @@
  * Used by: backend/cli.ts, backend/pipeline/run.ts.
  */
 
+import { resolveCaptionPlacement } from "../../src/dl/captionPlacement";
+import { checkCaptionPlacements } from "./captionPlacement";
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
@@ -37,6 +39,7 @@ import { checkThreeStage } from "./threeStage";
 
 /** The standard layer rules a finding can belong to. */
 export type DesignRule =
+  | "caption-placement"
   | "schema"
   | "scene"
   | "camera"
@@ -492,6 +495,7 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
 
   let clips = 0;
   const scene = film.scene as Scene | undefined;
+  findings.push(...checkCaptionPlacements(film, scene));
   const assets: EnvironmentAsset[] = scene ? [...(scene.background ? [scene.background] : []), ...(scene.props ?? [])] : [];
   if (scene) {
     const result = validateSceneWithNodeAssets(scene);
@@ -506,7 +510,7 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
       for (const p of scene.performances ?? []) for (const warning of p.retarget?.warnings ?? []) findings.push({ rule: "scene", severity: "warning", where: `performance ${p.id}`, message: `retargeted onto ${p.retarget!.to} with clamp policy: ${warning}` });
     }
     for (const asset of assets) {
-      if (hasCaptions && asset.position.y > CAPTION_SAFE_SQUARE.y1 && asset.assetId !== "background") {
+      if (hasCaptions && (["long", "reel"] as const).some((format) => film.shots.some((s) => resolveCaptionPlacement(film, format, s.id).source === "default")) && asset.position.y > CAPTION_SAFE_SQUARE.y1 && asset.assetId !== "background") {
         findings.push({ rule: "safe-area", severity: "error", where: asset.assetId, message: `placed at y=${asset.position.y}, which is inside the caption band (y > ${CAPTION_SAFE_SQUARE.y1}); move it up to keep it readable.` });
       }
       checkAsset(asset, film.accent, findings);

@@ -90,6 +90,8 @@ journey("J3 studio: Apply Edits on an AI edit plan applies, saves and survives a
     await openProject(page, url, AI_SLUG, "edit");
     await page.waitFor(`document.querySelector('.__remotion-player')`, "the preview player");
 
+    await page.clickButton("Expand AI editor");
+
     // The user asks, reviews the plan, and clicks Apply Edits.
     await page.waitFor(`document.querySelector('input[placeholder^="Ask AI to edit"]')`, "the AI edit prompt");
     await page.focus('input[placeholder^="Ask AI to edit"]');
@@ -118,6 +120,7 @@ journey("J3 studio: Apply Edits on an AI edit plan applies, saves and survives a
     // Reload: the studio reads the film back and shows the new accent on its own controls.
     await page.reload();
     await page.waitFor(`document.querySelector('.__remotion-player')`, "the preview player after reload");
+    await page.clickButton("Expand AI editor");
     await page.waitFor(`document.querySelector('input[placeholder^="Ask AI to edit"]')`, "the AI edit prompt after reload");
     await page.focus('input[placeholder^="Ask AI to edit"]');
     await page.typeText("x");

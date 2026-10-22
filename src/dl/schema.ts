@@ -402,8 +402,23 @@ export const themeSchema = z.object({
   accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
 });
 
+/** An owner-controlled caption card in normalized output coordinates. */
+export const captionPlacementSchema = z.object({
+  x: z.number().min(0).max(1).default(0.5),
+  y: z.number().min(0).max(1),
+  w: z.number().min(0).max(1).default(0.86),
+  locked: z.boolean().default(false),
+}).strict();
+export const captionPlacementByFormatSchema = z.object({
+  long: captionPlacementSchema.optional(),
+  reel: captionPlacementSchema.optional(),
+}).strict();
+export type CaptionPlacement = z.infer<typeof captionPlacementSchema>;
+export type CaptionPlacementByFormat = z.infer<typeof captionPlacementByFormatSchema>;
+
 export const shotSchema = z.preprocess(dropLegacyBlocks, z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
+  captionPlacement: captionPlacementByFormatSchema.optional(),
   ch: z.string().min(1).max(30).optional(),
   /** Timeline position where the clip sits (seconds). Stored data! */
   position: z.number().min(0).optional(),
@@ -644,6 +659,7 @@ export const filmBaseSchema = z.object({
   overlayClips: z.array(overlayClipSchema).optional(),
   /** Editor timeline lanes. Absent means the editor derives its default lane set. */
   layers: z.array(timelineLayerSchema).optional(),
+  captionPlacement: captionPlacementByFormatSchema.optional(),
   /** Burned-in captions rendering. default is "bottom" */
   captions: z.union([z.enum(["bottom", "off"]), z.string()]).default("bottom").optional(),
   /**

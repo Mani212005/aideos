@@ -7,7 +7,7 @@
  * Used by: editor/src/App.tsx.
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Sparkles, Check, X, Loader2, ArrowRight, Wand2 } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import type { TimedShot } from "../../../src/dl/camera";
@@ -22,6 +22,7 @@ interface OnCanvasAiEditorProps {
   currentFrame: number;
   onUpdateFilm: (updatedFilm: Film) => void;
   accent?: string;
+  folded?: boolean;
 }
 
 interface PlannedState {
@@ -61,6 +62,8 @@ function describeEditOp(op: EditOp): string {
       return `${op.muted !== false ? "Mute" : "Unmute"} Lane: "${op.laneId}"`;
     case "hide_lane":
       return `${op.hidden !== false ? "Hide" : "Show"} Lane: "${op.laneId}"`;
+    case "set_caption_placement":
+      return `Place ${op.format === "long" ? "Wide" : "Reel"} captions (${op.scope.kind === "film" ? "whole film" : op.scope.shotId})`;
     case "set_accent":
       return `Set Accent Color: ${op.hex}`;
     case "set_theme":
@@ -76,13 +79,17 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
   film,
   onUpdateFilm,
   accent,
+  folded = false,
 }) => {
   const [promptInput, setPromptInput] = useState<string>("");
   const [isPlanning, setIsPlanning] = useState<boolean>(false);
   const [isApplying, setIsApplying] = useState<boolean>(false);
   const [plannedState, setPlannedState] = useState<PlannedState | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError?: boolean } | null>(null);
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+
+  // Free the caption controls whenever direct placement is active.
+  useEffect(() => { if (folded) setIsExpanded(false); }, [folded]);
 
   // Suggested prompt chips for quick actions
   const suggestionChips = useMemo(() => [
@@ -202,19 +209,20 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
   };
 
   return (
-    <div className="absolute bottom-4 right-4 z-40 max-w-lg w-full flex flex-col font-sans">
+    <div className="relative z-20 flex w-full shrink-0 flex-col font-sans">
       {/* Container Box */}
-      <div className="bg-paper-2 border-2 border-ink shadow-[4px_4px_0px_#14140f] rounded-lg overflow-hidden flex flex-col">
+      <div className="bg-paper-2 border-t-2 border-ink overflow-hidden flex flex-col">
         {/* Header Bar */}
         <div className="flex items-center justify-between px-3 py-2 bg-sunken border-b-2 border-ink">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-ink" style={{ color: accent || "#5b4bff" }} />
+            <Sparkles className="w-4 h-4 text-ink" style={{ color: accent || "var(--nb-select)" }} />
             <span className="font-mono text-xs font-bold text-ink tracking-tight uppercase">
               AI Video Editor
             </span>
           </div>
           <button
             type="button"
+            aria-label={isExpanded ? "Fold AI editor" : "Expand AI editor"}
             onClick={() => setIsExpanded(!isExpanded)}
             className="font-mono text-xs text-ink hover:underline font-bold"
           >
@@ -265,7 +273,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
                   type="submit"
                   disabled={isPlanning || !promptInput.trim()}
                   className="px-3 py-1.5 bg-select text-paper-3 border-2 border-ink rounded font-mono text-xs font-bold flex items-center gap-1.5 hover:opacity-90 disabled:opacity-50 transition-opacity"
-                  style={{ backgroundColor: accent || "#5b4bff" }}
+                  style={{ backgroundColor: accent || "var(--nb-select)" }}
                 >
                   {isPlanning ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />

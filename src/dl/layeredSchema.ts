@@ -10,6 +10,7 @@
 
 import { z } from "zod";
 import {
+  captionPlacementByFormatSchema,
   nodeSchema,
   edgeSchema,
   themeSchema,
@@ -45,6 +46,7 @@ export type Layer = z.infer<typeof layerSchema>;
 /** Animation Clip Payload (procedural spatial beats and vector devices) */
 export const animationPayloadSchema = z.preprocess(dropLegacyBlocks, z.object({
   shotId: z.string().regex(/^[a-z0-9-]+$/),
+  captionPlacement: captionPlacementByFormatSchema.optional(),
   ch: z.string().min(1).max(30).optional(),
   stage: stageSchema,
   look: lookSchema,
@@ -138,6 +140,7 @@ export type Clip = z.infer<typeof clipSchema>;
 
 /** Layered Film Schema */
 export const layeredFilmSchema = z.object({
+  captionPlacement: captionPlacementByFormatSchema.optional(),
   id: z.string().regex(/^[a-z0-9-]+$/),
   title: z.string().min(1),
   fps: z.number().int().positive().default(30),
