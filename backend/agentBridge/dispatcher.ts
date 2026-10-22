@@ -14,6 +14,18 @@ import { agentLink } from "../agentLink/store";
 import { remoteTaskPrompt } from "../agentLink/prompt";
 import type { AgentSessionInfo, AgentTask, DispatchChannel, DispatchOptions, DispatchResult } from "./types";
 
+/** Injectable tmux command effect; omitted under Node tests unless explicitly supplied. */
+export type DispatchTmuxRun = (args: string[]) => { status: number | null };
+
+export interface DispatchDeps {
+  tmux?: DispatchTmuxRun;
+}
+
+/** Runs a tmux command for production dispatches. */
+function runTmux(args: string[]): { status: number | null } {
+  return spawnSync("tmux", args, { encoding: "utf8" });
+}
+
 /** Default timeout in milliseconds before falling back to in-process server-side execution. */
 export const DEFAULT_AGENT_TIMEOUT_MS = 15000;
 
@@ -155,6 +167,7 @@ Claim this task via MCP tool \`aideos_claim_task({ taskId: "${task.id}" })\` or 
 export function dispatchLocalAndTmux(
   prompt: string,
   opts?: { sessionName?: string; pane?: string },
+  deps: DispatchDeps = {},
 ): { tmuxSent: boolean; fileWritten: boolean } {
   let fileWritten = false;
   let tmuxSent = false;
@@ -176,17 +189,20 @@ export function dispatchLocalAndTmux(
   const sessionInfo = getAgentSession();
   const targetSession = opts?.sessionName || sessionInfo.tmuxSession || "aideos";
   const targetPane = opts?.pane || sessionInfo.tmuxPane;
-  const target = targetPane || targetSession;
+  const tmux = deps.tmux ?? (process.env.NODE_TEST_CONTEXT || process.env.NODE_ENV === "test" ? undefined : runTmux);
+  // Only stable pane IDs are safe: tmux also accepts session names as pane targets.
+  if (!targetPane || !/^%\d+$/.test(targetPane) || !tmux) return { tmuxSent, fileWritten };
 
   try {
-    const hasSess = spawnSync("tmux", ["has-session", "-t", targetSession], { encoding: "utf8" });
+    const hasSess = tmux(["has-session", "-t", targetSession]);
     if (hasSess.status === 0) {
       const bufName = `aideos_${Date.now()}`;
-      const setBuf = spawnSync("tmux", ["set-buffer", "-b", bufName, prompt], { encoding: "utf8" });
+      const setBuf = tmux(["set-buffer", "-b", bufName, prompt]);
       if (setBuf.status === 0) {
-        spawnSync("tmux", ["paste-buffer", "-b", bufName, "-t", target, "-d"], { encoding: "utf8" });
-        spawnSync("tmux", ["send-keys", "-t", target, "Enter"], { encoding: "utf8" });
-        tmuxSent = true;
+        const pasted = tmux(["paste-buffer", "-b", bufName, "-t", targetPane, "-d"]);
+        if (pasted.status === 0) {
+          tmuxSent = tmux(["send-keys", "-t", targetPane, "Enter"]).status === 0;
+        }
       }
     }
   } catch (_) {}
@@ -195,7 +211,7 @@ export function dispatchLocalAndTmux(
 }
 
 /** Dispatches a rich task across all active channels with automatic hybrid fallback. */
-export async function dispatchTask(opts: DispatchOptions): Promise<DispatchResult> {
+export async function dispatchTask(opts: DispatchOptions, deps: DispatchDeps = {}): Promise<DispatchResult> {
   const timeoutMs = opts.timeoutMs ?? DEFAULT_AGENT_TIMEOUT_MS;
   const context = buildTaskContext(opts);
   const prompt = buildDirectingPrompt(opts, context);
@@ -246,7 +262,7 @@ export async function dispatchTask(opts: DispatchOptions): Promise<DispatchResul
   const localResult = dispatchLocalAndTmux(prompt, {
     sessionName: opts.sessionName,
     pane: opts.pane,
-  });
+  }, deps);
   if (localResult.tmuxSent) {
     channels.push("tmux");
     task.dispatchedChannels = [...channels];

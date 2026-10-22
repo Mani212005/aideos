@@ -11,6 +11,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import childProcess from "node:child_process";
+import { ROOT } from "../pipeline/filmStore";
+import { dispatchLocalAndTmux, setAgentSession } from "./dispatcher";
 import {
   TaskQueue,
   taskQueue,
@@ -408,4 +411,73 @@ test("buildTaskContext handles non-conforming film identifiers without throwing 
     assert.equal(context.filmTitle, "Non Conforming Film");
     assert.equal(context.film, null);
   });
+});
+
+// Verify unpaired dispatch preserves durable delivery without invoking the injected tmux effect.
+test("dispatchTask without a recorded pane never calls tmux", async (t) => {
+  const sessionFile = path.join(ROOT, ".aideos_session.json");
+  const previous = fs.existsSync(sessionFile) ? fs.readFileSync(sessionFile) : undefined;
+  t.after(() => {
+    if (previous) fs.writeFileSync(sessionFile, previous);
+    else fs.rmSync(sessionFile, { force: true });
+  });
+  setAgentSession({ tmuxSession: "aideos", tmuxPane: undefined });
+  const calls: string[][] = [];
+  const result = await dispatchTask({
+    eventType: "custom_directive",
+    filmId: "unpaired-test",
+    enableFallback: false,
+  }, { tmux: (args) => { calls.push(args); return { status: 0 }; } });
+  assert.deepEqual(calls, []);
+  assert.ok(!result.channels.includes("tmux"));
+  assert.ok(result.channels.includes("mcp_queue"));
+  assert.ok(result.channels.includes("file_inbox"));
+  assert.equal(taskQueue.getTask(result.taskId)?.prompt, result.prompt);
+  assert.equal(fs.readFileSync(path.join(ROOT, ".aideos_task.md"), "utf8"), result.prompt);
+  const entries = fs.readFileSync(path.join(ROOT, "state", "agent_events.jsonl"), "utf8").trim().split("\n");
+  const entry = JSON.parse(entries[entries.length - 1]);
+  assert.equal(entry.promptSnippet, result.prompt.slice(0, 100));
+});
+
+// Verify persisted pane addressing still delivers through the injected command runner.
+test("dispatchTask targets only the recorded pane", async (t) => {
+  const sessionFile = path.join(ROOT, ".aideos_session.json");
+  const previous = fs.existsSync(sessionFile) ? fs.readFileSync(sessionFile) : undefined;
+  t.after(() => {
+    if (previous) fs.writeFileSync(sessionFile, previous);
+    else fs.rmSync(sessionFile, { force: true });
+  });
+  setAgentSession({ tmuxSession: "aideos", tmuxPane: "%42" });
+  const calls: string[][] = [];
+  const result = await dispatchTask({
+    eventType: "custom_directive", filmId: "paired-test", enableFallback: false,
+  }, { tmux: (args) => { calls.push(args); return { status: 0 }; } });
+  assert.ok(result.channels.includes("tmux"));
+  assert.equal(calls.length, 4);
+  assert.deepEqual(calls[0], ["has-session", "-t", "aideos"]);
+  assert.deepEqual(calls[2], ["paste-buffer", "-b", calls[1][2], "-t", "%42", "-d"]);
+  assert.deepEqual(calls[3], ["send-keys", "-t", "%42", "Enter"]);
+});
+
+// Verify existing dispatchTask callers cannot execute real tmux even with a pane configured.
+test("dispatchTask disables the default tmux effect under tests", async (t) => {
+  const spawn = t.mock.method(childProcess, "spawnSync", () => { throw new Error("Unexpected real process"); });
+  const result = await dispatchTask({
+    eventType: "custom_directive", filmId: "test-default", pane: "%42", enableFallback: false,
+  });
+  assert.equal(spawn.mock.callCount(), 0);
+  assert.ok(!result.channels.includes("tmux"));
+});
+
+// Verify a session name cannot masquerade as a pane, even through an explicit override.
+test("dispatchLocalAndTmux rejects session targets and failed pastes", () => {
+  const calls: string[][] = [];
+  const tmux = (args: string[]) => {
+    calls.push(args);
+    return { status: args[0] === "paste-buffer" ? 1 : 0 };
+  };
+  assert.equal(dispatchLocalAndTmux("test", { pane: "aideos" }, { tmux }).tmuxSent, false);
+  assert.deepEqual(calls, []);
+  assert.equal(dispatchLocalAndTmux("test", { pane: "%42" }, { tmux }).tmuxSent, false);
+  assert.equal(calls.some((args) => args[0] === "send-keys"), false);
 });
