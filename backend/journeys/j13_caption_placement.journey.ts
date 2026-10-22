@@ -210,6 +210,23 @@ journey(
           0,
         );
         await saved(page);
+        const resizedPlacement = resolveCaptionPlacement(film(), format);
+        const resizedRect = captionCardRect(
+          format,
+          format === "long" ? 1920 : 1080,
+          format === "long" ? 1080 : 1920,
+          resizedPlacement,
+        );
+        assert.equal(
+          resizedRect.w,
+          resizedPlacement.w * (format === "long" ? 1920 : 1080),
+        );
+        const overlayWidths = await page.eval<{ handle: number; card: number; frame: number }>(
+          `(() => { const frame = document.querySelector('[data-caption-guides]'); const handle = document.querySelector('[data-caption-handle]'); const card = document.querySelector('[data-caption-card]'); return { handle: handle.getBoundingClientRect().width / frame.getBoundingClientRect().width, card: card.offsetWidth / ${format === "long" ? 1920 : 1080}, frame: ${resizedRect.w} }; })()`,
+        );
+        assert.ok(Math.abs(overlayWidths.handle - resizedPlacement.w) < 0.01);
+        assert.ok(Math.abs(overlayWidths.card - resizedPlacement.w) < 0.01);
+        assert.equal(overlayWidths.frame, resizedRect.w);
         assert.ok(
           resolveCaptionPlacement(film(), format).w < moved.w,
           "edge drag narrows the actual card",
@@ -255,6 +272,8 @@ journey(
         assert.equal(film().captionPlacement?.[format], undefined);
         // Leave a real placement for the independent native Player/export comparison.
         await drag(page, "[data-caption-handle]", 0, -45);
+        await saved(page);
+        await drag(page, 'button[aria-label="Resize caption right edge"]', -40, 0);
         await saved(page);
         await page.clickButton("Lock", { exact: true });
         await saved(page);
@@ -317,6 +336,13 @@ journey(
           size.width,
           size.height,
           resolveCaptionPlacement(film(), format),
+        );
+        const renderedCardWidth = await comparison.eval<number>(
+          `document.querySelector('[data-caption-card]').offsetWidth`,
+        );
+        assert.ok(
+          Math.abs(renderedCardWidth - rect.w) <= 1,
+          `${composition} visible caption card width differs from its collision rectangle`,
         );
         const previewBounds = brightBounds(decodeFrame(preview), rect);
         const stillBounds = brightBounds(decodeFrame(output), rect);

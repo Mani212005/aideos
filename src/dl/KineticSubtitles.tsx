@@ -51,7 +51,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   // Compute every phrase once so neither position nor wrapping can change during a phrase.
   const phrases = useMemo(() => buildCaptionPhrases({
     words, fps, fontSize, width,
-    placementAt: placementAt ?? (() => ({ x: 0.5, y: position === "top" ? 0.1 : position === "center" ? 0.45 : 0.78, w: maxWidth / width, locked: false })),
+    placementAt: placementAt ?? (() => ({ x: 0.5, y: position === "top" ? 0.1 : position === "center" ? 0.45 : 0.78, w: maxWidth / width, locked: false, source: "default" })),
     measure: (text) => measureText({ text, fontFamily, fontSize, fontWeight: 700 }).width,
   }), [words, fps, fontSize, width, placementAt, position, maxWidth, fontFamily]);
 
@@ -64,6 +64,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   );
 
   if (!activePhrase) return null;
+  const explicitWidth = activePhrase.placement.source !== "default" && Math.abs(activePhrase.placement.w - 0.86) > 0.000001;
 
   // Find active word index within the global words array
   let activeWordIndex = words.findIndex(
@@ -120,7 +121,9 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
           boxShadow: "0 12px 32px rgba(0, 0, 0, 0.45)",
           border: "1px solid rgba(255, 255, 255, 0.12)",
           textAlign: "center",
-          maxWidth: "92%",
+          ...(explicitWidth
+            ? { width: activePhrase.placement.w * width, boxSizing: "border-box" as const }
+            : { maxWidth: "92%" }),
         }}
       >
         <div
@@ -132,6 +135,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
             display: "block",
             textAlign: "center",
             textWrap: "balance",
+            ...(explicitWidth ? { width: "100%", boxSizing: "border-box" as const } : {}),
           }}
         >
           {activePhrase.words.map((w, localIdx) => {

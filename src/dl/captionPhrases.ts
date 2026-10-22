@@ -11,7 +11,7 @@ export type CaptionPhrase = {
   startFrame: number;
   endFrame: number;
   words: CaptionWord[];
-  placement: CaptionPlacement;
+  placement: CaptionPlacement & { source?: "shot" | "film" | "default" };
   lineBreaks: number[];
 };
 // Finds the phrase displayed at a frame using the render's phrase boundaries.
@@ -51,7 +51,7 @@ export function buildCaptionPhrases({
   fps: number;
   fontSize: number;
   width: number;
-  placementAt: (frame: number) => CaptionPlacement;
+  placementAt: (frame: number) => CaptionPlacement & { source?: "shot" | "film" | "default" };
   measure: (text: string) => number;
 }): CaptionPhrase[] {
   const phrases: CaptionPhrase[] = [];
@@ -59,7 +59,7 @@ export function buildCaptionPhrases({
   while (start < words.length) {
     const placement = placementAt(words[start].startFrame);
     const customWidth = Math.abs(placement.w - 0.86) > 0.000001;
-    const inner = width * placement.w * 0.92 - 58;
+    const inner = width * placement.w - 58;
     let end = start;
     while (end + 1 < words.length && end - start < 6) {
       const word = words[end];
