@@ -9,7 +9,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { ensureGenerated } from "../pipeline/generatedFiles";
+import { readActiveFilmSource, restoreActiveFilmSource, setActiveFilm } from "../pipeline/filmStore";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
@@ -20,17 +20,22 @@ export async function renderVideoForSlug(slug: string, format: "long" | "reel" =
   const rendersDir = path.join(pkgDir, "renders");
   const outPath = path.join(rendersDir, `${format}.mp4`);
   // Remotion bundles the generated film shadows, so a film.json edited since the last render must be re-shadowed first.
-  ensureGenerated();
+  const previousActive = readActiveFilmSource();
   await fsp.mkdir(rendersDir, { recursive: true });
 
   const compId = format === "reel" ? "Reel" : "Long";
   const args = [
-    "remotion", "render", "src/index.ts", compId, outPath, `--props={"filmId":"${slug}"}`, "--gl=angle"
+    "remotion", "render", "src/index.ts", compId, outPath, "--gl=angle"
   ];
 
-  execFileSync("npx", args, { cwd: REPO_ROOT, stdio: "inherit" });
-  if (!fs.existsSync(outPath)) {
-    throw new Error(`Render failed to create output file at ${outPath}`);
+  try {
+    setActiveFilm(slug);
+    execFileSync("npx", args, { cwd: REPO_ROOT, stdio: "inherit" });
+    if (!fs.existsSync(outPath)) {
+      throw new Error(`Render failed to create output file at ${outPath}`);
+    }
+    return outPath;
+  } finally {
+    restoreActiveFilmSource(previousActive);
   }
-  return outPath;
 }
