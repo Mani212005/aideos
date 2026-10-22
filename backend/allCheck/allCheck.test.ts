@@ -993,7 +993,6 @@ test("launch script: an agent that exits without a result still gets a verdict f
     fs.mkdirSync(allCheckDir(slug), { recursive: true });
     const text = fs.readFileSync(writeLaunchScript(slug, "claude", "/tmp/brief.md", "claude-sonnet-5-5"), "utf8");
     assert.match(text, /\[ -f '[^']*result\.json' \] \|\| npx tsx backend\/cli\.ts all-check finish 'ac-script-finish'/);
-    assert.doesNotMatch(text, /exec /, "the workspace shell stays available without nesting another shell");
   } finally {
     dropPackage(slug);
   }

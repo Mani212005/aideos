@@ -100,7 +100,7 @@ export function registerAllCheckCommands(program: Command): void {
         console.log(`  brief:   ${started.briefPath}`);
         console.log(`  result:  ${started.resultPath}`);
         console.log(`  wait:    aideos all-check wait ${slug}`);
-        if (started.tookOverStaleLock) console.log("  (an earlier run's window was gone, so its lock was replaced)");
+        if (started.tookOverStaleLock) console.log("  (an earlier run's pane was gone, so its lock was replaced)");
         if (flags.wait) await runWait(slug, 240, 20);
       } catch (err) {
         fail(err);
