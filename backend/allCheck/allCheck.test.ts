@@ -340,7 +340,6 @@ test("start: writes config, brief and launch script, opens one window, refuses a
     assert.ok(!NO_DASH.test(brief));
     const script = fs.readFileSync(path.join(dir, "launch.sh"), "utf8");
     assert.match(script, /--dangerously-skip-permissions/);
-    assert.doesNotMatch(script, /exec /);
     assert.equal(readLock(slug)?.herdr?.paneId, "w7:p1");
 
     // The second start is refused before anything new is opened or written.
@@ -1014,11 +1013,12 @@ test("launch script: the caller environment survives shell state and a real proc
     const script = writeLaunchScript(slug, "claude", "/tmp/brief.md", "claude-sonnet-5-5", {
       HOME: scratch, PATH: `${scratch}${path.delimiter}${process.env.PATH}`, AIDEOS_CONFIG: config, AIDEOS_VIDEOS_DIR: getVideosDir(),
     });
-    const child = spawnSync("bash", [script], {
+    const child = spawnSync("bash", ["-c", 'bash "$1"; printf "workspace-shell-survived\\n"', "all-check-shell", script], {
       encoding: "utf8", timeout: 5000,
       env: { ...process.env, AIDEOS_CONFIG: "server's stale config", AIDEOS_GEMINI_REVIEW_MODEL: "stale-review-model", AC_ENV_EVIDENCE: evidence, AC_FINISH_EVIDENCE: finish },
     });
     assert.equal(child.status, 0, child.stderr);
+    assert.equal(child.stdout, "workspace-shell-survived\n");
     assert.equal(fs.readFileSync(evidence, "utf8"), `${config}\nunset\n`);
     assert.equal(fs.readFileSync(finish, "utf8"), `tsx backend/cli.ts all-check finish ${slug}`);
   } finally {
