@@ -9,6 +9,7 @@ import test from "node:test";
 import fs from "node:fs";
 import { parseFilm } from "../src/dl/schema";
 import { captionWordsForFilm } from "../src/dl/captionsParser";
+import { checkCaptionPlacements } from "./designCheck/captionPlacement";
 import { subtitleCardBottom } from "../src/dl/fullScreenHeroLayout";
 import {
   resolveCaptionPlacement,
@@ -227,6 +228,33 @@ test("phrase layout keeps start placement across a cut and splits narrow cards",
   assert.equal(captionPhraseAtFrame(result, 25)?.placement.y, 0.2);
   assert.ok(result.every((p) => p.words.length <= 6));
   assert.equal(result.flatMap((p) => p.words).length, words.length);
+});
+
+test("full design check uses the phrase start placement against art in the next shot", () => {
+  const film = {
+    ...base,
+    captions: "WEBVTT\n\n00:00:00.800 --> 00:00:01.300\nA phrase\n",
+    shots: [
+      { ...base.shots[0], id: "caption-origin", dur: 1, scriptText: "A phrase", captionPlacement: { long: top } },
+      { ...base.shots[0], id: "art-shot", dur: 1, scriptText: "Next shot", captionPlacement: { long: { ...top, y: 0.6 } } },
+    ],
+  } as typeof base;
+  const scene = {
+    ...base.scene!,
+    durationFrames: 60,
+    audioDurationMs: 2000,
+    props: [{
+      ...base.scene!.props[0],
+      position: { x: 960, y: 640 },
+      scale: 1,
+      animation: {
+        timelineId: "enter-in-shot-b",
+        clips: [{ clipId: "enter", targets: ["nodes"], property: "opacity", from: 0, to: 1, startFrame: 30, durationFrames: 1, easing: "linear" }],
+      },
+    }],
+  };
+  const findings = checkCaptionPlacements(film, scene);
+  assert.ok(findings.some((finding) => finding.where === "shot caption-origin / long / nodes" && /frame 3[0-9]/.test(finding.message)), JSON.stringify(findings));
 });
 
 // Rejects arbitrary filesystem paths at the geometry reader boundary.
