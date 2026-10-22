@@ -1,0 +1,141 @@
+{
+  "create": {
+    "id": "cli:workspace:create",
+    "result": {
+      "root_pane": {
+        "agent_status": "unknown",
+        "cwd": "/repo",
+        "focused": true,
+        "foreground_cwd": "/repo",
+        "pane_id": "w1:p1",
+        "revision": 0,
+        "scroll": {
+          "max_offset_from_bottom": 0,
+          "offset_from_bottom": 0,
+          "viewport_rows": 24
+        },
+        "tab_id": "w1:t1",
+        "terminal_id": "term_65e714fddac7c1",
+        "workspace_id": "w1"
+      },
+      "tab": {
+        "agent_status": "unknown",
+        "focused": true,
+        "label": "1",
+        "number": 1,
+        "pane_count": 1,
+        "tab_id": "w1:t1",
+        "workspace_id": "w1"
+      },
+      "type": "workspace_created",
+      "workspace": {
+        "active_tab_id": "w1:t1",
+        "agent_status": "unknown",
+        "focused": true,
+        "label": "all-check: lab",
+        "number": 1,
+        "pane_count": 1,
+        "tab_count": 1,
+        "workspace_id": "w1"
+      }
+    }
+  },
+  "pane": {
+    "id": "cli:pane:get",
+    "result": {
+      "pane": {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "8acc61cf-0327-43e5-9f6c-2f15978e099b"
+        },
+        "agent_status": "idle",
+        "cwd": "/repo",
+        "focused": true,
+        "foreground_cwd": "/repo",
+        "pane_id": "w1:p1",
+        "revision": 1,
+        "scroll": {
+          "max_offset_from_bottom": 0,
+          "offset_from_bottom": 0,
+          "viewport_rows": 39
+        },
+        "tab_id": "w1:t1",
+        "terminal_id": "term_65e714fddac7c1",
+        "terminal_title": "\u2733 Claude Code",
+        "terminal_title_stripped": "Claude Code",
+        "workspace_id": "w1"
+      },
+      "type": "pane_info"
+    }
+  },
+  "idle": {
+    "id": "cli:pane:process_info",
+    "result": {
+      "process_info": {
+        "foreground_process_group_id": 3341,
+        "foreground_processes": [
+          {
+            "argv": [
+              "-zsh"
+            ],
+            "argv0": "zsh",
+            "cmdline": "-zsh",
+            "cwd": "/repo",
+            "name": "zsh",
+            "pid": 3341
+          }
+        ],
+        "pane_id": "w1:p1",
+        "shell_pid": 3341
+      },
+      "type": "pane_process_info"
+    }
+  },
+  "active": {
+    "id": "cli:pane:process_info",
+    "result": {
+      "process_info": {
+        "foreground_process_group_id": 37758,
+        "foreground_processes": [
+          {
+            "argv": [
+              "claude",
+              "--model",
+              "claude-sonnet-5-5",
+              "--dangerously-skip-permissions"
+            ],
+            "argv0": "claude",
+            "cmdline": "claude --model claude-sonnet-5-5 --dangerously-skip-permissions",
+            "cwd": "/repo",
+            "name": "claude.exe",
+            "pid": 37759
+          },
+          {
+            "argv": [
+              "bash",
+              "/lab/launch-claude-False.sh"
+            ],
+            "argv0": "bash",
+            "cmdline": "bash /lab/launch-claude-False.sh",
+            "cwd": "/repo",
+            "name": "bash",
+            "pid": 37758
+          }
+        ],
+        "pane_id": "w1:p1",
+        "shell_pid": 3341
+      },
+      "type": "pane_process_info"
+    }
+  },
+  "missing": {
+    "error": {
+      "code": "pane_not_found",
+      "message": "pane w5:p1 not found"
+    },
+    "id": "cli:pane:get"
+  }
+}

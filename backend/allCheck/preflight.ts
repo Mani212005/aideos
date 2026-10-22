@@ -1,6 +1,6 @@
 /**
  * File Description: Preflight of `aideos all-check`. Before any agent starts it checks the things a
- * run cannot recover from halfway: the video package, its voiceover, ffmpeg and tesseract, tmux, the
+ * run cannot recover from halfway: the video package, its voiceover, ffmpeg and tesseract, Herdr, the
  * background agent's CLI and the agy login that the Gemini review runs on. Each failure carries the
  * exact fix, and all failures are reported together as one message. Process access is injectable.
  * Inputs and outputs: slug and environment -> preflight readiness check result.
@@ -12,10 +12,11 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { getVideosDir, resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import type { AgentName } from "./types";
+import { herdrSocket, realHerdr, type HerdrRun } from "./herdr";
 
 /** One thing that must be fixed before a run can start. */
 export interface PreflightProblem {
-  check: "package" | "voiceover" | "ffmpeg" | "tesseract" | "tmux" | "agent" | "agy-login";
+  check: "package" | "voiceover" | "ffmpeg" | "tesseract" | "herdr" | "agent" | "agy-login";
   message: string;
   fix: string;
 }
@@ -30,6 +31,7 @@ export interface ProcResult {
 
 /** The outside world the checks read; the defaults are real, tests inject fakes. */
 export interface PreflightDeps {
+  herdr: HerdrRun;
   /** Resolves a command on PATH, or null. */
   which: (command: string) => string | null;
   run: (command: string, args: string[], timeoutMs: number) => ProcResult;
@@ -56,7 +58,7 @@ function realRun(command: string, args: string[], timeoutMs: number): ProcResult
   return { status: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "", error: r.error?.message };
 }
 
-export const REAL_PREFLIGHT_DEPS: PreflightDeps = { which: realWhich, run: realRun };
+export const REAL_PREFLIGHT_DEPS: PreflightDeps = { which: realWhich, run: realRun, herdr: realHerdr };
 
 // Checks the video package: it exists in the personal videos folder and its film.json parses.
 function checkPackage(slug: string, problems: PreflightProblem[]): { film: Record<string, unknown> | null; dir: string } {
@@ -142,8 +144,9 @@ export function packageProblems(slug: string): PreflightProblem[] {
 
 // Runs every check and returns the problems found (empty means ready to start).
 export function runPreflight(
-  input: { slug: string; agent: AgentName },
+  input: { slug: string; agent: AgentName; socketPath?: string },
   deps: PreflightDeps = REAL_PREFLIGHT_DEPS,
+  herdr: HerdrRun = deps.herdr,
 ): PreflightProblem[] {
   const problems: PreflightProblem[] = [];
   const { film, dir } = checkPackage(input.slug, problems);
@@ -155,8 +158,22 @@ export function runPreflight(
   if (!deps.which("tesseract")) {
     problems.push({ check: "tesseract", message: "tesseract is not on PATH, and the measured review reads on-screen text with it", fix: "brew install tesseract" });
   }
-  if (!deps.which("tmux")) {
-    problems.push({ check: "tmux", message: "tmux is not on PATH, and the background agent runs in its own tmux window", fix: "brew install tmux" });
+  if (!deps.which("herdr")) {
+    problems.push({ check: "herdr", message: "herdr is not on PATH, and the background agent runs in its own Herdr workspace", fix: "brew install herdr" });
+  } else {
+    const version = herdr(["--version"], { HERDR_SOCKET_PATH: input.socketPath ?? herdrSocket() });
+    const match = version.stdout.match(/\b(\d+)\.(\d+)\.(\d+)\b/);
+    const supported = version.status === 0 && match && (Number(match[1]) > 0 || Number(match[2]) >= 8);
+    if (!supported) {
+      problems.push({ check: "herdr", message: `Herdr 0.8.0 or newer is required (${version.stdout.trim() || version.stderr.trim() || "version unavailable"})`, fix: "herdr update" });
+    } else {
+      const server = herdr(["workspace", "list"], { HERDR_SOCKET_PATH: input.socketPath ?? herdrSocket() });
+      if (server.status !== 0) problems.push({
+        check: "herdr",
+        message: `the Herdr server is not reachable on ${input.socketPath ?? herdrSocket()} (${server.stderr.trim() || server.stdout.trim() || "no response"})`,
+        fix: "start herdr in a terminal (`herdr`, then `ctrl+b q` to detach and leave it running) and re-run all-check",
+      });
+    }
   }
   if (!deps.which(input.agent)) {
     problems.push({

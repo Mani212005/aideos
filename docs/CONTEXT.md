@@ -360,14 +360,14 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `RUBRIC_CRITERIA`, `RUBRIC_SYSTEM_PROMPT`, `SINGLE_REVIEW_JSON_SCHEMA`, `PAIRWISE_WATCH_JSON_SCHEMA`, `PAIRWISE_EXCHANGE_JSON_SCHEMA` (`backend/geminiReview/rubric.ts`): The 12-criterion rubric definitions, structured JSON schemas, and review prompts enforcing the 6 hard gates.
 
 ### `backend/allCheck/` (End-to-End Review & Repair Background Agent)
-* `runAllCheck(slug, options, deps)` (`backend/allCheck/index.ts`): Orchestrates preflight, locking, brief generation, and launching the background agent in its own tmux window to review and repair long and reel formats.
+* `startAllCheck(options, deps)` (`backend/allCheck/index.ts`): Orchestrates preflight, locking, brief generation, and launching the background agent in its own unfocused Herdr workspace to review and repair long and reel formats.
 * `resolveAgent(env)` (`backend/allCheck/agent.ts`): Resolves the background agent and model from `aideos.config.json` or CLI flags, enforcing the forbidden generation model policy.
 * `buildAgentCommand(agent, briefPath, slug, model)` (`backend/allCheck/agent.ts`): Builds the interactive invocation command for the background agent with the specified model and brief.
 * `formatAllCheckReport(result)` (`backend/allCheck/index.ts`): Formats final all-check outcomes and round summaries into human-readable markdown.
-* `runPreflight(slug, options, deps)` (`backend/allCheck/preflight.ts`): Validates video package, voiceover, ffmpeg, tesseract, tmux, agent CLI, and agy login before starting the background agent.
-* `acquireLock(slug, record, deps)`, `releaseLock(slug, deps)`, `inspectLock(slug, deps)` (`backend/allCheck/lock.ts`): Manages the per-video lock in `videos/<slug>/all-check/lock.json` tied to the active tmux window.
+* `runPreflight(slug, options, deps)` (`backend/allCheck/preflight.ts`): Validates video package, voiceover, ffmpeg, tesseract, Herdr 0.8.0+ and its server, agent CLI, and agy login before starting the background agent.
+* `acquireLock(record, deps)`, `releaseLock(slug)`, `lockIsLive(lock, deps)` (`backend/allCheck/lock.ts`): Manages the per-video lock in `videos/<slug>/all-check/lock.json` tied to the recorded Herdr socket and foreground process in its pane.
 * `generateAgentBrief(context)` (`backend/allCheck/brief.ts`): Generates structured instructions and review constraints for the background coding agent (`videos/<slug>/all-check/brief.md`).
-* `launchAgentProcess(options, deps)` (`backend/allCheck/launch.ts`): Creates a dedicated tmux window and launches the coding agent (Claude Code or Antigravity) with pre-approved permissions.
+* `launchAgentWorkspace(slug, scriptPath, opts)` (`backend/allCheck/launch.ts`): Creates a dedicated Herdr workspace and launches the coding agent (Claude Code or Antigravity) with pre-approved permissions. The workspace stays open, and the next start closes only its previous idle workspace.
 * `executeReviewRound(slug, options, deps)` (`backend/allCheck/round.ts`): Renders formats, backs up `film.json`, executes measured review and Gemini 3.8 Flash review, extracts stills, and performs automatic rollback on score regressions.
 * `recordFrameCheck(slug, options, deps)` (`backend/allCheck/round.ts`): Records the agent's inspection of rendered frame stills for visual defects.
 * `findBestRound(rounds)` (`backend/allCheck/best.ts`): Evaluates completed rounds to identify the best composite round and detect repo baseline violations.

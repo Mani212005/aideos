@@ -1,8 +1,8 @@
 /**
  * File Description: Tests of `aideos all-check`: command-line parsing, agent choice, preflight, the
- * one-run-per-video lock, starting a run (with a fake tmux), the round records and pass rules, the
+ * one-run-per-video lock, starting a run (with a fake Herdr), the round records and pass rules, the
  * verdict and finish side effects, waiting for a result, and the argv rewrite. No model, render or
- * tmux window is ever touched: every outside effect is injected.
+ * Herdr workspace is ever touched: every outside effect is injected.
  * Inputs and outputs: mock review results and round loop state -> test assertions.
  * Used by: npm test.
  */
@@ -24,6 +24,7 @@ import { betterEarlierRound, dirtyRepoPaths, rankRecord, rollbackFilm, settleRou
 import { decideVerdict, finishRun, type FinishDeps } from "./finish";
 import { startAllCheck, runStatus, waitForResult, type IdleWatchdog, type StartDeps } from "./index";
 import { writeLaunchScript } from "./launch";
+import type { HerdrLocation } from "./herdr";
 import { acquireLock, lockIsLive, lockPath, readLock, releaseLock, type LockDeps, type LockRecord } from "./lock";
 import { parseAllCheckOptions } from "./options";
 import { formatPreflight, packageProblems, runPreflight, type PreflightDeps, type ProcResult } from "./preflight";
@@ -47,6 +48,7 @@ function dropPackage(slug: string): void {
 // Preflight dependencies where every tool is installed and agy is signed in, with overrides.
 function fakePreflight(over: { missing?: string[]; agy?: Partial<ProcResult> } = {}): PreflightDeps {
   return {
+    herdr: (args) => ({ status: 0, stdout: args[0] === "--version" ? "herdr 0.8.0" : JSON.stringify({ result: { panes: [] } }), stderr: "" }),
     which: (c) => (over.missing?.includes(c) ? null : `/usr/bin/${c}`),
     run: () => ({ status: 0, stdout: "gemini-3.8-flash-high\n", stderr: "", ...over.agy }),
   };
@@ -55,10 +57,15 @@ function fakePreflight(over: { missing?: string[]; agy?: Partial<ProcResult> } =
 // Lock dependencies with controllable liveness.
 function fakeLock(state: { windows: Set<string>; pids?: Set<number>; now?: number }): LockDeps {
   return {
-    windowAlive: (id) => state.windows.has(id),
+    paneLive: (location) => state.windows.has(location.paneId),
     pidAlive: (pid) => state.pids?.has(pid) ?? false,
     now: () => state.now ?? Date.now(),
   };
+}
+
+// Gives fake runs a server-qualified pane location.
+function herdrLocation(paneId: string): HerdrLocation {
+  return { socketPath: "/fake/herdr.sock", workspaceId: paneId.split(":")[0], paneId, agentName: null };
 }
 
 const NO_DASH = /[\u2013\u2014]/;
@@ -161,7 +168,7 @@ test("preflight: a ready machine has no problems, each failure names its fix", (
   try {
     assert.deepEqual(runPreflight({ slug, agent: "agy" }, fakePreflight()), []);
 
-    for (const [tool, check] of [["ffmpeg", "ffmpeg"], ["ffprobe", "ffmpeg"], ["tesseract", "tesseract"], ["tmux", "tmux"]] as const) {
+    for (const [tool, check] of [["ffmpeg", "ffmpeg"], ["ffprobe", "ffmpeg"], ["tesseract", "tesseract"], ["herdr", "herdr"]] as const) {
       const problems = runPreflight({ slug, agent: "agy" }, fakePreflight({ missing: [tool] }));
       assert.deepEqual(problems.map((p) => p.check), [check]);
       assert.match(problems[0].fix, /brew install/);
@@ -177,7 +184,7 @@ test("preflight: a ready machine has no problems, each failure names its fix", (
     const timedOut = runPreflight({ slug, agent: "agy" }, fakePreflight({ agy: { status: null, error: "spawnSync agy ETIMEDOUT" } }));
     assert.match(timedOut[0].message, /did not answer/);
 
-    const message = formatPreflight(slug, runPreflight({ slug, agent: "agy" }, fakePreflight({ missing: ["ffmpeg", "tmux"] })));
+    const message = formatPreflight(slug, runPreflight({ slug, agent: "agy" }, fakePreflight({ missing: ["ffmpeg", "herdr"] })));
     assert.match(message, /2 things to fix/);
     assert.equal((message.match(/fix:/g) ?? []).length, 2);
     assert.ok(!NO_DASH.test(message));
@@ -211,20 +218,62 @@ test("preflight: missing package and missing voiceover", () => {
   }
 });
 
+test("preflight: Herdr version floor and missing server provide their exact fixes", () => {
+  const slug = "ac-herdr-preflight";
+  makePackage(slug);
+  try {
+    for (const version of ["herdr 0.7.99", "garbled output"]) {
+      const deps = fakePreflight();
+      deps.herdr = () => ({ status: 0, stdout: version, stderr: "" });
+      const problems = runPreflight({ slug, agent: "claude", socketPath: "/recorded/sock" }, deps);
+      assert.deepEqual(problems.map((problem) => problem.check), ["herdr"]);
+      assert.equal(problems[0].fix, "herdr update");
+    }
+    const deps = fakePreflight();
+    const sockets: string[] = [];
+    deps.herdr = (args, env) => {
+      sockets.push(env.HERDR_SOCKET_PATH);
+      return args[0] === "--version"
+        ? { status: 0, stdout: "herdr 0.8.0", stderr: "" }
+        : { status: 1, stdout: "", stderr: '{"error":{"code":"server_not_running"}}' };
+    };
+    const problems = runPreflight({ slug, agent: "claude", socketPath: "/recorded/sock" }, deps);
+    assert.match(problems[0].message, /server_not_running/);
+    assert.match(problems[0].fix, /start herdr.*ctrl\+b q/);
+    assert.deepEqual(sockets, ["/recorded/sock", "/recorded/sock"]);
+  } finally {
+    dropPackage(slug);
+  }
+});
+
+test("lock: a tmux-era lock is refused intact even if its launcher is gone", () => {
+  const slug = "ac-legacy-lock";
+  makePackage(slug);
+  try {
+    fs.mkdirSync(allCheckDir(slug), { recursive: true });
+    const old = JSON.stringify({ slug, tmuxWindowId: "@12", tmuxSession: "aideos", launcherPid: 1 });
+    fs.writeFileSync(lockPath(slug), old);
+    assert.throws(() => acquireLock({ slug, agent: "claude", startedAt: new Date().toISOString(), launcherPid: 2 }, fakeLock({ windows: new Set() })), /tmux-era all-check lock; if that run is over, delete .*lock.json/);
+    assert.equal(fs.readFileSync(lockPath(slug), "utf8"), old);
+  } finally {
+    dropPackage(slug);
+  }
+});
+
 test("lock: one run per video, a live run is named, a stale lock is replaced", () => {
   const slug = "ac-lock";
   makePackage(slug);
   try {
     const record = (over: Partial<LockRecord> = {}): LockRecord => ({ slug, agent: "agy", startedAt: new Date().toISOString(), launcherPid: 111, ...over });
-    const state: { windows: Set<string>; pids: Set<number>; now?: number } = { windows: new Set<string>(["@9"]), pids: new Set<number>([111]) };
+    const state: { windows: Set<string>; pids: Set<number>; now?: number } = { windows: new Set<string>(["w9:p1"]), pids: new Set<number>([111]) };
     const deps = fakeLock(state);
 
-    assert.equal(acquireLock(record({ tmuxWindowId: "@9", tmuxSession: "aideos" }), deps).tookOverStale, false);
+    assert.equal(acquireLock(record({ herdr: herdrLocation("w9:p1") }), deps).tookOverStale, false);
     assert.ok(fs.existsSync(lockPath(slug)));
 
     // A second run is refused and told where the first one is.
-    assert.throws(() => acquireLock(record(), deps), (err: Error) => err instanceof AllCheckError && /already running/.test(err.message) && /@9/.test(err.message) && /aideos all-check wait ac-lock/.test(err.message));
-    assert.equal(readLock(slug)?.tmuxWindowId, "@9");
+    assert.throws(() => acquireLock(record(), deps), (err: Error) => err instanceof AllCheckError && /already running/.test(err.message) && /w9:p1/.test(err.message) && /aideos all-check wait ac-lock/.test(err.message));
+    assert.equal(readLock(slug)?.herdr?.paneId, "w9:p1");
 
     // The window closes: the lock is stale and the next run takes it over.
     state.windows.clear();
@@ -248,7 +297,7 @@ test("lock: one run per video, a live run is named, a stale lock is replaced", (
   }
 });
 
-// A start's dependencies with a fake tmux window.
+// A start's dependencies with a fake Herdr window.
 function fakeStart(over: Partial<StartDeps> & { windows?: Set<string> } = {}): StartDeps & { launched: string[] } {
   const windows = over.windows ?? new Set<string>();
   const launched: string[] = [];
@@ -256,13 +305,13 @@ function fakeStart(over: Partial<StartDeps> & { windows?: Set<string> } = {}): S
     env: {},
     preflight: fakePreflight(),
     lock: fakeLock({ windows, pids: new Set() }),
-    tmux: () => ({ status: 0, stdout: "", stderr: "" }),
+    herdr: fakePreflight().herdr,
     studioRunning: () => false,
     now: () => new Date("2026-10-02T10:00:00.000Z"),
     launch: (slug) => {
       launched.push(slug);
-      windows.add("@7");
-      return { windowId: "@7", session: "aideos", attachCommand: "tmux attach -t aideos" };
+      windows.add("w7:p1");
+      return { ...herdrLocation("w7:p1"), attachCommand: "herdr agent attach w7:p1" };
     },
     ...over,
     launched,
@@ -279,7 +328,7 @@ test("start: writes config, brief and launch script, opens one window, refuses a
     const started = startAllCheck(options, deps);
 
     assert.equal(started.agent.agent, "claude");
-    assert.equal(started.window.windowId, "@7");
+    assert.equal(started.workspace.paneId, "w7:p1");
     const dir = allCheckDir(slug);
     const config = JSON.parse(fs.readFileSync(path.join(dir, "config.json"), "utf8")) as AllCheckConfig;
     assert.deepEqual({ rounds: config.rounds, target: config.target, agent: config.agent, studioWasRunning: config.studioWasRunning }, { rounds: 4, target: 9.2, agent: "claude", studioWasRunning: false });
@@ -291,8 +340,8 @@ test("start: writes config, brief and launch script, opens one window, refuses a
     assert.ok(!NO_DASH.test(brief));
     const script = fs.readFileSync(path.join(dir, "launch.sh"), "utf8");
     assert.match(script, /--dangerously-skip-permissions/);
-    assert.match(script, /exec "\$\{SHELL:-bash\}"/);
-    assert.equal(readLock(slug)?.tmuxWindowId, "@7");
+    assert.doesNotMatch(script, /exec /);
+    assert.equal(readLock(slug)?.herdr?.paneId, "w7:p1");
 
     // The second start is refused before anything new is opened or written.
     assert.throws(() => startAllCheck(options, deps), /already running/);
@@ -320,6 +369,28 @@ test("start: a failing preflight starts nothing and leaves no lock; an unknown v
   assert.ok(!fs.existsSync(path.join(getVideosDir(), "ac-ghost")));
 });
 
+test("start: shell startup keeps the launcher lock live before agent detection", () => {
+  const slug = "ac-starting-shell";
+  makePackage(slug);
+  try {
+    const options = parseAllCheckOptions(slug);
+    const deps = fakeStart({
+      now: () => new Date(),
+      lock: fakeLock({ windows: new Set(), pids: new Set([process.pid]) }),
+      launch: (_slug, _script, _agent, onCreated) => {
+        onCreated(herdrLocation("w7:p1"));
+        assert.equal(readLock(slug)?.herdr, undefined, "the starting process owns the lock while the shell loads");
+        assert.throws(() => startAllCheck(options, deps), /already running/);
+        return { ...herdrLocation("w7:p1"), attachCommand: "herdr agent attach w7:p1" };
+      },
+    });
+    startAllCheck(options, deps);
+    assert.equal(readLock(slug)?.herdr?.paneId, "w7:p1");
+  } finally {
+    dropPackage(slug);
+  }
+});
+
 test("start: an earlier run's files are archived, a stale lock is replaced", () => {
   const slug = "ac-restart";
   makePackage(slug);
@@ -331,7 +402,7 @@ test("start: an earlier run's files are archived, a stale lock is replaced", () 
     fs.writeFileSync(path.join(allCheckDir(slug), "result.json"), "{}");
 
     // The agent window disappears without finishing: the next run takes over and starts from a clean folder.
-    (deps.lock as unknown as { windowAlive: (id: string) => boolean }).windowAlive = () => false;
+    deps.lock.paneLive = () => false;
     const second = startAllCheck(parseAllCheckOptions(slug, { agent: "agy" }), deps);
     assert.equal(second.tookOverStaleLock, true);
     assert.ok(!fs.existsSync(path.join(allCheckDir(slug), "round-1")));
@@ -635,9 +706,9 @@ test("wait: returns the result once written, reports a vanished agent, and times
   makePackage(slug);
   try {
     const config = writeConfig(slug);
-    const windows = new Set<string>(["@3"]);
+    const windows = new Set<string>(["w3:p1"]);
     const lockDeps = fakeLock({ windows });
-    fs.writeFileSync(lockPath(slug), JSON.stringify({ slug, agent: "agy", startedAt: config.startedAt, launcherPid: 1, tmuxWindowId: "@3", tmuxSession: "aideos" }));
+    fs.writeFileSync(lockPath(slug), JSON.stringify({ slug, agent: "agy", startedAt: config.startedAt, launcherPid: 1, herdr: herdrLocation("w3:p1") }));
 
     // Still running: times out.
     const timedOut = await waitForResult(slug, { timeoutMs: 0, pollMs: 1, lockDeps });
@@ -866,9 +937,9 @@ test("wait: an agent that goes quiet without finishing gets its run closed from 
   makePackage(slug);
   try {
     const config = writeConfig(slug);
-    const windows = new Set<string>(["@5"]);
+    const windows = new Set<string>(["w5:p1"]);
     const lockDeps = fakeLock({ windows });
-    fs.writeFileSync(lockPath(slug), JSON.stringify({ slug, agent: "agy", startedAt: config.startedAt, launcherPid: 1, tmuxWindowId: "@5", tmuxSession: "aideos" }));
+    fs.writeFileSync(lockPath(slug), JSON.stringify({ slug, agent: "agy", startedAt: config.startedAt, launcherPid: 1, herdr: herdrLocation("w5:p1") }));
 
     let clock = 0;
     let screen = "agent working 1";
@@ -878,6 +949,7 @@ test("wait: an agent that goes quiet without finishing gets its run closed from 
       thresholdMs: 10_000,
       now: () => clock,
       paneText: () => screen,
+      agentStatus: () => "unknown",
       roundInFlight: () => busy,
       finish: (s) => {
         finished++;
@@ -922,7 +994,67 @@ test("launch script: an agent that exits without a result still gets a verdict f
     fs.mkdirSync(allCheckDir(slug), { recursive: true });
     const text = fs.readFileSync(writeLaunchScript(slug, "claude", "/tmp/brief.md", "claude-sonnet-5-5"), "utf8");
     assert.match(text, /\[ -f '[^']*result\.json' \] \|\| npx tsx backend\/cli\.ts all-check finish 'ac-script-finish'/);
-    assert.ok(text.indexOf("all-check finish") < text.indexOf("exec "), "the verdict is written before the window is kept open");
+    assert.doesNotMatch(text, /exec /, "the workspace shell stays available without nesting another shell");
+  } finally {
+    dropPackage(slug);
+  }
+});
+
+test("launch script: the caller environment survives shell state and a real process exit runs finish", () => {
+  const slug = "ac-script-env";
+  makePackage(slug);
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "allcheck-launch-env-"));
+  try {
+    fs.mkdirSync(allCheckDir(slug), { recursive: true });
+    const evidence = path.join(scratch, "env.txt");
+    const finish = path.join(scratch, "finish.txt");
+    fs.writeFileSync(path.join(scratch, "claude"), '#!/bin/sh\nprintf "%s\\n" "$AIDEOS_CONFIG" "${AIDEOS_GEMINI_REVIEW_MODEL-unset}" > "$AC_ENV_EVIDENCE"\n', { mode: 0o755 });
+    fs.writeFileSync(path.join(scratch, "npx"), '#!/bin/sh\nprintf "%s" "$*" > "$AC_FINISH_EVIDENCE"\n', { mode: 0o755 });
+    const config = "caller's $(literal) `configuration`";
+    const script = writeLaunchScript(slug, "claude", "/tmp/brief.md", "claude-sonnet-5-5", {
+      HOME: scratch, PATH: `${scratch}${path.delimiter}${process.env.PATH}`, AIDEOS_CONFIG: config, AIDEOS_VIDEOS_DIR: getVideosDir(),
+    });
+    const child = spawnSync("bash", [script], {
+      encoding: "utf8", timeout: 5000,
+      env: { ...process.env, AIDEOS_CONFIG: "server's stale config", AIDEOS_GEMINI_REVIEW_MODEL: "stale-review-model", AC_ENV_EVIDENCE: evidence, AC_FINISH_EVIDENCE: finish },
+    });
+    assert.equal(child.status, 0, child.stderr);
+    assert.equal(fs.readFileSync(evidence, "utf8"), `${config}\nunset\n`);
+    assert.equal(fs.readFileSync(finish, "utf8"), `tsx backend/cli.ts all-check finish ${slug}`);
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+    dropPackage(slug);
+  }
+});
+
+test("wait: working resets the clock, idle and blocked count without screen changes, blocked is announced once", async () => {
+  const slug = "ac-status-watchdog";
+  makePackage(slug);
+  try {
+    const config = writeConfig(slug);
+    const location = herdrLocation("w5:p1");
+    fs.writeFileSync(lockPath(slug), JSON.stringify({ slug, agent: "agy", startedAt: config.startedAt, launcherPid: 1, herdr: location }));
+    const lockDeps = fakeLock({ windows: new Set([location.paneId]) });
+    let clock = 0;
+    const lines: string[] = [];
+    let sawSlug = "";
+    const idle: IdleWatchdog = {
+      thresholdMs: 10_000, now: () => clock,
+      agentStatus: (actual) => { assert.deepEqual(actual, location); return clock < 20_000 ? "working" : clock < 24_000 ? "idle" : "blocked"; },
+      paneText: () => { throw new Error("known agent status should not need screen fallback"); },
+      roundInFlight: (actual) => { sawSlug = actual; return false; },
+      finish: (actual) => {
+        const result = { schema: "aideos.all-check.result/1", slug: actual, status: "failed", startedAt: config.startedAt, reportPath: "r.md" };
+        fs.writeFileSync(path.join(allCheckDir(slug), "result.json"), JSON.stringify(result));
+        return result as never;
+      },
+    };
+    const outcome = await waitForResult(slug, { timeoutMs: 100_000, pollMs: 4000, lockDeps, idle, onProgress: (line) => lines.push(line), sleep: async (ms) => { clock += ms; } });
+    assert.equal(outcome.finishedByWatchdog, true);
+    assert.equal(clock, 28_000);
+    assert.equal(sawSlug, slug);
+    assert.equal(lines.filter((line) => /waiting for input/.test(line)).length, 1);
+    assert.match(lines.find((line) => /waiting for input/.test(line)) ?? "", /herdr agent attach 'w5:p1'/);
   } finally {
     dropPackage(slug);
   }

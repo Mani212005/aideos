@@ -167,18 +167,22 @@ aideos all-check status hnsw                              # rounds so far
 ### What happens
 
 1. **Preflight** (before any agent starts; one message listing each problem with its exact fix): the video
-   package, its voiceover, ffmpeg/ffprobe, tesseract, tmux, the background agent's CLI, and the agy login (the
+   package, its voiceover, ffmpeg/ffprobe, tesseract, Herdr 0.8.0+ with a reachable server, the background agent's CLI, and the agy login (the
    Gemini review runs plain `agy`, checked with `agy models`).
-2. **One run per video.** `videos/<slug>/all-check/lock.json` names the tmux window running the agent; a second
-   run is refused and pointed at it. A lock whose window is gone is stale and replaced.
+2. **One run per video.** `videos/<slug>/all-check/lock.json` records the Herdr socket, workspace and pane running the agent. A second
+   run is refused and pointed at it. A pane that is gone or has returned to its shell makes the lock stale.
+   A tmux-era lock is refused with its exact deletion path; remove it only after that old run is over.
 3. **Launch.** The brief (`all-check/brief.md`, readable, it is exactly what the agent is told) and `launch.sh`
-   are written and a new tmux window starts the agent with all permissions pre-approved: `claude
+   are written and a new unfocused Herdr workspace named `all-check: <slug>` starts the agent with all permissions pre-approved: `claude
    --model <model> --dangerously-skip-permissions "<prompt>"` or `agy --model <model> --prompt-interactive "<prompt>"
    --dangerously-skip-permissions`. The agent and model come from the video model policy in `aideos.config.json`
    (see "Video model policy" below): Claude Sonnet 5.5, whichever agent invoked all-check. Only `--agent` / `--model`
-   change it for one run. The window stays open to watch
-   or step in. `HOME`, `PATH`, `AIDEOS_VIDEOS_DIR` and the review model variables are passed with `tmux -e`, since a
-   window inherits the tmux server's environment, not the caller's.
+   change it for one run. Inside Herdr, the workspace opens on the caller's server. From a plain terminal,
+   it opens on the running default server. If no server is reachable, preflight tells you to start `herdr`
+   and detach with `ctrl+b q`. Install Herdr with `brew install herdr`.
+   Click the workspace or use the printed server-specific `herdr agent attach` command to watch or step in.
+   `launch.sh` exports the caller's `HOME`, `PATH`, `AIDEOS_VIDEOS_DIR` and review model variables before starting
+   the agent. Each Gemini review remains a bounded headless `agy -p` child process.
 4. **The agent runs the loop** with these commands (all `aideos all-check <sub> <slug>`, also spelled
    `all-check-<sub>`): `round --format long|reel|both` renders through Remotion, backs up `film.json`
    (`all-check/backups/`), runs the measured review and the Gemini review (the measured `review.json` is handed to
@@ -198,15 +202,18 @@ aideos all-check status hnsw                              # rounds so far
    round honestly and everything that still fails. When the run did not pass, `finish` also restores the best
    round's `film.json` (the version it replaced is kept as `all-check/backups/film.before-finish.json`) and keeps
    that round's renders as `final-long.mp4` and `final-reel.mp4`, so the package ends on the best film, not the last
-   experiment. An interactive agent that stops at a summary without running `finish` is covered twice: the window
+   experiment. An interactive agent that stops at a summary without running `finish` is covered twice: the launch
    script runs `finish` if the agent process exits, and `all-check wait` closes the run itself from the measured
-   records once the agent's screen has been silent for 10 minutes (`--idle-min`) with no round running.
+   records after 10 minutes (`--idle-min`) idle or blocked with no round running for this film. A working
+   status resets the timer. Unknown agent status falls back to screen changes. A blocked agent prints an
+   attach hint once. The workspace stays open for reading. On the next start of the same film, aideos closes
+   its previous workspace only if every pane is provably at an idle shell.
 7. **Result.** `videos/<slug>/all-check/` gets `report.md`, `result.json`, `round-N/<format>.md|.json` (scores,
    failures, reviewer feedback), the reviewer and measured reports, the rendered `round-N/<format>.mp4`, the stills
    `round-N/<format>-frames/`, and `final-long.mp4` + `final-reel.mp4`. A macOS notification is sent; on a pass the
    final videos open. `aideos exit` logic runs only if the studio was not already running when all-check started.
-   `aideos all-check wait` exits 0 all good, 1 not all good, 3 still running at the timeout, 4 the agent window
-   closed without a result.
+   `aideos all-check wait` exits 0 all good, 1 not all good, 3 still running at the timeout, 4 the agent pane
+   closed or returned to its shell without a result.
 
 ### Rules for the background agent
 

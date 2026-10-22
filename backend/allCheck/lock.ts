@@ -1,7 +1,7 @@
 /**
  * File Description: One all-check run per video at a time. A lock file in videos/<slug>/all-check/
- * names the tmux window running the agent; a second run is refused with a pointer to the live one,
- * while a lock whose window is gone (crashed, closed without finishing) is stale and is taken over.
+ * names the Herdr pane running the agent; a second run is refused with a pointer to the live one,
+ * while a lock whose pane is gone (crashed, closed without finishing) is stale and is taken over.
  * Creation is atomic (exclusive write), liveness is injectable.
  * Inputs and outputs: slug and lock state -> mutual exclusion lock file.
  * Used by: backend/allCheck/index.ts.
@@ -9,24 +9,23 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { allCheckDir, AllCheckError, type AgentName } from "./types";
+import { z } from "zod";
+import { allCheckDir, AllCheckError } from "./types";
+import { attachCommand, herdrLocationSchema, type HerdrLocation } from "./herdr";
 
-/** The lock record: who holds the video and where to find them. */
-export interface LockRecord {
-  slug: string;
-  agent: AgentName;
-  startedAt: string;
-  /** Process that created the lock, which is the only owner until the tmux window exists. */
-  launcherPid: number;
-  /** tmux window id (for example @12) once the agent window exists. */
-  tmuxWindowId?: string;
-  /** tmux session name, for the attach hint. */
-  tmuxSession?: string;
-}
+const lockSchema = z.object({
+  slug: z.string(),
+  agent: z.enum(["claude", "agy"]),
+  startedAt: z.string(),
+  launcherPid: z.number().int(),
+  herdr: herdrLocationSchema.optional(),
+});
+/** Who holds the video, with a location once the Herdr workspace has been created. */
+export type LockRecord = z.infer<typeof lockSchema>;
 
 /** How liveness is decided: tests inject both. */
 export interface LockDeps {
-  windowAlive: (windowId: string) => boolean;
+  paneLive: (location: HerdrLocation) => boolean;
   pidAlive: (pid: number) => boolean;
   now: () => number;
 }
@@ -42,7 +41,7 @@ function realPidAlive(pid: number): boolean {
 }
 
 export const LOCK_FILE = "lock.json";
-/** A lock with no window yet is the launcher still starting: trusted this long. */
+/** A lock with no pane yet is the launcher still starting: trusted this long. */
 const STARTING_GRACE_MS = 120_000;
 
 // Path of a video's lock file.
@@ -52,24 +51,30 @@ export function lockPath(slug: string): string {
 
 // Reads the lock of a video, or null when there is none (or it is unreadable).
 export function readLock(slug: string): LockRecord | null {
+  let raw: unknown;
   try {
-    return JSON.parse(fs.readFileSync(lockPath(slug), "utf8")) as LockRecord;
+    raw = JSON.parse(fs.readFileSync(lockPath(slug), "utf8"));
   } catch {
     return null;
   }
+  if (raw && typeof raw === "object" && ("tmuxWindowId" in raw || "tmuxSession" in raw)) {
+    throw new AllCheckError(`this video has a tmux-era all-check lock; if that run is over, delete ${lockPath(slug)}`);
+  }
+  const parsed = lockSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
 }
 
 // Decides whether the run a lock names is still going.
 export function lockIsLive(lock: LockRecord, deps: LockDeps): boolean {
-  if (lock.tmuxWindowId) return deps.windowAlive(lock.tmuxWindowId);
+  if (lock.herdr) return deps.paneLive(lock.herdr);
   const age = deps.now() - Date.parse(lock.startedAt);
   return age < STARTING_GRACE_MS && deps.pidAlive(lock.launcherPid);
 }
 
 // Describes where a live run is, for the refusal message and the status command.
 export function describeLock(lock: LockRecord): string {
-  const where = lock.tmuxWindowId
-    ? `tmux window ${lock.tmuxWindowId}${lock.tmuxSession ? ` in session "${lock.tmuxSession}" (attach: tmux attach -t ${lock.tmuxSession})` : ""}`
+  const where = lock.herdr
+    ? `Herdr workspace "all-check: ${lock.slug}", pane ${lock.herdr.paneId} (attach: ${attachCommand(lock.herdr)})`
     : "a run that is still starting";
   return `${lock.agent} agent since ${lock.startedAt}, in ${where}`;
 }
@@ -102,11 +107,25 @@ export function acquireLock(record: LockRecord, deps: LockDeps): { tookOverStale
   throw new AllCheckError(`could not take the all-check lock for "${record.slug}" (${file})`);
 }
 
-// Records the tmux window the agent runs in once it exists.
-export function attachWindowToLock(slug: string, windowId: string, session: string): void {
+// Saves workspace ownership before typing, while the lock still belongs to the starting process.
+export function recordOwnedWorkspace(slug: string, herdr: HerdrLocation): void {
+  fs.writeFileSync(path.join(allCheckDir(slug), "workspace.json"), JSON.stringify({ slug, herdr }, null, 2) + "\n");
+}
+
+// Records the detected workspace in the lock, which finish removes.
+export function attachWorkspaceToLock(slug: string, herdr: HerdrLocation): void {
+  recordOwnedWorkspace(slug, herdr);
   const lock = readLock(slug);
-  if (!lock) return;
-  fs.writeFileSync(lockPath(slug), JSON.stringify({ ...lock, tmuxWindowId: windowId, tmuxSession: session }, null, 2) + "\n");
+  if (lock) fs.writeFileSync(lockPath(slug), JSON.stringify({ ...lock, herdr }, null, 2) + "\n");
+}
+
+// Reads only the workspace this video's launcher recorded as its own.
+export function readOwnedWorkspace(slug: string): HerdrLocation | null {
+  try {
+    return z.object({ slug: z.literal(slug), herdr: herdrLocationSchema }).parse(JSON.parse(fs.readFileSync(path.join(allCheckDir(slug), "workspace.json"), "utf8"))).herdr;
+  } catch {
+    return null;
+  }
 }
 
 // Releases a video's lock.
@@ -114,7 +133,7 @@ export function releaseLock(slug: string): void {
   fs.rmSync(lockPath(slug), { force: true });
 }
 
-// The real liveness checks: a tmux window by id, a process by pid.
-export function realLockDeps(tmuxWindowAlive: (windowId: string) => boolean): LockDeps {
-  return { windowAlive: tmuxWindowAlive, pidAlive: realPidAlive, now: () => Date.now() };
+// The real liveness checks: a recorded Herdr pane and the starting process.
+export function realLockDeps(paneLive: (location: HerdrLocation) => boolean): LockDeps {
+  return { paneLive, pidAlive: realPidAlive, now: () => Date.now() };
 }

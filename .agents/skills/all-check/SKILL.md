@@ -8,7 +8,7 @@ description: Run the whole aideos video check on a film in a background agent - 
 # all-check
 
 One skill for the full check of a finished aideos film. It does not review in your session: it starts a
-second agent in its own tmux window that renders, measures, reads the review feedback, edits the film and
+second agent in its own Herdr workspace that renders, measures, reads the review feedback, edits the film and
 repeats, while you stay free. You wait for its result file and then report the scores and the final videos.
 
 ## What it does (the pipeline it owns)
@@ -35,14 +35,14 @@ automatically.
    aideos all-check <slug> [--reference <mp4>] [--rounds <n>] [--target <score>]
    ```
 
-   If `aideos` is not on PATH, use `npx tsx backend/cli.ts all-check <slug> ...` from the repo root. The same command works from a plain terminal; there too the background agent is the one in `aideos.config.json`.
-3. **If it prints "all-check cannot start"**: that is the preflight (agy signed in, video package, voiceover, ffmpeg, tesseract, tmux). Show the user that message with its exact fix and stop. Do not work around it, and do not start anything yourself.
-4. **If it says all-check is already running** on that video: tell the user, point them at the window it names, and offer `aideos all-check wait <slug>`. One run per video at a time.
-5. Otherwise it prints the tmux window, the brief and the result file. Tell the user the check is running and that `tmux attach` shows the agent working (they can step in).
+   If `aideos` is not on PATH, use `npx tsx backend/cli.ts all-check <slug> ...` from the repo root. The same command works from a plain terminal if the default Herdr server is running. Inside Herdr it uses the current server. Herdr 0.8.0+ is required (`brew install herdr`); start `herdr` and detach with `ctrl+b q` before launching from a plain terminal.
+3. **If it prints "all-check cannot start"**: that is the preflight (agy signed in, video package, voiceover, ffmpeg, tesseract, Herdr 0.8.0+ and its running server). Show the user that message with its exact fix and stop. Do not work around it, and do not start anything yourself.
+4. **If it says all-check is already running** on that video: tell the user, point them at the workspace and attach command it names, and offer `aideos all-check wait <slug>`. One run per video at a time.
+5. Otherwise it prints the Herdr workspace, the pane, the server-specific attach command, the brief and the result file. Tell the user the check is running. They can click `all-check: <slug>` in Herdr or use the printed attach command to watch or step in. Detach with `ctrl+b q`.
 6. Wait for the result: `aideos all-check wait <slug>` (polls the result file; prints each round as it lands). A run takes tens of minutes, so run it as a background command if your harness has one, and re-run it if it exits with 3 (still running).
-7. Report from its output: for long and reel the reviewer score, whether each passed, the round used, the paths of `final-long.mp4` and `final-reel.mp4`, the report path (`videos/<slug>/all-check/report.md`), and, if it is not all good, exactly what still fails. Say plainly if it stopped on the round budget. Exit codes of `wait`: 0 all good, 1 not all good, 3 timed out (still running), 4 the agent window closed without a result. (If the agent goes quiet without finishing, `wait` closes the run itself from the measured records after 10 minutes of silence.)
+7. Report from its output: for long and reel the reviewer score, whether each passed, the round used, the paths of `final-long.mp4` and `final-reel.mp4`, the report path (`videos/<slug>/all-check/report.md`), and, if it is not all good, exactly what still fails. Say plainly if it stopped on the round budget. Exit codes of `wait`: 0 all good, 1 not all good, 3 timed out (still running), 4 the agent pane closed or returned to its shell without a result. (If the agent goes quiet without finishing, `wait` closes the run itself from the measured records after 10 minutes idle or blocked with no round running. A working status resets the timer; unknown status uses screen changes.)
 
-On a pass the final videos open on their own and a macOS notification is sent; the tmux window stays open.
+On a pass the final videos open on their own and a macOS notification is sent; the Herdr workspace stays open. The next start of the same film closes that previous workspace only when every pane is at an idle shell.
 
 Do not edit the film yourself while the background agent runs, and never score the video yourself: only the tools' output counts.
 

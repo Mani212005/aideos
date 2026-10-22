@@ -325,9 +325,9 @@ camera motion smoother and move captions slightly upward.
 
 ## All-check (the whole review in one background agent)
 
-- `aideos all-check <slug>` (`backend/allCheck/`, [docs/REVIEW.md](docs/REVIEW.md) section 3, skill `.agents/skills/all-check/SKILL.md`, linked from `.claude/skills`) preflights, takes a per-video lock, writes a brief and opens a tmux window with a pre-approved `claude` or `agy` that loops render, measured review, Gemini review, frame check, fix on `videos/<slug>/` until long and reel both pass. Pass/fail comes only from the tool-written records in `videos/<slug>/all-check/`; the agent never scores or writes them. A code fix goes through a treehouse worktree and a PR, never main.
+- `aideos all-check <slug>` (`backend/allCheck/`, [docs/REVIEW.md](docs/REVIEW.md) section 3, skill `.agents/skills/all-check/SKILL.md`, linked from `.claude/skills`) preflights, takes a per-video lock, writes a brief and opens an unfocused Herdr workspace with a pre-approved `claude` or `agy` that loops render, measured review, Gemini review, frame check, fix on `videos/<slug>/` until long and reel both pass. Pass/fail comes only from the tool-written records in `videos/<slug>/all-check/`; the agent never scores or writes them. A code fix goes through a treehouse worktree and a PR, never main.
 - The tool, not the prompt, keeps a run honest: a worse round is rolled back to the best film automatically, a new round needs the previous frame check recorded, `finish` restores the best round's film when nothing passed, `wait` closes a run whose agent went quiet, and files the agent creates outside `videos/<slug>/` are reported (`backend/allCheck/best.ts`).
-- Every outside effect (tmux, agy, render, notifications, studio) is injected, so `backend/allCheck/allCheck.test.ts` covers parsing, preflight, lock, rounds and verdict with no model or window. Keep it that way for new steps.
+- Every outside effect (Herdr, agy, render, notifications, studio) is injected, so `backend/allCheck/allCheck.test.ts` covers parsing, preflight, lock, rounds and verdict with no model or window. Keep it that way for new steps.
 - `cleanModelJsonResponse` strips a code fence with any language tag (a `python` fence crashed a pairwise run); extend it rather than parsing reviewer JSON anywhere else.
 
 ## Vision judge (frame review loop)
