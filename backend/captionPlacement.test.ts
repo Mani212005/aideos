@@ -209,7 +209,7 @@ test("review recognizes a moved band without accepting text elsewhere", async ()
 
 // Pins a crossing phrase to its start shot, and narrows into shorter phrases at a fixed font size.
 test("phrase layout keeps start placement across a cut and splits narrow cards", async () => {
-  const { buildCaptionPhrases } = await import("../src/dl/captionPhrases");
+  const { buildCaptionPhrases, captionPhraseAtFrame } = await import("../src/dl/captionPhrases");
   const words = Array.from({ length: 7 }, (_, i) => ({
     text: "readable",
     startFrame: i * 10,
@@ -224,8 +224,16 @@ test("phrase layout keeps start placement across a cut and splits narrow cards",
     measure: () => 180,
   });
   assert.equal(result[0].placement.y, 0.2);
+  assert.equal(captionPhraseAtFrame(result, 25)?.placement.y, 0.2);
   assert.ok(result.every((p) => p.words.length <= 6));
   assert.equal(result.flatMap((p) => p.words).length, words.length);
+});
+
+// Rejects arbitrary filesystem paths at the geometry reader boundary.
+test("caption geometry rejects absolute and traversing SVG sources", async () => {
+  const { resolveCaptionSvgSource } = await import("./designCheck/insetRegion");
+  assert.throws(() => resolveCaptionSvgSource("/etc/passwd.svg"), /only accepts package visuals SVG paths/);
+  assert.throws(() => resolveCaptionSvgSource("examples/demo/visuals/../../../../etc/passwd.svg"), /only accepts package visuals SVG paths/);
 });
 
 // Executes the closed AI operation and its atomic rollback on a locked target.

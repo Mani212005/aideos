@@ -14,6 +14,13 @@ export type CaptionPhrase = {
   placement: CaptionPlacement;
   lineBreaks: number[];
 };
+// Finds the phrase displayed at a frame using the render's phrase boundaries.
+export function captionPhraseAtFrame(
+  phrases: CaptionPhrase[],
+  frame: number,
+): CaptionPhrase | undefined {
+  return phrases.find((phrase) => frame >= phrase.startFrame && frame <= phrase.endFrame);
+}
 // Fits words into at most two rows without changing the font size.
 export function captionWordRows(
   words: CaptionWord[],

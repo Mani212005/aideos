@@ -65,11 +65,12 @@ export function checkCaptionPlacements(
       }
     }
     for (const timed of timeline) {
-      if (sample && sample.shotId !== timed.shot.id) continue;
-      const placement = resolveCaptionPlacement(film, format, timed.shot.id);
+      if (sample && !(sample.frame >= timed.from && sample.frame < timed.to)) continue;
+      const placementShotId = sample?.shotId ?? timed.shot.id;
+      const placement = resolveCaptionPlacement(film, format, placementShotId);
       if (placement.source === "default") continue;
       const rect = captionCardRect(format, width, height, placement, 2);
-      const where = `shot ${timed.shot.id} / ${format}`;
+      const where = `shot ${placementShotId} / ${format}`;
       if (
         timed.shot.stage === "inset" &&
         captionRectsOverlap(rect, getInsetRegion(format, width, height))

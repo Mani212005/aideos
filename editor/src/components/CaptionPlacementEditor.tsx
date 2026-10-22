@@ -30,6 +30,10 @@ import {
   type CaptionScope,
 } from "../../../src/dl/captionPlacement";
 import { getInsetRegion } from "../../../src/dl/fullScreenHeroLayout";
+import { captionWordsForFilm } from "../../../src/dl/captionsParser";
+import { buildCaptionPhrases, captionPhraseAtFrame } from "../../../src/dl/captionPhrases";
+import { measureText } from "@remotion/layout-utils";
+import { SANS } from "../../../src/dl/tokens";
 import { Button, SegmentedTabs } from "./ui";
 
 const collisionResponse = z.object({
@@ -66,13 +70,23 @@ export function CaptionPlacementEditor({
 }: Props) {
   const timeline = buildTimeline(film, film.voiceover?.durationSec);
   const shot = shotAt(timeline, frame).shot;
-  const initialSource = resolveCaptionPlacement(film, format, shot.id).source;
+  const [draft, setDraft] = useState<Film | null>(null);
+  const shownFilm = draft ?? film;
+  const fps = film.fps || 30;
+  const words = captionWordsForFilm(shownFilm);
+  const phrases = buildCaptionPhrases({
+    words, fps, width: CAPTION_FRAMES[format].width, fontSize: 45,
+    placementAt: (startFrame) => resolveCaptionPlacement(shownFilm, format, shotAt(timeline, startFrame)?.shot.id),
+    measure: (text) => measureText({ text, fontFamily: SANS, fontSize: 45, fontWeight: 700 }).width,
+  });
+  const activePhrase = captionPhraseAtFrame(phrases, frame);
+  const phraseShotId = activePhrase ? shotAt(timeline, activePhrase.startFrame)?.shot.id : shot.id;
+  const initialSource = resolveCaptionPlacement(film, format, phraseShotId).source;
   const [scopeKind, setScopeKind] = useState<"film" | "shot">(() =>
-    resolveCaptionPlacement(film, format, shot.id).source === "shot"
+    resolveCaptionPlacement(film, format, phraseShotId).source === "shot"
       ? "shot"
       : "film",
   );
-  const [draft, setDraft] = useState<Film | null>(null);
   const [viewport, setViewport] = useState<{
     left: number;
     top: number;
@@ -80,22 +94,21 @@ export function CaptionPlacementEditor({
   } | null>(null);
   const [artWarnings, setArtWarnings] = useState<string[]>([]);
   const gesture = useRef<Gesture | null>(null);
-  const shownFilm = draft ?? film;
   const scope: CaptionScope =
-    scopeKind === "shot" ? { kind: "shot", shotId: shot.id } : { kind: "film" };
+    scopeKind === "shot" ? { kind: "shot", shotId: phraseShotId } : { kind: "film" };
   const placement = resolveCaptionPlacement(
     shownFilm,
     format,
-    scopeKind === "shot" ? shot.id : undefined,
+    scopeKind === "shot" ? phraseShotId : undefined,
   );
   const { width, height } = CAPTION_FRAMES[format];
   const card = captionCardRect(format, width, height, placement);
   const bounds = captionBounds(format, width, height, placement.w, placement.y);
   const collision =
-    shot.stage === "inset" &&
+    shotAt(timeline, activePhrase?.startFrame ?? frame)?.shot.stage === "inset" &&
     captionRectsOverlap(card, getInsetRegion(format, width, height));
   const formatName = format === "long" ? "Wide" : "Reel";
-  const scopeName = scopeKind === "film" ? "whole film" : `shot ${shot.id}`;
+  const scopeName = scopeKind === "film" ? "whole film" : `shot ${phraseShotId}`;
 
   // Debounces geometry measurement and discards stale responses while dragging.
   useEffect(() => {
@@ -108,7 +121,7 @@ export function CaptionPlacementEditor({
           body: JSON.stringify({
             film: shownFilm,
             format,
-            shotId: shot.id,
+            shotId: phraseShotId,
             frame,
           }),
           signal: controller.signal,
@@ -129,14 +142,14 @@ export function CaptionPlacementEditor({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [shownFilm, format, shot.id, frame]);
+  }, [shownFilm, format, phraseShotId, frame]);
 
   // Follow exceptions when changing shots or formats, without resetting an explicit scope choice mid-gesture.
   useEffect(() => {
     setScopeKind(initialSource === "shot" ? "shot" : "film");
     setDraft(null);
     onDraft(null);
-  }, [film.id, format, shot.id, initialSource, onDraft]);
+  }, [film.id, format, phraseShotId, initialSource, onDraft]);
 
   // Track the real letterboxed composition, including media-bin and timeline resize changes.
   useEffect(() => {
@@ -256,10 +269,10 @@ export function CaptionPlacementEditor({
     if (kind === scopeKind) return;
     const next = setCaptionPlacement(film, {
       format,
-      scope: { kind: "shot", shotId: shot.id },
+      scope: { kind: "shot", shotId: phraseShotId },
       placement:
         kind === "shot"
-          ? resolveCaptionPlacement(film, format, shot.id)
+          ? resolveCaptionPlacement(film, format, phraseShotId)
           : undefined,
       owner: true,
     });

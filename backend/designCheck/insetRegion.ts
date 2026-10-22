@@ -9,6 +9,7 @@
  */
 
 import fs from "node:fs";
+import path from "node:path";
 import { buildTimeline } from "../../src/dl/camera";
 import type { Film } from "../../src/dl/schema";
 import { getInsetRegion, INSET_FORMAT_FRAMES, type InsetRect } from "../../src/dl/fullScreenHeroLayout";
@@ -16,7 +17,7 @@ import { compileScene, type CompiledEntity, type CompiledFrame } from "../../src
 import type { Scene } from "../../src/dl/scene/types";
 import { stageProjection } from "../../src/dl/scene/projection";
 import { parseSvgDocument, type SvgNode } from "../../src/dl/scene/svgDocument";
-import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { getExamplesDir, getVideosDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import {
   apply,
   IDENTITY,
@@ -61,6 +62,31 @@ interface Leaf {
 /** The drawn elements of one parsed asset document, cached per file version. */
 const LEAF_CACHE = new Map<string, Leaf[]>();
 
+// Resolves only package visual assets and rejects absolute or escaping sources.
+export function resolveCaptionSvgSource(svgSource: string): string {
+  const parts = svgSource.split("/");
+  if (
+    path.isAbsolute(svgSource) ||
+    parts.some((part) => !part || part === "." || part === "..") ||
+    !/^(videos|examples)\/[^/]+\/visuals\/[^/]+\.svg$/.test(svgSource)
+  ) throw new Error(`Caption geometry only accepts package visuals SVG paths: ${svgSource}`);
+  let resolved: string;
+  try {
+    resolved = fs.realpathSync(resolveRepoAssetPath(svgSource));
+  } catch {
+    throw new Error(`Caption geometry SVG source does not resolve to an authorized package asset: ${svgSource}`);
+  }
+  const roots = [getVideosDir(), getExamplesDir()].flatMap((root) => {
+    try { return [fs.realpathSync(root)]; } catch { return []; }
+  });
+  const inPackageVisuals = roots.some((root) => {
+    const relative = path.relative(path.resolve(root), resolved);
+    return !relative.startsWith("..") && !path.isAbsolute(relative) && relative.split(path.sep)[1] === "visuals";
+  });
+  if (!inPackageVisuals) throw new Error(`Caption geometry SVG path escapes an authorized package visuals directory: ${svgSource}`);
+  return resolved;
+}
+
 // Reads an element's authored opacity, defaulting to opaque.
 function authoredOpacity(node: SvgNode): number {
   const v = Number.parseFloat(node.attrs.opacity ?? "");
@@ -69,7 +95,7 @@ function authoredOpacity(node: SvgNode): number {
 
 // Flattens an asset document into its drawn elements, recording each one's chain of ancestors.
 function collectLeaves(svgSource: string): Leaf[] {
-  const file = resolveRepoAssetPath(svgSource);
+  const file = resolveCaptionSvgSource(svgSource);
   if (!fs.existsSync(file)) return [];
   // A design build rewrites artwork in place, so the cache is keyed by the file's own version.
   const stat = fs.statSync(file);

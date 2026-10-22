@@ -8,7 +8,7 @@ import { CaptionRegionContext } from "./captionRegionContext";
 import { captionCardRect, resolveCaptionPlacement } from "./captionPlacement";
 import React from "react";
 import { AbsoluteFill, Freeze, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
-import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO } from "./tokens";
+import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO, SANS } from "./tokens";
 import { SUBTITLE_FONT_RATIO, getFullScreenHeroLayout, getInsetRegion, heroScrimGradient } from "./fullScreenHeroLayout";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext, useAccent } from "./accent";
@@ -17,6 +17,8 @@ import { CanvasGraph } from "./CanvasGraph";
 import { SceneStage, type TestStageVisibility } from "./SceneStage";
 import { PaperRip } from "./PaperRip";
 import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
+import { buildCaptionPhrases, captionPhraseAtFrame } from "./captionPhrases";
+import { measureText } from "@remotion/layout-utils";
 import { getRetimedAudioRelPath } from "./audio/retime";
 import { deliveryTimeline, formatForSize } from "./delivery";
 import { EndCard, EndCardVoice } from "./EndCard";
@@ -587,6 +589,16 @@ export const FilmView: React.FC<FilmViewProps> = ({
   // A slow push across the card keeps the held stage from reading as a frozen frame.
   const holdScale = inCard && card ? 1 + 0.01 * Math.min(1, (rawFrame - card.from) / Math.max(1, card.durationInFrames)) : 1;
   const current = shotAt(timeline, frame);
+  const captionPhrases = captionWords ? buildCaptionPhrases({
+    words: captionWords,
+    fps,
+    width,
+    fontSize: Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO),
+    placementAt: (startFrame) => resolveCaptionPlacement(film, width < height ? "reel" : "long", shotAt(timeline, startFrame)?.shot.id),
+    measure: (text) => measureText({ text, fontFamily: SANS, fontSize: Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO), fontWeight: 700 }).width,
+  }) : [];
+  const activeCaptionPhrase = captionPhraseAtFrame(captionPhrases, frame);
+  const captionContextPlacement = activeCaptionPhrase?.placement ?? resolveCaptionPlacement(film, width < height ? "reel" : "long", current.shot.id);
   const cam = camAt(film, timeline, frame, { width, height });
   const subtitleWords =
     film.subtitles === false ? captionWords ?? [] : [...(captionWords ?? []), ...delivery.cardWords];
@@ -636,7 +648,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
 
   return (
     <ThemeContext.Provider value={bgTheme}>
-      <CaptionRegionContext.Provider value={film.subtitles !== false && film.captions !== "off" ? captionCardRect(width < height ? "reel" : "long", width, height, resolveCaptionPlacement(film, width < height ? "reel" : "long", current.shot.id)) : undefined}>
+      <CaptionRegionContext.Provider value={film.subtitles !== false && film.captions !== "off" ? captionCardRect(width < height ? "reel" : "long", width, height, captionContextPlacement) : undefined}>
         <AccentContext.Provider value={accent}>
           <Freeze frame={frame} active={inCard}>
             <AbsoluteFill style={{ transform: `scale(${holdScale})` }}>
