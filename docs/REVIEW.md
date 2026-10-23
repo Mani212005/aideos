@@ -171,6 +171,8 @@ aideos all-check status hnsw                              # rounds so far
    Gemini review runs plain `agy`, checked with `agy models`).
 2. **One run per video.** `videos/<slug>/all-check/lock.json` records the Herdr socket, workspace and pane running the agent. A second
    run is refused and pointed at it. A pane that is gone or has returned to its shell makes the lock stale.
+   If Herdr cannot confirm pane or process state, all-check keeps the lock and reports the query error with a retry hint;
+   it never treats an indeterminate result as stale.
    A tmux-era lock is refused with its exact deletion path; remove it only after that old run is over.
 3. **Launch.** The brief (`all-check/brief.md`, readable, it is exactly what the agent is told) and `launch.sh`
    are written and a new unfocused Herdr workspace named `all-check: <slug>` starts the agent with all permissions pre-approved: `claude
