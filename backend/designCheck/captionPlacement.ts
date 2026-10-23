@@ -20,6 +20,12 @@ import {
 import { getInsetRegion } from "../../src/dl/fullScreenHeroLayout";
 import { prepareSvgProjection } from "./insetRegion";
 import type { DesignFinding } from "./designCheck";
+// Uses the server-loaded active film for scene assets after checking the submitted film identity.
+export function resolveCaptionCheckFilm(requestedFilm: Film, activeFilm: Film): Film {
+  if (requestedFilm.id !== activeFilm.id)
+    throw new Error("Caption placement check must match the studio's active film.");
+  return activeFilm;
+}
 // Reports unsafe explicit entries and stage art that occupies an owner's placed card.
 export function checkCaptionPlacements(
   film: Film,

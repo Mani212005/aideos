@@ -12,7 +12,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
-import { checkCaptionPlacementsAsync } from '../backend/designCheck/captionPlacement.ts';
+import { checkCaptionPlacementsAsync, resolveCaptionCheckFilm } from '../backend/designCheck/captionPlacement.ts';
 import type { Scene } from '../src/dl/scene/types.ts';
 import { carryCaptionPlacement } from '../src/dl/captionPlacement.ts';
 import { dropLegacyFilmBlocks, filmSchema } from '../src/dl/schema.ts'
@@ -571,7 +571,23 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           sendJson(res, 400, { error: 'Expected a valid film, format, shotId and frame' });
           return;
         }
-        const { film, format, shotId, frame } = parsed.data;
+        const { film: requestedFilm, format, shotId, frame } = parsed.data;
+        // This local studio route trusts the server's active-film pointer, never a request's package body.
+        const activeFilmFile = path.resolve(__dirname, '../src/dl/activeFilm.ts');
+        const activeFilmSource = fs.existsSync(activeFilmFile) ? fs.readFileSync(activeFilmFile, 'utf8') : '';
+        const activeFilmId = /from\s+["']\.\/films\/([a-z0-9-]+)["']/.exec(activeFilmSource)?.[1];
+        const activeFilm = activeFilmId ? readFilm(activeFilmId) : null;
+        if (!activeFilm) {
+          sendJson(res, 409, { error: 'The studio has no active film to check.' });
+          return;
+        }
+        let film: Film;
+        try {
+          film = resolveCaptionCheckFilm(requestedFilm, activeFilm);
+        } catch (error) {
+          sendJson(res, 409, { error: error instanceof Error ? error.message : String(error) });
+          return;
+        }
         void checkCaptionPlacementsAsync(film, film.scene as Scene | undefined, { format, shotId, frame: Math.round(frame) })
           .then((findings) => sendJson(res, 200, { findings }))
           .catch((error) => sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) }));

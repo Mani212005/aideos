@@ -23,6 +23,7 @@ import {
   captionRectsOverlap,
   dragCaption,
   resizeCaption,
+  preserveVisibleCaptionWidth,
   resolveCaptionPlacement,
   setCaptionPlacement,
   REEL_ACTION_ZONE,
@@ -243,6 +244,15 @@ export function CaptionPlacementEditor({
     };
   }, [format, formatName, onCommit, onDraft]);
 
+  // Preserves the visible default card width when an edit saves its placement.
+  function placementForExplicitSave(target: typeof placement) {
+    const renderedCard = playerRef.current?.getContainerNode()?.querySelector<HTMLElement>("[data-caption-card]");
+    const renderedWidth = renderedCard?.getBoundingClientRect().width;
+    return renderedWidth && viewport
+      ? preserveVisibleCaptionWidth(target, renderedWidth, viewport.scale, width)
+      : target;
+  }
+
   // Captures the selected scope and initial placement so every pointer delta has one stable origin.
   function begin(
     event: React.PointerEvent<HTMLElement>,
@@ -253,11 +263,7 @@ export function CaptionPlacementEditor({
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.focus();
-    const renderedCard = playerRef.current?.getContainerNode()?.querySelector<HTMLElement>("[data-caption-card]");
-    const renderedWidth = renderedCard?.getBoundingClientRect().width;
-    const gesturePlacement = placement.source === "default" && renderedWidth && viewport
-      ? { ...placement, w: renderedWidth / (viewport.scale * width) }
-      : placement;
+    const gesturePlacement = placementForExplicitSave(placement);
     gesture.current = {
       kind,
       x: event.clientX,
@@ -272,12 +278,13 @@ export function CaptionPlacementEditor({
   // Switches scope at the current position, removing the current exception when following the whole film.
   function chooseScope(kind: "film" | "shot") {
     if (kind === scopeKind) return;
+    const shotPlacement = placementForExplicitSave(placement);
     const next = setCaptionPlacement(film, {
       format,
       scope: { kind: "shot", shotId: phraseShotId },
       placement:
         kind === "shot"
-          ? resolveCaptionPlacement(film, format, phraseShotId)
+          ? shotPlacement
           : undefined,
       owner: true,
     });
@@ -301,11 +308,12 @@ export function CaptionPlacementEditor({
   }
   // Provides precise keyboard placement, width changes, lock and gesture cancellation.
   function keyDown(event: React.KeyboardEvent) {
+    const editablePlacement = placementForExplicitSave(placement);
     if (event.key.toLowerCase() === "l") {
       event.preventDefault();
       event.stopPropagation();
       save(
-        { ...placement, locked: !placement.locked },
+        { ...editablePlacement, locked: !placement.locked },
         placement.locked ? "Unlock" : "Lock",
       );
       return;
@@ -320,7 +328,7 @@ export function CaptionPlacementEditor({
     const next =
       event.altKey && horizontal
         ? resizeCaption({
-            placement,
+            placement: editablePlacement,
             format,
             edge: "right",
             dx: direction * step * width,
@@ -328,7 +336,7 @@ export function CaptionPlacementEditor({
             snap: false,
           })
         : dragCaption({
-            placement,
+            placement: editablePlacement,
             format,
             dx: horizontal ? direction * step * width : 0,
             dy: horizontal ? 0 : direction * step * height,

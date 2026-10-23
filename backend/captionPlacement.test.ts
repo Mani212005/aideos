@@ -20,7 +20,9 @@ import {
   setCaptionPlacement,
   captionCardRect,
   resolveCaptionCardWidth,
+  preserveVisibleCaptionWidth,
 } from "../src/dl/captionPlacement";
+import { resolveCaptionCheckFilm } from "./designCheck/captionPlacement";
 import {
   convertFilmToLayeredFilm,
   convertLayeredFilmToFilm,
@@ -41,6 +43,28 @@ test("saved w 0.86 has the same fixed width in caption geometry", () => {
   assert.equal(sizing.width, 1920 * 0.86);
   assert.equal(captionCardRect("long", 1920, 1080, explicit).w, sizing.width);
   assert.equal(sizing.innerWidth, sizing.width - 58);
+});
+// Keeps the visible legacy width when a default placement becomes a shot exception.
+test("materializing the implicit card preserves its visible width", () => {
+  const implicit = resolveCaptionPlacement(base, "long");
+  const materialized = preserveVisibleCaptionWidth(implicit, 700, 0.5, 1920);
+  assert.equal(materialized.w, 700 / (0.5 * 1920));
+  assert.equal(preserveVisibleCaptionWidth({ ...implicit, source: "film" }, 700, 0.5, 1920).w, 0.86);
+  const shot = setCaptionPlacement(base, {
+    format: "long",
+    scope: { kind: "shot", shotId: base.shots[0].id },
+    placement: materialized,
+    owner: true,
+  });
+  assert.equal(shot.shots[0].captionPlacement?.long?.w, materialized.w);
+});
+// Restricts caption checks to server-loaded scene assets for the active package.
+test("caption check uses the active disk film and rejects another package id", () => {
+  const active = { ...base, id: "active-film", scene: { renderer: "svg", props: [{ assetId: "trusted" }] } } as typeof base;
+  const request = { ...base, id: "active-film", scene: { renderer: "svg", props: [{ assetId: "body-injected" }] } } as typeof base;
+  assert.equal(resolveCaptionCheckFilm(request, active), active);
+  assert.equal(resolveCaptionCheckFilm(request, active).scene, active.scene);
+  assert.throws(() => resolveCaptionCheckFilm({ ...request, id: "other-film" }, active), /active film/);
 });
 // Keeps the legacy default and each format independent while resolving shot exceptions first.
 test("caption resolver: defaults, format independence, shot precedence and lock", () => {
@@ -127,7 +151,38 @@ test("move and resize use composition coordinates and preserve the opposite edge
     scale: 1,
     snap: true,
   });
-  assert.equal(snapped.x, 0.5);
+  assert.equal(snapped.x, 0.49);
+  const vertical = dragCaption({
+    placement: { ...top, x: 0.51, y: 0.44 },
+    format: "long",
+    dx: 0,
+    dy: 8,
+    scale: 1,
+    snap: true,
+  });
+  assert.equal(vertical.x, 0.51);
+  const unchangedResize = resizeCaption({
+    placement: { ...top, w: 0.85 },
+    format: "long",
+    edge: "right",
+    dx: 0,
+    scale: 1,
+    snap: true,
+  });
+  assert.equal(unchangedResize.w, 0.85);
+});
+
+// Explicit defaults are validated by format, while only the unresolved default retains legacy bounds.
+test("explicit default values obey format bounds", () => {
+  const implicit = resolveCaptionPlacement(base, "reel");
+  const explicit = resolveCaptionPlacement({
+    ...base,
+    captionPlacement: { reel: { x: 0.5, y: 0.78, w: 0.86, locked: false } },
+  }, "reel");
+  assert.equal(implicit.x, 0.5);
+  assert.equal(implicit.w, 0.86);
+  assert.notEqual(explicit.w, 0.86);
+  assert.equal(setCaptionPlacement(base, { format: "reel", scope: { kind: "film" }, placement: { x: 0.5, y: 0.78, w: 0.86, locked: false }, owner: true }).captionPlacement?.reel?.w, explicit.w);
 });
 
 // Keeps an untouched gesture axis fixed when safe-area clamping would otherwise shift it.

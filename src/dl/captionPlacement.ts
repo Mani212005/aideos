@@ -37,6 +37,17 @@ export function resolveCaptionCardWidth(
   const fixed = placement.source !== "default";
   return { width, fixed, innerWidth: (fixed ? width : width * 0.92) - 58 };
 }
+// Materializes the legacy card's visible width when an implicit placement becomes explicit.
+export function preserveVisibleCaptionWidth(
+  placement: ResolvedCaptionPlacement,
+  renderedWidth: number,
+  scale: number,
+  frameWidth: number,
+): CaptionPlacement {
+  return placement.source === "default"
+    ? { ...placement, w: renderedWidth / (scale * frameWidth) }
+    : placement;
+}
 // Clamps a normalized value between its safe limits.
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -85,13 +96,6 @@ export function clampCaptionPlacement(
   placement: CaptionPlacement,
   format: CaptionFormat,
 ): CaptionPlacement {
-  if (placement.x === 0.5 && placement.y === 0.78 && placement.w === 0.86)
-    return {
-      x: placement.x,
-      y: placement.y,
-      w: placement.w,
-      locked: placement.locked,
-    };
   const { width, height } = CAPTION_FRAMES[format];
   const bounds = captionBounds(format, width, height, placement.w, placement.y);
   return {
@@ -170,8 +174,8 @@ export function dragCaption({
     y: placement.y + dy / scale / height,
   };
   const bounds = captionBounds(format, width, height, next.w, next.y);
-  next.x = snapTo(next.x, [bounds.minX, 0.5, bounds.maxX], snap);
-  next.y = snapTo(next.y, [bounds.minY, 0.45, bounds.maxY], snap);
+  next.x = snapTo(next.x, [bounds.minX, 0.5, bounds.maxX], snap && dx !== 0);
+  next.y = snapTo(next.y, [bounds.minY, 0.45, bounds.maxY], snap && dy !== 0);
   const clamped = clampCaptionPlacement(next, format);
   return {
     ...clamped,
@@ -197,7 +201,7 @@ export function resizeCaption({
     edge === "left" ? opposite - margin : bounds.maxX + bounds.w / 2 - opposite;
   const delta = (dx / scale / width) * (edge === "left" ? -1 : 1);
   const w = clamp(
-    snapTo(placement.w + delta, [0.86], snap),
+    snapTo(placement.w + delta, [0.86], snap && dx !== 0),
     bounds.minW,
     Math.max(bounds.minW, limit),
   );
