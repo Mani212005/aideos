@@ -162,6 +162,29 @@ test("writers preserve placements and owners alone can reset locked entries", ()
     carryCaptionPlacement(previous, base, { owner: true }).captionPlacement,
     undefined,
   );
+  const unlocked = { ...base, captionPlacement: { long: top } };
+  const movedFilm = { ...base, captionPlacement: { long: { ...top, y: 0.4 } } };
+  assert.equal(
+    carryCaptionPlacement(unlocked, movedFilm, { owner: false, agentEdit: true }).captionPlacement?.long?.y,
+    0.4,
+  );
+  const unlockedShot = {
+    ...base,
+    shots: base.shots.map((shot, index) => index === 0 ? { ...shot, captionPlacement: { reel: top } } : shot),
+  };
+  const movedShot = {
+    ...unlockedShot,
+    shots: unlockedShot.shots.map((shot, index) => index === 0 ? { ...shot, captionPlacement: { reel: { ...top, y: 0.4 } } } : shot),
+  };
+  assert.equal(
+    carryCaptionPlacement(unlockedShot, movedShot, { owner: false, agentEdit: true }).shots[0].captionPlacement?.reel?.y,
+    0.4,
+  );
+  const lockedFilm = { ...unlocked, captionPlacement: { long: { ...top, locked: true } } };
+  assert.equal(
+    carryCaptionPlacement(lockedFilm, movedFilm, { owner: false, agentEdit: true }).captionPlacement?.long?.y,
+    top.y,
+  );
   assert.throws(
     () =>
       setCaptionPlacement(previous, {
@@ -291,9 +314,27 @@ test("AI caption operation validates, applies, refuses locks and rolls back", as
     placement: { x: top.x, y: top.y, w: top.w },
   };
   const program = editProgramSchema.parse([op]);
-  const layered = convertFilmToLayeredFilm(base);
+  const stored = { ...base, captionPlacement: { long: { ...top, y: 0.4 } } };
+  const layered = convertFilmToLayeredFilm(stored);
   const applied = applyEditProgram(layered, program);
   assert.deepEqual(applied.film.captionPlacement?.long, top);
+  const updatedFilm = convertLayeredFilmToFilm(applied.film, stored);
+  assert.equal(carryCaptionPlacement(stored, updatedFilm, { owner: false }).captionPlacement?.long?.y, 0.4);
+  assert.equal(carryCaptionPlacement(stored, updatedFilm, { owner: false, agentEdit: true }).captionPlacement?.long?.y, top.y);
+  const shotStored = {
+    ...base,
+    shots: base.shots.map((shot, index) => index === 0 ? { ...shot, captionPlacement: { reel: { ...top, y: 0.4 } } } : shot),
+  };
+  const shotProgram = editProgramSchema.parse([{
+    ...op,
+    format: "reel",
+    scope: { kind: "shot", shotId: shotStored.shots[0].id },
+    placement: { x: top.x, y: top.y, w: top.w },
+  }]);
+  const shotApplied = applyEditProgram(convertFilmToLayeredFilm(shotStored), shotProgram);
+  const updatedShotFilm = convertLayeredFilmToFilm(shotApplied.film, shotStored);
+  assert.equal(updatedShotFilm.shots[0].captionPlacement?.reel?.y, top.y);
+  assert.equal(carryCaptionPlacement(shotStored, updatedShotFilm, { owner: false, agentEdit: true }).shots[0].captionPlacement?.reel?.y, top.y);
   const locked = convertFilmToLayeredFilm({
     ...base,
     captionPlacement: { long: { ...top, locked: true } },

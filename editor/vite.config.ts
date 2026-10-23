@@ -97,7 +97,7 @@ const studioFilmWrites = new Map<string, string>();
 // Persists a film to both the video package (authoritative, read by the editor Player)
 // and the generated src/dl/films/<id>.ts module (read by Remotion's CLI render/activeFilm
 // bundle), so the two never drift the way they did when B-roll auto-wiring only touched one.
-function writeFilm(filmId: string, incoming: Film, options: { owner: boolean } = { owner: false }): void {
+function writeFilm(filmId: string, incoming: Film, options: { owner: boolean; agentEdit?: boolean } = { owner: false }): void {
   const film = filmSchema.parse(carryCaptionPlacement(readFilm(filmId), incoming, options));
   const pkgDir = path.join(videosDir, filmId);
   if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
@@ -1739,7 +1739,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               }
 
               const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
-              writeFilm(updatedFilm.id, updatedFilm);
+              writeFilm(updatedFilm.id, updatedFilm, {
+                owner: false,
+                agentEdit: planResult.ops.some((op) => op.op === 'set_caption_placement'),
+              });
 
               appendEditProvenanceRecord(videosDir, filmId, {
                 request,

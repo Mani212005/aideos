@@ -253,7 +253,7 @@ export function setCaptionPlacement(
 export function carryCaptionPlacement(
   previous: Film | null,
   next: Film,
-  { owner }: { owner: boolean },
+  { owner, agentEdit = false }: { owner: boolean; agentEdit?: boolean },
 ): Film {
   if (!previous || owner) return next;
   // Merges the two format entries without introducing fields on untouched films.
@@ -264,7 +264,7 @@ export function carryCaptionPlacement(
     if (!prev) return incoming;
     const result = { ...incoming };
     for (const format of ["long", "reel"] as const) {
-      if (prev[format])
+      if (prev[format] && (!agentEdit || prev[format].locked || !incoming?.[format]))
         result[format] = prev[format];
     }
     return result;

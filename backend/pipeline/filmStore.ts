@@ -70,7 +70,7 @@ export function readFilm(slug: string): Film | null {
  * than the editor previews. The film is validated before either write, so a malformed film
  * never lands on disk half-applied.
  */
-export function writeFilm(slug: string, film: Film, options: { owner: boolean } = { owner: false }): Film {
+export function writeFilm(slug: string, film: Film, options: { owner: boolean; agentEdit?: boolean } = { owner: false }): Film {
   const validated = parseFilm(carryCaptionPlacement(readFilm(slug), film, options));
   const dir = packageDir(slug);
   fs.mkdirSync(dir, { recursive: true });
