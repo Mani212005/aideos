@@ -66,7 +66,7 @@ the check command, and the instruction to rerun. Both `film` and `direct` exit w
 
 | Mode | Behavior |
 | --- | --- |
-| `inline` (default) | Deliver through agent link, tmux or steering inbox and wait for validated output. With no listener or a timeout, return the authoring stop to the invoking agent. |
+| `inline` (default) | Deliver through agent link, a recorded tmux pane, or steering inbox and wait for validated output. With no listener or a timeout, return the authoring stop to the invoking agent. |
 | `agent` | Require a delivered coding agent; missing delivery or a timeout fails the stage. |
 | `server` | Ask the configured Claude generation model (`aideos.config.json`'s `videoModels.generation`) for JSON, validate, and feed errors back for bounded retries. An exhausted retry returns an authoring stop. |
 | `templates` | Explicitly compile a node-graph template film, stamped `design.source = "templates"`. |
