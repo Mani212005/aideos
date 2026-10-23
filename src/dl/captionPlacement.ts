@@ -172,7 +172,12 @@ export function dragCaption({
   const bounds = captionBounds(format, width, height, next.w, next.y);
   next.x = snapTo(next.x, [bounds.minX, 0.5, bounds.maxX], snap);
   next.y = snapTo(next.y, [bounds.minY, 0.45, bounds.maxY], snap);
-  return clampCaptionPlacement(next, format);
+  const clamped = clampCaptionPlacement(next, format);
+  return {
+    ...clamped,
+    x: dx === 0 && next.x === placement.x ? placement.x : clamped.x,
+    y: dy === 0 && next.y === placement.y ? placement.y : clamped.y,
+  };
 }
 // Resizes from one edge while retaining the opposite edge and the fixed font size.
 export function resizeCaption({
@@ -196,10 +201,11 @@ export function resizeCaption({
     bounds.minW,
     Math.max(bounds.minW, limit),
   );
-  return clampCaptionPlacement(
+  const clamped = clampCaptionPlacement(
     { ...placement, w, x: opposite + ((edge === "left" ? -1 : 1) * w) / 2 },
     format,
   );
+  return { ...clamped, y: placement.y };
 }
 // Sets or resets one scope, refusing agent writes to a pinned effective card.
 export function setCaptionPlacement(

@@ -1,11 +1,12 @@
 # Movable caption proof
 
-Real film `speculative-decoding-designed`, frame 45. The after images use positions moved,
-resized and locked through the studio. Font size is unchanged. These images are for visual
+Real film `speculative-decoding-designed`, frame 45. The after images use saved positions
+that are locked. Font size is unchanged. These images are for visual
 acceptance by the owner.
 
-The saved Wide card is 40% of the frame width at X 25% / Y 24%; the Reel card is 64%
-at X 40% / Y 29%. Both are locked. Every saved card uses its declared visible width,
+The saved Wide card is `{x: 0.42637305699481864, y: 0.2367681347150259, w: 0.7527461139896373}`;
+the Reel card is `{x: 0.3983630781040107, y: 0.28778821243523317, w: 0.63524467472654}`.
+Both are locked. Every saved card uses its declared visible width,
 including a saved width of 86%; implicit defaults retain the original content-sized card.
 
 | Format | Before | Moved and resized |

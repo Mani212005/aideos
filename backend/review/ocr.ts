@@ -159,12 +159,12 @@ function overlapping(a: OcrWord, b: OcrWord, ratio: number): boolean {
 }
 
 // Measures one sampled frame: caption card, small and faint words, overlaps, edge crowding, numbers.
-export function analyzeSample(words: OcrWord[], gray: Uint8Array | null, width: number, height: number, t: number, captionRect?: CaptionRect): SampleAnalysis {
+export function analyzeSample(words: OcrWord[], gray: Uint8Array | null, width: number, height: number, t: number, captionRect?: CaptionRect | null): SampleAnalysis {
   const unit = Math.min(width, height) / 1080;
   const T = THRESHOLDS;
   const confident = words.filter((w) => w.conf >= T.readability.confidenceMin && w.text.length > 1 && /[A-Za-z0-9]/.test(w.text));
 
-  const band = confident.filter((w) => (captionRect ? w.left >= captionRect.x && w.left + w.width <= captionRect.x + captionRect.w && w.top >= captionRect.y && w.top + w.height <= captionRect.y + captionRect.h : w.top > height * T.captions.bandTopRatio) && w.height / unit >= T.captions.wordHeightMin);
+  const band = captionRect === null ? [] : confident.filter((w) => (captionRect ? w.left >= captionRect.x && w.left + w.width <= captionRect.x + captionRect.w && w.top >= captionRect.y && w.top + w.height <= captionRect.y + captionRect.h : w.top > height * T.captions.bandTopRatio) && w.height / unit >= T.captions.wordHeightMin);
   const lines = new Map<number, OcrWord[]>();
   for (const w of band) {
     const key = Math.round(w.top / (20 * unit));

@@ -70,31 +70,33 @@ export function resolveCaptionSvgSource(svgSource: string, packageSlug?: string)
     parts.some((part) => !part || part === "." || part === "..") ||
     !/^(videos|examples)\/[^/]+\/visuals\/[^/]+\.svg$/.test(svgSource)
   ) throw new Error(`Caption geometry only accepts package visuals SVG paths: ${svgSource}`);
+  const targetSlug = packageSlug ?? parts[1];
   if (packageSlug && (parts[1] !== packageSlug || !/^[a-z0-9-]+$/.test(packageSlug)))
     throw new Error(`Caption geometry SVG source must belong to package ${packageSlug}: ${svgSource}`);
-  let resolved: string;
+  if (!/^[a-z0-9-]+$/.test(targetSlug))
+    throw new Error(`Caption geometry package slug is invalid: ${targetSlug}`);
+  const personalDir = getVideosDir();
+  const packageDir = resolvePackageDir(targetSlug);
+  const personalPackage = path.resolve(packageDir) === path.resolve(personalDir, targetSlug);
+  const expectedPrefix = `${personalPackage ? "videos" : "examples"}/${targetSlug}/visuals/`;
+  if (!svgSource.startsWith(expectedPrefix))
+    throw new Error(`Caption geometry SVG source must belong to package ${targetSlug}: ${svgSource}`);
+  const packageVisuals = path.join(packageDir, "visuals");
+  const svgPath = path.join(packageVisuals, parts[3]);
   try {
-    resolved = fs.realpathSync(resolveRepoAssetPath(svgSource));
+    if (fs.lstatSync(packageDir).isSymbolicLink() || fs.lstatSync(packageVisuals).isSymbolicLink() || fs.lstatSync(svgPath).isSymbolicLink())
+      throw new Error("Package SVG paths may not be symlinks");
+    const videosRoot = fs.realpathSync(personalPackage ? personalDir : getExamplesDir());
+    const physicalPackage = fs.realpathSync(packageDir);
+    if (physicalPackage !== path.join(videosRoot, targetSlug)) throw new Error("Package directory is not physically owned by its root");
+    const visualRoot = fs.realpathSync(packageVisuals);
+    const resolved = fs.realpathSync(svgPath);
+    const visualRelative = path.relative(visualRoot, resolved);
+    if (visualRelative.startsWith("..") || path.isAbsolute(visualRelative)) throw new Error("SVG escapes package visuals");
+    return resolved;
   } catch {
     throw new Error(`Caption geometry SVG source does not resolve to an authorized package asset: ${svgSource}`);
   }
-  const roots = [getVideosDir(), getExamplesDir()].flatMap((root) => {
-    try { return [fs.realpathSync(root)]; } catch { return []; }
-  });
-  const inPackageVisuals = roots.some((root) => {
-    const relative = path.relative(path.resolve(root), resolved);
-    return !relative.startsWith("..") && !path.isAbsolute(relative) && relative.split(path.sep)[1] === "visuals";
-  });
-  if (!inPackageVisuals) throw new Error(`Caption geometry SVG path escapes an authorized package visuals directory: ${svgSource}`);
-  if (packageSlug) {
-    let visualRoot: string;
-    try { visualRoot = fs.realpathSync(path.join(resolvePackageDir(packageSlug), "visuals")); }
-    catch { throw new Error(`Caption geometry package visuals directory does not resolve: ${packageSlug}`); }
-    const relative = path.relative(visualRoot, resolved);
-    if (relative.startsWith("..") || path.isAbsolute(relative))
-      throw new Error(`Caption geometry SVG source escapes package ${packageSlug}: ${svgSource}`);
-  }
-  return resolved;
 }
 
 // Reads an element's authored opacity, defaulting to opaque.
@@ -105,7 +107,7 @@ function authoredOpacity(node: SvgNode): number {
 
 // Flattens an asset document into its drawn elements, recording each one's chain of ancestors.
 function collectLeaves(svgSource: string, packageSlug?: string): Leaf[] {
-  const file = resolveCaptionSvgSource(svgSource, packageSlug);
+  const file = packageSlug ? resolveCaptionSvgSource(svgSource, packageSlug) : resolveRepoAssetPath(svgSource);
   if (!fs.existsSync(file)) return [];
   // A design build rewrites artwork in place, so the cache is keyed by the file's own version.
   const stat = fs.statSync(file);
@@ -246,7 +248,7 @@ export function checkInsetRegions(film: Film, scene: Scene): InsetFinding[] {
         const toPx = sceneToFrame(frame, scene, size.width, size.height);
         for (const entity of frame.entities) {
           if (entity.kind === "background" || reported.has(entity.entityId)) continue;
-          const hit = projectedSvgParts(entity, toPx).find((part) => overlapOf(part.bounds, region));
+          const hit = projectedSvgParts(entity, toPx, film.id).find((part) => overlapOf(part.bounds, region));
           if (!hit) continue;
           reported.add(entity.entityId);
           const cut = format === "long" ? "wide" : "reel";

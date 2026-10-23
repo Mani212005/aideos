@@ -19,6 +19,7 @@ export function prepareCaptionReview(
   width: number,
   height: number,
 ) {
+  if (film.captions === "off" || film.subtitles === false) return null;
   if (!film.captionPlacement && !film.shots.some((s) => s.captionPlacement))
     return undefined;
   const format = width < height ? "reel" : "long";

@@ -51,7 +51,7 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
     try {
       const facts = prepareStageFacts(scene, width, height);
       dispose = facts.dispose;
-      const svgAt = scene.props.some((p) => p.plane === "foreground") ? prepareSvgProjection(scene, width, height) : undefined;
+      const svgAt = scene.props.some((p) => p.plane === "foreground") ? prepareSvgProjection(scene, width, height, film.id) : undefined;
       const foregroundIds = new Set(scene.props.filter((p) => p.plane === "foreground").map((p) => p.assetId));
       const captions = film.captions !== "off" && film.subtitles !== false;
       const placed = timeline.some((t) => resolveCaptionCardWidth(resolveCaptionPlacement(film, format, t.shot.id), width).fixed);

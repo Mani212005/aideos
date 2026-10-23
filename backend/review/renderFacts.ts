@@ -34,7 +34,7 @@ export interface RenderFacts {
 export interface RenderOptions {
   /** Skip the OCR pass (pixel facts only). */
   skipOcr?: boolean;
-  captionRectAt?: (t: number) => CaptionRect;
+  captionRectAt?: ((t: number) => CaptionRect) | null;
   onProgress?: (message: string) => void;
 }
 
@@ -56,14 +56,14 @@ async function pixelPass(file: string) {
 }
 
 // Runs the OCR pass: one full-resolution frame per sample interval, several tesseract processes at once.
-async function ocrPass(file: string, video: VideoFacts, onProgress?: (m: string) => void, captionRectAt?: (t: number) => CaptionRect): Promise<SampleAnalysis[]> {
+async function ocrPass(file: string, video: VideoFacts, onProgress?: (m: string) => void, captionRectAt?: ((t: number) => CaptionRect) | null): Promise<SampleAnalysis[]> {
   const out: SampleAnalysis[] = [];
   const limit = Math.max(1, Math.min(4, os.cpus().length - 1));
   const inflight = new Set<Promise<void>>();
   await streamSampleFrames(file, video, THRESHOLDS.captions.sampleEverySec, async (gray, index, t) => {
     if (t > video.durationSec) return;
     const job = ocrFrame(gray, video.width, video.height).then((words) => {
-      out.push(analyzeSample(words, gray, video.width, video.height, t, captionRectAt?.(t)));
+      out.push(analyzeSample(words, gray, video.width, video.height, t, captionRectAt === null ? null : captionRectAt?.(t)));
       if (index % 10 === 9) onProgress?.(`ocr ${out.length} samples`);
     });
     const tracked = job.finally(() => inflight.delete(tracked));

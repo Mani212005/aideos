@@ -163,7 +163,7 @@ export async function measureBottomCaptions(
   videoPath: string,
   durationSec: number,
   numSamples = 12,
-  captionRectAt?: (t: number) => CaptionRect,
+  captionRectAt?: ((t: number) => CaptionRect) | null,
 ): Promise<{
   measured: boolean;
   hasCaptions: boolean;
@@ -175,6 +175,18 @@ export async function measureBottomCaptions(
   score: number;
   summary: string;
 }> {
+  if (captionRectAt === null) {
+    return {
+      measured: true,
+      hasCaptions: false,
+      coverageRatio: 0,
+      sampledFrames: 0,
+      captionFrames: 0,
+      score: 0,
+      summary: "Caption rendering is disabled by film data",
+    };
+  }
+
   if (durationSec <= 2) {
     return {
       measured: false,

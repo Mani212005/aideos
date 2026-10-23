@@ -129,6 +129,14 @@ test("move and resize use composition coordinates and preserve the opposite edge
   });
   assert.equal(snapped.x, 0.5);
 });
+
+// Keeps an untouched gesture axis fixed when safe-area clamping would otherwise shift it.
+test("horizontal drag and width resize preserve the original vertical position", () => {
+  const implicit = resolveCaptionPlacement(base, "long");
+  assert.equal(dragCaption({ placement: implicit, format: "long", dx: 12, dy: 0, scale: 1, snap: false }).y, implicit.y);
+  assert.equal(dragCaption({ placement: implicit, format: "long", dx: 0, dy: 12, scale: 1, snap: false }).x, implicit.x);
+  assert.equal(resizeCaption({ placement: implicit, format: "long", edge: "right", dx: -12, scale: 1, snap: false }).y, implicit.y);
+});
 // Verifies rebuild carry-forward, owner reset and locked non-owner protection.
 test("writers preserve placements and owners alone can reset locked entries", () => {
   const previous = {
@@ -302,24 +310,53 @@ test("full design check uses the phrase start placement against art in the next 
 test("caption geometry rejects absolute and traversing SVG sources", async () => {
   const path = await import("node:path");
   const { resolveCaptionSvgSource } = await import("./designCheck/insetRegion");
-  assert.throws(() => resolveCaptionSvgSource("/etc/passwd.svg"), /only accepts package visuals SVG paths/);
-  assert.throws(() => resolveCaptionSvgSource("examples/demo/visuals/../../../../etc/passwd.svg"), /only accepts package visuals SVG paths/);
+  assert.throws(() => resolveCaptionSvgSource("/etc/passwd.svg", "demo"), /only accepts package visuals SVG paths/);
+  assert.throws(() => resolveCaptionSvgSource("examples/demo/visuals/../../../../etc/passwd.svg", "demo"), /only accepts package visuals SVG paths/);
   assert.throws(() => resolveCaptionSvgSource("examples/hello-scene/visuals/nodes.svg", "inset-stage"), /must belong to package/);
   const videosDir = fs.mkdtempSync(path.join(process.cwd(), ".caption-svg-scope-test-"));
   const packageDir = path.join(videosDir, "caption-scope-test");
+  const otherPackageDir = path.join(videosDir, "other-package");
   const visualsDir = path.join(packageDir, "visuals");
   const priorVideosDir = process.env.AIDEOS_VIDEOS_DIR;
   fs.mkdirSync(visualsDir, { recursive: true });
+  fs.mkdirSync(path.join(otherPackageDir, "visuals"), { recursive: true });
   fs.writeFileSync(path.join(packageDir, "film.json"), "{}");
-  fs.symlinkSync(path.resolve("examples/hello-scene/visuals/nodes.svg"), path.join(visualsDir, "escape.svg"));
+  fs.writeFileSync(path.join(otherPackageDir, "film.json"), "{}");
+  fs.writeFileSync(path.join(otherPackageDir, "visuals", "private.svg"), '<svg><text id="other-film-secret">private label</text></svg>');
+  fs.rmSync(visualsDir, { recursive: true });
+  fs.symlinkSync(path.join(otherPackageDir, "visuals"), visualsDir);
   process.env.AIDEOS_VIDEOS_DIR = videosDir;
   try {
-    assert.throws(() => resolveCaptionSvgSource("videos/caption-scope-test/visuals/escape.svg", "caption-scope-test"), /authorized package|escapes package/);
+    assert.throws(
+      () => resolveCaptionSvgSource("videos/caption-scope-test/visuals/private.svg", "caption-scope-test"),
+      (error: Error) => {
+        assert.match(error.message, /authorized package/);
+        assert.doesNotMatch(error.message, /other-film-secret|private label/);
+        return true;
+      },
+    );
   } finally {
     if (priorVideosDir === undefined) delete process.env.AIDEOS_VIDEOS_DIR;
     else process.env.AIDEOS_VIDEOS_DIR = priorVideosDir;
     fs.rmSync(videosDir, { recursive: true, force: true });
   }
+});
+
+// Disabled caption sources do not create a review region that unrelated text could satisfy.
+test("caption review omits placement geometry when rendering is disabled", async () => {
+  const { prepareCaptionReview } = await import("./review/captionRegion");
+  const { analyzeSample } = await import("./review/ocr");
+  const { measureBottomCaptions } = await import("./geminiReview/facts");
+  const placed = { ...base, captionPlacement: { long: top } };
+  const captionsOff = prepareCaptionReview({ ...placed, captions: "off" }, 1920, 1080);
+  const subtitlesOff = prepareCaptionReview({ ...placed, subtitles: false }, 1920, 1080);
+  assert.equal(captionsOff, null);
+  assert.equal(subtitlesOff, null);
+  const words = ["one", "two", "three"].map((text, index) => ({ text, left: 100 + index * 100, top: 900, width: 70, height: 45, conf: 95 }));
+  assert.equal(analyzeSample(words, null, 1920, 1080, 1, captionsOff).hasCaption, false);
+  const measured = await measureBottomCaptions("unused.mp4", 4, 12, captionsOff);
+  assert.equal(measured.hasCaptions, false);
+  assert.match(measured.summary, /disabled/);
 });
 
 // Executes the closed AI operation and its atomic rollback on a locked target.

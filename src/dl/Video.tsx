@@ -4,7 +4,7 @@
  * Used by: src/Root.tsx, backend/insetStage.test.ts.
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Audio, Sequence, staticFile, useVideoConfig } from "remotion";
 import { FilmView } from "./Film";
 import { deliveryTimeline, formatForSize } from "./delivery";
@@ -56,6 +56,7 @@ export const Video: React.FC<VideoProps> = ({
   const effectiveVoiceoverVolume = voiceoverVolume ?? film.voiceover?.volume ?? 1;
   const effectiveMusicSrc = (musicSrc ?? "").trim() || film.music?.src || film.audio?.src || "";
   const effectiveMusicVolume = musicVolume ?? film.music?.volume ?? 1;
+  const captionWords = useMemo(() => captionWordsForFilm(film), [film]);
 
   // Extract speech intervals from audio clips or timeline shots with narration
   const speechIntervals: SpeechInterval[] =
@@ -165,9 +166,7 @@ export const Video: React.FC<VideoProps> = ({
         accent={accent}
         showGrid={showGrid}
         showRail={showRail}
-        captionWords={
-          captionWordsForFilm(film)
-        }
+        captionWords={captionWords}
         includeAudio={false}
       />
     </>
