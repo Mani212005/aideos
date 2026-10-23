@@ -331,8 +331,9 @@ test("design check names invalid placement and colliding inset", async () => {
   );
 });
 
-// Keeps the SVG default-band rule active in the format with no saved placement.
-test("scene SVG default band remains protected with only the other format placed", async () => {
+// The scene-art cutoff y > 1260 is the intentional legacy default for every format whenever
+// no placement is saved; per-format projection applies only where a placement is saved.
+test("scene SVG preserves the intentional legacy y > 1260 default cutoff in Wide and Reel", async () => {
   const { checkFilmDesign } = await import("./designCheck/designCheck");
   for (const placed of ["long", "reel"] as const) {
     const defaultFormat = placed === "long" ? "reel" : "long";

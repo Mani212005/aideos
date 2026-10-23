@@ -512,6 +512,8 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
       for (const p of scene.performances ?? []) for (const warning of p.retarget?.warnings ?? []) findings.push({ rule: "scene", severity: "warning", where: `performance ${p.id}`, message: `retargeted onto ${p.retarget!.to} with clamp policy: ${warning}` });
     }
     for (const asset of assets) {
+      // The scene-art cutoff y > 1260 is the intentional legacy default for every format whenever
+      // no placement is saved; per-format projection applies only where a placement is saved.
       if (defaultCaptionFormats.length && asset.position.y > CAPTION_SAFE_SQUARE.y1 && asset.assetId !== "background") {
         findings.push({ rule: "safe-area", severity: "error", where: asset.assetId, message: `placed at y=${asset.position.y}, which is inside the default caption band in ${defaultCaptionFormats.join(" and ")} (y > ${CAPTION_SAFE_SQUARE.y1}); move it up to keep it readable.` });
       }
