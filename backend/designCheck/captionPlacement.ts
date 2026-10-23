@@ -20,11 +20,21 @@ import {
 import { getInsetRegion } from "../../src/dl/fullScreenHeroLayout";
 import { prepareSvgProjection } from "./insetRegion";
 import type { DesignFinding } from "./designCheck";
-// Uses the server-loaded active film for scene assets after checking the submitted film identity.
-export function resolveCaptionCheckFilm(requestedFilm: Film, activeFilm: Film): Film {
+// Applies draft placement fields to the active disk film without accepting request-owned scene data.
+export function applyCaptionPlacementDraft(requestedFilm: Film, activeFilm: Film): Film {
   if (requestedFilm.id !== activeFilm.id)
     throw new Error("Caption placement check must match the studio's active film.");
-  return activeFilm;
+  const requestedShots = new Map(requestedFilm.shots.map((shot) => [shot.id, shot]));
+  return {
+    ...activeFilm,
+    captionPlacement: requestedFilm.captionPlacement,
+    shots: activeFilm.shots.map((shot) => {
+      const requested = requestedShots.get(shot.id);
+      return requested
+        ? { ...shot, captionPlacement: requested.captionPlacement }
+        : shot;
+    }),
+  };
 }
 // Reports unsafe explicit entries and stage art that occupies an owner's placed card.
 export function checkCaptionPlacements(

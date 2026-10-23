@@ -218,6 +218,29 @@ journey(
           "AI panel folds away",
         );
         const before = resolveCaptionPlacement(film(), format);
+        await page.waitFor(
+          `document.querySelector('[data-caption-card]')`,
+          "caption before first saved edit",
+        );
+        const visibleDefaultWidth = await page.eval<number>(
+          `document.querySelector('[data-caption-card]').getBoundingClientRect().width / document.querySelector('[data-caption-guides]').getBoundingClientRect().width * ${format === "long" ? 1920 : 1080}`,
+        );
+        await page.clickButton("Lock", { exact: true });
+        await saved(page);
+        const toolbarLocked = resolveCaptionPlacement(film(), format);
+        assert.ok(Math.abs(toolbarLocked.w * (format === "long" ? 1920 : 1080) - visibleDefaultWidth) <= 1, `toolbar Lock saves the visible default width (${toolbarLocked.w * (format === "long" ? 1920 : 1080)} vs ${visibleDefaultWidth}; source ${before.source})`);
+        await assertCardGeometry(page, format, toolbarLocked);
+        await page.clickButton("Reset", { exact: true });
+        await saved(page);
+        assert.equal(resolveCaptionPlacement(film(), format).source, "default");
+        await page.clickButton("This shot only", { exact: true });
+        await saved(page);
+        const scopedDefault = resolveCaptionPlacement(film(), format, film().shots[0].id);
+        assert.ok(Math.abs(scopedDefault.w * (format === "long" ? 1920 : 1080) - visibleDefaultWidth) <= 1, `shot scope saves the visible default width (${scopedDefault.w * (format === "long" ? 1920 : 1080)} vs ${visibleDefaultWidth}; source ${scopedDefault.source})`);
+        await assertCardGeometry(page, format, scopedDefault);
+        await page.clickButton("Reset", { exact: true });
+        await saved(page);
+        await page.clickButton("Whole film", { exact: true });
         // Move above Reel's action-button strip so a saved w=.86 remains within bounds.
         const moveDy = await page.eval<number>(
           `-document.querySelector('[data-caption-guides]').getBoundingClientRect().height * 0.5`,
@@ -372,7 +395,7 @@ journey(
         for (let i = 0; i < previewBounds.length; i++)
           assert.ok(
             Math.abs(previewBounds[i] - stillBounds[i]) <= 2,
-            `${composition} caption PNG box differs by more than 2 px`,
+            `${composition} caption PNG box differs by more than 2 px: ${previewBounds.join(",")} vs ${stillBounds.join(",")}`,
           );
         const videoBounds = brightBounds(decodeFrame(mp4), rect);
         assert.ok(

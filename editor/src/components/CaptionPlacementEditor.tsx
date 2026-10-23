@@ -81,6 +81,10 @@ export function CaptionPlacementEditor({
     measure: (text) => measureText({ text, fontFamily: SANS, fontSize: 45, fontWeight: 700 }).width,
   }), [words, fps, format, shownFilm, timeline]);
   const activePhrase = captionPhraseAtFrame(phrases, frame);
+  const implicitPhrases = phrases.filter((phrase) => phrase.placement.source === "default");
+  const widthMeasurePhrase = activePhrase?.placement.source === "default"
+    ? activePhrase
+    : implicitPhrases.find((phrase) => phrase.startFrame > frame) ?? implicitPhrases[implicitPhrases.length - 1];
   const phraseShotId = activePhrase ? shotAt(timeline, activePhrase.startFrame)?.shot.id : shot.id;
   const initialSource = resolveCaptionPlacement(film, format, phraseShotId).source;
   const [scopeKind, setScopeKind] = useState<"film" | "shot">(() =>
@@ -95,6 +99,7 @@ export function CaptionPlacementEditor({
   } | null>(null);
   const [artWarnings, setArtWarnings] = useState<string[]>([]);
   const gesture = useRef<Gesture | null>(null);
+  const defaultWidthMeasure = useRef<HTMLDivElement | null>(null);
   const scope: CaptionScope =
     scopeKind === "shot" ? { kind: "shot", shotId: phraseShotId } : { kind: "film" };
   const placement = resolveCaptionPlacement(
@@ -245,12 +250,18 @@ export function CaptionPlacementEditor({
   }, [format, formatName, onCommit, onDraft]);
 
   // Preserves the visible default card width when an edit saves its placement.
-  function placementForExplicitSave(target: typeof placement) {
-    const renderedCard = playerRef.current?.getContainerNode()?.querySelector<HTMLElement>("[data-caption-card]");
-    const renderedWidth = renderedCard?.getBoundingClientRect().width;
-    return renderedWidth && viewport
-      ? preserveVisibleCaptionWidth(target, renderedWidth, viewport.scale, width)
-      : target;
+  function placementForExplicitSave(target: typeof placement): CaptionPlacement | undefined {
+    if (target.source !== "default") return target;
+    const document = host?.ownerDocument;
+    const renderedCard = document?.querySelector<HTMLElement>("[data-caption-card]");
+    const frameWidth = document?.querySelector<HTMLElement>("[data-caption-guides]")?.getBoundingClientRect().width;
+    const visibleWidth = renderedCard?.getBoundingClientRect().width ?? 0;
+    const measuredWidth = visibleWidth > 0
+      ? visibleWidth
+      : defaultWidthMeasure.current?.getBoundingClientRect().width;
+    return measuredWidth && frameWidth
+      ? preserveVisibleCaptionWidth(target, measuredWidth, frameWidth / width, width)
+      : undefined;
   }
 
   // Captures the selected scope and initial placement so every pointer delta has one stable origin.
@@ -264,6 +275,7 @@ export function CaptionPlacementEditor({
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.focus();
     const gesturePlacement = placementForExplicitSave(placement);
+    if (!gesturePlacement) return;
     gesture.current = {
       kind,
       x: event.clientX,
@@ -278,7 +290,8 @@ export function CaptionPlacementEditor({
   // Switches scope at the current position, removing the current exception when following the whole film.
   function chooseScope(kind: "film" | "shot") {
     if (kind === scopeKind) return;
-    const shotPlacement = placementForExplicitSave(placement);
+    const shotPlacement = kind === "shot" ? placementForExplicitSave(placement) : undefined;
+    if (kind === "shot" && !shotPlacement) return;
     const next = setCaptionPlacement(film, {
       format,
       scope: { kind: "shot", shotId: phraseShotId },
@@ -306,19 +319,26 @@ export function CaptionPlacementEditor({
       `${label} captions (${formatName}, ${scopeName})`,
     );
   }
+  // Locks the current placement without changing the default card's visible width.
+  function toggleLock() {
+    const editablePlacement = placementForExplicitSave(placement);
+    if (!editablePlacement) return;
+    save(
+      { ...editablePlacement, locked: !placement.locked },
+      placement.locked ? "Unlock" : "Lock",
+    );
+  }
   // Provides precise keyboard placement, width changes, lock and gesture cancellation.
   function keyDown(event: React.KeyboardEvent) {
-    const editablePlacement = placementForExplicitSave(placement);
     if (event.key.toLowerCase() === "l") {
       event.preventDefault();
       event.stopPropagation();
-      save(
-        { ...editablePlacement, locked: !placement.locked },
-        placement.locked ? "Unlock" : "Lock",
-      );
+      toggleLock();
       return;
     }
     if (placement.locked || !event.key.startsWith("Arrow")) return;
+    const editablePlacement = placementForExplicitSave(placement);
+    if (!editablePlacement) return;
     event.preventDefault();
     event.stopPropagation();
     const step = event.shiftKey ? 0.05 : 0.005;
@@ -376,6 +396,56 @@ export function CaptionPlacementEditor({
                     card.h * viewport.scale,
                 }}
               />
+              {widthMeasurePhrase ? (
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    width: placement.w * width * viewport.scale,
+                    visibility: "hidden",
+                    pointerEvents: "none",
+                  }}
+                >
+                  <div
+                    ref={defaultWidthMeasure}
+                    style={{
+                      display: "inline-block",
+                      maxWidth: "92%",
+                      padding: `${12 * viewport.scale}px ${28 * viewport.scale}px`,
+                      border: `${viewport.scale}px solid transparent`,
+                      borderRadius: `${16 * viewport.scale}px`,
+                      boxSizing: "content-box",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: `${Math.round(Math.min(width, height) * 0.042) * viewport.scale}px`,
+                        fontFamily: SANS,
+                        fontWeight: 700,
+                        lineHeight: 1.35,
+                        display: "block",
+                        textAlign: "center",
+                        textWrap: "balance",
+                      }}
+                    >
+                      {widthMeasurePhrase.words.map((word, index) => (
+                        <span
+                          key={`${index}-${word.text}`}
+                          style={{
+                            display: "inline-block",
+                            margin: `${4 * viewport.scale}px ${6 * viewport.scale}px`,
+                          }}
+                        >
+                          {word.text}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               {format === "reel" ? (
                 <div
                   aria-label="Platform action buttons"
@@ -488,12 +558,7 @@ export function CaptionPlacementEditor({
           <Button
             size="sm"
             active={placement.locked}
-            onClick={() =>
-              save(
-                { ...placement, locked: !placement.locked },
-                placement.locked ? "Unlock" : "Lock",
-              )
-            }
+            onClick={toggleLock}
           >
             {placement.locked ? (
               <LockKeyhole size={12} />

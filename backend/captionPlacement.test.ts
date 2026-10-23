@@ -22,7 +22,7 @@ import {
   resolveCaptionCardWidth,
   preserveVisibleCaptionWidth,
 } from "../src/dl/captionPlacement";
-import { resolveCaptionCheckFilm } from "./designCheck/captionPlacement";
+import { applyCaptionPlacementDraft } from "./designCheck/captionPlacement";
 import {
   convertFilmToLayeredFilm,
   convertLayeredFilmToFilm,
@@ -59,12 +59,30 @@ test("materializing the implicit card preserves its visible width", () => {
   assert.equal(shot.shots[0].captionPlacement?.long?.w, materialized.w);
 });
 // Restricts caption checks to server-loaded scene assets for the active package.
-test("caption check uses the active disk film and rejects another package id", () => {
-  const active = { ...base, id: "active-film", scene: { renderer: "svg", props: [{ assetId: "trusted" }] } } as typeof base;
-  const request = { ...base, id: "active-film", scene: { renderer: "svg", props: [{ assetId: "body-injected" }] } } as typeof base;
-  assert.equal(resolveCaptionCheckFilm(request, active), active);
-  assert.equal(resolveCaptionCheckFilm(request, active).scene, active.scene);
-  assert.throws(() => resolveCaptionCheckFilm({ ...request, id: "other-film" }, active), /active film/);
+test("caption check applies draft placements to active disk film without body scene data", () => {
+  const active = {
+    ...base,
+    id: "active-film",
+    scene: { renderer: "svg", props: [{ assetId: "trusted" }] },
+    captionPlacement: { long: top },
+  } as typeof base;
+  const request = {
+    ...base,
+    id: "active-film",
+    scene: { renderer: "svg", props: [{ assetId: "body-injected" }] },
+    captionPlacement: { long: { ...top, x: 0.4 } },
+    shots: base.shots.map((shot, index) => ({
+      ...shot,
+      captionPlacement: index === 0 ? { long: { ...top, y: 0.3 } } : undefined,
+    })),
+  } as typeof base;
+  const draft = applyCaptionPlacementDraft(request, active);
+  assert.equal(draft.scene, active.scene);
+  assert.equal(draft.title, active.title);
+  assert.deepEqual(draft.captionPlacement, request.captionPlacement);
+  assert.deepEqual(draft.shots[0].captionPlacement, request.shots[0].captionPlacement);
+  assert.deepEqual(draft.shots[1].captionPlacement, active.shots[1].captionPlacement);
+  assert.throws(() => applyCaptionPlacementDraft({ ...request, id: "other-film" }, active), /active film/);
 });
 // Keeps the legacy default and each format independent while resolving shot exceptions first.
 test("caption resolver: defaults, format independence, shot precedence and lock", () => {
