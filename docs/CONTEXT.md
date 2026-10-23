@@ -293,13 +293,13 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 ### `backend/agentBridge/` (Connected Agent Bridge Hub & Multi-Channel Dispatcher)
 * `traceBus` (`backend/agentBridge/traceBus.ts`): Global singleton in-process telemetry and live film update bus (`TraceBus`) collecting and streaming execution steps (`recordStep`, `updateStep`, `getRecentSteps`, `subscribe`, `clear`) and broadcasting real-time film change notifications (`onFilmUpdate`, `notifyFilmUpdated`, `filmSubscriberCount`) across coding agents, Studio clients, AI edit planning, neural TTS synthesis, GPU B-roll rendering, and invariant validation.
 * `formatStepTimestamp(date)`, `generateStepId()` (`backend/agentBridge/traceBus.ts`): Formatting and identifier helpers for trace steps.
-* `dispatchTask(opts)`: Dispatches rich task context across all active channels (Firstmate steering inbox, MCP task queue, local file/tmux) with automatic hybrid timeout fallback.
+* `dispatchTask(opts)`: Dispatches rich task context across all active channels (Firstmate steering inbox, MCP task queue, local file/tmux) with automatic hybrid timeout fallback. The tmux effect is injectable and only sends to a recorded pane ID; without one, durable file and event-log delivery still occurs.
 * `buildTaskContext(opts, rootDir)`: Assembles full working context payload (script, film manifest, audio spine, word timings, director guide ref, design invariants).
 * `shotLookContext(filmId, shotId, rootDir)`: Reads the checked look plan's treatment and carried cast objects for one shot to provide look-first context in shot redesign prompts.
 * `buildDirectingPrompt(opts, context)`: Formats structured directing prompts for connected coding agents from Studio events (`canvas_updated`, `critique`, `ai_edit`, `narrate_audio`, `script_updated`, `produce_film`, `custom_directive`).
 * `taskQueue`: Global in-memory lifecycle manager for agent tasks (`createTask`, `claimTask`, `completeTask`, `failTask`, `timeoutTask`, `listPendingTasks`, `listAllTasks`, `addListener`).
 * `writeFirstmateInboxMessage(task, targetInboxDir)`: Writes sequential steering message file (`001.msg`, `002.msg`, ...) to Firstmate agent inbox.
-* `dispatchLocalAndTmux(prompt, opts)`: Writes `.aideos_task.md` and pastes prompt into active tmux agent pane.
+* `dispatchLocalAndTmux(prompt, opts)`: Writes `.aideos_task.md` and an event-log entry, then pastes to a recorded tmux pane ID when available. Session names alone are never paste targets.
 * `cancelFallbackTimer(taskId)`, `clearAllFallbackTimers()`: Manages and clears active fallback timer callbacks.
 * `getAgentSession()`, `setAgentSession(info)`: Reads and persists active agent session metadata (`.aideos_session.json`).
 
