@@ -264,7 +264,7 @@ export function carryCaptionPlacement(
     if (!prev) return incoming;
     const result = { ...incoming };
     for (const format of ["long", "reel"] as const) {
-      if (prev[format] && (prev[format].locked || !incoming?.[format]))
+      if (prev[format])
         result[format] = prev[format];
     }
     return result;

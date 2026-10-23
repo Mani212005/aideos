@@ -8,7 +8,7 @@ import type { Scene } from "../../src/dl/scene/types";
 import { buildTimeline } from "../../src/dl/camera";
 import { buildCaptionPhrases, captionPhraseAtFrame } from "../../src/dl/captionPhrases";
 import { captionWordsForFilm } from "../../src/dl/captionsParser";
-import { measureCaptionWords } from "../review/captionMeasurements";
+import { measureCaptionWords, measureCaptionWordsAsync } from "../review/captionMeasurements";
 import {
   CAPTION_FRAMES,
   captionCardRect,
@@ -138,4 +138,26 @@ export function checkCaptionPlacements(
     }
   }
   return findings;
+}
+
+// Preloads measured widths asynchronously before running the shared collision checks.
+export async function checkCaptionPlacementsAsync(
+  film: Film,
+  scene?: Scene,
+  sample?: { format: "long" | "reel"; shotId: string; frame: number },
+): Promise<DesignFinding[]> {
+  if (film.captions !== "off" && film.subtitles !== false) {
+    const timeline = buildTimeline(film, film.voiceover?.durationSec);
+    const words = captionWordsForFilm(film);
+    const needsMeasurement = (["long", "reel"] as const).some((format) => {
+      if (sample && sample.format !== format) return false;
+      const { width } = CAPTION_FRAMES[format];
+      return timeline.some((timed) =>
+        resolveCaptionCardWidth(resolveCaptionPlacement(film, format, timed.shot.id), width).fixed,
+      );
+    });
+    if (needsMeasurement)
+      await measureCaptionWordsAsync(words.map((word) => word.text), 45);
+  }
+  return checkCaptionPlacements(film, scene, sample);
 }

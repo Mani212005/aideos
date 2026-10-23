@@ -241,6 +241,8 @@ test("phrase layout keeps start placement across a cut and splits narrow cards",
   assert.equal(captionPhraseAtFrame(result, 25)?.placement.y, 0.2);
   assert.ok(result.every((p) => p.words.length <= 6));
   assert.equal(result.flatMap((p) => p.words).length, words.length);
+  assert.ok(result.slice(0, -1).every((phrase, i) => phrase.endFrame < result[i + 1].startFrame));
+  assert.equal(captionPhraseAtFrame(result, result[1].startFrame)?.startFrame, result[1].startFrame);
 });
 
 // Checks current shot art against the card anchored by the phrase's first word.
@@ -431,6 +433,17 @@ test("design rebuild keeps locked and unlocked owner placements", async () => {
     assert.deepEqual(readFilm(id)?.captionPlacement, {
       long: { ...top, locked: true },
       reel: top,
+    });
+    writeFilm(
+      id,
+      { ...readFilm(id)!, captionPlacement: { long: { ...top, locked: true }, reel: { ...top, y: 0.4 } } },
+      { owner: true },
+    );
+    const rebuilt = buildDesign(id);
+    assert.equal(rebuilt.state, "passed", JSON.stringify(rebuilt.errors));
+    assert.deepEqual(readFilm(id)?.captionPlacement, {
+      long: { ...top, locked: true },
+      reel: { ...top, y: 0.4 },
     });
   } finally {
     writeFilm(id, original, { owner: true });

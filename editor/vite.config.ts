@@ -12,7 +12,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
-import { checkCaptionPlacements } from '../backend/designCheck/captionPlacement.ts';
+import { checkCaptionPlacementsAsync } from '../backend/designCheck/captionPlacement.ts';
 import type { Scene } from '../src/dl/scene/types.ts';
 import { carryCaptionPlacement } from '../src/dl/captionPlacement.ts';
 import { dropLegacyFilmBlocks, filmSchema } from '../src/dl/schema.ts'
@@ -572,7 +572,9 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           return;
         }
         const { film, format, shotId, frame } = parsed.data;
-        sendJson(res, 200, { findings: checkCaptionPlacements(film, film.scene as Scene | undefined, { format, shotId, frame: Math.round(frame) }) });
+        void checkCaptionPlacementsAsync(film, film.scene as Scene | undefined, { format, shotId, frame: Math.round(frame) })
+          .then((findings) => sendJson(res, 200, { findings }))
+          .catch((error) => sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) }));
       }).catch((error) => sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) }));
       return;
     }

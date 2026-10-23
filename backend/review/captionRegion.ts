@@ -5,7 +5,7 @@
  */
 import type { Film } from "../../src/dl/schema";
 import { captionWordsForFilm } from "../../src/dl/captionsParser";
-import { buildCaptionPhrases } from "../../src/dl/captionPhrases";
+import { buildCaptionPhrases, captionPhraseAtFrame } from "../../src/dl/captionPhrases";
 import { buildTimeline, shotAt } from "../../src/dl/camera";
 import {
   captionCardRect,
@@ -47,9 +47,7 @@ export function prepareCaptionReview(
   // Returns the declared region for a sampled time; gaps use the shot's ghost card.
   return (t: number) => {
     const frame = Math.round(t * film.fps);
-    const phrase = phrases.find(
-      (p) => frame >= p.startFrame && frame <= p.endFrame,
-    );
+    const phrase = captionPhraseAtFrame(phrases, frame);
     const placement =
       phrase?.placement ??
       resolveCaptionPlacement(film, format, shotAt(timeline, frame)?.shot.id);
