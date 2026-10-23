@@ -28,7 +28,7 @@ export const MIN_CAPTION_WIDTH = { long: 0.4, reel: 0.6 };
 // Conservative lower-half right-hand action-button strip; the legacy default remains unchanged.
 export const REEL_ACTION_ZONE = { x: 0.88, y: 0.5 };
 export type CaptionRect = { x: number; y: number; w: number; h: number };
-// Gives saved cards one fixed width while retaining the legacy content-sized card inside its envelope.
+// Keeps the renderer's implicit card content-sized while reserving its full envelope for editor and collision geometry.
 export function resolveCaptionCardWidth(
   placement: CaptionPlacement & { source?: ResolvedCaptionPlacement["source"] },
   frameWidth: number,
@@ -118,7 +118,7 @@ export function resolveCaptionPlacement(
       }
     : { ...DEFAULT_CAPTION_PLACEMENT, source: "default" };
 }
-// Returns the conservative caption envelope used by checks and the editor overlay.
+// Returns a conservative reserved band for legacy defaults and the visible fixed box for saved placements.
 export function captionCardRect(
   _format: CaptionFormat,
   width: number,

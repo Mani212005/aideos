@@ -253,12 +253,17 @@ export function CaptionPlacementEditor({
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.focus();
+    const renderedCard = playerRef.current?.getContainerNode()?.querySelector<HTMLElement>("[data-caption-card]");
+    const renderedWidth = renderedCard?.getBoundingClientRect().width;
+    const gesturePlacement = placement.source === "default" && renderedWidth && viewport
+      ? { ...placement, w: renderedWidth / (viewport.scale * width) }
+      : placement;
     gesture.current = {
       kind,
       x: event.clientX,
       y: event.clientY,
       scale: viewport.scale,
-      placement,
+      placement: gesturePlacement,
       film,
       scope,
       next: film,

@@ -77,7 +77,7 @@ export function checkCaptionPlacements(
       )
     ) {
       try {
-        project = prepareSvgProjection(scene, width, height);
+        project = prepareSvgProjection(scene, width, height, film.id);
       } catch {
         /* Scene validity is reported by the scene rule. */
       }

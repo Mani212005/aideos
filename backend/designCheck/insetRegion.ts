@@ -17,7 +17,7 @@ import { compileScene, type CompiledEntity, type CompiledFrame } from "../../src
 import type { Scene } from "../../src/dl/scene/types";
 import { stageProjection } from "../../src/dl/scene/projection";
 import { parseSvgDocument, type SvgNode } from "../../src/dl/scene/svgDocument";
-import { getExamplesDir, getVideosDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { getExamplesDir, getVideosDir, resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import {
   apply,
   IDENTITY,
@@ -63,13 +63,15 @@ interface Leaf {
 const LEAF_CACHE = new Map<string, Leaf[]>();
 
 // Resolves only package visual assets and rejects absolute or escaping sources.
-export function resolveCaptionSvgSource(svgSource: string): string {
+export function resolveCaptionSvgSource(svgSource: string, packageSlug?: string): string {
   const parts = svgSource.split("/");
   if (
     path.isAbsolute(svgSource) ||
     parts.some((part) => !part || part === "." || part === "..") ||
     !/^(videos|examples)\/[^/]+\/visuals\/[^/]+\.svg$/.test(svgSource)
   ) throw new Error(`Caption geometry only accepts package visuals SVG paths: ${svgSource}`);
+  if (packageSlug && (parts[1] !== packageSlug || !/^[a-z0-9-]+$/.test(packageSlug)))
+    throw new Error(`Caption geometry SVG source must belong to package ${packageSlug}: ${svgSource}`);
   let resolved: string;
   try {
     resolved = fs.realpathSync(resolveRepoAssetPath(svgSource));
@@ -84,6 +86,14 @@ export function resolveCaptionSvgSource(svgSource: string): string {
     return !relative.startsWith("..") && !path.isAbsolute(relative) && relative.split(path.sep)[1] === "visuals";
   });
   if (!inPackageVisuals) throw new Error(`Caption geometry SVG path escapes an authorized package visuals directory: ${svgSource}`);
+  if (packageSlug) {
+    let visualRoot: string;
+    try { visualRoot = fs.realpathSync(path.join(resolvePackageDir(packageSlug), "visuals")); }
+    catch { throw new Error(`Caption geometry package visuals directory does not resolve: ${packageSlug}`); }
+    const relative = path.relative(visualRoot, resolved);
+    if (relative.startsWith("..") || path.isAbsolute(relative))
+      throw new Error(`Caption geometry SVG source escapes package ${packageSlug}: ${svgSource}`);
+  }
   return resolved;
 }
 
@@ -94,8 +104,8 @@ function authoredOpacity(node: SvgNode): number {
 }
 
 // Flattens an asset document into its drawn elements, recording each one's chain of ancestors.
-function collectLeaves(svgSource: string): Leaf[] {
-  const file = resolveCaptionSvgSource(svgSource);
+function collectLeaves(svgSource: string, packageSlug?: string): Leaf[] {
+  const file = resolveCaptionSvgSource(svgSource, packageSlug);
   if (!fs.existsSync(file)) return [];
   // A design build rewrites artwork in place, so the cache is keyed by the file's own version.
   const stat = fs.statSync(file);
@@ -151,6 +161,7 @@ function overlapOf(box: Box, region: InsetRect): { w: number; h: number } | null
 export function projectedSvgParts(
   entity: CompiledEntity,
   frameToPx: Affine,
+  packageSlug?: string,
 ): Array<{ name: string; bounds: Box }> {
   if (!entity.svgSource || entity.transform.opacity <= INSET_ART_MIN_OPACITY) return [];
   const parts: Array<{ name: string; bounds: Box }> = [];
@@ -159,7 +170,7 @@ export function projectedSvgParts(
     multiply(multiply(translation(entity.transform.x, entity.transform.y), scaling(entity.transform.scale, entity.transform.scale)), rotation(entity.transform.rotation)),
   );
   const states = entity.elementStates ?? {};
-  for (const leaf of collectLeaves(entity.svgSource)) {
+  for (const leaf of collectLeaves(entity.svgSource, packageSlug)) {
     let m = placed;
     let opacity = entity.transform.opacity;
     let drawn = true;
@@ -193,16 +204,19 @@ export function prepareSvgProjection(
   scene: Scene,
   width: number,
   height: number,
+  packageSlugOrOptions?: string | { includeBackground?: boolean; packageSlug?: string },
   options: { includeBackground?: boolean } = {},
 ) {
+  const packageSlug = typeof packageSlugOrOptions === "string" ? packageSlugOrOptions : packageSlugOrOptions?.packageSlug;
+  const opts = typeof packageSlugOrOptions === "object" && packageSlugOrOptions !== null ? packageSlugOrOptions : options;
   const compiled = compileScene(scene, { clockMs: 0, skipContinuityVerification: true });
   // Returns the drawn parts at exactly this frame, preserving element animation and authored opacity.
   return (frame: number) => {
     const current = compiled.frames[Math.max(0, Math.min(compiled.frames.length - 1, frame))];
     const matrix = sceneToFrame(current, scene, width, height);
     return current.entities
-      .filter((e) => options.includeBackground || e.kind !== "background")
-      .map((e) => ({ id: e.entityId, parts: projectedSvgParts(e, matrix) }));
+      .filter((e) => opts.includeBackground || e.kind !== "background")
+      .map((e) => ({ id: e.entityId, parts: projectedSvgParts(e, matrix, packageSlug) }));
   };
 }
 

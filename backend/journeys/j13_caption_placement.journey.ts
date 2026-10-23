@@ -231,7 +231,7 @@ journey(
         await drag(page, "[data-caption-handle]", 0, moveDy);
         await saved(page);
         const moved = resolveCaptionPlacement(film(), format);
-        assert.equal(moved.w, 0.86, "a move preserves the default numerical width");
+        assert.ok(moved.w < before.w, "the first gesture saves the rendered default card width");
         await assertCardGeometry(page, format, moved);
         await drag(
           page,

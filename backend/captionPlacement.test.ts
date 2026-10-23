@@ -32,7 +32,9 @@ const top = { x: 0.5, y: 0.2, w: 0.7, locked: false };
 // Treats a saved default-valued width as fixed while retaining the implicit legacy card.
 test("saved w 0.86 has the same fixed width in caption geometry", () => {
   const implicit = resolveCaptionPlacement(base, "long");
-  assert.equal(resolveCaptionCardWidth(implicit, 1920).fixed, false);
+  const implicitSizing = resolveCaptionCardWidth(implicit, 1920);
+  assert.equal(implicitSizing.fixed, false);
+  assert.equal(captionCardRect("long", 1920, 1080, implicit).w, implicitSizing.width);
   const explicit = resolveCaptionPlacement({ ...base, captionPlacement: { long: { ...top, w: 0.86 } } }, "long");
   const sizing = resolveCaptionCardWidth(explicit, 1920);
   assert.equal(sizing.fixed, true);
@@ -298,9 +300,26 @@ test("full design check uses the phrase start placement against art in the next 
 
 // Rejects arbitrary filesystem paths at the geometry reader boundary.
 test("caption geometry rejects absolute and traversing SVG sources", async () => {
+  const path = await import("node:path");
   const { resolveCaptionSvgSource } = await import("./designCheck/insetRegion");
   assert.throws(() => resolveCaptionSvgSource("/etc/passwd.svg"), /only accepts package visuals SVG paths/);
   assert.throws(() => resolveCaptionSvgSource("examples/demo/visuals/../../../../etc/passwd.svg"), /only accepts package visuals SVG paths/);
+  assert.throws(() => resolveCaptionSvgSource("examples/hello-scene/visuals/nodes.svg", "inset-stage"), /must belong to package/);
+  const videosDir = fs.mkdtempSync(path.join(process.cwd(), ".caption-svg-scope-test-"));
+  const packageDir = path.join(videosDir, "caption-scope-test");
+  const visualsDir = path.join(packageDir, "visuals");
+  const priorVideosDir = process.env.AIDEOS_VIDEOS_DIR;
+  fs.mkdirSync(visualsDir, { recursive: true });
+  fs.writeFileSync(path.join(packageDir, "film.json"), "{}");
+  fs.symlinkSync(path.resolve("examples/hello-scene/visuals/nodes.svg"), path.join(visualsDir, "escape.svg"));
+  process.env.AIDEOS_VIDEOS_DIR = videosDir;
+  try {
+    assert.throws(() => resolveCaptionSvgSource("videos/caption-scope-test/visuals/escape.svg", "caption-scope-test"), /authorized package|escapes package/);
+  } finally {
+    if (priorVideosDir === undefined) delete process.env.AIDEOS_VIDEOS_DIR;
+    else process.env.AIDEOS_VIDEOS_DIR = priorVideosDir;
+    fs.rmSync(videosDir, { recursive: true, force: true });
+  }
 });
 
 // Executes the closed AI operation and its atomic rollback on a locked target.
