@@ -1,6 +1,6 @@
 /**
  * File Description: The entry points of `aideos all-check`: start a run (preflight, lock, config,
- * brief, tmux window for the background agent), read its status, wait for its result, and roll the
+ * brief, Herdr workspace for the background agent), read its status, wait for its result, and roll the
  * film back to a round's backup. Rounds and the finish step live in round.ts and finish.ts.
  * Inputs and outputs: slug and options -> full multi-round all-check execution result.
  * Used by: backend/allCheck/cli.ts, backend/allCheck/agent.ts.
@@ -12,8 +12,9 @@ import { spawnSync } from "node:child_process";
 import { writeRepoBaseline } from "./best";
 import { resolveAgent, type ResolvedAgent } from "./agent";
 import { buildBrief } from "./brief";
-import { launchAgentWindow, realTmux, tmuxWindowAlive, writeLaunchScript, type LaunchedWindow, type TmuxRun } from "./launch";
-import { acquireLock, attachWindowToLock, describeLock, lockIsLive, readLock, realLockDeps, releaseLock, type LockDeps } from "./lock";
+import { launchAgentWorkspace, writeLaunchScript, type LaunchedWorkspace } from "./launch";
+import { attachCommand, closeIdleWorkspace, herdrSocket, paneInfo, paneLive, readPane, realHerdr, type AgentStatus, type HerdrLocation, type HerdrRun } from "./herdr";
+import { acquireLock, attachWorkspaceToLock, readOwnedWorkspace, recordOwnedWorkspace, describeLock, lockIsLive, readLock, realLockDeps, releaseLock, type LockDeps } from "./lock";
 import { formatPreflight, packageProblems, REAL_PREFLIGHT_DEPS, runPreflight, type PreflightDeps } from "./preflight";
 import { finishRun } from "./finish";
 import { latestRound, readConfig, readRecords } from "./round";
@@ -32,27 +33,27 @@ export interface StartDeps {
   env: NodeJS.ProcessEnv;
   preflight: PreflightDeps;
   lock: LockDeps;
-  tmux: TmuxRun;
+  herdr: HerdrRun;
   studioRunning: () => boolean;
   now: () => Date;
-  /** Opens the agent window; replaced in tests so none is opened. */
-  launch: (slug: string, scriptPath: string) => LaunchedWindow;
+  /** Opens only the run's own workspace; tests replace it. */
+  launch: (slug: string, scriptPath: string, agent: AllCheckConfig["agent"], onCreated: (location: HerdrLocation) => void) => LaunchedWorkspace;
 }
 
 // The real dependencies of a start.
 export function realStartDeps(): StartDeps {
-  const tmux = realTmux;
+  const herdr = realHerdr;
   return {
     env: process.env,
     preflight: REAL_PREFLIGHT_DEPS,
-    lock: realLockDeps((id) => tmuxWindowAlive(id, tmux)),
-    tmux,
+    lock: realLockDeps((location) => paneLive(location, herdr)),
+    herdr,
     studioRunning: () => {
       const r = spawnSync("lsof", ["-tiTCP:3001", "-sTCP:LISTEN"], { encoding: "utf8" });
       return r.status === 0 && r.stdout.trim().length > 0;
     },
     now: () => new Date(),
-    launch: (slug, scriptPath) => launchAgentWindow(slug, scriptPath, { env: process.env, tmux }),
+    launch: (slug, scriptPath, agent, onCreated) => launchAgentWorkspace(slug, scriptPath, { agent, onCreated, env: process.env, herdr }),
   };
 }
 
@@ -60,7 +61,7 @@ export function realStartDeps(): StartDeps {
 export interface StartResult {
   slug: string;
   agent: ResolvedAgent;
-  window: LaunchedWindow;
+  workspace: LaunchedWorkspace;
   briefPath: string;
   resultPath: string;
   tookOverStaleLock: boolean;
@@ -78,7 +79,7 @@ function archivePreviousRun(slug: string, stamp: string): void {
   for (const name of old) fs.renameSync(path.join(dir, name), path.join(dest, name));
 }
 
-// Starts a run: refuses a second one, checks preflight, then opens the agent's tmux window.
+// Starts a run: refuses a second one, checks preflight, then opens the agent's Herdr workspace.
 export function startAllCheck(options: AllCheckOptions, deps: StartDeps = realStartDeps()): StartResult {
   const slug = options.slug;
   const agent = resolveAgent({ flag: options.agent, modelFlag: options.model, allowForbiddenModel: options.allowForbiddenModel });
@@ -88,11 +89,13 @@ export function startAllCheck(options: AllCheckOptions, deps: StartDeps = realSt
   const dir = allCheckDir(slug);
   const missingPackage = packageProblems(slug);
   if (missingPackage.length) throw new AllCheckError(formatPreflight(slug, missingPackage));
+  const previousWorkspace = readOwnedWorkspace(slug);
   const { tookOverStale } = acquireLock({ slug, agent: agent.agent, startedAt, launcherPid: process.pid }, deps.lock);
   try {
-    const problems = runPreflight({ slug, agent: agent.agent }, deps.preflight);
+    const problems = runPreflight({ slug, agent: agent.agent, socketPath: herdrSocket(deps.env) }, deps.preflight, deps.herdr);
     if (problems.length) throw new AllCheckError(formatPreflight(slug, problems));
 
+    if (previousWorkspace) closeIdleWorkspace(previousWorkspace, deps.herdr);
     archivePreviousRun(slug, startedAt);
     const config: AllCheckConfig = {
       schema: "aideos.all-check.config/1",
@@ -110,11 +113,11 @@ export function startAllCheck(options: AllCheckOptions, deps: StartDeps = realSt
     writeRepoBaseline(slug, REPO_ROOT);
     const briefPath = path.join(dir, "brief.md");
     fs.writeFileSync(briefPath, buildBrief(config, REPO_ROOT));
-    const scriptPath = writeLaunchScript(slug, agent.agent, briefPath, agent.model);
+    const scriptPath = writeLaunchScript(slug, agent.agent, briefPath, agent.model, deps.env);
 
-    const window = deps.launch(slug, scriptPath);
-    attachWindowToLock(slug, window.windowId, window.session);
-    return { slug, agent, window, briefPath, resultPath: path.join(dir, "result.json"), tookOverStaleLock: tookOverStale };
+    const workspace = deps.launch(slug, scriptPath, agent.agent, (location) => recordOwnedWorkspace(slug, location));
+    attachWorkspaceToLock(slug, workspace);
+    return { slug, agent, workspace, briefPath, resultPath: path.join(dir, "result.json"), tookOverStaleLock: tookOverStale };
   } catch (err) {
     releaseLock(slug);
     throw err;
@@ -152,7 +155,7 @@ export function runStatus(slug: string, lockDeps: LockDeps = realStartDeps().loc
   if (result) return { state: "finished", detail: `${result.status}: see ${result.reportPath}`, result, ...base };
   const lock = readLock(slug);
   if (lock && lockIsLive(lock, lockDeps)) return { state: "running", detail: describeLock(lock), ...base };
-  if (lock || records.length) return { state: "stopped", detail: "the agent window is gone and no result was written; run: aideos all-check finish " + slug, ...base };
+  if (lock || records.length) return { state: "stopped", detail: "the agent pane is gone or has returned to its shell and no result was written; run: aideos all-check finish " + slug, ...base };
   return { state: "idle", detail: "no all-check run for this video", ...base };
 }
 
@@ -167,32 +170,40 @@ export interface WaitOutcome {
 
 /**
  * A watchdog for an agent that stops without running `finish`: an interactive agent that has said
- * its piece just sits at its prompt, so its window never closes. When its screen has not changed for
+ * its piece just sits at its prompt, so its pane never closes. When its screen has not changed for
  * `thresholdMs` and no round or finish command is running, the wait writes the result itself from the
  * tool-written records (it scores nothing).
  */
 export interface IdleWatchdog {
   thresholdMs: number;
-  paneText: (windowId: string) => string | null;
-  roundInFlight: () => boolean;
+  paneText: (location: HerdrLocation) => string | null;
+  agentStatus: (location: HerdrLocation) => AgentStatus;
+  roundInFlight: (slug: string) => boolean;
   finish: (slug: string) => AllCheckResult;
   now?: () => number;
 }
 
-// The real watchdog: the tmux pane text, a process check for a running round, and the real finish.
+// Quotes the slug in pgrep's extended regular expression.
+export function roundProcessPattern(slug: string): string {
+  const escaped = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return `all-check[ -](round|finish|frames)[[:space:]]+${escaped}([[:space:]]|$)`;
+}
+
+// The real watchdog reads Herdr's status and screen, and checks only this video's round processes.
 export function realIdleWatchdog(thresholdMs: number): IdleWatchdog {
   return {
     thresholdMs,
-    paneText: (windowId) => {
-      const r = realTmux(["capture-pane", "-p", "-t", windowId]);
-      return r.status === 0 ? r.stdout : null;
+    paneText: (location) => readPane(location),
+    agentStatus: (location) => {
+      const pane = paneInfo(location);
+      return pane?.agent ? pane.agent_status : "unknown";
     },
-    roundInFlight: () => spawnSync("pgrep", ["-f", "all-check[ -](round|finish|frames)"], { encoding: "utf8" }).status === 0,
+    roundInFlight: (slug) => spawnSync("pgrep", ["-f", roundProcessPattern(slug)], { encoding: "utf8" }).status === 0,
     finish: (slug) => finishRun(slug),
   };
 }
 
-// Polls until the run writes its result, its window disappears, the agent goes idle, or the timeout passes.
+// Polls until the run writes its result, its pane disappears, the agent goes idle, or the timeout passes.
 export async function waitForResult(
   slug: string,
   opts: { timeoutMs: number; pollMs: number; onProgress?: (line: string) => void; lockDeps?: LockDeps; sleep?: (ms: number) => Promise<void>; idle?: IdleWatchdog },
@@ -203,6 +214,7 @@ export async function waitForResult(
   let printed = 0;
   let lastScreen: string | null = null;
   let lastChange = now();
+  let reportedBlocked = false;
   for (;;) {
     const status = runStatus(slug, opts.lockDeps);
     for (; printed < status.lines.length; printed++) opts.onProgress?.(status.lines[printed]);
@@ -210,13 +222,19 @@ export async function waitForResult(
     if (status.state === "stopped") return { outcome: "stopped", status };
     if (status.state === "idle") return { outcome: "idle", status };
     if (opts.idle) {
-      const windowId = readLock(slug)?.tmuxWindowId;
-      const screen = windowId ? opts.idle.paneText(windowId) : null;
-      if (screen !== lastScreen) {
-        lastScreen = screen;
-        lastChange = now();
+      const location = readLock(slug)?.herdr;
+      const agentStatus = location ? opts.idle.agentStatus(location) : "unknown";
+      const fallback = agentStatus === "unknown";
+      const screen = fallback && location ? opts.idle.paneText(location) : null;
+      if (agentStatus === "working" || (fallback && screen !== lastScreen)) lastChange = now();
+      lastScreen = screen;
+      if (agentStatus === "blocked" && location && !reportedBlocked) {
+        opts.onProgress?.(`agent is waiting for input in Herdr pane ${location.paneId} (${attachCommand(location)})`);
+        reportedBlocked = true;
       }
-      if (screen !== null && !opts.idle.roundInFlight() && now() - lastChange >= opts.idle.thresholdMs) {
+      const roundRunning = opts.idle.roundInFlight(slug);
+      if (roundRunning) lastChange = now();
+      if (location && (fallback ? screen !== null : agentStatus !== "working") && !roundRunning && now() - lastChange >= opts.idle.thresholdMs) {
         opts.onProgress?.("the agent has gone quiet without finishing: closing the run from the measured records");
         const result = opts.idle.finish(slug);
         return { outcome: "result", result, status: runStatus(slug, opts.lockDeps), finishedByWatchdog: true };

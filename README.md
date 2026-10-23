@@ -89,10 +89,11 @@ npm run review -- videos/speculative-decoding/renders/long.mp4
 # 10. Run Gemini 3.8 Flash video quality review (9.0+ bar)
 aideos gemini-review videos/speculative-decoding/renders/long.mp4
 
-# 11. Full check of the long cut AND the reel in a background agent (own tmux window): render, measured review,
+# 11. Full check of the long cut AND the reel in a background agent (own Herdr workspace): render, measured review,
 #     Gemini review, fix, repeat; reports the scores and final videos (also the `all-check` skill)
 aideos all-check speculative-decoding [--reference ref.mp4] [--rounds 6] [--target 9.0] [--agent claude|agy] [--model <id>]
 #     (models come from aideos.config.json: Claude Sonnet 5.5 generates, Gemini 3.8 Flash reviews)
+#     Requires Herdr 0.8.0+ (`brew install herdr`) and a running Herdr server.
 aideos all-check wait speculative-decoding
 ```
 

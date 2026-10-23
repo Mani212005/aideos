@@ -81,7 +81,7 @@ export function describeResult(result: AllCheckResult): string {
 export function registerAllCheckCommands(program: Command): void {
   program
     .command("all-check")
-    .description("Run the whole video check (render long and reel, measured review, Gemini review, fix, repeat) in a background agent in its own tmux window")
+    .description("Run the whole video check (render long and reel, measured review, Gemini review, fix, repeat) in a background agent in its own Herdr workspace")
     .argument("<slug>", "film slug under videos/")
     .option("--reference <mp4>", "reference video the long cut must win or tie against in the cross-review")
     .option("--rounds <n>", "round budget (default 6)")
@@ -95,11 +95,12 @@ export function registerAllCheckCommands(program: Command): void {
         const options = parseAllCheckOptions(slug, flags);
         const started = startAllCheck(options);
         console.log(`all-check started for "${slug}" with the ${started.agent.agent} agent on ${started.agent.model}${started.agent.note ? ` (${started.agent.note})` : ""}.`);
-        console.log(`  window:  ${started.window.windowId} in tmux session "${started.window.session}" (watch or step in: ${started.window.attachCommand})`);
+        console.log(`  workspace: all-check: ${slug}, pane ${started.workspace.paneId} (watch or step in: ${started.workspace.attachCommand})`);
+        if (started.workspace.warning) console.log(`  ${started.workspace.warning}`);
         console.log(`  brief:   ${started.briefPath}`);
         console.log(`  result:  ${started.resultPath}`);
         console.log(`  wait:    aideos all-check wait ${slug}`);
-        if (started.tookOverStaleLock) console.log("  (an earlier run's window was gone, so its lock was replaced)");
+        if (started.tookOverStaleLock) console.log("  (the earlier pane is no longer running its agent, so its lock was replaced)");
         if (flags.wait) await runWait(slug, 240, 20);
       } catch (err) {
         fail(err);
