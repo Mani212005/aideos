@@ -21,6 +21,7 @@ import {
   captionCardRect,
   resolveCaptionCardWidth,
   preserveVisibleCaptionWidth,
+  MIN_CAPTION_WIDTH,
 } from "../src/dl/captionPlacement";
 import { applyCaptionPlacementDraft } from "./designCheck/captionPlacement";
 import {
@@ -57,6 +58,72 @@ test("materializing the implicit card preserves its visible width", () => {
     owner: true,
   });
   assert.equal(shot.shots[0].captionPlacement?.long?.w, materialized.w);
+});
+// Covers the one-word Wide and short Reel exceptions across first-save paths and explicit resize.
+test("first saves retain short visible widths while explicit resize enforces the minimum", () => {
+  for (const [format, visibleWidth] of [["long", 0.22], ["reel", 0.34]] as const) {
+    const frameWidth = format === "long" ? 1920 : 1080;
+    const implicit = resolveCaptionPlacement(base, format);
+    const materialized = preserveVisibleCaptionWidth(
+      implicit,
+      visibleWidth * frameWidth,
+      1,
+      frameWidth,
+    );
+    assert.equal(materialized.widthSource, "implicit-default");
+    const locked = setCaptionPlacement(base, {
+      format,
+      scope: { kind: "film" },
+      placement: { ...materialized, locked: true },
+      owner: true,
+    });
+    assert.equal(resolveCaptionPlacement(locked, format).w, visibleWidth);
+    assert.equal(parseFilm(locked).captionPlacement?.[format]?.widthSource, "implicit-default");
+    assert.equal(
+      checkCaptionPlacements(locked).some((finding) => finding.rule === "caption-placement"),
+      false,
+    );
+
+    const moved = setCaptionPlacement(base, {
+      format,
+      scope: { kind: "film" },
+      placement: dragCaption({
+        placement: materialized,
+        format,
+        dx: frameWidth * 0.01,
+        dy: 0,
+        scale: 1,
+        snap: false,
+      }),
+      owner: true,
+    });
+    assert.equal(resolveCaptionPlacement(moved, format).w, visibleWidth);
+
+    const shot = setCaptionPlacement(base, {
+      format,
+      scope: { kind: "shot", shotId: base.shots[0].id },
+      placement: materialized,
+      owner: true,
+    });
+    assert.equal(resolveCaptionPlacement(shot, format, base.shots[0].id).w, visibleWidth);
+
+    const invalidExplicit = checkCaptionPlacements({
+      ...base,
+      captionPlacement: { [format]: { x: 0.5, y: 0.2, w: visibleWidth, locked: false } },
+    });
+    assert.ok(invalidExplicit.some((finding) => finding.rule === "caption-placement"));
+
+    const resized = resizeCaption({
+      placement: materialized,
+      format,
+      edge: "right",
+      dx: 0,
+      scale: 1,
+      snap: false,
+    });
+    assert.equal(resized.w, MIN_CAPTION_WIDTH[format]);
+    assert.equal(resized.widthSource, undefined);
+  }
 });
 // Restricts caption checks to server-loaded scene assets for the active package.
 test("caption check applies draft placements to active disk film without body scene data", () => {
@@ -576,6 +643,38 @@ test("shot exceptions survive split move and retime", async () => {
   );
   const roundTrip = convertLayeredFilmToFilm(moved.film, film);
   assert.ok(roundTrip.shots.every((s) => s.captionPlacement?.reel?.y === 0.2));
+});
+
+// Persists an AI split through the normal interpreter and non-owner writer path.
+test("AI split descendants retain shot placement through film persistence", async () => {
+  const { applyEditProgram } = await import("./editPlanner/interpreter");
+  const { readFilm, writeFilm } = await import("./pipeline/filmStore");
+  const id = "caption-ai-split-placement";
+  const original = {
+    ...base,
+    id,
+    shots: base.shots.map((shot, index) => index === 0
+      ? { ...shot, captionPlacement: { long: top } }
+      : shot),
+  };
+  writeFilm(id, original, { owner: true });
+  const layered = convertFilmToLayeredFilm(readFilm(id)!);
+  const source = layered.clips.find((clip) =>
+    clip.kind === "animation" &&
+    (clip.payload as { shotId?: string }).shotId === original.shots[0].id,
+  )!;
+  const split = applyEditProgram(layered, [{
+    op: "split_at",
+    clipId: source.id,
+    atSec: source.position + (source.end - source.start) / 2,
+  }]);
+  assert.equal(split.rejected.length, 0);
+  const updated = convertLayeredFilmToFilm(split.film, original);
+  writeFilm(id, updated);
+  const persisted = readFilm(id)!;
+  const descendants = persisted.shots.filter((shot) => shot.id.startsWith(`${original.shots[0].id}-`));
+  assert.equal(descendants.length, 2);
+  assert.ok(descendants.every((shot) => shot.captionPlacement?.long?.y === top.y));
 });
 
 // Rebuilds from the saved base design and keeps owner placements before the design gate runs.

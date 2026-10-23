@@ -408,6 +408,7 @@ export const captionPlacementSchema = z.object({
   y: z.number().min(0).max(1),
   w: z.number().min(0).max(1).default(0.86),
   locked: z.boolean().default(false),
+  widthSource: z.literal("implicit-default").optional(),
 }).strict();
 export const captionPlacementByFormatSchema = z.object({
   long: captionPlacementSchema.optional(),

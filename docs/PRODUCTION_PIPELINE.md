@@ -231,6 +231,8 @@ can be run against any file.
 Each card records normalized `x` (centre), `y` (top), `w` (width), and `locked`.
 Missing fields retain the legacy centred bottom card. A shot exception overrides its film-wide
 card only in the specified format. The renderer fixes placement and wrapping at each phrase's start.
+The first save of an untouched caption marks and preserves its visible width, even below the resize
+minimum; explicit resizes and unmarked placements still use the format minimum.
 
 Both film writers use `carryCaptionPlacement` in `src/dl/captionPlacement.ts`. Rebuilds preserve
 omitted entries and cannot change locked entries. The studio's save endpoint is the owner writer,

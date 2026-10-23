@@ -109,7 +109,14 @@ export function CaptionPlacementEditor({
   );
   const { width, height } = CAPTION_FRAMES[format];
   const card = captionCardRect(format, width, height, placement);
-  const bounds = captionBounds(format, width, height, placement.w, placement.y);
+  const bounds = captionBounds(
+    format,
+    width,
+    height,
+    placement.w,
+    placement.y,
+    placement.widthSource === "implicit-default" ? 0 : undefined,
+  );
   const collision =
     shot.stage === "inset" &&
     captionRectsOverlap(card, getInsetRegion(format, width, height));

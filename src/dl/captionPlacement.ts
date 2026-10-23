@@ -45,7 +45,11 @@ export function preserveVisibleCaptionWidth(
   frameWidth: number,
 ): CaptionPlacement {
   return placement.source === "default"
-    ? { ...placement, w: renderedWidth / (scale * frameWidth) }
+    ? {
+        ...placement,
+        w: renderedWidth / (scale * frameWidth),
+        widthSource: "implicit-default",
+      }
     : placement;
 }
 // Clamps a normalized value between its safe limits.
@@ -68,6 +72,7 @@ export function captionBounds(
   height: number,
   w: number,
   y = 0.2,
+  minimumWidth = MIN_CAPTION_WIDTH[format],
 ) {
   const margins = getFrameMargins(format, width);
   const right =
@@ -77,7 +82,7 @@ export function captionBounds(
       : 1 - margins.right / width;
   const left = margins.left / width;
   const maxWidth = right - left;
-  const safeWidth = clamp(w, MIN_CAPTION_WIDTH[format], maxWidth);
+  const safeWidth = clamp(w, minimumWidth, maxWidth);
   return {
     minX: left + safeWidth / 2,
     maxX: right - safeWidth / 2,
@@ -86,7 +91,7 @@ export function captionBounds(
       0.78,
       (height - margins.bottom - captionCardHeight(width, height)) / height,
     ),
-    minW: MIN_CAPTION_WIDTH[format],
+    minW: minimumWidth,
     maxW: maxWidth,
     w: safeWidth,
   };
@@ -97,12 +102,15 @@ export function clampCaptionPlacement(
   format: CaptionFormat,
 ): CaptionPlacement {
   const { width, height } = CAPTION_FRAMES[format];
-  const bounds = captionBounds(format, width, height, placement.w, placement.y);
+  // Only a materialized legacy card may remain below the resize minimum.
+  const minimumWidth = placement.widthSource === "implicit-default" ? 0 : MIN_CAPTION_WIDTH[format];
+  const bounds = captionBounds(format, width, height, placement.w, placement.y, minimumWidth);
   return {
     x: clamp(placement.x, bounds.minX, bounds.maxX),
     y: clamp(placement.y, bounds.minY, bounds.maxY),
     w: bounds.w,
     locked: placement.locked,
+    ...(placement.widthSource ? { widthSource: placement.widthSource } : {}),
   };
 }
 // Resolves shot, film and legacy default independently in each format.
@@ -173,7 +181,14 @@ export function dragCaption({
     x: placement.x + dx / scale / width,
     y: placement.y + dy / scale / height,
   };
-  const bounds = captionBounds(format, width, height, next.w, next.y);
+  const bounds = captionBounds(
+    format,
+    width,
+    height,
+    next.w,
+    next.y,
+    next.widthSource === "implicit-default" ? 0 : undefined,
+  );
   next.x = snapTo(next.x, [bounds.minX, 0.5, bounds.maxX], snap && dx !== 0);
   next.y = snapTo(next.y, [bounds.minY, 0.45, bounds.maxY], snap && dy !== 0);
   const clamped = clampCaptionPlacement(next, format);
@@ -193,6 +208,8 @@ export function resizeCaption({
   snap,
 }: Gesture & { edge: "left" | "right" }): CaptionPlacement {
   if (placement.locked) return placement;
+  const resizablePlacement = { ...placement };
+  delete resizablePlacement.widthSource;
   const { width, height } = CAPTION_FRAMES[format];
   const bounds = captionBounds(format, width, height, placement.w, placement.y);
   const opposite = placement.x + ((edge === "left" ? 1 : -1) * placement.w) / 2;
@@ -206,7 +223,7 @@ export function resizeCaption({
     Math.max(bounds.minW, limit),
   );
   const clamped = clampCaptionPlacement(
-    { ...placement, w, x: opposite + ((edge === "left" ? -1 : 1) * w) / 2 },
+    { ...resizablePlacement, w, x: opposite + ((edge === "left" ? -1 : 1) * w) / 2 },
     format,
   );
   return { ...clamped, y: placement.y };
@@ -259,6 +276,16 @@ export function setCaptionPlacement(
         ),
       };
 }
+// Recognizes the generated ID shape used by timeline split descendants.
+function isSplitDescendant(parentId: string, candidateId: string): boolean {
+  return candidateId.startsWith(`${parentId}-`) &&
+    /^-[ab][a-z0-9]{4}(?:-[ab][a-z0-9]{4})*$/.test(candidateId.slice(parentId.length));
+}
+// Compares the serialized placement fields independent of object key order.
+function sameCaptionPlacement(a: CaptionPlacement | undefined, b: CaptionPlacement | undefined): boolean {
+  return !!a && !!b && a.x === b.x && a.y === b.y && a.w === b.w &&
+    a.locked === b.locked && a.widthSource === b.widthSource;
+}
 // Carries omitted entries across rebuilds and lets only owner writes alter locked entries.
 export function carryCaptionPlacement(
   previous: Film | null,
@@ -279,10 +306,16 @@ export function carryCaptionPlacement(
     }
     return result;
   };
-  const orphans = previous.shots.filter(
-    (shot) =>
-      shot.captionPlacement && !next.shots.some((s) => s.id === shot.id),
-  );
+  const orphans = previous.shots.filter((shot) => {
+    if (!shot.captionPlacement || next.shots.some((s) => s.id === shot.id)) return false;
+    const descendants = next.shots.filter((candidate) => isSplitDescendant(shot.id, candidate.id));
+    return descendants.length === 0 || descendants.some((candidate) =>
+      (["long", "reel"] as const).some((format) =>
+        shot.captionPlacement?.[format] &&
+        !sameCaptionPlacement(shot.captionPlacement?.[format], candidate.captionPlacement?.[format]),
+      ),
+    );
+  });
   if (orphans.length)
     throw new Error(
       `caption-placement: rebuild removes shots with owner placement: ${orphans.map((s) => s.id).join(", ")}. Reset those exceptions before rebuilding.`,
