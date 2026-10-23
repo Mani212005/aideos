@@ -2,7 +2,7 @@
 # Inputs and outputs: repository source -> image that serves the editor and its API on port 8080.
 # Used by: render.yaml (Render web service).
 
-FROM node:20-bookworm-slim
+FROM node:22-bookworm-slim
 
 # 1. Install system dependencies: Chromium, FFmpeg, and Asian/Emoji/Western fonts
 RUN apt-get update && apt-get install -y --no-install-recommends \
