@@ -59,7 +59,7 @@ Journeys the brief's list missed, added here:
 
 ## Test layers
 
-Static: file headers, eslint, root and editor type-checks, editor build. Unit and feature:
+Static: file headers, eslint, root type-check, editor build (which type-checks the editor). Unit and feature:
 `backend/characters/characters.test.ts` (schema, hash, rig, expansion, field-named errors, budgets,
 Iona exactness, outward normals, seek-order independence, library resolution, `check --stamp`).
 Property and regression: `backend/characters/retarget.test.ts` (every character, fail and clamp
@@ -153,7 +153,7 @@ character suites to `npm test` for that workflow to run.
 - `npm test` (rebased on the part 2 stage design gates): 874 pass, 0 fail, 3 pre-existing
   intentional skips. New suites: `characters.test.ts` (16), `retarget.test.ts` (10, including 120 + 60 random-proportion cases),
   `journeys.test.ts` (10), `pixels.test.ts` (2, headless Chrome on software GL).
-- Lint gate: headers, eslint, root and editor type-checks, editor build; `smoke:studio` and the
+- Lint gate: headers, eslint, root type-check, editor build (which type-checks the editor); `smoke:studio` and the
   example `validate` pass.
 - Iona promotion: CPU geometry, materials, outlines, hierarchy and mesh order are bit-identical to
   the frozen P0 module; spec-built and legacy Iona are pixel-identical in the same browser; the real
