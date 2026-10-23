@@ -19,7 +19,7 @@ export async function renderVideoForSlug(slug: string, format: "long" | "reel" =
   const pkgDir = resolvePackageDir(slug);
   const rendersDir = path.join(pkgDir, "renders");
   const outPath = path.join(rendersDir, `${format}.mp4`);
-  // Remotion bundles the generated film shadows, so a film.json edited since the last render must be re-shadowed first.
+  // Refresh generated shadows, then capture the active-film source so this render can restore it afterward.
   const previousActive = readActiveFilmSource();
   await fsp.mkdir(rendersDir, { recursive: true });
 
