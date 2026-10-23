@@ -183,7 +183,8 @@ aideos all-check status hnsw                              # rounds so far
    `all-check-<sub>`): `round --format long|reel|both` renders through Remotion, backs up `film.json`
    (`all-check/backups/`), runs the measured review and the Gemini review (the measured `review.json` is handed to
    the reviewer as context), runs the cross-review for the long cut when `--reference` was given, and extracts stills
-   every 4 s; `frames --round N --format F --clean | --issue "..."` records the agent's own frame check;
+   every 4 s. Each render points Remotion at the requested film package and restores the previous active-film
+   selection afterward, including when rendering fails. `frames --round N --format F --clean | --issue "..."` records the agent's own frame check;
    `rollback --round N` restores a backup; `finish` closes the run. Order: long until it passes, then reel, then one
    final `round --format both`. Two rules are enforced by the tool, not the prompt: a round that scores lower than
    the best earlier round (compared on the formats both measured) puts that round's `film.json` back automatically
