@@ -19,7 +19,7 @@ You have complete creative autonomy. The browser canvas is your viewport; the de
 - **Rhythm & Breathing**: Film is music for the eyes. Alternate between tight analytical focus shots and wide canvas camera pull-backs to let the viewer breathe and re-anchor the big picture.
 - **Move, focus, hold**: Each camera move should read as a deliberate turn toward the object the narration is about to discuss. Arrive about one beat before its cue word, name that object as the pose's focus, then hold on it for about 3 to 5 seconds. Avoid continuous drift between subjects.
 - **Readable carry-over**: When a carried object changes, plan a distinct resulting state and a substantial visible transformation. Finish the change while the camera holds on that object, then keep it framed and readable for at least about 2 seconds.
-- **Good Video Standard**: Every film must satisfy the authoritative quality rubric in [`docs/GOOD_VIDEO.md`](GOOD_VIDEO.md) (persistent stage, carry-over with transformation, visible cause and effect, camera movement, bottom captions, and honest data).
+- **Good Video Standard**: Every film must satisfy the authoritative quality rubric in [`docs/GOOD_VIDEO.md`](GOOD_VIDEO.md) (persistent stage, carry-over with transformation, visible cause and effect, camera movement, captions at their placed position with bottom as the default, and honest data).
 
 ---
 

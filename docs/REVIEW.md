@@ -6,7 +6,7 @@ File Description: Documentation and usage reference for aideos deterministic vid
 
 Video quality verification in Aideos operates on two connected layers, and `aideos all-check` (section 3) runs
 both, on the long cut and the reel, with an agent that fixes the film between rounds:
-1. **Deterministic Checks (`aideos review`)**: Precise numerical measurements (OCR caption band coverage, layout correlation, audio loudness, camera motion frequency).
+1. **Deterministic Checks (`aideos review`)**: Precise numerical measurements (OCR caption-card coverage, layout correlation, audio loudness, camera motion frequency).
 2. **Gemini 3.8 Flash Native Review (`aideos gemini-review`)**: Full multimodal video and audio evaluation against the 12-criterion rubric, requiring a score of 9.0+ out of 10.0 with all 6 hard gates passing for acceptance.
 
 ---
@@ -132,8 +132,8 @@ parent exit also kills the remaining tree.
 
 ### How it works
 1. **Direct Video Inspection in Isolated Workspace via agy CLI**: Invokes the configured agy reviewer non-interactively in print mode with `--sandbox` within an isolated temporary directory using neutral filenames (`video.mp4` for single review and pairwise comparisons) and explicit directives to evaluate only the visual and audio stream without writing scripts, extracting frames, or accessing repository files.
-2. **Deterministic Facts Extraction**: Gathers ground-truth data (bottom captions OCR coverage, audio LUFS loudness, duration, framerate, camera track from `film.json` including declared `scene.camera` keyframes, and per-shot look plan facts from `design/LOOK.md` when present) and feeds them into the model prompt to prevent hallucinations.
-3. **Structured Rubric Evaluation**: Grades all 12 criteria on a 0.0 to 10.0 scale, checking the 6 hard gates (persistent stage, camera purpose, bottom captions, readability, no overlap/clipping, audio sync).
+2. **Deterministic Facts Extraction**: Gathers ground-truth data (caption-position OCR coverage, audio LUFS loudness, duration, framerate, camera track from `film.json` including declared `scene.camera` keyframes, and per-shot look plan facts from `design/LOOK.md` when present) and feeds them into the model prompt to prevent hallucinations.
+3. **Structured Rubric Evaluation**: Grades all 12 criteria on a 0.0 to 10.0 scale, checking the 6 hard gates (persistent stage, camera purpose, captions at their placed position, readability, no overlap/clipping, audio sync).
 4. **Timestamp Evidence Enforcement**: Validates that every criterion score includes concrete timestamp citations (e.g. `00:14`, `01:02`) within the video bounds. A criterion still without evidence after the last attempt is failed as unmeasured and the verdict is `REVISE`: missing evidence is never a pass.
 5. **Verdict Decision**:
    - `ACCEPT`: Overall score >= 9.0 and all 6 hard gates passed.
@@ -246,7 +246,7 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 2 | carry_over_transform | No | Named elements carry over across beat boundaries and change position, scale, shape, or role. |
 | 3 | visible_cause_effect | No | Mechanism claims have animations starting within 0.4s of spoken keywords that visually demonstrate the claim. |
 | 4 | **camera_purpose** | Yes | Active, purposeful camera moves (>= 1 move per 20s) framing content naturally without disorienting drift. |
-| 5 | **bottom_captions** | Yes | Clean burned-in captions in the bottom 22% band for >= 95% of speech, readable size (>= 36px), matching spoken audio. |
+| 5 | **bottom_captions** | Yes | Clean burned-in captions at the owner-declared card position (default: bottom 20-22% of the frame) for >= 95% of speech, readable size (>= 36px), matching spoken audio. |
 | 6 | **readability** | Yes | High contrast (>= 4.5:1), clear font hierarchy (>= 24px), sufficient reading duration (>= 0.35s per word). |
 | 7 | **no_overlap_clipping** | Yes | No text-text or text-artwork overlapping; all essential elements stay within the 96px safe margin. |
 | 8 | **audio_sync** | Yes | Story cues synchronize with voiceover within 120ms; the audio and delivered picture durations agree within 100ms, including the end card. |

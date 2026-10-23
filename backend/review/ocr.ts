@@ -1,7 +1,7 @@
 /**
  * File Description: On-screen text measurement for `aideos review`.
  * Runs tesseract on full-resolution sample frames (piped as PGM, no temp files) and turns its word
- * boxes into the facts the rubric needs: is there a caption band along the bottom, how many words
+ * boxes into the facts the rubric needs: are captions in the declared card or default bottom band, how many words
  * are too small or too faint to read, does text overlap other text or leave the safe margin, and
  * which numbers are on screen. Sizes are normalised to a 1080 short side so a reel and a wide cut
  * are held to the same standard. The geometry (`analyzeSample`) is pure and unit tested.
@@ -27,7 +27,7 @@ export interface OcrWord {
 export interface SampleAnalysis {
   t: number;
   words: number;
-  /** A caption band (>= 3 caption-sized words on a line in the bottom quarter) is present. */
+  /** The declared card, or default bottom-quarter band, contains caption text. */
   hasCaption: boolean;
   /** Lines of caption-sized text in the band. */
   captionLines: number;
@@ -158,7 +158,7 @@ function overlapping(a: OcrWord, b: OcrWord, ratio: number): boolean {
   return (ix * iy) / Math.min(a.width * a.height, b.width * b.height) > ratio;
 }
 
-// Measures one sampled frame: caption band, small and faint words, overlaps, edge crowding, numbers.
+// Measures one sampled frame: caption card, small and faint words, overlaps, edge crowding, numbers.
 export function analyzeSample(words: OcrWord[], gray: Uint8Array | null, width: number, height: number, t: number, captionRect?: CaptionRect): SampleAnalysis {
   const unit = Math.min(width, height) / 1080;
   const T = THRESHOLDS;

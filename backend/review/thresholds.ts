@@ -25,13 +25,13 @@ export const THRESHOLDS = {
     boundaryCarryMin: 0.6,
   },
   captions: {
-    /** Share of narrated sample times with a caption band in the bottom quarter. */
+    /** Share of narrated sample times with captions in the declared card, or the bottom-quarter default. */
     coverageMin: 0.6,
     /** A word in the band at least this tall (px at 1080 short side) counts as caption text. */
     wordHeightMin: 28,
     /** Caption lines allowed at once. */
     maxLines: 2,
-    /** The band is the bottom quarter of the frame. */
+    /** The fallback band is the bottom quarter of the frame when no placement metadata exists. */
     bandTopRatio: 0.75,
     /** Seconds between OCR samples. */
     sampleEverySec: 2,

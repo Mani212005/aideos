@@ -9,7 +9,7 @@
 
 ## 🎬 Two Formats, One Film
 
-`Long` (1920x1080) and `Reel` (1080x1920) derive from the same canvas and shot list, sharing safe-area padding and phrase-locked bottom kinetic subtitles (`KineticSubtitles.tsx`) using the active theme accent token. Each render appends the configured like-and-subscribe end card after the story (6 seconds for Long and 3 seconds for Reel by default); its copy, handle, and timing are set in `aideos.config.json`.
+`Long` (1920x1080) and `Reel` (1080x1920) are not two separate edits. They derive automatically from the exact same canvas and shot list, sharing safe-area padding and phrase-locked kinetic subtitles (`KineticSubtitles.tsx`) using the active theme accent token. Captions default to the bottom and can have separate owner-placed cards for each format; see [caption placement](src/dl/README.md#owner-caption-cards). Each render appends the configured like-and-subscribe end card after the story (6 seconds for Long and 3 seconds for Reel by default); its copy, handle, and timing are set in `aideos.config.json`.
 
 ---
 

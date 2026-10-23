@@ -104,7 +104,7 @@ Aideos is engineered around 4 strict architectural invariants:
    - `Reel`: 1080x1920 vertical format for mobile, TikTok, and social shorts.
 2. **Audio Stack**:
    - Dynamic ducking: Automatically attenuates background music when narration is speaking and restores volume during breath gaps.
-   - Kinetic Subtitles: Synchronized word-level karaoke text reveal across both Long and Reel formats positioned in the bottom safe area with active theme accent color (default "bottom", or disabled via "off").
+   - Kinetic Subtitles: Synchronized word-level karaoke text reveal across Long and Reel, using the active theme accent. Captions default to the bottom; owner placements can vary by format and shot. See [caption placement](../src/dl/README.md#owner-caption-cards). Captions can also be disabled with "off".
 
 3. **Autonomous Production Pipeline (`backend/pipeline/run.ts`, `backend/pipeline/director.ts`)**:
    - See [docs/PRODUCTION_PIPELINE.md](PRODUCTION_PIPELINE.md) and [docs/DIRECTOR_GUIDE.md](DIRECTOR_GUIDE.md) for the unified entry points coordinating intake, narrate, look, design, b-roll, assemble, render, and verify, or auto-prompting a film directly from a natural language topic.

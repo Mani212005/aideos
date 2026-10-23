@@ -20,7 +20,7 @@ The root data contract defining a complete video composition (stored authoritati
 * `scene?: FilmScene` (Optional vector scene replacing the canvas graph for scene films)
 * `shots: Shot[]` (Ordered chronological sequence of camera shots and visual blocks)
 * `voiceover?: { src: string, volume?: number, speed?: number, retimedSrc?: string }` (Master audio track source file)
-* `captions?: "bottom" | "off" | string` (Burned-in bottom captions rendering mode or sidecar path, default "bottom")
+* `captions?: "bottom" | "off" | string` (Burned-in captions mode or sidecar path, default "bottom"; position is configured separately by `captionPlacement` in `src/dl/schema.ts`, see [caption placement](../src/dl/README.md#owner-caption-cards))
 * `layers?: LayerDefinition[]` (Persisted non-linear track definitions and settings)
 * `audioClips?: AudioClip[]` (Persisted multi-track audio clips)
 * `videoClips?: VideoClip[]` (Persisted imported footage picture clips)
@@ -499,7 +499,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `buildEditContext(layeredFilm, transcript, fillers, silences, options)` (`buildEditContext.ts`): Assembles pure, structured timeline context (`EditContext`) summarizing lanes, clips, media dimensions, fillers, and silences for LLM planning.
 
 ### `backend/editPlanner/` (Model-Driven AI Edit Planning, Validation, Execution & Provenance Logging)
-* `editOpSchema`, `editProgramSchema` (`schema.ts`): Closed Zod discriminated union and array schema defining the complete edit operation vocabulary (`add_text_overlay`, `add_lower_third`, `add_slide`, `add_caption_track`, `remove_fillers`, `remove_dead_air`, `trim_range`, `split_clip`, `move_clip`, `set_clip_speed`, `set_clip_volume`, `set_layer_state`, `set_accent`, `set_theme`, `reorder_segments`).
+* `editOpSchema`, `editProgramSchema` (`schema.ts`): Closed Zod discriminated union and array schema defining the checked edit operation vocabulary; see `backend/editPlanner/schema.ts` for the current operation list, including `set_caption_placement`.
 * `validateEditProgram(program, context)` (`validator.ts`): Validates edit operation programs against schema constraints, timeline bounds, and dry-run layer model simulation.
 * `applyEditProgram(film, program, context)` (`interpreter.ts`): Pure transactional interpreter applying `EditOp[]` to `LayeredFilm` with atomic rollback on failure.
 * `planEdits(request, context, llmCaller, options)` (`planner.ts`): Model-driven planner generating and validating `EditOp[]` programs from natural language requests in a 3-attempt validate-and-repair loop.
