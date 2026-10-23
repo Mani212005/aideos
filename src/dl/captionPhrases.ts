@@ -5,6 +5,7 @@
  */
 import type { CaptionWord } from "./KineticSubtitles";
 import type { CaptionPlacement } from "./schema";
+import { resolveCaptionCardWidth } from "./captionPlacement";
 export type CaptionPhrase = {
   startIndex: number;
   endIndex: number;
@@ -39,7 +40,7 @@ export function captionWordRows(
   });
   return breaks;
 }
-// Keeps the legacy seven-word split at default width and measures narrower cards before displaying them.
+// Keeps the legacy split for implicit defaults and measures every saved card before displaying it.
 export function buildCaptionPhrases({
   words,
   fps,
@@ -58,8 +59,9 @@ export function buildCaptionPhrases({
   let start = 0;
   while (start < words.length) {
     const placement = placementAt(words[start].startFrame);
-    const customWidth = Math.abs(placement.w - 0.86) > 0.000001;
-    const inner = width * placement.w - 58;
+    const card = resolveCaptionCardWidth(placement, width);
+    const customWidth = card.fixed;
+    const inner = card.innerWidth;
     let end = start;
     while (end + 1 < words.length && end - start < 6) {
       const word = words[end];

@@ -3,7 +3,7 @@
  * Inputs and outputs: film, scene and camera intentions -> shot/rule diagnostics before design persistence.
  * Used by: checkFilmDesign; legacy SVG films keep their existing checks.
  */
-import { captionCardRect, resolveCaptionPlacement } from "../../src/dl/captionPlacement";
+import { captionCardRect, resolveCaptionCardWidth, resolveCaptionPlacement } from "../../src/dl/captionPlacement";
 import type { Film } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
 import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
@@ -54,7 +54,7 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
       const svgAt = scene.props.some((p) => p.plane === "foreground") ? prepareSvgProjection(scene, width, height) : undefined;
       const foregroundIds = new Set(scene.props.filter((p) => p.plane === "foreground").map((p) => p.assetId));
       const captions = film.captions !== "off" && film.subtitles !== false;
-      const placed = !!film.captionPlacement || film.shots.some((s) => !!s.captionPlacement);
+      const placed = timeline.some((t) => resolveCaptionCardWidth(resolveCaptionPlacement(film, format, t.shot.id), width).fixed);
       const words = captions ? captionWordsForFilm(film) : [];
       const fontSize = Math.round(Math.min(width, height) * 0.042);
       const widths = placed && words.length
@@ -68,7 +68,11 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
         placementAt: (startFrame) => resolveCaptionPlacement(film, format, timeline.find((t) => startFrame >= t.from && startFrame < t.to)?.shot.id),
         measure: (text) => widths[text] ?? 0,
       });
-      const safe = getStageSafeRegion(format, width, height, captions && !placed);
+      const defaultSafe = getStageSafeRegion(format, width, height, captions);
+      const placedSafe = getStageSafeRegion(format, width, height, false);
+      // Follow the visible phrase across cuts, falling back to the current shot between phrases.
+      const placementAtFrame = (frame: number) => captionPhraseAtFrame(phrases, frame)?.placement ??
+        resolveCaptionPlacement(film, format, timeline.find((t) => frame >= t.from && frame < t.to)?.shot.id);
       for (const material of facts.materials) {
         for (const colour of undeclaredMaterialColours(material.meshes, material.palette)) add("palette", 0, format, material.actor, `undeclared 3D material colour ${colour}; declare it in character ${material.character}'s palette`);
       }
@@ -79,11 +83,9 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
         const poses = facts.at(frame, "prop");
         const shot = timeline.find((s) => frame >= s.from && frame < s.to)?.shot;
         const phrase = captionPhraseAtFrame(phrases, frame);
-        const placementShot = phrase
-          ? timeline.find((t) => phrase.startFrame >= t.from && phrase.startFrame < t.to)?.shot
-          : shot;
-        const placement = resolveCaptionPlacement(film, format, placementShot?.id);
-        const card = captionCardRect(format, width, height, phrase?.placement ?? placement);
+        const placement = placementAtFrame(frame);
+        const safe = placement.source === "default" ? defaultSafe : placedSafe;
+        const card = captionCardRect(format, width, height, placement);
         const captionBox = { x0: card.x, y0: card.y, x1: card.x + card.w, y1: card.y + card.h };
         const inset = getInsetRegion(format, width, height);
         const insetBox = { x0: inset.x, y0: inset.y, x1: inset.x + inset.w, y1: inset.y + inset.h };
@@ -95,7 +97,7 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
               add("safe-area", frame, format, id, "full posed silhouette including outlines crosses the shared safe square, output margin or caption band; move or scale the cast");
               clear = false;
             }
-            if (placed && captions && phrase && placement.source !== "default" && parts.some((p) => overlaps(p.bounds, captionBox))) {
+            if (captions && phrase && placement.source !== "default" && parts.some((p) => overlaps(p.bounds, captionBox))) {
               add("caption-placement", frame, format, id, "posed art overlaps the owner caption card; move the cast clear of the card");
               clear = false;
             }
@@ -135,6 +137,7 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
       for (const target of context.cameraTargets ?? []) if (target.focus && scene.cast?.some((c) => c.id === target.focus)) {
         const frame = Math.max(0, Math.min(scene.durationFrames - 1, Math.round(target.frame)));
         const pose = facts.at(frame, "all").find((p) => p.actor === target.focus || p.prop === target.focus);
+        const safe = placementAtFrame(frame).source === "default" ? defaultSafe : placedSafe;
         const bounds = pose?.actor === target.focus ? pose.actorBounds : pose?.propBounds;
         const depth = pose?.actor === target.focus ? pose.actorVisibility : pose?.propVisibility;
         if (target.authoredFocus !== target.focus || depth?.status !== "exposed" || !bounds || !rectInside(bounds, safe) || Math.hypot((bounds.x0 + bounds.x1) / 2 - width / 2, (bounds.y0 + bounds.y1) / 2 - height / 2) > Math.min(width, height) / 3) add("camera", frame, format, target.focus, "focused cast silhouette is cropped, hidden, unnamed in the authored pose or away from the camera's subject region");

@@ -28,6 +28,15 @@ export const MIN_CAPTION_WIDTH = { long: 0.4, reel: 0.6 };
 // Conservative lower-half right-hand action-button strip; the legacy default remains unchanged.
 export const REEL_ACTION_ZONE = { x: 0.88, y: 0.5 };
 export type CaptionRect = { x: number; y: number; w: number; h: number };
+// Gives saved cards one fixed width while retaining the legacy content-sized card inside its envelope.
+export function resolveCaptionCardWidth(
+  placement: CaptionPlacement & { source?: ResolvedCaptionPlacement["source"] },
+  frameWidth: number,
+) {
+  const width = placement.w * frameWidth;
+  const fixed = placement.source !== "default";
+  return { width, fixed, innerWidth: (fixed ? width : width * 0.92) - 58 };
+}
 // Clamps a normalized value between its safe limits.
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -117,10 +126,11 @@ export function captionCardRect(
   placement: CaptionPlacement,
   lines = 2,
 ): CaptionRect {
+  const card = resolveCaptionCardWidth(placement, width);
   return {
-    x: (placement.x - placement.w / 2) * width,
+    x: placement.x * width - card.width / 2,
     y: placement.y * height,
-    w: placement.w * width,
+    w: card.width,
     h: captionCardHeight(width, height, lines),
   };
 }

@@ -502,7 +502,9 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
     for (const e of result.errors) {
       findings.push({ rule: "scene", severity: "error", where: e.entityId ?? "scene", message: e.message });
     }
-    const hasCaptions = film.captions !== "off";
+    const hasCaptions = film.captions !== "off" && film.subtitles !== false;
+    const defaultCaptionFormats = (["long", "reel"] as const).filter((format) =>
+      hasCaptions && film.shots.some((shot) => resolveCaptionPlacement(film, format, shot.id).source === "default"));
     if (scene.renderer === "three" && result.errors.length === 0) {
       findings.push(...checkThreeStage(film, scene, context));
       findings.push({ rule: "scene", severity: "warning", where: "three stage", message: "posed vertices, outlines and sampled mesh depth measured in both crops; facial appeal, finger contact, raster presence and unsampled occlusion remain unmeasured" });
@@ -510,8 +512,8 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
       for (const p of scene.performances ?? []) for (const warning of p.retarget?.warnings ?? []) findings.push({ rule: "scene", severity: "warning", where: `performance ${p.id}`, message: `retargeted onto ${p.retarget!.to} with clamp policy: ${warning}` });
     }
     for (const asset of assets) {
-      if (hasCaptions && (["long", "reel"] as const).some((format) => film.shots.some((s) => resolveCaptionPlacement(film, format, s.id).source === "default")) && asset.position.y > CAPTION_SAFE_SQUARE.y1 && asset.assetId !== "background") {
-        findings.push({ rule: "safe-area", severity: "error", where: asset.assetId, message: `placed at y=${asset.position.y}, which is inside the caption band (y > ${CAPTION_SAFE_SQUARE.y1}); move it up to keep it readable.` });
+      if (defaultCaptionFormats.length && asset.position.y > CAPTION_SAFE_SQUARE.y1 && asset.assetId !== "background") {
+        findings.push({ rule: "safe-area", severity: "error", where: asset.assetId, message: `placed at y=${asset.position.y}, which is inside the default caption band in ${defaultCaptionFormats.join(" and ")} (y > ${CAPTION_SAFE_SQUARE.y1}); move it up to keep it readable.` });
       }
       checkAsset(asset, film.accent, findings);
       clips += checkContinuity(asset, findings);

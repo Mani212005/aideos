@@ -80,6 +80,22 @@ function film() {
   return result;
 }
 
+// Compares the visible saved card and drag outline with the collision rectangle in composition pixels.
+async function assertCardGeometry(
+  page: StudioPage,
+  format: "long" | "reel",
+  placement: ReturnType<typeof resolveCaptionPlacement>,
+): Promise<void> {
+  const width = format === "long" ? 1920 : 1080;
+  const rect = captionCardRect(format, width, format === "long" ? 1080 : 1920, placement);
+  const widths = await page.eval<{ handle: number; card: number }>(
+    `(() => { const frame = document.querySelector('[data-caption-guides]'); const handle = document.querySelector('[data-caption-handle]'); const card = document.querySelector('[data-caption-card]'); return { handle: handle.getBoundingClientRect().width / frame.getBoundingClientRect().width * ${width}, card: card.offsetWidth }; })()`,
+  );
+  assert.equal(rect.w, placement.w * width);
+  assert.ok(Math.abs(widths.handle - rect.w) <= 1, "drag outline matches collision width");
+  assert.ok(Math.abs(widths.card - rect.w) <= 1, "visible saved card matches collision width");
+}
+
 // Measures visible caption-word ink within its declared card for a lossy mp4 comparison.
 function brightBounds(
   rgb: ReturnType<typeof decodeFrame>,
@@ -133,6 +149,10 @@ journey(
     });
     assert.equal(produced.status, "stopped");
     const original = film();
+    // A resumed production run must not inherit locks from an earlier journey.
+    delete original.captionPlacement;
+    for (const shot of original.shots) delete shot.captionPlacement;
+    writeFilm(SLUG, original, { owner: true });
     writeFilm(
       "journey-caption-empty",
       { ...original, id: "journey-caption-empty", voiceover: undefined },
@@ -176,6 +196,10 @@ journey(
       );
       await page.clickButton("Pause video");
       await page.clickButton("Go to start");
+      await page.waitFor(
+        `document.querySelector('input[placeholder^="Ask AI to edit"]')`,
+        "AI editor expanded before caption placement",
+      );
       for (const format of ["long", "reel"] as const) {
         console.info("[caption-journey] controls", format);
         await page.clickButton(format === "long" ? "Wide" : "Reel", {
@@ -194,15 +218,21 @@ journey(
           "AI panel folds away",
         );
         const before = resolveCaptionPlacement(film(), format);
-        await drag(page, "[data-caption-handle]", 0, -55);
+        // Move above Reel's action-button strip so a saved w=.86 remains within bounds.
+        const moveDy = await page.eval<number>(
+          `-document.querySelector('[data-caption-guides]').getBoundingClientRect().height * 0.5`,
+        );
+        await drag(page, "[data-caption-handle]", 0, moveDy);
         await saved(page);
         assert.ok(resolveCaptionPlacement(film(), format).y < before.y);
         await page.clickButton("Undo");
         await saved(page);
         assert.equal(resolveCaptionPlacement(film(), format).y, before.y);
-        await drag(page, "[data-caption-handle]", 0, -55);
+        await drag(page, "[data-caption-handle]", 0, moveDy);
         await saved(page);
         const moved = resolveCaptionPlacement(film(), format);
+        assert.equal(moved.w, 0.86, "a move preserves the default numerical width");
+        await assertCardGeometry(page, format, moved);
         await drag(
           page,
           'button[aria-label="Resize caption right edge"]',
@@ -211,22 +241,7 @@ journey(
         );
         await saved(page);
         const resizedPlacement = resolveCaptionPlacement(film(), format);
-        const resizedRect = captionCardRect(
-          format,
-          format === "long" ? 1920 : 1080,
-          format === "long" ? 1080 : 1920,
-          resizedPlacement,
-        );
-        assert.equal(
-          resizedRect.w,
-          resizedPlacement.w * (format === "long" ? 1920 : 1080),
-        );
-        const overlayWidths = await page.eval<{ handle: number; card: number; frame: number }>(
-          `(() => { const frame = document.querySelector('[data-caption-guides]'); const handle = document.querySelector('[data-caption-handle]'); const card = document.querySelector('[data-caption-card]'); return { handle: handle.getBoundingClientRect().width / frame.getBoundingClientRect().width, card: card.offsetWidth / ${format === "long" ? 1920 : 1080}, frame: ${resizedRect.w} }; })()`,
-        );
-        assert.ok(Math.abs(overlayWidths.handle - resizedPlacement.w) < 0.01);
-        assert.ok(Math.abs(overlayWidths.card - resizedPlacement.w) < 0.01);
-        assert.equal(overlayWidths.frame, resizedRect.w);
+        await assertCardGeometry(page, format, resizedPlacement);
         assert.ok(
           resolveCaptionPlacement(film(), format).w < moved.w,
           "edge drag narrows the actual card",
@@ -278,6 +293,10 @@ journey(
         await page.clickButton("Lock", { exact: true });
         await saved(page);
         await page.clickButton("Move captions", { exact: true });
+        await page.waitFor(
+          `document.querySelector('input[placeholder^="Ask AI to edit"]')`,
+          "AI editor expansion restored after caption placement",
+        );
         console.info("[caption-journey] controls passed", format);
       }
       assert.deepEqual(page.errors, []);

@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import fs from "node:fs";
 import { parseFilm } from "../src/dl/schema";
+import type { Scene } from "../src/dl/scene/types";
 import { captionWordsForFilm } from "../src/dl/captionsParser";
 import { checkCaptionPlacements } from "./designCheck/captionPlacement";
 import { subtitleCardBottom } from "../src/dl/fullScreenHeroLayout";
@@ -18,6 +19,7 @@ import {
   carryCaptionPlacement,
   setCaptionPlacement,
   captionCardRect,
+  resolveCaptionCardWidth,
 } from "../src/dl/captionPlacement";
 import {
   convertFilmToLayeredFilm,
@@ -27,6 +29,17 @@ const base = parseFilm(
   JSON.parse(fs.readFileSync("examples/hello-scene/film.json", "utf8")),
 );
 const top = { x: 0.5, y: 0.2, w: 0.7, locked: false };
+// Treats a saved default-valued width as fixed while retaining the implicit legacy card.
+test("saved w 0.86 has the same fixed width in caption geometry", () => {
+  const implicit = resolveCaptionPlacement(base, "long");
+  assert.equal(resolveCaptionCardWidth(implicit, 1920).fixed, false);
+  const explicit = resolveCaptionPlacement({ ...base, captionPlacement: { long: { ...top, w: 0.86 } } }, "long");
+  const sizing = resolveCaptionCardWidth(explicit, 1920);
+  assert.equal(sizing.fixed, true);
+  assert.equal(sizing.width, 1920 * 0.86);
+  assert.equal(captionCardRect("long", 1920, 1080, explicit).w, sizing.width);
+  assert.equal(sizing.innerWidth, sizing.width - 58);
+});
 // Keeps the legacy default and each format independent while resolving shot exceptions first.
 test("caption resolver: defaults, format independence, shot precedence and lock", () => {
   assert.deepEqual(resolveCaptionPlacement(base, "long"), {
@@ -230,6 +243,7 @@ test("phrase layout keeps start placement across a cut and splits narrow cards",
   assert.equal(result.flatMap((p) => p.words).length, words.length);
 });
 
+// Checks current shot art against the card anchored by the phrase's first word.
 test("full design check uses the phrase start placement against art in the next shot", () => {
   const film = {
     ...base,
@@ -239,8 +253,8 @@ test("full design check uses the phrase start placement against art in the next 
       { ...base.shots[0], id: "art-shot", dur: 1, scriptText: "Next shot", captionPlacement: { long: { ...top, y: 0.6 } } },
     ],
   } as typeof base;
-  const scene = {
-    ...base.scene!,
+  const scene: Scene = {
+    ...(base.scene as Scene),
     durationFrames: 60,
     audioDurationMs: 2000,
     props: [{
@@ -315,6 +329,24 @@ test("design check names invalid placement and colliding inset", async () => {
       (f) => f.rule === "caption-placement" && /inset/i.test(f.message),
     ),
   );
+});
+
+// Keeps the SVG default-band rule active in the format with no saved placement.
+test("scene SVG default band remains protected with only the other format placed", async () => {
+  const { checkFilmDesign } = await import("./designCheck/designCheck");
+  for (const placed of ["long", "reel"] as const) {
+    const defaultFormat = placed === "long" ? "reel" : "long";
+    const film = structuredClone(base);
+    film.captions = "bottom";
+    film.subtitles = true;
+    film.captionPlacement = { [placed]: top };
+    const asset = film.scene!.props[0];
+    asset.position.y = 1300;
+    const findings = checkFilmDesign(film).findings;
+    assert.ok(findings.some((f) => f.rule === "safe-area" && f.where === asset.assetId && f.message.includes(defaultFormat)), JSON.stringify(findings));
+    film.captionPlacement = { long: top, reel: top };
+    assert.equal(checkFilmDesign(film).findings.some((f) => f.rule === "safe-area" && f.where === asset.assetId), false);
+  }
 });
 
 // Persists through the real writer and reports orphaned exceptions instead of dropping them.

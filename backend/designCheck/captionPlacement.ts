@@ -8,14 +8,13 @@ import type { Scene } from "../../src/dl/scene/types";
 import { buildTimeline } from "../../src/dl/camera";
 import { buildCaptionPhrases, captionPhraseAtFrame } from "../../src/dl/captionPhrases";
 import { captionWordsForFilm } from "../../src/dl/captionsParser";
-import { measureText } from "@remotion/layout-utils";
-import { SANS } from "../../src/dl/tokens";
 import { measureCaptionWords } from "../review/captionMeasurements";
 import {
   CAPTION_FRAMES,
   captionCardRect,
   captionRectsOverlap,
   resolveCaptionPlacement,
+  resolveCaptionCardWidth,
   clampCaptionPlacement,
 } from "../../src/dl/captionPlacement";
 import { getInsetRegion } from "../../src/dl/fullScreenHeroLayout";
@@ -57,8 +56,7 @@ export function checkCaptionPlacements(
         });
     }
     const fontSize = Math.round(Math.min(width, height) * 0.042);
-    const hasCustomWidth = [film.captionPlacement?.[format], ...film.shots.map((shot) => shot.captionPlacement?.[format])]
-      .some((entry) => entry && Math.abs(entry.w - 0.86) > 0.000001);
+    const hasCustomWidth = timeline.some((t) => resolveCaptionCardWidth(resolveCaptionPlacement(film, format, t.shot.id), width).fixed);
     const wordWidths = hasCustomWidth
       ? measureCaptionWords(words.map((word) => word.text), fontSize)
       : {};
@@ -68,7 +66,7 @@ export function checkCaptionPlacements(
       width,
       fontSize,
       placementAt: (startFrame) => resolveCaptionPlacement(film, format, timeline.find((t) => startFrame >= t.from && startFrame < t.to)?.shot.id),
-      measure: (text) => wordWidths[text] ?? measureText({ text, fontFamily: SANS, fontSize, fontWeight: 700 }).width,
+      measure: (text) => wordWidths[text],
     });
     let project: ReturnType<typeof prepareSvgProjection> | undefined;
     if (

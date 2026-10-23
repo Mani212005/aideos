@@ -3,7 +3,7 @@
  * Inputs and outputs: film, playhead and scaled Player -> draft preview and one labelled commit per gesture.
  * Used by: EditStage.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { createPortal } from "react-dom";
 import type { PlayerRef } from "@remotion/player";
@@ -68,17 +68,17 @@ export function CaptionPlacementEditor({
   onDraft,
   onCommit,
 }: Props) {
-  const timeline = buildTimeline(film, film.voiceover?.durationSec);
+  const timeline = useMemo(() => buildTimeline(film, film.voiceover?.durationSec), [film]);
   const shot = shotAt(timeline, frame).shot;
   const [draft, setDraft] = useState<Film | null>(null);
   const shownFilm = draft ?? film;
   const fps = film.fps || 30;
-  const words = captionWordsForFilm(shownFilm);
-  const phrases = buildCaptionPhrases({
+  const words = useMemo(() => captionWordsForFilm(film), [film]);
+  const phrases = useMemo(() => buildCaptionPhrases({
     words, fps, width: CAPTION_FRAMES[format].width, fontSize: 45,
     placementAt: (startFrame) => resolveCaptionPlacement(shownFilm, format, shotAt(timeline, startFrame)?.shot.id),
     measure: (text) => measureText({ text, fontFamily: SANS, fontSize: 45, fontWeight: 700 }).width,
-  });
+  }), [words, fps, format, shownFilm, timeline]);
   const activePhrase = captionPhraseAtFrame(phrases, frame);
   const phraseShotId = activePhrase ? shotAt(timeline, activePhrase.startFrame)?.shot.id : shot.id;
   const initialSource = resolveCaptionPlacement(film, format, phraseShotId).source;
@@ -105,7 +105,7 @@ export function CaptionPlacementEditor({
   const card = captionCardRect(format, width, height, placement);
   const bounds = captionBounds(format, width, height, placement.w, placement.y);
   const collision =
-    shotAt(timeline, activePhrase?.startFrame ?? frame)?.shot.stage === "inset" &&
+    shot.stage === "inset" &&
     captionRectsOverlap(card, getInsetRegion(format, width, height));
   const formatName = format === "long" ? "Wide" : "Reel";
   const scopeName = scopeKind === "film" ? "whole film" : `shot ${phraseShotId}`;

@@ -26,7 +26,8 @@ import { validateScene } from "../../src/dl/scene/validateScene";
 import { validateStageSvgResources } from "../../src/dl/scene/validateStage";
 import { receiveSchema } from "../../src/dl/scene/stageContract";
 import { prepareStageFacts, stageEvidence } from "../../src/dl/scene/stageFacts";
-import { applyStageCamera, projectStagePoint, stageViewport } from "../../src/dl/scene/projection";
+import { applyStageCamera, projectStagePoint, rectInside, stageViewport } from "../../src/dl/scene/projection";
+import { getStageSafeRegion } from "../../src/dl/fullScreenHeroLayout";
 import { projectMeshParts, sampleMeshDepth, undeclaredMaterialColours } from "../../src/dl/scene/stageGeometry";
 import { checkThreeStage } from "../designCheck/threeStage";
 import { captionCardRect, captionRectsOverlap, resolveCaptionPlacement } from "../../src/dl/captionPlacement";
@@ -224,6 +225,38 @@ test("Three-stage collision follows a phrase placement across a shot cut", () =>
     }), JSON.stringify(findings));
   } finally {
     facts.dispose();
+  }
+});
+
+// Places a real silhouette between the default caption floor and the uncapped safe floor in each crop.
+test("Three-stage default caption guard stays active when only the other format is placed", () => {
+  for (const [placedFormat, defaultFormat, width, height] of [["long", "reel", 1080, 1920], ["reel", "long", 1920, 1080]] as const) {
+    const film = compiled(), scene = film.scene as Scene;
+    film.captions = "bottom";
+    film.subtitles = true;
+    film.captionPlacement = { [placedFormat]: { x: 0.5, y: 0.2, w: 0.7, locked: false } };
+    for (const shot of film.shots) delete shot.captionPlacement;
+    const actor = scene.cast!.find((cast) => cast.kind === "character")!;
+    assert.equal(actor.kind, "character");
+    if (actor.kind !== "character") throw new Error("expected fixture character");
+    const capped = getStageSafeRegion(defaultFormat, width, height, true);
+    const clear = getStageSafeRegion(defaultFormat, width, height, false);
+    const before = prepareStageFacts(scene, width, height);
+    try {
+      const bounds = before.at(0, "prop").find((pose) => pose.actor === actor.id)!.actorBounds;
+      const camera = before.camera[0];
+      const a = projectStagePoint({ x: 0, y: 0 }, camera, width, height);
+      const b = projectStagePoint({ x: 0, y: 1 }, camera, width, height);
+      actor.position[1] += ((capped.y1 + clear.y1) / 2 - bounds.y1) / (b.y - a.y);
+    } finally { before.dispose(); }
+    const after = prepareStageFacts(scene, width, height);
+    try {
+      const bounds = after.at(0, "prop").find((pose) => pose.actor === actor.id)!.actorBounds;
+      assert.ok(rectInside(bounds, clear), "fixture must fit the uncapped region");
+      assert.equal(rectInside(bounds, capped), false, "fixture must cross only the caption floor");
+    } finally { after.dispose(); }
+    const findings = checkThreeStage(film, scene, {});
+    assert.ok(findings.some((f) => f.rule === "safe-area" && f.where.includes(`/ ${defaultFormat} / ${actor.id} / frame 0`)), JSON.stringify(findings));
   }
 });
 

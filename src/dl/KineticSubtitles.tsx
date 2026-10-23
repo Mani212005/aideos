@@ -14,6 +14,7 @@ import { SANS } from "./tokens";
 import { measureText } from "@remotion/layout-utils";
 import { buildCaptionPhrases } from "./captionPhrases";
 import type { CaptionPlacement } from "./schema";
+import { resolveCaptionCardWidth, type ResolvedCaptionPlacement } from "./captionPlacement";
 import { frames } from "./motion";
 
 export interface CaptionWord {
@@ -31,7 +32,7 @@ export interface KineticSubtitleProps {
   highlightColor?: string;
   backgroundColor?: string;
   position?: "top" | "center" | "bottom";
-  placementAt?: (frame: number) => CaptionPlacement;
+  placementAt?: (frame: number) => CaptionPlacement & { source?: ResolvedCaptionPlacement["source"] };
 }
 
 export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
@@ -64,7 +65,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   );
 
   if (!activePhrase) return null;
-  const explicitWidth = activePhrase.placement.source !== "default" && Math.abs(activePhrase.placement.w - 0.86) > 0.000001;
+  const card = resolveCaptionCardWidth(activePhrase.placement, width);
 
   // Find active word index within the global words array
   let activeWordIndex = words.findIndex(
@@ -101,7 +102,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
         left: `${activePhrase.placement.x * 100}%`,
         top: `${activePhrase.placement.y * 100}%`,
         transform: "translateX(-50%)",
-        width: activePhrase.placement.w * width,
+        width: card.width,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -121,8 +122,8 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
           boxShadow: "0 12px 32px rgba(0, 0, 0, 0.45)",
           border: "1px solid rgba(255, 255, 255, 0.12)",
           textAlign: "center",
-          ...(explicitWidth
-            ? { width: activePhrase.placement.w * width, boxSizing: "border-box" as const }
+          ...(card.fixed
+            ? { width: card.width, boxSizing: "border-box" as const }
             : { maxWidth: "92%" }),
         }}
       >
@@ -135,7 +136,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
             display: "block",
             textAlign: "center",
             textWrap: "balance",
-            ...(explicitWidth ? { width: "100%", boxSizing: "border-box" as const } : {}),
+            ...(card.fixed ? { width: "100%", boxSizing: "border-box" as const } : {}),
           }}
         >
           {activePhrase.words.map((w, localIdx) => {

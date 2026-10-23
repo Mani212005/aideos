@@ -316,6 +316,7 @@ test("DesignCheck: scene camera survives parseFilm in schema", () => {
   assert.equal(report.findings.find(f => f.rule === "camera"), undefined);
 });
 
+// Protects the default band only when both caption visibility switches permit rendering.
 test("DesignCheck: placing an asset in the caption band of a captioned film is an error", () => {
   const film = stillTalking();
   // still-talking is a scene film. We place an asset low in the frame (e.g. y = 1300)
@@ -326,8 +327,13 @@ test("DesignCheck: placing an asset in the caption band of a captioned film is a
   film.captions = "off";
   assert.ok(!errorRules(film).includes("safe-area"));
   
-  // With captions enabled (or default), it fails
+  // The separate subtitles switch still keeps the band clear of caption checks.
   film.captions = "bottom";
+  film.subtitles = false;
+  assert.ok(!errorRules(film).includes("safe-area"));
+
+  // With captions enabled by both switches, it fails.
+  film.subtitles = true;
   assert.ok(errorRules(film).includes("safe-area"));
 });
 

@@ -589,14 +589,20 @@ export const FilmView: React.FC<FilmViewProps> = ({
   // A slow push across the card keeps the held stage from reading as a frozen frame.
   const holdScale = inCard && card ? 1 + 0.01 * Math.min(1, (rawFrame - card.from) / Math.max(1, card.durationInFrames)) : 1;
   const current = shotAt(timeline, frame);
-  const captionPhrases = captionWords ? buildCaptionPhrases({
+  const captionFormat = width < height ? "reel" : "long";
+  const captionFontSize = Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO);
+  // Keep phrase planning independent of the currently rendered frame.
+  const captionPlacementAt = React.useCallback((startFrame: number) =>
+    resolveCaptionPlacement(film, captionFormat, shotAt(timeline, startFrame)?.shot.id),
+  [film, captionFormat, timeline]);
+  const captionPhrases = React.useMemo(() => captionWords ? buildCaptionPhrases({
     words: captionWords,
     fps,
     width,
-    fontSize: Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO),
-    placementAt: (startFrame) => resolveCaptionPlacement(film, width < height ? "reel" : "long", shotAt(timeline, startFrame)?.shot.id),
-    measure: (text) => measureText({ text, fontFamily: SANS, fontSize: Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO), fontWeight: 700 }).width,
-  }) : [];
+    fontSize: captionFontSize,
+    placementAt: captionPlacementAt,
+    measure: (text) => measureText({ text, fontFamily: SANS, fontSize: captionFontSize, fontWeight: 700 }).width,
+  }) : [], [captionWords, fps, width, captionFontSize, captionPlacementAt]);
   const activeCaptionPhrase = captionPhraseAtFrame(captionPhrases, frame);
   const captionContextPlacement = activeCaptionPhrase?.placement ?? resolveCaptionPlacement(film, width < height ? "reel" : "long", current.shot.id);
   const cam = camAt(film, timeline, frame, { width, height });
@@ -819,7 +825,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
             maxWidth={width * 0.86}
             fontSize={Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO)}
             highlightColor={accent}
-            placementAt={(startFrame) => resolveCaptionPlacement(film, width < height ? "reel" : "long", shotAt(timeline, startFrame)?.shot.id)}
+            placementAt={captionPlacementAt}
           />
         ) : null}
 

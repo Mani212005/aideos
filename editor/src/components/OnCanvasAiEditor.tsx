@@ -7,7 +7,7 @@
  * Used by: editor/src/App.tsx.
  */
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Sparkles, Check, X, Loader2, ArrowRight, Wand2 } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import type { TimedShot } from "../../../src/dl/camera";
@@ -86,10 +86,8 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
   const [isApplying, setIsApplying] = useState<boolean>(false);
   const [plannedState, setPlannedState] = useState<PlannedState | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError?: boolean } | null>(null);
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
-
-  // Free the caption controls whenever direct placement is active.
-  useEffect(() => { if (folded) setIsExpanded(false); }, [folded]);
+  const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  const expanded = isExpanded && !folded;
 
   // Suggested prompt chips for quick actions
   const suggestionChips = useMemo(() => [
@@ -222,15 +220,16 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
           </div>
           <button
             type="button"
-            aria-label={isExpanded ? "Fold AI editor" : "Expand AI editor"}
+            aria-label={expanded ? "Fold AI editor" : "Expand AI editor"}
+            disabled={folded}
             onClick={() => setIsExpanded(!isExpanded)}
             className="font-mono text-xs text-ink hover:underline font-bold"
           >
-            {isExpanded ? "Minimize" : "Expand"}
+            {expanded ? "Minimize" : "Expand"}
           </button>
         </div>
 
-        {isExpanded && (
+        {expanded && (
           <div className="p-3 flex flex-col gap-3 bg-paper-2">
             {/* Suggestion Chips */}
             {!plannedState && (

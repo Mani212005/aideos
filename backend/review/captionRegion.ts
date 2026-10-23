@@ -10,6 +10,7 @@ import { buildTimeline, shotAt } from "../../src/dl/camera";
 import {
   captionCardRect,
   resolveCaptionPlacement,
+  resolveCaptionCardWidth,
 } from "../../src/dl/captionPlacement";
 import { measureCaptionWords } from "./captionMeasurements";
 // Resolves at phrase start so review follows captions across a cut instead of jumping with the shot.
@@ -26,8 +27,7 @@ export function prepareCaptionReview(
   const words = captionWordsForFilm(film);
   const variableWidth = timeline.some(
     (timed) =>
-      Math.abs(resolveCaptionPlacement(film, format, timed.shot.id).w - 0.86) >
-      0.000001,
+      resolveCaptionCardWidth(resolveCaptionPlacement(film, format, timed.shot.id), width).fixed,
   );
   const widths = variableWidth
     ? measureCaptionWords(
