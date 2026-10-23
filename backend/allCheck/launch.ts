@@ -74,7 +74,12 @@ export function launchAgentWorkspace(
   runInPane(location, scriptPath, run);
   const deadline = now() + 60_000;
   for (;;) {
-    const pane = paneInfo(location, run);
+    let pane: ReturnType<typeof paneInfo>;
+    try {
+      pane = paneInfo(location, run);
+    } catch {
+      pane = null;
+    }
     if (pane?.agent === opts.agent) {
       location = renameAgent(location, `ac-${slug}`.slice(0, 32), run);
       return { ...location, attachCommand: attachCommand(location), ...(pane.agent_status === "blocked" ? { warning: `agent is waiting for input in Herdr pane ${location.paneId} (${attachCommand(location)})` } : {}) };

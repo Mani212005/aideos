@@ -24,7 +24,7 @@ import { betterEarlierRound, dirtyRepoPaths, rankRecord, rollbackFilm, settleRou
 import { decideVerdict, finishRun, type FinishDeps } from "./finish";
 import { startAllCheck, runStatus, waitForResult, type IdleWatchdog, type StartDeps } from "./index";
 import { writeLaunchScript } from "./launch";
-import type { HerdrLocation } from "./herdr";
+import { paneLive, type HerdrLocation, type HerdrRun } from "./herdr";
 import { acquireLock, lockIsLive, lockPath, readLock, releaseLock, type LockDeps, type LockRecord } from "./lock";
 import { parseAllCheckOptions } from "./options";
 import { formatPreflight, packageProblems, runPreflight, type PreflightDeps, type ProcResult } from "./preflight";
@@ -292,6 +292,61 @@ test("lock: one run per video, a live run is named, a stale lock is replaced", (
 
     releaseLock(slug);
     assert.equal(readLock(slug), null);
+  } finally {
+    dropPackage(slug);
+  }
+});
+
+test("lock: indeterminate Herdr liveness preserves the existing lock", () => {
+  const slug = "ac-indeterminate-herdr-lock";
+  makePackage(slug);
+  try {
+    const location = herdrLocation("w9:p1");
+    const existing: LockRecord = { slug, agent: "agy", startedAt: new Date().toISOString(), launcherPid: 111, herdr: location };
+    const pane = { pane_id: location.paneId, workspace_id: location.workspaceId, agent_status: "idle" };
+    for (const failure of ["pane-error", "pane-malformed", "process-error", "process-malformed"] as const) {
+      fs.mkdirSync(allCheckDir(slug), { recursive: true });
+      fs.writeFileSync(lockPath(slug), JSON.stringify(existing));
+      const run: HerdrRun = (args) => {
+        if (args[1] === "get") {
+          if (failure === "pane-error") return { status: 1, stdout: "", stderr: '{"error":{"code":"server_not_running"}}' };
+          if (failure === "pane-malformed") return { status: 0, stdout: "{}", stderr: "" };
+          return { status: 0, stdout: JSON.stringify({ result: { pane } }), stderr: "" };
+        }
+        if (failure === "process-error") return { status: 1, stdout: "", stderr: '{"error":{"code":"server_not_running"}}' };
+        return { status: 0, stdout: JSON.stringify({ result: { process_info: {} } }), stderr: "" };
+      };
+      const deps = { ...fakeLock({ windows: new Set() }), paneLive: (actual: HerdrLocation) => paneLive(actual, run) };
+      assert.throws(() => acquireLock({ ...existing, launcherPid: 222 }, deps), (error: Error) => error instanceof AllCheckError && /cannot confirm all-check liveness/.test(error.message) && /existing lock is preserved/.test(error.message) && /retry/.test(error.message));
+      assert.equal(readLock(slug)?.launcherPid, 111, `${failure} must leave the current owner recorded`);
+    }
+  } finally {
+    dropPackage(slug);
+  }
+});
+
+test("lock: confirmed missing and idle Herdr processes allow stale takeover", () => {
+  const slug = "ac-stopped-herdr-lock";
+  makePackage(slug);
+  try {
+    const location = herdrLocation("w9:p1");
+    const existing: LockRecord = { slug, agent: "agy", startedAt: new Date().toISOString(), launcherPid: 111, herdr: location };
+    const pane = { pane_id: location.paneId, workspace_id: location.workspaceId, agent_status: "idle" };
+    const stopped = '{"error":{"code":"pane_not_found","message":"pane unavailable"}}';
+    for (const state of ["pane-missing", "terminal-unavailable", "idle-shell"] as const) {
+      fs.mkdirSync(allCheckDir(slug), { recursive: true });
+      fs.writeFileSync(lockPath(slug), JSON.stringify(existing));
+      const run: HerdrRun = (args) => {
+        if (args[1] === "get") return state === "pane-missing"
+          ? { status: 1, stdout: "", stderr: stopped }
+          : { status: 0, stdout: JSON.stringify({ result: { pane } }), stderr: "" };
+        if (state === "terminal-unavailable") return { status: 1, stdout: "", stderr: stopped };
+        return { status: 0, stdout: JSON.stringify({ result: { process_info: { pane_id: location.paneId, shell_pid: 100, foreground_process_group_id: 100 } } }), stderr: "" };
+      };
+      const deps = { ...fakeLock({ windows: new Set() }), paneLive: (actual: HerdrLocation) => paneLive(actual, run) };
+      assert.equal(acquireLock({ ...existing, launcherPid: 222 }, deps).tookOverStale, true, `${state} is confirmed stopped`);
+      assert.equal(readLock(slug)?.launcherPid, 222);
+    }
   } finally {
     dropPackage(slug);
   }

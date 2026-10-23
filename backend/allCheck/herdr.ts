@@ -29,9 +29,31 @@ const paneSchema = z.object({
 });
 export type AgentStatus = z.infer<typeof paneSchema>["agent_status"];
 const processSchema = z.object({
+  pane_id: z.string(),
   shell_pid: z.number().int().positive(),
   foreground_process_group_id: z.number().int().positive().nullable(),
 });
+
+class HerdrCommandError extends AllCheckError {
+  constructor(message: string, readonly code?: string) {
+    super(message);
+  }
+}
+
+// Extracts a structured Herdr error code without replacing its CLI message.
+function herdrErrorCode(text: string): string | undefined {
+  try {
+    const parsed = JSON.parse(text) as { error?: { code?: unknown } };
+    return typeof parsed.error?.code === "string" ? parsed.error.code : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Identifies Herdr's explicit response for a pane that is no longer available.
+function isMissingPane(error: unknown): boolean {
+  return error instanceof HerdrCommandError && error.code === "pane_not_found";
+}
 
 // Runs a bounded CLI call, removing ambient session selection in favor of the recorded socket.
 export const realHerdr: HerdrRun = (args, target) => {
@@ -60,8 +82,11 @@ export function attachCommand(location: HerdrLocation): string {
 // Parses structured responses once at the CLI boundary and retains actionable raw errors.
 export function herdrJson<T>(run: HerdrRun, socketPath: string, args: string[], schema: z.ZodType<T>): T {
   const response = run(args, { HERDR_SOCKET_PATH: socketPath });
+  if (response.status !== 0) {
+    const detail = response.stderr.trim() || response.stdout.trim() || "Herdr did not answer";
+    throw new HerdrCommandError(`herdr ${args.slice(0, 2).join(" ")}: ${detail}`, herdrErrorCode(response.stderr.trim() || response.stdout.trim()));
+  }
   try {
-    if (response.status !== 0) throw new Error(response.stderr.trim() || response.stdout.trim() || "Herdr did not answer");
     return schema.parse(JSON.parse(response.stdout));
   } catch (error) {
     throw new AllCheckError(`herdr ${args.slice(0, 2).join(" ")}: ${error instanceof Error ? error.message : String(error)}`);
@@ -86,26 +111,38 @@ export function runInPane(location: HerdrLocation, scriptPath: string, run: Herd
 export function paneInfo(location: HerdrLocation, run: HerdrRun = realHerdr): z.infer<typeof paneSchema> | null {
   try {
     const { result } = herdrJson(run, location.socketPath, ["pane", "get", location.paneId], z.object({ result: z.object({ pane: paneSchema }) }));
-    return result.pane.pane_id === location.paneId && result.pane.workspace_id === location.workspaceId ? result.pane : null;
-  } catch {
-    return null;
+    if (result.pane.pane_id !== location.paneId || result.pane.workspace_id !== location.workspaceId) {
+      throw new AllCheckError(`herdr pane get returned a different pane than ${location.paneId}`);
+    }
+    return result.pane;
+  } catch (error) {
+    if (isMissingPane(error)) return null;
+    throw error;
   }
 }
 
 // Reads process truth rather than trusting a restored pane's saved agent badge.
 export function processInfo(location: HerdrLocation, run: HerdrRun = realHerdr): z.infer<typeof processSchema> | null {
   try {
-    return herdrJson(run, location.socketPath, ["pane", "process-info", "--pane", location.paneId], z.object({ result: z.object({ process_info: processSchema }) })).result.process_info;
-  } catch {
-    return null;
+    const info = herdrJson(run, location.socketPath, ["pane", "process-info", "--pane", location.paneId], z.object({ result: z.object({ process_info: processSchema }) })).result.process_info;
+    if (info.pane_id !== location.paneId) throw new AllCheckError(`herdr process-info returned a different pane than ${location.paneId}`);
+    return info;
+  } catch (error) {
+    if (isMissingPane(error)) return null;
+    throw error;
   }
 }
 
 // A live run must have both its pane and a foreground process other than its interactive shell.
 export function paneLive(location: HerdrLocation, run: HerdrRun = realHerdr): boolean {
-  if (!paneInfo(location, run)) return false;
-  const info = processInfo(location, run);
-  return !!info && info.foreground_process_group_id !== null && info.foreground_process_group_id !== info.shell_pid;
+  try {
+    if (!paneInfo(location, run)) return false;
+    const info = processInfo(location, run);
+    return !!info && info.foreground_process_group_id !== null && info.foreground_process_group_id !== info.shell_pid;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new AllCheckError(`cannot confirm all-check liveness for Herdr pane ${location.paneId}: ${detail}. The existing lock is preserved; retry when Herdr responds.`);
+  }
 }
 
 // Reads plain terminal text; pane read deliberately has no JSON envelope.

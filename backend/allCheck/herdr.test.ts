@@ -101,7 +101,10 @@ test("Herdr: process truth distinguishes the running script from an idle or miss
     assert.ok(calls.every((call) => call.socket === location.socketPath));
     assert.ok(calls.filter((call) => call.args[1] === "process-info").every((call) => call.args[2] === "--pane"));
   }
-  assert.equal(paneLive(location, () => ok(fixtures.pane)), false, "restored metadata without process truth is stopped");
+  const restoredWithoutTerminal: HerdrRun = (args) => args[1] === "process-info"
+    ? { status: 1, stdout: "", stderr: JSON.stringify(fixtures.missing) }
+    : ok(fixtures.pane);
+  assert.equal(paneLive(location, restoredWithoutTerminal), false, "restored metadata without a materialized terminal is stopped");
   assert.equal(readPane(location, fakeHerdr().run), "plain terminal text");
 });
 
