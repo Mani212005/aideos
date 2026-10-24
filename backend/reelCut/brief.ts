@@ -13,7 +13,7 @@ import {
 import { designSpecSchema } from "../designSpec/spec";
 import { lookPlanSchema } from "../lookPlan/schema";
 import { createReelContext, type ReelContext } from "./constraints";
-import { reelBudgetSchema, type ReelBudget, type ReelCut } from "./schema";
+import { parseReelBudget, type ReelBudget, type ReelCut } from "./schema";
 import { visibleReelText } from "./visibleText";
 
 export class ReelCutSceneFilmError extends Error {
@@ -70,7 +70,7 @@ export function reelBrief(
   context: ReelContext,
   budgetInput: ReelBudget,
 ): string {
-  const budget = reelBudgetSchema.parse(budgetInput);
+  const budget = parseReelBudget(budgetInput);
   const targetWords = Math.floor(
     (budget.targetSec - budget.endCardSec) * context.wordsPerSec,
   );
@@ -122,7 +122,7 @@ On-screen numbers to speak: ${s.onScreenNumbers.join(", ") || "none"}
 ${JSON.stringify(scaffold, null, 2)}
 \`\`\`
 
-Validate with: aideos reel check ${context.filmId} --max-sec ${budget.maxSec} --target-sec ${budget.targetSec} --end-card-sec ${budget.endCardSec}
+Validate with: aideos reel check ${context.filmId} --max-sec ${budget.maxSec} --target-sec ${budget.targetSec}
 `;
 }
 

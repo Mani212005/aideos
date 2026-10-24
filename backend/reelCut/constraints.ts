@@ -4,7 +4,7 @@
  * Used by: backend/reelCut/check.ts and brief.ts.
  */
 import { createHash } from "node:crypto";
-import type { Block, Film } from "../../src/dl/schema";
+import type { Block, Film, OverlayClip } from "../../src/dl/schema";
 import type { DesignSpec } from "../designSpec/spec";
 import type { LookPlan } from "../lookPlan/schema";
 import { resolveCue } from "../designSpec/cues";
@@ -12,6 +12,7 @@ import type { Cues } from "../sceneKit/timing";
 import { spokenNumbers } from "../review/speech";
 import { buildTimeline } from "../../src/dl/camera";
 import { easeExpo, frames, MS } from "../../src/dl/motion";
+import { compactNumber } from "../../src/dl/numberFormat";
 import { minimumShotSeconds } from "./motion";
 
 export interface ReelPhraseLock {
@@ -36,6 +37,19 @@ export interface ReelContext {
   wordsPerSec: number;
   shots: ReelShotConstraint[];
 }
+
+const COMPACT_MAGNITUDES: Record<string, number> = {
+  k: 1e3,
+  m: 1e6,
+  b: 1e9,
+  t: 1e12,
+};
+const NUMBER_WORD_PATTERN =
+  "zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|and|a";
+const SIGNED_NUMBER_WORDS = new RegExp(
+  `\\b(?:minus|negative)\\s+((?:(?:${NUMBER_WORD_PATTERN})(?:[\\s-]+(?:${NUMBER_WORD_PATTERN}))*|\\d[\\d,]*(?:\\.\\d+)?))`,
+  "gi",
+);
 
 // Hashes the exact long line so edits, including punctuation changes, invalidate its reel counterpart.
 export function narrationHash(text: string): string {
@@ -83,17 +97,21 @@ function progressSamples(
 }
 
 // Formats one counter tick with the same visible compact notation as StatCounter.
-function statCounterText(value: number, to: number, format: "plain" | "compact"): string {
+function statCounterText(
+  value: number,
+  to: number,
+  format: "plain" | "compact",
+  suffix?: string,
+): string {
+  let text: string;
   if (format === "compact") {
-    const abs = Math.abs(value);
-    if (abs >= 1e12) return `${(value / 1e12).toFixed(1)}T`;
-    if (abs >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
-    if (abs >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
-    if (abs >= 1e3) return `${(value / 1e3).toFixed(0)}k`;
+    text = compactNumber(value);
+  } else {
+    text = (to >= 1900 && to <= 2100) || format === "plain"
+      ? String(value)
+      : value.toLocaleString("en-US");
   }
-  return (to >= 1900 && to <= 2100) || format === "plain"
-    ? String(value)
-    : value.toLocaleString("en-US");
+  return suffix ? `${text} ${suffix}` : text;
 }
 
 // Lists block text and every numeric label rendered during its shot.
@@ -113,7 +131,12 @@ function blockText(
     case "StatCounter":
       return [
         ...progressSamples(durationInFrames, fps, 900, MS.stagger * index, (p) =>
-          statCounterText(Math.round(block.to * p), block.to, block.format),
+          statCounterText(
+            Math.round(block.to * p),
+            block.to,
+            block.format,
+            block.suffix,
+          ),
         ),
         block.label,
       ];
@@ -130,6 +153,7 @@ function blockText(
       return [block.xLabel ?? "", block.yLabel ?? "", block.endLabel ?? ""];
     case "MatrixGrid":
       return [
+        ...block.values.flat().map((value) => value.toFixed(2)),
         block.rowLabel ?? "",
         block.colLabel ?? "",
         block.valueLabel ?? "",
@@ -151,18 +175,17 @@ function blockText(
         block.arrow?.label ?? "",
         ...block.points.map((p) => p.label ?? ""),
       ];
-    case "LayerStack":
-      {
-        const count = block.count ?? 32;
-        const sweepFrom = frames(MS.enter, fps);
-        const sweepSpan = Math.max(
-          1,
-          durationInFrames - frames(MS.enter + MS.move, fps),
-        );
-        const indexes = Array.from({ length: durationInFrames }, (_, frame) => {
-          const travel = Math.max(0, Math.min(1, (frame - sweepFrom) / sweepSpan));
-          return String(Math.min(count - 1, Math.floor(travel * count)) + 1);
-        });
+    case "LayerStack": {
+      const count = block.count ?? 32;
+      const sweepFrom = frames(MS.enter, fps);
+      const sweepSpan = Math.max(
+        1,
+        durationInFrames - frames(MS.enter + MS.move, fps),
+      );
+      const indexes = Array.from({ length: durationInFrames }, (_, frame) => {
+        const travel = Math.max(0, Math.min(1, (frame - sweepFrom) / sweepSpan));
+        return String(Math.min(count - 1, Math.floor(travel * count)) + 1);
+      });
       return [
         ...indexes,
         String(count),
@@ -173,7 +196,7 @@ function blockText(
           typeof l === "string" ? [l] : [l.label, l.dim ?? ""],
         ),
       ];
-      }
+    }
     case "ScaleBar":
       return [...block.ticks, block.label ?? ""];
     case "AnalogyInset":
@@ -191,13 +214,44 @@ function blockText(
   }
 }
 
-// Converts compact magnitude labels to their full numeric value before shared number grounding.
-function groundedNumbers(text: string): number[] {
-  const expanded = text.replace(/\b(\d[\d,]*(?:\.\d+)?)\s*([kmbt])\b/gi, (_, raw: string, suffix: string) => {
-    const scale: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9, t: 1e12 };
-    return String(Number(raw.replace(/,/g, "")) * scale[suffix.toLowerCase()]);
+// Parses compact and signed numeric labels into values comparable with narration.
+export function groundedNumbers(text: string): number[] {
+  const expanded = text.replace(
+    /\b(\d[\d,]*(?:\.\d+)?)\s*([kmbt])\b/gi,
+    (_, raw: string, suffix: string) =>
+      String(
+        Number(raw.replace(/,/g, "")) *
+          COMPACT_MAGNITUDES[suffix.toLowerCase()],
+      ),
+  );
+  const negative: number[] = [];
+  let unsigned = expanded.replace(/-\s*(\d[\d,]*(?:\.\d+)?)/g, (_, raw: string) => {
+    negative.push(-Number(raw.replace(/,/g, "")));
+    return " ";
   });
-  return spokenNumbers(expanded);
+  unsigned = unsigned.replace(SIGNED_NUMBER_WORDS, (_match, words: string) => {
+    const value = spokenNumbers(words)[0];
+    if (value !== undefined) negative.push(-Math.abs(value));
+    return " ";
+  });
+  return [...spokenNumbers(unsigned), ...negative];
+}
+
+// Returns visible text overlays whose rendered time interval intersects one shot.
+function overlayTextForShot(
+  clips: OverlayClip[] | undefined,
+  fps: number,
+  from: number,
+  to: number,
+): string[] {
+  return (clips ?? []).flatMap((clip) => {
+    if (clip.kind === "image" || clip.opacity === 0) return [];
+    const start = Math.round(clip.position * fps);
+    const duration = Math.max(1, Math.round((clip.end - clip.start) * fps));
+    if (start >= to || start + duration <= from) return [];
+    const text = (clip.payload as { text?: string }).text;
+    return text ? [text] : [];
+  });
 }
 
 // Extracts every shared-design lock, including look camera/cast cues and decisive performances.
@@ -213,16 +267,26 @@ export function createReelContext({
   visibleText?: Record<string, string[]>;
 }): ReelContext {
   const minimum = minimumShotSeconds(film);
-  const durationByShot = new Map(
-    buildTimeline(film).map((timed) => [timed.shot.id, timed.durationInFrames]),
-  );
+  const timeline = buildTimeline(film);
+  const timingByShot = new Map(timeline.map((timed) => [timed.shot.id, timed]));
   const shots: ReelShotConstraint[] = film.shots.map((s) => {
+    const timed = timingByShot.get(s.id);
     const onScreenText = [
-      ...s.blocks.flatMap((block, index) =>
-        blockText(block, durationByShot.get(s.id) ?? 1, film.fps, index),
+      ...new Set(
+        [
+          ...s.blocks.flatMap((block, index) =>
+            blockText(block, timed?.durationInFrames ?? 1, film.fps, index),
+          ),
+          ...(visibleText[s.id] ?? []),
+          ...overlayTextForShot(
+            film.overlayClips,
+            film.fps,
+            timed?.from ?? 0,
+            timed?.to ?? 0,
+          ),
+        ].filter(Boolean),
       ),
-      ...(visibleText[s.id] ?? []),
-    ].filter(Boolean);
+    ];
     return {
       id: s.id,
       narration: s.scriptText ?? "",

@@ -29,6 +29,9 @@ import { loadReelContext, reelBrief, writeReelBrief } from "./brief";
 import { minimumShotSeconds } from "./motion";
 import { visibleReelText } from "./visibleText";
 import {
+  DEFAULT_REEL_BUDGET,
+  parseReelBudget,
+  REEL_MAX_SEC,
   reelCutSchema,
   reelBudgetSchema,
   type ReelBudget,
@@ -234,6 +237,22 @@ test("cut schema refuses contradictory entries, textless narration, unreasoned d
   );
   assert.throws(() => reelBudgetSchema.parse({ ...BUDGET, targetSec: 180 }));
   assert.throws(() => reelBudgetSchema.parse({ ...BUDGET, endCardSec: 170 }));
+  assert.equal(parseReelBudget({ ...BUDGET, maxSec: 100, targetSec: 90 }).maxSec, 100);
+  assert.equal(DEFAULT_REEL_BUDGET.maxSec, REEL_MAX_SEC);
+  assert.throws(() => parseReelBudget({ ...BUDGET, maxSec: REEL_MAX_SEC + 1 }));
+  assert.throws(() => parseReelBudget({ ...BUDGET, endCardSec: 0 }));
+  assert.throws(() =>
+    check(cut(), createReelContext({ film: film() }), {
+      ...BUDGET,
+      maxSec: REEL_MAX_SEC + 1,
+    }),
+  );
+  assert.throws(() =>
+    reelBrief(createReelContext({ film: film() }), {
+      ...BUDGET,
+      maxSec: REEL_MAX_SEC + 1,
+    }),
+  );
 });
 
 test("all shots must appear once in order, including drops", () => {
@@ -400,6 +419,8 @@ test("changed long hashes, missing hashes and removed shot hashes fail stale det
 
 test("new numbers fail per shot and displayed quantities must still be spoken", () => {
   const f = film();
+  f.shots[1].scriptText =
+    "Fold paper through zero, one, and two to catch it with two hands.";
   f.shots[1].blocks = [
     { c: "StatCounter", to: 2, label: "Hands", format: "plain" },
   ];
@@ -407,7 +428,8 @@ test("new numbers fail per shot and displayed quantities must still be spoken", 
   const value = cut(context);
   value.shots[1] = {
     id: "middle",
-    narration: "Fold the paper and catch it with 2 hands.",
+    narration:
+      "Fold paper through zero, one, and two to catch it with two hands.",
   };
   assert.equal(check(value, context).ok, true);
   value.shots[1] = {
@@ -434,13 +456,36 @@ test("displayed LayerStack counts and compact magnitudes use full numeric ground
     { c: "ScaleBar", ticks: ["1M", "1B"], value: 0.5 },
   ];
   const context = createReelContext({ film: f });
-  assert.deepEqual(context.shots[1].onScreenNumbers, [32, 1e6, 1e9]);
+  assert.ok(
+    [...Array(32)].every((_, i) =>
+      context.shots[1].onScreenNumbers.includes(i + 1),
+    ),
+  );
+  assert.ok(
+    [1e6, 1e9].every((n) => context.shots[1].onScreenNumbers.includes(n)),
+  );
   const value = cut(context);
   value.shots[1] = {
     id: "middle",
     narration: "Fold 32 layers and move from one million to one billion.",
   };
-  assert.equal(check(value, context).findings.some((finding) => finding.rule === "numbers"), false);
+  const numberFindings = check(value, context).findings.filter(
+    (finding) => finding.rule === "numbers" && finding.shotId === "middle",
+  );
+  assert.ok(
+    numberFindings.some((finding) => /on-screen number 1 must/.test(finding.message)),
+  );
+  assert.ok(
+    numberFindings.some((finding) => /on-screen number 31 must/.test(finding.message)),
+  );
+  assert.equal(
+    numberFindings.some((finding) => /on-screen number 1000000/.test(finding.message)),
+    false,
+  );
+  assert.equal(
+    numberFindings.some((finding) => /on-screen number 1000000000/.test(finding.message)),
+    false,
+  );
 });
 
 test("animated counters, labelled progress and layer indexes ground every displayed tick", () => {
@@ -448,13 +493,14 @@ test("animated counters, labelled progress and layer indexes ground every displa
   f.shots[1].scriptText =
     "The counter reaches three. The bar reaches fifty percent. There are four layers.";
   f.shots[1].blocks = [
-    { c: "StatCounter", to: 3, label: "Count", format: "plain" },
+    { c: "StatCounter", to: 3, label: "Count", format: "plain", suffix: "x10" },
     { c: "ProgressBar", value: 0.5, label: "Complete" },
     { c: "LayerStack", count: 4 },
   ];
   const context = createReelContext({ film: f });
   const visibleNumbers = context.shots[1].onScreenNumbers;
   assert.ok([0, 1, 2, 3].every((n) => visibleNumbers.includes(n)));
+  assert.ok(visibleNumbers.includes(10));
   assert.ok(visibleNumbers.some((n) => n > 0 && n < 50));
   assert.ok([1, 2, 3, 4].every((n) => visibleNumbers.includes(n)));
 
@@ -470,10 +516,113 @@ test("animated counters, labelled progress and layer indexes ground every displa
   assert.ok(numberFindings.some((finding) => /on-screen number 1/.test(finding.message)));
   assert.ok(numberFindings.some((finding) => /on-screen number 2/.test(finding.message)));
   assert.ok(
+    numberFindings.some((finding) => /on-screen number 10/.test(finding.message)),
+  );
+  assert.ok(
     numberFindings.some((finding) => {
       const value = Number(finding.message.match(/on-screen number ([\d.]+)/)?.[1]);
       return value > 0 && value < 50 && value !== 3 && value !== 4;
     }),
+  );
+});
+
+test("matrix cells and counter suffix numbers are grounded from rendered text", () => {
+  const f = film();
+  f.shots[1].blocks = [
+    {
+      c: "MatrixGrid",
+      values: [[0.12, 0.75], [0.4, 1]],
+      sweep: "cell",
+    },
+    { c: "StatCounter", to: 2, label: "Scale", suffix: "x10", format: "plain" },
+    { c: "StatCounter", to: 2_000, label: "Total", format: "compact" },
+  ];
+  const context = createReelContext({ film: f });
+  assert.ok(
+    [0.12, 0.75, 0.4, 1, 10, 2_000].every((n) =>
+      context.shots[1].onScreenNumbers.includes(n),
+    ),
+  );
+
+  const value = cut(context);
+  value.shots[1] = { id: "middle", narration: "Zero point twelve." };
+  const numberFindings = check(value, context).findings.filter(
+    (finding) => finding.rule === "numbers" && finding.shotId === "middle",
+  );
+  assert.ok(
+    numberFindings.some((finding) => /on-screen number 0\.75/.test(finding.message)),
+  );
+  assert.ok(
+    numberFindings.some((finding) => /on-screen number 10/.test(finding.message)),
+  );
+});
+
+test("overlay text is grounded only in shots where its timeline interval is visible", () => {
+  const f = film();
+  f.shots[1].scriptText = "The value is negative seven.";
+  f.overlayClips = [
+    {
+      id: "value-overlay",
+      kind: "text",
+      position: 11,
+      start: 0,
+      end: 1,
+      opacity: 1,
+      payload: { text: "Value -7" },
+    },
+    {
+      id: "marker-overlay",
+      kind: "subtitle",
+      position: 12,
+      start: 0,
+      end: 1,
+      opacity: 1,
+      payload: { text: "Marker 8" },
+    },
+  ];
+  const context = createReelContext({ film: f });
+  assert.ok(context.shots[0].onScreenNumbers.includes(-7) === false);
+  assert.ok(context.shots[1].onScreenNumbers.includes(-7));
+  assert.ok(context.shots[1].onScreenNumbers.includes(8));
+
+  const value = cut(context);
+  value.shots[1] = { id: "middle", narration: "The value is seven." };
+  const numberFindings = check(value, context).findings.filter(
+    (finding) => finding.rule === "numbers" && finding.shotId === "middle",
+  );
+  assert.ok(numberFindings.some((finding) => /on-screen number -7/.test(finding.message)));
+  assert.ok(numberFindings.some((finding) => /new number 7/.test(finding.message)));
+  assert.ok(numberFindings.some((finding) => /on-screen number 8/.test(finding.message)));
+});
+
+test("spoken positive numbers cannot satisfy signed displayed numbers", () => {
+  const f = film();
+  f.shots[1].scriptText = "The reading is negative two.";
+  f.shots[1].blocks = [
+    { c: "StatCounter", to: -2, label: "Reading", format: "plain" },
+  ];
+  const context = createReelContext({ film: f });
+  assert.ok(context.shots[1].onScreenNumbers.includes(-2));
+
+  const value = cut(context);
+  value.shots[1] = { id: "middle", narration: "The reading is two." };
+  assert.ok(
+    check(value, context).findings.some(
+      (finding) =>
+        finding.rule === "numbers" &&
+        finding.shotId === "middle" &&
+        /on-screen number -2/.test(finding.message),
+    ),
+  );
+  value.shots[1] = {
+    id: "middle",
+    narration: "The reading is zero, negative one, and negative two.",
+  };
+  assert.equal(
+    check(value, context).findings.some(
+      (finding) => finding.rule === "numbers",
+    ),
+    false,
   );
 });
 
@@ -552,10 +701,6 @@ test("cap includes the card, reports exact overage and longest shots; target onl
   assert.match(
     formatReelReport(over),
     /1.0 s over the 32.0 s cap; shorten middle/,
-  );
-  assert.equal(
-    check(value, context, { maxSec: 32, targetSec: 31, endCardSec: 0 }).ok,
-    true,
   );
   assert.equal(
     check(
@@ -744,6 +889,27 @@ test("real aideos reel brief/check commands produce a brief, enforce failures an
   const valid = run(["check", "reel-test", "--json"]);
   assert.equal(valid.status, 0, valid.stderr);
   assert.equal(JSON.parse(valid.stdout).ok, true);
+  assert.equal(JSON.parse(valid.stdout).estimate.endCardSec, 3);
+  const help = run(["check", "reel-test", "--help"]);
+  assert.equal(help.status, 0, help.stderr);
+  assert.match(help.stdout, /--max-sec/);
+  assert.equal(help.stdout.includes("--end-card-sec"), false);
+  const cardOverride = run([
+    "check",
+    "reel-test",
+    "--end-card-sec",
+    "0",
+  ]);
+  assert.notEqual(cardOverride.status, 0);
+  const tooHigh = run([
+    "check",
+    "reel-test",
+    "--max-sec",
+    String(REEL_MAX_SEC + 1),
+    "--target-sec",
+    "170",
+  ]);
+  assert.notEqual(tooHigh.status, 0);
   const over = run([
     "check",
     "reel-test",

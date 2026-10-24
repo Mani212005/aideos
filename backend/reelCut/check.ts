@@ -4,9 +4,8 @@
  * Used by: aideos reel check, reel brief and the production reel stage.
  */
 import { createCues, type NarrationTiming } from "../sceneKit/timing";
-import { spokenNumbers } from "../review/speech";
-import { countWords, type ReelContext } from "./constraints";
-import { reelBudgetSchema, reelCutSchema, type ReelBudget } from "./schema";
+import { countWords, groundedNumbers, type ReelContext } from "./constraints";
+import { parseReelBudget, reelCutSchema, type ReelBudget } from "./schema";
 
 export interface ReelFinding {
   rule:
@@ -64,7 +63,7 @@ export function checkReelCut(
   context: ReelContext,
   budgetInput: ReelBudget,
 ): ReelCheckReport {
-  const budget = reelBudgetSchema.parse(budgetInput);
+  const budget = parseReelBudget(budgetInput);
   const findings: ReelFinding[] = [];
   const parsed = reelCutSchema.safeParse(raw);
   // Creates a report whose verdict can only pass when no blocking findings remain.
@@ -179,10 +178,10 @@ export function checkReelCut(
     }
     // The shared picture is also source material: carried labels may need to be re-spoken in a shorter cut.
     const originalNumbers = new Set([
-      ...spokenNumbers(shot.narration),
+      ...groundedNumbers(shot.narration),
       ...shot.onScreenNumbers,
     ]);
-    const said = new Set(spokenNumbers(entry.narration));
+    const said = new Set(groundedNumbers(entry.narration));
     for (const n of said)
       if (!originalNumbers.has(n))
         findings.push({

@@ -6,7 +6,11 @@
 import { Command } from "commander";
 import { loadReelContext, readReelCut, writeReelBrief } from "./brief";
 import { checkReelCut, formatReelReport } from "./check";
-import { reelBudgetSchema } from "./schema";
+import {
+  DEFAULT_REEL_BUDGET,
+  REEL_MAX_SEC,
+  parseReelBudget,
+} from "./schema";
 
 // Adds the pre-synthesis budget parameters until the production stage supplies its delivery budget.
 function withBudget(command: Command): Command {
@@ -14,18 +18,13 @@ function withBudget(command: Command): Command {
     .argument("<film>", "film package slug")
     .option(
       "--max-sec <seconds>",
-      "delivered reel cap including the end card",
-      "179",
+      `lower the delivered reel cap (maximum ${REEL_MAX_SEC} seconds, including the end card)`,
+      String(DEFAULT_REEL_BUDGET.maxSec),
     )
     .option(
       "--target-sec <seconds>",
       "delivered reel target including the end card",
-      "170",
-    )
-    .option(
-      "--end-card-sec <seconds>",
-      "reserved end card time in the budget",
-      "3",
+      String(DEFAULT_REEL_BUDGET.targetSec),
     );
 }
 
@@ -45,12 +44,12 @@ export function registerReelCommands(program: Command): void {
   ).action(
     (
       film: string,
-      options: { maxSec: string; targetSec: string; endCardSec: string },
+      options: { maxSec: string; targetSec: string },
     ) => {
-      const budget = reelBudgetSchema.parse({
+      const budget = parseReelBudget({
         maxSec: Number(options.maxSec),
         targetSec: Number(options.targetSec),
-        endCardSec: Number(options.endCardSec),
+        endCardSec: DEFAULT_REEL_BUDGET.endCardSec,
       });
       console.log(writeReelBrief(film, budget));
     },
@@ -69,15 +68,14 @@ export function registerReelCommands(program: Command): void {
         options: {
           maxSec: string;
           targetSec: string;
-          endCardSec: string;
           json?: boolean;
         },
       ) => {
         try {
-          const budget = reelBudgetSchema.parse({
+          const budget = parseReelBudget({
             maxSec: Number(options.maxSec),
             targetSec: Number(options.targetSec),
-            endCardSec: Number(options.endCardSec),
+            endCardSec: DEFAULT_REEL_BUDGET.endCardSec,
           });
           const context = loadReelContext(film);
           const report = checkReelCut(readReelCut(film), context, budget);
