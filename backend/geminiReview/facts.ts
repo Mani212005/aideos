@@ -9,7 +9,7 @@
  * Used by: backend/geminiReview/geminiReview.ts.
  */
 
-import { prepareCaptionReview } from "../review/captionRegion";
+import { hasCaptionPlacementForFormat, prepareCaptionReview } from "../review/captionRegion";
 import type { CaptionRect } from "../../src/dl/captionPlacement";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -163,7 +163,7 @@ export async function measureBottomCaptions(
   videoPath: string,
   durationSec: number,
   numSamples = 12,
-  captionRectAt?: ((t: number) => CaptionRect) | null,
+  captionRectAt?: ((t: number) => CaptionRect | undefined) | null,
 ): Promise<{
   measured: boolean;
   hasCaptions: boolean;
@@ -465,20 +465,17 @@ export async function extractDeterministicFacts(
   if (filmPath && fs.existsSync(filmPath)) {
     try {
       const film = parseFilm(JSON.parse(fs.readFileSync(filmPath, "utf8")));
+      const format = viewport
+        ? viewport.width < viewport.height ? "reel" : "long"
+        : undefined;
       if (viewport) captionRectAt = prepareCaptionReview(film, viewport.width, viewport.height);
-      else if (
-        film.captions !== "off" &&
-        film.subtitles !== false &&
-        (film.captionPlacement || film.shots.some((shot) => shot.captionPlacement))
-      ) {
-        captionMeasurementNote = "- Owner caption cards: NOT measured (output dimensions unavailable); do not judge caption coverage from the legacy bottom band.";
-        captionRectAt = null;
-      }
       if (captionRectAt && typeof captionRectAt !== "function") {
-        captionMeasurementNote = `- Owner caption cards: NOT measured (${captionRectAt.unavailable}); do not judge caption coverage from the legacy bottom band.`;
+        captionMeasurementNote = `- Owner ${format} caption cards: NOT measured (${captionRectAt.unavailable}); do not judge caption coverage from the legacy bottom band.`;
         captionRectAt = null;
       }
-      if (captionRectAt) placementNote = `- Owner caption cards: ${JSON.stringify({ film: film.captionPlacement, shots: film.shots.filter((s) => s.captionPlacement).map((s) => ({ id: s.id, placement: s.captionPlacement })) })}. Check these placed rectangles; locked cards must be preserved.`;
+      if (captionRectAt && format && hasCaptionPlacementForFormat(film, format)) {
+        placementNote = `- Owner ${format} caption cards: ${JSON.stringify({ film: film.captionPlacement?.[format], shots: film.shots.filter((shot) => shot.captionPlacement?.[format]).map((shot) => ({ id: shot.id, placement: shot.captionPlacement?.[format] })) })}. Check these placed rectangles; locked cards must be preserved.`;
+      }
       if (film.scene?.renderer === "three" && !viewport) stageNote = "- Stage facts: NOT measured, the output size of this video could not be probed; judge the stage only from the video.";
       else filmFacts = readFilmFacts(film, viewport ?? undefined);
     } catch (err) {

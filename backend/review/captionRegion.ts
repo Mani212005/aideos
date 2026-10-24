@@ -14,10 +14,20 @@ import {
 } from "../../src/dl/captionPlacement";
 import { measureCaptionWords } from "./captionMeasurements";
 export type CaptionReviewRegion =
-  | ((t: number) => ReturnType<typeof captionCardRect>)
+  | ((t: number) => ReturnType<typeof captionCardRect> | undefined)
   | { unavailable: string }
   | null
   | undefined;
+// Checks whether a film or one of its shots declares placement for the rendered format.
+export function hasCaptionPlacementForFormat(
+  film: Film,
+  format: "long" | "reel",
+): boolean {
+  return Boolean(
+    film.captionPlacement?.[format] ||
+      film.shots.some((shot) => shot.captionPlacement?.[format]),
+  );
+}
 // Resolves at phrase start so review follows captions across a cut instead of jumping with the shot.
 export function prepareCaptionReview(
   film: Film,
@@ -26,9 +36,8 @@ export function prepareCaptionReview(
   measureWords = measureCaptionWords,
 ): CaptionReviewRegion {
   if (film.captions === "off" || film.subtitles === false) return null;
-  if (!film.captionPlacement && !film.shots.some((s) => s.captionPlacement))
-    return undefined;
   const format = width < height ? "reel" : "long";
+  if (!hasCaptionPlacementForFormat(film, format)) return undefined;
   const timeline = buildTimeline(film, film.voiceover?.durationSec);
   const fontSize = Math.round(Math.min(width, height) * 0.042);
   const words = captionWordsForFilm(film);
@@ -65,6 +74,8 @@ export function prepareCaptionReview(
     const placement =
       phrase?.placement ??
       resolveCaptionPlacement(film, format, shotAt(timeline, frame)?.shot.id);
-    return captionCardRect(format, width, height, placement);
+    return placement.source === "default"
+      ? undefined
+      : captionCardRect(format, width, height, placement);
   };
 }

@@ -34,7 +34,7 @@ export interface RenderFacts {
 export interface RenderOptions {
   /** Skip the OCR pass (pixel facts only). */
   skipOcr?: boolean;
-  captionRectAt?: ((t: number) => CaptionRect) | null;
+  captionRectAt?: ((t: number) => CaptionRect | undefined) | null;
   onProgress?: (message: string) => void;
 }
 
@@ -56,7 +56,7 @@ async function pixelPass(file: string) {
 }
 
 // Runs the OCR pass: one full-resolution frame per sample interval, several tesseract processes at once.
-async function ocrPass(file: string, video: VideoFacts, onProgress?: (m: string) => void, captionRectAt?: ((t: number) => CaptionRect) | null): Promise<SampleAnalysis[]> {
+async function ocrPass(file: string, video: VideoFacts, onProgress?: (m: string) => void, captionRectAt?: ((t: number) => CaptionRect | undefined) | null): Promise<SampleAnalysis[]> {
   const out: SampleAnalysis[] = [];
   const limit = Math.max(1, Math.min(4, os.cpus().length - 1));
   const inflight = new Set<Promise<void>>();

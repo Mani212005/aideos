@@ -745,13 +745,63 @@ test("caption review omits placement geometry when rendering is disabled", async
 
 test("caption review reports measurement unavailability instead of a default region", async () => {
   const { prepareCaptionReview } = await import("./review/captionRegion");
+  const longOnly = { ...base, captionPlacement: { long: { ...top, w: 0.86 } } };
+  const unavailable = () => { throw new Error("Chrome unavailable"); };
   const result = prepareCaptionReview(
-    { ...base, captionPlacement: { long: { ...top, w: 0.86 } } },
+    longOnly,
     1920,
     1080,
-    () => { throw new Error("Chrome unavailable"); },
+    unavailable,
   );
   assert.deepEqual(result, { unavailable: "Chrome unavailable" });
+  assert.equal(prepareCaptionReview(longOnly, 1080, 1920, unavailable), undefined);
+
+  const reelOnly = { ...base, captionPlacement: { reel: { ...top, w: 0.7 } } };
+  assert.deepEqual(prepareCaptionReview(reelOnly, 1080, 1920, unavailable), {
+    unavailable: "Chrome unavailable",
+  });
+  assert.equal(prepareCaptionReview(reelOnly, 1920, 1080, unavailable), undefined);
+
+  const shotOnly = {
+    ...base,
+    shots: base.shots.map((shot, index) => index === 0
+      ? { ...shot, captionPlacement: { long: { ...top, w: 0.7 } } }
+      : shot),
+  };
+  assert.deepEqual(prepareCaptionReview(shotOnly, 1920, 1080, unavailable), {
+    unavailable: "Chrome unavailable",
+  });
+  assert.equal(prepareCaptionReview(shotOnly, 1080, 1920, unavailable), undefined);
+});
+
+test("review uses the legacy bottom band for phrases without a format placement", async () => {
+  const { prepareCaptionReview } = await import("./review/captionRegion");
+  const timeline = buildTimeline(base, base.voiceover?.durationSec);
+  const fps = base.fps;
+  const placedFrame = timeline[0].from + 3;
+  const defaultFrame = timeline[1].from + 3;
+  const toTimestamp = (frame: number) => {
+    const seconds = frame / fps;
+    const minutes = Math.floor(seconds / 60);
+    return `${String(minutes).padStart(2, "0")}:${(seconds - minutes * 60).toFixed(3).padStart(6, "0")}`;
+  };
+  const film = {
+    ...base,
+    captions: `WEBVTT\n\n${toTimestamp(placedFrame)} --> ${toTimestamp(placedFrame + 12)}\nPlaced.\n\n${toTimestamp(defaultFrame)} --> ${toTimestamp(defaultFrame + 12)}\nDefault.\n`,
+    shots: base.shots.map((shot, index) => index === 0
+      ? { ...shot, captionPlacement: { long: { ...top, w: 0.7 } } }
+      : shot),
+  };
+  const regionAt = prepareCaptionReview(film, 1920, 1080, (words) =>
+    Object.fromEntries(words.map((word) => [word, 48])),
+  );
+  assert.equal(typeof regionAt, "function");
+  if (typeof regionAt !== "function") return;
+  assert.deepEqual(
+    regionAt(placedFrame / fps),
+    captionCardRect("long", 1920, 1080, resolveCaptionPlacement(film, "long", timeline[0].shot.id)),
+  );
+  assert.equal(regionAt(defaultFrame / fps), undefined);
 });
 
 // Executes the closed AI operation and its atomic rollback on a locked target.
