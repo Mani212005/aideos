@@ -1168,11 +1168,17 @@ test("hero label follows an explicit top caption", async () => {
 test("review phrase measurement matches rendered word widths", async () => {
   const { findChromeBinary } = await import("./scene/renderStill");
   if (!findChromeBinary()) return;
-  const { measureCaptionWords } = await import("./review/captionMeasurements");
+  const { measureCaptionWords, measureCaptionWordsAsync } = await import(
+    "./review/captionMeasurements"
+  );
   const measured = measureCaptionWords(["MMMM", "iiii", "readable"], 45);
   assert.ok(measured.MMMM > measured.iiii * 3);
   assert.equal(
     measureCaptionWords(["readable"], 45).readable,
     measured.readable,
   );
+  const parityWords = ["RunnerParityWordQZ731", "DifferentWidthsQZ731"];
+  const asynchronous = measureCaptionWordsAsync(parityWords, 47);
+  const synchronous = measureCaptionWords(parityWords, 47);
+  assert.deepEqual(await asynchronous, synchronous);
 });
