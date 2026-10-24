@@ -117,8 +117,12 @@ Validate with: aideos reel check ${context.filmId} --max-sec ${budget.maxSec} --
 
 // Writes only the generated brief, leaving the long package and any owner-authored cut untouched.
 export function writeReelBrief(slug: string, budget: ReelBudget): string {
+  const pkg = reelPackageDir(slug);
+  const personalPkg = path.join(getVideosDir(), slug);
+  if (path.resolve(pkg) !== path.resolve(personalPkg))
+    throw new Error(`cannot write a reel brief for read-only example "${slug}"`);
   const body = reelBrief(loadReelContext(slug), budget);
-  const dir = path.join(getVideosDir(), slug, "reel");
+  const dir = path.join(pkg, "reel");
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, "REEL_BRIEF.md");
   fs.writeFileSync(file, body, "utf8");

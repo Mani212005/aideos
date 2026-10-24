@@ -427,6 +427,22 @@ test("new numbers fail per shot and displayed quantities must still be spoken", 
   );
 });
 
+test("displayed LayerStack counts and compact magnitudes use full numeric grounding", () => {
+  const f = film();
+  f.shots[1].blocks = [
+    { c: "LayerStack", count: 32 },
+    { c: "ScaleBar", ticks: ["1M", "1B"], value: 0.5 },
+  ];
+  const context = createReelContext({ film: f });
+  assert.deepEqual(context.shots[1].onScreenNumbers, [32, 1e6, 1e9]);
+  const value = cut(context);
+  value.shots[1] = {
+    id: "middle",
+    narration: "Fold 32 layers and move from one million to one billion.",
+  };
+  assert.equal(check(value, context).findings.some((finding) => finding.rule === "numbers"), false);
+});
+
 test("grounding reads rendered chart decimals and ignores an unlabelled progress bar", () => {
   const f = film();
   f.shots[1].scriptText = "Probabilities are 0.60 and 0.40.";
@@ -567,6 +583,14 @@ test("brief contains the delivered word budget, per-shot locks, motion floors, s
     narrationHash(film().shots[1].scriptText ?? ""),
   );
   assert.equal(check(scaffold, context).ok, true);
+});
+
+test("brief writing rejects read-only examples before creating a personal shadow", () => {
+  assert.throws(
+    () => writeReelBrief("hello-scene", BUDGET),
+    /read-only example/,
+  );
+  assert.equal(fs.existsSync(path.join(TEST_VIDEOS_DIR, "hello-scene")), false);
 });
 
 test("SVG text grounding follows visibility and reel crop, including a one-frame reveal", () => {

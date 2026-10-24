@@ -109,6 +109,7 @@ function blockText(block: Block): string[] {
       ];
     case "LayerStack":
       return [
+        String(block.count ?? 32),
         block.bottomLabel ?? "",
         block.topLabel ?? "",
         block.prompt ?? "",
@@ -131,6 +132,15 @@ function blockText(block: Block): string[] {
       return exhaustive;
     }
   }
+}
+
+// Converts compact magnitude labels to their full numeric value before shared number grounding.
+function groundedNumbers(text: string): number[] {
+  const expanded = text.replace(/\b(\d[\d,]*(?:\.\d+)?)\s*([kmbt])\b/gi, (_, raw: string, suffix: string) => {
+    const scale: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9, t: 1e12 };
+    return String(Number(raw.replace(/,/g, "")) * scale[suffix.toLowerCase()]);
+  });
+  return spokenNumbers(expanded);
 }
 
 // Extracts every shared-design lock, including look camera/cast cues and decisive performances.
@@ -159,7 +169,7 @@ export function createReelContext({
       minSec: minimum.get(s.id) ?? 1 / film.fps,
       locks: [],
       onScreenText,
-      onScreenNumbers: [...new Set(onScreenText.flatMap(spokenNumbers))],
+      onScreenNumbers: [...new Set(onScreenText.flatMap(groundedNumbers))],
       decisive: false,
     };
   });
