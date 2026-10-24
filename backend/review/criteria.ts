@@ -327,12 +327,18 @@ function cueTiming(i: ReviewInputs): CriterionResult {
   };
 }
 
+// Seconds of the end card at the tail of the reviewed video (0 when the film has none).
+function endCardSec(film: ReviewInputs["film"]): number {
+  return film?.endCard ? film.endCard.endSec - film.endCard.startSec : 0;
+}
+
 // Criterion 4: a camera that moves, from film data (gate).
 function camera(i: ReviewInputs): CriterionResult {
   const { film, video } = i;
   if (!film) return skipped(4, "camera", "Camera that does something", true, "camera is read from film data, not pixels; pass --film or review an aideos film");
   const cam = film.camera;
-  const need = Math.max(1, Math.floor(video.durationSec / T.camera.movePerSec));
+  // The end card holds the final stage on purpose, so only the story owes camera moves.
+  const need = Math.max(1, Math.floor((video.durationSec - endCardSec(film)) / T.camera.movePerSec));
   const metrics = { cameraKind: cam.kind, moves: cam.moves.length, movesNeeded: need, subThresholdMoves: cam.driftOnly, maxSpeedWidthPerSec: round(cam.maxSpeed, 3) };
   const threshold = { movePerSec: T.camera.movePerSec, maxSpeedWidthPerSec: T.camera.maxSpeedWidthPerSec };
   const failures: string[] = [];
@@ -351,7 +357,12 @@ function camera(i: ReviewInputs): CriterionResult {
 
 // Criterion 5: burned-in captions along the bottom (gate).
 function captions(i: ReviewInputs): CriterionResult {
-  const { render, narration, silences } = i;
+  const { render, silences } = i;
+  // The end card's spoken line is narration too, captioned like the story.
+  const cardWords = i.film?.endCard?.words ?? [];
+  const narration = i.narration?.timed && cardWords.length
+    ? { ...i.narration, words: [...i.narration.words, ...cardWords], text: `${i.narration.text} ${cardWords.map((w) => w.word).join(" ")}` }
+    : i.narration;
   if (!render.ocrRan) return skipped(5, "captions", "Bottom captions", true, "OCR was not run");
   if (!narration && !i.video.hasAudio) return skipped(5, "captions", "Bottom captions", true, "no narration: the video has no audio and no narration was given");
   // Only narrated moments are held to having a caption: with timed words, within a second of a word; otherwise outside any silence.
@@ -430,8 +441,10 @@ function audioSync(i: ReviewInputs): CriterionResult {
   const failures: string[] = [];
   const lengthDiff = Math.abs(audioDurationSec - video.durationSec);
   if (lengthDiff > T.audioSync.lengthToleranceSec) failures.push(`audio is ${round(audioDurationSec, 2)} s but the picture is ${round(video.durationSec, 2)} s`);
-  const filmDiff = film ? Math.abs(film.durationSec - video.durationSec) : null;
-  if (filmDiff !== null && filmDiff > T.audioSync.lengthToleranceSec) failures.push(`the film's shots add up to ${round(film!.durationSec, 2)} s but the rendered video is ${round(video.durationSec, 2)} s`);
+  // The delivered video is the story plus the fixed end card.
+  const cardSec = endCardSec(film);
+  const filmDiff = film ? Math.abs(film.durationSec + cardSec - video.durationSec) : null;
+  if (filmDiff !== null && filmDiff > T.audioSync.lengthToleranceSec) failures.push(`the film's shots add up to ${round(film!.durationSec, 2)} s${cardSec > 0 ? ` plus a ${round(cardSec, 1)} s end card` : ""} but the rendered video is ${round(video.durationSec, 2)} s`);
   const cuts = film && narration?.timed ? cutsThroughWords(narration.words, film.shotBoundaries, T.audioSync.boundaryToleranceSec) : null;
   if (cuts && cuts.length) failures.push(`${cuts.length} shot boundaries cut through a spoken word (${cuts.slice(0, 3).map((c) => `"${c.word}" at ${round(c.t, 1)} s`).join(", ")})`);
   const tail = narration?.timed && narration.words.length ? narration.words[narration.words.length - 1].end - video.durationSec : null;

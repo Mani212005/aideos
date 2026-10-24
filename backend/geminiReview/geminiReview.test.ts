@@ -36,6 +36,7 @@ import type {
   AgyReviewClient,
 } from "./types";
 import {
+  endCardFactLine,
   inspectCamera,
   measureBottomCaptions,
 } from "./facts";
@@ -125,6 +126,14 @@ test("Rubric: buildPairwiseWatchPrompt and buildPairwiseExchangePrompt contain c
   assert.ok(exchangePrompt.includes("OTHER video (Video B)"));
   assert.ok(exchangePrompt.includes("persistent stage"));
   assert.ok(exchangePrompt.includes("Give the OTHER video a rating (0-10) and brief reasoning."));
+});
+
+test("facts: the end card fact names its span, where the story ends, and its spoken line", () => {
+  const spoken = endCardFactLine({ startSec: 54, endSec: 60, words: [{ word: "like", start: 54.3, end: 54.6 }, { word: "subscribe.", start: 54.7, end: 55.4 }] });
+  assert.match(spoken, /the last 6\.0s \(54\.0s to 60\.0s\) is the fixed like-and-subscribe end card/);
+  assert.match(spoken, /the story ends at 54\.0s/);
+  assert.match(spoken, /not a static freeze, dead air or a stage clear; its spoken line is "like subscribe\."/);
+  assert.match(endCardFactLine({ startSec: 30, endSec: 33, words: [] }), /the last 3\.0s .*, and it is silent\.$/);
 });
 
 test("facts: inspectCamera handles missing film.json without hardcoded path heuristics", () => {

@@ -1,12 +1,14 @@
 /**
- * File Description: Top-level Remotion video composition mixing canvas visuals, voiceover narration, sidechain-ducked music, and sound effects.
+ * File Description: Top-level Remotion video composition mixing canvas visuals, voiceover narration, sidechain-ducked music, sound effects and the end card's spoken line.
  * Inputs and outputs: Film props and dimensions -> full Remotion Composition component.
  * Used by: src/Root.tsx, backend/insetStage.test.ts.
  */
 
 import React from "react";
-import { Audio, Sequence, staticFile } from "remotion";
+import { Audio, Sequence, staticFile, useVideoConfig } from "remotion";
 import { FilmView } from "./Film";
+import { deliveryTimeline, formatForSize } from "./delivery";
+import { EndCardVoice } from "./EndCard";
 import { TOTAL_FRAMES, FILM, TIMELINE, FPS, type FilmProps } from "./runtime";
 import { calculateDuckingVolume, type SpeechInterval } from "./audio/ducking";
 import { getRetimedAudioRelPath } from "./audio/retime";
@@ -43,8 +45,13 @@ export const Video: React.FC<VideoProps> = ({
   film = FILM,
   timeline = TIMELINE,
 }) => {
+  const { width, height } = useVideoConfig();
   const effectiveFps = film.fps ?? FPS;
+  // The narration fades against the end of the story; music runs on under the end card to the
+  // end of the delivered video.
   const effectiveTotalFrames = timeline.length > 0 ? timeline[timeline.length - 1].to : TOTAL_FRAMES;
+  const delivery = deliveryTimeline(film, formatForSize(width, height), { timeline });
+  const card = delivery.card;
   const effectiveVoiceoverSrc = (voiceoverSrc ?? "").trim() || film.voiceover?.src || "";
   const effectiveVoiceoverVolume = voiceoverVolume ?? film.voiceover?.volume ?? 1;
   const effectiveMusicSrc = (musicSrc ?? "").trim() || film.music?.src || film.audio?.src || "";
@@ -63,6 +70,13 @@ export const Video: React.FC<VideoProps> = ({
           startSec: t.from / effectiveFps,
           endSec: t.to / effectiveFps,
         }));
+  // The music ducks under the end card's spoken line too.
+  if (card && film.endCardVoice && card.lineFrom !== null) {
+    speechIntervals.push({
+      startSec: card.lineFrom / effectiveFps,
+      endSec: card.lineFrom / effectiveFps + film.endCardVoice.durationSec,
+    });
+  }
 
   return (
     <>
@@ -76,7 +90,7 @@ export const Video: React.FC<VideoProps> = ({
             calculateDuckingVolume({
               frame: f,
               fps: effectiveFps,
-              totalFrames: effectiveTotalFrames,
+              totalFrames: delivery.totalFrames,
               musicVolume: effectiveMusicVolume,
               duckUnderVoiceover: film.music?.duckUnderVoiceover ?? true,
               speechIntervals,
@@ -130,7 +144,10 @@ export const Video: React.FC<VideoProps> = ({
         })()
       ) : null}
 
-      {/* 3. Transition Sound Effects (SFX) Track */}
+      {/* 3. The end card's spoken line, at the narration's own level */}
+      {card ? <EndCardVoice film={film} card={card} volume={effectiveVoiceoverVolume} /> : null}
+
+      {/* 4. Transition Sound Effects (SFX) Track */}
       {film.sfx && film.sfx.length > 0
         ? film.sfx.map((sfx, idx) => {
             const startFrame = Math.round(sfx.timeSec * effectiveFps);

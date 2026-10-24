@@ -1,6 +1,6 @@
 /**
  * File Description: Runtime validation and module-scope timeline initialization for the active film composition.
- * Inputs and outputs: ACTIVE_FILM manifest -> validated FILM object, compiled TIMELINE, and Remotion composition props schema.
+ * Inputs and outputs: ACTIVE_FILM manifest -> validated FILM object, compiled TIMELINE, each format's delivered frame count, and Remotion composition props schema.
  * Used by: src/Root.tsx.
  */
 
@@ -8,6 +8,7 @@ import { z } from "zod";
 import { zColor } from "@remotion/zod-types";
 import { parseFilm } from "./schema";
 import { buildTimeline, totalFrames } from "./camera";
+import { deliveryTimeline } from "./delivery";
 import { ACTIVE_FILM } from "./activeFilm";
 import { PALETTE } from "./tokens";
 
@@ -21,7 +22,11 @@ import { PALETTE } from "./tokens";
 export const FILM = parseFilm(ACTIVE_FILM);
 export const TIMELINE = buildTimeline(FILM);
 export const FPS = FILM.fps;
+/** Frames of the story alone: the film's own timeline, which the narration is locked to. */
 export const TOTAL_FRAMES = totalFrames(TIMELINE);
+/** Delivered frames per format: the story plus that format's end card (src/dl/delivery.ts). */
+export const LONG_TOTAL_FRAMES = deliveryTimeline(FILM, "long", { timeline: TIMELINE }).totalFrames;
+export const REEL_TOTAL_FRAMES = deliveryTimeline(FILM, "reel", { timeline: TIMELINE }).totalFrames;
 
 /**
  * The Studio hand-off surface.

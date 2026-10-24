@@ -1,11 +1,11 @@
 /**
- * File Description: Core Remotion film renderer assembling canvas graph, spatial camera movements, staged devices, subtitles, and audio tracks.
+ * File Description: Core Remotion film renderer assembling canvas graph, spatial camera movements, staged devices, subtitles, audio tracks and the fixed end card (the story's last frame held under it).
  * Inputs and outputs: Film manifest, current frame, and player props -> composite Remotion video composition.
  * Used by: src/dl/Video.tsx, src/Root.tsx, editor Remotion Player.
  */
 
 import React from "react";
-import { AbsoluteFill, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
+import { AbsoluteFill, Freeze, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
 import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO } from "./tokens";
 import { SUBTITLE_FONT_RATIO, getFullScreenHeroLayout, getInsetRegion, heroScrimGradient } from "./fullScreenHeroLayout";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
@@ -16,6 +16,8 @@ import { SceneStage, type TestStageVisibility } from "./SceneStage";
 import { PaperRip } from "./PaperRip";
 import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
 import { getRetimedAudioRelPath } from "./audio/retime";
+import { deliveryTimeline, formatForSize } from "./delivery";
+import { EndCard, EndCardVoice } from "./EndCard";
 import { Kicker, TextReveal, Body } from "./primitives";
 import {
   buildTimeline,
@@ -568,10 +570,23 @@ export const FilmView: React.FC<FilmViewProps> = ({
   includeAudio = true,
   testVisibility,
 }) => {
-  const frame = useCurrentFrame();
+  const rawFrame = useCurrentFrame();
   const { width, height, fps } = useVideoConfig();
+  // The delivered video is the story plus the end card (src/dl/delivery.ts). Through the card the
+  // story holds its last frame, so everything below that describes the story reads that frame.
+  const delivery = React.useMemo(
+    () => deliveryTimeline(film, formatForSize(width, height), { timeline }),
+    [film, timeline, width, height],
+  );
+  const card = delivery.card;
+  const inCard = card !== null && rawFrame >= card.from;
+  const frame = inCard ? Math.max(0, delivery.storyFrames - 1) : rawFrame;
+  // A slow push across the card keeps the held stage from reading as a frozen frame.
+  const holdScale = inCard && card ? 1 + 0.01 * Math.min(1, (rawFrame - card.from) / Math.max(1, card.durationInFrames)) : 1;
   const current = shotAt(timeline, frame);
   const cam = camAt(film, timeline, frame, { width, height });
+  const subtitleWords =
+    film.subtitles === false ? captionWords ?? [] : [...(captionWords ?? []), ...delivery.cardWords];
 
 
   // The whole composition drifts 100 -> 104% across a held shot; the diagram
@@ -619,7 +634,11 @@ export const FilmView: React.FC<FilmViewProps> = ({
   return (
     <ThemeContext.Provider value={bgTheme}>
       <AccentContext.Provider value={accent}>
-        <ImportedVideoLayer film={film} fps={fps} />
+        <Freeze frame={frame} active={inCard}>
+          <AbsoluteFill style={{ transform: `scale(${holdScale})` }}>
+            <ImportedVideoLayer film={film} fps={fps} />
+          </AbsoluteFill>
+        </Freeze>
         <AbsoluteFill
           style={{
             backgroundColor: hasVideoBase ? "transparent" : bgTheme.canvas,
@@ -627,6 +646,8 @@ export const FilmView: React.FC<FilmViewProps> = ({
             fontFamily,
           }}
         >
+        <Freeze frame={frame} active={inCard}>
+        <AbsoluteFill style={{ transform: `scale(${holdScale})` }}>
         {/* Paper & Texture Library Filter Shaders. Skipped over an imported video: a paper grain
             or blueprint grid is a treatment for the generated canvas look, not something that
             belongs printed over someone's real footage. */}
@@ -699,6 +720,8 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {activeTransition === "paper-rip" && (
           <PaperRip active={isTransitioning} progress={transitionProgress} frame={frame} />
         )}
+        </AbsoluteFill>
+        </Freeze>
         {/* Burned-in subtitles previously reel-only, now default across formats */}
         {/* Master Audio Track & Multi-Clip Voiceover Spine */}
         {includeAudio && (
@@ -762,16 +785,21 @@ export const FilmView: React.FC<FilmViewProps> = ({
                 <Audio src={staticFile(sfx.src)} volume={() => sfx.volume ?? 1} />
               </Sequence>
             ))}
+
+            {card ? <EndCardVoice film={film} card={card} volume={film.voiceover?.volume ?? 1} /> : null}
           </>
         )}
 
-        {/* Chapter Rail */}
-        {showRail ? <Rail film={film} timeline={timeline} /> : null}
+        {/* Chapter Rail. The end card is not a chapter, so the rail leaves with the story. */}
+        {showRail && !inCard ? <Rail film={film} timeline={timeline} /> : null}
 
-        {/* Burned-in subtitles rendered after Rail */}
-        {film.captions !== "off" && captionWords && captionWords.length > 0 ? (
+        {/* The fixed end card over the held, dimmed stage. */}
+        {card ? <EndCard card={card} cardWords={delivery.cardWords} /> : null}
+
+        {/* Burned-in subtitles rendered after Rail and the end card */}
+        {film.captions !== "off" && subtitleWords.length > 0 ? (
           <KineticSubtitles
-            words={captionWords}
+            words={subtitleWords}
             maxWidth={width * 0.86}
             fontSize={Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO)}
             highlightColor={accent}

@@ -77,7 +77,7 @@ export const RUBRIC_CRITERIA: RubricCriterionDefinition[] = [
     title: "Audio sync",
     isGate: true,
     description:
-      "Visual cues land within 120ms of spoken words. Shot transitions occur during natural speech pauses. Total video duration matches voiceover audio duration within 100ms.",
+      "Visual cues land within 120ms of spoken words. Shot transitions occur during natural speech pauses. The story (everything before the fixed end card) matches the voiceover audio duration within 100ms.",
     passTarget: "Cues aligned within 120ms; voiceover and video durations match",
   },
   {
@@ -85,7 +85,7 @@ export const RUBRIC_CRITERIA: RubricCriterionDefinition[] = [
     title: "Pacing",
     isGate: false,
     description:
-      "Dynamic visual rhythm: no static frame held unchanged for > 3s, mean beat length 5-12s, no dead air > 0.7s, narration delivery pace 130-170 words per minute.",
+      "Dynamic visual rhythm: no static frame held unchanged for > 3s in the story (the end card's held, dimmed final stage is intentional), mean beat length 5-12s, no dead air > 0.7s, narration delivery pace 130-170 words per minute.",
     passTarget: "Continuous visual motion; no static freezes > 3s; natural delivery",
   },
   {
@@ -93,7 +93,7 @@ export const RUBRIC_CRITERIA: RubricCriterionDefinition[] = [
     title: "Storyline",
     isGate: false,
     description:
-      "Clear narrative arc: problem statement introduced upfront, each beat logically builds upon the previous one without disjointed leaps, concluding with an integrated payoff scene.",
+      "Clear narrative arc: problem statement introduced upfront, each beat logically builds upon the previous one without disjointed leaps, the story concluding with an integrated payoff scene (the fixed like-and-subscribe end card after it is not the payoff).",
     passTarget: "Logical build; beats cannot be arbitrarily reordered; clear payoff",
   },
   {

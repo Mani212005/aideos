@@ -29,6 +29,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { PLACEHOLDER_FILM } from "./state/placeholderFilm";
+import { deliveryTimeline } from "../../src/dl/delivery";
 import { useFilmProject } from "./state/useFilmProject";
 import { useLayeredTimeline } from "./state/useLayeredTimeline";
 import { Badge, Button, Panel, RailTab, Select, Spinner, ToastStack } from "./components/ui";
@@ -131,14 +132,23 @@ export default function App() {
     [commit, film],
   );
 
+  // The delivered length of the format on screen: the story plus its end card (src/dl/delivery.ts).
+  const deliveredFrames = useMemo(() => {
+    try {
+      return deliveryTimeline(film, format).totalFrames;
+    } catch {
+      return project.durationFrames;
+    }
+  }, [film, format, project.durationFrames]);
+
   /** Seek the preview player and keep the timeline playhead in step. */
   const seekFrame = useCallback(
     (frame: number) => {
-      const clamped = Math.max(0, Math.min(project.durationFrames - 1, Math.round(frame)));
+      const clamped = Math.max(0, Math.min(deliveredFrames - 1, Math.round(frame)));
       setCurrentFrame(clamped);
       playerRef.current?.seekTo(clamped);
     },
-    [project.durationFrames],
+    [deliveredFrames],
   );
 
   /** Toggle preview playback from anywhere in the shell. */
@@ -247,6 +257,7 @@ export default function App() {
       if (!res.ok) throw new Error(data.error || "Export failed");
       setExportResult({ filename: data.filename, downloadUrl: data.downloadUrl });
       notify("success", `Export complete: ${data.filename}`);
+      if (typeof data.notice === "string" && data.notice) notify("warn", data.notice, { sticky: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setExportError(message);
@@ -473,7 +484,7 @@ export default function App() {
         isOpen={isExporting}
         film={film}
         format={format}
-        durationInFrames={project.durationFrames}
+        durationInFrames={deliveredFrames}
         result={exportResult}
         error={exportError}
         onClose={() => {

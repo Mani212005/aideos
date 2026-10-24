@@ -68,6 +68,10 @@ export interface ProduceAudioResult {
   wordsPath: string;
   /** Which synthesizer produced the narration, for provenance in logs and manifests. */
   ttsBackend: string;
+  /** The voice id the synthesizer used (null when it has no voices), so a later line can match it. */
+  voice: string | null;
+  /** The pace multiplier the synthesizer applied (null when it has no pace control). */
+  speed: number | null;
 }
 
 /** Knobs the production pipeline and the editor both drive the narration synthesis with. */
@@ -393,6 +397,8 @@ export async function produceAudioPipeline(
     words: absoluteWords,
     wordsPath,
     ttsBackend: backend.name,
+    voice: backend.voice ?? null,
+    speed: backend.speed ?? null,
   };
 }
 

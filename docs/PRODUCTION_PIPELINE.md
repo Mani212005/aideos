@@ -218,8 +218,9 @@ slug. For `needs_design`, read `design/BRIEF.md`, write `design/design.json` and
 The `verify` stage probes each rendered file with ffprobe, measures audio levels and silence with
 ffmpeg, and writes a twelve-frame contact sheet sampled evenly across the whole duration to
 `videos/<slug>/review/`. It records warnings rather than failing, so a run always produces something
-to look at: wrong frame size, picture and narration lengths disagreeing by more than a second,
-a missing audio stream, clipping, or more than two and a half seconds of silence.
+to look at: wrong frame size, a picture length that differs by more than a second from the
+narration plus that format's end card (`src/dl/delivery.ts`), a missing audio stream, clipping, or
+more than two and a half seconds of silence before the end card.
 
 `analyseAudio` and `contactSheet` in `backend/pipeline/render.ts` are exported, so the same checks
 can be run against any file.

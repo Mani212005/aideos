@@ -16,7 +16,7 @@ import os from "os";
 import path from "path";
 import { parseClaudeScript } from "../scriptIntake";
 import { compileFilmFromScreenplayAsync, flattenScreenplay } from "./design";
-import { buildFootagePrompt, runProduction } from "./run";
+import { buildFootagePrompt, deliveredOutputWarnings, runProduction } from "./run";
 import {
   slugify,
   writeFilm,
@@ -497,6 +497,54 @@ test("runProduction: default needs_look has exact next steps and resumes an exte
     for (const stage of ["intake", "narrate", "look", "design", "broll", "assemble"]) {
       assert.ok(unchanged.some((e) => e.stage === stage && e.status === "skipped"), `${stage} should be cached`);
     }
+  } finally { cleanProbe(slug); }
+});
+
+test("verify: a render is the narration plus its end card, and a quiet card is not dead air", () => {
+  const film = parseFilm({ ...JSON.parse(fs.readFileSync(path.join(__dirname, "../../test_fixtures/films/fixture-canvas-a.json"), "utf8")), voiceover: { src: "v.wav", volume: 1, durationSec: 20 } });
+  const verify = (format: "long" | "reel", durationSec: number, silences: Array<{ startSec: number; durationSec: number }> = []) =>
+    deliveredOutputWarnings({ film, format, durationSec, narrationSec: 20, silences });
+  assert.deepEqual(verify("long", 26), []);
+  assert.deepEqual(verify("reel", 23), []);
+  assert.match(verify("long", 20).join(), /narration plus the 6.0s end card is 26.00s/);
+  // 3.6 s of quiet after the line inside the card is by design; the same quiet inside the story is not.
+  assert.deepEqual(verify("long", 26, [{ startSec: 22.4, durationSec: 3.6 }]), []);
+  assert.deepEqual(verify("long", 26, [{ startSec: 19.5, durationSec: 6.5 }]), [], "only 0.5 s of it is in the story");
+  assert.match(verify("long", 26, [{ startSec: 10, durationSec: 3 }]).join(), /3.0s of silence at 10.0s/);
+  // A partial render is held to its own window.
+  assert.deepEqual(deliveredOutputWarnings({ film, format: "long", durationSec: 1, narrationSec: 20, silences: [], renderFrames: [0, 29] }), []);
+});
+
+test("runProduction: narration records its voice and speed; the end card line is spoken in it and survives a design rebuild", async () => {
+  const slug = `probe-endcard-${Date.now().toString(36)}`;
+  try {
+    const request = inlineRequest(slug);
+    await runProduction(request);
+    const pkg = path.join(VIDEOS_DIR, slug);
+    const narration = JSON.parse(fs.readFileSync(path.join(pkg, "narration.json"), "utf8"));
+    assert.equal(narration.ttsBackend, "tone");
+    assert.ok("voice" in narration && "speed" in narration, "narration.json records the voice and speed it was made with");
+    const line = JSON.parse(fs.readFileSync(path.join(pkg, "endcard/line.json"), "utf8"));
+    assert.equal(line.text, "If this helped, like and subscribe.");
+    assert.equal(line.ttsBackend, "tone");
+    assert.ok(fs.existsSync(path.join(pkg, "endcard/voiceover.wav")));
+
+    writeProbeDesign(slug);
+    assert.equal(buildDesign(slug).state, "passed");
+    const resumed = await runProduction(request);
+    assert.equal(resumed.stoppedAfter, "assemble", JSON.stringify(resumed.warnings));
+    const film = readFilm(slug)!;
+    assert.equal(film.endCardVoice?.src, `videos/${slug}/endcard/voiceover.wav`);
+    assert.equal(film.endCardVoice?.fingerprint, line.fingerprint);
+    assert.ok(film.endCardVoice?.words.some((w) => /subscribe/i.test(w.word)));
+
+    // A rebuild starts from base-film.json, which predates the line, and still keeps it.
+    assert.equal(buildDesign(slug).state, "passed");
+    assert.deepEqual(readFilm(slug)?.endCardVoice, film.endCardVoice);
+    // Attaching the line is not a design change: an unchanged rerun reuses the assembly.
+    const again: ProductionProgress[] = [];
+    await runProduction(request, (e) => again.push(e));
+    assert.ok(again.some((e) => e.stage === "assemble" && e.status === "skipped"), "assemble should be cached");
   } finally { cleanProbe(slug); }
 });
 
