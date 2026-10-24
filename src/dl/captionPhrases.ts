@@ -17,6 +17,12 @@ export type CaptionPhrase = {
   lineBreaks: number[];
   unfittableWords: CaptionWord[];
 };
+// Produces a stable key for the shot mapping that phrase starts resolve against.
+export function captionTimelineLayoutKey(
+  timeline: Array<{ from: number; to: number; shot: { id: string } }>,
+): string {
+  return JSON.stringify(timeline.map(({ from, to, shot }) => [shot.id, from, to]));
+}
 // Finds the phrase displayed at a frame using the render's phrase boundaries.
 export function captionPhraseAtFrame(
   phrases: CaptionPhrase[],

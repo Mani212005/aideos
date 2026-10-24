@@ -17,7 +17,7 @@ import { CanvasGraph } from "./CanvasGraph";
 import { SceneStage, type TestStageVisibility } from "./SceneStage";
 import { PaperRip } from "./PaperRip";
 import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
-import { buildCaptionPhrases, captionPhraseAtFrame } from "./captionPhrases";
+import { buildCaptionPhrases, captionPhraseAtFrame, captionTimelineLayoutKey } from "./captionPhrases";
 import { measureText } from "@remotion/layout-utils";
 import { getRetimedAudioRelPath } from "./audio/retime";
 import { deliveryTimeline, formatForSize } from "./delivery";
@@ -595,10 +595,10 @@ export const FilmView: React.FC<FilmViewProps> = ({
   const captionPlacementAt = React.useCallback((startFrame: number) =>
     resolveCaptionPlacement(film, captionFormat, shotAt(timeline, startFrame)?.shot.id),
   [film, captionFormat, timeline]);
-  const captionPhraseLayoutKey = JSON.stringify(film.shots.map((shot) => {
+  const captionPhraseLayoutKey = JSON.stringify([film.shots.map((shot) => {
     const placement = resolveCaptionPlacement(film, captionFormat, shot.id);
     return [placement.source, placement.w];
-  }));
+  }), captionTimelineLayoutKey(timeline)]);
   const captionPhrases = React.useMemo(() => captionWords ? buildCaptionPhrases({
     words: captionWords,
     fps,

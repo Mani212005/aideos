@@ -20,7 +20,10 @@ export async function checkCaptionPlacementDraftAsync(
   if (scene?.renderer !== "three") return findings;
   const formatSegment = `/ ${sample.format} /`;
   const suffix = `/ frame ${sample.frame}`;
-  const characterFindings = checkThreeStage(film, scene, {}).filter(
+  const characterFindings = checkThreeStage(film, scene, {}, {
+    format: sample.format,
+    frame: sample.frame,
+  }).filter(
     (finding) =>
       finding.rule === "caption-placement" &&
       finding.where.includes(formatSegment) &&

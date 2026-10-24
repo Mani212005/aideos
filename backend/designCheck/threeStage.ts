@@ -28,7 +28,12 @@ function cameraHeld(a: { center: { x: number; y: number }; zoom: number; rotatio
 }
 
 // Checks the complete moving stage without using character names, joint ids or placement anchors.
-export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckContext): DesignFinding[] {
+export function checkThreeStage(
+  film: Film,
+  scene: Scene,
+  context: DesignCheckContext,
+  target?: { format: "long" | "reel"; frame: number },
+): DesignFinding[] {
   const findings: DesignFinding[] = [], reported = new Set<string>();
   const timeline = buildTimeline(film);
   // Names the shot at the defective frame and deduplicates only within that shot and rule.
@@ -47,6 +52,7 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
     }
   }
   for (const [format, width, height] of [["long", 1920, 1080], ["reel", 1080, 1920]] as const) {
+    if (target && target.format !== format) continue;
     let dispose: (() => void) | undefined, checkedFrame = 0;
     try {
       const facts = prepareStageFacts(scene, width, height);
@@ -80,6 +86,7 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
       const held = new Map((scene.performances ?? []).map((p) => [p.id, 0]));
       const starts = new Map((scene.performances ?? []).map((p) => [p.id, Math.ceil(p.data.holdFromFrame)]));
       for (let frame = 0; frame < scene.durationFrames; frame++) {
+        if (target && target.frame !== frame) continue;
         checkedFrame = frame;
         const poses = facts.at(frame, "prop");
         const shot = shotAt(timeline, frame)?.shot;

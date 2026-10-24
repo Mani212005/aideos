@@ -26,7 +26,7 @@ import {
   MIN_CAPTION_WIDTH,
 } from "../src/dl/captionPlacement";
 import { applyCaptionPlacementDraft } from "./designCheck/captionPlacement";
-import { buildCaptionPhrases, captionPhraseAtFrame, fitCaptionWordToRow, captionWordRows } from "../src/dl/captionPhrases";
+import { buildCaptionPhrases, captionPhraseAtFrame, captionTimelineLayoutKey, fitCaptionWordToRow, captionWordRows } from "../src/dl/captionPhrases";
 import {
   convertFilmToLayeredFilm,
   convertLayeredFilmToFilm,
@@ -656,6 +656,19 @@ test("phrase layout keeps start placement across a cut and splits narrow cards",
   assert.equal(result.flatMap((p) => p.words).length, words.length);
   assert.ok(result.slice(0, -1).every((phrase, i) => phrase.endFrame < result[i + 1].startFrame));
   assert.equal(captionPhraseAtFrame(result, result[1].startFrame)?.startFrame, result[1].startFrame);
+});
+
+// Invalidates cached phrase planning when retiming changes which shot owns a phrase start.
+test("caption phrase timeline key changes when shot timing changes", () => {
+  const timeline = [
+    { shot: { id: "first" }, from: 0, to: 30 },
+    { shot: { id: "second" }, from: 30, to: 60 },
+  ];
+  const retimed = [
+    { shot: { id: "first" }, from: 0, to: 20 },
+    { shot: { id: "second" }, from: 20, to: 60 },
+  ];
+  assert.notEqual(captionTimelineLayoutKey(timeline), captionTimelineLayoutKey(retimed));
 });
 
 // Checks current shot art against the card anchored by the phrase's first word.
