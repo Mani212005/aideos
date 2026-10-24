@@ -188,7 +188,18 @@ if [ "$#" -gt 0 ]; then
       cd "$AIDEOS_DIR" && npm run render "$@"
       exit 0
       ;;
-    "render:reel"|reel)
+    reel)
+      case "${1:-}" in
+        brief|check|--help|-h|help)
+          exec "$AIDEOS_DIR/node_modules/.bin/tsx" "$AIDEOS_DIR/backend/cli.ts" reel "$@"
+          ;;
+        *)
+          ( cd "$AIDEOS_DIR" && npm run render:reel -- "$@" )
+          ;;
+      esac
+      exit 0
+      ;;
+    "render:reel")
       cd "$AIDEOS_DIR" && npm run render:reel "$@"
       exit 0
       ;;
@@ -233,6 +244,7 @@ if [ "$#" -gt 0 ]; then
       echo "  aideos character check <spec>  Validate a character spec, naming bad fields (--stamp writes its hash)"
       echo "  aideos character sheet <spec>  Render its model sheet, expression sheet and receive stills"
       echo "  aideos look brief|check <film>      Write or check a film's look plan (aideos look --help)"
+      echo "  aideos reel brief|check <film>      Write or check a condensed reel narration cut"
       echo "  aideos design check|brief|build <film>  Check, brief or build a film's bespoke design (aideos design --help)"
       echo "  aideos connect <code>       Link the studio to the coding agent in this terminal"
       echo "  aideos mcp                  Serve the production tools over MCP (stdio)"

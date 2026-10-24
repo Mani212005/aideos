@@ -19,6 +19,7 @@ import { runDirector, type DirectorRequest } from "./pipeline/director";
 import type { TtsBackendName } from "./tts";
 import { registerAllCheckCommands, rewriteAllCheckArgv } from "./allCheck/cli";
 import { registerCharacterCommands } from "./characters/cli";
+import { registerReelCommands } from "./reelCut/cli";
 
 dotenv.config({ quiet: true });
 
@@ -28,6 +29,7 @@ const GENERATED_PATH = path.join(ROOT, "src/dl/films/generated.ts");
 const ACTIVE_FILM_PATH = path.join(ROOT, "src/dl/activeFilm.ts");
 
 const program = new Command();
+registerReelCommands(program);
 program
   .name("aideos-backend")
   .description("Generate and render Aideos films from natural language")

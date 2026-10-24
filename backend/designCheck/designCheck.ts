@@ -313,6 +313,8 @@ function checkHonestData(film: Film, findings: DesignFinding[]): void {
 
 /** Largest zoom change allowed in a single frame, as a fraction of the zoom (0.8% a frame is about 24% a second at 30 fps). */
 export const MAX_CAMERA_ZOOM_STEP = 0.008;
+/** Largest camera pan speed allowed, as a fraction of the scene width per second. */
+export const MAX_CAMERA_PAN_WIDTHS = 0.2;
 /** Largest pan acceleration allowed, as a fraction of the scene width per second squared (a stop-and-burst move is several times this). */
 export const MAX_CAMERA_PAN_ACCEL_WIDTHS = 0.3;
 
@@ -358,7 +360,7 @@ function checkCamera(scene: Scene, findings: DesignFinding[], targets: DesignChe
     if (frames > 0) {
       const durationSec = frames / (scene.fps || FPS);
       const speed = dist / durationSec;
-      const maxSpeed = (scene.sceneSize?.w ?? 1920) * 0.20;
+      const maxSpeed = (scene.sceneSize?.w ?? 1920) * MAX_CAMERA_PAN_WIDTHS;
       if (speed > maxSpeed) {
         findings.push({ rule: "camera", severity: "error", where: `scene.camera segment ${p1.frame}-${p2.frame}`, message: `camera moves ${speed.toFixed(1)} px/s, exceeding the speed limit of 20% of frame width (${maxSpeed} px/s).` });
       }

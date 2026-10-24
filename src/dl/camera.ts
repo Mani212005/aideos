@@ -105,7 +105,7 @@ export type TimedShot = {
 };
 
 /** No shot is allowed to collapse below half a second of screen time. */
-const MIN_SHOT_FRAMES = 15;
+export const MIN_SHOT_FRAMES = 15;
 
 /**
  * Lay the shots out on the timeline. Starts are computed, never authored, so
