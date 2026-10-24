@@ -15,6 +15,8 @@ import { compareGoldens } from "./goldenCompare";
 import { writeGoldenOutcome } from "./goldenResult";
 import { openFilm, type CompositionId } from "./remotionFrames";
 import { glFlag } from "../pipeline/render";
+import { readFilm } from "../pipeline/filmStore";
+import { deliveryTimeline } from "../../src/dl/delivery";
 
 const GOLDEN_DIR = path.join(__dirname, "goldens");
 const MANIFEST = path.join(GOLDEN_DIR, "MANIFEST.json");
@@ -54,9 +56,12 @@ async function renderAll(outDir: string): Promise<Map<string, string>> {
   for (const spec of SPECS) {
     const film = await openFilm(spec.slug);
     try {
+      const manifest = readFilm(spec.slug);
+      assert.ok(manifest, `missing film manifest for ${spec.slug}`);
+      const storyFrames = deliveryTimeline(manifest, "long").storyFrames;
       for (const composition of ["Long", "Reel"] as const) {
         for (const fraction of spec.frames[composition]) {
-          const frame = Math.min(film.durationInFrames - 1, Math.round(fraction * film.durationInFrames));
+          const frame = Math.min(storyFrames - 1, Math.round(fraction * storyFrames));
           const name = goldenName(spec.slug, composition, frame);
           await film.still(composition, frame, path.join(outDir, name), SCALE);
           out.set(name, path.join(outDir, name));
