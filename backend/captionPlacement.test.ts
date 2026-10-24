@@ -301,16 +301,21 @@ test("default phrases keep the legacy tail and placed phrases stop at the next p
   assert.equal(captionPhraseAtFrame(defaultToPlaced, 11)?.placement.source, "shot");
 });
 
-// Applies shot-only edits to the playhead shot even when its visible phrase began in the prior shot.
-test("shot caption scope targets the playhead shot across a phrase cut", () => {
+// Keeps the visible phrase overlay and shot-only edit target on its phrase-start shot across a cut.
+test("shot caption scope targets the phrase owner across a shot cut", () => {
+  const nextShotPlacement = { ...top, y: 0.6 };
   const film = {
     ...base,
-    shots: base.shots.slice(0, 2).map((shot) => ({ ...shot, captionPlacement: undefined })),
+    shots: base.shots.slice(0, 2).map((shot, index) => ({
+      ...shot,
+      captionPlacement: index === 1 ? { long: nextShotPlacement } : undefined,
+    })),
   };
   const timeline = buildTimeline(film);
   const playhead = timeline[0].to + 1;
-  const playheadShotId = shotAt(timeline, playhead).shot.id;
   const phraseStart = timeline[0].to - 2;
+  const phraseShotId = shotAt(timeline, phraseStart).shot.id;
+  const playheadShotId = shotAt(timeline, playhead).shot.id;
   const phrase = buildCaptionPhrases({
     words: [{ text: "crossing", startFrame: phraseStart, endFrame: playhead + 2 }],
     fps: film.fps,
@@ -320,18 +325,19 @@ test("shot caption scope targets the playhead shot across a phrase cut", () => {
     measure: () => 100,
   })[0];
   assert.equal(shotAt(timeline, phraseStart).shot.id, film.shots[0].id);
+  assert.equal(phraseShotId, film.shots[0].id);
   assert.equal(playheadShotId, film.shots[1].id);
   assert.equal(phrase.startFrame < playhead && playhead <= phrase.endFrame, true);
   assert.equal(phrase.placement.source, "default");
 
   const next = setCaptionPlacement(film, {
     format: "long",
-    scope: { kind: "shot", shotId: playheadShotId },
+    scope: { kind: "shot", shotId: phraseShotId },
     placement: top,
     owner: true,
   });
-  assert.equal(next.shots[0].captionPlacement?.long, undefined);
-  assert.deepEqual(next.shots[1].captionPlacement?.long, top);
+  assert.deepEqual(next.shots[0].captionPlacement?.long, top);
+  assert.deepEqual(next.shots[1].captionPlacement?.long, nextShotPlacement);
 });
 
 // Keeps the approved default y reachable when dragging down in either output format.

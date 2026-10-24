@@ -92,9 +92,12 @@ export function CaptionPlacementEditor({
     measure: (text) => measureText({ text, fontFamily: SANS, fontSize: 45, fontWeight: 700 }).width,
   }), [words, fps, format, phraseLayoutKey, timeline]);
   const activePhrase = captionPhraseAtFrame(phrases, frame);
-  const initialSource = resolveCaptionPlacement(film, format, shot.id).source;
+  const editingShot = activePhrase
+    ? shotAt(timeline, activePhrase.startFrame).shot
+    : shot;
+  const initialSource = resolveCaptionPlacement(film, format, editingShot.id).source;
   const [scopeKind, setScopeKind] = useState<"film" | "shot">(() =>
-    resolveCaptionPlacement(film, format, shot.id).source === "shot"
+    resolveCaptionPlacement(film, format, editingShot.id).source === "shot"
       ? "shot"
       : "film",
   );
@@ -106,11 +109,11 @@ export function CaptionPlacementEditor({
   const [artWarnings, setArtWarnings] = useState<string[]>([]);
   const gesture = useRef<Gesture | null>(null);
   const scope: CaptionScope =
-    scopeKind === "shot" ? { kind: "shot", shotId: shot.id } : { kind: "film" };
+    scopeKind === "shot" ? { kind: "shot", shotId: editingShot.id } : { kind: "film" };
   const placement = resolveCaptionPlacement(
     shownFilm,
     format,
-    scopeKind === "shot" ? shot.id : undefined,
+    scopeKind === "shot" ? editingShot.id : undefined,
   );
   const { width, height } = CAPTION_FRAMES[format];
   const card = captionCardRect(format, width, height, placement);
@@ -126,7 +129,7 @@ export function CaptionPlacementEditor({
     shot.stage === "inset" &&
     captionRectsOverlap(card, getInsetRegion(format, width, height));
   const formatName = format === "long" ? "Wide" : "Reel";
-  const scopeName = scopeKind === "film" ? "whole film" : `shot ${shot.id}`;
+  const scopeName = scopeKind === "film" ? "whole film" : `shot ${editingShot.id}`;
 
   // Debounces geometry measurement and discards stale responses while dragging.
   useEffect(() => {
@@ -140,7 +143,7 @@ export function CaptionPlacementEditor({
             film: shownFilm,
             previewFilm,
             format,
-            shotId: shot.id,
+            shotId: editingShot.id,
             frame,
           }),
           signal: controller.signal,
@@ -161,14 +164,14 @@ export function CaptionPlacementEditor({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [shownFilm, previewFilm, format, shot.id, frame]);
+  }, [shownFilm, previewFilm, format, editingShot.id, frame]);
 
   // Follow exceptions when changing shots or formats, without resetting an explicit scope choice mid-gesture.
   useEffect(() => {
     setScopeKind(initialSource === "shot" ? "shot" : "film");
     setDraft(null);
     onDraft(null);
-  }, [film.id, format, shot.id, initialSource, onDraft]);
+  }, [film.id, format, editingShot.id, initialSource, onDraft]);
 
   // Track the real letterboxed composition, including media-bin and timeline resize changes.
   useEffect(() => {
@@ -289,7 +292,7 @@ export function CaptionPlacementEditor({
     const shotPlacement = kind === "shot" ? placement : undefined;
     const next = setCaptionPlacement(film, {
       format,
-      scope: { kind: "shot", shotId: shot.id },
+      scope: { kind: "shot", shotId: editingShot.id },
       placement:
         kind === "shot"
           ? shotPlacement
@@ -443,7 +446,7 @@ export function CaptionPlacementEditor({
                     <Move size={11} />
                   )}
                   {placement.locked ? "Locked" : "Move / resize"} -{" "}
-                  {scopeKind === "film" ? "Whole film" : shot.id}
+                  {scopeKind === "film" ? "Whole film" : editingShot.id}
                 </span>
                 {!placement.locked
                   ? (["left", "right"] as const).map((edge) => (
@@ -485,7 +488,7 @@ export function CaptionPlacementEditor({
               label: "Whole film",
               title: `All ${formatName} shots`,
             },
-            { value: "shot", label: "This shot only", title: shot.id },
+            { value: "shot", label: "This shot only", title: editingShot.id },
           ]}
         />
         <span
