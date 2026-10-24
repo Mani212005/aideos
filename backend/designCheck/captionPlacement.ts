@@ -71,7 +71,7 @@ export function checkCaptionPlacements(
       if (
         Math.abs(safe.x - entry.x) +
           Math.abs(safe.y - entry.y) +
-          Math.abs(safe.w - entry.w) >
+          (entry.w === undefined ? 0 : Math.abs((safe.w ?? 0) - entry.w)) >
         1e-6
       )
         findings.push({

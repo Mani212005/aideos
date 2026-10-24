@@ -6,8 +6,9 @@ acceptance by the owner.
 
 The saved Wide card is `{x: 0.42637305699481864, y: 0.2367681347150259, w: 0.7527461139896373}`;
 the Reel card is `{x: 0.3983630781040107, y: 0.28778821243523317, w: 0.63524467472654}`.
-Both are locked. Every saved card uses its declared visible width,
-including a saved width of 86%; implicit defaults retain the original content-sized card.
+Both are locked with explicit widths. Placements without `w` retain the legacy content-sized card,
+including after first save; the editor and collision checks reserve the full 86% band. Explicit
+resizes save a fixed width within the format bounds.
 
 | Format | Before | Moved and resized |
 | --- | --- | --- |

@@ -229,10 +229,11 @@ can be run against any file.
 
 `film.captionPlacement` and `shot.captionPlacement` hold independent `long` and `reel` cards.
 Each card records normalized `x` (centre), `y` (top), `w` (width), and `locked`.
-Missing fields retain the legacy centred bottom card. A shot exception overrides its film-wide
-card only in the specified format. The renderer fixes placement and wrapping at each phrase's start.
-The first save of an untouched caption marks and preserves its visible width, even below the resize
-minimum; explicit resizes and unmarked placements still use the format minimum.
+Missing placement fields retain the legacy centred bottom card. Missing `w` keeps the auto-width
+shrink-to-content card after Lock, movement and shot-scope changes; the editor and collision checks
+reserve its full 86% band. Only an explicit resize writes `w`, bounded by the format minimum and
+maximum. A shot exception overrides its film-wide card only in the specified format, and the
+renderer fixes placement and wrapping at each phrase's start.
 
 Both film writers use `carryCaptionPlacement` in `src/dl/captionPlacement.ts`. Rebuilds preserve
 omitted entries and cannot change locked entries. The studio's save endpoint is the owner writer,

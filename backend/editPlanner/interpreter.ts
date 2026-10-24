@@ -506,8 +506,8 @@ function applySingleOp(
     case "set_caption_placement": {
       const source = convertLayeredFilmToFilm(film);
       const placement = "preset" in op.placement
-        ? { x: 0.5, y: op.placement.preset === "top" ? 0.12 : op.placement.preset === "middle" ? 0.45 : 0.78, w: 0.86, locked: false }
-        : { x: op.placement.x, y: op.placement.y, w: op.placement.w, locked: false };
+        ? { x: 0.5, y: op.placement.preset === "top" ? 0.12 : op.placement.preset === "middle" ? 0.45 : 0.78, locked: false }
+        : { x: op.placement.x, y: op.placement.y, ...(op.placement.w === undefined ? {} : { w: op.placement.w }), locked: false };
       const next = setCaptionPlacement(source, { format: op.format, scope: op.scope, placement, owner: false });
       working = { ...film, captionPlacement: next.captionPlacement, clips: film.clips.map((clip) => {
         if (clip.kind !== "animation") return clip;

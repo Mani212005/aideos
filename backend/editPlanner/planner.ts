@@ -154,7 +154,7 @@ ${clipsSummary}
 - set_volume: { "op": "set_volume", "clipId"?: string, "laneId"?: string, "volume": number, "label"?: string }
 - mute_lane: { "op": "mute_lane", "laneId": string, "muted"?: boolean, "label"?: string }
 - hide_lane: { "op": "hide_lane", "laneId": string, "hidden"?: boolean, "label"?: string }
-- set_caption_placement: { "op": "set_caption_placement", "format": "long" | "reel", "scope": { "kind": "film" } | { "kind": "shot", "shotId": string }, "placement": { "x": number, "y": number, "w": number } | { "preset": "top" | "middle" | "bottom" } }. Coordinates are normalized, x is centre, y is top, w is width. Never change a locked placement.
+- set_caption_placement: { "op": "set_caption_placement", "format": "long" | "reel", "scope": { "kind": "film" } | { "kind": "shot", "shotId": string }, "placement": { "x": number, "y": number, "w"?: number } | { "preset": "top" | "middle" | "bottom" } }. Coordinates are normalized, x is centre, y is top, and optional w sets a bounded fixed width; omit w to keep auto width. Never change a locked placement.
 - set_accent: { "op": "set_accent", "hex": "#RRGGBB", "label"?: string }
 - set_theme: { "op": "set_theme", "partialTheme": object, "label"?: string }
 - reorder_segments: { "op": "reorder_segments", "order": string[], "label"?: string }

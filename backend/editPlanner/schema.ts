@@ -139,7 +139,7 @@ export const setCaptionPlacementOpSchema = z.object({
   op: z.literal("set_caption_placement"),
   format: z.enum(["long", "reel"]),
   scope: z.discriminatedUnion("kind", [z.object({ kind: z.literal("film") }).strict(), z.object({ kind: z.literal("shot"), shotId: z.string().min(1) }).strict()]),
-  placement: z.union([captionPlacementSchema.omit({ locked: true, widthSource: true }).strict(), z.object({ preset: z.enum(["top", "middle", "bottom"]) }).strict()]),
+  placement: z.union([captionPlacementSchema.omit({ locked: true }).strict(), z.object({ preset: z.enum(["top", "middle", "bottom"]) }).strict()]),
   label: z.string().optional(),
 }).strict();
 

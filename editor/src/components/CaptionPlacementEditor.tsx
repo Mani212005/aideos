@@ -18,12 +18,12 @@ import type { CaptionPlacement, Film } from "../../../src/dl/schema";
 import { buildTimeline, shotAt } from "../../../src/dl/camera";
 import {
   CAPTION_FRAMES,
+  DEFAULT_CAPTION_PLACEMENT_WIDTH,
   captionBounds,
   captionCardRect,
   captionRectsOverlap,
   dragCaption,
   resizeCaption,
-  preserveVisibleCaptionWidth,
   resolveCaptionPlacement,
   setCaptionPlacement,
   REEL_ACTION_ZONE,
@@ -81,10 +81,6 @@ export function CaptionPlacementEditor({
     measure: (text) => measureText({ text, fontFamily: SANS, fontSize: 45, fontWeight: 700 }).width,
   }), [words, fps, format, shownFilm, timeline]);
   const activePhrase = captionPhraseAtFrame(phrases, frame);
-  const implicitPhrases = phrases.filter((phrase) => phrase.placement.source === "default");
-  const widthMeasurePhrase = activePhrase?.placement.source === "default"
-    ? activePhrase
-    : implicitPhrases.find((phrase) => phrase.startFrame > frame) ?? implicitPhrases[implicitPhrases.length - 1];
   const phraseShotId = activePhrase ? shotAt(timeline, activePhrase.startFrame)?.shot.id : shot.id;
   const initialSource = resolveCaptionPlacement(film, format, phraseShotId).source;
   const [scopeKind, setScopeKind] = useState<"film" | "shot">(() =>
@@ -99,7 +95,6 @@ export function CaptionPlacementEditor({
   } | null>(null);
   const [artWarnings, setArtWarnings] = useState<string[]>([]);
   const gesture = useRef<Gesture | null>(null);
-  const defaultWidthMeasure = useRef<HTMLDivElement | null>(null);
   const scope: CaptionScope =
     scopeKind === "shot" ? { kind: "shot", shotId: phraseShotId } : { kind: "film" };
   const placement = resolveCaptionPlacement(
@@ -113,9 +108,9 @@ export function CaptionPlacementEditor({
     format,
     width,
     height,
-    placement.w,
+    placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH,
     placement.y,
-    placement.widthSource === "implicit-default" ? 0 : undefined,
+    placement.w === undefined ? 0 : undefined,
   );
   const collision =
     shot.stage === "inset" &&
@@ -256,21 +251,6 @@ export function CaptionPlacementEditor({
     };
   }, [format, formatName, onCommit, onDraft]);
 
-  // Preserves the visible default card width when an edit saves its placement.
-  function placementForExplicitSave(target: typeof placement): CaptionPlacement | undefined {
-    if (target.source !== "default") return target;
-    const renderedCard = host?.querySelector<HTMLElement>("[data-caption-card]")
-      ?? playerRef.current?.getContainerNode()?.querySelector<HTMLElement>("[data-caption-card]");
-    const frameWidth = host?.querySelector<HTMLElement>("[data-caption-guides]")?.getBoundingClientRect().width;
-    const visibleWidth = renderedCard?.getBoundingClientRect().width ?? 0;
-    const measuredWidth = visibleWidth > 0
-      ? visibleWidth
-      : defaultWidthMeasure.current?.getBoundingClientRect().width;
-    return measuredWidth && frameWidth
-      ? preserveVisibleCaptionWidth(target, measuredWidth, frameWidth / width, width)
-      : undefined;
-  }
-
   // Captures the selected scope and initial placement so every pointer delta has one stable origin.
   function begin(
     event: React.PointerEvent<HTMLElement>,
@@ -281,14 +261,12 @@ export function CaptionPlacementEditor({
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.focus();
-    const gesturePlacement = placementForExplicitSave(placement);
-    if (!gesturePlacement) return;
     gesture.current = {
       kind,
       x: event.clientX,
       y: event.clientY,
       scale: viewport.scale,
-      placement: gesturePlacement,
+      placement,
       film,
       scope,
       next: film,
@@ -297,8 +275,7 @@ export function CaptionPlacementEditor({
   // Switches scope at the current position, removing the current exception when following the whole film.
   function chooseScope(kind: "film" | "shot") {
     if (kind === scopeKind) return;
-    const shotPlacement = kind === "shot" ? placementForExplicitSave(placement) : undefined;
-    if (kind === "shot" && !shotPlacement) return;
+    const shotPlacement = kind === "shot" ? placement : undefined;
     const next = setCaptionPlacement(film, {
       format,
       scope: { kind: "shot", shotId: phraseShotId },
@@ -328,10 +305,8 @@ export function CaptionPlacementEditor({
   }
   // Locks the current placement without changing the default card's visible width.
   function toggleLock() {
-    const editablePlacement = placementForExplicitSave(placement);
-    if (!editablePlacement) return;
     save(
-      { ...editablePlacement, locked: !placement.locked },
+      { ...placement, locked: !placement.locked },
       placement.locked ? "Unlock" : "Lock",
     );
   }
@@ -344,8 +319,6 @@ export function CaptionPlacementEditor({
       return;
     }
     if (placement.locked || !event.key.startsWith("Arrow")) return;
-    const editablePlacement = placementForExplicitSave(placement);
-    if (!editablePlacement) return;
     event.preventDefault();
     event.stopPropagation();
     const step = event.shiftKey ? 0.05 : 0.005;
@@ -355,7 +328,7 @@ export function CaptionPlacementEditor({
     const next =
       event.altKey && horizontal
         ? resizeCaption({
-            placement: editablePlacement,
+            placement,
             format,
             edge: "right",
             dx: direction * step * width,
@@ -363,7 +336,7 @@ export function CaptionPlacementEditor({
             snap: false,
           })
         : dragCaption({
-            placement: editablePlacement,
+            placement,
             format,
             dx: horizontal ? direction * step * width : 0,
             dy: horizontal ? 0 : direction * step * height,
@@ -395,7 +368,7 @@ export function CaptionPlacementEditor({
                     (card.w * viewport.scale) / 2,
                   top: bounds.minY * height * viewport.scale,
                   width:
-                    (bounds.maxX - bounds.minX + placement.w) *
+                    (bounds.maxX - bounds.minX + (placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH)) *
                     width *
                     viewport.scale,
                   height:
@@ -403,56 +376,6 @@ export function CaptionPlacementEditor({
                     card.h * viewport.scale,
                 }}
               />
-              {widthMeasurePhrase ? (
-                <div
-                  aria-hidden="true"
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    width: placement.w * width * viewport.scale,
-                    visibility: "hidden",
-                    pointerEvents: "none",
-                  }}
-                >
-                  <div
-                    ref={defaultWidthMeasure}
-                    style={{
-                      display: "inline-block",
-                      maxWidth: "92%",
-                      padding: `${12 * viewport.scale}px ${28 * viewport.scale}px`,
-                      border: `${viewport.scale}px solid transparent`,
-                      borderRadius: `${16 * viewport.scale}px`,
-                      boxSizing: "content-box",
-                      textAlign: "center",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: `${Math.round(Math.min(width, height) * 0.042) * viewport.scale}px`,
-                        fontFamily: SANS,
-                        fontWeight: 700,
-                        lineHeight: 1.35,
-                        display: "block",
-                        textAlign: "center",
-                        textWrap: "balance",
-                      }}
-                    >
-                      {widthMeasurePhrase.words.map((word, index) => (
-                        <span
-                          key={`${index}-${word.text}`}
-                          style={{
-                            display: "inline-block",
-                            margin: `${4 * viewport.scale}px ${6 * viewport.scale}px`,
-                          }}
-                        >
-                          {word.text}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
               {format === "reel" ? (
                 <div
                   aria-label="Platform action buttons"
@@ -559,7 +482,7 @@ export function CaptionPlacementEditor({
           className="font-mono text-[10px] tabular-nums text-ink-soft"
         >
           X {Math.round(placement.x * 100)}% / Y {Math.round(placement.y * 100)}
-          % / W {Math.round(placement.w * 100)}%
+          % / W {placement.w === undefined ? "Auto" : `${Math.round(placement.w * 100)}%`}
         </span>
         <div className="ml-auto flex items-center gap-2">
           <Button

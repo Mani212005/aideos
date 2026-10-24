@@ -20,7 +20,6 @@ import {
   setCaptionPlacement,
   captionCardRect,
   resolveCaptionCardWidth,
-  preserveVisibleCaptionWidth,
   MIN_CAPTION_WIDTH,
 } from "../src/dl/captionPlacement";
 import { applyCaptionPlacementDraft } from "./designCheck/captionPlacement";
@@ -33,11 +32,13 @@ const base = parseFilm(
   JSON.parse(fs.readFileSync("examples/hello-scene/film.json", "utf8")),
 );
 const top = { x: 0.5, y: 0.2, w: 0.7, locked: false };
-// Treats a saved default-valued width as fixed while retaining the implicit legacy card.
-test("saved w 0.86 has the same fixed width in caption geometry", () => {
+// Keeps auto-width cards shrink-to-content and reserves the default envelope for geometry.
+test("auto width keeps legacy sizing while explicit w 0.86 uses the fixed card", () => {
   const implicit = resolveCaptionPlacement(base, "long");
+  assert.equal(implicit.w, undefined);
   const implicitSizing = resolveCaptionCardWidth(implicit, 1920);
   assert.equal(implicitSizing.fixed, false);
+  assert.equal(implicitSizing.width, 1920 * 0.86);
   assert.equal(captionCardRect("long", 1920, 1080, implicit).w, implicitSizing.width);
   const explicit = resolveCaptionPlacement({ ...base, captionPlacement: { long: { ...top, w: 0.86 } } }, "long");
   const sizing = resolveCaptionCardWidth(explicit, 1920);
@@ -46,40 +47,27 @@ test("saved w 0.86 has the same fixed width in caption geometry", () => {
   assert.equal(captionCardRect("long", 1920, 1080, explicit).w, sizing.width);
   assert.equal(sizing.innerWidth, sizing.width - 58);
 });
-// Keeps the visible legacy width when a default placement becomes a shot exception.
-test("materializing the implicit card preserves its visible width", () => {
+// Keeps first saves auto-sized for locking, moving and selecting shot scope.
+test("first saves retain absent auto width while explicit resize enforces format minimums", () => {
   const implicit = resolveCaptionPlacement(base, "long");
-  const materialized = preserveVisibleCaptionWidth(implicit, 700, 0.5, 1920);
-  assert.equal(materialized.w, 700 / (0.5 * 1920));
-  assert.equal(preserveVisibleCaptionWidth({ ...implicit, source: "film" }, 700, 0.5, 1920).w, 0.86);
   const shot = setCaptionPlacement(base, {
     format: "long",
     scope: { kind: "shot", shotId: base.shots[0].id },
-    placement: materialized,
+    placement: { ...implicit, locked: true },
     owner: true,
   });
-  assert.equal(shot.shots[0].captionPlacement?.long?.w, materialized.w);
-});
-// Covers the one-word Wide and short Reel exceptions across first-save paths and explicit resize.
-test("first saves retain short visible widths while explicit resize enforces the minimum", () => {
-  for (const [format, visibleWidth] of [["long", 0.22], ["reel", 0.34]] as const) {
+  assert.equal(shot.shots[0].captionPlacement?.long?.w, undefined);
+  for (const format of ["long", "reel"] as const) {
     const frameWidth = format === "long" ? 1920 : 1080;
     const implicit = resolveCaptionPlacement(base, format);
-    const materialized = preserveVisibleCaptionWidth(
-      implicit,
-      visibleWidth * frameWidth,
-      1,
-      frameWidth,
-    );
-    assert.equal(materialized.widthSource, "implicit-default");
     const locked = setCaptionPlacement(base, {
       format,
       scope: { kind: "film" },
-      placement: { ...materialized, locked: true },
+      placement: { ...implicit, locked: true },
       owner: true,
     });
-    assert.equal(resolveCaptionPlacement(locked, format).w, visibleWidth);
-    assert.equal(parseFilm(locked).captionPlacement?.[format]?.widthSource, "implicit-default");
+    assert.equal(resolveCaptionPlacement(locked, format).w, undefined);
+    assert.equal(parseFilm(locked).captionPlacement?.[format]?.w, undefined);
     assert.equal(
       checkCaptionPlacements(locked).some((finding) => finding.rule === "caption-placement" && finding.severity === "error"),
       false,
@@ -89,7 +77,7 @@ test("first saves retain short visible widths while explicit resize enforces the
       format,
       scope: { kind: "film" },
       placement: dragCaption({
-        placement: materialized,
+        placement: implicit,
         format,
         dx: frameWidth * 0.01,
         dy: 0,
@@ -98,32 +86,29 @@ test("first saves retain short visible widths while explicit resize enforces the
       }),
       owner: true,
     });
-    assert.equal(resolveCaptionPlacement(moved, format).w, visibleWidth);
+    assert.equal(resolveCaptionPlacement(moved, format).w, undefined);
 
     const shot = setCaptionPlacement(base, {
       format,
       scope: { kind: "shot", shotId: base.shots[0].id },
-      placement: materialized,
+      placement: implicit,
       owner: true,
     });
-    assert.equal(resolveCaptionPlacement(shot, format, base.shots[0].id).w, visibleWidth);
-
-    const invalidExplicit = checkCaptionPlacements({
-      ...base,
-      captionPlacement: { [format]: { x: 0.5, y: 0.2, w: visibleWidth, locked: false } },
-    });
-    assert.ok(invalidExplicit.some((finding) => finding.rule === "caption-placement"));
+    assert.equal(resolveCaptionPlacement(shot, format, base.shots[0].id).w, undefined);
 
     const resized = resizeCaption({
-      placement: materialized,
+      placement: implicit,
       format,
       edge: "right",
-      dx: 0,
+      dx: -frameWidth,
       scale: 1,
       snap: false,
     });
     assert.equal(resized.w, MIN_CAPTION_WIDTH[format]);
-    assert.equal(resized.widthSource, undefined);
+    const invalid = { ...base, captionPlacement: { [format]: { x: 0.5, y: 0.2, w: 0, locked: false } } };
+    assert.throws(() => parseFilm(invalid));
+    const negative = { ...base, captionPlacement: { [format]: { x: 0.5, y: 0.2, w: -0.1, locked: false } } };
+    assert.throws(() => parseFilm(negative));
   }
 });
 // Restricts caption checks to server-loaded scene assets for the active package.
@@ -157,7 +142,6 @@ test("caption resolver: defaults, format independence, shot precedence and lock"
   assert.deepEqual(resolveCaptionPlacement(base, "long"), {
     x: 0.5,
     y: 0.78,
-    w: 0.86,
     locked: false,
     source: "default",
   });
@@ -258,15 +242,15 @@ test("move and resize use composition coordinates and preserve the opposite edge
   assert.equal(unchangedResize.w, 0.85);
 });
 
-// Explicit defaults are validated by format, while only the unresolved default retains legacy bounds.
-test("explicit default values obey format bounds", () => {
+// An explicit default-valued width is fixed while absent width stays auto.
+test("explicit default values obey format bounds while absent width stays auto", () => {
   const implicit = resolveCaptionPlacement(base, "reel");
   const explicit = resolveCaptionPlacement({
     ...base,
     captionPlacement: { reel: { x: 0.5, y: 0.78, w: 0.86, locked: false } },
   }, "reel");
   assert.equal(implicit.x, 0.5);
-  assert.equal(implicit.w, 0.86);
+  assert.equal(implicit.w, undefined);
   assert.notEqual(explicit.w, 0.86);
   assert.equal(setCaptionPlacement(base, { format: "reel", scope: { kind: "film" }, placement: { x: 0.5, y: 0.78, w: 0.86, locked: false }, owner: true }).captionPlacement?.reel?.w, explicit.w);
 });
@@ -554,10 +538,10 @@ test("AI caption operation validates, applies, refuses locks and rolls back", as
     placement: { x: top.x, y: top.y, w: top.w },
   };
   const program = editProgramSchema.parse([op]);
-  assert.throws(() => editProgramSchema.parse([{
-    ...op,
-    placement: { x: 0.5, y: 0.2, w: 0.2, widthSource: "implicit-default" },
-  }]));
+  const autoProgram = editProgramSchema.parse([{ ...op, placement: { x: 0.5, y: 0.2 } }]);
+  const autoApplied = applyEditProgram(convertFilmToLayeredFilm(base), autoProgram);
+  assert.equal(autoApplied.film.captionPlacement?.long?.w, undefined);
+  assert.throws(() => editProgramSchema.parse([{ ...op, placement: { x: 0.5, y: 0.2, w: 0 } }]));
   const narrowProgram = editProgramSchema.parse([{
     ...op,
     placement: { x: 0.5, y: 0.2, w: 0.2 },

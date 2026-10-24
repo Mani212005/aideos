@@ -402,13 +402,12 @@ export const themeSchema = z.object({
   accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
 });
 
-/** An owner-controlled caption card in normalized output coordinates. */
+/** An owner-controlled caption placement; absent w keeps the content-sized auto card. */
 export const captionPlacementSchema = z.object({
   x: z.number().min(0).max(1).default(0.5),
   y: z.number().min(0).max(1),
-  w: z.number().min(0).max(1).default(0.86),
+  w: z.number().positive().max(1).optional(),
   locked: z.boolean().default(false),
-  widthSource: z.literal("implicit-default").optional(),
 }).strict();
 export const captionPlacementByFormatSchema = z.object({
   long: captionPlacementSchema.optional(),

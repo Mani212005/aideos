@@ -75,10 +75,10 @@ vertical space in a reel. The alternative is authoring a second canvas, which
 
 The shared caption geometry is `captionPlacement.ts`. Film and shot placements are optional and
 independent in `long` and `reel`; absence preserves the existing bottom card with zero pixel changes.
-The editor outline and collision checks reserve the full 86% default band; the renderer keeps its
-legacy shrink-to-content card until the first gesture, which saves the visible card width.
-That first-save width is marked `implicit-default` and may remain below the normal resize minimum;
-explicit resizes and unmarked placements still enforce the minimum.
+An absent `w` keeps the legacy shrink-to-content card, including after Lock, movement or switching
+to **This shot only**. The editor outline and collision checks reserve the full 86% default band.
+Only an explicit resize writes `w`, which is clamped to the format's minimum and maximum. Existing
+saved widths remain fixed, including an explicit width of 86%.
 `captionPhrases.ts` fixes each phrase's placement at its first word and splits a narrowed card
 into at most two measured lines. The font size stays fixed. The studio overlay is outside FilmView;
 its drafts and the export use the same composition.

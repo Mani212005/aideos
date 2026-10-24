@@ -112,7 +112,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
         <strong>Caption placement</strong>
         {(["long", "reel"] as const).map((format) => {
           const card = resolveCaptionPlacement(film, format, shot.id);
-          return <p key={format}>{format === "long" ? "Wide" : "Reel"}: {card.source} / X {Math.round(card.x * 100)}% Y {Math.round(card.y * 100)}% W {Math.round(card.w * 100)}%{card.locked ? " / locked" : ""}</p>;
+          return <p key={format}>{format === "long" ? "Wide" : "Reel"}: {card.source} / X {Math.round(card.x * 100)}% Y {Math.round(card.y * 100)}% W {card.w === undefined ? "Auto" : `${Math.round(card.w * 100)}%`}{card.locked ? " / locked" : ""}</p>;
         })}
       </div>
       {/* HEADER: Shot Identity, Number & Quick Actions */}

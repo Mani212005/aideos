@@ -13,7 +13,7 @@ import { runProduction } from "../pipeline/run";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { renderFormat } from "../pipeline/render";
-import { captionCardRect } from "../../src/dl/captionPlacement";
+import { captionCardRect, DEFAULT_CAPTION_PLACEMENT_WIDTH } from "../../src/dl/captionPlacement";
 import { openFilm } from "./remotionFrames";
 import { resolveCaptionPlacement } from "../../src/dl/captionPlacement";
 
@@ -77,6 +77,12 @@ async function saved(page: StudioPage): Promise<void> {
 function previewSelector(selector: string): string {
   return `document.querySelector('[data-preview-host]').querySelector(${JSON.stringify(selector)})`;
 }
+// Reads the active caption phrase and layout width without animated child transforms.
+async function readVisibleCard(page: StudioPage): Promise<{ phrase: string; width: number }> {
+  return page.eval<{ phrase: string; width: number }>(
+    `(() => { const phrase = ${previewSelector("[data-caption-phrase]")}; const card = ${previewSelector("[data-caption-card]")}; return { phrase: phrase.innerText, width: card.offsetWidth }; })()`,
+  );
+}
 // Reads the authoritative saved film for assertions outside React state.
 function film() {
   const result = readFilm(SLUG);
@@ -95,9 +101,24 @@ async function assertCardGeometry(
   const widths = await page.eval<{ handle: number; card: number }>(
     `(() => { const frame = ${previewSelector("[data-caption-guides]")}; const handle = ${previewSelector("[data-caption-handle]")}; const card = ${previewSelector("[data-caption-card]")}; return { handle: handle.getBoundingClientRect().width / frame.getBoundingClientRect().width * ${width}, card: card.offsetWidth }; })()`,
   );
-  assert.equal(rect.w, placement.w * width);
+  assert.equal(rect.w, (placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH) * width);
   assert.ok(Math.abs(widths.handle - rect.w) <= 1, "drag outline matches collision width");
   assert.ok(Math.abs(widths.card - rect.w) <= 1, "visible saved card matches collision width");
+}
+// Confirms an auto-width placement keeps its content-sized rendering and conservative hit geometry.
+async function assertAutoCardGeometry(
+  page: StudioPage,
+  format: "long" | "reel",
+  placement: ReturnType<typeof resolveCaptionPlacement>,
+): Promise<void> {
+  const width = format === "long" ? 1920 : 1080;
+  const rect = captionCardRect(format, width, format === "long" ? 1080 : 1920, placement);
+  const handleWidth = await page.eval<number>(
+    `(() => { const frame = ${previewSelector("[data-caption-guides]")}; const handle = ${previewSelector("[data-caption-handle]")}; return handle.getBoundingClientRect().width / frame.getBoundingClientRect().width * ${width}; })()`,
+  );
+  assert.equal(placement.w, undefined);
+  assert.equal(rect.w, DEFAULT_CAPTION_PLACEMENT_WIDTH * width);
+  assert.ok(Math.abs(handleWidth - rect.w) <= 1, "auto-width hit target uses the reserved card band");
 }
 
 // Measures visible caption-word ink within its declared card for a lossy mp4 comparison.
@@ -235,25 +256,27 @@ journey(
           `${previewSelector("[data-caption-card]")}`,
           "caption before first saved edit",
         );
-        const visibleDefaultWidth = await page.eval<number>(
-          `${previewSelector("[data-caption-card]")}.getBoundingClientRect().width / ${previewSelector("[data-caption-guides]")}.getBoundingClientRect().width * ${format === "long" ? 1920 : 1080}`,
-        );
+        const visibleDefaultCard = await readVisibleCard(page);
         await page.clickButton("Lock", { exact: true });
         await saved(page);
         const toolbarLocked = resolveCaptionPlacement(film(), format);
-        assert.ok(Math.abs(toolbarLocked.w * (format === "long" ? 1920 : 1080) - visibleDefaultWidth) <= 1, `toolbar Lock saves the visible default width (${toolbarLocked.w * (format === "long" ? 1920 : 1080)} vs ${visibleDefaultWidth}; source ${before.source})`);
-        await assertCardGeometry(page, format, toolbarLocked);
+        assert.equal(film().captionPlacement?.[format]?.w, undefined, "Lock leaves auto width unset");
+        const lockedCard = await readVisibleCard(page);
+        assert.equal(lockedCard.phrase, visibleDefaultCard.phrase, "Lock keeps the same active phrase");
+        assert.ok(Math.abs(lockedCard.width - visibleDefaultCard.width) <= 1, "Lock preserves the visible auto-width card");
+        await assertAutoCardGeometry(page, format, toolbarLocked);
         await page.clickButton("Reset", { exact: true });
         await saved(page);
         assert.equal(resolveCaptionPlacement(film(), format).source, "default");
-        const scopeVisibleWidth = await page.eval<number>(
-          `${previewSelector("[data-caption-card]")}.getBoundingClientRect().width / ${previewSelector("[data-caption-guides]")}.getBoundingClientRect().width * ${format === "long" ? 1920 : 1080}`,
-        );
+        const scopeCard = await readVisibleCard(page);
         await page.clickButton("This shot only", { exact: true });
         await saved(page);
         const scopedDefault = resolveCaptionPlacement(film(), format, film().shots[0].id);
-        assert.ok(Math.abs(scopedDefault.w * (format === "long" ? 1920 : 1080) - scopeVisibleWidth) <= 1, `shot scope saves the visible default width (${scopedDefault.w * (format === "long" ? 1920 : 1080)} vs ${scopeVisibleWidth}; source ${scopedDefault.source})`);
-        await assertCardGeometry(page, format, scopedDefault);
+        assert.equal(film().shots[0].captionPlacement?.[format]?.w, undefined, "shot scope leaves auto width unset");
+        const scopedCard = await readVisibleCard(page);
+        assert.equal(scopedCard.phrase, scopeCard.phrase, "shot scope keeps the same active phrase");
+        assert.ok(Math.abs(scopedCard.width - scopeCard.width) <= 1, "shot scope preserves the visible auto-width card");
+        await assertAutoCardGeometry(page, format, scopedDefault);
         await page.clickButton("Reset", { exact: true });
         await saved(page);
         await page.clickButton("Whole film", { exact: true });
@@ -270,8 +293,9 @@ journey(
         await drag(page, "[data-caption-handle]", 0, moveDy);
         await saved(page);
         const moved = resolveCaptionPlacement(film(), format);
-        assert.ok(moved.w < before.w, "the first gesture saves the rendered default card width");
-        await assertCardGeometry(page, format, moved);
+        assert.equal(film().captionPlacement?.[format]?.w, undefined, "moving an auto-width caption leaves w unset");
+        assert.ok(moved.x !== before.x || moved.y !== before.y);
+        await assertAutoCardGeometry(page, format, moved);
         await drag(
           page,
           'button[aria-label="Resize caption right edge"]',
@@ -282,7 +306,7 @@ journey(
         const resizedPlacement = resolveCaptionPlacement(film(), format);
         await assertCardGeometry(page, format, resizedPlacement);
         assert.ok(
-          resolveCaptionPlacement(film(), format).w < moved.w,
+          resolveCaptionPlacement(film(), format).w! < DEFAULT_CAPTION_PLACEMENT_WIDTH,
           "edge drag narrows the actual card",
         );
         await page.clickButton("This shot only", { exact: true });

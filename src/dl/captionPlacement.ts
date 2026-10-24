@@ -14,10 +14,10 @@ export type CaptionScope = { kind: "film" } | { kind: "shot"; shotId: string };
 export type ResolvedCaptionPlacement = CaptionPlacement & {
   source: "shot" | "film" | "default";
 };
+export const DEFAULT_CAPTION_PLACEMENT_WIDTH = 0.86;
 export const DEFAULT_CAPTION_PLACEMENT: CaptionPlacement = {
   x: 0.5,
   y: 0.78,
-  w: 0.86,
   locked: false,
 };
 export const CAPTION_FRAMES = {
@@ -28,29 +28,14 @@ export const MIN_CAPTION_WIDTH = { long: 0.4, reel: 0.6 };
 // Conservative lower-half right-hand action-button strip; the legacy default remains unchanged.
 export const REEL_ACTION_ZONE = { x: 0.88, y: 0.5 };
 export type CaptionRect = { x: number; y: number; w: number; h: number };
-// Keeps the renderer's implicit card content-sized while reserving its full envelope for editor and collision geometry.
+// Keeps absent widths content-sized while reserving the default envelope for editor and collision geometry.
 export function resolveCaptionCardWidth(
   placement: CaptionPlacement & { source?: ResolvedCaptionPlacement["source"] },
   frameWidth: number,
 ) {
-  const width = placement.w * frameWidth;
-  const fixed = placement.source !== "default";
+  const width = (placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH) * frameWidth;
+  const fixed = placement.w !== undefined;
   return { width, fixed, innerWidth: (fixed ? width : width * 0.92) - 58 };
-}
-// Materializes the legacy card's visible width when an implicit placement becomes explicit.
-export function preserveVisibleCaptionWidth(
-  placement: ResolvedCaptionPlacement,
-  renderedWidth: number,
-  scale: number,
-  frameWidth: number,
-): CaptionPlacement {
-  return placement.source === "default"
-    ? {
-        ...placement,
-        w: renderedWidth / (scale * frameWidth),
-        widthSource: "implicit-default",
-      }
-    : placement;
 }
 // Clamps a normalized value between its safe limits.
 function clamp(value: number, min: number, max: number): number {
@@ -96,21 +81,26 @@ export function captionBounds(
     w: safeWidth,
   };
 }
-// Clamps explicit owner placement without changing the legacy implicit default.
+// Preserves absent auto width and clamps every explicit width to the format bounds.
 export function clampCaptionPlacement(
   placement: CaptionPlacement,
   format: CaptionFormat,
 ): CaptionPlacement {
   const { width, height } = CAPTION_FRAMES[format];
-  // Only a materialized legacy card may remain below the resize minimum.
-  const minimumWidth = placement.widthSource === "implicit-default" ? 0 : MIN_CAPTION_WIDTH[format];
-  const bounds = captionBounds(format, width, height, placement.w, placement.y, minimumWidth);
+  const hasExplicitWidth = placement.w !== undefined;
+  const bounds = captionBounds(
+    format,
+    width,
+    height,
+    placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH,
+    placement.y,
+    hasExplicitWidth ? MIN_CAPTION_WIDTH[format] : 0,
+  );
   return {
     x: clamp(placement.x, bounds.minX, bounds.maxX),
     y: clamp(placement.y, bounds.minY, bounds.maxY),
-    w: bounds.w,
+    ...(hasExplicitWidth ? { w: bounds.w } : {}),
     locked: placement.locked,
-    ...(placement.widthSource ? { widthSource: placement.widthSource } : {}),
   };
 }
 // Resolves shot, film and legacy default independently in each format.
@@ -185,9 +175,9 @@ export function dragCaption({
     format,
     width,
     height,
-    next.w,
+    next.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH,
     next.y,
-    next.widthSource === "implicit-default" ? 0 : undefined,
+    next.w === undefined ? 0 : undefined,
   );
   next.x = snapTo(next.x, [bounds.minX, 0.5, bounds.maxX], snap && dx !== 0);
   next.y = snapTo(next.y, [bounds.minY, 0.45, bounds.maxY], snap && dy !== 0);
@@ -208,22 +198,21 @@ export function resizeCaption({
   snap,
 }: Gesture & { edge: "left" | "right" }): CaptionPlacement {
   if (placement.locked) return placement;
-  const resizablePlacement = { ...placement };
-  delete resizablePlacement.widthSource;
   const { width, height } = CAPTION_FRAMES[format];
-  const bounds = captionBounds(format, width, height, placement.w, placement.y);
-  const opposite = placement.x + ((edge === "left" ? 1 : -1) * placement.w) / 2;
+  const baseWidth = placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH;
+  const bounds = captionBounds(format, width, height, baseWidth, placement.y);
+  const opposite = placement.x + ((edge === "left" ? 1 : -1) * baseWidth) / 2;
   const margin = getFrameMargins(format, width).left / width;
   const limit =
     edge === "left" ? opposite - margin : bounds.maxX + bounds.w / 2 - opposite;
   const delta = (dx / scale / width) * (edge === "left" ? -1 : 1);
   const w = clamp(
-    snapTo(placement.w + delta, [0.86], snap && dx !== 0),
+    snapTo(baseWidth + delta, [DEFAULT_CAPTION_PLACEMENT_WIDTH], snap && dx !== 0),
     bounds.minW,
     Math.max(bounds.minW, limit),
   );
   const clamped = clampCaptionPlacement(
-    { ...resizablePlacement, w, x: opposite + ((edge === "left" ? -1 : 1) * w) / 2 },
+    { ...placement, w, x: opposite + ((edge === "left" ? -1 : 1) * w) / 2 },
     format,
   );
   return { ...clamped, y: placement.y };
@@ -291,7 +280,7 @@ export function splitCaptionDescendants<T extends { id: string; captionPlacement
 // Compares the serialized placement fields independent of object key order.
 function sameCaptionPlacement(a: CaptionPlacement | undefined, b: CaptionPlacement | undefined): boolean {
   return !!a && !!b && a.x === b.x && a.y === b.y && a.w === b.w &&
-    a.locked === b.locked && a.widthSource === b.widthSource;
+    a.locked === b.locked;
 }
 // Carries omitted entries across rebuilds and lets only owner writes alter locked entries.
 export function carryCaptionPlacement(
