@@ -826,7 +826,6 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {film.subtitles !== false && film.captions !== "off" && subtitleWords.length > 0 ? (
           <KineticSubtitles
             words={subtitleWords}
-            maxWidth={width * 0.86}
             fontSize={Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO)}
             highlightColor={accent}
             placementAt={captionPlacementAt}

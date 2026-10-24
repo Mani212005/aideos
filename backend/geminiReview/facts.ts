@@ -458,7 +458,7 @@ export async function extractDeterministicFacts(
 
   const viewport: ReviewViewport | null = metadata.width && metadata.height ? { width: metadata.width, height: metadata.height } : null;
   let filmFacts: FilmFacts | null = null;
-  let captionRectAt: ReturnType<typeof prepareCaptionReview>;
+  let captionRectAt: ((t: number) => CaptionRect | undefined) | null | undefined = undefined;
   let placementNote: string | null = null;
   let captionMeasurementNote: string | null = null;
   let stageNote: string | null = null;
@@ -468,11 +468,13 @@ export async function extractDeterministicFacts(
       const format = viewport
         ? viewport.width < viewport.height ? "reel" : "long"
         : undefined;
-      captionRectAt = prepareCaptionReview(film, viewport?.width, viewport?.height);
-      if (captionRectAt && typeof captionRectAt !== "function") {
+      const prepared = prepareCaptionReview(film, viewport?.width, viewport?.height);
+      if (prepared && typeof prepared !== "function") {
         const cardLabel = format ? `Owner ${format} caption cards` : "Owner caption cards";
-        captionMeasurementNote = `- ${cardLabel}: NOT measured (${captionRectAt.unavailable}); do not judge caption coverage from the legacy bottom band.`;
+        captionMeasurementNote = `- ${cardLabel}: NOT measured (${prepared.unavailable}); do not judge caption coverage from the legacy bottom band.`;
         captionRectAt = null;
+      } else {
+        captionRectAt = prepared;
       }
       if (captionRectAt && format && hasCaptionPlacementForFormat(film, format)) {
         placementNote = `- Owner ${format} caption cards: ${JSON.stringify({ film: film.captionPlacement?.[format], shots: film.shots.filter((shot) => shot.captionPlacement?.[format]).map((shot) => ({ id: shot.id, placement: shot.captionPlacement?.[format] })) })}. Check these placed rectangles; locked cards must be preserved.`;

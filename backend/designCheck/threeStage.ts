@@ -60,7 +60,6 @@ export function checkThreeStage(
       const svgAt = scene.props.some((p) => p.plane === "foreground") ? prepareSvgProjection(scene, width, height, film.id) : undefined;
       const foregroundIds = new Set(scene.props.filter((p) => p.plane === "foreground").map((p) => p.assetId));
       const captions = film.captions !== "off" && film.subtitles !== false;
-      const placed = timeline.some((t) => resolveCaptionPlacement(film, format, t.shot.id).source !== "default");
       const hasFixedWidth = timeline.some((t) => resolveCaptionCardWidth(resolveCaptionPlacement(film, format, t.shot.id), width).fixed);
       const words = captions ? captionWordsForFilm(film) : [];
       const fontSize = Math.round(Math.min(width, height) * 0.042);

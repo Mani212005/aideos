@@ -1762,7 +1762,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
               writeFilm(updatedFilm.id, updatedFilm, {
                 owner: false,
-                agentEdit: planResult.ops.some((op) => op.op === 'set_caption_placement'),
+                agentEdit: planResult.ops.some((op: { op: string }) => op.op === 'set_caption_placement'),
               });
 
               appendEditProvenanceRecord(videosDir, filmId, {

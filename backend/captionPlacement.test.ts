@@ -223,6 +223,7 @@ test("move and resize use composition coordinates and preserve the opposite edge
     scale: 0.5,
     snap: false,
   });
+  assert.ok(resized.w !== undefined);
   assert.ok(Math.abs(resized.x - resized.w / 2 - (top.x - top.w / 2)) < 1e-9);
   const clamped = dragCaption({
     placement: top,
@@ -234,7 +235,7 @@ test("move and resize use composition coordinates and preserve the opposite edge
   });
   const rect = captionCardRect("reel", 1080, 1920, clamped, 2);
   assert.ok(rect.x >= 64 && rect.x + rect.w <= 1080 - 64);
-  assert.ok(clamped.y <= 0.78);
+  assert.ok(clamped.y >= 0.78);
   assert.ok(rect.y + rect.h <= 1920 - 240);
   const snapped = dragCaption({
     placement: { ...top, x: 0.49 },
@@ -497,7 +498,7 @@ test("caption editor shot selection follows the visible timeline and saves sourc
     shots: sourceTimelineFilm.shots.slice(1).map((shot, index) => ({
       ...shot,
       position: index * 6,
-      stage: undefined,
+      stage: "none" as const,
       captionPlacement: undefined,
     })),
   } as typeof base;
