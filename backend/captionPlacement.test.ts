@@ -510,6 +510,16 @@ test("AI caption operation validates, applies, refuses locks and rolls back", as
     placement: { x: top.x, y: top.y, w: top.w },
   };
   const program = editProgramSchema.parse([op]);
+  assert.throws(() => editProgramSchema.parse([{
+    ...op,
+    placement: { x: 0.5, y: 0.2, w: 0.2, widthSource: "implicit-default" },
+  }]));
+  const narrowProgram = editProgramSchema.parse([{
+    ...op,
+    placement: { x: 0.5, y: 0.2, w: 0.2 },
+  }]);
+  const narrowApplied = applyEditProgram(convertFilmToLayeredFilm(base), narrowProgram);
+  assert.equal(narrowApplied.film.captionPlacement?.long?.w, MIN_CAPTION_WIDTH.long);
   const stored = { ...base, captionPlacement: { long: { ...top, y: 0.4 } } };
   const layered = convertFilmToLayeredFilm(stored);
   const applied = applyEditProgram(layered, program);
@@ -681,6 +691,8 @@ test("AI split descendants retain shot placement through film persistence", asyn
 test("design rebuild keeps locked and unlocked owner placements", async () => {
   const { writeFilm, readFilm } = await import("./pipeline/filmStore");
   const { buildDesign } = await import("./designSpec/build");
+  const { applyEditProgram } = await import("./editPlanner/interpreter");
+  const { editProgramSchema } = await import("./editPlanner/schema");
   const id = "speculative-decoding-designed";
   const original = readFilm(id)!;
   const { resolvePackageDir } = await import("../src/dl/videoPackageLoader");
@@ -714,6 +726,39 @@ test("design rebuild keeps locked and unlocked owner placements", async () => {
       long: { ...top, locked: true },
       reel: { ...top, y: 0.4 },
     });
+
+    const active = readFilm(id)!;
+    const splitParentId = active.shots[0].id;
+    const ownerPlaced = {
+      ...active,
+      captionPlacement: { long: { ...top, locked: true }, reel: top },
+      shots: active.shots.map((shot, index) => index === 0
+        ? { ...shot, captionPlacement: { long: { ...top, y: 0.3 }, reel: { ...top, y: 0.6 } } }
+        : shot),
+    };
+    writeFilm(id, ownerPlaced, { owner: true });
+    const layered = convertFilmToLayeredFilm(readFilm(id)!);
+    const source = layered.clips.find((clip) =>
+      clip.kind === "animation" &&
+      (clip.payload as { shotId?: string }).shotId === splitParentId,
+    )!;
+    const split = applyEditProgram(layered, editProgramSchema.parse([{
+      op: "split_at",
+      clipId: source.id,
+      atSec: source.position + (source.end - source.start) / 2,
+    }]));
+    assert.equal(split.rejected.length, 0);
+    writeFilm(id, convertLayeredFilmToFilm(split.film, ownerPlaced), { owner: true });
+    const splitChildren = readFilm(id)!.shots.filter((shot) => shot.id.startsWith(`${splitParentId}-`));
+    assert.equal(splitChildren.length, 2);
+    const splitBuild = buildDesign(id);
+    assert.equal(splitBuild.state, "passed", JSON.stringify(splitBuild.errors));
+    const rebuiltChildren = readFilm(id)!.shots.filter((shot) => shot.id.startsWith(`${splitParentId}-`));
+    assert.equal(rebuiltChildren.length, 2);
+    assert.ok(rebuiltChildren.every((shot) =>
+      shot.captionPlacement?.long?.y === 0.3 && shot.captionPlacement?.reel?.y === 0.6,
+    ));
+    assert.deepEqual(readFilm(id)?.captionPlacement, { long: { ...top, locked: true }, reel: top });
   } finally {
     writeFilm(id, original, { owner: true });
     fs.writeFileSync(lookFile, look);

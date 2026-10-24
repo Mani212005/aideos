@@ -9,7 +9,7 @@
  * Used by: backend/designSpec/designer.ts.
  */
 
-import { carryCaptionPlacement } from "../../src/dl/captionPlacement";
+import { carryCaptionPlacement, splitCaptionDescendants } from "../../src/dl/captionPlacement";
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
@@ -241,34 +241,54 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   const baseFile = path.join(pkg, "design", "base-film.json");
   if (!fs.existsSync(baseFile)) fs.copyFileSync(filmFile, baseFile);
   let film: Film;
+  let buildFilm: Film;
   try {
-    film = carryCaptionPlacement(parseFilm(JSON.parse(fs.readFileSync(filmFile, "utf8"))), parseFilm(JSON.parse(fs.readFileSync(baseFile, "utf8"))), { owner: false });
+    const activeFilm = parseFilm(JSON.parse(fs.readFileSync(filmFile, "utf8")));
+    const baseFilm = parseFilm(JSON.parse(fs.readFileSync(baseFile, "utf8")));
+    film = carryCaptionPlacement(activeFilm, baseFilm, { owner: false });
+    buildFilm = {
+      ...baseFilm,
+      captionPlacement: film.captionPlacement,
+      shots: baseFilm.shots.map((shot) => ({
+        ...shot,
+        captionPlacement: film.shots.find((current) => current.id === shot.id)?.captionPlacement ?? shot.captionPlacement,
+      })),
+    };
   } catch (error) { return fail([error instanceof Error ? error.message : String(error)]); }
   const wordsFile = path.join(pkg, "voiceover_words.json");
   const words: TimedWord[] = fs.existsSync(wordsFile) ? (JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? []) : [];
 
   const resolved = resolveDesignCharacters(spec, pkg);
   if (resolved.errors.length) return fail(resolved.errors);
-  const compiled = compileDesign(film, spec, words, source, { characters: resolved.characters });
+  const compiled = compileDesign(buildFilm, spec, words, source, { characters: resolved.characters });
   if (!compiled.film) return fail(compiled.errors);
+  const builtFilm: Film = {
+    ...compiled.film,
+    shots: compiled.film.shots.flatMap((shot) => {
+      const descendants = splitCaptionDescendants(film.shots, shot.id);
+      return descendants.some((descendant) => descendant.captionPlacement)
+        ? descendants.map((descendant) => ({ ...descendant, stage: shot.stage, blocks: shot.blocks }))
+        : [shot];
+    }),
+  };
 
   // Legacy packages without a plan still build; new production runs always require one first.
   let lookPlan: LookPlan | undefined;
   const lookFindings: DesignFinding[] = [];
   if (fs.existsSync(path.join(designDir(filmId), "look.json"))) {
-    const look = readCheckedLookPlan(film);
+    const look = readCheckedLookPlan(buildFilm);
     if (!look.plan) return fail(look.errors, (look.warnings ?? []).map((message): DesignFinding => ({ rule: "look", severity: "warning", where: "design/look.json", message })));
     lookPlan = look.plan;
     lookFindings.push(...(look.warnings ?? []).map((message): DesignFinding => ({ rule: "look", severity: "warning", where: "design/look.json", message })));
     try {
-      const errors = checkDesignAgainstLook(film, spec, words, pkg, lookPlan);
+      const errors = checkDesignAgainstLook(buildFilm, spec, words, pkg, lookPlan);
       if (errors.length) return fail(errors);
     } catch (err) {
       return fail([`look/design check: ${err instanceof Error ? err.message : String(err)}`]);
     }
   }
 
-  const cues = createCues(narrationTimingForFilm(film, words), film.fps);
+  const cues = createCues(narrationTimingForFilm(buildFilm, words), buildFilm.fps);
   let cameraTargets: DesignCheckContext["cameraTargets"] = [];
   try {
     const authoredPoses = (spec.camera ?? []).map((pose) => ({ frame: resolveCue(pose.at, cues), focus: pose.focus }));
@@ -282,7 +302,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   } catch (err) {
     return fail([`camera cue resolution: ${err instanceof Error ? err.message : String(err)}`]);
   }
-  const report = checkFilmDesign(compiled.film, {
+  const report = checkFilmDesign(builtFilm, {
     ...(cameraTargets.length ? { cameraTargets } : {}),
     ...(lookPlan ? { lookPlan } : {}),
   });
@@ -291,7 +311,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   // The end card's spoken line comes from the narration, not the design (base-film.json may predate
   // it), so a rebuild keeps the line the current film carries.
   const endCardVoice = (JSON.parse(fs.readFileSync(filmFile, "utf8")) as { endCardVoice?: unknown }).endCardVoice;
-  writeFilm(filmId, endCardVoice ? { ...compiled.film, endCardVoice } as typeof compiled.film : compiled.film);
+  writeFilm(filmId, endCardVoice ? { ...builtFilm, endCardVoice } as typeof builtFilm : builtFilm);
   // The browser bundle reads artwork through the generated source map, so refresh it.
   buildSvgSources();
   return record(filmId, { state: "passed", source, at, errors: [], findings: [...lookFindings, ...report.findings] });

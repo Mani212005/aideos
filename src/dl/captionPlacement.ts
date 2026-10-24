@@ -281,6 +281,13 @@ function isSplitDescendant(parentId: string, candidateId: string): boolean {
   return candidateId.startsWith(`${parentId}-`) &&
     /^-[ab][a-z0-9]{4}(?:-[ab][a-z0-9]{4})*$/.test(candidateId.slice(parentId.length));
 }
+// Returns timeline shots created by splitting the given parent shot.
+export function splitCaptionDescendants<T extends { id: string; captionPlacement?: CaptionPlacementByFormat }>(
+  shots: readonly T[],
+  parentId: string,
+): T[] {
+  return shots.filter((shot) => isSplitDescendant(parentId, shot.id));
+}
 // Compares the serialized placement fields independent of object key order.
 function sameCaptionPlacement(a: CaptionPlacement | undefined, b: CaptionPlacement | undefined): boolean {
   return !!a && !!b && a.x === b.x && a.y === b.y && a.w === b.w &&
@@ -293,6 +300,13 @@ export function carryCaptionPlacement(
   { owner, agentEdit = false }: { owner: boolean; agentEdit?: boolean },
 ): Film {
   if (!previous || owner) return next;
+  const nextShots = next.shots.flatMap((shot) => {
+    const descendants = splitCaptionDescendants(previous.shots, shot.id);
+    return descendants.some((descendant) => descendant.captionPlacement)
+      ? descendants
+      : [shot];
+  });
+  const mergedNext = { ...next, shots: nextShots };
   // Merges the two format entries without introducing fields on untouched films.
   const carry = (
     prev?: CaptionPlacementByFormat,
@@ -307,8 +321,8 @@ export function carryCaptionPlacement(
     return result;
   };
   const orphans = previous.shots.filter((shot) => {
-    if (!shot.captionPlacement || next.shots.some((s) => s.id === shot.id)) return false;
-    const descendants = next.shots.filter((candidate) => isSplitDescendant(shot.id, candidate.id));
+    if (!shot.captionPlacement || mergedNext.shots.some((s) => s.id === shot.id)) return false;
+    const descendants = splitCaptionDescendants(mergedNext.shots, shot.id);
     return descendants.length === 0 || descendants.some((candidate) =>
       (["long", "reel"] as const).some((format) =>
         shot.captionPlacement?.[format] &&
@@ -320,11 +334,11 @@ export function carryCaptionPlacement(
     throw new Error(
       `caption-placement: rebuild removes shots with owner placement: ${orphans.map((s) => s.id).join(", ")}. Reset those exceptions before rebuilding.`,
     );
-  const filmPlacement = carry(previous.captionPlacement, next.captionPlacement);
+  const filmPlacement = carry(previous.captionPlacement, mergedNext.captionPlacement);
   return {
-    ...next,
+    ...mergedNext,
     ...(filmPlacement ? { captionPlacement: filmPlacement } : {}),
-    shots: next.shots.map((shot) => {
+    shots: mergedNext.shots.map((shot) => {
       const previousShot = previous.shots.find((s) => s.id === shot.id);
       const placement = carry(
         previousShot?.captionPlacement,
