@@ -10,6 +10,8 @@ import type { LookPlan } from "../lookPlan/schema";
 import { resolveCue } from "../designSpec/cues";
 import type { Cues } from "../sceneKit/timing";
 import { spokenNumbers } from "../review/speech";
+import { buildTimeline } from "../../src/dl/camera";
+import { easeExpo, frames, MS } from "../../src/dl/motion";
 import { minimumShotSeconds } from "./motion";
 
 export interface ReelPhraseLock {
@@ -67,8 +69,40 @@ function phraseCue(
   return found;
 }
 
-// Lists text the block actually displays, keeping coordinates and animation parameters out of grounding.
-function blockText(block: Block): string[] {
+// Samples the same eased progress used by the animated primitives at each rendered shot frame.
+function progressSamples(
+  durationInFrames: number,
+  fps: number,
+  durationMs: number,
+  delayMs: number,
+  valueAt: (progress: number) => string,
+): string[] {
+  return Array.from({ length: durationInFrames }, (_, frame) =>
+    valueAt(easeExpo((frame - frames(delayMs, fps)) / frames(durationMs, fps))),
+  );
+}
+
+// Formats one counter tick with the same visible compact notation as StatCounter.
+function statCounterText(value: number, to: number, format: "plain" | "compact"): string {
+  if (format === "compact") {
+    const abs = Math.abs(value);
+    if (abs >= 1e12) return `${(value / 1e12).toFixed(1)}T`;
+    if (abs >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
+    if (abs >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+    if (abs >= 1e3) return `${(value / 1e3).toFixed(0)}k`;
+  }
+  return (to >= 1900 && to <= 2100) || format === "plain"
+    ? String(value)
+    : value.toLocaleString("en-US");
+}
+
+// Lists block text and every numeric label rendered during its shot.
+function blockText(
+  block: Block,
+  durationInFrames: number,
+  fps: number,
+  index: number,
+): string[] {
   switch (block.c) {
     case "Kicker":
     case "TextReveal":
@@ -77,10 +111,20 @@ function blockText(block: Block): string[] {
     case "IconLabel":
       return [block.text];
     case "StatCounter":
-      return [String(block.to), block.label];
+      return [
+        ...progressSamples(durationInFrames, fps, 900, MS.stagger * index, (p) =>
+          statCounterText(Math.round(block.to * p), block.to, block.format),
+        ),
+        block.label,
+      ];
     case "ProgressBar":
       return block.label
-        ? [String(Math.round(block.value * 100)), block.label]
+        ? [
+            ...progressSamples(durationInFrames, fps, 900, MS.stagger * index, (p) =>
+              String(Math.round(p * block.value * 100)),
+            ),
+            block.label,
+          ]
         : [];
     case "Plot":
       return [block.xLabel ?? "", block.yLabel ?? "", block.endLabel ?? ""];
@@ -108,8 +152,20 @@ function blockText(block: Block): string[] {
         ...block.points.map((p) => p.label ?? ""),
       ];
     case "LayerStack":
+      {
+        const count = block.count ?? 32;
+        const sweepFrom = frames(MS.enter, fps);
+        const sweepSpan = Math.max(
+          1,
+          durationInFrames - frames(MS.enter + MS.move, fps),
+        );
+        const indexes = Array.from({ length: durationInFrames }, (_, frame) => {
+          const travel = Math.max(0, Math.min(1, (frame - sweepFrom) / sweepSpan));
+          return String(Math.min(count - 1, Math.floor(travel * count)) + 1);
+        });
       return [
-        String(block.count ?? 32),
+        ...indexes,
+        String(count),
         block.bottomLabel ?? "",
         block.topLabel ?? "",
         block.prompt ?? "",
@@ -117,6 +173,7 @@ function blockText(block: Block): string[] {
           typeof l === "string" ? [l] : [l.label, l.dim ?? ""],
         ),
       ];
+      }
     case "ScaleBar":
       return [...block.ticks, block.label ?? ""];
     case "AnalogyInset":
@@ -156,9 +213,14 @@ export function createReelContext({
   visibleText?: Record<string, string[]>;
 }): ReelContext {
   const minimum = minimumShotSeconds(film);
+  const durationByShot = new Map(
+    buildTimeline(film).map((timed) => [timed.shot.id, timed.durationInFrames]),
+  );
   const shots: ReelShotConstraint[] = film.shots.map((s) => {
     const onScreenText = [
-      ...s.blocks.flatMap(blockText),
+      ...s.blocks.flatMap((block, index) =>
+        blockText(block, durationByShot.get(s.id) ?? 1, film.fps, index),
+      ),
       ...(visibleText[s.id] ?? []),
     ].filter(Boolean);
     return {

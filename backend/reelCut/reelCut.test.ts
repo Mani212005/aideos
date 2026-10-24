@@ -443,6 +443,40 @@ test("displayed LayerStack counts and compact magnitudes use full numeric ground
   assert.equal(check(value, context).findings.some((finding) => finding.rule === "numbers"), false);
 });
 
+test("animated counters, labelled progress and layer indexes ground every displayed tick", () => {
+  const f = film();
+  f.shots[1].scriptText =
+    "The counter reaches three. The bar reaches fifty percent. There are four layers.";
+  f.shots[1].blocks = [
+    { c: "StatCounter", to: 3, label: "Count", format: "plain" },
+    { c: "ProgressBar", value: 0.5, label: "Complete" },
+    { c: "LayerStack", count: 4 },
+  ];
+  const context = createReelContext({ film: f });
+  const visibleNumbers = context.shots[1].onScreenNumbers;
+  assert.ok([0, 1, 2, 3].every((n) => visibleNumbers.includes(n)));
+  assert.ok(visibleNumbers.some((n) => n > 0 && n < 50));
+  assert.ok([1, 2, 3, 4].every((n) => visibleNumbers.includes(n)));
+
+  const value = cut(context);
+  value.shots[1] = {
+    id: "middle",
+    narration: "Three, fifty percent, and four layers.",
+  };
+  const numberFindings = check(value, context).findings.filter(
+    (finding) => finding.rule === "numbers" && finding.shotId === "middle",
+  );
+  assert.ok(numberFindings.some((finding) => /on-screen number 0/.test(finding.message)));
+  assert.ok(numberFindings.some((finding) => /on-screen number 1/.test(finding.message)));
+  assert.ok(numberFindings.some((finding) => /on-screen number 2/.test(finding.message)));
+  assert.ok(
+    numberFindings.some((finding) => {
+      const value = Number(finding.message.match(/on-screen number ([\d.]+)/)?.[1]);
+      return value > 0 && value < 50 && value !== 3 && value !== 4;
+    }),
+  );
+});
+
 test("grounding reads rendered chart decimals and ignores an unlabelled progress bar", () => {
   const f = film();
   f.shots[1].scriptText = "Probabilities are 0.60 and 0.40.";
