@@ -67,7 +67,7 @@ export function captionBounds(
     minX: left + safeWidth / 2,
     maxX: right - safeWidth / 2,
     minY: margins.top / height,
-    maxY: Math.min(
+    maxY: Math.max(
       0.78,
       (height - margins.bottom - captionCardHeight(width, height)) / height,
     ),

@@ -26,7 +26,7 @@ import {
   MIN_CAPTION_WIDTH,
 } from "../src/dl/captionPlacement";
 import { applyCaptionPlacementDraft } from "./designCheck/captionPlacement";
-import { buildCaptionPhrases, fitCaptionWordToRow, captionWordRows } from "../src/dl/captionPhrases";
+import { buildCaptionPhrases, captionPhraseAtFrame, fitCaptionWordToRow, captionWordRows } from "../src/dl/captionPhrases";
 import {
   convertFilmToLayeredFilm,
   convertLayeredFilmToFilm,
@@ -263,6 +263,46 @@ test("move and resize use composition coordinates and preserve the opposite edge
     snap: true,
   });
   assert.equal(unchangedResize.w, 0.85);
+});
+
+// Keeps legacy phrase tails while preventing an explicitly placed phrase from overlapping its successor.
+test("default phrases keep the legacy tail and placed phrases stop at the next phrase", () => {
+  const words = [
+    { text: "hello,", startFrame: 0, endFrame: 10 },
+    { text: "world", startFrame: 11, endFrame: 20 },
+  ];
+  const build = (placement: ReturnType<typeof resolveCaptionPlacement>) =>
+    buildCaptionPhrases({
+      words,
+      fps: 30,
+      fontSize: 45,
+      width: 1920,
+      placementAt: () => placement,
+      measure: () => 100,
+    });
+  const legacy = build(resolveCaptionPlacement(base, "long"));
+  assert.equal(legacy[0].endFrame, 18);
+  assert.equal(captionPhraseAtFrame(legacy, 15)?.words[0].text, "hello,");
+  const placed = build({ ...top, source: "film" });
+  assert.equal(placed[0].endFrame, 10);
+  assert.equal(captionPhraseAtFrame(placed, 11)?.words[0].text, "world");
+});
+
+// Keeps the approved default y reachable when dragging down in either output format.
+test("bottom clamp never pushes a drag above the approved default position", () => {
+  for (const format of ["long", "reel"] as const) {
+    const frame = CAPTION_FRAMES[format];
+    const moved = dragCaption({
+      placement: { ...resolveCaptionPlacement(base, format), y: 0.78 },
+      format,
+      dx: 0,
+      dy: 1,
+      scale: 1,
+      snap: false,
+    });
+    assert.ok(moved.y >= 0.78, `${format}: ${moved.y}`);
+    assert.ok(moved.y <= 1 - 96 / frame.height);
+  }
 });
 
 test("owner saves preserve unchanged positions while agent and movement writes clamp", () => {

@@ -595,6 +595,10 @@ export const FilmView: React.FC<FilmViewProps> = ({
   const captionPlacementAt = React.useCallback((startFrame: number) =>
     resolveCaptionPlacement(film, captionFormat, shotAt(timeline, startFrame)?.shot.id),
   [film, captionFormat, timeline]);
+  const captionPhraseLayoutKey = JSON.stringify(film.shots.map((shot) => {
+    const placement = resolveCaptionPlacement(film, captionFormat, shot.id);
+    return [placement.source, placement.w];
+  }));
   const captionPhrases = React.useMemo(() => captionWords ? buildCaptionPhrases({
     words: captionWords,
     fps,
@@ -602,9 +606,9 @@ export const FilmView: React.FC<FilmViewProps> = ({
     fontSize: captionFontSize,
     placementAt: captionPlacementAt,
     measure: (text) => measureText({ text, fontFamily: SANS, fontSize: captionFontSize, fontWeight: 700 }).width,
-  }) : [], [captionWords, fps, width, captionFontSize, captionPlacementAt]);
+  }) : [], [captionWords, fps, width, captionFontSize, captionPhraseLayoutKey]);
   const activeCaptionPhrase = captionPhraseAtFrame(captionPhrases, frame);
-  const captionContextPlacement = activeCaptionPhrase?.placement ?? resolveCaptionPlacement(film, width < height ? "reel" : "long", current.shot.id);
+  const captionContextPlacement = captionPlacementAt(activeCaptionPhrase?.startFrame ?? frame);
   const cam = camAt(film, timeline, frame, { width, height });
   const subtitleWords =
     film.subtitles === false ? captionWords ?? [] : [...(captionWords ?? []), ...delivery.cardWords];
@@ -826,6 +830,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
             fontSize={Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO)}
             highlightColor={accent}
             placementAt={captionPlacementAt}
+            phraseLayoutKey={captionPhraseLayoutKey}
           />
         ) : null}
 

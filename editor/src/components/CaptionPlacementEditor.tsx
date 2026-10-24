@@ -79,11 +79,18 @@ export function CaptionPlacementEditor({
   const shownFilm = draft ?? film;
   const fps = film.fps || 30;
   const words = useMemo(() => captionWordsForFilm(previewFilm), [previewFilm]);
+  const phraseLayoutKey = JSON.stringify([
+    resolveCaptionPlacement(shownFilm, format).w,
+    ...shownFilm.shots.map((item) => {
+      const resolved = resolveCaptionPlacement(shownFilm, format, item.id);
+      return [resolved.source, resolved.w];
+    }),
+  ]);
   const phrases = useMemo(() => buildCaptionPhrases({
     words, fps, width: CAPTION_FRAMES[format].width, fontSize: 45,
     placementAt: (startFrame) => resolveCaptionPlacement(shownFilm, format, shotAt(timeline, startFrame)?.shot.id),
     measure: (text) => measureText({ text, fontFamily: SANS, fontSize: 45, fontWeight: 700 }).width,
-  }), [words, fps, format, shownFilm, timeline]);
+  }), [words, fps, format, phraseLayoutKey, timeline]);
   const activePhrase = captionPhraseAtFrame(phrases, frame);
   const phraseShotId = activePhrase ? shotAt(timeline, activePhrase.startFrame)?.shot.id : shot.id;
   const initialSource = resolveCaptionPlacement(film, format, phraseShotId).source;

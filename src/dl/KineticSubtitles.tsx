@@ -31,6 +31,7 @@ export interface KineticSubtitleProps {
   highlightColor?: string;
   backgroundColor?: string;
   placementAt: (frame: number) => CaptionPlacement & { source?: ResolvedCaptionPlacement["source"] };
+  phraseLayoutKey?: string;
 }
 
 export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
@@ -41,6 +42,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   highlightColor = "#635BFF",
   backgroundColor = "rgba(10, 15, 29, 0.88)",
   placementAt,
+  phraseLayoutKey,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
@@ -54,7 +56,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
     words, fps, fontSize, width,
     placementAt,
     measure: measureWord,
-  }), [words, fps, fontSize, width, placementAt, measureWord]);
+  }), [words, fps, fontSize, width, phraseLayoutKey, measureWord]);
 
   // If no words, don't render
   if (!words || words.length === 0) return null;
@@ -65,7 +67,8 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   );
 
   if (!activePhrase) return null;
-  const card = resolveCaptionCardWidth(activePhrase.placement, width);
+  const activePlacement = placementAt(activePhrase.startFrame);
+  const card = resolveCaptionCardWidth(activePlacement, width);
 
   // Find active word index within the global words array
   let activeWordIndex = words.findIndex(
@@ -99,8 +102,8 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
       data-caption-phrase
       style={{
         position: "absolute",
-        left: `${activePhrase.placement.x * 100}%`,
-        top: `${activePhrase.placement.y * 100}%`,
+        left: `${activePlacement.x * 100}%`,
+        top: `${activePlacement.y * 100}%`,
         transform: "translateX(-50%)",
         width: card.width,
         display: "flex",
