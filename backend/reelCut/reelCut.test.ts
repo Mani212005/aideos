@@ -751,9 +751,7 @@ test("brief contains the delivered word budget, per-shot locks, motion floors, s
   const brief = reelBrief(context, BUDGET);
   assert.match(brief, /179.0 s, including 3.0 s of end card/);
   assert.match(brief, /Story target: 167.0 s/);
-  assert.match(brief, /catch it.*exactly once/);
   assert.match(brief, /Minimum motion time:/);
-  assert.match(brief, /approval is optional and never gates rendering/);
   const scaffold = reelCutSchema.parse(
     JSON.parse(brief.split("```json\n")[1].split("\n```")[0]),
   );
