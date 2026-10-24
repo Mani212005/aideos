@@ -286,6 +286,52 @@ test("default phrases keep the legacy tail and placed phrases stop at the next p
   const placed = build({ ...top, source: "film" });
   assert.equal(placed[0].endFrame, 10);
   assert.equal(captionPhraseAtFrame(placed, 11)?.words[0].text, "world");
+  const defaultToPlaced = buildCaptionPhrases({
+    words,
+    fps: 30,
+    fontSize: 45,
+    width: 1920,
+    placementAt: (frame) =>
+      frame === 0
+        ? resolveCaptionPlacement(base, "long")
+        : { ...top, source: "shot" },
+    measure: () => 100,
+  });
+  assert.equal(defaultToPlaced[0].endFrame, 10);
+  assert.equal(captionPhraseAtFrame(defaultToPlaced, 11)?.placement.source, "shot");
+});
+
+// Applies shot-only edits to the playhead shot even when its visible phrase began in the prior shot.
+test("shot caption scope targets the playhead shot across a phrase cut", () => {
+  const film = {
+    ...base,
+    shots: base.shots.slice(0, 2).map((shot) => ({ ...shot, captionPlacement: undefined })),
+  };
+  const timeline = buildTimeline(film);
+  const playhead = timeline[0].to + 1;
+  const playheadShotId = shotAt(timeline, playhead).shot.id;
+  const phraseStart = timeline[0].to - 2;
+  const phrase = buildCaptionPhrases({
+    words: [{ text: "crossing", startFrame: phraseStart, endFrame: playhead + 2 }],
+    fps: film.fps,
+    fontSize: 45,
+    width: 1920,
+    placementAt: (frame) => resolveCaptionPlacement(film, "long", shotAt(timeline, frame).shot.id),
+    measure: () => 100,
+  })[0];
+  assert.equal(shotAt(timeline, phraseStart).shot.id, film.shots[0].id);
+  assert.equal(playheadShotId, film.shots[1].id);
+  assert.equal(phrase.startFrame < playhead && playhead <= phrase.endFrame, true);
+  assert.equal(phrase.placement.source, "default");
+
+  const next = setCaptionPlacement(film, {
+    format: "long",
+    scope: { kind: "shot", shotId: playheadShotId },
+    placement: top,
+    owner: true,
+  });
+  assert.equal(next.shots[0].captionPlacement?.long, undefined);
+  assert.deepEqual(next.shots[1].captionPlacement?.long, top);
 });
 
 // Keeps the approved default y reachable when dragging down in either output format.

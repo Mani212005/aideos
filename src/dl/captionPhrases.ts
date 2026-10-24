@@ -136,7 +136,10 @@ export function buildCaptionPhrases({
     start = end + 1;
   }
   for (let i = 0; i < phrases.length - 1; i++) {
-    if (phrases[i].placement.source !== "default") {
+    if (
+      phrases[i].placement.source !== "default" ||
+      phrases[i + 1].placement.source !== "default"
+    ) {
       phrases[i].endFrame = Math.min(
         phrases[i].endFrame,
         phrases[i + 1].startFrame - 1,
