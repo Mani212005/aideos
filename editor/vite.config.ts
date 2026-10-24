@@ -2524,6 +2524,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               return;
             }
             const file = path.join(filmsDir, `${id}.ts`);
+            // This studio save endpoint is the trusted owner path; placement locks bind agents and rebuilds.
             writeFilm(id, parsed.data, { owner: true });
 
             const activeFilmFile = path.resolve(__dirname, '../src/dl/activeFilm.ts');

@@ -237,8 +237,10 @@ renderer fixes placement and wrapping at each phrase's start.
 
 Both film writers use `carryCaptionPlacement` in `src/dl/captionPlacement.ts`. Rebuilds preserve
 omitted entries and cannot change locked entries. The studio's save endpoint is the owner writer,
-so owner reset, unlock, and undo can remove entries. A rebuild that removes a shot with an owner
-exception fails with `caption-placement` and names the shot instead of losing the exception.
+so the studio owner may move or reset a locked caption, including through undo. The existing studio
+endpoint trusts its local editor caller and has no separate authorization layer. Locks bind checked
+agent edits and rebuilds, not owner writes. A rebuild that removes a shot with an owner exception
+fails with `caption-placement` and names the shot instead of losing the exception.
 
 Agents and the MCP AI edit flow use `set_caption_placement` through the transactional edit
 interpreter. The operation takes `format`, `scope` (`{kind:"film"}` or `{kind:"shot",shotId}`),

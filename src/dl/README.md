@@ -89,7 +89,8 @@ against the visible graph manually; scene-art and posed-character collision chec
 In Edit, choose Wide or Reel, then **Move captions**. Drag the card body to move it and an edge handle
 to resize it. **Whole film** changes that format's default; **This shot only** creates an exception
 at the playhead. A drop saves one undo step. **Lock** pins the chosen entry, **Unlock** enables edits,
-and **Reset** removes that entry. Resetting a shot restores the film-wide position.
+and **Reset** removes that entry. Resetting a shot restores the film-wide position. Studio saves are
+trusted owner writes and can move locked captions; locks prevent checked agent edits and rebuilds.
 
 Arrow keys nudge by 0.5%, Shift increases the step to 5%, Alt + Left/Right changes width, and L toggles
 lock. Alt bypasses snapping during a pointer gesture. Esc cancels the current gesture.

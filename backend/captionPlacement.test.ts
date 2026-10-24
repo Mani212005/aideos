@@ -262,8 +262,8 @@ test("horizontal drag and width resize preserve the original vertical position",
   assert.equal(dragCaption({ placement: implicit, format: "long", dx: 0, dy: 12, scale: 1, snap: false }).x, implicit.x);
   assert.equal(resizeCaption({ placement: implicit, format: "long", edge: "right", dx: -12, scale: 1, snap: false }).y, implicit.y);
 });
-// Verifies rebuild carry-forward, owner reset and locked non-owner protection.
-test("writers preserve placements and owners alone can reset locked entries", () => {
+// Verifies rebuild carry-forward, owner reset and agent protection for locked placements.
+test("rebuild and agent writes preserve locks while owners can reset them", () => {
   const previous = {
     ...base,
     captionPlacement: { long: { ...top, locked: true }, reel: top },
@@ -318,6 +318,26 @@ test("writers preserve placements and owners alone can reset locked entries", ()
   const lockedFilm = { ...unlocked, captionPlacement: { long: { ...top, locked: true } } };
   assert.equal(
     carryCaptionPlacement(lockedFilm, movedFilm, { owner: false, agentEdit: true }).captionPlacement?.long?.y,
+    top.y,
+  );
+  const lockedShot = {
+    ...base,
+    shots: base.shots.map((shot, index) => index === 0
+      ? { ...shot, captionPlacement: { reel: { ...top, locked: true } } }
+      : shot),
+  };
+  const movedLockedShot = {
+    ...lockedShot,
+    shots: lockedShot.shots.map((shot, index) => index === 0
+      ? { ...shot, captionPlacement: { reel: { ...top, y: 0.4 } } }
+      : shot),
+  };
+  assert.equal(
+    carryCaptionPlacement(lockedShot, movedLockedShot, { owner: false }).shots[0].captionPlacement?.reel?.y,
+    top.y,
+  );
+  assert.equal(
+    carryCaptionPlacement(lockedShot, movedLockedShot, { owner: false, agentEdit: true }).shots[0].captionPlacement?.reel?.y,
     top.y,
   );
   assert.throws(
@@ -577,6 +597,16 @@ test("AI caption operation validates, applies, refuses locks and rolls back", as
   assert.equal(refused.applied.length, 0);
   assert.match(refused.rejected[0].reason, /locked/i);
   assert.deepEqual(refused.film, locked);
+  const lockedShot = convertFilmToLayeredFilm({
+    ...base,
+    shots: base.shots.map((shot, index) => index === 0
+      ? { ...shot, captionPlacement: { reel: { ...top, y: 0.4, locked: true } } }
+      : shot),
+  });
+  const refusedShot = applyEditProgram(lockedShot, shotProgram);
+  assert.equal(refusedShot.applied.length, 0);
+  assert.match(refusedShot.rejected[0].reason, /locked/i);
+  assert.deepEqual(refusedShot.film, lockedShot);
 });
 
 // Validates caption-specific limits and inset collisions through the design gate.
