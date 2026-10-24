@@ -804,6 +804,27 @@ test("spoken year phrases ground rendered year labels", () => {
   );
 });
 
+test("spoken cardinal numbers from twenty one to twenty nine ground rendered numbers", () => {
+  const f = film();
+  f.shots[1].scriptText = "There are twenty five candidates in total.";
+  f.shots[1].blocks = [
+    { c: "StatCounter", to: 25, label: "Candidates", format: "plain" },
+  ];
+  const context = createReelContext({ film: f });
+  assert.ok(context.shots[1].onScreenNumbers.includes(25));
+  const value = cut(context);
+  value.shots[1] = {
+    id: "middle",
+    narration: "There are twenty five candidates in total.",
+  };
+  assert.equal(
+    check(value, context).findings.some(
+      (finding) => finding.rule === "numbers",
+    ),
+    false,
+  );
+});
+
 test("grounding reads rendered chart decimals and ignores an unlabelled progress bar", () => {
   const f = film();
   f.shots[1].scriptText = "Probabilities are 0.60 and 0.40.";

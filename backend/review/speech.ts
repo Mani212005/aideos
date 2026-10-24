@@ -119,7 +119,7 @@ const UNITS: Record<string, number> = {
 const TENS: Record<string, number> = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
 const SCALES: Record<string, number> = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12 };
 const YEAR_PREFIXES: Record<string, number> = { seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20 };
-const YEAR_PHRASE = /\b(seventeen|eighteen|nineteen|twenty)\s+(?:(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)|(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[\s-]+(one|two|three|four|five|six|seven|eight|nine))?)\b(?!\s+(?:thousand|million|billion|trillion)\b)/gi;
+const YEAR_PHRASE = /\b(seventeen|eighteen|nineteen|twenty)\s+(?:(ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)|(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[\s-]+(one|two|three|four|five|six|seven|eight|nine))?)\b(?!\s+(?:thousand|million|billion|trillion)\b)/gi;
 
 // Every number in a piece of narration, written as digits or spoken ("seven hundred sixty eight" -> 768, "a hundred million" -> 1e8).
 export function spokenNumbers(text: string): number[] {

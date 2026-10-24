@@ -247,8 +247,12 @@ test("speech: spokenNumbers reads digits and number words", () => {
 
 test("speech: spoken year phrases retain their year values", () => {
   assert.deepEqual(
-    spokenNumbers("seventeen seventy-six, nineteen eighty four, twenty twenty-four"),
-    [1776, 1984, 2024],
+    spokenNumbers("seventeen seventy-six, nineteen eighty four, twenty twenty-four, twenty fourteen"),
+    [1776, 1984, 2024, 2014],
+  );
+  assert.deepEqual(
+    spokenNumbers("twenty one items, twenty two parts, twenty five percent, twenty nine total"),
+    [21, 22, 25, 29],
   );
   assert.deepEqual(spokenNumbers("seventeen hundred million"), [1_700_000_000]);
 });
