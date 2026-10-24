@@ -268,7 +268,7 @@ export function EditStage({
             )}
           </div>
 
-          {moveCaptions && previewTimeline ? <CaptionPlacementEditor key={`${film.id}-${format}`} film={film} previewTimeline={previewTimeline} format={format} frame={currentFrame} playerRef={playerRef} host={previewHost} onDraft={setCaptionDraft} onCommit={project.commit} /> : null}
+          {moveCaptions && previewTimeline ? <CaptionPlacementEditor key={`${film.id}-${format}`} film={film} previewFilm={previewFilm} previewTimeline={previewTimeline} format={format} frame={currentFrame} playerRef={playerRef} host={previewHost} onDraft={setCaptionDraft} onCommit={project.commit} /> : null}
 
           <div
             role="separator"

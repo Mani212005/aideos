@@ -50,7 +50,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env'), quiet: true })
 import { createEngine } from '../backend/engine/index.ts'
 import type { VideoJobSpec } from '../backend/engine/types.ts'
 
-const captionCheckRequest = z.object({ film: filmSchema, format: z.enum(['long', 'reel']), shotId: z.string(), frame: z.number().finite().min(0) }).strict();
+const captionCheckRequest = z.object({ film: filmSchema, previewFilm: filmSchema, format: z.enum(['long', 'reel']), shotId: z.string(), frame: z.number().finite().min(0) }).strict();
 
 const filmsDir = path.resolve(__dirname, '../src/dl/films');
 // The owner's personal, gitignored videos (AIDEOS_VIDEOS_DIR moves it); examples/ is the read-only fallback.
@@ -571,7 +571,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           sendJson(res, 400, { error: 'Expected a valid film, format, shotId and frame' });
           return;
         }
-        const { film: requestedFilm, format, shotId, frame } = parsed.data;
+        const { film: requestedFilm, previewFilm, format, shotId, frame } = parsed.data;
         // This local studio route trusts the server's active-film pointer, never a request's package body.
         const activeFilmFile = path.resolve(__dirname, '../src/dl/activeFilm.ts');
         const activeFilmSource = fs.existsSync(activeFilmFile) ? fs.readFileSync(activeFilmFile, 'utf8') : '';
@@ -581,6 +581,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           sendJson(res, 409, { error: 'The studio has no active film to check.' });
           return;
         }
+        if (previewFilm.id !== activeFilm.id) {
+          sendJson(res, 409, { error: 'Caption placement preview must match the studio active film.' });
+          return;
+        }
         let film: Film;
         try {
           film = applyCaptionPlacementDraft(requestedFilm, activeFilm);
@@ -588,7 +592,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           sendJson(res, 409, { error: error instanceof Error ? error.message : String(error) });
           return;
         }
-        void checkCaptionPlacementsAsync(film, film.scene as Scene | undefined, { format, shotId, frame: Math.round(frame) })
+        void checkCaptionPlacementsAsync(film, film.scene as Scene | undefined, { format, shotId, frame: Math.round(frame) }, previewFilm)
           .then((findings) => sendJson(res, 200, { findings }))
           .catch((error) => sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) }));
       }).catch((error) => sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) }));

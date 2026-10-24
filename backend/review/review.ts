@@ -140,6 +140,8 @@ export async function reviewVideo(req: ReviewRequest): Promise<ReviewReport> {
     const loaded = loadFilmFacts(target.film, { width: video.width, height: video.height });
     film = loaded.facts;
     captionRectAt = prepareCaptionReview(loaded.film, video.width, video.height);
+    if (captionRectAt && typeof captionRectAt !== "function")
+      throw new Error(`Placed caption review unavailable: ${captionRectAt.unavailable}`);
   }
   let narration: Narration | null = null;
   if (target.words) {

@@ -10,7 +10,7 @@ import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
 import { rectInside, projectStagePoint, SAFE_SQUARE, type SceneRect } from "../../src/dl/scene/projection";
 import { undeclaredMaterialColours } from "../../src/dl/scene/stageGeometry";
 import { getInsetRegion, getStageSafeRegion } from "../../src/dl/fullScreenHeroLayout";
-import { buildTimeline } from "../../src/dl/camera";
+import { buildTimeline, shotAt } from "../../src/dl/camera";
 import { buildCaptionPhrases, captionPhraseAtFrame } from "../../src/dl/captionPhrases";
 import { captionWordsForFilm } from "../../src/dl/captionsParser";
 import { measureCaptionWords } from "../review/captionMeasurements";
@@ -33,7 +33,7 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
   const timeline = buildTimeline(film);
   // Names the shot at the defective frame and deduplicates only within that shot and rule.
   const add = (rule: DesignRule, frame: number, format: string, id: string, message: string) => {
-    const shot = timeline.find((s) => frame >= s.from && frame < s.to)?.shot.id ?? scene.performances?.find((p) => p.id === id || p.actor === id || p.prop === id)?.decisive.shotId ?? "unknown";
+    const shot = shotAt(timeline, frame)?.shot.id ?? scene.performances?.find((p) => p.id === id || p.actor === id || p.prop === id)?.decisive.shotId ?? "unknown";
     const key = `${rule}/${format}/${id}/${shot}`;
     if (reported.has(key)) return;
     reported.add(key);
@@ -66,14 +66,14 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
         fps: film.fps,
         width,
         fontSize,
-        placementAt: (startFrame) => resolveCaptionPlacement(film, format, timeline.find((t) => startFrame >= t.from && startFrame < t.to)?.shot.id),
+        placementAt: (startFrame) => resolveCaptionPlacement(film, format, shotAt(timeline, startFrame)?.shot.id),
         measure: (text) => widths[text] ?? 0,
       });
       const defaultSafe = getStageSafeRegion(format, width, height, captions);
       const placedSafe = getStageSafeRegion(format, width, height, false);
       // Follow the visible phrase across cuts, falling back to the current shot between phrases.
       const placementAtFrame = (frame: number) => captionPhraseAtFrame(phrases, frame)?.placement ??
-        resolveCaptionPlacement(film, format, timeline.find((t) => frame >= t.from && frame < t.to)?.shot.id);
+        resolveCaptionPlacement(film, format, shotAt(timeline, frame)?.shot.id);
       for (const material of facts.materials) {
         for (const colour of undeclaredMaterialColours(material.meshes, material.palette)) add("palette", 0, format, material.actor, `undeclared 3D material colour ${colour}; declare it in character ${material.character}'s palette`);
       }
@@ -82,7 +82,7 @@ export function checkThreeStage(film: Film, scene: Scene, context: DesignCheckCo
       for (let frame = 0; frame < scene.durationFrames; frame++) {
         checkedFrame = frame;
         const poses = facts.at(frame, "prop");
-        const shot = timeline.find((s) => frame >= s.from && frame < s.to)?.shot;
+        const shot = shotAt(timeline, frame)?.shot;
         const phrase = captionPhraseAtFrame(phrases, frame);
         const placement = placementAtFrame(frame);
         const safe = placement.source === "default" ? defaultSafe : placedSafe;

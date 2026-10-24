@@ -42,6 +42,7 @@ const collisionResponse = z.object({
 });
 type Props = {
   film: Film;
+  previewFilm: Film;
   previewTimeline: TimedShot[];
   format: CaptionFormat;
   frame: number;
@@ -63,6 +64,7 @@ type Gesture = {
 // Keeps all editor affordances outside the rendered composition and all changes in project history.
 export function CaptionPlacementEditor({
   film,
+  previewFilm,
   previewTimeline,
   format,
   frame,
@@ -76,7 +78,7 @@ export function CaptionPlacementEditor({
   const [draft, setDraft] = useState<Film | null>(null);
   const shownFilm = draft ?? film;
   const fps = film.fps || 30;
-  const words = useMemo(() => captionWordsForFilm(film), [film]);
+  const words = useMemo(() => captionWordsForFilm(previewFilm), [previewFilm]);
   const phrases = useMemo(() => buildCaptionPhrases({
     words, fps, width: CAPTION_FRAMES[format].width, fontSize: 45,
     placementAt: (startFrame) => resolveCaptionPlacement(shownFilm, format, shotAt(timeline, startFrame)?.shot.id),
@@ -130,6 +132,7 @@ export function CaptionPlacementEditor({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             film: shownFilm,
+            previewFilm,
             format,
             shotId: phraseShotId,
             frame,
@@ -152,7 +155,7 @@ export function CaptionPlacementEditor({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [shownFilm, format, phraseShotId, frame]);
+  }, [shownFilm, previewFilm, format, phraseShotId, frame]);
 
   // Follow exceptions when changing shots or formats, without resetting an explicit scope choice mid-gesture.
   useEffect(() => {

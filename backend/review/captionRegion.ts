@@ -13,12 +13,18 @@ import {
   resolveCaptionCardWidth,
 } from "../../src/dl/captionPlacement";
 import { measureCaptionWords } from "./captionMeasurements";
+export type CaptionReviewRegion =
+  | ((t: number) => ReturnType<typeof captionCardRect>)
+  | { unavailable: string }
+  | null
+  | undefined;
 // Resolves at phrase start so review follows captions across a cut instead of jumping with the shot.
 export function prepareCaptionReview(
   film: Film,
   width: number,
   height: number,
-) {
+  measureWords = measureCaptionWords,
+): CaptionReviewRegion {
   if (film.captions === "off" || film.subtitles === false) return null;
   if (!film.captionPlacement && !film.shots.some((s) => s.captionPlacement))
     return undefined;
@@ -30,12 +36,19 @@ export function prepareCaptionReview(
     (timed) =>
       resolveCaptionCardWidth(resolveCaptionPlacement(film, format, timed.shot.id), width).fixed,
   );
-  const widths = variableWidth
-    ? measureCaptionWords(
+  let widths: Record<string, number>;
+  try {
+    widths = variableWidth
+      ? measureWords(
         words.map((word) => word.text),
         fontSize,
       )
-    : {};
+      : {};
+  } catch (error) {
+    return {
+      unavailable: error instanceof Error ? error.message : String(error),
+    };
+  }
   const phrases = buildCaptionPhrases({
     words,
     fps: film.fps,

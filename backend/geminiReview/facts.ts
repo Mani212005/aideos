@@ -460,11 +460,24 @@ export async function extractDeterministicFacts(
   let filmFacts: FilmFacts | null = null;
   let captionRectAt: ReturnType<typeof prepareCaptionReview>;
   let placementNote: string | null = null;
+  let captionMeasurementNote: string | null = null;
   let stageNote: string | null = null;
   if (filmPath && fs.existsSync(filmPath)) {
     try {
       const film = parseFilm(JSON.parse(fs.readFileSync(filmPath, "utf8")));
       if (viewport) captionRectAt = prepareCaptionReview(film, viewport.width, viewport.height);
+      else if (
+        film.captions !== "off" &&
+        film.subtitles !== false &&
+        (film.captionPlacement || film.shots.some((shot) => shot.captionPlacement))
+      ) {
+        captionMeasurementNote = "- Owner caption cards: NOT measured (output dimensions unavailable); do not judge caption coverage from the legacy bottom band.";
+        captionRectAt = null;
+      }
+      if (captionRectAt && typeof captionRectAt !== "function") {
+        captionMeasurementNote = `- Owner caption cards: NOT measured (${captionRectAt.unavailable}); do not judge caption coverage from the legacy bottom band.`;
+        captionRectAt = null;
+      }
       if (captionRectAt) placementNote = `- Owner caption cards: ${JSON.stringify({ film: film.captionPlacement, shots: film.shots.filter((s) => s.captionPlacement).map((s) => ({ id: s.id, placement: s.captionPlacement })) })}. Check these placed rectangles; locked cards must be preserved.`;
       if (film.scene?.renderer === "three" && !viewport) stageNote = "- Stage facts: NOT measured, the output size of this video could not be probed; judge the stage only from the video.";
       else filmFacts = readFilmFacts(film, viewport ?? undefined);
@@ -476,12 +489,24 @@ export async function extractDeterministicFacts(
   // stage and may be silent by design.
   const storySec = filmFacts?.endCard ? Math.min(durationSec, filmFacts.endCard.startSec) : durationSec;
   if (!options?.skipOcr) {
-    bottomCaptions = await measureBottomCaptions(
-      resolved,
-      storySec,
-      options?.sampleCount ?? 12,
-      captionRectAt,
-    );
+    if (captionMeasurementNote) {
+      bottomCaptions = {
+        measured: false,
+        hasCaptions: false,
+        coverageRatio: 0,
+        sampledFrames: 0,
+        captionFrames: 0,
+        score: 0,
+        summary: captionMeasurementNote.replace(/^- Owner caption cards: /, ""),
+      };
+    } else {
+      bottomCaptions = await measureBottomCaptions(
+        resolved,
+        storySec,
+        options?.sampleCount ?? 12,
+        captionRectAt,
+      );
+    }
   }
 
   const camera = inspectCamera(filmPath, storySec, filmFacts);
@@ -492,6 +517,7 @@ export async function extractDeterministicFacts(
 
   const rawSummaryText = [
     placementNote,
+    captionMeasurementNote,
     `=== PRE-MEASURED GROUND TRUTH FACTS (DETERMINISTIC FACTS) ===`,
     `- Exact Video Duration: ${durationSec.toFixed(1)}s (do NOT hallucinate a different duration such as 120s)`,
     metadata.width && metadata.height ? `- Dimensions: ${metadata.width}x${metadata.height}` : null,

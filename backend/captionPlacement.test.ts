@@ -371,17 +371,62 @@ test("caption editor shot selection follows the visible timeline and saves sourc
   })[0];
   const targetShotId = shotAt(previewTimeline, phrase.startFrame).shot.id;
   assert.equal(targetShotId, visibleShotId);
-  const positioned = setCaptionPlacement(base, {
+  const sourceTimelineFilm = {
+    ...base,
+    captions: "WEBVTT\n\n00:00:06.200 --> 00:00:06.600\nVisible phrase\n",
+    shots: [
+      { ...base.shots[0], id: "hidden-a", dur: 6, position: 0, scriptText: "Hidden" },
+      { ...base.shots[0], id: "source-b", dur: 6, position: 6, scriptText: "Source B", stage: "inset", captionPlacement: { long: { ...top, y: 0.5, w: 0.86 } } },
+      { ...base.shots[0], id: "source-c", dur: 6, position: 12, scriptText: "Source C" },
+    ],
+  } as typeof base;
+  const previewForCheck = {
+    ...sourceTimelineFilm,
+    shots: sourceTimelineFilm.shots.slice(1).map((shot, index) => ({
+      ...shot,
+      position: index * 6,
+      stage: undefined,
+      captionPlacement: undefined,
+    })),
+  } as typeof base;
+  assert.equal(shotAt(buildTimeline(sourceTimelineFilm), 186).shot.id, "source-b");
+  assert.equal(shotAt(buildTimeline(previewForCheck), 186).shot.id, "source-c");
+  const collisionTarget = checkCaptionPlacements(
+    sourceTimelineFilm,
+    undefined,
+    { format: "long", shotId: "source-c", frame: 186 },
+    previewForCheck,
+  );
+  assert.ok(collisionTarget.some((finding) => finding.where === "CanvasGraph / long"));
+  assert.ok(!collisionTarget.some((finding) => /overlaps the device inset/.test(finding.message)), JSON.stringify(collisionTarget));
+  const positioned = setCaptionPlacement(sourceTimelineFilm, {
     format: "long",
-    scope: { kind: "shot", shotId: targetShotId },
+    scope: { kind: "shot", shotId: "source-c" },
     placement: {
-      ...resolveCaptionPlacement(base, "long", targetShotId),
-      y: 0.5,
+      ...resolveCaptionPlacement(sourceTimelineFilm, "long", "source-c"),
+      y: 0.4,
     },
     owner: true,
   });
-  assert.equal(positioned.shots[0].captionPlacement?.long, undefined);
   assert.equal(positioned.shots[1].captionPlacement?.long?.y, 0.5);
+  assert.equal(positioned.shots[2].captionPlacement?.long?.y, 0.4);
+});
+
+test("caption checks select the next shot in gaps and the final shot after the timeline", () => {
+  const film = {
+    ...base,
+    captions: "WEBVTT\n\n00:00:01.500 --> 00:00:02.000\nA phrase\n",
+    shots: [
+      { ...base.shots[0], id: "gap-a", dur: 1, position: 0, scriptText: "First" },
+      { ...base.shots[0], id: "gap-b", dur: 1, position: 2, scriptText: "Second", stage: "inset", captionPlacement: { long: { ...top, y: 0.5, w: 0.86 } } },
+    ],
+  } as typeof base;
+  const gapFindings = checkCaptionPlacements(film, undefined, { format: "long", shotId: "gap-b", frame: 45 });
+  assert.ok(gapFindings.some((finding) => finding.where === "shot gap-b / long" && /inset/.test(finding.message)), JSON.stringify(gapFindings));
+
+  const afterFilm = { ...film, captions: "WEBVTT\n\n00:00:03.500 --> 00:00:04.000\nA phrase\n" };
+  const afterFindings = checkCaptionPlacements(afterFilm, undefined, { format: "long", shotId: "gap-b", frame: 105 });
+  assert.ok(afterFindings.some((finding) => finding.where === "shot gap-b / long" && /inset/.test(finding.message)), JSON.stringify(afterFindings));
 });
 
 // Keeps an untouched gesture axis fixed when safe-area clamping would otherwise shift it.
@@ -696,6 +741,17 @@ test("caption review omits placement geometry when rendering is disabled", async
   const measured = await measureBottomCaptions("unused.mp4", 4, 12, captionsOff);
   assert.equal(measured.hasCaptions, false);
   assert.match(measured.summary, /disabled/);
+});
+
+test("caption review reports measurement unavailability instead of a default region", async () => {
+  const { prepareCaptionReview } = await import("./review/captionRegion");
+  const result = prepareCaptionReview(
+    { ...base, captionPlacement: { long: { ...top, w: 0.86 } } },
+    1920,
+    1080,
+    () => { throw new Error("Chrome unavailable"); },
+  );
+  assert.deepEqual(result, { unavailable: "Chrome unavailable" });
 });
 
 // Executes the closed AI operation and its atomic rollback on a locked target.

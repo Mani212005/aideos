@@ -5,7 +5,7 @@
  */
 import type { Film } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
-import { buildTimeline } from "../../src/dl/camera";
+import { buildTimeline, shotAt } from "../../src/dl/camera";
 import { buildCaptionPhrases, captionPhraseAtFrame } from "../../src/dl/captionPhrases";
 import { captionWordsForFilm } from "../../src/dl/captionsParser";
 import { measureCaptionWords, measureCaptionWordsAsync } from "../review/captionMeasurements";
@@ -42,11 +42,12 @@ export function checkCaptionPlacements(
   film: Film,
   scene?: Scene,
   sample?: { format: "long" | "reel"; shotId: string; frame: number },
+  timingFilm: Film = film,
 ): DesignFinding[] {
   const findings: DesignFinding[] = [];
   if (film.captions === "off" || film.subtitles === false) return findings;
-  const timeline = buildTimeline(film, film.voiceover?.durationSec);
-  const words = captionWordsForFilm(film);
+  const timeline = buildTimeline(timingFilm, timingFilm.voiceover?.durationSec);
+  const words = captionWordsForFilm(timingFilm);
   for (const format of ["long", "reel"] as const) {
     if (sample && sample.format !== format) continue;
     const { width, height } = CAPTION_FRAMES[format];
@@ -95,17 +96,15 @@ export function checkCaptionPlacements(
       : {};
     const phrases = buildCaptionPhrases({
       words,
-      fps: film.fps,
+      fps: timingFilm.fps,
       width,
       fontSize,
-      placementAt: (startFrame) => resolveCaptionPlacement(film, format, timeline.find((t) => startFrame >= t.from && startFrame < t.to)?.shot.id),
+      placementAt: (startFrame) => resolveCaptionPlacement(film, format, shotAt(timeline, startFrame)?.shot.id),
       measure: (text) => wordWidths[text],
     });
     for (const phrase of phrases) {
       if (!phrase.unfittableWords.length) continue;
-      const shotId = timeline.find(
-        (t) => phrase.startFrame >= t.from && phrase.startFrame < t.to,
-      )?.shot.id;
+      const shotId = shotAt(timeline, phrase.startFrame)?.shot.id;
       for (const word of phrase.unfittableWords)
         findings.push({
           rule: "caption-placement",
@@ -138,11 +137,11 @@ export function checkCaptionPlacements(
         );
     const reported = new Set<string>();
     for (const frame of frames) {
-      const timed = timeline.find((t) => frame >= t.from && frame < t.to);
+      const timed = shotAt(timeline, frame);
       if (!timed) continue;
       const phrase = captionPhraseAtFrame(phrases, frame);
       const placementShotId = phrase
-        ? timeline.find((t) => phrase.startFrame >= t.from && phrase.startFrame < t.to)?.shot.id
+        ? shotAt(timeline, phrase.startFrame)?.shot.id
         : sample?.shotId ?? timed.shot.id;
       const resolved = resolveCaptionPlacement(film, format, placementShotId);
       if (resolved.source === "default") continue;
@@ -191,10 +190,11 @@ export async function checkCaptionPlacementsAsync(
   film: Film,
   scene?: Scene,
   sample?: { format: "long" | "reel"; shotId: string; frame: number },
+  timingFilm: Film = film,
 ): Promise<DesignFinding[]> {
   if (film.captions !== "off" && film.subtitles !== false) {
-    const timeline = buildTimeline(film, film.voiceover?.durationSec);
-    const words = captionWordsForFilm(film);
+    const timeline = buildTimeline(timingFilm, timingFilm.voiceover?.durationSec);
+    const words = captionWordsForFilm(timingFilm);
     const needsMeasurement = (["long", "reel"] as const).some((format) => {
       if (sample && sample.format !== format) return false;
       const { width } = CAPTION_FRAMES[format];
@@ -205,5 +205,5 @@ export async function checkCaptionPlacementsAsync(
     if (needsMeasurement)
       await measureCaptionWordsAsync(words.map((word) => word.text), 45);
   }
-  return checkCaptionPlacements(film, scene, sample);
+  return checkCaptionPlacements(film, scene, sample, timingFilm);
 }
