@@ -10,6 +10,7 @@ import fs from "node:fs";
 import { parseFilm } from "../src/dl/schema";
 import type { Scene } from "../src/dl/scene/types";
 import { captionWordsForFilm } from "../src/dl/captionsParser";
+import { buildTimeline, shotAt } from "../src/dl/camera";
 import { checkCaptionPlacements } from "./designCheck/captionPlacement";
 import { SUBTITLE_BAND_TOP_RATIO, subtitleCardBottom } from "../src/dl/fullScreenHeroLayout";
 import {
@@ -20,6 +21,7 @@ import {
   setCaptionPlacement,
   captionCardRect,
   captionCardHeight,
+  CAPTION_FRAMES,
   resolveCaptionCardWidth,
   MIN_CAPTION_WIDTH,
 } from "../src/dl/captionPlacement";
@@ -243,17 +245,143 @@ test("move and resize use composition coordinates and preserve the opposite edge
   assert.equal(unchangedResize.w, 0.85);
 });
 
-// An explicit default-valued width is fixed while absent width stays auto.
-test("explicit default values obey format bounds while absent width stays auto", () => {
+test("owner saves preserve unchanged positions while agent and movement writes clamp", () => {
+  for (const format of ["long", "reel"] as const) {
+    const initial = resolveCaptionPlacement(base, format);
+    const locked = setCaptionPlacement(base, {
+      format,
+      scope: { kind: "film" },
+      placement: { ...initial, locked: true },
+      owner: true,
+    });
+    assert.equal(locked.captionPlacement?.[format]?.x, 0.5);
+    assert.equal(locked.captionPlacement?.[format]?.y, 0.78);
+    assert.equal(resolveCaptionPlacement(locked, format).x, 0.5);
+    assert.equal(resolveCaptionPlacement(locked, format).y, 0.78);
+
+    const shotId = base.shots[0].id;
+    const scoped = setCaptionPlacement(locked, {
+      format,
+      scope: { kind: "shot", shotId },
+      placement: resolveCaptionPlacement(locked, format, shotId),
+      owner: true,
+    });
+    assert.equal(scoped.shots[0].captionPlacement?.[format]?.x, 0.5);
+    assert.equal(scoped.shots[0].captionPlacement?.[format]?.y, 0.78);
+    assert.equal(resolveCaptionPlacement(scoped, format, shotId).x, 0.5);
+    assert.equal(resolveCaptionPlacement(scoped, format, shotId).y, 0.78);
+
+    const moved = dragCaption({
+      placement: initial,
+      format,
+      dx: format === "long" ? 1920 : 1080,
+      dy: format === "long" ? 1080 : 1920,
+      scale: 1,
+      snap: false,
+    });
+    const movedSave = setCaptionPlacement(base, {
+      format,
+      scope: { kind: "film" },
+      placement: moved,
+      owner: true,
+    });
+    assert.equal(movedSave.captionPlacement?.[format]?.x, moved.x);
+    assert.equal(movedSave.captionPlacement?.[format]?.y, moved.y);
+
+    const agentSave = setCaptionPlacement(base, {
+      format,
+      scope: { kind: "film" },
+      placement: { ...initial, x: 0.99, y: 0.99 },
+      owner: false,
+    });
+    assert.notEqual(agentSave.captionPlacement?.[format]?.x, 0.99);
+    assert.notEqual(agentSave.captionPlacement?.[format]?.y, 0.99);
+  }
+});
+
+test("explicit default width is clamped while absent width stays auto", () => {
   const implicit = resolveCaptionPlacement(base, "reel");
-  const explicit = resolveCaptionPlacement({
+  const explicit = setCaptionPlacement(base, {
+    format: "reel",
+    scope: { kind: "film" },
+    owner: true,
+    placement: {
+      x: 0.5,
+      y: 0.78,
+      w: 0.86,
+      locked: false,
+    },
+  });
+  const fixed = resolveCaptionPlacement({
     ...base,
-    captionPlacement: { reel: { x: 0.5, y: 0.78, w: 0.86, locked: false } },
+    captionPlacement: explicit.captionPlacement,
   }, "reel");
   assert.equal(implicit.x, 0.5);
   assert.equal(implicit.w, undefined);
-  assert.notEqual(explicit.w, 0.86);
-  assert.equal(setCaptionPlacement(base, { format: "reel", scope: { kind: "film" }, placement: { x: 0.5, y: 0.78, w: 0.86, locked: false }, owner: true }).captionPlacement?.reel?.w, explicit.w);
+  assert.notEqual(fixed.w, 0.86);
+  assert.equal(explicit.captionPlacement?.reel?.w, fixed.w);
+});
+
+test("caption editor shot selection follows the visible timeline and saves source shot id", () => {
+  assert.ok(base.shots.length > 1);
+  const firstShotId = base.shots[0].id;
+  const visibleShotId = base.shots[1].id;
+  const hiddenLayerId = "layer-animation-hidden-test";
+  const layered = convertFilmToLayeredFilm(base);
+  const hiddenLayer = {
+    id: hiddenLayerId,
+    number: 11,
+    label: "Hidden first shot",
+    locked: false,
+    hidden: true,
+    muted: false,
+    height: 76,
+  };
+  const renderFilm = convertLayeredFilmToFilm(
+    {
+      ...layered,
+      layers: [...layered.layers, hiddenLayer],
+      clips: layered.clips
+        .map((clip) =>
+          clip.id === `clip-anim-${firstShotId}`
+            ? { ...clip, layerId: hiddenLayerId }
+            : clip,
+        )
+        .filter((clip) => clip.layerId !== hiddenLayerId),
+    },
+    base,
+  );
+  const previewTimeline = buildTimeline(renderFilm);
+  assert.deepEqual(
+    previewTimeline.map((timed) => timed.shot.id),
+    base.shots.slice(1).map((shot) => shot.id),
+  );
+  const phrase = buildCaptionPhrases({
+    words: [{ text: "Visible", startFrame: 0, endFrame: 12 }],
+    fps: base.fps,
+    fontSize: 45,
+    width: CAPTION_FRAMES.long.width,
+    placementAt: (frame) =>
+      resolveCaptionPlacement(
+        renderFilm,
+        "long",
+        shotAt(previewTimeline, frame).shot.id,
+      ),
+    measure: () => 60,
+  })[0];
+  const targetShotId = shotAt(previewTimeline, phrase.startFrame).shot.id;
+  assert.equal(targetShotId, visibleShotId);
+  const positioned = setCaptionPlacement(base, {
+    format: "long",
+    scope: { kind: "shot", shotId: targetShotId },
+    placement: {
+      ...resolveCaptionPlacement(base, "long", targetShotId),
+      y: 0.5,
+    },
+    owner: true,
+  });
+  assert.equal(positioned.shots[0].captionPlacement?.long, undefined);
+  assert.equal(positioned.shots[1].captionPlacement?.long?.y, 0.5);
 });
 
 // Keeps an untouched gesture axis fixed when safe-area clamping would otherwise shift it.

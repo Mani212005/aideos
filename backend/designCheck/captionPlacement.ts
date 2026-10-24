@@ -11,6 +11,7 @@ import { captionWordsForFilm } from "../../src/dl/captionsParser";
 import { measureCaptionWords, measureCaptionWordsAsync } from "../review/captionMeasurements";
 import {
   CAPTION_FRAMES,
+  DEFAULT_CAPTION_PLACEMENT,
   captionCardRect,
   captionRectsOverlap,
   resolveCaptionPlacement,
@@ -68,11 +69,16 @@ export function checkCaptionPlacements(
     ] as const) {
       if (!entry) continue;
       const safe = clampCaptionPlacement(entry, format);
+      const isLegacyDefaultPosition =
+        entry.w === undefined &&
+        entry.x === DEFAULT_CAPTION_PLACEMENT.x &&
+        entry.y === DEFAULT_CAPTION_PLACEMENT.y;
       if (
+        !isLegacyDefaultPosition &&
         Math.abs(safe.x - entry.x) +
           Math.abs(safe.y - entry.y) +
           (entry.w === undefined ? 0 : Math.abs((safe.w ?? 0) - entry.w)) >
-        1e-6
+          1e-6
       )
         findings.push({
           rule: "caption-placement",

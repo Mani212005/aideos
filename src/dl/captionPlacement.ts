@@ -109,10 +109,7 @@ export function resolveCaptionPlacement(
   ];
   const entry = shot ?? film.captionPlacement?.[format];
   return entry
-    ? {
-        ...clampCaptionPlacement(entry, format),
-        source: shot ? "shot" : "film",
-      }
+    ? { ...entry, source: shot ? "shot" : "film" }
     : { ...DEFAULT_CAPTION_PLACEMENT, source: "default" };
 }
 // Returns a conservative reserved band for legacy defaults and the visible fixed box for saved placements.
@@ -243,19 +240,41 @@ export function setCaptionPlacement(
   // Writes only the selected format and removes empty optional fields on reset.
   const update = (
     entries?: CaptionPlacementByFormat,
+    current?: CaptionPlacement,
   ): CaptionPlacementByFormat | undefined => {
     const result = { ...entries };
-    if (placement) result[format] = clampCaptionPlacement(placement, format);
+    if (placement) {
+      const clamped = clampCaptionPlacement(placement, format);
+      result[format] = owner
+        ? {
+            ...clamped,
+            x: placement.x === current?.x ? placement.x : clamped.x,
+            y: placement.y === current?.y ? placement.y : clamped.y,
+          }
+        : clamped;
+    }
     else delete result[format];
     return result.long || result.reel ? result : undefined;
   };
   return scope.kind === "film"
-    ? { ...film, captionPlacement: update(film.captionPlacement) }
+    ? {
+        ...film,
+        captionPlacement: update(
+          film.captionPlacement,
+          resolveCaptionPlacement(film, format),
+        ),
+      }
     : {
         ...film,
         shots: film.shots.map((shot) =>
           shot.id === scope.shotId
-            ? { ...shot, captionPlacement: update(shot.captionPlacement) }
+            ? {
+                ...shot,
+                captionPlacement: update(
+                  shot.captionPlacement,
+                  resolveCaptionPlacement(film, format, shot.id),
+                ),
+              }
             : shot,
         ),
       };

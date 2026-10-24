@@ -15,7 +15,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import type { CaptionPlacement, Film } from "../../../src/dl/schema";
-import { buildTimeline, shotAt } from "../../../src/dl/camera";
+import { shotAt, type TimedShot } from "../../../src/dl/camera";
 import {
   CAPTION_FRAMES,
   DEFAULT_CAPTION_PLACEMENT_WIDTH,
@@ -42,6 +42,7 @@ const collisionResponse = z.object({
 });
 type Props = {
   film: Film;
+  previewTimeline: TimedShot[];
   format: CaptionFormat;
   frame: number;
   playerRef: React.RefObject<PlayerRef | null>;
@@ -62,6 +63,7 @@ type Gesture = {
 // Keeps all editor affordances outside the rendered composition and all changes in project history.
 export function CaptionPlacementEditor({
   film,
+  previewTimeline,
   format,
   frame,
   playerRef,
@@ -69,7 +71,7 @@ export function CaptionPlacementEditor({
   onDraft,
   onCommit,
 }: Props) {
-  const timeline = useMemo(() => buildTimeline(film, film.voiceover?.durationSec), [film]);
+  const timeline = previewTimeline;
   const shot = shotAt(timeline, frame).shot;
   const [draft, setDraft] = useState<Film | null>(null);
   const shownFilm = draft ?? film;
