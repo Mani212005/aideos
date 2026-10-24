@@ -4,7 +4,7 @@
  * Used by: backend/reelCut/check.ts and brief.ts.
  */
 import { createHash } from "node:crypto";
-import type { Block, Film, OverlayClip } from "../../src/dl/schema";
+import type { Block, Film, OverlayClip, VideoClip } from "../../src/dl/schema";
 import type { DesignSpec } from "../designSpec/spec";
 import type { LookPlan } from "../lookPlan/schema";
 import { resolveCue } from "../designSpec/cues";
@@ -29,6 +29,7 @@ export interface ReelShotConstraint {
   locks: ReelPhraseLock[];
   onScreenText: string[];
   onScreenNumbers: number[];
+  hasUninspectedMedia: boolean;
   decisive: boolean;
 }
 export interface ReelContext {
@@ -50,6 +51,22 @@ const SIGNED_NUMBER_WORDS = new RegExp(
   `\\b(?:minus|negative)\\s+((?:(?:${NUMBER_WORD_PATTERN})(?:[\\s-]+(?:${NUMBER_WORD_PATTERN}))*|\\d[\\d,]*(?:\\.\\d+)?))`,
   "gi",
 );
+const DECIMAL_NUMBER_WORDS = new RegExp(
+  `\\b(?:(minus|negative)\\s+)?((?:${NUMBER_WORD_PATTERN})(?:[\\s-]+(?:${NUMBER_WORD_PATTERN}))*)\\s+point\\s+((?:${NUMBER_WORD_PATTERN})(?:[\\s-]+(?:${NUMBER_WORD_PATTERN}))*)\\b`,
+  "gi",
+);
+const DIGIT_WORDS: Record<string, string> = {
+  zero: "0",
+  one: "1",
+  two: "2",
+  three: "3",
+  four: "4",
+  five: "5",
+  six: "6",
+  seven: "7",
+  eight: "8",
+  nine: "9",
+};
 
 // Hashes the exact long line so edits, including punctuation changes, invalidate its reel counterpart.
 export function narrationHash(text: string): string {
@@ -191,10 +208,6 @@ function blockText(
         String(count),
         block.bottomLabel ?? "",
         block.topLabel ?? "",
-        block.prompt ?? "",
-        ...(block.layers ?? []).flatMap((l) =>
-          typeof l === "string" ? [l] : [l.label, l.dim ?? ""],
-        ),
       ];
     }
     case "ScaleBar":
@@ -225,7 +238,38 @@ export function groundedNumbers(text: string): number[] {
       ),
   );
   const negative: number[] = [];
-  let unsigned = expanded.replace(/-\s*(\d[\d,]*(?:\.\d+)?)/g, (_, raw: string) => {
+  const decimals: number[] = [];
+  let unsigned = expanded.replace(
+    DECIMAL_NUMBER_WORDS,
+    (
+      match,
+      sign: string | undefined,
+      whole: string,
+      fractional: string,
+    ) => {
+      const wholeValue = spokenNumbers(whole)[0];
+      const fractionalWords = fractional.toLowerCase().split(/[\s-]+/);
+      const digitFraction = fractionalWords.every(
+        (word) => word in DIGIT_WORDS,
+      )
+        ? Number(
+            fractionalWords.map((word) => DIGIT_WORDS[word]).join(""),
+          ) / 10 ** fractionalWords.length
+        : undefined;
+      const fractionalValue = spokenNumbers(fractional)[0];
+      const cardinalFraction =
+        fractionalValue === undefined
+          ? undefined
+          : fractionalValue /
+            10 ** String(Math.abs(fractionalValue)).length;
+      const fraction = digitFraction ?? cardinalFraction;
+      if (wholeValue === undefined || fraction === undefined) return match;
+      const value = wholeValue + fraction;
+      decimals.push(sign ? -value : value);
+      return " ";
+    },
+  );
+  unsigned = unsigned.replace(/-\s*(\d[\d,]*(?:\.\d+)?)/g, (_, raw: string) => {
     negative.push(-Number(raw.replace(/,/g, "")));
     return " ";
   });
@@ -234,7 +278,25 @@ export function groundedNumbers(text: string): number[] {
     if (value !== undefined) negative.push(-Math.abs(value));
     return " ";
   });
-  return [...spokenNumbers(unsigned), ...negative];
+  return [...spokenNumbers(unsigned), ...decimals, ...negative];
+}
+
+type TimedMediaClip = Pick<
+  VideoClip,
+  "position" | "start" | "end" | "opacity"
+>;
+
+// Checks whether a rendered clip's timeline interval intersects the given shot.
+function clipIntersectsShot(
+  clip: TimedMediaClip,
+  fps: number,
+  from: number,
+  to: number,
+): boolean {
+  if (clip.opacity === 0) return false;
+  const start = Math.round(clip.position * fps);
+  const duration = Math.max(1, Math.round((clip.end - clip.start) * fps));
+  return start < to && start + duration > from;
 }
 
 // Returns visible text overlays whose rendered time interval intersects one shot.
@@ -245,13 +307,34 @@ function overlayTextForShot(
   to: number,
 ): string[] {
   return (clips ?? []).flatMap((clip) => {
-    if (clip.kind === "image" || clip.opacity === 0) return [];
-    const start = Math.round(clip.position * fps);
-    const duration = Math.max(1, Math.round((clip.end - clip.start) * fps));
-    if (start >= to || start + duration <= from) return [];
-    const text = (clip.payload as { text?: string }).text;
+    if (
+      clip.kind === "image" ||
+      !clipIntersectsShot(clip, fps, from, to)
+    )
+      return [];
+    const text = "text" in clip.payload ? clip.payload.text : undefined;
     return text ? [text] : [];
   });
+}
+
+// Marks shots where imported raster or video media may contain unprojectable numbers.
+function hasUninspectedMediaForShot(
+  videoClips: VideoClip[] | undefined,
+  overlayClips: OverlayClip[] | undefined,
+  fps: number,
+  from: number,
+  to: number,
+): boolean {
+  return (
+    (videoClips ?? []).some((clip) =>
+      clipIntersectsShot(clip, fps, from, to),
+    ) ||
+    (overlayClips ?? []).some(
+      (clip) =>
+        clip.kind === "image" &&
+        clipIntersectsShot(clip, fps, from, to),
+    )
+  );
 }
 
 // Extracts every shared-design lock, including look camera/cast cues and decisive performances.
@@ -296,6 +379,13 @@ export function createReelContext({
       locks: [],
       onScreenText,
       onScreenNumbers: [...new Set(onScreenText.flatMap(groundedNumbers))],
+      hasUninspectedMedia: hasUninspectedMediaForShot(
+        film.videoClips,
+        film.overlayClips,
+        film.fps,
+        timed?.from ?? 0,
+        timed?.to ?? 0,
+      ),
       decisive: false,
     };
   });

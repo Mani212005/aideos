@@ -157,3 +157,5 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 Reel cut support currently requires a scene film. The writer brief says to condense without adding facts or numbers, the deterministic check flags new content words as non-blocking review advisories, and the captain reviews the rendered reel before approving it.
 
 The reel cut budget defaults to a 170-second target and a 179-second delivered cap. `--max-sec` may lower the cap, but cannot raise it; the 3-second end-card reserve is fixed.
+
+For shots containing imported image or video media, `aideos reel check` warns that numbers inside that media are not checked. Review those numbers when approving the rendered reel.

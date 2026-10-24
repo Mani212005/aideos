@@ -18,6 +18,7 @@ export interface ReelFinding {
     | "drop"
     | "motion"
     | "new-words"
+    | "media"
     | "length";
   severity: "error" | "warning";
   shotId?: string;
@@ -125,6 +126,13 @@ export function checkReelCut(
       }
       continue;
     }
+    if (shot.hasUninspectedMedia)
+      findings.push({
+        rule: "media",
+        severity: "warning",
+        shotId: entry.id,
+        message: `shot ${entry.id} shows imported media; numbers inside it are not checked, review them at approval`,
+      });
     const novelWords = newContentWords(
       entry.narration,
       [shot.narration, ...shot.locks.map((lock) => lock.phrase)].join(" "),

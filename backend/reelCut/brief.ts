@@ -113,6 +113,7 @@ Long narration: ${s.narration}
 Locked phrases: ${s.locks.length ? s.locks.map((l) => `${JSON.stringify(l.phrase)}${l.unique ? " (exactly once)" : ""} [${l.source}]`).join("; ") : "none"}
 On-screen text: ${s.onScreenText.length ? s.onScreenText.map((t) => JSON.stringify(t)).join("; ") : "none"}
 On-screen numbers to speak: ${s.onScreenNumbers.join(", ") || "none"}
+${s.hasUninspectedMedia ? `Imported media caveat: shot ${s.id} shows imported media; numbers inside it are not checked, review them at approval.` : ""}
 `,
   )
   .join("\n")}

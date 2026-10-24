@@ -420,7 +420,7 @@ test("changed long hashes, missing hashes and removed shot hashes fail stale det
 test("new numbers fail per shot and displayed quantities must still be spoken", () => {
   const f = film();
   f.shots[1].scriptText =
-    "Fold paper through zero, one, and two to catch it with two hands.";
+    "Count zero, then one, then two while catching with two hands.";
   f.shots[1].blocks = [
     { c: "StatCounter", to: 2, label: "Hands", format: "plain" },
   ];
@@ -429,7 +429,7 @@ test("new numbers fail per shot and displayed quantities must still be spoken", 
   value.shots[1] = {
     id: "middle",
     narration:
-      "Fold paper through zero, one, and two to catch it with two hands.",
+      "Count zero, then one, then two while catching with two hands.",
   };
   assert.equal(check(value, context).ok, true);
   value.shots[1] = {
@@ -484,6 +484,33 @@ test("displayed LayerStack counts and compact magnitudes use full numeric ground
   );
   assert.equal(
     numberFindings.some((finding) => /on-screen number 1000000000/.test(finding.message)),
+    false,
+  );
+});
+
+test("LayerStack ignores metadata that Block does not render", () => {
+  const f = film();
+  f.shots[1].scriptText =
+    "The visible stack counts one, then two, then three, and finally four.";
+  f.shots[1].blocks = [
+    {
+      c: "LayerStack",
+      count: 4,
+      prompt: "101 hidden layers",
+      layers: [{ label: "layer 98", dim: "99" }],
+    },
+  ];
+  const context = createReelContext({ film: f });
+  assert.equal(context.shots[1].onScreenNumbers.includes(98), false);
+  assert.equal(context.shots[1].onScreenNumbers.includes(99), false);
+  assert.equal(context.shots[1].onScreenNumbers.includes(101), false);
+
+  const value = cut(context);
+  value.shots[1] = { id: "middle", narration: f.shots[1].scriptText! };
+  assert.equal(
+    check(value, context).findings.some(
+      (finding) => finding.rule === "numbers",
+    ),
     false,
   );
 });
@@ -554,6 +581,128 @@ test("matrix cells and counter suffix numbers are grounded from rendered text", 
   );
   assert.ok(
     numberFindings.some((finding) => /on-screen number 10/.test(finding.message)),
+  );
+});
+
+test("spoken decimal phrases ground rendered decimals and keep negative signs", () => {
+  const f = film();
+  f.shots[1].scriptText =
+    "Read zero point twelve, followed by zero point seven five, then zero point four, and finally one point zero zero.";
+  f.shots[1].blocks = [
+    {
+      c: "MatrixGrid",
+      values: [[0.12, 0.75], [0.4, 1]],
+      sweep: "cell",
+    },
+  ];
+  const context = createReelContext({ film: f });
+  const value = cut(context);
+  value.shots[1] = { id: "middle", narration: f.shots[1].scriptText };
+  assert.equal(
+    check(value, context).findings.some(
+      (finding) => finding.rule === "numbers",
+    ),
+    false,
+  );
+
+  const negativeFilm = film();
+  negativeFilm.shots[1].scriptText = "Read negative zero point twelve.";
+  negativeFilm.overlayClips = [
+    {
+      id: "negative-decimal",
+      kind: "text",
+      position: 11,
+      start: 0,
+      end: 1,
+      opacity: 1,
+      payload: { text: "Reading -0.12" },
+    },
+  ];
+  const negativeContext = createReelContext({ film: negativeFilm });
+  assert.ok(negativeContext.shots[1].onScreenNumbers.includes(-0.12));
+  const negativeCut = cut(negativeContext);
+  negativeCut.shots[1] = {
+    id: "middle",
+    narration: "Read negative zero point twelve.",
+  };
+  assert.equal(
+    check(negativeCut, negativeContext).findings.some(
+      (finding) => finding.rule === "numbers",
+    ),
+    false,
+  );
+  negativeCut.shots[1] = {
+    id: "middle",
+    narration: "Read zero point twelve.",
+  };
+  assert.ok(
+    check(negativeCut, negativeContext).findings.some(
+      (finding) =>
+        finding.rule === "numbers" &&
+        /on-screen number -0.12/.test(finding.message),
+    ),
+  );
+});
+
+test("imported media yields a non-blocking per-shot review advisory", () => {
+  const f = film();
+  f.videoClips = [
+    {
+      id: "video-middle",
+      src: "media/clip.mp4",
+      position: 10.5,
+      start: 0,
+      end: 2,
+      opacity: 1,
+      volume: 1,
+    },
+  ];
+  f.overlayClips = [
+    {
+      id: "image-outro",
+      kind: "image",
+      position: 20,
+      start: 0,
+      end: 1,
+      opacity: 1,
+      payload: { src: "media/card.png", scale: 1 },
+    },
+    {
+      id: "hidden-image",
+      kind: "image",
+      position: 0,
+      start: 0,
+      end: 1,
+      opacity: 0,
+      payload: { src: "media/hidden.png", scale: 1 },
+    },
+  ];
+  const context = createReelContext({ film: f });
+  const report = check(cut(context), context);
+  const advisories = report.findings.filter(
+    (finding) => finding.rule === "media",
+  );
+  assert.equal(report.ok, true);
+  assert.deepEqual(
+    advisories.map((finding) => finding.shotId),
+    ["middle", "outro"],
+  );
+  assert.ok(
+    advisories.every(
+      (finding) =>
+        finding.severity === "warning" &&
+        finding.message.includes(
+          `shot ${finding.shotId} shows imported media; numbers inside it are not checked, review them at approval`,
+        ),
+    ),
+  );
+  assert.match(
+    formatReelReport(report),
+    /warning: media \/ middle: shot middle shows imported media/,
+  );
+  assert.match(
+    reelBrief(context, BUDGET),
+    /Imported media caveat: shot middle shows imported media; numbers inside it are not checked, review them at approval\./,
   );
 });
 
