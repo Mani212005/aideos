@@ -67,10 +67,13 @@ function toPgm(gray: Uint8Array, width: number, height: number): Buffer {
   return Buffer.concat([Buffer.from(`P5\n${width} ${height}\n255\n`), Buffer.from(gray.buffer, gray.byteOffset, gray.byteLength)]);
 }
 
-// Runs tesseract over one gray frame (sparse-text mode, one thread so several can run side by side).
-export function ocrFrame(gray: Uint8Array, width: number, height: number): Promise<OcrWord[]> {
+// Runs one OCR mode against a gray image, retaining the caller's original word geometry.
+function readOcr(gray: Uint8Array, width: number, height: number, mode: "sparse" | "number" | "word"): Promise<OcrWord[]> {
   return new Promise((resolve, reject) => {
-    const child = spawn("tesseract", ["stdin", "stdout", "--psm", "11", "tsv"], { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, OMP_THREAD_LIMIT: "1" } });
+    const args = ["stdin", "stdout", "--psm", mode === "sparse" ? "11" : "8"];
+    if (mode === "number") args.push("-c", "tessedit_char_whitelist=0123456789,.%");
+    args.push("tsv");
+    const child = spawn("tesseract", args, { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, OMP_THREAD_LIMIT: "1" } });
     let out = "";
     let err = "";
     child.stdout.on("data", (d) => (out += d));
@@ -80,6 +83,37 @@ export function ocrFrame(gray: Uint8Array, width: number, height: number): Promi
     child.stdin.on("error", () => undefined);
     child.stdin.end(toPgm(gray, width, height));
   });
+}
+
+// Rechecks a numeric word in isolation because sparse-text OCR confuses monospace 3/5/9 glyphs.
+async function readNumber(gray: Uint8Array, width: number, height: number, word: OcrWord): Promise<OcrWord> {
+  const token = word.text;
+  const currency = /^[$£€]\d[\d,.]*%?$/.test(token);
+  if (word.conf < THRESHOLDS.readability.confidenceMin || word.height < THRESHOLDS.readability.wordHeightMin * Math.min(width, height) / 1080 || !(currency || /^\d[\d,.]*%?$/.test(token))) return word;
+  const pad = Math.max(12, Math.ceil(word.height * 0.12));
+  const left = Math.max(0, word.left - pad), top = Math.max(0, word.top - pad);
+  const right = Math.min(width, word.left + word.width + pad), bottom = Math.min(height, word.top + word.height + pad);
+  const cropWidth = right - left, cropHeight = bottom - top;
+  if (cropWidth <= 0 || cropHeight <= 0) return word;
+  const crop = new Uint8Array(cropWidth * cropHeight);
+  for (let row = 0; row < cropHeight; row++) crop.set(gray.subarray((top + row) * width + left, (top + row) * width + right), row * cropWidth);
+  const reads = await readOcr(crop, cropWidth, cropHeight, currency ? "word" : "number");
+  // Currency-like icon detections need an unconstrained read, rather than forcing their pixels into digits.
+  if (currency) return reads.length === 1
+    ? { ...word, text: reads[0].text, conf: Math.min(word.conf, reads[0].conf) }
+    : { ...word, conf: 0 };
+  const corrected = reads[0]?.text.replace(/^[^\d]+|[^\d%]+$/g, "").replace(/[,.]+$/, "");
+  return reads.length === 1 && reads[0].conf >= THRESHOLDS.readability.confidenceMin && corrected && /^\d[\d,.]*%?$/.test(corrected)
+    ? { ...word, text: corrected, conf: Math.min(word.conf, reads[0].conf) }
+    : word;
+}
+
+// Reads sparse text, then verifies numeric words from their pixels without consulting the narration.
+export async function ocrFrame(gray: Uint8Array, width: number, height: number): Promise<OcrWord[]> {
+  const words = await readOcr(gray, width, height, "sparse");
+  const verified: OcrWord[] = [];
+  for (const word of words) verified.push(await readNumber(gray, width, height, word));
+  return verified;
 }
 
 // Relative luminance of an 8-bit gray level, using a plain gamma curve.
@@ -164,7 +198,9 @@ export function analyzeSample(words: OcrWord[], gray: Uint8Array | null, width: 
   for (let i = 0; i < solid.length; i++) {
     for (let j = i + 1; j < solid.length; j++) if (overlapping(solid[i], solid[j], T.overlap.overlapRatio)) overlaps++;
   }
-  const numbers = confident.map((w) => w.text.replace(/^[^\d]+|[^\d%]+$/g, "")).filter((s) => /^\d[\d,.]*%?$/.test(s));
+  // Tiny footer numerals are chapter/time chrome; their text still contributes to readability checks.
+  const content = confident.filter((w) => !(w.top > height * 0.9 && w.height / unit < T.readability.wordHeightMin));
+  const numbers = content.map((w) => w.text.replace(/^[^\d]+|[^\d%]+$/g, "")).filter((s) => /^\d[\d,.]*%?$/.test(s));
   return {
     t,
     words: confident.length,
