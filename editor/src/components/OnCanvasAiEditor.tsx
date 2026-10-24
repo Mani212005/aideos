@@ -207,9 +207,9 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
   };
 
   return (
-    <div className="relative z-20 flex w-full shrink-0 flex-col font-sans">
+    <div data-ai-editor-panel className={folded ? "hidden" : "absolute bottom-4 right-4 z-40 max-w-lg w-full flex flex-col font-sans"}>
       {/* Container Box */}
-      <div className="bg-paper-2 border-t-2 border-ink overflow-hidden flex flex-col">
+      <div className="bg-paper-2 border-2 border-ink shadow-[4px_4px_0px_#14140f] rounded-lg overflow-hidden flex flex-col">
         {/* Header Bar */}
         <div className="flex items-center justify-between px-3 py-2 bg-sunken border-b-2 border-ink">
           <div className="flex items-center gap-2">

@@ -232,7 +232,7 @@ export function EditStage({
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {/* The one dark surface in the product: the matte behind the video frame. */}
-          <div ref={setPreviewHost} className="relative flex min-h-0 flex-1 items-center justify-center bg-matte">
+          <div data-preview-host ref={setPreviewHost} className="relative flex min-h-0 flex-1 items-center justify-center bg-matte">
             {!api.hasVisibleVisuals ? (
               <div className="flex max-w-sm flex-col items-center gap-2 p-6 text-center">
                 <EyeOff className="h-6 w-6 text-matte-text" />
@@ -259,7 +259,7 @@ export function EditStage({
                   clickToPlay={!moveCaptions}
                   acknowledgeRemotionLicense
                 />
-
+                <OnCanvasAiEditor film={film} timeline={previewTimeline} currentFrame={currentFrame} onUpdateFilm={(next) => project.commit(next, "On-canvas AI edit")} accent={accent} folded={moveCaptions} />
               </>
             ) : (
               <p className="p-6 text-center font-mono text-xs text-matte-text">
@@ -269,7 +269,6 @@ export function EditStage({
           </div>
 
           {moveCaptions && previewTimeline ? <CaptionPlacementEditor key={`${film.id}-${format}`} film={film} format={format} frame={currentFrame} playerRef={playerRef} host={previewHost} onDraft={setCaptionDraft} onCommit={project.commit} /> : null}
-          {previewTimeline ? <OnCanvasAiEditor film={film} timeline={previewTimeline} currentFrame={currentFrame} onUpdateFilm={(next) => project.commit(next, "On-canvas AI edit")} accent={accent} folded={moveCaptions} /> : null}
 
           <div
             role="separator"

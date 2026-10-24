@@ -21,6 +21,10 @@ The journey also compares the visible card, drag outline and collision rectangle
 width 86% and after resizing. Unit CI passed 1,017 tests with 3 skipped; static CI, J3 and
 studio smoke passed.
 
+For CanvasGraph films, the design report explicitly says placed-card collisions against graph art
+were not checked because the graph uses 3D projection. Manually review the placed card against the
+visible graph; scene-art and posed-character collision checks remain active.
+
 The original fixture narration is unavailable. Separate 10-second MP4 excerpts used disposable
 tone audio, which is not committed. Measured review passes the placed-caption gate in both
 formats (Wide 60%, Reel 80% coverage, no over-two-line frames), but fails overall because the

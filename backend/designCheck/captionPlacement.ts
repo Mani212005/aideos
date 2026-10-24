@@ -49,6 +49,17 @@ export function checkCaptionPlacements(
   for (const format of ["long", "reel"] as const) {
     if (sample && sample.format !== format) continue;
     const { width, height } = CAPTION_FRAMES[format];
+    const hasPlacedCard = timeline.some(
+      (timed) => resolveCaptionPlacement(film, format, timed.shot.id).source !== "default",
+    );
+    if (!scene && hasPlacedCard)
+      findings.push({
+        rule: "caption-placement",
+        severity: "warning",
+        where: `CanvasGraph / ${format}`,
+        message:
+          "caption placement was not checked against CanvasGraph art; manually review the placed card against the visible graph.",
+      });
     for (const [where, entry] of [
       ["film", film.captionPlacement?.[format]],
       ...film.shots.map(

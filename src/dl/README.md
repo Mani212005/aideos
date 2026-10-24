@@ -82,6 +82,9 @@ explicit resizes and unmarked placements still enforce the minimum.
 `captionPhrases.ts` fixes each phrase's placement at its first word and splits a narrowed card
 into at most two measured lines. The font size stays fixed. The studio overlay is outside FilmView;
 its drafts and the export use the same composition.
+For CanvasGraph films, the design check reports that owner-positioned cards were not checked against
+graph art because its 3D projection is not covered by the collision geometry. Review the placed card
+against the visible graph manually; scene-art and posed-character collision checks remain active.
 
 In Edit, choose Wide or Reel, then **Move captions**. Drag the card body to move it and an edge handle
 to resize it. **Whole film** changes that format's default; **This shot only** creates an exception

@@ -24,6 +24,7 @@ import {
   MIN_CAPTION_WIDTH,
 } from "../src/dl/captionPlacement";
 import { applyCaptionPlacementDraft } from "./designCheck/captionPlacement";
+import { buildCaptionPhrases, fitCaptionWordToRow, captionWordRows } from "../src/dl/captionPhrases";
 import {
   convertFilmToLayeredFilm,
   convertLayeredFilmToFilm,
@@ -80,7 +81,7 @@ test("first saves retain short visible widths while explicit resize enforces the
     assert.equal(resolveCaptionPlacement(locked, format).w, visibleWidth);
     assert.equal(parseFilm(locked).captionPlacement?.[format]?.widthSource, "implicit-default");
     assert.equal(
-      checkCaptionPlacements(locked).some((finding) => finding.rule === "caption-placement"),
+      checkCaptionPlacements(locked).some((finding) => finding.rule === "caption-placement" && finding.severity === "error"),
       false,
     );
 
@@ -444,6 +445,49 @@ test("full design check uses the phrase start placement against art in the next 
   };
   const findings = checkCaptionPlacements(film, scene);
   assert.ok(findings.some((finding) => finding.where === "shot caption-origin / long / nodes" && /frame 3[0-9]/.test(finding.message)), JSON.stringify(findings));
+});
+
+test("CanvasGraph placement reports that graph art needs manual review", () => {
+  const graphFilm = { ...base, scene: undefined, captionPlacement: { long: top } };
+  const findings = checkCaptionPlacements(graphFilm);
+  assert.ok(findings.some((finding) =>
+    finding.rule === "caption-placement" &&
+    finding.severity === "warning" &&
+    finding.where === "CanvasGraph / long" &&
+    /not checked against CanvasGraph art/.test(finding.message),
+  ), JSON.stringify(findings));
+});
+
+test("long unbreakable caption tokens stay within the planned card width", () => {
+  const longToken = "vectorquantizationcachemissrecovery";
+  for (const format of ["long", "reel"] as const) {
+    const width = format === "long" ? 1920 : 1080;
+    const placement = { ...top, w: MIN_CAPTION_WIDTH[format], source: "film" as const };
+    const innerWidth = resolveCaptionCardWidth(placement, width).innerWidth;
+    const measure = (text: string) => text === longToken ? innerWidth + 80 : 60;
+    assert.deepEqual(fitCaptionWordToRow(longToken, innerWidth, measure), {
+      rowWidth: innerWidth,
+      maxWidth: innerWidth - 12,
+    });
+    assert.deepEqual(captionWordRows([
+      { text: longToken, startFrame: 0, endFrame: 10 },
+      { text: "next", startFrame: 11, endFrame: 20 },
+    ], innerWidth, measure), [1]);
+    const phrases = buildCaptionPhrases({
+      words: [
+        { text: longToken, startFrame: 0, endFrame: 10 },
+        { text: "next", startFrame: 11, endFrame: 20 },
+      ],
+      fps: 30,
+      fontSize: 45,
+      width,
+      placementAt: () => placement,
+      measure,
+    });
+    assert.deepEqual(phrases[0].words.map((word) => word.text), [longToken, "next"]);
+    assert.deepEqual(phrases[0].lineBreaks, [1]);
+    assert.ok((phrases[0].wordMaxWidths[0] ?? 0) <= innerWidth - 12);
+  }
 });
 
 // Rejects arbitrary filesystem paths at the geometry reader boundary.

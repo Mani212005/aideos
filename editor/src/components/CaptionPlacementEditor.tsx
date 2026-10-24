@@ -259,9 +259,9 @@ export function CaptionPlacementEditor({
   // Preserves the visible default card width when an edit saves its placement.
   function placementForExplicitSave(target: typeof placement): CaptionPlacement | undefined {
     if (target.source !== "default") return target;
-    const document = host?.ownerDocument;
-    const renderedCard = document?.querySelector<HTMLElement>("[data-caption-card]");
-    const frameWidth = document?.querySelector<HTMLElement>("[data-caption-guides]")?.getBoundingClientRect().width;
+    const renderedCard = host?.querySelector<HTMLElement>("[data-caption-card]")
+      ?? playerRef.current?.getContainerNode()?.querySelector<HTMLElement>("[data-caption-card]");
+    const frameWidth = host?.querySelector<HTMLElement>("[data-caption-guides]")?.getBoundingClientRect().width;
     const visibleWidth = renderedCard?.getBoundingClientRect().width ?? 0;
     const measuredWidth = visibleWidth > 0
       ? visibleWidth

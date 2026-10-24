@@ -12,6 +12,7 @@ export type CaptionPhrase = {
   startFrame: number;
   endFrame: number;
   words: CaptionWord[];
+  wordMaxWidths: Array<number | undefined>;
   placement: CaptionPlacement & { source?: "shot" | "film" | "default" };
   lineBreaks: number[];
 };
@@ -31,7 +32,7 @@ export function captionWordRows(
   const breaks: number[] = [];
   let used = 0;
   words.forEach((word, i) => {
-    const size = measure(word.text) + 12;
+    const size = fitCaptionWordToRow(word.text, innerWidth, measure).rowWidth;
     if (used > 0 && used + size > innerWidth) {
       breaks.push(i);
       used = 0;
@@ -39,6 +40,18 @@ export function captionWordRows(
     used += size;
   });
   return breaks;
+}
+
+// Bounds an unbreakable word to the same content width the renderer can wrap inside.
+export function fitCaptionWordToRow(
+  text: string,
+  innerWidth: number,
+  measure: (text: string) => number,
+): { rowWidth: number; maxWidth?: number } {
+  const measuredWidth = measure(text) + 12;
+  return measuredWidth <= innerWidth
+    ? { rowWidth: measuredWidth }
+    : { rowWidth: innerWidth, maxWidth: Math.max(0, innerWidth - 12) };
 }
 // Keeps the legacy split for implicit defaults and measures every saved card before displaying it.
 export function buildCaptionPhrases({
@@ -84,6 +97,9 @@ export function buildCaptionPhrases({
       startFrame: chunk[0].startFrame,
       endFrame: chunk[chunk.length - 1].endFrame + Math.round(fps * 0.25),
       words: chunk,
+      wordMaxWidths: customWidth
+        ? chunk.map((word) => fitCaptionWordToRow(word.text, inner, measure).maxWidth)
+        : [],
       placement,
       lineBreaks: customWidth ? captionWordRows(chunk, inner, measure) : [],
     });

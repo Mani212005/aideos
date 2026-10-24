@@ -25,36 +25,36 @@ export interface CaptionWord {
 
 export interface KineticSubtitleProps {
   words: CaptionWord[];
-  maxWidth?: number;
   fontSize?: number;
   fontFamily?: string;
   primaryColor?: string;
   highlightColor?: string;
   backgroundColor?: string;
-  position?: "top" | "center" | "bottom";
-  placementAt?: (frame: number) => CaptionPlacement & { source?: ResolvedCaptionPlacement["source"] };
+  placementAt: (frame: number) => CaptionPlacement & { source?: ResolvedCaptionPlacement["source"] };
 }
 
 export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   words,
-  maxWidth = 1000,
   fontSize = 32,
   fontFamily = SANS,
   primaryColor = "#FFFFFF",
   highlightColor = "#635BFF",
   backgroundColor = "rgba(10, 15, 29, 0.88)",
-  position = "bottom",
   placementAt,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
+  const measureWord = React.useCallback(
+    (text: string) => measureText({ text, fontFamily, fontSize, fontWeight: 700 }).width,
+    [fontFamily, fontSize],
+  );
 
   // Compute every phrase once so neither position nor wrapping can change during a phrase.
   const phrases = useMemo(() => buildCaptionPhrases({
     words, fps, fontSize, width,
-    placementAt: placementAt ?? (() => ({ x: 0.5, y: position === "top" ? 0.1 : position === "center" ? 0.45 : 0.78, w: maxWidth / width, locked: false, source: "default" })),
-    measure: (text) => measureText({ text, fontFamily, fontSize, fontWeight: 700 }).width,
-  }), [words, fps, fontSize, width, placementAt, position, maxWidth, fontFamily]);
+    placementAt,
+    measure: measureWord,
+  }), [words, fps, fontSize, width, placementAt, measureWord]);
 
   // If no words, don't render
   if (!words || words.length === 0) return null;
@@ -163,6 +163,12 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
                     transform: `scale(${dynamicScale})`,
                     display: "inline-block",
                     margin: "4px 6px",
+                    ...(card.fixed && activePhrase.wordMaxWidths[localIdx] !== undefined
+                      ? {
+                          maxWidth: activePhrase.wordMaxWidths[localIdx],
+                          overflowWrap: "anywhere" as const,
+                        }
+                      : {}),
                     textShadow: isActive
                       ? `0 0 20px ${highlightColor}88, 0 2px 6px rgba(0,0,0,0.8)`
                       : isPast

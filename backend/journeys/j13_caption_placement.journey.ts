@@ -73,6 +73,10 @@ async function saved(page: StudioPage): Promise<void> {
     15000,
   );
 }
+// Selects geometry from the active preview rather than another mounted editor surface.
+function previewSelector(selector: string): string {
+  return `document.querySelector('[data-preview-host]').querySelector(${JSON.stringify(selector)})`;
+}
 // Reads the authoritative saved film for assertions outside React state.
 function film() {
   const result = readFilm(SLUG);
@@ -89,7 +93,7 @@ async function assertCardGeometry(
   const width = format === "long" ? 1920 : 1080;
   const rect = captionCardRect(format, width, format === "long" ? 1080 : 1920, placement);
   const widths = await page.eval<{ handle: number; card: number }>(
-    `(() => { const frame = document.querySelector('[data-caption-guides]'); const handle = document.querySelector('[data-caption-handle]'); const card = document.querySelector('[data-caption-card]'); return { handle: handle.getBoundingClientRect().width / frame.getBoundingClientRect().width * ${width}, card: card.offsetWidth }; })()`,
+    `(() => { const frame = ${previewSelector("[data-caption-guides]")}; const handle = ${previewSelector("[data-caption-handle]")}; const card = ${previewSelector("[data-caption-card]")}; return { handle: handle.getBoundingClientRect().width / frame.getBoundingClientRect().width * ${width}, card: card.offsetWidth }; })()`,
   );
   assert.equal(rect.w, placement.w * width);
   assert.ok(Math.abs(widths.handle - rect.w) <= 1, "drag outline matches collision width");
@@ -200,6 +204,10 @@ journey(
         `document.querySelector('input[placeholder^="Ask AI to edit"]')`,
         "AI editor expanded before caption placement",
       );
+      const aiPanelPosition = await page.eval<{ position: string; bottom: string; right: string }>(
+        `(() => { const style = getComputedStyle(document.querySelector('[data-ai-editor-panel]')); return { position: style.position, bottom: style.bottom, right: style.right }; })()`,
+      );
+      assert.deepEqual(aiPanelPosition, { position: "absolute", bottom: "16px", right: "16px" });
       for (const format of ["long", "reel"] as const) {
         console.info("[caption-journey] controls", format);
         await page.clickButton(format === "long" ? "Wide" : "Reel", {
@@ -207,7 +215,7 @@ journey(
         });
         await page.clickButton("Move captions", { exact: true });
         await page.waitFor(
-          `document.querySelector('[data-caption-handle]')`,
+          `${previewSelector("[data-caption-handle]")}`,
           "caption move overlay",
         );
         assert.equal(
@@ -217,13 +225,18 @@ journey(
           false,
           "AI panel folds away",
         );
+        assert.equal(
+          await page.eval(`getComputedStyle(document.querySelector('[data-ai-editor-panel]')).display`),
+          "none",
+          "AI panel folds away only during caption placement",
+        );
         const before = resolveCaptionPlacement(film(), format);
         await page.waitFor(
-          `document.querySelector('[data-caption-card]')`,
+          `${previewSelector("[data-caption-card]")}`,
           "caption before first saved edit",
         );
         const visibleDefaultWidth = await page.eval<number>(
-          `document.querySelector('[data-caption-card]').getBoundingClientRect().width / document.querySelector('[data-caption-guides]').getBoundingClientRect().width * ${format === "long" ? 1920 : 1080}`,
+          `${previewSelector("[data-caption-card]")}.getBoundingClientRect().width / ${previewSelector("[data-caption-guides]")}.getBoundingClientRect().width * ${format === "long" ? 1920 : 1080}`,
         );
         await page.clickButton("Lock", { exact: true });
         await saved(page);
@@ -233,17 +246,20 @@ journey(
         await page.clickButton("Reset", { exact: true });
         await saved(page);
         assert.equal(resolveCaptionPlacement(film(), format).source, "default");
+        const scopeVisibleWidth = await page.eval<number>(
+          `${previewSelector("[data-caption-card]")}.getBoundingClientRect().width / ${previewSelector("[data-caption-guides]")}.getBoundingClientRect().width * ${format === "long" ? 1920 : 1080}`,
+        );
         await page.clickButton("This shot only", { exact: true });
         await saved(page);
         const scopedDefault = resolveCaptionPlacement(film(), format, film().shots[0].id);
-        assert.ok(Math.abs(scopedDefault.w * (format === "long" ? 1920 : 1080) - visibleDefaultWidth) <= 1, `shot scope saves the visible default width (${scopedDefault.w * (format === "long" ? 1920 : 1080)} vs ${visibleDefaultWidth}; source ${scopedDefault.source})`);
+        assert.ok(Math.abs(scopedDefault.w * (format === "long" ? 1920 : 1080) - scopeVisibleWidth) <= 1, `shot scope saves the visible default width (${scopedDefault.w * (format === "long" ? 1920 : 1080)} vs ${scopeVisibleWidth}; source ${scopedDefault.source})`);
         await assertCardGeometry(page, format, scopedDefault);
         await page.clickButton("Reset", { exact: true });
         await saved(page);
         await page.clickButton("Whole film", { exact: true });
         // Move above Reel's action-button strip so a saved w=.86 remains within bounds.
         const moveDy = await page.eval<number>(
-          `-document.querySelector('[data-caption-guides]').getBoundingClientRect().height * 0.5`,
+          `-${previewSelector("[data-caption-guides]")}.getBoundingClientRect().height * 0.5`,
         );
         await drag(page, "[data-caption-handle]", 0, moveDy);
         await saved(page);
