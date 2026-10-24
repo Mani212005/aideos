@@ -15,6 +15,7 @@ export type CaptionPhrase = {
   wordMaxWidths: Array<number | undefined>;
   placement: CaptionPlacement & { source?: "shot" | "film" | "default" };
   lineBreaks: number[];
+  unfittableWords: CaptionWord[];
 };
 // Finds the phrase displayed at a frame using the render's phrase boundaries.
 export function captionPhraseAtFrame(
@@ -47,11 +48,23 @@ export function fitCaptionWordToRow(
   text: string,
   innerWidth: number,
   measure: (text: string) => number,
-): { rowWidth: number; maxWidth?: number } {
+):
+  | { kind: "fits"; rowWidth: number; maxWidth?: number }
+  | { kind: "unfittable"; rowWidth: number; maxWidth: number } {
   const measuredWidth = measure(text) + 12;
   return measuredWidth <= innerWidth
-    ? { rowWidth: measuredWidth }
-    : { rowWidth: innerWidth, maxWidth: Math.max(0, innerWidth - 12) };
+    ? { kind: "fits", rowWidth: measuredWidth }
+    : measure(text) <= Math.max(0, innerWidth - 12) * 2
+      ? {
+          kind: "fits",
+          rowWidth: innerWidth,
+          maxWidth: Math.max(0, innerWidth - 12),
+        }
+      : {
+          kind: "unfittable",
+          rowWidth: innerWidth,
+          maxWidth: Math.max(0, innerWidth - 12),
+        };
 }
 // Keeps the legacy split for implicit defaults and measures every saved card before displaying it.
 export function buildCaptionPhrases({
@@ -102,6 +115,11 @@ export function buildCaptionPhrases({
         : [],
       placement,
       lineBreaks: customWidth ? captionWordRows(chunk, inner, measure) : [],
+      unfittableWords: customWidth
+        ? chunk.filter(
+            (word) => fitCaptionWordToRow(word.text, inner, measure).kind === "unfittable",
+          )
+        : [],
     });
     start = end + 1;
   }

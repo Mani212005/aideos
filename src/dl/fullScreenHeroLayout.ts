@@ -43,14 +43,19 @@ export const SUBTITLE_CARD_PADDING_Y = 12;
 /** A phrase is at most seven words, which never wraps past two lines at the card's width in either format. */
 export const SUBTITLE_MAX_LINES = 2;
 
+// Returns the rendered caption card height for the planned number of lines.
+export const subtitleCardHeight = (
+  width: number,
+  height: number,
+  lines = SUBTITLE_MAX_LINES,
+): number => {
+  const fontSize = Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO);
+  return SUBTITLE_CARD_PADDING_Y * 2 + 2 + (fontSize * SUBTITLE_LINE_HEIGHT + 8) * lines;
+};
+
 /** Bottom edge (render px) of the tallest subtitle card a frame of this size can draw, to check it clears the frame edge. */
 export const subtitleCardBottom = (width: number, height: number): number => {
-  const fontSize = Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO);
-  return (
-    height * SUBTITLE_BAND_TOP_RATIO +
-    SUBTITLE_CARD_PADDING_Y * 2 +
-    (fontSize * SUBTITLE_LINE_HEIGHT + 8) * SUBTITLE_MAX_LINES + 2
-  );
+  return height * SUBTITLE_BAND_TOP_RATIO + subtitleCardHeight(width, height);
 };
 
 export type FullScreenHeroLayoutInput = {

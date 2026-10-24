@@ -8,7 +8,10 @@ import type {
   CaptionPlacementByFormat,
   Film,
 } from "./schema";
-import { getFrameMargins } from "./fullScreenHeroLayout";
+import {
+  getFrameMargins,
+  subtitleCardHeight as captionCardHeight,
+} from "./fullScreenHeroLayout";
 export type CaptionFormat = "long" | "reel";
 export type CaptionScope = { kind: "film" } | { kind: "shot"; shotId: string };
 export type ResolvedCaptionPlacement = CaptionPlacement & {
@@ -28,6 +31,7 @@ export const MIN_CAPTION_WIDTH = { long: 0.4, reel: 0.6 };
 // Conservative lower-half right-hand action-button strip; the legacy default remains unchanged.
 export const REEL_ACTION_ZONE = { x: 0.88, y: 0.5 };
 export type CaptionRect = { x: number; y: number; w: number; h: number };
+export { captionCardHeight };
 // Keeps absent widths content-sized while reserving the default envelope for editor and collision geometry.
 export function resolveCaptionCardWidth(
   placement: CaptionPlacement & { source?: ResolvedCaptionPlacement["source"] },
@@ -40,15 +44,6 @@ export function resolveCaptionCardWidth(
 // Clamps a normalized value between its safe limits.
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
-}
-// Returns the full two-line card height including inline margins and borders.
-export function captionCardHeight(
-  width: number,
-  height: number,
-  lines = 2,
-): number {
-  const font = Math.round(Math.min(width, height) * 0.042);
-  return 26 + lines * (font * 1.35 + 8);
 }
 // Returns safe placement limits for one format and chosen width.
 export function captionBounds(

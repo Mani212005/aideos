@@ -511,6 +511,15 @@ export function CaptionPlacementEditor({
               "Caption overlaps this shot's inset. Move the card or the art."}
           </p>
         ) : null}
+        {activePhrase?.unfittableWords.map((word) => (
+          <p
+            key={`${activePhrase.startIndex}-${word.text}`}
+            role="status"
+            className="w-full font-mono text-xs text-danger-text"
+          >
+            “{word.text}” cannot fit within two rows at this card width.
+          </p>
+        ))}
         <p className="w-full font-mono text-[9px] text-ink-mute">
           Drag to move. Edge handles resize. Drop saves. Arrows nudge, Shift
           moves faster, Alt bypasses snap, Alt + arrows resize, L locks. Esc

@@ -11,7 +11,7 @@ import { parseFilm } from "../src/dl/schema";
 import type { Scene } from "../src/dl/scene/types";
 import { captionWordsForFilm } from "../src/dl/captionsParser";
 import { checkCaptionPlacements } from "./designCheck/captionPlacement";
-import { subtitleCardBottom } from "../src/dl/fullScreenHeroLayout";
+import { SUBTITLE_BAND_TOP_RATIO, subtitleCardBottom } from "../src/dl/fullScreenHeroLayout";
 import {
   resolveCaptionPlacement,
   dragCaption,
@@ -19,6 +19,7 @@ import {
   carryCaptionPlacement,
   setCaptionPlacement,
   captionCardRect,
+  captionCardHeight,
   resolveCaptionCardWidth,
   MIN_CAPTION_WIDTH,
 } from "../src/dl/captionPlacement";
@@ -373,10 +374,11 @@ test("shared caption words respect subtitles false and captions off", () => {
 });
 // Includes inline word margins on both lines and the card borders in the measured height.
 test("two-line card height includes word margins and borders", () => {
-  assert.equal(
-    subtitleCardBottom(1920, 1080),
-    1080 * 0.78 + 24 + 2 * (45 * 1.35 + 8) + 2,
-  );
+  for (const [width, height] of [[1920, 1080], [1080, 1920]] as const)
+    assert.equal(
+      subtitleCardBottom(width, height),
+      height * SUBTITLE_BAND_TOP_RATIO + captionCardHeight(width, height),
+    );
 });
 
 // Uses real OCR geometry to recognize placed captions and reject a missing caption.
@@ -470,6 +472,7 @@ test("long unbreakable caption tokens stay within the planned card width", () =>
     const innerWidth = resolveCaptionCardWidth(placement, width).innerWidth;
     const measure = (text: string) => text === longToken ? innerWidth + 80 : 60;
     assert.deepEqual(fitCaptionWordToRow(longToken, innerWidth, measure), {
+      kind: "fits",
       rowWidth: innerWidth,
       maxWidth: innerWidth - 12,
     });
@@ -490,8 +493,28 @@ test("long unbreakable caption tokens stay within the planned card width", () =>
     });
     assert.deepEqual(phrases[0].words.map((word) => word.text), [longToken, "next"]);
     assert.deepEqual(phrases[0].lineBreaks, [1]);
+    assert.deepEqual(phrases[0].unfittableWords, []);
     assert.ok((phrases[0].wordMaxWidths[0] ?? 0) <= innerWidth - 12);
   }
+});
+
+test("unfittable caption words produce a named design warning", () => {
+  const longToken = "x".repeat(200);
+  const film = {
+    ...base,
+    scene: undefined,
+    captions: `WEBVTT\n\n00:00:00.000 --> 00:00:00.700\n${longToken}`,
+    captionPlacement: {
+      long: { ...top, w: MIN_CAPTION_WIDTH.long },
+    },
+  };
+  const finding = checkCaptionPlacements(film).find((entry) =>
+    entry.rule === "caption-placement" &&
+    entry.severity === "warning" &&
+    entry.where === `shot ${base.shots[0].id} / long` &&
+    entry.message.includes(longToken),
+  );
+  assert.ok(finding, "expected the design check to name the shot and impossible word");
 });
 
 // Rejects arbitrary filesystem paths at the geometry reader boundary.

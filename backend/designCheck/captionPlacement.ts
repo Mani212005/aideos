@@ -95,6 +95,19 @@ export function checkCaptionPlacements(
       placementAt: (startFrame) => resolveCaptionPlacement(film, format, timeline.find((t) => startFrame >= t.from && startFrame < t.to)?.shot.id),
       measure: (text) => wordWidths[text],
     });
+    for (const phrase of phrases) {
+      if (!phrase.unfittableWords.length) continue;
+      const shotId = timeline.find(
+        (t) => phrase.startFrame >= t.from && phrase.startFrame < t.to,
+      )?.shot.id;
+      for (const word of phrase.unfittableWords)
+        findings.push({
+          rule: "caption-placement",
+          severity: "warning",
+          where: `shot ${shotId ?? "unknown"} / ${format}`,
+          message: `caption word "${word.text}" cannot fit within two rows at the placed card width.`,
+        });
+    }
     let project: ReturnType<typeof prepareSvgProjection> | undefined;
     if (
       scene &&
