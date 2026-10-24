@@ -108,10 +108,30 @@ test("first saves retain absent auto width while explicit resize enforces format
       snap: false,
     });
     assert.equal(resized.w, MIN_CAPTION_WIDTH[format]);
-    const invalid = { ...base, captionPlacement: { [format]: { x: 0.5, y: 0.2, w: 0, locked: false } } };
-    assert.throws(() => parseFilm(invalid));
+    for (const w of [0, 0.01]) {
+      const explicit = {
+        ...base,
+        captionPlacement: { [format]: { x: 0.5, y: 0.2, w, locked: false } },
+      };
+      const parsed = parseFilm(explicit);
+      assert.equal(parsed.captionPlacement?.[format]?.w, w);
+      const resolved = resolveCaptionPlacement(parsed, format);
+      assert.equal(resolved.w, MIN_CAPTION_WIDTH[format]);
+      assert.equal(resolved.x, 0.5);
+      assert.equal(resolved.y, 0.2);
+      assert.equal(captionCardRect(format, CAPTION_FRAMES[format].width, CAPTION_FRAMES[format].height, resolved).w, MIN_CAPTION_WIDTH[format] * CAPTION_FRAMES[format].width);
+      const normalized = setCaptionPlacement(base, {
+        format,
+        scope: { kind: "film" },
+        placement: explicit.captionPlacement[format],
+        owner: true,
+      });
+      assert.equal(normalized.captionPlacement?.[format]?.w, MIN_CAPTION_WIDTH[format]);
+    }
     const negative = { ...base, captionPlacement: { [format]: { x: 0.5, y: 0.2, w: -0.1, locked: false } } };
     assert.throws(() => parseFilm(negative));
+    const aboveOne = { ...base, captionPlacement: { [format]: { x: 0.5, y: 0.2, w: 1.1, locked: false } } };
+    assert.throws(() => parseFilm(aboveOne));
   }
 });
 // Restricts caption checks to server-loaded scene assets for the active package.
@@ -841,7 +861,27 @@ test("AI caption operation validates, applies, refuses locks and rolls back", as
   const autoProgram = editProgramSchema.parse([{ ...op, placement: { x: 0.5, y: 0.2 } }]);
   const autoApplied = applyEditProgram(convertFilmToLayeredFilm(base), autoProgram);
   assert.equal(autoApplied.film.captionPlacement?.long?.w, undefined);
-  assert.throws(() => editProgramSchema.parse([{ ...op, placement: { x: 0.5, y: 0.2, w: 0 } }]));
+  for (const format of ["long", "reel"] as const) {
+    for (const w of [0, 0.01]) {
+      const explicitProgram = editProgramSchema.parse([{
+        ...op,
+        format,
+        placement: { x: 0.5, y: 0.2, w },
+      }]);
+      const explicitApplied = applyEditProgram(convertFilmToLayeredFilm(base), explicitProgram);
+      assert.equal(explicitApplied.film.captionPlacement?.[format]?.w, MIN_CAPTION_WIDTH[format]);
+    }
+    assert.throws(() => editProgramSchema.parse([{
+      ...op,
+      format,
+      placement: { x: 0.5, y: 0.2, w: -0.1 },
+    }]));
+    assert.throws(() => editProgramSchema.parse([{
+      ...op,
+      format,
+      placement: { x: 0.5, y: 0.2, w: 1.1 },
+    }]));
+  }
   const narrowProgram = editProgramSchema.parse([{
     ...op,
     placement: { x: 0.5, y: 0.2, w: 0.2 },

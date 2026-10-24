@@ -231,8 +231,8 @@ can be run against any file.
 Each card records normalized `x` (centre), `y` (top), `w` (width), and `locked`.
 Missing placement fields retain the legacy centred bottom card. Missing `w` keeps the auto-width
 shrink-to-content card after Lock, movement and shot-scope changes; the editor and collision checks
-reserve its full 86% band. Only an explicit resize writes `w`, bounded by the format minimum and
-maximum. A shot exception overrides its film-wide card only in the specified format, and the
+reserve its full 86% band. Explicit `w` values from 0 through 1 are clamped by format to the
+minimum and maximum; omitted `w` remains auto-sized. A shot exception overrides its film-wide card only in the specified format, and the
 renderer fixes placement and wrapping at each phrase's start.
 
 Both film writers use `carryCaptionPlacement` in `src/dl/captionPlacement.ts`. Rebuilds preserve

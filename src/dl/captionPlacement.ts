@@ -108,9 +108,16 @@ export function resolveCaptionPlacement(
     format
   ];
   const entry = shot ?? film.captionPlacement?.[format];
-  return entry
-    ? { ...entry, source: shot ? "shot" : "film" }
-    : { ...DEFAULT_CAPTION_PLACEMENT, source: "default" };
+  if (!entry) return { ...DEFAULT_CAPTION_PLACEMENT, source: "default" };
+  const { width, height } = CAPTION_FRAMES[format];
+  const normalizedWidth = entry.w === undefined
+    ? undefined
+    : captionBounds(format, width, height, entry.w, entry.y).w;
+  return {
+    ...entry,
+    ...(normalizedWidth === undefined ? {} : { w: normalizedWidth }),
+    source: shot ? "shot" : "film",
+  };
 }
 // Returns a conservative reserved band for legacy defaults and the visible fixed box for saved placements.
 export function captionCardRect(

@@ -406,7 +406,7 @@ export const themeSchema = z.object({
 export const captionPlacementSchema = z.object({
   x: z.number().min(0).max(1).default(0.5),
   y: z.number().min(0).max(1),
-  w: z.number().positive().max(1).optional(),
+  w: z.number().min(0).max(1).optional(),
   locked: z.boolean().default(false),
 }).strict();
 export const captionPlacementByFormatSchema = z.object({

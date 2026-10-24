@@ -77,8 +77,8 @@ The shared caption geometry is `captionPlacement.ts`. Film and shot placements a
 independent in `long` and `reel`; absence preserves the existing bottom card with zero pixel changes.
 An absent `w` keeps the legacy shrink-to-content card, including after Lock, movement or switching
 to **This shot only**. The editor outline and collision checks reserve the full 86% default band.
-Only an explicit resize writes `w`, which is clamped to the format's minimum and maximum. Existing
-saved widths remain fixed, including an explicit width of 86%.
+Explicit `w` values from 0 through 1 are clamped to the format's minimum and maximum. An omitted
+`w` remains auto-sized. Existing saved widths remain fixed, including an explicit width of 86%.
 `captionPhrases.ts` fixes each phrase's placement at its first word and splits a narrowed card
 into at most two measured lines. The font size stays fixed. The studio overlay is outside FilmView;
 its drafts and the export use the same composition.
