@@ -18,6 +18,16 @@ export type CaptionReviewRegion =
   | { unavailable: string }
   | null
   | undefined;
+// Checks whether any caption placement exists when review cannot select an output format.
+export function hasCaptionPlacement(film: Film): boolean {
+  return Boolean(
+    film.captionPlacement?.long ||
+      film.captionPlacement?.reel ||
+      film.shots.some(
+        (shot) => shot.captionPlacement?.long || shot.captionPlacement?.reel,
+      ),
+  );
+}
 // Checks whether a film or one of its shots declares placement for the rendered format.
 export function hasCaptionPlacementForFormat(
   film: Film,
@@ -31,11 +41,15 @@ export function hasCaptionPlacementForFormat(
 // Resolves at phrase start so review follows captions across a cut instead of jumping with the shot.
 export function prepareCaptionReview(
   film: Film,
-  width: number,
-  height: number,
+  width: number | undefined,
+  height: number | undefined,
   measureWords = measureCaptionWords,
 ): CaptionReviewRegion {
   if (film.captions === "off" || film.subtitles === false) return null;
+  if (!width || !height)
+    return hasCaptionPlacement(film)
+      ? { unavailable: "Output dimensions are required to review placed captions." }
+      : undefined;
   const format = width < height ? "reel" : "long";
   if (!hasCaptionPlacementForFormat(film, format)) return undefined;
   const timeline = buildTimeline(film, film.voiceover?.durationSec);

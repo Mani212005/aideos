@@ -468,9 +468,10 @@ export async function extractDeterministicFacts(
       const format = viewport
         ? viewport.width < viewport.height ? "reel" : "long"
         : undefined;
-      if (viewport) captionRectAt = prepareCaptionReview(film, viewport.width, viewport.height);
+      captionRectAt = prepareCaptionReview(film, viewport?.width, viewport?.height);
       if (captionRectAt && typeof captionRectAt !== "function") {
-        captionMeasurementNote = `- Owner ${format} caption cards: NOT measured (${captionRectAt.unavailable}); do not judge caption coverage from the legacy bottom band.`;
+        const cardLabel = format ? `Owner ${format} caption cards` : "Owner caption cards";
+        captionMeasurementNote = `- ${cardLabel}: NOT measured (${captionRectAt.unavailable}); do not judge caption coverage from the legacy bottom band.`;
         captionRectAt = null;
       }
       if (captionRectAt && format && hasCaptionPlacementForFormat(film, format)) {

@@ -774,6 +774,29 @@ test("caption review reports measurement unavailability instead of a default reg
   assert.equal(prepareCaptionReview(shotOnly, 1080, 1920, unavailable), undefined);
 });
 
+test("caption review without dimensions is unavailable only when a placement exists", async () => {
+  const { prepareCaptionReview } = await import("./review/captionRegion");
+  assert.deepEqual(
+    prepareCaptionReview({ ...base, captionPlacement: { long: top } }, undefined, undefined),
+    { unavailable: "Output dimensions are required to review placed captions." },
+  );
+  assert.deepEqual(
+    prepareCaptionReview({ ...base, captionPlacement: { reel: top } }, undefined, undefined),
+    { unavailable: "Output dimensions are required to review placed captions." },
+  );
+  const shotPlacement = {
+    ...base,
+    shots: base.shots.map((shot, index) => index === 0
+      ? { ...shot, captionPlacement: { reel: top } }
+      : shot),
+  };
+  assert.deepEqual(
+    prepareCaptionReview(shotPlacement, undefined, undefined),
+    { unavailable: "Output dimensions are required to review placed captions." },
+  );
+  assert.equal(prepareCaptionReview(base, undefined, undefined), undefined);
+});
+
 test("review uses the legacy bottom band for phrases without a format placement", async () => {
   const { prepareCaptionReview } = await import("./review/captionRegion");
   const timeline = buildTimeline(base, base.voiceover?.durationSec);
