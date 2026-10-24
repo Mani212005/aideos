@@ -657,7 +657,7 @@ test("CanvasGraph placement reports that graph art needs manual review", () => {
   ), JSON.stringify(findings));
 });
 
-test("long unbreakable caption tokens stay within the planned card width", () => {
+test("two-row caption tokens isolate neighboring words in both formats", () => {
   const longToken = "vectorquantizationcachemissrecovery";
   for (const format of ["long", "reel"] as const) {
     const width = format === "long" ? 1920 : 1080;
@@ -675,8 +675,9 @@ test("long unbreakable caption tokens stay within the planned card width", () =>
     ], innerWidth, measure), [1]);
     const phrases = buildCaptionPhrases({
       words: [
-        { text: longToken, startFrame: 0, endFrame: 10 },
-        { text: "next", startFrame: 11, endFrame: 20 },
+        { text: "before", startFrame: 0, endFrame: 10 },
+        { text: longToken, startFrame: 11, endFrame: 20 },
+        { text: "next", startFrame: 21, endFrame: 30 },
       ],
       fps: 30,
       fontSize: 45,
@@ -684,10 +685,13 @@ test("long unbreakable caption tokens stay within the planned card width", () =>
       placementAt: () => placement,
       measure,
     });
-    assert.deepEqual(phrases[0].words.map((word) => word.text), [longToken, "next"]);
-    assert.deepEqual(phrases[0].lineBreaks, [1]);
-    assert.deepEqual(phrases[0].unfittableWords, []);
-    assert.ok((phrases[0].wordMaxWidths[0] ?? 0) <= innerWidth - 12);
+    assert.deepEqual(
+      phrases.map((phrase) => phrase.words.map((word) => word.text)),
+      [["before"], [longToken], ["next"]],
+    );
+    assert.deepEqual(phrases[1].lineBreaks, []);
+    assert.deepEqual(phrases[1].unfittableWords, []);
+    assert.ok((phrases[1].wordMaxWidths[0] ?? 0) <= innerWidth - 12);
   }
 });
 

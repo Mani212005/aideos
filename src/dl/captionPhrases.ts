@@ -92,6 +92,12 @@ export function buildCaptionPhrases({
     while (end + 1 < words.length && end - start < 6) {
       const word = words[end];
       if (
+        customWidth &&
+        (fitCaptionWordToRow(word.text, inner, measure).maxWidth !== undefined ||
+          fitCaptionWordToRow(words[end + 1].text, inner, measure).maxWidth !== undefined)
+      )
+        break;
+      if (
         /[.,!?;:]$/.test(word.text) ||
         words[end + 1].startFrame - word.endFrame > fps * 0.4
       )
