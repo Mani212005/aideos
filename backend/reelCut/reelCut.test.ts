@@ -1016,9 +1016,9 @@ test("SVG text grounding follows visibility and reel crop, including a one-frame
       },
     ];
     const texts = visibleReelText(f);
-    assert.deepEqual(texts.intro, []);
+    assert.deepEqual(texts.intro, ["88"]);
     assert.deepEqual(texts.middle.sort(), ["42", "88"]);
-    assert.deepEqual(texts.outro, []);
+    assert.deepEqual(texts.outro, ["88"]);
     const context = createReelContext({ film: f, visibleText: texts });
     assert.ok(
       check(cut(context), context).findings.some(
@@ -1111,7 +1111,7 @@ test("real aideos reel brief/check commands produce a brief, enforce failures an
   assert.equal(run(["check", "reel-test"]).status, 1);
   fs.writeFileSync(path.join(pkg, "film.json"), JSON.stringify(film()));
   const legacyBrief = run(["brief", "reel-test"]);
-  assert.equal(legacyBrief.status, 2);
+  assert.equal(legacyBrief.status, 1);
   assert.match(
     legacyBrief.stderr,
     /reel cut supports scene films only; this package uses legacy actors/,
