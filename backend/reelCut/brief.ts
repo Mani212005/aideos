@@ -16,6 +16,16 @@ import { createReelContext, type ReelContext } from "./constraints";
 import { reelBudgetSchema, type ReelBudget, type ReelCut } from "./schema";
 import { visibleReelText } from "./visibleText";
 
+export class ReelCutSceneFilmError extends Error {
+  readonly code = "REEL_CUT_SCENE_FILMS_ONLY";
+
+  // Initializes the stable CLI error contract for unsupported film packages.
+  constructor() {
+    super("reel cut supports scene films only; this package uses legacy actors");
+    this.name = "ReelCutSceneFilmError";
+  }
+}
+
 // Resolves a validated package slug without accepting arbitrary filesystem traversal.
 export function reelPackageDir(slug: string): string {
   if (!/^[a-z0-9-]+$/.test(slug)) throw new Error(`invalid film id "${slug}"`);
@@ -37,6 +47,7 @@ export function loadReelContext(slug: string): ReelContext {
   );
   if (film.id !== slug)
     throw new Error(`package "${slug}" contains film "${film.id}"`);
+  if (!film.scene || film.scene.actors.length) throw new ReelCutSceneFilmError();
   const design = optionalJson(path.join(pkg, "design/design.json"));
   const look = optionalJson(path.join(pkg, "design/look.json"));
   return createReelContext({
@@ -87,7 +98,7 @@ Rules:
 - Condense evenly first. Drop the least load-bearing shots only when condensing cannot meet the budget. Every drop needs a reason.
 - Keep the first-shot hook, last-shot payoff and every decisive performance. A dropped shot must later pass the reel design check without a visible snap.
 - Keep every locked phrase verbatim under the cue matcher's case and punctuation normalization. Decisive phrases must occur exactly once in their shot.
-- Never add a fact or number. Every on-screen number in a kept shot must still be spoken there. The on-screen text below tells you which picture the narration must explain.
+- Condense, never add a fact or number. New content words will be flagged by \`aideos reel check\` for the captain's review. Every on-screen number in a kept shot must still be spoken there. The on-screen text below tells you which picture the narration must explain.
 - Keep more narration when the estimate falls below a shot's motion floor. Floors come from the compiled long camera curve under uniform retiming; the compiled reel design check is the final authority at shot boundaries and phrase cues.
 - Same voice and speed as the long. Nothing is automatically trimmed, accelerated or removed to fit.
 - Keep long.shots hashes exactly as listed. If a long line changes, rewrite its reel line and refresh that hash.

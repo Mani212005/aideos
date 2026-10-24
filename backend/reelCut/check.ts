@@ -18,6 +18,7 @@ export interface ReelFinding {
     | "numbers"
     | "drop"
     | "motion"
+    | "new-words"
     | "length";
   severity: "error" | "warning";
   shotId?: string;
@@ -34,6 +35,27 @@ export interface ReelCheckReport {
   ok: boolean;
   findings: ReelFinding[];
   estimate: ReelEstimate | null;
+}
+
+const NON_CONTENT_WORDS = new Set(
+  "a an and are as at be been but by can could did do does for from had has have he her hers him his how i if in into is it its me my nor of on or our ours she so than that the their theirs them then there these they this those to too us was we were what when where which who will with would you your yours".split(
+    " ",
+  ),
+);
+
+// Returns distinct narration words that do not occur in the long line or locked phrases.
+function newContentWords(narration: string, source: string): string[] {
+  const sourceWords = new Set(
+    source.toLocaleLowerCase().match(/[a-z0-9]+(?:['’][a-z0-9]+)*/g) ?? [],
+  );
+  const seen = new Set<string>();
+  return (narration.toLocaleLowerCase().match(/[a-z0-9]+(?:['’][a-z0-9]+)*/g) ?? [])
+    .filter((word) => {
+      if (NON_CONTENT_WORDS.has(word) || sourceWords.has(word) || seen.has(word))
+        return false;
+      seen.add(word);
+      return true;
+    });
 }
 
 // Checks every narration constraint and the estimate without changing the cut or requiring approval.
@@ -104,6 +126,17 @@ export function checkReelCut(
       }
       continue;
     }
+    const novelWords = newContentWords(
+      entry.narration,
+      [shot.narration, ...shot.locks.map((lock) => lock.phrase)].join(" "),
+    );
+    if (novelWords.length)
+      findings.push({
+        rule: "new-words",
+        severity: "warning",
+        shotId: entry.id,
+        message: `review new content words against the long narration and locked phrases: ${novelWords.join(", ")}`,
+      });
     const sec = countWords(entry.narration) / context.wordsPerSec;
     estimates.push({ id: entry.id, sec });
     if (sec + 1e-6 < shot.minSec)

@@ -593,16 +593,43 @@ test("brief writing rejects read-only examples before creating a personal shadow
   assert.equal(fs.existsSync(path.join(TEST_VIDEOS_DIR, "hello-scene")), false);
 });
 
+test("new content words are a non-blocking per-shot review advisory", () => {
+  const context = createReelContext({ film: film() });
+  const invented = cut(context);
+  invented.shots[0] = { id: "intro", narration: "See how the glass moves." };
+  const warning = check(invented, context).findings.find(
+    (finding) => finding.rule === "new-words" && finding.shotId === "intro",
+  );
+  assert.equal(warning?.severity, "warning");
+  assert.match(warning?.message ?? "", /glass/);
+  assert.equal(check(invented, context).ok, true);
+
+  const reworded = cut(context);
+  reworded.shots[0] = { id: "intro", narration: "The paper moves." };
+  assert.equal(
+    check(reworded, context).findings.some(
+      (finding) => finding.rule === "new-words" && finding.shotId === "intro",
+    ),
+    false,
+  );
+});
+
 test("SVG text grounding follows visibility and reel crop, including a one-frame reveal", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-reel-text-"));
   try {
     const svg = path.join(tmp, "labels.svg");
+    const backgroundSvg = path.join(tmp, "background.svg");
     fs.writeFileSync(
       svg,
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-960 -960 1920 1920"><text id="inside" x="-60" y="-60" font-size="40" opacity="0">42</text><text id="outside" x="-920" y="-60" font-size="40">999</text></svg>',
     );
+    fs.writeFileSync(
+      backgroundSvg,
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-960 -960 1920 1920"><text id="bg-number" x="-60" y="-120" font-size="40">88</text></svg>',
+    );
     const f = sceneFilm();
     f.scene!.camera = undefined;
+    f.scene!.background.svgSource = backgroundSvg;
     f.scene!.props = [
       {
         ...f.scene!.background,
@@ -635,7 +662,7 @@ test("SVG text grounding follows visibility and reel crop, including a one-frame
     ];
     const texts = visibleReelText(f);
     assert.deepEqual(texts.intro, []);
-    assert.deepEqual(texts.middle, ["42"]);
+    assert.deepEqual(texts.middle.sort(), ["42", "88"]);
     assert.deepEqual(texts.outro, []);
     const context = createReelContext({ film: f, visibleText: texts });
     assert.ok(
@@ -653,7 +680,13 @@ test("SVG text grounding follows visibility and reel crop, including a one-frame
 test("real aideos reel brief/check commands produce a brief, enforce failures and leave source data untouched", () => {
   const pkg = path.join(TEST_VIDEOS_DIR, "reel-test");
   fs.mkdirSync(path.join(pkg, "reel"), { recursive: true });
-  const f = film();
+  const background = path.join(pkg, "background.svg");
+  fs.writeFileSync(
+    background,
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"/>',
+  );
+  const f = sceneFilm();
+  f.scene!.background.svgSource = background;
   const value = cut();
   fs.writeFileSync(path.join(pkg, "film.json"), JSON.stringify(f));
   fs.writeFileSync(path.join(pkg, "reel/cut.json"), JSON.stringify(value));
@@ -700,6 +733,20 @@ test("real aideos reel brief/check commands produce a brief, enforce failures an
     JSON.stringify({ ...value, shots: [{ id: "intro", narration: "" }] }),
   );
   assert.equal(run(["check", "reel-test"]).status, 1);
+  fs.writeFileSync(path.join(pkg, "film.json"), JSON.stringify(film()));
+  const legacyBrief = run(["brief", "reel-test"]);
+  assert.equal(legacyBrief.status, 2);
+  assert.match(
+    legacyBrief.stderr,
+    /reel cut supports scene films only; this package uses legacy actors/,
+  );
+  fs.rmSync(path.join(pkg, "reel/cut.json"));
+  const legacyCheck = run(["check", "reel-test"]);
+  assert.equal(legacyCheck.status, 2);
+  assert.match(
+    legacyCheck.stderr,
+    /reel cut supports scene films only; this package uses legacy actors/,
+  );
   assert.throws(() => loadReelContext("../outside"), /invalid film id/);
   assert.throws(() => writeReelBrief("../outside", BUDGET), /invalid film id/);
 });

@@ -33,12 +33,14 @@ function withBudget(command: Command): Command {
 export function registerReelCommands(program: Command): void {
   const reel = program
     .command("reel")
-    .description("Write or check a separate condensed reel narration cut");
+    .description(
+      "Write or check a separate condensed reel narration cut for scene films only",
+    );
   withBudget(
     reel
       .command("brief")
       .description(
-        "Write reel/REEL_BRIEF.md with locks, hashes and motion budgets",
+        "Write a scene-film reel brief with locks, hashes and motion budgets",
       ),
   ).action(
     (
@@ -57,7 +59,7 @@ export function registerReelCommands(program: Command): void {
     reel
       .command("check")
       .description(
-        "Validate reel/cut.json without changing any film or narration",
+        "Check a scene-film reel cut without changing source data",
       ),
   )
     .option("--json", "print a structured report")
@@ -77,11 +79,8 @@ export function registerReelCommands(program: Command): void {
             targetSec: Number(options.targetSec),
             endCardSec: Number(options.endCardSec),
           });
-          const report = checkReelCut(
-            readReelCut(film),
-            loadReelContext(film),
-            budget,
-          );
+          const context = loadReelContext(film);
+          const report = checkReelCut(readReelCut(film), context, budget);
           console.log(
             options.json
               ? JSON.stringify(report, null, 2)

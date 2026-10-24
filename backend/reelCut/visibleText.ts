@@ -39,12 +39,8 @@ function textByElement(source: string): Map<string, string[]> {
 // Samples every story frame, preserving short reveals, authored visibility and the reel's actual crop.
 export function visibleReelText(film: Film): Record<string, string[]> {
   if (!film.scene) return {};
-  if (film.scene.actors.length)
-    throw new Error(
-      "reel text projection requires a scene without legacy actors",
-    );
   const labels = new Map(
-    film.scene.props.flatMap((p) =>
+    [film.scene.background, ...film.scene.props].flatMap((p) =>
       p.svgSource
         ? [
             [p.assetId, textByElement(p.svgSource)] satisfies [
@@ -56,7 +52,12 @@ export function visibleReelText(film: Film): Record<string, string[]> {
     ),
   );
   if (![...labels.values()].some((l) => l.size)) return {};
-  const at = prepareSvgProjection({ ...film.scene, actors: [] }, 1080, 1920);
+  const at = prepareSvgProjection(
+    { ...film.scene, actors: [] },
+    1080,
+    1920,
+    { includeBackground: true },
+  );
   return Object.fromEntries(
     buildTimeline(film).map(({ shot, from, to }) => {
       const texts = new Set<string>();
