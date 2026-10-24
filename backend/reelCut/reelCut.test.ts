@@ -775,6 +775,35 @@ test("spoken positive numbers cannot satisfy signed displayed numbers", () => {
   );
 });
 
+test("spoken year phrases ground rendered year labels", () => {
+  const f = film();
+  f.shots[1].scriptText = "This method was introduced in nineteen eighty four.";
+  f.overlayClips = [
+    {
+      id: "year-label",
+      kind: "text",
+      position: 11,
+      start: 0,
+      end: 1,
+      opacity: 1,
+      payload: { text: "1984" },
+    },
+  ];
+  const context = createReelContext({ film: f });
+  assert.ok(context.shots[1].onScreenNumbers.includes(1984));
+  const value = cut(context);
+  value.shots[1] = {
+    id: "middle",
+    narration: "This method was introduced in nineteen eighty four.",
+  };
+  assert.equal(
+    check(value, context).findings.some(
+      (finding) => finding.rule === "numbers" && finding.shotId === "middle",
+    ),
+    false,
+  );
+});
+
 test("grounding reads rendered chart decimals and ignores an unlabelled progress bar", () => {
   const f = film();
   f.shots[1].scriptText = "Probabilities are 0.60 and 0.40.";
