@@ -654,6 +654,21 @@ export const filmBaseSchema = z.object({
   subtitles: z.boolean().optional(),
   sfx: z.array(sfxItemSchema).optional(),
   music: musicTrackSchema.optional(),
+  /**
+   * The end card's spoken line, synthesized once in this film's own narration voice. Derived data:
+   * the narrate stage and `ensureEndCardVoice` (backend/endCard/voice.ts) write it, nobody authors
+   * it. Word times are relative to the line's own start; `src/dl/delivery.ts` places them in the card.
+   */
+  endCardVoice: z
+    .object({
+      src: z.string().min(1),
+      text: z.string().min(1),
+      durationSec: z.number().positive(),
+      /** Hash of the line and the voice settings it was synthesized with, so a stale line is re-made. */
+      fingerprint: z.string().min(1),
+      words: z.array(z.object({ word: z.string().min(1), start: z.number().min(0), end: z.number().min(0) })),
+    })
+    .optional(),
 });
 
 export const filmSchema = filmBaseSchema.superRefine((film, ctx) => {

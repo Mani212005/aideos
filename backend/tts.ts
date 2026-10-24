@@ -22,6 +22,10 @@ export const DEFAULT_KOKORO_SPEED = 0.75;
 /** A synthesis backend: text in, mono Float32 PCM at PCM_SAMPLE_RATE out. */
 export interface TtsBackend {
   name: string;
+  /** The voice id this backend actually speaks with, when it has voices. */
+  voice?: string;
+  /** The pace multiplier this backend actually applies, when it has pace control. */
+  speed?: number;
   /** Longest text one call may receive; the caller chunks above this. */
   maxChars: number;
   synthesize(text: string): Promise<Float32Array>;
@@ -171,6 +175,8 @@ async function createKokoroBackend(voice: string, speed: number): Promise<TtsBac
 
   return {
     name: `kokoro:${chosen}`,
+    voice: chosen,
+    speed,
     // Kokoro truncates past ~510 phoneme tokens. 300 characters of English narration
     // stays comfortably inside that even for phoneme-dense text.
     maxChars: 300,
@@ -198,6 +204,7 @@ async function createGoogleBackend(voiceName: string): Promise<TtsBackend> {
 
   return {
     name: `google:${voiceName}`,
+    voice: voiceName,
     maxChars: 800,
     async synthesize(text: string): Promise<Float32Array> {
       const [response] = await client.synthesizeSpeech({
@@ -219,6 +226,7 @@ async function createGoogleBackend(voiceName: string): Promise<TtsBackend> {
 function createSayBackend(voice: string): TtsBackend {
   return {
     name: `say:${voice}`,
+    voice,
     maxChars: 800,
     async synthesize(text: string): Promise<Float32Array> {
       return synthesizeViaFile((out) => {

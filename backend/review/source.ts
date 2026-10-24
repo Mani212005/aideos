@@ -17,6 +17,7 @@ import { stageTreatmentAt, type StageTreatment, type TreatmentSpan } from "../..
 import fs from "node:fs";
 import path from "node:path";
 import { buildTimeline, lookBox, nodeBox, solveCam } from "../../src/dl/camera";
+import { deliveryTimeline } from "../../src/dl/delivery";
 import { MS } from "../../src/dl/motion";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
@@ -122,6 +123,11 @@ export interface FilmFacts {
   /** Canvas nodes whose boxes overlap, as "a / b". */
   nodeOverlaps: string[];
   voiceoverSec: number | null;
+  /**
+   * The fixed end card appended after the story in this output (src/dl/delivery.ts), with its spoken
+   * line's words in video seconds; null when the film has no card. `durationSec` above is the story.
+   */
+  endCard?: { startSec: number; endSec: number; words: Array<{ word: string; start: number; end: number }> } | null;
   /** Optional plan loaded beside film.json for the non-gating plan-adherence criterion. */
   lookPlan?: LookPlan | null;
   /** Per-shot stage and scene motion facts used to compare the rendered design with its plan. */
@@ -391,6 +397,23 @@ function overlappingNodes(film: Film): string[] {
 
 // Reads every film-data fact the review uses from a parsed film, measuring stage presence and camera in the given output.
 export function readFilmFacts(film: Film, viewport: ReviewViewport = FRAME): FilmFacts {
+  return { ...readStoryFacts(film, viewport), endCard: endCardFacts(film, formatOfViewport(viewport)) };
+}
+
+// The end card span and its spoken words in one output, in seconds of the delivered video.
+export function endCardFacts(film: Film, format: "long" | "reel"): FilmFacts["endCard"] {
+  const delivery = deliveryTimeline(film, format);
+  if (!delivery.card) return null;
+  const sec = (frame: number) => frame / delivery.fps;
+  return {
+    startSec: sec(delivery.card.from),
+    endSec: sec(delivery.card.to),
+    words: delivery.cardWords.map((w) => ({ word: w.text, start: sec(w.startFrame), end: sec(w.endFrame) })),
+  };
+}
+
+// Reads the facts of the story itself (everything before the end card).
+function readStoryFacts(film: Film, viewport: ReviewViewport): FilmFacts {
   const fps = film.fps;
   const voiceoverSec = film.voiceover?.durationSec ?? null;
   const durations = film.shots.map((s) => s.dur);

@@ -13,7 +13,7 @@ Aideos is engineered around 4 strict architectural invariants:
 1. **Films are Pure Data (`videos/<slug>/film.json`, with generated `src/dl/films/*.ts` shadows)**:
    - No React runtime logic, side-effects, or random math inside film definitions. Every film is a pure, serializable JSON data structure conforming strictly to `filmSchema` (`src/dl/schema.ts`).
 2. **Master Clock Audio Spine**:
-   - Video duration is never guessed. The synthesized voiceover audio is the immutable master clock of the film. Total shot durations must sum to the voiceover length within a strict tolerance of $\pm 50\text{ms}$.
+   - Story duration is never guessed. The synthesized voiceover audio is the master clock for the story, and total shot durations must sum to the voiceover length within $\pm 50\text{ms}$. Each delivered format appends its configured end card after the story.
 3. **Derived Camera Framing**:
    - The virtual camera never uses hardcoded pixel offsets. Viewport centers, zoom factors, and bounding boxes are mathematically derived from continuous 2D node coordinates $(x, y, w, h)$ on the spatial canvas graph.
 4. **Declared Palette with Semantic Theme Tokens**:

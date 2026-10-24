@@ -396,6 +396,12 @@ export function inspectCamera(
   };
 }
 
+// The fact line that tells the reviewer where the fixed end card sits and that its held stage is by design.
+export function endCardFactLine(card: NonNullable<FilmFacts["endCard"]>): string {
+  const spoken = card.words.length ? `; its spoken line is "${card.words.map((w) => w.word).join(" ")}"` : ", and it is silent";
+  return `- End Card: the last ${(card.endSec - card.startSec).toFixed(1)}s (${card.startSec.toFixed(1)}s to ${card.endSec.toFixed(1)}s) is the fixed like-and-subscribe end card added to every video; the story ends at ${card.startSec.toFixed(1)}s. Its held, dimmed final stage is by design, not a static freeze, dead air or a stage clear${spoken}.`;
+}
+
 // Extracts all deterministic ground truth facts for a video.
 export async function extractDeterministicFacts(
   videoPath: string,
@@ -416,14 +422,6 @@ export async function extractDeterministicFacts(
     score: 0,
     summary: "OCR measurement skipped",
   };
-
-  if (!options?.skipOcr) {
-    bottomCaptions = await measureBottomCaptions(
-      resolved,
-      durationSec,
-      options?.sampleCount ?? 12,
-    );
-  }
 
   // Look for film.json in parent or sibling directories
   let filmPath = options?.filmPath;
@@ -453,7 +451,18 @@ export async function extractDeterministicFacts(
       stageNote = `- Stage facts: NOT measured, the film data could not be read (${err instanceof Error ? err.message : String(err)}); judge the stage only from the video.`;
     }
   }
-  const camera = inspectCamera(filmPath, durationSec, filmFacts);
+  // Captions and camera moves are owed by the story only: the end card after it holds the final
+  // stage and may be silent by design.
+  const storySec = filmFacts?.endCard ? Math.min(durationSec, filmFacts.endCard.startSec) : durationSec;
+  if (!options?.skipOcr) {
+    bottomCaptions = await measureBottomCaptions(
+      resolved,
+      storySec,
+      options?.sampleCount ?? 12,
+    );
+  }
+
+  const camera = inspectCamera(filmPath, storySec, filmFacts);
   const wordsPath = filmPath ? path.join(path.dirname(filmPath), "voiceover_words.json") : null;
   let narration: ReturnType<typeof loadNarration> | null = null;
   try { narration = wordsPath && fs.existsSync(wordsPath) ? loadNarration(wordsPath) : null; } catch { narration = null; }
@@ -464,6 +473,7 @@ export async function extractDeterministicFacts(
     `- Exact Video Duration: ${durationSec.toFixed(1)}s (do NOT hallucinate a different duration such as 120s)`,
     metadata.width && metadata.height ? `- Dimensions: ${metadata.width}x${metadata.height}` : null,
     stage ? `=== STAGE FACTS FOR THIS OUTPUT (projected geometry and action data; pixels and craft unmeasured) ===\n${stageTruthText(stage)}` : stageNote,
+    filmFacts?.endCard ? endCardFactLine(filmFacts.endCard) : null,
     audio.measured ? `- Audio Mix: ${audio.summary}` : `- Audio: Not measured`,
     bottomCaptions.measured
       ? `- Bottom Captions: ${bottomCaptions.summary} -> Gate Status: ${bottomCaptions.hasCaptions ? "PASS" : "FAIL (0% captions)"}`
@@ -476,7 +486,7 @@ export async function extractDeterministicFacts(
     `1. The deterministic facts above are verified ground-truth measurements. You MUST NOT contradict these facts.`,
     `2. Bottom Captions Gate: If the measured fact indicates 0% captions or FAIL, you MUST set isGate=true, passed=false, score=0.0 for "bottom_captions". Do NOT pass captions when 0% are present.`,
     `3. Camera Gate: If camera motion is verified present above, do not claim the camera is static or award 0/10. Evaluate its framing purpose.`,
-    `4. Duration and Pacing: Base all pacing and duration comments on the exact measured duration (${durationSec.toFixed(1)}s).`,
+    `4. Duration and Pacing: Base all pacing and duration comments on the exact measured duration (${durationSec.toFixed(1)}s)${filmFacts?.endCard ? `, of which the story is the first ${filmFacts.endCard.startSec.toFixed(1)}s; judge audio sync, pacing and the payoff on the story, and the end card only for readability and overlap` : ""}.`,
     stage || stageNote ? `5. Stage: the stage facts say where geometry and contacts are, not what the pixels show. A character or prop counts only if you can see it in the video. Face appeal, finger contact and occlusion are unmeasured: judge them from the video, and never pass a criterion on these facts alone.` : null,
   ]
     .filter(Boolean)

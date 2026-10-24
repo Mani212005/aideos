@@ -284,7 +284,10 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   });
   if (!report.ok) return fail([], report.findings);
 
-  writeFilm(filmId, compiled.film);
+  // The end card's spoken line comes from the narration, not the design (base-film.json may predate
+  // it), so a rebuild keeps the line the current film carries.
+  const endCardVoice = (JSON.parse(fs.readFileSync(filmFile, "utf8")) as { endCardVoice?: unknown }).endCardVoice;
+  writeFilm(filmId, endCardVoice ? { ...compiled.film, endCardVoice } as typeof compiled.film : compiled.film);
   // The browser bundle reads artwork through the generated source map, so refresh it.
   buildSvgSources();
   return record(filmId, { state: "passed", source, at, errors: [], findings: [...lookFindings, ...report.findings] });

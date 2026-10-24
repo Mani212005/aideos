@@ -18,6 +18,7 @@ import type { GeminiReviewReport, PairwiseRunReport } from "../geminiReview";
 import type { ReviewReport } from "../review/types";
 import { agentPrompt, buildAgentCommand, resolveAgent } from "./agent";
 import { forbiddenGenerationMatch, loadAideosConfig, reviewerModel, type AideosConfig } from "../aideosConfig";
+import { parseDeliveryConfig } from "../../src/dl/delivery";
 import { buildBrief } from "./brief";
 import { ALL_CHECK_SUBCOMMANDS, rewriteAllCheckArgv } from "./cli";
 import { betterEarlierRound, dirtyRepoPaths, rankRecord, rollbackFilm, settleRound, strayFiles, writeRepoBaseline } from "./best";
@@ -100,6 +101,7 @@ const POLICY: AideosConfig = {
     reviewer: { agent: "agy", model: "gemini-3.8-flash-high" },
     forbiddenGenerationModels: ["gemini-3.1-pro"],
   },
+  delivery: parseDeliveryConfig({}),
 };
 
 test("config: the committed aideos.config.json holds the video model policy", () => {

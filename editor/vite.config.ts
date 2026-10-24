@@ -15,6 +15,7 @@ import { dropLegacyFilmBlocks, filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../src/dl/videoPackageLoader.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
+import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
 import { synthesizeVoiceover, VoiceSynthesisError, readContainerMemoryLimit, sayToWav } from '../backend/voiceSynthesis.ts'
 import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
 import { transcribe, writeImportWords } from '../backend/transcribe.ts'
@@ -683,10 +684,22 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
         if (url === '/api/export' && req.method === 'POST') {
           void readBody(req)
             .then(async (body) => {
-              const { film, format } = (body as { film: Film; format?: string }) || {};
-              if (!film || !film.id || !FILM_ID.test(film.id)) {
+              const { film: postedFilm, format } = (body as { film: Film; format?: string }) || {};
+              if (!postedFilm || !postedFilm.id || !FILM_ID.test(postedFilm.id)) {
                 sendJson(res, 400, { error: 'Valid film with a valid film.id is required' });
                 return;
+              }
+
+              // The end card speaks in the film's own voice: attach its line (synthesizing it when the
+              // narration voice is known) before rendering. A failure leaves the card silent.
+              let film = postedFilm;
+              let endCardNotice: string | undefined;
+              try {
+                const endCard = await ensureEndCardVoice(postedFilm.id, { film: postedFilm });
+                film = endCard.film;
+                endCardNotice = endCard.notice;
+              } catch (err) {
+                endCardNotice = `end card line could not be attached (${err instanceof Error ? err.message : String(err)}); the card stays silent`;
               }
 
               // Enforce rule: Don't render video till B-roll is complete and footage is retrieved
@@ -752,6 +765,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                     ok: true,
                     filename,
                     downloadUrl: `/api/downloads/${filename}`,
+                    ...(endCardNotice ? { notice: endCardNotice } : {}),
                   });
                 } else {
                   sendJson(res, 500, {

@@ -543,6 +543,41 @@ test("criteria: audio sync catches a length mismatch and a shot boundary through
   assert.equal(byKey(evaluateCriteria(inputs({ video: { ...VIDEO, hasAudio: false, audioDurationSec: null } })), "audio-sync").status, "skipped");
 });
 
+test("source: each output carries its own end card span and the spoken line's words", () => {
+  const spoken = { ...nodeFilm([{ look: "a" }, { look: "b" }]), endCardVoice: { src: "videos/t-film/endcard/voiceover.wav", text: "like and subscribe.", durationSec: 1.5, fingerprint: "f", words: [{ word: "like", start: 0, end: 0.4 }, { word: "and", start: 0.45, end: 0.6 }, { word: "subscribe.", start: 0.65, end: 1.5 }] } };
+  const long = readFilmFacts(spoken).endCard!;
+  assert.equal(long.startSec, 12);
+  assert.equal(long.endSec, 18);
+  assert.deepEqual(long.words.map((w) => w.word), ["like", "and", "subscribe."]);
+  assert.equal(long.words[0].start, 12.3);
+  const reel = readFilmFacts(spoken, { width: 1080, height: 1920 }).endCard!;
+  assert.equal(reel.endSec - reel.startSec, 3);
+});
+
+test("criteria: the end card is part of the delivered length, its line is captioned narration, and it owes no camera moves", () => {
+  const story = { ...readFilmFacts(nodeFilm([{ look: "a" }, { look: "b" }])), durationSec: 54, shotBoundaries: [] };
+  const card = { startSec: 54, endSec: 60, words: [{ word: "like", start: 55, end: 55.4 }, { word: "and", start: 55.45, end: 55.6 }, { word: "subscribe.", start: 55.65, end: 56.4 }] };
+  assert.equal(byKey(evaluateCriteria(inputs({ film: { ...story, endCard: card } })), "audio-sync").status, "pass", "54 s story + 6 s card = the 60 s video");
+  const without = byKey(evaluateCriteria(inputs({ film: { ...story, endCard: null } })), "audio-sync");
+  assert.equal(without.status, "fail");
+  assert.match(without.summary, /add up to 54 s but the rendered video is 60 s/);
+
+  const narration: Narration = { words: [{ word: "hop", start: 0, end: 1 }, { word: "down", start: 1, end: 2 }, { word: "the", start: 2, end: 3 }, { word: "layers", start: 3, end: 5 }], text: "hop down the layers", timed: true };
+  const uncaptioned = [sample(1), sample(3), sample(55.5, { hasCaption: false, captionLines: 0 }), sample(56, { hasCaption: false, captionLines: 0 })];
+  assert.equal(byKey(evaluateCriteria(inputs({ narration, film: { ...story, endCard: card } }, uncaptioned)), "captions").status, "fail", "the spoken card line needs its caption");
+  const captioned = [sample(1), sample(3), sample(55.5, { captionText: "like and subscribe." }), sample(56, { captionText: "like and subscribe." })];
+  const ok = byKey(evaluateCriteria(inputs({ narration, film: { ...story, endCard: card } }, captioned)), "captions");
+  assert.equal(ok.status, "pass");
+  assert.equal(ok.metrics.captionWordMatch, 1);
+  assert.equal(byKey(evaluateCriteria(inputs({ narration, film: { ...story, endCard: { ...card, words: [] } } }, uncaptioned)), "captions").status, "pass", "a silent card needs no caption");
+
+  // A 40 s video whose last 6 s are the card owes one move, not two.
+  const moving = readFilmFacts(nodeFilm([{ look: "a" }, { look: "a", zoom: 1.1 }]));
+  const forty = { ...VIDEO, durationSec: 40, audioDurationSec: 40 };
+  assert.equal(byKey(evaluateCriteria(inputs({ film: { ...moving, endCard: { startSec: 34, endSec: 40, words: [] } }, video: forty })), "camera").metrics.movesNeeded, 1);
+  assert.equal(byKey(evaluateCriteria(inputs({ film: { ...moving, endCard: null }, video: forty })), "camera").metrics.movesNeeded, 2);
+});
+
 test("criteria: pacing fails hard cuts, loudness fails a hot mix, grounding fails unspoken numbers", () => {
   const cuts = byKey(evaluateCriteria(inputs({ render: { ...RENDER, hardCutTimes: [5, 10, 15, 20] } })), "pacing");
   assert.equal(cuts.status, "fail");

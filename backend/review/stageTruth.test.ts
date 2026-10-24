@@ -200,6 +200,11 @@ test("J7: the stage facts for Gemini name the characters, the contact against th
 
 test("J9: SVG scene facts do not depend on the reviewed output", () => {
   const film = parseFilm(JSON.parse(fs.readFileSync(path.join(resolvePackageDir("inset-stage"), "film.json"), "utf8")));
-  assert.deepEqual(readFilmFacts(film, LONG), readFilmFacts(film, REEL));
-  assert.equal(readFilmFacts(film, REEL).performances, undefined);
+  // Only the end card is per output, by design: each format appends its own card length.
+  const { endCard: longCard, ...long } = readFilmFacts(film, LONG);
+  const { endCard: reelCard, ...reel } = readFilmFacts(film, REEL);
+  assert.deepEqual(long, reel);
+  const cardSec = (card: typeof longCard) => (card ? card.endSec - card.startSec : 0);
+  assert.deepEqual([cardSec(longCard), cardSec(reelCard)], [6, 3]);
+  assert.equal(reel.performances, undefined);
 });

@@ -13,8 +13,9 @@ import { Player, type PlayerRef } from "@remotion/player";
 import { EyeOff, FileText, GripHorizontal, Mic, RefreshCw } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import { FilmView } from "../../../src/dl/Film";
-import { buildTimeline, totalFrames } from "../../../src/dl/camera";
+import { buildTimeline } from "../../../src/dl/camera";
 import { generateWordsFromFilm } from "../../../src/dl/captionsParser";
+import { deliveryTimeline } from "../../../src/dl/delivery";
 import type { FilmProject } from "../state/useFilmProject";
 import type { LayeredTimelineApi } from "../state/useLayeredTimeline";
 import { Button, EmptyState, SegmentedTabs, Toolbar, ToolbarDivider, ToolbarGroup, ToolbarLabel, cn } from "../components/ui";
@@ -86,7 +87,19 @@ export function EditStage({
     }
   }, [api.renderFilm]);
 
-  const previewFrames = previewTimeline ? totalFrames(previewTimeline) : project.durationFrames;
+  // The preview runs the delivered length: the story plus this format's end card.
+  const previewDelivery = useMemo(
+    () => (previewTimeline ? deliveryTimeline(api.renderFilm, format, { timeline: previewTimeline }) : null),
+    [api.renderFilm, format, previewTimeline],
+  );
+  const previewFrames = previewDelivery ? previewDelivery.totalFrames : project.durationFrames;
+  const endCardSpan = useMemo(
+    () =>
+      previewDelivery?.card
+        ? { startSec: previewDelivery.card.from / previewDelivery.fps, endSec: previewDelivery.card.to / previewDelivery.fps }
+        : null,
+    [previewDelivery],
+  );
 
   const playerInputProps = useMemo(
     () => ({
@@ -271,6 +284,7 @@ export function EditStage({
               film={film}
               api={api}
               durationSec={project.durationSec}
+              endCard={endCardSpan}
               currentFrame={currentFrame}
               isPlaying={isPlaying}
               selectedClipIds={selectedClipIds}

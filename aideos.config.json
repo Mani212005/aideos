@@ -4,5 +4,20 @@
     "generation": { "agent": "claude", "model": "claude-sonnet-5-5" },
     "reviewer": { "agent": "agy", "model": "gemini-3.8-flash-low" },
     "forbiddenGenerationModels": ["gemini-3.1-pro"]
+  },
+  "endCard": {
+    "enabled": true,
+    "durationSec": { "long": 6.0, "reel": 3.0 },
+    "label": "THANKS FOR WATCHING",
+    "headline": "Like and subscribe",
+    "like": "LIKE",
+    "subscribe": "SUBSCRIBE",
+    "handle": "@Mani_Jos",
+    "spokenLine": "If this helped, like and subscribe.",
+    "spokenLineDelaySec": 0.3
+  },
+  "reel": {
+    "maxSec": 179.0,
+    "targetSec": 170.0
   }
 }

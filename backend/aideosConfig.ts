@@ -2,8 +2,10 @@
  * File Description: Loads `aideos.config.json` (repo root), the committed home of the video model
  * policy: which agent and model generate and fix a film (all-check's background agent), which
  * agent and model review it (gemini-review, all-check, pairwise), and which generation models are
- * refused unless a run passes an explicit override. Node-only, dependency-free, with the file path
- * injectable so tests never read the real config.
+ * refused unless a run passes an explicit override. It also validates the delivery settings (the
+ * end card and the reel length budget) through `src/dl/delivery.ts`, which owns their shape so the
+ * browser bundle and Node agree. Node-only, with the file path injectable so tests never read the
+ * real config.
  * Inputs and outputs: config file on disk or environment variables -> loaded AideosConfig object.
  * Used by: backend/modelClient.ts, backend/jev.ts, backend/geminiReview/geminiReview.ts, backend/designSpec/designer.ts.
  */
@@ -11,6 +13,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFile } from "node:child_process";
+import { parseDeliveryConfig, type DeliveryConfig } from "../src/dl/delivery";
 
 /** An agent CLI plus the model id it is run with. */
 export interface AgentModel {
@@ -30,6 +33,8 @@ export interface VideoModelPolicy {
 export interface AideosConfig {
   schema: "aideos.config/1";
   videoModels: VideoModelPolicy;
+  /** End card and reel length settings (absent sections take their defaults). */
+  delivery: DeliveryConfig;
 }
 
 /** An unusable config or a refused model, as one clear message. */
@@ -72,7 +77,17 @@ export function loadAideosConfig(file: string = configPath()): AideosConfig {
       reviewer: parseAgentModel(models.reviewer, "videoModels.reviewer"),
       forbiddenGenerationModels: forbidden as string[],
     },
+    delivery: parseDelivery(raw),
   };
+}
+
+// Validates the delivery sections, rethrowing a bad value as a config error.
+function parseDelivery(raw: unknown): DeliveryConfig {
+  try {
+    return parseDeliveryConfig(raw);
+  } catch (err) {
+    throw new AideosConfigError(err instanceof Error ? err.message : String(err));
+  }
 }
 
 // Lowercases a model id and treats "." and "-" alike so "gemini-3.1-pro" matches "gemini-3-1-pro-high".

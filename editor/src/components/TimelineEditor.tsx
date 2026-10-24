@@ -22,6 +22,7 @@ import {
   ArrowLeftRight,
   ChevronsLeftRight,
   Layers,
+  Lock,
   Magnet,
   Maximize2,
   Pause,
@@ -93,6 +94,12 @@ const HEADER_WIDTH_PX = 184;
 /** Extra seconds of empty runway drawn after the last clip so there is somewhere to drop things. */
 const RUNWAY_SEC = 6;
 
+/** Narrowest end card tail, in pixels, that fits its full "End card 6.0s" label. */
+const END_CARD_LABEL_PX = 104;
+
+/** Narrowest end card tail, in pixels, that still fits its lock icon. */
+const END_CARD_ICON_PX = 22;
+
 export type TimelineTool = "select" | "razor";
 
 export interface TimelineEditorProps {
@@ -100,6 +107,8 @@ export interface TimelineEditorProps {
   api: LayeredTimelineApi;
   /** Authoritative total length of the film in seconds. */
   durationSec: number;
+  /** The fixed end card appended after the story in the format on screen, drawn as a locked tail. */
+  endCard?: { startSec: number; endSec: number } | null;
   currentFrame: number;
   isPlaying: boolean;
   selectedClipIds: string[];
@@ -153,6 +162,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   film,
   api,
   durationSec,
+  endCard,
   currentFrame,
   isPlaying,
   selectedClipIds,
@@ -183,7 +193,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   const [dropHintLaneId, setDropHintLaneId] = useState<string | null>(null);
 
   const playheadSec = currentFrame / fps;
-  const timelineSec = Math.max(durationSec, api.contentEndSec) + RUNWAY_SEC;
+  const timelineSec = Math.max(durationSec, api.contentEndSec, endCard?.endSec ?? 0) + RUNWAY_SEC;
   const contentWidth = Math.max(viewport.width, timelineSec * pxPerSec);
 
   const selection = useMemo(() => new Set(selectedClipIds), [selectedClipIds]);
@@ -1235,6 +1245,28 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 );
               })}
             </div>
+
+            {/* The end card is part of every delivered video but not of the edit: a locked tail. */}
+            {endCard && endCard.endSec > endCard.startSec ? (
+              <div
+                data-testid="timeline-end-card"
+                className="nb-hatch pointer-events-none absolute bottom-0 top-[26px] z-20 overflow-hidden border-l-2 border-ink bg-sunken-2"
+                style={{ left: endCard.startSec * pxPerSec, width: (endCard.endSec - endCard.startSec) * pxPerSec }}
+                title={`End card ${(endCard.endSec - endCard.startSec).toFixed(1)}s: added to every video, not editable here`}
+              >
+                {/* Zoomed out, the tail is narrower than its label, so it keeps only the lock. */}
+                {(endCard.endSec - endCard.startSec) * pxPerSec >= END_CARD_LABEL_PX ? (
+                  <span className="absolute left-1 top-1 inline-flex items-center gap-1 whitespace-nowrap border-2 border-ink bg-paper px-1 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-ink shadow-nb-sm">
+                    <Lock className="h-2.5 w-2.5" aria-hidden />
+                    End card {(endCard.endSec - endCard.startSec).toFixed(1)}s
+                  </span>
+                ) : (endCard.endSec - endCard.startSec) * pxPerSec >= END_CARD_ICON_PX ? (
+                  <span className="absolute left-1 top-1 inline-flex items-center border-2 border-ink bg-paper p-0.5 text-ink shadow-nb-sm">
+                    <Lock className="h-2.5 w-2.5" aria-label="End card" />
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
 
             {/* Snap guide naming exactly what the drag is locking on to. */}
             {drag.snapTarget ? (

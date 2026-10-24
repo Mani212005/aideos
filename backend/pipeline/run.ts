@@ -24,6 +24,8 @@ import path from "path";
 import type { Film } from "../../src/dl/schema";
 import { ensureRetimedAudio, produceAudioPipeline, type ProduceAudioResult } from "../audio";
 import { DEFAULT_KOKORO_SPEED } from "../tts";
+import { DELIVERY_CONFIG, deliveryTimeline } from "../../src/dl/delivery";
+import { ensureEndCardVoice, narrationVoiceOf, synthesizeEndCardLine } from "../endCard/voice";
 import { hasScreenplayTags, parseClaudeScript } from "../scriptIntake";
 import { createEngine } from "../engine";
 import { traceBus } from "../agentBridge";
@@ -442,6 +444,17 @@ export async function runProduction(
           "running",
           `${result.segments.length} segment(s), ${result.totalAudioDuration.toFixed(2)}s via ${result.ttsBackend}`,
         );
+        // The end card's spoken line, once, in the voice the story was just narrated in.
+        const line = DELIVERY_CONFIG.endCard.spokenLine.trim();
+        const voice = narrationVoiceOf(result);
+        if (DELIVERY_CONFIG.endCard.enabled && line && voice) {
+          try {
+            const record = await synthesizeEndCardLine(pkgDir, line, voice);
+            emit("narrate", "running", `end card line, ${record.durationSec.toFixed(2)}s`);
+          } catch (err) {
+            warnings.push(`end card line was not synthesized (${err instanceof Error ? err.message : String(err)}); the card stays silent`);
+          }
+        }
         return result;
       },
     );
@@ -619,12 +632,13 @@ export async function runProduction(
     if (shouldStop("broll")) return buildResult("broll");
 
     // ---- assemble: wire footage in, install as the active film, validate ---------------------
-    const assembled = await runStage<Film>(
+    let assembled = await runStage<Film>(
       "assemble",
       // Fingerprinted on the compiled film itself, not on the inputs that produced it: a
       // change to the design compiler produces a different film from identical inputs, and
-      // hashing the inputs alone let a stale assembly survive the change.
-      fingerprint(design.film, brollClips.map((c) => c.staticPath)),
+      // hashing the inputs alone let a stale assembly survive the change. The end card line is
+      // attached after assembly from the narration, so it is not part of the design's identity.
+      fingerprint(withoutEndCardVoice(design.film), brollClips.map((c) => c.staticPath)),
       () => readFilm(slug),
       async () => {
         let film = readFilm(slug);
@@ -656,6 +670,15 @@ export async function runProduction(
         return film;
       },
     );
+    // The end card speaks in the film's own voice: attach its line (synthesizing it when missing),
+    // so the studio preview and the render both carry it. A failure leaves the card silent.
+    try {
+      const endCardLine = await ensureEndCardVoice(slug, { film: assembled });
+      assembled = endCardLine.film;
+      if (endCardLine.notice) warnings.push(`end card: ${endCardLine.notice}`);
+    } catch (err) {
+      warnings.push(`end card line could not be attached (${err instanceof Error ? err.message : String(err)}); the card stays silent`);
+    }
     filmResult = assembled;
     if (shouldStop("assemble")) return buildResult("assemble");
 
@@ -691,7 +714,8 @@ export async function runProduction(
           const outPath = request.outDir ? path.join(outDir, `${slug}-${format}.mp4`) : path.join(outDir, `${format}.mp4`);
           // Remotion holds every frame of a format in the temp dir until it stitches them, so the
           // guard renders a few real frames, measures them and refuses only a render that cannot fit.
-          const frameRange: [number, number] = request.renderFrames ?? [0, Math.ceil(narration.totalAudioDuration * assembled.fps) - 1];
+          // The whole delivered video: the story plus this format's end card.
+          const frameRange: [number, number] = request.renderFrames ?? [0, deliveryTimeline(assembled, format).totalFrames - 1];
           emit("render", "running", `measuring ${format} frame sizes for the disk budget`);
           await checkRenderDiskBudget({ film: assembled, format, range: frameRange, dirs: [os.tmpdir(), outDir], browserExecutable: request.browserExecutable });
           emit("render", "running", `rendering ${format} (${FORMAT_SPECS[format].width}x${FORMAT_SPECS[format].height})`);
@@ -730,30 +754,20 @@ export async function runProduction(
               `${output.format} rendered at ${output.width}x${output.height}, expected ${spec.width}x${spec.height}`,
             );
           }
-          // A partial render (renderFrames) is only as long as the window it was asked for.
-          const expected = request.renderFrames
-            ? (request.renderFrames[1] - request.renderFrames[0] + 1) / assembled.fps
-            : narration.totalAudioDuration;
-          if (Math.abs(output.durationSec - expected) > 1.0) {
-            warnings.push(
-              `${output.format} runs ${output.durationSec.toFixed(2)}s but the narration is ` +
-                `${expected.toFixed(2)}s; picture and voice are not the same length`,
-            );
-          }
-
           const audio = analyseAudio(output.path);
+          warnings.push(...deliveredOutputWarnings({
+            film: assembled,
+            format: output.format,
+            durationSec: output.durationSec,
+            narrationSec: narration.totalAudioDuration,
+            silences: audio.silences,
+            renderFrames: request.renderFrames,
+          }));
           if (audio.channels === 0) {
             warnings.push(`${output.format} has no audio stream`);
           }
           if (audio.peakDb > -0.5) {
             warnings.push(`${output.format} peaks at ${audio.peakDb.toFixed(2)} dBFS; that is clipping territory`);
-          }
-          const longSilence = audio.silences.find((s) => s.durationSec > 2.5);
-          if (longSilence) {
-            warnings.push(
-              `${output.format} has ${longSilence.durationSec.toFixed(1)}s of silence at ` +
-                `${longSilence.startSec.toFixed(1)}s`,
-            );
           }
 
           contactSheet(output.path, path.join(reviewDir, `${output.format}-sheet.jpg`), { count: 12, columns: 4 });
@@ -775,6 +789,49 @@ export async function runProduction(
       ? err
       : new ProductionError(current, err instanceof Error ? err.message : String(err), err);
   }
+}
+
+/**
+ * The verify stage's length and silence findings for one rendered output. A full render runs the
+ * narration plus the format's end card (src/dl/delivery.ts); a partial render (renderFrames) only
+ * the window it was asked for. Only the story is held to having no long silence, because the end
+ * card may be quiet by design.
+ */
+export function deliveredOutputWarnings(input: {
+  film: Film;
+  format: ProductionFormat;
+  durationSec: number;
+  narrationSec: number;
+  silences: Array<{ startSec: number; durationSec: number }>;
+  renderFrames?: [number, number];
+}): string[] {
+  const { film, format, durationSec, narrationSec, silences, renderFrames } = input;
+  const warnings: string[] = [];
+  const delivery = deliveryTimeline(film, format);
+  const cardSec = delivery.card ? delivery.card.durationInFrames / delivery.fps : 0;
+  const expected = renderFrames ? (renderFrames[1] - renderFrames[0] + 1) / film.fps : narrationSec + cardSec;
+  if (Math.abs(durationSec - expected) > 1.0) {
+    warnings.push(
+      `${format} runs ${durationSec.toFixed(2)}s but the narration` +
+        `${cardSec > 0 && !renderFrames ? ` plus the ${cardSec.toFixed(1)}s end card` : ""} is ` +
+        `${expected.toFixed(2)}s; picture and voice are not the same length`,
+    );
+  }
+  const storyEndSec = delivery.card && !renderFrames ? delivery.card.from / delivery.fps : Infinity;
+  const longSilence = silences
+    .map((s) => ({ startSec: s.startSec, durationSec: Math.min(s.startSec + s.durationSec, storyEndSec) - s.startSec }))
+    .find((s) => s.durationSec > 2.5);
+  if (longSilence) {
+    warnings.push(`${format} has ${longSilence.durationSec.toFixed(1)}s of silence at ${longSilence.startSec.toFixed(1)}s`);
+  }
+  return warnings;
+}
+
+// The film minus its derived end card line, for fingerprints of what the design produced.
+function withoutEndCardVoice(film: Film): Film {
+  const rest = { ...film };
+  delete rest.endCardVoice;
+  return rest;
 }
 
 /** Every stage name, in order. Exported so callers can render a progress UI without guessing. */
