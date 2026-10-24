@@ -80,8 +80,8 @@ export function EditStage({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const captionWords = useMemo(
-    () => captionWordsForFilm(previewFilm),
-    [previewFilm],
+    () => captionWordsForFilm(api.renderFilm),
+    [api.renderFilm],
   );
 
   // The preview plays exactly what an export would produce, so hidden lanes disappear from it and

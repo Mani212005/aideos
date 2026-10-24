@@ -12,7 +12,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
-import { applyCaptionPlacementDraft, checkCaptionPlacementsAsync } from '../backend/designCheck/captionPlacement.ts';
+import { applyCaptionPlacementDraft } from '../backend/designCheck/captionPlacement.ts';
+import { checkCaptionPlacementDraftAsync } from '../backend/designCheck/captionPlacementDraft.ts';
 import type { Scene } from '../src/dl/scene/types.ts';
 import { carryCaptionPlacement } from '../src/dl/captionPlacement.ts';
 import { dropLegacyFilmBlocks, filmSchema } from '../src/dl/schema.ts'
@@ -592,7 +593,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           sendJson(res, 409, { error: error instanceof Error ? error.message : String(error) });
           return;
         }
-        void checkCaptionPlacementsAsync(film, film.scene as Scene | undefined, { format, shotId, frame: Math.round(frame) }, previewFilm)
+        void checkCaptionPlacementDraftAsync(film, film.scene as Scene | undefined, { format, shotId, frame: Math.round(frame) }, previewFilm)
           .then((findings) => sendJson(res, 200, { findings }))
           .catch((error) => sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) }));
       }).catch((error) => sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) }));

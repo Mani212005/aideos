@@ -30,6 +30,7 @@ import { applyStageCamera, projectStagePoint, rectInside, stageViewport } from "
 import { getStageSafeRegion } from "../../src/dl/fullScreenHeroLayout";
 import { projectMeshParts, sampleMeshDepth, undeclaredMaterialColours } from "../../src/dl/scene/stageGeometry";
 import { checkThreeStage } from "../designCheck/threeStage";
+import { checkCaptionPlacementDraftAsync } from "../designCheck/captionPlacementDraft";
 import { captionCardRect, captionRectsOverlap, resolveCaptionPlacement } from "../../src/dl/captionPlacement";
 import { buildTimeline } from "../../src/dl/camera";
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
@@ -194,7 +195,7 @@ test("P2 full silhouettes reject wide captions and reel cropping, with shot and 
   }
 });
 
-test("Three-stage collision follows a phrase placement across a shot cut", () => {
+test("editor caption check reports a posed-character collision at the active frame", async () => {
   const film = compiled(), scene = film.scene as Scene, timeline = buildTimeline(film);
   const boundary = timeline[0].to, frame = boundary + 6;
   const facts = prepareStageFacts(scene, 1920, 1080);
@@ -218,11 +219,18 @@ test("Three-stage collision follows a phrase placement across a shot cut", () =>
     const start = ((boundary - 15) / film.fps).toFixed(3).padStart(6, "0");
     const end = ((boundary + 15) / film.fps).toFixed(3).padStart(6, "0");
     film.captions = `WEBVTT\n\n00:00:${start} --> 00:00:${end}\nA phrase\n`;
-    const findings = checkThreeStage(film, scene, {});
-    assert.ok(findings.some((finding) => {
-      const match = finding.where.match(/frame (\d+)/);
-      return finding.rule === "caption-placement" && finding.where.includes(`shot ${film.shots[1].id} / long`) && Number(match?.[1]) >= timeline[1].from;
-    }), JSON.stringify(findings));
+    const findings = await checkCaptionPlacementDraftAsync(
+      film,
+      scene,
+      { format: "long", shotId: film.shots[1].id, frame },
+      film,
+    );
+    assert.ok(findings.some((finding) =>
+      finding.rule === "caption-placement" &&
+      finding.severity === "warning" &&
+      finding.where === `shot ${film.shots[1].id} / long / iona / frame ${frame}` &&
+      /posed art overlaps the owner caption card/.test(finding.message),
+    ), JSON.stringify(findings));
   } finally {
     facts.dispose();
   }
