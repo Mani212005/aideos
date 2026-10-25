@@ -757,9 +757,16 @@ export const FilmView: React.FC<FilmViewProps> = ({
                   const speed = ac.speed ?? 1.0;
                   const isRetimed = Math.abs(speed - 1.0) > 0.001;
                   const startFrame = Math.round(ac.position * fps);
-                  const durFrames = Math.max(1, Math.round(ac.end * fps) - Math.round((ac.start ?? 0) * fps));
+                  const isMusicClip = ac.channel === "music";
+                  const reachesStoryEnd =
+                    isMusicClip &&
+                    card &&
+                    ac.position + (ac.end - (ac.start ?? 0)) >= delivery.storyFrames / fps - 0.05;
+                  const durFrames = reachesStoryEnd
+                    ? Math.round(delivery.totalFrames) - startFrame
+                    : Math.max(1, Math.round(ac.end * fps) - Math.round((ac.start ?? 0) * fps));
                   const startFrom = Math.round((ac.start ?? 0) * fps);
-                  const endAt = Math.round(ac.end * fps);
+                  const endAt = reachesStoryEnd ? undefined : Math.round(ac.end * fps);
                   const audioSrc = isRetimed
                     ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
                     : staticFile(ac.src);
@@ -769,9 +776,9 @@ export const FilmView: React.FC<FilmViewProps> = ({
                       <Audio
                         src={audioSrc}
                         startFrom={startFrom}
-                        endAt={endAt}
+                        {...(endAt !== undefined ? { endAt } : {})}
                         playbackRate={1.0}
-                        volume={() => (ac.channel === "music" ? (ac.volume ?? 1) * 0.25 : ac.volume ?? 1)}
+                        volume={() => (isMusicClip ? (ac.volume ?? 1) * 0.25 : ac.volume ?? 1)}
                       />
                     </Sequence>
                   );

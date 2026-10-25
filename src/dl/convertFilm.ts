@@ -209,7 +209,8 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
     });
   }
 
-  if (!declaredChannels.has("music") && film.music?.src) {
+  const hasMusicClip = film.audioClips?.some((ac) => ac.id === MUSIC_CLIP_ID);
+  if (!hasMusicClip && film.music?.src) {
     const totalDur = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
     clips.push({
       id: MUSIC_CLIP_ID,
@@ -228,19 +229,22 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
     });
   }
 
-  if (!declaredChannels.has("sfx") && film.sfx && film.sfx.length > 0) {
+  if (film.sfx && film.sfx.length > 0) {
     film.sfx.forEach((sfx, idx) => {
-      clips.push({
-        id: `clip-sfx-${idx}`,
-        layerId: ensureLayer(CONVERTED_LAYER_IDS.sfx),
-        position: sfx.timeSec,
-        start: 0,
-        end: SFX_CLIP_DURATION,
-        kind: "audio",
-        payload: { src: sfx.src, channel: "sfx" },
-        volume: Math.min(2, Math.max(0, sfx.volume ?? 1)),
-        opacity: 1,
-      });
+      const sfxId = `clip-sfx-${idx}`;
+      if (!film.audioClips?.some((ac) => ac.id === sfxId)) {
+        clips.push({
+          id: sfxId,
+          layerId: ensureLayer(CONVERTED_LAYER_IDS.sfx),
+          position: sfx.timeSec,
+          start: 0,
+          end: SFX_CLIP_DURATION,
+          kind: "audio",
+          payload: { src: sfx.src, channel: "sfx" },
+          volume: Math.min(2, Math.max(0, sfx.volume ?? 1)),
+          opacity: 1,
+        });
+      }
     });
   }
 
@@ -533,17 +537,18 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
       }
     : base?.voiceover;
 
-  const music =
-    musicClips.length > 0 && isPlainMusic(musicClips[0])
-      ? {
-          src: (musicClips[0].payload as AudioPayload).src,
-          volume: musicClips[0].volume ?? 1,
-          duckUnderVoiceover: (musicClips[0].payload as AudioPayload).duckUnderVoiceover ?? true,
-        }
-      : undefined;
+  const plainMusicClip = musicClips.find(isPlainMusic);
+  const music = plainMusicClip
+    ? {
+        src: (plainMusicClip.payload as AudioPayload).src,
+        volume: plainMusicClip.volume ?? 1,
+        duckUnderVoiceover: (plainMusicClip.payload as AudioPayload).duckUnderVoiceover ?? true,
+      }
+    : undefined;
 
-  const sfx = sfxClips.length > 0
-    ? sfxClips.map((c) => ({
+  const plainSfxClips = sfxClips.filter(isPlainSfx);
+  const sfx = plainSfxClips.length > 0
+    ? plainSfxClips.map((c) => ({
         timeSec: c.position,
         src: (c.payload as AudioPayload).src,
         volume: c.volume ?? 1,
