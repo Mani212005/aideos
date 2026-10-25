@@ -7,7 +7,7 @@
 import { CaptionRegionContext } from "./captionRegionContext";
 import { captionCardRect, resolveCaptionPlacement } from "./captionPlacement";
 import React from "react";
-import { AbsoluteFill, Freeze, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
+import { AbsoluteFill, Freeze, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Sequence } from "remotion";
 import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO, SANS } from "./tokens";
 import { SUBTITLE_FONT_RATIO, getFullScreenHeroLayout, getInsetRegion, heroScrimGradient } from "./fullScreenHeroLayout";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
@@ -19,9 +19,9 @@ import { PaperRip } from "./PaperRip";
 import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
 import { buildCaptionPhrases, captionPhraseAtFrame, captionTimelineLayoutKey } from "./captionPhrases";
 import { measureText } from "@remotion/layout-utils";
-import { getRetimedAudioRelPath } from "./audio/retime";
 import { deliveryTimeline, formatForSize } from "./delivery";
-import { EndCard, EndCardVoice } from "./EndCard";
+import { EndCard } from "./EndCard";
+import { Soundtrack } from "./Soundtrack";
 import { Kicker, TextReveal, Body } from "./primitives";
 import {
   buildTimeline,
@@ -749,78 +749,9 @@ export const FilmView: React.FC<FilmViewProps> = ({
         </AbsoluteFill>
         </Freeze>
         {/* Burned-in subtitles previously reel-only, now default across formats */}
-        {/* Multi-Clip Audio Track & Master Voiceover Spine */}
+        {/* Shared Soundtrack */}
         {includeAudio && (
-          <>
-            {film.audioClips && film.audioClips.length > 0
-              ? film.audioClips.map((ac) => {
-                  const speed = ac.speed ?? 1.0;
-                  const isRetimed = Math.abs(speed - 1.0) > 0.001;
-                  const startFrame = Math.round(ac.position * fps);
-                  const isMusicClip = ac.channel === "music";
-                  const reachesStoryEnd =
-                    isMusicClip &&
-                    card &&
-                    ac.position + (ac.end - (ac.start ?? 0)) >= delivery.storyFrames / fps - 0.05;
-                  const durFrames = reachesStoryEnd
-                    ? Math.round(delivery.totalFrames) - startFrame
-                    : Math.max(1, Math.round(ac.end * fps) - Math.round((ac.start ?? 0) * fps));
-                  const startFrom = Math.round((ac.start ?? 0) * fps);
-                  const endAt = reachesStoryEnd ? undefined : Math.round(ac.end * fps);
-                  const audioSrc = isRetimed
-                    ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
-                    : staticFile(ac.src);
-
-                  return (
-                    <Sequence key={ac.id} from={startFrame} durationInFrames={durFrames}>
-                      <Audio
-                        src={audioSrc}
-                        startFrom={startFrom}
-                        {...(endAt !== undefined ? { endAt } : {})}
-                        playbackRate={1.0}
-                        volume={() => (isMusicClip ? (ac.volume ?? 1) * 0.25 : ac.volume ?? 1)}
-                      />
-                    </Sequence>
-                  );
-                })
-              : null}
-
-            {!(film.audioClips?.some((ac) => (ac.channel ?? "voiceover") === "voiceover")) &&
-              film.voiceover?.src &&
-              (() => {
-                const speed = film.voiceover.speed ?? 1.0;
-                const isRetimed = Math.abs(speed - 1.0) > 0.001;
-                const audioSrc = isRetimed
-                  ? staticFile(film.voiceover.retimedSrc || getRetimedAudioRelPath(film.voiceover.src, speed))
-                  : staticFile(film.voiceover.src);
-
-                return (
-                  <Audio
-                    key={`vo-${film.voiceover.src}-${speed}`}
-                    src={audioSrc}
-                    playbackRate={1.0}
-                    volume={() => film.voiceover?.volume ?? 1}
-                  />
-                );
-              })()}
-
-            {/* Background Music */}
-            {film.music?.src && (
-              <Audio
-                src={staticFile(film.music.src)}
-                volume={() => (film.music?.volume ?? 1) * 0.25}
-              />
-            )}
-
-            {/* SFX Timeline Placements */}
-            {film.sfx?.map((sfx, idx) => (
-              <Sequence key={idx} from={Math.round(sfx.timeSec * fps)}>
-                <Audio src={staticFile(sfx.src)} volume={() => sfx.volume ?? 1} />
-              </Sequence>
-            ))}
-
-            {card ? <EndCardVoice film={film} card={card} volume={film.voiceover?.volume ?? 1} /> : null}
-          </>
+          <Soundtrack film={film} timeline={timeline} />
         )}
 
         {/* Chapter Rail. The end card is not a chapter, so the rail leaves with the story. */}
