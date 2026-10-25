@@ -749,7 +749,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
         </AbsoluteFill>
         </Freeze>
         {/* Burned-in subtitles previously reel-only, now default across formats */}
-        {/* Master Audio Track & Multi-Clip Voiceover Spine */}
+        {/* Multi-Clip Audio Track & Master Voiceover Spine */}
         {includeAudio && (
           <>
             {film.audioClips && film.audioClips.length > 0

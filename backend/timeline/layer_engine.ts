@@ -157,6 +157,7 @@ export function resolveLayerCollisions(clips: Clip[], anchor: number | number[])
  * Import an external media asset into a LayeredFilm (U-6 and U-10).
  * A video asset lands as TWO symmetrically linked clips (video plus its audio) so the pair can be
  * moved, trimmed, split and deleted as one unit until the user explicitly unlinks them.
+ * An audio asset lands on the Music or SFX lane, avoiding the voiceover spine to prevent rippling narration.
  */
 export function importMediaAssetToLayeredFilm(
   film: LayeredFilm,

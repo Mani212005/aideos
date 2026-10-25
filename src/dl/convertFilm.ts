@@ -209,6 +209,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
     });
   }
 
+  // Synthesize background music unless already present as the synthetic clip id, preserving additional music clips.
   const hasMusicClip = film.audioClips?.some((ac) => ac.id === MUSIC_CLIP_ID);
   if (!hasMusicClip && film.music?.src) {
     const totalDur = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
@@ -229,6 +230,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
     });
   }
 
+  // Synthesize summary sfx unless already present by id in audioClips.
   if (film.sfx && film.sfx.length > 0) {
     film.sfx.forEach((sfx, idx) => {
       const sfxId = `clip-sfx-${idx}`;
