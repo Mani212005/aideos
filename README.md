@@ -97,6 +97,10 @@ aideos all-check speculative-decoding [--reference ref.mp4] [--rounds 6] [--targ
 aideos all-check wait speculative-decoding
 ```
 
+To populate the shared background music and sound effects cache, run `aideos audio fetch`;
+use `aideos audio verify` to check its hash locks. See [Audio Library](docs/AUDIO_LIBRARY.md)
+for manual imports and cache details.
+
 See [docs/PRODUCTION_PIPELINE.md](docs/PRODUCTION_PIPELINE.md), [docs/DIRECTOR_GUIDE.md](docs/DIRECTOR_GUIDE.md), and [docs/REVIEW.md](docs/REVIEW.md) for full production, direction, and review documentation.
 
 ---

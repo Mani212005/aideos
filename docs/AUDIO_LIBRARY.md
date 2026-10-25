@@ -2,7 +2,7 @@
 
 # Audio Library and Management Commands
 
-Aideos uses a committed, hash-locked audio library manifest (`audio/library.json`) for background music and sound effects. Audio files are never committed to git; assets are fetched on demand from source URLs into a local shared cache, and the manifest records each item's license and attribution details. The current catalog includes Mixkit music and sound effects, plus sound effects from Freesound and Kenney.
+Aideos uses a committed, hash-locked audio library manifest (`audio/library.json`) for background music and sound effects. Audio files are never committed to git; assets are fetched on demand from source URLs into a local shared cache, and the manifest records each item's license and attribution details. The current catalog includes Mixkit music and sound effects, plus sound effects from Freesound and Kenney. Music must not require credit; sound effects are intended as subtle accents.
 
 ## 1. Commands
 
@@ -26,6 +26,7 @@ aideos audio fetch --json
 - Downloads items sequentially (never crawls or scrapes).
 - Verifies SHA256 checksums immediately upon download; mismatches are rejected and deleted.
 - Skips items already present in the cache with matching SHA256 hashes.
+- Exits with code 1 when manual items still need importing.
 
 ### `aideos audio verify`
 Verifies all cached audio assets against their declared SHA256 hashes:
@@ -55,7 +56,7 @@ aideos audio import <id> /path/to/track.mp3
 - Refuses the import unless the file matches the SHA256 already recorded in the manifest.
 - Copies the file into `.audio-library/` inside the active videos directory.
 
-To add a manually downloaded track, first add its complete metadata to `audio/library.json` with `url: null`, including the expected SHA256, byte count, license details, duration, loudness, roles, moods, energy, and content ID risk. Then import the file using its manifest ID. `aideos audio verify` checks it against the same hash lock. Use this for tracks added manually from the YouTube Audio Library; the manifest records attribution when the track's license requires it.
+To add a manually downloaded YouTube Audio Library track, first add its complete metadata to `audio/library.json` with `url: null`, including the expected SHA256, byte count, license details, duration, loudness, roles, moods, energy, and content ID risk. Choose a music license that does not require credit. Then import the file using its manifest ID. `aideos audio verify` checks it against the same hash lock.
 
 ## 2. Storage and Cache Layout
 
