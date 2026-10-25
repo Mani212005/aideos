@@ -4,7 +4,7 @@
  * an accent SUBSCRIBE pill with a bell, the channel handle) enters on the ease-out-expo curve, and the
  * SUBSCRIBE pill presses on the spoken word "subscribe". Copy comes from aideos.config.json.
  * Inputs and outputs: the card span and its spoken words from src/dl/delivery.ts, the current frame -> card overlay and the spoken line's audio.
- * Used by: src/dl/Film.tsx (FilmView, both the Remotion render and the studio preview) and src/dl/Video.tsx (the line's audio in renders).
+ * Used by: src/dl/Film.tsx (FilmView end card overlay), src/dl/Soundtrack.tsx (the line's audio in render and studio preview).
  */
 
 import React from "react";
