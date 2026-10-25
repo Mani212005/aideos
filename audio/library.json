@@ -1,0 +1,1071 @@
+{
+  "schema": "aideos.audio-library/1",
+  "version": 1,
+  "updatedAt": "2026-10-25",
+  "items": [
+    {
+      "id": "mk-556",
+      "kind": "music",
+      "title": "Xceed Thru Johann",
+      "artist": "Eugenio Mininni",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/music/556/556.mp3",
+      "licence": {
+        "id": "mixkit-stock-music-free",
+        "url": "https://mixkit.co/license/#musicFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "2b38e6677301f44bdf589a046fe231cbd9b9d93eb54ff4f7851792f673394df0",
+      "bytes": 7426597,
+      "durationSec": 232,
+      "loudness": {
+        "integratedLufs": -12,
+        "truePeakDb": 1.5,
+        "lra": 5.5
+      },
+      "roles": [
+        "hook",
+        "tension"
+      ],
+      "moods": [
+        "Electronica",
+        "Serious",
+        "Tension",
+        "Investigation",
+        "Technology"
+      ],
+      "energy": 3,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "mk-615",
+      "kind": "music",
+      "title": "Tapis",
+      "artist": "Eugenio Mininni",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/music/615/615.mp3",
+      "licence": {
+        "id": "mixkit-stock-music-free",
+        "url": "https://mixkit.co/license/#musicFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "db34bc5dcfa5fdf237d334035e6933408aa07519032cb395daa791ce8d132884",
+      "bytes": 5223117,
+      "durationSec": 163.15,
+      "loudness": {
+        "integratedLufs": -14.4,
+        "truePeakDb": -1.8,
+        "lra": 3.9
+      },
+      "roles": [
+        "hook"
+      ],
+      "moods": [
+        "Film Score",
+        "Mysterious",
+        "Atmospheric",
+        "Synth",
+        "Cinematic"
+      ],
+      "energy": 2,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "mk-554",
+      "kind": "music",
+      "title": "Sonnor",
+      "artist": "Eugenio Mininni",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/music/554/554.mp3",
+      "licence": {
+        "id": "mixkit-stock-music-free",
+        "url": "https://mixkit.co/license/#musicFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "05663a088b7e268a97afe7d3f10d9390d7c10cca273fa5aca1a0e57b6fc8210d",
+      "bytes": 7426597,
+      "durationSec": 232,
+      "loudness": {
+        "integratedLufs": -16.7,
+        "truePeakDb": -1.6,
+        "lra": 5.6
+      },
+      "roles": [
+        "explain"
+      ],
+      "moods": [
+        "Underscore",
+        "Electronica",
+        "Atmospheric",
+        "Futuristic",
+        "Technology"
+      ],
+      "energy": 2,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "mk-184",
+      "kind": "music",
+      "title": "Vastness",
+      "artist": "Andrew Ev",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/music/184/184.mp3",
+      "licence": {
+        "id": "mixkit-stock-music-free",
+        "url": "https://mixkit.co/license/#musicFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "3ffae7ccd5ea6f612f75efdf9a8318ccce79a5e4f355b26e233631330a57660f",
+      "bytes": 7356125,
+      "durationSec": 229.82,
+      "loudness": {
+        "integratedLufs": -13.5,
+        "truePeakDb": -0.3,
+        "lra": 2.1
+      },
+      "roles": [
+        "explain"
+      ],
+      "moods": [
+        "Ambient",
+        "Electronica",
+        "Atmospheric",
+        "Relaxed",
+        "Cinematic"
+      ],
+      "energy": 1,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "mk-570",
+      "kind": "music",
+      "title": "Sonor #2",
+      "artist": "Eugenio Mininni",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/music/570/570.mp3",
+      "licence": {
+        "id": "mixkit-stock-music-free",
+        "url": "https://mixkit.co/license/#musicFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "e98aaa4574f3e83ac9aefe2aa32ae8bedd1da4e9f5517858f2ccc3cb4c5f3221",
+      "bytes": 8383724,
+      "durationSec": 261.92,
+      "loudness": {
+        "integratedLufs": -13.7,
+        "truePeakDb": -0.2,
+        "lra": 8.2
+      },
+      "roles": [
+        "explain"
+      ],
+      "moods": [
+        "Electronic",
+        "Atmospheric",
+        "Meditative",
+        "Technology"
+      ],
+      "energy": 2,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "mk-107",
+      "kind": "music",
+      "title": "Atoms in Peace",
+      "artist": "Alejandro Magaña (A. M.)",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/music/107/107.mp3",
+      "licence": {
+        "id": "mixkit-stock-music-free",
+        "url": "https://mixkit.co/license/#musicFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "e86dde0cc740c75e70aab03cbec4ea67bf3284157e210c20a2a041fe9cb1e228",
+      "bytes": 7259206,
+      "durationSec": 226.85,
+      "loudness": {
+        "integratedLufs": -11.1,
+        "truePeakDb": 0.5,
+        "lra": 4.3
+      },
+      "roles": [
+        "explain",
+        "reel"
+      ],
+      "moods": [
+        "Electronica",
+        "Atmospheric",
+        "Futuristic",
+        "Technology",
+        "City"
+      ],
+      "energy": 3,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "mk-634",
+      "kind": "music",
+      "title": "Your Breath",
+      "artist": "Eugenio Mininni",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/music/634/634.mp3",
+      "licence": {
+        "id": "mixkit-stock-music-free",
+        "url": "https://mixkit.co/license/#musicFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "8b837348a9c5b61f359fa458af832bfe957f3da461039af3ba0ba6c6f467ed0e",
+      "bytes": 7557001,
+      "durationSec": 236.08,
+      "loudness": {
+        "integratedLufs": -9.5,
+        "truePeakDb": 0.4,
+        "lra": 9.4
+      },
+      "roles": [
+        "payoff",
+        "reel"
+      ],
+      "moods": [
+        "Corporate Music",
+        "Electronica",
+        "Positive",
+        "Futuristic",
+        "Technology"
+      ],
+      "energy": 4,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "mk-1023",
+      "kind": "music",
+      "title": "Crying Sea",
+      "artist": "Michael Ramir C.",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/music/1023/1023.mp3",
+      "licence": {
+        "id": "mixkit-stock-music-free",
+        "url": "https://mixkit.co/license/#musicFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "77f8f8e203391312e70deb4175707192226056f343ce16fb57fbc47a99bb4b8e",
+      "bytes": 4472162,
+      "durationSec": 139.68,
+      "loudness": {
+        "integratedLufs": -16.8,
+        "truePeakDb": -3.3,
+        "lra": 3.6
+      },
+      "roles": [
+        "payoff",
+        "outro"
+      ],
+      "moods": [
+        "Chillout",
+        "Corporate Music",
+        "Atmospheric",
+        "Positive",
+        "Motivational"
+      ],
+      "energy": 3,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "mk-543",
+      "kind": "music",
+      "title": "A New Life",
+      "artist": "Eugenio Mininni",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/music/543/543.mp3",
+      "licence": {
+        "id": "mixkit-stock-music-free",
+        "url": "https://mixkit.co/license/#musicFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "bad126a1306f9488914ea240fa0d1f984b89dc988691b1fd0b509e6f33438273",
+      "bytes": 3182640,
+      "durationSec": 99.37,
+      "loudness": {
+        "integratedLufs": -14.8,
+        "truePeakDb": -0.3,
+        "lra": 17.8
+      },
+      "roles": [
+        "payoff",
+        "outro"
+      ],
+      "moods": [
+        "Film Score",
+        "Orchestral Hybrid",
+        "Hopeful",
+        "Reflective",
+        "Cinematic"
+      ],
+      "energy": 3,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "mk-1167",
+      "kind": "music",
+      "title": "Close Up",
+      "artist": "Michael Ramir C.",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/music/1167/1167.mp3",
+      "licence": {
+        "id": "mixkit-stock-music-free",
+        "url": "https://mixkit.co/license/#musicFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "a7f05a29d07a84d38072ccd2b35204bca812db86e75b2a837e71cc144d3e739b",
+      "bytes": 3045294,
+      "durationSec": 95.11,
+      "loudness": {
+        "integratedLufs": -16,
+        "truePeakDb": 0,
+        "lra": 4.1
+      },
+      "roles": [
+        "reel",
+        "payoff"
+      ],
+      "moods": [
+        "Corporate Music",
+        "Rhythmic Underscore",
+        "Positive",
+        "Futuristic",
+        "Technology"
+      ],
+      "energy": 4,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "mk-175",
+      "kind": "music",
+      "title": "Digital Clouds",
+      "artist": "Alejandro Magaña (A. M.)",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/music/175/175.mp3",
+      "licence": {
+        "id": "mixkit-stock-music-free",
+        "url": "https://mixkit.co/license/#musicFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "71cd4ea39edcc7532672bd97311abadfd318d00e7a828310a88b4f57fad9cd48",
+      "bytes": 3232566,
+      "durationSec": 101.02,
+      "loudness": {
+        "integratedLufs": -13.1,
+        "truePeakDb": 0.6,
+        "lra": 3.8
+      },
+      "roles": [
+        "reel"
+      ],
+      "moods": [
+        "Chillout",
+        "Electronic",
+        "Positive",
+        "Futuristic",
+        "Technology"
+      ],
+      "energy": 3,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "mk-148",
+      "kind": "music",
+      "title": "Forest Mist Whispers",
+      "artist": "Alejandro Magaña (A. M.)",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/music/148/148.mp3",
+      "licence": {
+        "id": "mixkit-stock-music-free",
+        "url": "https://mixkit.co/license/#musicFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "30232da0b9521ed35e009162bfe7c63d06c9c8e4ca81ea5137ab63a9dc66cd98",
+      "bytes": 4830022,
+      "durationSec": 150.94,
+      "loudness": {
+        "integratedLufs": -14.8,
+        "truePeakDb": -0.1,
+        "lra": 8.3
+      },
+      "roles": [
+        "outro"
+      ],
+      "moods": [
+        "Ambient",
+        "Hopeful",
+        "Atmospheric",
+        "Piano",
+        "Synth",
+        "Documentary"
+      ],
+      "energy": 1,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "whoosh-soft",
+      "kind": "sfx",
+      "title": "Air woosh",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/1489/1489.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "fdc4f87eb2c6d29ec3567b299fdc3b2aeea2432afe27801db80c496bda084499",
+      "bytes": 614126,
+      "durationSec": 2.32,
+      "loudness": {
+        "integratedLufs": -18,
+        "truePeakDb": -1.5,
+        "lra": 0
+      },
+      "roles": [
+        "transition",
+        "camera-pan"
+      ],
+      "moods": [
+        "Air",
+        "Woosh",
+        "Soft",
+        "Movement"
+      ],
+      "energy": 2,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "whoosh-fast",
+      "kind": "sfx",
+      "title": "Fast whoosh transition",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/1490/1490.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "2f914dcec1276107b888557e2e33043396cff10adad9e7b6f6adf93cc011c08b",
+      "bytes": 309928,
+      "durationSec": 1.76,
+      "loudness": {
+        "integratedLufs": -15.4,
+        "truePeakDb": -2,
+        "lra": 0
+      },
+      "roles": [
+        "transition",
+        "card-swap"
+      ],
+      "moods": [
+        "Fast",
+        "Whoosh",
+        "Transition",
+        "Quick"
+      ],
+      "energy": 3,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "sweep-tech",
+      "kind": "sfx",
+      "title": "Futuristic transition sweep",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/2634/2634.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "c9efa1501d42dbc536929c85af2c0990d3b74833761af5cdced00097aac1e958",
+      "bytes": 618446,
+      "durationSec": 2.34,
+      "loudness": {
+        "integratedLufs": -7.4,
+        "truePeakDb": 0.1,
+        "lra": 0
+      },
+      "roles": [
+        "transition",
+        "scene-change"
+      ],
+      "moods": [
+        "Futuristic",
+        "Sweep",
+        "Technology",
+        "Transition"
+      ],
+      "energy": 3,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "swoosh-chapter",
+      "kind": "sfx",
+      "title": "Cinematic tunnel reverb woosh",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/1486/1486.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "0c5943e1f934e51d6d40f62ce6448f38be1cbaada103fe6e4ce95c82b660733b",
+      "bytes": 1785332,
+      "durationSec": 6.75,
+      "loudness": {
+        "integratedLufs": -13.7,
+        "truePeakDb": -1,
+        "lra": 22.3
+      },
+      "roles": [
+        "transition",
+        "chapter-cut"
+      ],
+      "moods": [
+        "Cinematic",
+        "Tunnel",
+        "Reverb",
+        "Deep",
+        "Atmospheric"
+      ],
+      "energy": 4,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "zoom-in",
+      "kind": "sfx",
+      "title": "User interface zoom in",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/2618/2618.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "9c3abba1a559ee8cf60c6f18fb2e45e7e31a2e573136154f88e56812da3af7cd",
+      "bytes": 173918,
+      "durationSec": 0.66,
+      "loudness": {
+        "integratedLufs": -23.3,
+        "truePeakDb": -13.2,
+        "lra": 0
+      },
+      "roles": [
+        "camera-push",
+        "ui"
+      ],
+      "moods": [
+        "UI",
+        "Zoom",
+        "Interface",
+        "Modern"
+      ],
+      "energy": 2,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "zoom-out",
+      "kind": "sfx",
+      "title": "UI zoom out",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/2619/2619.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "c48552e480b982c6f4bc7db646e5e531c1024992fded0f2749d2b0d03cd2ebb0",
+      "bytes": 304100,
+      "durationSec": 1.15,
+      "loudness": {
+        "integratedLufs": -18.5,
+        "truePeakDb": -11.2,
+        "lra": 0
+      },
+      "roles": [
+        "camera-pull",
+        "ui"
+      ],
+      "moods": [
+        "UI",
+        "Zoom",
+        "Wide",
+        "Payoff"
+      ],
+      "energy": 2,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "riser-short",
+      "kind": "sfx",
+      "title": "Riser sound effect short",
+      "artist": "syntheffects",
+      "source": "freesound",
+      "url": "https://cdn.freesound.org/previews/685/685256_12265588-hq.mp3",
+      "licence": {
+        "id": "cc0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "1a48f213348b8b362844c6ba1f87cf30dc69873e16c8cfb58d9211dc2348f726",
+      "bytes": 69603,
+      "durationSec": 3.05,
+      "loudness": {
+        "integratedLufs": -21.2,
+        "truePeakDb": -10.4,
+        "lra": 20
+      },
+      "roles": [
+        "build",
+        "hook"
+      ],
+      "moods": [
+        "Riser",
+        "Tension",
+        "Build",
+        "Electronic"
+      ],
+      "energy": 3,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "hit-soft",
+      "kind": "sfx",
+      "title": "Deep heartbeat impact",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/498/498.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "6097c4b9350beb3f6af7cc078bc81c0dd28ba381315eca066063a1cf85507db2",
+      "bytes": 612052,
+      "durationSec": 3.47,
+      "loudness": {
+        "integratedLufs": -16.2,
+        "truePeakDb": -0.7,
+        "lra": 8
+      },
+      "roles": [
+        "impact",
+        "payoff"
+      ],
+      "moods": [
+        "Deep",
+        "Impact",
+        "Heartbeat",
+        "Landing"
+      ],
+      "energy": 4,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "reveal-sparkle",
+      "kind": "sfx",
+      "title": "Magic transition sweep presentation",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/2638/2638.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "6d77a7509e4d6b00600a663a28c3a6c8b231886bd3e50f789e6604bc1ff84593",
+      "bytes": 1043924,
+      "durationSec": 3.94,
+      "loudness": {
+        "integratedLufs": -16.4,
+        "truePeakDb": -2.6,
+        "lra": 0.1
+      },
+      "roles": [
+        "reveal",
+        "insight"
+      ],
+      "moods": [
+        "Sweep",
+        "Magic",
+        "Presentation",
+        "Sparkle",
+        "Insight"
+      ],
+      "energy": 3,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "pop-card",
+      "kind": "sfx",
+      "title": "Dry pop up notification alert",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/2356/2356.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "aa1085ba2eb7fb36c59dc75cb8b515e95fa53e87318895774f5655f813ba342e",
+      "bytes": 195282,
+      "durationSec": 0.3,
+      "loudness": {
+        "integratedLufs": -70,
+        "truePeakDb": -4.9,
+        "lra": 0
+      },
+      "roles": [
+        "card-enter",
+        "ui"
+      ],
+      "moods": [
+        "Pop",
+        "Dry",
+        "Notification",
+        "Card"
+      ],
+      "energy": 2,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "ui-select",
+      "kind": "sfx",
+      "title": "Interface option select",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/2573/2573.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "8c66b12ae8d31f6a656d53b23d9eb81bde351be851b49a83677a7520e1a388a1",
+      "bytes": 274068,
+      "durationSec": 1.55,
+      "loudness": {
+        "integratedLufs": -10.7,
+        "truePeakDb": -0.3,
+        "lra": 0
+      },
+      "roles": [
+        "element-enter",
+        "ui"
+      ],
+      "moods": [
+        "Interface",
+        "Select",
+        "Subtle",
+        "Click"
+      ],
+      "energy": 2,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "click",
+      "kind": "sfx",
+      "title": "click_002",
+      "artist": "Kenney",
+      "source": "kenney",
+      "url": "https://kenney.nl/media/pages/assets/interface-sounds/fa43c1dd4d-1677589452/kenney_interface-sounds.zip",
+      "licence": {
+        "id": "cc0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "adcd1f4adc35f1b41bc1b5bbefeff7aa44f2f3f0d96d3199b544140c7c1e761c",
+      "bytes": 4275,
+      "durationSec": 0.01,
+      "loudness": {
+        "integratedLufs": -70,
+        "truePeakDb": -0.8,
+        "lra": 0
+      },
+      "roles": [
+        "highlight",
+        "ui"
+      ],
+      "moods": [
+        "Click",
+        "UI",
+        "Interface",
+        "Clean"
+      ],
+      "energy": 1,
+      "contentIdRisk": "none",
+      "archivePath": "Audio/click_002.ogg"
+    },
+    {
+      "id": "tick",
+      "kind": "sfx",
+      "title": "tick_001",
+      "artist": "Kenney",
+      "source": "kenney",
+      "url": "https://kenney.nl/media/pages/assets/interface-sounds/fa43c1dd4d-1677589452/kenney_interface-sounds.zip",
+      "licence": {
+        "id": "cc0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "9d057b918024c787bbe6c00beed13a7ef72a3fa0c259add3cef36582792f4230",
+      "bytes": 4497,
+      "durationSec": 0.02,
+      "loudness": {
+        "integratedLufs": -70,
+        "truePeakDb": 0.5,
+        "lra": 0
+      },
+      "roles": [
+        "counter-step",
+        "ui"
+      ],
+      "moods": [
+        "Tick",
+        "Counter",
+        "Fast",
+        "Subtle"
+      ],
+      "energy": 1,
+      "contentIdRisk": "none",
+      "archivePath": "Audio/tick_001.ogg"
+    },
+    {
+      "id": "counter-land",
+      "kind": "sfx",
+      "title": "High tech bleep confirmation",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/2520/2520.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "565a2664cbc96c5ca3c0e4161e97a21700b5a59eb62ced8f85f1de0fab2ed6a7",
+      "bytes": 161216,
+      "durationSec": 0.61,
+      "loudness": {
+        "integratedLufs": -12.2,
+        "truePeakDb": -8.2,
+        "lra": 0
+      },
+      "roles": [
+        "counter-finish",
+        "ui"
+      ],
+      "moods": [
+        "Tech",
+        "Bleep",
+        "Confirmation",
+        "Landing"
+      ],
+      "energy": 2,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "confirm",
+      "kind": "sfx",
+      "title": "confirmation_001",
+      "artist": "Kenney",
+      "source": "kenney",
+      "url": "https://kenney.nl/media/pages/assets/interface-sounds/fa43c1dd4d-1677589452/kenney_interface-sounds.zip",
+      "licence": {
+        "id": "cc0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "063564703b6094d70718a3e787a55cc9141611e4ecd6b6637f8828f79b4a8c3a",
+      "bytes": 8968,
+      "durationSec": 0.29,
+      "loudness": {
+        "integratedLufs": -70,
+        "truePeakDb": -0.9,
+        "lra": 0
+      },
+      "roles": [
+        "success",
+        "ui"
+      ],
+      "moods": [
+        "Confirmation",
+        "Success",
+        "Positive"
+      ],
+      "energy": 2,
+      "contentIdRisk": "none",
+      "archivePath": "Audio/confirmation_001.ogg"
+    },
+    {
+      "id": "error",
+      "kind": "sfx",
+      "title": "error_006",
+      "artist": "Kenney",
+      "source": "kenney",
+      "url": "https://kenney.nl/media/pages/assets/interface-sounds/fa43c1dd4d-1677589452/kenney_interface-sounds.zip",
+      "licence": {
+        "id": "cc0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "a97513d7fd2b12b1210c423be943b4c1ab0e899b11db95855e9b74836e646ae0",
+      "bytes": 8288,
+      "durationSec": 0.5,
+      "loudness": {
+        "integratedLufs": -19.8,
+        "truePeakDb": -0.8,
+        "lra": 0
+      },
+      "roles": [
+        "failure",
+        "ui"
+      ],
+      "moods": [
+        "Error",
+        "Warning",
+        "Problem"
+      ],
+      "energy": 3,
+      "contentIdRisk": "none",
+      "archivePath": "Audio/error_006.ogg"
+    },
+    {
+      "id": "glitch-small",
+      "kind": "sfx",
+      "title": "Small sci fi glitch",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/1030/1030.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "674fedd7f88cf0e32269240ce1ed3b3df0433405999c445c5a3c2bf529fd3b28",
+      "bytes": 455714,
+      "durationSec": 1.72,
+      "loudness": {
+        "integratedLufs": -20.3,
+        "truePeakDb": -2.8,
+        "lra": 0
+      },
+      "roles": [
+        "glitch",
+        "bug"
+      ],
+      "moods": [
+        "Glitch",
+        "Sci-Fi",
+        "Noise",
+        "Corruption"
+      ],
+      "energy": 3,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "typing",
+      "kind": "sfx",
+      "title": "Soft typing on a digital keyboard",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/1396/1396.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "4cee888a77521cccc275077e1ab1d813a14ffad487b448fbc754d6f3b365e7da",
+      "bytes": 4623956,
+      "durationSec": 26.21,
+      "loudness": {
+        "integratedLufs": -29.1,
+        "truePeakDb": -10.2,
+        "lra": 3.3
+      },
+      "roles": [
+        "typing",
+        "codeblock"
+      ],
+      "moods": [
+        "Typing",
+        "Keyboard",
+        "Digital",
+        "Code"
+      ],
+      "energy": 1,
+      "contentIdRisk": "low"
+    },
+    {
+      "id": "card-arrive",
+      "kind": "sfx",
+      "title": "Software interface start",
+      "artist": "Mixkit",
+      "source": "mixkit",
+      "url": "https://assets.mixkit.co/active_storage/sfx/2574/2574.wav",
+      "licence": {
+        "id": "mixkit-sound-effects-free",
+        "url": "https://mixkit.co/license/#sfxFree",
+        "attribution": null,
+        "checkedAt": "2026-10-25"
+      },
+      "sha256": "7323c6ced9605a9b8a406cd088550d06d1a39dc8d37c9abfe52b536482468ad5",
+      "bytes": 414076,
+      "durationSec": 2.35,
+      "loudness": {
+        "integratedLufs": -18.9,
+        "truePeakDb": -1,
+        "lra": 0
+      },
+      "roles": [
+        "arrival",
+        "endcard"
+      ],
+      "moods": [
+        "Interface",
+        "Start",
+        "Chime",
+        "Arrival"
+      ],
+      "energy": 3,
+      "contentIdRisk": "low"
+    }
+  ]
+}

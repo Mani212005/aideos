@@ -46,14 +46,21 @@ public/gpu_robot_arm/
 # props panel: see CLAUDE.md.
 public/*.mp3
 public/*.wav
+public/*.ogg
 public/*.m4a
 public/*.mp4
 public/*.mov
 *.wav
 *.mp3
+*.ogg
 *.m4a
 *.mp4
 *.mov
+
+# Shared audio library cache next to personal videos
+/videos/.audio-library/
+/videos/.audio-cache/
+/videos/audio-cache/
 
 # Transitions directory
 public/transitions/
