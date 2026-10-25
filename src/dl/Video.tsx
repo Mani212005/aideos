@@ -6,8 +6,8 @@
 
 import React, { useMemo } from "react";
 import { FilmView } from "./Film";
-import { Soundtrack, voiceLevel } from "./Soundtrack";
-import { FILM, TIMELINE, type FilmProps } from "./runtime";
+import { Soundtrack, voiceLevel as soundtrackVoiceLevel } from "./Soundtrack";
+import { FILM, TIMELINE, TOTAL_FRAMES, type FilmProps } from "./runtime";
 import { captionWordsForFilm } from "./captionsParser";
 import type { Film } from "./schema";
 import type { TimedShot } from "./camera";
@@ -23,7 +23,9 @@ export type VideoProps = FilmProps & {
   timeline?: TimedShot[];
 };
 
-export { voiceLevel };
+// Calculates narration volume using the active film length when no total is supplied.
+export const voiceLevel = (frame: number, level: number, total: number = TOTAL_FRAMES) =>
+  soundtrackVoiceLevel(frame, level, total);
 
 // Renders the combined video composition with layered audio tracks, sound effects, and subtitles.
 export const Video: React.FC<VideoProps> = ({
