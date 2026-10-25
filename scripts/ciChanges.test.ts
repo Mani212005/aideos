@@ -14,8 +14,11 @@ import {
   computeRisk,
   formatJobSummary,
   groupFilesByArea,
+  isDocFile,
   isJourneysSkippable,
   isLegacySkippable,
+  isStageFile,
+  isWorkflowFile,
   run,
 } from "./ciChanges.mjs";
 
@@ -29,6 +32,17 @@ test("isJourneysSkippable and isLegacySkippable check specific file types", () =
   assert.equal(isLegacySkippable("editor/src/App.tsx"), true);
   assert.equal(isLegacySkippable("src/dl/Film.tsx"), false);
   assert.equal(isLegacySkippable("backend/journeys/legacy.golden.ts"), false);
+
+  assert.equal(isStageFile("src/dl/scene/compile.ts"), true);
+  assert.equal(isStageFile("backend/stillTalking/scene.ts"), true);
+  assert.equal(isStageFile("src/dl/Film.tsx"), false);
+
+  assert.equal(isWorkflowFile(".github/dependabot.yml"), true);
+  assert.equal(isWorkflowFile("package.json"), false);
+
+  assert.equal(isDocFile("docs/images/diagram.png"), true);
+  assert.equal(isDocFile("LICENSE-MIT"), true);
+  assert.equal(isDocFile("src/dl/Film.tsx"), false);
 });
 
 test("docs-only skips journeys and legacy", () => {
@@ -251,8 +265,11 @@ test("run takes fail-safe path when BASE_SHA or HEAD_SHA is missing even if bran
 test("computeRisk rates High for render, stage, golden, workflows, dependencies, security, and large PRs", () => {
   assert.equal(computeRisk({ event: "pull_request", files: ["backend/pipeline/render.ts"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: ["src/dl/scene/ThreeStage.tsx"] }).risk, "High");
+  assert.equal(computeRisk({ event: "pull_request", files: ["src/dl/scene/compile.ts"] }).risk, "High");
+  assert.equal(computeRisk({ event: "pull_request", files: ["backend/stillTalking/scene.ts"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: ["backend/journeys/legacy.golden.ts"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: [".github/workflows/ci.yml"] }).risk, "High");
+  assert.equal(computeRisk({ event: "pull_request", files: [".github/dependabot.yml"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: ["package.json"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: ["editor/package-lock.json"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: ["editor/vite.config.ts"] }).risk, "High");
@@ -266,7 +283,14 @@ test("computeRisk rates High for render, stage, golden, workflows, dependencies,
 test("computeRisk rates Low for docs-only PRs and Medium otherwise", () => {
   const docsResult = computeRisk({
     event: "pull_request",
-    files: ["docs/CI.md", "README.md", "LICENSE", ".agents/skills/all-check/SKILL.md"],
+    files: [
+      "docs/CI.md",
+      "README.md",
+      "LICENSE",
+      "LICENSE-MIT",
+      "docs/images/diagram.png",
+      ".agents/skills/all-check/SKILL.md",
+    ],
   });
   assert.equal(docsResult.risk, "Low");
   assert.ok(docsResult.reasons.some((r: string) => r.includes("documentation")));

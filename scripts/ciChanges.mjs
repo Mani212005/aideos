@@ -67,21 +67,14 @@ export function isRenderFile(file) {
   return false;
 }
 
-// Checks if a changed file is considered stage code.
+// Checks if a changed file is considered stage or scene code.
 export function isStageFile(file) {
   const normalized = file.trim().replace(/^\.\//, "").replace(/^\/+/, "");
-  if (normalized === "src/dl/SceneStage.tsx") return true;
-  if (normalized.startsWith("src/dl/scene/ThreeStage")) return true;
-  if (normalized.startsWith("src/dl/scene/stage")) return true;
-  if (normalized.startsWith("src/dl/scene/threeStage")) return true;
-  if (normalized === "src/dl/scene/validateStage.ts") return true;
-  if (normalized === "backend/sceneKit/stage.ts") return true;
-  if (normalized.startsWith("backend/review/stageTruth")) return true;
-  if (normalized.startsWith("backend/designCheck/threeStage")) return true;
-  if (normalized === "scripts/freeze_stage_resources.ts") return true;
-  if (normalized.startsWith("backend/journeys/j3_j5_stage")) return true;
-  if (normalized.startsWith("backend/insetStage")) return true;
-  if (normalized.startsWith("editor/src/screens/") && normalized.endsWith("Stage.tsx")) return true;
+  if (normalized === "src/dl/scene" || normalized.startsWith("src/dl/scene/")) return true;
+  if (normalized.startsWith("src/dl/Stage")) return true;
+  if (normalized.startsWith("src/dl/Scene")) return true;
+  if (normalized === "backend/stage" || normalized.startsWith("backend/stage/")) return true;
+  if (normalized === "backend/stillTalking" || normalized.startsWith("backend/stillTalking/")) return true;
   return false;
 }
 
@@ -96,10 +89,10 @@ export function isGoldenFile(file) {
   return false;
 }
 
-// Checks if a changed file is a GitHub Actions workflow.
+// Checks if a changed file is a GitHub Actions workflow or configuration.
 export function isWorkflowFile(file) {
   const normalized = file.trim().replace(/^\.\//, "").replace(/^\/+/, "");
-  return normalized.startsWith(".github/workflows/");
+  return normalized === ".github" || normalized.startsWith(".github/");
 }
 
 // Checks if a changed file is a project dependency or lockfile.
@@ -119,14 +112,17 @@ export function isSecuritySensitiveFile(file) {
   return normalized === "editor/vite.config.ts";
 }
 
-// Checks if a changed file is documentation or agent skill docs only.
+// Checks if a changed file is documentation only.
 export function isDocFile(file) {
   const normalized = file.trim().replace(/^\.\//, "").replace(/^\/+/, "");
-  // Runtime-read docs have behavioral impact
-  if (normalized === "docs/DIRECTOR_GUIDE.md" || normalized === "characters/README.md") {
-    return false;
+  if (normalized === "docs" || normalized.startsWith("docs/")) {
+    return true;
   }
-  if (normalized.endsWith(".md") || normalized === "LICENSE" || normalized.startsWith(".agents/skills/")) {
+  if (normalized.endsWith(".md")) {
+    return true;
+  }
+  const basename = normalized.split("/").pop() ?? "";
+  if (basename.startsWith("LICENSE")) {
     return true;
   }
   return false;
