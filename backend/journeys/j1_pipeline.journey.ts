@@ -35,7 +35,7 @@ journey("J1 script to wide and reel mp4s through the real pipeline, with no mode
   assert.equal(result.status, "completed", JSON.stringify(result.warnings));
   assert.deepEqual(
     result.stages.map((s) => `${s.stage}:${s.status}`),
-    ["intake", "narrate", "look", "design", "broll", "assemble", "render", "verify"].map((s) => `${s}:done`),
+    ["intake", "narrate", "look", "design", "reel", "broll", "assemble", "render", "verify"].map((s) => `${s}:done`),
   );
   assert.equal(result.ttsBackend, "tone");
   assert.deepEqual(result.warnings, [], "a clean run must not warn");
