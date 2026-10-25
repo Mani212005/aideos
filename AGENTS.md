@@ -4,7 +4,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 
 # Agent Guidelines & Coding Standards
 
-Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos review <slug>` and attach `review.json` to your handoff.
+Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos review <slug>` and attach the generated per-format review reports to your handoff.
 
 ## Making a video: look first
 

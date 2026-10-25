@@ -32,8 +32,9 @@ when the long cut already fits).
    every shot re-frames itself.
 2. **Order defines stagger.** A block's index among its siblings is its only
    timing input. No block declares its own delay.
-3. **Format only scales.** Both compositions solve their framing from the same
-   canvas and the same shot list. There is no per-format authoring anywhere.
+3. **Format solves framing.** Both compositions solve their framing from the
+   same canvas. The reel uses a derived shorter shot list when shots are dropped;
+   its shared scene artwork and camera targets are compiled against that cut.
 
 Shot start times are *derived* from durations, so a scene cannot start before
 the previous one ends - that failure mode is unrepresentable rather than
