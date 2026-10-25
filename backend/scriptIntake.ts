@@ -5,7 +5,7 @@
  * into canonical markdown, into strictly-spoken narration text, and into Remotion sub-shots with on-screen
  * TextReveal overlays. Contains no Node-only imports so it can be bundled for the browser as-is.
  * Inputs and outputs: raw script text or structured ScriptData -> bidirectional parsed segments, beats, and formatted screenplay.
- * Used by: backend/pipeline/run.ts, backend/pipeline/director.ts, editor/src/components/ScriptEditor.tsx.
+ * Used by: backend/pipeline/run.ts, backend/pipeline/director.ts, backend/audio.ts, editor/src/components/ScriptEditor.tsx.
  */
 
 import {
@@ -491,6 +491,51 @@ export function extractSpokenBlocks(raw: string): string[] {
   }
 
   return legacyExtractSpokenBlocks(raw);
+}
+
+/** Identifies which spoken narration beats mark the beginning of a new chapter in a Claude screenplay. */
+export function detectChapterStartsFromScript(raw: string): boolean[] {
+  const trimmed = (raw || "").trim();
+  if (!trimmed || !hasScreenplayTags(trimmed)) {
+    return [];
+  }
+  const sections = parseClaudeScript(trimmed);
+  const beats: Array<{ sectionIndex: number; text: string }> = [];
+  sections.forEach((section, sectionIndex) => {
+    for (const beat of section.beats) {
+      if (beat.type === "narration" && beat.text.trim()) {
+        beats.push({ sectionIndex, text: beat.text.trim() });
+      }
+    }
+  });
+
+  if (beats.length === 0) {
+    return [];
+  }
+
+  const MAX_CHAPTERS = 12;
+  const usedSections = [...new Set(beats.map((b) => b.sectionIndex))].sort((a, b) => a - b);
+  if (usedSections.length <= 1) {
+    return new Array(beats.length).fill(false);
+  }
+
+  const chapterIndexBySection = new Map<number, number>();
+  if (usedSections.length <= MAX_CHAPTERS) {
+    usedSections.forEach((sIdx, i) => chapterIndexBySection.set(sIdx, i));
+  } else {
+    usedSections.forEach((sIdx, i) => {
+      const cIdx = Math.min(MAX_CHAPTERS - 1, Math.floor((i * MAX_CHAPTERS) / usedSections.length));
+      chapterIndexBySection.set(sIdx, cIdx);
+    });
+  }
+
+  let lastChapterIdx = -1;
+  return beats.map((b, i) => {
+    const chapterIdx = chapterIndexBySection.get(b.sectionIndex) ?? 0;
+    const isStart = i === 0 || chapterIdx !== lastChapterIdx;
+    lastChapterIdx = chapterIdx;
+    return isStart;
+  });
 }
 
 /** Groups a segment's ordered beats into narration-anchored micro-shots (sub-shot splitting). */

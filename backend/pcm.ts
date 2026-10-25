@@ -100,6 +100,10 @@ export interface AssembleOptions {
   sampleRate: number;
   /** Silence inserted between two segments (two different shots). */
   segmentGapMs: number;
+  /** Silence inserted before a segment that opens a new chapter (decision D4). */
+  chapterGapMs?: number;
+  /** Boolean flags or predicate indicating which segments open a new chapter. */
+  isChapterStart?: boolean[] | ((segIdx: number) => boolean);
   /** Silence inserted between chunks that belong to the same segment. */
   chunkGapMs: number;
   /** Length of the ramp applied to each chunk's head and tail. */
@@ -108,9 +112,16 @@ export interface AssembleOptions {
   silenceThreshold: number;
 }
 
+// Decision D4: narration breath at chapter cuts so music changes can land in a pause instead of under speech.
+export const CHAPTER_BREATH_GAP_MS = 900;
+
+// Decision D4: narration breath at chapter cuts so music changes can land in a pause instead of under speech.
+export const CHAPTER_SEGMENT_GAP_MS = CHAPTER_BREATH_GAP_MS;
+
 /** The defaults the production pipeline runs with. */
 export const DEFAULT_ASSEMBLE_OPTIONS: Omit<AssembleOptions, "sampleRate"> = {
   segmentGapMs: 200,
+  chapterGapMs: CHAPTER_BREATH_GAP_MS,
   chunkGapMs: 110,
   fadeMs: 6,
   silenceThreshold: 0.005,
@@ -127,9 +138,17 @@ export function assembleSegments(
   segmentChunks: PcmChunk[][],
   options: AssembleOptions,
 ): AssembledAudio {
-  const { sampleRate, segmentGapMs, chunkGapMs, fadeMs, silenceThreshold } = options;
-  const segmentGap = Math.round((segmentGapMs / 1000) * sampleRate);
+  const { sampleRate, segmentGapMs, chapterGapMs, isChapterStart, chunkGapMs, fadeMs, silenceThreshold } = options;
+  const standardGap = Math.round((segmentGapMs / 1000) * sampleRate);
+  const chapterGap = Math.round(((chapterGapMs ?? segmentGapMs) / 1000) * sampleRate);
   const chunkGap = Math.round((chunkGapMs / 1000) * sampleRate);
+
+  const getGapForSegment = (segIdx: number): number => {
+    if (segIdx <= 0) return 0;
+    if (!isChapterStart) return standardGap;
+    const isChapter = typeof isChapterStart === "function" ? isChapterStart(segIdx) : Boolean(isChapterStart[segIdx]);
+    return isChapter ? chapterGap : standardGap;
+  };
 
   const prepared: Float32Array[][] = segmentChunks.map((chunks) =>
     chunks
@@ -139,7 +158,7 @@ export function assembleSegments(
 
   let total = 0;
   prepared.forEach((chunks, segIdx) => {
-    if (segIdx > 0) total += segmentGap;
+    if (segIdx > 0) total += getGapForSegment(segIdx);
     chunks.forEach((buf, chunkIdx) => {
       if (chunkIdx > 0) total += chunkGap;
       total += buf.length;
@@ -151,7 +170,7 @@ export function assembleSegments(
   let cursor = 0;
 
   prepared.forEach((chunks, segIdx) => {
-    if (segIdx > 0) cursor += segmentGap;
+    if (segIdx > 0) cursor += getGapForSegment(segIdx);
     const startSample = cursor;
     chunks.forEach((buf, chunkIdx) => {
       if (chunkIdx > 0) cursor += chunkGap;
