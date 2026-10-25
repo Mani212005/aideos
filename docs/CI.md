@@ -23,12 +23,13 @@ GitHub job summary), so one run reports every problem.
 
 | Job | Steps | Runs |
 | --- | --- | --- |
+| `changes` | `scripts/ciChanges.mjs`: lists changed files grouped by area, computes shadow mode decisions and reasons for journeys and legacy | every PR and push to main |
 | `static` | file headers, every test file is wired, eslint (src, backend, scripts, editor), `tsc` root, oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
 | `unit` | `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
 | `journeys` | `npm run test:journeys` (real pipeline and real renders, including browser journeys for AI edit apply and new-project script save; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
 | `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; compares committed Linux baselines | every PR and push to main, Linux only |
 | `nightly` | `scripts/nightly_budget.ts`: the whole Iona film, wide and reel, with budgets on wall time, peak memory, peak temp disk and bundle size | 03:17 UTC and on demand, never on a PR |
-| `all-green` | fails unless the four jobs above succeeded | the one check to require |
+| `all-green` | fails unless all five jobs above succeeded | the one check to require |
 
 Reviewers that need a login (agy, Gemini, the all-check loop) are not part of CI. Their gate is
 the measured `aideos review` and the Gemini round described in [REVIEW.md](REVIEW.md), run by the
@@ -51,6 +52,28 @@ a journey case for each bug the captain or a user reported), and the captain's e
   silently passed) when none exists. CI always runs it.
 * Failing frames, reports and studio screenshots land under `.ci-artifacts/`. The journeys artifact
   uploads on failure; legacy evidence and the nightly budget report upload on every run.
+
+## Changed files (shadow mode)
+
+The first job in `.github/workflows/ci.yml` is `changes`. It runs `scripts/ciChanges.mjs` (a dependency-free
+script) to inspect pull request changes using `git diff --name-only --no-renames "$BASE_SHA...$HEAD_SHA"`.
+
+* **Area-grouped summary**: Changed files are grouped by area (backend, editor, src, docs, scripts,
+  .github, root) with file counts and path lists published to the GitHub Actions job summary.
+* **Shadow mode decisions**: Classifies which test suites (`journeys`, `legacy`) would be required based
+  on dependency closures. In shadow mode, these decisions are logged in the summary as "would run" or
+  "would skip", but all jobs run regardless. No job is skipped in shadow mode.
+* **Fail-safe defaults**: Any condition other than a clean pull request (pushes to main, manual dispatch,
+  git diff errors, empty diffs, or diffs over 300 files) defaults to running all jobs.
+
+## Runner hardening and red-main alert
+
+* **APT retry with timeouts**: Every `apt-get` step in `ci.yml` wraps `update` and `install` in a 3-attempt
+  retry loop with a 300-second per-command timeout, 15-second sleep between retries, and `-o Acquire::Retries=3`.
+  Each apt step is bounded by its own `timeout-minutes: 10` to prevent runner hangs from exhausting job limits.
+* **Red-main alert**: `.github/workflows/main-red-alert.yml` runs on `workflow_run` when the CI workflow
+  completes on the main branch with failure, timed_out, or cancelled conclusions. It opens or updates a single
+  GitHub issue (`CI: main branch failure`) naming the failing run URL and commit SHA, preventing unnoticed red builds.
 
 Rendering tests rewrite the generated `src/dl/activeFilm.ts`, so they run sequentially
 (`--test-concurrency=1`) and every harness restores the file afterwards. Check disk first: the

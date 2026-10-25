@@ -70,6 +70,7 @@ scripts/*.py
 scripts/*.mjs
 # The agent connector is served to users at /api/agent-link/connect.mjs, so it must ship.
 !scripts/aideos-connect.mjs
+!scripts/ciChanges.mjs
 
 # Local Agent Director session and dispatch state backend/agentBridge/dispatcher.ts and
 # bin/aideos write to the repo root: which coding agent/tmux pane is connected, and the log

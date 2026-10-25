@@ -25,6 +25,7 @@ interface WorkflowStep {
   with?: Record<string, unknown>;
   env?: Record<string, string>;
   "continue-on-error"?: boolean;
+  "timeout-minutes"?: number;
 }
 
 interface WorkflowJob {
@@ -32,6 +33,10 @@ interface WorkflowJob {
   "runs-on"?: string;
   permissions?: unknown;
   "continue-on-error"?: boolean;
+  "timeout-minutes"?: number;
+  if?: string;
+  needs?: string[] | string;
+  outputs?: Record<string, string>;
   steps?: WorkflowStep[];
 }
 
@@ -154,6 +159,97 @@ test("golden updates run only from default-branch dispatch and keep write access
           assert.doesNotMatch(checkoutRef, /github\.event\.pull_request\.(?:head|head\.ref)/, `${file} job ${jobKey} checks out a PR head with write access`);
           assert.doesNotMatch(String(doc.env?.BRANCH ?? ""), /github\.event\.pull_request\.head\.ref/, `${file} job ${jobKey} resolves checkout through a PR head branch`);
         }
+      }
+    }
+  }
+});
+
+test("ci.yml changes job is pinned by full SHA, has no if condition, and all-green requires changes", () => {
+  const ci = YAML.parse(fs.readFileSync(path.join(workflowDir, "ci.yml"), "utf8")) as WorkflowDocument;
+  const changes = ci.jobs?.changes;
+  assert.ok(changes, "ci.yml must have a changes job");
+  assert.equal(changes.if, undefined, "changes job must have no if: condition");
+  assert.equal(changes["timeout-minutes"], 5, "changes job must have timeout-minutes: 5");
+  assert.equal(changes["runs-on"], "ubuntu-24.04", "changes job must pin ubuntu-24.04");
+
+  const checkoutStep = changes.steps?.find((s) => s.uses?.startsWith("actions/checkout@"));
+  assert.ok(checkoutStep, "changes job must have an actions/checkout step");
+  assert.match(
+    checkoutStep.uses!,
+    /^actions\/checkout@[0-9a-f]{40}/,
+    "actions/checkout in changes job must be pinned by full commit SHA",
+  );
+  assert.equal(checkoutStep.with?.["fetch-depth"], 0, "changes checkout must specify fetch-depth: 0");
+
+  const allGreen = ci.jobs?.["all-green"];
+  assert.ok(allGreen, "ci.yml must have an all-green job");
+  assert.equal(allGreen.if, "always()", "all-green must have if: always()");
+  assert.deepEqual(
+    allGreen.needs,
+    ["changes", "static", "unit", "journeys", "legacy"],
+    "all-green must need changes, static, unit, journeys, and legacy",
+  );
+  const requireStep = allGreen.steps?.find((s) => s.name === "Require every job to have passed");
+  assert.ok(requireStep?.run, "all-green must have step to require every job");
+  assert.match(
+    requireStep.run,
+    /test "\$\{RESULTS\}" = "success success success success success"/,
+    "all-green must require all five jobs to succeed",
+  );
+});
+
+test("ci.yml wraps every apt-get update and install in a retry loop with timeouts", () => {
+  const ci = YAML.parse(fs.readFileSync(path.join(workflowDir, "ci.yml"), "utf8")) as WorkflowDocument;
+  const aptSteps: { job: string; step: WorkflowStep }[] = [];
+  for (const [jobKey, job] of Object.entries(ci.jobs ?? {})) {
+    for (const step of job.steps ?? []) {
+      if (step.run?.includes("apt-get")) {
+        aptSteps.push({ job: jobKey, step });
+      }
+    }
+  }
+
+  assert.ok(aptSteps.length >= 3, "expected at least 3 apt-get steps in ci.yml (unit, journeys, legacy)");
+  for (const { job, step } of aptSteps) {
+    assert.ok(step["timeout-minutes"], `${job} step "${step.name}" must have its own timeout-minutes`);
+    assert.ok(step["timeout-minutes"] <= 10, `${job} step "${step.name}" timeout-minutes should be at most 10`);
+    assert.match(step.run!, /for\s+\w+\s+in\s+1\s+2\s+3/, `${job} step "${step.name}" must have 3 retry attempts`);
+    assert.match(step.run!, /timeout\s+300\s+sudo\s+apt-get/, `${job} step "${step.name}" must use timeout 300 per apt command`);
+    assert.match(step.run!, /Acquire::Retries=3/, `${job} step "${step.name}" must pass -o Acquire::Retries=3`);
+    assert.match(step.run!, /sleep\s+15/, `${job} step "${step.name}" must sleep 15 between attempts`);
+  }
+});
+
+test("main-red-alert workflow satisfies least privilege, triggers only on workflow_run, has no secrets, and uses no third-party actions", () => {
+  const alertPath = path.join(workflowDir, "main-red-alert.yml");
+  assert.ok(fs.existsSync(alertPath), "main-red-alert.yml must exist under .github/workflows");
+  const raw = fs.readFileSync(alertPath, "utf8");
+  assert.doesNotMatch(raw, /secrets\./, "main-red-alert.yml must not reference any secrets");
+
+  const doc = YAML.parse(raw) as WorkflowDocument;
+  const triggers = Object.keys(doc.on ?? {});
+  assert.deepEqual(triggers, ["workflow_run"], "main-red-alert.yml must only trigger on workflow_run");
+
+  const workflowRun = (doc.on as Record<string, unknown>).workflow_run as {
+    workflows?: string[];
+    branches?: string[];
+    types?: string[];
+  };
+  assert.deepEqual(workflowRun.workflows, ["CI"], "main-red-alert.yml must monitor CI workflow");
+  assert.deepEqual(workflowRun.branches, ["main"], "main-red-alert.yml must monitor main branch only");
+  assert.deepEqual(workflowRun.types, ["completed"], "main-red-alert.yml must trigger on completed runs only");
+
+  assert.deepEqual(
+    doc.permissions,
+    { contents: "read", issues: "write" },
+    "main-red-alert.yml must declare minimal permissions (contents: read, issues: write)",
+  );
+
+  for (const [jobKey, job] of Object.entries(doc.jobs ?? {})) {
+    assert.equal(job["runs-on"], "ubuntu-24.04", `${jobKey} must pin ubuntu-24.04`);
+    for (const step of job.steps ?? []) {
+      if (step.uses) {
+        assert.match(step.uses, /^actions\//, `${jobKey} step "${step.name}" must not use third-party actions`);
       }
     }
   }

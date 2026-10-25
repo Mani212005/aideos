@@ -1,5 +1,5 @@
-# File Description: Pull request and main CI. Four parallel jobs (static, unit, journeys, legacy) each run one `npm run ci -- <job>`, so the commands live in scripts/ci.ts and run identically on a laptop; a final all-green job gives branch protection a single check to require.
-# Inputs and outputs: pull requests, pushes to main, manual runs -> job results, a timing table in each job summary, failing frames and reports as artifacts.
+# File Description: Pull request and main CI. A first changes job classifies changed files in shadow mode, four parallel jobs (static, unit, journeys, legacy) each run one `npm run ci -- <job>`, and a final all-green job gives branch protection a single check to require.
+# Inputs and outputs: pull requests, pushes to main, manual runs -> changed files analysis, job results, a timing table in each job summary, failing frames and reports as artifacts.
 # Used by: GitHub Actions. Documented in docs/CI.md.
 name: CI
 
@@ -24,6 +24,28 @@ env:
   RUFF_VERSION: "0.17.0"
 
 jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      journeys: ${{ steps.classify.outputs.journeys }}
+      legacy: ${{ steps.classify.outputs.legacy }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: 22
+      - name: Classify changed files
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/ciChanges.mjs
+
   static:
     name: static
     runs-on: ubuntu-24.04
@@ -58,7 +80,20 @@ jobs:
             package-lock.json
             editor/package-lock.json
       - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+        timeout-minutes: 10
+        run: |
+          for attempt in 1 2 3; do
+            if timeout 300 sudo apt-get -o Acquire::Retries=3 update && \
+               timeout 300 sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "apt install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "apt attempt $attempt failed; sleeping 15s before retry"
+            sleep 15
+          done
       - name: Install dependencies
         run: npm ci
       - name: Unit and feature tests
@@ -78,9 +113,20 @@ jobs:
             package-lock.json
             editor/package-lock.json
       - name: Install ffmpeg and browser libraries
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg libnss3 libdbus-1-3 libatk1.0-0 libgbm-dev libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2
+          for attempt in 1 2 3; do
+            if timeout 300 sudo apt-get -o Acquire::Retries=3 update && \
+               timeout 300 sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg libnss3 libdbus-1-3 libatk1.0-0 libgbm-dev libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "apt install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "apt attempt $attempt failed; sleeping 15s before retry"
+            sleep 15
+          done
       - name: Install dependencies
         run: npm ci
       - name: Restore the Remotion browser
@@ -117,9 +163,20 @@ jobs:
             package-lock.json
             editor/package-lock.json
       - name: Install ffmpeg and browser libraries
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg libnss3 libdbus-1-3 libatk1.0-0 libgbm-dev libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2
+          for attempt in 1 2 3; do
+            if timeout 300 sudo apt-get -o Acquire::Retries=3 update && \
+               timeout 300 sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg libnss3 libdbus-1-3 libatk1.0-0 libgbm-dev libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "apt install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "apt attempt $attempt failed; sleeping 15s before retry"
+            sleep 15
+          done
       - name: Install dependencies
         run: npm ci
       - name: Restore the Remotion browser
@@ -146,13 +203,13 @@ jobs:
   all-green:
     name: all-green
     if: always()
-    needs: [static, unit, journeys, legacy]
+    needs: [changes, static, unit, journeys, legacy]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require every job to have passed
         env:
-          RESULTS: ${{ needs.static.result }} ${{ needs.unit.result }} ${{ needs.journeys.result }} ${{ needs.legacy.result }}
+          RESULTS: ${{ needs.changes.result }} ${{ needs.static.result }} ${{ needs.unit.result }} ${{ needs.journeys.result }} ${{ needs.legacy.result }}
         run: |
-          echo "static unit journeys legacy: ${RESULTS}"
-          test "${RESULTS}" = "success success success success"
+          echo "changes static unit journeys legacy: ${RESULTS}"
+          test "${RESULTS}" = "success success success success success"
