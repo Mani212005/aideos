@@ -50,7 +50,7 @@ function treeRssMB(): number {
   return total / 1024;
 }
 
-/** Bytes currently held by Remotion's temp render folders across standard temporary directories. */
+/** Bytes currently held by Remotion and aideos render temp folders across standard temporary directories. */
 function tempBytes(): number {
   const prefixes = ["remotion-", "react-motion-render", "aideos-render-"];
   const dirs = [os.tmpdir(), "/tmp"].filter((d, i, arr) => arr.indexOf(d) === i && fs.existsSync(d));
