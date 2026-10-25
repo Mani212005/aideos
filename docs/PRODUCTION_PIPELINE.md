@@ -139,7 +139,12 @@ for the details; the plan is always model-driven, so there is no canned screenpl
 and returns the exact timing spine the film is built from. Trimming, boundary fades, gap insertion
 and peak normalization all happen on samples rather than on encoded files, so the reported segment
 offsets are exact and nothing is stitched across a sample-rate or channel-layout mismatch. The
-assembled audio is then normalized to -16 integrated LUFS with -1 dB true-peak headroom via FFmpeg
+default pause is 200 ms between narration segments and 900 ms before a segment that opens a new
+chapter. For tagged screenplays, chapter boundaries are inferred from narration-bearing sections;
+scene-film voiceover beats can provide chapter names explicitly. Both pause lengths and explicit
+chapter-start flags can be overridden through the audio options. The longer chapter breath gives
+later music changes room to land between spoken lines. The assembled audio is then normalized to
+-16 integrated LUFS with -1 dB true-peak headroom via FFmpeg
 loudnorm to satisfy the review loudness standard without changing its duration. See
 `backend/pcm.ts` for the sample-domain helpers and `backend/voiceover_stutter.test.ts` for the
 defect classes that are held closed by regression tests.
