@@ -215,8 +215,8 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
     film.soundtrack.sections.forEach((sec, idx) => {
       const sectionClipId = `clip-music-section-${idx}`;
       if (!film.audioClips?.some((ac) => ac.id === sectionClipId)) {
-        const fromSec = sec.from ?? sec.fromSec ?? 0;
-        const toSec = sec.to ?? sec.toSec ?? fromSec;
+        const fromSec = sec.from;
+        const toSec = sec.to;
         const offsetSec = sec.offsetSec ?? 0;
         clips.push({
           id: sectionClipId,
@@ -628,18 +628,19 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
   const soundtrack: Soundtrack | undefined = base?.soundtrack
     ? {
         ...base.soundtrack,
-        sections: musicClips.map((c, idx) => {
+        sections: musicClips.filter(isSoundtrackSectionClip).map((c) => {
           const p = c.payload as AudioPayload | undefined;
           const dur = c.end - c.start;
-          const origSec = base.soundtrack?.sections[idx];
+          const itemIdentity = p?.itemId || p?.src || c.id;
+          const origSec = base.soundtrack?.sections.find(
+            (section) => section.item === itemIdentity || section.src === itemIdentity,
+          );
           return {
             role: p?.role || origSec?.role || "explain",
-            item: p?.itemId || origSec?.item || p?.src || c.id,
+            item: itemIdentity,
             sha256: origSec?.sha256,
             from: c.position,
             to: c.position + dur,
-            fromSec: c.position,
-            toSec: c.position + dur,
             offsetSec: c.start,
             crossfadeSec: p?.crossfadeSec ?? origSec?.crossfadeSec ?? 0,
             src: p?.src,
@@ -647,11 +648,14 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
             duckUnderVoiceover: p?.duckUnderVoiceover ?? origSec?.duckUnderVoiceover ?? true,
           };
         }),
-        sfx: sfxClips.map((c, idx) => {
+        sfx: sfxClips.filter(isSoundtrackSfxClip).map((c) => {
           const p = c.payload as AudioPayload | undefined;
-          const origSfx = base.soundtrack?.sfx[idx];
+          const itemIdentity = p?.itemId || p?.src || c.id;
+          const origSfx = base.soundtrack?.sfx.find(
+            (effect) => effect.item === itemIdentity || effect.src === itemIdentity,
+          );
           return {
-            item: p?.itemId || origSfx?.item || p?.src || c.id,
+            item: itemIdentity,
             sha256: origSfx?.sha256,
             timeSec: c.position,
             gainDb: p?.gainDb ?? origSfx?.gainDb ?? 0,
