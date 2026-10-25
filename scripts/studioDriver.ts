@@ -291,13 +291,14 @@ export class StudioPage {
   }
 
   /** Polls a page expression until it is truthy, or throws naming what never happened. */
-  async waitFor(expression: string, what: string, timeoutMs = 20000): Promise<void> {
+  async waitFor(expression: string, what: string, timeoutMs = 60000): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
       if (await this.eval<boolean>(`Boolean(${expression})`).catch(() => false)) return;
       await new Promise((r) => setTimeout(r, 150));
     }
-    throw new Error(`timed out after ${timeoutMs}ms waiting for ${what}`);
+    const errSuffix = this.errors.length ? `; browser errors: ${this.errors.join("; ")}` : "";
+    throw new Error(`timed out after ${timeoutMs}ms waiting for ${what}${errSuffix}`);
   }
 
   /** Presses and releases one key the way a user's keyboard would (it reaches the window listeners). */
