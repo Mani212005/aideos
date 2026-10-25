@@ -13,7 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
-import { formatInputs } from "../reelCut/store";
+import { formatInputs, reelForRender } from "../reelCut/store";
 import { backupPath, rankRecord, rollbackFilm, strayFiles } from "./best";
 import { releaseLock } from "./lock";
 import { readConfig, readRecords } from "./round";
@@ -179,7 +179,17 @@ export function finishRun(slug: string, deps: FinishDeps = REAL_FINISH_DEPS): Al
   const records = readRecords(slug);
   const filmFile = path.join(resolvePackageDir(slug), "film.json");
   // Reads each format's current manifest identity, including an identity reel's shared long film.
-  const hashes = () => ({ long: hashOrNull(filmFile), reel: hashOrNull(formatInputs(slug, "reel").film) });
+  const hashes = () => {
+    const reelFile = formatInputs(slug, "reel").film;
+    let reel: string | null = null;
+    try {
+      reelForRender(slug);
+      reel = hashOrNull(reelFile);
+    } catch {
+      reel = null;
+    }
+    return { long: hashOrNull(filmFile), reel };
+  };
   let verdict = decideVerdict(records, hashes());
 
   // Not all good: the package must end on the best round's film, not on the last experiment.

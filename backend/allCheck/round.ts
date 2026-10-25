@@ -18,7 +18,7 @@ import { reviewPairwise, reviewVideo as geminiReview, formatReviewSummary, rende
 import type { GeminiReviewReport, PairwiseRunReport } from "../geminiReview";
 import { extractStill, probeVideo } from "../review/media";
 import { reviewVideo as measuredReview } from "../review/review";
-import { formatInputs } from "../reelCut/store";
+import { formatInputs, reelForRender } from "../reelCut/store";
 import type { ReviewReport } from "../review/types";
 import {
   allCheckDir,
@@ -181,6 +181,7 @@ export interface RoundRequest {
 // Measures one format in one round and saves the record.
 export async function runFormatRound(req: RoundRequest, round: number, config: AllCheckConfig, deps: RoundDeps): Promise<FormatRoundRecord> {
   const { slug, format } = req;
+  if (format === "reel" && req.skipRender) reelForRender(slug);
   const pkg = resolvePackageDir(slug);
   const inputs = formatInputs(slug, format);
   const filmFile = inputs.film;
