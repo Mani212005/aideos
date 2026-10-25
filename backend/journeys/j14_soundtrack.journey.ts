@@ -51,11 +51,8 @@ function renderAudioWav(outWav: string): void {
 journey("decision D6: studio soundtrack journey covers narration retention, asset insertion lane, music ducking through end card, and multi-music persistence", async (ctx) => {
   const slug = "journey-soundtrack-d6";
   const pkgDir = packageDir(slug);
-  const repoVideosDir = path.join(REPO_ROOT, "videos", slug);
   fs.mkdirSync(pkgDir, { recursive: true });
-  fs.mkdirSync(repoVideosDir, { recursive: true });
   fs.cpSync(path.join(REPO_ROOT, "examples/hello-scene/visuals"), path.join(pkgDir, "visuals"), { recursive: true });
-  fs.cpSync(path.join(REPO_ROOT, "examples/hello-scene/visuals"), path.join(repoVideosDir, "visuals"), { recursive: true });
 
   const tonesDir = path.join(ctx.workDir, "tones");
   const t440 = path.join(tonesDir, "narration_440.wav");
@@ -68,9 +65,6 @@ journey("decision D6: studio soundtrack journey covers narration retention, asse
   fs.copyFileSync(t440, path.join(pkgDir, "voiceover.wav"));
   fs.copyFileSync(t1000, path.join(pkgDir, "music-a.wav"));
   fs.copyFileSync(t2000, path.join(pkgDir, "music-b.wav"));
-  fs.copyFileSync(t440, path.join(repoVideosDir, "voiceover.wav"));
-  fs.copyFileSync(t1000, path.join(repoVideosDir, "music-a.wav"));
-  fs.copyFileSync(t2000, path.join(repoVideosDir, "music-b.wav"));
 
   const helloScenePath = path.join(REPO_ROOT, "examples/hello-scene/film.json");
   const baseFilm: Film = JSON.parse(fs.readFileSync(helloScenePath, "utf8"));
@@ -210,7 +204,6 @@ journey("decision D6: studio soundtrack journey covers narration retention, asse
   } finally {
     // Teardown
     fs.rmSync(pkgDir, { recursive: true, force: true });
-    fs.rmSync(repoVideosDir, { recursive: true, force: true });
     fs.rmSync(path.join(REPO_ROOT, "src/dl/films", `${slug}.ts`), { force: true });
     ensureGenerated();
   }
