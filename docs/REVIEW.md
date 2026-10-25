@@ -18,7 +18,7 @@ rubric and writes `review.json` (or `review.reel.json` for a reel) plus evidence
 needs only `ffmpeg`, `ffprobe` and `tesseract`, and works on any mp4, not just aideos films. It is
 the numbers layer: the Gemini review loop reads the same JSON as context and judges what numbers
 cannot (story, whether two things are the same object, whether an animation shows its claim).
-When film data is supplied, review expects the full-length rendered film; stage facts describe the whole timeline.
+When film data is supplied, it must match the reviewed format: long reviews use the long film and reel reviews use the derived reel film (or the shared long film for an identity reel). Stage facts describe that format's whole timeline.
 
 ```bash
 aideos review hnsw-explainer                       # slug: reviews every rendered format (long and reel)
