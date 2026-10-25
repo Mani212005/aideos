@@ -107,6 +107,10 @@ export function registerAudioCommands(program: Command): void {
           );
           console.log(`Cache: ${report.cacheDir}`);
         }
+
+        if (!report.ok) {
+          process.exitCode = 1;
+        }
       }
     );
 
