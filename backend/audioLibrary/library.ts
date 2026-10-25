@@ -206,7 +206,7 @@ async function downloadToFile(url: string, destPath: string): Promise<void> {
     fs.writeFileSync(destPath, Buffer.from(arrayBuffer));
   } catch {
     // Fall back to curl if Node fetch encountered network or SSL transport issue
-    execSync(`curl -sL "${url}" -o "${destPath}"`, { stdio: "pipe" });
+    execSync(`curl -fsSL "${url}" -o "${destPath}"`, { stdio: "pipe" });
   }
 }
 
