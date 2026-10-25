@@ -61,12 +61,28 @@ export function getExamplesDir(): string {
   return path.resolve(getProjectRoot(), "examples");
 }
 
+/** Name of the shared audio library cache directory inside getVideosDir(). */
+export const AUDIO_LIBRARY_CACHE_DIR_NAME = ".audio-library";
+
+/**
+ * Directories inside getVideosDir() reserved for engine assets and caches,
+ * which must never be listed or treated as video packages.
+ */
+export const RESERVED_PACKAGE_NAMES = new Set([
+  AUDIO_LIBRARY_CACHE_DIR_NAME,
+]);
+
+// Returns the path to the shared audio library cache next to the personal videos.
+export function getAudioLibraryCacheDir(): string {
+  return path.join(getVideosDir(), AUDIO_LIBRARY_CACHE_DIR_NAME);
+}
+
 /** Lists the package folders (with a film.json) directly inside a directory. */
 function packagesIn(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && !d.name.startsWith(".") && fs.existsSync(path.join(dir, d.name, "film.json")))
+    .filter((d) => d.isDirectory() && !d.name.startsWith(".") && !RESERVED_PACKAGE_NAMES.has(d.name) && fs.existsSync(path.join(dir, d.name, "film.json")))
     .map((d) => d.name);
 }
 
@@ -79,7 +95,7 @@ export function listVideoPackages(): string[] {
   const personal = fs.existsSync(dir)
     ? fs
         .readdirSync(dir, { withFileTypes: true })
-        .filter((dirent) => dirent.isDirectory() && !dirent.name.startsWith("."))
+        .filter((dirent) => dirent.isDirectory() && !dirent.name.startsWith(".") && !RESERVED_PACKAGE_NAMES.has(dirent.name))
         .map((dirent) => dirent.name)
     : [];
   const examples = packagesIn(getExamplesDir()).filter((slug) => !personal.includes(slug));
@@ -88,6 +104,9 @@ export function listVideoPackages(): string[] {
 
 /** The package directory a slug resolves to for reading: personal first, then examples. */
 export function resolvePackageDir(slug: string): string {
+  if (RESERVED_PACKAGE_NAMES.has(slug)) {
+    throw new Error(`"${slug}" is a reserved directory name, not a video package`);
+  }
   const personal = path.join(getVideosDir(), slug);
   if (fs.existsSync(path.join(personal, "film.json"))) return personal;
   const example = path.join(getExamplesDir(), slug);

@@ -18,6 +18,7 @@ import type { DesignMode, ProductionFormat, ProductionProgress, ProductionStage,
 import { runDirector, type DirectorRequest } from "./pipeline/director";
 import type { TtsBackendName } from "./tts";
 import { registerAllCheckCommands, rewriteAllCheckArgv } from "./allCheck/cli";
+import { registerAudioCommands } from "./audioLibrary/cli";
 import { registerCharacterCommands } from "./characters/cli";
 import { registerReelCommands } from "./reelCut/cli";
 
@@ -657,6 +658,7 @@ program
 
 registerAllCheckCommands(program);
 registerCharacterCommands(program);
+registerAudioCommands(program);
 
 export { program };
 

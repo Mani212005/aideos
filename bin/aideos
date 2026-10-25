@@ -8,11 +8,11 @@ set -e
 # Reject unknown commands before resolving a checkout or touching Studio state.
 if [ "$#" -gt 0 ]; then
   case "$1" in
-    exit|stop|down|kill|validate|review|all-check|connect|design|look|character|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|help|--help|-h)
+    exit|stop|down|kill|validate|review|all-check|connect|design|look|character|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|audio|help|--help|-h)
       ;;
     *)
       echo "Error: unknown aideos command '$1'." >&2
-      echo "Commands: exit (stop/down/kill), validate, review, all-check, connect, design, look, character, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, help" >&2
+      echo "Commands: exit (stop/down/kill), validate, review, all-check, connect, design, look, character, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, audio, help" >&2
       echo "Run 'aideos help' for usage." >&2
       exit 2
       ;;
@@ -77,6 +77,13 @@ design_usage() {
 look_usage() {
   echo "Usage: aideos look brief <film>"
   echo "       aideos look check <film> [--json]"
+}
+
+# Prints the usage of `aideos audio`.
+audio_usage() {
+  echo "Usage: aideos audio fetch [--item <id>] [--force] [--json]"
+  echo "       aideos audio verify [--item <id>] [--json]"
+  echo "       aideos audio import <id> <file>"
 }
 
 CONFIG_DIR="${HOME}/.config/aideos"
@@ -184,6 +191,24 @@ if [ "$#" -gt 0 ]; then
           ;;
       esac
       ;;
+    audio)
+      # aideos audio fetch|verify|import ...
+      SUB="${1:-}"
+      shift || true
+      case "$SUB" in
+        fetch|verify|import)
+          cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts audio "$SUB" "$@"
+          ;;
+        --help|-h|help|"")
+          audio_usage
+          exit 0
+          ;;
+        *)
+          audio_usage >&2
+          exit 1
+          ;;
+      esac
+      ;;
     render)
       cd "$AIDEOS_DIR" && npm run render "$@"
       exit 0
@@ -243,6 +268,9 @@ if [ "$#" -gt 0 ]; then
       echo "  aideos review <slug|mp4>    Measured (deterministic) review of a rendered video"
       echo "  aideos character check <spec>  Validate a character spec, naming bad fields (--stamp writes its hash)"
       echo "  aideos character sheet <spec>  Render its model sheet, expression sheet and receive stills"
+      echo "  aideos audio fetch [--item <id>]    Fetch background music and sound effects into shared cache"
+      echo "  aideos audio verify [--json]        Verify cached audio against hash locks"
+      echo "  aideos audio import <id> <file>     Import manual audio file into shared cache"
       echo "  aideos look brief|check <film>      Write or check a film's look plan (aideos look --help)"
       echo "  aideos reel brief|check <film>      Write or check a condensed reel narration cut"
       echo "  aideos design check|brief|build <film>  Check, brief or build a film's bespoke design (aideos design --help)"
