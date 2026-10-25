@@ -30,7 +30,7 @@ export async function produceVoiceover(): Promise<VoiceoverTiming> {
   console.log(`[${SLUG}] ${BEATS.length} narration beats, ${spokenWordCount()} spoken words.`);
   return produceKitVoiceover({
     slug: SLUG,
-    beats: BEATS.map((beat) => ({ id: beat.id, narration: beat.narration })),
+    beats: BEATS.map((beat) => ({ id: beat.id, narration: beat.narration, chapter: beat.chapter })),
     speed: NARRATION_SPEED,
     gapMs: BEAT_GAP_MS,
     tailMs: TAIL_HANDLE_MS,

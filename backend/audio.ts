@@ -32,7 +32,7 @@ import {
   type PcmChunk,
 } from "./pcm";
 
-export { trimSilence, CHAPTER_BREATH_GAP_MS, CHAPTER_SEGMENT_GAP_MS } from "./pcm";
+export { trimSilence, CHAPTER_BREATH_GAP_MS } from "./pcm";
 export { detectChapterStartsFromScript } from "./scriptIntake";
 
 export interface WordInfo {
@@ -82,10 +82,10 @@ export interface ProduceAudioOptions {
   /** Silence between segments at a chapter boundary, in milliseconds (decision D4). */
   chapterGapMs?: number;
   /**
-   * Optional boolean array or predicate marking which segment indices start a new chapter.
+   * Optional boolean array marking which segment indices start a new chapter.
    * If omitted and script is a screenplay, chapter boundaries are inferred from script sections.
    */
-  isChapterStart?: boolean[] | ((segmentIndex: number) => boolean);
+  isChapterStart?: boolean[];
   /** Silence between chunks inside one segment, in milliseconds. */
   chunkGapMs?: number;
   /** Pin a specific synthesizer instead of auto-selecting. */
@@ -325,11 +325,7 @@ export async function produceAudioPipeline(
 
   let chapterStarts: boolean[] | undefined;
   if (options?.isChapterStart) {
-    if (Array.isArray(options.isChapterStart)) {
-      chapterStarts = [...options.isChapterStart];
-    } else {
-      chapterStarts = segmentTexts.map((_, i) => (options.isChapterStart as (idx: number) => boolean)(i));
-    }
+    chapterStarts = [...options.isChapterStart];
   } else if (typeof script === "string" && hasScreenplayTags(script)) {
     chapterStarts = detectChapterStartsFromScript(script);
   }
@@ -365,7 +361,6 @@ export async function produceAudioPipeline(
     console.error(`[narration] a segment fell under ${SCHEMA_MIN_DUR}s; merging it into its neighbour`);
     segmentChunks = merged;
     if (chapterStarts && chapterStarts.length > target + 1) {
-      chapterStarts[target] = chapterStarts[target] || chapterStarts[target + 1];
       chapterStarts.splice(target + 1, 1);
       assembleOptions.isChapterStart = chapterStarts;
     }

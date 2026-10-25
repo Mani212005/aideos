@@ -102,8 +102,8 @@ export interface AssembleOptions {
   segmentGapMs: number;
   /** Silence inserted before a segment that opens a new chapter (decision D4). */
   chapterGapMs?: number;
-  /** Boolean flags or predicate indicating which segments open a new chapter. */
-  isChapterStart?: boolean[] | ((segIdx: number) => boolean);
+  /** Boolean flags indicating which segments open a new chapter. */
+  isChapterStart?: boolean[];
   /** Silence inserted between chunks that belong to the same segment. */
   chunkGapMs: number;
   /** Length of the ramp applied to each chunk's head and tail. */
@@ -114,9 +114,6 @@ export interface AssembleOptions {
 
 // Decision D4: narration breath at chapter cuts so music changes can land in a pause instead of under speech.
 export const CHAPTER_BREATH_GAP_MS = 900;
-
-// Decision D4: narration breath at chapter cuts so music changes can land in a pause instead of under speech.
-export const CHAPTER_SEGMENT_GAP_MS = CHAPTER_BREATH_GAP_MS;
 
 /** The defaults the production pipeline runs with. */
 export const DEFAULT_ASSEMBLE_OPTIONS: Omit<AssembleOptions, "sampleRate"> = {
@@ -146,8 +143,7 @@ export function assembleSegments(
   const getGapForSegment = (segIdx: number): number => {
     if (segIdx <= 0) return 0;
     if (!isChapterStart) return standardGap;
-    const isChapter = typeof isChapterStart === "function" ? isChapterStart(segIdx) : Boolean(isChapterStart[segIdx]);
-    return isChapter ? chapterGap : standardGap;
+    return isChapterStart[segIdx] ? chapterGap : standardGap;
   };
 
   const prepared: Float32Array[][] = segmentChunks.map((chunks) =>
