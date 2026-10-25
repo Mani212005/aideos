@@ -200,8 +200,16 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
     if (step.todoCases) child.stdout?.on("data", (chunk: Buffer) => {
       process.stdout.write(chunk);
     });
+    // Removes the temporary journey TODO report directory if it exists.
+    const cleanup = () => {
+      if (reportDir) {
+        try { fs.rmSync(reportDir, { recursive: true, force: true }); } catch {}
+      }
+    };
+    if (reportDir) process.once("exit", cleanup);
     const done = (status: StepResult["status"], note?: string) => {
-      if (reportDir) fs.rmSync(reportDir, { recursive: true, force: true });
+      if (reportDir) process.removeListener("exit", cleanup);
+      cleanup();
       resolve({ job: job.id, step: step.name, status, seconds: (Date.now() - started) / 1000, note, ...(todoNames.length ? { todoNames } : {}) });
     };
     child.on("error", (err) => done("failed", err.message));

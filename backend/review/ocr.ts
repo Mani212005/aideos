@@ -1,7 +1,7 @@
 /**
  * File Description: On-screen text measurement for `aideos review`.
  * Runs tesseract on full-resolution sample frames (piped as PGM, no temp files) and turns its word
- * boxes into the facts the rubric needs: is there a caption band along the bottom, how many words
+ * boxes into the facts the rubric needs: are captions in the declared card or default bottom band, how many words
  * are too small or too faint to read, does text overlap other text or leave the safe margin, and
  * which numbers are on screen. Sizes are normalised to a 1080 short side so a reel and a wide cut
  * are held to the same standard. The geometry (`analyzeSample`) is pure and unit tested.
@@ -9,6 +9,7 @@
  * Used by: backend/review/renderFacts.ts.
  */
 
+import type { CaptionRect } from "../../src/dl/captionPlacement";
 import { spawn } from "node:child_process";
 import { THRESHOLDS } from "./thresholds";
 
@@ -26,7 +27,7 @@ export interface OcrWord {
 export interface SampleAnalysis {
   t: number;
   words: number;
-  /** A caption band (>= 3 caption-sized words on a line in the bottom quarter) is present. */
+  /** The declared card, or default bottom-quarter band, contains caption text. */
   hasCaption: boolean;
   /** Lines of caption-sized text in the band. */
   captionLines: number;
@@ -157,13 +158,13 @@ function overlapping(a: OcrWord, b: OcrWord, ratio: number): boolean {
   return (ix * iy) / Math.min(a.width * a.height, b.width * b.height) > ratio;
 }
 
-// Measures one sampled frame: caption band, small and faint words, overlaps, edge crowding, numbers.
-export function analyzeSample(words: OcrWord[], gray: Uint8Array | null, width: number, height: number, t: number): SampleAnalysis {
+// Measures one sampled frame: caption card, small and faint words, overlaps, edge crowding, numbers.
+export function analyzeSample(words: OcrWord[], gray: Uint8Array | null, width: number, height: number, t: number, captionRect?: CaptionRect | null): SampleAnalysis {
   const unit = Math.min(width, height) / 1080;
   const T = THRESHOLDS;
   const confident = words.filter((w) => w.conf >= T.readability.confidenceMin && w.text.length > 1 && /[A-Za-z0-9]/.test(w.text));
 
-  const band = confident.filter((w) => w.top > height * T.captions.bandTopRatio && w.height / unit >= T.captions.wordHeightMin);
+  const band = captionRect === null ? [] : confident.filter((w) => (captionRect ? w.left >= captionRect.x && w.left + w.width <= captionRect.x + captionRect.w && w.top >= captionRect.y && w.top + w.height <= captionRect.y + captionRect.h : w.top > height * T.captions.bandTopRatio) && w.height / unit >= T.captions.wordHeightMin);
   const lines = new Map<number, OcrWord[]>();
   for (const w of band) {
     const key = Math.round(w.top / (20 * unit));

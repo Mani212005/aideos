@@ -9,6 +9,7 @@
 
 import type { EditContext } from "../editContext/buildEditContext";
 import type { LayeredFilm, Layer, Clip } from "../../src/dl/layeredSchema";
+import { shotSchema } from "../../src/dl/schema";
 import { editProgramSchema, type EditOp } from "./schema";
 import { applyEditProgram } from "./interpreter";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
@@ -42,7 +43,7 @@ function createLayeredFilmFromContext(context: EditContext): LayeredFilm {
     end: c.end,
     linkedClipId: c.linkedClipId ?? null,
     kind: c.kind as any,
-    payload: { src: "media/source.mp4" },
+    payload: c.captionShot ? { ...shotSchema.parse({ id: c.captionShot.id, dur: Math.max(0.5, c.end - c.start), look: ["n1"], stage: "none" }), shotId: c.captionShot.id, captionPlacement: c.captionShot.captionPlacement } : { src: "media/source.mp4" },
     opacity: 1,
     volume: 1,
   }));
@@ -53,6 +54,7 @@ function createLayeredFilmFromContext(context: EditContext): LayeredFilm {
     fps: (context.meta.fps as 24 | 30 | 60) || 30,
     accent: context.meta.accent || "#635BFF",
     theme: context.meta.theme,
+    captionPlacement: context.meta.captionPlacement,
     canvas: { nodes: [{ id: "n1", label: "Scene", x: 0, y: 0, w: 190, h: 62 }], edges: [] },
     chapters: [],
     layers,
@@ -228,6 +230,15 @@ export function validateEditProgram(
         break;
       }
 
+      case "set_caption_placement": {
+        const shots = context.clips.flatMap((clip) => clip.captionShot ? [{ id: clip.captionShot.id, captionPlacement: clip.captionShot.captionPlacement }] : []);
+        const scope = op.scope;
+        const target = scope.kind === "shot" ? shots.find((shot) => shot.id === scope.shotId) : undefined;
+        if (op.scope.kind === "shot" && !target) errors.push(`${opPrefix} unknown shot ${op.scope.shotId}`);
+        const entry = target?.captionPlacement?.[op.format] ?? context.meta.captionPlacement?.[op.format];
+        if (entry?.locked) errors.push(`${opPrefix} caption placement is locked; unlock it in the studio first`);
+        break;
+      }
       case "set_accent": {
         if (!/^#[0-9a-fA-F]{6}$/.test(op.hex)) {
           errors.push(`${opPrefix} accent hex code "${op.hex}" must be a 6-digit hex color (e.g. #635BFF)`);

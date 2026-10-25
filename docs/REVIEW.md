@@ -6,7 +6,7 @@ File Description: Documentation and usage reference for aideos deterministic vid
 
 Video quality verification in Aideos operates on two connected layers, and `aideos all-check` (section 3) runs
 both, on the long cut and the reel, with an agent that fixes the film between rounds:
-1. **Deterministic Checks (`aideos review`)**: Precise numerical measurements (OCR caption band coverage, layout correlation, audio loudness, camera motion frequency).
+1. **Deterministic Checks (`aideos review`)**: Precise numerical measurements (OCR caption-card coverage, layout correlation, audio loudness, camera motion frequency).
 2. **Gemini 3.8 Flash Native Review (`aideos gemini-review`)**: Full multimodal video and audio evaluation against the 12-criterion rubric, requiring a score of 9.0+ out of 10.0 with all 6 hard gates passing for acceptance.
 
 ---
@@ -41,7 +41,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 13 | Look plan adherence | when `design/look.json` is available, scene motion, carried objects, camera poses, device spacing and stage treatment are checked against the plan as a non-gate score; on a character film each planned performance is checked by its evaluated contact frame against its decisive word (anticipation may start earlier, no clip at the cue is needed), its character id and version, and its actor and prop on stage in this output | all planned shots follow the plan; this remains non-gating until calibrated on the proof and two or three more films |
 | 3 | Cues aimed at spoken words | film clips against word timings, compared with chance; declared Three performances contribute their evaluated contact events | clip starts and performance contacts land on word starts clearly more often than chance |
 | 4 | **Camera that does something** | film data only (the solved framing of each shot, or a scene camera track) | >= 1 move per 20 s, none faster than 20% of the frame width per second (a scene camera also fails the design check on a zoom jump over 0.8% a frame or a pan acceleration over 0.3 widths per second squared) |
-| 5 | **Bottom captions** | OCR of full-resolution frames every 2 s | caption band in the bottom quarter in >= 60% of narrated moments, <= 2 lines, words match the narration |
+| 5 | **Captions at placed position (default bottom)** | OCR of full-resolution frames every 2 s | caption band in its declared rectangle (bottom quarter when absent) in >= 60% of narrated moments, <= 2 lines, words match the narration |
 | 6 | **Readability** | OCR box height (normalised to a 1080 short side) and pixel contrast | <= 58% of words under 18 px, <= 10% under 3:1 contrast |
 | 7 | **No overlap or clipping** | OCR boxes overlapping, text inside the edge margin, canvas node overlap | <= 10% of sampled frames affected |
 | 8 | **Audio sync** | audio vs video length, film length, shot boundaries vs word timings | lengths within 0.1 s, no shot boundary through a spoken word |
@@ -132,8 +132,8 @@ parent exit also kills the remaining tree.
 
 ### How it works
 1. **Direct Video Inspection in Isolated Workspace via agy CLI**: Invokes the configured agy reviewer non-interactively in print mode with `--sandbox` within an isolated temporary directory using neutral filenames (`video.mp4` for single review and pairwise comparisons) and explicit directives to evaluate only the visual and audio stream without writing scripts, extracting frames, or accessing repository files.
-2. **Deterministic Facts Extraction**: Gathers ground-truth data (bottom captions OCR coverage, audio LUFS loudness, duration, framerate, camera track from `film.json` including declared `scene.camera` keyframes, and per-shot look plan facts from `design/LOOK.md` when present) and feeds them into the model prompt to prevent hallucinations.
-3. **Structured Rubric Evaluation**: Grades all 12 criteria on a 0.0 to 10.0 scale, checking the 6 hard gates (persistent stage, camera purpose, bottom captions, readability, no overlap/clipping, audio sync).
+2. **Deterministic Facts Extraction**: Gathers ground-truth data (caption-position OCR coverage, audio LUFS loudness, duration, framerate, camera track from `film.json` including declared `scene.camera` keyframes, and per-shot look plan facts from `design/LOOK.md` when present) and feeds them into the model prompt to prevent hallucinations.
+3. **Structured Rubric Evaluation**: Grades all 12 criteria on a 0.0 to 10.0 scale, checking the 6 hard gates (persistent stage, camera purpose, captions at their placed position, readability, no overlap/clipping, audio sync).
 4. **Timestamp Evidence Enforcement**: Validates that every criterion score includes concrete timestamp citations (e.g. `00:14`, `01:02`) within the video bounds. A criterion still without evidence after the last attempt is failed as unmeasured and the verdict is `REVISE`: missing evidence is never a pass.
 5. **Verdict Decision**:
    - `ACCEPT`: Overall score >= 9.0 and all 6 hard gates passed.
@@ -246,7 +246,7 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 2 | carry_over_transform | No | Named elements carry over across beat boundaries and change position, scale, shape, or role. |
 | 3 | visible_cause_effect | No | Mechanism claims have animations starting within 0.4s of spoken keywords that visually demonstrate the claim. |
 | 4 | **camera_purpose** | Yes | Active, purposeful camera moves (>= 1 move per 20s) framing content naturally without disorienting drift. |
-| 5 | **bottom_captions** | Yes | Clean burned-in captions in the bottom 22% band for >= 95% of speech, readable size (>= 36px), matching spoken audio. |
+| 5 | **bottom_captions** | Yes | Clean burned-in captions at the owner-declared card position (default: bottom 20-22% of the frame) for >= 95% of speech, readable size (>= 36px), matching spoken audio. |
 | 6 | **readability** | Yes | High contrast (>= 4.5:1), clear font hierarchy (>= 24px), sufficient reading duration (>= 0.35s per word). |
 | 7 | **no_overlap_clipping** | Yes | No text-text or text-artwork overlapping; all essential elements stay within the 96px safe margin. |
 | 8 | **audio_sync** | Yes | Story cues synchronize with voiceover within 120ms; the audio and delivered picture durations agree within 100ms, including the end card. |
@@ -291,3 +291,19 @@ properties; J3/J4 in `backend/journeys/j3_j4_dots.journey.ts` checks Player/expo
 parity and both crops. These checks do not award facial appeal or turn short
 engineering excerpts into full-film review passes. Record render seconds per
 video second, peak process-tree memory and disk alongside the actual clips.
+
+### Owner-placed captions
+
+With film metadata, OCR checks the declared caption rectangle in each reviewed format. A phrase
+crossing a cut keeps its start placement. Without placement metadata, the existing bottom-quarter
+measurement and thresholds apply. Gemini facts list owner placements and locks, and its caption
+gate accepts their declared position with bottom as the default. The `bottom_captions` result key
+remains stable for existing report consumers.
+
+The design check reports out-of-bounds cards and inset collisions as `caption-placement` errors.
+Art intersecting an owner card produces a warning naming the art, format, shot and sampled frame;
+locked cards stay fixed. The Edit caption bar uses the same geometry check for its red warning.
+For CanvasGraph films, the report warns that placed-card collisions against graph art were not checked:
+its 3D projection is deliberately out of scope for the collision geometry. Review of the placed position
+remains the safety net for CanvasGraph films; scene-art and posed-character collision checks remain active.
+Automatic placement and suggestions are outside this feature.

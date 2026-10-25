@@ -432,7 +432,10 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
       }
 
       const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
-      const savedFilm = writeFilm(slug, updatedFilm);
+      const savedFilm = writeFilm(slug, updatedFilm, {
+        owner: false,
+        agentEdit: planResult.ops.some((op) => op.op === "set_caption_placement"),
+      });
 
       appendEditProvenanceRecord(VIDEOS_DIR, slug, {
         request,

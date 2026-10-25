@@ -85,6 +85,7 @@ seconds). There is no override variable: tests inject a fake sampler and `statfs
 | J10 an agent authors from the docs, bad input names the field | `j8_failures.journey.ts` checks bad values in design.json, look.json and character specs through their public validators; `schemaIssues.test.ts` covers nested unions, unknown fields, required values and version tags | unit, journey |
 | J11 a contributor opens a PR and the suite reproduces locally | `npm run ci`, `scripts/ci.test.ts` (workflows only call real jobs, every job is run by a workflow, least privilege) | static |
 | J12 a long render never fills the disk | `assertRenderDiskBudget` and `checkRenderDiskBudget` (`renderDiskBudget.test.ts`), the estimate against a real render's peak temp (`j12_render_disk.journey.ts`), temp-leak and size assertions in `j1_pipeline.journey.ts`, `stagePublicDir` cleanup never follows a symlink (`harness.test.ts`), nightly peak-temp budget | unit, journey, nightly |
+| J13 captions: move, resize, scope, lock, undo, reset, reload, preview equals export | `j13_caption_placement.journey.ts`: exercises Whole film and This shot only scopes, move, resize, lock, reset, undo, and reload in both formats, then checks native Player caption ink bounds against PNG and MP4 export within 2 px | journey |
 
 ### Risks and the check that watches them
 

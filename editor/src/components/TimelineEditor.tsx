@@ -1173,6 +1173,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                       dropHintLaneId === lane.id && "bg-primary/25",
                     )}
                   >
+                    {clips.some((clip) => clip.kind === "subtitle") ? film.shots.filter((shot) => shot.captionPlacement).map((shot) => <span key={shot.id} aria-label={`Caption position exception: ${shot.id}`} title={`Caption position exception: ${shot.id}`} className="pointer-events-none absolute top-0 z-20 h-2 w-2 rotate-45 border border-ink bg-primary" style={{ left: (shot.position ?? shot.startSec ?? film.shots.slice(0, film.shots.indexOf(shot)).reduce((sum, item) => sum + item.dur, 0)) * pxPerSec }} />) : null}
                     {clips.map((clip) => {
                       const dur = clipDuration(clip);
                       if (

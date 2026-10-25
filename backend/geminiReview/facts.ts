@@ -1,6 +1,6 @@
 /**
  * File Description: Deterministic video facts extractor for the Gemini review pipeline.
- * Measures hard ground-truth facts (duration, bottom-band captions via OCR, audio loudness,
+ * Measures hard ground-truth facts (duration, placed-caption presence via OCR, audio loudness,
  * and camera tracks) using ffprobe, ffmpeg, tesseract, and film metadata. For a Three stage film
  * the camera and the stage (characters drawn, per-shot presence, contact against the decisive
  * word, what is unmeasured) are measured in this video's own output through the measured review's
@@ -9,6 +9,8 @@
  * Used by: backend/geminiReview/geminiReview.ts.
  */
 
+import { hasCaptionPlacementForFormat, prepareCaptionReview } from "../review/captionRegion";
+import type { CaptionRect } from "../../src/dl/captionPlacement";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -156,11 +158,12 @@ export function runTesseractOnImage(imagePath: string): Promise<string | null> {
   });
 }
 
-// Samples frames across the video and measures bottom-band caption presence via OCR.
+// Samples frames across the video and measures the declared caption card, falling back to the bottom band.
 export async function measureBottomCaptions(
   videoPath: string,
   durationSec: number,
   numSamples = 12,
+  captionRectAt?: ((t: number) => CaptionRect | undefined) | null,
 ): Promise<{
   measured: boolean;
   hasCaptions: boolean;
@@ -172,6 +175,18 @@ export async function measureBottomCaptions(
   score: number;
   summary: string;
 }> {
+  if (captionRectAt === null) {
+    return {
+      measured: true,
+      hasCaptions: false,
+      coverageRatio: 0,
+      sampledFrames: 0,
+      captionFrames: 0,
+      score: 0,
+      summary: "Caption rendering is disabled by film data",
+    };
+  }
+
   if (durationSec <= 2) {
     return {
       measured: false,
@@ -216,13 +231,15 @@ export async function measureBottomCaptions(
       const framePath = path.join(tmpDir, `frame-${i}.png`);
 
       try {
-        // Crop the bottom 22% of the frame where bottom captions reside
+        const rect = captionRectAt?.(t);
+        const crop = rect ? `crop=${Math.floor(rect.w)}:${Math.floor(rect.h)}:${Math.floor(rect.x)}:${Math.floor(rect.y)}` : "crop=in_w:in_h*0.22:0:in_h*0.78";
+        // Crop the declared card, falling back to the legacy bottom band for mp4-only review.
         const args = [
           "-y",
           "-ss", String(t),
           "-i", videoPath,
           "-vframes", "1",
-          "-vf", "crop=in_w:in_h*0.22:0:in_h*0.78",
+          "-vf", crop,
           framePath
         ];
         execFileSync("ffmpeg", args, { stdio: ["ignore", "ignore", "ignore"] });
@@ -273,8 +290,8 @@ export async function measureBottomCaptions(
   const pct = Math.round(coverageRatio * 100);
 
   const summary = hasCaptions
-    ? `Burned-in bottom captions detected in ${pct}% of sampled frames (${captionFrames}/${sampledFrames})`
-    : `0% caption frames detected by OCR in bottom band (${captionFrames}/${sampledFrames} frames with captions)`;
+    ? `Burned-in captions at the placed position (default bottom) detected in ${pct}% of sampled frames (${captionFrames}/${sampledFrames})`
+    : `Caption coverage below the required level at the placed position (default bottom): ${pct}% (${captionFrames}/${sampledFrames} frames with captions)`;
 
   return {
     measured: true,
@@ -441,10 +458,27 @@ export async function extractDeterministicFacts(
 
   const viewport: ReviewViewport | null = metadata.width && metadata.height ? { width: metadata.width, height: metadata.height } : null;
   let filmFacts: FilmFacts | null = null;
+  let captionRectAt: ((t: number) => CaptionRect | undefined) | null | undefined = undefined;
+  let placementNote: string | null = null;
+  let captionMeasurementNote: string | null = null;
   let stageNote: string | null = null;
   if (filmPath && fs.existsSync(filmPath)) {
     try {
       const film = parseFilm(JSON.parse(fs.readFileSync(filmPath, "utf8")));
+      const format = viewport
+        ? viewport.width < viewport.height ? "reel" : "long"
+        : undefined;
+      const prepared = prepareCaptionReview(film, viewport?.width, viewport?.height);
+      if (prepared && typeof prepared !== "function") {
+        const cardLabel = format ? `Owner ${format} caption cards` : "Owner caption cards";
+        captionMeasurementNote = `- ${cardLabel}: NOT measured (${prepared.unavailable}); do not judge caption coverage from the legacy bottom band.`;
+        captionRectAt = null;
+      } else {
+        captionRectAt = prepared;
+      }
+      if (captionRectAt && format && hasCaptionPlacementForFormat(film, format)) {
+        placementNote = `- Owner ${format} caption cards: ${JSON.stringify({ film: film.captionPlacement?.[format], shots: film.shots.filter((shot) => shot.captionPlacement?.[format]).map((shot) => ({ id: shot.id, placement: shot.captionPlacement?.[format] })) })}. Check these placed rectangles; locked cards must be preserved.`;
+      }
       if (film.scene?.renderer === "three" && !viewport) stageNote = "- Stage facts: NOT measured, the output size of this video could not be probed; judge the stage only from the video.";
       else filmFacts = readFilmFacts(film, viewport ?? undefined);
     } catch (err) {
@@ -455,11 +489,24 @@ export async function extractDeterministicFacts(
   // stage and may be silent by design.
   const storySec = filmFacts?.endCard ? Math.min(durationSec, filmFacts.endCard.startSec) : durationSec;
   if (!options?.skipOcr) {
-    bottomCaptions = await measureBottomCaptions(
-      resolved,
-      storySec,
-      options?.sampleCount ?? 12,
-    );
+    if (captionMeasurementNote) {
+      bottomCaptions = {
+        measured: false,
+        hasCaptions: false,
+        coverageRatio: 0,
+        sampledFrames: 0,
+        captionFrames: 0,
+        score: 0,
+        summary: captionMeasurementNote.replace(/^- Owner caption cards: /, ""),
+      };
+    } else {
+      bottomCaptions = await measureBottomCaptions(
+        resolved,
+        storySec,
+        options?.sampleCount ?? 12,
+        captionRectAt,
+      );
+    }
   }
 
   const camera = inspectCamera(filmPath, storySec, filmFacts);
@@ -469,6 +516,8 @@ export async function extractDeterministicFacts(
   const stage: StageTruth | undefined = filmFacts ? stageTruth(filmFacts, narration) : undefined;
 
   const rawSummaryText = [
+    placementNote,
+    captionMeasurementNote,
     `=== PRE-MEASURED GROUND TRUTH FACTS (DETERMINISTIC FACTS) ===`,
     `- Exact Video Duration: ${durationSec.toFixed(1)}s (do NOT hallucinate a different duration such as 120s)`,
     metadata.width && metadata.height ? `- Dimensions: ${metadata.width}x${metadata.height}` : null,
@@ -476,7 +525,7 @@ export async function extractDeterministicFacts(
     filmFacts?.endCard ? endCardFactLine(filmFacts.endCard) : null,
     audio.measured ? `- Audio Mix: ${audio.summary}` : `- Audio: Not measured`,
     bottomCaptions.measured
-      ? `- Bottom Captions: ${bottomCaptions.summary} -> Gate Status: ${bottomCaptions.hasCaptions ? "PASS" : "FAIL (0% captions)"}`
+      ? `- Captions at placed position (default bottom): ${bottomCaptions.summary} -> Gate Status: ${bottomCaptions.hasCaptions ? "PASS" : "FAIL (insufficient caption coverage)"}`
       : null,
     camera.measured
       ? `- Camera Motion: ${camera.summary} -> Gate Status: ${camera.hasCameraMoves ? "PASS" : "FAIL"}`
@@ -484,7 +533,7 @@ export async function extractDeterministicFacts(
     ``,
     `MANDATORY EVALUATION INSTRUCTIONS FOR GEMINI:`,
     `1. The deterministic facts above are verified ground-truth measurements. You MUST NOT contradict these facts.`,
-    `2. Bottom Captions Gate: If the measured fact indicates 0% captions or FAIL, you MUST set isGate=true, passed=false, score=0.0 for "bottom_captions". Do NOT pass captions when 0% are present.`,
+    `2. Caption Placement Gate (stable result key: bottom_captions): If the measured fact indicates 0% captions or FAIL, you MUST set isGate=true, passed=false, score=0.0 for "bottom_captions". Do NOT pass captions when 0% are present. Owner-declared cards may be anywhere within the frame; do not require a moved card to be at the bottom.`,
     `3. Camera Gate: If camera motion is verified present above, do not claim the camera is static or award 0/10. Evaluate its framing purpose.`,
     `4. Duration and Pacing: Base all pacing and duration comments on the exact measured duration (${durationSec.toFixed(1)}s)${filmFacts?.endCard ? `, of which the story is the first ${filmFacts.endCard.startSec.toFixed(1)}s; judge audio sync, pacing and the payoff on the story, and the end card only for readability and overlap` : ""}.`,
     stage || stageNote ? `5. Stage: the stage facts say where geometry and contacts are, not what the pixels show. A character or prop counts only if you can see it in the video. Face appeal, finger contact and occlusion are unmeasured: judge them from the video, and never pass a criterion on these facts alone.` : null,

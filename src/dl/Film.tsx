@@ -4,9 +4,11 @@
  * Used by: src/dl/Video.tsx, src/Root.tsx, editor Remotion Player.
  */
 
+import { CaptionRegionContext } from "./captionRegionContext";
+import { captionCardRect, resolveCaptionPlacement } from "./captionPlacement";
 import React from "react";
 import { AbsoluteFill, Freeze, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Audio, Sequence } from "remotion";
-import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO } from "./tokens";
+import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO, SANS } from "./tokens";
 import { SUBTITLE_FONT_RATIO, getFullScreenHeroLayout, getInsetRegion, heroScrimGradient } from "./fullScreenHeroLayout";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext, useAccent } from "./accent";
@@ -15,6 +17,8 @@ import { CanvasGraph } from "./CanvasGraph";
 import { SceneStage, type TestStageVisibility } from "./SceneStage";
 import { PaperRip } from "./PaperRip";
 import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
+import { buildCaptionPhrases, captionPhraseAtFrame, captionTimelineLayoutKey } from "./captionPhrases";
+import { measureText } from "@remotion/layout-utils";
 import { getRetimedAudioRelPath } from "./audio/retime";
 import { deliveryTimeline, formatForSize } from "./delivery";
 import { EndCard, EndCardVoice } from "./EndCard";
@@ -496,6 +500,7 @@ const Dynamic3DHeroOverlay: React.FC<{ frame: number; timeline: ReturnType<typeo
   const heroLayout = getFullScreenHeroLayout({
     ...layout,
     labelHeight: Number(labelStyle.fontSize) * 1.6,
+    captionRect: React.useContext(CaptionRegionContext),
   });
 
   for (const t of timeline) {
@@ -584,6 +589,26 @@ export const FilmView: React.FC<FilmViewProps> = ({
   // A slow push across the card keeps the held stage from reading as a frozen frame.
   const holdScale = inCard && card ? 1 + 0.01 * Math.min(1, (rawFrame - card.from) / Math.max(1, card.durationInFrames)) : 1;
   const current = shotAt(timeline, frame);
+  const captionFormat = width < height ? "reel" : "long";
+  const captionFontSize = Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO);
+  // Keep phrase planning independent of the currently rendered frame.
+  const captionPlacementAt = React.useCallback((startFrame: number) =>
+    resolveCaptionPlacement(film, captionFormat, shotAt(timeline, startFrame)?.shot.id),
+  [film, captionFormat, timeline]);
+  const captionPhraseLayoutKey = JSON.stringify([film.shots.map((shot) => {
+    const placement = resolveCaptionPlacement(film, captionFormat, shot.id);
+    return [placement.source, placement.w];
+  }), captionTimelineLayoutKey(timeline)]);
+  const captionPhrases = React.useMemo(() => captionWords ? buildCaptionPhrases({
+    words: captionWords,
+    fps,
+    width,
+    fontSize: captionFontSize,
+    placementAt: captionPlacementAt,
+    measure: (text) => measureText({ text, fontFamily: SANS, fontSize: captionFontSize, fontWeight: 700 }).width,
+  }) : [], [captionWords, fps, width, captionFontSize, captionPhraseLayoutKey]);
+  const activeCaptionPhrase = captionPhraseAtFrame(captionPhrases, frame);
+  const captionContextPlacement = captionPlacementAt(activeCaptionPhrase?.startFrame ?? frame);
   const cam = camAt(film, timeline, frame, { width, height });
   const subtitleWords =
     film.subtitles === false ? captionWords ?? [] : [...(captionWords ?? []), ...delivery.cardWords];
@@ -633,12 +658,13 @@ export const FilmView: React.FC<FilmViewProps> = ({
 
   return (
     <ThemeContext.Provider value={bgTheme}>
-      <AccentContext.Provider value={accent}>
-        <Freeze frame={frame} active={inCard}>
-          <AbsoluteFill style={{ transform: `scale(${holdScale})` }}>
-            <ImportedVideoLayer film={film} fps={fps} />
-          </AbsoluteFill>
-        </Freeze>
+      <CaptionRegionContext.Provider value={film.subtitles !== false && film.captions !== "off" ? captionCardRect(width < height ? "reel" : "long", width, height, captionContextPlacement) : undefined}>
+        <AccentContext.Provider value={accent}>
+          <Freeze frame={frame} active={inCard}>
+            <AbsoluteFill style={{ transform: `scale(${holdScale})` }}>
+              <ImportedVideoLayer film={film} fps={fps} />
+            </AbsoluteFill>
+          </Freeze>
         <AbsoluteFill
           style={{
             backgroundColor: hasVideoBase ? "transparent" : bgTheme.canvas,
@@ -797,13 +823,13 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {card ? <EndCard card={card} cardWords={delivery.cardWords} /> : null}
 
         {/* Burned-in subtitles rendered after Rail and the end card */}
-        {film.captions !== "off" && subtitleWords.length > 0 ? (
+        {film.subtitles !== false && film.captions !== "off" && subtitleWords.length > 0 ? (
           <KineticSubtitles
             words={subtitleWords}
-            maxWidth={width * 0.86}
             fontSize={Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO)}
             highlightColor={accent}
-            position="bottom"
+            placementAt={captionPlacementAt}
+            phraseLayoutKey={captionPhraseLayoutKey}
           />
         ) : null}
 
@@ -816,6 +842,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
         />
       </AbsoluteFill>
     </AccentContext.Provider>
+    </CaptionRegionContext.Provider>
   </ThemeContext.Provider>
 );
 };

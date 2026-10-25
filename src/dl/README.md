@@ -70,3 +70,28 @@ A wide system map in a 9:16 frame letterboxes - the canvas is shaped as a
 compromise between the two aspect ratios, but a 2.5:1 graph will always leave
 vertical space in a reel. The alternative is authoring a second canvas, which
 §06 rule 05 forbids.
+
+## Owner caption cards
+
+The shared caption geometry is `captionPlacement.ts`. Film and shot placements are optional and
+independent in `long` and `reel`; absence preserves the existing bottom card with zero pixel changes.
+An absent `w` keeps the legacy shrink-to-content card, including after Lock, movement or switching
+to **This shot only**. The editor outline and collision checks reserve the full 86% default band.
+Explicit `w` values from 0 through 1 are clamped to the format's minimum and maximum. An omitted
+`w` remains auto-sized. Existing saved widths remain fixed, including an explicit width of 86%.
+`captionPhrases.ts` fixes each phrase's placement at its first word and splits a narrowed card
+into at most two measured lines. The font size stays fixed. The studio overlay is outside FilmView;
+its drafts and the export use the same composition.
+For CanvasGraph films, the design check reports that owner-positioned cards were not checked against
+graph art because its 3D projection is deliberately out of scope for the collision geometry. Review
+of the placed position (where Review checks the placed card) remains the safety net for CanvasGraph films;
+scene-art and posed-character collision checks remain active.
+
+In Edit, choose Wide or Reel, then **Move captions**. Drag the card body to move it and an edge handle
+to resize it. **Whole film** changes that format's default; **This shot only** creates an exception
+at the playhead. A drop saves one undo step. **Lock** pins the chosen entry, **Unlock** enables edits,
+and **Reset** removes that entry. Resetting a shot restores the film-wide position. Studio saves are
+trusted owner writes and can move locked captions; locks prevent checked agent edits and rebuilds.
+
+Arrow keys nudge by 0.5%, Shift increases the step to 5%, Alt + Left/Right changes width, and L toggles
+lock. Alt bypasses snapping during a pointer gesture. Esc cancels the current gesture.

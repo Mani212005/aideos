@@ -11,6 +11,8 @@
  * Used by: backend/cli.ts, backend/pipeline/run.ts.
  */
 
+import { resolveCaptionPlacement } from "../../src/dl/captionPlacement";
+import { checkCaptionPlacements } from "./captionPlacement";
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
@@ -37,6 +39,7 @@ import { checkThreeStage } from "./threeStage";
 
 /** The standard layer rules a finding can belong to. */
 export type DesignRule =
+  | "caption-placement"
   | "schema"
   | "scene"
   | "camera"
@@ -492,13 +495,16 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
 
   let clips = 0;
   const scene = film.scene as Scene | undefined;
+  findings.push(...checkCaptionPlacements(film, scene));
   const assets: EnvironmentAsset[] = scene ? [...(scene.background ? [scene.background] : []), ...(scene.props ?? [])] : [];
   if (scene) {
     const result = validateSceneWithNodeAssets(scene);
     for (const e of result.errors) {
       findings.push({ rule: "scene", severity: "error", where: e.entityId ?? "scene", message: e.message });
     }
-    const hasCaptions = film.captions !== "off";
+    const hasCaptions = film.captions !== "off" && film.subtitles !== false;
+    const defaultCaptionFormats = (["long", "reel"] as const).filter((format) =>
+      hasCaptions && film.shots.some((shot) => resolveCaptionPlacement(film, format, shot.id).source === "default"));
     if (scene.renderer === "three" && result.errors.length === 0) {
       findings.push(...checkThreeStage(film, scene, context));
       findings.push({ rule: "scene", severity: "warning", where: "three stage", message: "posed vertices, outlines and sampled mesh depth measured in both crops; facial appeal, finger contact, raster presence and unsampled occlusion remain unmeasured" });
@@ -506,8 +512,10 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
       for (const p of scene.performances ?? []) for (const warning of p.retarget?.warnings ?? []) findings.push({ rule: "scene", severity: "warning", where: `performance ${p.id}`, message: `retargeted onto ${p.retarget!.to} with clamp policy: ${warning}` });
     }
     for (const asset of assets) {
-      if (hasCaptions && asset.position.y > CAPTION_SAFE_SQUARE.y1 && asset.assetId !== "background") {
-        findings.push({ rule: "safe-area", severity: "error", where: asset.assetId, message: `placed at y=${asset.position.y}, which is inside the caption band (y > ${CAPTION_SAFE_SQUARE.y1}); move it up to keep it readable.` });
+      // The scene-art cutoff y > 1260 is the intentional legacy default for every format whenever
+      // no placement is saved; per-format projection applies only where a placement is saved.
+      if (defaultCaptionFormats.length && asset.position.y > CAPTION_SAFE_SQUARE.y1 && asset.assetId !== "background") {
+        findings.push({ rule: "safe-area", severity: "error", where: asset.assetId, message: `placed at y=${asset.position.y}, which is inside the default caption band in ${defaultCaptionFormats.join(" and ")} (y > ${CAPTION_SAFE_SQUARE.y1}); move it up to keep it readable.` });
       }
       checkAsset(asset, film.accent, findings);
       clips += checkContinuity(asset, findings);

@@ -14,13 +14,14 @@ import { EyeOff, FileText, GripHorizontal, Mic, RefreshCw } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import { FilmView } from "../../../src/dl/Film";
 import { buildTimeline } from "../../../src/dl/camera";
-import { generateWordsFromFilm } from "../../../src/dl/captionsParser";
+import { captionWordsForFilm } from "../../../src/dl/captionsParser";
 import { deliveryTimeline } from "../../../src/dl/delivery";
 import type { FilmProject } from "../state/useFilmProject";
 import type { LayeredTimelineApi } from "../state/useLayeredTimeline";
 import { Button, EmptyState, SegmentedTabs, Toolbar, ToolbarDivider, ToolbarGroup, ToolbarLabel, cn } from "../components/ui";
 import { TimelineEditor } from "../components/TimelineEditor";
 import { AssetBin, type MediaAsset } from "../components/AssetBin";
+import { CaptionPlacementEditor } from "../components/CaptionPlacementEditor";
 import { OnCanvasAiEditor } from "../components/OnCanvasAiEditor";
 import { FORMATS, type Format } from "../App";
 
@@ -36,6 +37,7 @@ export interface EditStageProps {
   format: Format;
   onFormatChange: (format: Format) => void;
   playerRef: React.RefObject<PlayerRef | null>;
+  onPlayerMount: (player: PlayerRef | null) => void;
   currentFrame: number;
   isPlaying: boolean;
   onSeekFrame: (frame: number) => void;
@@ -55,6 +57,7 @@ export function EditStage({
   format,
   onFormatChange,
   playerRef,
+  onPlayerMount,
   currentFrame,
   isPlaying,
   onSeekFrame,
@@ -70,11 +73,15 @@ export function EditStage({
   // timeline are what the Edit stage is for.
   const [binOpen, setBinOpen] = useState(() => window.innerWidth >= 1280);
   const [previewKey, setPreviewKey] = useState(0);
+  const [moveCaptions, setMoveCaptions] = useState(false);
+  const [captionDraft, setCaptionDraft] = useState<Film | null>(null);
+  const [previewHost, setPreviewHost] = useState<HTMLDivElement | null>(null);
+  const previewFilm = useMemo(() => captionDraft ? { ...api.renderFilm, captionPlacement: captionDraft.captionPlacement, shots: api.renderFilm.shots.map((s) => ({ ...s, captionPlacement: captionDraft.shots.find((draftShot) => draftShot.id === s.id)?.captionPlacement })) } : api.renderFilm, [captionDraft, api.renderFilm]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const captionWords = useMemo(
-    () => generateWordsFromFilm(film as unknown as Record<string, unknown>),
-    [film],
+    () => captionWordsForFilm(api.renderFilm),
+    [api.renderFilm],
   );
 
   // The preview plays exactly what an export would produce, so hidden lanes disappear from it and
@@ -103,14 +110,14 @@ export function EditStage({
 
   const playerInputProps = useMemo(
     () => ({
-      film: api.renderFilm,
+      film: previewFilm,
       timeline: previewTimeline ?? [],
       accent,
       showGrid: film.theme?.videoType === "case-study",
       showRail: true,
       captionWords,
     }),
-    [accent, api.renderFilm, captionWords, film.theme?.videoType, previewTimeline],
+    [accent, previewFilm, captionWords, film.theme?.videoType, previewTimeline],
   );
 
   // Drag the horizontal split between the preview and the timeline.
@@ -198,6 +205,7 @@ export function EditStage({
         <ToolbarDivider />
 
         <ToolbarGroup>
+          <Button size="sm" active={moveCaptions} onClick={() => { playerRef.current?.pause(); setCaptionDraft(null); setMoveCaptions((enabled) => !enabled); }} title="Move and resize caption cards in the preview">Move captions</Button>
           <Button
             size="sm"
             onClick={() => setPreviewKey((k) => k + 1)}
@@ -224,7 +232,7 @@ export function EditStage({
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {/* The one dark surface in the product: the matte behind the video frame. */}
-          <div className="relative flex min-h-0 flex-1 items-center justify-center bg-matte">
+          <div data-preview-host ref={setPreviewHost} className="relative flex min-h-0 flex-1 items-center justify-center bg-matte">
             {!api.hasVisibleVisuals ? (
               <div className="flex max-w-sm flex-col items-center gap-2 p-6 text-center">
                 <EyeOff className="h-6 w-6 text-matte-text" />
@@ -238,7 +246,7 @@ export function EditStage({
             ) : previewTimeline ? (
               <>
                 <Player
-                  ref={playerRef}
+                  ref={onPlayerMount}
                   key={previewKey}
                   component={FilmView}
                   inputProps={playerInputProps}
@@ -247,17 +255,11 @@ export function EditStage({
                   compositionWidth={FORMATS[format].width}
                   compositionHeight={FORMATS[format].height}
                   style={{ width: "100%", height: "100%", maxHeight: "100%" }}
-                  controls
-                  clickToPlay
+                  controls={!moveCaptions}
+                  clickToPlay={!moveCaptions}
                   acknowledgeRemotionLicense
                 />
-                <OnCanvasAiEditor
-                  film={film}
-                  timeline={previewTimeline}
-                  currentFrame={currentFrame}
-                  onUpdateFilm={(next) => project.commit(next, "On-canvas AI edit")}
-                  accent={accent}
-                />
+                <OnCanvasAiEditor film={film} timeline={previewTimeline} currentFrame={currentFrame} onUpdateFilm={(next) => project.commit(next, "On-canvas AI edit")} accent={accent} folded={moveCaptions} />
               </>
             ) : (
               <p className="p-6 text-center font-mono text-xs text-matte-text">
@@ -265,6 +267,8 @@ export function EditStage({
               </p>
             )}
           </div>
+
+          {moveCaptions && previewTimeline ? <CaptionPlacementEditor key={`${film.id}-${format}`} film={film} previewFilm={previewFilm} previewTimeline={previewTimeline} format={format} frame={currentFrame} playerRef={playerRef} host={previewHost} onDraft={setCaptionDraft} onCommit={project.commit} /> : null}
 
           <div
             role="separator"

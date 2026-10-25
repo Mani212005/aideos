@@ -1,0 +1,209 @@
+/**
+ * File Description: Format-aware owner caption collision and bounds checks over the rendered scene geometry.
+ * Inputs and outputs: parsed film and optional scene -> caption-placement findings naming the art or inset.
+ * Used by: checkFilmDesign and studio design reports.
+ */
+import type { Film } from "../../src/dl/schema";
+import type { Scene } from "../../src/dl/scene/types";
+import { buildTimeline, shotAt } from "../../src/dl/camera";
+import { buildCaptionPhrases, captionPhraseAtFrame } from "../../src/dl/captionPhrases";
+import { captionWordsForFilm } from "../../src/dl/captionsParser";
+import { measureCaptionWords, measureCaptionWordsAsync } from "../review/captionMeasurements";
+import {
+  CAPTION_FRAMES,
+  DEFAULT_CAPTION_PLACEMENT,
+  captionCardRect,
+  captionRectsOverlap,
+  resolveCaptionPlacement,
+  resolveCaptionCardWidth,
+  clampCaptionPlacement,
+} from "../../src/dl/captionPlacement";
+import { getInsetRegion } from "../../src/dl/fullScreenHeroLayout";
+import { prepareSvgProjection } from "./insetRegion";
+import type { DesignFinding } from "./designCheck";
+// Applies draft placement fields to the active disk film without accepting request-owned scene data.
+export function applyCaptionPlacementDraft(requestedFilm: Film, activeFilm: Film): Film {
+  if (requestedFilm.id !== activeFilm.id)
+    throw new Error("Caption placement check must match the studio's active film.");
+  const requestedShots = new Map(requestedFilm.shots.map((shot) => [shot.id, shot]));
+  return {
+    ...activeFilm,
+    captionPlacement: requestedFilm.captionPlacement,
+    shots: activeFilm.shots.map((shot) => {
+      const requested = requestedShots.get(shot.id);
+      return requested
+        ? { ...shot, captionPlacement: requested.captionPlacement }
+        : shot;
+    }),
+  };
+}
+// Reports unsafe explicit entries and stage art that occupies an owner's placed card.
+export function checkCaptionPlacements(
+  film: Film,
+  scene?: Scene,
+  sample?: { format: "long" | "reel"; shotId: string; frame: number },
+  timingFilm: Film = film,
+): DesignFinding[] {
+  const findings: DesignFinding[] = [];
+  if (film.captions === "off" || film.subtitles === false) return findings;
+  const timeline = buildTimeline(timingFilm, timingFilm.voiceover?.durationSec);
+  const words = captionWordsForFilm(timingFilm);
+  for (const format of ["long", "reel"] as const) {
+    if (sample && sample.format !== format) continue;
+    const { width, height } = CAPTION_FRAMES[format];
+    const hasPlacedCard = timeline.some(
+      (timed) => resolveCaptionPlacement(film, format, timed.shot.id).source !== "default",
+    );
+    if (!scene && hasPlacedCard)
+      findings.push({
+        rule: "caption-placement",
+        severity: "warning",
+        where: `CanvasGraph / ${format}`,
+        message:
+          "caption placement was not checked against CanvasGraph art; manually review the placed card against the visible graph.",
+      });
+    for (const [where, entry] of [
+      ["film", film.captionPlacement?.[format]],
+      ...film.shots.map(
+        (s) => [`shot ${s.id}`, s.captionPlacement?.[format]] as const,
+      ),
+    ] as const) {
+      if (!entry) continue;
+      const safe = clampCaptionPlacement(entry, format);
+      const isLegacyDefaultPosition =
+        entry.w === undefined &&
+        entry.x === DEFAULT_CAPTION_PLACEMENT.x &&
+        entry.y === DEFAULT_CAPTION_PLACEMENT.y;
+      if (
+        !isLegacyDefaultPosition &&
+        Math.abs(safe.x - entry.x) +
+          Math.abs(safe.y - entry.y) +
+          (entry.w === undefined ? 0 : Math.abs((safe.w ?? 0) - entry.w)) >
+          1e-6
+      )
+        findings.push({
+          rule: "caption-placement",
+          severity: "error",
+          where: `${where} / ${format}`,
+          message:
+            "caption card is outside the format bounds or width limits; reset it or move and resize it inside the safe area.",
+        });
+    }
+    const fontSize = Math.round(Math.min(width, height) * 0.042);
+    const hasCustomWidth = timeline.some((t) => resolveCaptionCardWidth(resolveCaptionPlacement(film, format, t.shot.id), width).fixed);
+    const wordWidths = hasCustomWidth
+      ? measureCaptionWords(words.map((word) => word.text), fontSize)
+      : {};
+    const phrases = buildCaptionPhrases({
+      words,
+      fps: timingFilm.fps,
+      width,
+      fontSize,
+      placementAt: (startFrame) => resolveCaptionPlacement(film, format, shotAt(timeline, startFrame)?.shot.id),
+      measure: (text) => wordWidths[text],
+    });
+    for (const phrase of phrases) {
+      if (!phrase.unfittableWords.length) continue;
+      const shotId = shotAt(timeline, phrase.startFrame)?.shot.id;
+      for (const word of phrase.unfittableWords)
+        findings.push({
+          rule: "caption-placement",
+          severity: "warning",
+          where: `shot ${shotId ?? "unknown"} / ${format}`,
+          message: `caption word "${word.text}" cannot fit within two rows at the placed card width.`,
+        });
+    }
+    let project: ReturnType<typeof prepareSvgProjection> | undefined;
+    if (
+      scene &&
+      timeline.some(
+        (t) =>
+          resolveCaptionPlacement(film, format, t.shot.id).source !== "default",
+      )
+    ) {
+      try {
+        project = prepareSvgProjection(scene, width, height, film.id);
+      } catch {
+        /* Scene validity is reported by the scene rule. */
+      }
+    }
+    const frames = sample
+      ? [sample.frame]
+      : timeline.flatMap((timed) =>
+          Array.from(
+            { length: Math.ceil((timed.to - timed.from) / 3) },
+            (_, i) => timed.from + i * 3,
+          ),
+        );
+    const reported = new Set<string>();
+    for (const frame of frames) {
+      const timed = shotAt(timeline, frame);
+      if (!timed) continue;
+      const phrase = captionPhraseAtFrame(phrases, frame);
+      const placementShotId = phrase
+        ? shotAt(timeline, phrase.startFrame)?.shot.id
+        : sample?.shotId ?? timed.shot.id;
+      const resolved = resolveCaptionPlacement(film, format, placementShotId);
+      if (resolved.source === "default") continue;
+      const placement = phrase?.placement ?? resolved;
+      const rect = captionCardRect(format, width, height, placement, 2);
+      const where = `shot ${placementShotId} / ${format}`;
+      if (
+        timed.shot.stage === "inset" &&
+        captionRectsOverlap(rect, getInsetRegion(format, width, height))
+      )
+        findings.push({
+          rule: "caption-placement",
+          severity: "error",
+          where,
+          message: `caption card overlaps the device inset; move the ${placement.locked ? "art around the locked caption" : "card beside the inset"}.`,
+        });
+      if (project)
+        for (const asset of project(frame))
+          for (const part of asset.parts) {
+            const b = part.bounds;
+            if (
+              captionRectsOverlap(rect, {
+                x: b.x0,
+                y: b.y0,
+                w: b.x1 - b.x0,
+                h: b.y1 - b.y0,
+              }) &&
+              !reported.has(`${phrase?.startFrame ?? frame}:${asset.id}`)
+            ) {
+              reported.add(`${phrase?.startFrame ?? frame}:${asset.id}`);
+              findings.push({
+                rule: "caption-placement",
+                severity: "warning",
+                where: `${where} / ${asset.id}`,
+                message: `art ${asset.id}/${part.name} collides with the ${placement.locked ? "locked " : ""}caption card at frame ${frame}; move the art clear of the placed card.`,
+              });
+            }
+          }
+    }
+  }
+  return findings;
+}
+
+// Preloads measured widths asynchronously before running the shared collision checks.
+export async function checkCaptionPlacementsAsync(
+  film: Film,
+  scene?: Scene,
+  sample?: { format: "long" | "reel"; shotId: string; frame: number },
+  timingFilm: Film = film,
+): Promise<DesignFinding[]> {
+  if (film.captions !== "off" && film.subtitles !== false) {
+    const timeline = buildTimeline(timingFilm, timingFilm.voiceover?.durationSec);
+    const words = captionWordsForFilm(timingFilm);
+    const needsMeasurement = (["long", "reel"] as const).some((format) => {
+      if (sample && sample.format !== format) return false;
+      const { width } = CAPTION_FRAMES[format];
+      return timeline.some((timed) =>
+        resolveCaptionCardWidth(resolveCaptionPlacement(film, format, timed.shot.id), width).fixed,
+      );
+    });
+    if (needsMeasurement)
+      await measureCaptionWordsAsync(words.map((word) => word.text), 45);
+  }
+  return checkCaptionPlacements(film, scene, sample, timingFilm);
+}

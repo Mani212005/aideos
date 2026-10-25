@@ -4,6 +4,7 @@
  * Used by: src/dl/Film.tsx, backend/captionsParser.test.ts.
  */
 
+import type { Film } from "./schema";
 import type { CaptionWord } from "./KineticSubtitles";
 
 // Parses timestamp format "00:01:23.456" or "01:23.456" into total fractional seconds.
@@ -139,6 +140,11 @@ export function generateWordsFromFilm(film: Record<string, unknown>): CaptionWor
   }
 
   return [];
+}
+
+// Returns the shared enabled caption track for preview and export.
+export function captionWordsForFilm(film: Film): CaptionWord[] {
+  return film.subtitles === false || film.captions === "off" ? [] : generateWordsFromFilm(film);
 }
 
 // Formats numeric seconds into standard HH:MM:SS.mmm WebVTT timecode string.

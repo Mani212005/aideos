@@ -355,7 +355,7 @@ function camera(i: ReviewInputs): CriterionResult {
   };
 }
 
-// Criterion 5: burned-in captions along the bottom (gate).
+// Criterion 5: burned-in captions at the declared position, default bottom (gate).
 function captions(i: ReviewInputs): CriterionResult {
   const { render, silences } = i;
   // The end card's spoken line is narration too, captioned like the story.
@@ -363,11 +363,11 @@ function captions(i: ReviewInputs): CriterionResult {
   const narration = i.narration?.timed && cardWords.length
     ? { ...i.narration, words: [...i.narration.words, ...cardWords], text: `${i.narration.text} ${cardWords.map((w) => w.word).join(" ")}` }
     : i.narration;
-  if (!render.ocrRan) return skipped(5, "captions", "Bottom captions", true, "OCR was not run");
-  if (!narration && !i.video.hasAudio) return skipped(5, "captions", "Bottom captions", true, "no narration: the video has no audio and no narration was given");
+  if (!render.ocrRan) return skipped(5, "captions", "Captions at placed position (default bottom)", true, "OCR was not run");
+  if (!narration && !i.video.hasAudio) return skipped(5, "captions", "Captions at placed position (default bottom)", true, "no narration: the video has no audio and no narration was given");
   // Only narrated moments are held to having a caption: with timed words, within a second of a word; otherwise outside any silence.
   const narratedSamples = render.samples.filter((s) => (narration?.timed ? narration.words.some((w) => s.t >= w.start - 1 && s.t <= w.end + 1) : !silences.some((x) => x.end - x.start >= 1 && s.t >= x.start && s.t <= x.end)));
-  if (narratedSamples.length === 0) return skipped(5, "captions", "Bottom captions", true, "no narrated moments to check");
+  if (narratedSamples.length === 0) return skipped(5, "captions", "Captions at placed position (default bottom)", true, "no narrated moments to check");
   const withCaption = narratedSamples.filter((s) => s.hasCaption);
   const coverage = withCaption.length / narratedSamples.length;
   const tooTall = withCaption.filter((s) => s.captionLines > T.captions.maxLines).length;
@@ -379,13 +379,13 @@ function captions(i: ReviewInputs): CriterionResult {
   if (match !== null && match < 0.7) failures.push(`only ${Math.round(match * 100)}% of caption words are in the narration`);
   const missing = narratedSamples.filter((s) => !s.hasCaption).map((s) => s.t);
   return {
-    id: 5, key: "captions", name: "Bottom captions", gate: true,
+    id: 5, key: "captions", name: "Captions at placed position (default bottom)", gate: true,
     status: failures.length ? "fail" : "pass", score: score(coverage, 0, 0.9),
     summary: failures.length ? failures.join("; ") : `captions present in ${Math.round(coverage * 100)}% of narrated moments`,
     metrics: { narratedSamples: narratedSamples.length, captionSamples: withCaption.length, coverage: round(coverage), overTwoLineFrames: tooTall, captionWordMatch: match === null ? null : round(match) },
     threshold: { coverageMin: T.captions.coverageMin, maxLines: T.captions.maxLines, wordHeightMinPx: T.captions.wordHeightMin, wordMatchMin: 0.7 },
-    evidence: spread(missing, 4).map((t) => ({ t, note: "narrated moment with no caption band in the bottom quarter" })),
-    fix: failures.length ? "Burn in captions along the bottom quarter of the frame (word-highlighted, two lines at most, 36 px or more at 1080p) for all narrated time; keep artwork out of that band." : undefined,
+    evidence: spread(missing, 4).map((t) => ({ t, note: "narrated moment with no caption in the checked band (default bottom quarter)" })),
+    fix: failures.length ? "Burn in captions at their declared position (default bottom quarter, word-highlighted, two lines at most, 36 px or more at 1080p) for all narrated time; keep artwork out of that band." : undefined,
   };
 }
 

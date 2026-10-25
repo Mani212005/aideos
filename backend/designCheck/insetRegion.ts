@@ -9,6 +9,7 @@
  */
 
 import fs from "node:fs";
+import path from "node:path";
 import { buildTimeline } from "../../src/dl/camera";
 import type { Film } from "../../src/dl/schema";
 import { getInsetRegion, INSET_FORMAT_FRAMES, type InsetRect } from "../../src/dl/fullScreenHeroLayout";
@@ -16,7 +17,7 @@ import { compileScene, type CompiledEntity, type CompiledFrame } from "../../src
 import type { Scene } from "../../src/dl/scene/types";
 import { stageProjection } from "../../src/dl/scene/projection";
 import { parseSvgDocument, type SvgNode } from "../../src/dl/scene/svgDocument";
-import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { getExamplesDir, getVideosDir, resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import {
   apply,
   IDENTITY,
@@ -61,6 +62,43 @@ interface Leaf {
 /** The drawn elements of one parsed asset document, cached per file version. */
 const LEAF_CACHE = new Map<string, Leaf[]>();
 
+// Resolves only package visual assets and rejects absolute or escaping sources.
+export function resolveCaptionSvgSource(svgSource: string, packageSlug?: string): string {
+  const parts = svgSource.split("/");
+  if (
+    path.isAbsolute(svgSource) ||
+    parts.some((part) => !part || part === "." || part === "..") ||
+    !/^(videos|examples)\/[^/]+\/visuals\/[^/]+\.svg$/.test(svgSource)
+  ) throw new Error(`Caption geometry only accepts package visuals SVG paths: ${svgSource}`);
+  const targetSlug = packageSlug ?? parts[1];
+  if (packageSlug && (parts[1] !== packageSlug || !/^[a-z0-9-]+$/.test(packageSlug)))
+    throw new Error(`Caption geometry SVG source must belong to package ${packageSlug}: ${svgSource}`);
+  if (!/^[a-z0-9-]+$/.test(targetSlug))
+    throw new Error(`Caption geometry package slug is invalid: ${targetSlug}`);
+  const personalDir = getVideosDir();
+  const packageDir = resolvePackageDir(targetSlug);
+  const personalPackage = path.resolve(packageDir) === path.resolve(personalDir, targetSlug);
+  const expectedPrefix = `${personalPackage ? "videos" : "examples"}/${targetSlug}/visuals/`;
+  if (!svgSource.startsWith(expectedPrefix))
+    throw new Error(`Caption geometry SVG source must belong to package ${targetSlug}: ${svgSource}`);
+  const packageVisuals = path.join(packageDir, "visuals");
+  const svgPath = path.join(packageVisuals, parts[3]);
+  try {
+    if (fs.lstatSync(packageDir).isSymbolicLink() || fs.lstatSync(packageVisuals).isSymbolicLink() || fs.lstatSync(svgPath).isSymbolicLink())
+      throw new Error("Package SVG paths may not be symlinks");
+    const videosRoot = fs.realpathSync(personalPackage ? personalDir : getExamplesDir());
+    const physicalPackage = fs.realpathSync(packageDir);
+    if (physicalPackage !== path.join(videosRoot, targetSlug)) throw new Error("Package directory is not physically owned by its root");
+    const visualRoot = fs.realpathSync(packageVisuals);
+    const resolved = fs.realpathSync(svgPath);
+    const visualRelative = path.relative(visualRoot, resolved);
+    if (visualRelative.startsWith("..") || path.isAbsolute(visualRelative)) throw new Error("SVG escapes package visuals");
+    return resolved;
+  } catch {
+    throw new Error(`Caption geometry SVG source does not resolve to an authorized package asset: ${svgSource}`);
+  }
+}
+
 // Reads an element's authored opacity, defaulting to opaque.
 function authoredOpacity(node: SvgNode): number {
   const v = Number.parseFloat(node.attrs.opacity ?? "");
@@ -68,8 +106,8 @@ function authoredOpacity(node: SvgNode): number {
 }
 
 // Flattens an asset document into its drawn elements, recording each one's chain of ancestors.
-function collectLeaves(svgSource: string): Leaf[] {
-  const file = resolveRepoAssetPath(svgSource);
+function collectLeaves(svgSource: string, packageSlug?: string): Leaf[] {
+  const file = packageSlug ? resolveCaptionSvgSource(svgSource, packageSlug) : resolveRepoAssetPath(svgSource);
   if (!fs.existsSync(file)) return [];
   // A design build rewrites artwork in place, so the cache is keyed by the file's own version.
   const stat = fs.statSync(file);
@@ -125,6 +163,7 @@ function overlapOf(box: Box, region: InsetRect): { w: number; h: number } | null
 export function projectedSvgParts(
   entity: CompiledEntity,
   frameToPx: Affine,
+  packageSlug?: string,
 ): Array<{ name: string; bounds: Box }> {
   if (!entity.svgSource || entity.transform.opacity <= INSET_ART_MIN_OPACITY) return [];
   const parts: Array<{ name: string; bounds: Box }> = [];
@@ -133,7 +172,7 @@ export function projectedSvgParts(
     multiply(multiply(translation(entity.transform.x, entity.transform.y), scaling(entity.transform.scale, entity.transform.scale)), rotation(entity.transform.rotation)),
   );
   const states = entity.elementStates ?? {};
-  for (const leaf of collectLeaves(entity.svgSource)) {
+  for (const leaf of collectLeaves(entity.svgSource, packageSlug)) {
     let m = placed;
     let opacity = entity.transform.opacity;
     let drawn = true;
@@ -167,16 +206,19 @@ export function prepareSvgProjection(
   scene: Scene,
   width: number,
   height: number,
+  packageSlugOrOptions?: string | { includeBackground?: boolean; packageSlug?: string },
   options: { includeBackground?: boolean } = {},
 ) {
+  const packageSlug = typeof packageSlugOrOptions === "string" ? packageSlugOrOptions : packageSlugOrOptions?.packageSlug;
+  const opts = typeof packageSlugOrOptions === "object" && packageSlugOrOptions !== null ? packageSlugOrOptions : options;
   const compiled = compileScene(scene, { clockMs: 0, skipContinuityVerification: true });
   // Returns the drawn parts at exactly this frame, preserving element animation and authored opacity.
   return (frame: number) => {
     const current = compiled.frames[Math.max(0, Math.min(compiled.frames.length - 1, frame))];
     const matrix = sceneToFrame(current, scene, width, height);
     return current.entities
-      .filter((e) => options.includeBackground || e.kind !== "background")
-      .map((e) => ({ id: e.entityId, parts: projectedSvgParts(e, matrix) }));
+      .filter((e) => opts.includeBackground || e.kind !== "background")
+      .map((e) => ({ id: e.entityId, parts: projectedSvgParts(e, matrix, packageSlug) }));
   };
 }
 
@@ -206,7 +248,7 @@ export function checkInsetRegions(film: Film, scene: Scene): InsetFinding[] {
         const toPx = sceneToFrame(frame, scene, size.width, size.height);
         for (const entity of frame.entities) {
           if (entity.kind === "background" || reported.has(entity.entityId)) continue;
-          const hit = projectedSvgParts(entity, toPx).find((part) => overlapOf(part.bounds, region));
+          const hit = projectedSvgParts(entity, toPx, film.id).find((part) => overlapOf(part.bounds, region));
           if (!hit) continue;
           reported.add(entity.entityId);
           const cut = format === "long" ? "wide" : "reel";

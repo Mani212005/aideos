@@ -8,7 +8,7 @@
  */
 
 import type { LayeredFilm } from "../../src/dl/layeredSchema";
-import type { ThemeConfig } from "../../src/dl/schema";
+import type { CaptionPlacementByFormat, ThemeConfig } from "../../src/dl/schema";
 import type { TranscribedWord } from "../transcribe";
 import type { FillerSpan } from "./detectFillers";
 import type { SilenceWindow } from "./detectSilences";
@@ -30,6 +30,7 @@ export interface EditContextClipSummary {
   start: number;
   end: number;
   linkedClipId?: string | null;
+  captionShot?: { id: string; captionPlacement?: CaptionPlacementByFormat };
 }
 
 export interface EditContextMeta {
@@ -38,6 +39,7 @@ export interface EditContextMeta {
   durationSec?: number;
   accent?: string;
   theme?: ThemeConfig;
+  captionPlacement?: CaptionPlacementByFormat;
 }
 
 export interface EditContext {
@@ -77,8 +79,9 @@ export function buildEditContext(
     position: clip.position,
     start: clip.start,
     end: clip.end,
+    ...(clip.kind === "animation" && "shotId" in clip.payload ? { captionShot: { id: clip.payload.shotId, captionPlacement: "captionPlacement" in clip.payload ? clip.payload.captionPlacement : undefined } } : {}),
     ...(clip.linkedClipId ? { linkedClipId: clip.linkedClipId } : {}),
   }));
 
-  return { transcript, fillers, silences, lanes, clips, meta };
+  return { transcript, fillers, silences, lanes, clips, meta: { ...meta, ...(layeredFilm.captionPlacement ? { captionPlacement: layeredFilm.captionPlacement } : {}) } };
 }

@@ -4,7 +4,7 @@
  * Used by: src/Root.tsx, backend/insetStage.test.ts.
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Audio, Sequence, staticFile, useVideoConfig } from "remotion";
 import { FilmView } from "./Film";
 import { deliveryTimeline, formatForSize } from "./delivery";
@@ -12,7 +12,7 @@ import { EndCardVoice } from "./EndCard";
 import { TOTAL_FRAMES, FILM, TIMELINE, FPS, type FilmProps } from "./runtime";
 import { calculateDuckingVolume, type SpeechInterval } from "./audio/ducking";
 import { getRetimedAudioRelPath } from "./audio/retime";
-import { generateWordsFromFilm } from "./captionsParser";
+import { captionWordsForFilm } from "./captionsParser";
 import type { Film } from "./schema";
 import type { TimedShot } from "./camera";
 
@@ -56,6 +56,7 @@ export const Video: React.FC<VideoProps> = ({
   const effectiveVoiceoverVolume = voiceoverVolume ?? film.voiceover?.volume ?? 1;
   const effectiveMusicSrc = (musicSrc ?? "").trim() || film.music?.src || film.audio?.src || "";
   const effectiveMusicVolume = musicVolume ?? film.music?.volume ?? 1;
+  const captionWords = useMemo(() => captionWordsForFilm(film), [film]);
 
   // Extract speech intervals from audio clips or timeline shots with narration
   const speechIntervals: SpeechInterval[] =
@@ -165,11 +166,7 @@ export const Video: React.FC<VideoProps> = ({
         accent={accent}
         showGrid={showGrid}
         showRail={showRail}
-        captionWords={
-          film.subtitles === false
-            ? []
-            : generateWordsFromFilm(film as unknown as Record<string, unknown>)
-        }
+        captionWords={captionWords}
         includeAudio={false}
       />
     </>

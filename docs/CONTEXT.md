@@ -20,7 +20,8 @@ The root data contract defining a complete video composition (stored authoritati
 * `scene?: FilmScene` (Optional vector scene replacing the canvas graph for scene films)
 * `shots: Shot[]` (Ordered chronological sequence of camera shots and visual blocks)
 * `voiceover?: { src: string, volume?: number, speed?: number, retimedSrc?: string }` (Master audio track source file)
-* `captions?: "bottom" | "off" | string` (Burned-in bottom captions rendering mode or sidecar path, default "bottom")
+* `captionPlacement?: CaptionPlacementByFormat` (Optional per-format owner caption card placement, see [caption placement](../src/dl/README.md#owner-caption-cards))
+* `captions?: "bottom" | "off" | string` (Burned-in captions mode or sidecar path, default "bottom"; position is configured separately by `captionPlacement` in `src/dl/schema.ts`, see [caption placement](../src/dl/README.md#owner-caption-cards))
 * `layers?: LayerDefinition[]` (Persisted non-linear track definitions and settings)
 * `audioClips?: AudioClip[]` (Persisted multi-track audio clips)
 * `videoClips?: VideoClip[]` (Persisted imported footage picture clips)
@@ -85,6 +86,18 @@ Standalone caption cue payload for standalone subtitle overlays.
 * `text: string` (Caption text content)
 * `startFrame?: number, endFrame?: number` (Optional frame-level timing bounds)
 
+### `CaptionPlacement`
+An owner-controlled caption card placement (`src/dl/schema.ts`, `src/dl/captionPlacement.ts`).
+* `x?: number` (Normalized card horizontal centre, 0.0 to 1.0, default 0.5)
+* `y: number` (Normalized card top edge, 0.0 to 1.0)
+* `w?: number` (Normalized card width, 0.0 to 1.0; absent keeps auto-width shrink-to-content sizing)
+* `locked?: boolean` (Pinned by owner; prevents agent edits and rebuild overwrite, default false)
+
+### `CaptionPlacementByFormat`
+Independent caption card placements per format (`src/dl/schema.ts`).
+* `long?: CaptionPlacement` (Owner caption card for 16:9 Long cut)
+* `reel?: CaptionPlacement` (Owner caption card for 9:16 Reel cut)
+
 ### `CameraTrack`
 Declarative camera motion track for continuous scene graph camera movement (`src/dl/schema.ts`, `src/dl/scene/types.ts`).
 * `keyframes: CameraKeyframe[]` (Ordered list of camera position, zoom, and rotation keyframes)
@@ -100,6 +113,7 @@ A discrete camera position and framing keyframe on the scene timeline.
 ### `Shot`
 A single continuous camera view and duration window on the timeline.
 * `id: string` (Unique shot identifier, e.g. "shot-intro")
+* `captionPlacement?: CaptionPlacementByFormat` (Optional per-format owner caption card exception for this shot)
 * `ch?: string` (Chapter assignment for chapter rail tracking)
 * `dur: number` (Authored duration in seconds; locked by master audio clock +/- 50ms)
 * `stage: "anchor" | "frame" | "none" | "inset"` (Visual staging: "frame"=Hero center stage, "anchor"=grows from canvas node, "none"=empty canvas, "inset"=one device in the format's fixed inset region over a scene stage)
@@ -211,11 +225,24 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ### `src/dl/fullScreenHeroLayout.ts` (Frame Safe Areas, Hero Layout & Inset Regions)
 * `SUBTITLE_BAND_TOP_RATIO`: Single definition of the burned-in caption card top ratio (0.78), aligned with scene engine `CAPTION_SAFE_SQUARE`.
-* `getFullScreenHeroLayout(format, width, height)`: Media, scrim, and caption bounding box geometry for full-screen B-roll heroes.
+* `subtitleCardHeight(width, height, lines)`: Returns the rendered caption card height for the planned number of lines.
+* `subtitleCardBottom(width, height)`: Bottom edge (render px) of the subtitle card.
+* `getFullScreenHeroLayout(input)`: Computes media, scrim, and caption bounding box geometry for full-screen B-roll heroes from `FullScreenHeroLayoutInput` (moving the hero label to the bottom when `captionRect.y < height / 2`).
 * `getInsetRegion(format, width, height)`: Fixed frame rectangle (`InsetRect`) for `stage: "inset"` device beats (right third in long cut, lower-middle band in reel, clearing subtitle band and margins).
 * `INSET_FORMAT_FRAMES`: Reference frame sizes (`long`: 1920x1080, `reel`: 1080x1920) windowed against the square scene.
 * `getFrameMargins(format, width)`: Shared format chrome margins (long: 96px, reel: top 120px, left/right 64px, bottom 240px, scaled from format reference width), consumed by `useLayout()` and stage safe regions.
 * `getStageSafeRegion(format, width, height, captions)`: Safe scene rectangle intersecting the shared 1080 square with output margins and optional caption band.
+
+### `src/dl/captionPlacement.ts` (Owner Caption Placement Resolution & Gesture Geometry)
+* `resolveCaptionPlacement(film, format, shotId)`: Resolves shot exception, film-wide placement, or default bottom card (`{x: 0.5, y: 0.78, w: undefined}`).
+* `captionBounds(format, frameW, frameH, w)`: Format-safe placement bounds clamping card within margins, 0.78 floor, and Reel action-zone boundaries.
+* `captionCardRect(format, frameW, frameH, placement, lines)`: Computes 2D card bounding rectangle for render, design check, and review OCR.
+* `dragCaption(input)`, `resizeCaption(input)`: Gesture math clamping deltas and snapping to margins/center/presets.
+* `carryCaptionPlacement(prev, next, options)`: Preserves placements across film writers, protecting locked entries from agent edits or rebuild overwrites.
+
+### `src/dl/captionPhrases.ts` (Deterministic Phrase Splitting by Measured Width)
+* `buildCaptionPhrases({ words, fps, width, fontSize, placementAt, measure })`: Measures word widths and splits caption words into at most two lines per phrase, locking placement at phrase start.
+* `captionPhraseAtFrame(phrases, frame)`: Resolves active caption phrase and its placement at a given frame.
 
 ---
 
@@ -342,7 +369,9 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 ### `backend/review/` (Deterministic Video Review & Good-Video Rubric)
 * `reviewVideo(options)` (`backend/review/review.ts`): Orchestrates measuring the rendered video (picture, text, audio) plus film data and narration where available, evaluating rubric criteria, extracting evidence stills for failed criteria, and writing `review.json`.
 * `formatReview(report)` (`backend/review/review.ts`): Formats a `ReviewReport` into a human-readable terminal summary with passing/failing gates.
-* `measureRenderFacts(videoPath, options)` (`backend/review/renderFacts.ts`): Measures layout persistence, stage clears, cuts, stillness, captions, text size, contrast, overlap, and on-screen numbers from decoded frames and OCR.
+* `measureRenderFacts(videoPath, options)` (`backend/review/renderFacts.ts`): Measures layout persistence, stage clears, cuts, stillness, captions, text size, contrast, overlap, and on-screen numbers from decoded frames and OCR (accepting `captionRectAt` for owner-placed caption regions).
+* `prepareCaptionReview(film, width, height)` (`backend/review/captionRegion.ts`): Prepares declared caption review rectangles from film words and output format for measured review OCR and Gemini deterministic facts.
+* `measureCaptionWords(words, fontSize)` (`backend/review/captionMeasurements.ts`): Measures caption words with the render's pinned font and layout utility for exact review phrase boundaries.
 * `evaluateCriteria(inputs)` (`backend/review/criteria.ts`): Pure evaluation of rubric criteria (criteria 1 to 12 plus supplemental criterion 13 `plan-adherence`) from measured facts against calibrated thresholds.
 * `readFilmFacts(film, viewport)`, `loadFilmFacts(filmJson, viewport)` (`backend/review/source.ts`): Derives camera motion, element persistence, carry-over transformations, per-shot stage and motion facts (`planShots`), and optional look plan from film data. Three-stage presence, camera and evaluated performance contact are measured in the supplied output viewport; see [REVIEW.md](REVIEW.md) for the review contract.
 * `deriveNarrationFacts(words, duration)` (`backend/review/speech.ts`): Derives pace, dead air, narrated moments, and sync alignment from word timings or narration text.
@@ -452,7 +481,8 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `displayWords(lines, extra)`, `unmeasuredWords(words, table)`, `measureWords(words, file)` (`measureWords.ts`): Measures unmeasured words in headless Chrome and merges them into `wordWidths.json`.
 
 ### `backend/designCheck/` (Deterministic Design Standard Checker)
-* `checkFilmDesign(raw, context)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, scene engine validity, static self-contained artwork, locked palette, typography, motion continuity, single transform origin, picture locked to narration, honest data / grounded numbers, smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration), move-then-hold pacing (>= 30% hold share, <= 6s continuous moves, cue landing, and subject focus framing), carry-over change holds (substantial visible animation settling in a camera hold and remaining framed for >= 2s), a clear inset region while a device shot shares the stage, and Three.js stage geometry gates (`checkThreeStage`) including occlusion checks.
+* `checkFilmDesign(raw, context)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, scene engine validity, static self-contained artwork, locked palette, typography, motion continuity, single transform origin, picture locked to narration, honest data / grounded numbers, smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration), move-then-hold pacing (>= 30% hold share, <= 6s continuous moves, cue landing, and subject focus framing), carry-over change holds (substantial visible animation settling in a camera hold and remaining framed for >= 2s), a clear inset region while a device shot shares the stage, Three.js stage geometry gates (`checkThreeStage`) including occlusion checks, and owner caption placement checks (`checkCaptionPlacements`).
+* `checkCaptionPlacements(film, scene)` (`captionPlacement.ts`): Checks format-aware caption bounds, inset collisions, and stage art collisions against owner-placed caption cards; reports a non-blocking warning when caption placement is not checked against CanvasGraph art.
 * `checkThreeStage(film, scene, context)` (`threeStage.ts`): Evaluates Three stage designs against geometry-driven gates across wide and reel formats: posed mesh vertex extents and outlines within stage safe region and caption clearance, device inset clearance during inset shots, foreground SVG and sampled mesh depth occlusion, 2s settled aftermath carry holds, camera speed (<= 20% width/s) and acceleration (<= 0.3 widths/s^2), cast focus framing, duplicate performance writers, and finite character material palettes.
 * `MAX_CAMERA_ZOOM_STEP`, `MAX_CAMERA_PAN_WIDTHS`, `MAX_CAMERA_PAN_ACCEL_WIDTHS` (`designCheck.ts`): Scene camera limits on single-frame zoom change (0.8%), pan speed (20% of scene width/s), and pan acceleration (0.3 scene widths/s^2).
 * `checkFilmDesignById(filmId)` (`designCheck.ts`): Loads a film by package slug and executes design validation against optional look plan and camera target cues.
@@ -499,7 +529,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `buildEditContext(layeredFilm, transcript, fillers, silences, options)` (`buildEditContext.ts`): Assembles pure, structured timeline context (`EditContext`) summarizing lanes, clips, media dimensions, fillers, and silences for LLM planning.
 
 ### `backend/editPlanner/` (Model-Driven AI Edit Planning, Validation, Execution & Provenance Logging)
-* `editOpSchema`, `editProgramSchema` (`schema.ts`): Closed Zod discriminated union and array schema defining the complete edit operation vocabulary (`add_text_overlay`, `add_lower_third`, `add_slide`, `add_caption_track`, `remove_fillers`, `remove_dead_air`, `trim_range`, `split_clip`, `move_clip`, `set_clip_speed`, `set_clip_volume`, `set_layer_state`, `set_accent`, `set_theme`, `reorder_segments`).
+* `editOpSchema`, `editProgramSchema` (`schema.ts`): Closed Zod discriminated union and array schema defining the checked edit operation vocabulary; see `backend/editPlanner/schema.ts` for the current operation list, including `set_caption_placement`.
 * `validateEditProgram(program, context)` (`validator.ts`): Validates edit operation programs against schema constraints, timeline bounds, and dry-run layer model simulation.
 * `applyEditProgram(film, program, context)` (`interpreter.ts`): Pure transactional interpreter applying `EditOp[]` to `LayeredFilm` with atomic rollback on failure.
 * `planEdits(request, context, llmCaller, options)` (`planner.ts`): Model-driven planner generating and validating `EditOp[]` programs from natural language requests in a 3-attempt validate-and-repair loop.
@@ -555,7 +585,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * **`StoryStage.tsx` (`MindMap.tsx`, `NodeEditor.tsx`)**: 2D infinite spatial canvas for dragging nodes, editing labels, and connecting directed edges; dispatches spatial actions (`add_node`, `add_edge`, `add_shot`) to the Agent Bridge Hub via `/api/canvas/event`.
 * **`LookStage.tsx` (`DesignView.tsx`, `Styleboard.tsx`, `CustomizationEditor.tsx`)**: Look stage sub-views for bespoke design and look plan inspection (stage, cast, treatments, LOOK.md preview, captain approval, artwork, motion, and visual swaps), canvas texture presets, typography controls, and storyboard keyframe gallery.
 * **`MotionStage.tsx` (`motionTemplates.ts`)**: Custom SVG animation authoring studio with element-level timeline keyframing, motion templates, and live scrubbing.
-* **`EditStage.tsx` (`TimelineEditor.tsx`, `InspectorPanel.tsx`, `AssetBin.tsx`, `OnCanvasAiEditor.tsx`)**: Non-linear multi-track timeline with clip dragging, sticky snapping, magnetic ripple editing (R), linked audio-video trimming, waveform preview, track mute/hide/lock, clip/shot inspector, and model-driven AI edit panel (`OnCanvasAiEditor.tsx`) dispatching validated edit programs to Agent Bridge with live trace telemetry.
+* **`EditStage.tsx` (`TimelineEditor.tsx`, `CaptionPlacementEditor.tsx`, `InspectorPanel.tsx`, `AssetBin.tsx`, `OnCanvasAiEditor.tsx`)**: Non-linear multi-track timeline with clip dragging, Move captions mode with player overlay and bounds snapping (`CaptionPlacementEditor.tsx`), sticky snapping, magnetic ripple editing (R), linked audio-video trimming, waveform preview, track mute/hide/lock, clip/shot inspector, and model-driven AI edit panel (`OnCanvasAiEditor.tsx`) dispatching validated edit programs to Agent Bridge with live trace telemetry.
 * **`CaptionsStage.tsx` (`KineticCaptionEditor.tsx`)**: Word-level subtitle karaoke editor powered by `@chenglou/pretext`.
 * **`ReviewStage.tsx` (`CritiqueStudio.tsx`, `ExportProgressModal.tsx`)**: AI critique drawer executing natural-language feedback and patches via `/api/critique`, dispatching review critiques to connected agents, pacing and coverage health charts (`Charts.tsx`), and headless MP4 export progress.
 

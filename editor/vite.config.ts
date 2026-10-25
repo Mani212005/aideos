@@ -4,6 +4,7 @@
  * Used by: npm run editor, Vite build, and Render container.
  */
 
+import { z } from 'zod';
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -11,6 +12,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
+import { applyCaptionPlacementDraft } from '../backend/designCheck/captionPlacement.ts';
+import { checkCaptionPlacementDraftAsync } from '../backend/designCheck/captionPlacementDraft.ts';
+import type { Scene } from '../src/dl/scene/types.ts';
+import { carryCaptionPlacement } from '../src/dl/captionPlacement.ts';
 import { dropLegacyFilmBlocks, filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../src/dl/videoPackageLoader.ts'
@@ -45,6 +50,8 @@ import dotenv from 'dotenv'
 dotenv.config({ path: path.resolve(__dirname, '../.env'), quiet: true })
 import { createEngine } from '../backend/engine/index.ts'
 import type { VideoJobSpec } from '../backend/engine/types.ts'
+
+const captionCheckRequest = z.object({ film: filmSchema, previewFilm: filmSchema, format: z.enum(['long', 'reel']), shotId: z.string(), frame: z.number().finite().min(0) }).strict();
 
 const filmsDir = path.resolve(__dirname, '../src/dl/films');
 // The owner's personal, gitignored videos (AIDEOS_VIDEOS_DIR moves it); examples/ is the read-only fallback.
@@ -85,13 +92,19 @@ function readFilm(filmId: string): Film | null {
   return null;
 }
 
+// Identifies writer echoes so the external-file watcher cannot replay a save after Undo.
+const studioFilmWrites = new Map<string, string>();
+
 // Persists a film to both the video package (authoritative, read by the editor Player)
 // and the generated src/dl/films/<id>.ts module (read by Remotion's CLI render/activeFilm
 // bundle), so the two never drift the way they did when B-roll auto-wiring only touched one.
-function writeFilm(filmId: string, film: Film): void {
+function writeFilm(filmId: string, incoming: Film, options: { owner: boolean; agentEdit?: boolean } = { owner: false }): void {
+  const film = filmSchema.parse(carryCaptionPlacement(readFilm(filmId), incoming, options));
   const pkgDir = path.join(videosDir, filmId);
   if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
-  fs.writeFileSync(path.join(pkgDir, 'film.json'), JSON.stringify(film, null, 2), 'utf8');
+  const contents = JSON.stringify(film, null, 2);
+  studioFilmWrites.set(filmId, contents);
+  fs.writeFileSync(path.join(pkgDir, 'film.json'), contents, 'utf8');
 
   const filmPath = path.join(filmsDir, `${filmId}.ts`);
   if (fs.existsSync(filmPath)) {
@@ -378,6 +391,7 @@ function startFilmWatcher(): void {
         if (!fs.existsSync(filmPath)) return;
         try {
           const raw = fs.readFileSync(filmPath, 'utf8');
+          if (studioFilmWrites.get(slug) === raw) return;
           const parsedJson = JSON.parse(raw);
           const parsed = filmSchema.safeParse(parsedJson);
           if (parsed.success) {
@@ -547,6 +561,42 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
     if (req.method === 'OPTIONS') {
       res.statusCode = 204;
       res.end();
+      return;
+    }
+
+    // Measures the draft card against the same compiled art geometry as the design gate.
+    if (url === '/api/caption-placement/check' && req.method === 'POST') {
+      void readBody(req).then((body) => {
+        const parsed = captionCheckRequest.safeParse(body);
+        if (!parsed.success) {
+          sendJson(res, 400, { error: 'Expected a valid film, format, shotId and frame' });
+          return;
+        }
+        const { film: requestedFilm, previewFilm, format, shotId, frame } = parsed.data;
+        // This local studio route trusts the server's active-film pointer, never a request's package body.
+        const activeFilmFile = path.resolve(__dirname, '../src/dl/activeFilm.ts');
+        const activeFilmSource = fs.existsSync(activeFilmFile) ? fs.readFileSync(activeFilmFile, 'utf8') : '';
+        const activeFilmId = /from\s+["']\.\/films\/([a-z0-9-]+)["']/.exec(activeFilmSource)?.[1];
+        const activeFilm = activeFilmId ? readFilm(activeFilmId) : null;
+        if (!activeFilm) {
+          sendJson(res, 409, { error: 'The studio has no active film to check.' });
+          return;
+        }
+        if (previewFilm.id !== activeFilm.id) {
+          sendJson(res, 409, { error: 'Caption placement preview must match the studio active film.' });
+          return;
+        }
+        let film: Film;
+        try {
+          film = applyCaptionPlacementDraft(requestedFilm, activeFilm);
+        } catch (error) {
+          sendJson(res, 409, { error: error instanceof Error ? error.message : String(error) });
+          return;
+        }
+        void checkCaptionPlacementDraftAsync(film, film.scene as Scene | undefined, { format, shotId, frame: Math.round(frame) }, previewFilm)
+          .then((findings) => sendJson(res, 200, { findings }))
+          .catch((error) => sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) }));
+      }).catch((error) => sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) }));
       return;
     }
 
@@ -1710,7 +1760,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               }
 
               const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
-              writeFilm(updatedFilm.id, updatedFilm);
+              writeFilm(updatedFilm.id, updatedFilm, {
+                owner: false,
+                agentEdit: planResult.ops.some((op: { op: string }) => op.op === 'set_caption_placement'),
+              });
 
               appendEditProvenanceRecord(videosDir, filmId, {
                 request,
@@ -2476,7 +2529,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               return;
             }
             const file = path.join(filmsDir, `${id}.ts`);
-            writeFilm(id, parsed.data);
+            // This studio save endpoint is the trusted owner path; placement locks bind agents and rebuilds.
+            writeFilm(id, parsed.data, { owner: true });
 
             const activeFilmFile = path.resolve(__dirname, '../src/dl/activeFilm.ts');
             fs.writeFileSync(

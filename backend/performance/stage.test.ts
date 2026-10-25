@@ -26,9 +26,13 @@ import { validateScene } from "../../src/dl/scene/validateScene";
 import { validateStageSvgResources } from "../../src/dl/scene/validateStage";
 import { receiveSchema } from "../../src/dl/scene/stageContract";
 import { prepareStageFacts, stageEvidence } from "../../src/dl/scene/stageFacts";
-import { applyStageCamera, projectStagePoint, stageViewport } from "../../src/dl/scene/projection";
+import { applyStageCamera, projectStagePoint, rectInside, stageViewport } from "../../src/dl/scene/projection";
+import { getStageSafeRegion } from "../../src/dl/fullScreenHeroLayout";
 import { projectMeshParts, sampleMeshDepth, undeclaredMaterialColours } from "../../src/dl/scene/stageGeometry";
 import { checkThreeStage } from "../designCheck/threeStage";
+import { checkCaptionPlacementDraftAsync } from "../designCheck/captionPlacementDraft";
+import { captionCardRect, captionRectsOverlap, resolveCaptionPlacement } from "../../src/dl/captionPlacement";
+import { buildTimeline } from "../../src/dl/camera";
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
 import { generateWordsFromFilm } from "../../src/dl/captionsParser";
 import type { ReceiveAction } from "../../src/dl/performance/types";
@@ -191,6 +195,79 @@ test("P2 full silhouettes reject wide captions and reel cropping, with shot and 
   }
 });
 
+test("editor caption check reports a posed-character collision at the active frame", async () => {
+  const film = compiled(), scene = film.scene as Scene, timeline = buildTimeline(film);
+  const boundary = timeline[0].to, frame = boundary + 6;
+  const facts = prepareStageFacts(scene, 1920, 1080);
+  try {
+    const actor = facts.at(frame, "prop").find((pose) => pose.actor === "iona");
+    assert.ok(actor?.actorParts.length);
+    const candidates = [0.1, 0.3, 0.5, 0.7].flatMap((y) => [0.25, 0.5, 0.75].map((x) => ({ x, y, w: 0.4, locked: false })));
+    const parts = actor.actorParts.map((part) => ({ x: part.bounds.x0, y: part.bounds.y0, w: part.bounds.x1 - part.bounds.x0, h: part.bounds.y1 - part.bounds.y0 }));
+    const placementA = candidates.find((entry) => {
+      const resolved = resolveCaptionPlacement({ ...film, shots: [{ ...film.shots[0], captionPlacement: { long: entry } }, ...film.shots.slice(1)] }, "long", film.shots[0].id);
+      const rect = captionCardRect("long", 1920, 1080, resolved);
+      return parts.some((part) => captionRectsOverlap(rect, part));
+    });
+    const placementB = candidates.find((entry) => {
+      const rect = captionCardRect("long", 1920, 1080, entry);
+      return parts.every((part) => !captionRectsOverlap(rect, part));
+    });
+    assert.ok(placementA && placementB);
+    film.shots[0].captionPlacement = { long: placementA };
+    film.shots[1].captionPlacement = { long: placementB };
+    const start = ((boundary - 15) / film.fps).toFixed(3).padStart(6, "0");
+    const end = ((boundary + 15) / film.fps).toFixed(3).padStart(6, "0");
+    film.captions = `WEBVTT\n\n00:00:${start} --> 00:00:${end}\nA phrase\n`;
+    const findings = await checkCaptionPlacementDraftAsync(
+      film,
+      scene,
+      { format: "long", shotId: film.shots[1].id, frame },
+      film,
+    );
+    assert.ok(findings.some((finding) =>
+      finding.rule === "caption-placement" &&
+      finding.severity === "warning" &&
+      finding.where === `shot ${film.shots[1].id} / long / iona / frame ${frame}` &&
+      /posed art overlaps the owner caption card/.test(finding.message),
+    ), JSON.stringify(findings));
+  } finally {
+    facts.dispose();
+  }
+});
+
+// Places a real silhouette between the default caption floor and the uncapped safe floor in each crop.
+test("Three-stage default caption guard stays active when only the other format is placed", () => {
+  for (const [placedFormat, defaultFormat, width, height] of [["long", "reel", 1080, 1920], ["reel", "long", 1920, 1080]] as const) {
+    const film = compiled(), scene = film.scene as Scene;
+    film.captions = "bottom";
+    film.subtitles = true;
+    film.captionPlacement = { [placedFormat]: { x: 0.5, y: 0.2, w: 0.7, locked: false } };
+    for (const shot of film.shots) delete shot.captionPlacement;
+    const actor = scene.cast!.find((cast) => cast.kind === "character")!;
+    assert.equal(actor.kind, "character");
+    if (actor.kind !== "character") throw new Error("expected fixture character");
+    const capped = getStageSafeRegion(defaultFormat, width, height, true);
+    const clear = getStageSafeRegion(defaultFormat, width, height, false);
+    const before = prepareStageFacts(scene, width, height);
+    try {
+      const bounds = before.at(0, "prop").find((pose) => pose.actor === actor.id)!.actorBounds;
+      const camera = before.camera[0];
+      const a = projectStagePoint({ x: 0, y: 0 }, camera, width, height);
+      const b = projectStagePoint({ x: 0, y: 1 }, camera, width, height);
+      actor.position[1] += ((capped.y1 + clear.y1) / 2 - bounds.y1) / (b.y - a.y);
+    } finally { before.dispose(); }
+    const after = prepareStageFacts(scene, width, height);
+    try {
+      const bounds = after.at(0, "prop").find((pose) => pose.actor === actor.id)!.actorBounds;
+      assert.ok(rectInside(bounds, clear), "fixture must fit the uncapped region");
+      assert.equal(rectInside(bounds, capped), false, "fixture must cross only the caption floor");
+    } finally { after.dispose(); }
+    const findings = checkThreeStage(film, scene, {});
+    assert.ok(findings.some((f) => f.rule === "safe-area" && f.where.includes(`/ ${defaultFormat} / ${actor.id} / frame 0`)), JSON.stringify(findings));
+  }
+});
+
 test("P2 clear Three insets pass and a one-frame moving silhouette intersection fails", () => {
   const film = compiled();
   film.shots[2].stage = "inset";
@@ -302,7 +379,7 @@ test("P2 foreground obstruction blocks carry facts and honors exact element opac
   const film = compiled(), scene = film.scene as Scene, file = path.join(pkg, "visuals/p2-obstructor.svg");
   fs.writeFileSync(file, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1920"><rect id="cover" x="0" y="0" width="1920" height="1920" fill="#0A0A0B"/></svg>');
   try {
-    scene.props.push({ assetId: "cover", svgSource: file, plane: "foreground", position: { x: 0, y: 0 }, scale: 1, rotation: 0, opacity: 1 });
+    scene.props.push({ assetId: "cover", svgSource: "videos/iona-receive/visuals/p2-obstructor.svg", plane: "foreground", position: { x: 0, y: 0 }, scale: 1, rotation: 0, opacity: 1 });
     const hidden = checkFilmDesign(film);
     assert.ok(hidden.findings.some((f) => f.rule === "occlusion" && /foreground SVG/.test(f.message)), JSON.stringify(hidden.findings));
     assert.ok(hidden.findings.some((f) => f.rule === "carry-over"));

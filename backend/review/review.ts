@@ -13,7 +13,8 @@ import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { evaluateCriteria } from "./criteria";
 import { detectSilences, extractStill, measureLoudness, probeVideo } from "./media";
-import { measureRender } from "./renderFacts";
+import { prepareCaptionReview } from "./captionRegion";
+import { measureRender, type RenderOptions } from "./renderFacts";
 import { loadFilmFacts, siblingFile, type FilmFacts } from "./source";
 import { loadNarration, type Narration } from "./speech";
 import { stageTruth } from "./stageTruth";
@@ -132,10 +133,16 @@ export async function reviewVideo(req: ReviewRequest): Promise<ReviewReport> {
   const target = resolveTarget(req);
   const video = probeVideo(target.mp4);
   let film: FilmFacts | null = null;
+  let captionRectAt: RenderOptions["captionRectAt"] = undefined;
   if (target.film) {
     if (!fs.existsSync(target.film)) throw new Error(`no film data at ${target.film}`);
     // Stage presence and camera are measured in this video's own output, so a reel is never judged by the long crop.
-    film = loadFilmFacts(target.film, { width: video.width, height: video.height }).facts;
+    const loaded = loadFilmFacts(target.film, { width: video.width, height: video.height });
+    film = loaded.facts;
+    const prepared = prepareCaptionReview(loaded.film, video.width, video.height);
+    if (prepared && typeof prepared !== "function")
+      throw new Error(`Placed caption review unavailable: ${prepared.unavailable}`);
+    captionRectAt = prepared;
   }
   let narration: Narration | null = null;
   if (target.words) {
@@ -144,7 +151,7 @@ export async function reviewVideo(req: ReviewRequest): Promise<ReviewReport> {
   }
   const truth = film ? stageTruth(film, narration) : undefined;
   req.onProgress?.(`measuring ${path.basename(target.mp4)} (${video.width}x${video.height}, ${video.durationSec.toFixed(1)} s)`);
-  const render = await measureRender(target.mp4, video, { skipOcr: req.skipOcr, onProgress: req.onProgress });
+  const render = await measureRender(target.mp4, video, { skipOcr: req.skipOcr, onProgress: req.onProgress, captionRectAt });
   const loudness = video.hasAudio ? measureLoudness(target.mp4) : null;
   const silences = video.hasAudio ? detectSilences(target.mp4, video.durationSec) : [];
   const criteria = evaluateCriteria({ video, render, film, narration, loudness, silences });

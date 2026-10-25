@@ -116,6 +116,12 @@ export default function App() {
   // can open it at any time and that choice is then respected for the rest of the session.
   const [inspectorOpen, setInspectorOpen] = useState(() => window.innerWidth >= 1180);
   const playerRef = useRef<PlayerRef>(null);
+  const [mountedPlayer, setMountedPlayer] = useState<PlayerRef | null>(null);
+  // Attach playback observers whenever a Player mounts or is replaced.
+  const attachPlayer = useCallback((player: PlayerRef | null) => {
+    playerRef.current = player;
+    setMountedPlayer(player);
+  }, []);
 
   /** Surface a rejected timeline edit as a readable, non-blocking message. */
   const handleReject = useCallback((message: string) => notify("warn", message), [notify]);
@@ -166,7 +172,7 @@ export default function App() {
 
   // Keep the shell's frame and playing state in step with the Remotion player.
   useEffect(() => {
-    const player = playerRef.current;
+    const player = mountedPlayer;
     if (!player) return;
 
     const onFrame = (e: { detail: { frame: number } }) => setCurrentFrame(e.detail.frame);
@@ -184,7 +190,7 @@ export default function App() {
       player.removeEventListener("pause", onPause);
       player.removeEventListener("ended", onEnded);
     };
-  }, [stage]);
+  }, [mountedPlayer]);
 
   // Global shortcuts that are not timeline-specific.
   useEffect(() => {
@@ -436,6 +442,7 @@ export default function App() {
                   format={format}
                   onFormatChange={setFormat}
                   playerRef={playerRef}
+                  onPlayerMount={attachPlayer}
                   currentFrame={currentFrame}
                   isPlaying={isPlaying}
                   onSeekFrame={seekFrame}

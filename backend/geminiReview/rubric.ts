@@ -50,11 +50,11 @@ export const RUBRIC_CRITERIA: RubricCriterionDefinition[] = [
   },
   {
     name: "bottom_captions",
-    title: "Bottom captions",
+    title: "Captions at placed position (default bottom)",
     isGate: true,
     description:
-      "Burned-in caption band located in the bottom 20-22% of the frame for >= 95% of narrated time. Clean typography (>= 36px at 1080p), max 2 lines, no widows, exactly matching spoken voiceover words.",
-    passTarget: "Present in bottom band for >= 95% of speech; words synchronized",
+      "Burned-in captions located at the owner-declared card position (default: bottom 20-22% of the frame) for >= 95% of narrated time. Clean typography (>= 36px at 1080p), max 2 lines, no widows, exactly matching spoken voiceover words.",
+    passTarget: "Present at declared position (default bottom) for >= 95% of speech; words synchronized",
   },
   {
     name: "readability",
@@ -242,7 +242,7 @@ export function buildPairwiseWatchPrompt(videoPath?: string): string {
     ? `Watch and inspect the complete local video file at: ${videoPath} with audio. Base your evaluation strictly on what you visually see and hear in the video; do not look for, open, or read any other files or source code. DO NOT write or run scripts. DO NOT extract frames. ONLY watch the video and return the required JSON.`
     : `Watch the video in this directory with audio. DO NOT run any tools. DO NOT write or run scripts. ONLY watch the video and return the required JSON.`;
 
-  return `Evaluate the video against the 12-criterion quality rubric (e.g. unified persistent stage, carry-over and transformation, purposeful camera motion, readable bottom captions, audio sync).\n${locationContext}\nProduce a detailed report: provide an overall rating (0-10), what you like, what you dislike, and what you are neutral on. Cite specific timestamps for your points.`;
+  return `Evaluate the video against the 12-criterion quality rubric (e.g. unified persistent stage, carry-over and transformation, purposeful camera motion, readable captions at their placed position (default bottom), audio sync).\n${locationContext}\nProduce a detailed report: provide an overall rating (0-10), what you like, what you dislike, and what you are neutral on. Cite specific timestamps for your points.`;
 }
 
 // Builds the exchange phase prompt for scoring the other video based on its evaluation report.

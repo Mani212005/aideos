@@ -4,6 +4,7 @@
  * Used by: src/dl/Film.tsx, src/dl/Block.tsx.
  */
 
+import { CaptionRegionContext } from "./captionRegionContext";
 import React from "react";
 import { Img, OffthreadVideo, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { accentAt, MONO, SERIF, useLayout, useTokens } from "./tokens";
@@ -656,6 +657,7 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
     resolvedSrc = `${framesDir}/frame_${pad}.png`;
   }
 
+  const captionRect = React.useContext(CaptionRegionContext);
   const isVisible = frame >= start + delayFrames;
   const isVideo = Boolean(resolvedSrc?.match(/\.(mp4|webm|mov)$/i));
 
@@ -664,6 +666,7 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
     const heroLayout = getFullScreenHeroLayout({
       ...layout,
       labelHeight: Number(labelStyle.fontSize) * 1.6,
+      captionRect,
     });
     return (
       <div

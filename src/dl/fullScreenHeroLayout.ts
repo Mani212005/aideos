@@ -6,6 +6,7 @@
  * Used by: Film, devices, KineticSubtitles, tokens, stage design checks and layout tests.
  */
 
+import type { CaptionRect } from "./captionPlacement";
 import type { Format } from "./tokens";
 import { projectStagePoint, SAFE_SQUARE, type SceneRect } from "./scene/projection";
 
@@ -39,17 +40,22 @@ export const SUBTITLE_FONT_RATIO = 0.042;
 /** Line height (a multiple of font size) and vertical padding (px, each side) of the burned-in subtitle card. */
 export const SUBTITLE_LINE_HEIGHT = 1.35;
 export const SUBTITLE_CARD_PADDING_Y = 12;
-/** A phrase is at most seven words, which never wraps past two lines at the card's width in either format. */
+/** Caption phrases never wrap past two lines; narrowed cards are split by measured width to preserve this bound. */
 export const SUBTITLE_MAX_LINES = 2;
+
+// Returns the rendered caption card height for the planned number of lines.
+export const subtitleCardHeight = (
+  width: number,
+  height: number,
+  lines = SUBTITLE_MAX_LINES,
+): number => {
+  const fontSize = Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO);
+  return SUBTITLE_CARD_PADDING_Y * 2 + 2 + (fontSize * SUBTITLE_LINE_HEIGHT + 8) * lines;
+};
 
 /** Bottom edge (render px) of the tallest subtitle card a frame of this size can draw, to check it clears the frame edge. */
 export const subtitleCardBottom = (width: number, height: number): number => {
-  const fontSize = Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO);
-  return (
-    height * SUBTITLE_BAND_TOP_RATIO +
-    SUBTITLE_CARD_PADDING_Y * 2 +
-    fontSize * SUBTITLE_LINE_HEIGHT * SUBTITLE_MAX_LINES
-  );
+  return height * SUBTITLE_BAND_TOP_RATIO + subtitleCardHeight(width, height);
 };
 
 export type FullScreenHeroLayoutInput = {
@@ -59,6 +65,7 @@ export type FullScreenHeroLayoutInput = {
   margin: { top: number; right: number; bottom: number; left: number };
   /** Rendered height of one caption line, in render pixels. */
   labelHeight: number;
+  captionRect?: CaptionRect;
 };
 
 export type FullScreenHeroLayout = {
@@ -111,12 +118,14 @@ export const getFullScreenHeroLayout = ({
   height,
   margin,
   labelHeight,
+  captionRect,
 }: FullScreenHeroLayoutInput): FullScreenHeroLayout => {
+  const labelTop = captionRect && captionRect.y < height / 2 ? height - margin.bottom - labelHeight : margin.top;
   return {
     media: MEDIA,
     scrimStops: SCRIM_STOPS,
-    caption: { left: margin.left, top: margin.top },
-    captionBand: { top: margin.top, bottom: margin.top + labelHeight },
+    caption: { left: margin.left, top: labelTop },
+    captionBand: { top: labelTop, bottom: labelTop + labelHeight },
     subtitleBandTop: height * SUBTITLE_BAND_TOP_RATIO,
     frameHeight: height,
   };

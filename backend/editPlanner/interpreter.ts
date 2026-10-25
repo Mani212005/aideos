@@ -11,7 +11,9 @@
 import type { LayeredFilm, Clip, Layer } from "../../src/dl/layeredSchema";
 import type { EditContext } from "../editContext/buildEditContext";
 import type { EditOp } from "./schema";
-import { CONVERTED_LAYER_IDS } from "../../src/dl/convertFilm";
+import { setCaptionPlacement } from "../../src/dl/captionPlacement";
+import { animationPayloadSchema } from "../../src/dl/layeredSchema";
+import { convertLayeredFilmToFilm, CONVERTED_LAYER_IDS } from "../../src/dl/convertFilm";
 import {
   clipDuration,
   moveLayerClip,
@@ -501,6 +503,20 @@ function applySingleOp(
       break;
     }
 
+    case "set_caption_placement": {
+      const source = convertLayeredFilmToFilm(film);
+      const placement = "preset" in op.placement
+        ? { x: 0.5, y: op.placement.preset === "top" ? 0.12 : op.placement.preset === "middle" ? 0.45 : 0.78, locked: false }
+        : { x: op.placement.x, y: op.placement.y, ...(op.placement.w === undefined ? {} : { w: op.placement.w }), locked: false };
+      const next = setCaptionPlacement(source, { format: op.format, scope: op.scope, placement, owner: false });
+      working = { ...film, captionPlacement: next.captionPlacement, clips: film.clips.map((clip) => {
+        if (clip.kind !== "animation") return clip;
+        const payload = animationPayloadSchema.parse(clip.payload);
+        return { ...clip, payload: { ...payload, captionPlacement: next.shots.find((shot) => shot.id === payload.shotId)?.captionPlacement } };
+      }) };
+      break;
+    }
+
     case "set_accent": {
       working = { ...working, accent: op.hex };
       break;
@@ -576,7 +592,7 @@ export function applyEditProgram(
   ops: EditOp[],
   context?: EditContext,
 ): EditProgramResult {
-  const originalFilm: LayeredFilm = JSON.parse(JSON.stringify(film));
+  const originalFilm = film;
   let workingFilm: LayeredFilm = JSON.parse(JSON.stringify(film));
   const applied: EditOp[] = [];
   const rejected: Array<{ op: EditOp; reason: string }> = [];

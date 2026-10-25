@@ -6,6 +6,7 @@
  * Used by: editor/src/components/shell/InspectorPanel.tsx.
  */
 
+import { resolveCaptionPlacement } from "../../../src/dl/captionPlacement";
 import React, { useState } from "react";
 import {
   Trash2,
@@ -107,6 +108,13 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
 
   return (
     <div className="flex flex-col gap-3 font-sans select-none text-xs text-ink">
+      <div className="border-2 border-ink bg-paper-2 p-2 font-mono text-[10px]">
+        <strong>Caption placement</strong>
+        {(["long", "reel"] as const).map((format) => {
+          const card = resolveCaptionPlacement(film, format, shot.id);
+          return <p key={format}>{format === "long" ? "Wide" : "Reel"}: {card.source} / X {Math.round(card.x * 100)}% Y {Math.round(card.y * 100)}% W {card.w === undefined ? "Auto" : `${Math.round(card.w * 100)}%`}{card.locked ? " / locked" : ""}</p>;
+        })}
+      </div>
       {/* HEADER: Shot Identity, Number & Quick Actions */}
       <div className="flex items-center justify-between bg-paper-3 p-2.5 border-2 border-ink shadow-nb-sm">
         <div className="flex items-center gap-2 min-w-0">

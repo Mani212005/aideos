@@ -1,0 +1,150 @@
+/**
+ * File Description: Deterministic phrase splitting with placement fixed at the first spoken word.
+ * Inputs and outputs: caption words, placement lookup and measured word widths -> timed two-line phrases.
+ * Used by: KineticSubtitles and caption placement tests.
+ */
+import type { CaptionWord } from "./KineticSubtitles";
+import type { CaptionPlacement } from "./schema";
+import { resolveCaptionCardWidth } from "./captionPlacement";
+export type CaptionPhrase = {
+  startIndex: number;
+  endIndex: number;
+  startFrame: number;
+  endFrame: number;
+  words: CaptionWord[];
+  wordMaxWidths: Array<number | undefined>;
+  placement: CaptionPlacement & { source?: "shot" | "film" | "default" };
+  lineBreaks: number[];
+  unfittableWords: CaptionWord[];
+};
+// Produces a stable key for the shot mapping that phrase starts resolve against.
+export function captionTimelineLayoutKey(
+  timeline: Array<{ from: number; to: number; shot: { id: string } }>,
+): string {
+  return JSON.stringify(timeline.map(({ from, to, shot }) => [shot.id, from, to]));
+}
+// Finds the phrase displayed at a frame using the render's phrase boundaries.
+export function captionPhraseAtFrame(
+  phrases: CaptionPhrase[],
+  frame: number,
+): CaptionPhrase | undefined {
+  return phrases.find((phrase) => frame >= phrase.startFrame && frame <= phrase.endFrame);
+}
+// Fits words into at most two rows without changing the font size.
+export function captionWordRows(
+  words: CaptionWord[],
+  innerWidth: number,
+  measure: (text: string) => number,
+): number[] {
+  const breaks: number[] = [];
+  let used = 0;
+  words.forEach((word, i) => {
+    const size = fitCaptionWordToRow(word.text, innerWidth, measure).rowWidth;
+    if (used > 0 && used + size > innerWidth) {
+      breaks.push(i);
+      used = 0;
+    }
+    used += size;
+  });
+  return breaks;
+}
+
+// Bounds an unbreakable word to the same content width the renderer can wrap inside.
+export function fitCaptionWordToRow(
+  text: string,
+  innerWidth: number,
+  measure: (text: string) => number,
+):
+  | { kind: "fits"; rowWidth: number; maxWidth?: number }
+  | { kind: "unfittable"; rowWidth: number; maxWidth: number } {
+  const measuredWidth = measure(text) + 12;
+  return measuredWidth <= innerWidth
+    ? { kind: "fits", rowWidth: measuredWidth }
+    : measure(text) <= Math.max(0, innerWidth - 12) * 2
+      ? {
+          kind: "fits",
+          rowWidth: innerWidth,
+          maxWidth: Math.max(0, innerWidth - 12),
+        }
+      : {
+          kind: "unfittable",
+          rowWidth: innerWidth,
+          maxWidth: Math.max(0, innerWidth - 12),
+        };
+}
+// Keeps the legacy split for implicit defaults and measures every saved card before displaying it.
+export function buildCaptionPhrases({
+  words,
+  fps,
+  width,
+  placementAt,
+  measure,
+}: {
+  words: CaptionWord[];
+  fps: number;
+  fontSize: number;
+  width: number;
+  placementAt: (frame: number) => CaptionPlacement & { source?: "shot" | "film" | "default" };
+  measure: (text: string) => number;
+}): CaptionPhrase[] {
+  const phrases: CaptionPhrase[] = [];
+  let start = 0;
+  while (start < words.length) {
+    const placement = placementAt(words[start].startFrame);
+    const card = resolveCaptionCardWidth(placement, width);
+    const customWidth = card.fixed;
+    const inner = card.innerWidth;
+    let end = start;
+    while (end + 1 < words.length && end - start < 6) {
+      const word = words[end];
+      if (
+        customWidth &&
+        (fitCaptionWordToRow(word.text, inner, measure).maxWidth !== undefined ||
+          fitCaptionWordToRow(words[end + 1].text, inner, measure).maxWidth !== undefined)
+      )
+        break;
+      if (
+        /[.,!?;:]$/.test(word.text) ||
+        words[end + 1].startFrame - word.endFrame > fps * 0.4
+      )
+        break;
+      if (
+        customWidth &&
+        captionWordRows(words.slice(start, end + 2), inner, measure).length > 1
+      )
+        break;
+      end++;
+    }
+    const chunk = words.slice(start, end + 1);
+    phrases.push({
+      startIndex: start,
+      endIndex: end,
+      startFrame: chunk[0].startFrame,
+      endFrame: chunk[chunk.length - 1].endFrame + Math.round(fps * 0.25),
+      words: chunk,
+      wordMaxWidths: customWidth
+        ? chunk.map((word) => fitCaptionWordToRow(word.text, inner, measure).maxWidth)
+        : [],
+      placement,
+      lineBreaks: customWidth ? captionWordRows(chunk, inner, measure) : [],
+      unfittableWords: customWidth
+        ? chunk.filter(
+            (word) => fitCaptionWordToRow(word.text, inner, measure).kind === "unfittable",
+          )
+        : [],
+    });
+    start = end + 1;
+  }
+  for (let i = 0; i < phrases.length - 1; i++) {
+    if (
+      phrases[i].placement.source !== "default" ||
+      phrases[i + 1].placement.source !== "default"
+    ) {
+      phrases[i].endFrame = Math.min(
+        phrases[i].endFrame,
+        phrases[i + 1].startFrame - 1,
+      );
+    }
+  }
+  return phrases;
+}

@@ -13,6 +13,7 @@
  * examples/. `ensureGenerated` rebuilds every generated file from whatever packages are on disk.
  */
 
+import { carryCaptionPlacement } from "../../src/dl/captionPlacement";
 import fs from "fs";
 import path from "path";
 import type { Block, Film } from "../../src/dl/schema";
@@ -69,8 +70,8 @@ export function readFilm(slug: string): Film | null {
  * than the editor previews. The film is validated before either write, so a malformed film
  * never lands on disk half-applied.
  */
-export function writeFilm(slug: string, film: Film): Film {
-  const validated = parseFilm(film);
+export function writeFilm(slug: string, film: Film, options: { owner: boolean; agentEdit?: boolean } = { owner: false }): Film {
+  const validated = parseFilm(carryCaptionPlacement(readFilm(slug), film, options));
   const dir = packageDir(slug);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "film.json"), JSON.stringify(validated, null, 2), "utf8");

@@ -8,6 +8,7 @@
  * Used by: backend/editPlanner/validator.ts, backend/editPlanner/interpreter.ts.
  */
 
+import { captionPlacementSchema } from "../../src/dl/schema";
 import { z } from "zod";
 
 export const addTextOverlayOpSchema = z.object({
@@ -133,6 +134,15 @@ export const hideLaneOpSchema = z.object({
   label: z.string().optional().describe("Human-readable label for this edit operation"),
 });
 
+/** The one checked agent operation for unlocked owner caption cards. */
+export const setCaptionPlacementOpSchema = z.object({
+  op: z.literal("set_caption_placement"),
+  format: z.enum(["long", "reel"]),
+  scope: z.discriminatedUnion("kind", [z.object({ kind: z.literal("film") }).strict(), z.object({ kind: z.literal("shot"), shotId: z.string().min(1) }).strict()]),
+  placement: z.union([captionPlacementSchema.omit({ locked: true }).strict(), z.object({ preset: z.enum(["top", "middle", "bottom"]) }).strict()]),
+  label: z.string().optional(),
+}).strict();
+
 export const setAccentOpSchema = z.object({
   op: z.literal("set_accent"),
   hex: z.string().regex(/^#[0-9a-fA-F]{6}$/).describe("Six-digit hexadecimal color code for the accent color"),
@@ -169,6 +179,7 @@ export const editOpSchema = z.discriminatedUnion("op", [
   setVolumeOpSchema,
   muteLaneOpSchema,
   hideLaneOpSchema,
+  setCaptionPlacementOpSchema,
   setAccentOpSchema,
   setThemeOpSchema,
   reorderSegmentsOpSchema,
