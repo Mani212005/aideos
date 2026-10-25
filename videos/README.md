@@ -12,7 +12,7 @@ Each video is a self-contained package, `videos/<slug>/`:
 - `script.md`, `voiceover.wav`, `voiceover_words.json`, `captions.vtt`
 - `footage/<shotId>.mp4`: generated B-roll
 - `visuals/*.svg` and `design/`: scene artwork and the design spec
-- `reel/`: `reel/REEL_BRIEF.md` and `reel/cut.json` for condensed scene-film reel cuts
+- `reel/`: `reel/REEL_BRIEF.md`, `reel/cut.json`, derived `reel/film.json`, `reel/voiceover.wav`, `reel/voiceover_words.json`, and `reel/status.json` for condensed reel cuts
 
 Keep your videos somewhere else entirely by setting `AIDEOS_VIDEOS_DIR` (absolute, or relative to the
 repo root), for example `AIDEOS_VIDEOS_DIR=~/aideos-videos`. If you do, also point the `public/videos`

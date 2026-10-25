@@ -6,8 +6,10 @@ File Description: Documentation for the Video Design Language implementation in 
 
 Implements the Video Design Language specification across color tokens, typography, motion grammar, and camera continuity.
 
-Compositions: **Long** (1920x1080) and **Reel** (1080x1920). They are the
-same film, not two edits of it.
+Compositions: **Long** (1920x1080) and **Reel** (1080x1920). The reel is a
+separate shorter cut with condensed narration capped at 179 seconds, sharing the
+visual canvas, camera targets, and footage of the long cut (or an identity reel
+when the long cut already fits).
 
 | Spec section          | Here                                            |
 | --------------------- | ----------------------------------------------- |
