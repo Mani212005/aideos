@@ -103,8 +103,8 @@ still build directly; new production runs require one before design.
 
 | Mode | Behavior |
 | --- | --- |
-| `inline` (default) | Deliver through agent link, a recorded tmux pane, or steering inbox and wait for validated output. With no listener or a timeout, return `status: "needs_reel_cut"` with actionable next steps. |
-| `agent` | Require a delivered coding agent; missing delivery or a timeout fails the stage. |
+| `inline` (default) | Return `status: "needs_reel_cut"` with actionable next steps. This mode does not dispatch to an agent or wait for output. |
+| `agent` | Dispatch the reel-cut task to a connected coding agent and wait for validated output. Feed check and cap failures back for up to three attempts; missing delivery or a timeout fails the stage. |
 | `server` | Ask the configured generation model to write or repair `cut.json`, feeding check and cap failures back for up to three attempts. |
 
 When the long story plus reel end card already fits the 179 s hard cap (`DELIVERY_CONFIG.reel.maxSec`), the reel stage creates an identity reel that reuses the long cut's narration. For longer films, the reel is a separate shorter cut with condensed narration, keeping the long cut's backend, voice, and speed. Caption placement carries film-level and kept-shot owner placements from the long cut. Shared design cues re-resolve against reel timing; end cues target the reel story end. Dropped shots become zero-length boundary spans for scene cues. A dropped shot collapsing an animated clip into a visible snap fails design check with an error naming the shot and element, directing the writer to keep that shot condensed instead. Node-graph drops remove the shot.
