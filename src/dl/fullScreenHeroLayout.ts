@@ -40,7 +40,7 @@ export const SUBTITLE_FONT_RATIO = 0.042;
 /** Line height (a multiple of font size) and vertical padding (px, each side) of the burned-in subtitle card. */
 export const SUBTITLE_LINE_HEIGHT = 1.35;
 export const SUBTITLE_CARD_PADDING_Y = 12;
-/** A phrase is at most seven words, which never wraps past two lines at the card's width in either format. */
+/** Caption phrases never wrap past two lines; narrowed cards are split by measured width to preserve this bound. */
 export const SUBTITLE_MAX_LINES = 2;
 
 // Returns the rendered caption card height for the planned number of lines.
