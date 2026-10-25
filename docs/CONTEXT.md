@@ -24,6 +24,7 @@ The root data contract defining a complete video composition (stored authoritati
 * `captions?: "bottom" | "off" | string` (Burned-in captions mode or sidecar path, default "bottom"; position is configured separately by `captionPlacement` in `src/dl/schema.ts`, see [caption placement](../src/dl/README.md#owner-caption-cards))
 * `layers?: LayerDefinition[]` (Persisted non-linear track definitions and settings)
 * `audioClips?: AudioClip[]` (Persisted multi-track audio clips)
+* `soundtrack?: Soundtrack` (Per-film soundtrack manifest; field definitions and legacy normalization live in [`src/dl/schema.ts`](../src/dl/schema.ts))
 * `videoClips?: VideoClip[]` (Persisted imported footage picture clips)
 * `overlayClips?: OverlayClip[]` (Persisted standalone text/image/subtitle overlay clips)
 
