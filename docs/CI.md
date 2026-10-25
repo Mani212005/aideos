@@ -6,7 +6,7 @@ File Description: How aideos is checked - the one command that owns every CI ste
 
 One command owns the list: **`npm run ci`**. GitHub Actions and a contributor's laptop use the job
 definitions in `scripts/ci.ts`; the local validation tool (`.no-mistakes.yaml`) selects only the
-`unit`, `journeys` and `static` jobs. Platform-dependent steps can be skipped locally with a reason.
+`static` job. Platform-dependent steps can be skipped locally with a reason.
 Add a check to `scripts/ci.ts` and it becomes part of the matching job everywhere that job runs.
 
 ```bash
@@ -35,8 +35,8 @@ the measured `aideos review` and the Gemini round described in [REVIEW.md](REVIE
 author before handoff.
 
 Layers, from cheapest to dearest: static, unit and property tests (the maths on generated input),
-feature tests with good and bad fixtures, headless journeys (below), regression (every bug fixed
-gets its own test, plus golden frames), and the captain's eye for art, which no test can replace.
+feature tests with good and bad fixtures, headless journeys (below), regression (golden frames, plus
+a journey case for each bug the captain or a user reported), and the captain's eye for art, which no test can replace.
 
 ## Setup that every job shares
 

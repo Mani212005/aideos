@@ -56,7 +56,7 @@ camera motion smoother and move captions slightly upward.
 ## Claude Screenplay Intake
 - `backend/scriptIntake.ts` is the single source of truth for parsing/serializing Claude-style screenplays (`## timestamp - Title` headers, `[VISUAL]`/`[NARRATION]`/`[ON SCREEN]` tag blocks, plus legacy `VO:`/`Voiceover:`/`Narrator:` conventions), extracting zero-leakage spoken narration, deterministically structuring untagged prose via `structureUntaggedProseToScript`, and compiling sub-shots and animated primitive blocks (`TextReveal`, `StatCounter`, `CodeBlock`, `Card`, `Divider`, `IconLabel`, `ProgressBar`) for Remotion using TypeSafe Jev (`backend/jev.ts`) for semantic primitive selection with confidence gating and deterministic fallback.
 - Jev is asked once per film, not once per beat: `backend/jev.ts`'s `prefetchShotVisualAnswers`/`prefetchPrimitiveAnswers` send every beat in one batched request and `resolveShotVisual`/`resolvePrimitive` gate each answer against the beat's live state. Never call `selectShotVisual`/`selectPrimitive` in a per-beat loop; they remain the path for a single decision and for test mocks.
-- `npm run eval:visuals [-- --jev]` scores shot-visual choice on the labelled beats in `backend/eval/shot_visual_cases.json` (heuristic, raw Jev, and what ships after gating and grounding). Re-run it before changing a threshold, the criteria wording or the model, and add a labelled case for any bad pick you fix.
+- `npm run eval:visuals [-- --jev]` scores shot-visual choice on the labelled beats in `backend/eval/shot_visual_cases.json` (heuristic, raw Jev, and what ships after gating and grounding). Re-run it before changing a threshold, the criteria wording or the model, and add a labelled case only for a bad pick the captain identified, with his label.
 - It has no Node-only imports, so `editor/src/components/ScriptEditor.tsx` (browser bundle), `editor/vite.config.ts` (dev server), and `backend/audio.ts` all import it directly instead of re-implementing screenplay parsing. Extend this module rather than adding another parser copy.
 
 ## Transcription and edit context (Phase 1)
@@ -218,7 +218,7 @@ camera motion smoother and move captions slightly upward.
 
 ## Studio browser smoke check
 
-- `npm run smoke:studio` (`scripts/smoke_studio.ts`) starts the editor dev server, loads the studio in headless Chrome over the DevTools protocol and fails on a blank page, an uncaught exception, a `console.error`, or a Vite client error. It is part of the no-mistakes test gate. Unit tests run in Node and cannot see browser-only crashes such as a Node built-in leaking into the client bundle (the blank studio after #43). It skips with a warning when no Chrome is installed; set `AIDEOS_SMOKE_REQUIRED=1` to make that a failure.
+- `npm run smoke:studio` (`scripts/smoke_studio.ts`) starts the editor dev server, loads the studio in headless Chrome over the DevTools protocol and fails on a blank page, an uncaught exception, a `console.error`, or a Vite client error. It is part of CI's journeys job. Unit tests run in Node and cannot see browser-only crashes such as a Node built-in leaking into the client bundle (the blank studio after #43). It skips with a warning when no Chrome is installed; set `AIDEOS_SMOKE_REQUIRED=1` to make that a failure.
 
 ## Design check (the standard layer)
 
@@ -231,7 +231,7 @@ camera motion smoother and move captions slightly upward.
   agent delivery while retaining the inline stop behavior; choose templates explicitly for legacy
   compiler tests. See [docs/PRODUCTION_PIPELINE.md](docs/PRODUCTION_PIPELINE.md) for resume semantics.
 - Any module the editor dev server can reach (vite.config imports the pipeline) must be safe to bundle as ESM: no bare `require.main === module` guards (use the `typeof require` form in `backend/scene/buildSvgSources.ts`) and no Remotion bundler or renderer imports (which is why `backend/sceneKit/reviewStills.ts` is not re-exported from the kit index).
-- Build new scene films on `backend/sceneKit/` and add any new standard rule to the check (with a failing case in `designCheck.test.ts`), not only to a prompt.
+- Build new scene films on `backend/sceneKit/` and add any new standard rule the captain approved to the check (with a failing case in `designCheck.test.ts`), not only to a prompt.
 - Template charts and visual blocks carry no canned data. `backend/pipeline/deviceData.ts` has a text model (Gemini, `AIDEOS_GEMINI_MODEL`) write each chart's contents from its beat in one batched request, and refuses any block that fails the schema or shows a word or number the beat never says; a refused chart leaves the beat on its text card. `buildBlocksForPrimitive` in `backend/scriptIntake.ts` never invents stand-ins (`StatCounter` requires narrated numbers, `CodeBlock` requires inline code, and `ProgressBar` requires explicit percentages, falling back to `TextReveal` otherwise). StatCounter is still read straight from the narration. Why each shot got its visual lands in `videos/<id>/design/visual-choices.json`.
 - The studio shows a film's design in Look > Design (`editor/src/components/DesignView.tsx`, from `/api/design/:id` in `backend/designSpec/shotTools.ts`). The shot inspector's "Why this visual" panel swaps a shot to one of Jev's runner-ups through the same authoring and honesty check (`POST /api/design/:id/shots/:shot/visual`) and sends a shot-focused `design_film` task to the connected agent (`.../redesign`). Tests may call `requestShotRedesign`/`dispatchTask`: the default tmux effect is disabled under tests. Inject a fake tmux runner to test pane delivery.
 
@@ -357,6 +357,12 @@ sections in `src/dl/README.md`, `docs/PRODUCTION_PIPELINE.md`, and `docs/REVIEW.
 - An agent may only claim done once Gemini rates the video 9.0 or higher with all 6 hard gates passing (verdict: ACCEPT).
 - If the verdict is REVISE, the agent must inspect the constructive feedback and timestamp citations, iterate on the film or design, and re-render.
 - Review rounds and reports are persisted under `videos/<slug>/gemini-review/` (`round-N.json`, `latest.json`), which is gitignored.
+
+## Tests
+- Do not add tests on your own. A test you write only restates your own reading of the task. The source of truth is the captain's decisions, the committed golden frames, the design check rules and the journeys.
+- Add or change a test only when (1) the captain asks for it; (2) the captain states a new rule or standard, and the test encodes exactly that rule and names the decision; or (3) you fix a bug the captain or a user hit, and its end-to-end reproduction becomes a journey case.
+- Never loosen, re-point or delete an existing assertion, timeout, tolerance or golden-frame selection to make a run green. If you believe a test is wrong, leave it failing and say so in the PR description under "Test changes", with the reason, for the captain to decide.
+- A flaky test is a bug in readiness, warm-up, a network download or shared state. Fix the cause; a retry or a longer wait is not a fix unless you name the measured cause.
 
 ## Maintaining this file
 - This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.
