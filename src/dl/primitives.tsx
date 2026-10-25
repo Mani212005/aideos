@@ -16,6 +16,7 @@ import {
 import { frames, MS, useEntrance, useProgress } from "./motion";
 import { useAccent } from "./accent";
 import { useAlign } from "./align";
+import { compactNumber } from "./numberFormat";
 
 /**
  * ---------------------------------------------------------------------------
@@ -273,15 +274,6 @@ export const MathLine: React.FC<BlockProps & { text: string }> = ({ text, start,
 /* Numbers                                                                     */
 /* -------------------------------------------------------------------------- */
 
-const compact = (n: number) => {
-  const abs = Math.abs(n);
-  if (abs >= 1e12) return `${(n / 1e12).toFixed(1)}T`;
-  if (abs >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-  if (abs >= 1e3) return `${(n / 1e3).toFixed(0)}k`;
-  return `${n}`;
-};
-
 /**
  * A number counting up. Tabular figures are not optional: proportional digits
  * change width as they tick and the whole line jitters for the full 900ms.
@@ -297,7 +289,7 @@ export const StatCounter: React.FC<
   const value = Math.round(to * p);
   const formattedValue =
     format === "compact"
-      ? compact(value)
+      ? compactNumber(value)
       : (to >= 1900 && to <= 2100) || format === "plain"
       ? String(value)
       : value.toLocaleString("en-US");

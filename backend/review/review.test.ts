@@ -245,6 +245,18 @@ test("speech: spokenNumbers reads digits and number words", () => {
   assert.deepEqual(spokenNumbers("no numbers here"), []);
 });
 
+test("speech: spoken year phrases retain their year values", () => {
+  assert.deepEqual(
+    spokenNumbers("seventeen seventy-six, nineteen eighty four, twenty twenty-four, twenty fourteen"),
+    [1776, 1984, 2024, 2014],
+  );
+  assert.deepEqual(
+    spokenNumbers("twenty one items, twenty two parts, twenty five percent, twenty nine total"),
+    [21, 22, 25, 29],
+  );
+  assert.deepEqual(spokenNumbers("seventeen hundred million"), [1_700_000_000]);
+});
+
 test("speech: caption words are matched against what is said near that moment", () => {
   const narration: Narration = { words: WORDS, text: "", timed: true };
   assert.equal(captionMatch("hop down the layers", narration, 1, 4), 1);

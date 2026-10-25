@@ -163,13 +163,20 @@ export function projectedSvgParts(
 }
 
 // Prepares SVG plane geometry using the runtime compiler and the canonical projector.
-export function prepareSvgProjection(scene: Scene, width: number, height: number) {
+export function prepareSvgProjection(
+  scene: Scene,
+  width: number,
+  height: number,
+  options: { includeBackground?: boolean } = {},
+) {
   const compiled = compileScene(scene, { clockMs: 0, skipContinuityVerification: true });
   // Returns the drawn parts at exactly this frame, preserving element animation and authored opacity.
   return (frame: number) => {
     const current = compiled.frames[Math.max(0, Math.min(compiled.frames.length - 1, frame))];
     const matrix = sceneToFrame(current, scene, width, height);
-    return current.entities.filter((e) => e.kind !== "background").map((e) => ({ id: e.entityId, parts: projectedSvgParts(e, matrix) }));
+    return current.entities
+      .filter((e) => options.includeBackground || e.kind !== "background")
+      .map((e) => ({ id: e.entityId, parts: projectedSvgParts(e, matrix) }));
   };
 }
 

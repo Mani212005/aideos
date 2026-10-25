@@ -170,6 +170,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 | `lookBox(film, shot)` | `(Film, Shot) => Box` | Calculates bounding box enclosing all nodes targeted by the shot's `look` parameter. |
 | `projectBox(box, cam, viewport)` | `(Box, Cam, Size) => Box` | Projects 2D world-space coordinates into 2D screen-space pixel coordinates. |
 | `totalFrames(timeline)` | `(TimedShot[]) => number` | Returns total frame count across all shots in the timeline. |
+| `MIN_SHOT_FRAMES` | `15` | Minimum frame duration for any shot on the timeline (0.5 seconds at 30 fps). |
 
 ---
 
@@ -204,6 +205,9 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ### `EXPO` Motion Token (`src/dl/motion.ts`)
 * `EXPO = [0.16, 1, 0.3, 1]`: Native ease-out-expo cubic-bezier easing curve ensuring high initial velocity and soft, organic landing.
+
+### Number Formatting (`src/dl/numberFormat.ts`)
+* `compactNumber(value)`: Formats numeric values with compact magnitude thresholds (T, B, M, k) used by `StatCounter` and reel number grounding.
 
 ### `src/dl/fullScreenHeroLayout.ts` (Frame Safe Areas, Hero Layout & Inset Regions)
 * `SUBTITLE_BAND_TOP_RATIO`: Single definition of the burned-in caption card top ratio (0.78), aligned with scene engine `CAPTION_SAFE_SQUARE`.
@@ -342,6 +346,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `evaluateCriteria(inputs)` (`backend/review/criteria.ts`): Pure evaluation of rubric criteria (criteria 1 to 12 plus supplemental criterion 13 `plan-adherence`) from measured facts against calibrated thresholds.
 * `readFilmFacts(film, viewport)`, `loadFilmFacts(filmJson, viewport)` (`backend/review/source.ts`): Derives camera motion, element persistence, carry-over transformations, per-shot stage and motion facts (`planShots`), and optional look plan from film data. Three-stage presence, camera and evaluated performance contact are measured in the supplied output viewport; see [REVIEW.md](REVIEW.md) for the review contract.
 * `deriveNarrationFacts(words, duration)` (`backend/review/speech.ts`): Derives pace, dead air, narrated moments, and sync alignment from word timings or narration text.
+* `spokenNumbers(text)` (`backend/review/speech.ts`): Extracts numbers from digits and spoken English number phrases, including year expressions ("nineteen eighty four", "twenty twenty four") and cardinal amounts ("twenty five").
 
 ### `backend/aideosConfig.ts` (Video Model Policy & Config Loader)
 * `loadAideosConfig(file?)`: Loads and validates `aideos.config.json` containing the committed video model policy (generation agent/model, reviewer agent/model, forbidden generation models).
@@ -449,7 +454,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 ### `backend/designCheck/` (Deterministic Design Standard Checker)
 * `checkFilmDesign(raw, context)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, scene engine validity, static self-contained artwork, locked palette, typography, motion continuity, single transform origin, picture locked to narration, honest data / grounded numbers, smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration), move-then-hold pacing (>= 30% hold share, <= 6s continuous moves, cue landing, and subject focus framing), carry-over change holds (substantial visible animation settling in a camera hold and remaining framed for >= 2s), a clear inset region while a device shot shares the stage, and Three.js stage geometry gates (`checkThreeStage`) including occlusion checks.
 * `checkThreeStage(film, scene, context)` (`threeStage.ts`): Evaluates Three stage designs against geometry-driven gates across wide and reel formats: posed mesh vertex extents and outlines within stage safe region and caption clearance, device inset clearance during inset shots, foreground SVG and sampled mesh depth occlusion, 2s settled aftermath carry holds, camera speed (<= 20% width/s) and acceleration (<= 0.3 widths/s^2), cast focus framing, duplicate performance writers, and finite character material palettes.
-* `MAX_CAMERA_ZOOM_STEP`, `MAX_CAMERA_PAN_ACCEL_WIDTHS` (`designCheck.ts`): Scene camera limits on single-frame zoom change (0.8%) and pan acceleration (0.3 scene widths/s^2).
+* `MAX_CAMERA_ZOOM_STEP`, `MAX_CAMERA_PAN_WIDTHS`, `MAX_CAMERA_PAN_ACCEL_WIDTHS` (`designCheck.ts`): Scene camera limits on single-frame zoom change (0.8%), pan speed (20% of scene width/s), and pan acceleration (0.3 scene widths/s^2).
 * `checkFilmDesignById(filmId)` (`designCheck.ts`): Loads a film by package slug and executes design validation against optional look plan and camera target cues.
 * `checkInsetRegions(film)`, `projectedSvgParts(entity, frameToPx)`, `prepareSvgProjection(scene, width, height)` (`insetRegion.ts`): Verifies that no visible scene artwork occupies the format-specific inset region during `stage: "inset"` shots across both wide and reel formats, and extracts projected SVG parts for stage occlusion checks.
 * `leafBounds(node)`, `parseTransform(value)` (`svgBounds.ts`): Conservative 2D bounding box and affine transform calculations for SVG elements without rasterization.
@@ -472,6 +477,15 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `checkLookPlan(plan, filmId, context)`, `checkLookPlanById(filmId)`, `formatLookReport(report)` (`check.ts`): Semantic checker enforcing unique cast and shot IDs, valid carries references, non-minor carry-over changes with distinct resulting states, initial and final wide camera framing, intermediate camera poses naming cast focus, bottom captions without kinetic columns, device naming, no consecutive device shots, at most 1 device shot per 4 shots, valid shot and cast IDs against `film.json`, cue phrases against narration text, and cast IDs against design assets or SVG element IDs (reporting warnings when auxiliary inputs are unavailable and attributing parse errors to source files).
 * `renderLookBrief(film)`, `writeLookBrief(filmId)` (`brief.ts`): Generates designer look briefs (`design/LOOK_BRIEF.md`) detailing the 6 look questions, shot treatment decision rules, example look plan, and timed script beats.
 * `renderLookMd(plan, filmTitle, shotTimings)`, `writeLookMd(filmId)` (`render.ts`): Renders and writes human-readable look plans (`design/LOOK.md`) from validated `look.json`.
+
+### `backend/reelCut/` (Condensed Reel Narration Cut & Deterministic Check Engine)
+* `schema.ts`: `reelCutSchema` (`aideos.reelcut/1`), `reelBudgetSchema`, constants `REEL_MAX_SEC` (179), `REEL_TARGET_SEC` (170), `REEL_END_CARD_SEC` (3), `DEFAULT_REEL_BUDGET`, and `parseReelBudget(input)`.
+* `brief.ts`: `loadReelContext(slug)`, `readReelCut(slug)`, `reelBrief(context, budget)`, `writeReelBrief(slug, budget)`, `ReelCutSceneFilmError`. Generates `videos/<slug>/reel/REEL_BRIEF.md` for scene films with source narration hashes, word targets, motion duration floors, locked phrases, and on-screen numbers.
+* `check.ts`: `checkReelCut(raw, context, budget)`, `formatReelReport(report)`. Deterministic validator for `videos/<slug>/reel/cut.json` checking schema, shot coverage, original order, long narration hash freshness, locked phrases, spoken on-screen numbers, forbidden new numbers, protected drop constraints (hook, payoff, decisive performances), camera motion duration floors, and delivery length limits (179s cap, 170s target). Flags non-blocking advisories for novel content words and uninspected imported media.
+* `constraints.ts`: `createReelContext(options)`, `countWords(text)`, `groundedNumbers(text)`.
+* `motion.ts`: `minShotDurationSec(camera, startSec, endSec, fps)`. Computes shortest safe shot duration satisfying camera speed, zoom step, and acceleration caps.
+* `visibleText.ts`: `visibleReelText(film)`. Extracts on-screen text and numbers across scene stage elements, SVG assets, and text overlays.
+* `cli.ts`: `registerReelCommands(program)`. Registers CLI commands for `aideos reel brief` and `aideos reel check`.
 
 ### `backend/transcribe.ts` (Audio & Video Transcription)
 * `transcribe(src, options, deps)`: Transcribes audio or video media into word-level timings (`TranscribedWord[]`) with confidence scores, using Deepgram with local Whisper CLI fallback.

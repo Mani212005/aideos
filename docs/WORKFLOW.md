@@ -140,6 +140,8 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos design build <film>` | Compiles bespoke design and writes film on PASS | `videos/<film>/film.json`, `design/status.json` |
 | `aideos render` | Renders long-form landscape video | `videos/<slug>/renders/long.mp4` (1920x1080) |
 | `aideos reel` | Renders vertical reel video | `videos/<slug>/renders/reel.mp4` (1080x1920) |
+| `aideos reel brief <film> [--max-sec <seconds>] [--target-sec <seconds>]` | Writes the condensed narration brief for scene films | `videos/<film>/reel/REEL_BRIEF.md` |
+| `aideos reel check <film> [--max-sec <seconds>] [--target-sec <seconds>] [--json]` | Checks the authored reel cut; max is 179 s including the fixed 3 s end card | Terminal report |
 | `aideos studio` | Opens native Remotion Studio UI | Remotion Studio browser tab |
 | `aideos test` | Executes full automated verification suite | Test TAP results |
 | `aideos produce` | Runs audio-first produce pipeline | `voiceover.wav`, `captions.vtt`, `film.ts` |
@@ -151,3 +153,9 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos connect` | Connects local coding agent via one-time pairing code | Connected agent session |
 | `npm run validate:film <path>` | Standalone invariant validator for arbitrary film manifests | Runsheet & status in terminal |
 | `npm run backend -- mcp` | Starts Model Context Protocol (MCP) server over stdio | MCP stdio interface |
+
+Reel cut support currently requires a scene film. The writer brief says to condense without adding facts or numbers, the deterministic check flags new content words as non-blocking review advisories, and the captain reviews the rendered reel before approving it.
+
+The reel cut budget defaults to a 170-second target and a 179-second delivered cap. `--max-sec` may lower the cap, but cannot raise it; the 3-second end-card reserve is fixed.
+
+For shots containing imported image or video media, `aideos reel check` warns that numbers inside that media are not checked. Review those numbers when approving the rendered reel.

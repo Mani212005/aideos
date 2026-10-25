@@ -98,14 +98,15 @@ test("agy timeout kills a SIGTERM-resistant process tree and removes parent hook
   const dir = fakeAgy(t, stubbornTree);
   const exits = process.listenerCount("exit");
   const terms = process.listenerCount("SIGTERM");
-  const result = defaultAgyRunner("Review", { timeoutSeconds: 0.5 });
+  const result = defaultAgyRunner("Review", { timeoutSeconds: 5 });
   const guard = setTimeout(() => {
     for (const name of ["child.pid", "leader.pid"]) {
       const file = path.join(dir, name);
       if (fs.existsSync(file)) process.kill(Number(fs.readFileSync(file, "utf8")), "SIGKILL");
     }
-  }, 4000);
+  }, 8000);
   try {
+    await until(() => ["leader.pid", "child.pid"].every((name) => fs.existsSync(path.join(dir, name))));
     await assert.rejects(result, /timed out/i);
     for (const name of ["leader.pid", "child.pid"]) {
       const pid = Number(fs.readFileSync(path.join(dir, name), "utf8"));
