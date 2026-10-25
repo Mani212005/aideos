@@ -25,6 +25,8 @@ export interface ReviewFeedbackItem {
 }
 
 export interface DeterministicVideoFacts {
+  reelLength?: { capSec: number; passed: boolean; summary: string };
+  endCard?: { startSec: number; endSec: number } | null;
   /** A Three stage film measured in this video's own output (see backend/review/stageTruth.ts). */
   stage?: StageTruth;
   durationSec: number;

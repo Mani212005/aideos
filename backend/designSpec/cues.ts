@@ -14,6 +14,13 @@ import type { LookPerformance } from "../lookPlan/schema";
 const CUE = /^(?<shot>[a-z0-9-]+)(?::"(?<phrase>[^"]+)")?(?:@(?<at>end|start|\d*\.?\d+))?(?<offset>[+-]\d+)?$/;
 const END = /^end(?<offset>[+-]\d+)?$/;
 
+// Names a dropped shot through the same validated cue grammar used by resolution.
+export function collapsedCueShot(cue: string | number, cues: Cues): string | undefined {
+  if (typeof cue !== "string") return undefined;
+  const shot = CUE.exec(cue.trim())?.groups?.shot;
+  return shot && cues.collapsed?.has(shot) ? shot : undefined;
+}
+
 // Resolves one cue to a frame number, throwing a message an agent can act on when it cannot.
 export function resolveCue(cue: string | number, cues: Cues): number {
   if (typeof cue === "number") return cue;
@@ -25,6 +32,8 @@ export function resolveCue(cue: string | number, cues: Cues): number {
     throw new Error(`cue "${cue}" is not valid; use shot, shot@0.5, shot@end, shot:"spoken phrase", optionally +N/-N frames`);
   }
   const { shot, phrase, at } = m.groups;
+  const collapsed = cues.collapsed?.get(shot);
+  if (collapsed !== undefined) return collapsed;
   const offset = Number(m.groups.offset ?? 0);
   if (phrase) return cues.word(shot, phrase, at === "end" ? "end" : "start") + offset;
   if (!at || at === "start") return cues.from(shot) + offset;

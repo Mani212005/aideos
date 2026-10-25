@@ -15,15 +15,17 @@ import { evaluateCriteria } from "./criteria";
 import { detectSilences, extractStill, measureLoudness, probeVideo } from "./media";
 import { prepareCaptionReview } from "./captionRegion";
 import { measureRender, type RenderOptions } from "./renderFacts";
-import { loadFilmFacts, siblingFile, type FilmFacts } from "./source";
+import { loadFilmFacts, type FilmFacts } from "./source";
 import { loadNarration, type Narration } from "./speech";
 import { stageTruth } from "./stageTruth";
 import type { CriterionResult, ReviewReport } from "./types";
+import { formatInputs } from "../reelCut/store";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 
 /** What to review and the optional extra inputs. */
 export interface ReviewRequest {
+  format?: "long" | "reel";
   /** A film slug under videos/ or the path of an mp4. */
   target: string;
   /** Path of a film.json to read the camera, persistence and geometry from. */
@@ -40,6 +42,7 @@ export interface ReviewRequest {
 
 /** The resolved inputs of a review. */
 export interface ResolvedTarget {
+  format?: "long" | "reel";
   subject: string;
   mp4: string;
   film: string | null;
@@ -48,7 +51,7 @@ export interface ResolvedTarget {
 }
 
 // Finds the rendered mp4 of a film slug among the places the pipeline and the studio put it.
-export function findSlugVideo(slug: string): string | null {
+export function findSlugVideo(slug: string, format?: "long" | "reel"): string | null {
   const pkgDir = resolvePackageDir(slug);
   const rendersDir = path.join(pkgDir, "renders");
   const candidates: string[] = [];
@@ -77,7 +80,9 @@ export function findSlugVideo(slug: string): string | null {
     );
   }
 
-  return candidates.find((c) => fs.existsSync(c)) ?? null;
+  return candidates.find((c) => fs.existsSync(c) && (!format || (format === "reel"
+    ? /(?:^|[-_])reel\.mp4$/.test(path.basename(c))
+    : !/(?:^|[-_])reel\.mp4$/.test(path.basename(c))))) ?? null;
 }
 
 // Works out the mp4, film data, narration and output folder for a slug or an mp4 path.
@@ -88,6 +93,7 @@ export function resolveTarget(req: ReviewRequest): ResolvedTarget {
     const base = path.basename(asFile).replace(/\.[^.]+$/, "");
     return {
       subject: asFile,
+      format: req.format,
       mp4: asFile,
       film: req.film ? path.resolve(req.film) : null,
       words: req.words ? path.resolve(req.words) : null,
@@ -96,28 +102,33 @@ export function resolveTarget(req: ReviewRequest): ResolvedTarget {
   }
   const slug = req.target;
   const pkgDir = resolvePackageDir(slug);
-  const filmJson = path.join(pkgDir, "film.json");
-  if (!fs.existsSync(filmJson)) throw new Error(`"${slug}" is neither an mp4 nor a film: no videos/${slug}/film.json`);
-  const mp4 = findSlugVideo(slug);
+  if (!fs.existsSync(path.join(pkgDir, "film.json"))) throw new Error(`"${slug}" is neither an mp4 nor a film: no videos/${slug}/film.json`);
+  const mp4 = findSlugVideo(slug, req.format);
   if (!mp4) throw new Error(`no rendered video for "${slug}": looked for videos/${slug}/renders/long.mp4, videos/${slug}/renders/*.mp4, and fallback out/${slug}-long.mp4. Render it first (npm run render) or pass an mp4 path.`);
+  const format = req.format ?? (/(?:^|[-_])reel\.mp4$/.test(path.basename(mp4)) ? "reel" : "long");
+  const inputs = formatInputs(slug, format);
+  const filmJson = inputs.film;
+  if (!fs.existsSync(filmJson)) throw new Error(`"${slug}" is neither an mp4 nor a film: no videos/${slug}/film.json`);
   return {
     subject: slug,
+    format,
     mp4,
     film: req.film ? path.resolve(req.film) : filmJson,
-    words: req.words ? path.resolve(req.words) : siblingFile(filmJson, "voiceover_words.json"),
+    words: req.words ? path.resolve(req.words) : fs.existsSync(inputs.words) ? inputs.words : null,
     outDir: path.resolve(req.outDir ?? pkgDir),
   };
 }
 
 // Extracts a still for every evidence time of the criteria that failed, so each finding can be looked at.
-function attachEvidenceFrames(mp4: string, criteria: CriterionResult[], outDir: string, durationSec: number): void {
-  const frameDir = path.join(outDir, "review");
+function attachEvidenceFrames(mp4: string, criteria: CriterionResult[], outDir: string, durationSec: number, format: "long" | "reel"): void {
+  const evidenceDir = format === "reel" ? "review.reel" : "review";
+  const frameDir = path.join(outDir, evidenceDir);
   for (const c of criteria) {
     if (c.status !== "fail") continue;
     for (const e of c.evidence.slice(0, 4)) {
       const t = Math.min(Math.max(0, e.t), Math.max(0, durationSec - 0.1));
       const name = `${c.key}-${t.toFixed(1)}s.jpg`;
-      if (extractStill(mp4, t, path.join(frameDir, name))) e.frame = path.posix.join("review", name);
+      if (extractStill(mp4, t, path.join(frameDir, name))) e.frame = path.posix.join(evidenceDir, name);
     }
   }
 }
@@ -132,6 +143,7 @@ function recommend(criteria: CriterionResult[]): string[] {
 export async function reviewVideo(req: ReviewRequest): Promise<ReviewReport> {
   const target = resolveTarget(req);
   const video = probeVideo(target.mp4);
+  const format = req.format ?? (video.width < video.height ? "reel" : "long");
   let film: FilmFacts | null = null;
   let captionRectAt: RenderOptions["captionRectAt"] = undefined;
   if (target.film) {
@@ -154,13 +166,14 @@ export async function reviewVideo(req: ReviewRequest): Promise<ReviewReport> {
   const render = await measureRender(target.mp4, video, { skipOcr: req.skipOcr, onProgress: req.onProgress, captionRectAt });
   const loudness = video.hasAudio ? measureLoudness(target.mp4) : null;
   const silences = video.hasAudio ? detectSilences(target.mp4, video.durationSec) : [];
-  const criteria = evaluateCriteria({ video, render, film, narration, loudness, silences });
+  const criteria = evaluateCriteria({ video, render, film, narration, loudness, silences, format });
 
-  if (!req.noWrite) attachEvidenceFrames(target.mp4, criteria, target.outDir, video.durationSec);
+  if (!req.noWrite) attachEvidenceFrames(target.mp4, criteria, target.outDir, video.durationSec, format);
   const scored = criteria.filter((c) => c.score !== null);
   const gateFailures = criteria.filter((c) => c.gate && c.status === "fail").map((c) => c.key);
   const report: ReviewReport = {
     schema: "aideos.review/1",
+    format,
     subject: target.subject,
     createdAt: new Date().toISOString(),
     video,
@@ -177,7 +190,7 @@ export async function reviewVideo(req: ReviewRequest): Promise<ReviewReport> {
   };
   if (!req.noWrite) {
     fs.mkdirSync(target.outDir, { recursive: true });
-    fs.writeFileSync(path.join(target.outDir, "review.json"), JSON.stringify(report, null, 2) + "\n");
+    fs.writeFileSync(path.join(target.outDir, format === "reel" ? "review.reel.json" : "review.json"), JSON.stringify(report, null, 2) + "\n");
   }
   return report;
 }
@@ -200,6 +213,16 @@ export function formatReview(report: ReviewReport): string {
     lines.push("Recommendations:");
     report.recommendations.forEach((r, i) => lines.push(`  ${i + 1}. ${r}`));
   }
-  if (report.outDir) lines.push(`Report: ${path.join(report.outDir, "review.json")}`);
+  if (report.outDir) lines.push(`Report: ${path.join(report.outDir, report.format === "reel" ? "review.reel.json" : "review.json")}`);
   return lines.join("\n");
+}
+
+// Reviews every rendered delivery of a slug, or the one format/file explicitly selected.
+export async function reviewFormats(req: ReviewRequest): Promise<ReviewReport[]> {
+  if (req.format || /\.(mp4|mov|webm|mkv)$/i.test(req.target)) return [await reviewVideo(req)];
+  const formats = (["long", "reel"] as const).filter((format) => findSlugVideo(req.target, format));
+  if (!formats.length) return [await reviewVideo(req)];
+  const reports: ReviewReport[] = [];
+  for (const format of formats) reports.push(await reviewVideo({ ...req, format }));
+  return reports;
 }

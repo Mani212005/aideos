@@ -116,7 +116,7 @@ export function resolveDesignCharacters(spec: DesignSpec, pkg: string): { charac
 }
 
 // Checks the design's cast, carried motion, device overrides and camera against its look plan.
-export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: TimedWord[], pkg: string, plan: LookPlan): string[] {
+export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: TimedWord[], pkg: string, plan: LookPlan, options: { collapsed?: ReadonlyMap<string, number> } = {}): string[] {
   const errors: string[] = [];
   const idsByAsset = new Map<string, string[]>(spec.assets.map((a): [string, string[]] => [a.id,
     "file" in a ? collectSvgElementIds(parseSvgDocument(fs.readFileSync(path.join(pkg, a.file), "utf8"))) : [],
@@ -126,7 +126,7 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
       errors.push(`look cast "${item.id}" has no asset or SVG element in design.json`);
     }
   }
-  const cues = createCues(narrationTimingForFilm(film, words), film.fps);
+  const cues = createCues(narrationTimingForFilm(film, words), film.fps, options);
   if (plan.schema === "aideos.look/2") {
     if (!("performances" in spec)) return ["Three look requires aideos.design/2 performances."];
     if ((spec.treatment ?? "cel-v1") !== (plan.film.treatment ?? "cel-v1")) errors.push("design.treatment: differs from look film.treatment");
@@ -157,6 +157,7 @@ export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: Time
     for (const delivered of spec.performances) if (!lookIds.has(delivered.id)) errors.push(`design performance "${delivered.id}" has no matching look performance`);
   }
   for (const shot of plan.shots) {
+    if (options.collapsed?.has(shot.id)) continue;
     if (shot.treatment === "scene") {
       if (plan.schema === "aideos.look/2" && "performances" in shot && shot.performances.length) continue;
       const start = cues.from(shot.id);

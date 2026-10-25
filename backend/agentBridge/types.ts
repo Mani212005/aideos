@@ -16,6 +16,7 @@ export type AgentEventType =
   | "canvas_updated"
   | "critique"
   | "design_film"
+  | "reel_cut"
   | "frame_review";
 
 export type AgentTaskStatus =

@@ -42,6 +42,8 @@ export function shotFrames(timing: NarrationTiming, fps: number = FPS): ShotFram
 
 /** Frame lookups a timeline is authored with. */
 export interface Cues {
+  /** Reel-only shot boundaries for explicitly dropped narration spans. */
+  collapsed?: ReadonlyMap<string, number>;
   /** Frame at a fraction through a named shot. */
   at: (shotId: string, fraction?: number) => number;
   /** First frame of a named shot. */
@@ -56,8 +58,9 @@ export interface Cues {
 }
 
 // Builds the frame lookups for a film from its measured narration.
-export function createCues(timing: NarrationTiming, fps: number = FPS): Cues {
+export function createCues(timing: NarrationTiming, fps: number = FPS, options: { collapsed?: ReadonlyMap<string, number> } = {}): Cues {
   const { spans, durationFrames } = shotFrames(timing, fps);
+  for (const [id, frame] of options.collapsed ?? []) spans.set(id, { from: frame, to: frame });
   const at = (shotId: string, fraction = 0): number => {
     const span = spans.get(shotId);
     if (!span) throw new Error(`No shot "${shotId}" in the measured narration.`);
@@ -86,16 +89,20 @@ export function createCues(timing: NarrationTiming, fps: number = FPS): Cues {
   };
   // Preserves first-match behavior for ordinary visual cues that are not decisive events.
   const word = (shotId: string, phrase: string, edge: "start" | "end" = "start"): number => {
+    const collapsed = options.collapsed?.get(shotId);
+    if (collapsed !== undefined) return collapsed;
     const { segment, wanted, starts } = matches(shotId, phrase);
     if (starts.length === 0) throw new Error(`"${phrase}" is not spoken in shot "${shotId}": ${segment.text}`);
     return frameOf(segment, wanted, starts[0], edge);
   };
   // Requires a unique spoken phrase for an exact decisive event.
   const wordOnce = (shotId: string, phrase: string, edge: "start" | "end" = "start"): number => {
+    const collapsed = options.collapsed?.get(shotId);
+    if (collapsed !== undefined) return collapsed;
     const { segment, wanted, starts } = matches(shotId, phrase);
     if (starts.length === 0) throw new Error(`"${phrase}" is not spoken in shot "${shotId}": ${segment.text}`);
     if (starts.length > 1) throw new Error(`"${phrase}" is spoken ${starts.length} times in shot "${shotId}" (ambiguous, at words ${starts.map((i) => i + 1).join(", ")}): use a longer phrase that is said only once`);
     return frameOf(segment, wanted, starts[0], edge);
   };
-  return { at, from: (id) => at(id, 0), to: (id) => at(id, 1), word, wordOnce, durationFrames };
+  return { at, from: (id) => at(id, 0), to: (id) => at(id, 1), word, wordOnce, durationFrames, collapsed: options.collapsed };
 }

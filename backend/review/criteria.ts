@@ -13,10 +13,12 @@ import type { RenderFacts } from "./renderFacts";
 import type { FilmFacts } from "./source";
 import { captionMatch, chanceNearWordStarts, cutsThroughWords, normalizeWord, pauses, phraseFrame, shareNearWordStarts, spokenNumbers, wordsPerMinute, type Narration } from "./speech";
 import { THRESHOLDS as T } from "./thresholds";
+import { DELIVERY_CONFIG } from "../../src/dl/delivery";
 import type { CriterionKey, CriterionResult, Evidence, VideoFacts } from "./types";
 
 /** Everything the criteria are computed from. */
 export interface ReviewInputs {
+  format?: "long" | "reel";
   video: VideoFacts;
   render: RenderFacts;
   film: FilmFacts | null;
@@ -545,5 +547,18 @@ function loudness(i: ReviewInputs): CriterionResult {
 
 // Computes every criterion's verdict from the measured inputs, in rubric order.
 export function evaluateCriteria(i: ReviewInputs): CriterionResult[] {
-  return [persistentStage(i), carryOver(i), planAdherence(i), cueTiming(i), camera(i), captions(i), readability(i), overlap(i), audioSync(i), pacing(i), grounding(i), loudness(i)];
+  const criteria = [persistentStage(i), carryOver(i), planAdherence(i), cueTiming(i), camera(i), captions(i), readability(i), overlap(i), audioSync(i), pacing(i), grounding(i), loudness(i)];
+  if ((i.format ?? (i.video.width < i.video.height ? "reel" : "long")) === "reel") criteria.push(reelLength(Math.max(i.video.durationSec, i.video.containerDurationSec ?? 0, i.video.audioDurationSec ?? 0)));
+  return criteria;
+}
+
+// Enforces the captain's delivered reel cap on the container's measured duration, including its card.
+export function reelLength(durationSec: number): CriterionResult {
+  const cap = DELIVERY_CONFIG.reel.maxSec, passed = durationSec <= cap;
+  return { id: 14, key: "reel-length", name: "Reel delivered length", gate: true,
+    status: passed ? "pass" : "fail", score: passed ? 4 : 0,
+    summary: `${durationSec.toFixed(3)} s including the end card; ${passed ? "within" : `${(durationSec - cap).toFixed(3)} s over`} the ${cap} s cap`,
+    metrics: { durationSec, capSec: cap }, threshold: { maxSec: cap }, evidence: [],
+    ...(passed ? {} : { fix: "Shorten reel/cut.json, check and rebuild the reel, then render it again. Never trim or speed up the render." }),
+  };
 }

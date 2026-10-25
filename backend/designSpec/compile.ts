@@ -13,7 +13,7 @@
 import { DEVICE_BLOCKS, type Film } from "../../src/dl/schema";
 import type { CameraTrack, EnvironmentAsset, Scene } from "../../src/dl/scene/types";
 import { FPS, SCENE_SIZE, Timeline, createCues, type Cues, type NarrationTiming } from "../sceneKit";
-import { resolveCue } from "./cues";
+import { resolveCue, collapsedCueShot } from "./cues";
 import type { DesignSpec, SpecCamera } from "./spec";
 import { fitReceiveSpan } from "../performance/bindReceive";
 import { rigFromCharacter } from "../../src/dl/characters/rig";
@@ -81,6 +81,8 @@ function compileCamera(poses: SpecCamera[], cues: Cues, errors: string[]): Camer
     if (!prev) {
       if (pose.easing) errors.push(`camera "${id}": the first pose has no move to arrive by, so remove its easing`);
     } else {
+      // Dropping a shot can merge two identical holds without creating a camera jump.
+      if (cues.collapsed?.size && frame === prev.frame && pose.center[0] === prev.pose.center[0] && pose.center[1] === prev.pose.center[1] && pose.zoom === prev.pose.zoom) return;
       if (frame <= prev.frame) {
         errors.push(`camera "${id}": cue "${pose.at}" is frame ${frame}, not after "${prev.id}" at frame ${prev.frame}; list poses in time order, each at least one frame apart`);
       } else {
@@ -109,11 +111,12 @@ export function compileDesign(
   spec: DesignSpec,
   words: TimedWord[],
   source: DesignSource,
-  options: { characters?: Readonly<Record<string, CharacterSpec>> } = {},
-): { film?: Film; errors: string[] } {
+  options: { characters?: Readonly<Record<string, CharacterSpec>>; collapsed?: ReadonlyMap<string, number> } = {},
+): { film?: Film; errors: string[]; collapsedClips?: Array<{ asset: string; clipId: string; shotId: string; frame: number }> } {
   const errors: string[] = [];
+  const collapsedClips: Array<{ asset: string; clipId: string; shotId: string; frame: number }> = [];
   const fps = film.fps ?? FPS;
-  const cues = createCues(narrationTimingForFilm(film, words), fps);
+  const cues = createCues(narrationTimingForFilm(film, words), fps, options);
   const pkg = `videos/${film.id}`;
 
   const assetIds = new Set<string>();
@@ -126,7 +129,7 @@ export function compileDesign(
   }
   const shotIds = new Set(film.shots.map((s) => s.id));
   for (const id of Object.keys(spec.shots ?? {})) {
-    if (!shotIds.has(id)) errors.push(`shots."${id}" overrides a shot the film does not have (shots: ${[...shotIds].join(", ")})`);
+    if (!shotIds.has(id) && !options.collapsed?.has(id)) errors.push(`shots."${id}" overrides a shot the film does not have (shots: ${[...shotIds].join(", ")})`);
   }
 
   const props: EnvironmentAsset[] = spec.assets.filter((a) => "file" in a).map((a) => {
@@ -134,16 +137,22 @@ export function compileDesign(
     const timeline = new Timeline(`${a.id}-motion`, cues.durationFrames);
     for (const clip of spec.clips.filter((c) => c.asset === a.id)) {
       try {
+        const start = resolveCue(clip.start, cues);
+        const end = resolveCue(clip.end, cues);
+        const dropped = start === end ? collapsedCueShot(clip.start, cues) ?? collapsedCueShot(clip.end, cues) : undefined;
+        // A hidden collapsed change still leaves its final value for the next shot. The design
+        // checker rejects this one-frame representation whenever the change would be visible.
+        if (dropped) collapsedClips.push({ asset: a.id, clipId: clip.id, shotId: dropped, frame: start });
         timeline.add({
           id: clip.id,
           targets: clip.targets,
           property: clip.property,
           from: clip.from,
           to: clip.to,
-          start: resolveCue(clip.start, cues),
-          end: resolveCue(clip.end, cues),
+          start: dropped ? Math.max(0, start - 1) : start,
+          end: dropped ? Math.max(1, end) : end,
           ...(clip.easing ? { easing: clip.easing } : {}),
-          ...(clip.stagger ? { stagger: clip.stagger } : {}),
+          ...(clip.stagger && !dropped ? { stagger: clip.stagger } : {}),
           ...(clip.origin ? { origin: { x: clip.origin[0], y: clip.origin[1] } } : {}),
           ...(clip.allowJump ? { allowJump: true } : {}),
         });
@@ -246,5 +255,6 @@ export function compileDesign(
       design: { source, brief: spec.brief },
     } as Film,
     errors: [],
+    collapsedClips,
   };
 }

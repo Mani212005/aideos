@@ -43,7 +43,8 @@ export type CriterionKey =
   | "audio-sync"
   | "pacing"
   | "grounding"
-  | "loudness";
+  | "loudness"
+  | "reel-length";
 
 /** One rubric criterion's result. */
 export interface CriterionResult {
@@ -70,6 +71,8 @@ export interface CriterionResult {
 export interface VideoFacts {
   path: string;
   durationSec: number;
+  /** Delivered container duration, which can include an encoded audio tail beyond the picture. */
+  containerDurationSec?: number;
   width: number;
   height: number;
   fps: number;
@@ -90,6 +93,7 @@ export interface ReviewSources {
 
 /** The whole review. */
 export interface ReviewReport {
+  format?: "long" | "reel";
   /** Format-indexed stage facts distinguish projected geometry from unmeasured visual craft. */
   stage?: FilmFacts["stage"];
   /** The stage as measured in this video's own output: drawn cast, per-shot presence, contact against the cue, camera, and what is unmeasured. */

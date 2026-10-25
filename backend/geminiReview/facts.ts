@@ -21,6 +21,7 @@ import { parseFilm } from "../../src/dl/schema";
 import { readFilmFacts, type FilmFacts, type ReviewViewport } from "../review/source";
 import { loadNarration } from "../review/speech";
 import { stageTruth, stageTruthText, type StageTruth } from "../review/stageTruth";
+import { DELIVERY_CONFIG } from "../../src/dl/delivery";
 
 export interface FactsOptions {
   sampleCount?: number;
@@ -457,14 +458,26 @@ export async function extractDeterministicFacts(
   }
 
   const viewport: ReviewViewport | null = metadata.width && metadata.height ? { width: metadata.width, height: metadata.height } : null;
+  // A reel beside a package resolves its derived inputs before camera, captions or narration facts.
+  if (viewport && viewport.width < viewport.height && filmPath && path.basename(path.dirname(filmPath)) !== "reel") {
+    const reelPath = path.join(path.dirname(filmPath), "reel/film.json");
+    if (fs.existsSync(reelPath)) filmPath = reelPath;
+  }
+  const reelLength = viewport && viewport.width < viewport.height ? {
+    capSec: DELIVERY_CONFIG.reel.maxSec,
+    passed: durationSec <= DELIVERY_CONFIG.reel.maxSec,
+    summary: `Reel delivered duration ${durationSec.toFixed(3)} s, including the end card, ${durationSec <= DELIVERY_CONFIG.reel.maxSec ? "passes" : "exceeds"} the ${DELIVERY_CONFIG.reel.maxSec} s hard cap.`,
+  } : undefined;
   let filmFacts: FilmFacts | null = null;
   let captionRectAt: ((t: number) => CaptionRect | undefined) | null | undefined = undefined;
   let placementNote: string | null = null;
   let captionMeasurementNote: string | null = null;
   let stageNote: string | null = null;
+  let wordsDir = filmPath ? path.dirname(filmPath) : null;
   if (filmPath && fs.existsSync(filmPath)) {
     try {
       const film = parseFilm(JSON.parse(fs.readFileSync(filmPath, "utf8")));
+      if (path.basename(path.dirname(filmPath)) === "reel" && !film.voiceover?.src.includes("/reel/")) wordsDir = path.dirname(path.dirname(filmPath));
       const format = viewport
         ? viewport.width < viewport.height ? "reel" : "long"
         : undefined;
@@ -510,7 +523,7 @@ export async function extractDeterministicFacts(
   }
 
   const camera = inspectCamera(filmPath, storySec, filmFacts);
-  const wordsPath = filmPath ? path.join(path.dirname(filmPath), "voiceover_words.json") : null;
+  const wordsPath = wordsDir ? path.join(wordsDir, "voiceover_words.json") : null;
   let narration: ReturnType<typeof loadNarration> | null = null;
   try { narration = wordsPath && fs.existsSync(wordsPath) ? loadNarration(wordsPath) : null; } catch { narration = null; }
   const stage: StageTruth | undefined = filmFacts ? stageTruth(filmFacts, narration) : undefined;
@@ -523,6 +536,7 @@ export async function extractDeterministicFacts(
     metadata.width && metadata.height ? `- Dimensions: ${metadata.width}x${metadata.height}` : null,
     stage ? `=== STAGE FACTS FOR THIS OUTPUT (projected geometry and action data; pixels and craft unmeasured) ===\n${stageTruthText(stage)}` : stageNote,
     filmFacts?.endCard ? endCardFactLine(filmFacts.endCard) : null,
+    reelLength ? `- ${reelLength.summary} Gate Status: ${reelLength.passed ? "PASS" : "FAIL"}. This deterministic reel-length gate overrides any model pass.` : null,
     audio.measured ? `- Audio Mix: ${audio.summary}` : `- Audio: Not measured`,
     bottomCaptions.measured
       ? `- Captions at placed position (default bottom): ${bottomCaptions.summary} -> Gate Status: ${bottomCaptions.hasCaptions ? "PASS" : "FAIL (insufficient caption coverage)"}`
@@ -537,12 +551,15 @@ export async function extractDeterministicFacts(
     `3. Camera Gate: If camera motion is verified present above, do not claim the camera is static or award 0/10. Evaluate its framing purpose.`,
     `4. Duration and Pacing: Base all pacing and duration comments on the exact measured duration (${durationSec.toFixed(1)}s)${filmFacts?.endCard ? `, of which the story is the first ${filmFacts.endCard.startSec.toFixed(1)}s; judge audio sync, pacing and the payoff on the story, and the end card only for readability and overlap` : ""}.`,
     stage || stageNote ? `5. Stage: the stage facts say where geometry and contacts are, not what the pixels show. A character or prop counts only if you can see it in the video. Face appeal, finger contact and occlusion are unmeasured: judge them from the video, and never pass a criterion on these facts alone.` : null,
+    reelLength ? `6. Reel length: enforce the ${reelLength.capSec} s cap including the end card. An over-cap reel cannot be accepted, regardless of other scores.` : null,
   ]
     .filter(Boolean)
     .join("\n");
 
   return {
     durationSec,
+    ...(reelLength ? { reelLength } : {}),
+    endCard: filmFacts?.endCard ? { startSec: filmFacts.endCard.startSec, endSec: filmFacts.endCard.endSec } : null,
     ...(stage ? { stage } : {}),
     width: metadata.width,
     height: metadata.height,

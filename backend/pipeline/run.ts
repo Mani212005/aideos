@@ -26,6 +26,9 @@ import { ensureRetimedAudio, produceAudioPipeline, type ProduceAudioResult } fro
 import { DEFAULT_KOKORO_SPEED } from "../tts";
 import { DELIVERY_CONFIG, deliveryTimeline } from "../../src/dl/delivery";
 import { ensureEndCardVoice, narrationVoiceOf, synthesizeEndCardLine } from "../endCard/voice";
+import { deliverReel } from "../reelCut/writer";
+import { reelForRender, reelSourceFingerprint, writeReelFilm } from "../reelCut/store";
+import { recordReelStatus, type ReelBuildStatus } from "../reelCut/build";
 import { hasScreenplayTags, parseClaudeScript } from "../scriptIntake";
 import { createEngine } from "../engine";
 import { traceBus } from "../agentBridge";
@@ -42,6 +45,7 @@ import {
   slugify,
   wireFootageIntoFilm,
   writeFilm,
+  withFootage,
 } from "./filmStore";
 import { analyseAudio, contactSheet, describeVideo, renderFormat, FORMAT_SPECS } from "./render";
 import { checkRenderDiskBudget } from "./renderDiskBudget";
@@ -62,10 +66,10 @@ import {
 
 /** A resumable authoring stop, kept distinct from a production failure. */
 class NeedsInput extends Error {
-  readonly status: "needs_look" | "needs_design";
+  readonly status: "needs_look" | "needs_design" | "needs_reel_cut";
   readonly nextSteps: string[];
   // Carries the missing authoring stage and exact continuation instructions.
-  constructor(status: "needs_look" | "needs_design", nextSteps: string[], message: string) {
+  constructor(status: "needs_look" | "needs_design" | "needs_reel_cut", nextSteps: string[], message: string) {
     super(message);
     this.status = status;
     this.nextSteps = nextSteps;
@@ -569,6 +573,27 @@ export async function runProduction(
     filmResult = design.film;
     if (shouldStop("design")) return buildResult("design");
 
+    // ---- reel: same picture and voice, separate condensed narration when the long does not fit.
+    const reelFingerprint = () => fingerprint(reelSourceFingerprint(slug), request.reel ?? mode, formats.includes("reel"));
+    let reelFilm = await runStage<Film | false>("reel", reelFingerprint(), () => {
+      if (!formats.includes("reel")) return false;
+      if (!fs.existsSync(path.join(pkgDir, "reel/status.json")) || !fs.existsSync(path.join(pkgDir, "reel/film.json"))) return null;
+      try { return reelForRender(slug); } catch { return null; }
+    }, async () => {
+      if (!formats.includes("reel")) return false;
+      const outcome = await deliverReel(slug, {
+        ...delivery, mode: request.reel ?? (mode === "templates" ? "inline" : mode),
+        llmCaller: request.reelLlmCaller !== undefined ? request.reelLlmCaller : request.designLlmCaller,
+        synthesize: request.reelSynthesizer,
+        onProgress: (message) => emit("reel", "running", message),
+      });
+      if (outcome.status === "needs_reel_cut") throw new NeedsInput(outcome.status, outcome.nextSteps, outcome.note);
+      return outcome.film;
+    });
+    stageRecord(state, "reel").fingerprint = reelFingerprint();
+    saveState(state);
+    if (shouldStop("reel")) return buildResult("reel");
+
     // ---- broll: render footage on the GPU and wire it into the film --------------------------
     // On a resume the design stage is cached, so its footage requests have to be rebuilt from
     // the film. They are rebuilt the same way the design stage builds them - same budget, same
@@ -638,7 +663,7 @@ export async function runProduction(
       // change to the design compiler produces a different film from identical inputs, and
       // hashing the inputs alone let a stale assembly survive the change. The end card line is
       // attached after assembly from the narration, so it is not part of the design's identity.
-      fingerprint(withoutEndCardVoice(design.film), brollClips.map((c) => c.staticPath)),
+      fingerprint(withoutEndCardVoice(design.film), reelFilm && withoutEndCardVoice(reelFilm), brollClips.map((c) => c.staticPath)),
       () => readFilm(slug),
       async () => {
         let film = readFilm(slug);
@@ -680,11 +705,26 @@ export async function runProduction(
       warnings.push(`end card line could not be attached (${err instanceof Error ? err.message : String(err)}); the card stays silent`);
     }
     filmResult = assembled;
+    if (reelFilm) {
+      for (const clip of brollClips) {
+        const shot = reelFilm.shots.find((s) => s.id === clip.shotId);
+        if (!shot || clip.durationSec + 0.05 < shot.dur) continue;
+        const block = shot.blocks.find((b) => b.c === "AnalogyInset");
+        reelFilm = withFootage(reelFilm, shot.id, clip.staticPath, block?.caption ?? shot.ch ?? "");
+      }
+      reelFilm = writeReelFilm(slug, { ...reelFilm, endCardVoice: assembled.endCardVoice });
+      const statusPath = path.join(pkgDir, "reel/status.json");
+      const status = JSON.parse(fs.readFileSync(statusPath, "utf8")) as ReelBuildStatus;
+      recordReelStatus(slug, { ...status, fingerprint: reelSourceFingerprint(slug) });
+      stageRecord(state, "reel").fingerprint = reelFingerprint();
+      saveState(state);
+    }
     if (shouldStop("assemble")) return buildResult("assemble");
 
     // ---- render: produce the deliverables ----------------------------------------------------
     const renderFingerprint = fingerprint(
       assembled,
+      reelFilm,
       formats,
       brollClips.map((c) => c.staticPath),
       // Only a partial render changes the key, so every existing full-render cache stays valid.
@@ -704,10 +744,12 @@ export async function runProduction(
         // assembly is reached by runs that stop before rendering, and those must not leave the
         // repository pointing at a film nothing ever rendered.
         ensureRetimedAudio(assembled);
-        setActiveFilm(slug);
 
         const produced: RenderedOutput[] = [];
         for (const format of formats) {
+          const outputFilm = format === "reel" ? reelForRender(slug) : assembled;
+          ensureRetimedAudio(outputFilm);
+          setActiveFilm(slug);
           if (!FORMAT_SPECS[format]) {
             throw new Error(`Invalid format "${format}". Supported formats are: ${Object.keys(FORMAT_SPECS).join(", ")}`);
           }
@@ -715,9 +757,9 @@ export async function runProduction(
           // Remotion holds every frame of a format in the temp dir until it stitches them, so the
           // guard renders a few real frames, measures them and refuses only a render that cannot fit.
           // The whole delivered video: the story plus this format's end card.
-          const frameRange: [number, number] = request.renderFrames ?? [0, deliveryTimeline(assembled, format).totalFrames - 1];
+          const frameRange: [number, number] = request.renderFrames ?? [0, deliveryTimeline(outputFilm, format).totalFrames - 1];
           emit("render", "running", `measuring ${format} frame sizes for the disk budget`);
-          await checkRenderDiskBudget({ film: assembled, format, range: frameRange, dirs: [os.tmpdir(), outDir], browserExecutable: request.browserExecutable });
+          await checkRenderDiskBudget({ film: outputFilm, format, range: frameRange, dirs: [os.tmpdir(), outDir], browserExecutable: request.browserExecutable });
           emit("render", "running", `rendering ${format} (${FORMAT_SPECS[format].width}x${FORMAT_SPECS[format].height})`);
           const output = await renderFormat(format, outPath, {
             concurrency: request.renderConcurrency,
@@ -748,6 +790,7 @@ export async function runProduction(
         await fsp.mkdir(reviewDir, { recursive: true });
 
         for (const output of outputs) {
+          const outputFilm = output.format === "reel" && reelFilm ? reelFilm : assembled;
           const spec = FORMAT_SPECS[output.format];
           if (output.width !== spec.width || output.height !== spec.height) {
             warnings.push(
@@ -756,10 +799,10 @@ export async function runProduction(
           }
           const audio = analyseAudio(output.path);
           warnings.push(...deliveredOutputWarnings({
-            film: assembled,
+            film: outputFilm,
             format: output.format,
             durationSec: output.durationSec,
-            narrationSec: narration.totalAudioDuration,
+            narrationSec: outputFilm.voiceover?.durationSec ?? narration.totalAudioDuration,
             silences: audio.silences,
             renderFrames: request.renderFrames,
           }));

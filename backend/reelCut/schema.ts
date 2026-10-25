@@ -51,7 +51,7 @@ export const reelBudgetSchema = z
   .strictObject({
     maxSec: z.number().positive().finite().max(REEL_MAX_SEC),
     targetSec: z.number().positive().finite(),
-    endCardSec: z.literal(REEL_END_CARD_SEC),
+    endCardSec: z.number().nonnegative().finite(),
   })
   .refine(
     (b) => b.targetSec <= b.maxSec && b.endCardSec < b.targetSec,

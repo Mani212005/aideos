@@ -7,7 +7,7 @@
 import React, { useMemo } from "react";
 import { FilmView } from "./Film";
 import { Soundtrack, voiceLevel as soundtrackVoiceLevel } from "./Soundtrack";
-import { FILM, TIMELINE, TOTAL_FRAMES, type FilmProps } from "./runtime";
+import { FILM, TIMELINE, TOTAL_FRAMES, REEL_FILM, REEL_TIMELINE, type FilmProps } from "./runtime";
 import { captionWordsForFilm } from "./captionsParser";
 import type { Film } from "./schema";
 import type { TimedShot } from "./camera";
@@ -63,3 +63,6 @@ export const Video: React.FC<VideoProps> = ({
     </>
   );
 };
+
+// Renders the reel's own timing and soundtrack through the shared video tree.
+export const ReelVideo: React.FC<FilmProps> = (props) => <Video {...props} film={REEL_FILM} timeline={REEL_TIMELINE} />;

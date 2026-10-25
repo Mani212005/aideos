@@ -15,6 +15,7 @@ export const PRODUCTION_STAGES = [
   "narrate",
   "look",
   "design",
+  "reel",
   "broll",
   "assemble",
   "render",
@@ -79,6 +80,12 @@ export interface ProductionRequest {
   syncToPreview?: boolean;
   /** Look and design delivery policy; defaults to inline with resumable needs-input results. */
   design?: DesignMode;
+  /** Reel cut delivery; defaults to the design policy, with templates mapped to inline. */
+  reel?: import("../reelCut/writer").ReelDeliveryMode;
+  /** Server reel writer injection; null disables model calls. */
+  reelLlmCaller?: import("../designSpec/designer").DesignLlmCaller | null;
+  /** Narration injection for deterministic pipeline tests. */
+  reelSynthesizer?: import("../endCard/voice").LineSynthesizer;
   /** Legacy alias: false selects templates. True uses the default inline policy. */
   bespoke?: boolean;
   /** Skip live agent delivery, including from deterministic tests. */
@@ -146,7 +153,7 @@ export interface BrollClip {
 
 /** Everything a finished run produced. */
 export interface ProductionResult {
-  status: "completed" | "stopped" | "needs_look" | "needs_design";
+  status: "completed" | "stopped" | "needs_look" | "needs_design" | "needs_reel_cut";
   /** Exact brief, authoring and check steps for a resumable stop. */
   nextSteps?: string[];
   slug: string;

@@ -164,9 +164,11 @@ export function projectedSvgParts(
   entity: CompiledEntity,
   frameToPx: Affine,
   packageSlug?: string,
-): Array<{ name: string; bounds: Box }> {
-  if (!entity.svgSource || entity.transform.opacity <= INSET_ART_MIN_OPACITY) return [];
-  const parts: Array<{ name: string; bounds: Box }> = [];
+  options: { includeAncestry?: boolean; minOpacity?: number } = {},
+): Array<{ name: string; bounds: Box; ancestors?: string[] }> {
+  const minOpacity = options.minOpacity ?? INSET_ART_MIN_OPACITY;
+  if (!entity.svgSource || entity.transform.opacity <= minOpacity) return [];
+  const parts: Array<{ name: string; bounds: Box; ancestors?: string[] }> = [];
   const placed = multiply(
     frameToPx,
     multiply(multiply(translation(entity.transform.x, entity.transform.y), scaling(entity.transform.scale, entity.transform.scale)), rotation(entity.transform.rotation)),
@@ -188,7 +190,7 @@ export function projectedSvgParts(
         opacity *= link.opacity;
       }
     }
-    if (!drawn || opacity <= INSET_ART_MIN_OPACITY) continue;
+    if (!drawn || opacity <= minOpacity) continue;
     const corners = [apply(m, leaf.box.x0, leaf.box.y0), apply(m, leaf.box.x1, leaf.box.y0), apply(m, leaf.box.x0, leaf.box.y1), apply(m, leaf.box.x1, leaf.box.y1)];
     const box: Box = {
       x0: Math.min(...corners.map((c) => c[0])),
@@ -196,7 +198,7 @@ export function projectedSvgParts(
       x1: Math.max(...corners.map((c) => c[0])),
       y1: Math.max(...corners.map((c) => c[1])),
     };
-    parts.push({ name: leaf.name, bounds: box });
+    parts.push({ name: leaf.name, bounds: box, ...(options.includeAncestry ? { ancestors: leaf.chain.flatMap((link) => link.id ? [link.id] : []) } : {}) });
   }
   return parts;
 }
@@ -206,8 +208,8 @@ export function prepareSvgProjection(
   scene: Scene,
   width: number,
   height: number,
-  packageSlugOrOptions?: string | { includeBackground?: boolean; packageSlug?: string },
-  options: { includeBackground?: boolean } = {},
+  packageSlugOrOptions?: string | { includeBackground?: boolean; packageSlug?: string; includeAncestry?: boolean; minOpacity?: number },
+  options: { includeBackground?: boolean; includeAncestry?: boolean; minOpacity?: number } = {},
 ) {
   const packageSlug = typeof packageSlugOrOptions === "string" ? packageSlugOrOptions : packageSlugOrOptions?.packageSlug;
   const opts = typeof packageSlugOrOptions === "object" && packageSlugOrOptions !== null ? packageSlugOrOptions : options;
@@ -218,12 +220,12 @@ export function prepareSvgProjection(
     const matrix = sceneToFrame(current, scene, width, height);
     return current.entities
       .filter((e) => opts.includeBackground || e.kind !== "background")
-      .map((e) => ({ id: e.entityId, parts: projectedSvgParts(e, matrix, packageSlug) }));
+      .map((e) => ({ id: e.entityId, parts: projectedSvgParts(e, matrix, packageSlug, opts) }));
   };
 }
 
 // Checks every inset shot of a scene film keeps the inset region free of visible scene art in both formats.
-export function checkInsetRegions(film: Film, scene: Scene): InsetFinding[] {
+export function checkInsetRegions(film: Film, scene: Scene, formats: ReadonlyArray<"long" | "reel"> = ["long", "reel"]): InsetFinding[] {
   const insetShots = film.shots.filter((s) => s.stage === "inset");
   if (insetShots.length === 0) return [];
   let compiled;
@@ -241,6 +243,7 @@ export function checkInsetRegions(film: Film, scene: Scene): InsetFinding[] {
     for (let f = timed.from; f < last; f += SAMPLE_STEP_FRAMES) samples.push(f);
     if (last >= timed.from) samples.push(last);
     for (const [format, size] of Object.entries(INSET_FORMAT_FRAMES) as Array<[keyof typeof INSET_FORMAT_FRAMES, { width: number; height: number }]>) {
+      if (!formats.includes(format)) continue;
       const region = getInsetRegion(format, size.width, size.height);
       const reported = new Set<string>();
       for (const f of samples) {

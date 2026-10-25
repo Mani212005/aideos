@@ -5,8 +5,8 @@
  */
 
 import { Composition } from "remotion";
-import { Video } from "./dl/Video";
-import { defaultFilmProps, filmPropsSchema, FPS, LONG_TOTAL_FRAMES, REEL_TOTAL_FRAMES } from "./dl/runtime";
+import { Video, ReelVideo } from "./dl/Video";
+import { defaultFilmProps, defaultReelProps, filmPropsSchema, FPS, LONG_TOTAL_FRAMES, REEL_TOTAL_FRAMES } from "./dl/runtime";
 
 // Renders the root Remotion compositions for the film deliverables.
 export const RemotionRoot: React.FC = () => {
@@ -24,13 +24,13 @@ export const RemotionRoot: React.FC = () => {
       />
       <Composition
         id="Reel"
-        component={Video}
+        component={ReelVideo}
         durationInFrames={REEL_TOTAL_FRAMES}
         fps={FPS}
         width={1080}
         height={1920}
         schema={filmPropsSchema}
-        defaultProps={defaultFilmProps}
+        defaultProps={defaultReelProps}
       />
     </>
   );
