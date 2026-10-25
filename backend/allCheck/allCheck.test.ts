@@ -1073,7 +1073,7 @@ test("launch script: the caller environment survives shell state and a real proc
       encoding: "utf8", timeout: 30_000,
       env: { ...process.env, AIDEOS_CONFIG: "server's stale config", AIDEOS_GEMINI_REVIEW_MODEL: "stale-review-model", AC_ENV_EVIDENCE: evidence, AC_FINISH_EVIDENCE: finish },
     });
-    assert.equal(child.status, 0, child.stderr || child.error?.message);
+    assert.equal(child.status, 0, child.stderr || child.error?.message || "");
     assert.equal(child.stdout, `\nall-check agent exited. Result: ${allCheckDir(slug)}/result.json (this workspace stays open).\nworkspace-shell-survived\n`);
     assert.equal(fs.readFileSync(evidence, "utf8"), `${config}\nunset\n`);
     assert.equal(fs.readFileSync(finish, "utf8"), `tsx backend/cli.ts all-check finish ${slug}`);
