@@ -47,7 +47,8 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
   const card = delivery.card;
   const effectiveVoiceoverSrc = (voiceoverSrc ?? "").trim() || film.voiceover?.src || "";
   const effectiveVoiceoverVolume = voiceoverVolume ?? film.voiceover?.volume ?? 1;
-  const effectiveMusicSrc = (musicSrc ?? "").trim() || film.music?.src || film.audio?.src || "";
+  const requestedMusicSrc = (musicSrc ?? "").trim();
+  const effectiveMusicSrc = requestedMusicSrc || film.music?.src || film.audio?.src || "";
   const effectiveMusicVolume = musicVolume ?? film.music?.volume ?? 1;
   const audioClips = film.audioClips ?? [];
   const hasPrimaryMusicClip = audioClips.some((ac) => ac.id === "clip-music-main" && ac.channel === "music");
@@ -114,9 +115,11 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
                 ? (ac.volume ?? 1)
                 : (ac.volume ?? 1) * effectiveMusicVolume
               : (ac.volume ?? 1) * effectiveVoiceoverVolume;
+            const hasMusicOverride = ac.id === "clip-music-main" && requestedMusicSrc.length > 0 && requestedMusicSrc !== ac.src;
+            const clipSrc = hasMusicOverride ? effectiveMusicSrc : ac.src;
             const audioSrc = isRetimed
-              ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
-              : staticFile(ac.src);
+              ? staticFile(hasMusicOverride ? getRetimedAudioRelPath(clipSrc, speed) : ac.retimedSrc || getRetimedAudioRelPath(clipSrc, speed))
+              : staticFile(clipSrc);
 
             return (
               <Sequence key={ac.id} from={startFrame} durationInFrames={durFrames}>
