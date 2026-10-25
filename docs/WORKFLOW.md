@@ -103,7 +103,7 @@ Aideos is engineered around 4 strict architectural invariants:
    - `Long`: 1920x1080 landscape video for YouTube, desktop, and documentation.
    - `Reel`: 1080x1920 vertical format for mobile, TikTok, and social shorts.
 2. **Audio Stack**:
-   - Dynamic ducking: Automatically attenuates background music when narration is speaking and restores volume during breath gaps.
+   - Rendered audio dynamically attenuates summary background music and clips on the Music lane while narration is speaking, then restores volume during breath gaps. Music lane clips that reach the end of the story continue through the delivered end card in both Studio preview and rendered output.
    - Kinetic Subtitles: Synchronized word-level karaoke text reveal across Long and Reel, using the active theme accent. Captions default to the bottom; owner placements can vary by format and shot. See [caption placement](../src/dl/README.md#owner-caption-cards). Captions can also be disabled with "off".
 
 3. **Autonomous Production Pipeline (`backend/pipeline/run.ts`, `backend/pipeline/director.ts`)**:
