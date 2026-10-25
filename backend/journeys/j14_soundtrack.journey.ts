@@ -34,10 +34,10 @@ function measureBandpassRms(wavPath: string, startSec: number, endSec: number, f
   return match[1] === "-inf" ? -Infinity : parseFloat(match[1]);
 }
 
-// Renders the active film's Long composition to a WAV file using Remotion CLI.
-function renderAudioWav(outWav: string): void {
+// Renders the active film's Long composition using an isolated public asset directory.
+function renderAudioWav(outWav: string, publicDir: string): void {
   try {
-    execSync(`npx remotion render src/index.ts Long "${outWav}" --codec=wav`, {
+    execSync(`npx remotion render src/index.ts Long "${outWav}" --codec=wav --public-dir="${publicDir}"`, {
       cwd: REPO_ROOT,
       stdio: "pipe",
     });
@@ -55,6 +55,7 @@ journey("decision D6: studio soundtrack journey covers narration retention, asse
   fs.cpSync(path.join(REPO_ROOT, "examples/hello-scene/visuals"), path.join(pkgDir, "visuals"), { recursive: true });
 
   const tonesDir = path.join(ctx.workDir, "tones");
+  const publicDir = path.join(ctx.workDir, "public");
   const t440 = path.join(tonesDir, "narration_440.wav");
   const t1000 = path.join(tonesDir, "music_a_1000.wav");
   const t2000 = path.join(tonesDir, "music_b_2000.wav");
@@ -65,6 +66,7 @@ journey("decision D6: studio soundtrack journey covers narration retention, asse
   fs.copyFileSync(t440, path.join(pkgDir, "voiceover.wav"));
   fs.copyFileSync(t1000, path.join(pkgDir, "music-a.wav"));
   fs.copyFileSync(t2000, path.join(pkgDir, "music-b.wav"));
+  fs.cpSync(pkgDir, path.join(publicDir, "videos", slug), { recursive: true });
 
   const helloScenePath = path.join(REPO_ROOT, "examples/hello-scene/film.json");
   const baseFilm: Film = JSON.parse(fs.readFileSync(helloScenePath, "utf8"));
@@ -76,12 +78,22 @@ journey("decision D6: studio soundtrack journey covers narration retention, asse
     const filmS1: Film = JSON.parse(JSON.stringify(baseFilm));
     filmS1.voiceover = { src: `videos/${slug}/voiceover.wav`, volume: 1.0 };
     filmS1.music = { src: `videos/${slug}/music-a.wav`, volume: 0.5, duckUnderVoiceover: true };
-    delete filmS1.audioClips;
+    filmS1.audioClips = [
+      {
+        id: "clip-music-main",
+        src: `videos/${slug}/music-a.wav`,
+        position: 0,
+        start: 0,
+        end: 20,
+        volume: 0.5,
+        channel: "music",
+      },
+    ];
 
     writeFilm(slug, filmS1);
     setActiveFilm(slug);
     const wavS1 = path.join(ctx.workDir, "out-s1.wav");
-    renderAudioWav(wavS1);
+    renderAudioWav(wavS1, publicDir);
     ctx.keep(wavS1);
 
     const s1Narration = measureBandpassRms(wavS1, 1, 4, 440);
@@ -92,7 +104,7 @@ journey("decision D6: studio soundtrack journey covers narration retention, asse
     );
     assert.ok(
       Math.abs(s1MusicA - (-42.05)) < 1.0,
-      `Scenario 1 (D6): music A must be ducked under narration (expected ~ -42.05 dB, got ${s1MusicA.toFixed(2)} dB)`
+      `Scenario 1 (D6): a duplicate primary music clip must play once and duck under narration (expected ~ -42.05 dB, got ${s1MusicA.toFixed(2)} dB)`
     );
     fs.rmSync(wavS1, { force: true });
 
@@ -143,7 +155,7 @@ journey("decision D6: studio soundtrack journey covers narration retention, asse
     writeFilm(slug, filmS3);
     setActiveFilm(slug);
     const wavS3 = path.join(ctx.workDir, "out-s3.wav");
-    renderAudioWav(wavS3);
+    renderAudioWav(wavS3, publicDir);
     ctx.keep(wavS3);
 
     const s3MusicDucked = measureBandpassRms(wavS3, 1, 4, 1000);
@@ -187,7 +199,7 @@ journey("decision D6: studio soundtrack journey covers narration retention, asse
     writeFilm(slug, savedFilmS4);
     setActiveFilm(slug);
     const wavS4 = path.join(ctx.workDir, "out-s4.wav");
-    renderAudioWav(wavS4);
+    renderAudioWav(wavS4, publicDir);
     ctx.keep(wavS4);
 
     const s4MusicA = measureBandpassRms(wavS4, 1, 4, 1000);

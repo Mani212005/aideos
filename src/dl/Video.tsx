@@ -15,7 +15,7 @@ import type { TimedShot } from "./camera";
 /**
  * The film plus its soundtrack.
  *
- * Mixes multi-clip audio tracks and summary tracks (voiceover, sidechain-ducked music, and sfx) plus the end card voice.
+ * Describes the render composition's film, timeline, and audio override props; src/dl/Soundtrack.tsx owns audio mixing.
  */
 
 export type VideoProps = FilmProps & {
