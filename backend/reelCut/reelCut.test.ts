@@ -808,7 +808,7 @@ test("spoken cardinal numbers from twenty one to twenty nine ground rendered num
   const f = film();
   f.shots[1].scriptText = "There are twenty five candidates in total.";
   f.shots[1].blocks = [
-    { c: "StatCounter", to: 25, label: "Candidates", format: "plain" },
+    { c: "IconLabel", text: "25 candidates" },
   ];
   const context = createReelContext({ film: f });
   assert.ok(context.shots[1].onScreenNumbers.includes(25));
