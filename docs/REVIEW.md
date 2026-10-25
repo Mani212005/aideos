@@ -189,13 +189,13 @@ aideos all-check status hnsw                              # rounds so far
    the agent. Each Gemini review remains a bounded headless `agy -p` child process.
 4. **The agent runs the loop** with these commands (all `aideos all-check <sub> <slug>`, also spelled
    `all-check-<sub>`): `round --format long|reel|both` renders through Remotion, backs up `film.json`
-   (`all-check/backups/`), runs the measured review and the Gemini review (the measured `review.json` or `review.reel.json` is handed to
+   and the reel package (`all-check/backups/`), runs the measured review and the Gemini review (the measured `review.json` or `review.reel.json` is handed to
    the reviewer as context), runs the cross-review for the long cut when `--reference` was given, and extracts stills
    every 4 s. Each render points Remotion at the requested film package and restores the previous active-film
    selection afterward, including when rendering fails. `frames --round N --format F --clean | --issue "..."` records the agent's own frame check;
    `rollback --round N` restores a backup; `finish` closes the run. Order: long until it passes, then reel, then one
    final `round --format both`. Two rules are enforced by the tool, not the prompt: a round that scores lower than
-   the best earlier round (compared on the formats both measured) puts that round's `film.json` back automatically
+   the best earlier round (compared on the formats both measured) restores that round's `film.json` and reel package automatically
    and says "ROLLED BACK"; and a new round is refused until the previous round's frame check is recorded.
 5. **Pass** = per format, the reviewer's JSON says at least the target (9.0) with every hard gate passing, AND
    the measured checks pass (`aideos review`: no failed gate; soft failures are listed, not blocking), AND (long
@@ -206,7 +206,7 @@ aideos all-check status hnsw                              # rounds so far
    an identity reel), and the reel fits the delivered length cap including the end card.
 6. **Stop.** After the round budget (`--rounds`, default 6; a round past it is refused) `finish` reports the best
    round honestly and everything that still fails. When the run did not pass, `finish` also restores the best
-   round's `film.json` (the version it replaced is kept as `all-check/backups/film.before-finish.json`) and keeps
+   round's `film.json` and reel package (the replaced long manifest is kept as `all-check/backups/film.before-finish.json`; per-round reel packages remain under `all-check/backups/`) and keeps
    that round's renders as `final-long.mp4` and `final-reel.mp4`, so the package ends on the best film, not the last
    experiment. An interactive agent that stops at a summary without running `finish` is covered twice: the launch
    script runs `finish` if the agent process exits, and `all-check wait` closes the run itself from the measured
@@ -216,7 +216,7 @@ aideos all-check status hnsw                              # rounds so far
    its previous workspace only if every pane is provably at an idle shell.
 7. **Result.** `videos/<slug>/all-check/` gets `report.md`, `result.json`, `round-N/<format>.md|.json` (scores,
    failures, reviewer feedback), the reviewer and measured reports, the rendered `round-N/<format>.mp4`, the stills
-   `round-N/<format>-frames/`, and `final-long.mp4` + `final-reel.mp4`. A macOS notification is sent; on a pass the
+   `round-N/<format>-frames/`, `backups/film.round-N.json` and `backups/reel.round-N/`, and `final-long.mp4` + `final-reel.mp4`. A macOS notification is sent; on a pass the
    final videos open. `aideos exit` logic runs only if the studio was not already running when all-check started.
    `aideos all-check wait` exits 0 all good, 1 not all good, 3 still running at the timeout, 4 the agent pane
    closed or returned to its shell without a result.

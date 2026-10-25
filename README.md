@@ -83,8 +83,8 @@ npm run backend -- film --script-file videos/my-video/script.md --title "My Vide
 # 8. Start Model Context Protocol (MCP) server
 npm run backend -- mcp
 
-# 9. Run deterministic quality review checks on rendered videos (long and reel)
-npm run review -- videos/speculative-decoding/renders/long.mp4
+# 9. Run deterministic quality review checks on every rendered format for a film
+npm run review -- speculative-decoding
 
 # 10. Run Gemini 3.8 Flash video quality review (9.0+ bar)
 aideos gemini-review videos/speculative-decoding/renders/long.mp4

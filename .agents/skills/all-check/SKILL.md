@@ -23,7 +23,7 @@ repeats, while you stay free. You wait for its result file and then report the s
 A format passes only when the reviewer says 9.0+ with every gate passing AND the measured checks pass AND the
 frame check is clean. The background agent never scores its own work. "All good" needs both formats to pass in one
 final round, each matching its own current film hash, with the reel fitting the delivered cap including the end card. If the round budget (default 6) runs out first, it reports the best round and what still fails, restores that round's
-film.json and keeps its renders as the final videos. A round that scores lower than the best so far is rolled back
+film.json and reel package and keeps its renders as the final videos. A round that scores lower than the best so far is rolled back
 automatically.
 
 ## How to run it
