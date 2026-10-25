@@ -1,5 +1,5 @@
 /**
- * File Description: Journey J6: resume reopens exactly the right stages on a real character film. Running the same request again reuses every production stage (verify re-probes the outputs) and keeps the rendered reel byte for byte; giving the film its own edited copy of Iona (re-stamped) reuses intake, narration and look, and reruns design, assembly, render and verify into a reel whose pixels show the new art.
+ * File Description: Journey J6: resume reopens exactly the right stages on a real character film. Running the same request again reuses every production stage (verify re-probes the outputs) and keeps the rendered reel byte for byte; giving the film its own edited copy of Iona (re-stamped) reuses intake, narration and look, and reruns design, reel, broll, assembly, render and verify into a reel whose pixels show the new art.
  * Inputs and outputs: the iona-receive fixture through runProduction three times (contact-window reel renders, tone narration) -> assertions on stages reused and run, the rendered files and the decoded contact frame.
  * Used by: npm run test:journeys (the CI journeys job).
  */
@@ -44,7 +44,7 @@ journey("J6 resume reuses everything when nothing changed, and a character edit 
   const same = await rerun(request);
   // Verify always probes the outputs again (cheap, and its warnings belong to every run); everything else is reused.
   assert.deepEqual(same.ran, ["verify"], "an unchanged request must not redo any production stage");
-  assert.deepEqual(same.reused, ["intake", "narrate", "look", "design", "broll", "assemble", "render"]);
+  assert.deepEqual(same.reused, ["intake", "narrate", "look", "design", "reel", "broll", "assemble", "render"]);
   assert.equal(sha(same.outputs[0].path), firstHash, "the reel is the one already rendered");
 
   // The film gets its own Iona with a different jacket colour, re-stamped as `aideos character check --stamp` would.
@@ -57,7 +57,7 @@ journey("J6 resume reuses everything when nothing changed, and a character edit 
 
   const edited = await rerun(request);
   assert.deepEqual(edited.reused, ["intake", "narrate", "look"], "narration and the look plan still hold");
-  assert.deepEqual(edited.ran, ["design", "broll", "assemble", "render", "verify"], "design and every later stage reopen");
+  assert.deepEqual(edited.ran, ["design", "reel", "broll", "assemble", "render", "verify"], "design and every later stage reopen");
   const cast = (readFilm(SLUG)!.scene as Scene).cast!.find((c) => c.kind === "character")!;
   assert.ok("character" in cast && cast.character.hash === spec.hash, "the film embeds the edited spec");
   const reel = edited.outputs[0].path;
