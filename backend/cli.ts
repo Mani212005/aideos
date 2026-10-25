@@ -284,7 +284,7 @@ program
         (event) => console.log(formatProgress(event)),
       );
 
-      if (result.status === "needs_look" || result.status === "needs_design") {
+      if (result.status === "needs_look" || result.status === "needs_design" || result.status === "needs_reel_cut") {
         console.log(`\n${result.status}: ${result.title} (${result.slug})`);
         for (const step of result.nextSteps ?? []) console.log(`  ${step}`);
         for (const warning of result.warnings) console.log(`  ${warning}`);
@@ -401,7 +401,7 @@ program
         (event) => console.log(formatProgress(event)),
       );
 
-      if (result.status === "needs_look" || result.status === "needs_design") {
+      if (result.status === "needs_look" || result.status === "needs_design" || result.status === "needs_reel_cut") {
         console.log(`\n${result.status}: ${result.title} (${result.slug})`);
         for (const step of result.nextSteps ?? []) console.log(`  ${step}`);
         for (const warning of result.warnings) console.log(`  ${warning}`);
@@ -570,24 +570,26 @@ program
   .command("review")
   .description("Review a rendered video against the good-video rubric: measurable checks on the mp4 (and film data), evidence frames, exit 1 when a gate fails")
   .argument("<target>", "a film slug under videos/ or the path of an mp4")
+  .option("--format <format>", "review long or reel; default reviews every rendered format")
   .option("--film <film.json>", "film data to read the camera, persistence and geometry from (a slug review finds it itself)")
   .option("--words <file>", "word timings (voiceover_words.json) or narration text, for audio sync, caption matching and grounding")
   .option("--out <dir>", "where review.json and the review/ evidence frames are written")
   .option("--no-ocr", "skip the OCR pass (no caption, readability, overlap or grounding checks)")
   .option("--json", "print the report as JSON on stdout (progress goes to stderr)")
-  .action(async (target: string, options: { film?: string; words?: string; out?: string; ocr: boolean; json?: boolean }) => {
-    const { reviewVideo, formatReview } = await import("./review/review");
+  .action(async (target: string, options: { format?: string; film?: string; words?: string; out?: string; ocr: boolean; json?: boolean }) => {
+    const { reviewFormats, formatReview } = await import("./review/review");
     try {
-      const report = await reviewVideo({
-        target,
+      if (options.format !== undefined && options.format !== "long" && options.format !== "reel") throw new Error("--format must be long or reel");
+      const reports = await reviewFormats({
+        target, format: options.format,
         film: options.film,
         words: options.words,
         outDir: options.out,
         skipOcr: !options.ocr,
         onProgress: (m) => console.error(`[review] ${m}`),
       });
-      console.log(options.json ? JSON.stringify(report, null, 2) : formatReview(report));
-      if (!report.passed) process.exitCode = 1;
+      console.log(options.json ? JSON.stringify(reports.length === 1 ? reports[0] : reports, null, 2) : reports.map(formatReview).join("\n\n"));
+      if (reports.some((report) => !report.passed)) process.exitCode = 1;
     } catch (err) {
       // A tool error is not a gate failure: exit 2 so callers can tell "could not review" from "reviewed and failed".
       console.error(err instanceof Error ? err.message : String(err));

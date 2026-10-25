@@ -9,6 +9,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { ensureGenerated } from "../backend/pipeline/generatedFiles";
 import { resolvePackageDir } from "../src/dl/videoPackageLoader";
+import { reelForRender } from "../backend/reelCut/store";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 
@@ -25,6 +26,7 @@ function main(): void {
   }
 
   const pkgDir = resolvePackageDir(activeFilm);
+  if (composition === "Reel") reelForRender(activeFilm);
   const rendersDir = path.join(pkgDir, "renders");
   fs.mkdirSync(rendersDir, { recursive: true });
 
@@ -37,7 +39,6 @@ function main(): void {
     "src/index.ts",
     composition,
     outPath,
-    `--props={"filmId":"${activeFilm}"}`,
     "--gl=angle",
     ...extraArgs,
   ];

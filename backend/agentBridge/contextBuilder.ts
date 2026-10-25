@@ -129,6 +129,9 @@ export function buildTaskContext(opts: DispatchOptions, rootDir: string = ROOT):
 export function buildDirectingPrompt(opts: DispatchOptions, context?: AgentTaskContext): string {
   const ctx = context || buildTaskContext(opts);
   const title = ctx.filmTitle || ctx.filmId;
+  if (opts.eventType === "reel_cut") {
+    return `Write the separate condensed reel narration for ${ctx.filmId}.\n${opts.customInstruction ?? "Read reel/REEL_BRIEF.md and write reel/cut.json, then run aideos reel check."}\nThe long film and shared picture are authoritative. Approval belongs to the captain after rendering.`;
+  }
   if (opts.eventType === "design_film") {
     // The brief is the whole contract; the prompt only points at it and at the one gate.
     const shotId = typeof opts.metadata?.shotId === "string" ? opts.metadata.shotId : null;

@@ -78,6 +78,10 @@ export function rollbackFilm(slug: string, round: number): string {
   const backup = backupPath(slug, round);
   if (!fs.existsSync(backup)) throw new AllCheckError(`no backup for round ${round} (${backup})`);
   fs.copyFileSync(backup, path.join(resolvePackageDir(slug), "film.json"));
+  const reelBackup = path.join(path.dirname(backup), `reel.round-${round}`);
+  const reelDir = path.join(resolvePackageDir(slug), "reel");
+  fs.rmSync(reelDir, { recursive: true, force: true });
+  if (fs.existsSync(reelBackup)) fs.cpSync(reelBackup, reelDir, { recursive: true });
   ensureGenerated();
   return backup;
 }

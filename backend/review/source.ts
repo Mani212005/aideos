@@ -539,7 +539,8 @@ function readStoryFacts(film: Film, viewport: ReviewViewport): FilmFacts {
 export function loadFilmFacts(filmJson: string, viewport?: ReviewViewport): { film: Film; facts: FilmFacts } {
   const film = parseFilm(JSON.parse(fs.readFileSync(filmJson, "utf8")));
   const facts = readFilmFacts(film, viewport);
-  const lookPath = path.join(path.dirname(filmJson), "design", "look.json");
+  const filmDir = path.dirname(filmJson);
+  const lookPath = path.join(path.basename(filmDir) === "reel" ? path.dirname(filmDir) : filmDir, "design", "look.json");
   if (fs.existsSync(lookPath)) {
     try {
       const parsed = safeParseLookPlan(JSON.parse(fs.readFileSync(lookPath, "utf8")));

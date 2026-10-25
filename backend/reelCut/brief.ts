@@ -47,7 +47,7 @@ export function loadReelContext(slug: string): ReelContext {
   );
   if (film.id !== slug)
     throw new Error(`package "${slug}" contains film "${film.id}"`);
-  if (!film.scene || film.scene.actors.length) throw new ReelCutSceneFilmError();
+  if (film.scene?.actors.length) throw new ReelCutSceneFilmError();
   const design = optionalJson(path.join(pkg, "design/design.json"));
   const look = optionalJson(path.join(pkg, "design/look.json"));
   return createReelContext({

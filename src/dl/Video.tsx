@@ -7,9 +7,9 @@
 import React, { useMemo } from "react";
 import { Audio, Sequence, staticFile, useVideoConfig } from "remotion";
 import { FilmView } from "./Film";
-import { deliveryTimeline, formatForSize } from "./delivery";
+import { deliveryTimeline, formatForSize, DELIVERY_CONFIG } from "./delivery";
 import { EndCardVoice } from "./EndCard";
-import { TOTAL_FRAMES, FILM, TIMELINE, FPS, type FilmProps } from "./runtime";
+import { TOTAL_FRAMES, FILM, TIMELINE, REEL_FILM, REEL_TIMELINE, FPS, type FilmProps } from "./runtime";
 import { calculateDuckingVolume, type SpeechInterval } from "./audio/ducking";
 import { getRetimedAudioRelPath } from "./audio/retime";
 import { captionWordsForFilm } from "./captionsParser";
@@ -51,6 +51,9 @@ export const Video: React.FC<VideoProps> = ({
   // end of the delivered video.
   const effectiveTotalFrames = timeline.length > 0 ? timeline[timeline.length - 1].to : TOTAL_FRAMES;
   const delivery = deliveryTimeline(film, formatForSize(width, height), { timeline });
+  if (delivery.format === "reel" && delivery.totalFrames / film.fps > DELIVERY_CONFIG.reel.maxSec) {
+    throw new Error(`needs reel cut: delivered reel exceeds the ${DELIVERY_CONFIG.reel.maxSec} s cap`);
+  }
   const card = delivery.card;
   const effectiveVoiceoverSrc = (voiceoverSrc ?? "").trim() || film.voiceover?.src || "";
   const effectiveVoiceoverVolume = voiceoverVolume ?? film.voiceover?.volume ?? 1;
@@ -172,5 +175,8 @@ export const Video: React.FC<VideoProps> = ({
     </>
   );
 };
+
+// Renders the reel's own timing and soundtrack through the shared video tree.
+export const ReelVideo: React.FC<FilmProps> = (props) => <Video {...props} film={REEL_FILM} timeline={REEL_TIMELINE} />;
 
 

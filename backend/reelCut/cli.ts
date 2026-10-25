@@ -1,56 +1,61 @@
 /**
- * File Description: Registers the independent reel brief and deterministic cut-check commands.
+ * File Description: Registers the reel brief, cut check and delivery build commands.
  * Inputs and outputs: Commander arguments -> generated brief path or report and process exit code.
  * Used by: backend/cli.ts and bin/aideos.
  */
 import { Command } from "commander";
 import { loadReelContext, readReelCut, writeReelBrief } from "./brief";
 import { checkReelCut, formatReelReport } from "./check";
+import { readFilm } from "../pipeline/filmStore";
+import { reelBudgetFor } from "./store";
+import { deliverReel } from "./writer";
 import {
-  DEFAULT_REEL_BUDGET,
   REEL_MAX_SEC,
   parseReelBudget,
 } from "./schema";
 
-// Adds the pre-synthesis budget parameters until the production stage supplies its delivery budget.
+// Adds optional stricter pre-synthesis budgets to the shared delivery settings.
 function withBudget(command: Command): Command {
   return command
     .argument("<film>", "film package slug")
     .option(
       "--max-sec <seconds>",
       `lower the delivered reel cap (maximum ${REEL_MAX_SEC} seconds, including the end card)`,
-      String(DEFAULT_REEL_BUDGET.maxSec),
     )
     .option(
       "--target-sec <seconds>",
       "delivered reel target including the end card",
-      String(DEFAULT_REEL_BUDGET.targetSec),
     );
 }
 
-// Registers the reel authoring commands without starting render, synthesis or agent delivery.
+// Applies optional stricter CLI budgets to the configured delivery cap and this film's card span.
+function commandBudget(slug: string, options: { maxSec?: string; targetSec?: string }) {
+  const film = readFilm(slug);
+  if (!film) throw new Error(`no film for ${slug}`);
+  const budget = reelBudgetFor(film);
+  return parseReelBudget({ ...budget, maxSec: options.maxSec === undefined ? budget.maxSec : Number(options.maxSec),
+    targetSec: options.targetSec === undefined ? budget.targetSec : Number(options.targetSec) });
+}
+
+// Registers reel authoring and build commands on the production CLI.
 export function registerReelCommands(program: Command): void {
   const reel = program
     .command("reel")
     .description(
-      "Write or check a separate condensed reel narration cut for scene films only",
+      "Write, check or build a separate condensed reel narration cut",
     );
   withBudget(
     reel
       .command("brief")
       .description(
-        "Write a scene-film reel brief with locks, hashes and motion budgets",
+        "Write a reel brief with locks, hashes and motion budgets",
       ),
   ).action(
     (
       film: string,
-      options: { maxSec: string; targetSec: string },
+      options: { maxSec?: string; targetSec?: string },
     ) => {
-      const budget = parseReelBudget({
-        maxSec: Number(options.maxSec),
-        targetSec: Number(options.targetSec),
-        endCardSec: DEFAULT_REEL_BUDGET.endCardSec,
-      });
+      const budget = commandBudget(film, options);
       console.log(writeReelBrief(film, budget));
     },
   );
@@ -58,7 +63,7 @@ export function registerReelCommands(program: Command): void {
     reel
       .command("check")
       .description(
-        "Check a scene-film reel cut without changing source data",
+        "Check a reel cut without changing source data",
       ),
   )
     .option("--json", "print a structured report")
@@ -66,17 +71,13 @@ export function registerReelCommands(program: Command): void {
       (
         film: string,
         options: {
-          maxSec: string;
-          targetSec: string;
+          maxSec?: string;
+          targetSec?: string;
           json?: boolean;
         },
       ) => {
         try {
-          const budget = parseReelBudget({
-            maxSec: Number(options.maxSec),
-            targetSec: Number(options.targetSec),
-            endCardSec: DEFAULT_REEL_BUDGET.endCardSec,
-          });
+          const budget = commandBudget(film, options);
           const context = loadReelContext(film);
           const report = checkReelCut(readReelCut(film), context, budget);
           console.log(
@@ -91,4 +92,15 @@ export function registerReelCommands(program: Command): void {
         }
       },
     );
+  reel.command("build").argument("<film>", "film package slug")
+    .option("--delivery <mode>", "inline, agent or server", "inline")
+    .action(async (film: string, options: { delivery: string }) => {
+      const mode = options.delivery;
+      if (mode !== "inline" && mode !== "agent" && mode !== "server") throw new Error("--delivery must be inline, agent or server");
+      const outcome = await deliverReel(film, { mode, onProgress: (message) => console.error(message) });
+      if (outcome.status === "needs_reel_cut") {
+        console.log(`${outcome.status}: ${outcome.note}\n${outcome.nextSteps.join("\n")}`);
+        process.exitCode = 3;
+      } else console.log(`PASS ${film}: reel film built`);
+    });
 }

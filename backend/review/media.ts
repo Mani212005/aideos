@@ -33,6 +33,7 @@ export function probeVideo(file: string): VideoFacts {
   return {
     path: file,
     durationSec: Number(video.duration ?? info.format?.duration ?? 0),
+    containerDurationSec: Number(info.format?.duration ?? video.duration ?? 0),
     width: video.width,
     height: video.height,
     fps: den ? Math.round((num / den) * 100) / 100 : 30,

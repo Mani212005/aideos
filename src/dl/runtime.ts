@@ -9,7 +9,7 @@ import { zColor } from "@remotion/zod-types";
 import { parseFilm } from "./schema";
 import { buildTimeline, totalFrames } from "./camera";
 import { deliveryTimeline } from "./delivery";
-import { ACTIVE_FILM } from "./activeFilm";
+import { ACTIVE_FILM, ACTIVE_REEL_FILM } from "./activeFilm";
 import { PALETTE } from "./tokens";
 
 /**
@@ -26,7 +26,9 @@ export const FPS = FILM.fps;
 export const TOTAL_FRAMES = totalFrames(TIMELINE);
 /** Delivered frames per format: the story plus that format's end card (src/dl/delivery.ts). */
 export const LONG_TOTAL_FRAMES = deliveryTimeline(FILM, "long", { timeline: TIMELINE }).totalFrames;
-export const REEL_TOTAL_FRAMES = deliveryTimeline(FILM, "reel", { timeline: TIMELINE }).totalFrames;
+export const REEL_FILM = parseFilm(ACTIVE_REEL_FILM);
+export const REEL_TIMELINE = buildTimeline(REEL_FILM);
+export const REEL_TOTAL_FRAMES = deliveryTimeline(REEL_FILM, "reel", { timeline: REEL_TIMELINE }).totalFrames;
 
 /**
  * The Studio hand-off surface.
@@ -60,4 +62,11 @@ export const defaultFilmProps: FilmProps = {
   musicVolume: FILM.music?.volume ?? 1,
   showRail: true,
   showGrid: false,
+};
+
+/** Reel audio comes from the condensed narration while picture styling remains shared. */
+export const defaultReelProps: FilmProps = {
+  ...defaultFilmProps,
+  voiceoverSrc: REEL_FILM.voiceover?.src ?? "",
+  voiceoverVolume: REEL_FILM.voiceover?.volume ?? 1,
 };
