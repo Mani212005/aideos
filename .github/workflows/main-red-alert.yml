@@ -1,0 +1,41 @@
+# File Description: Alerts on failed, timed out, or cancelled CI runs on the main branch by opening or updating a GitHub issue.
+# Inputs and outputs: workflow_run completion event for CI on main -> open or updated GitHub issue naming run URL and commit.
+# Used by: GitHub Actions. Documented in docs/CI.md.
+name: Main red alert
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  alert:
+    name: alert
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    if: >-
+      github.event.workflow_run.head_branch == 'main' &&
+      (github.event.workflow_run.conclusion == 'failure' ||
+       github.event.workflow_run.conclusion == 'timed_out' ||
+       github.event.workflow_run.conclusion == 'cancelled')
+    steps:
+      - name: Open or update issue for failed main run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          EXISTING_ISSUE=$(gh issue list --repo "$REPO" --state open --json number,title --jq '.[] | select(.title == "CI: main branch failure") | .number' | head -n 1)
+          BODY=$(printf "Main branch CI run failed:\n- Run: %s\n- Conclusion: %s\n- Commit: %s\n" "$RUN_URL" "$CONCLUSION" "$COMMIT_SHA")
+          if [ -n "$EXISTING_ISSUE" ]; then
+            gh issue comment "$EXISTING_ISSUE" --repo "$REPO" --body "$BODY"
+          else
+            gh issue create --repo "$REPO" --title "CI: main branch failure" --body "$BODY"
+          fi
