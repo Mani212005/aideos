@@ -42,7 +42,12 @@ a journey case for each bug the captain or a user reported), and the captain's e
 ## Setup that every job shares
 
 * Every workflow job uses Node 22 and `npm ci` (npm cache keyed on both lockfiles). Jobs that render
-  install `ffmpeg` and the Remotion browser libraries, and cache `node_modules/.remotion`.
+  install `ffmpeg` and the Remotion browser libraries, and cache `node_modules/.remotion`. APT packages
+  are cached across runs under `/home/runner/.apt-cache` with retry-hardened installs.
+* The `unit` job restores the Remotion browser cache, runs `remotion browser ensure` before tests,
+  and installs `tesseract-ocr` so OCR features run without skipping.
+* Skipped tests in any test runner are captured and reported honestly as `NOT COVERED (skipped)` in
+  the timing summary and job summary, not as passes.
 * Renders use **software GL** (`AIDEOS_GL=swangle`, read by `backend/pipeline/render.ts`'s `glFlag`).
   This avoids GPU-dependent rendering on CI. Goldens remain pinned to the CI platform, and the
   update workflow renders them twice on that platform before accepting them. On a Mac the default
@@ -50,7 +55,8 @@ a journey case for each bug the captain or a user reported), and the captain's e
 * `ruff` is pinned (`RUFF_VERSION` in `scripts/ci.ts` and in `ci.yml`); locally the step uses an
   installed `ruff`, `python3 -m ruff` or `uvx ruff@<pinned>`, and is skipped with a reason (never
   silently passed) when none exists. CI always runs it.
-* Failing frames, reports and studio screenshots land under `.ci-artifacts/`. The journeys artifact
+* Failing frames, reports and studio screenshots land under `.ci-artifacts/`. Artifact uploads use
+  `include-hidden-files: true` so `.ci-artifacts` directories are uploaded reliably. The journeys artifact
   uploads on failure; legacy evidence and the nightly budget report upload on every run.
 
 ## Changed files (shadow mode)
@@ -63,14 +69,33 @@ script) to inspect pull request changes using `git diff --name-only --no-renames
 * **Shadow mode decisions**: Classifies which test suites (`journeys`, `legacy`) would be required based
   on dependency closures. In shadow mode, these decisions are logged in the summary as "would run" or
   "would skip", but all jobs run regardless. No job is skipped in shadow mode.
+* **PR risk rating (D5 shadow mode)**: Classifies the risk level of the pull request into `High`,
+  `Medium`, or `Low` and reports the rating along with specific triggered reasons in the job summary.
+  The rating is computed from rules and operates in shadow mode alongside no-mistakes: it does not
+  gate, skip, or fail any jobs.
+  * **High risk triggers**:
+    * Touches render code: `backend/pipeline/render*`, `src/dl/render*`
+    * Touches stage or scene code: `src/dl/scene/**`, `src/dl/Stage*`, `src/dl/Scene*`, `backend/stage/**`, `backend/stillTalking/**`
+    * Touches golden regression code or baselines: `backend/journeys/goldens/**`, `backend/journeys/legacy.golden.ts`, `backend/journeys/goldenResult.ts`
+    * Touches CI workflows: `.github/**`
+    * Touches dependencies or lockfiles: `package.json`, `package-lock.json`, `editor/package.json`, `editor/package-lock.json`
+    * Touches security-sensitive server routes in `editor/vite.config.ts`
+    * Touches more than N files (threshold N = 25, calibrated to the 75th percentile of the last 37 PR file counts)
+    * Non-PR events (pushes to main, manual workflow dispatches), empty diffs, or git diff errors default to High
+  * **Low risk triggers**:
+    * Documentation-only changes (`docs/**`, `*.md`, `LICENSE*`)
+  * **Medium risk**:
+    * All other standard pull requests that do not match High or Low risk rules
 * **Fail-safe defaults**: Any condition other than a clean pull request (pushes to main, manual dispatch,
   git diff errors, empty diffs, or diffs over 300 files) defaults to running all jobs.
 
 ## Runner hardening and red-main alert
 
-* **APT retry with timeouts**: Every `apt-get` step in `ci.yml` wraps `update` and `install` in a 3-attempt
-  retry loop with a 300-second per-command timeout, 15-second sleep between retries, and `-o Acquire::Retries=3`.
-  Each apt step is bounded by its own `timeout-minutes: 10` to prevent runner hangs from exhausting job limits.
+* **APT caching and retry with timeouts**: Every `apt-get` step in `ci.yml` and `nightly.yml` restores
+  and saves `/home/runner/.apt-cache` via `actions/cache@v4` with `-o Dir::Cache::Archives=/home/runner/.apt-cache`.
+  The install runs in a 3-attempt retry loop with a 300-second per-command timeout, 15-second sleep between retries,
+  and `-o Acquire::Retries=3`. Each apt step is bounded by its own `timeout-minutes: 10` to prevent runner hangs
+  from exhausting job limits.
 * **Red-main alert**: `.github/workflows/main-red-alert.yml` runs on `workflow_run` when the CI workflow
   completes on the main branch with failure, timed_out, or cancelled conclusions. It opens or updates a single
   GitHub issue (`CI: main branch failure`) naming the failing run URL and commit SHA, preventing unnoticed red builds.

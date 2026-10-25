@@ -61,7 +61,7 @@ export function holdActiveFilm(): () => void {
 }
 
 /** Temp entries a render or journey may create; anything with these prefixes left behind is a leak. */
-export const TEMP_PREFIXES = ["remotion-", "react-motion-render", "aideos-journey-", "puppeteer_dev"];
+export const TEMP_PREFIXES = ["remotion-", "react-motion-render", "aideos-journey-", "puppeteer_dev", "aideos-render-"];
 
 /** Lists the temp-dir entries that match the prefixes, so a before/after diff shows a leak. */
 export function tempEntries(prefixes: string[] = TEMP_PREFIXES, dir = os.tmpdir()): string[] {

@@ -50,9 +50,15 @@ function treeRssMB(): number {
   return total / 1024;
 }
 
-/** Bytes currently held by Remotion's temp render folders. */
+/** Bytes currently held by Remotion's temp render folders across standard temporary directories. */
 function tempBytes(): number {
-  return tempEntries(["remotion-", "react-motion-render"]).reduce((sum, name) => sum + sizeOf(path.join(os.tmpdir(), name)), 0);
+  const prefixes = ["remotion-", "react-motion-render", "aideos-render-"];
+  const dirs = [os.tmpdir(), "/tmp"].filter((d, i, arr) => arr.indexOf(d) === i && fs.existsSync(d));
+  let total = 0;
+  for (const dir of dirs) {
+    total += tempEntries(prefixes, dir).reduce((sum, name) => sum + sizeOf(path.join(dir, name)), 0);
+  }
+  return total;
 }
 
 /** Entry point: produce, sample, compare to the budgets, report. */

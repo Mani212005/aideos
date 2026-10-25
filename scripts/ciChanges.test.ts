@@ -11,6 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   classify,
+  computeRisk,
   formatJobSummary,
   groupFilesByArea,
   isJourneysSkippable,
@@ -245,4 +246,46 @@ test("run takes fail-safe path when BASE_SHA or HEAD_SHA is missing even if bran
     }
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
+});
+
+test("computeRisk rates High for render, stage, golden, workflows, dependencies, security, and large PRs", () => {
+  assert.equal(computeRisk({ event: "pull_request", files: ["backend/pipeline/render.ts"] }).risk, "High");
+  assert.equal(computeRisk({ event: "pull_request", files: ["src/dl/scene/ThreeStage.tsx"] }).risk, "High");
+  assert.equal(computeRisk({ event: "pull_request", files: ["backend/journeys/legacy.golden.ts"] }).risk, "High");
+  assert.equal(computeRisk({ event: "pull_request", files: [".github/workflows/ci.yml"] }).risk, "High");
+  assert.equal(computeRisk({ event: "pull_request", files: ["package.json"] }).risk, "High");
+  assert.equal(computeRisk({ event: "pull_request", files: ["editor/package-lock.json"] }).risk, "High");
+  assert.equal(computeRisk({ event: "pull_request", files: ["editor/vite.config.ts"] }).risk, "High");
+
+  const largeSet = Array.from({ length: 26 }, (_, i) => `src/file_${i}.ts`);
+  const largeResult = computeRisk({ event: "pull_request", files: largeSet });
+  assert.equal(largeResult.risk, "High");
+  assert.ok(largeResult.reasons.some((r: string) => r.includes("more than 25 files")));
+});
+
+test("computeRisk rates Low for docs-only PRs and Medium otherwise", () => {
+  const docsResult = computeRisk({
+    event: "pull_request",
+    files: ["docs/CI.md", "README.md", "LICENSE", ".agents/skills/all-check/SKILL.md"],
+  });
+  assert.equal(docsResult.risk, "Low");
+  assert.ok(docsResult.reasons.some((r: string) => r.includes("documentation")));
+
+  const mediumResult = computeRisk({
+    event: "pull_request",
+    files: ["src/dl/Film.tsx", "backend/allCheck/runner.ts"],
+  });
+  assert.equal(mediumResult.risk, "Medium");
+  assert.ok(mediumResult.reasons.some((r: string) => r.includes("outside high-risk boundaries")));
+});
+
+test("formatJobSummary includes shadow PR risk rating", () => {
+  const files = ["backend/pipeline/render.ts"];
+  const classification = classify({ event: "pull_request", files });
+  const summary = formatJobSummary({ files, classification, event: "pull_request", error: null });
+
+  assert.match(summary, /### PR Risk Rating \(Shadow Mode\)/);
+  assert.match(summary, /- \*\*Risk Level\*\*: \*\*High\*\*/);
+  assert.match(summary, /- \*\*Reason\*\*: touches render code/);
+  assert.match(summary, /In shadow mode, this rating is for observation only/);
 });

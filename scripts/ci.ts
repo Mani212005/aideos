@@ -54,6 +54,7 @@ export interface StepResult {
   seconds: number;
   note?: string;
   todoNames?: string[];
+  skippedNames?: string[];
 }
 
 /** The ruff release CI installs; the uvx fallback pins the same one so laptop and CI agree on formatting. */
@@ -130,7 +131,21 @@ export const JOBS: CiJob[] = [
     id: "unit",
     title: "Unit and feature tests, fixture design checks, evals",
     steps: [
-      { name: "npm test", cmd: ["npm", "test"] },
+      {
+        name: "unit and feature tests",
+        cmd: [
+          "node",
+          "--import",
+          "tsx",
+          "--import",
+          "./backend/testSupport/fixtureVideosDir.ts",
+          "--test",
+          "--test-concurrency=1",
+          "backend/**/*.test.ts",
+          "scripts/**/*.test.ts",
+        ],
+        todoCases: true,
+      },
       { name: "validate hello-scene", cmd: ["npm", "run", "validate", "--silent", "--", "examples/hello-scene/film.json"] },
       {
         name: "design:check fixtures",
@@ -180,6 +195,7 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
   return new Promise((resolve) => {
     const cmd = step.resolve ? step.resolve(step.cmd) : step.cmd;
     let todoNames: string[] = [];
+    let skippedNames: string[] = [];
     const reportDir = step.todoCases ? fs.mkdtempSync(path.join(ROOT, ".ci-todo-report-")) : null;
     const reportPath = reportDir ? path.join(reportDir, "todos.json") : null;
     const runCmd = reportPath
@@ -210,13 +226,27 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
     const done = (status: StepResult["status"], note?: string) => {
       if (reportDir) process.removeListener("exit", cleanup);
       cleanup();
-      resolve({ job: job.id, step: step.name, status, seconds: (Date.now() - started) / 1000, note, ...(todoNames.length ? { todoNames } : {}) });
+      resolve({
+        job: job.id,
+        step: step.name,
+        status,
+        seconds: (Date.now() - started) / 1000,
+        note,
+        ...(todoNames.length ? { todoNames } : {}),
+        ...(skippedNames.length ? { skippedNames } : {}),
+      });
     };
     child.on("error", (err) => done("failed", err.message));
     child.on("close", (code) => {
       if (reportPath && reportDir) {
         try {
-          todoNames = JSON.parse(fs.readFileSync(reportPath, "utf8")) as string[];
+          const raw = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+          if (Array.isArray(raw)) {
+            todoNames = raw as string[];
+          } else if (raw && typeof raw === "object") {
+            todoNames = (raw.todos ?? []) as string[];
+            skippedNames = (raw.skipped ?? []) as string[];
+          }
         } catch (err) {
           return done("failed", `could not read structured TODO report: ${err instanceof Error ? err.message : String(err)}`);
         }
@@ -237,14 +267,19 @@ export function summaryTable(results: StepResult[]): string {
   const rows = results.map((r) => {
     const gaps = r.job === "journeys" && r.step === "journey tests" ? `KNOWN GAPS (todo): ${r.todoNames?.length ?? 0}: ${r.todoNames?.join(", ") || "none"}` : "";
     const j1Scope = r.job === "journeys" && r.step === "journey tests" ? "J1-END-TO-END-REVIEW: PR rendering is a contact-frame excerpt; full-film budgets run nightly; measured review and captain watch are separate." : "";
-    return `| ${r.job} | ${r.step} | ${r.status === "not-covered" ? "NOT COVERED" : r.status} | ${r.seconds.toFixed(1)}s | ${[r.note, gaps, j1Scope].filter(Boolean).join("; ")} |`;
+    const skips = r.skippedNames?.length ? `NOT COVERED (skipped): ${r.skippedNames.length}: ${r.skippedNames.join(", ")}` : "";
+    return `| ${r.job} | ${r.step} | ${r.status === "not-covered" ? "NOT COVERED" : r.status} | ${r.seconds.toFixed(1)}s | ${[r.note, gaps, j1Scope, skips].filter(Boolean).join("; ")} |`;
   });
   return ["| job | step | status | time | note |", "| --- | --- | --- | --- | --- |", ...rows].join("\n");
 }
 
-/** One sentence per step that compared nothing, for the warning annotation and the job summary. */
+/** One sentence per step that compared nothing or had skipped tests, for the warning annotation and the job summary. */
 export function notCoveredNotices(results: StepResult[]): string[] {
-  return results.filter((r) => r.status === "not-covered").map((r) => `${r.job} / ${r.step} is NOT COVERED: ${r.note}`);
+  const stepNotices = results.filter((r) => r.status === "not-covered").map((r) => `${r.job} / ${r.step} is NOT COVERED: ${r.note}`);
+  const skipNotices = results
+    .filter((r) => r.skippedNames && r.skippedNames.length > 0)
+    .map((r) => `${r.job} / ${r.step} has ${r.skippedNames!.length} test(s) NOT COVERED: ${r.skippedNames!.join(", ")}`);
+  return [...stepNotices, ...skipNotices];
 }
 
 /** Formats todo journey cases for the console, GitHub warning annotation and job summary. */

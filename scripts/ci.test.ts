@@ -20,6 +20,7 @@ const workflows = fs.existsSync(workflowDir) ? fs.readdirSync(workflowDir).filte
 
 interface WorkflowStep {
   name?: string;
+  id?: string;
   run?: string;
   uses?: string;
   with?: Record<string, unknown>;
@@ -346,4 +347,51 @@ test("the legacy step reports NOT COVERED (exit 0), passed or failed from what t
     else process.env.AIDEOS_CI_ARTIFACTS = before;
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("decision D0: ci.yml evidence uploads specify include-hidden-files: true", () => {
+  const ci = YAML.parse(fs.readFileSync(path.join(workflowDir, "ci.yml"), "utf8")) as WorkflowDocument;
+  const uploadSteps: WorkflowStep[] = [];
+  for (const job of Object.values(ci.jobs ?? {})) {
+    for (const step of job.steps ?? []) {
+      if (step.uses?.startsWith("actions/upload-artifact@")) {
+        uploadSteps.push(step);
+      }
+    }
+  }
+  assert.ok(uploadSteps.length >= 2, "expected at least 2 upload-artifact steps in ci.yml");
+  for (const step of uploadSteps) {
+    assert.equal(step.with?.["include-hidden-files"], true, `${step.name} must specify include-hidden-files: true`);
+  }
+});
+
+test("decision D0: ci.yml unit job restores browser cache and nightly.yml hardens apt installation", () => {
+  const ci = YAML.parse(fs.readFileSync(path.join(workflowDir, "ci.yml"), "utf8")) as WorkflowDocument;
+  const unitSteps = ci.jobs?.unit?.steps ?? [];
+  const browserCache = unitSteps.find((s) => s.id === "remotion-browser");
+  assert.ok(browserCache, "unit job must have remotion-browser cache step");
+  const browserEnsure = unitSteps.find((s) => s.run?.includes("remotion browser ensure"));
+  assert.ok(browserEnsure, "unit job must have remotion browser ensure step");
+
+  const nightly = YAML.parse(fs.readFileSync(path.join(workflowDir, "nightly.yml"), "utf8")) as WorkflowDocument;
+  const nightlySteps = nightly.jobs?.["render-budget"]?.steps ?? [];
+  const aptStep = nightlySteps.find((s) => s.run?.includes("apt-get"));
+  assert.ok(aptStep, "nightly.yml must have apt-get step");
+  assert.match(aptStep.run!, /timeout\s+300\s+sudo\s+apt-get/, "nightly apt step must use timeout 300");
+  assert.match(aptStep.run!, /for\s+\w+\s+in\s+1\s+2\s+3/, "nightly apt step must retry 3 times");
+  assert.match(aptStep.run!, /Dir::Cache::Archives/, "nightly apt step must use apt cache");
+});
+
+test("decision D0: skipped tests report as NOT COVERED in notCoveredNotices and summaryTable", () => {
+  const stepResult = {
+    job: "unit",
+    step: "unit and feature tests",
+    status: "passed" as const,
+    seconds: 12.3,
+    skippedNames: ["ocr: monospace counter", "review: burned-in captions"],
+  };
+  const table = summaryTable([stepResult]);
+  assert.match(table, /NOT COVERED \(skipped\): 2: ocr: monospace counter, review: burned-in captions/);
+  const notices = notCoveredNotices([stepResult]);
+  assert.ok(notices.some((n) => n.includes("has 2 test(s) NOT COVERED: ocr: monospace counter, review: burned-in captions")));
 });
