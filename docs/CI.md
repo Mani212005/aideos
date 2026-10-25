@@ -123,7 +123,7 @@ seconds). There is no override variable: tests inject a fake sampler and `statfs
 | unreachable targets giving NaN | J8: finite numbers and a failed critique by name |
 | cue binding, missing or duplicate phrase | J8: missing phrase, unknown shot and duplicate decisive phrase name the cue and shot; a unique longer phrase resolves successfully |
 | render weight and memory | nightly budget: measured 313 s, 2.2 GB RSS, 0.5 GB temp on a Mac |
-| CI slowness, logins | four parallel jobs, caches, no login-only reviewer in CI |
+| CI slowness, logins | parallel jobs, caches, no login-only reviewer in CI |
 
 ## How to add a journey test
 
@@ -206,13 +206,13 @@ default branch again. Review and merge its pull request like any other change.
 
 ## Branch protection (proposal, not applied)
 
-Require the single check **`all-green`** (it fails unless static, unit, journeys and legacy all
-succeeded). The nightly and update-goldens workflows are not checks. Branch protection is a
+Require the single check **`all-green`** (it fails unless all five jobs above succeeded).
+The nightly and update-goldens workflows are not checks. Branch protection is a
 repository setting and is left to the captain.
 
 ## Cost
 
-Standard GitHub-hosted `ubuntu-24.04` runners, free for a public repository. The four PR jobs run in
+Standard GitHub-hosted `ubuntu-24.04` runners, free for a public repository. The PR jobs run in
 parallel, so wall time is the slowest job; each job's measured time is in the pull request
 description and in the timing table at the end of every run.
 
