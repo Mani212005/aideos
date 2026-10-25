@@ -66,7 +66,8 @@ test("review --format reel selects reel inputs; default reviews both and preserv
   assert.equal(JSON.parse(fs.readFileSync(path.join(pkg, "review.reel.json"), "utf8")).format, "reel");
   const facts = await extractDeterministicFacts(path.join(pkg, "renders/reel.mp4"), { skipOcr: true });
   assert.equal(facts.reelLength?.capSec, 179);
-  assert.equal(facts.endCard?.endSec! - facts.endCard?.startSec!, 3);
+  assert.ok(facts.endCard);
+  assert.equal(facts.endCard.endSec - facts.endCard.startSec, 3);
   assert.match(facts.rawSummaryText, /179 s hard cap/);
-  assert.equal(facts.endCard?.startSec, 10);
+  assert.equal(facts.endCard.startSec, 10);
 });
