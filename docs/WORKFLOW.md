@@ -140,8 +140,8 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos design build <film>` | Compiles bespoke design and writes film on PASS | `videos/<film>/film.json`, `design/status.json` |
 | `aideos render` | Renders long-form landscape video | `videos/<slug>/renders/long.mp4` (1920x1080) |
 | `aideos reel` | Renders vertical reel video | `videos/<slug>/renders/reel.mp4` (1080x1920) |
-| `aideos reel brief <film>` | Writes the condensed narration brief for scene films | `videos/<film>/reel/REEL_BRIEF.md` |
-| `aideos reel check <film> [--max-sec <seconds>] [--target-sec <seconds>]` | Checks the authored reel cut; max is 179 s including the fixed 3 s end card | Terminal report |
+| `aideos reel brief <film> [--max-sec <seconds>] [--target-sec <seconds>]` | Writes the condensed narration brief for scene films | `videos/<film>/reel/REEL_BRIEF.md` |
+| `aideos reel check <film> [--max-sec <seconds>] [--target-sec <seconds>] [--json]` | Checks the authored reel cut; max is 179 s including the fixed 3 s end card | Terminal report |
 | `aideos studio` | Opens native Remotion Studio UI | Remotion Studio browser tab |
 | `aideos test` | Executes full automated verification suite | Test TAP results |
 | `aideos produce` | Runs audio-first produce pipeline | `voiceover.wav`, `captions.vtt`, `film.ts` |
