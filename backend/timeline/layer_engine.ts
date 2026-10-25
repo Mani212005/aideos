@@ -295,8 +295,31 @@ export function importMediaAssetToLayeredFilm(
   }
 
   if (asset.type === "audio") {
-    const audioLayer =
-      explicitLayer ?? newLayers.find((l) => l.number === 0 || l.id.includes("audio")) ?? newLayers[0];
+    // Checks whether a given layer is a dedicated voiceover or narration spine lane.
+    const isVoiceoverLane = (l: Layer) =>
+      l.id === "layer-audio-spine" || l.id === "layer-voiceover" || (l.number === 0 && l.id.includes("audio"));
+    let audioLayer =
+      explicitLayer && !isVoiceoverLane(explicitLayer)
+        ? explicitLayer
+        : newLayers.find((l) => l.id === "layer-audio-music" || l.id.includes("music")) ??
+          newLayers.find((l) => !isVoiceoverLane(l) && (l.id.includes("audio") || l.id.includes("sfx")));
+    if (!audioLayer) {
+      audioLayer = {
+        id: "layer-audio-music",
+        number: 2,
+        label: "Music",
+        locked: false,
+        hidden: false,
+        muted: false,
+        height: 48,
+      };
+      appendLayer(audioLayer, "Create music layer");
+    }
+
+    const isMusicLane = audioLayer.id === "layer-audio-music" || audioLayer.id.includes("music");
+    const isSfxLane = audioLayer.id === "layer-audio-sfx" || audioLayer.id.includes("sfx");
+    const channel: "voiceover" | "music" | "sfx" | "external" = isMusicLane ? "music" : isSfxLane ? "sfx" : "external";
+
     const audioClipId = `clip-audio-${slug}-${generateUUID().slice(0, 4)}`;
     const audioClip: Clip = {
       id: audioClipId,
@@ -306,7 +329,11 @@ export function importMediaAssetToLayeredFilm(
       end: dur,
       sourceDuration: dur,
       kind: "audio",
-      payload: { src: asset.src, channel: "external" },
+      payload: {
+        src: asset.src,
+        channel,
+        ...(isMusicLane ? { duckUnderVoiceover: true } : {}),
+      },
       opacity: 1,
       volume: 1,
     };

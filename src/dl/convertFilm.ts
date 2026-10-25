@@ -533,13 +533,14 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
       }
     : base?.voiceover;
 
-  const music = musicClips.length > 0
-    ? {
-        src: (musicClips[0].payload as AudioPayload).src,
-        volume: musicClips[0].volume ?? 1,
-        duckUnderVoiceover: (musicClips[0].payload as AudioPayload).duckUnderVoiceover ?? true,
-      }
-    : undefined;
+  const music =
+    musicClips.length > 0 && isPlainMusic(musicClips[0])
+      ? {
+          src: (musicClips[0].payload as AudioPayload).src,
+          volume: musicClips[0].volume ?? 1,
+          duckUnderVoiceover: (musicClips[0].payload as AudioPayload).duckUnderVoiceover ?? true,
+        }
+      : undefined;
 
   const sfx = sfxClips.length > 0
     ? sfxClips.map((c) => ({

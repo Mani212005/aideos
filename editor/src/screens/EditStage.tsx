@@ -147,6 +147,10 @@ export function EditStage({
     (asset: MediaAsset) => {
       const kind: "video" | "audio" | "image" =
         asset.type === "audio" ? "audio" : asset.type === "image" ? "image" : "video";
+      const targetLaneId =
+        kind === "audio"
+          ? film.layers?.find((l) => l.id === "layer-audio-music" || l.id.includes("music"))?.id ?? "layer-audio-music"
+          : undefined;
       api.importAsset(
         {
           filename: asset.filename,
@@ -157,9 +161,10 @@ export function EditStage({
           height: asset.height,
         },
         currentFrame / (film.fps || 30),
+        targetLaneId,
       );
     },
-    [api, currentFrame, film.fps],
+    [api, currentFrame, film.fps, film.layers],
   );
 
   if (!film.voiceover?.src) {

@@ -59,14 +59,13 @@ export const Video: React.FC<VideoProps> = ({
   const captionWords = useMemo(() => captionWordsForFilm(film), [film]);
 
   // Extract speech intervals from audio clips or timeline shots with narration
+  const voClips = film.audioClips?.filter((ac) => (ac.channel ?? "voiceover") === "voiceover") ?? [];
   const speechIntervals: SpeechInterval[] =
-    film.audioClips && film.audioClips.length > 0
-      ? film.audioClips
-          .filter((ac) => (ac.channel ?? "voiceover") === "voiceover")
-          .map((ac) => ({
-            startSec: ac.position,
-            endSec: ac.position + (ac.end - (ac.start ?? 0)) / (ac.speed ?? 1.0),
-          }))
+    voClips.length > 0
+      ? voClips.map((ac) => ({
+          startSec: ac.position,
+          endSec: ac.position + (ac.end - (ac.start ?? 0)) / (ac.speed ?? 1.0),
+        }))
       : timeline.filter((t) => Boolean(t.shot.scriptText)).map((t) => ({
           startSec: t.from / effectiveFps,
           endSec: t.to / effectiveFps,
@@ -78,6 +77,8 @@ export const Video: React.FC<VideoProps> = ({
       endSec: card.lineFrom / effectiveFps + film.endCardVoice.durationSec,
     });
   }
+
+  const hasVoiceoverClips = voClips.length > 0;
 
   return (
     <>
@@ -101,16 +102,22 @@ export const Video: React.FC<VideoProps> = ({
       ) : null}
 
       {/* 2. Voiceover & Multi-Clip Audio Track */}
-      {film.audioClips && film.audioClips.length > 0 ? (
-        film.audioClips
-          .filter((ac) => ac.channel !== "music" || !effectiveMusicSrc)
-          .map((ac) => {
+      {film.audioClips && film.audioClips.length > 0
+        ? film.audioClips.map((ac) => {
             const speed = ac.speed ?? 1.0;
             const isRetimed = Math.abs(speed - 1.0) > 0.001;
             const startFrame = Math.round(ac.position * effectiveFps);
-            const durFrames = Math.max(1, Math.round(ac.end * effectiveFps) - Math.round((ac.start ?? 0) * effectiveFps));
+            const isMusicClip = ac.channel === "music";
+            const durFrames =
+              isMusicClip &&
+              delivery.card &&
+              ac.position + (ac.end - (ac.start ?? 0)) >= effectiveTotalFrames / effectiveFps - 0.05
+                ? Math.round(delivery.totalFrames) - startFrame
+                : Math.max(1, Math.round(ac.end * effectiveFps) - Math.round((ac.start ?? 0) * effectiveFps));
             const startFrom = Math.round((ac.start ?? 0) * effectiveFps);
-            const clipLevel = (ac.volume ?? 1) * effectiveVoiceoverVolume;
+            const clipLevel = isMusicClip
+              ? (ac.volume ?? 1) * effectiveMusicVolume
+              : (ac.volume ?? 1) * effectiveVoiceoverVolume;
             const audioSrc = isRetimed
               ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
               : staticFile(ac.src);
@@ -121,12 +128,25 @@ export const Video: React.FC<VideoProps> = ({
                   src={audioSrc}
                   trimBefore={startFrom}
                   playbackRate={1.0}
-                  volume={(f) => voiceLevel(f + startFrame, clipLevel, effectiveTotalFrames)}
+                  volume={(f) =>
+                    isMusicClip
+                      ? calculateDuckingVolume({
+                          frame: f + startFrame,
+                          fps: effectiveFps,
+                          totalFrames: delivery.totalFrames,
+                          musicVolume: clipLevel,
+                          duckUnderVoiceover: true,
+                          speechIntervals,
+                        })
+                      : voiceLevel(f + startFrame, clipLevel, effectiveTotalFrames)
+                  }
                 />
               </Sequence>
             );
           })
-      ) : effectiveVoiceoverSrc.trim().length > 0 ? (
+        : null}
+
+      {!hasVoiceoverClips && effectiveVoiceoverSrc.trim().length > 0 ? (
         (() => {
           const speed = film.voiceover?.speed ?? 1.0;
           const isRetimed = Math.abs(speed - 1.0) > 0.001;
