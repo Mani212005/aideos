@@ -41,9 +41,10 @@ function renderAudioWav(outWav: string, publicDir: string): void {
       cwd: REPO_ROOT,
       stdio: "pipe",
     });
-  } catch (err: any) {
-    console.error("remotion render failed. stderr:", err.stderr?.toString());
-    console.error("stdout:", err.stdout?.toString());
+  } catch (err: unknown) {
+    const renderError = err as { stderr?: Buffer; stdout?: Buffer };
+    console.error("remotion render failed. stderr:", renderError.stderr?.toString());
+    console.error("stdout:", renderError.stdout?.toString());
     throw err;
   }
 }
