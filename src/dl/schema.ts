@@ -508,10 +508,6 @@ export const soundtrackSectionSchema = z.object({
   from: z.number().min(0).default(0),
   /** Resolved timeline end time in seconds. */
   to: z.number().min(0),
-  /** Optional alias for start time in seconds. */
-  fromSec: z.number().min(0).optional(),
-  /** Optional alias for end time in seconds. */
-  toSec: z.number().min(0).optional(),
   /** Offset seconds into the source audio track to start playback (used for back-timing outro). */
   offsetSec: z.number().min(0).default(0),
   /** Equal-power crossfade duration in seconds centered on section boundary (3s long, 1.5s reel). */
@@ -532,8 +528,6 @@ export const soundtrackMixSchema = z.object({
   targetLufs: z.number().default(-16),
   /** Attenuation level in dB while voiceover speech is active (-18 dB under speech). */
   duckDb: z.number().default(-18),
-  /** Optional alias for duckDb in dB. */
-  speechGainDb: z.number().default(-18).optional(),
   /** Attenuation level in dB during narration breath pauses (-10 dB in pauses). */
   pauseGainDb: z.number().default(-10),
   /** Level in dB during music-only moments such as the end card or pre-roll (-8 dB). */
@@ -582,8 +576,6 @@ export const soundtrackSchema = z.object({
   sections: z.array(soundtrackSectionSchema).default([]),
   /** Measured speech activity intervals for Remotion sidechain ducking. */
   speech: z.array(speechIntervalSchema).default([]),
-  /** Optional alias for speech intervals. */
-  speechIntervals: z.array(speechIntervalSchema).optional(),
   /** Mix levels, ducking depths, and target loudness settings. */
   mix: soundtrackMixSchema.default(soundtrackMixDefault),
   /** Sound effects tied to visual events on the timeline. */
@@ -607,19 +599,14 @@ export function normalizeFilmSoundtrack(film: {
   shots?: Array<{ dur?: number }>;
 }): Soundtrack {
   if (film.soundtrack && film.soundtrack.sections.length > 0) {
-    const rawSpeech =
-      film.soundtrack.speech && film.soundtrack.speech.length > 0
-        ? film.soundtrack.speech
-        : (film.soundtrack.speechIntervals ?? []);
+    const rawSpeech = film.soundtrack.speech ?? [];
     return {
       library: film.soundtrack.library,
       sections: film.soundtrack.sections,
       speech: rawSpeech,
-      speechIntervals: rawSpeech,
       mix: {
         targetLufs: film.soundtrack.mix?.targetLufs ?? -16,
         duckDb: film.soundtrack.mix?.duckDb ?? -18,
-        speechGainDb: film.soundtrack.mix?.speechGainDb ?? film.soundtrack.mix?.duckDb ?? -18,
         pauseGainDb: film.soundtrack.mix?.pauseGainDb ?? -10,
         musicOnlyGainDb: film.soundtrack.mix?.musicOnlyGainDb ?? -8,
         maxTruePeakDb: film.soundtrack.mix?.maxTruePeakDb ?? -1,
@@ -641,8 +628,6 @@ export function normalizeFilmSoundtrack(film: {
           src: effectiveMusicSrc,
           from: 0,
           to: totalDur,
-          fromSec: 0,
-          toSec: totalDur,
           offsetSec: film.audio?.trimBefore ?? 0,
           crossfadeSec: 0,
           volume: film.music?.volume ?? 1,
@@ -659,20 +644,15 @@ export function normalizeFilmSoundtrack(film: {
     volume: s.volume ?? 1,
   }));
 
-  const rawSpeech =
-    film.soundtrack?.speech && film.soundtrack.speech.length > 0
-      ? film.soundtrack.speech
-      : (film.soundtrack?.speechIntervals ?? []);
+  const rawSpeech = film.soundtrack?.speech ?? [];
 
   return {
     library: film.soundtrack?.library,
     sections: sections.length > 0 ? sections : (film.soundtrack?.sections ?? []),
     speech: rawSpeech,
-    speechIntervals: rawSpeech,
     mix: {
       targetLufs: film.soundtrack?.mix?.targetLufs ?? -16,
       duckDb: film.soundtrack?.mix?.duckDb ?? -18,
-      speechGainDb: film.soundtrack?.mix?.speechGainDb ?? film.soundtrack?.mix?.duckDb ?? -18,
       pauseGainDb: film.soundtrack?.mix?.pauseGainDb ?? -10,
       musicOnlyGainDb: film.soundtrack?.mix?.musicOnlyGainDb ?? -8,
       maxTruePeakDb: film.soundtrack?.mix?.maxTruePeakDb ?? -1,
