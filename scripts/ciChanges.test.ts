@@ -6,12 +6,16 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
   classify,
   formatJobSummary,
   groupFilesByArea,
   isJourneysSkippable,
   isLegacySkippable,
+  run,
 } from "./ciChanges.mjs";
 
 test("isJourneysSkippable and isLegacySkippable check specific file types", () => {
@@ -197,4 +201,48 @@ test("formatJobSummary includes area counts and job decisions", () => {
   assert.match(summary, /\| journeys \| would skip \|/);
   assert.match(summary, /\| legacy \| would skip \|/);
   assert.match(summary, /No jobs are skipped/);
+});
+
+test("run takes fail-safe path when BASE_SHA or HEAD_SHA is missing even if branch refs exist", async () => {
+  const origEnv = { ...process.env };
+  const origLog = console.log;
+  console.log = () => {};
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ci-changes-run-"));
+  const outputFile = path.join(tmpDir, "github_output");
+  const summaryFile = path.join(tmpDir, "step_summary");
+
+  try {
+    process.env.EVENT_NAME = "pull_request";
+    delete process.env.BASE_SHA;
+    delete process.env.HEAD_SHA;
+    process.env.GITHUB_BASE_REF = "main";
+    process.env.GITHUB_HEAD_REF = "feature";
+    process.env.GITHUB_OUTPUT = outputFile;
+    process.env.GITHUB_STEP_SUMMARY = summaryFile;
+
+    await run();
+
+    const outputContent = fs.readFileSync(outputFile, "utf8");
+    assert.match(outputContent, /journeys=true/);
+    assert.match(outputContent, /legacy=true/);
+
+    const summaryContent = fs.readFileSync(summaryFile, "utf8");
+    assert.match(summaryContent, /Missing BASE_SHA or HEAD_SHA environment variable/);
+    assert.match(summaryContent, /All CI jobs will run as a fail-safe default/);
+    assert.match(summaryContent, /\| journeys \| would run \|/);
+    assert.match(summaryContent, /\| legacy \| would run \|/);
+  } finally {
+    console.log = origLog;
+    for (const key of Object.keys(process.env)) {
+      if (!(key in origEnv)) {
+        delete process.env[key];
+      }
+    }
+    for (const [key, value] of Object.entries(origEnv)) {
+      if (value !== undefined) {
+        process.env[key] = value;
+      }
+    }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 });

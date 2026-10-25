@@ -192,8 +192,8 @@ export function formatJobSummary({ files, classification, event, error }) {
 // Main entry point that reads git changes, executes classification, and writes CI outputs.
 export async function run() {
   const event = process.env.EVENT_NAME || process.env.GITHUB_EVENT_NAME || "pull_request";
-  const baseSha = process.env.BASE_SHA || process.env.GITHUB_BASE_REF;
-  const headSha = process.env.HEAD_SHA || process.env.GITHUB_HEAD_REF;
+  const baseSha = process.env.BASE_SHA;
+  const headSha = process.env.HEAD_SHA;
 
   let files = [];
   let error = null;
