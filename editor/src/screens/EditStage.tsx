@@ -149,7 +149,7 @@ export function EditStage({
         asset.type === "audio" ? "audio" : asset.type === "image" ? "image" : "video";
       const targetLaneId =
         kind === "audio"
-          ? film.layers?.find((l) => l.id === "layer-audio-music" || l.id.includes("music"))?.id ?? "layer-audio-music"
+          ? film.layers?.find((l) => l.id === "layer-audio-music")?.id ?? "layer-audio-music"
           : undefined;
       api.importAsset(
         {

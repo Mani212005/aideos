@@ -302,8 +302,7 @@ export function importMediaAssetToLayeredFilm(
     let audioLayer =
       explicitLayer && !isVoiceoverLane(explicitLayer)
         ? explicitLayer
-        : newLayers.find((l) => l.id === "layer-audio-music" || l.id.includes("music")) ??
-          newLayers.find((l) => !isVoiceoverLane(l) && (l.id.includes("audio") || l.id.includes("sfx")));
+        : newLayers.find((l) => l.id === "layer-audio-music");
     if (!audioLayer) {
       audioLayer = {
         id: "layer-audio-music",
@@ -317,8 +316,8 @@ export function importMediaAssetToLayeredFilm(
       appendLayer(audioLayer, "Create music layer");
     }
 
-    const isMusicLane = audioLayer.id === "layer-audio-music" || audioLayer.id.includes("music");
-    const isSfxLane = audioLayer.id === "layer-audio-sfx" || audioLayer.id.includes("sfx");
+    const isMusicLane = audioLayer.id === "layer-audio-music";
+    const isSfxLane = audioLayer.id === "layer-audio-sfx";
     const channel: "voiceover" | "music" | "sfx" | "external" = isMusicLane ? "music" : isSfxLane ? "sfx" : "external";
 
     const audioClipId = `clip-audio-${slug}-${generateUUID().slice(0, 4)}`;
