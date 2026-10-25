@@ -95,3 +95,4 @@ examples/*/footage/
 videos/*/gemini-review/
 videos/*/review.json
 .ci-artifacts/
+.ci-todo-report-*/
