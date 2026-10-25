@@ -33,6 +33,8 @@ export interface VoiceoverTiming extends NarrationTiming {
 export interface NarratedBeat {
   id: string;
   narration: string;
+  /** Optional chapter name this beat belongs to. */
+  chapter?: string;
 }
 
 /** Everything a film decides about its narration. */
@@ -44,6 +46,8 @@ export interface VoiceoverConfig {
   speed?: number;
   /** Silence between lines in ms, which is also the beat a line resets on. */
   gapMs?: number;
+  /** Silence before a line that starts a new chapter in ms (decision D4). */
+  chapterGapMs?: number;
   /** Silence appended after the last word in ms. The take is exactly this much longer. */
   tailMs?: number;
   /** Delivery loudness in LUFS and true-peak ceiling in dBFS. */
@@ -217,8 +221,19 @@ export async function produceVoiceover(config: VoiceoverConfig): Promise<Voiceov
   const segments = beats.map((b) => b.narration);
   console.log(`[${config.slug}] ${segments.length} lines, ${segments.join(" ").split(/\s+/).filter(Boolean).length} spoken words.`);
 
+  let lastChapter: string | undefined;
+  const isChapterStart = beats.map((b, i) => {
+    if (!b.chapter) return false;
+    const isStart = i === 0 || b.chapter !== lastChapter;
+    lastChapter = b.chapter;
+    return isStart;
+  });
+  const hasChapterTransitions = isChapterStart.slice(1).some(Boolean);
+
   const result = await produceAudioPipeline(segments, outDir, {
     gapMs: config.gapMs ?? DEFAULTS.gapMs,
+    chapterGapMs: config.chapterGapMs,
+    ...(hasChapterTransitions ? { isChapterStart } : {}),
     speed: config.speed ?? DEFAULTS.speed,
     syncToPreview,
   });

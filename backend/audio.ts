@@ -18,7 +18,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { type Film, parseFilm } from "../src/dl/schema";
 import { getRetimedAudioFilename } from "../src/dl/audio/retime";
-import { extractSpokenBlocks, hasScreenplayTags } from "./scriptIntake";
+import { detectChapterStartsFromScript, extractSpokenBlocks, hasScreenplayTags } from "./scriptIntake";
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
 import * as fsSync from "fs";
 import {
@@ -32,7 +32,8 @@ import {
   type PcmChunk,
 } from "./pcm";
 
-export { trimSilence } from "./pcm";
+export { trimSilence, CHAPTER_BREATH_GAP_MS } from "./pcm";
+export { detectChapterStartsFromScript } from "./scriptIntake";
 
 export interface WordInfo {
   word: string;
@@ -78,6 +79,13 @@ export interface ProduceAudioResult {
 export interface ProduceAudioOptions {
   /** Silence between two segments, in milliseconds. */
   gapMs?: number;
+  /** Silence between segments at a chapter boundary, in milliseconds (decision D4). */
+  chapterGapMs?: number;
+  /**
+   * Optional boolean array marking which segment indices start a new chapter.
+   * If omitted and script is a screenplay, chapter boundaries are inferred from script sections.
+   */
+  isChapterStart?: boolean[];
   /** Silence between chunks inside one segment, in milliseconds. */
   chunkGapMs?: number;
   /** Pin a specific synthesizer instead of auto-selecting. */
@@ -312,7 +320,15 @@ export async function produceAudioPipeline(
 ): Promise<ProduceAudioResult> {
   const segmentTexts = splitScriptIntoSegments(script);
   const gapMs = options?.gapMs ?? DEFAULT_ASSEMBLE_OPTIONS.segmentGapMs;
+  const chapterGapMs = options?.chapterGapMs ?? DEFAULT_ASSEMBLE_OPTIONS.chapterGapMs;
   const chunkGapMs = options?.chunkGapMs ?? DEFAULT_ASSEMBLE_OPTIONS.chunkGapMs;
+
+  let chapterStarts: boolean[] | undefined;
+  if (options?.isChapterStart) {
+    chapterStarts = [...options.isChapterStart];
+  } else if (typeof script === "string" && hasScreenplayTags(script)) {
+    chapterStarts = detectChapterStartsFromScript(script);
+  }
 
   await fs.mkdir(outDir, { recursive: true });
 
@@ -330,15 +346,24 @@ export async function produceAudioPipeline(
     ...DEFAULT_ASSEMBLE_OPTIONS,
     sampleRate: PCM_SAMPLE_RATE,
     segmentGapMs: gapMs,
+    chapterGapMs,
+    isChapterStart: chapterStarts,
     chunkGapMs,
   };
 
   let assembled = assembleSegments(segmentChunks, assembleOptions);
   for (;;) {
+    const shortIdx = assembled.segments.findIndex((s) => s.durationSec < SCHEMA_MIN_DUR);
+    if (shortIdx < 0 || segmentChunks.length < 2) break;
+    const target = shortIdx > 0 ? shortIdx - 1 : 0;
     const merged = mergeShortSegments(segmentChunks, assembled.segments.map((s) => s.durationSec));
     if (!merged) break;
     console.error(`[narration] a segment fell under ${SCHEMA_MIN_DUR}s; merging it into its neighbour`);
     segmentChunks = merged;
+    if (chapterStarts && chapterStarts.length > target + 1) {
+      chapterStarts.splice(target + 1, 1);
+      assembleOptions.isChapterStart = chapterStarts;
+    }
     assembled = assembleSegments(segmentChunks, assembleOptions);
   }
 

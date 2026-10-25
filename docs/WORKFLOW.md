@@ -34,7 +34,7 @@ Aideos is engineered around 4 strict architectural invariants:
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  STAGE 2: AUDIO-FIRST TIMING SPINE ENGINE                                    │
 │  • Shot-scoped segmentation & Neural / Kokoro audio synthesis                │
-│  • Raw silence trimming & 200ms inter-shot rhythm pause -> voiceover.wav     │
+│  • Silence trimming & chapter-aware pauses (see Production Pipeline)         │
 │  • Word-level forced timestamp alignment -> captions.vtt                     │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │ Master Audio Duration & Captions
