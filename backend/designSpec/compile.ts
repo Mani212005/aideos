@@ -40,13 +40,15 @@ export function narrationTimingForFilm(film: Film, words: TimedWord[]): Narratio
   const segments = film.shots.map((shot) => {
     const startSec = cursor;
     cursor += shot.dur;
+    // Word timestamps are rounded to milliseconds; give the rounded onset to the nearest shot boundary.
+    const wordTimeRoundingSec = 0.0005;
     return {
       shotId: shot.id,
       text: shot.scriptText ?? "",
       startSec,
       durationSec: shot.dur,
       words: words
-        .filter((w) => w.start >= startSec - 1e-6 && w.start < cursor - 1e-6)
+        .filter((w) => w.start >= startSec - wordTimeRoundingSec && w.start < cursor - wordTimeRoundingSec)
         .map((w) => ({ word: w.punctuated_word ?? w.word, startSec: w.start, endSec: w.end })),
     };
   });
