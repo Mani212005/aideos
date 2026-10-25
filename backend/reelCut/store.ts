@@ -52,11 +52,13 @@ export function formatInputs(slug: string, format: DeliveryFormat): { film: stri
   const pkg = resolvePackageDir(slug);
   const reelFile = path.join(pkg, "reel/film.json");
   const longFile = path.join(pkg, "film.json");
-  const long = format === "reel" && fs.existsSync(reelFile) && fs.existsSync(longFile) ? parseFilm(JSON.parse(fs.readFileSync(longFile, "utf8"))) : null;
-  const identity = long && deliveryTimeline(long, "reel").totalFrames / long.fps <= DELIVERY_CONFIG.reel.maxSec;
-  if (format === "long" || identity || !fs.existsSync(reelFile)) {
+  if (format === "long") {
     return { film: path.join(pkg, "film.json"), words: path.join(pkg, "voiceover_words.json") };
   }
+  const long = fs.existsSync(longFile) ? parseFilm(JSON.parse(fs.readFileSync(longFile, "utf8"))) : null;
+  const identity = long && deliveryTimeline(long, "reel").totalFrames / long.fps <= DELIVERY_CONFIG.reel.maxSec;
+  if (identity) return { film: longFile, words: path.join(pkg, "voiceover_words.json") };
+  if (!fs.existsSync(reelFile)) throw new Error(`needs reel cut: derived reel film is missing for "${slug}"`);
   const film = parseFilm(JSON.parse(fs.readFileSync(reelFile, "utf8")));
   const isCut = film.voiceover?.src === `videos/${slug}/reel/voiceover.wav`;
   return { film: reelFile, words: path.join(pkg, isCut ? "reel/voiceover_words.json" : "voiceover_words.json") };
