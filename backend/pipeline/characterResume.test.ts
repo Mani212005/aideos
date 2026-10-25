@@ -38,7 +38,8 @@ test("J6: a character spec edit reopens exactly design and the stages after it; 
 
   const again = await run(slug);
   assert.deepEqual(again.ran, [], "nothing changed, so nothing runs");
-  assert.deepEqual(again.reused, ["intake", "narrate", "look", "design", "broll", "assemble"]);
+  // Approved plan step 7 adds the reel stage between design and b-roll.
+  assert.deepEqual(again.reused, ["intake", "narrate", "look", "design", "reel", "broll", "assemble"]);
 
   // The film's own copy of Iona with a longer neck: a rig change, re-stamped as an author would.
   const lookBefore = lookPlanFingerprint(slug), designBefore = designFilesFingerprint(slug);
@@ -53,7 +54,7 @@ test("J6: a character spec edit reopens exactly design and the stages after it; 
 
   const edited = await run(slug);
   assert.deepEqual(edited.reused, ["intake", "narrate", "look"], "the narration and the look plan still hold");
-  assert.deepEqual(edited.ran, ["design", "broll", "assemble"], "design and everything after it rebuild");
+  assert.deepEqual(edited.ran, ["design", "reel", "broll", "assemble"], "design and everything after it rebuild");
   const cast = (readFilm(slug)!.scene as Scene).cast!.find((c) => c.kind === "character")!;
   assert.ok("character" in cast && cast.character.hash === spec.hash, "the rebuilt film embeds the edited spec, not the stale one");
   assert.equal(readFilm(slug)!.scene!.performances![0].retarget?.characterHash, spec.hash, "the receive was refitted to the edited rig");
