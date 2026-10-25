@@ -304,6 +304,6 @@ The design check reports out-of-bounds cards and inset collisions as `caption-pl
 Art intersecting an owner card produces a warning naming the art, format, shot and sampled frame;
 locked cards stay fixed. The Edit caption bar uses the same geometry check for its red warning.
 For CanvasGraph films, the report warns that placed-card collisions against graph art were not checked:
-its 3D projection is outside the collision geometry. Review the placed position against the visible
-graph manually. Scene-art and posed-character collision checks remain active.
+its 3D projection is deliberately out of scope for the collision geometry. Review of the placed position
+remains the safety net for CanvasGraph films; scene-art and posed-character collision checks remain active.
 Automatic placement and suggestions are outside this feature.
