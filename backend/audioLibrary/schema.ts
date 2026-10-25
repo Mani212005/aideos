@@ -28,7 +28,6 @@ export const audioItemSchema = z.object({
   artist: z.string(),
   source: z.string(),
   url: z.string().url().nullable(),
-  fetch: z.enum(["manual", "direct", "archive"]).optional(),
   archivePath: z.string().optional(),
   licence: audioLicenceSchema,
   sha256: z.string().regex(/^[0-9a-f]{64}$/),

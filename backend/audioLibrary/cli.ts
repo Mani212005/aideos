@@ -73,27 +73,14 @@ export function registerAudioCommands(program: Command): void {
     .description("Download audio library assets into the shared cache and verify SHA256 hashes")
     .option("--item <id>", "fetch a single item by id")
     .option("--force", "re-download and overwrite files even if already present in cache")
-    .option("--import <mapping>", "import a manual audio file (format: <id>=<path>)")
     .option("--json", "print fetch report as JSON")
     .action(
       async (options: {
         item?: string;
         force?: boolean;
-        import?: string;
         json?: boolean;
       }) => {
         const library = loadAudioLibrary();
-
-        if (options.import) {
-          const eqIdx = options.import.indexOf("=");
-          if (eqIdx === -1) {
-            throw new Error(`--import format must be <id>=<filePath>, got: "${options.import}"`);
-          }
-          const id = options.import.slice(0, eqIdx).trim();
-          const filePath = options.import.slice(eqIdx + 1).trim();
-          const imported = importManualAudioItem(id, filePath);
-          console.log(`Imported ${imported.item.id} (${imported.sha256.slice(0, 16)}...) into cache.`);
-        }
 
         const report = await fetchAudioLibrary(library, {
           force: options.force,

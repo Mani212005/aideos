@@ -81,7 +81,7 @@ look_usage() {
 
 # Prints the usage of `aideos audio`.
 audio_usage() {
-  echo "Usage: aideos audio fetch [--item <id>] [--force] [--import <id>=<file>] [--json]"
+  echo "Usage: aideos audio fetch [--item <id>] [--force] [--json]"
   echo "       aideos audio verify [--item <id>] [--json]"
   echo "       aideos audio import <id> <file>"
 }
