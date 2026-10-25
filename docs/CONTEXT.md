@@ -300,7 +300,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ### Production Pipeline, Auto-Prompt Director & MCP Server (`backend/pipeline/`, `backend/mcp/`)
 * Deep reference documentation in [`docs/PRODUCTION_PIPELINE.md`](PRODUCTION_PIPELINE.md) and [`docs/DIRECTOR_GUIDE.md`](DIRECTOR_GUIDE.md).
-* `runProduction(request, onProgress)` (`backend/pipeline/run.ts`): Single typed programmatic entry point driving `intake`, `narrate`, `look`, `design`, `broll`, `assemble`, `render`, `verify`.
+* `runProduction(request, onProgress)` (`backend/pipeline/run.ts`): Single typed programmatic entry point driving `intake`, `narrate`, `look`, `design`, `reel`, `broll`, `assemble`, `render`, `verify`.
 * `runDirector(request, onProgress)` (`backend/pipeline/director.ts`): Auto-prompt entry point above `runProduction` that drafts a Claude screenplay from a raw prompt with an LLM and produces it end to end.
 * `draftScreenplay(prompt, options)` (`backend/pipeline/director.ts`): Drafts and validates a Claude screenplay from a natural language prompt, retrying rejected drafts with feedback.
 * `transformProseToScreenplay(prose, options)` (`backend/pipeline/director.ts`): Automatically transforms raw untagged prose into a structured Claude screenplay with visual and narration beats via LLM with validation retries and code fence stripping.
@@ -367,7 +367,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `appendEmbeddingLog(filmId, entries)` (`backend/visionJudge/agentReview.ts`): Appends per-frame similarity scores and thresholds to `design/judge/embedding-log.jsonl`.
 
 ### `backend/review/` (Deterministic Video Review & Good-Video Rubric)
-* `reviewVideo(options)` (`backend/review/review.ts`): Orchestrates measuring the rendered video (picture, text, audio) plus film data and narration where available, evaluating rubric criteria, extracting evidence stills for failed criteria, and writing `review.json`.
+* `reviewFormats(options)`, `reviewVideo(options)` (`backend/review/review.ts`): Orchestrates measuring rendered video(s) (picture, text, audio) plus film data and narration, evaluating rubric criteria (including criterion 14 `reel-length` on reels), extracting evidence stills, and writing `review.json` (long) and `review.reel.json` (reel).
 * `formatReview(report)` (`backend/review/review.ts`): Formats a `ReviewReport` into a human-readable terminal summary with passing/failing gates.
 * `measureRenderFacts(videoPath, options)` (`backend/review/renderFacts.ts`): Measures layout persistence, stage clears, cuts, stillness, captions, text size, contrast, overlap, and on-screen numbers from decoded frames and OCR (accepting `captionRectAt` for owner-placed caption regions).
 * `prepareCaptionReview(film, width, height)` (`backend/review/captionRegion.ts`): Prepares declared caption review rectangles from film words and output format for measured review OCR and Gemini deterministic facts.
@@ -512,10 +512,13 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `schema.ts`: `reelCutSchema` (`aideos.reelcut/1`), `reelBudgetSchema`, constants `REEL_MAX_SEC` (179), `REEL_TARGET_SEC` (170), `REEL_END_CARD_SEC` (3), `DEFAULT_REEL_BUDGET`, and `parseReelBudget(input)`.
 * `brief.ts`: `loadReelContext(slug)`, `readReelCut(slug)`, `reelBrief(context, budget)`, `writeReelBrief(slug, budget)`, `ReelCutSceneFilmError`. Generates `videos/<slug>/reel/REEL_BRIEF.md` for scene films with source narration hashes, word targets, motion duration floors, locked phrases, and on-screen numbers.
 * `check.ts`: `checkReelCut(raw, context, budget)`, `formatReelReport(report)`. Deterministic validator for `videos/<slug>/reel/cut.json` checking schema, shot coverage, original order, long narration hash freshness, locked phrases, spoken on-screen numbers, forbidden new numbers, protected drop constraints (hook, payoff, decisive performances), camera motion duration floors, and delivery length limits (179s cap, 170s target). Flags non-blocking advisories for novel content words and uninspected imported media.
+* `build.ts`: `buildReel(slug, options)`, `compileReel(input)`, `recordReelStatus(slug, status)`. Compiles derived reel narration and film with checked shot drops, snap-free scene continuity, and reel-crop design checks.
+* `store.ts`: `writeReelFilm(slug, film)`, `formatInputs(slug, format)`, `assertReelCap(film, stage)`, `reelForRender(slug)`, `reelSourceFingerprint(slug)`, `reelBudgetFor(film)`. Manages reel persistence, shadows (`<slug>.reel.ts`), delivery length cap assertions, and input resolution.
+* `writer.ts`: `deliverReel(slug, options)`. Delivers reel cut inline (`needs_reel_cut`), via connected agent, or via server model with checked retry loop.
 * `constraints.ts`: `createReelContext(options)`, `countWords(text)`, `groundedNumbers(text)`.
 * `motion.ts`: `minShotDurationSec(camera, startSec, endSec, fps)`. Computes shortest safe shot duration satisfying camera speed, zoom step, and acceleration caps.
 * `visibleText.ts`: `visibleReelText(film)`. Extracts on-screen text and numbers across scene stage elements, SVG assets, and text overlays.
-* `cli.ts`: `registerReelCommands(program)`. Registers CLI commands for `aideos reel brief` and `aideos reel check`.
+* `cli.ts`: `registerReelCommands(program)`. Registers CLI commands for `aideos reel brief`, `aideos reel check`, and `aideos reel build`.
 
 ### `backend/transcribe.ts` (Audio & Video Transcription)
 * `transcribe(src, options, deps)`: Transcribes audio or video media into word-level timings (`TranscribedWord[]`) with confidence scores, using Deepgram with local Whisper CLI fallback.

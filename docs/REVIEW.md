@@ -14,22 +14,23 @@ both, on the long cut and the reel, with an agent that fixes the film between ro
 ## 1. Deterministic Review (`aideos review`)
 
 `aideos review <slug|mp4>` measures a rendered video against the measurable half of the good-video
-rubric and writes `review.json` plus evidence frames. It is deterministic (same video, same report),
+rubric and writes `review.json` (or `review.reel.json` for a reel) plus evidence frames. It is deterministic (same video, same report),
 needs only `ffmpeg`, `ffprobe` and `tesseract`, and works on any mp4, not just aideos films. It is
 the numbers layer: the Gemini review loop reads the same JSON as context and judges what numbers
 cannot (story, whether two things are the same object, whether an animation shows its claim).
 When film data is supplied, review expects the full-length rendered film; stage facts describe the whole timeline.
 
 ```bash
-aideos review hnsw-explainer                       # slug: finds videos/<slug>/renders/long.mp4 (or out/ fallback), film.json, voiceover_words.json
+aideos review hnsw-explainer                       # slug: reviews every rendered format (long and reel)
+aideos review hnsw-explainer --format reel          # explicit format (long or reel)
 aideos review path/to/video.mp4 --film film.json --words voiceover_words.json
 aideos review video.mp4 --words script.json        # narration text only: caption match and number grounding, no timings
-npm run review -- <slug|mp4> [--json] [--no-ocr] [--out dir]
+npm run review -- <slug|mp4> [--format long|reel] [--json] [--no-ocr] [--out dir]
 ```
 
 Exit code: `0` all gates passed, `1` a gate failed, `2` the review could not run (missing file,
-no ffmpeg). Output: `<out>/review.json` (a slug writes into `videos/<slug>/`, an mp4 into
-`.frames/review/<name>/`, `--out` overrides) and `<out>/review/<criterion>-<seconds>s.jpg` for the
+no ffmpeg). Output: `<out>/review.json` for long, `<out>/review.reel.json` for reel (a slug writes into `videos/<slug>/`, an mp4 into
+`.frames/review/<name>/`, `--out` overrides) and `<out>/review/<criterion>-<seconds>s.jpg` (or `<out>/review.reel/` for a reel) for the
 moments behind each failed criterion. The schema is `ReviewReport` in `backend/review/types.ts`.
 
 ### What it measures
@@ -48,6 +49,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 9 | Pacing | frame difference (static holds, hard cuts), word timings or silence (dead air, pace) | no hold over 3 s, <= 2 hard cuts per minute, no pause over 0.7 s, 120 to 180 wpm |
 | 11 | Numbers grounded in narration | OCR numbers vs spoken numbers (digits and number words) | every on-screen number is said |
 | 12 | Loudness and mix | `ebur128` | -18 to -14 LUFS, true peak <= -1 dBFS |
+| 14 | **Reel delivered length** | video container, audio stream and picture durations | <= 179 s including the end card (measured duration within DELIVERY_CONFIG.reel.maxSec); evaluated on reel reviews |
 
 A character film (Three stage) is measured in the reviewed output's own crop: a cast member is on
 stage when at least half of its projected posed box (outline included) lies inside that output, a
@@ -187,7 +189,7 @@ aideos all-check status hnsw                              # rounds so far
    the agent. Each Gemini review remains a bounded headless `agy -p` child process.
 4. **The agent runs the loop** with these commands (all `aideos all-check <sub> <slug>`, also spelled
    `all-check-<sub>`): `round --format long|reel|both` renders through Remotion, backs up `film.json`
-   (`all-check/backups/`), runs the measured review and the Gemini review (the measured `review.json` is handed to
+   (`all-check/backups/`), runs the measured review and the Gemini review (the measured `review.json` or `review.reel.json` is handed to
    the reviewer as context), runs the cross-review for the long cut when `--reference` was given, and extracts stills
    every 4 s. Each render points Remotion at the requested film package and restores the previous active-film
    selection afterward, including when rendering fails. `frames --round N --format F --clean | --issue "..."` records the agent's own frame check;
@@ -199,8 +201,9 @@ aideos all-check status hnsw                              # rounds so far
    the measured checks pass (`aideos review`: no failed gate; soft failures are listed, not blocking), AND (long
    only) the cross-review against the reference is a win or a tie, AND the agent's frame check is clean. The agent
    never scores its own work and never writes the round records: a tool that cannot run (agy signed out, quota)
-   is recorded as an error, never a pass. **All good** = one round holds a passing long and a passing reel from the
-   same `film.json`, still unchanged when `finish` runs.
+   is recorded as an error, never a pass. **All good** = one round holds a passing long and a passing reel, each at
+   its own current film hash when `finish` runs (long at `film.json`, reel at `reel/film.json` or the shared film for
+   an identity reel), and the reel fits the delivered length cap including the end card.
 6. **Stop.** After the round budget (`--rounds`, default 6; a round past it is refused) `finish` reports the best
    round honestly and everything that still fails. When the run did not pass, `finish` also restores the best
    round's `film.json` (the version it replaced is kept as `all-check/backups/film.before-finish.json`) and keeps
@@ -255,7 +258,7 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 11 | accuracy_honesty | No | Every number, chart, and label is grounded in the narration; zero fabricated numbers or misleading visuals. |
 | 12 | loudness_mix | No | Audio loudness normalized to -14 to -18 LUFS integrated, true peak <= -1 dBFS, background music ducked cleanly. |
 
-Supplemental: When `design/look.json` is available, `aideos review` also reports supplemental criterion 13 (`plan-adherence`: Look plan adherence) as a non-gating check (non-gate until calibrated on the proof and two or three more films).
+Supplemental: When `design/look.json` is available, `aideos review` also reports supplemental criterion 13 (`plan-adherence`: Look plan adherence) as a non-gating check (non-gate until calibrated on the proof and two or three more films). For reel reviews, deterministic facts also enforce the hard gate `reel_length`: container duration <= 179 s including the end card. This gate overrides any model pass when exceeded.
 
 Run `npm run eval:look -- --plans <look.json-or-directory> [--min percent]` before changing look-treatment criteria wording.
 

@@ -22,7 +22,7 @@ repeats, while you stay free. You wait for its result file and then report the s
 
 A format passes only when the reviewer says 9.0+ with every gate passing AND the measured checks pass AND the
 frame check is clean. The background agent never scores its own work. "All good" needs both formats to pass in one
-final round on the same film. If the round budget (default 6) runs out first, it reports the best round and what still fails, restores that round's
+final round, each matching its own current film hash, with the reel fitting the delivered cap including the end card. If the round budget (default 6) runs out first, it reports the best round and what still fails, restores that round's
 film.json and keeps its renders as the final videos. A round that scores lower than the best so far is rolled back
 automatically.
 
@@ -58,7 +58,7 @@ Everything lands in `videos/<slug>/all-check/`: `brief.md` (what the agent was t
 |---|---|
 | `aideos render` | Render the active film, 16:9, to `videos/<slug>/renders/long.mp4` |
 | `aideos reel` | Render the active film, 9:16, to `videos/<slug>/renders/reel.mp4` |
-| `aideos review <slug\|mp4>` | Measured checks only; writes `review.json`, exit 1 on a failed gate |
+| `aideos review <slug\|mp4>` | Measured checks only; writes `review.json` (or `review.reel.json`), exit 1 on a failed gate |
 | `aideos gemini-review <mp4>` | Gemini 3.8 Flash review (agy), 12-point rubric, 9.0 bar |
 | `aideos gemini-review <mp4> --pairwise <ref.mp4>` | Cross-review of two videos |
 | `aideos exit` | Stop the local studio |
