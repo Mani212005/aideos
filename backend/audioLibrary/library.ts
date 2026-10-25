@@ -7,9 +7,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { getProjectRoot, getAudioLibraryCacheDir } from "../../src/dl/videoPackageLoader";
-import { parseAudioLibrary, type AudioItem, type AudioLibrary } from "./schema";
+import { audioItemIdSchema, parseAudioLibrary, type AudioItem, type AudioLibrary } from "./schema";
 
 export type AudioItemStatus = "valid" | "missing" | "mismatch" | "unavailable";
 
@@ -78,6 +78,7 @@ export function loadAudioLibrary(customPath?: string): AudioLibrary {
 
 // Determines the destination cache filename for an audio library item.
 export function getAudioItemFilename(item: { id: string; url: string | null; archivePath?: string }): string {
+  audioItemIdSchema.parse(item.id);
   if (item.archivePath) {
     const ext = path.extname(item.archivePath) || ".ogg";
     return `${item.id}${ext}`;
@@ -206,7 +207,7 @@ async function downloadToFile(url: string, destPath: string): Promise<void> {
     fs.writeFileSync(destPath, Buffer.from(arrayBuffer));
   } catch {
     // Fall back to curl if Node fetch encountered network or SSL transport issue
-    execSync(`curl -fsSL "${url}" -o "${destPath}"`, { stdio: "pipe" });
+    execFileSync("curl", ["-fsSL", url, "-o", destPath], { stdio: "pipe" });
   }
 }
 
@@ -272,10 +273,20 @@ export async function fetchAudioItem(
       let archiveZip = options.archiveCache?.get(item.url);
       if (!archiveZip || !fs.existsSync(archiveZip)) {
         archiveZip = path.join(cacheDir, `archive_${crypto.randomBytes(6).toString("hex")}.zip`);
-        await downloadToFile(item.url, archiveZip);
+        try {
+          await downloadToFile(item.url, archiveZip);
+        } catch (err) {
+          if (fs.existsSync(archiveZip)) {
+            fs.unlinkSync(archiveZip);
+          }
+          throw err;
+        }
         options.archiveCache?.set(item.url, archiveZip);
       }
-      execSync(`unzip -p "${archiveZip}" "${item.archivePath}" > "${tempPath}"`, { stdio: "pipe" });
+      const extracted = execFileSync("unzip", ["-p", archiveZip, item.archivePath], {
+        maxBuffer: Math.max(item.bytes + 1, 1024),
+      });
+      fs.writeFileSync(tempPath, extracted);
     } else {
       await downloadToFile(item.url, tempPath);
     }

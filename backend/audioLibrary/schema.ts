@@ -21,8 +21,10 @@ export const audioLoudnessSchema = z.object({
   lra: z.number(),
 });
 
+export const audioItemIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/);
+
 export const audioItemSchema = z.object({
-  id: z.string(),
+  id: audioItemIdSchema,
   kind: z.enum(["music", "sfx"]),
   title: z.string(),
   artist: z.string(),

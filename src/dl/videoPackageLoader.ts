@@ -70,9 +70,6 @@ export const AUDIO_LIBRARY_CACHE_DIR_NAME = ".audio-library";
  */
 export const RESERVED_PACKAGE_NAMES = new Set([
   AUDIO_LIBRARY_CACHE_DIR_NAME,
-  ".audio-cache",
-  "audio-library",
-  "audio-cache",
 ]);
 
 // Returns the path to the shared audio library cache next to the personal videos.
