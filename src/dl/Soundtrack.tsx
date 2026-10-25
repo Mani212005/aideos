@@ -11,7 +11,7 @@ import { EndCardVoice } from "./EndCard";
 import { TOTAL_FRAMES, FILM, TIMELINE, FPS } from "./runtime";
 import { calculateDuckingVolume, type SpeechInterval } from "./audio/ducking";
 import { getRetimedAudioRelPath } from "./audio/retime";
-import type { Film, AudioClip } from "./schema";
+import type { Film } from "./schema";
 import type { TimedShot } from "./camera";
 
 export type SoundtrackProps = {
@@ -28,24 +28,6 @@ export const voiceLevel = (frame: number, level: number, total: number = TOTAL_F
   level *
   Math.min(1, frame / 6) *
   Math.min(1, Math.max(0, total - frame) / 12);
-
-// Normalizes audio source paths for reliable comparison.
-const normalizeAudioSrc = (src?: string) => (src ?? "").trim().replace(/^\.?\//, "");
-
-// Determines if an audio clip duplicates the primary music track.
-export const isDuplicatePrimaryMusicClip = (
-  ac: AudioClip,
-  effectiveMusicSrc: string,
-  filmMusicSrc?: string,
-  filmAudioSrc?: string
-): boolean => {
-  if (ac.channel !== "music") return false;
-  const primarySrc = effectiveMusicSrc.trim() || filmMusicSrc?.trim() || filmAudioSrc?.trim();
-  if (!primarySrc) return false;
-  const normPrimary = normalizeAudioSrc(primarySrc);
-  const normClip = normalizeAudioSrc(ac.src);
-  return ac.id === "clip-music" || (normClip.length > 0 && normClip === normPrimary);
-};
 
 // Renders the shared soundtrack with ducked music, narration spine or clips, sound effects and end-card audio.
 export const Soundtrack: React.FC<SoundtrackProps> = ({
@@ -67,6 +49,8 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
   const effectiveVoiceoverVolume = voiceoverVolume ?? film.voiceover?.volume ?? 1;
   const effectiveMusicSrc = (musicSrc ?? "").trim() || film.music?.src || film.audio?.src || "";
   const effectiveMusicVolume = musicVolume ?? film.music?.volume ?? 1;
+  const audioClips = film.audioClips ?? [];
+  const hasPrimaryMusicClip = audioClips.some((ac) => ac.id === "clip-music-main" && ac.channel === "music");
 
   // Extract speech intervals from audio clips or timeline shots with narration
   const voClips = film.audioClips?.filter((ac) => (ac.channel ?? "voiceover") === "voiceover") ?? [];
@@ -93,7 +77,7 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
   return (
     <>
       {/* 1. Background Music Track (with ducking) */}
-      {effectiveMusicSrc.trim().length > 0 ? (
+      {!hasPrimaryMusicClip && effectiveMusicSrc.trim().length > 0 ? (
         <Audio
           key={`aideos-music-${film.id}`}
           src={staticFile(effectiveMusicSrc)}
@@ -112,50 +96,50 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
       ) : null}
 
       {/* 2. Voiceover & Multi-Clip Audio Track */}
-      {film.audioClips && film.audioClips.length > 0
-        ? film.audioClips
-            .filter((ac) => !isDuplicatePrimaryMusicClip(ac, effectiveMusicSrc, film.music?.src, film.audio?.src))
-            .map((ac) => {
-              const speed = ac.speed ?? 1.0;
-              const isRetimed = Math.abs(speed - 1.0) > 0.001;
-              const startFrame = Math.round(ac.position * effectiveFps);
-              const isMusicClip = ac.channel === "music";
-              const durFrames =
-                isMusicClip &&
-                delivery.card &&
-                ac.position + (ac.end - (ac.start ?? 0)) >= effectiveTotalFrames / effectiveFps - 0.05
-                  ? Math.round(delivery.totalFrames) - startFrame
-                  : Math.max(1, Math.round(ac.end * effectiveFps) - Math.round((ac.start ?? 0) * effectiveFps));
-              const startFrom = Math.round((ac.start ?? 0) * effectiveFps);
-              const clipLevel = isMusicClip
-                ? (ac.volume ?? 1) * effectiveMusicVolume
-                : (ac.volume ?? 1) * effectiveVoiceoverVolume;
-              const audioSrc = isRetimed
-                ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
-                : staticFile(ac.src);
+      {audioClips.length > 0
+        ? audioClips.map((ac) => {
+            const speed = ac.speed ?? 1.0;
+            const isRetimed = Math.abs(speed - 1.0) > 0.001;
+            const startFrame = Math.round(ac.position * effectiveFps);
+            const isMusicClip = ac.channel === "music";
+            const durFrames =
+              isMusicClip &&
+              delivery.card &&
+              ac.position + (ac.end - (ac.start ?? 0)) >= effectiveTotalFrames / effectiveFps - 0.05
+                ? Math.round(delivery.totalFrames) - startFrame
+                : Math.max(1, Math.round(ac.end * effectiveFps) - Math.round((ac.start ?? 0) * effectiveFps));
+            const startFrom = Math.round((ac.start ?? 0) * effectiveFps);
+            const clipLevel = isMusicClip
+              ? ac.id === "clip-music-main"
+                ? (ac.volume ?? 1)
+                : (ac.volume ?? 1) * effectiveMusicVolume
+              : (ac.volume ?? 1) * effectiveVoiceoverVolume;
+            const audioSrc = isRetimed
+              ? staticFile(ac.retimedSrc || getRetimedAudioRelPath(ac.src, speed))
+              : staticFile(ac.src);
 
-              return (
-                <Sequence key={ac.id} from={startFrame} durationInFrames={durFrames}>
-                  <Audio
-                    src={audioSrc}
-                    trimBefore={startFrom}
-                    playbackRate={1.0}
-                    volume={(f) =>
-                      isMusicClip
-                        ? calculateDuckingVolume({
-                            frame: f + startFrame,
-                            fps: effectiveFps,
-                            totalFrames: delivery.totalFrames,
-                            musicVolume: clipLevel,
-                            duckUnderVoiceover: true,
-                            speechIntervals,
-                          })
-                        : voiceLevel(f + startFrame, clipLevel, effectiveTotalFrames)
-                    }
-                  />
-                </Sequence>
-              );
-            })
+            return (
+              <Sequence key={ac.id} from={startFrame} durationInFrames={durFrames}>
+                <Audio
+                  src={audioSrc}
+                  trimBefore={startFrom}
+                  playbackRate={1.0}
+                  volume={(f) =>
+                    isMusicClip
+                      ? calculateDuckingVolume({
+                          frame: f + startFrame,
+                          fps: effectiveFps,
+                          totalFrames: delivery.totalFrames,
+                          musicVolume: clipLevel,
+                          duckUnderVoiceover: true,
+                          speechIntervals,
+                        })
+                      : voiceLevel(f + startFrame, clipLevel, effectiveTotalFrames)
+                  }
+                />
+              </Sequence>
+            );
+          })
         : null}
 
       {!hasVoiceoverClips && effectiveVoiceoverSrc.trim().length > 0 ? (
