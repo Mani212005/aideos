@@ -218,7 +218,7 @@ camera motion smoother and move captions slightly upward.
 
 ## Studio browser smoke check
 
-- `npm run smoke:studio` (`scripts/smoke_studio.ts`) starts the editor dev server, loads the studio in headless Chrome over the DevTools protocol and fails on a blank page, an uncaught exception, a `console.error`, or a Vite client error. It is part of the no-mistakes test gate. Unit tests run in Node and cannot see browser-only crashes such as a Node built-in leaking into the client bundle (the blank studio after #43). It skips with a warning when no Chrome is installed; set `AIDEOS_SMOKE_REQUIRED=1` to make that a failure.
+- `npm run smoke:studio` (`scripts/smoke_studio.ts`) starts the editor dev server, loads the studio in headless Chrome over the DevTools protocol and fails on a blank page, an uncaught exception, a `console.error`, or a Vite client error. It is part of CI's journeys job. Unit tests run in Node and cannot see browser-only crashes such as a Node built-in leaking into the client bundle (the blank studio after #43). It skips with a warning when no Chrome is installed; set `AIDEOS_SMOKE_REQUIRED=1` to make that a failure.
 
 ## Design check (the standard layer)
 

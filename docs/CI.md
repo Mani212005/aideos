@@ -6,7 +6,7 @@ File Description: How aideos is checked - the one command that owns every CI ste
 
 One command owns the list: **`npm run ci`**. GitHub Actions and a contributor's laptop use the job
 definitions in `scripts/ci.ts`; the local validation tool (`.no-mistakes.yaml`) selects only the
-`unit`, `journeys` and `static` jobs. Platform-dependent steps can be skipped locally with a reason.
+`static` job. Platform-dependent steps can be skipped locally with a reason.
 Add a check to `scripts/ci.ts` and it becomes part of the matching job everywhere that job runs.
 
 ```bash
