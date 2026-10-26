@@ -491,6 +491,10 @@ export const musicTrackSchema = z.object({
 export const speechIntervalSchema = z.object({
   startSec: z.number().min(0),
   endSec: z.number().min(0),
+}).superRefine((interval, ctx) => {
+  if (interval.endSec <= interval.startSec) {
+    ctx.addIssue({ code: "custom", path: ["endSec"], message: "endSec must be greater than startSec" });
+  }
 });
 
 /**
@@ -518,6 +522,10 @@ export const soundtrackSectionSchema = z.object({
   volume: z.number().min(0).max(2).default(1).optional(),
   /** Whether this section ducks under voiceover speech (default true). */
   duckUnderVoiceover: z.boolean().default(true).optional(),
+}).superRefine((section, ctx) => {
+  if (section.to <= section.from) {
+    ctx.addIssue({ code: "custom", path: ["to"], message: "to must be greater than from" });
+  }
 });
 
 /**

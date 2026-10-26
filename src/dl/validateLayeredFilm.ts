@@ -7,7 +7,7 @@
  * Rule 4: Two clips on the same layer may not overlap in time.
  * Rule 5: linkedClipId resolves to an existing clip and is symmetric.
  * Rule 6: Source file references are valid non-empty strings.
- * Rule 7: opacity in [0,1], volume in [0,1].
+ * Rule 7: opacity in [0,1], volume in [0,2].
  * Browser-safe by contract: this module is bundled into the studio (the AI edit Apply gesture runs it
  * in the page), so it must never import a Node built-in or read `process`. Whether a source file exists
  * on disk is a Node-only question answered by backend/timeline/layerAssetCheck.ts.
@@ -56,12 +56,12 @@ export function validateLayeredFilm(input: unknown): LayeredFilm {
       throw new Error(`Rule 3 violation: clip "${clip.id}" has invalid source range (start: ${clip.start}, end: ${clip.end})`);
     }
 
-    // Rule 7: opacity and volume in [0,1]
+    // Rule 7: opacity in [0,1] and volume in [0,2]
     if (clip.opacity !== undefined && (clip.opacity < 0 || clip.opacity > 1)) {
       throw new Error(`Rule 7 violation: clip "${clip.id}" has opacity ${clip.opacity} outside [0, 1]`);
     }
-    if (clip.volume !== undefined && (clip.volume < 0 || clip.volume > 1)) {
-      throw new Error(`Rule 7 violation: clip "${clip.id}" has volume ${clip.volume} outside [0, 1]`);
+    if (clip.volume !== undefined && (clip.volume < 0 || clip.volume > 2)) {
+      throw new Error(`Rule 7 violation: clip "${clip.id}" has volume ${clip.volume} outside [0, 2]`);
     }
 
     // Rule 6: Source file verification for video/audio/image clips
