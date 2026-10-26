@@ -30,7 +30,7 @@ import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNod
 import { narrationSupportsVisual, numbersIn } from "../shotVisualCues";
 import type { ShotVisual } from "../jev";
 import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
-import { checkInsetRegions } from "./insetRegion";
+import { checkInsetRegions, prepareSvgProjection } from "./insetRegion";
 import { safeParseLookPlan, type LookPlan } from "../lookPlan/schema";
 import { createCues, FPS, CAPTION_SAFE_SQUARE } from "../sceneKit";
 import { narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
@@ -74,6 +74,8 @@ export interface DesignReport {
 
 /** Optional approved look data used to check authored camera and carry-over intent. */
 export interface DesignCheckContext {
+  formats?: ReadonlyArray<"long" | "reel">;
+  collapsedClips?: Array<{ asset: string; clipId: string; shotId: string; frame: number }>;
   lookPlan?: LookPlan;
   cameraTargets?: Array<{ frame: number; focus?: string; authoredFocus?: string }>;
 }
@@ -495,7 +497,8 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
 
   let clips = 0;
   const scene = film.scene as Scene | undefined;
-  findings.push(...checkCaptionPlacements(film, scene));
+  const formats = context.formats ?? ["long", "reel"];
+  findings.push(...checkCaptionPlacements(film, scene, undefined, film, formats));
   const assets: EnvironmentAsset[] = scene ? [...(scene.background ? [scene.background] : []), ...(scene.props ?? [])] : [];
   if (scene) {
     const result = validateSceneWithNodeAssets(scene);
@@ -503,7 +506,7 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
       findings.push({ rule: "scene", severity: "error", where: e.entityId ?? "scene", message: e.message });
     }
     const hasCaptions = film.captions !== "off" && film.subtitles !== false;
-    const defaultCaptionFormats = (["long", "reel"] as const).filter((format) =>
+    const defaultCaptionFormats = formats.filter((format) =>
       hasCaptions && film.shots.some((shot) => resolveCaptionPlacement(film, format, shot.id).source === "default"));
     if (scene.renderer === "three" && result.errors.length === 0) {
       findings.push(...checkThreeStage(film, scene, context));
@@ -511,6 +514,11 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
       // A receive clamped to fit its character's limits builds, but the change is reported, never silent.
       for (const p of scene.performances ?? []) for (const warning of p.retarget?.warnings ?? []) findings.push({ rule: "scene", severity: "warning", where: `performance ${p.id}`, message: `retargeted onto ${p.retarget!.to} with clamp policy: ${warning}` });
     }
+    const projections = context.collapsedClips?.length && result.errors.length === 0 ? formats.map((format) => {
+      const width = format === "long" ? 1920 : 1080;
+      const height = format === "long" ? 1080 : 1920;
+      return { width, height, project: prepareSvgProjection(scene, width, height, { packageSlug: film.id, includeBackground: true, includeAncestry: true, minOpacity: 0.001 }) };
+    }) : [];
     for (const asset of assets) {
       // The scene-art cutoff y > 1260 is the intentional legacy default for every format whenever
       // no placement is saved; per-format projection applies only where a placement is saved.
@@ -519,12 +527,24 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
       }
       checkAsset(asset, film.accent, findings);
       clips += checkContinuity(asset, findings);
+      for (const collapsed of context.collapsedClips?.filter((c) => c.asset === asset.assetId) ?? []) {
+        const clip = asset.animation?.clips.find((c) => c.clipId === collapsed.clipId);
+        if (!clip || clip.from === clip.to) continue;
+        for (const target of clip.targets) {
+          const visible = projections.some(({ width, height, project }) =>
+            [Math.max(0, collapsed.frame - 1), collapsed.frame].some((frame) =>
+              project(frame).find((entity) => entity.id === asset.assetId)?.parts.some((part) =>
+                part.ancestors?.includes(target) && part.bounds.x1 > 0 && part.bounds.x0 < width && part.bounds.y1 > 0 && part.bounds.y0 < height)));
+          if (visible) findings.push({ rule: "continuity", severity: "error", where: `shot ${collapsed.shotId} / ${asset.assetId} / ${target}`,
+            message: `dropped shot collapses clip "${clip.clipId}" into a visible snap at frame ${collapsed.frame}; keep this shot condensed` });
+        }
+      }
     }
     checkCamera(scene, findings, context.cameraTargets);
     checkCarryChangeHolds(film, scene, context.lookPlan, findings);
     // The inset rule reads the compiled scene, which only exists when the scene itself is valid.
     if (result.errors.length === 0) {
-      for (const f of checkInsetRegions(film, scene)) findings.push({ rule: "inset", severity: "error", ...f });
+      for (const f of checkInsetRegions(film, scene, formats)) findings.push({ rule: "inset", severity: "error", ...f });
     }
   }
   checkAudioLock(film, findings);

@@ -70,7 +70,7 @@ export interface FormatRoundRecord {
   round: number;
   format: CheckFormat;
   videoPath: string;
-  /** SHA-256 of film.json at render time: ties the long, the reel and the final film together. */
+  /** SHA-256 of this format's film.json at render time, checked against its current manifest. */
   filmHash: string;
   createdAt: string;
   review: {

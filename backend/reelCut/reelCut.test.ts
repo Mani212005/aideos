@@ -240,7 +240,8 @@ test("cut schema refuses contradictory entries, textless narration, unreasoned d
   assert.equal(parseReelBudget({ ...BUDGET, maxSec: 100, targetSec: 90 }).maxSec, 100);
   assert.equal(DEFAULT_REEL_BUDGET.maxSec, REEL_MAX_SEC);
   assert.throws(() => parseReelBudget({ ...BUDGET, maxSec: REEL_MAX_SEC + 1 }));
-  assert.throws(() => parseReelBudget({ ...BUDGET, endCardSec: 0 }));
+  // Approved plan sections 4.2 and 4.8 reserve the canonical card span, including zero when disabled.
+  assert.doesNotThrow(() => parseReelBudget({ ...BUDGET, endCardSec: 0 }));
   assert.throws(() =>
     check(cut(), createReelContext({ film: film() }), {
       ...BUDGET,
@@ -1132,17 +1133,18 @@ test("real aideos reel brief/check commands produce a brief, enforce failures an
   assert.equal(run(["check", "reel-test"]).status, 1);
   fs.writeFileSync(path.join(pkg, "film.json"), JSON.stringify(film()));
   const legacyBrief = run(["brief", "reel-test"]);
-  assert.equal(legacyBrief.status, 1);
+  // Approved plan step 7 supports checked node-graph cuts as well as scene films.
+  assert.equal(legacyBrief.status, 0);
   assert.match(
-    legacyBrief.stderr,
-    /reel cut supports scene films only; this package uses legacy actors/,
+    legacyBrief.stdout,
+    /reel\/REEL_BRIEF\.md/,
   );
   fs.rmSync(path.join(pkg, "reel/cut.json"));
   const legacyCheck = run(["check", "reel-test"]);
   assert.equal(legacyCheck.status, 2);
   assert.match(
     legacyCheck.stderr,
-    /reel cut supports scene films only; this package uses legacy actors/,
+    /ENOENT.*reel\/cut\.json/,
   );
   assert.throws(() => loadReelContext("../outside"), /invalid film id/);
   assert.throws(() => writeReelBrief("../outside", BUDGET), /invalid film id/);

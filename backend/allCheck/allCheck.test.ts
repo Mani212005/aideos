@@ -36,7 +36,21 @@ import { allCheckDir, AllCheckError, recordPath, type AllCheckConfig, type Forma
 function makePackage(slug: string, opts: { voiceover?: boolean } = {}): string {
   const dir = path.join(getVideosDir(), slug);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "film.json"), JSON.stringify({ id: slug, shots: [{ id: "a" }], voiceover: { src: `videos/${slug}/voiceover.wav` } }));
+  fs.writeFileSync(path.join(dir, "film.json"), JSON.stringify({
+    id: slug,
+    title: slug,
+    fps: 30,
+    chapters: ["Chapter"],
+    canvas: {
+      nodes: [
+        { id: "a", label: "A", x: 0, y: 0 },
+        { id: "b", label: "B", x: 200, y: 0 },
+      ],
+      edges: [{ from: "a", to: "b" }],
+    },
+    shots: [{ id: "a", dur: 10, stage: "none", look: "a", move: "cut" }],
+    voiceover: { src: `videos/${slug}/voiceover.wav` },
+  }));
   if (opts.voiceover !== false) fs.writeFileSync(path.join(dir, "voiceover.wav"), "RIFF");
   return dir;
 }
@@ -841,7 +855,9 @@ function plainRestore(slug: string, round: number): string {
 
 // Rewrites a package's film.json with a marker so each version has its own hash.
 function writeFilmVersion(slug: string, version: string): void {
-  fs.writeFileSync(path.join(getVideosDir(), slug, "film.json"), JSON.stringify({ id: slug, version }));
+  const file = path.join(getVideosDir(), slug, "film.json");
+  const film = JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, unknown>;
+  fs.writeFileSync(file, JSON.stringify({ ...film, version }));
 }
 
 // Finish dependencies that touch nothing outside the test package.

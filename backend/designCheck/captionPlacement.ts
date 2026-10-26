@@ -43,12 +43,13 @@ export function checkCaptionPlacements(
   scene?: Scene,
   sample?: { format: "long" | "reel"; shotId: string; frame: number },
   timingFilm: Film = film,
+  formats: ReadonlyArray<"long" | "reel"> = ["long", "reel"],
 ): DesignFinding[] {
   const findings: DesignFinding[] = [];
   if (film.captions === "off" || film.subtitles === false) return findings;
   const timeline = buildTimeline(timingFilm, timingFilm.voiceover?.durationSec);
   const words = captionWordsForFilm(timingFilm);
-  for (const format of ["long", "reel"] as const) {
+  for (const format of formats) {
     if (sample && sample.format !== format) continue;
     const { width, height } = CAPTION_FRAMES[format];
     const hasPlacedCard = timeline.some(

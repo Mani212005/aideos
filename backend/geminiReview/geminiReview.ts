@@ -65,7 +65,8 @@ function readLookPlanStrip(videoPath: string, explicitFilmPath?: string): string
   ];
   const filmPath = candidates.find((candidate) => fs.existsSync(candidate));
   if (!filmPath) return null;
-  const lookPath = path.join(path.dirname(filmPath), "design", "LOOK.md");
+  const filmDir = path.dirname(filmPath);
+  const lookPath = path.join(path.basename(filmDir) === "reel" ? path.dirname(filmDir) : filmDir, "design", "LOOK.md");
   if (!fs.existsSync(lookPath)) return null;
   try {
     const markdown = fs.readFileSync(lookPath, "utf8");
@@ -406,15 +407,16 @@ export async function reviewVideo(
 
   let deterministicReviewContext: string | undefined;
   const possiblePaths: string[] = [];
+  const reviewName = facts?.reelLength ? "review.reel.json" : "review.json";
   if (options?.reviewContextPath) {
     possiblePaths.push(path.resolve(options.reviewContextPath));
   } else if (options?.slug) {
-    possiblePaths.push(path.join(resolvePackageDir(options.slug), "review.json"));
+    possiblePaths.push(path.join(resolvePackageDir(options.slug), reviewName));
   } else {
     const parentDir = path.dirname(resolvedPath);
     possiblePaths.push(
-      path.join(parentDir, "review.json"),
-      path.join(parentDir, "..", "review.json"),
+      path.join(parentDir, reviewName),
+      path.join(parentDir, "..", reviewName),
     );
   }
 
@@ -526,6 +528,13 @@ export async function reviewVideo(
             }
           }
         }
+      }
+
+      if (facts?.reelLength) {
+        normalizedCriteria.push({ name: "reel_length", title: "Reel delivered length", isGate: true,
+          score: facts.reelLength.passed ? 10 : 0, passed: facts.reelLength.passed,
+          evidenceTimestamps: [`${Math.floor(facts.durationSec / 60)}:${String(Math.floor(facts.durationSec % 60)).padStart(2, "0")}`],
+          reason: facts.reelLength.summary });
       }
 
       // Verify that every single criterion contains timestamp evidence

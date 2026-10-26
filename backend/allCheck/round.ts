@@ -18,6 +18,7 @@ import { reviewPairwise, reviewVideo as geminiReview, formatReviewSummary, rende
 import type { GeminiReviewReport, PairwiseRunReport } from "../geminiReview";
 import { extractStill, probeVideo } from "../review/media";
 import { reviewVideo as measuredReview } from "../review/review";
+import { formatInputs, reelForRender } from "../reelCut/store";
 import type { ReviewReport } from "../review/types";
 import {
   allCheckDir,
@@ -180,15 +181,19 @@ export interface RoundRequest {
 // Measures one format in one round and saves the record.
 export async function runFormatRound(req: RoundRequest, round: number, config: AllCheckConfig, deps: RoundDeps): Promise<FormatRoundRecord> {
   const { slug, format } = req;
+  if (format === "reel" && req.skipRender) reelForRender(slug);
   const pkg = resolvePackageDir(slug);
-  const filmFile = path.join(pkg, "film.json");
+  const inputs = formatInputs(slug, format);
+  const filmFile = inputs.film;
   const dir = roundDir(slug, round);
   fs.mkdirSync(dir, { recursive: true });
 
   const backup = path.join(allCheckDir(slug), "backups", `film.round-${round}.json`);
   if (!fs.existsSync(backup)) {
     fs.mkdirSync(path.dirname(backup), { recursive: true });
-    fs.copyFileSync(filmFile, backup);
+    fs.copyFileSync(path.join(pkg, "film.json"), backup);
+    const reelDir = path.join(pkg, "reel");
+    if (fs.existsSync(reelDir)) fs.cpSync(reelDir, path.join(path.dirname(backup), `reel.round-${round}`), { recursive: true });
   }
 
   deps.onProgress(`[round ${round} ${format}] rendering ${slug}`);
@@ -215,7 +220,7 @@ export async function runFormatRound(req: RoundRequest, round: number, config: A
   fs.copyFileSync(rendered, videoPath);
   const filmHash = hashFile(filmFile);
 
-  const wordsFile = path.join(pkg, "voiceover_words.json");
+  const wordsFile = inputs.words;
   const measuredDir = path.join(dir, `${format}-measured`);
   const measured: FormatRoundRecord["measured"] = { passed: null, gateFailures: [], softFailures: [], recommendations: [], reportPath: null };
   deps.onProgress(`[round ${round} ${format}] measured review`);
@@ -225,7 +230,7 @@ export async function runFormatRound(req: RoundRequest, round: number, config: A
     measured.gateFailures = report.gateFailures;
     measured.softFailures = report.softFailures;
     measured.recommendations = report.recommendations;
-    measured.reportPath = path.join(measuredDir, "review.json");
+    measured.reportPath = path.join(measuredDir, report.format === "reel" ? "review.reel.json" : "review.json");
   } catch (err) {
     measured.error = err instanceof Error ? err.message : String(err);
   }

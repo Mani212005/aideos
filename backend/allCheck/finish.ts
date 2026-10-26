@@ -13,6 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { formatInputs, reelForRender } from "../reelCut/store";
 import { backupPath, rankRecord, rollbackFilm, strayFiles } from "./best";
 import { releaseLock } from "./lock";
 import { readConfig, readRecords } from "./round";
@@ -105,12 +106,13 @@ export interface Verdict {
 }
 
 // Decides the verdict: a passing round holding both formats from the film still on disk, else the best round.
-export function decideVerdict(records: FormatRoundRecord[], currentFilmHash: string | null): Verdict {
+export function decideVerdict(records: FormatRoundRecord[], currentFilmHash: string | null | Record<CheckFormat, string | null>): Verdict {
+  const hashes = typeof currentFilmHash === "object" && currentFilmHash !== null ? currentFilmHash : { long: currentFilmHash, reel: currentFilmHash };
   const rounds = [...new Set(records.map((r) => r.round))].sort((a, b) => b - a);
   for (const round of rounds) {
     const long = pick(records, round, "long");
     const reel = pick(records, round, "reel");
-    if (long?.passed && reel?.passed && long.filmHash === reel.filmHash && long.filmHash === currentFilmHash) {
+    if (long?.passed && reel?.passed && long.filmHash === hashes.long && reel.filmHash === hashes.reel) {
       return { passed: true, round, long, reel, stillFailing: [] };
     }
   }
@@ -133,8 +135,7 @@ export function decideVerdict(records: FormatRoundRecord[], currentFilmHash: str
   if (!reel) stillFailing.push("the reel was never measured in this round");
   for (const rec of [long, reel]) if (rec) for (const f of rec.failing) stillFailing.push(`${rec.format}: ${f}`);
   if (long && reel && long.passed && reel.passed) {
-    if (long.filmHash !== reel.filmHash) stillFailing.push("the long cut and the reel were rendered from different versions of the film: re-check both in one round");
-    else if (long.filmHash !== currentFilmHash) stillFailing.push("film.json changed after the last check: re-check both formats in a final round");
+    if (long.filmHash !== hashes.long || reel.filmHash !== hashes.reel) stillFailing.push("film.json changed after the last check: re-check both formats in a final round (each format must match its own current film hash)");
   }
   return { passed: false, round: best.round, long, reel, stillFailing };
 }
@@ -177,17 +178,30 @@ export function finishRun(slug: string, deps: FinishDeps = REAL_FINISH_DEPS): Al
   const dir = allCheckDir(slug);
   const records = readRecords(slug);
   const filmFile = path.join(resolvePackageDir(slug), "film.json");
-  let verdict = decideVerdict(records, hashOrNull(filmFile));
+  // Reads each format's current manifest identity, including an identity reel's shared long film.
+  const hashes = () => {
+    const reelFile = formatInputs(slug, "reel").film;
+    let reel: string | null = null;
+    try {
+      reelForRender(slug);
+      reel = hashOrNull(reelFile);
+    } catch {
+      reel = null;
+    }
+    return { long: hashOrNull(filmFile), reel };
+  };
+  let verdict = decideVerdict(records, hashes());
 
   // Not all good: the package must end on the best round's film, not on the last experiment.
   let restoredFilmFromRound: number | null = null;
   const best = verdict.long ?? verdict.reel;
-  if (!verdict.passed && verdict.round !== null && best && best.filmHash !== hashOrNull(filmFile) && fs.existsSync(backupPath(slug, verdict.round))) {
+  const changed = [verdict.long, verdict.reel].some((rec) => rec && rec.filmHash !== hashes()[rec.format]);
+  if (!verdict.passed && verdict.round !== null && best && changed && fs.existsSync(backupPath(slug, verdict.round))) {
     fs.copyFileSync(filmFile, path.join(dir, "backups", "film.before-finish.json"));
     (deps.restoreFilm ?? rollbackFilm)(slug, verdict.round);
     restoredFilmFromRound = verdict.round;
     // Restoring the checked film can turn "edited after the last check" into a pass.
-    verdict = decideVerdict(records, hashOrNull(filmFile));
+    verdict = decideVerdict(records, hashes());
   }
 
   const finals: Record<CheckFormat, string | null> = { long: null, reel: null };

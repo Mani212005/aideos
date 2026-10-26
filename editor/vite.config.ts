@@ -20,6 +20,7 @@ import { dropLegacyFilmBlocks, filmSchema } from '../src/dl/schema.ts'
 import type { Film } from '../src/dl/schema.ts'
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../src/dl/videoPackageLoader.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
+import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
 import { synthesizeVoiceover, VoiceSynthesisError, readContainerMemoryLimit, sayToWav } from '../backend/voiceSynthesis.ts'
 import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
@@ -781,12 +782,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               fs.writeFileSync(filmFile, filmModule(film), 'utf8');
 
               // Ensure activeFilm.ts is synced to this exported film
-              const activeFilmFile = path.resolve(__dirname, '../src/dl/activeFilm.ts');
-              fs.writeFileSync(
-                activeFilmFile,
-                `import { ${exportName(film.id)} } from "./films/${film.id}";\nimport type { Film } from "./schema";\n\nexport const ACTIVE_FILM: Film = ${exportName(film.id)};\n`,
-                'utf8'
-              );
+              setActiveFilm(film.id);
 
               const child = spawn(
                 'npx',
@@ -2307,12 +2303,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             writeFilm(cleanId, newFilm);
 
             // 3. Point activeFilm.ts to new film
-            const activeFilmFile = path.resolve(__dirname, '../src/dl/activeFilm.ts');
-            fs.writeFileSync(
-              activeFilmFile,
-              `import { ${exportName(cleanId)} } from "./films/${cleanId}";\nimport type { Film } from "./schema";\n\nexport const ACTIVE_FILM: Film = ${exportName(cleanId)};\n`,
-              'utf8'
-            );
+            setActiveFilm(cleanId);
 
             sendJson(res, 200, {
               ok: true,
@@ -2349,11 +2340,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 sendJson(res, 404, { error: `Film "${id}" not found on disk.` });
                 return;
               }
-              fs.writeFileSync(
-                activeFilmFile,
-                `import { ${exportName(id)} } from "./films/${id}";\nimport type { Film } from "./schema";\n\nexport const ACTIVE_FILM: Film = ${exportName(id)};\n`,
-                'utf8'
-              );
+              setActiveFilm(id);
               sendJson(res, 200, { ok: true, activeId: id });
             }).catch(err => sendJson(res, 500, { error: String(err) }));
             return;
@@ -2532,12 +2519,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             // This studio save endpoint is the trusted owner path; placement locks bind agents and rebuilds.
             writeFilm(id, parsed.data, { owner: true });
 
-            const activeFilmFile = path.resolve(__dirname, '../src/dl/activeFilm.ts');
-            fs.writeFileSync(
-              activeFilmFile,
-              `import { ${exportName(id)} } from "./films/${id}";\nimport type { Film } from "./schema";\n\nexport const ACTIVE_FILM: Film = ${exportName(id)};\n`,
-              'utf8'
-            );
+            setActiveFilm(id);
 
             sendJson(res, 200, { ok: true, file: path.relative(path.resolve(__dirname, '..'), file), film: parsed.data });
           })

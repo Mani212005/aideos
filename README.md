@@ -7,9 +7,9 @@
 
 ---
 
-## 🎬 Two Formats, One Film
+## 🎬 Two Formats, Shared Visuals
 
-`Long` (1920x1080) and `Reel` (1080x1920) are not two separate edits. They derive automatically from the exact same canvas and shot list, sharing safe-area padding and phrase-locked kinetic subtitles (`KineticSubtitles.tsx`) using the active theme accent token. Captions default to the bottom and can have separate owner-placed cards for each format; see [caption placement](src/dl/README.md#owner-caption-cards). Each render appends the configured like-and-subscribe end card after the story (6 seconds for Long and 3 seconds for Reel by default); its copy, handle, and timing are set in `aideos.config.json`.
+`Long` (1920x1080) and `Reel` (1080x1920) share the same visual canvas, scene motion, and footage, but the Reel is a separate shorter cut with condensed narration capped at 179 seconds including the end card (aim 170 seconds). When the long cut already fits within 179 seconds, an identity reel reuses the long narration. AI drafts the cut for the captain to review and approve after rendering; approval does not gate rendering. Caption placement copies kept-shot owner placements from the long cut, while phrase-locked kinetic subtitles (`KineticSubtitles.tsx`) use the active theme accent token. Each render appends the configured like-and-subscribe end card after the story (6 seconds for Long and 3 seconds for Reel by default); its copy, handle, and timing are set in `aideos.config.json`.
 
 ---
 
@@ -77,14 +77,14 @@ npm run render:reel
 # 6. Auto-prompt a complete film from a prompt (LLM director plans and produces end to end)
 npm run backend -- direct "Why attention scales quadratically" --broll --formats long,reel
 
-# 7. Run end-to-end production pipeline from an existing screenplay (intake -> narrate -> look -> design -> b-roll -> assemble -> render -> verify)
+# 7. Run end-to-end production pipeline from an existing screenplay (intake -> narrate -> look -> design -> reel -> b-roll -> assemble -> render -> verify)
 npm run backend -- film --script-file videos/my-video/script.md --title "My Video" --slug my-video --broll --formats long,reel
 
 # 8. Start Model Context Protocol (MCP) server
 npm run backend -- mcp
 
-# 9. Run deterministic quality review checks on a rendered video
-npm run review -- videos/speculative-decoding/renders/long.mp4
+# 9. Run deterministic quality review checks on every rendered format for a film
+npm run review -- speculative-decoding
 
 # 10. Run Gemini 3.8 Flash video quality review (9.0+ bar)
 aideos gemini-review videos/speculative-decoding/renders/long.mp4

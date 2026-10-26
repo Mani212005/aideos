@@ -6,8 +6,10 @@ File Description: Documentation for the Video Design Language implementation in 
 
 Implements the Video Design Language specification across color tokens, typography, motion grammar, and camera continuity.
 
-Compositions: **Long** (1920x1080) and **Reel** (1080x1920). They are the
-same film, not two edits of it.
+Compositions: **Long** (1920x1080) and **Reel** (1080x1920). The reel is a
+separate shorter cut with condensed narration capped at 179 seconds, sharing the
+visual canvas, camera targets, and footage of the long cut (or an identity reel
+when the long cut already fits).
 
 | Spec section          | Here                                            |
 | --------------------- | ----------------------------------------------- |
@@ -30,8 +32,9 @@ same film, not two edits of it.
    every shot re-frames itself.
 2. **Order defines stagger.** A block's index among its siblings is its only
    timing input. No block declares its own delay.
-3. **Format only scales.** Both compositions solve their framing from the same
-   canvas and the same shot list. There is no per-format authoring anywhere.
+3. **Format solves framing.** Both compositions solve their framing from the
+   same canvas. The reel uses a derived shorter shot list when shots are dropped;
+   its shared scene artwork and camera targets are compiled against that cut.
 
 Shot start times are *derived* from durations, so a scene cannot start before
 the previous one ends - that failure mode is unrepresentable rather than

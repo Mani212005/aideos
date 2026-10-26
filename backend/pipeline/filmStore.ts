@@ -108,8 +108,14 @@ export function wireFootageIntoFilm(
 ): Film {
   const film = readFilm(slug);
   if (!film) throw new Error(`no film found for "${slug}"`);
+  return writeFilm(slug, withFootage(film, shotId, staticPath, caption));
+}
+
+// Shares one footage wiring operation between long and reel without touching either owner record.
+export function withFootage(film: Film, shotId: string, staticPath: string, caption: string): Film {
+  film = structuredClone(film);
   const shot = film.shots.find((s) => s.id === shotId);
-  if (!shot) throw new Error(`film "${slug}" has no shot "${shotId}"`);
+  if (!shot) throw new Error(`film "${film.id}" has no shot "${shotId}"`);
 
   shot.needsFootage = true;
   const inset = shot.blocks.find((b) => b.c === "AnalogyInset") as
@@ -132,5 +138,5 @@ export function wireFootageIntoFilm(
     ];
   }
 
-  return writeFilm(slug, film);
+  return film;
 }

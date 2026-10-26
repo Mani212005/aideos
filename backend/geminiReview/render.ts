@@ -11,11 +11,13 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { readActiveFilmSource, restoreActiveFilmSource, setActiveFilm } from "../pipeline/filmStore";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { reelForRender } from "../reelCut/store";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 
 // Renders the video for a given slug using Remotion CLI.
 export async function renderVideoForSlug(slug: string, format: "long" | "reel" = "long"): Promise<string> {
+  if (format === "reel") reelForRender(slug);
   const pkgDir = resolvePackageDir(slug);
   const rendersDir = path.join(pkgDir, "renders");
   const outPath = path.join(rendersDir, `${format}.mp4`);

@@ -42,6 +42,7 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 | `narrate`  | Synthesizes narration and derives the timing spine every later stage is locked to     | `voiceover.wav`, `captions.vtt`, `voiceover_words.json`, `narration.json` |
 | `look`     | Writes the measured look brief and validates the plan through the selected delivery mode | `design/LOOK_BRIEF.md`, `look.json`, `LOOK.md` |
 | `design`   | Compiles treatments from the accepted look and builds a checked scene design | `design/BRIEF.md`, `base-film.json`, `status.json`, `film.json` and its shadow |
+| `reel`     | Builds condensed reel narration and derived film with checked shot drops, or reuses the long for an identity reel | `videos/<slug>/reel/film.json`, `voiceover.wav`, `voiceover_words.json`, `status.json`, and its `src/dl/films/<slug>.reel.ts` shadow |
 | `broll`    | Renders GPU footage for the flagged shots and fetches the clips                       | `videos/<slug>/footage/<shotId>.mp4`                |
 | `assemble` | Wires each clip into its shot as a full-screen inset                                 | `film.json` and its `src/dl/films/<slug>.ts` shadow |
 | `render`   | Installs the film as active and drives Remotion for each requested format            | `src/dl/activeFilm.ts`, `videos/<slug>/renders/<format>.mp4` by default |
@@ -57,7 +58,7 @@ is written as `<outDir>/<slug>-<format>.mp4` instead.
 
 A failure throws a `ProductionError` whose `stage` field names where it happened, so a caller
 never has to guess which part of the chain broke. An authoring stop returns a result instead:
-`status: "needs_look"` or `"needs_design"`, with `nextSteps` naming the brief, the file to write,
+`status: "needs_look"`, `"needs_design"`, or `"needs_reel_cut"`, with `nextSteps` naming the brief, the file to write,
 the check command, and the instruction to rerun. Both `film` and `direct` exit with code 3.
 
 ## Look and design delivery
@@ -95,6 +96,20 @@ must start before its decisive word and the evaluated contact must land on that 
 cue is required. Builds record provenance in `design/status.json`,
 defaulting CLI builds to `hand-built` (`--source <who>` overrides). Older packages without a look can
 still build directly; new production runs require one before design.
+
+## Reel cut delivery
+
+`ProductionRequest.reel` and `--reel <mode>` (defaulting to the design policy, with templates mapped to inline) govern reel delivery:
+
+| Mode | Behavior |
+| --- | --- |
+| `inline` (default) | Return `status: "needs_reel_cut"` with actionable next steps. This mode does not dispatch to an agent or wait for output. |
+| `agent` | Dispatch the reel-cut task to a connected coding agent and wait for validated output. Feed check and cap failures back for up to three attempts; missing delivery or a timeout fails the stage. |
+| `server` | Ask the configured generation model to write or repair `cut.json`, feeding check and cap failures back for up to three attempts. |
+
+When the long story plus reel end card already fits the 179 s hard cap (`DELIVERY_CONFIG.reel.maxSec`), the reel stage creates an identity reel that reuses the long cut's narration. For longer films, the reel is a separate shorter cut with condensed narration, keeping the long cut's backend, voice, and speed. Caption placement carries film-level and kept-shot owner placements from the long cut. Shared design cues re-resolve against reel timing; end cues target the reel story end. Dropped shots become zero-length boundary spans for scene cues. A dropped shot collapsing an animated clip into a visible snap fails design check with an error naming the shot and element, directing the writer to keep that shot condensed instead. Node-graph drops remove the shot.
+
+The reel stage fingerprints the long film, narration and word timings, reel cut, design inputs and artwork, and delivery settings. Changes to those inputs invalidate the derived reel. The cut records a narration hash for each long shot; when a long narration line changes, the reel check marks that shot stale until its reel line and source hash are rewritten.
 
 ## Resuming
 
@@ -210,11 +225,13 @@ Tools:
 
 A full render takes tens of minutes, so `aideos_produce_film` never blocks: it starts the run in
 the background and hands back a `runId` for the caller to poll. The design mode defaults to `inline`.
-When authoring is needed, `aideos_run_status` reports `status: "needs_look"` or `"needs_design"` alongside
+When authoring is needed, `aideos_run_status` reports `status: "needs_look"`, `"needs_design"`, or `"needs_reel_cut"` alongside
 actionable `nextSteps`. For `needs_look`, call `aideos_look_brief`, write `design/look.json` with
 `aideos_write_file`, validate with `aideos_look_check`, then call `aideos_produce_film` again with the same
 slug. For `needs_design`, read `design/BRIEF.md`, write `design/design.json` and its SVGs, compile with
-`aideos_design_build`, then rerun `aideos_produce_film`. Run records live in the server process, so
+`aideos_design_build`, then rerun `aideos_produce_film`. For `needs_reel_cut`, read `reel/REEL_BRIEF.md`, write
+`reel/cut.json`, validate with `aideos reel check <slug>`, compile with `aideos reel build <slug>`, and rerun.
+Run records live in the server process, so
 `aideos_run_status` only knows about runs that process started; the durable record is
 `videos/<slug>/run-state.json`, which is also what makes a restarted run resumable.
 

@@ -15,6 +15,7 @@ import path from "path";
 import { dropLegacyFilmBlocks, type Film } from "../../src/dl/schema";
 import { getVideosDir, listVideoPackages, resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { buildSvgSources } from "../scene/buildSvgSources";
+import { deliveryTimeline, DELIVERY_CONFIG } from "../../src/dl/delivery";
 
 /** Repo root, resolved from this module so the pipeline works from any cwd. */
 export const ROOT = path.resolve(__dirname, "../..");
@@ -36,7 +37,12 @@ export function filmModule(film: Film): string {
 
 /** The generated module that points Remotion's CLI render at one film. */
 function activeFilmModule(slug: string): string {
+  const file = path.join(resolvePackageDir(slug), "film.json");
+  const long = JSON.parse(fs.readFileSync(file, "utf8")) as Film;
+  const identity = deliveryTimeline(long, "reel").totalFrames / long.fps <= DELIVERY_CONFIG.reel.maxSec;
+  const hasReel = !identity && fs.existsSync(path.join(resolvePackageDir(slug), "reel/film.json"));
   return `import { ${exportName(slug)} } from "./films/${slug}";
+${hasReel ? `import { ${exportName(slug)} as reelFilm } from "./films/${slug}.reel";` : ""}
 import type { Film } from "./schema";
 
 /**
@@ -44,6 +50,7 @@ import type { Film } from "./schema";
  * is a one-word change rather than a search through the components.
  */
 export const ACTIVE_FILM: Film = ${exportName(slug)};
+export const ACTIVE_REEL_FILM: Film = ${hasReel ? "reelFilm" : "ACTIVE_FILM"};
 `;
 }
 
@@ -79,6 +86,13 @@ export function ensureGenerated(): { shadows: number; svgAssets: number; activeF
     }
     if (film.id !== slug) continue;
     if (writeIfChanged(path.join(FILMS_DIR, `${slug}.ts`), filmModule(film))) shadows++;
+    const reelFile = path.join(resolvePackageDir(slug), "reel/film.json");
+    if (fs.existsSync(reelFile)) {
+      try {
+        const reel = dropLegacyFilmBlocks(JSON.parse(fs.readFileSync(reelFile, "utf8")) as Film);
+        if (reel.id === slug && writeIfChanged(path.join(FILMS_DIR, `${slug}.reel.ts`), filmModule(reel))) shadows++;
+      } catch { /* An invalid derived film is refused by the render guard. */ }
+    } else fs.rmSync(path.join(FILMS_DIR, `${slug}.reel.ts`), { force: true });
     if (file.startsWith(getVideosDir() + path.sep)) firstPersonal ??= slug;
     else firstExample ??= slug;
   }
@@ -87,7 +101,7 @@ export function ensureGenerated(): { shadows: number; svgAssets: number; activeF
   const available = new Set(listVideoPackages());
   if (fs.existsSync(FILMS_DIR)) {
     for (const file of fs.readdirSync(FILMS_DIR)) {
-      if (file.endsWith(".ts") && !available.has(file.slice(0, -3))) fs.rmSync(path.join(FILMS_DIR, file), { force: true });
+      if (file.endsWith(".ts") && !available.has(file.replace(/(?:\.reel)?\.ts$/, ""))) fs.rmSync(path.join(FILMS_DIR, file), { force: true });
     }
   }
   const svgAssets = buildSvgSources();
@@ -99,8 +113,8 @@ export function ensureGenerated(): { shadows: number; svgAssets: number; activeF
     activeFilm = m[1];
   } else if (firstPersonal ?? firstExample) {
     activeFilm = (firstPersonal ?? firstExample) as string;
-    setActiveFilm(activeFilm);
   }
+  if (activeFilm) setActiveFilm(activeFilm);
   return { shadows, svgAssets, activeFilm };
 }
 

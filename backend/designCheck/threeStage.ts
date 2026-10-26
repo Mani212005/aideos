@@ -52,6 +52,7 @@ export function checkThreeStage(
     }
   }
   for (const [format, width, height] of [["long", 1920, 1080], ["reel", 1080, 1920]] as const) {
+    if (context.formats && !context.formats.includes(format)) continue;
     if (target && target.format !== format) continue;
     let dispose: (() => void) | undefined, checkedFrame = 0;
     try {

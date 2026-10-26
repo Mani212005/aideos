@@ -71,7 +71,7 @@ Order matters: long first, then reel, then one final re-check of both.
 1. **Long.** Run \`round ${slug} --format long\`. Read the printed failures, \`round-N/long.md\`, the measured
    report and the reviewer feedback with its timestamps. Do the frame check (below). If it did not pass, edit the
    film, then run \`round ${slug} --format long\` again (a new round). Repeat until the long cut passes.
-2. **Reel.** Same loop with \`--format reel\`. The reel is a 9:16 cut of the same film: framing, safe areas,
+2. **Reel.** Same loop with \`--format reel\`. The reel has its own condensed narration over the shared picture: framing, safe areas,
    caption band and text size are what usually fail. Take care that a fix for the reel does not break the long cut.
 3. **Final re-check.** When both passed, run \`round ${slug} --format both\` once more on the film as it now is, do the
    frame check on both, and only if both pass, run \`finish\`. Never edit the film after that round.
@@ -90,7 +90,7 @@ A format passes when all of these hold in one record:
 - the measured checks (\`aideos review\`) pass,
 ${reference ? "- (long) it wins or ties the cross-review against the reference,\n" : ""}- your own frame check is clean.
 
-All good = a single round holds a passing long and a passing reel rendered from the same film.json, which is still unchanged when you run \`finish\`.
+All good = a single round holds a passing long and a passing reel, each at its own current film hash when you run \`finish\`. The reel must fit the configured delivered cap including its end card.
 
 ## Frame check (your part, before a round can pass)
 
@@ -106,7 +106,7 @@ with the time. Issues are work for the next round. Be strict; the reviewer will 
   edit those and rebuild instead, or your edit is overwritten. Each round backs film.json up to all-check/backups/.
 - Fix the cause named in the feedback, not the symptom, and change as little as needed so a fix for one finding does not break another.
 - After editing, the next \`round\` re-generates the render shadows itself; you do not need to run anything else.
-- Keep the narration and its timing intact unless a finding is about audio.
+- Keep the long narration and its timing intact unless a finding is about audio. Edit reel/cut.json for reel narration, run \`aideos reel check ${slug}\` and \`aideos reel build ${slug}\`; never hand-edit the derived reel/film.json. Shot drops are explicit and checked.
 - Read \`design/LOOK.md\` first; a fix may change motion freely, but changing a shot's treatment or the cast means editing \`look.json\` and passing \`aideos look check\` before the next round.
 
 ## Character films

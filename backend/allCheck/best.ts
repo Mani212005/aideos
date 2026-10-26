@@ -1,6 +1,6 @@
 /**
  * File Description: Keeps an all-check run honest about its best film. Ranks measured records by what
- * the tools reported, restores film.json from a round's backup (rollback), rolls back automatically
+ * the tools reported, restores the long film and reel package from a round's backup (rollback), rolls back automatically
  * when a round scores lower than the best so far, and spots files the background agent created
  * outside videos/<slug>/ (its one hard rule). Pure ranking plus small injectable file and git steps.
  * Inputs and outputs: scored review rounds -> selects best round iteration and moves artifacts.
@@ -73,11 +73,15 @@ export function backupPath(slug: string, round: number): string {
   return path.join(allCheckDir(slug), "backups", `film.round-${round}.json`);
 }
 
-// Restores film.json from the backup taken at the start of a round and regenerates the render shadows.
+// Restores film.json and the reel package from the backup taken at the start of a round, then regenerates render shadows.
 export function rollbackFilm(slug: string, round: number): string {
   const backup = backupPath(slug, round);
   if (!fs.existsSync(backup)) throw new AllCheckError(`no backup for round ${round} (${backup})`);
   fs.copyFileSync(backup, path.join(resolvePackageDir(slug), "film.json"));
+  const reelBackup = path.join(path.dirname(backup), `reel.round-${round}`);
+  const reelDir = path.join(resolvePackageDir(slug), "reel");
+  fs.rmSync(reelDir, { recursive: true, force: true });
+  if (fs.existsSync(reelBackup)) fs.cpSync(reelBackup, reelDir, { recursive: true });
   ensureGenerated();
   return backup;
 }
@@ -89,7 +93,7 @@ export interface RollbackNote {
   message: string;
 }
 
-// After a round is measured: when it scored lower than an earlier round, put that round's film back and say so.
+// After a round is measured: when it scored lower than an earlier round, restore that round's films and say so.
 export function settleRound(slug: string, round: number, records: FormatRoundRecord[], restore: (slug: string, round: number) => string = rollbackFilm): RollbackNote | null {
   const better = betterEarlierRound(records, round);
   if (!better) return null;
@@ -100,7 +104,7 @@ export function settleRound(slug: string, round: number, records: FormatRoundRec
     fromRound: round,
     message:
       `ROLLED BACK: round ${round} scored lower (${better.thisRank.toFixed(1)}) than round ${better.round} (${better.rank.toFixed(1)}), ` +
-      `so film.json is now round ${better.round}'s film again (round ${round}'s version is kept at ${failedCopy}). ` +
+      `so film.json and the reel package are now round ${better.round}'s versions again (round ${round}'s version is kept at ${failedCopy}). ` +
       `Build your next fix on top of round ${better.round}'s film and try something different from what you did in round ${round}.`,
   };
 }
