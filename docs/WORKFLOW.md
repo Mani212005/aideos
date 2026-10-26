@@ -155,9 +155,6 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `npm run validate:film <path>` | Standalone invariant validator for arbitrary film manifests | Runsheet & status in terminal |
 | `npm run backend -- mcp` | Starts Model Context Protocol (MCP) server over stdio | MCP stdio interface |
 
-The reel is a separate shorter cut with the same scenes and condensed narration, capped at 179 seconds including the end card (aim 170 seconds). An identity reel reuses the long narration when the long cut already fits. For scene films, dropped shots collapse to zero-length boundary spans for scene cues, and clips collapsing into visible snaps fail the check so the writer keeps those shots condensed; for node-graph films, shot drops remove the shot.
-The writer brief condenses without adding facts or numbers, and the deterministic check flags new content words as non-blocking review advisories. The captain reviews the rendered reel before approving it (approval does not gate rendering).
-
-The reel cut budget defaults to a 170-second target and a 179-second delivered cap. `--max-sec` may lower the cap, but cannot raise it; the end-card reserve is derived from canonical delivery timing.
+Reel-cut behavior, delivery modes, timing limits and shot-drop rules are documented in [the production pipeline reference](PRODUCTION_PIPELINE.md#reel-cut-delivery). The captain reviews the rendered reel before approval; approval does not gate rendering.
 
 For shots containing imported image or video media, `aideos reel check` warns that numbers inside that media are not checked. Review those numbers when approving the rendered reel.
