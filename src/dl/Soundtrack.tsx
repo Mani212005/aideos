@@ -10,8 +10,10 @@ import { deliveryTimeline, formatForSize } from "./delivery";
 import { EndCardVoice } from "./EndCard";
 import { calculateDuckingVolume, type SpeechInterval } from "./audio/ducking";
 import { getRetimedAudioRelPath } from "./audio/retime";
-import type { Film } from "./schema";
+import { normalizeFilmSoundtrack, type Film } from "./schema";
 import { totalFrames, type TimedShot } from "./camera";
+
+export { normalizeFilmSoundtrack };
 
 export type SoundtrackProps = {
   film: Film;
@@ -46,13 +48,16 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
   const card = delivery.card;
   const effectiveVoiceoverSrc = (voiceoverSrc ?? "").trim() || film.voiceover?.src || "";
   const effectiveVoiceoverVolume = voiceoverVolume ?? film.voiceover?.volume ?? 1;
+
+  const soundtrack = normalizeFilmSoundtrack(film);
+  const primarySection = soundtrack.sections[0];
   const requestedMusicSrc = (musicSrc ?? "").trim();
-  const effectiveMusicSrc = requestedMusicSrc || film.music?.src || film.audio?.src || "";
-  const effectiveMusicVolume = musicVolume ?? film.music?.volume ?? 1;
+  const effectiveMusicSrc = requestedMusicSrc || primarySection?.src || primarySection?.item || "";
+  const effectiveMusicVolume = musicVolume ?? primarySection?.volume ?? 1;
   const audioClips = film.audioClips ?? [];
   const duplicatePrimaryMusicClipId = audioClips.find(
     (ac) =>
-      ac.id === "clip-music-main" &&
+      (ac.id === "clip-music-main" || ac.id === "clip-music-section-0") &&
       ac.channel === "music" &&
       ac.src === effectiveMusicSrc &&
       ac.position === 0 &&
@@ -62,7 +67,9 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
   // Extract speech intervals from audio clips or timeline shots with narration
   const voClips = film.audioClips?.filter((ac) => (ac.channel ?? "voiceover") === "voiceover") ?? [];
   const speechIntervals: SpeechInterval[] =
-    voClips.length > 0
+    soundtrack.speech.length > 0
+      ? soundtrack.speech
+      : voClips.length > 0
       ? voClips.map((ac) => ({
           startSec: ac.position,
           endSec: ac.position + (ac.end - (ac.start ?? 0)) / (ac.speed ?? 1.0),
@@ -88,14 +95,14 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
         <Audio
           key={`aideos-music-${film.id}`}
           src={staticFile(effectiveMusicSrc)}
-          trimBefore={Math.round((film.audio?.trimBefore ?? 0) * effectiveFps)}
+          trimBefore={Math.round((primarySection?.offsetSec ?? film.audio?.trimBefore ?? 0) * effectiveFps)}
           volume={(f) =>
             calculateDuckingVolume({
               frame: f,
               fps: effectiveFps,
               totalFrames: delivery.totalFrames,
               musicVolume: effectiveMusicVolume,
-              duckUnderVoiceover: film.music?.duckUnderVoiceover ?? true,
+              duckUnderVoiceover: primarySection?.duckUnderVoiceover ?? film.music?.duckUnderVoiceover ?? true,
               speechIntervals,
             })
           }
@@ -170,12 +177,13 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
       {card ? <EndCardVoice film={film} card={card} volume={effectiveVoiceoverVolume} /> : null}
 
       {/* 4. Transition Sound Effects (SFX) Track */}
-      {film.sfx && film.sfx.length > 0
-        ? film.sfx.map((sfx, idx) => {
+      {soundtrack.sfx.length > 0
+        ? soundtrack.sfx.map((sfx, idx) => {
             const startFrame = Math.round(sfx.timeSec * effectiveFps);
+            const sfxSrc = sfx.src || sfx.item;
             return (
-              <Sequence key={`sfx-${idx}-${sfx.src}`} from={startFrame}>
-                <Audio src={staticFile(sfx.src)} volume={() => sfx.volume ?? 1} />
+              <Sequence key={`sfx-${idx}-${sfxSrc}`} from={startFrame}>
+                <Audio src={staticFile(sfxSrc)} volume={() => sfx.volume ?? 1} />
               </Sequence>
             );
           })

@@ -484,6 +484,193 @@ export const musicTrackSchema = z.object({
   duckUnderVoiceover: z.boolean().default(true).optional(),
 });
 
+/**
+ * Speech interval for Remotion sidechain ducking (Report Section 4.4 and Decision D6).
+ * Measured from voiceover narration audio to detect real speech vs breath gaps.
+ */
+export const speechIntervalSchema = z.object({
+  startSec: z.number().min(0),
+  endSec: z.number().min(0),
+}).superRefine((interval, ctx) => {
+  if (interval.endSec <= interval.startSec) {
+    ctx.addIssue({ code: "custom", path: ["endSec"], message: "endSec must be greater than startSec" });
+  }
+});
+
+/**
+ * A story-act soundtrack section (Report Sections 4.1, 4.9 and Decision D3).
+ * Represents one musical stretch playing under a section of the narrative.
+ */
+export const soundtrackSectionSchema = z.object({
+  /** Story act role: hook, explain, tension, payoff, outro (or custom). */
+  role: z.string().default("explain"),
+  /** Item id referencing the audio library (e.g. mk-554) or media path. */
+  item: z.string().min(1),
+  /** Optional SHA-256 hash for asset locking and reproducible renders. */
+  sha256: z.string().regex(/^[0-9a-f]{64}$/i).optional(),
+  /** Resolved timeline start time in seconds. */
+  from: z.number().min(0).default(0),
+  /** Resolved timeline end time in seconds. */
+  to: z.number().min(0),
+  /** Offset seconds into the source audio track to start playback (used for back-timing outro). */
+  offsetSec: z.number().min(0).default(0),
+  /** Equal-power crossfade duration in seconds centered on section boundary (3s long, 1.5s reel). */
+  crossfadeSec: z.number().min(0).default(0),
+  /** Optional source file path for legacy or direct file media playback. */
+  src: z.string().optional(),
+  /** Volume multiplier gain (default 1). */
+  volume: z.number().min(0).max(2).default(1).optional(),
+  /** Whether this section ducks under voiceover speech (default true). */
+  duckUnderVoiceover: z.boolean().default(true).optional(),
+}).superRefine((section, ctx) => {
+  if (section.to <= section.from) {
+    ctx.addIssue({ code: "custom", path: ["to"], message: "to must be greater than from" });
+  }
+});
+
+/**
+ * Mix levels, ducking depths, and target loudness settings (Report Sections 4.4, 4.5 and Decision D6).
+ */
+export const soundtrackMixSchema = z.object({
+  /** Integrated loudness target in LUFS (-16 LUFS recommendation). */
+  targetLufs: z.number().default(-16),
+  /** Attenuation level in dB while voiceover speech is active (-18 dB under speech). */
+  duckDb: z.number().default(-18),
+  /** Attenuation level in dB during narration breath pauses (-10 dB in pauses). */
+  pauseGainDb: z.number().default(-10),
+  /** Level in dB during music-only moments such as the end card or pre-roll (-8 dB). */
+  musicOnlyGainDb: z.number().default(-8),
+  /** True peak ceiling in dBTP (-1 dBTP maximum ceiling). */
+  maxTruePeakDb: z.number().default(-1).optional(),
+  /** Optional master gain offset in dB applied at mastering. */
+  masterGainDb: z.number().default(0).optional(),
+});
+
+/**
+ * Sound effect tied to an on-screen visual event (Report Sections 4.7, 4.9 and Decision D5).
+ */
+export const soundtrackSfxSchema = z.object({
+  /** Identifier of the sound effect from the audio library. */
+  item: z.string().min(1),
+  /** Optional SHA-256 hash of the sound effect asset. */
+  sha256: z.string().regex(/^[0-9a-f]{64}$/i).optional(),
+  /** Timeline trigger position in seconds. */
+  timeSec: z.number().min(0),
+  /** Gain offset in decibels for this effect (-8 dB for hits/whooshes, -14 dB for UI ticks). */
+  gainDb: z.number().default(0),
+  /** The on-screen visual event this sound effect is bound to (e.g. camera-pan, chapter-cut, stat-counter). */
+  event: z.string().optional(),
+  /** Optional source file path for legacy or direct file media playback. */
+  src: z.string().optional(),
+  /** Volume multiplier gain (default 1). */
+  volume: z.number().min(0).max(2).default(1).optional(),
+});
+
+export const soundtrackMixDefault = {
+  targetLufs: -16,
+  duckDb: -18,
+  pauseGainDb: -10,
+  musicOnlyGainDb: -8,
+};
+
+/**
+ * Recorded per-film soundtrack manifest (Report Section 4.9 and Decision D6).
+ * Captures music sections, speech ducking intervals, mix levels, sound effects, and description credits.
+ */
+export const soundtrackSchema = z.object({
+  /** SHA-256 hash of the audio/library.json manifest used for this film. */
+  library: z.string().optional(),
+  /** Ordered list of story act music sections. */
+  sections: z.array(soundtrackSectionSchema).default([]),
+  /** Measured speech activity intervals for Remotion sidechain ducking. */
+  speech: z.array(speechIntervalSchema).default([]),
+  /** Mix levels, ducking depths, and target loudness settings. */
+  mix: soundtrackMixSchema.default(soundtrackMixDefault),
+  /** Sound effects tied to visual events on the timeline. */
+  sfx: z.array(soundtrackSfxSchema).default([]),
+  /** Description credit text lines for YouTube or public display. */
+  credits: z.union([z.array(z.string()), z.string()]).default([]),
+});
+
+export type SpeechInterval = z.infer<typeof speechIntervalSchema>;
+export type SoundtrackSection = z.infer<typeof soundtrackSectionSchema>;
+export type SoundtrackMix = z.infer<typeof soundtrackMixSchema>;
+export type SoundtrackSfx = z.infer<typeof soundtrackSfxSchema>;
+export type Soundtrack = z.infer<typeof soundtrackSchema>;
+
+// Normalizes legacy music, audio, and sfx fields or existing soundtrack into a unified Soundtrack structure.
+export function normalizeFilmSoundtrack(film: {
+  soundtrack?: Soundtrack;
+  music?: { src: string; volume?: number; duckUnderVoiceover?: boolean };
+  audio?: { src: string; trimBefore?: number };
+  sfx?: Array<{ src: string; timeSec: number; volume?: number }>;
+  shots?: Array<{ dur?: number }>;
+}): Soundtrack {
+  if (film.soundtrack && film.soundtrack.sections.length > 0) {
+    const rawSpeech = film.soundtrack.speech ?? [];
+    return {
+      library: film.soundtrack.library,
+      sections: film.soundtrack.sections,
+      speech: rawSpeech,
+      mix: {
+        targetLufs: film.soundtrack.mix?.targetLufs ?? -16,
+        duckDb: film.soundtrack.mix?.duckDb ?? -18,
+        pauseGainDb: film.soundtrack.mix?.pauseGainDb ?? -10,
+        musicOnlyGainDb: film.soundtrack.mix?.musicOnlyGainDb ?? -8,
+        maxTruePeakDb: film.soundtrack.mix?.maxTruePeakDb ?? -1,
+        masterGainDb: film.soundtrack.mix?.masterGainDb ?? 0,
+      },
+      sfx: film.soundtrack.sfx ?? [],
+      credits: film.soundtrack.credits ?? [],
+    };
+  }
+
+  // Derive one-section soundtrack from legacy music or audio fields
+  const effectiveMusicSrc = (film.music?.src || film.audio?.src || "").trim();
+  const totalDur = film.shots?.reduce((acc, s) => acc + (s.dur || 3), 0) ?? 0;
+  const sections: SoundtrackSection[] = effectiveMusicSrc
+    ? [
+        {
+          role: "explain",
+          item: effectiveMusicSrc,
+          src: effectiveMusicSrc,
+          from: 0,
+          to: totalDur,
+          offsetSec: film.audio?.trimBefore ?? 0,
+          crossfadeSec: 0,
+          volume: film.music?.volume ?? 1,
+          duckUnderVoiceover: film.music?.duckUnderVoiceover ?? true,
+        },
+      ]
+    : [];
+
+  const legacySfx: SoundtrackSfx[] = (film.sfx ?? []).map((s) => ({
+    item: s.src,
+    src: s.src,
+    timeSec: s.timeSec,
+    gainDb: 0,
+    volume: s.volume ?? 1,
+  }));
+
+  const rawSpeech = film.soundtrack?.speech ?? [];
+
+  return {
+    library: film.soundtrack?.library,
+    sections: sections.length > 0 ? sections : (film.soundtrack?.sections ?? []),
+    speech: rawSpeech,
+    mix: {
+      targetLufs: film.soundtrack?.mix?.targetLufs ?? -16,
+      duckDb: film.soundtrack?.mix?.duckDb ?? -18,
+      pauseGainDb: film.soundtrack?.mix?.pauseGainDb ?? -10,
+      musicOnlyGainDb: film.soundtrack?.mix?.musicOnlyGainDb ?? -8,
+      maxTruePeakDb: film.soundtrack?.mix?.maxTruePeakDb ?? -1,
+      masterGainDb: film.soundtrack?.mix?.masterGainDb ?? 0,
+    },
+    sfx: film.soundtrack?.sfx && film.soundtrack.sfx.length > 0 ? film.soundtrack.sfx : legacySfx,
+    credits: film.soundtrack?.credits ?? [],
+  };
+}
+
 export const audioClipSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   src: z.string().min(1),
@@ -670,6 +857,11 @@ export const filmBaseSchema = z.object({
   subtitles: z.boolean().optional(),
   sfx: z.array(sfxItemSchema).optional(),
   music: musicTrackSchema.optional(),
+  /**
+   * Film soundtrack data describing story act music sections, sound effects, speech ducking intervals,
+   * mix loudness targets, and description credits (Decision D6 and Report Section 4.9).
+   */
+  soundtrack: soundtrackSchema.optional(),
   /**
    * The end card's spoken line, synthesized once in this film's own narration voice. Derived data:
    * the narrate stage and `ensureEndCardVoice` (backend/endCard/voice.ts) write it, nobody authors

@@ -87,6 +87,11 @@ export const audioPayloadSchema = z.object({
   duckUnderVoiceover: z.boolean().optional(),
   speed: z.number().min(0.25).max(4).default(1).optional(),
   retimedSrc: z.string().optional(),
+  role: z.string().optional(),
+  itemId: z.string().optional(),
+  event: z.string().optional(),
+  crossfadeSec: z.number().min(0).optional(),
+  gainDb: z.number().optional(),
 });
 
 export const clipKindSchema = z.enum([
@@ -133,7 +138,7 @@ export const clipSchema = z.object({
 
   /** Per-clip compositing properties */
   opacity: z.number().min(0).max(1).default(1),
-  volume: z.number().min(0).max(1).default(1),
+  volume: z.number().min(0).max(2).default(1),
 });
 
 export type Clip = z.infer<typeof clipSchema>;

@@ -12,7 +12,7 @@
  * Used by: editor/src/state/useLayeredTimeline.ts, editor/vite.config.ts, backend/timeline/timeline.ts.
  */
 
-import type { Film, Shot, AudioClip, VideoClip, OverlayClip } from "./schema";
+import type { Film, Shot, AudioClip, VideoClip, OverlayClip, Soundtrack } from "./schema";
 import type {
   LayeredFilm,
   Layer,
@@ -209,9 +209,40 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
     });
   }
 
+  // 1a. Background music sections from soundtrack.
+  const hasSoundtrackSections = Boolean(film.soundtrack?.sections && film.soundtrack.sections.length > 0);
+  if (hasSoundtrackSections && film.soundtrack) {
+    film.soundtrack.sections.forEach((sec, idx) => {
+      const sectionClipId = `clip-music-section-${idx}`;
+      if (!film.audioClips?.some((ac) => ac.id === sectionClipId)) {
+        const fromSec = sec.from;
+        const toSec = sec.to;
+        const offsetSec = sec.offsetSec ?? 0;
+        clips.push({
+          id: sectionClipId,
+          layerId: ensureLayer(CONVERTED_LAYER_IDS.music),
+          position: fromSec,
+          start: offsetSec,
+          end: offsetSec + Math.max(0.01, toSec - fromSec),
+          kind: "audio",
+          payload: {
+            src: sec.src || sec.item,
+            channel: "music",
+            duckUnderVoiceover: sec.duckUnderVoiceover ?? true,
+            role: sec.role,
+            itemId: sec.item,
+            crossfadeSec: sec.crossfadeSec,
+          },
+          volume: Math.min(2, Math.max(0, sec.volume ?? 1)),
+          opacity: 1,
+        });
+      }
+    });
+  }
+
   // Synthesize background music unless already present as the synthetic clip id, preserving additional music clips.
   const hasMusicClip = film.audioClips?.some((ac) => ac.id === MUSIC_CLIP_ID);
-  if (!hasMusicClip && film.music?.src) {
+  if (!hasMusicClip && !hasSoundtrackSections && film.music?.src) {
     const totalDur = film.shots.reduce((acc, s) => acc + (s.dur || 3), 0);
     clips.push({
       id: MUSIC_CLIP_ID,
@@ -230,8 +261,35 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
     });
   }
 
-  // Synthesize summary sfx unless already present by id in audioClips.
-  if (film.sfx && film.sfx.length > 0) {
+  // 1b. Sound effects from soundtrack.
+  const hasSoundtrackSfx = Boolean(film.soundtrack?.sfx && film.soundtrack.sfx.length > 0);
+  if (hasSoundtrackSfx && film.soundtrack) {
+    film.soundtrack.sfx.forEach((sfx, idx) => {
+      const sfxId = `clip-soundtrack-sfx-${idx}`;
+      if (!film.audioClips?.some((ac) => ac.id === sfxId)) {
+        clips.push({
+          id: sfxId,
+          layerId: ensureLayer(CONVERTED_LAYER_IDS.sfx),
+          position: sfx.timeSec,
+          start: 0,
+          end: SFX_CLIP_DURATION,
+          kind: "audio",
+          payload: {
+            src: sfx.src || sfx.item,
+            channel: "sfx",
+            event: sfx.event,
+            itemId: sfx.item,
+            gainDb: sfx.gainDb,
+          },
+          volume: Math.min(2, Math.max(0, sfx.volume ?? 1)),
+          opacity: 1,
+        });
+      }
+    });
+  }
+
+  // Synthesize summary sfx unless already present by id in audioClips or soundtrack.
+  if (!hasSoundtrackSfx && film.sfx && film.sfx.length > 0) {
     film.sfx.forEach((sfx, idx) => {
       const sfxId = `clip-sfx-${idx}`;
       if (!film.audioClips?.some((ac) => ac.id === sfxId)) {
@@ -385,6 +443,16 @@ function isPlainSfx(clip: Clip): boolean {
   return /^clip-sfx-\d+$/.test(clip.id) && clip.start === 0 && clip.end === SFX_CLIP_DURATION;
 }
 
+// True when an audio clip represents a synthesized soundtrack section.
+function isSoundtrackSectionClip(clip: Clip): boolean {
+  return /^clip-music-section-\d+$/.test(clip.id);
+}
+
+// True when an audio clip represents a synthesized soundtrack sfx cue.
+function isSoundtrackSfxClip(clip: Clip): boolean {
+  return /^clip-soundtrack-sfx-\d+$/.test(clip.id);
+}
+
 /** True when a lane list is still exactly the derived default set, ignoring lane order. */
 function isDefaultLayerSet(layers: Layer[]): boolean {
   const defaults = defaultTimelineLayers();
@@ -464,7 +532,7 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
 
   // Only clips that the summary fields cannot fully describe need an explicit audioClips entry.
   const explicitClips = audioClipsList.filter(
-    (c) => !(isPlainSpine(c) || isPlainMusic(c) || isPlainSfx(c)),
+    (c) => !(isPlainSpine(c) || isPlainMusic(c) || isPlainSfx(c) || isSoundtrackSectionClip(c) || isSoundtrackSfxClip(c)),
   );
 
   const audioClips: AudioClip[] | undefined =
@@ -557,6 +625,48 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
       }))
     : undefined;
 
+  const soundtrack: Soundtrack | undefined = base?.soundtrack
+    ? {
+        ...base.soundtrack,
+        sections: musicClips.filter(isSoundtrackSectionClip).map((c) => {
+          const p = c.payload as AudioPayload | undefined;
+          const dur = c.end - c.start;
+          const itemIdentity = p?.itemId || p?.src || c.id;
+          const origSec = base.soundtrack?.sections.find(
+            (section) => section.item === itemIdentity || section.src === itemIdentity,
+          );
+          return {
+            role: p?.role || origSec?.role || "explain",
+            item: itemIdentity,
+            sha256: origSec?.sha256,
+            from: c.position,
+            to: c.position + dur,
+            offsetSec: c.start,
+            crossfadeSec: p?.crossfadeSec ?? origSec?.crossfadeSec ?? 0,
+            src: p?.src,
+            volume: c.volume ?? 1,
+            duckUnderVoiceover: p?.duckUnderVoiceover ?? origSec?.duckUnderVoiceover ?? true,
+          };
+        }),
+        sfx: sfxClips.filter(isSoundtrackSfxClip).map((c) => {
+          const p = c.payload as AudioPayload | undefined;
+          const itemIdentity = p?.itemId || p?.src || c.id;
+          const origSfx = base.soundtrack?.sfx.find(
+            (effect) => effect.item === itemIdentity || effect.src === itemIdentity,
+          );
+          return {
+            item: itemIdentity,
+            sha256: origSfx?.sha256,
+            timeSec: c.position,
+            gainDb: p?.gainDb ?? origSfx?.gainDb ?? 0,
+            event: p?.event || origSfx?.event,
+            src: p?.src,
+            volume: c.volume ?? 1,
+          };
+        }),
+      }
+    : undefined;
+
   return {
     ...(base ?? {}),
     id: layeredFilm.id,
@@ -577,5 +687,6 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
     ...(overlayClips ? { overlayClips } : { overlayClips: undefined }),
     ...(music ? { music } : {}),
     ...(sfx ? { sfx } : {}),
+    ...(soundtrack ? { soundtrack } : {}),
   };
 }
