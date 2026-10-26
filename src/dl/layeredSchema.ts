@@ -138,7 +138,7 @@ export const clipSchema = z.object({
 
   /** Per-clip compositing properties */
   opacity: z.number().min(0).max(1).default(1),
-  volume: z.number().min(0).max(1).default(1),
+  volume: z.number().min(0).max(2).default(1),
 });
 
 export type Clip = z.infer<typeof clipSchema>;
