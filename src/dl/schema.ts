@@ -518,6 +518,8 @@ export const soundtrackSectionSchema = z.object({
   crossfadeSec: z.number().min(0).default(0),
   /** Optional source file path for legacy or direct file media playback. */
   src: z.string().optional(),
+  /** Backend-probed source channels so mono-to-stereo playback preserves measured loudness. */
+  sourceChannels: z.number().int().min(1).max(32).optional(),
   /** Volume multiplier gain (default 1). */
   volume: z.number().min(0).max(2).default(1).optional(),
   /** Whether this section ducks under voiceover speech (default true). */
@@ -584,6 +586,10 @@ export const soundtrackSchema = z.object({
   sections: z.array(soundtrackSectionSchema).default([]),
   /** Measured speech activity intervals for Remotion sidechain ducking. */
   speech: z.array(speechIntervalSchema).default([]),
+  /** Backend fingerprint of narration bytes and edits whose RMS intervals are recorded above. */
+  speechSource: z.string().optional(),
+  /** Narration sample peak after stereo upmix, used to keep effect true peaks below the voice. */
+  narrationPeakDb: z.number().optional(),
   /** Mix levels, ducking depths, and target loudness settings. */
   mix: soundtrackMixSchema.default(soundtrackMixDefault),
   /** Sound effects tied to visual events on the timeline. */
@@ -612,6 +618,8 @@ export function normalizeFilmSoundtrack(film: {
       library: film.soundtrack.library,
       sections: film.soundtrack.sections,
       speech: rawSpeech,
+      speechSource: film.soundtrack.speechSource,
+      narrationPeakDb: film.soundtrack.narrationPeakDb,
       mix: {
         targetLufs: film.soundtrack.mix?.targetLufs ?? -16,
         duckDb: film.soundtrack.mix?.duckDb ?? -18,
@@ -658,6 +666,8 @@ export function normalizeFilmSoundtrack(film: {
     library: film.soundtrack?.library,
     sections: sections.length > 0 ? sections : (film.soundtrack?.sections ?? []),
     speech: rawSpeech,
+    speechSource: film.soundtrack?.speechSource,
+    narrationPeakDb: film.soundtrack?.narrationPeakDb,
     mix: {
       targetLufs: film.soundtrack?.mix?.targetLufs ?? -16,
       duckDb: film.soundtrack?.mix?.duckDb ?? -18,

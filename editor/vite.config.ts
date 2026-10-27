@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { prepareSoundtrack } from '../backend/soundtrack.ts';
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -100,7 +101,7 @@ const studioFilmWrites = new Map<string, string>();
 // and the generated src/dl/films/<id>.ts module (read by Remotion's CLI render/activeFilm
 // bundle), so the two never drift the way they did when B-roll auto-wiring only touched one.
 function writeFilm(filmId: string, incoming: Film, options: { owner: boolean; agentEdit?: boolean } = { owner: false }): void {
-  const film = filmSchema.parse(carryCaptionPlacement(readFilm(filmId), incoming, options));
+  const film = prepareSoundtrack(filmSchema.parse(carryCaptionPlacement(readFilm(filmId), incoming, options)));
   const pkgDir = path.join(videosDir, filmId);
   if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
   const contents = JSON.stringify(film, null, 2);

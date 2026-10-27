@@ -639,6 +639,7 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
             role: p?.role || origSec?.role || "explain",
             item: itemIdentity,
             sha256: origSec?.sha256,
+            sourceChannels: origSec?.sourceChannels,
             from: c.position,
             to: c.position + dur,
             offsetSec: c.start,
