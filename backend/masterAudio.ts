@@ -37,7 +37,7 @@ export function masterAudio(file: string, onLog: (message: string) => void = con
     const limited = before.truePeakDb + gainDb > -1;
     const temporary = path.join(path.dirname(file), `.${path.basename(file)}.master-${process.pid}.mp4`);
     try {
-      const filter = `volume=${gainDb}dB${limited ? `,aresample=192000,alimiter=limit=${10 ** (-1.5 / 20)}:level=false:latency=true,aresample=48000` : ""}`;
+      const filter = `volume=${gainDb}dB${limited ? `,aresample=192000,alimiter=limit=${10 ** (-1.5 / 20)}:release=5:level=false:latency=true,aresample=48000` : ""}`;
       const encoded = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-map", "0:v:0", "-map", "0:a:0",
         "-map_metadata", "0", "-c:v", "copy", "-af", filter, "-c:a", "aac", "-b:a", "320k", "-movflags", "+faststart", temporary],
       { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
