@@ -17,6 +17,7 @@ import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { getInsetRegion, INSET_FORMAT_FRAMES } from "../../src/dl/fullScreenHeroLayout";
 import type { LookPlan } from "../lookPlan/schema";
+import { loadAudioLibrary } from "../audioLibrary/library";
 
 
 // Writes the inset region of each format in scene units, the coordinates artwork is placed in.
@@ -54,6 +55,16 @@ export const EXAMPLE_SPEC = {
     { id: "lamp-hold", at: "how-it-works", center: [900, 1100], zoom: 1.25, focus: "lamp" },
     { id: "payoff", at: "end", center: [960, 960], zoom: 1 },
   ],
+  soundtrack: {
+    sections: [
+      { role: "hook", item: "mk-556", start: "intro", end: "how-it-works" },
+      { role: "payoff", item: "mk-1023", start: "how-it-works", end: "end" },
+    ],
+    sfx: [
+      { item: "whoosh-soft", at: "how-it-works" },
+      { item: "card-arrive", at: "end" },
+    ],
+  },
 };
 
 // Formats seconds as m:ss.
@@ -122,8 +133,11 @@ ${JSON.stringify(EXAMPLE_SPEC, null, 2)}
 - \`clips[]\`: \`property\` is one of translateX, translateY, scale, scaleX, scaleY, rotate, opacity, drawOn. \`stagger\` delays each further target by N frames. \`origin\` is [x, y] in the asset's own coordinates.
 - \`camera\` (optional, at least two poses): \`at\` is a cue (same grammar as clips), \`center\` [x, y] in the scene, \`zoom\` (0.5 to 4), and optional \`focus\` naming the focused cast id from look.json. A cue on the film's end lands on its last frame. Poses must be in time order and at least one frame apart; an \`id\` names a pose in build errors.
 - \`shots\` (optional): \`{ "<shot id>": { "blocks": [...], "stage": "frame" } }\` replaces the cards drawn over the scene for that shot (film schema blocks, at most 4). Text-only blocks default to stage "frame" (scene stays visible), no blocks to "none". Use it to remove a chart the narration does not support or to write your own card.
+- \`soundtrack\` (optional): sections and sound effects chosen from the curated library and timed with cues.
 
 ${performanceSection}
+
+${renderSoundSection()}
 
 ## What the film says
 
@@ -166,6 +180,57 @@ Worked example from this look:
 ${fence}json
 ${JSON.stringify(example, null, 2)}
 ${fence}`;
+}
+
+// Renders the Sound section of the design brief detailing curated audio library items and mixing rules.
+function renderSoundSection(): string {
+  const library = loadAudioLibrary();
+  const musicRows = library.items
+    .filter((item) => item.kind === "music")
+    .map(
+      (item) =>
+        `| \`${item.id}\` | ${item.title} / ${item.artist} | ${item.roles.join(", ")} | ${item.moods.join(", ")} | ${item.energy}/5 | ${clock(item.durationSec)} | ${item.loudness.integratedLufs.toFixed(1)} / ${item.loudness.truePeakDb > 0 ? "+" : ""}${item.loudness.truePeakDb.toFixed(1)} / ${item.loudness.lra.toFixed(1)} |`,
+    )
+    .join("\n");
+
+  const sfxRows = library.items
+    .filter((item) => item.kind === "sfx")
+    .map(
+      (item) =>
+        `| \`${item.id}\` | ${item.title} (${item.source}) | ${item.roles.join(", ")} | ${item.durationSec.toFixed(2)}s | ${item.loudness.truePeakDb > 0 ? "+" : ""}${item.loudness.truePeakDb.toFixed(1)} |`,
+    )
+    .join("\n");
+
+  return `## Sound (Soundtrack & Audio Library)
+
+Choose music tracks and sound effects ONLY from the curated library tables below. Never search the web or name external audio assets. All items are pre-cleared for monetized use without attribution (Decision D2).
+
+### Soundtrack Rules
+
+- **Tracks per story act**: One track per story act (3 to 4 tracks for a long cut, changing only at chapter cuts; 1 track, at most 2, for a reel) (Decision D3).
+- **Cue grammar**: Author sections and effects with cues (e.g. \`"intro"\`, \`"intro@end"\`, \`'intro:"word"'\`, \`"end"\`).
+- **Every effect has a picture**: Every sound effect must land within +/- 2 frames of a real visual event (shot boundary, chapter cut, scene clip start, camera pose arrival, counter start or end, text card appearing, end card).
+- **Density caps**:
+  - Long cut: on average at most one effect per 8 seconds.
+  - Reel cut: on average at most one effect per 5 seconds.
+  - Never two effects within 0.5 seconds, except a tick run (\`"tick"\` on consecutive frames/steps).
+  - At most 4 effect families per film.
+- **Section limits & back-timing**: A section must not exceed its track length (no silent looping). The final section (outro) is automatically back-timed so its musical ending lands on the last frame of the end card.
+- **High-LRA tracks**: Tracks with LRA above 10 (e.g. \`mk-543\`) are allowed only in payoff or outro sections, never under dense explanation.
+- **Crossfades**: Equal-power crossfades of 3 seconds on the long cut and 1.5 seconds on the reel, centered on chapter cuts.
+
+### Curated Music Tracks
+
+| ID | Title / Artist | Roles | Moods | Energy | Length | LUFS / TP / LRA |
+|---|---|---|---|---|---|---|
+${musicRows}
+
+### Curated Sound Effects
+
+| ID | Title / Source | Roles | Length | Peak dBTP |
+|---|---|---|---|---|
+${sfxRows}
+`;
 }
 
 // Writes design/BRIEF.md for a film and returns its path.

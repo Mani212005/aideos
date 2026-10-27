@@ -28,6 +28,8 @@ import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { formatIssues } from "../../src/dl/characters/validate";
 import type { CharacterSpec } from "../../src/dl/characters/schema";
 import { loadCharacter } from "../characters/library";
+import { resolveSoundtrack } from "./soundtrack";
+import { writeReelFilm } from "../reelCut/store";
 
 
 /** The outcome of one build, as written to design/status.json. */
@@ -315,6 +317,30 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   writeFilm(filmId, endCardVoice ? { ...builtFilm, endCardVoice } as typeof builtFilm : builtFilm);
   // The browser bundle reads artwork through the generated source map, so refresh it.
   buildSvgSources();
+
+  // Write description credits for public/YouTube upload
+  const credits = builtFilm.soundtrack?.credits ?? [];
+  const creditsText = Array.isArray(credits) ? credits.join("\n") : String(credits);
+  const rendersDir = path.join(pkg, "renders");
+  fs.mkdirSync(rendersDir, { recursive: true });
+  fs.writeFileSync(path.join(rendersDir, "description-credits.txt"), creditsText ? `${creditsText}\n` : "");
+
+  // If a derived reel film exists, resolve the soundtrack separately for reel format
+  const reelFile = path.join(pkg, "reel/film.json");
+  if (spec.soundtrack && fs.existsSync(reelFile)) {
+    try {
+      const reelFilm = parseFilm(JSON.parse(fs.readFileSync(reelFile, "utf8")));
+      const isCut = reelFilm.voiceover?.src === `videos/${filmId}/reel/voiceover.wav`;
+      const reelWordsFile = path.join(pkg, isCut ? "reel/voiceover_words.json" : "voiceover_words.json");
+      const reelWords: TimedWord[] = fs.existsSync(reelWordsFile) ? (JSON.parse(fs.readFileSync(reelWordsFile, "utf8")).words ?? []) : [];
+      const reelCues = createCues(narrationTimingForFilm(reelFilm, reelWords), reelFilm.fps);
+      const reelSoundtrack = resolveSoundtrack(spec.soundtrack, reelCues, reelFilm, "reel");
+      writeReelFilm(filmId, { ...reelFilm, soundtrack: reelSoundtrack });
+    } catch {
+      // Don't fail the long design build if reel is mid-edit
+    }
+  }
+
   return record(filmId, { state: "passed", source, at, errors: [], findings: [...lookFindings, ...report.findings] });
 }
 

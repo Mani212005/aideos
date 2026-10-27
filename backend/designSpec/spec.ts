@@ -5,7 +5,7 @@
  * timed with a cue that names a shot or a spoken phrase, and `aideos design build` resolves the cues
  * against the measured narration, holds the continuity rules and runs the design check before anything ships.
  * Inputs and outputs: TypeScript definitions -> types and schemas for DesignSpec and visual cues.
- * Used by: backend/designSpec/designer.ts, backend/designSpec/compile.ts.
+ * Used by: backend/designSpec/designer.ts, backend/designSpec/compile.ts, backend/designSpec/soundtrack.ts.
  *
  * Cue grammar (a string, or a frame number):
  *   "jupiter"                shot start          "jupiter@0.4"      40% through the shot
@@ -71,6 +71,31 @@ export const specCameraSchema = z.object({
   easing: z.enum(["linear", "expoOut", "expoIn", "expoInOut", "hold"]).optional(),
 });
 
+/** One story act section of background music, timed with cues. */
+export const specSoundtrackSectionSchema = z.object({
+  role: z.enum(["hook", "explain", "tension", "payoff", "outro"]).default("explain"),
+  item: z.string().min(1),
+  start: cue,
+  end: cue,
+  offsetSec: z.number().min(0).optional(),
+  volume: z.number().min(0).max(2).optional(),
+});
+
+/** One sound effect timed to land on an on-screen visual event. */
+export const specSoundtrackSfxSchema = z.object({
+  item: z.string().min(1),
+  at: cue,
+  gainDb: z.number().optional(),
+  event: z.string().optional(),
+  volume: z.number().min(0).max(2).optional(),
+});
+
+/** Soundtrack definition in design.json: sections and sound effects. */
+export const specSoundtrackSchema = z.object({
+  sections: z.array(specSoundtrackSectionSchema).default([]),
+  sfx: z.array(specSoundtrackSfxSchema).default([]),
+});
+
 /** The whole design of one film. */
 const legacyDesignSchema = z.object({
   brief: z.object({
@@ -101,6 +126,8 @@ const legacyDesignSchema = z.object({
       }),
     )
     .optional(),
+  /** Optional soundtrack block choosing music sections and visual sound effects. */
+  soundtrack: specSoundtrackSchema.optional(),
 });
 
 const stagePlacement = { position: vec2, unitsToStage: z.number().positive().max(500), depth: z.number().default(0), treatment: stageTreatmentSchema.optional() };
@@ -125,3 +152,6 @@ export type DesignSpec = z.infer<typeof designSpecSchema>;
 export type LegacyDesignSpec = z.infer<typeof legacyDesignSchema>;
 export type SpecClip = z.infer<typeof specClipSchema>;
 export type SpecCamera = z.infer<typeof specCameraSchema>;
+export type SpecSoundtrackSection = z.infer<typeof specSoundtrackSectionSchema>;
+export type SpecSoundtrackSfx = z.infer<typeof specSoundtrackSfxSchema>;
+export type SpecSoundtrack = z.infer<typeof specSoundtrackSchema>;

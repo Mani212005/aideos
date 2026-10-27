@@ -70,6 +70,14 @@ To add a manually downloaded YouTube Audio Library track, first add its complete
 
 The mixer behavior is covered by the D6 golden soundtrack check in `backend/soundtrack.golden.test.ts`.
 
+### Design soundtrack authoring
+
+The optional `soundtrack` block in `design/design.json` authors `sections` of library music and `sfx` effects. Each section has a role, library item ID, and cue-based `start` and `end`; effects have an item ID and cue-based `at`. Optional section offsets and volume, plus effect gain, volume, and event labels, are supported by the design schema. The design brief's Sound section is generated from the curated audio library and gives agents the available items and authoring rules.
+
+`aideos design build` resolves those cues against measured narration. It writes the long soundtrack to `film.json`; when a soundtrack is configured and a derived reel exists, it resolves the same authored cues against reel timing and writes the reel soundtrack separately. The resolver applies 3-second long and 1.5-second reel crossfades, back-times a final/outro section to the delivery end, binds effects to visual events, and records the library manifest hash and credits. Build output includes `renders/description-credits.txt` for the video description.
+
+`aideos design check` enforces the D6 soundtrack rules: library item existence and no-credit licensing; music sections cover the full delivery without gaps or overlaps and fit their source tracks; section transitions land only at chapter cuts; crossfades match the format; effects match a visual event within +/- 2 frames; effect density is capped at one per 8 seconds for long or one per 5 seconds for reel, with no non-tick pair closer than 0.5 seconds and at most four effect families; reel soundtracks use at most two tracks; and tracks with LRA above 10 are restricted to payoff or outro roles. Regression coverage is in `backend/designCheck/designCheck.test.ts` under D6 cases.
+
 ## 3. Storage and Cache Layout
 
 - **Manifest**: `audio/library.json` (schema `aideos.audio-library/1`) holds IDs, metadata, source URLs, licenses, SHA256 hashes, duration, and measured loudness (integrated LUFS, true peak dB, and LRA).

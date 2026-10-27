@@ -22,6 +22,7 @@ import { DOT_RESOURCE_HASH, STAGE_RESOURCE_HASH } from "../../src/dl/scene/rigs/
 import { validateStage } from "../../src/dl/scene/validateStage";
 import { receiveSchema } from "../../src/dl/scene/stageContract";
 import { captionWordsToVtt } from "../../src/dl/captionsParser";
+import { resolveSoundtrack } from "./soundtrack";
 
 /** One narrated word with its offsets in seconds, as voiceover_words.json stores it. */
 export interface TimedWord {
@@ -113,7 +114,7 @@ export function compileDesign(
   spec: DesignSpec,
   words: TimedWord[],
   source: DesignSource,
-  options: { characters?: Readonly<Record<string, CharacterSpec>>; collapsed?: ReadonlyMap<string, number> } = {},
+  options: { characters?: Readonly<Record<string, CharacterSpec>>; collapsed?: ReadonlyMap<string, number>; format?: "long" | "reel" } = {},
 ): { film?: Film; errors: string[]; collapsedClips?: Array<{ asset: string; clipId: string; shotId: string; frame: number }> } {
   const errors: string[] = [];
   const collapsedClips: Array<{ asset: string; clipId: string; shotId: string; frame: number }> = [];
@@ -237,6 +238,17 @@ export function compileDesign(
     if (errors.length) return { errors };
   }
 
+  let soundtrack = film.soundtrack;
+  if (spec.soundtrack) {
+    try {
+      soundtrack = resolveSoundtrack(spec.soundtrack, cues, film, options.format ?? "long");
+    } catch (err) {
+      errors.push(`soundtrack: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  if (errors.length) return { errors };
+
   const shots = film.shots.map((shot) => {
     const override = spec.shots?.[shot.id];
     if (!override) return shot;
@@ -252,6 +264,7 @@ export function compileDesign(
       ...film,
       ...("performances" in spec && film.captions !== "off" ? { captions: captionWordsToVtt(words.map((w) => ({ text: w.punctuated_word ?? w.word, startFrame: Math.round(w.start * fps), endFrame: Math.round(w.end * fps) })), fps, 1) } : {}),
       ...(spec.accent ? { accent: spec.accent } : {}),
+      ...(soundtrack ? { soundtrack } : {}),
       scene,
       shots,
       design: { source, brief: spec.brief },

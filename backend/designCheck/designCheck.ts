@@ -36,6 +36,8 @@ import { createCues, FPS, CAPTION_SAFE_SQUARE } from "../sceneKit";
 import { narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
 import { resolveCue } from "../designSpec/cues";
 import { checkThreeStage } from "./threeStage";
+import { checkSoundtrack } from "./soundtrack";
+import type { AudioLibrary } from "../audioLibrary/schema";
 
 /** The standard layer rules a finding can belong to. */
 export type DesignRule =
@@ -54,6 +56,7 @@ export type DesignRule =
   | "inset"
   | "carry-over"
   | "occlusion"
+  | "soundtrack"
   | "look";
 
 /** One problem found in a film's design. Errors block shipping; warnings are worth a look. */
@@ -78,6 +81,7 @@ export interface DesignCheckContext {
   collapsedClips?: Array<{ asset: string; clipId: string; shotId: string; frame: number }>;
   lookPlan?: LookPlan;
   cameraTargets?: Array<{ frame: number; focus?: string; authoredFocus?: string }>;
+  library?: AudioLibrary;
 }
 
 /** The locked design-system palette (src/dl/README.md); a film may add its own accent. */
@@ -549,6 +553,7 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
   }
   checkAudioLock(film, findings);
   checkHonestData(film, findings);
+  checkSoundtrack(film, findings, context);
 
   return {
     filmId: film.id,

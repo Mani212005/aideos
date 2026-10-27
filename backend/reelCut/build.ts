@@ -14,6 +14,7 @@ import { checkFilmDesign, type DesignFinding } from "../designCheck/designCheck"
 import { checkDesignAgainstLook, resolveDesignCharacters } from "../designSpec/build";
 import { compileDesign, narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
 import { resolveCue } from "../designSpec/cues";
+import { resolveSoundtrack } from "../designSpec/soundtrack";
 import { designSpecSchema, type DesignSpec } from "../designSpec/spec";
 import { lookPlanSchema, type LookPlan } from "../lookPlan/schema";
 import { createCues } from "../sceneKit/timing";
@@ -76,7 +77,7 @@ export function compileReel(input: {
     if (!spec) return { errors: ["scene reel needs the shared design/design.json to re-resolve its narration cues"], findings: [] };
     const resolved = resolveDesignCharacters(spec, pkg);
     if (resolved.errors.length) return { errors: resolved.errors, findings: [] };
-    const compiled = compileDesign(reel, spec, words, long.design?.source === "server-model" ? "server-model" : "agent", { characters: resolved.characters, collapsed });
+    const compiled = compileDesign(reel, spec, words, long.design?.source === "server-model" ? "server-model" : "agent", { characters: resolved.characters, collapsed, format: "reel" });
     if (!compiled.film) return { errors: compiled.errors, findings: [] };
     reel = compiled.film;
     collapsedClips = compiled.collapsedClips ?? [];
@@ -89,6 +90,9 @@ export function compileReel(input: {
       const errors = checkDesignAgainstLook(reel, spec, words, pkg, look, { collapsed });
       if (errors.length) return { errors, findings: [] };
     }
+  } else if (spec?.soundtrack) {
+    const cues = createCues(narrationTimingForFilm(reel, words), reel.fps, { collapsed });
+    reel = { ...reel, soundtrack: resolveSoundtrack(spec.soundtrack, cues, reel, "reel") };
   }
   const cues = createCues(narrationTimingForFilm(reel, words), reel.fps, { collapsed });
   const authored = spec?.camera?.map((pose) => ({ frame: resolveCue(pose.at, cues), focus: pose.focus })) ?? [];
@@ -114,7 +118,22 @@ export async function buildReel(slug: string, options: { synthesize?: LineSynthe
   const status: ReelBuildStatus = { state: "failed", mode, fingerprint: reelSourceFingerprint(slug), at: new Date().toISOString(), errors: [], findings: [] };
   try {
     if (mode === "identity") {
-      const film = writeReelFilm(slug, long);
+      let reelFilm = long;
+      const specFile = path.join(pkg, "design/design.json");
+      if (fs.existsSync(specFile)) {
+        try {
+          const spec = designSpecSchema.parse(JSON.parse(fs.readFileSync(specFile, "utf8")));
+          if (spec.soundtrack) {
+            const wordsFile = path.join(pkg, "voiceover_words.json");
+            const words: TimedWord[] = fs.existsSync(wordsFile) ? (JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? []) : [];
+            const cues = createCues(narrationTimingForFilm(long, words), long.fps);
+            reelFilm = { ...long, soundtrack: resolveSoundtrack(spec.soundtrack, cues, long, "reel") };
+          }
+        } catch {
+          // Keep long soundtrack fallback on read/parse error
+        }
+      }
+      const film = writeReelFilm(slug, reelFilm);
       recordReelStatus(slug, { ...status, state: "passed", measuredSec: delivered.totalFrames / long.fps });
       return film;
     }
