@@ -6,6 +6,8 @@
 
 import { z } from 'zod';
 import { prepareSoundtrack } from '../backend/soundtrack.ts';
+import { persistStudioSoundtrack, rebuildStudioSoundtrack, studioSoundtrackRequestSchema } from '../backend/designSpec/soundtrackStudio.ts';
+import { fetchAudioItem, getAudioItemFilename, loadAudioLibrary, verifyAudioItem } from '../backend/audioLibrary/library.ts';
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -102,6 +104,7 @@ const studioFilmWrites = new Map<string, string>();
 // bundle), so the two never drift the way they did when B-roll auto-wiring only touched one.
 function writeFilm(filmId: string, incoming: Film, options: { owner: boolean; agentEdit?: boolean } = { owner: false }): void {
   const film = prepareSoundtrack(filmSchema.parse(carryCaptionPlacement(readFilm(filmId), incoming, options)));
+  if (options.owner) persistStudioSoundtrack(film);
   const pkgDir = path.join(videosDir, filmId);
   if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
   const contents = JSON.stringify(film, null, 2);
@@ -2346,6 +2349,36 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             }).catch(err => sendJson(res, 500, { error: String(err) }));
             return;
           }
+        }
+
+        // Previews use the same verified shared cache as the render, never the remote source URL.
+        const audioPreviewRoute = url.match(/^\/api\/audio-library\/([A-Za-z0-9._-]+)\/preview$/);
+        if (audioPreviewRoute) {
+          if (req.method !== 'POST') return sendJson(res, 405, { error: 'Use POST to prepare a track preview.' });
+          void (async () => {
+            const item = loadAudioLibrary().items.find((candidate) => candidate.id === audioPreviewRoute[1]);
+            if (!item || item.licence.attribution !== null) return sendJson(res, 400, { error: 'Choose a no-credit library item.' });
+            await fetchAudioItem(item);
+            const result = verifyAudioItem(item);
+            if (result.status !== 'valid') return sendJson(res, 400, { error: result.message });
+            sendJson(res, 200, { src: `/videos/.audio-library/${getAudioItemFilename(item)}` });
+          })().catch((error: unknown) => sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) }));
+          return;
+        }
+
+        // Propose a checked sound-only rebuild; the normal owner commit/autosave persists it.
+        const soundtrackRoute = url.match(/^\/api\/soundtrack\/([a-z0-9-]+)$/);
+        if (soundtrackRoute) {
+          if (req.method !== 'POST') return sendJson(res, 405, { error: 'Use POST to edit the soundtrack.' });
+          void readBody(req).then(async (body: unknown) => {
+            const request = studioSoundtrackRequestSchema.safeParse(body);
+            if (!request.success) throw new Error(request.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('\n'));
+            const { film, edit } = request.data;
+            if (film.id !== soundtrackRoute[1]) throw new Error('Soundtrack film does not match the open project.');
+            const rebuilt = await rebuildStudioSoundtrack(film, edit);
+            sendJson(res, 200, { film: rebuilt });
+          }).catch((error: unknown) => sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) }));
+          return;
         }
 
         // Handle /api/design/:id/approve-look (Look stage: captain approval recorded to look.json)

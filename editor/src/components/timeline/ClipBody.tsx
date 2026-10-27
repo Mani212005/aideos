@@ -52,6 +52,8 @@ export interface ClipBodyProps {
   ghost?: boolean;
   /** Audio source to draw a waveform from, when this clip plays audio. */
   waveformSrc?: string;
+  /** Alternating label rows keep nearby event markers readable without moving their time anchors. */
+  eventRow?: number;
   onPointerDown?: (e: React.PointerEvent, clip: Clip, mode: ClipPointerMode) => void;
   onDoubleClick?: (clip: Clip) => void;
 }
@@ -70,6 +72,7 @@ export function ClipBody({
   dimmed = false,
   ghost = false,
   waveformSrc,
+  eventRow = 0,
   onPointerDown,
   onDoubleClick,
 }: ClipBodyProps) {
@@ -77,6 +80,8 @@ export function ClipBody({
   const showLabel = width >= LABEL_MIN_WIDTH_PX;
   const bodyHeight = Math.max(18, laneHeight - 8);
   const handleWidth = Math.min(HANDLE_WIDTH_PX, Math.max(4, width / 3));
+  const eventMarker = clip.kind === "audio" && "channel" in clip.payload &&
+    clip.payload.channel === "sfx" && Boolean(clip.payload.event);
 
   const { peaks, durationSec: sourceDuration, status } = useAudioPeaks(waveformSrc);
   const waveformPeaks =
@@ -95,7 +100,7 @@ export function ClipBody({
       className={cn(
         "absolute top-1 select-none border-ink",
         width < HAIRLINE_WIDTH_PX ? "border-r" : "border-2",
-        KIND_FILL[clip.kind],
+        eventMarker ? "bg-paper-2" : KIND_FILL[clip.kind],
         ghost
           ? "pointer-events-none z-40 border-dashed opacity-90 shadow-nb"
           : locked
@@ -114,7 +119,10 @@ export function ClipBody({
         </div>
       ) : null}
 
-      {showLabel ? (
+      {eventMarker ? <div className="pointer-events-none absolute left-1 flex items-center gap-2" style={{ top: 2 + eventRow * 16 }}>
+        <span className="h-2 w-2 shrink-0 rotate-45 border border-ink bg-primary" />
+        <span className="max-w-40 truncate border border-ink bg-paper px-1 py-0.5 font-sans text-[10px] font-bold leading-none">{label}</span>
+      </div> : showLabel ? (
         <div className="pointer-events-none relative flex h-full items-center justify-between gap-1 px-1.5">
           <span className="flex min-w-0 items-center gap-1">
             {clip.linkedClipId ? <Link2 className="h-3 w-3 shrink-0 text-ink" /> : null}

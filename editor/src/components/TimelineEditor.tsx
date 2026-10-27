@@ -11,6 +11,7 @@
  * Used by: editor/src/screens/EditStage.tsx.
  */
 
+import library from "../../../audio/library.json";
 import React, {
   useCallback,
   useEffect,
@@ -120,6 +121,7 @@ export interface TimelineEditorProps {
   onUndo: () => void;
   onRedo: () => void;
   onReject: (message: string) => void;
+  onMusicSection?: (index: number) => void;
 }
 
 /** Short human label for a clip, used inside its body and in the inspector. */
@@ -128,7 +130,11 @@ export function clipLabel(clip: Clip): string {
     case "animation":
       return (clip.payload as AnimationPayload).shotId ?? clip.id;
     case "audio": {
-      const src = (clip.payload as AudioPayload).src ?? "";
+      const payload = clip.payload as AudioPayload;
+      const title = library.items.find((item) => item.id === payload.itemId)?.title ?? payload.itemId;
+      if (payload.channel === "music" && payload.role && title) return `${payload.role}: ${title}`;
+      if (payload.channel === "sfx" && payload.event) return payload.event;
+      const src = payload.src ?? "";
       return src.split("/").pop() || clip.id;
     }
     case "video": {
@@ -174,6 +180,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   onUndo,
   onRedo,
   onReject,
+  onMusicSection,
 }) => {
   const fps = film.fps || 30;
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -206,6 +213,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
 
   const primarySelected =
     selectedClipIds.length > 0 ? clipById.get(selectedClipIds[0]) : undefined;
+  const selectedMusicSection = primarySelected ? /^clip-music-section-(\d+)/.exec(primarySelected.id) : null;
 
   // Track the horizontal viewport so only clips in view are rendered.
   useEffect(() => {
@@ -990,6 +998,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         <ToolbarDivider />
 
         <ToolbarGroup>
+          {selectedMusicSection && onMusicSection ? <Button size="sm" onClick={() => onMusicSection(Number(selectedMusicSection[1]))}>Swap track</Button> : null}
           <Button
             size="sm"
             onClick={splitAtPlayhead}
@@ -1174,7 +1183,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                     )}
                   >
                     {clips.some((clip) => clip.kind === "subtitle") ? film.shots.filter((shot) => shot.captionPlacement).map((shot) => <span key={shot.id} aria-label={`Caption position exception: ${shot.id}`} title={`Caption position exception: ${shot.id}`} className="pointer-events-none absolute top-0 z-20 h-2 w-2 rotate-45 border border-ink bg-primary" style={{ left: (shot.position ?? shot.startSec ?? film.shots.slice(0, film.shots.indexOf(shot)).reduce((sum, item) => sum + item.dur, 0)) * pxPerSec }} />) : null}
-                    {clips.map((clip) => {
+                    {clips.map((clip, clipIndex) => {
                       const dur = clipDuration(clip);
                       if (
                         clip.position > visibleToSec ||
@@ -1197,10 +1206,13 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                           muted={lane.muted}
                           dimmed={isBeingDragged}
                           waveformSrc={waveformSourceFor(clip)}
+                          eventRow={clipIndex % 2}
                           onPointerDown={handleClipPointerDown}
-                          onDoubleClick={(c) =>
-                            onSeekFrame(Math.round(c.position * fps))
-                          }
+                          onDoubleClick={(c) => {
+                            onSeekFrame(Math.round(c.position * fps));
+                            const music = /^clip-music-section-(\d+)/.exec(c.id);
+                            if (music) onMusicSection?.(Number(music[1]));
+                          }}
                         />
                       );
                     })}
