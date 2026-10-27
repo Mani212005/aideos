@@ -100,6 +100,7 @@ export function ClipInspector({
 
   const lane = api.layered.layers.find((l) => l.id === clip.layerId);
   const duration = clipDuration(clip);
+  const soundtrackClip = /^clip-(?:music-section|soundtrack-sfx)-\d+(?:-[ab][a-z0-9]{4})*$/.test(clip.id);
   const partner = clip.linkedClipId
     ? api.layered.clips.find((c) => c.id === clip.linkedClipId)
     : undefined;
@@ -259,9 +260,9 @@ export function ClipInspector({
         <Button
           size="sm"
           block
-          disabled={readOnly}
+          disabled={readOnly || soundtrackClip}
           onClick={() => api.splitClip(clip.id, clip.position + duration / 2)}
-          title="Cut this clip in half"
+          title={soundtrackClip ? "Soundtrack clips cannot be split; swap the track or move the effect instead." : "Cut this clip in half"}
         >
           <Scissors className="h-3.5 w-3.5" />
           Split in half

@@ -26,6 +26,13 @@ const soundtrackEditSchema = z.discriminatedUnion("kind", [
 export type SoundtrackEdit = z.infer<typeof soundtrackEditSchema>;
 export const studioSoundtrackRequestSchema = z.object({ film: filmSchema, edit: soundtrackEditSchema }).strict();
 
+// Rejects edits to a derived reel, whose soundtrack is rebuilt from the long design cues.
+function assertLongStudioFilm(film: Film): void {
+  if (film.voiceover?.src === `videos/${film.id}/reel/voiceover.wav`) {
+    throw new Error("The reel soundtrack follows the Long film's design. Edit the Long film soundtrack instead.");
+  }
+}
+
 // Reads the existing visual design without creating a replacement for an undesigned film.
 function readStudioDesign(film: Film) {
   const file = path.join(resolvePackageDir(film.id), "design", "design.json");
@@ -68,8 +75,9 @@ function studioSoundtrackSpec(film: Film, previous?: SpecSoundtrack): SpecSoundt
   });
 }
 
-// Saves the soundtrack authoring data with the normal owner save, including Undo and split edits.
+// Saves the soundtrack authoring data with the normal owner save and Undo.
 export function persistStudioSoundtrack(film: Film): void {
+  assertLongStudioFilm(film);
   if (!film.soundtrack?.library && !film.soundtrack?.sections.some((s) => s.sha256) && !film.soundtrack?.sfx.some((s) => s.sha256)) return;
   const file = path.join(resolvePackageDir(film.id), "design", "design.json");
   if (!fs.existsSync(file)) return;
@@ -81,6 +89,7 @@ export function persistStudioSoundtrack(film: Film): void {
 
 // Rebuilds only the sound design so a track swap never resets the owner's visual or timeline edits.
 export async function rebuildStudioSoundtrack(film: Film, edit: SoundtrackEdit): Promise<Film> {
+  assertLongStudioFilm(film);
   const spec = readStudioDesign(film);
   const authored = studioSoundtrackSpec(film, spec.soundtrack);
   const library = loadAudioLibrary();
@@ -100,7 +109,7 @@ export async function rebuildStudioSoundtrack(film: Film, edit: SoundtrackEdit):
     authored.sfx = authored.sfx.map((effect) => ({ ...effect, volume: edit.volume }));
   }
   const cues = studioCues(film);
-  const format = film.id.includes("reel") ? "reel" : "long";
+  const format = "long";
   const rebuilt: Film = { ...film, soundtrack: resolveSoundtrack(authored, cues, film, format) };
   const findings: DesignFinding[] = [];
   checkSoundtrack(rebuilt, findings, { library, formats: [format] });

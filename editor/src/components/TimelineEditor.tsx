@@ -330,6 +330,10 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       e.stopPropagation();
 
       if (tool === "razor") {
+        if (/^clip-(?:music-section|soundtrack-sfx)-\d+(?:-[ab][a-z0-9]{4})*$/.test(clip.id)) {
+          onReject("Soundtrack clips cannot be split; swap the track or move the effect instead.");
+          return;
+        }
         const at = timeFromClientX(e.clientX);
         api.splitClip(clip.id, at);
         return;
@@ -700,6 +704,10 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
 
     if (!target) {
       onReject("Move the playhead inside a clip to split it.");
+      return;
+    }
+    if (/^clip-(?:music-section|soundtrack-sfx)-\d+(?:-[ab][a-z0-9]{4})*$/.test(target.id)) {
+      onReject("Soundtrack clips cannot be split; swap the track or move the effect instead.");
       return;
     }
     api.splitClip(target.id, playheadSec);

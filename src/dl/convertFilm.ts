@@ -446,12 +446,12 @@ function isPlainSfx(clip: Clip): boolean {
 
 // True when an audio clip represents a synthesized soundtrack section.
 function isSoundtrackSectionClip(clip: Clip): boolean {
-  return /^clip-music-section-\d+(?:-[ab][a-z0-9]{4})*$/.test(clip.id);
+  return /^clip-music-section-\d+$/.test(clip.id);
 }
 
 // True when an audio clip represents a synthesized soundtrack sfx cue.
 function isSoundtrackSfxClip(clip: Clip): boolean {
-  return /^clip-soundtrack-sfx-\d+(?:-[ab][a-z0-9]{4})*$/.test(clip.id);
+  return /^clip-soundtrack-sfx-\d+$/.test(clip.id);
 }
 
 /** True when a lane list is still exactly the derived default set, ignoring lane order. */
