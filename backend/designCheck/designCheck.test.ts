@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { deliveryTimeline } from "../../src/dl/delivery";
 import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import { checkFilmDesign, checkFilmDesignById, offPaletteColours, type DesignRule } from "./designCheck";
 
@@ -415,10 +416,12 @@ test("DesignCheck: stage inset is a scene-film device stage, not a card stage", 
 
 // Returns a valid soundtrack for the still-talking reference film.
 function validSoundtrack(): any {
+  const film = stillTalking();
+  const totalSec = deliveryTimeline(film, "long").totalFrames / film.fps;
   return {
     sections: [
       { role: "hook", item: "mk-556", from: 0, to: 72.03, crossfadeSec: 3, offsetSec: 0 },
-      { role: "outro", item: "mk-1023", from: 72.03, to: 155.23, crossfadeSec: 3, offsetSec: 56.48 },
+      { role: "outro", item: "mk-1023", from: 72.03, to: totalSec, crossfadeSec: 3, offsetSec: 0 },
     ],
     sfx: [
       { item: "whoosh-soft", timeSec: 0, gainDb: 0, event: "shot-boundary" },
