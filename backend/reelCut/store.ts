@@ -38,7 +38,7 @@ export function reelSourceFingerprint(slug: string): string {
 
 // Writes only the derived reel manifest and shadow, without mutating the long owner record.
 export function writeReelFilm(slug: string, film: Film): Film {
-  const validated = prepareSoundtrack(parseFilm(film));
+  const validated = parseFilm(prepareSoundtrack(parseFilm(film)));
   if (validated.id !== slug) throw new Error(`reel film id must be ${slug}`);
   const dir = path.join(resolvePackageDir(slug), "reel");
   fs.mkdirSync(dir, { recursive: true });
@@ -58,7 +58,7 @@ export function formatInputs(slug: string, format: DeliveryFormat): { film: stri
   }
   const long = fs.existsSync(longFile) ? parseFilm(JSON.parse(fs.readFileSync(longFile, "utf8"))) : null;
   const identity = long && deliveryTimeline(long, "reel").totalFrames / long.fps <= DELIVERY_CONFIG.reel.maxSec;
-  if (identity) return { film: longFile, words: path.join(pkg, "voiceover_words.json") };
+  if (identity && !long?.soundtrack?.defaultScore) return { film: longFile, words: path.join(pkg, "voiceover_words.json") };
   if (!fs.existsSync(reelFile)) throw new Error(`needs reel cut: derived reel film is missing for "${slug}"`);
   const film = parseFilm(JSON.parse(fs.readFileSync(reelFile, "utf8")));
   const isCut = film.voiceover?.src === `videos/${slug}/reel/voiceover.wav`;
@@ -79,7 +79,7 @@ export function assertReelCap(film: Film, stage: "reel" | "render" = "reel", con
 export function reelForRender(slug: string): Film {
   const pkg = resolvePackageDir(slug);
   const long = parseFilm(JSON.parse(fs.readFileSync(path.join(pkg, "film.json"), "utf8")));
-  if (deliveryTimeline(long, "reel").totalFrames / long.fps <= DELIVERY_CONFIG.reel.maxSec) return long;
+  if (deliveryTimeline(long, "reel").totalFrames / long.fps <= DELIVERY_CONFIG.reel.maxSec && !long.soundtrack?.defaultScore) return long;
   const statusFile = path.join(pkg, "reel/status.json");
   const status: unknown = fs.existsSync(statusFile) ? JSON.parse(fs.readFileSync(statusFile, "utf8")) : null;
   if (!status || typeof status !== "object" || !("state" in status) || status.state !== "passed" ||

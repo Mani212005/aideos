@@ -15,6 +15,7 @@ import { checkDesignAgainstLook, resolveDesignCharacters } from "../designSpec/b
 import { compileDesign, narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
 import { resolveCue } from "../designSpec/cues";
 import { resolveSoundtrack } from "../designSpec/soundtrack";
+import { prepareDefaultSoundtrack, scoreDefaultSoundtrack } from "../defaultSoundtrack";
 import { designSpecSchema, type DesignSpec } from "../designSpec/spec";
 import { lookPlanSchema, type LookPlan } from "../lookPlan/schema";
 import { createCues } from "../sceneKit/timing";
@@ -64,6 +65,8 @@ export function compileReel(input: {
     ...base, shots, captions: long.captions === "off" ? "off" : narration.captionsVttContent,
     voiceover: { volume: long.voiceover?.volume ?? 1, speed: long.voiceover?.speed, src: `videos/${long.id}/reel/voiceover.wav`, durationSec: narration.totalAudioDuration },
     endCardVoice: long.endCardVoice,
+    soundtrack: long.soundtrack,
+    music: long.music,
   }, { owner: false });
   const collapsed = new Map<string, number>();
   let seconds = 0;
@@ -94,6 +97,7 @@ export function compileReel(input: {
     const cues = createCues(narrationTimingForFilm(reel, words), reel.fps, { collapsed });
     reel = { ...reel, soundtrack: resolveSoundtrack(spec.soundtrack, cues, reel, "reel") };
   }
+  reel = scoreDefaultSoundtrack(reel, "reel");
   const cues = createCues(narrationTimingForFilm(reel, words), reel.fps, { collapsed });
   const authored = spec?.camera?.map((pose) => ({ frame: resolveCue(pose.at, cues), focus: pose.focus })) ?? [];
   const cameraTargets = (look?.film.camera ?? []).map((pose) => {
@@ -133,7 +137,7 @@ export async function buildReel(slug: string, options: { synthesize?: LineSynthe
           // Keep long soundtrack fallback on read/parse error
         }
       }
-      const film = writeReelFilm(slug, reelFilm);
+      const film = writeReelFilm(slug, await prepareDefaultSoundtrack(reelFilm, "reel"));
       recordReelStatus(slug, { ...status, state: "passed", measuredSec: delivered.totalFrames / long.fps });
       return film;
     }
@@ -165,7 +169,7 @@ export async function buildReel(slug: string, options: { synthesize?: LineSynthe
     status.findings = compiled.findings;
     if (!compiled.film) throw new Error([...compiled.errors, ...compiled.findings.filter((f) => f.severity === "error").map((f) => `${f.rule}: ${f.where}: ${f.message}`)].join("\n"));
     assertReelCap(compiled.film);
-    const film = writeReelFilm(slug, compiled.film);
+    const film = writeReelFilm(slug, await prepareDefaultSoundtrack(compiled.film, "reel"));
     recordReelStatus(slug, { ...status, state: "passed", measuredSec: deliveryTimeline(film, "reel").totalFrames / film.fps });
     return film;
   } catch (error) {

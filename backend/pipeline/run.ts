@@ -9,6 +9,7 @@
  */
 
 import { designFilm, planFilmLook } from "../designSpec/designer";
+import { prepareDefaultSoundtrack } from "../defaultSoundtrack";
 import { buildDesign, designDir, formatBuildStatus, readCheckedLookPlan } from "../designSpec/build";
 import { designSpecSchema } from "../designSpec/spec";
 import { DOT_RESOURCES, STAGE_RESOURCES, STAGE_RESOURCE_HASH, CEL_TREATMENT } from "../../src/dl/scene/rigs/registry";
@@ -485,9 +486,12 @@ export async function runProduction(
       },
       async () => {
         if (mode === "templates") return false;
+        const existing = readFilm(slug);
         const skeleton = await compileFilmFromScreenplayAsync(script, narration.segments, narration.shotDurations, {
           ...compileOptions, textOnly: true, maxFootageShots: 0,
         });
+        if (existing?.soundtrack && !existing.soundtrack.defaultScore) skeleton.film.soundtrack = existing.soundtrack;
+        if (existing?.music && !skeleton.film.music) skeleton.film.music = existing.music;
         writeFilm(slug, skeleton.film);
         filmResult = skeleton.film;
         const outcome = await planFilmLook(slug, { ...delivery, onProgress: (message) => emit("look", "running", message) });
@@ -509,7 +513,7 @@ export async function runProduction(
     // ---- design: the accepted plan controls treatments and invalidates changed designs -------
     const lookHash = look ? lookPlanFingerprint(slug) : null;
     const designFingerprint = () => fingerprint(script, narration.shotDurations, request.music ?? null,
-      wantsBroll, mode, lookHash, mode === "templates" ? null : designFilesFingerprint(slug));
+      wantsBroll, mode, lookHash, "default-soundtrack-v1", mode === "templates" ? null : designFilesFingerprint(slug));
 
     const design = await runStage(
       "design",
@@ -533,6 +537,9 @@ export async function runProduction(
           ...(look ? { lookPlan: look } : {}),
           deviceCaller: request.deviceCaller !== undefined ? request.deviceCaller : process.env.NODE_TEST_CONTEXT ? null : await defaultDeviceCaller(),
         });
+        const existing = readFilm(slug);
+        if (existing?.soundtrack && !existing.soundtrack.defaultScore) compiled.film.soundtrack = existing.soundtrack;
+        if (existing?.music && !compiled.film.music) compiled.film.music = existing.music;
         writeFilm(slug, compiled.film);
         // Every new compile becomes the build's base. A stale first-build snapshot must never
         // resurrect narration, timing or treatments from an earlier run.
@@ -567,6 +574,8 @@ export async function runProduction(
         return { ...compiled, film: designed };
       },
     );
+    const scoredDesign = await prepareDefaultSoundtrack(design.film, "long");
+    if (scoredDesign !== design.film) design.film = writeFilm(slug, scoredDesign);
     // Agent/server work writes authoring files during the stage. Cache their resulting hashes,
     // so an unchanged rerun reuses them while a later authoring edit invalidates the stage.
     stageRecord(state, "design").fingerprint = designFingerprint();
@@ -717,9 +726,9 @@ export async function runProduction(
       const statusPath = path.join(pkgDir, "reel/status.json");
       const status = JSON.parse(fs.readFileSync(statusPath, "utf8")) as ReelBuildStatus;
       recordReelStatus(slug, { ...status, fingerprint: reelSourceFingerprint(slug) });
-      stageRecord(state, "reel").fingerprint = reelFingerprint();
-      saveState(state);
     }
+    stageRecord(state, "reel").fingerprint = reelFingerprint();
+    saveState(state);
     if (shouldStop("assemble")) return buildResult("assemble");
 
     // ---- render: produce the deliverables ----------------------------------------------------
