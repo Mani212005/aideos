@@ -6,7 +6,8 @@
 
 import { z } from "zod";
 import { zColor } from "@remotion/zod-types";
-import { parseFilm } from "./schema";
+import { parseFilm, type Film } from "./schema";
+import { isLibrarySource } from "./audio/sectionMixer";
 import { buildTimeline, totalFrames } from "./camera";
 import { deliveryTimeline } from "./delivery";
 import { ACTIVE_FILM, ACTIVE_REEL_FILM } from "./activeFilm";
@@ -54,12 +55,17 @@ export const filmPropsSchema = z.object({
 
 export type FilmProps = z.infer<typeof filmPropsSchema>;
 
+// Keeps legacy music volume out of an authored section mix so studio and delivery use the same gains.
+function defaultMusicVolume(film: Film): number {
+  return film.soundtrack?.sections.some(isLibrarySource) ? 1 : film.music?.volume ?? 1;
+}
+
 export const defaultFilmProps: FilmProps = {
   accent: FILM.accent ?? PALETTE.accent,
   voiceoverSrc: FILM.voiceover?.src ?? "",
   voiceoverVolume: FILM.voiceover?.volume ?? 1,
   musicSrc: FILM.music?.src ?? FILM.audio?.src ?? "",
-  musicVolume: FILM.music?.volume ?? 1,
+  musicVolume: defaultMusicVolume(FILM),
   showRail: true,
   showGrid: false,
 };
@@ -69,4 +75,5 @@ export const defaultReelProps: FilmProps = {
   ...defaultFilmProps,
   voiceoverSrc: REEL_FILM.voiceover?.src ?? "",
   voiceoverVolume: REEL_FILM.voiceover?.volume ?? 1,
+  musicVolume: REEL_FILM.soundtrack?.sections.some(isLibrarySource) ? 1 : defaultFilmProps.musicVolume,
 };

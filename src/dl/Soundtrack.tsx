@@ -5,15 +5,30 @@
  */
 
 import React from "react";
-import { Audio, Sequence, staticFile, useVideoConfig } from "remotion";
+import { Audio, Sequence, staticFile, useDelayRender, useVideoConfig } from "remotion";
 import { deliveryTimeline, formatForSize } from "./delivery";
 import { EndCardVoice } from "./EndCard";
 import { calculateDuckingVolume, type SpeechInterval } from "./audio/ducking";
 import { getRetimedAudioRelPath } from "./audio/retime";
 import { normalizeFilmSoundtrack, type Film } from "./schema";
 import { totalFrames, type TimedShot } from "./camera";
+import {
+  dbGain, effectGain, isLibrarySource, mergeSpeech, mixSections, sectionEnvelope, speechGain,
+  soundtrackItem, soundtrackItemSrc,
+} from "./audio/sectionMixer";
 
 export { normalizeFilmSoundtrack };
+
+// Loads the ESM-only frame audio implementation when an authored section first needs it.
+const FrameAudio = React.lazy(async () => ({ default: (await import("@remotion/media")).Audio }));
+
+// Holds rendering while frame audio loads, then releases the hold when Suspense unmounts this fallback.
+const LoadingFrameAudio: React.FC = () => {
+  const { delayRender, continueRender } = useDelayRender();
+  const [handle] = React.useState(() => delayRender("Loading soundtrack frame audio"));
+  React.useEffect(() => () => continueRender(handle), [continueRender, handle]);
+  return null;
+};
 
 export type SoundtrackProps = {
   film: Film;
@@ -50,6 +65,9 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
   const effectiveVoiceoverVolume = voiceoverVolume ?? film.voiceover?.volume ?? 1;
 
   const soundtrack = normalizeFilmSoundtrack(film);
+  const sectionMix = Boolean(film.soundtrack?.sections.some(isLibrarySource));
+  const effectMix = Boolean(film.soundtrack?.sfx.some(isLibrarySource));
+  const sections = sectionMix ? mixSections(soundtrack, delivery) : [];
   const primarySection = soundtrack.sections[0];
   const requestedMusicSrc = (musicSrc ?? "").trim();
   const effectiveMusicSrc = requestedMusicSrc || primarySection?.src || primarySection?.item || "";
@@ -68,7 +86,7 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
   const voClips = film.audioClips?.filter((ac) => (ac.channel ?? "voiceover") === "voiceover") ?? [];
   const speechIntervals: SpeechInterval[] =
     soundtrack.speech.length > 0
-      ? soundtrack.speech
+      ? [...soundtrack.speech]
       : voClips.length > 0
       ? voClips.map((ac) => ({
           startSec: ac.position,
@@ -87,11 +105,39 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
   }
 
   const hasVoiceoverClips = voClips.length > 0;
+  // Authored soundtracks honor measured silence, including an intentionally empty speech list.
+  const measuredSpeech = mergeSpeech([
+    ...soundtrack.speech.map((interval) => ({
+      startSec: interval.startSec,
+      endSec: Math.min(interval.endSec, effectiveTotalFrames / effectiveFps),
+    })),
+    ...(card && film.endCardVoice && card.lineFrom !== null ? [{
+      startSec: card.lineFrom / effectiveFps,
+      endSec: Math.min(card.to / effectiveFps, card.lineFrom / effectiveFps + film.endCardVoice.durationSec),
+    }] : []),
+  ]);
 
   return (
     <>
       {/* 1. Background Music Track (with ducking) */}
-      {effectiveMusicSrc.trim().length > 0 ? (
+      {sectionMix ? sections.map((section, index) => (
+        <Sequence key={`music-section-${index}`} from={section.from} durationInFrames={section.durationInFrames}>
+          {/* Frame audio applies each gain to its own samples, avoiding packet-sized gain holds. */}
+          <React.Suspense fallback={<LoadingFrameAudio />}>
+          <FrameAudio
+            src={staticFile(section.src)}
+            disallowFallbackToHtml5Audio
+            trimBefore={section.trimBefore}
+            trimAfter={section.trimBefore + section.durationInFrames}
+            volume={(frame) => section.gain * (musicVolume ?? 1) * sectionEnvelope(section, frame) *
+              (section.duck ? speechGain(
+                (frame + section.from) / effectiveFps, measuredSpeech, soundtrack.mix,
+                effectiveTotalFrames / effectiveFps,
+              ) : dbGain(soundtrack.mix.musicOnlyGainDb))}
+          />
+          </React.Suspense>
+        </Sequence>
+      )) : effectiveMusicSrc.trim().length > 0 ? (
         <Audio
           key={`aideos-music-${film.id}`}
           src={staticFile(effectiveMusicSrc)}
@@ -111,7 +157,8 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
 
       {/* 2. Voiceover & Multi-Clip Audio Track */}
       {audioClips.length > 0
-        ? audioClips.filter((ac) => ac.id !== duplicatePrimaryMusicClipId).map((ac) => {
+        ? audioClips.filter((ac) => ac.id !== duplicatePrimaryMusicClipId &&
+          (!sectionMix || ac.channel !== "music") && (!effectMix || ac.channel !== "sfx")).map((ac) => {
             const speed = ac.speed ?? 1.0;
             const isRetimed = Math.abs(speed - 1.0) > 0.001;
             const startFrame = Math.round(ac.position * effectiveFps);
@@ -180,10 +227,16 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
       {soundtrack.sfx.length > 0
         ? soundtrack.sfx.map((sfx, idx) => {
             const startFrame = Math.round(sfx.timeSec * effectiveFps);
-            const sfxSrc = sfx.src || sfx.item;
+            const mixedEffect = isLibrarySource(sfx);
+            const item = mixedEffect ? soundtrackItem(sfx.item, sfx.sha256) : null;
+            const sfxSrc = sfx.src || (item ? soundtrackItemSrc(item) : sfx.item);
+            const durationInFrames = item ? Math.max(1, Math.ceil(item.durationSec * effectiveFps)) : undefined;
             return (
-              <Sequence key={`sfx-${idx}-${sfxSrc}`} from={startFrame}>
-                <Audio src={staticFile(sfxSrc)} volume={() => sfx.volume ?? 1} />
+              <Sequence key={`sfx-${idx}-${sfxSrc}`} from={startFrame} durationInFrames={durationInFrames}>
+                <Audio src={staticFile(sfxSrc)} useWebAudioApi={mixedEffect} allowAmplificationDuringRender={mixedEffect}
+                  volume={() => mixedEffect ? effectGain(sfx, soundtrack.mix,
+                    (soundtrack.narrationPeakDb ?? -1) + 20 * Math.log10(effectiveVoiceoverVolume || 1e-10),
+                  ) : sfx.volume ?? 1} />
               </Sequence>
             );
           })

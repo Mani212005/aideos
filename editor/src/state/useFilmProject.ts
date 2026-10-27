@@ -320,6 +320,24 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
             if (data.filmId === activeId && data.film) {
               const incomingFilm = parseFilm(data.film);
               if (JSON.stringify(incomingFilm) !== JSON.stringify(parseFilm(filmRef.current))) {
+                const current = filmRef.current;
+                const measured = current.soundtrack && incomingFilm.soundtrack ? {
+                  ...current,
+                  soundtrack: {
+                    ...current.soundtrack,
+                    speech: incomingFilm.soundtrack.speech,
+                    speechSource: incomingFilm.soundtrack.speechSource,
+                    narrationPeakDb: incomingFilm.soundtrack.narrationPeakDb,
+                    sections: current.soundtrack.sections.map((section, i) => ({
+                      ...section, sourceChannels: incomingFilm.soundtrack?.sections[i]?.sourceChannels,
+                    })),
+                  },
+                } : current;
+                // Backend measurements update the current gesture without adding a second Undo step.
+                if (JSON.stringify(parseFilm(measured)) === JSON.stringify(incomingFilm)) {
+                  setHistory((prev) => prev.map((entry) => entry.film === current ? { ...entry, film: incomingFilm } : entry));
+                  return;
+                }
                 commit(incomingFilm, "Live sync update");
                 notify("info", `⚡ Live update: ${incomingFilm.title || activeId} updated`);
               }

@@ -4,6 +4,7 @@
  * Used by: reel build, production rendering, deterministic review, Gemini facts and all-check.
  */
 import fs from "node:fs";
+import { prepareSoundtrack } from "../soundtrack";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { parseFilm, type Film } from "../../src/dl/schema";
@@ -37,7 +38,7 @@ export function reelSourceFingerprint(slug: string): string {
 
 // Writes only the derived reel manifest and shadow, without mutating the long owner record.
 export function writeReelFilm(slug: string, film: Film): Film {
-  const validated = parseFilm(film);
+  const validated = prepareSoundtrack(parseFilm(film));
   if (validated.id !== slug) throw new Error(`reel film id must be ${slug}`);
   const dir = path.join(resolvePackageDir(slug), "reel");
   fs.mkdirSync(dir, { recursive: true });
