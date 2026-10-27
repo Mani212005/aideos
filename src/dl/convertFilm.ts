@@ -13,6 +13,7 @@
  */
 
 import type { Film, Shot, AudioClip, VideoClip, OverlayClip, Soundtrack } from "./schema";
+import { soundtrackItem, soundtrackItemSrc } from "./audio/sectionMixer";
 import type {
   LayeredFilm,
   Layer,
@@ -226,7 +227,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
           end: offsetSec + Math.max(0.01, toSec - fromSec),
           kind: "audio",
           payload: {
-            src: sec.src || sec.item,
+            src: sec.src || (sec.sha256 ? soundtrackItemSrc(soundtrackItem(sec.item, sec.sha256)) : sec.item),
             channel: "music",
             duckUnderVoiceover: sec.duckUnderVoiceover ?? true,
             role: sec.role,
@@ -275,7 +276,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
           end: SFX_CLIP_DURATION,
           kind: "audio",
           payload: {
-            src: sfx.src || sfx.item,
+            src: sfx.src || (sfx.sha256 ? soundtrackItemSrc(soundtrackItem(sfx.item, sfx.sha256)) : sfx.item),
             channel: "sfx",
             event: sfx.event,
             itemId: sfx.item,
@@ -632,9 +633,8 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
           const p = c.payload as AudioPayload | undefined;
           const dur = c.end - c.start;
           const itemIdentity = p?.itemId || p?.src || c.id;
-          const origSec = base.soundtrack?.sections.find(
-            (section) => section.item === itemIdentity || section.src === itemIdentity,
-          );
+          const index = Number(/^clip-music-section-(\d+)/.exec(c.id)?.[1]);
+          const origSec = base.soundtrack?.sections[index];
           return {
             role: p?.role || origSec?.role || "explain",
             item: itemIdentity,
@@ -652,9 +652,8 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
         sfx: sfxClips.filter(isSoundtrackSfxClip).map((c) => {
           const p = c.payload as AudioPayload | undefined;
           const itemIdentity = p?.itemId || p?.src || c.id;
-          const origSfx = base.soundtrack?.sfx.find(
-            (effect) => effect.item === itemIdentity || effect.src === itemIdentity,
-          );
+          const index = Number(/^clip-soundtrack-sfx-(\d+)/.exec(c.id)?.[1]);
+          const origSfx = base.soundtrack?.sfx[index];
           return {
             item: itemIdentity,
             sha256: origSfx?.sha256,

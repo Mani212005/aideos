@@ -78,6 +78,12 @@ The optional `soundtrack` block in `design/design.json` authors `sections` of li
 
 `aideos design check` enforces the D6 soundtrack rules: library item existence and no-credit licensing; music sections cover the full delivery without gaps or overlaps and fit their source tracks; section transitions land only at chapter cuts; crossfades match the format; effects match a visual event within +/- 2 frames; effect density is capped at one per 8 seconds for long or one per 5 seconds for reel, with no non-tick pair closer than 0.5 seconds and at most four effect families; reel soundtracks use at most two tracks; and tracks with LRA above 10 are restricted to payoff or outro roles. Regression coverage is in `backend/designCheck/designCheck.test.ts` under D6 cases.
 
+### Studio soundtrack controls
+
+In Studio's Edit stage, the Music lane displays soundtrack sections with their role and track title, and the Sound effects lane displays effect markers by event. Double-click a music section to open the Mix panel, where a track can be auditioned and swapped for another library item with the same role. The panel also exposes music and effects level controls and read-only soundtrack credits.
+
+Studio edits target the Long film. Swaps and level changes are resolved and checked against the Long format before the film is committed; owner saves also check soundtrack validity, so moving a section away from a chapter cut or an effect away from its event is rejected. Soundtrack sections and effect clips cannot be split in the timeline; swap the track or move the effect instead. Reel soundtracks are derived from the same design cues when the reel is rebuilt.
+
 ## 3. Storage and Cache Layout
 
 - **Manifest**: `audio/library.json` (schema `aideos.audio-library/1`) holds IDs, metadata, source URLs, licenses, SHA256 hashes, duration, and measured loudness (integrated LUFS, true peak dB, and LRA).

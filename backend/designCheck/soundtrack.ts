@@ -18,7 +18,7 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
   }
 
   const fps = film.fps ?? FPS;
-  const isReel = Boolean(context.formats?.includes("reel") || film.id.includes("reel"));
+  const isReel = context.formats !== undefined ? context.formats.includes("reel") : film.id.includes("reel");
   const library = context.library ?? loadAudioLibrary();
 
   // Rule: Reel at most 2 tracks
@@ -93,13 +93,15 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
     const orderedIndex = orderedSections.indexOf(section);
     const fadeInOverlap = orderedIndex > 0 && Math.abs(orderedSections[orderedIndex - 1].to - section.from) <= boundaryTolerance ? expectedCrossfade / 2 : 0;
     const fadeOutOverlap = orderedIndex < orderedSections.length - 1 && Math.abs(section.to - orderedSections[orderedIndex + 1].from) <= boundaryTolerance ? expectedCrossfade / 2 : 0;
-    const totalRun = duration + (section.offsetSec ?? 0) + fadeInOverlap + fadeOutOverlap;
+    // The mixer back-times the final section from the source ending and ignores its stored offset.
+    const offsetSec = orderedIndex === orderedSections.length - 1 ? 0 : section.offsetSec;
+    const totalRun = duration + offsetSec + fadeInOverlap + fadeOutOverlap;
     if (totalRun > item.durationSec + 0.001) {
       findings.push({
         rule: "soundtrack",
         severity: "error",
         where: `soundtrack.sections.${section.item}`,
-        message: `section "${section.item}" runs ${duration.toFixed(1)}s (offset ${(section.offsetSec ?? 0).toFixed(1)}s, total ${totalRun.toFixed(1)}s), exceeding track length ${item.durationSec.toFixed(1)}s; no silent looping allowed.`,
+        message: `section "${section.item}" runs ${duration.toFixed(1)}s (offset ${offsetSec.toFixed(1)}s, total ${totalRun.toFixed(1)}s), exceeding track length ${item.durationSec.toFixed(1)}s; no silent looping allowed.`,
       });
     }
 

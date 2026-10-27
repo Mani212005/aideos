@@ -21,6 +21,7 @@ import type { LayeredTimelineApi } from "../state/useLayeredTimeline";
 import { Button, EmptyState, SegmentedTabs, Toolbar, ToolbarDivider, ToolbarGroup, ToolbarLabel, cn } from "../components/ui";
 import { TimelineEditor } from "../components/TimelineEditor";
 import { AssetBin, type MediaAsset } from "../components/AssetBin";
+import { SoundtrackPanel } from "../components/SoundtrackPanel";
 import { CaptionPlacementEditor } from "../components/CaptionPlacementEditor";
 import { OnCanvasAiEditor } from "../components/OnCanvasAiEditor";
 import { FORMATS, type Format } from "../App";
@@ -72,6 +73,8 @@ export function EditStage({
   // The media bin is the first thing to fold away on a narrow window, because the preview and the
   // timeline are what the Edit stage is for.
   const [binOpen, setBinOpen] = useState(() => window.innerWidth >= 1280);
+  const [mixOpen, setMixOpen] = useState(false);
+  const [mixSection, setMixSection] = useState<{ index: number } | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
   const [moveCaptions, setMoveCaptions] = useState(false);
   const [captionDraft, setCaptionDraft] = useState<Film | null>(null);
@@ -221,14 +224,15 @@ export function EditStage({
           </Button>
         </ToolbarGroup>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex gap-2">
+          <Button size="sm" active={mixOpen} onClick={() => { playerRef.current?.pause(); setMixOpen((open) => !open); setMixSection(null); }} title="Music sections, sound effects and credits">Mix</Button>
           <Button size="sm" active={binOpen} onClick={() => setBinOpen((p) => !p)} title="Show or hide the media bin">
             Media bin
           </Button>
         </div>
       </Toolbar>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {binOpen ? (
           <div className="w-56 shrink-0 overflow-y-auto border-r-2 border-ink bg-paper-2">
             <AssetBin onInsertAssetAsShot={insertAsset} />
@@ -305,9 +309,11 @@ export function EditStage({
               onUndo={project.undo}
               onRedo={project.redo}
               onReject={onReject}
+              onMusicSection={(index) => { playerRef.current?.pause(); setMixSection({ index }); setMixOpen(true); }}
             />
           </div>
         </div>
+        {mixOpen ? <SoundtrackPanel key={film.id} film={film} selectedSection={mixSection} onCommit={project.commit} onClose={() => setMixOpen(false)} onPreview={() => playerRef.current?.pause()} /> : null}
       </div>
     </div>
   );
