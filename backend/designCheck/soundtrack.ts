@@ -42,6 +42,22 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
   });
 
   const expectedCrossfade = isReel ? 1.5 : 3;
+  const orderedSections = [...film.soundtrack.sections].sort((a, b) => a.from - b.from);
+  const totalSec = deliveryTimeline(film, isReel ? "reel" : "long").totalFrames / fps;
+  const boundaryTolerance = 0.001;
+  if (orderedSections.length > 0) {
+    if (Math.abs(orderedSections[0].from) > boundaryTolerance) {
+      findings.push({ rule: "soundtrack", severity: "error", where: "soundtrack.sections", message: "soundtrack sections must cover the opening from 0s." });
+    }
+    for (let i = 0; i < orderedSections.length - 1; i++) {
+      if (Math.abs(orderedSections[i].to - orderedSections[i + 1].from) > boundaryTolerance) {
+        findings.push({ rule: "soundtrack", severity: "error", where: "soundtrack.sections", message: `soundtrack sections must meet without gaps or overlaps between ${orderedSections[i].item} and ${orderedSections[i + 1].item}.` });
+      }
+    }
+    if (Math.abs(orderedSections[orderedSections.length - 1].to - totalSec) > boundaryTolerance) {
+      findings.push({ rule: "soundtrack", severity: "error", where: "soundtrack.sections", message: `soundtrack sections must cover the ending through ${totalSec.toFixed(2)}s.` });
+    }
+  }
 
   for (const section of film.soundtrack.sections) {
     const item = library.items.find((candidate) => candidate.id === section.item);
@@ -57,6 +73,11 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
       continue;
     }
 
+    if (item.kind !== "music") {
+      findings.push({ rule: "soundtrack", severity: "error", where: `soundtrack.sections.${section.item}`, message: `item "${section.item}" is a sound effect, not a music track.` });
+      continue;
+    }
+
     // Rule: Licence allows monetized use without credit
     if (item.licence.attribution !== null) {
       findings.push({
@@ -69,8 +90,11 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
 
     // Rule: Section does not run past track length
     const duration = section.to - section.from;
-    const totalRun = duration + (section.offsetSec ?? 0);
-    if (totalRun > item.durationSec + 0.05) {
+    const orderedIndex = orderedSections.indexOf(section);
+    const fadeInOverlap = orderedIndex > 0 && Math.abs(orderedSections[orderedIndex - 1].to - section.from) <= boundaryTolerance ? expectedCrossfade / 2 : 0;
+    const fadeOutOverlap = orderedIndex < orderedSections.length - 1 && Math.abs(section.to - orderedSections[orderedIndex + 1].from) <= boundaryTolerance ? expectedCrossfade / 2 : 0;
+    const totalRun = duration + (section.offsetSec ?? 0) + fadeInOverlap + fadeOutOverlap;
+    if (totalRun > item.durationSec + 0.001) {
       findings.push({
         rule: "soundtrack",
         severity: "error",
@@ -140,6 +164,11 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
       continue;
     }
 
+    if (item.kind !== "sfx") {
+      findings.push({ rule: "soundtrack", severity: "error", where: `soundtrack.sfx.${effect.item}`, message: `item "${effect.item}" is a music track, not a sound effect.` });
+      continue;
+    }
+
     // Rule: Sfx licence allows monetized use without credit
     if (item.licence.attribution !== null) {
       findings.push({
@@ -152,13 +181,20 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
 
     // Rule: Every effect lands within plus or minus 2 frames of a real visual event
     const effectFrame = Math.round(effect.timeSec * fps);
-    const hasVisualEvent = visualEvents.some((ev) => Math.abs(ev.frame - effectFrame) <= 2);
-    if (!hasVisualEvent) {
+    const matchingEvents = visualEvents.filter((ev) => Math.abs(ev.frame - effectFrame) <= 2);
+    if (matchingEvents.length === 0) {
       findings.push({
         rule: "soundtrack",
         severity: "error",
         where: `soundtrack.sfx.${effect.item}`,
         message: `sound effect "${effect.item}" at ${effect.timeSec.toFixed(2)}s (frame ${effectFrame}) does not land within +/- 2 frames of a real visual event.`,
+      });
+    } else if (effect.event && !matchingEvents.some((ev) => ev.type === effect.event)) {
+      findings.push({
+        rule: "soundtrack",
+        severity: "error",
+        where: `soundtrack.sfx.${effect.item}`,
+        message: `sound effect "${effect.item}" is labeled "${effect.event}" but no matching visual event occurs within +/- 2 frames.`,
       });
     }
   }
@@ -166,7 +202,6 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
   // Density caps checks
   const sfxCount = film.soundtrack.sfx.length;
   if (sfxCount > 0) {
-    const totalSec = deliveryTimeline(film, isReel ? "reel" : "long").totalFrames / fps;
     const minInterval = isReel ? 5 : 8;
     const averageInterval = totalSec / sfxCount;
 

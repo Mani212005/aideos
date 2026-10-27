@@ -78,7 +78,6 @@ export const specSoundtrackSectionSchema = z.object({
   start: cue,
   end: cue,
   offsetSec: z.number().min(0).optional(),
-  crossfadeSec: z.number().min(0).optional(),
   volume: z.number().min(0).max(2).optional(),
 });
 

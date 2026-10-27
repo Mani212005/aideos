@@ -139,8 +139,6 @@ export function resolveSoundtrack(
       offsetSec = trackLength >= sectionLength ? Number((trackLength - sectionLength).toFixed(3)) : 0;
     }
 
-    const crossfadeSec = section.crossfadeSec !== undefined ? section.crossfadeSec : defaultCrossfadeSec;
-
     return {
       role: section.role,
       item: section.item,
@@ -148,7 +146,7 @@ export function resolveSoundtrack(
       from,
       to,
       offsetSec,
-      crossfadeSec,
+      crossfadeSec: defaultCrossfadeSec,
       volume: section.volume ?? 1,
       duckUnderVoiceover: true,
     };

@@ -479,6 +479,16 @@ test("DesignCheck (D6): soundtrack item must exist in library and require no cre
   assert.ok(creditErrors.some((m) => m.includes("requires credit attribution, which is not permitted under Decision D2")));
 });
 
+test("DesignCheck (D6): music and effect roles must match library item kinds", () => {
+  const film = stillTalking();
+  film.soundtrack = validSoundtrack();
+  film.soundtrack.sections[0].item = "whoosh-soft";
+  film.soundtrack.sfx[0].item = "mk-556";
+  const errors = soundtrackErrors(film);
+  assert.ok(errors.some((m) => m.includes('item "whoosh-soft" is a sound effect, not a music track')));
+  assert.ok(errors.some((m) => m.includes('item "mk-556" is a music track, not a sound effect')));
+});
+
 test("DesignCheck (D6): soundtrack section must not exceed track length (no silent looping)", () => {
   const film = stillTalking();
   film.soundtrack = validSoundtrack();
@@ -496,6 +506,29 @@ test("DesignCheck (D6): soundtrack section changes only at chapter cuts", () => 
   film.soundtrack.sections[1].from = 10.23;
   const errors = soundtrackErrors(film);
   assert.ok(errors.some((m) => m.includes("which is not a chapter cut; section changes are only allowed at chapter cuts")));
+});
+
+test("DesignCheck (D6): soundtrack sections cover opening, joins, and ending", () => {
+  const film = stillTalking();
+  film.soundtrack = validSoundtrack();
+  film.soundtrack.sections[1].from += 10;
+  const gapErrors = soundtrackErrors(film);
+  assert.ok(gapErrors.some((m) => m.includes("must meet without gaps or overlaps")));
+
+  film.soundtrack = validSoundtrack();
+  film.soundtrack.sections[0].from = 1;
+  film.soundtrack.sections[1].to -= 1;
+  const edgeErrors = soundtrackErrors(film);
+  assert.ok(edgeErrors.some((m) => m.includes("must cover the opening from 0s")));
+  assert.ok(edgeErrors.some((m) => m.includes("must cover the ending through")));
+});
+
+test("DesignCheck (D6): section track length includes crossfade source spans", () => {
+  const film = stillTalking();
+  film.soundtrack = validSoundtrack();
+  film.soundtrack.sections[0].offsetSec = 159.97;
+  const errors = soundtrackErrors(film);
+  assert.ok(errors.some((m) => m.includes("exceeding track length 232.0s; no silent looping allowed")));
 });
 
 test("DesignCheck (D6): soundtrack crossfade lengths must match format standards", () => {
@@ -520,6 +553,12 @@ test("DesignCheck (D6): every sound effect must land within 2 frames of a real v
   film.soundtrack.sfx.push({ item: "pop-card", timeSec: 5.0, gainDb: 0, event: "unknown" });
   const errors = soundtrackErrors(film);
   assert.ok(errors.some((m) => m.includes("does not land within +/- 2 frames of a real visual event")));
+
+  const mislabeled = stillTalking();
+  mislabeled.soundtrack = validSoundtrack();
+  mislabeled.soundtrack.sfx[2].event = "end-card";
+  const labelErrors = soundtrackErrors(mislabeled);
+  assert.ok(labelErrors.some((m) => m.includes('labeled "end-card" but no matching visual event')));
 });
 
 test("DesignCheck (D6): sound effect density caps on long and reel formats, spacing and families", () => {
