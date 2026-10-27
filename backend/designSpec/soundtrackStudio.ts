@@ -26,6 +26,14 @@ const soundtrackEditSchema = z.discriminatedUnion("kind", [
 export type SoundtrackEdit = z.infer<typeof soundtrackEditSchema>;
 export const studioSoundtrackRequestSchema = z.object({ film: filmSchema, edit: soundtrackEditSchema }).strict();
 
+// Rejects a soundtrack that violates the rules for its delivery format.
+function assertSoundtrackValid(film: Film, format: "long" | "reel", library = loadAudioLibrary()): void {
+  const findings: DesignFinding[] = [];
+  checkSoundtrack(film, findings, { library, formats: [format] });
+  const errors = findings.filter((finding) => finding.severity === "error");
+  if (errors.length) throw new Error(errors.map((finding) => `${finding.rule}: ${finding.message}`).join("\n"));
+}
+
 // Rejects edits to a derived reel, whose soundtrack is rebuilt from the long design cues.
 function assertLongStudioFilm(film: Film): void {
   if (film.voiceover?.src === `videos/${film.id}/reel/voiceover.wav`) {
@@ -78,6 +86,7 @@ function studioSoundtrackSpec(film: Film, previous?: SpecSoundtrack): SpecSoundt
 // Saves the soundtrack authoring data with the normal owner save and Undo.
 export function persistStudioSoundtrack(film: Film): void {
   assertLongStudioFilm(film);
+  if (film.soundtrack) assertSoundtrackValid(film, "long");
   if (!film.soundtrack?.library && !film.soundtrack?.sections.some((s) => s.sha256) && !film.soundtrack?.sfx.some((s) => s.sha256)) return;
   const file = path.join(resolvePackageDir(film.id), "design", "design.json");
   if (!fs.existsSync(file)) return;
@@ -113,10 +122,7 @@ export async function rebuildStudioSoundtrack(film: Film, edit: SoundtrackEdit, 
   }
   const cues = studioCues(film);
   const rebuilt: Film = { ...film, soundtrack: resolveSoundtrack(authored, cues, film, format) };
-  const findings: DesignFinding[] = [];
-  checkSoundtrack(rebuilt, findings, { library, formats: [format] });
-  const errors = findings.filter((finding) => finding.severity === "error");
-  if (errors.length) throw new Error(errors.map((finding) => `${finding.rule}: ${finding.message}`).join("\n"));
+  assertSoundtrackValid(rebuilt, format, library);
   // Only fetch the chosen item; every other source is already part of the playing film.
   if (edit.kind === "swap") {
     const item = library.items.find((candidate) => candidate.id === edit.item);
