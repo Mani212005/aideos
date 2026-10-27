@@ -37,12 +37,18 @@ export function masterAudio(file: string, onLog: (message: string) => void = con
     const limited = before.truePeakDb + gainDb > -1;
     const temporary = path.join(path.dirname(file), `.${path.basename(file)}.master-${process.pid}.mp4`);
     try {
-      const filter = `volume=${gainDb}dB${limited ? `,aresample=192000,alimiter=limit=${10 ** (-1.5 / 20)}:release=5:level=false:latency=true,aresample=48000` : ""}`;
-      const encoded = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-map", "0:v:0", "-map", "0:a:0",
-        "-map_metadata", "0", "-c:v", "copy", "-af", filter, "-c:a", "aac", "-b:a", "320k", "-movflags", "+faststart", temporary],
-      { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
-      if (encoded.status !== 0) throw new Error(`Master audio encode failed: ${encoded.error?.message ?? encoded.stderr}`);
-      const after = measure(temporary);
+      let after: Loudness | null = null;
+      let correctedGain = gainDb;
+      for (let attempt = 0; attempt < (limited ? 5 : 1); attempt += 1) {
+        const filter = `volume=${correctedGain}dB${limited ? `,aresample=192000,alimiter=limit=${10 ** (-2 / 20)}:release=5:level=false:latency=true,aresample=48000` : ""}`;
+        const encoded = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-map", "0:v:0", "-map", "0:a:0",
+          "-map_metadata", "0", "-c:v", "copy", "-af", filter, "-c:a", "aac", "-b:a", "320k", "-movflags", "+faststart", temporary],
+        { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
+        if (encoded.status !== 0) throw new Error(`Master audio encode failed: ${encoded.error?.message ?? encoded.stderr}`);
+        after = measure(temporary);
+        if (!after || !limited || (Math.abs(after.integratedLufs + 16) <= 0.5 && after.truePeakDb <= -1)) break;
+        correctedGain += -16 - after.integratedLufs;
+      }
       if (!after) {
         result = { status: "skipped", reason: "ffmpeg could not measure the mastered candidate" };
         onLog(`Master skipped for ${file}: ${result.reason}; original render retained`);
@@ -51,8 +57,8 @@ export function masterAudio(file: string, onLog: (message: string) => void = con
           throw new Error(`Master did not meet -16 +/- 0.5 LUFS and <= -1 dBTP: ${JSON.stringify(after)}; original render retained`);
         }
         fs.renameSync(temporary, file);
-        result = { status: "mastered", before, after, gainDb, limited };
-        onLog(`Master ${path.basename(file)}: ${before.integratedLufs} -> ${after.integratedLufs} LUFS, ${before.truePeakDb} -> ${after.truePeakDb} dBTP; gain ${gainDb.toFixed(1)} dB${limited ? ", limited" : ""}`);
+        result = { status: "mastered", before, after, gainDb: correctedGain, limited };
+        onLog(`Master ${path.basename(file)}: ${before.integratedLufs} -> ${after.integratedLufs} LUFS, ${before.truePeakDb} -> ${after.truePeakDb} dBTP; gain ${correctedGain.toFixed(1)} dB${limited ? ", limited" : ""}`);
       }
     } finally {
       fs.rmSync(temporary, { force: true });
