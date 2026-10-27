@@ -166,6 +166,7 @@ jobs:
       - name: Download the Remotion browser
         if: steps.remotion-browser.outputs.cache-hit != 'true'
         run: npx remotion browser ensure
+      # Includes the character and Three-stage suites selected by backend/journeys/**/*.journey.ts.
       - name: Journeys
         run: npm run ci -- journeys
       - name: Keep failing frames and reports

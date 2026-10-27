@@ -1,7 +1,7 @@
 /**
  * File Description: Raster evidence for dots occlusion, held poses, independent contexts and phone-scale facial features.
  * Inputs and outputs: real character spec and fitted action -> PNGs and measured equality/feature pixel counts.
- * Used by: dotsPixels.test.ts; test-only browser entry bundled with esbuild.
+ * Used by: backend/journeys/character_dots_pixels.journey.ts; test-only browser entry bundled with esbuild.
  */
 import { Box3, BoxGeometry, Group, Mesh, MeshBasicMaterial, NoToneMapping, OrthographicCamera, Points, Scene, SRGBColorSpace, Vector3, WebGLRenderer } from "three";
 import { buildCharacter, addCelLights } from "../../src/dl/scene/characters/build";

@@ -26,7 +26,7 @@ GitHub job summary), so one run reports every problem.
 | `changes` | `scripts/ciChanges.mjs`: lists changed files grouped by area, computes shadow mode decisions and reasons for journeys and legacy, and reports shadow PR risk rating | every PR and push to main |
 | `static` | file headers, every test file is wired, eslint (src, backend, scripts, editor), `tsc` root, oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
 | `unit` | `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
-| `journeys` | `npm run test:journeys` (real pipeline and real renders, including browser journeys for AI edit apply and new-project script save; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
+| `journeys` | `npm run test:journeys` (real pipeline, character and Three-stage checks, and real renders, including browser journeys for AI edit apply and new-project script save; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
 | `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; compares committed Linux baselines | every PR and push to main, Linux only |
 | `nightly` | `scripts/nightly_budget.ts`: the whole Iona film, wide and reel, with budgets on wall time, peak memory, peak temp disk and bundle size | 03:17 UTC and on demand, never on a PR |
 | `all-green` | fails unless all five jobs above succeeded | the one check to require |
@@ -38,6 +38,22 @@ author before handoff.
 Layers, from cheapest to dearest: static, unit and property tests (the maths on generated input),
 feature tests with good and bad fixtures, headless journeys (below), regression (golden frames, plus
 a journey case for each bug the captain or a user reported), and the captain's eye for art, which no test can replace.
+
+`npm run test:live` opts into the Deepgram audio, live TTS narration and SVG frame-strip checks (provider credentials required for Deepgram); these are excluded from CI. `test:visual` still runs the SVG strip alone.
+
+The seven character and Three-stage suites run unchanged under `backend/journeys/`:
+
+| Previous unit file | Journey file |
+| --- | --- |
+| `backend/characters/journeys.test.ts` | `backend/journeys/characters.journey.ts` |
+| `backend/characters/pixels.test.ts` | `backend/journeys/character_pixels.journey.ts` |
+| `backend/characters/retarget.test.ts` | `backend/journeys/character_retarget.journey.ts` |
+| `backend/characters/dotsPixels.test.ts` | `backend/journeys/character_dots_pixels.journey.ts` |
+| `backend/performance/stage.test.ts` | `backend/journeys/stage_contracts.journey.ts` |
+| `backend/review/stageTruth.test.ts` | `backend/journeys/stage_review_truth.journey.ts` |
+| `backend/pipeline/characterResume.test.ts` | `backend/journeys/character_resume.journey.ts` |
+
+Both `test:journeys` and `scripts/ci.ts` select every `backend/journeys/**/*.journey.ts` serially, and the workflow journeys job invokes that same CI job on every PR and main push. Their assertions, thresholds and timeouts are preserved.
 
 ## Setup that every job shares
 
@@ -122,12 +138,12 @@ seconds). There is no override variable: tests inject a fake sampler and `statfs
 | Journey | Protected by | Layer |
 | --- | --- | --- |
 | J1 make a film with a character end to end | `j1_pipeline.journey.ts`: the PR journey runs the real `runProduction` with the iona-receive fixture, renders wide and reel around the contact frame, and checks output metadata and a drawn frame; nightly renders the full film with budgets | journey, nightly |
-| J2 narration changes after design, stale work not reused | `j2_retime.journey.ts`: the real pipeline re-narrates with words inserted before "catches", the compiled contact follows the new word, design and render rerun into a new reel and the measured review finds the contact on the word; `backend/review/stageTruth.test.ts` (a contact off its word fails adherence even if the recorded cue frame is edited); `backend/pipeline/pipeline.test.ts` (retime refreshes base-film, forced upstream reopens downstream) | journey, feature |
+| J2 narration changes after design, stale work not reused | `j2_retime.journey.ts`: the real pipeline re-narrates with words inserted before "catches", the compiled contact follows the new word, design and render rerun into a new reel and the measured review finds the contact on the word; `backend/journeys/stage_review_truth.journey.ts` (a contact off its word fails adherence even if the recorded cue frame is edited); `backend/pipeline/pipeline.test.ts` (retime refreshes base-film, forced upstream reopens downstream) | journey, feature |
 | J3 scrub, save, reload, preview equals export | `scripts/smoke_studio.ts` (keyboard scrub forwards and back with exact frame readout, same picture on return, split, autosave, reload keeps the edit); `j3_studio_edit.journey.ts` (real Chrome: the AI edit Apply Edits gesture applies, saves, is logged and survives a reload, with only the model-backed `/api/ai-edit` answered by the test; a new project's script saves and survives a reload); `backend/editPlanner/browserSafety.test.ts` (the apply path bundles for a browser and runs with no Node built-ins, and the real studio bundle has no externalized Node module); export-versus-cold equality (wide and reel); `j3_j5_stage.journey.ts` compares a fresh Remotion Player's first contact-frame draw and later seeks with exported PNGs in both formats | journey |
-| J4 reel crop keeps character and prop clear of captions | `j1_pipeline.journey.ts`: projected character and prop bounds, every frame from approach to recovery, inside the frame and above the caption band in wide and reel; glider attached at the decisive frame; `j4_character_crops.journey.ts` covers Iona, Pip and Marlo with inset and out-of-bounds negatives, and committed Pip and Marlo wide/reel stills are checked by `backend/characters/pixels.test.ts` | journey, browser pixels |
+| J4 reel crop keeps character and prop clear of captions | `j1_pipeline.journey.ts`: projected character and prop bounds, every frame from approach to recovery, inside the frame and above the caption band in wide and reel; glider attached at the decisive frame; `j4_character_crops.journey.ts` covers Iona, Pip and Marlo with inset and out-of-bounds negatives, and committed Pip and Marlo wide/reel stills are checked by `backend/journeys/character_pixels.journey.ts` | journey, browser pixels |
 | J5 second and third character, same action | `j3_j5_stage.journey.ts` runs Iona, Pip and Marlo together through look check, design build, compilation and 13-frame wide/reel production renders; same-frame Player captures hide each object in turn and require attributable pixel changes inside its projected bounds in both formats. Negative checks reject missing props and actor pixels that overlap a hidden prop crop. Unit/property coverage remains in `backend/characters/` | unit, journey |
-| J6 resume reopens exactly the right stages | `j6_resume.journey.ts`: an unchanged rerun reuses every production stage and the reel byte for byte, a package character edit reruns design through verify and the new art is in the pixels; `backend/pipeline/characterResume.test.ts` (look hash and design fingerprint carry the character); `pipeline.test.ts`; `renderFrames` is part of the render fingerprint | journey, feature |
-| J7 reviews see the 3D stage truthfully | `j7_review_truth.journey.ts`: film facts and shared stage truth project the whole film timeline into wide and reel crops, with contact on the word, camera in that crop and unmeasured craft; `backend/review/stageTruth.test.ts` (per-format presence and camera, hidden cast, plain-word facts); `stage.test.ts`; `geminiReview.test.ts` | journey, feature |
+| J6 resume reopens exactly the right stages | `j6_resume.journey.ts`: an unchanged rerun reuses every production stage and the reel byte for byte, a package character edit reruns design through verify and the new art is in the pixels; `backend/journeys/character_resume.journey.ts` (look hash and design fingerprint carry the character); `pipeline.test.ts`; `renderFrames` is part of the render fingerprint | journey, feature |
+| J7 reviews see the 3D stage truthfully | `j7_review_truth.journey.ts`: film facts and shared stage truth project the whole film timeline into wide and reel crops, with contact on the word, camera in that crop and unmeasured craft; `backend/journeys/stage_review_truth.journey.ts` (per-format presence and camera, hidden cast, plain-word facts); `stage_contracts.journey.ts`; `geminiReview.test.ts` | journey, feature |
 | J8 failures give a named error | `j8_failures.journey.ts`: a phrase not spoken, an unknown shot and missing artwork are each named and write no film; a failed design stops the run with no mp4; unreachable targets fail the build and leave finite evaluator output; missing character resources and duplicate decisive phrases are refused by name; `j3_j5_stage.journey.ts` disables WebGL in real Chrome and checks export refusal and visible Player status | journey |
 | J9 existing SVG and template films render unchanged | `j9_template.journey.ts` (real pipeline, templates), `j9_svg_repeatability.journey.ts` (exact cold-render equality of Still Talking frame 2773), and `legacy.golden.ts` (golden frames of four films; committed Linux baselines) | journey, golden |
 | J10 an agent authors from the docs, bad input names the field | `j8_failures.journey.ts` checks bad values in design.json, look.json and character specs through their public validators; `schemaIssues.test.ts` covers nested unions, unknown fields, required values and version tags | unit, journey |
@@ -139,7 +155,7 @@ seconds). There is no override variable: tests inject a fake sampler and `statfs
 
 | Risk | Check |
 | --- | --- |
-| overfitting to Iona | `backend/characters/retarget.test.ts` checks named characters and randomized proportions through the same action (J5); the J4 crop journey checks full evaluated silhouettes for Iona, Pip and Marlo; see [the character-engine risk plan](CHARACTER_ENGINE.md#risks-this-part-must-hold) |
+| overfitting to Iona | `backend/journeys/character_retarget.journey.ts` checks named characters and randomized proportions through the same action (J5); the J4 crop journey checks full evaluated silhouettes for Iona, Pip and Marlo; see [the character-engine risk plan](CHARACTER_ENGINE.md#risks-this-part-must-hold) |
 | pixel tests flaky across machines | software GL everywhere in CI; goldens made only on the CI platform and validated by rendering twice; manifest records the platform and the test refuses a mismatch |
 | out-of-order frame rendering | J3 seek-order test: concurrent export frames equal cold single-frame renders |
 | blank first frame / resource races | J1 asserts the contact frame is drawn (luma spread), not flat; unit `J8` cases name the missing resource |

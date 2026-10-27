@@ -1,7 +1,7 @@
 /**
  * File Description: Browser-backed dot stability, real occlusion, independent workers, facial contrast and H.264 held-pose shimmer checks.
  * Inputs and outputs: Iona/Pip/Marlo specs and actual browser PNG sequences -> deterministic raster and encoded-frame assertions.
- * Used by: npm test. Uses installed Chrome; leaves all failure images in .ci-artifacts through the journey harness.
+ * Used by: npm run test:journeys and the CI journeys job. Uses installed Chrome; leaves all failure images in .ci-artifacts through the journey harness.
  */
 import "../testSupport/fixtureVideosDir";
 import test from "node:test";
@@ -14,8 +14,8 @@ import { journey, decodeFrame, frameDiff } from "../journeys/harness";
 import { loadSpec } from "../testSupport/characters";
 import { fitReceiveSpan } from "../performance/bindReceive";
 import { rigFromCharacter } from "../../src/dl/characters/rig";
-import { chromeAvailable, evaluatePage } from "./browser";
-import type { DotsPixelRequest, DotsPixelResult } from "./dotsPage";
+import { chromeAvailable, evaluatePage } from "../characters/browser";
+import type { DotsPixelRequest, DotsPixelResult } from "../characters/dotsPage";
 
 // Writes a data URL from a browser capture to its exact PNG bytes.
 function writePng(file: string, data: string): void { fs.writeFileSync(file, Buffer.from(data.slice(data.indexOf(",") + 1), "base64")); }
@@ -23,7 +23,7 @@ function writePng(file: string, data: string): void { fs.writeFileSync(file, Buf
 const name = "dots raster: no hidden-surface leaks, reverse seek/worker equality, phone features and encoded held-pose shimmer";
 if (!chromeAvailable() && process.env.AIDEOS_BROWSER_TESTS_REQUIRED !== "1") test(name, { skip: "no installed Chrome" }, () => undefined);
 else journey("dots raster: no hidden-surface leaks, reverse seek/worker equality, phone features and encoded held-pose shimmer", async (ctx) => {
-  await build({ entryPoints: [path.join(__dirname, "dotsPage.ts")], outfile: path.join(ctx.workDir, "dots.js"), bundle: true, format: "iife", platform: "browser", logLevel: "silent" });
+  await build({ entryPoints: [path.join(__dirname, "../characters/dotsPage.ts")], outfile: path.join(ctx.workDir, "dots.js"), bundle: true, format: "iife", platform: "browser", logLevel: "silent" });
   const requests: DotsPixelRequest[] = [];
   for (const id of ["iona", "pip", "marlo"] as const) {
     const spec = loadSpec(id);

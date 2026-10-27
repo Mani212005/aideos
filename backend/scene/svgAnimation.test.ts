@@ -3,8 +3,8 @@
  * Covers the SVG document parser, timeline validation and compilation, hold-and-evolve continuity,
  * staggered staged entry, draw-on reveals, render-time element identity and id namespacing,
  * byte-for-byte render determinism, audio-first retiming, the Remotion entry point, compiled
- * opacity winning over an authored opacity attribute, and a RUN_VISUAL_TESTS-gated frame strip
- * written to disk for human review.
+ * opacity winning over an authored opacity attribute. The opt-in frame strip lives in
+ * backend/live/svgAnimation.live.ts.
  * Inputs and outputs: SVG animation clips and easing curves -> test assertions.
  * Used by: npm test.
  * Inputs and outputs: SVG animation clips and easing curves -> test assertions.
@@ -14,14 +14,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import path from "node:path";
-import type { Scene } from "../../src/dl/scene/types";
 import type { SvgAnimationTimeline } from "../../src/dl/scene/svgAnimation";
 import {
   applySvgEasing,
   compileSvgTimeline,
   identitySvgElementState,
-  stagedEntryClips,
   svgElementStateToTransform,
   validateSvgTimeline,
 } from "../../src/dl/scene/svgAnimation";
@@ -35,7 +32,7 @@ import {
 import { compileScene } from "../../src/dl/scene/compile";
 import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNode";
 import { loadSceneAssets } from "./loadSceneAssets";
-import { renderFrameSvgMarkup, renderFrameStill, readPngDimensions } from "./renderStill";
+import { renderFrameSvgMarkup } from "./renderStill";
 import { renderSvgNodes } from "../../src/dl/scene/svgReact";
 import React from "react";
 import ReactDOMServer from "react-dom/server";
@@ -43,8 +40,7 @@ import { SceneClip } from "../../src/dl/scene/SceneClip";
 import { SceneView } from "../../src/dl/scene/SceneView";
 import { alignSceneToAudio, audioSyncDriftMs, framesForAudioMs } from "../../src/dl/scene/sceneTiming";
 
-const DIAGRAM_SVG = path.resolve("test_fixtures/svg/pipeline_diagram.svg");
-const OUT_STRIP_DIR = path.resolve("out/svg_movie");
+import { DIAGRAM_SVG, makeDemoScene, makeDemoTimeline } from "../testSupport/svgAnimation";
 
 test("transparent SVG foreground paints only its artwork; legacy scene keeps its canvas fill", () => {
   const scene = makeDemoScene(), frame = compileScene(scene, { clockMs: 0 }).frames[0];
@@ -52,65 +48,6 @@ test("transparent SVG foreground paints only its artwork; legacy scene keeps its
   assert.equal(render(false).children.filter((node) => node.tag === "rect" && node.attrs.width === "100%" && node.attrs.height === "100%").length, 1);
   assert.equal(render(true).children.filter((node) => node.tag === "rect" && node.attrs.width === "100%" && node.attrs.height === "100%").length, 0);
 });
-
-/** Builds the demo timeline: nodes stage in, edges draw on, a token travels, a caption lands. */
-function makeDemoTimeline(): SvgAnimationTimeline {
-  return {
-    timelineId: "pipeline-assembles",
-    clips: [
-      ...stagedEntryClips({
-        clipIdPrefix: "nodes-in",
-        targets: ["node-input", "node-model", "node-output"],
-        startFrame: 0,
-        durationFrames: 18,
-        staggerFrames: 8,
-        risePx: 14,
-      }),
-      { clipId: "edge-1-draw", targets: ["edge-in-model"], property: "drawOn", from: 0, to: 1, startFrame: 26, durationFrames: 14 },
-      { clipId: "edge-2-draw", targets: ["edge-model-out"], property: "drawOn", from: 0, to: 1, startFrame: 40, durationFrames: 14 },
-      { clipId: "token-appear", targets: ["token"], property: "opacity", from: 0, to: 1, startFrame: 54, durationFrames: 6 },
-      { clipId: "token-travel", targets: ["token"], property: "translateX", from: 0, to: 290, startFrame: 60, durationFrames: 45, easing: "expoInOut" },
-      { clipId: "model-pulse", targets: ["node-model"], property: "scale", from: 1, to: 1.18, startFrame: 62, durationFrames: 12, origin: { x: 0, y: 0 } },
-      { clipId: "model-settle", targets: ["node-model"], property: "scale", from: 1.18, to: 1, startFrame: 74, durationFrames: 16, origin: { x: 0, y: 0 } },
-      { clipId: "caption-in", targets: ["caption"], property: "opacity", from: 0, to: 1, startFrame: 88, durationFrames: 20 },
-    ],
-  };
-}
-
-/** Builds the demo scene: one animated diagram prop clocked to a 4 second audio segment. */
-function makeDemoScene(): Scene {
-  return {
-    schemaVersion: "1.0.0",
-    sceneId: "svg-movie-demo",
-    fps: 30,
-    durationFrames: 120,
-    audioSource: "audio/demo.wav",
-    audioDurationMs: 4000,
-    sceneSize: { w: 1920, h: 1080 },
-    background: {
-      assetId: "bg",
-      svgSource: DIAGRAM_SVG,
-      layer: 0,
-      position: { x: 0, y: 0 },
-      scale: 1,
-      rotation: 0,
-      opacity: 0,
-    },
-    props: [
-      {
-        assetId: "diagram",
-        svgSource: DIAGRAM_SVG,
-        layer: 10,
-        position: { x: 960, y: 540 },
-        scale: 2.2,
-        rotation: 0,
-        opacity: 1,
-        animation: makeDemoTimeline(),
-      },
-    ],
-    actors: [],
-  };
-}
 
 // A-1: The parser turns real SVG into an addressable tree and rejects malformed markup.
 test("A-1: parseSvgDocument builds an addressable tree and rejects malformed markup", () => {
@@ -397,35 +334,6 @@ test("A-13: rendering is frame-driven and reproducible byte for byte", () => {
     renderFrameSvgMarkup(first.frames[0], { svgSources: assets.svgSources }),
     renderFrameSvgMarkup(first.frames[70], { svgSources: assets.svgSources }),
   );
-});
-
-// A-14: Visual review: render a frame strip of the animated scene for human inspection.
-test("A-14 / Visual Review: render a custom SVG animation frame strip to out/svg_movie/", (t) => {
-  if (process.env.RUN_VISUAL_TESTS !== "1") {
-    t.skip("Visual review test: run with npm run test:visual");
-    return;
-  }
-
-  fs.mkdirSync(OUT_STRIP_DIR, { recursive: true });
-
-  const scene = makeDemoScene();
-  const assets = loadSceneAssets(scene);
-  const compiled = compileScene(scene, { assetElementIds: assets.elementIdsByAssetId, clockMs: 0 });
-
-  const sampleFrames = [0, 12, 30, 48, 66, 84, 102, 119];
-  for (const f of sampleFrames) {
-    const outPng = path.join(OUT_STRIP_DIR, `strip_${String(f).padStart(3, "0")}.png`);
-    renderFrameStill(compiled.frames[f], outPng, {
-      svgSources: assets.svgSources,
-      width: 960,
-      height: 540,
-      sceneSize: scene.sceneSize,
-    });
-    const dims = readPngDimensions(outPng);
-    assert.deepEqual(dims, { width: 960, height: 540 }, `Strip frame ${f} must be a true 960x540 raster`);
-  }
-
-  console.log(`✓ A-14 Complete: Rendered ${sampleFrames.length} animation strip frames to ${OUT_STRIP_DIR}`);
 });
 
 // A-15: Audio-first timing. Re-clocking a scene to a new take retimes its motion with it.

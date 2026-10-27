@@ -1,7 +1,7 @@
 /**
  * File Description: P0/P2 behavior tests for stage contracts, resources, projected geometry, design gates and editor persistence.
  * Inputs and outputs: disposable fixture package and defective designs -> observable compile/check/save outcomes.
- * Used by: npm test. Lossless browser pixels are separately captured from the real editor Player.
+ * Used by: npm run test:journeys and the CI journeys job. Lossless browser pixels are separately captured from the real editor Player.
  */
 import "../testSupport/fixtureVideosDir";
 import test from "node:test";
@@ -20,8 +20,8 @@ import { createReceiveAction } from "../../src/dl/performance/receive";
 import { shiftReceive } from "../../src/dl/performance/span";
 import { createPerformanceEvaluator } from "../../src/dl/performance/evaluate";
 import { IONA_RIG } from "../../src/dl/performance/iona";
-import { bindReceiveSpan } from "./bindReceive";
-import { validateStageResources } from "./resources";
+import { bindReceiveSpan } from "../performance/bindReceive";
+import { validateStageResources } from "../performance/resources";
 import { validateScene } from "../../src/dl/scene/validateScene";
 import { validateStageSvgResources } from "../../src/dl/scene/validateStage";
 import { receiveSchema } from "../../src/dl/scene/stageContract";
