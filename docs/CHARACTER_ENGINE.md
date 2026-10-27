@@ -145,8 +145,7 @@ declarations and design-check rules: those checks run at every build and render,
 carry the relevant frozen hash. This avoids invalidating every compiled film for a rule change; stale
 films are refused with a named error before drawing.
 
-The separate CI part owns the GitHub workflow and pull request checks. This part contributes its
-character suites to `npm test` for that workflow to run.
+The CI guide owns the current test tiers and workflow coverage; see [CI.md](CI.md).
 
 ## Verification record
 
