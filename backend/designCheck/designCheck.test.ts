@@ -412,3 +412,187 @@ test("DesignCheck: stage inset is a scene-film device stage, not a card stage", 
   const report = checkFilmDesign(nodeGraph);
   assert.ok(report.findings.some((f) => f.rule === "schema" && /only a scene film/.test(f.message)), JSON.stringify(report.findings).slice(0, 400));
 });
+
+// Returns a valid soundtrack for the still-talking reference film.
+function validSoundtrack(): any {
+  return {
+    sections: [
+      { role: "hook", item: "mk-556", from: 0, to: 72.03, crossfadeSec: 3, offsetSec: 0 },
+      { role: "outro", item: "mk-1023", from: 72.03, to: 155.23, crossfadeSec: 3, offsetSec: 56.48 },
+    ],
+    sfx: [
+      { item: "whoosh-soft", timeSec: 0, gainDb: 0, event: "shot-boundary" },
+      { item: "swoosh-chapter", timeSec: 36.6, gainDb: 0, event: "chapter-cut" },
+      { item: "pop-card", timeSec: 72.03, gainDb: 0, event: "chapter-cut" },
+      { item: "reveal-sparkle", timeSec: 118.80, gainDb: 0, event: "chapter-cut" },
+    ],
+  };
+}
+
+// Returns only the soundtrack error messages for a film.
+function soundtrackErrors(film: unknown, context?: any): string[] {
+  return checkFilmDesign(film, context)
+    .findings.filter((f) => f.rule === "soundtrack" && f.severity === "error")
+    .map((f) => f.message);
+}
+
+test("DesignCheck (D6): a valid soundtrack passes design check with no soundtrack findings", () => {
+  const film = stillTalking();
+  film.soundtrack = validSoundtrack();
+  const errors = soundtrackErrors(film);
+  assert.deepEqual(errors, []);
+});
+
+test("DesignCheck (D6): soundtrack item must exist in library and require no credit", () => {
+  const missing = stillTalking();
+  missing.soundtrack = validSoundtrack();
+  missing.soundtrack.sections[0].item = "nonexistent-track";
+  missing.soundtrack.sfx[0].item = "nonexistent-sfx";
+  const missingErrors = soundtrackErrors(missing);
+  assert.ok(missingErrors.some((m) => m.includes('track "nonexistent-track" does not exist in the audio library')));
+  assert.ok(missingErrors.some((m) => m.includes('sound effect "nonexistent-sfx" does not exist in the audio library')));
+
+  const creditFilm = stillTalking();
+  creditFilm.soundtrack = validSoundtrack();
+  const mockLibrary = {
+    schemaVersion: "1.0.0",
+    generatedAt: new Date().toISOString(),
+    items: [
+      {
+        id: "mk-556",
+        title: "Test Track",
+        kind: "music",
+        durationSec: 232,
+        licence: { source: "test", name: "CC-BY", canMonetize: true, attribution: "Must credit author" },
+        roles: ["hook"],
+        moods: [],
+        energy: "mid",
+        loudness: { integratedLufs: -14, peakDb: -1, lra: 5 },
+        sha256: "0".repeat(64),
+        bytes: 1000,
+        filename: "mk-556.mp3",
+        url: null,
+      },
+    ],
+  };
+  const creditErrors = soundtrackErrors(creditFilm, { library: mockLibrary });
+  assert.ok(creditErrors.some((m) => m.includes("requires credit attribution, which is not permitted under Decision D2")));
+});
+
+test("DesignCheck (D6): soundtrack section must not exceed track length (no silent looping)", () => {
+  const film = stillTalking();
+  film.soundtrack = validSoundtrack();
+  // mk-556 is 232.0s long; section runs 300s -> exceeds track length
+  film.soundtrack.sections[0].to = 300;
+  const errors = soundtrackErrors(film);
+  assert.ok(errors.some((m) => m.includes("exceeding track length 232.0s; no silent looping allowed")));
+});
+
+test("DesignCheck (D6): soundtrack section changes only at chapter cuts", () => {
+  const film = stillTalking();
+  film.soundtrack = validSoundtrack();
+  // Shot 1 starts at 10.23s, which is not a chapter cut (ch is still "departure")
+  film.soundtrack.sections[0].to = 10.23;
+  film.soundtrack.sections[1].from = 10.23;
+  const errors = soundtrackErrors(film);
+  assert.ok(errors.some((m) => m.includes("which is not a chapter cut; section changes are only allowed at chapter cuts")));
+});
+
+test("DesignCheck (D6): soundtrack crossfade lengths must match format standards", () => {
+  const film = stillTalking();
+  film.soundtrack = validSoundtrack();
+  film.soundtrack.sections[0].crossfadeSec = 1.0;
+  const errors = soundtrackErrors(film);
+  assert.ok(errors.some((m) => m.includes("crossfade length is 1s; expected 3s on long format")));
+
+  // Duration shorter than crossfade
+  film.soundtrack.sections[0].crossfadeSec = 3.0;
+  film.soundtrack.sections[0].to = 2.0;
+  film.soundtrack.sections[1].from = 2.0;
+  const shortErrors = soundtrackErrors(film);
+  assert.ok(shortErrors.some((m) => m.includes("is shorter than crossfade length 3s")));
+});
+
+test("DesignCheck (D6): every sound effect must land within 2 frames of a real visual event", () => {
+  const film = stillTalking();
+  film.soundtrack = validSoundtrack();
+  // 5.0s has no shot boundary, chapter cut, or scene clip start
+  film.soundtrack.sfx.push({ item: "pop-card", timeSec: 5.0, gainDb: 0, event: "unknown" });
+  const errors = soundtrackErrors(film);
+  assert.ok(errors.some((m) => m.includes("does not land within +/- 2 frames of a real visual event")));
+});
+
+test("DesignCheck (D6): sound effect density caps on long and reel formats, spacing and families", () => {
+  // Density cap: > 1 effect per 8s on long format
+  const denseFilm = stillTalking();
+  denseFilm.soundtrack = validSoundtrack();
+  denseFilm.soundtrack.sfx = [];
+  // 25 effects in 155s = ~6.2s average interval (< 8s limit)
+  for (let i = 0; i < 25; i++) {
+    denseFilm.soundtrack.sfx.push({ item: "pop-card", timeSec: 0, gainDb: 0 });
+  }
+  const denseErrors = soundtrackErrors(denseFilm);
+  assert.ok(denseErrors.some((m) => m.includes("sound effect density too high")));
+
+  // Spacing < 0.5s between non-tick effects
+  const spacedFilm = stillTalking();
+  spacedFilm.soundtrack = validSoundtrack();
+  spacedFilm.soundtrack.sfx = [
+    { item: "whoosh-soft", timeSec: 0, gainDb: 0 },
+    { item: "pop-card", timeSec: 0.2, gainDb: 0 },
+  ];
+  const spacedErrors = soundtrackErrors(spacedFilm);
+  assert.ok(spacedErrors.some((m) => m.includes("occur within 0.20s; never two effects within 0.5s except a tick run")));
+
+  // Tick run exception: two tick effects within 0.5s do NOT trip the spacing error
+  const tickFilm = stillTalking();
+  tickFilm.soundtrack = validSoundtrack();
+  tickFilm.soundtrack.sfx = [
+    { item: "tick", timeSec: 0, gainDb: 0 },
+    { item: "tick", timeSec: 0.1, gainDb: 0 },
+  ];
+  const tickErrors = soundtrackErrors(tickFilm);
+  assert.ok(!tickErrors.some((m) => m.includes("except a tick run")));
+
+  // Effect families > 4: 5 families
+  const familyFilm = stillTalking();
+  familyFilm.soundtrack = validSoundtrack();
+  familyFilm.soundtrack.sfx = [
+    { item: "whoosh-soft", timeSec: 0, gainDb: 0 },
+    { item: "zoom-in", timeSec: 36.6, gainDb: 0 },
+    { item: "pop-card", timeSec: 72.03, gainDb: 0 },
+    { item: "hit-soft", timeSec: 102.07, gainDb: 0 },
+    { item: "glitch-small", timeSec: 118.80, gainDb: 0 },
+  ];
+  const familyErrors = soundtrackErrors(familyFilm);
+  assert.ok(familyErrors.some((m) => m.includes("exceeding cap of at most 4 effect families per film")));
+});
+
+test("DesignCheck (D6): reel soundtrack allows at most 2 tracks", () => {
+  const film = stillTalking();
+  film.soundtrack = {
+    sections: [
+      { role: "hook", item: "mk-556", from: 0, to: 36.6, crossfadeSec: 1.5, offsetSec: 0 },
+      { role: "explain", item: "mk-554", from: 36.6, to: 72.03, crossfadeSec: 1.5, offsetSec: 0 },
+      { role: "outro", item: "mk-1023", from: 72.03, to: 155.23, crossfadeSec: 1.5, offsetSec: 0 },
+    ],
+    sfx: [],
+  };
+  const errors = soundtrackErrors(film, { formats: ["reel"] });
+  assert.ok(errors.some((m) => m.includes("at most 2 tracks allowed in reel format (Decision D3)")));
+});
+
+test("DesignCheck (D6): high-LRA tracks are only allowed in payoff or outro sections", () => {
+  const film = stillTalking();
+  film.soundtrack = validSoundtrack();
+  // mk-543 has LRA 17.8 > 10; role is set to explain
+  film.soundtrack.sections[0].item = "mk-543";
+  film.soundtrack.sections[0].role = "explain";
+  const errors = soundtrackErrors(film);
+  assert.ok(errors.some((m) => m.includes("has high loudness range (LRA 17.8 > 10) and is only allowed in payoff or outro sections, not in \"explain\"")));
+
+  // In payoff role, it passes
+  film.soundtrack.sections[0].role = "payoff";
+  const okErrors = soundtrackErrors(film);
+  assert.ok(!okErrors.some((m) => m.includes("high loudness range")));
+});

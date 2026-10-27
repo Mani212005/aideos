@@ -1,0 +1,210 @@
+/**
+ * File Description: Checks film soundtrack sections and effects against approved Decision D6 standards.
+ * Inputs and outputs: Film, DesignFinding array, and DesignCheckContext -> validated findings or failure reports.
+ * Used by: backend/designCheck/designCheck.ts.
+ */
+
+import { loadAudioLibrary } from "../audioLibrary/library";
+import { deliveryTimeline } from "../../src/dl/delivery";
+import { FPS } from "../sceneKit";
+import { effectFamily, getVisualEventFrames } from "../designSpec/soundtrack";
+import type { Film } from "../../src/dl/schema";
+import type { DesignCheckContext, DesignFinding } from "./designCheck";
+
+// Enforces standard-layer soundtrack rules for audio library usage, timing, density, and chapter alignment (Decision D6).
+export function checkSoundtrack(film: Film, findings: DesignFinding[], context: DesignCheckContext = {}): void {
+  if (!film.soundtrack || (film.soundtrack.sections.length === 0 && film.soundtrack.sfx.length === 0)) {
+    return;
+  }
+
+  const fps = film.fps ?? FPS;
+  const isReel = Boolean(context.formats?.includes("reel") || film.id.includes("reel"));
+  const library = context.library ?? loadAudioLibrary();
+
+  // Rule: Reel at most 2 tracks
+  if (isReel && film.soundtrack.sections.length > 2) {
+    findings.push({
+      rule: "soundtrack",
+      severity: "error",
+      where: "soundtrack.sections",
+      message: `reel format has ${film.soundtrack.sections.length} tracks; at most 2 tracks allowed in reel format (Decision D3).`,
+    });
+  }
+
+  // Chapter cut times for validating section boundaries
+  const chapterCuts: number[] = [0];
+  let cursorSec = 0;
+  film.shots.forEach((shot, index) => {
+    if (index > 0 && shot.ch && shot.ch !== film.shots[index - 1].ch) {
+      chapterCuts.push(cursorSec);
+    }
+    cursorSec += shot.dur;
+  });
+
+  const expectedCrossfade = isReel ? 1.5 : 3;
+
+  for (const section of film.soundtrack.sections) {
+    const item = library.items.find((candidate) => candidate.id === section.item);
+
+    // Rule: Item exists in library
+    if (!item) {
+      findings.push({
+        rule: "soundtrack",
+        severity: "error",
+        where: `soundtrack.sections.${section.item}`,
+        message: `track "${section.item}" does not exist in the audio library.`,
+      });
+      continue;
+    }
+
+    // Rule: Licence allows monetized use without credit
+    if (item.licence.attribution !== null) {
+      findings.push({
+        rule: "soundtrack",
+        severity: "error",
+        where: `soundtrack.sections.${section.item}`,
+        message: `track "${section.item}" requires credit attribution, which is not permitted under Decision D2 (no credit-required music).`,
+      });
+    }
+
+    // Rule: Section does not run past track length
+    const duration = section.to - section.from;
+    const totalRun = duration + (section.offsetSec ?? 0);
+    if (totalRun > item.durationSec + 0.05) {
+      findings.push({
+        rule: "soundtrack",
+        severity: "error",
+        where: `soundtrack.sections.${section.item}`,
+        message: `section "${section.item}" runs ${duration.toFixed(1)}s (offset ${(section.offsetSec ?? 0).toFixed(1)}s, total ${totalRun.toFixed(1)}s), exceeding track length ${item.durationSec.toFixed(1)}s; no silent looping allowed.`,
+      });
+    }
+
+    // Rule: High-LRA tracks only in payoff or outro sections
+    if (item.loudness.lra > 10 && section.role !== "payoff" && section.role !== "outro") {
+      findings.push({
+        rule: "soundtrack",
+        severity: "error",
+        where: `soundtrack.sections.${section.item}`,
+        message: `track "${section.item}" has high loudness range (LRA ${item.loudness.lra} > 10) and is only allowed in payoff or outro sections, not in "${section.role}".`,
+      });
+    }
+
+    // Rule: Crossfade lengths per format
+    if (film.soundtrack.sections.length > 1) {
+      if (Math.abs(section.crossfadeSec - expectedCrossfade) > 0.05) {
+        findings.push({
+          rule: "soundtrack",
+          severity: "error",
+          where: `soundtrack.sections.${section.item}`,
+          message: `section "${section.item}" crossfade length is ${section.crossfadeSec}s; expected ${expectedCrossfade}s on ${isReel ? "reel" : "long"} format.`,
+        });
+      }
+      if (duration < section.crossfadeSec) {
+        findings.push({
+          rule: "soundtrack",
+          severity: "error",
+          where: `soundtrack.sections.${section.item}`,
+          message: `section "${section.item}" duration ${duration.toFixed(1)}s is shorter than crossfade length ${section.crossfadeSec}s.`,
+        });
+      }
+    }
+
+    // Rule: Section changes only at chapter cuts
+    if (section.from > 0.01) {
+      const landsOnChapterCut = chapterCuts.some((cut) => Math.abs(cut - section.from) <= 2 / fps + 0.05);
+      if (!landsOnChapterCut) {
+        findings.push({
+          rule: "soundtrack",
+          severity: "error",
+          where: `soundtrack.sections.${section.item}`,
+          message: `section "${section.item}" changes at ${section.from.toFixed(2)}s, which is not a chapter cut; section changes are only allowed at chapter cuts.`,
+        });
+      }
+    }
+  }
+
+  // Sound effects checks
+  const visualEvents = getVisualEventFrames(film);
+
+  for (const effect of film.soundtrack.sfx) {
+    const item = library.items.find((candidate) => candidate.id === effect.item);
+
+    // Rule: Sfx item exists in library
+    if (!item) {
+      findings.push({
+        rule: "soundtrack",
+        severity: "error",
+        where: `soundtrack.sfx.${effect.item}`,
+        message: `sound effect "${effect.item}" does not exist in the audio library.`,
+      });
+      continue;
+    }
+
+    // Rule: Sfx licence allows monetized use without credit
+    if (item.licence.attribution !== null) {
+      findings.push({
+        rule: "soundtrack",
+        severity: "error",
+        where: `soundtrack.sfx.${effect.item}`,
+        message: `sound effect "${effect.item}" requires credit attribution, which is not permitted under Decision D2.`,
+      });
+    }
+
+    // Rule: Every effect lands within plus or minus 2 frames of a real visual event
+    const effectFrame = Math.round(effect.timeSec * fps);
+    const hasVisualEvent = visualEvents.some((ev) => Math.abs(ev.frame - effectFrame) <= 2);
+    if (!hasVisualEvent) {
+      findings.push({
+        rule: "soundtrack",
+        severity: "error",
+        where: `soundtrack.sfx.${effect.item}`,
+        message: `sound effect "${effect.item}" at ${effect.timeSec.toFixed(2)}s (frame ${effectFrame}) does not land within +/- 2 frames of a real visual event.`,
+      });
+    }
+  }
+
+  // Density caps checks
+  const sfxCount = film.soundtrack.sfx.length;
+  if (sfxCount > 0) {
+    const totalSec = deliveryTimeline(film, isReel ? "reel" : "long").totalFrames / fps;
+    const minInterval = isReel ? 5 : 8;
+    const averageInterval = totalSec / sfxCount;
+
+    if (averageInterval < minInterval - 1e-4) {
+      findings.push({
+        rule: "soundtrack",
+        severity: "error",
+        where: "soundtrack.sfx",
+        message: `sound effect density too high: average interval is ${averageInterval.toFixed(1)}s per effect (${sfxCount} effects in ${totalSec.toFixed(1)}s), exceeding limit of at most one effect per ${minInterval}s on ${isReel ? "reel" : "long"} format.`,
+      });
+    }
+
+    // Rule: Never two within 0.5s except a tick run
+    const sortedSfx = [...film.soundtrack.sfx].sort((a, b) => a.timeSec - b.timeSec);
+    for (let i = 0; i < sortedSfx.length - 1; i++) {
+      const gap = sortedSfx[i + 1].timeSec - sortedSfx[i].timeSec;
+      if (gap < 0.5 - 1e-4) {
+        const isTickRun = sortedSfx[i].item === "tick" && sortedSfx[i + 1].item === "tick";
+        if (!isTickRun) {
+          findings.push({
+            rule: "soundtrack",
+            severity: "error",
+            where: `soundtrack.sfx.${sortedSfx[i + 1].item}`,
+            message: `sound effects "${sortedSfx[i].item}" and "${sortedSfx[i + 1].item}" occur within ${gap.toFixed(2)}s; never two effects within 0.5s except a tick run.`,
+          });
+        }
+      }
+    }
+
+    // Rule: At most about 4 effect families per film
+    const families = new Set(film.soundtrack.sfx.map((s) => effectFamily(s.item)));
+    if (families.size > 4) {
+      findings.push({
+        rule: "soundtrack",
+        severity: "error",
+        where: "soundtrack.sfx",
+        message: `film uses ${families.size} sound effect families (${[...families].join(", ")}), exceeding cap of at most 4 effect families per film.`,
+      });
+    }
+  }
+}
