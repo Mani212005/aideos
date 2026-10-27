@@ -1,7 +1,7 @@
 /**
  * File Description: Journey tests for characters as data through the real design build: new characters (J5), resume (J6), facts (J7), failures (J8), authoring (J10) and stale embedded specs (J14).
  * Inputs and outputs: throwaway copies of the iona-receive fixture package with swapped characters -> build status, compiled films, validation and fingerprints.
- * Used by: npm test.
+ * Used by: npm run test:journeys and the CI journeys job.
  */
 import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import test from "node:test";
@@ -20,9 +20,9 @@ import { stageEvidence } from "../../src/dl/scene/stageFacts";
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
 import type { Scene } from "../../src/dl/scene/types";
 import { CHARACTER_FILES, rawSpec, type FixtureCharacter } from "../testSupport/characters";
-import { checkCharacterFile } from "./cli";
+import { checkCharacterFile } from "../characters/cli";
 import { checkLookPlanById } from "../lookPlan/check";
-import { loadCharacter } from "./library";
+import { loadCharacter } from "../characters/library";
 import { characterHash } from "../../src/dl/characters/hash";
 import { characterSpecSchema, type CharacterSpec } from "../../src/dl/characters/schema";
 import { LEGACY_P0_RESOURCE_HASH } from "../../src/dl/scene/stageContract";

@@ -1,7 +1,7 @@
 /**
  * File Description: Browser test page comparing real cel pixels: legacy stage alias, spec-built Iona, and production-rendered character stills.
  * Inputs and outputs: window.__pixelRequest (specs, actions and production PNG references) -> window.__pixels promise of pixel comparisons and PNG data URLs.
- * Used by: backend/characters/pixels.test.ts, which bundles this file with esbuild for headless Chrome. Never part of production.
+ * Used by: backend/journeys/character_pixels.journey.ts, which bundles this file with esbuild for headless Chrome. Never part of production.
  */
 import { Euler, Group, NoToneMapping, OrthographicCamera, Quaternion, Scene, SRGBColorSpace, Vector3, WebGLRenderer } from "three";
 import { createIonaArt, type IonaArt } from "../../test_fixtures/characters/iona-legacy/iona-art-v1.js";

@@ -289,7 +289,7 @@ Compare the same action, camera, crop and absolute frames in cel and dots.
 Inspect the eyes, mouth, hands and prop edges at phone size. A held pose should
 have identical lossless frames and near-zero H.264 frame difference; moving
 surfaces must carry their samples without sparkle or hidden-surface leaks.
-The dots raster test, `backend/characters/dotsPixels.test.ts`, measures these
+The dots raster test, `backend/journeys/character_dots_pixels.journey.ts`, measures these
 properties; J3/J4 in `backend/journeys/j3_j4_dots.journey.ts` checks Player/export
 parity and both crops. These checks do not award facial appeal or turn short
 engineering excerpts into full-film review passes. Record render seconds per

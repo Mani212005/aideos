@@ -1,22 +1,22 @@
 /**
  * File Description: Resume and hashing for character films (J6): an unchanged rerun reuses every stage, while editing the character a film names (its rig proportions, re-stamped) reopens exactly design and everything after it and leaves intake, narration and look reused; the look hash and the design fingerprint both carry the character.
  * Inputs and outputs: the real runProduction on the iona-receive fixture's look and design (tone narration, no engine, stopping before render) -> stage progress events, fingerprints and the compiled film's embedded spec.
- * Used by: npm test.
+ * Used by: npm run test:journeys and the CI journeys job.
  */
 import "../testSupport/fixtureVideosDir";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { runProduction, designFilesFingerprint, lookPlanFingerprint } from "./run";
-import { readFilm } from "./filmStore";
+import { runProduction, designFilesFingerprint, lookPlanFingerprint } from "../pipeline/run";
+import { readFilm } from "../pipeline/filmStore";
 import { buildDesign } from "../designSpec/build";
 import { journeyRequest, writeIonaDesign } from "../journeys/ionaFilm";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { characterHash } from "../../src/dl/characters/hash";
 import { characterSpecSchema } from "../../src/dl/characters/schema";
 import { rawSpec } from "../testSupport/characters";
-import type { ProductionProgress, ProductionStage } from "./types";
+import type { ProductionProgress, ProductionStage } from "../pipeline/types";
 import type { Scene } from "../../src/dl/scene/types";
 
 // Runs the request to the end of assembly and returns which stages ran and which were reused.

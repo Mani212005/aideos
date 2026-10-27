@@ -159,7 +159,7 @@ export const JOBS: CiJob[] = [
   },
   {
     id: "journeys",
-    title: "Headless user journeys: real pipeline, real render, real studio",
+    title: "Headless user journeys: character and Three-stage checks, real pipeline, real render, real studio",
     steps: [
       {
         name: "journey tests",

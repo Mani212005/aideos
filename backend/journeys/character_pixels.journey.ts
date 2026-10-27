@@ -1,7 +1,7 @@
 /**
  * File Description: Browser pixel tests: spec-built Iona equals the frozen legacy art, every character draws in both crops, Pip and Marlo match committed stage stills, and the sheet command works end to end.
  * Inputs and outputs: committed specs, legacy stage performances and PNG evidence -> headless Chrome (software GL) pixel comparisons and sheet files.
- * Used by: npm test. Skips when no Chrome is installed unless AIDEOS_BROWSER_TESTS_REQUIRED=1.
+ * Used by: npm run test:journeys and the CI journeys job. Skips when no Chrome is installed unless AIDEOS_BROWSER_TESTS_REQUIRED=1.
  */
 import "../testSupport/fixtureVideosDir";
 import test from "node:test";
@@ -13,9 +13,9 @@ import { build } from "esbuild";
 import { createReceiveAction } from "../../src/dl/performance/receive";
 import { readPngDimensions } from "../scene/renderStill";
 import { CHARACTER_FILES, characterPin, loadSpec } from "../testSupport/characters";
-import { chromeAvailable, evaluatePage } from "./browser";
-import { renderCharacterSheet } from "./sheet";
-import type { PixelRequest, PixelResult } from "./pixelPage";
+import { chromeAvailable, evaluatePage } from "../characters/browser";
+import { renderCharacterSheet } from "../characters/sheet";
+import type { PixelRequest, PixelResult } from "../characters/pixelPage";
 import { parseFilm } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
 import type { StageCast } from "../../src/dl/scene/stageContract";
@@ -92,7 +92,7 @@ async function productionCharacterStills(outDir: string): Promise<Array<PixelReq
 async function runPixelPage(request: PixelRequest): Promise<PixelResult> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-pixels-"));
   try {
-    await build({ entryPoints: [path.join(__dirname, "pixelPage.ts")], outfile: path.join(dir, "pixel.js"), bundle: true, format: "iife", platform: "browser", logLevel: "silent" });
+    await build({ entryPoints: [path.join(__dirname, "../characters/pixelPage.ts")], outfile: path.join(dir, "pixel.js"), bundle: true, format: "iife", platform: "browser", logLevel: "silent" });
     fs.writeFileSync(path.join(dir, "index.html"), `<!doctype html><meta charset="utf-8"><script>window.__pixelRequest=${JSON.stringify(request).replace(/</g, "\\u003c")};</script><script src="pixel.js"></script>`);
     const { value, errors } = await evaluatePage<PixelResult>(path.join(dir, "index.html"), "window.__pixels");
     assert.deepEqual(errors, []);

@@ -11,10 +11,10 @@ import path from "node:path";
 const ROOT = path.resolve(__dirname, "..");
 
 /** Scripts whose quoted globs select the test files they run. */
-export const TEST_SCRIPTS = ["test", "test:journeys", "test:legacy", "test:visual"];
+export const TEST_SCRIPTS = ["test", "test:journeys", "test:legacy", "test:live", "test:visual"];
 
-/** What makes a file a test file: the suffixes the three layers use. */
-export const TEST_FILE = /\.(test|journey|golden)\.(ts|tsx|mjs)$/;
+/** What makes a file a test file: the suffixes the CI layers and opt-in live checks use. */
+export const TEST_FILE = /\.(test|journey|golden|live)\.(ts|tsx|mjs)$/;
 
 /** Turns a shell-style glob (`*` within a folder, `**` across folders) into an anchored regex. */
 export function globToRegExp(glob: string): RegExp {
@@ -44,7 +44,7 @@ export function patternsFromScripts(scripts: Record<string, string>): string[] {
     if (!line) continue;
     for (const token of line.match(/"[^"]+"|'[^']+'|\S+/g) ?? []) {
       const bare = token.replace(/^["']|["']$/g, "");
-      if (TEST_FILE.test(bare) || /\*.*\.(test|journey|golden)\.(ts|tsx|mjs)$/.test(bare)) patterns.push(bare);
+      if (TEST_FILE.test(bare) || /\*.*\.(test|journey|golden|live)\.(ts|tsx|mjs)$/.test(bare)) patterns.push(bare);
     }
   }
   return patterns;

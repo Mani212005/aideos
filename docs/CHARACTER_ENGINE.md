@@ -62,12 +62,12 @@ Journeys the brief's list missed, added here:
 Static: file headers, eslint, root type-check, editor build (which type-checks the editor). Unit and feature:
 `backend/characters/characters.test.ts` (schema, hash, rig, expansion, field-named errors, budgets,
 Iona exactness, outward normals, seek-order independence, library resolution, `check --stamp`).
-Property and regression: `backend/characters/retarget.test.ts` (every character, fail and clamp
+Property and regression: `backend/journeys/character_retarget.journey.ts` (every character, fail and clamp
 policies, unreachable targets, planted feet, J2 rebinding, 180 random proportions, the elbow snap).
-Journey: `backend/characters/journeys.test.ts` (J3, J5, J6, J7, J8, J10, J14, several characters on
+Journey: `backend/journeys/characters.journey.ts` (J3, J5, J6, J7, J8, J10, J14, several characters on
 one stage), `backend/journeys/j4_character_crops.journey.ts` (J4 safe-square, caption and inset
 clearance for Iona, Pip and Marlo), plus the existing stage tests. Browser:
-`backend/characters/pixels.test.ts` (legacy versus spec pixels, golden, both crops, committed Pip and
+`backend/journeys/character_pixels.journey.ts` (legacy versus spec pixels, golden, both crops, committed Pip and
 Marlo stage stills, sheets), skipped without Chrome unless
 `AIDEOS_BROWSER_TESTS_REQUIRED=1`; refresh the golden with `AIDEOS_UPDATE_GOLDENS=1`. Visual: sheets
 reviewed by eye.

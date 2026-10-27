@@ -1,7 +1,7 @@
 /**
  * File Description: Review truth for Three stage films (J2, J7, J9): presence, camera and ownership measured in the reviewed output, hidden and off-frame cast never counted, plan adherence judged by each performance's evaluated contact against its spoken decisive word (no dummy clip), plain-word facts for Gemini that name what is unmeasured, and SVG facts that do not depend on the output.
  * Inputs and outputs: the compiled iona-receive fixture and its timed words, edited per case -> FilmFacts, criterion verdicts, StageTruth and prompt text.
- * Used by: npm test.
+ * Used by: npm run test:journeys and the CI journeys job.
  */
 import "../testSupport/fixtureVideosDir";
 import test from "node:test";
@@ -15,12 +15,12 @@ import { bindReceiveSpan } from "../performance/bindReceive";
 import { compileDesign } from "../designSpec/compile";
 import { resolveDesignCharacters } from "../designSpec/build";
 import { parseLookPlan } from "../lookPlan/schema";
-import { readFilmFacts, type FilmFacts } from "./source";
-import { evaluateCriteria } from "./criteria";
-import { stageTruth, stageTruthText } from "./stageTruth";
+import { readFilmFacts, type FilmFacts } from "../review/source";
+import { evaluateCriteria } from "../review/criteria";
+import { stageTruth, stageTruthText } from "../review/stageTruth";
 import { inspectCamera } from "../geminiReview/facts";
-import type { Narration } from "./speech";
-import type { RenderFacts } from "./renderFacts";
+import type { Narration } from "../review/speech";
+import type { RenderFacts } from "../review/renderFacts";
 import type { Scene } from "../../src/dl/scene/types";
 import { receiveSchema } from "../../src/dl/scene/stageContract";
 

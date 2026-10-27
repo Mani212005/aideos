@@ -1,7 +1,7 @@
 /**
  * File Description: Retargeting tests: the receive on every character, limit policies, named failures and property runs over random proportions.
  * Inputs and outputs: committed and randomly proportioned character rigs -> retargeted receives checked by the independent numerical critique.
- * Used by: npm test.
+ * Used by: npm run test:journeys and the CI journeys job.
  */
 import "../testSupport/fixtureVideosDir";
 import test from "node:test";

@@ -20,6 +20,9 @@ const remotionRules = remotionConfig
  */
 const LEGACY_ANY = [
   "backend/**/*.test.ts",
+  // Existing test-code exemptions follow the D7 moves; no new code is exempted.
+  "backend/journeys/characters.journey.ts",
+  "backend/live/audio.live.ts",
   "backend/agentBridge/{contextBuilder,dispatcher,taskQueue,traceBus,types}.ts",
   "backend/cli.ts",
   "backend/critique/engine.ts",

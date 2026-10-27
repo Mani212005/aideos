@@ -27,13 +27,13 @@ Validation: root `npm test` passed (836 passing, 3 intentional skips, no failure
 Character integration (part 1): `prepareStageFacts` builds each performer from its embedded, verified `aideos.character/1` spec and its prop, and `stageMaterials.ts` declares each performer's colours from that spec's palette plus the prop's colours, so the palette gate applies to any character; Iona, Pip and Marlo pass these gates in both formats (see `docs/CHARACTER_ENGINE.md`). No new character schema field was introduced by P2. The measurement helpers themselves accept arbitrary evaluated meshes, including Three's deformed vertex positions; 25 distinct proportions/transforms are checked against real camera matrices.
 
 Character follow-up: the deferred Pip and Marlo stage stills now live in
-`test_fixtures/characters/stage-stills/` and are compared by `backend/characters/pixels.test.ts`.
+`test_fixtures/characters/stage-stills/` and are compared by `backend/journeys/character_pixels.journey.ts`.
 The test renders each compiled decisive pose through the production Remotion stage in both formats
 before comparing it with those references.
 `backend/journeys/j4_character_crops.journey.ts` runs the receive through the real design compiler
 for Iona, Pip and Marlo, checks each evaluated actor and prop silhouette through recovery in both
 caption-safe crops, and proves clear/overlapping inset and out-of-bounds cases. The character-owned
 palette is checked against actual builder materials, with an undeclared-color negative case in
-`backend/performance/stage.test.ts`. This closes P2's deferred additional-character crop and still
+`backend/journeys/stage_contracts.journey.ts`. This closes P2's deferred additional-character crop and still
 evidence; facial appeal, finger contact and exact raster visibility remain outside what projected
 geometry can prove.

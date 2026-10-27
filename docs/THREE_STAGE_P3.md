@@ -79,7 +79,7 @@ CI (part 3) keep their owners.
 - **The review measured presence in the reel crop for every video**: a long-cut review counted the
   reel's presence. Fixed: facts take the viewport (J7).
 - **An unchanged rerun of a hand-built design re-assembled and re-rendered**: the cached design stage
-  rebuilt it as `agent`, which changed film.json. Fixed and held by J6 and `characterResume.test.ts`.
+  rebuilt it as `agent`, which changed film.json. Fixed and held by J6 and `character_resume.journey.ts`.
 - **A Gemini reply still missing evidence after the last attempt could ACCEPT.** Fixed.
 - **The Gemini facts pasted the whole projected stage JSON** (part boxes for every boundary). Replaced
   by the compact per-output summary.
