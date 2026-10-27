@@ -588,7 +588,7 @@ export const soundtrackSchema = z.object({
   speech: z.array(speechIntervalSchema).default([]),
   /** Backend fingerprint of narration bytes and edits whose RMS intervals are recorded above. */
   speechSource: z.string().optional(),
-  /** Measured narration sample peak used to keep effect true peaks safely below the voice. */
+  /** Narration sample peak after stereo upmix, used to keep effect true peaks below the voice. */
   narrationPeakDb: z.number().optional(),
   /** Mix levels, ducking depths, and target loudness settings. */
   mix: soundtrackMixSchema.default(soundtrackMixDefault),

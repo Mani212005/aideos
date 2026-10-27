@@ -30,7 +30,7 @@ function sourceChannels(src: string): number {
   return stream.channels;
 }
 
-// Reads 10 ms RMS windows from decoded audio and merges word gaps shorter than 0.6 s.
+// Reads raw 10 ms activity windows before playback timing determines which gaps are phrase breaks.
 function measureSpeech(file: string, start: number, end: number): { speech: SpeechInterval[]; peakDb: number } {
   const trim = `atrim=start=${start}${Number.isFinite(end) ? `:end=${end}` : ""},asetpts=PTS-STARTPTS,`;
   const output = execFileSync("ffmpeg", [
@@ -51,7 +51,7 @@ function measureSpeech(file: string, start: number, end: number): { speech: Spee
     const windowPeak = Number(match[1]);
     if (Number.isFinite(windowPeak)) peakDb = Math.max(peakDb, windowPeak);
   }
-  return { speech: mergeSpeech(windows), peakDb };
+  return { speech: windows, peakDb };
 }
 
 // Reuses measured phrases on ordinary saves and recomputes them when narration bytes or edits change.
@@ -74,7 +74,7 @@ export function prepareSoundtrack(film: Film): Film {
     src: film.voiceover.src, position: 0, start: 0, end: Infinity, speed: film.voiceover.speed ?? 1, volume: 1,
   }] : [];
   const resolved = sources.map((source) => ({ ...source, file: resolveAudioSourcePath(source.src) }));
-  const fingerprint = createHash("sha256").update("rms-10ms-minus40db-merge600ms-peak-v1");
+  const fingerprint = createHash("sha256").update("rms-10ms-minus40db-retimed-merge600ms-peak-v2");
   for (const source of resolved) {
     fingerprint.update(JSON.stringify(source));
     fingerprint.update(fs.readFileSync(source.file));
@@ -85,7 +85,8 @@ export function prepareSoundtrack(film: Film): Film {
   let narrationPeakDb = -Infinity;
   for (const source of resolved) {
     const measured = measureSpeech(source.file, source.start, source.end);
-    narrationPeakDb = Math.max(narrationPeakDb, measured.peakDb + 20 * Math.log10(source.volume || 1e-10));
+    const stereoPeakDb = measured.peakDb + (sourceChannels(source.src) === 1 ? -10 * Math.log10(2) : 0);
+    narrationPeakDb = Math.max(narrationPeakDb, stereoPeakDb + 20 * Math.log10(source.volume || 1e-10));
     for (const interval of measured.speech) {
       speech.push({
         startSec: source.position + interval.startSec / source.speed,
