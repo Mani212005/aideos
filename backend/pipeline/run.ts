@@ -574,7 +574,10 @@ export async function runProduction(
         return { ...compiled, film: designed };
       },
     );
-    const scoredDesign = await prepareDefaultSoundtrack(design.film, "long");
+    const scoredDesign = await prepareDefaultSoundtrack(design.film, "long", (message) => {
+      warnings.push(message);
+      emit("design", "running", message);
+    });
     if (scoredDesign !== design.film) design.film = writeFilm(slug, scoredDesign);
     // Agent/server work writes authoring files during the stage. Cache their resulting hashes,
     // so an unchanged rerun reuses them while a later authoring edit invalidates the stage.

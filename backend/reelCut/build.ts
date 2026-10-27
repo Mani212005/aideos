@@ -16,7 +16,7 @@ import { checkDesignAgainstLook, resolveDesignCharacters } from "../designSpec/b
 import { compileDesign, narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
 import { resolveCue } from "../designSpec/cues";
 import { resolveSoundtrack } from "../designSpec/soundtrack";
-import { prepareDefaultSoundtrack, scoreDefaultSoundtrack } from "../defaultSoundtrack";
+import { prepareDefaultSoundtrack } from "../defaultSoundtrack";
 import { designSpecSchema, type DesignSpec } from "../designSpec/spec";
 import { lookPlanSchema, type LookPlan } from "../lookPlan/schema";
 import { createCues } from "../sceneKit/timing";
@@ -149,7 +149,7 @@ export function compileReel(input: {
     ...base, shots, captions: long.captions === "off" ? "off" : narration.captionsVttContent,
     voiceover: { volume: long.voiceover?.volume ?? 1, speed: long.voiceover?.speed, src: `videos/${long.id}/reel/voiceover.wav`, durationSec: narration.totalAudioDuration },
     endCardVoice: long.endCardVoice,
-    soundtrack: long.soundtrack,
+    soundtrack: long.soundtrack?.defaultScore ? undefined : long.soundtrack,
     music: long.music,
   }, { owner: false });
   const collapsed = new Map<string, number>();
@@ -199,7 +199,6 @@ export function compileReel(input: {
     const cues = createCues(narrationTimingForFilm(reel, words), reel.fps, { collapsed });
     reel = { ...reel, soundtrack: resolveSoundtrack(spec.soundtrack, cues, reel, "reel") };
   }
-  reel = scoreDefaultSoundtrack(reel, "reel");
   const cues = createCues(narrationTimingForFilm(reel, words), reel.fps, { collapsed });
   const authored = spec?.camera?.map((pose) => ({ frame: resolveCue(pose.at, cues), focus: pose.focus })) ?? [];
   const cameraTargets = (look?.film.camera ?? []).map((pose) => {

@@ -5,14 +5,22 @@
  */
 
 import { createHash } from "node:crypto";
+import fs from "node:fs";
 import { buildTimeline } from "../src/dl/camera";
 import { deliveryTimeline, type DeliveryFormat } from "../src/dl/delivery";
 import { soundtrackMixDefault, type Film, type SoundtrackSection } from "../src/dl/schema";
 import { computeFileSha256, fetchAudioItem, getDefaultLibraryPath, loadAudioLibrary } from "./audioLibrary/library";
 import type { AudioLibrary } from "./audioLibrary/schema";
 import { checkSoundtrack } from "./designCheck/soundtrack";
+import { resolveAudioSourcePath } from "./audio";
 
 type Act = Pick<SoundtrackSection, "role" | "from" | "to">;
+
+// Keeps owner-authored audio outside the default scorer's selection and fallback paths.
+function hasExplicitAudio(film: Film): boolean {
+  return Boolean(film.music || film.audio || film.audioClips?.some((clip) => clip.channel === "music") ||
+    (film.soundtrack && !film.soundtrack.defaultScore));
+}
 
 // Returns frame-aligned chapter starts from the same timeline that playback uses.
 function soundtrackChapterCuts(film: Film): number[] {
@@ -59,7 +67,7 @@ function actsFor(film: Film, format: DeliveryFormat, library: AudioLibrary): Act
 
 // Preserves explicit audio and assigns stable role-matched music to an otherwise unscored film.
 export function scoreDefaultSoundtrack(film: Film, format: DeliveryFormat, library: AudioLibrary = loadAudioLibrary()): Film {
-  if (film.music || film.audio || film.audioClips?.some((clip) => clip.channel === "music") || (film.soundtrack && !film.soundtrack.defaultScore)) return film;
+  if (hasExplicitAudio(film)) return film;
   const acts = actsFor(film, format, library);
   const fade = Math.round((format === "reel" ? 1.5 : 3) * film.fps);
   const sections = acts.map((act, index): SoundtrackSection => {
@@ -78,7 +86,18 @@ export function scoreDefaultSoundtrack(film: Film, format: DeliveryFormat, libra
 }
 
 // Validates a default score and fetches only its selected, hash-verified assets before persistence.
-export async function prepareDefaultSoundtrack(film: Film, format: DeliveryFormat): Promise<Film> {
+export async function prepareDefaultSoundtrack(film: Film, format: DeliveryFormat, onWarning?: (message: string) => void): Promise<Film> {
+  if (hasExplicitAudio(film)) return film;
+  const clips = film.audioClips?.filter((clip) => (clip.channel ?? "voiceover") === "voiceover") ?? [];
+  const sources = clips.length ? clips.map((clip) => clip.src) : film.voiceover?.src ? [film.voiceover.src] : [];
+  try {
+    for (const src of sources) fs.accessSync(resolveAudioSourcePath(src), fs.constants.R_OK);
+  } catch (error) {
+    (onWarning ?? console.warn)(`[soundtrack] Skipping default music for "${film.id}" (${format}): narration audio cannot be read (${error instanceof Error ? error.message : String(error)}). Film remains unscored.`);
+    if (!film.soundtrack?.defaultScore) return film;
+    const { soundtrack: _defaultScore, ...unscored } = film;
+    return unscored;
+  }
   const library = loadAudioLibrary();
   const scored = scoreDefaultSoundtrack(film, format, library);
   if (scored === film) return film;
