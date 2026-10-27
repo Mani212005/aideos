@@ -58,7 +58,19 @@ aideos audio import <id> /path/to/track.mp3
 
 To add a manually downloaded YouTube Audio Library track, first add its complete metadata to `audio/library.json` with `url: null`, including the expected SHA256, byte count, license details, duration, loudness, roles, moods, energy, and content ID risk. Choose a music license that does not require credit. Then import the file using its manifest ID. `aideos audio verify` checks it against the same hash lock.
 
-## 2. Storage and Cache Layout
+## 2. Soundtrack Mixing
+
+`Film.soundtrack` is mixed by the shared `src/dl/Soundtrack.tsx` component in both Studio preview and rendered output. Its section and mix fields are defined in [`src/dl/schema.ts`](../src/dl/schema.ts); the browser-safe section mixer is `src/dl/audio/sectionMixer.ts`, and backend save paths record speech activity through `backend/soundtrack.ts`.
+
+- Library music is normalized to the configured target (default -16 LUFS) using each manifest item's measured integrated loudness, then applies the section volume and mono playback correction.
+- Sections overlap at chapter cuts with equal-power fades centered on the cut: 3 seconds for Long and 1.5 seconds for Reel. The final section extends through the end card and starts at the source offset that places its ending at the delivery end. If the track is too short, playback uses its available tail and a fade of up to 1.5 seconds. Sources are never looped.
+- Backend saves measure narration RMS in 10 ms windows, record intervals above -40 dB, merge gaps shorter than 0.6 seconds, and cache the result against the narration source and edit timing. The browser mixer uses those recorded intervals to apply the configured music levels: -18 dB during speech, -10 dB in pauses, and -8 dB in music-only moments. It starts ducking up to 0.25 seconds before speech and releases over 0.6 seconds.
+- Library sound effects play at their recorded timeline positions. Their loudness is normalized before `gainDb` and `volume`; hits and whooshes are capped at least 8 dB below narration peak, and UI effects at least 14 dB below.
+- Legacy music, audio, and SFX continue through the legacy playback path when they are normalized into a one-section soundtrack. A film without library-backed soundtrack items keeps its existing audio behavior.
+
+The mixer behavior is covered by the D6 golden soundtrack check in `backend/soundtrack.golden.test.ts`.
+
+## 3. Storage and Cache Layout
 
 - **Manifest**: `audio/library.json` (schema `aideos.audio-library/1`) holds IDs, metadata, source URLs, licenses, SHA256 hashes, duration, and measured loudness (integrated LUFS, true peak dB, and LRA).
 - **Cache**: Assets are saved to `.audio-library/` inside the active videos directory. By default this is `videos/.audio-library/`; setting `AIDEOS_VIDEOS_DIR` moves the cache with personal video packages.
