@@ -624,6 +624,13 @@ test("DesignCheck (D6): reel soundtrack allows at most 2 tracks", () => {
   assert.ok(errors.some((m) => m.includes("at most 2 tracks allowed in reel format (Decision D3)")));
 });
 
+test("DesignCheck (D6): explicit long format overrides reel-like film ids", () => {
+  const film = stillTalking();
+  film.id = "reel-explainer";
+  film.soundtrack = validSoundtrack();
+  assert.deepEqual(soundtrackErrors(film, { formats: ["long"] }), []);
+});
+
 test("DesignCheck (D6): high-LRA tracks are only allowed in payoff or outro sections", () => {
   const film = stillTalking();
   film.soundtrack = validSoundtrack();

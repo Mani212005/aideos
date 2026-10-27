@@ -18,7 +18,7 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
   }
 
   const fps = film.fps ?? FPS;
-  const isReel = Boolean(context.formats?.includes("reel") || film.id.includes("reel"));
+  const isReel = context.formats !== undefined ? context.formats.includes("reel") : film.id.includes("reel");
   const library = context.library ?? loadAudioLibrary();
 
   // Rule: Reel at most 2 tracks
