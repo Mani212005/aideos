@@ -251,6 +251,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
     film = carryCaptionPlacement(activeFilm, baseFilm, { owner: false });
     buildFilm = {
       ...baseFilm,
+      soundtrack: baseFilm.soundtrack?.defaultScore ? undefined : baseFilm.soundtrack,
       ...(!spec.soundtrack && activeFilm.soundtrack && !activeFilm.soundtrack.defaultScore ? { soundtrack: activeFilm.soundtrack } : {}),
       ...(!spec.soundtrack && activeFilm.music ? { music: activeFilm.music } : {}),
       captionPlacement: film.captionPlacement,
