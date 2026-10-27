@@ -8,6 +8,8 @@
  * Used by: backend/cli.ts, backend/allCheck/round.ts.
  */
 
+import type { Film } from "../../src/dl/schema";
+import { measureMusicUnderVoice } from "./music";
 import fs from "node:fs";
 import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
@@ -145,12 +147,14 @@ export async function reviewVideo(req: ReviewRequest): Promise<ReviewReport> {
   const video = probeVideo(target.mp4);
   const format = req.format ?? (video.width < video.height ? "reel" : "long");
   let film: FilmFacts | null = null;
+  let audioFilm: Film | null = null;
   let captionRectAt: RenderOptions["captionRectAt"] = undefined;
   if (target.film) {
     if (!fs.existsSync(target.film)) throw new Error(`no film data at ${target.film}`);
     // Stage presence and camera are measured in this video's own output, so a reel is never judged by the long crop.
     const loaded = loadFilmFacts(target.film, { width: video.width, height: video.height });
     film = loaded.facts;
+    audioFilm = loaded.film;
     const prepared = prepareCaptionReview(loaded.film, video.width, video.height);
     if (prepared && typeof prepared !== "function")
       throw new Error(`Placed caption review unavailable: ${prepared.unavailable}`);
@@ -166,7 +170,8 @@ export async function reviewVideo(req: ReviewRequest): Promise<ReviewReport> {
   const render = await measureRender(target.mp4, video, { skipOcr: req.skipOcr, onProgress: req.onProgress, captionRectAt });
   const loudness = video.hasAudio ? measureLoudness(target.mp4) : null;
   const silences = video.hasAudio ? detectSilences(target.mp4, video.durationSec) : [];
-  const criteria = evaluateCriteria({ video, render, film, narration, loudness, silences, format });
+  const musicUnderVoice = audioFilm ? await measureMusicUnderVoice(audioFilm, format, req.onProgress) : undefined;
+  const criteria = evaluateCriteria({ video, render, film, narration, loudness, silences, format, musicUnderVoice });
 
   if (!req.noWrite) attachEvidenceFrames(target.mp4, criteria, target.outDir, video.durationSec, format);
   const scored = criteria.filter((c) => c.score !== null);

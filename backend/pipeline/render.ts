@@ -79,7 +79,7 @@ export function stagePublicDir(
   for (const pool of [examplesDir, videosDir]) {
     if (!fs.existsSync(pool)) continue;
     for (const slug of fs.readdirSync(pool)) {
-      if (!fs.existsSync(path.join(pool, slug, "film.json"))) continue;
+      if (slug !== ".audio-library" && !fs.existsSync(path.join(pool, slug, "film.json"))) continue;
       fs.rmSync(path.join(videosRoot, slug), { force: true });
       fs.symlinkSync(path.join(pool, slug), path.join(videosRoot, slug));
     }

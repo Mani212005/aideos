@@ -1,7 +1,7 @@
 /**
  * File Description: Shared soundtrack component mixing multi-clip audio tracks, background music with sidechain ducking, narration spine, end card voice, and sound effects.
  * Inputs and outputs: Film and timeline props -> rendered Remotion audio elements and sequences.
- * Used by: src/dl/Video.tsx (render path) and src/dl/Film.tsx (FilmView preview path).
+ * Used by: src/dl/Video.tsx (render), src/dl/Film.tsx (preview) and src/dl/reviewAudio.tsx (review stems).
  */
 
 import React from "react";
@@ -32,6 +32,7 @@ const LoadingFrameAudio: React.FC = () => {
 
 export type SoundtrackProps = {
   film: Film;
+  stem?: "music" | "narration";
   timeline: TimedShot[];
   voiceoverSrc?: string;
   voiceoverVolume?: number;
@@ -48,6 +49,7 @@ export const voiceLevel = (frame: number, level: number, total: number) =>
 // Renders the shared soundtrack with ducked music, narration spine or clips, sound effects and end-card audio.
 export const Soundtrack: React.FC<SoundtrackProps> = ({
   film,
+  stem,
   timeline,
   voiceoverSrc,
   voiceoverVolume,
@@ -120,7 +122,7 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
   return (
     <>
       {/* 1. Background Music Track (with ducking) */}
-      {sectionMix ? sections.map((section, index) => (
+      {stem !== "narration" && (sectionMix ? sections.map((section, index) => (
         <Sequence key={`music-section-${index}`} from={section.from} durationInFrames={section.durationInFrames}>
           {/* Frame audio applies each gain to its own samples, avoiding packet-sized gain holds. */}
           <React.Suspense fallback={<LoadingFrameAudio />}>
@@ -153,12 +155,13 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
             })
           }
         />
-      ) : null}
+      ) : null)}
 
       {/* 2. Voiceover & Multi-Clip Audio Track */}
       {audioClips.length > 0
         ? audioClips.filter((ac) => ac.id !== duplicatePrimaryMusicClipId &&
-          (!sectionMix || ac.channel !== "music") && (!effectMix || ac.channel !== "sfx")).map((ac) => {
+          (!sectionMix || ac.channel !== "music") && (!effectMix || ac.channel !== "sfx") &&
+          (!stem || (stem === "music" ? ac.channel === "music" : (ac.channel ?? "voiceover") === "voiceover"))).map((ac) => {
             const speed = ac.speed ?? 1.0;
             const isRetimed = Math.abs(speed - 1.0) > 0.001;
             const startFrame = Math.round(ac.position * effectiveFps);
@@ -201,7 +204,7 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
           })
         : null}
 
-      {!hasVoiceoverClips && effectiveVoiceoverSrc.trim().length > 0 ? (
+      {stem !== "music" && !hasVoiceoverClips && effectiveVoiceoverSrc.trim().length > 0 ? (
         (() => {
           const speed = film.voiceover?.speed ?? 1.0;
           const isRetimed = Math.abs(speed - 1.0) > 0.001;
@@ -221,10 +224,10 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
       ) : null}
 
       {/* 3. The end card's spoken line, at the narration's own level */}
-      {card ? <EndCardVoice film={film} card={card} volume={effectiveVoiceoverVolume} /> : null}
+      {stem !== "music" && card ? <EndCardVoice film={film} card={card} volume={effectiveVoiceoverVolume} /> : null}
 
       {/* 4. Transition Sound Effects (SFX) Track */}
-      {soundtrack.sfx.length > 0
+      {!stem && soundtrack.sfx.length > 0
         ? soundtrack.sfx.map((sfx, idx) => {
             const startFrame = Math.round(sfx.timeSec * effectiveFps);
             const mixedEffect = isLibrarySource(sfx);

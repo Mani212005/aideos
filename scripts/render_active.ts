@@ -9,6 +9,8 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { ensureGenerated } from "../backend/pipeline/generatedFiles";
 import { resolvePackageDir } from "../src/dl/videoPackageLoader";
+import { readFilm } from "../backend/pipeline/filmStore";
+import { masterAudio, writeDescriptionCredits } from "../backend/masterAudio";
 import { reelForRender } from "../backend/reelCut/store";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
@@ -26,7 +28,7 @@ function main(): void {
   }
 
   const pkgDir = resolvePackageDir(activeFilm);
-  if (composition === "Reel") reelForRender(activeFilm);
+  const film = composition === "Reel" ? reelForRender(activeFilm) : readFilm(activeFilm);
   const rendersDir = path.join(pkgDir, "renders");
   fs.mkdirSync(rendersDir, { recursive: true });
 
@@ -55,6 +57,9 @@ function main(): void {
     console.error(`Error: Render failed to create output file at ${outPath}`);
     process.exit(1);
   }
+
+  masterAudio(outPath);
+  if (film) writeDescriptionCredits(rendersDir, [film]);
 
   console.log(`[render] Render complete: ${outPath}`);
 }
