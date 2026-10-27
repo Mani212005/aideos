@@ -72,7 +72,7 @@ export function readFilm(slug: string): Film | null {
  * never lands on disk half-applied.
  */
 export function writeFilm(slug: string, film: Film, options: { owner: boolean; agentEdit?: boolean } = { owner: false }): Film {
-  const validated = prepareSoundtrack(parseFilm(carryCaptionPlacement(readFilm(slug), film, options)));
+  const validated = parseFilm(prepareSoundtrack(parseFilm(carryCaptionPlacement(readFilm(slug), film, options))));
   const dir = packageDir(slug);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "film.json"), JSON.stringify(validated, null, 2), "utf8");

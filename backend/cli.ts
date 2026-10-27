@@ -538,6 +538,15 @@ program
     const source = options.source as "agent" | "server-model" | "hand-built";
     if (!["agent", "server-model", "hand-built"].includes(source)) throw new Error(`unknown --source "${options.source}"`);
     const status = buildDesign(film, source);
+    if (status.state === "passed") {
+      const { prepareDefaultSoundtrack } = await import("./defaultSoundtrack");
+      const { readFilm, writeFilm } = await import("./pipeline/filmStore");
+      const current = readFilm(film);
+      if (current) {
+        const scored = await prepareDefaultSoundtrack(current, "long");
+        if (scored !== current) writeFilm(film, scored);
+      }
+    }
     console.log(formatBuildStatus(film, status));
     if (status.state !== "passed") process.exitCode = 1;
   });

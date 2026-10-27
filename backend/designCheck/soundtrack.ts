@@ -6,6 +6,7 @@
 
 import { loadAudioLibrary } from "../audioLibrary/library";
 import { deliveryTimeline } from "../../src/dl/delivery";
+import { buildTimeline } from "../../src/dl/camera";
 import { FPS } from "../sceneKit";
 import { effectFamily, getVisualEventFrames } from "../designSpec/soundtrack";
 import type { Film } from "../../src/dl/schema";
@@ -18,7 +19,9 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
   }
 
   const fps = film.fps ?? FPS;
-  const isReel = context.formats !== undefined ? context.formats.includes("reel") : film.id.includes("reel");
+  const format = context.formats !== undefined ? undefined :
+    film.soundtrack.defaultScore?.format ?? (film.id.includes("reel") ? "reel" : "long");
+  const isReel = context.formats !== undefined ? context.formats.includes("reel") : format === "reel";
   const library = context.library ?? loadAudioLibrary();
 
   // Rule: Reel at most 2 tracks
@@ -33,17 +36,17 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
 
   // Chapter cut times for validating section boundaries
   const chapterCuts: number[] = [0];
-  let cursorSec = 0;
-  film.shots.forEach((shot, index) => {
-    if (index > 0 && shot.ch && shot.ch !== film.shots[index - 1].ch) {
-      chapterCuts.push(cursorSec);
+  const timeline = buildTimeline(film);
+  timeline.forEach(({ shot, from }, index) => {
+    if (index > 0 && shot.ch && shot.ch !== timeline[index - 1].shot.ch) {
+      chapterCuts.push(from / fps);
     }
-    cursorSec += shot.dur;
   });
 
   const expectedCrossfade = isReel ? 1.5 : 3;
   const orderedSections = [...film.soundtrack.sections].sort((a, b) => a.from - b.from);
-  const totalSec = deliveryTimeline(film, isReel ? "reel" : "long").totalFrames / fps;
+  const delivery = deliveryTimeline(film, isReel ? "reel" : "long");
+  const totalSec = delivery.totalFrames / fps;
   const boundaryTolerance = 0.001;
   if (orderedSections.length > 0) {
     if (Math.abs(orderedSections[0].from) > boundaryTolerance) {
@@ -88,21 +91,45 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
       });
     }
 
-    // Rule: Section does not run past track length
+    // Rule: Roles describe both the library item and the section's actual story position.
+    if (!item.roles.includes(section.role)) {
+      findings.push({ rule: "soundtrack", severity: "error", where: `soundtrack.sections.${section.item}`, message: `track "${section.item}" does not support role "${section.role}"; supported roles: ${item.roles.join(", ")}.` });
+    }
+    const lastChapter = chapterCuts[chapterCuts.length - 1];
+    const closingRole = section.role === "payoff" || section.role === "outro";
+    const misplaced = (section.role === "hook" && section.from > boundaryTolerance) ||
+      (closingRole && ((chapterCuts.length > 1 && section.from <= boundaryTolerance) || section.from > lastChapter + boundaryTolerance || Math.abs(section.to - totalSec) > boundaryTolerance)) ||
+      (section.role === "reel" && (!isReel || orderedSections.length !== 1));
+    if (misplaced) {
+      findings.push({ rule: "soundtrack", severity: "error", where: `soundtrack.sections.${section.item}`, message: `role "${section.role}" does not match its story position: hook opens the film, payoff/outro covers the last chapter and end card, and a reel bed spans the reel.` });
+    }
+
+    // Rule: The full frame-rounded source span needed by the mixer must be available.
     const duration = section.to - section.from;
     const orderedIndex = orderedSections.indexOf(section);
-    const fadeInOverlap = orderedIndex > 0 && Math.abs(orderedSections[orderedIndex - 1].to - section.from) <= boundaryTolerance ? expectedCrossfade / 2 : 0;
-    const fadeOutOverlap = orderedIndex < orderedSections.length - 1 && Math.abs(section.to - orderedSections[orderedIndex + 1].from) <= boundaryTolerance ? expectedCrossfade / 2 : 0;
+    const last = orderedIndex === orderedSections.length - 1;
+    const fadeFrames = Math.round(expectedCrossfade * fps);
+    const fadeIn = orderedIndex > 0 && Math.abs(orderedSections[orderedIndex - 1].to - section.from) < 1 / fps ? fadeFrames : 0;
+    const fadeOut = !last && Math.abs(section.to - orderedSections[orderedIndex + 1].from) < 1 / fps ? fadeFrames : 0;
+    const fromFrame = Math.max(0, Math.round(section.from * fps) - Math.ceil(fadeIn / 2));
+    const toFrame = last && section.to >= delivery.storyFrames / fps - 1 / fps ? delivery.totalFrames :
+      Math.min(delivery.totalFrames, Math.round(section.to * fps) + Math.ceil(fadeOut / 2));
+    const spanFrames = toFrame - fromFrame;
+    const trackFrames = Math.floor(item.durationSec * fps);
+    const trimBefore = last ? Math.max(0, trackFrames - spanFrames) : Math.round(section.offsetSec * fps);
     // The mixer back-times the final section from the source ending and ignores its stored offset.
-    const offsetSec = orderedIndex === orderedSections.length - 1 ? 0 : section.offsetSec;
-    const totalRun = duration + offsetSec + fadeInOverlap + fadeOutOverlap;
-    if (totalRun > item.durationSec + 0.001) {
+    const offsetSec = last ? 0 : section.offsetSec;
+    const totalRun = Math.max((spanFrames + trimBefore) / fps, duration + offsetSec);
+    if (spanFrames + trimBefore > trackFrames || totalRun > item.durationSec + 0.001) {
       findings.push({
         rule: "soundtrack",
         severity: "error",
         where: `soundtrack.sections.${section.item}`,
         message: `section "${section.item}" runs ${duration.toFixed(1)}s (offset ${offsetSec.toFixed(1)}s, total ${totalRun.toFixed(1)}s), exceeding track length ${item.durationSec.toFixed(1)}s; no silent looping allowed.`,
       });
+    }
+    if (fadeIn + fadeOut > spanFrames) {
+      findings.push({ rule: "soundtrack", severity: "error", where: `soundtrack.sections.${section.item}`, message: `section "${section.item}" is too short for its crossfades; choose a longer story act.` });
     }
 
     // Rule: High-LRA tracks only in payoff or outro sections

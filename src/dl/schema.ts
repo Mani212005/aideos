@@ -582,6 +582,8 @@ export const soundtrackMixDefault = {
 export const soundtrackSchema = z.object({
   /** SHA-256 hash of the audio/library.json manifest used for this film. */
   library: z.string().optional(),
+  /** Provenance permits a generated long score to be recomputed for a derived reel. */
+  defaultScore: z.object({ format: z.enum(["long", "reel"]) }).optional(),
   /** Ordered list of story act music sections. */
   sections: z.array(soundtrackSectionSchema).default([]),
   /** Measured speech activity intervals for Remotion sidechain ducking. */
@@ -616,6 +618,7 @@ export function normalizeFilmSoundtrack(film: {
     const rawSpeech = film.soundtrack.speech ?? [];
     return {
       library: film.soundtrack.library,
+      defaultScore: film.soundtrack.defaultScore,
       sections: film.soundtrack.sections,
       speech: rawSpeech,
       speechSource: film.soundtrack.speechSource,
@@ -664,6 +667,7 @@ export function normalizeFilmSoundtrack(film: {
 
   return {
     library: film.soundtrack?.library,
+    defaultScore: film.soundtrack?.defaultScore,
     sections: sections.length > 0 ? sections : (film.soundtrack?.sections ?? []),
     speech: rawSpeech,
     speechSource: film.soundtrack?.speechSource,
