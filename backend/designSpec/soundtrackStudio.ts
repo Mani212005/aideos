@@ -88,7 +88,10 @@ export function persistStudioSoundtrack(film: Film): void {
 }
 
 // Rebuilds only the sound design so a track swap never resets the owner's visual or timeline edits.
-export async function rebuildStudioSoundtrack(film: Film, edit: SoundtrackEdit): Promise<Film> {
+export async function rebuildStudioSoundtrack(film: Film, edit: SoundtrackEdit, format: "long" | "reel"): Promise<Film> {
+  if (format !== "long") {
+    throw new Error("The reel soundtrack follows the Long film's design and is rebuilt from it.");
+  }
   assertLongStudioFilm(film);
   const spec = readStudioDesign(film);
   const authored = studioSoundtrackSpec(film, spec.soundtrack);
@@ -109,7 +112,6 @@ export async function rebuildStudioSoundtrack(film: Film, edit: SoundtrackEdit):
     authored.sfx = authored.sfx.map((effect) => ({ ...effect, volume: edit.volume }));
   }
   const cues = studioCues(film);
-  const format = "long";
   const rebuilt: Film = { ...film, soundtrack: resolveSoundtrack(authored, cues, film, format) };
   const findings: DesignFinding[] = [];
   checkSoundtrack(rebuilt, findings, { library, formats: [format] });

@@ -2375,7 +2375,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             if (!request.success) throw new Error(request.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('\n'));
             const { film, edit } = request.data;
             if (film.id !== soundtrackRoute[1]) throw new Error('Soundtrack film does not match the open project.');
-            const rebuilt = await rebuildStudioSoundtrack(film, edit);
+            const rebuilt = await rebuildStudioSoundtrack(film, edit, 'long');
             sendJson(res, 200, { film: rebuilt });
           }).catch((error: unknown) => sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) }));
           return;
