@@ -47,6 +47,9 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
   const orderedSections = [...film.soundtrack.sections].sort((a, b) => a.from - b.from);
   const delivery = deliveryTimeline(film, isReel ? "reel" : "long");
   const totalSec = delivery.totalFrames / fps;
+  const storyEnd = delivery.storyFrames / fps;
+  const firstChapterEnd = chapterCuts[1] ?? storyEnd;
+  const lastChapterStart = chapterCuts.length > 1 ? chapterCuts[chapterCuts.length - 1] : storyEnd;
   const boundaryTolerance = 0.001;
   if (orderedSections.length > 0) {
     if (Math.abs(orderedSections[0].from) > boundaryTolerance) {
@@ -95,13 +98,12 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
     if (!item.roles.includes(section.role)) {
       findings.push({ rule: "soundtrack", severity: "error", where: `soundtrack.sections.${section.item}`, message: `track "${section.item}" does not support role "${section.role}"; supported roles: ${item.roles.join(", ")}.` });
     }
-    const lastChapter = chapterCuts[chapterCuts.length - 1];
     const closingRole = section.role === "payoff" || section.role === "outro";
-    const misplaced = (section.role === "hook" && section.from > boundaryTolerance) ||
-      (closingRole && ((chapterCuts.length > 1 && section.from <= boundaryTolerance) || section.from > lastChapter + boundaryTolerance || Math.abs(section.to - totalSec) > boundaryTolerance)) ||
+    const misplaced = (section.role === "hook" && (section.from > boundaryTolerance || section.to > firstChapterEnd + boundaryTolerance)) ||
+      (closingRole && (section.from < lastChapterStart - boundaryTolerance || Math.abs(section.to - totalSec) > boundaryTolerance)) ||
       (section.role === "reel" && (!isReel || orderedSections.length !== 1));
     if (misplaced) {
-      findings.push({ rule: "soundtrack", severity: "error", where: `soundtrack.sections.${section.item}`, message: `role "${section.role}" does not match its story position: hook opens the film, payoff/outro covers the last chapter and end card, and a reel bed spans the reel.` });
+      findings.push({ rule: "soundtrack", severity: "error", where: `soundtrack.sections.${section.item}`, message: `role "${section.role}" does not match its story position: hook stays within the first chapter, payoff/outro starts in the last chapter (or end card for a single chapter) and reaches the ending, and a reel bed spans the reel.` });
     }
 
     // Rule: The full frame-rounded source span needed by the mixer must be available.

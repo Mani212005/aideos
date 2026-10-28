@@ -9,7 +9,7 @@ import fs from "node:fs";
 import { buildTimeline } from "../src/dl/camera";
 import { deliveryTimeline, type DeliveryFormat } from "../src/dl/delivery";
 import { soundtrackMixDefault, type Film, type SoundtrackSection } from "../src/dl/schema";
-import { computeFileSha256, fetchAudioItem, getDefaultLibraryPath, loadAudioLibrary } from "./audioLibrary/library";
+import { computeFileSha256, getDefaultLibraryPath, loadAudioLibrary, verifyAudioItem } from "./audioLibrary/library";
 import type { AudioLibrary } from "./audioLibrary/schema";
 import { checkSoundtrack } from "./designCheck/soundtrack";
 import { resolveAudioSourcePath } from "./audio";
@@ -20,6 +20,13 @@ type Act = Pick<SoundtrackSection, "role" | "from" | "to">;
 function hasExplicitAudio(film: Film): boolean {
   return Boolean(film.music || film.audio || film.audioClips?.some((clip) => clip.channel === "music") ||
     (film.soundtrack && !film.soundtrack.defaultScore));
+}
+
+// Removes generated music while preserving all owner-authored soundtrack data.
+function withoutDefaultScore(film: Film): Film {
+  if (!film.soundtrack?.defaultScore) return film;
+  const { soundtrack: _defaultScore, ...unscored } = film;
+  return unscored;
 }
 
 // Returns frame-aligned chapter starts from the same timeline that playback uses.
@@ -44,7 +51,9 @@ function candidates(act: Act, index: number, count: number, film: Film, format: 
 // Chooses chapter-sized acts, splitting a long explanation once when one track cannot cover it.
 function actsFor(film: Film, format: DeliveryFormat, library: AudioLibrary): Act[] {
   const cuts = soundtrackChapterCuts(film);
-  const end = deliveryTimeline(film, format).totalFrames / film.fps;
+  const delivery = deliveryTimeline(film, format);
+  const end = delivery.totalFrames / film.fps;
+  const storyEnd = delivery.storyFrames / film.fps;
   const single: Act[] = [{ role: format === "reel" ? "reel" : "hook", from: 0, to: end }];
   if (format === "reel" && candidates(single[0], 0, 1, film, format, library).length) return single;
   const last = cuts[cuts.length - 1];
@@ -59,7 +68,12 @@ function actsFor(film: Film, format: DeliveryFormat, library: AudioLibrary): Act
       for (const split of splits) plans.push([hook, { role: "explain", from: hook.to, to: split }, { role: "explain", from: split, to: last }, payoff]);
     }
   }
-  if (cuts.length === 1) plans.push(single);
+  if (cuts.length === 1) {
+    plans.push([
+      { role: "hook", from: 0, to: storyEnd },
+      { role: "payoff", from: storyEnd, to: end },
+    ]);
+  }
   const plan = plans.find((acts) => acts.every((act, i) => candidates(act, i, acts.length, film, format, library).length));
   if (!plan) throw new Error(`No default soundtrack fits ${film.id} (${format}): choose longer role-matched tracks or shorten chapters; no silent looping allowed.`);
   return plan;
@@ -68,10 +82,11 @@ function actsFor(film: Film, format: DeliveryFormat, library: AudioLibrary): Act
 // Preserves explicit audio and assigns stable role-matched music to an otherwise unscored film.
 export function scoreDefaultSoundtrack(film: Film, format: DeliveryFormat, library: AudioLibrary = loadAudioLibrary()): Film {
   if (hasExplicitAudio(film)) return film;
-  const acts = actsFor(film, format, library);
+  const cachedLibrary: AudioLibrary = { ...library, items: library.items.filter((item) => verifyAudioItem(item).status === "valid") };
+  const acts = actsFor(film, format, cachedLibrary);
   const fade = Math.round((format === "reel" ? 1.5 : 3) * film.fps);
   const sections = acts.map((act, index): SoundtrackSection => {
-    const pool = candidates(act, index, acts.length, film, format, library);
+    const pool = candidates(act, index, acts.length, film, format, cachedLibrary);
     const seed = createHash("sha256").update(JSON.stringify([film.id, format, act.role, index])).digest().readUInt32BE(0);
     const item = pool[seed % pool.length];
     const spanFrames = Math.round((act.to - act.from) * film.fps) + (index > 0 ? Math.ceil(fade / 2) : 0);
@@ -94,19 +109,21 @@ export async function prepareDefaultSoundtrack(film: Film, format: DeliveryForma
     for (const src of sources) fs.accessSync(resolveAudioSourcePath(src), fs.constants.R_OK);
   } catch (error) {
     (onWarning ?? console.warn)(`[soundtrack] Skipping default music for "${film.id}" (${format}): narration audio cannot be read (${error instanceof Error ? error.message : String(error)}). Film remains unscored.`);
-    if (!film.soundtrack?.defaultScore) return film;
-    const { soundtrack: _defaultScore, ...unscored } = film;
-    return unscored;
+    return withoutDefaultScore(film);
   }
   const library = loadAudioLibrary();
-  const scored = scoreDefaultSoundtrack(film, format, library);
+  const cachedCount = library.items.filter((item) => verifyAudioItem(item).status === "valid").length;
+  let scored: Film;
+  try {
+    scored = scoreDefaultSoundtrack(film, format, library);
+  } catch (error) {
+    if (cachedCount === library.items.length) throw error;
+    (onWarning ?? console.warn)(`[soundtrack] Skipping default music for "${film.id}" (${format}): suitable tracks are not verified in the audio cache. Film remains unscored.`);
+    return withoutDefaultScore(film);
+  }
   if (scored === film) return film;
   const findings: Parameters<typeof checkSoundtrack>[1] = [];
   checkSoundtrack(scored, findings, { formats: [format], library });
   if (findings.length) throw new Error(findings.map((finding) => finding.message).join("\n"));
-  for (const id of new Set(scored.soundtrack?.sections.map((section) => section.item))) {
-    const item = library.items.find((entry) => entry.id === id);
-    if (item) await fetchAudioItem(item);
-  }
   return scored;
 }
