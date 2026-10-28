@@ -117,6 +117,8 @@ still build directly; new production runs require one before design.
 
 When the long story plus reel end card already fits the 179 s hard cap (`DELIVERY_CONFIG.reel.maxSec`), the reel stage creates an identity reel that reuses the long cut's narration. For longer films, the reel is a separate shorter cut with condensed narration, keeping the long cut's backend, voice, and speed. Caption placement carries film-level and kept-shot owner placements from the long cut. Shared design cues re-resolve against reel timing; end cues target the reel story end. Dropped shots become zero-length boundary spans for scene cues. A dropped shot collapsing an animated clip into a visible snap fails design check with an error naming the shot and element, directing the writer to keep that shot condensed instead. Node-graph drops remove the shot.
 
+Standalone `videoClips` and `overlayClips` are mapped from source time onto the reel timeline through the kept shots. Each clip is trimmed to the portions retained by the shortened narration durations; clips with no retained portion are omitted. If a dropped-shot gap splits a clip, only its first contiguous retained portion is kept. `audioClips` retain their source timing and are not retimed by this mapping.
+
 The reel stage fingerprints the long film, narration and word timings, reel cut, design inputs and artwork, and delivery settings. Changes to those inputs invalidate the derived reel. The cut records a narration hash for each long shot; when a long narration line changes, the reel check marks that shot stale until its reel line and source hash are rewritten.
 
 ## Resuming

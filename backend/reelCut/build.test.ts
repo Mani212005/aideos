@@ -116,7 +116,7 @@ test("reel compile: standalone clips stay within shortened kept-shot narration",
     long,
     base: long,
     cut: cutFor(long),
-    narration: narration(["Short opening.", "Short middle.", "Short ending."], [2, 2, 2]),
+    narration: narration(["Short opening.", "Short middle.", "Short ending."], [4, 4, 4]),
     pkg: path.join(TEST_VIDEOS_DIR, long.id),
   });
   assert.ok(result.film, JSON.stringify(result));
