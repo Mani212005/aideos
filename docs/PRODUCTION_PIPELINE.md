@@ -110,39 +110,27 @@ still build directly; new production runs require one before design.
 
 ## Soundtrack
 
-`Film.soundtrack` records library-backed music sections, measured narration intervals, mix levels,
+`Film.soundtrack` records music sections, measured narration intervals, mix levels,
 sound effects, and credits. `src/dl/Soundtrack.tsx` is shared by the Studio preview and Remotion
-render. Library assets live in the hash-locked `audio/library.json` manifest. Fetch them with
-`aideos audio fetch`, check the cache with `aideos audio verify`, and import manual assets with
-`aideos audio import <id> <file>`. Fetch verifies downloaded files, verify checks the cache against
-the manifest, and import accepts a file only when its SHA256 matches the manifest.
-
-The section mixer normalizes library music toward -16 LUFS using manifest loudness data. It applies
-equal-power crossfades centered on chapter cuts: 3 seconds for Long and 1.5 seconds for Reel. The
-last section is back-timed from the source end through the end card. Narration assembly adds a
-default 900 ms chapter breath. Backend RMS measurements then locate speech and pauses in the audio
-itself. Default music levels are -18 dB during speech, -10 dB in pauses, and -8 dB when there is no
-speech. The mixer does not infer breaths from screenplay timing.
+render. Use `aideos audio fetch` to download listed assets, `aideos audio verify` to check the cache,
+and `aideos audio import <id> <file>` to import a manual asset. Manifest entries can include SHA256
+hashes to lock asset identity. See [Audio Library and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing)
+for the manifest, mix behavior, chapter breath timing, and speech measurements.
 
 The optional `soundtrack` block in `design/design.json` authors cue-based music sections and effects.
-`aideos design check` validates library identity, licensing, roles, coverage, track length, chapter
-alignment, crossfade duration, effect timing and density, and format-specific track limits. The
-Studio Mix panel lets you preview and swap tracks of the same role, set music and effects levels,
-and read credits. It checks edits before committing them to the Long film. When `design.json` has
-an authored soundtrack, the reel build resolves those cues against Reel timing. Without an authored
-design soundtrack, an existing `film.soundtrack` carries forward, while a generated default score is
-recomputed for Reel timing. Reel builds map standalone clips through kept shots, and retime, trim,
-and split linked video audio to follow its video. Loose audio clips keep their source timing.
+`aideos design check` validates the authored soundtrack; Studio edits are checked before they are
+committed to the Long film. A design-authored soundtrack resolves its cues against Reel timing. If
+there is no authored soundtrack in `design.json`, an existing `film.soundtrack` carries into the
+Reel, while a generated default score is recomputed for Reel timing. Reel builds map standalone
+clips through kept shots and retime, trim, and split linked video audio to follow its video. Loose
+audio clips keep their source timing.
 
-Films without explicit music can receive a deterministic default score. The scorer uses only
-hash-verified tracks already in the local cache. If suitable tracks are not downloaded, it omits
-default music and reports a warning. A single-chapter film can fail design check at the end-card
-boundary, and a Reel fallback can fail when the film has more than two chapter starts. With a custom
-`AIDEOS_VIDEOS_DIR`, render staging can omit the audio cache. Default scoring also drops legacy
-`film.sfx` when no music has been authored. The master limiter does not account for encoded-peak
-overshoot. Silent or unmeasurable renders warn and keep the original. See [Audio Library and
-Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing) for schema, mixing, authoring, checks,
-and the current limits.
+Films without explicit music can receive a deterministic default score from tracks already in the
+local cache; see the audio guide for its eligibility rules and current limits. Render staging with
+a custom `AIDEOS_VIDEOS_DIR` can omit the audio cache. The master limiter does not account for
+encoded-peak overshoot. Silent or unmeasurable renders warn and keep the original. See [Audio Library
+and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing) for soundtrack schema, mixing,
+authoring, checks, and scoring limits.
 
 ## Reel cut delivery
 
