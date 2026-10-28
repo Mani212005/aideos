@@ -441,7 +441,13 @@ function soundtrackErrors(film: unknown, context?: any): string[] {
 
 test("DesignCheck (D6): a valid soundtrack passes design check with no soundtrack findings", () => {
   const film = stillTalking();
-  film.soundtrack = validSoundtrack();
+  const soundtrack = validSoundtrack();
+  soundtrack.sections = [
+    { role: "hook", item: "mk-556", from: 0, to: 36.6, crossfadeSec: 3, offsetSec: 0 },
+    { role: "explain", item: "mk-554", from: 36.6, to: 118.8, crossfadeSec: 3, offsetSec: 0 },
+    { role: "outro", item: "mk-1023", from: 118.8, to: deliveryTimeline(film, "long").totalFrames / film.fps, crossfadeSec: 3, offsetSec: 0 },
+  ];
+  film.soundtrack = soundtrack;
   const errors = soundtrackErrors(film);
   assert.deepEqual(errors, []);
 });
@@ -627,7 +633,13 @@ test("DesignCheck (D6): reel soundtrack allows at most 2 tracks", () => {
 test("DesignCheck (D6): explicit long format overrides reel-like film ids", () => {
   const film = stillTalking();
   film.id = "reel-explainer";
-  film.soundtrack = validSoundtrack();
+  const soundtrack = validSoundtrack();
+  soundtrack.sections = [
+    { role: "hook", item: "mk-556", from: 0, to: 36.6, crossfadeSec: 3, offsetSec: 0 },
+    { role: "explain", item: "mk-554", from: 36.6, to: 118.8, crossfadeSec: 3, offsetSec: 0 },
+    { role: "outro", item: "mk-1023", from: 118.8, to: deliveryTimeline(film, "long").totalFrames / film.fps, crossfadeSec: 3, offsetSec: 0 },
+  ];
+  film.soundtrack = soundtrack;
   assert.deepEqual(soundtrackErrors(film, { formats: ["long"] }), []);
 });
 
