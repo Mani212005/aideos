@@ -13,7 +13,7 @@ import { getRetimedAudioRelPath } from "./audio/retime";
 import { normalizeFilmSoundtrack, type Film } from "./schema";
 import { totalFrames, type TimedShot } from "./camera";
 import {
-  dbGain, effectGain, isLibrarySource, mergeSpeech, mixSections, sectionEnvelope, speechGain,
+  dbGain, effectGain, isLibrarySource, mergeSpeech, mixSections, sectionEnvelope, speechGain, usesSectionMixer,
   soundtrackItem, soundtrackItemSrc,
 } from "./audio/sectionMixer";
 
@@ -67,7 +67,7 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
   const effectiveVoiceoverVolume = voiceoverVolume ?? film.voiceover?.volume ?? 1;
 
   const soundtrack = normalizeFilmSoundtrack(film);
-  const sectionMix = Boolean(film.soundtrack?.sections.some(isLibrarySource));
+  const sectionMix = usesSectionMixer(soundtrack);
   const effectMix = Boolean(film.soundtrack?.sfx.some(isLibrarySource));
   const sections = sectionMix ? mixSections(soundtrack, delivery) : [];
   const primarySection = soundtrack.sections[0];
