@@ -26,7 +26,9 @@ journey("J9 an existing template film still renders through the real pipeline", 
     ...journeyRequest("j9-template", { script: SCRIPT, title: "Load balancing", formats: ["long"], renderFrames: [30, 59], design: "templates" }),
   });
   assert.equal(result.status, "completed", JSON.stringify(result.warnings));
-  assert.deepEqual(result.warnings, []);
+  assert.deepEqual(result.warnings, [
+    '[soundtrack] Skipping default music for "j9-template" (long): suitable tracks are not verified in the audio cache. Film remains unscored.',
+  ]);
   const out = result.outputs[0];
   const facts = probeVideo(out.path);
   assert.deepEqual([facts.width, facts.height, facts.frames], [1920, 1080, 30]);
