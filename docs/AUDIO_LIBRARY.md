@@ -64,7 +64,7 @@ To add a manually downloaded YouTube Audio Library track, first add its complete
 
 ### Library identity and legacy films
 
-Each library-backed section and effect records an item ID and its manifest SHA256. The mixer resolves that identity against `audio/library.json` and rejects an unknown item or a changed hash. `aideos audio fetch` downloads listed assets into the active audio cache and checks their hashes. `aideos audio verify` checks the full cache against the manifest. `aideos audio import <id> <file>` copies a manual asset only when it matches the hash already recorded for that item.
+Each library-backed section and effect records an item ID; a SHA256 can also be recorded to lock the asset identity. When present, the mixer checks that hash against `audio/library.json` and rejects a changed hash; unknown items are rejected. `aideos audio fetch` downloads listed assets into the active audio cache and checks their hashes. `aideos audio verify` checks the full cache against the manifest. `aideos audio import <id> <file>` copies a manual asset only when it matches the hash already recorded for that item.
 
 `normalizeFilmSoundtrack` maps legacy `film.music` or `film.audio` into a single file-backed section. The section spans the shot duration, carries the legacy volume and ducking setting, and uses `film.audio.trimBefore` as its source offset. It maps legacy `film.sfx` entries into file-backed effects. A soundtrack with authored sections takes precedence over those legacy fields. A path-only soundtrack stays on the legacy playback path, while any section or effect with a library identity uses the section mixer.
 
