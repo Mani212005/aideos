@@ -18,7 +18,7 @@ type Act = Pick<SoundtrackSection, "role" | "from" | "to">;
 
 // Keeps owner-authored audio outside the default scorer's selection and fallback paths.
 function hasExplicitAudio(film: Film): boolean {
-  return Boolean(film.music || film.audio || film.audioClips?.some((clip) => clip.channel === "music") ||
+  return Boolean(film.music || film.audio || film.sfx?.length || film.audioClips?.some((clip) => clip.channel === "music") ||
     (film.soundtrack && !film.soundtrack.defaultScore));
 }
 
@@ -49,7 +49,7 @@ function candidates(act: Act, index: number, count: number, film: Film, format: 
 }
 
 // Chooses chapter-sized acts, splitting a long explanation once when one track cannot cover it.
-function actsFor(film: Film, format: DeliveryFormat, library: AudioLibrary): Act[] {
+function actsFor(film: Film, format: DeliveryFormat, library: AudioLibrary, completeLibrary: AudioLibrary): Act[] {
   const cuts = soundtrackChapterCuts(film);
   const delivery = deliveryTimeline(film, format);
   const end = delivery.totalFrames / film.fps;
@@ -61,11 +61,15 @@ function actsFor(film: Film, format: DeliveryFormat, library: AudioLibrary): Act
   if (cuts.length > 1) {
     const hook: Act = { role: "hook", from: 0, to: cuts[1] };
     const payoff: Act = { role: "payoff", from: last, to: end };
-    if (format === "reel" || cuts.length === 2) plans.push([{ ...hook, to: last }, payoff]);
-    else {
+    if (cuts.length === 2) plans.push([hook, payoff]);
+    else if (format !== "reel") {
       plans.push([hook, { role: "explain", from: hook.to, to: last }, payoff]);
       const splits = cuts.slice(2, -1).sort((a, b) => Math.abs(a - (hook.to + last) / 2) - Math.abs(b - (hook.to + last) / 2) || a - b);
       for (const split of splits) plans.push([hook, { role: "explain", from: hook.to, to: split }, { role: "explain", from: split, to: last }, payoff]);
+    }
+    if (format === "reel" && !candidates(single[0], 0, 1, film, format, completeLibrary).length) {
+      const splits = cuts.slice(1).sort((a, b) => Math.abs(a - end / 2) - Math.abs(b - end / 2) || a - b);
+      for (const split of splits) plans.push([{ role: "reel", from: 0, to: split }, { role: "reel", from: split, to: end }]);
     }
   }
   if (cuts.length === 1) {
@@ -83,7 +87,7 @@ function actsFor(film: Film, format: DeliveryFormat, library: AudioLibrary): Act
 export function scoreDefaultSoundtrack(film: Film, format: DeliveryFormat, library: AudioLibrary = loadAudioLibrary()): Film {
   if (hasExplicitAudio(film)) return film;
   const cachedLibrary: AudioLibrary = { ...library, items: library.items.filter((item) => verifyAudioItem(item).status === "valid") };
-  const acts = actsFor(film, format, cachedLibrary);
+  const acts = actsFor(film, format, cachedLibrary, library);
   const fade = Math.round((format === "reel" ? 1.5 : 3) * film.fps);
   const sections = acts.map((act, index): SoundtrackSection => {
     const pool = candidates(act, index, acts.length, film, format, cachedLibrary);

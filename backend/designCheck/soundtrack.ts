@@ -51,6 +51,14 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
   const firstChapterEnd = chapterCuts[1] ?? storyEnd;
   const lastChapterStart = chapterCuts.length > 1 ? chapterCuts[chapterCuts.length - 1] : storyEnd;
   const boundaryTolerance = 0.001;
+  // Two reel beds are a chapter-aligned fallback only when no eligible library bed spans the delivery.
+  const reelPair = isReel && orderedSections.length === 2 && orderedSections.every((section) => section.role === "reel") &&
+    Math.abs(orderedSections[0].from) <= boundaryTolerance &&
+    Math.abs(orderedSections[1].to - totalSec) <= boundaryTolerance &&
+    Math.abs(orderedSections[0].to - orderedSections[1].from) <= boundaryTolerance &&
+    chapterCuts.slice(1).some((cut) => Math.abs(cut - orderedSections[1].from) <= boundaryTolerance) &&
+    !library.items.some((item) => item.kind === "music" && item.licence.attribution === null &&
+      item.roles.includes("reel") && item.loudness.lra <= 10 && Math.floor(item.durationSec * fps) >= delivery.totalFrames);
   if (orderedSections.length > 0) {
     if (Math.abs(orderedSections[0].from) > boundaryTolerance) {
       findings.push({ rule: "soundtrack", severity: "error", where: "soundtrack.sections", message: "soundtrack sections must cover the opening from 0s." });
@@ -101,9 +109,9 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
     const closingRole = section.role === "payoff" || section.role === "outro";
     const misplaced = (section.role === "hook" && (section.from > boundaryTolerance || section.to > firstChapterEnd + boundaryTolerance)) ||
       (closingRole && (section.from < lastChapterStart - boundaryTolerance || Math.abs(section.to - totalSec) > boundaryTolerance)) ||
-      (section.role === "reel" && (!isReel || orderedSections.length !== 1));
+      (section.role === "reel" && (!isReel || (orderedSections.length !== 1 && !reelPair)));
     if (misplaced) {
-      findings.push({ rule: "soundtrack", severity: "error", where: `soundtrack.sections.${section.item}`, message: `role "${section.role}" does not match its story position: hook stays within the first chapter, payoff/outro starts in the last chapter (or end card for a single chapter) and reaches the ending, and a reel bed spans the reel.` });
+      findings.push({ rule: "soundtrack", severity: "error", where: `soundtrack.sections.${section.item}`, message: `role "${section.role}" does not match its story position: hook stays within the first chapter, payoff/outro starts in the last chapter (or end card for a single chapter) and reaches the ending, and reel beds span the reel alone or as a chapter-aligned pair when no single bed fits.` });
     }
 
     // Rule: The full frame-rounded source span needed by the mixer must be available.
@@ -167,7 +175,9 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
     // Rule: Section changes only at chapter cuts
     if (section.from > 0.01) {
       const landsOnChapterCut = chapterCuts.some((cut) => Math.abs(cut - section.from) <= 2 / fps + 0.05);
-      if (!landsOnChapterCut) {
+      const singleChapterClosing = chapterCuts.length === 1 && closingRole &&
+        Math.abs(section.from - storyEnd) <= boundaryTolerance && Math.abs(section.to - totalSec) <= boundaryTolerance;
+      if (!landsOnChapterCut && !singleChapterClosing) {
         findings.push({
           rule: "soundtrack",
           severity: "error",
