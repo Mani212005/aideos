@@ -18,6 +18,12 @@ import { judgeAndRepair, type JudgeOptions, type JudgeResult } from "../visionJu
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { availableCharacters, renderLookBrief, writeLookBrief, writeLookMd, type LookPlan } from "../lookPlan";
 import type { DesignMode } from "../pipeline/types";
+import { prepareDefaultSoundtrack } from "../defaultSoundtrack";
+import { resolveSoundtrack } from "./soundtrack";
+import { designSpecSchema } from "./spec";
+import { narrationTimingForFilm, type TimedWord } from "./compile";
+import { createCues } from "../sceneKit/timing";
+import { checkSoundtrack } from "../designCheck/soundtrack";
 
 
 /** Asks a text model for a completion; injectable so tests never reach a real model. */
@@ -237,10 +243,25 @@ export async function serverDesignCaller(): Promise<DesignLlmCaller | null> {
 }
 
 // Marks a film as keeping its template design so the studio can flag it.
-function markTemplates(filmId: string, note: string): void {
+async function markTemplates(filmId: string, note: string): Promise<void> {
   const film = readFilm(filmId);
   if (!film) return;
-  writeFilm(filmId, { ...film, design: { source: "templates", note } });
+  let scored = film;
+  const specFile = path.join(designDir(filmId), "design.json");
+  if (fs.existsSync(specFile)) {
+    const spec = designSpecSchema.parse(JSON.parse(fs.readFileSync(specFile, "utf8")));
+    if (spec.soundtrack) {
+      const wordsFile = path.join(resolvePackageDir(filmId), "voiceover_words.json");
+      const words: TimedWord[] = fs.existsSync(wordsFile) ? JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? [] : [];
+      const cues = createCues(narrationTimingForFilm(film, words), film.fps);
+      scored = { ...film, soundtrack: resolveSoundtrack(spec.soundtrack, cues, film) };
+      const findings: Parameters<typeof checkSoundtrack>[1] = [];
+      checkSoundtrack(scored, findings, { formats: ["long"] });
+      if (findings.length) throw new Error(findings.map((finding) => finding.message).join("\n"));
+    }
+  }
+  scored = await prepareDefaultSoundtrack(scored, "long");
+  writeFilm(filmId, { ...scored, design: { source: "templates", note } });
 }
 
 // Runs the vision judge on a finished design and sends failed frames back through the path that made it.
@@ -274,7 +295,7 @@ export async function designFilm(filmId: string, opts: DesignFilmOptions = {}): 
   const mode = opts.mode ?? "inline";
   if (mode === "templates") {
     const note = "template design explicitly requested";
-    markTemplates(filmId, note);
+    await markTemplates(filmId, note);
     return { source: "templates", note };
   }
   writeDesignBrief(filmId);

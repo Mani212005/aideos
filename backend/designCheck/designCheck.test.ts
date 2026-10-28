@@ -441,7 +441,13 @@ function soundtrackErrors(film: unknown, context?: any): string[] {
 
 test("DesignCheck (D6): a valid soundtrack passes design check with no soundtrack findings", () => {
   const film = stillTalking();
-  film.soundtrack = validSoundtrack();
+  const soundtrack = validSoundtrack();
+  soundtrack.sections = [
+    { role: "hook", item: "mk-556", from: 0, to: 36.6, crossfadeSec: 3, offsetSec: 0 },
+    { role: "explain", item: "mk-554", from: 36.6, to: 118.8, crossfadeSec: 3, offsetSec: 0 },
+    { role: "outro", item: "mk-1023", from: 118.8, to: deliveryTimeline(film, "long").totalFrames / film.fps, crossfadeSec: 3, offsetSec: 0 },
+  ];
+  film.soundtrack = soundtrack;
   const errors = soundtrackErrors(film);
   assert.deepEqual(errors, []);
 });
@@ -627,7 +633,13 @@ test("DesignCheck (D6): reel soundtrack allows at most 2 tracks", () => {
 test("DesignCheck (D6): explicit long format overrides reel-like film ids", () => {
   const film = stillTalking();
   film.id = "reel-explainer";
-  film.soundtrack = validSoundtrack();
+  const soundtrack = validSoundtrack();
+  soundtrack.sections = [
+    { role: "hook", item: "mk-556", from: 0, to: 36.6, crossfadeSec: 3, offsetSec: 0 },
+    { role: "explain", item: "mk-554", from: 36.6, to: 118.8, crossfadeSec: 3, offsetSec: 0 },
+    { role: "outro", item: "mk-1023", from: 118.8, to: deliveryTimeline(film, "long").totalFrames / film.fps, crossfadeSec: 3, offsetSec: 0 },
+  ];
+  film.soundtrack = soundtrack;
   assert.deepEqual(soundtrackErrors(film, { formats: ["long"] }), []);
 });
 
@@ -644,4 +656,54 @@ test("DesignCheck (D6): high-LRA tracks are only allowed in payoff or outro sect
   film.soundtrack.sections[0].role = "payoff";
   const okErrors = soundtrackErrors(film);
   assert.ok(!okErrors.some((m) => m.includes("high loudness range")));
+});
+
+test("DesignCheck (D6): music roles must match library roles and actual story position", () => {
+  const unsupported = stillTalking();
+  unsupported.soundtrack = validSoundtrack();
+  unsupported.soundtrack.sections[0].item = "mk-554";
+  assert.ok(soundtrackErrors(unsupported).some((message) => message.includes('does not support role "hook"')));
+
+  const mislabeled = stillTalking();
+  mislabeled.soundtrack = validSoundtrack();
+  mislabeled.soundtrack.sections[0].role = "payoff";
+  mislabeled.soundtrack.sections[0].item = "mk-634";
+  assert.ok(soundtrackErrors(mislabeled).some((message) => message.includes('role "payoff" does not match its story position')));
+});
+
+test("DesignCheck (D6): music sections cover the opening, joins and end card without gaps", () => {
+  for (const gap of ["opening", "join", "ending"]) {
+    const film = stillTalking();
+    film.soundtrack = validSoundtrack();
+    if (gap === "opening") film.soundtrack.sections[0].from = 0.01;
+    if (gap === "join") film.soundtrack.sections[0].to -= 0.01;
+    if (gap === "ending") film.soundtrack.sections[1].to -= 0.01;
+    assert.ok(soundtrackErrors(film).some((message) => /cover the opening|without gaps or overlaps|cover the ending/.test(message)), gap);
+  }
+});
+
+test("DesignCheck (D6): odd-frame reel crossfades require the entire rounded source span", () => {
+  const film = stillTalking();
+  const end = deliveryTimeline(film, "reel").totalFrames / film.fps;
+  film.soundtrack = { sections: [
+    { role: "hook", item: "mk-615", from: 0, to: 36.6, offsetSec: 125.8, crossfadeSec: 1.5 },
+    { role: "payoff", item: "mk-634", from: 36.6, to: end, offsetSec: 0, crossfadeSec: 1.5 },
+  ], sfx: [] };
+  assert.ok(soundtrackErrors(film, { formats: ["reel"] }).some((message) => message.includes('section "mk-615"') && message.includes("exceeding track length")));
+});
+
+test("DesignCheck (D6): the final source span is back-timed including the incoming crossfade", () => {
+  const film = stillTalking();
+  const totalSec = deliveryTimeline(film, "long").totalFrames / film.fps;
+  film.soundtrack = {
+    sections: [
+      { role: "hook", item: "mk-556", from: 0, to: 36.6, crossfadeSec: 3, offsetSec: 0 },
+      { role: "explain", item: "mk-554", from: 36.6, to: 118.8, crossfadeSec: 3, offsetSec: 0 },
+      { role: "outro", item: "mk-1023", from: 118.8, to: totalSec, crossfadeSec: 3, offsetSec: 0 },
+    ],
+    sfx: [],
+  };
+  const final = film.soundtrack.sections[2];
+  final.offsetSec = 139.68 - (final.to - final.from + 1.5);
+  assert.deepEqual(soundtrackErrors(film), []);
 });

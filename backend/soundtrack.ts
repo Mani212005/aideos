@@ -33,13 +33,14 @@ function sourceChannels(src: string): number {
 // Reads raw 10 ms activity windows before playback timing determines which gaps are phrase breaks.
 function measureSpeech(file: string, start: number, end: number): { speech: SpeechInterval[]; peakDb: number } {
   const trim = `atrim=start=${start}${Number.isFinite(end) ? `:end=${end}` : ""},asetpts=PTS-STARTPTS,`;
+  // One metadata writer keeps long-file timestamps intact; separate stdout writers interleave bytes.
   const output = execFileSync("ffmpeg", [
     "-v", "error", "-i", file, "-vn", "-ac", "1", "-ar", "48000",
-    "-af", `${trim}aresample=48000,asetnsamples=n=480:p=0,astats=metadata=1:reset=1,ametadata=mode=print:key=lavfi.astats.Overall.RMS_level:file=-,ametadata=mode=print:key=lavfi.astats.Overall.Peak_level:file=-`,
+    "-af", `${trim}aresample=48000,asetnsamples=n=480:p=0,astats=metadata=1:reset=1:measure_perchannel=none:measure_overall=RMS_level+Peak_level,ametadata=mode=print:file=-`,
     "-f", "null", "-",
   ], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   const windows: SpeechInterval[] = [];
-  const pattern = /pts_time:([\d.e+-]+)\s*\r?\nlavfi\.astats\.Overall\.RMS_level=([^\r\n]+)/g;
+  const pattern = /pts_time:([\d.e+-]+)\s*\r?\n(?:lavfi\.[^\r\n]*\r?\n)*?lavfi\.astats\.Overall\.RMS_level=([^\r\n]+)/g;
   for (const match of output.matchAll(pattern)) {
     const rmsDb = Number(match[2]);
     if (!Number.isFinite(rmsDb) || rmsDb <= -40) continue;
@@ -74,7 +75,7 @@ export function prepareSoundtrack(film: Film): Film {
     src: film.voiceover.src, position: 0, start: 0, end: Infinity, speed: film.voiceover.speed ?? 1, volume: 1,
   }] : [];
   const resolved = sources.map((source) => ({ ...source, file: resolveAudioSourcePath(source.src) }));
-  const fingerprint = createHash("sha256").update("rms-10ms-minus40db-retimed-merge600ms-peak-v2");
+  const fingerprint = createHash("sha256").update("rms-10ms-minus40db-retimed-merge600ms-peak-single-writer-v3");
   for (const source of resolved) {
     fingerprint.update(JSON.stringify(source));
     fingerprint.update(fs.readFileSync(source.file));

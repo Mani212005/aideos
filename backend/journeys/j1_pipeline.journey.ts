@@ -38,7 +38,9 @@ journey("J1 script to wide and reel mp4s through the real pipeline, with no mode
     ["intake", "narrate", "look", "design", "reel", "broll", "assemble", "render", "verify"].map((s) => `${s}:done`),
   );
   assert.equal(result.ttsBackend, "tone");
-  assert.deepEqual(result.warnings, [], "a clean run must not warn");
+  assert.deepEqual(result.warnings, [
+    `[soundtrack] Skipping default music for "${SLUG}" (long): suitable tracks are not verified in the audio cache. Film remains unscored.`,
+  ], "only the expected soundtrack cache-miss warnings are allowed");
 
   const expectedFrames = WINDOW * 2 + 1;
   const sizes = { long: [1920, 1080], reel: [1080, 1920] } as const;
