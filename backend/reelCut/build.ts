@@ -5,7 +5,8 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { parseFilm, type Film } from "../../src/dl/schema";
+import { parseFilm, type Film, type OverlayClip, type VideoClip } from "../../src/dl/schema";
+import { buildTimeline } from "../../src/dl/camera";
 import { carryCaptionPlacement } from "../../src/dl/captionPlacement";
 import { deliveryTimeline, DELIVERY_CONFIG } from "../../src/dl/delivery";
 import { produceAudioPipeline, type ProduceAudioResult } from "../audio";
@@ -32,6 +33,43 @@ export interface ReelBuildStatus {
   measuredSec?: number;
   errors: string[];
   findings: DesignFinding[];
+}
+
+type KeptTimelineInterval = { sourceStart: number; sourceEnd: number; reelStart: number };
+
+// Maps a standalone clip through kept shot intervals, trimming to its first contiguous kept portion.
+function retimeStandaloneClip<T extends VideoClip | OverlayClip>(clip: T, intervals: KeptTimelineInterval[]): T | undefined {
+  const clipStart = clip.position;
+  const clipEnd = clip.position + (clip.end - clip.start);
+  let first: { sourceStart: number; reelStart: number } | undefined;
+  let sourceEnd = 0;
+  let reelEnd = 0;
+  for (const interval of intervals) {
+    const sourceStart = Math.max(clipStart, interval.sourceStart);
+    const keptEnd = Math.min(clipEnd, interval.sourceEnd);
+    if (keptEnd <= sourceStart) continue;
+    if (!first) {
+      first = { sourceStart, reelStart: interval.reelStart + sourceStart - interval.sourceStart };
+      sourceEnd = keptEnd;
+      reelEnd = interval.reelStart + keptEnd - interval.sourceStart;
+      continue;
+    }
+    if (sourceStart > sourceEnd + 1e-6) break;
+    sourceEnd = keptEnd;
+    reelEnd = interval.reelStart + keptEnd - interval.sourceStart;
+  }
+  if (!first || reelEnd <= first.reelStart) return undefined;
+  const trimStart = clip.start + first.sourceStart - clipStart;
+  return { ...clip, position: first.reelStart, start: trimStart, end: trimStart + reelEnd - first.reelStart };
+}
+
+// Retimes standalone clips against the same kept-shot mapping used to collapse dropped scene cues.
+function retimeStandaloneClips<T extends VideoClip | OverlayClip>(clips: T[] | undefined, intervals: KeptTimelineInterval[]): T[] | undefined {
+  if (!clips?.length) return clips;
+  return clips.flatMap((clip) => {
+    const retimed = retimeStandaloneClip(clip, intervals);
+    return retimed ? [retimed] : [];
+  });
 }
 
 // Records the build outcome so a failed or stale reel can never be rendered as a passing one.
@@ -66,10 +104,25 @@ export function compileReel(input: {
     endCardVoice: long.endCardVoice,
   }, { owner: false });
   const collapsed = new Map<string, number>();
+  const sourceTimeline = new Map(buildTimeline(long).map((timed) => [timed.shot.id, timed]));
+  const keptIntervals: KeptTimelineInterval[] = [];
   let seconds = 0;
   for (const entry of cut.shots) {
     if ("drop" in entry) collapsed.set(entry.id, Math.round(seconds * long.fps));
-    else seconds += shots.find((s) => s.id === entry.id)!.dur;
+    else {
+      const current = sourceTimeline.get(entry.id);
+      if (!current) throw new Error(`reel shot ${entry.id} is missing from the long timeline`);
+      const duration = shots.find((s) => s.id === entry.id)!.dur;
+      keptIntervals.push({ sourceStart: current.from / long.fps, sourceEnd: current.to / long.fps, reelStart: seconds });
+      seconds += duration;
+    }
+  }
+  if (long.videoClips?.length || long.overlayClips?.length) {
+    reel = {
+      ...reel,
+      videoClips: retimeStandaloneClips(long.videoClips, keptIntervals),
+      overlayClips: retimeStandaloneClips(long.overlayClips, keptIntervals),
+    };
   }
   const words: TimedWord[] = narration.words;
   let collapsedClips: NonNullable<ReturnType<typeof compileDesign>["collapsedClips"]> = [];
