@@ -113,7 +113,8 @@ export function compileReel(input: {
       const current = sourceTimeline.get(entry.id);
       if (!current) throw new Error(`reel shot ${entry.id} is missing from the long timeline`);
       const duration = shots.find((s) => s.id === entry.id)!.dur;
-      keptIntervals.push({ sourceStart: current.from / long.fps, sourceEnd: current.to / long.fps, reelStart: seconds });
+      const sourceStart = current.from / long.fps;
+      keptIntervals.push({ sourceStart, sourceEnd: Math.min(current.to / long.fps, sourceStart + duration), reelStart: seconds });
       seconds += duration;
     }
   }
