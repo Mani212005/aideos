@@ -48,7 +48,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 8 | **Audio sync** | audio vs video length, film length, shot boundaries vs word timings | lengths within 0.1 s, no shot boundary through a spoken word |
 | 9 | Pacing | frame difference (static holds, hard cuts), word timings or silence (dead air, pace) | no hold over 3 s, <= 2 hard cuts per minute, no pause over 0.7 s, 120 to 180 wpm |
 | 11 | Numbers grounded in narration | OCR numbers vs spoken numbers (digits and number words) | every on-screen number is said |
-| 12 | Loudness and mix | `ebur128` | -18 to -14 LUFS, true peak <= -1 dBFS |
+| 12 | Loudness and mix | `ebur128` on the delivered MP4; when film soundtrack data is available, isolated music and narration stems over 400 ms audible-speech windows | -18 to -14 LUFS, true peak <= -1 dBFS, and music at least 12 dB below narration (design target 18 dB) |
 | 14 | **Reel delivered length** | video container, audio stream and picture durations | <= 179 s including the end card (measured duration within DELIVERY_CONFIG.reel.maxSec); evaluated on reel reviews |
 
 A character film (Three stage) is measured in the reviewed output's own crop: a cast member is on
@@ -65,6 +65,13 @@ Criterion 10 (storyline) is not deterministic and is left to the model judge. A 
 inputs are missing is `skipped`, never `pass`: the camera is never guessed from pixels, carry-over is
 never measured by pixel overlap in place, and captions are skipped for a silent video with no
 narration. Every threshold lives in `backend/review/thresholds.ts`.
+
+For a film with configured soundtrack music, criterion 12 measures music against narration from the
+review mixer's isolated stems, considering only audible narration windows. Missing or unusable stem
+data fails the mix criterion instead of silently passing it. A film with no music skips this part
+of the criterion. MP4 loudness and true peak are measured from the delivered file, including any
+post-render mastering. The delivery master targets -16 LUFS integrated within 0.5 LU and -1 dBTP;
+the review rubric keeps its wider -18 to -14 LUFS acceptance window.
 
 ### Two design constraints from the audit
 

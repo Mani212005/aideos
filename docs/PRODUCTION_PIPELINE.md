@@ -45,7 +45,7 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 | `reel`     | Builds condensed reel narration and derived film with checked shot drops, or reuses the long for an identity reel | `videos/<slug>/reel/film.json`, `voiceover.wav`, `voiceover_words.json`, `status.json`, and its `src/dl/films/<slug>.reel.ts` shadow |
 | `broll`    | Renders GPU footage for the flagged shots and fetches the clips                       | `videos/<slug>/footage/<shotId>.mp4`                |
 | `assemble` | Wires each clip into its shot as a full-screen inset                                 | `film.json` and its `src/dl/films/<slug>.ts` shadow |
-| `render`   | Installs the film as active and drives Remotion for each requested format            | `src/dl/activeFilm.ts`, `videos/<slug>/renders/<format>.mp4` by default |
+| `render`   | Installs the film as active, drives Remotion for each requested format, then measures and masters each MP4 audio track | `src/dl/activeFilm.ts`, `videos/<slug>/renders/<format>.mp4`, `<format>.mp4.master.json`, `description-credits.txt` by default |
 | `verify`   | Probes the rendered files and writes contact sheets across the whole duration         | `videos/<slug>/review/<format>-sheet.jpg`          |
 
 Progress arrives through the second argument to `runProduction`: one `ProductionProgress` per
@@ -55,6 +55,14 @@ the stage, and milliseconds since the run began.
 Rendered paths are returned in `result.outputs`. By default they are written inside the video
 package at `videos/<slug>/renders/<format>.mp4`. When `ProductionRequest.outDir` is set, each file
 is written as `<outDir>/<slug>-<format>.mp4` instead.
+
+After each render, the master stage measures the delivered MP4 with `ebur128`, applies a single
+linear gain toward -16 LUFS integrated, and uses a limiter only when the gain would exceed -1 dBTP.
+It re-encodes audio while copying the video stream, then verifies the resulting loudness and peak.
+The per-format `.master.json` records the measurement and result. If the source has no measurable
+audible loudness, mastering is skipped, the original render is retained, and the pipeline reports a
+warning. The render stage also writes `description-credits.txt` from required attributions across
+the delivered long and reel soundtracks; it is empty when no credits are required.
 
 A failure throws a `ProductionError` whose `stage` field names where it happened, so a caller
 never has to guess which part of the chain broke. An authoring stop returns a result instead:

@@ -48,6 +48,7 @@ import {
   withFootage,
 } from "./filmStore";
 import { analyseAudio, contactSheet, describeVideo, renderFormat, FORMAT_SPECS } from "./render";
+import { masterAudio, writeDescriptionCredits } from "../masterAudio";
 import { checkRenderDiskBudget } from "./renderDiskBudget";
 import {
   PRODUCTION_STAGES,
@@ -727,7 +728,8 @@ export async function runProduction(
       reelFilm,
       formats,
       brollClips.map((c) => c.staticPath),
-      // Only a partial render changes the key, so every existing full-render cache stays valid.
+      "master-audio-v1",
+      // Partial renders have a separate cache identity.
       ...(request.renderFrames ? [request.renderFrames] : []),
     );
 
@@ -761,14 +763,17 @@ export async function runProduction(
           emit("render", "running", `measuring ${format} frame sizes for the disk budget`);
           await checkRenderDiskBudget({ film: outputFilm, format, range: frameRange, dirs: [os.tmpdir(), outDir], browserExecutable: request.browserExecutable });
           emit("render", "running", `rendering ${format} (${FORMAT_SPECS[format].width}x${FORMAT_SPECS[format].height})`);
-          const output = await renderFormat(format, outPath, {
+          await renderFormat(format, outPath, {
             concurrency: request.renderConcurrency,
             browserExecutable: request.browserExecutable,
             frames: request.renderFrames,
             onLog: (message, progress) => emit("render", "running", message, progress),
           });
-          produced.push(output);
+          const master = masterAudio(outPath, (message) => emit("render", "running", message));
+          if (master.status === "skipped") warnings.push(`${format} master skipped: ${master.reason}`);
+          produced.push(describeVideo(format, outPath));
         }
+        writeDescriptionCredits(path.join(pkgDir, "renders"), [assembled, ...(reelFilm ? [reelFilm] : [])]);
         state.outputs = produced;
         return produced;
       },

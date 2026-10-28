@@ -77,7 +77,7 @@ export function loadAudioLibrary(customPath?: string): AudioLibrary {
 }
 
 // Determines the destination cache filename for an audio library item.
-export function getAudioItemFilename(item: { id: string; url: string | null; archivePath?: string }): string {
+export function getAudioItemFilename(item: Pick<AudioItem, "id" | "url" | "archivePath">): string {
   audioItemIdSchema.parse(item.id);
   if (item.archivePath) {
     const ext = path.extname(item.archivePath) || ".ogg";
@@ -93,7 +93,7 @@ export function getAudioItemFilename(item: { id: string; url: string | null; arc
 
 // Returns the full absolute path of an audio item inside the cache.
 export function getAudioItemCachePath(
-  item: { id: string; url: string | null; archivePath?: string },
+  item: Pick<AudioItem, "id" | "url" | "archivePath">,
   customCacheDir?: string
 ): string {
   const cacheDir = customCacheDir ? path.resolve(customCacheDir) : getAudioLibraryCacheDir();

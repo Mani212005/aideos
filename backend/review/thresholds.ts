@@ -86,6 +86,8 @@ export const THRESHOLDS = {
     lufsMin: -18,
     lufsMax: -14,
     truePeakMaxDb: -1,
+    musicUnderVoiceMinDb: 12,
+    musicUnderVoiceTargetDb: 18,
   },
   camera: {
     /** At least one purposeful move per this many seconds. */

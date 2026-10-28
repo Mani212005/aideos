@@ -12,6 +12,7 @@ import type { Loudness, Silence } from "./media";
 import type { RenderFacts } from "./renderFacts";
 import type { FilmFacts } from "./source";
 import { captionMatch, chanceNearWordStarts, cutsThroughWords, normalizeWord, pauses, phraseFrame, shareNearWordStarts, spokenNumbers, wordsPerMinute, type Narration } from "./speech";
+import type { MusicUnderVoice } from "./music";
 import { THRESHOLDS as T } from "./thresholds";
 import { DELIVERY_CONFIG } from "../../src/dl/delivery";
 import type { CriterionKey, CriterionResult, Evidence, VideoFacts } from "./types";
@@ -25,6 +26,7 @@ export interface ReviewInputs {
   narration: Narration | null;
   loudness: Loudness | null;
   silences: Silence[];
+  musicUnderVoice?: MusicUnderVoice;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -534,14 +536,21 @@ function loudness(i: ReviewInputs): CriterionResult {
   const failures: string[] = [];
   if (l.integratedLufs < T.loudness.lufsMin || l.integratedLufs > T.loudness.lufsMax) failures.push(`integrated loudness ${l.integratedLufs} LUFS (window ${T.loudness.lufsMin} to ${T.loudness.lufsMax})`);
   if (l.truePeakDb > T.loudness.truePeakMaxDb) failures.push(`true peak ${l.truePeakDb} dBFS (max ${T.loudness.truePeakMaxDb})`);
+  const music = i.musicUnderVoice;
+  if (music?.status === "unavailable") failures.push(`music under voice could not be measured: ${music.reason}`);
+  if (music?.status === "measured" && music.minimumGapDb < T.loudness.musicUnderVoiceMinDb) {
+    failures.push(`music is only ${round(music.minimumGapDb, 1)} dB under narration at ${round(music.worstTimeSec, 1)} s (min ${T.loudness.musicUnderVoiceMinDb}, design target ${T.loudness.musicUnderVoiceTargetDb})`);
+  }
   return {
     id: 12, key: "loudness", name: "Loudness and mix", gate: false,
     status: failures.length ? "fail" : "pass", score: failures.length ? 1 : 4,
-    summary: failures.length ? failures.join("; ") : `${l.integratedLufs} LUFS, true peak ${l.truePeakDb} dBFS`,
-    metrics: { integratedLufs: l.integratedLufs, truePeakDb: l.truePeakDb },
-    threshold: { lufsMin: T.loudness.lufsMin, lufsMax: T.loudness.lufsMax, truePeakMaxDb: T.loudness.truePeakMaxDb },
-    evidence: [],
-    fix: failures.length ? "Normalise the mix to between -18 and -14 LUFS integrated with true peak at or below -1 dBFS." : undefined,
+    summary: failures.length ? failures.join("; ") : `${l.integratedLufs} LUFS, true peak ${l.truePeakDb} dBFS${music?.status === "measured" ? `, music at least ${round(music.minimumGapDb, 1)} dB under speech` : ""}`,
+    metrics: { integratedLufs: l.integratedLufs, truePeakDb: l.truePeakDb, musicMeasurement: music?.status ?? "no film data",
+      ...(music?.status === "measured" ? { musicUnderVoiceDb: round(music.gapDb), musicMinimumGapDb: round(music.minimumGapDb),
+        musicWorstTimeSec: music.worstTimeSec, speechWindows: music.speechWindows } : {}) },
+    threshold: { lufsMin: T.loudness.lufsMin, lufsMax: T.loudness.lufsMax, truePeakMaxDb: T.loudness.truePeakMaxDb, musicUnderVoiceMinDb: T.loudness.musicUnderVoiceMinDb, musicUnderVoiceTargetDb: T.loudness.musicUnderVoiceTargetDb },
+    evidence: music?.status === "measured" && music.minimumGapDb < T.loudness.musicUnderVoiceMinDb ? [{ t: music.worstTimeSec, note: "music masks narration in this speech window" }] : [],
+    fix: failures.length ? "Keep music at least 12 dB under speech (design target 18 dB). Normalise the mix to between -18 and -14 LUFS integrated with true peak at or below -1 dBFS." : undefined,
   };
 }
 

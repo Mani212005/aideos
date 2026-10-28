@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { masterAudio, writeDescriptionCredits } from '../backend/masterAudio.ts';
 import { prepareSoundtrack } from '../backend/soundtrack.ts';
 import { persistStudioSoundtrack, rebuildStudioSoundtrack, studioSoundtrackRequestSchema } from '../backend/designSpec/soundtrackStudio.ts';
 import { fetchAudioItem, getAudioItemFilename, loadAudioLibrary, verifyAudioItem } from '../backend/audioLibrary/library.ts';
@@ -811,6 +812,14 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
               child.on('close', (code) => {
                 if (code === 0) {
+                  try {
+                    const master = masterAudio(outPath);
+                    writeDescriptionCredits(rendersDir, [film]);
+                    if (master.status === 'skipped') endCardNotice = [endCardNotice, `Master skipped: ${master.reason}`].filter(Boolean).join('; ');
+                  } catch (error) {
+                    sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
+                    return;
+                  }
                   sendJson(res, 200, {
                     ok: true,
                     filename,
