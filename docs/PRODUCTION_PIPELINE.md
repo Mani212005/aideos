@@ -128,10 +128,11 @@ The optional `soundtrack` block in `design/design.json` authors cue-based music 
 `aideos design check` validates library identity, licensing, roles, coverage, track length, chapter
 alignment, crossfade duration, effect timing and density, and format-specific track limits. The
 Studio Mix panel lets you preview and swap tracks of the same role, set music and effects levels,
-and read credits. It checks edits before committing them to the Long film. Reel soundtracks resolve
-from the same design cues against Reel timing. Reel builds map standalone clips through kept shots,
-and retime, trim, and split linked video audio to follow its video. Loose audio clips keep their
-source timing.
+and read credits. It checks edits before committing them to the Long film. When `design.json` has
+an authored soundtrack, the reel build resolves those cues against Reel timing. Without an authored
+design soundtrack, an existing `film.soundtrack` carries forward, while a generated default score is
+recomputed for Reel timing. Reel builds map standalone clips through kept shots, and retime, trim,
+and split linked video audio to follow its video. Loose audio clips keep their source timing.
 
 Films without explicit music can receive a deterministic default score. The scorer uses only
 hash-verified tracks already in the local cache. If suitable tracks are not downloaded, it omits
