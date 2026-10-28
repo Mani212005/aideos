@@ -56,13 +56,16 @@ Rendered paths are returned in `result.outputs`. By default they are written ins
 package at `videos/<slug>/renders/<format>.mp4`. When `ProductionRequest.outDir` is set, each file
 is written as `<outDir>/<slug>-<format>.mp4` instead.
 
-After each render, the master stage measures the delivered MP4 with `ebur128`, applies a single
-linear gain toward -16 LUFS integrated, and uses a limiter only when the gain would exceed -1 dBTP.
-It re-encodes audio while copying the video stream, then verifies the resulting loudness and peak.
-The per-format `.master.json` records the measurement and result. If the source has no measurable
-audible loudness, mastering is skipped, the original render is retained, and the pipeline reports a
-warning. The render stage also writes `description-credits.txt` from required attributions across
-the delivered long and reel soundtracks; it is empty when no credits are required.
+After each render, the master stage measures the MP4 with `ebur128` and targets -16 LUFS integrated
+within 0.5 LU and true peak at or below -1 dBTP. It applies gain toward the loudness target, encodes
+an AAC candidate while copying the video stream, and measures that encoded MP4. If encoding pushes
+the peak above -1 dBTP, mastering enables or tightens the limiter and retries, correcting gain from
+each candidate's measured loudness, for up to five attempts. Only a candidate meeting both targets
+replaces the original render; otherwise mastering fails and the original is retained. The per-format
+`.master.json` records the measurement and result. If the source has no measurable audible loudness,
+mastering is skipped, the original render is retained, and the pipeline reports a warning. The render
+stage also writes `description-credits.txt` from required attributions across the delivered long and
+reel soundtracks; it is empty when no credits are required.
 
 A failure throws a `ProductionError` whose `stage` field names where it happened, so a caller
 never has to guess which part of the chain broke. An authoring stop returns a result instead:
