@@ -137,7 +137,7 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos look check <film> [--json]` | Validates look.json against schema and semantic rules; writes LOOK.md on PASS | `videos/<film>/design/LOOK.md` |
 | `aideos design brief <film>` | Writes bespoke design brief for scene compilation | `videos/<film>/design/BRIEF.md` |
 | `aideos design check <film>` | Validates bespoke film design and renders review stills | Terminal report, `.frames/<film>/` |
-| `aideos design build <film>` | Compiles bespoke design and writes film on PASS | `videos/<film>/film.json`, `reel/film.json` when soundtrack is configured and a reel exists, `renders/description-credits.txt`, `design/status.json` |
+| `aideos design build <film>` | Compiles bespoke design and writes film on PASS | `videos/<film>/film.json` (including an eligible default soundtrack), `reel/film.json` when soundtrack is configured and a derived reel exists, `renders/description-credits.txt`, `design/status.json` |
 | `aideos render` | Renders long-form landscape video | `videos/<slug>/renders/long.mp4` (1920x1080) |
 | `aideos reel` | Renders vertical reel video | `videos/<slug>/renders/reel.mp4` (1080x1920) |
 | `aideos reel brief <film> [--max-sec <seconds>] [--target-sec <seconds>]` | Writes the condensed narration brief with locks, hashes and motion budgets | `videos/<film>/reel/REEL_BRIEF.md` |
