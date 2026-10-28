@@ -66,10 +66,12 @@ inputs are missing is `skipped`, never `pass`: the camera is never guessed from 
 never measured by pixel overlap in place, and captions are skipped for a silent video with no
 narration. Every threshold lives in `backend/review/thresholds.ts`.
 
-For a film with soundtrack data, criterion 12 measures music against narration from the review
-mixer's isolated stems, considering only audible narration windows. Missing or unusable stem data
-fails the mix criterion instead of silently passing it. MP4 loudness and true peak are measured
-from the delivered file, including any post-render mastering.
+For a film with configured soundtrack music, criterion 12 measures music against narration from the
+review mixer's isolated stems, considering only audible narration windows. Missing or unusable stem
+data fails the mix criterion instead of silently passing it. A film with no music skips this part
+of the criterion. MP4 loudness and true peak are measured from the delivered file, including any
+post-render mastering. The delivery master targets -16 LUFS integrated within 0.5 LU and -1 dBTP;
+the review rubric keeps its wider -18 to -14 LUFS acceptance window.
 
 ### Two design constraints from the audit
 

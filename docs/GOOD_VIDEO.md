@@ -35,7 +35,7 @@ full camera/pacing rubric honestly. It is engineering evidence, not an accepted 
 | 9 | **Pacing** | no beat holds an unchanged frame > 3 s; mean beat length 5 to 12 s; no dead air > 0.7 s; narration 130 to 170 wpm | pass | deterministic (frame diff, silencedetect, word count) |
 | 10 | **Storyline** | a one-sentence problem is stated, each beat builds on the previous (no beat could be reordered without breaking), a payoff beat restates the result with what the audience has seen | >= 3 of 4 | vision/LLM judge on the beat filmstrip + script |
 | 11 | **Accuracy and honesty** | every number and label on screen is said in the narration or marked "illustrative"; computed visuals come from the real computation | zero ungrounded | deterministic (existing `honest-data` rule extended to SVG text via OCR) + judge for semantic truth |
-| 12 | **Loudness and mix** | -14 to -18 LUFS integrated, true peak <= -1 dBFS, music >= 12 dB under voice | pass | deterministic (`ebur128`) |
+| 12 | **Loudness and mix** | delivered audio targets -16 LUFS integrated (within 0.5 LU) and true peak <= -1 dBTP; music >= 12 dB under narration (design target 18 dB) | pass | deterministic; see [review measurements](REVIEW.md#4-the-12-criterion-rubric) |
 
 ## Anchors for scoring (0-4)
 - 0: Absent
