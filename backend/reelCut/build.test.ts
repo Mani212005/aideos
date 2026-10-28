@@ -102,6 +102,30 @@ test("captain decision 2026-10-22: explicit checked drops remove node-graph shot
   assert.ok(long.shots[1].captionPlacement?.reel?.locked);
 });
 
+test("reel compile: standalone clips stay within shortened kept-shot narration", () => {
+  const long = packageFilm("reel-shortened-shot-clips", 30);
+  long.videoClips = [
+    { id: "early-video", src: "media/early.mp4", position: 1, start: 0, end: 1, opacity: 1, volume: 1 },
+    { id: "late-video", src: "media/late.mp4", position: 8, start: 0, end: 1, opacity: 1, volume: 1 },
+  ];
+  long.overlayClips = [
+    { id: "early-overlay", kind: "text", position: 1, start: 0, end: 1, opacity: 1, payload: { text: "Kept" } },
+    { id: "late-overlay", kind: "text", position: 8, start: 0, end: 1, opacity: 1, payload: { text: "Expired" } },
+  ];
+  const result = compileReel({
+    long,
+    base: long,
+    cut: cutFor(long),
+    narration: narration(["Short opening.", "Short middle.", "Short ending."], [4, 4, 4]),
+    pkg: path.join(TEST_VIDEOS_DIR, long.id),
+  });
+  assert.ok(result.film, JSON.stringify(result));
+  assert.deepEqual(result.film.videoClips?.map((clip) => clip.id), ["early-video"]);
+  assert.deepEqual(result.film.overlayClips?.map((clip) => clip.id), ["early-overlay"]);
+  assert.equal(result.film.videoClips?.[0].position, 1);
+  assert.equal(result.film.overlayClips?.[0].position, 1);
+});
+
 test("captain decision 2026-10-22: a dropped shot's visible scene motion is rejected with the shot and element named", () => {
   const pkg = path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed");
   const long = parseFilm(JSON.parse(fs.readFileSync(path.join(pkg, "film.json"), "utf8")));

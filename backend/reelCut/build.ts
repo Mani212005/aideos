@@ -5,7 +5,8 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { parseFilm, type Film } from "../../src/dl/schema";
+import { parseFilm, type Film, type OverlayClip, type VideoClip } from "../../src/dl/schema";
+import { buildTimeline } from "../../src/dl/camera";
 import { carryCaptionPlacement } from "../../src/dl/captionPlacement";
 import { deliveryTimeline, DELIVERY_CONFIG } from "../../src/dl/delivery";
 import { produceAudioPipeline, type ProduceAudioResult } from "../audio";
@@ -32,6 +33,89 @@ export interface ReelBuildStatus {
   measuredSec?: number;
   errors: string[];
   findings: DesignFinding[];
+}
+
+type KeptTimelineInterval = { sourceStart: number; sourceEnd: number; reelStart: number };
+type MappedClip<T> = { clip: T; sourceStart: number; sourceEnd: number };
+
+// Maps a standalone clip through each kept contiguous portion, trimming against reel shot bounds.
+function retimeStandaloneClip<T extends VideoClip | OverlayClip>(clip: T, intervals: KeptTimelineInterval[]): MappedClip<T>[] {
+  const clipStart = clip.position;
+  const clipEnd = clip.position + (clip.end - clip.start);
+  const portions: Array<{ sourceStart: number; sourceEnd: number; reelStart: number; reelEnd: number }> = [];
+  for (const interval of intervals) {
+    const sourceStart = Math.max(clipStart, interval.sourceStart);
+    const keptEnd = Math.min(clipEnd, interval.sourceEnd);
+    if (keptEnd <= sourceStart) continue;
+    const reelStart = interval.reelStart + sourceStart - interval.sourceStart;
+    const reelEnd = interval.reelStart + keptEnd - interval.sourceStart;
+    const previous = portions[portions.length - 1];
+    if (previous && sourceStart <= previous.sourceEnd + 1e-6 && reelStart <= previous.reelEnd + 1e-6) {
+      previous.sourceEnd = keptEnd;
+      previous.reelEnd = reelEnd;
+    } else {
+      portions.push({ sourceStart, sourceEnd: keptEnd, reelStart, reelEnd });
+    }
+  }
+  return portions.flatMap((portion, index) => {
+    if (portion.reelEnd <= portion.reelStart) return [];
+    const trimStart = clip.start + portion.sourceStart - clipStart;
+    const suffix = index === 0 ? "" : `-reel-${index + 1}`;
+    return [{
+      clip: { ...clip, id: `${clip.id}${suffix}`, position: portion.reelStart, start: trimStart, end: trimStart + portion.reelEnd - portion.reelStart },
+      sourceStart: portion.sourceStart,
+      sourceEnd: portion.sourceEnd,
+    }];
+  });
+}
+
+// Retimes standalone clips through every kept portion on the same map used for collapsed scene cues.
+function retimeStandaloneClips<T extends VideoClip | OverlayClip>(clips: T[] | undefined, intervals: KeptTimelineInterval[]): T[] | undefined {
+  if (!clips?.length) return clips;
+  return clips.flatMap((clip) => retimeStandaloneClip(clip, intervals).map(({ clip: retimed }) => retimed));
+}
+
+// Keeps linked imported audio in sync with each retimed video portion, including matching splits.
+function retimeVideoAndLinkedAudio(long: Film, intervals: KeptTimelineInterval[]): { videoClips: VideoClip[] | undefined; audioClips: Film["audioClips"] } {
+  if (!long.videoClips?.length) return { videoClips: long.videoClips, audioClips: long.audioClips };
+  const pairedAudio = new Map<string, NonNullable<Film["audioClips"]>[number]>();
+  for (const audio of long.audioClips ?? []) {
+    if (audio.linkedClipId) pairedAudio.set(audio.linkedClipId, audio);
+  }
+  const videoClips: VideoClip[] = [];
+  const linkedAudioByVideo = new Map<string, NonNullable<Film["audioClips"]>>();
+  for (const sourceVideo of long.videoClips) {
+    const sourceAudio = pairedAudio.get(sourceVideo.id);
+    const portions = retimeStandaloneClip(sourceVideo, intervals);
+    const paired = portions.map(({ clip, sourceStart, sourceEnd }, index) => {
+      if (!sourceAudio || sourceAudio.id !== sourceVideo.linkedClipId) return clip;
+      const sourceOffset = clip.start - sourceVideo.start;
+      const duration = Math.min(sourceEnd - sourceStart, sourceAudio.end - sourceAudio.start - sourceOffset);
+      if (duration <= 0) {
+        const { linkedClipId: _linkedClipId, ...unlinked } = clip;
+        return unlinked;
+      }
+      const suffix = index === 0 ? "" : `-reel-${index + 1}`;
+      const audio = {
+        ...sourceAudio,
+        id: `${sourceAudio.id}${suffix}`,
+        linkedClipId: clip.id,
+        position: clip.position,
+        start: sourceAudio.start + sourceOffset,
+        end: sourceAudio.start + sourceOffset + duration,
+      };
+      linkedAudioByVideo.set(sourceVideo.id, [...(linkedAudioByVideo.get(sourceVideo.id) ?? []), audio]);
+      return { ...clip, linkedClipId: audio.id };
+    });
+    videoClips.push(...paired);
+  }
+  const audioClips = long.audioClips?.flatMap((audio) => {
+    const sourceVideoId = audio.linkedClipId;
+    const sourceVideo = long.videoClips?.find((video) => video.id === sourceVideoId);
+    if (!sourceVideo || sourceVideo.linkedClipId !== audio.id) return [audio];
+    return linkedAudioByVideo.get(sourceVideo.id) ?? [];
+  });
+  return { videoClips, audioClips };
 }
 
 // Records the build outcome so a failed or stale reel can never be rendered as a passing one.
@@ -66,10 +150,28 @@ export function compileReel(input: {
     endCardVoice: long.endCardVoice,
   }, { owner: false });
   const collapsed = new Map<string, number>();
+  const sourceTimeline = new Map(buildTimeline(long).map((timed) => [timed.shot.id, timed]));
+  const keptIntervals: KeptTimelineInterval[] = [];
   let seconds = 0;
   for (const entry of cut.shots) {
     if ("drop" in entry) collapsed.set(entry.id, Math.round(seconds * long.fps));
-    else seconds += shots.find((s) => s.id === entry.id)!.dur;
+    else {
+      const current = sourceTimeline.get(entry.id);
+      if (!current) throw new Error(`reel shot ${entry.id} is missing from the long timeline`);
+      const duration = shots.find((s) => s.id === entry.id)!.dur;
+      const sourceStart = current.from / long.fps;
+      keptIntervals.push({ sourceStart, sourceEnd: Math.min(current.to / long.fps, sourceStart + duration), reelStart: seconds });
+      seconds += duration;
+    }
+  }
+  if (long.videoClips?.length || long.overlayClips?.length) {
+    const mapped = retimeVideoAndLinkedAudio(long, keptIntervals);
+    reel = {
+      ...reel,
+      videoClips: mapped.videoClips,
+      overlayClips: retimeStandaloneClips(long.overlayClips, keptIntervals),
+      audioClips: mapped.audioClips,
+    };
   }
   const words: TimedWord[] = narration.words;
   let collapsedClips: NonNullable<ReturnType<typeof compileDesign>["collapsedClips"]> = [];
