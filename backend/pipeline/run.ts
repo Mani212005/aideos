@@ -576,7 +576,7 @@ export async function runProduction(
     );
     const scoredDesign = await prepareDefaultSoundtrack(design.film, "long", (message) => {
       warnings.push(message);
-      emit("design", "running", message);
+      emit("design", "done", message);
     });
     if (scoredDesign !== design.film) design.film = writeFilm(slug, scoredDesign);
     // Agent/server work writes authoring files during the stage. Cache their resulting hashes,

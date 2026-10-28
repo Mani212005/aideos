@@ -682,8 +682,16 @@ test("DesignCheck (D6): odd-frame reel crossfades require the entire rounded sou
 
 test("DesignCheck (D6): the final source span is back-timed including the incoming crossfade", () => {
   const film = stillTalking();
-  film.soundtrack = validSoundtrack();
-  const final = film.soundtrack.sections[1];
-  final.offsetSec = 139.68 - (final.to - final.from);
+  const totalSec = deliveryTimeline(film, "long").totalFrames / film.fps;
+  film.soundtrack = {
+    sections: [
+      { role: "hook", item: "mk-556", from: 0, to: 36.6, crossfadeSec: 3, offsetSec: 0 },
+      { role: "explain", item: "mk-554", from: 36.6, to: 118.8, crossfadeSec: 3, offsetSec: 0 },
+      { role: "outro", item: "mk-1023", from: 118.8, to: totalSec, crossfadeSec: 3, offsetSec: 0 },
+    ],
+    sfx: [],
+  };
+  const final = film.soundtrack.sections[2];
+  final.offsetSec = 139.68 - (final.to - final.from + 1.5);
   assert.deepEqual(soundtrackErrors(film), []);
 });
