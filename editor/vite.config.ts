@@ -638,9 +638,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
         // from videos/<slug>/ on disk. staticFile('videos/<slug>/...') resolves to this
         // same URL path under Vite's publicDir, but Vite's own static middleware won't
         // follow the public/videos symlink, so it's served explicitly here instead.
-        const videosUrl = url.startsWith('/public/videos/') ? url.slice('/public'.length) : url;
-        if (videosUrl.startsWith('/videos/') && req.method === 'GET') {
-          const rel = decodeURIComponent(videosUrl.slice('/videos/'.length));
+        if (url.startsWith('/videos/') && req.method === 'GET') {
+          const rel = decodeURIComponent(url.slice('/videos/'.length));
           const filePath = path.join(videosDir, rel);
           if (!rel.includes('..') && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
             serveFileWithRange(req, res, filePath);
