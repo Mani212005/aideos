@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { ensureGenerated } from "../backend/pipeline/generatedFiles";
+import { stagePublicDir } from "../backend/pipeline/render";
 import { resolvePackageDir } from "../src/dl/videoPackageLoader";
 import { readFilm } from "../backend/pipeline/filmStore";
 import { masterAudio, writeDescriptionCredits } from "../backend/masterAudio";
@@ -45,11 +46,20 @@ function main(): void {
     ...extraArgs,
   ];
 
+  const publicDir = stagePublicDir();
+  if (publicDir) args.push(`--public-dir=${publicDir.dir}`);
+
   console.log(`[render] Rendering active film "${activeFilm}" (${composition}) to ${path.relative(REPO_ROOT, outPath)}...`);
+  let renderError: unknown;
   try {
     execFileSync("npx", args, { cwd: REPO_ROOT, stdio: "inherit" });
   } catch (err: unknown) {
-    const status = (err as { status?: number }).status ?? 1;
+    renderError = err;
+  } finally {
+    publicDir?.cleanup();
+  }
+  if (renderError) {
+    const status = (renderError as { status?: number }).status ?? 1;
     process.exit(status);
   }
 
