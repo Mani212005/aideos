@@ -22,7 +22,7 @@ function measure(file: string): Loudness | null {
   return result.status === 0 ? parseEbur128(result.stderr) : null;
 }
 
-// Applies a single measured correction, preserving video packets and the original file on any failure.
+// Masters against encoded measurements, preserving video packets and the original file on any failure.
 export function masterAudio(file: string, onLog: (message: string) => void = console.warn): MasterResult {
   fs.rmSync(`${file}.master.json`, { force: true });
   const before = measure(file);
@@ -34,19 +34,24 @@ export function masterAudio(file: string, onLog: (message: string) => void = con
     result = { status: "unchanged", before, after: before, gainDb: 0, limited: false };
   } else {
     const gainDb = -16 - before.integratedLufs;
-    const limited = before.truePeakDb + gainDb > -1;
+    let limited = before.truePeakDb + gainDb > -1;
     const temporary = path.join(path.dirname(file), `.${path.basename(file)}.master-${process.pid}.mp4`);
     try {
       let after: Loudness | null = null;
       let correctedGain = gainDb;
-      for (let attempt = 0; attempt < (limited ? 5 : 1); attempt += 1) {
-        const filter = `volume=${correctedGain}dB${limited ? `,aresample=192000,alimiter=limit=${10 ** (-2 / 20)}:release=5:level=false:latency=true,aresample=48000` : ""}`;
+      let limitDb = -2;
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const filter = `volume=${correctedGain}dB${limited ? `,aresample=192000,alimiter=limit=${10 ** (limitDb / 20)}:release=5:level=false:latency=true,aresample=48000` : ""}`;
         const encoded = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-map", "0:v:0", "-map", "0:a:0",
           "-map_metadata", "0", "-c:v", "copy", "-af", filter, "-c:a", "aac", "-b:a", "320k", "-movflags", "+faststart", temporary],
         { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
         if (encoded.status !== 0) throw new Error(`Master audio encode failed: ${encoded.error?.message ?? encoded.stderr}`);
         after = measure(temporary);
-        if (!after || !limited || (Math.abs(after.integratedLufs + 16) <= 0.5 && after.truePeakDb <= -1)) break;
+        if (!after || (Math.abs(after.integratedLufs + 16) <= 0.5 && after.truePeakDb <= -1)) break;
+        if (after.truePeakDb > -1) {
+          if (limited) limitDb -= after.truePeakDb + 1;
+          limited = true;
+        }
         correctedGain += -16 - after.integratedLufs;
       }
       if (!after) {
