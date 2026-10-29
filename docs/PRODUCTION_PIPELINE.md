@@ -125,12 +125,8 @@ Reel, while a generated default score is recomputed for Reel timing. Reel builds
 clips through kept shots and retime, trim, and split linked video audio to follow its video. Loose
 audio clips keep their source timing.
 
-Films without explicit music can receive a deterministic default score from tracks already in the
-local cache; see the audio guide for its eligibility rules and current limits. Render staging with
-a custom `AIDEOS_VIDEOS_DIR` can omit the audio cache. The master limiter does not account for
-encoded-peak overshoot. Silent or unmeasurable renders warn and keep the original. See [Audio Library
-and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing) for soundtrack schema, mixing,
-authoring, checks, and scoring limits.
+For default scoring, cache behavior, and soundtrack authoring and checks, see [Audio Library and
+Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing).
 
 ## Reel cut delivery
 
