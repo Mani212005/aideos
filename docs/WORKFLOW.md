@@ -103,7 +103,7 @@ Aideos is engineered around 4 strict architectural invariants:
    - `Long`: 1920x1080 landscape video for YouTube, desktop, and documentation.
    - `Reel`: 1080x1920 vertical format for mobile, TikTok, and social shorts.
 2. **Audio Stack**:
-   - `src/dl/Soundtrack.tsx` is shared by Studio preview and rendered output. RMS measurements of narration audio determine speech intervals and pauses for music ducking; the mixer does not infer breaths from text timing. The soundtrack schema, library-backed section mixing, and legacy compatibility are documented in [Audio Library and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing). Layered timeline conversions preserve soundtrack metadata alongside explicit audio clips.
+   - <a id="2-soundtrack-mixing"></a>`src/dl/Soundtrack.tsx` is shared by Studio preview and rendered output. RMS measurements of narration audio determine speech intervals and pauses for music ducking; the mixer does not infer breaths from text timing. The soundtrack schema, library-backed section mixing, and legacy compatibility are documented in [Audio Library and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing). Layered timeline conversions preserve soundtrack metadata alongside explicit audio clips.
    - Kinetic Subtitles: Synchronized word-level karaoke text reveal across Long and Reel, using the active theme accent. Captions default to the bottom; owner placements can vary by format and shot. See [caption placement](../src/dl/README.md#owner-caption-cards). Captions can also be disabled with "off".
 
 3. **Autonomous Production Pipeline (`backend/pipeline/run.ts`, `backend/pipeline/director.ts`)**:

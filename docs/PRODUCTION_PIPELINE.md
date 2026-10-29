@@ -57,13 +57,13 @@ package at `videos/<slug>/renders/<format>.mp4`. When `ProductionRequest.outDir`
 is written as `<outDir>/<slug>-<format>.mp4` instead.
 
 After each render, the master stage measures the delivered MP4 with `ebur128` and targets -16 LUFS
-integrated within 0.5 LU and true peak at or below -1 dBTP. Without limiting, it applies one gain
-correction. When limiting is needed, it encodes an AAC candidate while copying the video stream,
-remeasures that encoded MP4, and can adjust gain for up to five attempts. The limiter does not account
-for encoded-peak overshoot. Only a candidate meeting both targets replaces the original render;
-otherwise mastering fails and the original is retained. The per-format `.master.json` records the
-measurement and result. If the source has no measurable audible loudness, mastering is skipped, the
-original render is retained, and the pipeline reports a warning. The render stage also writes
+integrated within 0.5 LU and true peak at or below -1 dBTP. If limiting is needed, it encodes an AAC
+candidate while copying the video stream, remeasures that encoded MP4, adjusts gain from its measured
+loudness, and tightens the limiter if encoded true peak remains above -1 dBTP. It retries up to five
+times. Only a candidate meeting both targets replaces the original render; otherwise mastering fails
+and the original is retained. The per-format `.master.json` records the measurement and result. If the
+source has no measurable audible loudness, mastering is skipped, the original render is retained, and
+the pipeline reports a warning. The render stage also writes
 `description-credits.txt` from required attributions across the delivered Long and Reel soundtracks;
 it is empty when no credits are required.
 
@@ -112,10 +112,12 @@ still build directly; new production runs require one before design.
 
 `Film.soundtrack` records music sections, measured narration intervals, mix levels,
 sound effects, and credits. `src/dl/Soundtrack.tsx` is shared by the Studio preview and Remotion
-render. Use `aideos audio fetch` to download listed assets, `aideos audio verify` to check the cache,
-and `aideos audio import <id> <file>` to import a manual asset. Manifest entries can include SHA256
-hashes to lock asset identity. See [Audio Library and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing)
-for the manifest, mix behavior, chapter breath timing, and speech measurements.
+render. The [workflow soundtrack overview](WORKFLOW.md#2-soundtrack-mixing) links to the full
+[Audio Library and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing) reference. Use
+`aideos audio fetch` to download listed assets, `aideos audio verify` to check the cache, and
+`aideos audio import <id> <file>` to import a manual asset. Manifest entries can include SHA256
+hashes to lock asset identity. The reference covers the manifest, mix behavior, chapter breath timing,
+and speech measurements.
 
 The optional `soundtrack` block in `design/design.json` authors cue-based music sections and effects.
 `aideos design check` validates the authored soundtrack; Studio edits are checked before they are
