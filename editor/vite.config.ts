@@ -7,6 +7,7 @@
 import { z } from 'zod';
 import { masterAudio, writeDescriptionCredits } from '../backend/masterAudio.ts';
 import { prepareSoundtrack } from '../backend/soundtrack.ts';
+import { stagePublicDir } from '../backend/pipeline/render.ts';
 import { persistStudioSoundtrack, rebuildStudioSoundtrack, studioSoundtrackRequestSchema } from '../backend/designSpec/soundtrackStudio.ts';
 import { fetchAudioItem, getAudioItemFilename, loadAudioLibrary, verifyAudioItem } from '../backend/audioLibrary/library.ts';
 import { defineConfig } from 'vite'
@@ -789,9 +790,13 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               // Ensure activeFilm.ts is synced to this exported film
               setActiveFilm(film.id);
 
+              const publicDir = stagePublicDir();
+              const renderArgs = ['remotion', 'render', 'src/index.ts', composition, outPath];
+              if (publicDir) renderArgs.push(`--public-dir=${publicDir.dir}`);
+
               const child = spawn(
                 'npx',
-                ['remotion', 'render', 'src/index.ts', composition, outPath],
+                renderArgs,
                 {
                   cwd: path.resolve(__dirname, '..'),
                   stdio: 'pipe',
@@ -811,6 +816,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               });
 
               child.on('close', (code) => {
+                publicDir?.cleanup();
+                if (res.headersSent) return;
                 if (code === 0) {
                   try {
                     const master = masterAudio(outPath);
@@ -831,6 +838,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                     error: `Remotion render exited with code ${code}: ${renderLogs.trim()}`,
                   });
                 }
+              });
+              child.on('error', (error) => {
+                publicDir?.cleanup();
+                sendJson(res, 500, { error: `Remotion render could not start: ${error.message}` });
               });
             })
             .catch((err) => {

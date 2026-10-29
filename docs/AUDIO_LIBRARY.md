@@ -90,5 +90,5 @@ Studio edits target the Long film. Swaps and level changes are resolved and chec
 
 - **Manifest**: `audio/library.json` (schema `aideos.audio-library/1`) holds IDs, metadata, source URLs, licenses, SHA256 hashes, duration, and measured loudness (integrated LUFS, true peak dB, and LRA).
 - **Cache**: Assets are saved to `.audio-library/` inside the active videos directory. By default this is `videos/.audio-library/`; setting `AIDEOS_VIDEOS_DIR` moves the cache with personal video packages.
-- **Serving**: The editor's `/videos/*` middleware can serve files from the active videos directory. Remotion's public path reaches the default `videos/` directory through `public/videos`; when `AIDEOS_VIDEOS_DIR` points elsewhere, the render staging directory includes video packages but not the separate audio cache. `listVideoPackages()` skips the hidden cache directory.
+- **Serving**: The editor's `/videos/*` middleware serves files from the active videos directory, including the audio cache. Render paths stage the active videos directory under Remotion's `public/videos`, including `.audio-library`, when `AIDEOS_VIDEOS_DIR` points elsewhere. `listVideoPackages()` skips the hidden cache directory.
 - **Git Ignore**: Git ignores `*.mp3`, `*.wav`, `*.ogg`, and the `videos/.audio-library/` directory.

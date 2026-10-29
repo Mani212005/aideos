@@ -10,6 +10,7 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { masterAudio, writeDescriptionCredits } from "../masterAudio";
+import { stagePublicDir } from "../pipeline/render";
 import { readFilm, readActiveFilmSource, restoreActiveFilmSource, setActiveFilm } from "../pipeline/filmStore";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { reelForRender } from "../reelCut/store";
@@ -30,6 +31,8 @@ export async function renderVideoForSlug(slug: string, format: "long" | "reel" =
   const args = [
     "remotion", "render", "src/index.ts", compId, outPath, "--gl=angle"
   ];
+  const publicDir = stagePublicDir();
+  if (publicDir) args.push(`--public-dir=${publicDir.dir}`);
 
   try {
     setActiveFilm(slug);
@@ -41,6 +44,7 @@ export async function renderVideoForSlug(slug: string, format: "long" | "reel" =
     if (film) writeDescriptionCredits(rendersDir, [film]);
     return outPath;
   } finally {
+    publicDir?.cleanup();
     restoreActiveFilmSource(previousActive);
   }
 }
