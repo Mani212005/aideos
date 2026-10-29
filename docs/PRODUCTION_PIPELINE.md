@@ -56,16 +56,16 @@ Rendered paths are returned in `result.outputs`. By default they are written ins
 package at `videos/<slug>/renders/<format>.mp4`. When `ProductionRequest.outDir` is set, each file
 is written as `<outDir>/<slug>-<format>.mp4` instead.
 
-After each render, the master stage measures the MP4 with `ebur128` and targets -16 LUFS integrated
-within 0.5 LU and true peak at or below -1 dBTP. It applies gain toward the loudness target, encodes
-an AAC candidate while copying the video stream, and measures that encoded MP4. If encoding pushes
-the peak above -1 dBTP, mastering enables or tightens the limiter and retries, correcting gain from
-each candidate's measured loudness, for up to five attempts. Only a candidate meeting both targets
-replaces the original render; otherwise mastering fails and the original is retained. The per-format
-`.master.json` records the measurement and result. If the source has no measurable audible loudness,
-mastering is skipped, the original render is retained, and the pipeline reports a warning. The render
-stage also writes `description-credits.txt` from required attributions across the delivered long and
-reel soundtracks; it is empty when no credits are required.
+After each render, the master stage measures the delivered MP4 with `ebur128` and targets -16 LUFS
+integrated within 0.5 LU and true peak at or below -1 dBTP. If limiting is needed, it encodes an AAC
+candidate while copying the video stream, remeasures that encoded MP4, adjusts gain from its measured
+loudness, and tightens the limiter if encoded true peak remains above -1 dBTP. It retries up to five
+times. Only a candidate meeting both targets replaces the original render; otherwise mastering fails
+and the original is retained. The per-format `.master.json` records the measurement and result. If the
+source has no measurable audible loudness, mastering is skipped, the original render is retained, and
+the pipeline reports a warning. The render stage also writes
+`description-credits.txt` from required attributions across the delivered Long and Reel soundtracks;
+it is empty when no credits are required.
 
 A failure throws a `ProductionError` whose `stage` field names where it happened, so a caller
 never has to guess which part of the chain broke. An authoring stop returns a result instead:
@@ -107,6 +107,28 @@ must start before its decisive word and the evaluated contact must land on that 
 cue is required. Builds record provenance in `design/status.json`,
 defaulting CLI builds to `hand-built` (`--source <who>` overrides). Older packages without a look can
 still build directly; new production runs require one before design.
+
+## Soundtrack
+
+`Film.soundtrack` records music sections, measured narration intervals, mix levels,
+sound effects, and credits. `src/dl/Soundtrack.tsx` is shared by the Studio preview and Remotion
+render. The [workflow soundtrack overview](WORKFLOW.md#2-soundtrack-mixing) links to the full
+[Audio Library and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing) reference. Use
+`aideos audio fetch` to download listed assets, `aideos audio verify` to check the cache, and
+`aideos audio import <id> <file>` to import a manual asset. Manifest entries can include SHA256
+hashes to lock asset identity. The reference covers the manifest, mix behavior, chapter breath timing,
+and speech measurements.
+
+The optional `soundtrack` block in `design/design.json` authors cue-based music sections and effects.
+`aideos design check` validates the authored soundtrack; Studio edits are checked before they are
+committed to the Long film. A design-authored soundtrack resolves its cues against Reel timing. If
+there is no authored soundtrack in `design.json`, an existing `film.soundtrack` carries into the
+Reel, while a generated default score is recomputed for Reel timing. Reel builds map standalone
+clips through kept shots and retime, trim, and split linked video audio to follow its video. Loose
+audio clips keep their source timing.
+
+For default scoring, cache behavior, and soundtrack authoring and checks, see [Audio Library and
+Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing).
 
 ## Reel cut delivery
 

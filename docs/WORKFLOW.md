@@ -103,7 +103,7 @@ Aideos is engineered around 4 strict architectural invariants:
    - `Long`: 1920x1080 landscape video for YouTube, desktop, and documentation.
    - `Reel`: 1080x1920 vertical format for mobile, TikTok, and social shorts.
 2. **Audio Stack**:
-   - `src/dl/Soundtrack.tsx` is shared by Studio preview and rendered output. The soundtrack schema, library-backed section mixing, speech analysis, and legacy compatibility are documented in [Audio Library and Management Commands](AUDIO_LIBRARY.md#soundtrack-mixing). Layered timeline conversions preserve soundtrack metadata alongside explicit audio clips.
+   - <a id="2-soundtrack-mixing"></a>`src/dl/Soundtrack.tsx` is shared by Studio preview and rendered output. RMS measurements of narration audio determine speech intervals and pauses for music ducking; the mixer does not infer breaths from text timing. The soundtrack schema, library-backed section mixing, and legacy compatibility are documented in [Audio Library and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing). Layered timeline conversions preserve soundtrack metadata alongside explicit audio clips.
    - Kinetic Subtitles: Synchronized word-level karaoke text reveal across Long and Reel, using the active theme accent. Captions default to the bottom; owner placements can vary by format and shot. See [caption placement](../src/dl/README.md#owner-caption-cards). Captions can also be disabled with "off".
 
 3. **Autonomous Production Pipeline (`backend/pipeline/run.ts`, `backend/pipeline/director.ts`)**:
@@ -137,7 +137,7 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos look check <film> [--json]` | Validates look.json against schema and semantic rules; writes LOOK.md on PASS | `videos/<film>/design/LOOK.md` |
 | `aideos design brief <film>` | Writes bespoke design brief for scene compilation | `videos/<film>/design/BRIEF.md` |
 | `aideos design check <film>` | Validates bespoke film design and renders review stills | Terminal report, `.frames/<film>/` |
-| `aideos design build <film>` | Compiles bespoke design and writes film on PASS | `videos/<film>/film.json` (including an eligible default soundtrack), `reel/film.json` when soundtrack is configured and a derived reel exists, `renders/description-credits.txt`, `design/status.json` |
+| `aideos design build <film>` | Compiles bespoke design and writes film on PASS | `videos/<film>/film.json` (including an eligible default soundtrack), `reel/film.json` when a derived reel exists, `renders/description-credits.txt`, `design/status.json` |
 | `aideos render` | Renders long-form landscape video | `videos/<slug>/renders/long.mp4` (1920x1080) |
 | `aideos reel` | Renders vertical reel video | `videos/<slug>/renders/reel.mp4` (1080x1920) |
 | `aideos reel brief <film> [--max-sec <seconds>] [--target-sec <seconds>]` | Writes the condensed narration brief with locks, hashes and motion budgets | `videos/<film>/reel/REEL_BRIEF.md` |
