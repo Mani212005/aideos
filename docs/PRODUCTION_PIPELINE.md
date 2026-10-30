@@ -132,7 +132,7 @@ Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing).
 
 ## Reel cut delivery
 
-`ProductionRequest.reel` governs reel delivery in the API. It defaults to the design policy, with templates mapped to inline. The `film` CLI uses inline reel delivery; `aideos reel build` exposes an explicit `--delivery` option:
+`ProductionRequest.reel` governs reel delivery in the API. It defaults to the design policy, with templates mapped to inline. The `film` CLI uses inline reel delivery by default; `aideos reel build` exposes an explicit `--delivery` option:
 
 | Mode | Behavior |
 | --- | --- |
@@ -160,7 +160,7 @@ aideos reel check <slug> [--max-sec 179] [--target-sec 170] [--json]
 # Build an identity reel or compile a checked cut.
 aideos reel build <slug> [--delivery inline|agent|server]
 
-# Run production through both output formats. The film CLI uses inline reel delivery.
+# Run production through both output formats. The film CLI uses inline reel delivery by default.
 npm run backend -- film --script-file videos/<slug>/script.md \
   --title "<title>" --slug <slug> --formats long,reel
 
