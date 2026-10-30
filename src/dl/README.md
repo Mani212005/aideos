@@ -6,10 +6,9 @@ File Description: Documentation for the Video Design Language implementation in 
 
 Implements the Video Design Language specification across color tokens, typography, motion grammar, and camera continuity.
 
-Compositions: **Long** (1920x1080) and **Reel** (1080x1920). The reel is a
-separate shorter cut with condensed narration capped at 179 seconds, sharing the
-visual canvas, camera targets, and footage of the long cut (or an identity reel
-when the long cut already fits).
+Compositions: **Long** (1920x1080) and **Reel** (1080x1920). For Reel cut
+behavior, identity deliveries, and delivered-length limits, see the
+[production pipeline reference](../../docs/PRODUCTION_PIPELINE.md#reel-cut-delivery).
 
 | Spec section          | Here                                            |
 | --------------------- | ----------------------------------------------- |
@@ -33,8 +32,9 @@ when the long cut already fits).
 2. **Order defines stagger.** A block's index among its siblings is its only
    timing input. No block declares its own delay.
 3. **Format solves framing.** Both compositions solve their framing from the
-   same canvas. The reel uses a derived shorter shot list when shots are dropped;
-   its shared scene artwork and camera targets are compiled against that cut.
+   same canvas. Checked reel cuts can derive a shorter shot list; see the
+   [production pipeline reference](../../docs/PRODUCTION_PIPELINE.md#reel-cut-delivery)
+   for supported film types and cut behavior.
 
 Shot start times are *derived* from durations, so a scene cannot start before
 the previous one ends - that failure mode is unrepresentable rather than

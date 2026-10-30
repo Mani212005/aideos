@@ -141,7 +141,7 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos render` | Renders long-form landscape video | `videos/<slug>/renders/long.mp4` (1920x1080) |
 | `aideos reel` | Renders vertical reel video | `videos/<slug>/renders/reel.mp4` (1080x1920) |
 | `aideos reel brief <film> [--max-sec <seconds>] [--target-sec <seconds>]` | Writes the condensed narration brief with locks, hashes and motion budgets | `videos/<film>/reel/REEL_BRIEF.md` |
-| `aideos reel check <film> [--max-sec <seconds>] [--target-sec <seconds>] [--json]` | Checks the authored reel cut without changing source data; max is 179 s including the end card | Terminal report |
+| `aideos reel check <film> [--max-sec <seconds>] [--target-sec <seconds>] [--json]` | Checks the authored reel cut without changing source data; see the [production pipeline reference](PRODUCTION_PIPELINE.md#reel-cut-delivery) for limits | Terminal report |
 | `aideos reel build <film> [--delivery <mode>]` | Compiles condensed reel cut into derived reel film and audio | `videos/<film>/reel/film.json`, `voiceover.wav`, `status.json` |
 | `aideos studio` | Opens native Remotion Studio UI | Remotion Studio browser tab |
 | `aideos test` | Executes full automated verification suite | Test TAP results |
@@ -155,6 +155,4 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `npm run validate:film <path>` | Standalone invariant validator for arbitrary film manifests | Runsheet & status in terminal |
 | `npm run backend -- mcp` | Starts Model Context Protocol (MCP) server over stdio | MCP stdio interface |
 
-Reel-cut behavior, delivery modes, timing limits and shot-drop rules are documented in [the production pipeline reference](PRODUCTION_PIPELINE.md#reel-cut-delivery). The captain reviews the rendered reel before approval; approval does not gate rendering.
-
-For shots containing imported image or video media, `aideos reel check` warns that numbers inside that media are not checked. Review those numbers when approving the rendered reel.
+Reel-cut behavior, delivery modes, timing limits, shot-drop rules and review guidance are documented in [the production pipeline reference](PRODUCTION_PIPELINE.md#reel-cut-delivery).
