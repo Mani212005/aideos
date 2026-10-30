@@ -177,7 +177,7 @@ This clip retiming behavior was added in [merged PR 153](https://github.com/Mani
 
 The reel stage fingerprints the long film, narration and word timings, reel cut, design inputs and artwork, and delivery settings. Changes to those inputs invalidate the derived reel. The cut records a narration hash for each long shot; when a long narration line changes, the reel check marks that shot stale until its reel line and source hash are rewritten.
 
-> **Studio reel controls:** See [Studio reel controls](STUDIO_REEL_CONTROLS.md). This pointer is reserved for the Studio controls documentation being added in parallel.
+> **Studio reel controls:** Controls documentation forthcoming.
 
 ## Resuming
 
