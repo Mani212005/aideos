@@ -115,7 +115,7 @@ export function ReelPanel({ filmId, onClose, onPreviewStart }: { filmId: string;
               <span className="text-xs font-bold">{data.current ? "Reel ready" : data.status?.state === "failed" ? "Build failed" : "Reel needs a build"}</span>
               <Badge tone={data.current ? "success" : data.status?.state === "failed" ? "danger" : "warn"}>{data.current ? data.identity ? "Identity" : "Current" : data.status?.state ?? "Missing"}</Badge>
             </div>
-            <Stat label="Delivered length" value={`${data.durationSec === null ? "--" : `${timeLabel(data.durationSec)} / ${data.durationSec.toFixed(1)}s`} · ${data.maxSec}s cap`} tone={data.durationSec !== null && data.durationSec > data.maxSec ? "danger" : "ink"} />
+            <Stat label="Delivered length" value={`${data.durationSec === null ? "--" : `${timeLabel(data.durationSec)} / ${data.maxSec}s cap`}`} tone={data.durationSec !== null && data.durationSec > data.maxSec ? "danger" : "ink"} />
             <div className="flex flex-wrap gap-2">
               <Button size="sm" tone="primary" disabled={busy || !data.writable} title={!data.writable ? "Example films are read-only" : undefined} onClick={() => void rebuild()}>
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
