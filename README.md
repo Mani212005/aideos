@@ -9,7 +9,7 @@
 
 ## 🎬 Two Formats, Shared Visuals
 
-`Long` (1920x1080) and `Reel` (1080x1920) share the same visual canvas, scene motion, and footage, but the Reel is a separate shorter cut with condensed narration capped at 179 seconds including the end card (aim 170 seconds). When the long cut already fits within 179 seconds, an identity reel reuses the long narration. AI drafts the cut for the captain to review and approve after rendering; approval does not gate rendering. Caption placement copies kept-shot owner placements from the long cut, while phrase-locked kinetic subtitles (`KineticSubtitles.tsx`) use the active theme accent token. Each render appends the configured like-and-subscribe end card after the story (6 seconds for Long and 3 seconds for Reel by default); its copy, handle, and timing are set in `aideos.config.json`.
+`Long` (1920x1080) and `Reel` (1080x1920) share the same visual canvas, scene motion, and footage. The Reel is a shorter companion delivery; see the [production pipeline reference](docs/PRODUCTION_PIPELINE.md#reel-cut-delivery) for its cut workflow and delivery limits. Caption placement copies kept-shot owner placements from the long cut, while phrase-locked kinetic subtitles (`KineticSubtitles.tsx`) use the active theme accent token. Each render appends the configured like-and-subscribe end card after the story (6 seconds for Long and 3 seconds for Reel by default); its copy, handle, and timing are set in `aideos.config.json`.
 
 ---
 

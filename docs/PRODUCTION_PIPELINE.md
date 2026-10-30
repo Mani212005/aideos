@@ -150,7 +150,7 @@ Reel cuts currently support scene films. `aideos reel brief <slug>` reads the Lo
 
 ### Build and review
 
-The build uses a valid cut to synthesize condensed narration, retime the shared design and picture, check the compiled Reel design, and write the derived package under `videos/<slug>/reel/`. Reel captions use the new narration while film-level and kept-shot owner placements carry over from Long. Shared design cues resolve against Reel word timings, and end cues resolve to the Reel story end. Dropped scene shots collapse to zero-length cue spans; if that would collapse a visible animation into a snap, the design check fails and names the shot and element. Dropped node-graph shots are removed. A failed or stale build records its status and cannot be used for rendering. With the default inline delivery, an over-cap film without a valid cut returns `needs_reel_cut` and next steps; agent and server modes can author or repair the cut. The production pipeline's `reel` stage does the same work as `aideos reel build` and can make an identity reel without a cut.
+The build uses a valid cut to synthesize condensed narration, retime the shared design and picture, check the compiled Reel design, and write the derived package under `videos/<slug>/reel/`. Reel captions use the new narration while film-level and kept-shot owner placements carry over from Long. Shared design cues resolve against Reel word timings, and end cues resolve to the Reel story end. Dropped scene shots collapse to zero-length cue spans; if that would collapse a visible animation into a snap, the design check fails and names the shot and element. A failed or stale build records its status and cannot be used for rendering. With the default inline delivery, an over-cap film without a valid cut returns `needs_reel_cut` and next steps; agent and server modes can author or repair the cut. The production pipeline's `reel` stage does the same work as `aideos reel build` and can make an identity reel without a cut.
 
 ```bash
 # Write the brief and validate an authored cut. The maximum can be lowered below 179 seconds.
@@ -160,7 +160,7 @@ aideos reel check <slug> [--max-sec 179] [--target-sec 170] [--json]
 # Build an identity reel or compile a checked cut.
 aideos reel build <slug> [--delivery inline|agent|server]
 
-# Run production through both output formats, choosing reel authoring behavior explicitly.
+# Run production through both output formats. The film CLI uses inline reel delivery.
 npm run backend -- film --script-file videos/<slug>/script.md \
   --title "<title>" --slug <slug> --formats long,reel
 
