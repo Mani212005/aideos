@@ -10,7 +10,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Player, type PlayerRef } from "@remotion/player";
-import { EyeOff, FileText, GripHorizontal, Mic, RefreshCw } from "lucide-react";
+import { EyeOff, FileText, GripHorizontal, Mic, RefreshCw, Clapperboard } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import { FilmView } from "../../../src/dl/Film";
 import { buildTimeline } from "../../../src/dl/camera";
@@ -22,6 +22,7 @@ import { Button, EmptyState, SegmentedTabs, Toolbar, ToolbarDivider, ToolbarGrou
 import { TimelineEditor } from "../components/TimelineEditor";
 import { AssetBin, type MediaAsset } from "../components/AssetBin";
 import { SoundtrackPanel } from "../components/SoundtrackPanel";
+import { ReelPanel } from "../components/ReelPanel";
 import { CaptionPlacementEditor } from "../components/CaptionPlacementEditor";
 import { OnCanvasAiEditor } from "../components/OnCanvasAiEditor";
 import { FORMATS, type Format } from "../App";
@@ -74,6 +75,7 @@ export function EditStage({
   // timeline are what the Edit stage is for.
   const [binOpen, setBinOpen] = useState(() => window.innerWidth >= 1280);
   const [mixOpen, setMixOpen] = useState(false);
+  const [reelOpen, setReelOpen] = useState(false);
   const [mixSection, setMixSection] = useState<{ index: number } | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
   const [moveCaptions, setMoveCaptions] = useState(false);
@@ -172,22 +174,30 @@ export function EditStage({
 
   if (!film.voiceover?.src) {
     return (
-      <EmptyState
-        icon={<Mic className="h-6 w-6" />}
-        title="This film has no voiceover yet"
-        description="The timeline locks to the narration track, so Aideos needs a voiceover before it can lay shots out in time."
-        steps={[
-          "Open the Script stage and write or paste your screenplay.",
-          "Pick a voice and generate the voiceover (.wav).",
-          "Come back here to arrange lanes, trim clips and export.",
-        ]}
-        action={
-          <Button tone="primary" size="md" onClick={onGoToScript}>
-            <FileText className="h-4 w-4" />
-            Go to Script
-          </Button>
-        }
-      />
+      <div className="relative flex min-h-0 flex-1 flex-col xl:flex-row">
+        <EmptyState
+          icon={<Mic className="h-6 w-6" />}
+          title="This film has no voiceover yet"
+          description="The timeline locks to the narration track, so Aideos needs a voiceover before it can lay shots out in time."
+          steps={[
+            "Open the Script stage and write or paste your screenplay.",
+            "Pick a voice and generate the voiceover (.wav).",
+            "Come back here to arrange lanes, trim clips and export.",
+          ]}
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button tone="primary" size="md" onClick={onGoToScript}>
+                <FileText className="h-4 w-4" />
+                Go to Script
+              </Button>
+              <Button size="md" active={reelOpen} onClick={() => setReelOpen((open) => !open)}>
+                <Clapperboard className="h-4 w-4" />Reel controls
+              </Button>
+            </div>
+          }
+        />
+        {reelOpen ? <ReelPanel key={film.id} filmId={film.id} onClose={() => setReelOpen(false)} onPreviewStart={() => playerRef.current?.pause()} /> : null}
+      </div>
     );
   }
 
@@ -225,7 +235,8 @@ export function EditStage({
         </ToolbarGroup>
 
         <div className="ml-auto flex gap-2">
-          <Button size="sm" active={mixOpen} onClick={() => { playerRef.current?.pause(); setMixOpen((open) => !open); setMixSection(null); }} title="Music sections, sound effects and credits">Mix</Button>
+          <Button size="sm" active={reelOpen} onClick={() => { playerRef.current?.pause(); setMixOpen(false); setReelOpen((open) => !open); }} title="Reel cut, checks and vertical preview"><Clapperboard className="h-3.5 w-3.5" />Reel</Button>
+          <Button size="sm" active={mixOpen} onClick={() => { playerRef.current?.pause(); setReelOpen(false); setMixOpen((open) => !open); setMixSection(null); }} title="Music sections, sound effects and credits">Mix</Button>
           <Button size="sm" active={binOpen} onClick={() => setBinOpen((p) => !p)} title="Show or hide the media bin">
             Media bin
           </Button>
@@ -309,11 +320,12 @@ export function EditStage({
               onUndo={project.undo}
               onRedo={project.redo}
               onReject={onReject}
-              onMusicSection={(index) => { playerRef.current?.pause(); setMixSection({ index }); setMixOpen(true); }}
+              onMusicSection={(index) => { playerRef.current?.pause(); setReelOpen(false); setMixSection({ index }); setMixOpen(true); }}
             />
           </div>
         </div>
         {mixOpen ? <SoundtrackPanel key={film.id} film={film} selectedSection={mixSection} onCommit={project.commit} onClose={() => setMixOpen(false)} onPreview={() => playerRef.current?.pause()} /> : null}
+        {reelOpen ? <ReelPanel key={film.id} filmId={film.id} onClose={() => setReelOpen(false)} onPreviewStart={() => playerRef.current?.pause()} /> : null}
       </div>
     </div>
   );

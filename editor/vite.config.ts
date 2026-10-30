@@ -7,6 +7,12 @@
 import { z } from 'zod';
 import { masterAudio, writeDescriptionCredits } from '../backend/masterAudio.ts';
 import { prepareSoundtrack } from '../backend/soundtrack.ts';
+import { deliverReel } from '../backend/reelCut/writer.ts';
+import { loadReelContext, readReelCut, reelPackageDir } from '../backend/reelCut/brief.ts';
+import { checkReelCut } from '../backend/reelCut/check.ts';
+import { reelBudgetFor, reelSourceFingerprint } from '../backend/reelCut/store.ts';
+import { REEL_MAX_SEC, reelCutSchema } from '../backend/reelCut/schema.ts';
+import { deliveryTimeline, DELIVERY_CONFIG } from '../src/dl/delivery.ts';
 import { stagePublicDir } from '../backend/pipeline/render.ts';
 import { persistStudioSoundtrack, rebuildStudioSoundtrack, studioSoundtrackRequestSchema } from '../backend/designSpec/soundtrackStudio.ts';
 import { fetchAudioItem, getAudioItemFilename, loadAudioLibrary, verifyAudioItem } from '../backend/audioLibrary/library.ts';
@@ -615,6 +621,69 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
         uptime: process.uptime(),
         timestamp: new Date().toISOString(),
       });
+      return;
+    }
+
+    // Returns the current reel cut, backend checks and a preview film only when its build is current.
+    const reelStudioMatch = /^\/api\/reel\/([a-z0-9-]+)$/.exec(url);
+    if (reelStudioMatch && (req.method === 'GET' || req.method === 'POST')) {
+      const slug = reelStudioMatch[1];
+      // Packages in examples/ are served for exploration and must never receive owner rebuild writes.
+      const respond = () => {
+        const film = readFilm(slug);
+        if (!film) {
+          sendJson(res, 404, { error: `No film found for ${slug}.` });
+          return;
+        }
+        const pkg = reelPackageDir(slug);
+        const writable = path.resolve(pkg).startsWith(`${path.resolve(videosDir)}${path.sep}`);
+        const statusPath = path.join(pkg, 'reel/status.json');
+        const reelFilmPath = path.join(pkg, 'reel/film.json');
+        let status: any = null;
+        let cut: unknown = null;
+        try { status = fs.existsSync(statusPath) ? JSON.parse(fs.readFileSync(statusPath, 'utf8')) : null; } catch { status = null; }
+        try { cut = readReelCut(slug); } catch { cut = null; }
+        const identity = deliveryTimeline(film, 'reel').totalFrames / film.fps <= DELIVERY_CONFIG.reel.maxSec && !film.soundtrack?.defaultScore;
+        const current = status?.state === 'passed' && status.fingerprint === reelSourceFingerprint(slug);
+        const previewFilm = identity ? film : current && fs.existsSync(reelFilmPath)
+          ? filmSchema.parse(JSON.parse(fs.readFileSync(reelFilmPath, 'utf8'))) : null;
+        let report = null;
+        if (!identity) {
+          try { report = checkReelCut(cut, loadReelContext(slug), reelBudgetFor(film)); } catch { report = null; }
+        }
+        const durationSec = previewFilm
+          ? deliveryTimeline(previewFilm, 'reel').totalFrames / previewFilm.fps
+          : report?.estimate?.totalSec ?? null;
+        sendJson(res, 200, {
+          filmId: slug,
+          maxSec: REEL_MAX_SEC,
+          writable,
+          identity,
+          cut: reelCutSchema.safeParse(cut).success ? reelCutSchema.parse(cut) : null,
+          report,
+          status,
+          current: Boolean(previewFilm),
+          durationSec,
+          previewFilm,
+          sourceShots: film.shots.map((shot) => ({ id: shot.id, narration: shot.scriptText ?? '' })),
+        });
+      };
+      if (req.method === 'GET') {
+        try { respond(); } catch (error) { sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) }); }
+      } else {
+        const pkg = reelPackageDir(slug);
+        if (!path.resolve(pkg).startsWith(`${path.resolve(videosDir)}${path.sep}`)) {
+          sendJson(res, 403, { error: 'Example films are read-only. Open a film in your videos folder to rebuild its reel.' });
+          return;
+        }
+        void deliverReel(slug, { mode: 'inline' }).then((outcome) => {
+          if (outcome.status === 'needs_reel_cut') {
+            sendJson(res, 422, { error: `${outcome.note}\n${outcome.nextSteps.join('\n')}` });
+            return;
+          }
+          respond();
+        }).catch((error) => sendJson(res, 422, { error: error instanceof Error ? error.message : String(error) }));
+      }
       return;
     }
 
