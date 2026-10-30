@@ -42,7 +42,7 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 | `narrate`  | Synthesizes narration and derives the timing spine every later stage is locked to     | `voiceover.wav`, `captions.vtt`, `voiceover_words.json`, `narration.json` |
 | `look`     | Writes the measured look brief and validates the plan through the selected delivery mode | `design/LOOK_BRIEF.md`, `look.json`, `LOOK.md` |
 | `design`   | Compiles treatments from the accepted look and builds a checked scene design | `design/BRIEF.md`, `base-film.json`, `status.json`, `film.json` and its shadow |
-| `reel`     | Builds condensed reel narration and derived film with checked shot drops, or reuses the long for an identity reel | `videos/<slug>/reel/film.json`, `voiceover.wav`, `voiceover_words.json`, `status.json`, and its `src/dl/films/<slug>.reel.ts` shadow |
+| `reel`     | Builds condensed reel narration and a derived film with checked shot drops, or reuses the long for an identity reel | `videos/<slug>/reel/film.json`, `status.json`, and its `src/dl/films/<slug>.reel.ts` shadow; cut mode also writes reel narration and word timings |
 | `broll`    | Renders GPU footage for the flagged shots and fetches the clips                       | `videos/<slug>/footage/<shotId>.mp4`                |
 | `assemble` | Wires each clip into its shot as a full-screen inset                                 | `film.json` and its `src/dl/films/<slug>.ts` shadow |
 | `render`   | Installs the film as active, drives Remotion for each requested format, then measures and masters each MP4 audio track | `src/dl/activeFilm.ts`, `videos/<slug>/renders/<format>.mp4`, `<format>.mp4.master.json`, `description-credits.txt` by default |
@@ -132,7 +132,7 @@ Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing).
 
 ## Reel cut delivery
 
-`ProductionRequest.reel` and `--reel <mode>` (defaulting to the design policy, with templates mapped to inline) govern reel delivery:
+`ProductionRequest.reel` governs reel delivery in the API. It defaults to the design policy, with templates mapped to inline. The `film` CLI uses inline reel delivery; `aideos reel build` exposes an explicit `--delivery` option:
 
 | Mode | Behavior |
 | --- | --- |
@@ -140,11 +140,44 @@ Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing).
 | `agent` | Dispatch the reel-cut task to a connected coding agent and wait for validated output. Feed check and cap failures back for up to three attempts; missing delivery or a timeout fails the stage. |
 | `server` | Ask the configured generation model to write or repair `cut.json`, feeding check and cap failures back for up to three attempts. |
 
-When the long story plus reel end card already fits the 179 s hard cap (`DELIVERY_CONFIG.reel.maxSec`), the reel stage creates an identity reel that reuses the long cut's narration. For longer films, the reel is a separate shorter cut with condensed narration, keeping the long cut's backend, voice, and speed. Caption placement carries film-level and kept-shot owner placements from the long cut. Shared design cues re-resolve against reel timing; end cues target the reel story end. Dropped shots become zero-length boundary spans for scene cues. A dropped shot collapsing an animated clip into a visible snap fails design check with an error naming the shot and element, directing the writer to keep that shot condensed instead. Node-graph drops remove the shot.
+The Reel is a separate 9:16 delivery made from the Long film's picture and design. If the Long delivery, including the configured Reel end card, is at most 179 seconds, it is an identity reel and reuses the Long narration. Otherwise, the cut has condensed narration for the kept shots and uses the Long narration backend, voice, and speed. The hard cap is 179 seconds for the full delivery, including the end card; the default writing target is 170 seconds, also including the card. The defaults and end-card span come from `src/dl/delivery.ts` and `backend/reelCut/schema.ts`.
+
+### Author and check a cut
+
+Reel cuts currently support scene films. `aideos reel brief <slug>` reads the Long film and available design and look plans, then writes `videos/<slug>/reel/REEL_BRIEF.md`. The brief lists each shot's source narration hash, exact phrases to retain, visible text and numbers, motion floor, and whether the shot is decisive. The editable source is `videos/<slug>/reel/cut.json` with schema `aideos.reelcut/1`: include every Long shot exactly once and in order, either with condensed narration or an explicit drop and reason. Preserve the first-shot hook, last-shot payoff, decisive performances, locked phrases, and every on-screen number that remains visible. Condense across shots before dropping one.
+
+`aideos reel check <slug>` is deterministic and read-only. It checks the cut schema, shot coverage and order, stale Long narration hashes, phrase locks, spoken numbers, drops, the estimated full-delivery budget, and each shot's camera motion floor. New content words trigger warnings for owner review. A kept shot with imported media also warns that numbers inside that media are not checked and must be reviewed by the owner; other failed constraints are errors. A passing estimate does not replace the measured build check: synthesis supplies actual shot durations, then design and delivery checks run against the compiled Reel. AI-authored cuts can render before the captain records approval; approval is optional and does not gate rendering. These authoring rules and checks landed in [merged PR 134](https://github.com/Mani212005/aideos/pull/134).
+
+### Build and review
+
+The build uses a valid cut to synthesize condensed narration, retime the shared design and picture, check the compiled Reel design, and write the derived package under `videos/<slug>/reel/`. Reel captions use the new narration while film-level and kept-shot owner placements carry over from Long. Shared design cues resolve against Reel word timings, and end cues resolve to the Reel story end. Dropped scene shots collapse to zero-length cue spans; if that would collapse a visible animation into a snap, the design check fails and names the shot and element. Dropped node-graph shots are removed. A failed or stale build records its status and cannot be used for rendering. With the default inline delivery, an over-cap film without a valid cut returns `needs_reel_cut` and next steps; agent and server modes can author or repair the cut. The production pipeline's `reel` stage does the same work as `aideos reel build` and can make an identity reel without a cut.
+
+```bash
+# Write the brief and validate an authored cut. The maximum can be lowered below 179 seconds.
+aideos reel brief <slug> [--max-sec 179] [--target-sec 170]
+aideos reel check <slug> [--max-sec 179] [--target-sec 170] [--json]
+
+# Build an identity reel or compile a checked cut.
+aideos reel build <slug> [--delivery inline|agent|server]
+
+# Run production through both output formats, choosing reel authoring behavior explicitly.
+npm run backend -- film --script-file videos/<slug>/script.md \
+  --title "<title>" --slug <slug> --formats long,reel
+
+# Review every rendered format, or request the Reel alone.
+aideos review <slug>
+aideos review <slug> --format reel
+```
+
+`aideos review` writes a separate measured report and evidence for each rendered format. Read the Reel report (`review.reel.json`) for Reel-specific facts, including the delivered-length gate; the review command defaults to every rendered format. See [Review](REVIEW.md) for the criteria, artifacts, and review workflow. This measured review is separate from the optional Gemini visual review and from captain approval of the cut.
 
 Standalone `videoClips` and `overlayClips` are mapped from source time onto the reel timeline through the kept shots and capped to each shot's shortened narration duration. A clip spanning dropped shots is split into one clip per kept contiguous portion, and clips with no retained portion are omitted. Linked imported-audio clips are retimed, trimmed and split to match their video clips; other `audioClips` keep their source timing.
 
+This clip retiming behavior was added in [merged PR 153](https://github.com/Mani212005/aideos/pull/153). Default Reel soundtrack scoring is documented in [Audio Library and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing) and [merged PR 159](https://github.com/Mani212005/aideos/pull/159); this section does not duplicate the scoring rules.
+
 The reel stage fingerprints the long film, narration and word timings, reel cut, design inputs and artwork, and delivery settings. Changes to those inputs invalidate the derived reel. The cut records a narration hash for each long shot; when a long narration line changes, the reel check marks that shot stale until its reel line and source hash are rewritten.
+
+> **Studio reel controls:** See [Studio reel controls](STUDIO_REEL_CONTROLS.md). This pointer is reserved for the Studio controls documentation being added in parallel.
 
 ## Resuming
 
