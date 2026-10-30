@@ -13,7 +13,7 @@ Aideos is engineered around 4 strict architectural invariants:
 1. **Films are Pure Data (`videos/<slug>/film.json`, with generated `src/dl/films/*.ts` shadows)**:
    - No React runtime logic, side-effects, or random math inside film definitions. Every film is a pure, serializable JSON data structure conforming strictly to `filmSchema` (`src/dl/schema.ts`).
 2. **Master Clock Audio Spine**:
-   - Story duration is never guessed. The synthesized voiceover audio is the master clock for the story, and total shot durations must sum to the voiceover length within $\pm 50\text{ms}$. Each delivered format appends its configured end card after the story.
+   - Story duration is never guessed. The synthesized voiceover audio is the master clock for the story, and total shot durations must sum to the voiceover length within $\pm 50\text{ms}$. Each delivered format appends its configured end card after the story by default; a film can disable its card.
 3. **Derived Camera Framing**:
    - The virtual camera never uses hardcoded pixel offsets. Viewport centers, zoom factors, and bounding boxes are mathematically derived from continuous 2D node coordinates $(x, y, w, h)$ on the spatial canvas graph.
 4. **Declared Palette with Semantic Theme Tokens**:
@@ -143,6 +143,7 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos reel brief <film> [--max-sec <seconds>] [--target-sec <seconds>]` | Writes the condensed narration brief with locks, hashes and motion budgets | `videos/<film>/reel/REEL_BRIEF.md` |
 | `aideos reel check <film> [--max-sec <seconds>] [--target-sec <seconds>] [--json]` | Checks the authored reel cut without changing source data; see the [production pipeline reference](PRODUCTION_PIPELINE.md#reel-cut-delivery) for limits | Terminal report |
 | `aideos reel build <film> [--delivery <mode>]` | Compiles condensed reel cut into derived reel film and audio | `videos/<film>/reel/film.json`, `voiceover.wav`, `status.json` |
+| `aideos end-card <film> <on|off>` | Enables or disables the automatic end card for one film | Updated `videos/<film>/film.json` |
 | `aideos studio` | Opens native Remotion Studio UI | Remotion Studio browser tab |
 | `aideos test` | Executes full automated verification suite | Test TAP results |
 | `aideos produce` | Runs audio-first produce pipeline | `voiceover.wav`, `captions.vtt`, `film.ts` |

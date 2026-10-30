@@ -98,3 +98,7 @@ trusted owner writes and can move locked captions; locks prevent checked agent e
 
 Arrow keys nudge by 0.5%, Shift increases the step to 5%, Alt + Left/Right changes width, and L toggles
 lock. Alt bypasses snapping during a pointer gesture. Esc cancels the current gesture.
+
+The same `carryCaptionPlacement` helper carries an existing film's `endCard.enabled` setting
+through rebuilds. Omitted settings default to enabled; Studio and `aideos end-card <slug> on|off`
+are owner paths for changing it.

@@ -25,7 +25,7 @@ export const TIMELINE = buildTimeline(FILM);
 export const FPS = FILM.fps;
 /** Frames of the story alone: the film's own timeline, which the narration is locked to. */
 export const TOTAL_FRAMES = totalFrames(TIMELINE);
-/** Delivered frames per format: the story plus that format's end card (src/dl/delivery.ts). */
+/** Delivered frames per format: the story plus that format's end card when enabled (src/dl/delivery.ts). */
 export const LONG_TOTAL_FRAMES = deliveryTimeline(FILM, "long", { timeline: TIMELINE }).totalFrames;
 export const REEL_FILM = parseFilm(ACTIVE_REEL_FILM);
 export const REEL_TIMELINE = buildTimeline(REEL_FILM);

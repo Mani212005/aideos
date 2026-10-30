@@ -17,7 +17,7 @@ The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React
 
 ### Architectural Directives
 1. **Single Canvas Model**: 2D infinite spatial canvas with continuous camera panning, zoom-in payoffs, and anchor tracking across two responsive aspect ratios (`Long` 1920x1080 and `Reel` 1080x1920).
-2. **Audio-First Pipeline**: Audio narration duration locks the story timeline; each delivered video then appends its configured end card. Kinetic word-level subtitles are powered by `@chenglou/pretext`.
+2. **Audio-First Pipeline**: Audio narration duration locks the story timeline; each delivered video appends its configured end card by default, with a per-film off switch. Kinetic word-level subtitles are powered by `@chenglou/pretext`.
 3. **Dual Design System Separation**:
    - **Rendered Video Design System (`src/dl/README.md`)**: The output video is strictly governed by a per-film declared palette with a measured contrast floor, Geist + JetBrains Mono typography, and `ease-out-expo` motion.
    - **Editor Chrome Neobrutalism Design System (`editor/src/styles/tokens.css`)**: The editor application is a pure light-themed interface with bone paper tones (`--nb-paper`, `--nb-surface`, `--nb-subtle`), 2-4px hard borders, 0px border radius, and hard offset shadows. The only dark surface is `--nb-matte`, reserved for the video canvas matte behind the preview player.

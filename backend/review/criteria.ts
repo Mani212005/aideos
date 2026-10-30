@@ -445,7 +445,7 @@ function audioSync(i: ReviewInputs): CriterionResult {
   const failures: string[] = [];
   const lengthDiff = Math.abs(audioDurationSec - video.durationSec);
   if (lengthDiff > T.audioSync.lengthToleranceSec) failures.push(`audio is ${round(audioDurationSec, 2)} s but the picture is ${round(video.durationSec, 2)} s`);
-  // The delivered video is the story plus the fixed end card.
+  // The delivered video is the story plus the end card when enabled.
   const cardSec = endCardSec(film);
   const filmDiff = film ? Math.abs(film.durationSec + cardSec - video.durationSec) : null;
   if (filmDiff !== null && filmDiff > T.audioSync.lengthToleranceSec) failures.push(`the film's shots add up to ${round(film!.durationSec, 2)} s${cardSec > 0 ? ` plus a ${round(cardSec, 1)} s end card` : ""} but the rendered video is ${round(video.durationSec, 2)} s`);

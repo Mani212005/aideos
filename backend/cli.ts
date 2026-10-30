@@ -313,6 +313,20 @@ program
     },
   );
 
+program
+  .command("end-card")
+  .description("Turn the automatic end card on or off for one existing film")
+  .argument("<slug>", "film package slug")
+  .argument("<state>", "on or off")
+  .action(async (slug: string, state: string) => {
+    if (state !== "on" && state !== "off") throw new Error('end-card state must be "on" or "off"');
+    const { readFilm, writeFilm } = await import("./pipeline/filmStore");
+    const film = readFilm(slug);
+    if (!film) throw new Error(`film "${slug}" was not found`);
+    writeFilm(slug, { ...film, endCard: { ...film.endCard, enabled: state === "on" } }, { owner: true });
+    console.log(`End card ${state} for ${slug}`);
+  });
+
 export interface DirectCliOptions {
   title?: string;
   slug?: string;

@@ -1,5 +1,5 @@
 /**
- * File Description: Shared caption placement resolution, gesture geometry and owner persistence policy.
+ * File Description: Shared caption placement geometry and carry-forward for owner-controlled film settings.
  * Inputs and outputs: film, format, scope and pointer deltas -> safe card rectangles and updated films.
  * Used by: FilmView, studio caption controls, film writers, design checks and review.
  */
@@ -303,7 +303,7 @@ function sameCaptionPlacement(a: CaptionPlacement | undefined, b: CaptionPlaceme
   return !!a && !!b && a.x === b.x && a.y === b.y && a.w === b.w &&
     a.locked === b.locked;
 }
-// Carries omitted entries across rebuilds and lets only owner writes alter locked entries.
+// Carries owner caption and end-card settings across rebuilds while allowing owner writes to change them.
 export function carryCaptionPlacement(
   previous: Film | null,
   next: Film,
@@ -345,9 +345,13 @@ export function carryCaptionPlacement(
       `caption-placement: rebuild removes shots with owner placement: ${orphans.map((s) => s.id).join(", ")}. Reset those exceptions before rebuilding.`,
     );
   const filmPlacement = carry(previous.captionPlacement, mergedNext.captionPlacement);
+  const endCard = previous.endCard
+    ? { ...mergedNext.endCard, enabled: previous.endCard.enabled }
+    : mergedNext.endCard;
   return {
     ...mergedNext,
     ...(filmPlacement ? { captionPlacement: filmPlacement } : {}),
+    ...(endCard ? { endCard } : {}),
     shots: mergedNext.shots.map((shot) => {
       const previousShot = previous.shots.find((s) => s.id === shot.id);
       const placement = carry(

@@ -216,6 +216,15 @@ export function EditStage({
           <Button size="sm" active={moveCaptions} onClick={() => { playerRef.current?.pause(); setCaptionDraft(null); setMoveCaptions((enabled) => !enabled); }} title="Move and resize caption cards in the preview">Move captions</Button>
           <Button
             size="sm"
+            active={film.endCard?.enabled !== false}
+            onClick={() => project.commit({ ...film, endCard: { ...film.endCard, enabled: film.endCard?.enabled === false } }, "Change end card")}
+            title="Turn the automatic end card on or off for this film"
+            aria-pressed={film.endCard?.enabled !== false}
+          >
+            End card: {film.endCard?.enabled === false ? "Off" : "On"}
+          </Button>
+          <Button
+            size="sm"
             onClick={() => setPreviewKey((k) => k + 1)}
             title="Rebuild the preview from the current film"
           >
