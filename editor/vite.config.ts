@@ -173,6 +173,24 @@ const bearerOf = (req: IncomingMessage): string | undefined => {
   return m ? m[1] : undefined;
 };
 
+// Checks that a request to the reel rebuild endpoint comes from a loopback Studio page.
+function isLocalStudioRequest(req: IncomingMessage): boolean {
+  const peer = String(req.socket.remoteAddress ?? '').toLowerCase();
+  const loopbackPeer = peer === '::1' || peer.startsWith('127.') || peer.startsWith('::ffff:127.');
+  const originHeader = req.headers.origin;
+  const hostHeader = req.headers.host;
+  if (!loopbackPeer || typeof originHeader !== 'string' || typeof hostHeader !== 'string') return false;
+  try {
+    const origin = new URL(originHeader);
+    const requestOrigin = new URL(`http://${hostHeader}`);
+    const hostname = origin.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
+    const loopbackHost = hostname === 'localhost' || hostname.endsWith('.localhost') || hostname === '::1' || hostname.startsWith('127.');
+    return loopbackHost && origin.protocol === 'http:' && origin.origin === requestOrigin.origin;
+  } catch {
+    return false;
+  }
+}
+
 // The URL a connector should dial: the configured public API URL, else the one this request reached.
 const publicApiUrl = (req: IncomingMessage): string => {
   if (process.env.AIDEOS_PUBLIC_API_URL) return process.env.AIDEOS_PUBLIC_API_URL.replace(/\/$/, '');
@@ -671,6 +689,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
       if (req.method === 'GET') {
         try { respond(); } catch (error) { sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) }); }
       } else {
+        if (!isLocalStudioRequest(req)) {
+          sendJson(res, 403, { error: 'Reel rebuilds are only available to the local Studio page.' });
+          return;
+        }
         const pkg = reelPackageDir(slug);
         if (!path.resolve(pkg).startsWith(`${path.resolve(videosDir)}${path.sep}`)) {
           sendJson(res, 403, { error: 'Example films are read-only. Open a film in your videos folder to rebuild its reel.' });
