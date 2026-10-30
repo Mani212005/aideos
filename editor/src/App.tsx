@@ -138,7 +138,7 @@ export default function App() {
     [commit, film],
   );
 
-  // The delivered length of the format on screen: the story plus its end card (src/dl/delivery.ts).
+  // The delivered length of the format on screen: the story plus its end card when enabled (src/dl/delivery.ts).
   const deliveredFrames = useMemo(() => {
     try {
       return deliveryTimeline(film, format).totalFrames;

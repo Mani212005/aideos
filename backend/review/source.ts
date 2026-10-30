@@ -124,7 +124,7 @@ export interface FilmFacts {
   nodeOverlaps: string[];
   voiceoverSec: number | null;
   /**
-   * The fixed end card appended after the story in this output (src/dl/delivery.ts), with its spoken
+   * The end card appended after the story when enabled for this output (src/dl/delivery.ts), with its spoken
    * line's words in video seconds; null when the film has no card. `durationSec` above is the story.
    */
   endCard?: { startSec: number; endSec: number; words: Array<{ word: string; start: number; end: number }> } | null;
