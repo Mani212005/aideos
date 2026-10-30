@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { releaseChannel } from '../backend/releaseChannel.ts';
 import { masterAudio, writeDescriptionCredits } from '../backend/masterAudio.ts';
 import { prepareSoundtrack } from '../backend/soundtrack.ts';
 import { stagePublicDir } from '../backend/pipeline/render.ts';
@@ -559,6 +560,10 @@ async function handleAgentLink(req: IncomingMessage, res: ServerResponse, url: s
 function setupApiMiddlewares(server: { middlewares: any }): void {
   startFilmWatcher();
   server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
+    if (req.url === '/api/release-channel') {
+      sendJson(res, 200, releaseChannel(path.resolve(__dirname, '..')));
+      return;
+    }
     const url = (req.url ?? '').split('?')[0];
 
     // Ensure permissive CORS headers for all incoming API and asset requests
@@ -2587,9 +2592,9 @@ export default defineConfig({
   plugins: [react(), filmApiPlugin()],
   publicDir: path.resolve(__dirname, '../public'),
   server: {
-    port: Number(process.env.PORT) || 3001,
+    port: Number(process.env.PORT) || releaseChannel(path.resolve(__dirname, '..')).port,
     host: process.env.HOST || '0.0.0.0',
-    strictPort: false,
+    strictPort: true,
     // The hosted backend is this dev server (the API lives in its middleware), reached as
     // aideos-backend.onrender.com directly and through Vercel's /api rewrite. Vite rejects any
     // Host it does not know with a 403, so name the hosting domains; AIDEOS_ALLOWED_HOSTS adds more.
@@ -2610,7 +2615,7 @@ export default defineConfig({
     }
   },
   preview: {
-    port: Number(process.env.PORT) || 3001,
+    port: Number(process.env.PORT) || releaseChannel(path.resolve(__dirname, '..')).port,
     host: process.env.HOST || '0.0.0.0',
   },
   resolve: {

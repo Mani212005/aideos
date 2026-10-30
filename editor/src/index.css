@@ -15,6 +15,31 @@
 @tailwind components;
 @tailwind utilities;
 
+:root { --release-color: var(--nb-warn); }
+:root[data-release-channel="stable"] { --release-color: var(--nb-success); }
+.release-strip {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 3px;
+  z-index: 1000;
+  background: var(--release-color);
+  pointer-events: none;
+}
+.release-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 124px;
+  height: 34px;
+  line-height: 1.15;
+  color: var(--nb-ink);
+  background: var(--release-color);
+  border: var(--nb-border) solid var(--nb-ink);
+  box-shadow: var(--nb-offset-sm) var(--nb-offset-sm) 0 var(--nb-ink);
+}
+
 @layer base {
   html,
   body,

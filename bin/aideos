@@ -5,20 +5,6 @@
 
 set -e
 
-# Reject unknown commands before resolving a checkout or touching Studio state.
-if [ "$#" -gt 0 ]; then
-  case "$1" in
-    exit|stop|down|kill|validate|review|all-check|connect|design|look|character|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|audio|help|--help|-h)
-      ;;
-    *)
-      echo "Error: unknown aideos command '$1'." >&2
-      echo "Commands: exit (stop/down/kill), validate, review, all-check, connect, design, look, character, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, audio, help" >&2
-      echo "Run 'aideos help' for usage." >&2
-      exit 2
-      ;;
-  esac
-fi
-
 # Project resolution precedence (the one place this is documented):
 #   1. The checkout containing the current directory (it or any ancestor holds remotion.config.ts and editor/),
 #      so working inside another checkout or worktree runs that checkout's code.
@@ -45,9 +31,9 @@ resolve_real_path() {
   printf '%s/%s\n' "$(cd "$(dirname "$target")" && pwd -P)" "$(basename "$target")"
 }
 
-AIDEOS_DIR=""
+AIDEOS_DIR="${AIDEOS_PINNED_ROOT:-}"
 SEARCH_DIR="$(pwd -P)"
-while true; do
+while [ -z "$AIDEOS_DIR" ]; do
   if is_aideos_checkout "$SEARCH_DIR"; then
     AIDEOS_DIR="$SEARCH_DIR"
     break
@@ -64,6 +50,30 @@ if [ -z "$AIDEOS_DIR" ]; then
     echo "Error: Could not locate the Aideos checkout for $SELF_PATH (expected remotion.config.ts and editor/ in $INSTALL_ROOT)." >&2
     exit 1
   fi
+fi
+
+# Derive identity from Git on every invocation; labels cannot be selected by environment.
+if [ -x "$AIDEOS_DIR/node_modules/.bin/tsx" ] && [ -f "$AIDEOS_DIR/scripts/channel.ts" ]; then
+  "$AIDEOS_DIR/node_modules/.bin/tsx" "$AIDEOS_DIR/scripts/channel.ts" "$AIDEOS_DIR"
+  AIDEOS_PORT="$("$AIDEOS_DIR/node_modules/.bin/tsx" "$AIDEOS_DIR/scripts/channel.ts" "$AIDEOS_DIR" port)"
+else
+  # Help remains usable before npm install; an unverifiable checkout always announces DEV.
+  echo "AIDEOS DEV (install dependencies to read Git identity)" >&2
+  AIDEOS_PORT=3001
+fi
+
+# Reject unknown commands before resolving a checkout or touching Studio state.
+if [ "$#" -gt 0 ]; then
+  case "$1" in
+    version|--version|which|exit|stop|down|kill|validate|review|all-check|connect|design|look|character|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|audio|help|--help|-h)
+      ;;
+    *)
+      echo "Error: unknown aideos command '$1'." >&2
+      echo "Commands: exit (stop/down/kill), validate, review, all-check, connect, design, look, character, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, audio, help" >&2
+      echo "Run 'aideos help' for usage." >&2
+      exit 2
+      ;;
+  esac
 fi
 
 # Prints the usage of `aideos design`.
@@ -89,26 +99,28 @@ audio_usage() {
 CONFIG_DIR="${HOME}/.config/aideos"
 CONFIG_FILE="${CONFIG_DIR}/agent"
 SESSION_FILE="${AIDEOS_DIR}/.aideos_session.json"
-TMUX_SESSION="aideos"
+TMUX_SESSION="aideos-$AIDEOS_PORT"
 
 # Subcommand dispatch for non-interactive commands
 if [ "$#" -gt 0 ]; then
   CMD="$1"
   shift
   case "$CMD" in
+    version|--version|which)
+      [ "$CMD" = --version ] && CMD=version
+      exec "$AIDEOS_DIR/node_modules/.bin/tsx" "$AIDEOS_DIR/scripts/channel.ts" "$AIDEOS_DIR" "$CMD"
+      ;;
     exit|stop|down|kill)
-      PIDS=$(lsof -tiTCP:3001 -sTCP:LISTEN 2>/dev/null || true)
-      if [ -n "$PIDS" ]; then
-        kill $PIDS 2>/dev/null || true
-      fi
-      PIDS_3000=$(lsof -tiTCP:3000 -sTCP:LISTEN 2>/dev/null || true)
-      if [ -n "$PIDS_3000" ]; then
-        for PID in $PIDS_3000; do
-          if ps -p "$PID" -o command= 2>/dev/null | grep -qi "aideos"; then
-            kill "$PID" 2>/dev/null || true
-          fi
-        done
-      fi
+      PIDS=$(lsof -tiTCP:"$AIDEOS_PORT" -sTCP:LISTEN 2>/dev/null || true)
+      for PID in $PIDS; do
+        # Stop only a server whose working directory is this checkout's editor.
+        if lsof -a -p "$PID" -d cwd -Fn 2>/dev/null | grep -Fxq "n$AIDEOS_DIR/editor"; then
+          kill "$PID"
+        else
+          echo "Refusing to stop a different server on port $AIDEOS_PORT." >&2
+          exit 1
+        fi
+      done
       echo "The local host is stopped. Hope you make something amazing!"
       exit 0
       ;;
@@ -135,7 +147,7 @@ if [ "$#" -gt 0 ]; then
       # aideos connect <PAIRING-CODE> --agent claude|agy|codex|opencode [--url <studio api url>]
       # Links a studio to the agent in this terminal (defaults to the local studio).
       case " $* " in *" --url "*) exec node "$AIDEOS_DIR/scripts/aideos-connect.mjs" "$@" ;; esac
-      exec node "$AIDEOS_DIR/scripts/aideos-connect.mjs" "$@" --url "http://localhost:3001"
+      exec node "$AIDEOS_DIR/scripts/aideos-connect.mjs" "$@" --url "http://localhost:$AIDEOS_PORT"
       ;;
     design)
       # aideos design check|brief|build <film>
@@ -229,7 +241,7 @@ if [ "$#" -gt 0 ]; then
       exit 0
       ;;
     studio)
-      cd "$AIDEOS_DIR" && npm run studio "$@"
+      cd "$AIDEOS_DIR" && npm run studio -- --port "$((AIDEOS_PORT + 100))" "$@"
       exit 0
       ;;
     frames)
@@ -253,7 +265,8 @@ if [ "$#" -gt 0 ]; then
       echo ""
       echo "Usage:"
       echo "  aideos               Launch Studio (localhost:3001) and connect AI coding agent"
-      echo "  aideos exit          Stop local editor dev server"
+      echo "  aideos version / which  Show channel, release, commit and checkout"
+      echo "  aideos exit          Stop this channel editor dev server"
       echo "  aideos validate      Validate active film schema and print runsheet"
       echo "  aideos render        Render long-form video (videos/<slug>/renders/long.mp4)"
       echo "  aideos reel          Render vertical reel (videos/<slug>/renders/reel.mp4)"
@@ -285,40 +298,32 @@ if [ "$#" -gt 0 ]; then
   esac
 fi
 
-# 1. Start Localhost Studio if not already running
-PORT=3001
-IS_RUNNING=0
-if lsof -nP -iTCP:3001 -sTCP:LISTEN >/dev/null 2>&1; then
-  PORT=3001
-  IS_RUNNING=1
-elif lsof -nP -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1; then
-  if curl -s http://localhost:3000/ | grep -qi "aideos\|editor"; then
-    PORT=3000
-    IS_RUNNING=1
+# 1. Start this checkout's editor on its channel's reserved port.
+PORT="$AIDEOS_PORT"
+if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  # Refuse another checkout's server instead of quietly attaching the wrong channel.
+  SERVER_ROOT="$(curl -fsS "http://localhost:$PORT/api/release-channel" | node -e 'let s="";process.stdin.on("data", c=>s+=c);process.stdin.on("end",()=>{try{process.stdout.write(JSON.parse(s).root)}catch{process.exit(1)}})')"
+  if [ "$SERVER_ROOT" != "$AIDEOS_DIR" ]; then
+    echo "Port $PORT belongs to another checkout. Stop that server first." >&2
+    exit 1
   fi
-fi
-
-if [ "$IS_RUNNING" -eq 0 ]; then
-  echo "🚀 Starting Aideos Studio on http://localhost:3001..."
-  cd "$AIDEOS_DIR/editor"
-  nohup npm run dev > /tmp/aideos-editor.log 2>&1 &
-  SERVER_PID=$!
-
-  # Wait for server to become ready (up to 10s)
-  for i in {1..20}; do
-    if lsof -nP -iTCP:3001 -sTCP:LISTEN >/dev/null 2>&1; then
-      PORT=3001
-      break
-    elif lsof -nP -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1 && curl -s http://localhost:3000/ | grep -qi "editor"; then
-      PORT=3000
+else
+  echo "Starting Aideos Studio on http://localhost:$PORT..."
+  ( cd "$AIDEOS_DIR/editor" && nohup npm run dev -- --port "$PORT" --strictPort > "/tmp/aideos-editor-$PORT.log" 2>&1 & )
+  READY=0
+  for i in {1..40}; do
+    if curl -fsS "http://localhost:$PORT/api/release-channel" >/dev/null 2>&1; then
+      READY=1
       break
     fi
     sleep 0.5
   done
-  echo "✓ Aideos Studio ready at http://localhost:$PORT/ (PID: $SERVER_PID)"
-else
-  echo "🎬 Aideos Studio is running on http://localhost:$PORT/"
+  if [ "$READY" -ne 1 ]; then
+    echo "Studio did not start; see /tmp/aideos-editor-$PORT.log" >&2
+    exit 1
+  fi
 fi
+echo "Aideos Studio: http://localhost:$PORT/"
 
 # Open in default browser
 open "http://localhost:$PORT/" 2>/dev/null || true

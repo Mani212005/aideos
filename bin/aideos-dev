@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# File Description: Pinned updating dispatcher that cannot switch to a stable checkout through cwd.
+# Inputs and outputs: command and arguments -> updating checkout CLI.
+# Used by: release setup's aideos-dev launcher.
+
+set -euo pipefail
+target="${BASH_SOURCE[0]}"
+while [ -L "$target" ]; do
+  base="$(cd "$(dirname "$target")" && pwd -P)"
+  link="$(readlink "$target")"
+  case "$link" in /*) target="$link" ;; *) target="$base/$link" ;; esac
+done
+root="$(cd "$(dirname "$target")/.." && pwd -P)"
+export AIDEOS_PINNED_ROOT="$root"
+export AIDEOS_PROJECT_ROOT="$root"
+export AIDEOS_VIDEOS_DIR="$root/videos"
+exec "$root/bin/aideos" "$@"
