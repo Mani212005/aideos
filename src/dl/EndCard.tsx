@@ -1,5 +1,5 @@
 /**
- * File Description: The fixed like-and-subscribe end card drawn over the held final stage of every
+ * File Description: The optional like-and-subscribe end card drawn over the held final stage of a
  * video: the stage dims gently, then a centred card (mono label, Geist headline, an outline LIKE chip,
  * an accent SUBSCRIBE pill with a bell, the channel handle) enters on the ease-out-expo curve, and the
  * SUBSCRIBE pill presses on the spoken word "subscribe". Copy comes from aideos.config.json.
