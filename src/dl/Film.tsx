@@ -1,5 +1,5 @@
 /**
- * File Description: Core Remotion film renderer assembling canvas graph, spatial camera movements, staged devices, subtitles, audio tracks and the fixed end card (the story's last frame held under it).
+ * File Description: Core Remotion film renderer assembling canvas graph, spatial camera movements, staged devices, subtitles, audio tracks and the optional end card (the story's last frame held under it).
  * Inputs and outputs: Film manifest, current frame, and player props -> composite Remotion video composition.
  * Used by: src/dl/Video.tsx, src/Root.tsx, editor Remotion Player.
  */

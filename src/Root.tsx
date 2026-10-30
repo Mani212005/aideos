@@ -1,5 +1,5 @@
 /**
- * File Description: Root Remotion entry point registering the two deliverables, Long (16:9) and Reel (9:16), each as long as its story plus its end card.
+ * File Description: Root Remotion entry point registering the two deliverables, Long (16:9) and Reel (9:16), each as long as its story plus any enabled end card.
  * Inputs and outputs: Remotion composition props and schema -> Remotion Root with Long and Reel compositions.
  * Used by: src/index.ts (Remotion root entry point).
  */

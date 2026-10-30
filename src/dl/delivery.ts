@@ -1,8 +1,8 @@
 /**
  * File Description: The single source of each format's delivered length: the story (the film's own
- * timeline) plus the fixed end card appended to every video, with the card's span, its spoken
- * line's word timings and the reel length budget. Parses the `endCard` and `reel` sections of the
- * committed aideos.config.json. Pure and browser safe (no Node imports), so Remotion, the studio
+ * timeline) plus the optional end card, with the card's span, its spoken
+ * line's word timings and the reel length budget. Uses the committed `endCard` and `reel` config
+ * defaults with the film's optional end-card override. Pure and browser safe (no Node imports), so Remotion, the studio
  * preview, the pipeline, review and gemini facts all agree on one number.
  * Inputs and outputs: Film manifest, format and optional prebuilt timeline -> DeliveryTimeline (story frames, card span, total frames, card words).
  * Used by: src/Root.tsx, src/dl/runtime.ts, src/dl/Video.tsx, src/dl/Film.tsx, src/dl/EndCard.tsx, editor/src/screens/EditStage.tsx, editor/src/App.tsx, backend/aideosConfig.ts, backend/endCard/voice.ts, backend/pipeline/run.ts, backend/review/source.ts, backend/geminiReview/facts.ts.

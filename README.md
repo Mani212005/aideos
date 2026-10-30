@@ -10,6 +10,7 @@
 ## 🎬 Two Formats, Shared Visuals
 
 `Long` (1920x1080) and `Reel` (1080x1920) share the same visual canvas, scene motion, and footage. The Reel is a shorter companion delivery; see the [production pipeline reference](docs/PRODUCTION_PIPELINE.md#reel-cut-delivery) for its cut workflow and delivery limits. Caption placement copies kept-shot owner placements from the long cut, while phrase-locked kinetic subtitles (`KineticSubtitles.tsx`) use the active theme accent token. Each render appends the configured like-and-subscribe end card after the story (6 seconds for Long and 3 seconds for Reel by default); its copy, handle, and timing are set in `aideos.config.json`.
+Turn the end card off for one film with **End card: Off** in Studio's Edit stage or the [`aideos end-card` CLI command](docs/WORKFLOW.md#5-cli-commands-reference); omitted per-film settings leave it on. The setting carries across design rebuilds with owner caption placement.
 
 ---
 
