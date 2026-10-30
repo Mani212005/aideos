@@ -136,7 +136,7 @@ Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing).
 
 | Mode | Behavior |
 | --- | --- |
-| `inline` (default) | Return `status: "needs_reel_cut"` with actionable next steps. This mode does not dispatch to an agent or wait for output. |
+| `inline` (CLI default) | Return `status: "needs_reel_cut"` with actionable next steps. This mode does not dispatch to an agent or wait for output. |
 | `agent` | Dispatch the reel-cut task to a connected coding agent and wait for validated output. Feed check and cap failures back for up to three attempts; missing delivery or a timeout fails the stage. |
 | `server` | Ask the configured generation model to write or repair `cut.json`, feeding check and cap failures back for up to three attempts. |
 
@@ -144,7 +144,7 @@ The Reel is a separate 9:16 delivery made from the Long film's picture and desig
 
 ### Author and check a cut
 
-Reel cuts currently support scene films. `aideos reel brief <slug>` reads the Long film and available design and look plans, then writes `videos/<slug>/reel/REEL_BRIEF.md`. The brief lists each shot's source narration hash, exact phrases to retain, visible text and numbers, motion floor, and whether the shot is decisive. The editable source is `videos/<slug>/reel/cut.json` with schema `aideos.reelcut/1`: include every Long shot exactly once and in order, either with condensed narration or an explicit drop and reason. Preserve the first-shot hook, last-shot payoff, decisive performances, locked phrases, and every on-screen number that remains visible. Condense across shots before dropping one.
+Reel cuts support scene and node-graph films; legacy actor films are not supported. `aideos reel brief <slug>` reads the Long film and available design and look plans, then writes `videos/<slug>/reel/REEL_BRIEF.md`. The brief lists each shot's source narration hash, exact phrases to retain, visible text and numbers, motion floor, and whether the shot is decisive. The editable source is `videos/<slug>/reel/cut.json` with schema `aideos.reelcut/1`: include every Long shot exactly once and in order, either with condensed narration or an explicit drop and reason. Preserve the first-shot hook, last-shot payoff, decisive performances, locked phrases, and every on-screen number that remains visible. Condense across shots before dropping one.
 
 `aideos reel check <slug>` is deterministic and read-only. It checks the cut schema, shot coverage and order, stale Long narration hashes, phrase locks, spoken numbers, drops, the estimated full-delivery budget, and each shot's camera motion floor. New content words trigger warnings for owner review. A kept shot with imported media also warns that numbers inside that media are not checked and must be reviewed by the owner; other failed constraints are errors. A passing estimate does not replace the measured build check: synthesis supplies actual shot durations, then design and delivery checks run against the compiled Reel. AI-authored cuts can render before the captain records approval; approval is optional and does not gate rendering. These authoring rules and checks landed in [merged PR 134](https://github.com/Mani212005/aideos/pull/134).
 
