@@ -876,6 +876,8 @@ export const filmBaseSchema = z.object({
    * mix loudness targets, and description credits (Decision D6 and Report Section 4.9).
    */
   soundtrack: soundtrackSchema.optional(),
+  /** Per-film delivery setting. Omit or set true to use the automatic end card; false turns it off. */
+  endCard: z.object({ enabled: z.boolean() }).strict().optional(),
   /**
    * The end card's spoken line, synthesized once in this film's own narration voice. Derived data:
    * the narrate stage and `ensureEndCardVoice` (backend/endCard/voice.ts) write it, nobody authors

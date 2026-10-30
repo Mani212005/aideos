@@ -106,10 +106,9 @@ export function formatForSize(width: number, height: number): DeliveryFormat {
   return width < height ? "reel" : "long";
 }
 
-// Whether this film carries the end card. The per-video off switch (film.endCard.enabled, carried by
-// the owner-settings carry) plugs in here and nowhere else; until it lands every film follows the config.
-export function endCardEnabledFor(_film: Film, config: DeliveryConfig = DELIVERY_CONFIG): boolean {
-  return config.endCard.enabled;
+// Whether this film carries the end card, respecting both the global config and its per-film override.
+export function endCardEnabledFor(film: Film, config: DeliveryConfig = DELIVERY_CONFIG): boolean {
+  return config.endCard.enabled && film.endCard?.enabled !== false;
 }
 
 // Seconds the end card holds in one format, or 0 when this film has no card.
