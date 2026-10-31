@@ -49,7 +49,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 9 | Pacing | frame difference (static holds, hard cuts), word timings or silence (dead air, pace) | no hold over 3 s, <= 2 hard cuts per minute, no pause over 0.7 s, 120 to 180 wpm |
 | 11 | Numbers grounded in narration | OCR numbers vs spoken numbers (digits and number words) | every on-screen number is said |
 | 12 | Loudness and mix | `ebur128` on the delivered MP4; when film soundtrack data is available, isolated music and narration stems over 400 ms audible-speech windows | -18 to -14 LUFS, true peak <= -1 dBFS, and music at least 12 dB below narration (design target 18 dB) |
-| 14 | **Reel delivered length** | video container, audio stream and picture durations | <= 179 s including the end card (measured duration within DELIVERY_CONFIG.reel.maxSec); evaluated on reel reviews |
+| 14 | **Reel delivered length** | video container, audio stream and picture durations | <= 179 s including any enabled end card (measured duration within DELIVERY_CONFIG.reel.maxSec); evaluated on reel reviews |
 
 A character film (Three stage) is measured in the reviewed output's own crop: a cast member is on
 stage when at least half of its projected posed box (outline included) lies inside that output, a
@@ -210,7 +210,7 @@ aideos all-check status hnsw                              # rounds so far
    never scores its own work and never writes the round records: a tool that cannot run (agy signed out, quota)
    is recorded as an error, never a pass. **All good** = one round holds a passing long and a passing reel, each at
    its own current film hash when `finish` runs (long at `film.json`, reel at `reel/film.json` or the shared film for
-   an identity reel), and the reel fits the delivered length cap including the end card.
+   an identity reel), and the reel fits the delivered length cap including any enabled end card.
 6. **Stop.** After the round budget (`--rounds`, default 6; a round past it is refused) `finish` reports the best
    round honestly and everything that still fails. When the run did not pass, `finish` also restores the best
    round's `film.json` and reel package (the replaced long manifest is kept as `all-check/backups/film.before-finish.json`; per-round reel packages remain under `all-check/backups/`) and keeps
@@ -259,13 +259,13 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 5 | **bottom_captions** | Yes | Clean burned-in captions at the owner-declared card position (default: bottom 20-22% of the frame) for >= 95% of speech, readable size (>= 36px), matching spoken audio. |
 | 6 | **readability** | Yes | High contrast (>= 4.5:1), clear font hierarchy (>= 24px), sufficient reading duration (>= 0.35s per word). |
 | 7 | **no_overlap_clipping** | Yes | No text-text or text-artwork overlapping; all essential elements stay within the 96px safe margin. |
-| 8 | **audio_sync** | Yes | Story cues synchronize with voiceover within 120ms; the audio and delivered picture durations agree within 100ms, including the end card. |
+| 8 | **audio_sync** | Yes | Story cues synchronize with voiceover within 120ms; the audio and delivered picture durations agree within 100ms, including any enabled end card. |
 | 9 | pacing | No | Dynamic progression with no static holds > 3s, mean beat length 5-12s, no dead air > 0.7s, speech 130-170 wpm. |
 | 10 | storyline | No | Clear problem statement, logical progression where beats build on previous content, satisfying payoff beat. |
 | 11 | accuracy_honesty | No | Every number, chart, and label is grounded in the narration; zero fabricated numbers or misleading visuals. |
 | 12 | loudness_mix | No | Audio loudness normalized to -14 to -18 LUFS integrated, true peak <= -1 dBFS, background music ducked cleanly. |
 
-Supplemental: When `design/look.json` is available, `aideos review` also reports supplemental criterion 13 (`plan-adherence`: Look plan adherence) as a non-gating check (non-gate until calibrated on the proof and two or three more films). For reel reviews, deterministic facts also enforce the hard gate `reel_length`: container duration <= 179 s including the end card. This gate overrides any model pass when exceeded.
+Supplemental: When `design/look.json` is available, `aideos review` also reports supplemental criterion 13 (`plan-adherence`: Look plan adherence) as a non-gating check (non-gate until calibrated on the proof and two or three more films). For reel reviews, deterministic facts also enforce the hard gate `reel_length`: container duration <= 179 s including any enabled end card. This gate overrides any model pass when exceeded.
 
 Run `npm run eval:look -- --plans <look.json-or-directory> [--min percent]` before changing look-treatment criteria wording.
 

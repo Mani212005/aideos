@@ -1,5 +1,5 @@
 /**
- * File Description: Core Remotion film renderer assembling canvas graph, spatial camera movements, staged devices, subtitles, audio tracks and the fixed end card (the story's last frame held under it).
+ * File Description: Core Remotion film renderer assembling canvas graph, spatial camera movements, staged devices, subtitles, audio tracks and the optional end card (the story's last frame held under it).
  * Inputs and outputs: Film manifest, current frame, and player props -> composite Remotion video composition.
  * Used by: src/dl/Video.tsx, src/Root.tsx, editor Remotion Player.
  */
@@ -577,7 +577,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
 }) => {
   const rawFrame = useCurrentFrame();
   const { width, height, fps } = useVideoConfig();
-  // The delivered video is the story plus the end card (src/dl/delivery.ts). Through the card the
+  // The delivered video is the story plus the end card when enabled (src/dl/delivery.ts). Through the card the
   // story holds its last frame, so everything below that describes the story reads that frame.
   const delivery = React.useMemo(
     () => deliveryTimeline(film, formatForSize(width, height), { timeline }),
@@ -753,7 +753,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {/* Chapter Rail. The end card is not a chapter, so the rail leaves with the story. */}
         {showRail && !inCard ? <Rail film={film} timeline={timeline} /> : null}
 
-        {/* The fixed end card over the held, dimmed stage. */}
+        {/* The enabled end card over the held, dimmed stage. */}
         {card ? <EndCard card={card} cardWords={delivery.cardWords} /> : null}
 
         {/* Burned-in subtitles rendered after Rail and the end card */}

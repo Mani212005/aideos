@@ -239,7 +239,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `captionBounds(format, frameW, frameH, w)`: Format-safe placement bounds clamping card within margins, 0.78 floor, and Reel action-zone boundaries.
 * `captionCardRect(format, frameW, frameH, placement, lines)`: Computes 2D card bounding rectangle for render, design check, and review OCR.
 * `dragCaption(input)`, `resizeCaption(input)`: Gesture math clamping deltas and snapping to margins/center/presets.
-* `carryCaptionPlacement(prev, next, options)`: Preserves placements across film writers, protecting locked entries from agent edits or rebuild overwrites.
+* `carryCaptionPlacement(prev, next, options)`: Carries owner settings through film rebuilds; see the [owner caption cards contract](../src/dl/README.md#owner-caption-cards).
 
 ### `src/dl/captionPhrases.ts` (Deterministic Phrase Splitting by Measured Width)
 * `buildCaptionPhrases({ words, fps, width, fontSize, placementAt, measure })`: Measures word widths and splits caption words into at most two lines per phrase, locking placement at phrase start.

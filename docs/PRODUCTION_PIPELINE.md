@@ -140,7 +140,7 @@ Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing).
 | `agent` | Dispatch the reel-cut task to a connected coding agent and wait for validated output. Feed check and cap failures back for up to three attempts; missing delivery or a timeout fails the stage. |
 | `server` | Ask the configured generation model to write or repair `cut.json`, feeding check and cap failures back for up to three attempts. |
 
-The Reel is a separate 9:16 delivery made from the Long film's picture and design. If the Long delivery, including the configured Reel end card, is at most 179 seconds, it is an identity reel and reuses the Long narration. Otherwise, the cut has condensed narration for the kept shots and uses the Long narration backend, voice, and speed. The hard cap is 179 seconds for the full delivery, including the end card; the default writing target is 170 seconds, also including the card. The defaults and end-card span come from `src/dl/delivery.ts` and `backend/reelCut/schema.ts`.
+The Reel is a separate 9:16 delivery made from the Long film's picture and design. If the Long delivery, including its Reel end card when enabled, is at most 179 seconds, it is an identity reel and reuses the Long narration. Otherwise, the cut has condensed narration for the kept shots and uses the Long narration backend, voice, and speed. The hard cap is 179 seconds for the full delivery; an enabled end card counts toward it. The default writing target is 170 seconds, also counting any enabled card. The defaults and end-card span come from `src/dl/delivery.ts` and `backend/reelCut/schema.ts`.
 
 ### Author and check a cut
 
@@ -309,8 +309,8 @@ The `verify` stage probes each rendered file with ffprobe, measures audio levels
 ffmpeg, and writes a twelve-frame contact sheet sampled evenly across the whole duration to
 `videos/<slug>/review/`. It records warnings rather than failing, so a run always produces something
 to look at: wrong frame size, a picture length that differs by more than a second from the
-narration plus that format's end card (`src/dl/delivery.ts`), a missing audio stream, clipping, or
-more than two and a half seconds of silence before the end card.
+narration plus that format's end card when enabled (`src/dl/delivery.ts`), a missing audio stream,
+clipping, or more than two and a half seconds of silence during the story.
 
 `analyseAudio` and `contactSheet` in `backend/pipeline/render.ts` are exported, so the same checks
 can be run against any file.

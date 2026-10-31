@@ -108,7 +108,7 @@ export interface TimelineEditorProps {
   api: LayeredTimelineApi;
   /** Authoritative total length of the film in seconds. */
   durationSec: number;
-  /** The fixed end card appended after the story in the format on screen, drawn as a locked tail. */
+  /** The enabled end card appended after the story in the format on screen, drawn as a locked tail. */
   endCard?: { startSec: number; endSec: number } | null;
   currentFrame: number;
   isPlaying: boolean;
