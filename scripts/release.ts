@@ -11,6 +11,7 @@ import { execFileSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { Command } from "commander";
 import { git, optionalGit, releaseChannel } from "../backend/releaseChannel";
+import type { AudioItem } from "../backend/audioLibrary/schema";
 
 const ROOT = path.resolve(__dirname, "..");
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
@@ -99,6 +100,21 @@ function checkStableClone(dir: string, head: string): void {
   }
 }
 
+/** Fetches every library music track (default scoring needs them) and each sound effect the package's film or design names into the private cache. */
+async function fetchAudioForPackage(
+  pkg: string,
+  items: AudioItem[],
+  fetchItem: (item: AudioItem) => Promise<unknown>,
+): Promise<void> {
+  const text = ["film.json", "reel/film.json", "design/design.json"]
+    .map((name) => path.join(pkg, name)).filter((file) => fs.existsSync(file))
+    .map((file) => fs.readFileSync(file, "utf8")).join("\n");
+  const named = new Set([...text.matchAll(/"item"\s*:\s*"([^"]+)"/g)].map((match) => match[1]));
+  for (const item of items) {
+    if (item.url && (item.kind === "music" || named.has(item.id))) await fetchItem(item);
+  }
+}
+
 /** Runs full CI and a complete, music-backed production on a private copy of the chosen film. */
 async function acceptance(source: string, evidence: string): Promise<void> {
   const videos = path.join(evidence, "videos");
@@ -112,14 +128,12 @@ async function acceptance(source: string, evidence: string): Promise<void> {
   const { runProduction } = await import("../backend/pipeline/run");
   const { readFilm } = await import("../backend/pipeline/filmStore");
   const { fetchAudioItem, loadAudioLibrary } = await import("../backend/audioLibrary/library");
-  for (const item of loadAudioLibrary().items.filter((item) => item.kind === "music" && item.url)) {
-    await fetchAudioItem(item);
-  }
   checkCopyTree(source);
   const film = parseFilm(JSON.parse(fs.readFileSync(path.join(source, "film.json"), "utf8")));
   const pkg = path.join(getVideosDir(), film.id);
   fs.cpSync(source, pkg, { recursive: true, errorOnExist: true, force: false,
     filter: (file) => !["renders", "review", "gemini-review"].includes(path.basename(file)) });
+  await fetchAudioForPackage(pkg, loadAudioLibrary().items, fetchAudioItem);
   const script = fs.readFileSync(path.join(pkg, "script.md"), "utf8");
   requireThat(fs.existsSync(path.join(pkg, "voiceover.wav")), "Acceptance needs a real narrated package, including voiceover.wav.");
   const result = await runProduction({
