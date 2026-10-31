@@ -17,7 +17,7 @@ import { CanvasGraph } from "./CanvasGraph";
 import { SceneStage, type TestStageVisibility } from "./SceneStage";
 import { PaperRip } from "./PaperRip";
 import { KineticSubtitles, type CaptionWord } from "./KineticSubtitles";
-import { buildCaptionPhrases, captionPhraseAtFrame, captionTimelineLayoutKey } from "./captionPhrases";
+import { buildCaptionPhrases, captionPhraseAtFrame } from "./captionPhrases";
 import { measureText } from "@remotion/layout-utils";
 import { deliveryTimeline, formatForSize } from "./delivery";
 import { EndCard } from "./EndCard";
@@ -595,10 +595,6 @@ export const FilmView: React.FC<FilmViewProps> = ({
   const captionPlacementAt = React.useCallback((startFrame: number) =>
     resolveCaptionPlacement(film, captionFormat, shotAt(timeline, startFrame)?.shot.id),
   [film, captionFormat, timeline]);
-  const captionPhraseLayoutKey = JSON.stringify([film.shots.map((shot) => {
-    const placement = resolveCaptionPlacement(film, captionFormat, shot.id);
-    return [placement.source, placement.w];
-  }), captionTimelineLayoutKey(timeline)]);
   const captionPhrases = React.useMemo(() => captionWords ? buildCaptionPhrases({
     words: captionWords,
     fps,
@@ -606,7 +602,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
     fontSize: captionFontSize,
     placementAt: captionPlacementAt,
     measure: (text) => measureText({ text, fontFamily: SANS, fontSize: captionFontSize, fontWeight: 700 }).width,
-  }) : [], [captionWords, fps, width, captionFontSize, captionPhraseLayoutKey]);
+  }) : [], [captionWords, fps, width, captionFontSize, captionPlacementAt]);
   const activeCaptionPhrase = captionPhraseAtFrame(captionPhrases, frame);
   const captionContextPlacement = captionPlacementAt(activeCaptionPhrase?.startFrame ?? frame);
   const cam = camAt(film, timeline, frame, { width, height });
@@ -767,7 +763,6 @@ export const FilmView: React.FC<FilmViewProps> = ({
             fontSize={Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO)}
             highlightColor={accent}
             placementAt={captionPlacementAt}
-            phraseLayoutKey={captionPhraseLayoutKey}
           />
         ) : null}
 

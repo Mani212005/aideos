@@ -31,7 +31,6 @@ export interface KineticSubtitleProps {
   highlightColor?: string;
   backgroundColor?: string;
   placementAt: (frame: number) => CaptionPlacement & { source?: ResolvedCaptionPlacement["source"] };
-  phraseLayoutKey?: string;
 }
 
 export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
@@ -42,7 +41,6 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   highlightColor = "#635BFF",
   backgroundColor = "rgba(10, 15, 29, 0.88)",
   placementAt,
-  phraseLayoutKey,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
@@ -56,7 +54,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
     words, fps, fontSize, width,
     placementAt,
     measure: measureWord,
-  }), [words, fps, fontSize, width, phraseLayoutKey, measureWord]);
+  }), [words, fps, fontSize, width, measureWord, placementAt]);
 
   // If no words, don't render
   if (!words || words.length === 0) return null;
