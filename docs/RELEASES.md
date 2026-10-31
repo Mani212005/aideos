@@ -117,7 +117,8 @@ No `.env`, voice recording or personal audio cache is copied. The stable launche
 `AIDEOS_PROJECT_ROOT` and `AIDEOS_VIDEOS_DIR` to the stable clone even if the shell inherited an
 updating path. Git-local settings record the stable path in the updating clone and the source
 videos path in stable. If the updating videos directory was customized, run setup with that same
-`AIDEOS_VIDEOS_DIR`. Keep `~/.local/bin` in PATH. Use separate terminals to run both editors.
+`AIDEOS_VIDEOS_DIR`; `aideos-dev` honors an inherited `AIDEOS_VIDEOS_DIR` (a relative value
+resolves against the updating checkout) and refuses one that points inside the stable clone. Keep `~/.local/bin` in PATH. Use separate terminals to run both editors.
 
 ## Copy a film into stable
 

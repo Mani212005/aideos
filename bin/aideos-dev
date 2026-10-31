@@ -13,5 +13,23 @@ done
 root="$(cd "$(dirname "$target")/.." && pwd -P)"
 export AIDEOS_PINNED_ROOT="$root"
 export AIDEOS_PROJECT_ROOT="$root"
-export AIDEOS_VIDEOS_DIR="$root/videos"
+# Honor a customized videos directory (the same one setup records for copy-film); default to the checkout's own.
+# A relative value resolves against the checkout, like src/dl/videoPackageLoader.ts. Refuse stable's own videos.
+case "${AIDEOS_VIDEOS_DIR:-}" in
+  "") videos="$root/videos" ;;
+  /*) videos="$AIDEOS_VIDEOS_DIR" ;;
+  *) videos="$root/$AIDEOS_VIDEOS_DIR" ;;
+esac
+stable="$(git -C "$root" config --local --get aideos.stablePath 2>/dev/null || true)"
+if [ -n "$stable" ] && [ -d "$stable" ]; then
+  stable_real="$(cd "$stable" && pwd -P)"
+  videos_real="$(mkdir -p "$videos" && cd "$videos" && pwd -P)"
+  case "$videos_real/" in
+    "$stable_real"/*)
+      echo "Error: aideos-dev refuses AIDEOS_VIDEOS_DIR inside the stable checkout ($videos_real)." >&2
+      exit 1
+      ;;
+  esac
+fi
+export AIDEOS_VIDEOS_DIR="$videos"
 exec "$root/bin/aideos" "$@"
