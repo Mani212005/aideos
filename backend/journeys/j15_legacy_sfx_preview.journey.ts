@@ -49,8 +49,9 @@ journey("legacy sfx with durationSec: the studio preview plays past more effects
   writeFilm(SLUG, film, { owner: true });
 
   const server = await startEditor(getVideosDir());
-  const page = await StudioPage.open(chrome);
+  let page: StudioPage | undefined;
   try {
+    page = await StudioPage.open(chrome);
     await page.goto(server.url);
     await page.eval(`localStorage.setItem('aideos_active_film_id', ${JSON.stringify(SLUG)})`);
     await page.goto(`${server.url}#edit`);
@@ -72,7 +73,7 @@ journey("legacy sfx with durationSec: the studio preview plays past more effects
     assert.deepEqual(audioErrors, [], "the preview mounted more Html5Audio tags than the Player allows");
     assert.deepEqual(page.errors, [], "the preview played without a browser error");
   } finally {
-    await page.close();
+    await page?.close();
     server.stop();
   }
 });
