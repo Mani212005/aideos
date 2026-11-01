@@ -54,8 +54,7 @@ fi
 
 # Derive identity from Git on every invocation; labels cannot be selected by environment.
 if [ -x "$AIDEOS_DIR/node_modules/.bin/tsx" ] && [ -f "$AIDEOS_DIR/scripts/channel.ts" ]; then
-  "$AIDEOS_DIR/node_modules/.bin/tsx" "$AIDEOS_DIR/scripts/channel.ts" "$AIDEOS_DIR"
-  AIDEOS_PORT="$("$AIDEOS_DIR/node_modules/.bin/tsx" "$AIDEOS_DIR/scripts/channel.ts" "$AIDEOS_DIR" port)"
+  AIDEOS_PORT="$("$AIDEOS_DIR/node_modules/.bin/tsx" "$AIDEOS_DIR/scripts/channel.ts" "$AIDEOS_DIR")"
 else
   # Help remains usable before npm install; an unverifiable checkout always announces DEV.
   echo "AIDEOS DEV (install dependencies to read Git identity)" >&2
@@ -302,7 +301,7 @@ fi
 PORT="$AIDEOS_PORT"
 if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   # Refuse another checkout's server instead of quietly attaching the wrong channel.
-  SERVER_ROOT="$(curl -fsS "http://localhost:$PORT/api/release-channel" | node -e 'let s="";process.stdin.on("data", c=>s+=c);process.stdin.on("end",()=>{try{process.stdout.write(JSON.parse(s).root)}catch{process.exit(1)}})')"
+  SERVER_ROOT="$(curl -fsS "http://localhost:$PORT/api/release-channel" 2>/dev/null | node -e 'let s="";process.stdin.on("data", c=>s+=c);process.stdin.on("end",()=>{try{process.stdout.write(JSON.parse(s).root)}catch{process.exit(1)}})' 2>/dev/null || true)"
   if [ "$SERVER_ROOT" != "$AIDEOS_DIR" ]; then
     echo "Port $PORT belongs to another checkout. Stop that server first." >&2
     exit 1

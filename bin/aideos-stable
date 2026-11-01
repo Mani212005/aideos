@@ -16,7 +16,7 @@ export AIDEOS_PROJECT_ROOT="$root"
 export AIDEOS_VIDEOS_DIR="$root/videos"
 if [ "${1:-}" = copy-film ]; then
   shift
-  "$root/node_modules/.bin/tsx" "$root/scripts/channel.ts" "$root"
+  "$root/node_modules/.bin/tsx" "$root/scripts/channel.ts" "$root" >/dev/null
   exec "$root/node_modules/.bin/tsx" "$root/scripts/release.ts" copy-film "$@"
 fi
 exec "$root/bin/aideos" "$@"

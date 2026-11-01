@@ -30,6 +30,6 @@ export function releaseChannel(root: string) {
   const ahead = aheadText ? Number(aheadText) : null;
   const label = stable ? `STABLE ${tag}` : "DEV";
   const description = stable ? `AIDEOS ${label} (commit ${commit})`
-    : `AIDEOS DEV ${branch}@${commit}${dirty ? " + UNCOMMITTED CHANGES" : ""}${ahead === null ? "" : ` (${ahead} commits ahead of stable)`}`;
+    : `AIDEOS DEV ${branch}@${commit}${dirty ? " + UNCOMMITTED CHANGES" : ""}${ahead ? ` (${ahead} commits ahead of stable)` : ""}`;
   return { channel: stable ? "stable" : "dev", label, tag, commit, branch, dirty, ahead, description, root, port: stable ? 3002 : 3001 };
 }

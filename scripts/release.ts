@@ -45,6 +45,16 @@ function setting(root: string, name: string): string {
   return optionalGit(root, ["config", "--local", "--get", `aideos.${name}`]);
 }
 
+/** Checks whether a commit or ref is an ancestor of the target commit. */
+function isAncestor(root: string, ancestor: string, descendant: string): boolean {
+  try {
+    git(root, ["merge-base", "--is-ancestor", ancestor, descendant]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Validates the next patch, minor or major release, with 1.0.0 as the first release. */
 function validateVersion(version: string): string {
   requireThat(VERSION.test(version), "Version must be X.Y.Z with no prefix, leading zeros or prerelease suffix.");
@@ -66,7 +76,9 @@ function preflightMain(): string {
   requireThat(head === git(ROOT, ["rev-parse", "refs/remotes/origin/main"]), "main must exactly match fetched origin/main; update it before releasing.");
   const stable = optionalGit(ROOT, ["rev-parse", "--verify", "refs/remotes/origin/stable"]);
   const localStable = optionalGit(ROOT, ["rev-parse", "--verify", "refs/heads/stable"]);
-  for (const ref of [stable, localStable].filter(Boolean)) git(ROOT, ["merge-base", "--is-ancestor", ref, head]);
+  for (const ref of [stable, localStable].filter(Boolean)) {
+    requireThat(isAncestor(ROOT, ref, head), "main is missing commits from stable; update main before releasing.");
+  }
   return head;
 }
 
@@ -93,7 +105,7 @@ function checkStableClone(dir: string, head: string): void {
   requireThat(!git(dir, ["status", "--porcelain", "--untracked-files=all"]), "Stable checkout has uncommitted changes.");
   requireThat(git(dir, ["remote", "get-url", "origin"]) === git(ROOT, ["remote", "get-url", "origin"]), "Stable and updating origins differ.");
   const stableHead = git(dir, ["rev-parse", "HEAD"]);
-  git(ROOT, ["merge-base", "--is-ancestor", stableHead, head]);
+  requireThat(isAncestor(ROOT, stableHead, head), "Stable checkout is ahead of candidate main; merge or rebase it first.");
   for (const name of ["videos", "data", "node_modules"]) {
     const target = path.join(dir, name);
     if (fs.existsSync(target)) requireThat(!fs.lstatSync(target).isSymbolicLink(), `Stable ${name} must not be shared through a symlink.`);
@@ -173,15 +185,15 @@ async function release(version: string, options: { acceptance: string; dryRun?: 
   if (hasStable) checkStableClone(stableDir, head);
   const actions = [
     `git tag -a ${tag} ${head} -m ${quote(`Aideos ${tag}: full acceptance watched and approved`)}`,
-    optionalGit(ROOT, ["rev-parse", "--verify", "refs/heads/stable"]) ? `git fetch . ${tag}:refs/heads/stable` : `git branch stable ${tag}`,
+    optionalGit(ROOT, ["rev-parse", "--verify", "refs/heads/stable"]) ? `git fetch . ${head}:refs/heads/stable` : `git branch stable ${head}`,
     `git push --atomic origin refs/tags/${tag} refs/heads/stable:refs/heads/stable`,
     ...(hasStable ? [`git -C ${quote(stableDir)} fetch --tags origin`, `git -C ${quote(stableDir)} merge --ff-only ${tag}`, `npm --prefix ${quote(stableDir)} ci`] : ["First release: run npm run release:setup, inspect its plan, then repeat with --apply."]),
   ];
   console.log(`${options.dryRun ? "DRY RUN - would run" : "Promotion plan"}:\n${actions.join("\n")}`);
   if (options.dryRun) return;
   run("git", ["tag", "-a", tag, head, "-m", `Aideos ${tag}: full acceptance watched and approved`]);
-  if (optionalGit(ROOT, ["rev-parse", "--verify", "refs/heads/stable"])) run("git", ["fetch", ".", `${tag}:refs/heads/stable`]);
-  else run("git", ["branch", "stable", tag]);
+  if (optionalGit(ROOT, ["rev-parse", "--verify", "refs/heads/stable"])) run("git", ["fetch", ".", `${head}:refs/heads/stable`]);
+  else run("git", ["branch", "stable", head]);
   run("git", ["push", "--atomic", "origin", `refs/tags/${tag}`, "refs/heads/stable:refs/heads/stable"]);
   if (hasStable) {
     run("git", ["fetch", "--tags", "origin"], stableDir);
