@@ -316,10 +316,10 @@ test("scripts/release.ts release enforces ancestry between stable and main", () 
     runGit(bareOrigin, ["config", "receive.shallowUpdate", "true"]);
     runGit(candidate, ["remote", "set-url", "origin", bareOrigin]);
 
-    runGit(candidate, ["checkout", "-b", "main"]);
+    runGit(candidate, ["checkout", "-B", "main"]);
     runGit(candidate, ["push", "origin", "main"]);
 
-    runGit(candidate, ["checkout", "-b", "stable"]);
+    runGit(candidate, ["checkout", "-B", "stable"]);
     fs.writeFileSync(path.join(candidate, "stable_exclusive.txt"), "exclusive\n");
     runGit(candidate, ["add", "stable_exclusive.txt"]);
     runGit(candidate, ["commit", "-m", "commit exclusive to stable"]);
