@@ -233,7 +233,8 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
             const mixedEffect = isLibrarySource(sfx);
             const item = mixedEffect ? soundtrackItem(sfx.item, sfx.sha256) : null;
             const sfxSrc = sfx.src || (item ? soundtrackItemSrc(item) : sfx.item);
-            const durationInFrames = item ? Math.max(1, Math.ceil(item.durationSec * effectiveFps)) : undefined;
+            const effectSec = item ? item.durationSec : sfx.durationSec;
+            const durationInFrames = effectSec ? Math.max(1, Math.ceil(effectSec * effectiveFps)) : undefined;
             return (
               <Sequence key={`sfx-${idx}-${sfxSrc}`} from={startFrame} durationInFrames={durationInFrames}>
                 <Audio src={staticFile(sfxSrc)} useWebAudioApi={mixedEffect} allowAmplificationDuringRender={mixedEffect}
