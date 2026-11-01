@@ -13,7 +13,7 @@ File Description: System architecture and design specification for the Aideos We
 
 **Aideos Web Editor** is an enterprise-grade interactive web application designed for authoring, staging, timing, and rendering high-production explainer videos as structured data. Rather than traditional timeline video editors that rely on manual keyframing and opaque video tracks, Aideos treats video as a **single infinite spatial canvas with continuous camera motion, generative SVG animations, and deterministic 2D rendering**.
 
-The editor UI runs locally on Vite (`http://localhost:3001`), connecting a React 19 single-page application directly to `@remotion/player`, the non-linear layer engine (`backend/timeline/`), and the backend production pipeline.
+The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://localhost:3002` for stable), connecting a React 19 single-page application directly to `@remotion/player`, the non-linear layer engine (`backend/timeline/`), and the backend production pipeline.
 
 ### Architectural Directives
 1. **Single Canvas Model**: 2D infinite spatial canvas with continuous camera panning, zoom-in payoffs, and anchor tracking across two responsive aspect ratios (`Long` 1920x1080 and `Reel` 1080x1920).

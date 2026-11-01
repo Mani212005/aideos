@@ -46,6 +46,7 @@ import { NewProjectModal } from "./components/NewProjectModal";
 import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
 import { AgentActivityInspector } from "./components/AgentActivityInspector";
 import { AgentConnect } from "./components/AgentConnect";
+import { ReleaseBadge } from "./components/ReleaseBadge";
 
 /** How the header names who made the open film's design; "templates" is flagged as a fallback. */
 const DESIGN_SOURCE_LABEL = {
@@ -291,9 +292,7 @@ export default function App() {
       {/* Header */}
       <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b-2 border-ink bg-paper-2 px-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="shrink-0 border-2 border-ink bg-primary px-2 py-1 font-sans text-[13px] font-black uppercase leading-none tracking-[-0.02em] text-ink shadow-nb-sm">
-            Aideos
-          </span>
+          <ReleaseBadge />
           <div className="flex min-w-0 items-center gap-1.5">
             <label htmlFor="project-switcher" className="sr-only">
               Active project

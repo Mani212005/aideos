@@ -50,6 +50,8 @@
     "postinstall": "npm --prefix editor ci && tsx scripts/ensure_generated.ts",
     "ensure:generated": "tsx scripts/ensure_generated.ts",
     "backend": "tsx backend/cli.ts",
+    "release": "tsx scripts/release.ts release",
+    "release:setup": "tsx scripts/release.ts setup",
     "studio": "remotion studio",
     "editor": "npm --prefix editor run dev --",
     "validate": "node scripts/validate.mjs",
