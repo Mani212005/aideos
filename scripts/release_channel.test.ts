@@ -14,10 +14,14 @@ import { releaseChannel } from "../backend/releaseChannel";
 
 const ROOT = path.resolve(__dirname, "..");
 
-/** Runs a Git command inside a repository with an isolated environment. */
+/** Runs a Git command inside a repository with an isolated environment and explicit test committer identity. */
 function runGit(repo: string, args: string[]): string {
-  const env = { ...process.env };
+  const env: NodeJS.ProcessEnv = { ...process.env };
   for (const key of Object.keys(env)) if (key.startsWith("GIT_")) delete env[key];
+  env.GIT_AUTHOR_NAME = "Test User";
+  env.GIT_AUTHOR_EMAIL = "test@example.com";
+  env.GIT_COMMITTER_NAME = "Test User";
+  env.GIT_COMMITTER_EMAIL = "test@example.com";
   return execFileSync("git", ["-C", repo, ...args], { encoding: "utf8", env, stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
@@ -303,6 +307,8 @@ test("scripts/release.ts release enforces ancestry between stable and main", () 
   withTempDir((tmp) => {
     const candidate = path.join(tmp, "candidate");
     runGit(tmp, ["clone", "--no-hardlinks", ROOT, candidate]);
+    runGit(candidate, ["config", "user.name", "Test User"]);
+    runGit(candidate, ["config", "user.email", "test@example.com"]);
     fs.symlinkSync(path.join(ROOT, "node_modules"), path.join(candidate, "node_modules"));
 
     const bareOrigin = path.join(tmp, "origin.git");
