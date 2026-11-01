@@ -2688,8 +2688,20 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
       });
 }
 
+// Tests cache a synthetic audio library (AIDEOS_AUDIO_LIBRARY): serve that manifest in place of the committed audio/library.json the mixer imports. A no-op when unset.
+const audioLibraryOverride = process.env.AIDEOS_AUDIO_LIBRARY?.trim()
+function audioLibraryOverridePlugin(): Plugin {
+  return {
+    name: 'aideos-audio-library-override',
+    enforce: 'pre',
+    resolveId(source) {
+      return audioLibraryOverride && /audio\/library\.json$/.test(source) ? path.resolve(audioLibraryOverride) : null
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), filmApiPlugin()],
+  plugins: [react(), filmApiPlugin(), audioLibraryOverridePlugin()],
   publicDir: path.resolve(__dirname, '../public'),
   server: {
     port: Number(process.env.PORT) || releaseChannel(path.resolve(__dirname, '..')).port,
@@ -2700,7 +2712,7 @@ export default defineConfig({
     // Host it does not know with a 403, so name the hosting domains; AIDEOS_ALLOWED_HOSTS adds more.
     allowedHosts: ['.onrender.com', ...(process.env.AIDEOS_ALLOWED_HOSTS || '').split(',').map((h) => h.trim()).filter(Boolean)],
     fs: {
-      allow: ['..']
+      allow: ['..', ...(audioLibraryOverride ? [path.dirname(path.resolve(audioLibraryOverride))] : [])]
     },
     watch: {
       // Saving a film rewrites its generated module and package manifest. Those are data, not

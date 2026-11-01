@@ -98,12 +98,12 @@ function actsFor(film: Film, format: DeliveryFormat, library: AudioLibrary, comp
 /** Longest library effect the default scorer places; keeps long beds such as typing out of the accents. */
 const DEFAULT_EFFECT_MAX_SEC = 4;
 
-/** Library effects the default scorer lays on each kind of visual event; a film's seed picks among them, except the end card, which takes the first one that is cached. */
-const EFFECTS_FOR_EVENT: Record<string, string[]> = {
-  "end-card": ["card-arrive", "pop-card"],
-  "chapter-cut": ["whoosh-soft", "whoosh-fast"],
-  "counter-end": ["counter-land"],
-  "text-card": ["pop-card"],
+/** Library roles the default scorer lays on each kind of visual event, most preferred first; a film's seed picks among the items of the first role that has one, except the end card, which takes the first by id. */
+const EFFECT_ROLES_FOR_EVENT: Record<string, string[]> = {
+  "end-card": ["endcard", "card-enter"],
+  "chapter-cut": ["transition"],
+  "counter-end": ["counter-finish"],
+  "text-card": ["card-enter"],
 };
 
 /** Event kinds in the order the scorer spends its effect budget on them. */
@@ -115,7 +115,7 @@ export function defaultEffects(film: Film, format: DeliveryFormat, library: Audi
   const totalSec = deliveryTimeline(film, format).totalFrames / fps;
   const spacingSec = format === "reel" ? 5 : 8;
   const budget = Math.floor(totalSec / spacingSec);
-  const events = getVisualEventFrames(film).filter((event) => event.frame > 0 && EFFECTS_FOR_EVENT[event.type]);
+  const events = getVisualEventFrames(film).filter((event) => event.frame > 0 && EFFECT_ROLES_FOR_EVENT[event.type]);
   const chosen: { frame: number; type: string }[] = [];
   for (const type of EFFECT_EVENT_PRIORITY) {
     const frames = [...new Set(events.filter((event) => event.type === type).map((event) => event.frame))].sort((a, b) => a - b);
@@ -124,9 +124,11 @@ export function defaultEffects(film: Film, format: DeliveryFormat, library: Audi
       if (chosen.every((other) => Math.abs(other.frame - frame) / fps >= spacingSec)) chosen.push({ frame, type });
     }
   }
-  const usable = library.items.filter((item) => item.kind === "sfx" && item.licence.attribution === null && item.durationSec <= DEFAULT_EFFECT_MAX_SEC);
+  const usable = library.items
+    .filter((item) => item.kind === "sfx" && item.licence.attribution === null && item.durationSec <= DEFAULT_EFFECT_MAX_SEC)
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return chosen.sort((a, b) => a.frame - b.frame).flatMap((event, index): SoundtrackSfx[] => {
-    const pool = EFFECTS_FOR_EVENT[event.type].map((id) => usable.find((item) => item.id === id)).filter((item) => item !== undefined);
+    const pool = EFFECT_ROLES_FOR_EVENT[event.type].map((role) => usable.filter((item) => item.roles.includes(role))).find((items) => items.length > 0) ?? [];
     if (pool.length === 0) return [];
     const seed = createHash("sha256").update(JSON.stringify([film.id, format, event.type, index])).digest().readUInt32BE(0);
     const item = event.type === "end-card" ? pool[0] : pool[seed % pool.length];

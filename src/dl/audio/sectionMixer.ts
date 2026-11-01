@@ -4,11 +4,19 @@
  * Used by: src/dl/Soundtrack.tsx and backend/soundtrack.ts.
  */
 
-import library from "../../../audio/library.json";
+import committedLibrary from "../../../audio/library.json";
 import type { DeliveryTimeline } from "../delivery";
 import type { Soundtrack, SoundtrackMix, SoundtrackSfx, SpeechInterval } from "../schema";
 
-type LibraryItem = (typeof library.items)[number];
+type LibraryItem = (typeof committedLibrary.items)[number];
+
+// The manifest items resolve against: the committed one unless a test installed a synthetic one (backend/audioLibrary/library.ts, AIDEOS_AUDIO_LIBRARY).
+let library: typeof committedLibrary = committedLibrary;
+
+// Swaps the manifest this mixer resolves items from; only the test-only AIDEOS_AUDIO_LIBRARY override calls it.
+export function overrideSoundtrackLibrary(next: typeof committedLibrary): void {
+  library = next;
+}
 
 export type MixedSection = {
   src: string;

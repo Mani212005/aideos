@@ -18,11 +18,15 @@ import { assertDeliverable } from "../deliveryGate";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 
+// Refuses a film that would be delivered without music, sound effects or the end card; an all-check render becomes the final video, so it is held to the same rule as any delivery.
+export function assertSlugDeliverable(slug: string, format: "long" | "reel"): void {
+  const film = format === "reel" ? reelForRender(slug) : readFilm(slug);
+  if (film) assertDeliverable([{ film, format }]);
+}
+
 // Renders the video for a given slug using Remotion CLI.
 export async function renderVideoForSlug(slug: string, format: "long" | "reel" = "long"): Promise<string> {
   const film = format === "reel" ? reelForRender(slug) : readFilm(slug);
-  // A review render becomes the final video, so it carries music, sound effects and the end card like any delivery.
-  if (film) assertDeliverable([{ film, format }]);
   const pkgDir = resolvePackageDir(slug);
   const rendersDir = path.join(pkgDir, "renders");
   const outPath = path.join(rendersDir, `${format}.mp4`);
