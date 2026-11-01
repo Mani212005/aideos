@@ -19,6 +19,7 @@ import {
 
 export { normalizeFilmSoundtrack };
 
+// Default duration in seconds assigned to direct-file sfx without durationSec so their sequences unmount.
 const SFX_CLIP_DURATION = 1;
 
 // Loads the ESM-only frame audio implementation when an authored section first needs it.
