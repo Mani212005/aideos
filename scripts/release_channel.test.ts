@@ -37,6 +37,7 @@ function initGitRepo(dir: string, branch = "main"): void {
   runGit(dir, ["init", "--initial-branch", branch]);
   runGit(dir, ["config", "user.name", "Test User"]);
   runGit(dir, ["config", "user.email", "test@example.com"]);
+  runGit(dir, ["config", "receive.shallowUpdate", "true"]);
   fs.writeFileSync(path.join(dir, "README.md"), "# Test Repo\n");
   runGit(dir, ["add", "README.md"]);
   runGit(dir, ["commit", "-m", "initial commit"]);
@@ -306,6 +307,7 @@ test("scripts/release.ts release enforces ancestry between stable and main", () 
 
     const bareOrigin = path.join(tmp, "origin.git");
     runGit(tmp, ["init", "--bare", bareOrigin]);
+    runGit(bareOrigin, ["config", "receive.shallowUpdate", "true"]);
     runGit(candidate, ["remote", "set-url", "origin", bareOrigin]);
 
     runGit(candidate, ["checkout", "-b", "main"]);
