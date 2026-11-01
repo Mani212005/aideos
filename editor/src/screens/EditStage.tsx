@@ -10,7 +10,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Player, type PlayerRef } from "@remotion/player";
-import { EyeOff, FileText, GripHorizontal, Mic, RefreshCw, Clapperboard } from "lucide-react";
+import { EyeOff, FileText, GripHorizontal, Mic, RefreshCw, Clapperboard, Subtitles } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import { FilmView } from "../../../src/dl/Film";
 import { buildTimeline } from "../../../src/dl/camera";
@@ -23,7 +23,7 @@ import { TimelineEditor } from "../components/TimelineEditor";
 import { AssetBin, type MediaAsset } from "../components/AssetBin";
 import { SoundtrackPanel } from "../components/SoundtrackPanel";
 import { ReelPanel } from "../components/ReelPanel";
-import { CaptionPlacementEditor } from "../components/CaptionPlacementEditor";
+import { CaptionObject, type CaptionTargetRect } from "../components/captions/CaptionObject";
 import { OnCanvasAiEditor } from "../components/OnCanvasAiEditor";
 import { FORMATS, type Format } from "../App";
 
@@ -78,11 +78,23 @@ export function EditStage({
   const [reelOpen, setReelOpen] = useState(false);
   const [mixSection, setMixSection] = useState<{ index: number } | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
-  const [moveCaptions, setMoveCaptions] = useState(false);
+  // The captions are an object in the preview, not a mode: selected by clicking them or the toolbar Captions button.
+  const [captionsSelected, setCaptionsSelected] = useState(false);
+  const [captionRect, setCaptionRect] = useState<CaptionTargetRect | null>(null);
+  // The AI panel steps aside while the pointer or focus is on a caption it would otherwise cover.
+  const [captionHot, setCaptionHot] = useState(false);
+  /** Selects or deselects the captions; deselecting also clears the hover state so the panel returns. */
+  const changeCaptionSelection = useCallback((selected: boolean) => {
+    setCaptionsSelected(selected);
+    if (!selected) setCaptionHot(false);
+  }, []);
   const [captionDraft, setCaptionDraft] = useState<Film | null>(null);
   const [previewHost, setPreviewHost] = useState<HTMLDivElement | null>(null);
   const previewFilm = useMemo(() => captionDraft ? { ...api.renderFilm, captionPlacement: captionDraft.captionPlacement, shots: api.renderFilm.shots.map((s) => ({ ...s, captionPlacement: captionDraft.shots.find((draftShot) => draftShot.id === s.id)?.captionPlacement })) } : api.renderFilm, [captionDraft, api.renderFilm]);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // A different film or format has a different caption, so nothing stays selected across the switch.
+  useEffect(() => changeCaptionSelection(false), [film.id, format, changeCaptionSelection]);
 
   const captionWords = useMemo(
     () => captionWordsForFilm(api.renderFilm),
@@ -223,7 +235,17 @@ export function EditStage({
         <ToolbarDivider />
 
         <ToolbarGroup>
-          <Button size="sm" active={moveCaptions} onClick={() => { playerRef.current?.pause(); setCaptionDraft(null); setMoveCaptions((enabled) => !enabled); }} title="Move and resize caption cards in the preview">Move captions</Button>
+          <Button
+            size="sm"
+            tone={captionsSelected ? "select" : "default"}
+            active={captionsSelected}
+            aria-pressed={captionsSelected}
+            onClick={() => { playerRef.current?.pause(); changeCaptionSelection(!captionsSelected); }}
+            title="Select the captions in the preview, then drag them to move them. You can also click the captions directly."
+          >
+            <Subtitles className="h-3.5 w-3.5" />
+            Captions
+          </Button>
           <Button
             size="sm"
             active={film.endCard?.enabled !== false}
@@ -284,11 +306,11 @@ export function EditStage({
                   compositionWidth={FORMATS[format].width}
                   compositionHeight={FORMATS[format].height}
                   style={{ width: "100%", height: "100%", maxHeight: "100%" }}
-                  controls={!moveCaptions}
-                  clickToPlay={!moveCaptions}
+                  controls
+                  clickToPlay={!captionsSelected}
                   acknowledgeRemotionLicense
                 />
-                <OnCanvasAiEditor film={film} timeline={previewTimeline} currentFrame={currentFrame} onUpdateFilm={(next) => project.commit(next, "On-canvas AI edit")} accent={accent} folded={moveCaptions} />
+                <OnCanvasAiEditor film={film} timeline={previewTimeline} currentFrame={currentFrame} onUpdateFilm={(next) => project.commit(next, "On-canvas AI edit")} accent={accent} folded={captionsSelected} avoidRect={captionRect} yieldToCaption={captionHot} />
               </>
             ) : (
               <p className="p-6 text-center font-mono text-xs text-matte-text">
@@ -297,7 +319,7 @@ export function EditStage({
             )}
           </div>
 
-          {moveCaptions && previewTimeline ? <CaptionPlacementEditor key={`${film.id}-${format}`} film={film} previewFilm={previewFilm} previewTimeline={previewTimeline} format={format} frame={currentFrame} playerRef={playerRef} host={previewHost} onDraft={setCaptionDraft} onCommit={project.commit} /> : null}
+          {api.hasVisibleVisuals && previewTimeline ? <CaptionObject key={`${film.id}-${format}`} film={film} previewFilm={previewFilm} previewTimeline={previewTimeline} format={format} frame={currentFrame} playerRef={playerRef} host={previewHost} selected={captionsSelected} onSelectedChange={changeCaptionSelection} onDraft={setCaptionDraft} onCommit={project.commit} onTargetRect={setCaptionRect} onHotChange={setCaptionHot} /> : null}
 
           <div
             role="separator"

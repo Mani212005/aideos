@@ -118,6 +118,9 @@ export default function App() {
   const [inspectorOpen, setInspectorOpen] = useState(() => window.innerWidth >= 1180);
   const playerRef = useRef<PlayerRef>(null);
   const [mountedPlayer, setMountedPlayer] = useState<PlayerRef | null>(null);
+  // Lets a newly mounted Player start where the timeline already is, instead of at frame 0.
+  const currentFrameRef = useRef(currentFrame);
+  currentFrameRef.current = currentFrame;
   // Attach playback observers whenever a Player mounts or is replaced.
   const attachPlayer = useCallback((player: PlayerRef | null) => {
     playerRef.current = player;
@@ -185,6 +188,8 @@ export default function App() {
     player.addEventListener("play", onPlay);
     player.addEventListener("pause", onPause);
     player.addEventListener("ended", onEnded);
+    // A Player remounted by a stage switch or a preview refresh shows frame 0 until told otherwise.
+    if (currentFrameRef.current > 0) player.seekTo(currentFrameRef.current);
     return () => {
       player.removeEventListener("frameupdate", onFrame);
       player.removeEventListener("play", onPlay);

@@ -1,7 +1,7 @@
 /**
- * File Description: Pretext kinetic subtitles and text engine calculating word-level karaoke highlights and phrase-chunked subtitles inside Remotion's render cycle.
+ * File Description: Kinetic subtitles that measure words with @remotion/layout-utils measureText and draw word-level karaoke highlights and phrase-chunked subtitles inside Remotion's render cycle.
  * Inputs and outputs: caption words and current frame -> styled kinetic typography subtitle overlay.
- * Used by: src/dl/Film.tsx, editor/src/components/KineticCaptionEditor.tsx.
+ * Used by: src/dl/Film.tsx.
  */
 
 import React, { useMemo } from "react";

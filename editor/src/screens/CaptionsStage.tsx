@@ -1,8 +1,8 @@
 /**
  * File Description: Captions stage for Aideos Studio.
  * The one place caption timing is authored. The timeline shows caption cues as a read-only
- * reference lane, so this stage owns editing them: word text, per-word frame ranges, and the
- * kinetic layout used when they are burned into the film. Edits are written back as a VTT track on
+ * reference lane, so this stage owns editing them: word text and per-word frame ranges. Caption
+ * position is set in Edit by clicking the captions in the preview. Edits are written back as a VTT track on
  * the film, which is what both the renderer and the timeline read.
  * Inputs and outputs: film project and caption state -> captions inspection and timing editor stage.
  * Used by: editor/src/App.tsx.

@@ -4,10 +4,10 @@
  * Allows users to request edits in natural language, reviews the generated natural-language
  * plan and discrete EditOp checklist (dry-run-then-apply), and commits changes as a single undo step.
  * Inputs and outputs: user prompt and selected element -> AI editing prompt popover.
- * Used by: editor/src/App.tsx.
+ * Used by: editor/src/screens/EditStage.tsx.
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useLayoutEffect } from "react";
 import { Sparkles, Check, X, Loader2, ArrowRight, Wand2 } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import type { TimedShot } from "../../../src/dl/camera";
@@ -23,7 +23,17 @@ interface OnCanvasAiEditorProps {
   onUpdateFilm: (updatedFilm: Film) => void;
   accent?: string;
   folded?: boolean;
+  /** Caption box in preview-host pixels, used to tell whether the open panel would sit on the caption. */
+  avoidRect?: { left: number; top: number; width: number; height: number } | null;
+  /** True while the pointer or keyboard focus is on the caption: the panel then yields by collapsing to its header. */
+  yieldToCaption?: boolean;
 }
+
+/** Corner inset of the anchored panel and breathing room kept around the caption, in pixels. */
+const PANEL_INSET = 16;
+const CAPTION_CLEARANCE = 8;
+/** Expanded height assumed until the panel has been measured open once. */
+const EXPANDED_HEIGHT_ESTIMATE = 170;
 
 interface PlannedState {
   request: string;
@@ -80,6 +90,8 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
   onUpdateFilm,
   accent,
   folded = false,
+  avoidRect = null,
+  yieldToCaption = false,
 }) => {
   const [promptInput, setPromptInput] = useState<string>("");
   const [isPlanning, setIsPlanning] = useState<boolean>(false);
@@ -87,7 +99,31 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
   const [plannedState, setPlannedState] = useState<PlannedState | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
-  const expanded = isExpanded && !folded;
+  const panelRef = useRef<HTMLDivElement>(null);
+  const openSize = useRef({ w: 0, h: 0 });
+  const [coversCaption, setCoversCaption] = useState(false);
+  // A review in progress outranks yielding, so Apply never disappears mid-plan.
+  const reviewing = plannedState !== null || isPlanning;
+  const expanded = isExpanded && !folded && !(coversCaption && yieldToCaption && !reviewing);
+
+  // Judges overlap by the open footprint, so collapsing to yield to the caption cannot change the answer and flip back and forth.
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    const parent = panel?.offsetParent;
+    if (!panel || !parent || folded) return;
+    if (expanded) openSize.current = { w: panel.offsetWidth, h: panel.offsetHeight };
+    const w = openSize.current.w || panel.offsetWidth;
+    const h = openSize.current.h || EXPANDED_HEIGHT_ESTIMATE;
+    const right = parent.clientWidth - PANEL_INSET;
+    const bottom = parent.clientHeight - PANEL_INSET;
+    const covers =
+      !!avoidRect &&
+      right - w < avoidRect.left + avoidRect.width + CAPTION_CLEARANCE &&
+      right > avoidRect.left - CAPTION_CLEARANCE &&
+      bottom - h < avoidRect.top + avoidRect.height + CAPTION_CLEARANCE &&
+      bottom > avoidRect.top - CAPTION_CLEARANCE;
+    setCoversCaption(covers);
+  }, [avoidRect, folded, expanded, plannedState, statusMessage]);
 
   // Suggested prompt chips for quick actions
   const suggestionChips = useMemo(() => [
@@ -207,7 +243,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
   };
 
   return (
-    <div data-ai-editor-panel className={folded ? "hidden" : "absolute bottom-4 right-4 z-40 max-w-lg w-full flex flex-col font-sans"}>
+    <div ref={panelRef} data-ai-editor-panel className={folded ? "hidden" : "absolute bottom-4 right-4 z-40 max-w-lg w-full flex flex-col font-sans"}>
       {/* Container Box */}
       <div className="bg-paper-2 border-2 border-ink shadow-[4px_4px_0px_#14140f] rounded-lg overflow-hidden flex flex-col">
         {/* Header Bar */}

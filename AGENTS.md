@@ -241,7 +241,7 @@ camera motion smoother and move captions slightly upward.
 Before changing captions, film writers, timeline conversion, or review bands, read the owner caption
 sections in `src/dl/README.md`, `docs/PRODUCTION_PIPELINE.md`, and `docs/REVIEW.md`.
 `src/dl/captionPlacement.ts` owns resolution, gesture bounds and carry-forward; use the checked
-`set_caption_placement` edit operation for agents. The J13 journey exercises both formats and scopes.
+`set_caption_placement` edit operation for agents. The J13 journey exercises both formats.
 
 ## Editor state and the timeline layer model
 

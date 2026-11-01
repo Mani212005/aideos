@@ -1,20 +1,14 @@
 /**
- * File Description: This component implements the Kinetic Caption & Pretext Inspector tab in Aideos, rendering an interactive word column for the entire film script with real-time frame timestamp editing and Pretext zero-DOM layout measurement.
+ * File Description: This component implements the caption words tab in Aideos, rendering an interactive word column for the entire film script with real-time frame timestamp editing.
  * Inputs and outputs: voiceover words and timing offsets -> interactive kinetic caption word column and timeline.
  * Used by: editor/src/screens/CaptionsStage.tsx.
 */
 
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  prepareWithSegments,
-  layoutWithLines,
-  type LayoutLine,
-} from "@chenglou/pretext";
-import {
   Search,
   Play,
   Edit2,
-  Sparkles,
   Clock,
   FileText,
   Subtitles,
@@ -34,7 +28,7 @@ interface KineticCaptionEditorProps {
   onSeekToFrame?: (frame: number) => void;
 }
 
-// Renders the interactive word column, Pretext layout inspector, and frame timing controls.
+// Renders the interactive word column and frame timing controls.
 export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
   film,
   words: initialWords = [],
@@ -43,9 +37,6 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
 }) => {
   const [localWords, setLocalWords] = useState<CaptionWordItem[]>(initialWords);
   const [searchQuery, setSearchQuery] = useState("");
-  const [fontSize, setFontSize] = useState(48);
-  const [maxWidth, setMaxWidth] = useState(640);
-  const [highlightColor, setHighlightColor] = useState("#635BFF");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   // Sync local words whenever incoming words prop changes
@@ -59,27 +50,6 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
   const fullText = useMemo(() => {
     return localWords.map((w) => w.text).join(" ");
   }, [localWords]);
-
-  const lineHeight = Math.round(fontSize * 1.3);
-
-  // Pretext zero-DOM layout measurement in real time
-  const pretextStats = useMemo(() => {
-    try {
-      const fontSpec = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
-      const prep = prepareWithSegments(
-        fullText || "Aideos kinetic video captions",
-        fontSpec,
-      );
-      const res = layoutWithLines(prep, maxWidth, lineHeight);
-      return {
-        lineCount: res.lines.length,
-        lines: res.lines.map((l: LayoutLine) => l.text),
-        totalHeight: Math.round(res.height),
-      };
-    } catch {
-      return { lineCount: 1, lines: [fullText], totalHeight: lineHeight };
-    }
-  }, [fullText, fontSize, maxWidth, lineHeight]);
 
   // Filters words list by search query
   const filteredWords = useMemo(() => {
@@ -124,13 +94,9 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
             {localWords.length} words total)
           </p>
         </div>
-        <span className="text-xs px-3 py-1.5 bg-select/20 text-select-text font-mono border border-select/40 flex items-center gap-1.5">
-          <Sparkles size={12} />
-          Pretext Engine Active
-        </span>
       </div>
 
-      {/* Grid Layout: Left Interactive Word Column (Full Script) | Right Pretext Controls & Preview */}
+      {/* Grid Layout: Left Interactive Word Column (Full Script) | Right Full Script Text */}
       <div className="grid grid-cols-12 gap-5">
         {/* Left Column: Interactive Word List Column */}
         <div className="col-span-5 flex flex-col gap-3 bg-paper p-4 border-2 border-ink">
@@ -219,7 +185,7 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Pretext Telemetry Box & Line-Wrapped Preview */}
+        {/* Right Column: Full Script Text and where captions are moved */}
         <div className="col-span-7 flex flex-col gap-4">
           {/* Full Script Text Area */}
           <div className="flex flex-col gap-1.5">
@@ -235,120 +201,9 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
             />
           </div>
 
-          {/* Pretext Zero-DOM Telemetry */}
-          <div className="grid grid-cols-3 gap-2 bg-paper p-3 border-2 border-ink font-mono text-xs">
-            <div>
-              <span className="text-ink-soft block text-[10px]">
-                Lines (Pretext)
-              </span>
-              <span className="text-ink font-bold text-sm">
-                {pretextStats.lineCount} lines
-              </span>
-            </div>
-            <div>
-              <span className="text-ink-soft block text-[10px]">
-                Box Height
-              </span>
-              <span className="text-ink font-bold text-sm">
-                {pretextStats.totalHeight} px
-              </span>
-            </div>
-            <div>
-              <span className="text-ink-soft block text-[10px]">
-                Wrap Max-Width
-              </span>
-              <span className="text-select-text font-bold text-sm">
-                {maxWidth} px
-              </span>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-ink-soft">
-                Font Size: {fontSize}px
-              </label>
-              <input
-                aria-label="Caption font size"
-                type="range"
-                min={24}
-                max={72}
-                value={fontSize}
-                onChange={(e) => setFontSize(Number(e.target.value))}
-                className="accent-select"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-ink-soft">
-                Wrap Width: {maxWidth}px
-              </label>
-              <input
-                aria-label="Caption wrap width"
-                type="range"
-                min={320}
-                max={1000}
-                value={maxWidth}
-                onChange={(e) => setMaxWidth(Number(e.target.value))}
-                className="accent-select"
-              />
-            </div>
-          </div>
-
-          {/* Highlight Accent */}
-          <div className="flex items-center justify-between gap-4 pt-1">
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-ink-soft">Accent Highlight:</label>
-              <input
-                type="color"
-                value={highlightColor}
-                onChange={(e) => setHighlightColor(e.target.value)}
-                className="w-7 h-7 border-none cursor-pointer bg-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Real-time Pretext Lines Preview */}
-          <div className="flex flex-col gap-1.5 pt-2 border-t-2 border-ink">
-            <span className="text-xs text-ink-soft font-semibold">
-              Pretext Line-Wrapped Kinetic Preview:
-            </span>
-            <div
-              className="flex min-h-[100px] flex-col items-center justify-center gap-1 border-2 border-ink bg-matte p-4 text-center"
-              style={{
-                maxWidth: `${maxWidth}px`,
-                width: "100%",
-                margin: "0 auto",
-              }}
-            >
-              {pretextStats.lines.map((line: string, lIdx: number) => (
-                <div
-                  key={lIdx}
-                  style={{
-                    fontSize: `${fontSize * 0.75}px`,
-                    fontWeight: 700,
-                    color: "#F5F5F5",
-                    lineHeight: 1.25,
-                  }}
-                >
-                  {line.split(" ").map((w: string, wIdx: number) => {
-                    const isHighlight = wIdx % 4 === 1;
-                    return (
-                      <span
-                        key={wIdx}
-                        style={{
-                          color: isHighlight ? highlightColor : "#F5F5F5",
-                          margin: "0 4px",
-                        }}
-                      >
-                        {w}
-                      </span>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
+          <p className="border-2 border-ink bg-paper-3 p-3 font-sans text-xs text-ink-soft">
+            To move captions, click them in the Edit preview.
+          </p>
         </div>
       </div>
     </div>

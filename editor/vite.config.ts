@@ -1471,7 +1471,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               voiceover: { src: `videos/${film.id}/voiceover.wav`, volume: 1 },
             };
 
-            // Flatten per-segment word timings onto the film's timeline for the Pretext
+            // Flatten per-segment word timings onto the film's timeline for the
             // kinetic captions editor
             const flatWords = audioResult.segments.flatMap((seg) =>
               seg.words.map((w) => ({

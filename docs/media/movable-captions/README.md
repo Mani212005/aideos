@@ -1,5 +1,17 @@
 # Movable caption proof
 
+## Click, select, drag (current Studio)
+
+The captions are an object in the Edit preview. Hover rings the rendered card, a click selects it
+(it does not start playback) and a drag moves it for the whole video. Guides and the unsafe areas of the
+frame show only while dragging. Screenshots use a throwaway tone-narrated film.
+
+| Hover | Selected | Dragging |
+| --- | --- | --- |
+| ![Hover](studio-hover.png) | ![Selected](studio-selected.png) | ![Dragging](studio-dragging.png) |
+
+## Earlier proof (per-scope editor)
+
 Real film `speculative-decoding-designed`, frame 45. The after images use saved positions
 that are locked. Font size is unchanged. These images are for visual
 acceptance by the owner.
@@ -17,10 +29,10 @@ to those bounds; an omitted width remains auto-sized.
 | Reel | ![Reel before](reel-before.png) | ![Reel after](reel-after.png) |
 
 Eight default-film stills across four fixture films and both formats matched their references
-with zero differing pixels. J13 verifies both scopes, move, resize, lock, reset, undo and reload,
+with zero differing pixels. J13 verifies click-select, move for the whole video, resize, lock, default position, undo and reload,
 then checks native Player caption ink bounds against PNG and MP4 export within 2 px.
-The journey also compares the visible card, drag outline and collision rectangle at saved
-width 86% and after resizing. Unit CI passed 1,017 tests with 3 skipped; static CI, J3 and
+The journey also compares the visible card and collision rectangle at saved
+width 86% and after resizing, and checks that the selection ring hugs the rendered card. Unit CI passed 1,017 tests with 3 skipped; static CI, J3 and
 studio smoke passed.
 
 For CanvasGraph films, the design report explicitly says placed-card collisions against graph art
