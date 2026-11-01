@@ -319,9 +319,7 @@ can be run against any file.
 
 `film.captionPlacement` and `shot.captionPlacement` hold independent `long` and `reel` cards.
 Each card records normalized `x` (centre), `y` (top), `w` (width), and `locked`.
-Missing placement fields retain the legacy centred bottom card. Missing `w` keeps the auto-width
-shrink-to-content card after Lock, movement and shot-scope changes; the editor and collision checks
-reserve its full 86% band. Explicit `w` values from 0 through 1 are clamped by format to the
+Missing placement fields retain the legacy centred bottom card. See [owner caption cards in `src/dl/README.md`](../src/dl/README.md#owner-caption-cards) for card geometry, auto-width behavior, and selection ring details. Explicit `w` values from 0 through 1 are clamped by format to the
 minimum and maximum; omitted `w` remains auto-sized. A shot exception overrides its film-wide card only in the specified format, and the
 renderer fixes placement and wrapping at each phrase's start.
 

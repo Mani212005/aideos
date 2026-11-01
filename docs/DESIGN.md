@@ -85,9 +85,10 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 - **Purpose**: Dedicated authoring studio for custom SVG movie animations and element-level keyframing.
 - **Features**: Live scrubbing of declarative SVG timelines, element ID discovery, pre-built motion templates (staged entry, pulse, draw-on strokes, vector paths), and audio-first retiming against spoken narration.
 
-### 5. Edit Stage (`EditStage.tsx` / `TimelineEditor.tsx` / `InspectorPanel.tsx` / `AssetBin.tsx`)
+### 5. Edit Stage (`EditStage.tsx` / `TimelineEditor.tsx` / `captions/CaptionObject.tsx` / `InspectorPanel.tsx` / `AssetBin.tsx`)
 - **Purpose**: Non-linear multi-track timeline editor with direct manipulation, track controls, and clip inspection.
 - **Features**:
+  - **Movable Caption Object (`captions/CaptionObject.tsx`)**: Direct-manipulation caption card in the preview (click to select without playback, drag for the whole video, edge resize handles, drag snap guides, format copying, and default position restoration).
   - **Pure Pointer-Drag Machine (`backend/timeline/drag_machine.ts`)**: Manages `move`, `trim-start`, `trim-end`, `scrub`, and `marquee` gestures with pixel-based thresholds and Escape-key cancellation.
   - **Magnetic Ripple Editing**: Auto-shifts downstream clips when trimming or deleting to close or prevent dead gaps (toggle via toolbar or `R` shortcut).
   - **Linked Audio-Video Trimming**: Automatically trims and shifts associated audio and video clips in lockstep.
