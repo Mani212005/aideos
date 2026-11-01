@@ -110,6 +110,8 @@ still build directly; new production runs require one before design.
 
 ## Soundtrack
 
+Music and sound effects are compulsory on every video, and so is the end card (see [Compulsory finishing steps](WORKFLOW.md#compulsory-finishing-steps-every-video)). `runProduction` checks every requested format before the first frame renders and refuses, with a `ProductionError` at the render stage whose message names what is missing and the command that fixes it. The design stage warns when it could not assign the default music and effects (for example when the audio library is not cached).
+
 `Film.soundtrack` records music sections, measured narration intervals, mix levels,
 sound effects, and credits. `src/dl/Soundtrack.tsx` is shared by the Studio preview and Remotion
 render. The [workflow soundtrack overview](WORKFLOW.md#2-soundtrack-mixing) links to the full
@@ -119,7 +121,7 @@ render. The [workflow soundtrack overview](WORKFLOW.md#2-soundtrack-mixing) link
 hashes to lock asset identity. The reference covers the manifest, mix behavior, chapter breath timing,
 and speech measurements.
 
-The optional `soundtrack` block in `design/design.json` authors cue-based music sections and effects.
+The `soundtrack` block in `design/design.json` authors cue-based music sections and effects; where it is absent or incomplete, the default score and default effects fill in the music and the effects separately.
 `aideos design check` validates the authored soundtrack; Studio edits are checked before they are
 committed to the Long film. A design-authored soundtrack resolves its cues against Reel timing. If
 there is no authored soundtrack in `design.json`, an existing `film.soundtrack` carries into the
@@ -140,7 +142,7 @@ Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing).
 | `agent` | Dispatch the reel-cut task to a connected coding agent and wait for validated output. Feed check and cap failures back for up to three attempts; missing delivery or a timeout fails the stage. |
 | `server` | Ask the configured generation model to write or repair `cut.json`, feeding check and cap failures back for up to three attempts. |
 
-The Reel is a separate 9:16 delivery made from the Long film's picture and design. If the Long delivery, including its Reel end card when enabled, is at most 179 seconds, it is an identity reel and reuses the Long narration. Otherwise, the cut has condensed narration for the kept shots and uses the Long narration backend, voice, and speed. The hard cap is 179 seconds for the full delivery; an enabled end card counts toward it. The default writing target is 170 seconds, also counting any enabled card. The defaults and end-card span come from `src/dl/delivery.ts` and `backend/reelCut/schema.ts`.
+The Reel is a separate 9:16 delivery made from the Long film's picture and design. If the Long delivery, including its Reel end card, is at most 179 seconds, it is an identity reel and reuses the Long narration. Otherwise, the cut has condensed narration for the kept shots and uses the Long narration backend, voice, and speed. The hard cap is 179 seconds for the full delivery; the end card counts toward it. The default writing target is 170 seconds, also counting the card. The defaults and end-card span come from `src/dl/delivery.ts` and `backend/reelCut/schema.ts`.
 
 ### Author and check a cut
 
@@ -309,7 +311,7 @@ The `verify` stage probes each rendered file with ffprobe, measures audio levels
 ffmpeg, and writes a twelve-frame contact sheet sampled evenly across the whole duration to
 `videos/<slug>/review/`. It records warnings rather than failing, so a run always produces something
 to look at: wrong frame size, a picture length that differs by more than a second from the
-narration plus that format's end card when enabled (`src/dl/delivery.ts`), a missing audio stream,
+narration plus that format's end card (`src/dl/delivery.ts`), a missing audio stream,
 clipping, or more than two and a half seconds of silence during the story.
 
 `analyseAudio` and `contactSheet` in `backend/pipeline/render.ts` are exported, so the same checks

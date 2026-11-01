@@ -50,6 +50,7 @@ import {
 } from "./filmStore";
 import { analyseAudio, contactSheet, describeVideo, renderFormat, FORMAT_SPECS } from "./render";
 import { masterAudio, writeDescriptionCredits } from "../masterAudio";
+import { assertDeliverable } from "../deliveryGate";
 import { checkRenderDiskBudget } from "./renderDiskBudget";
 import {
   PRODUCTION_STAGES,
@@ -758,6 +759,9 @@ export async function runProduction(
         // assembly is reached by runs that stop before rendering, and those must not leave the
         // repository pointing at a film nothing ever rendered.
         ensureRetimedAudio(assembled);
+
+        // The delivered cuts must all carry music, sound effects and the end card before any frame is rendered.
+        assertDeliverable(formats.map((format) => ({ film: format === "reel" ? reelForRender(slug) : assembled, format })));
 
         const produced: RenderedOutput[] = [];
         for (const format of formats) {

@@ -14,12 +14,15 @@ import { stagePublicDir } from "../pipeline/render";
 import { readFilm, readActiveFilmSource, restoreActiveFilmSource, setActiveFilm } from "../pipeline/filmStore";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { reelForRender } from "../reelCut/store";
+import { assertDeliverable } from "../deliveryGate";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 
 // Renders the video for a given slug using Remotion CLI.
 export async function renderVideoForSlug(slug: string, format: "long" | "reel" = "long"): Promise<string> {
   const film = format === "reel" ? reelForRender(slug) : readFilm(slug);
+  // A review render becomes the final video, so it carries music, sound effects and the end card like any delivery.
+  if (film) assertDeliverable([{ film, format }]);
   const pkgDir = resolvePackageDir(slug);
   const rendersDir = path.join(pkgDir, "renders");
   const outPath = path.join(rendersDir, `${format}.mp4`);

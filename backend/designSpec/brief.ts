@@ -133,7 +133,7 @@ ${JSON.stringify(EXAMPLE_SPEC, null, 2)}
 - \`clips[]\`: \`property\` is one of translateX, translateY, scale, scaleX, scaleY, rotate, opacity, drawOn. \`stagger\` delays each further target by N frames. \`origin\` is [x, y] in the asset's own coordinates.
 - \`camera\` (optional, at least two poses): \`at\` is a cue (same grammar as clips), \`center\` [x, y] in the scene, \`zoom\` (0.5 to 4), and optional \`focus\` naming the focused cast id from look.json. A cue on the film's end lands on its last frame. Poses must be in time order and at least one frame apart; an \`id\` names a pose in build errors.
 - \`shots\` (optional): \`{ "<shot id>": { "blocks": [...], "stage": "frame" } }\` replaces the cards drawn over the scene for that shot (film schema blocks, at most 4). Text-only blocks default to stage "frame" (scene stays visible), no blocks to "none". Use it to remove a chart the narration does not support or to write your own card.
-- \`soundtrack\` (optional): sections and sound effects chosen from the curated library and timed with cues.
+- \`soundtrack\` (compulsory outcome): sections and sound effects chosen from the curated library and timed with cues. Every video needs music and sound effects: author them here, or \`aideos design build\` completes whichever you leave out with the default score and effects. Delivery is refused for a video without music, sound effects or the end card, which is always appended.
 
 ${performanceSection}
 
@@ -207,6 +207,7 @@ Choose music tracks and sound effects ONLY from the curated library tables below
 
 ### Soundtrack Rules
 
+- **Compulsory**: A video without music or without sound effects is not delivered. Run \`aideos audio fetch\` first so the default score and effects have verified library items to use.
 - **Tracks per story act**: One track per story act (3 to 4 tracks for a long cut, changing only at chapter cuts; 1 track, at most 2, for a reel) (Decision D3).
 - **Cue grammar**: Author sections and effects with cues (e.g. \`"intro"\`, \`"intro@end"\`, \`'intro:"word"'\`, \`"end"\`).
 - **Every effect has a picture**: Every sound effect must land within +/- 2 frames of a real visual event (shot boundary, chapter cut, scene clip start, camera pose arrival, counter start or end, text card appearing, end card).

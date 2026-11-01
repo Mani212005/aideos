@@ -37,6 +37,7 @@ import { narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
 import { resolveCue } from "../designSpec/cues";
 import { checkThreeStage } from "./threeStage";
 import { checkSoundtrack } from "./soundtrack";
+import { deliveryGaps } from "../deliveryGate";
 import type { AudioLibrary } from "../audioLibrary/schema";
 
 /** The standard layer rules a finding can belong to. */
@@ -57,6 +58,7 @@ export type DesignRule =
   | "carry-over"
   | "occlusion"
   | "soundtrack"
+  | "delivery"
   | "look";
 
 /** One problem found in a film's design. Errors block shipping; warnings are worth a look. */
@@ -82,6 +84,8 @@ export interface DesignCheckContext {
   lookPlan?: LookPlan;
   cameraTargets?: Array<{ frame: number; focus?: string; authoredFocus?: string }>;
   library?: AudioLibrary;
+  /** Also fail a film that would be delivered without music, sound effects or the end card (the CLI check sets it; a design build runs the check before the default score is assigned). */
+  requireDelivery?: boolean;
 }
 
 /** The locked design-system palette (src/dl/README.md); a film may add its own accent. */
@@ -554,6 +558,11 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
   checkAudioLock(film, findings);
   checkHonestData(film, findings);
   checkSoundtrack(film, findings, context);
+  if (context.requireDelivery) {
+    for (const format of context.formats ?? (["long"] as const)) {
+      for (const gap of deliveryGaps(film, format)) findings.push({ rule: "delivery", severity: "error", where: gap.requirement, message: gap.message });
+    }
+  }
 
   return {
     filmId: film.id,
@@ -563,16 +572,16 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
   };
 }
 
-// Loads the film.json of a video package (personal videos dir, else examples/) and checks it.
-export function checkFilmDesignById(filmId: string): DesignReport {
+// Loads the film.json of a video package (personal videos dir, else examples/) and checks it; `base` adds context such as requireDelivery.
+export function checkFilmDesignById(filmId: string, base: DesignCheckContext = {}): DesignReport {
   const file = path.join(resolvePackageDir(filmId), "film.json");
   if (!fs.existsSync(file)) throw new Error(`no film at ${path.relative(REPO_ROOT, file)}`);
   const film = parseFilm(JSON.parse(fs.readFileSync(file, "utf8")));
   const pkg = resolvePackageDir(filmId);
   const lookFile = path.join(pkg, "design", "look.json");
-  if (!fs.existsSync(lookFile)) return checkFilmDesign(film);
+  if (!fs.existsSync(lookFile)) return checkFilmDesign(film, base);
   const parsed = safeParseLookPlan(JSON.parse(fs.readFileSync(lookFile, "utf8")));
-  if (!parsed.success) return checkFilmDesign(film);
+  if (!parsed.success) return checkFilmDesign(film, base);
   const wordsFile = path.join(pkg, "voiceover_words.json");
   const words: TimedWord[] = fs.existsSync(wordsFile) ? JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? [] : [];
   const designFile = path.join(pkg, "design", "design.json");
@@ -599,7 +608,7 @@ export function checkFilmDesignById(filmId: string): DesignReport {
   } catch {
     cameraTargets = [];
   }
-  return checkFilmDesign(film, { lookPlan: parsed.data, cameraTargets });
+  return checkFilmDesign(film, { ...base, lookPlan: parsed.data, cameraTargets });
 }
 
 // Formats a report as plain text an agent or a person can act on.

@@ -1,6 +1,6 @@
 /**
- * File Description: Scores unscored films deterministically from chapter acts and the curated free audio library.
- * Inputs and outputs: Film and delivery format -> preserved owner audio or a hash-locked default soundtrack.
+ * File Description: Completes a film's compulsory music and sound effects deterministically from chapter acts, visual events and the curated free audio library, leaving whatever the owner authored untouched.
+ * Inputs and outputs: Film and delivery format -> the film with owner audio preserved and any missing music or effects filled by a hash-locked default soundtrack.
  * Used by: design delivery, design-build CLI and reel builds.
  */
 
@@ -8,25 +8,37 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import { buildTimeline } from "../src/dl/camera";
 import { deliveryTimeline, type DeliveryFormat } from "../src/dl/delivery";
-import { soundtrackMixDefault, type Film, type SoundtrackSection } from "../src/dl/schema";
+import { soundtrackMixDefault, type Film, type SoundtrackSection, type SoundtrackSfx } from "../src/dl/schema";
 import { computeFileSha256, getDefaultLibraryPath, loadAudioLibrary, verifyAudioItem } from "./audioLibrary/library";
 import type { AudioLibrary } from "./audioLibrary/schema";
 import { checkSoundtrack } from "./designCheck/soundtrack";
 import { resolveAudioSourcePath } from "./audio";
+import { detectVisualEvent, getVisualEventFrames } from "./designSpec/soundtrack";
 
 type Act = Pick<SoundtrackSection, "role" | "from" | "to">;
 
-// Keeps owner-authored audio outside the default scorer's selection and fallback paths.
-function hasExplicitAudio(film: Film): boolean {
-  return Boolean(film.music || film.audio || film.sfx?.length || film.audioClips?.some((clip) => clip.channel === "music") ||
-    (film.soundtrack && !film.soundtrack.defaultScore));
+// Whether the owner supplied music: legacy music or audio, a music clip, or authored (not generated) soundtrack sections.
+export function hasExplicitMusic(film: Film): boolean {
+  return Boolean(film.music || film.audio || film.audioClips?.some((clip) => clip.channel === "music") ||
+    (film.soundtrack && !film.soundtrack.defaultScore && film.soundtrack.sections.length > 0));
 }
 
-// Removes generated music while preserving all owner-authored soundtrack data.
-function withoutDefaultScore(film: Film): Film {
-  if (!film.soundtrack?.defaultScore) return film;
-  const { soundtrack: _defaultScore, ...unscored } = film;
-  return unscored;
+// Whether the owner supplied sound effects: legacy effects, an effects clip, or authored (not generated) soundtrack effects.
+export function hasExplicitEffects(film: Film): boolean {
+  return Boolean(film.sfx?.length || film.audioClips?.some((clip) => clip.channel === "sfx") ||
+    film.soundtrack?.sfx.some((effect) => !effect.generated));
+}
+
+// Removes generated music and generated effects while preserving every piece of owner-authored soundtrack data.
+function withoutGenerated(film: Film): Film {
+  const soundtrack = film.soundtrack;
+  if (!soundtrack || (!soundtrack.defaultScore && !soundtrack.sfx.some((effect) => effect.generated))) return film;
+  const sections = soundtrack.defaultScore ? [] : soundtrack.sections;
+  const sfx = soundtrack.sfx.filter((effect) => !effect.generated);
+  const { soundtrack: _generated, ...rest } = film;
+  if (sections.length === 0 && sfx.length === 0) return rest;
+  const { defaultScore: _marker, ...kept } = soundtrack;
+  return { ...rest, soundtrack: { ...kept, sections, sfx } };
 }
 
 // Returns frame-aligned chapter starts from the same timeline that playback uses.
@@ -83,37 +95,85 @@ function actsFor(film: Film, format: DeliveryFormat, library: AudioLibrary, comp
   return plan;
 }
 
-// Preserves explicit audio and assigns stable role-matched music to an otherwise unscored film.
-export function scoreDefaultSoundtrack(film: Film, format: DeliveryFormat, library: AudioLibrary = loadAudioLibrary()): Film {
-  if (hasExplicitAudio(film)) return film;
-  const cachedLibrary: AudioLibrary = { ...library, items: library.items.filter((item) => verifyAudioItem(item).status === "valid") };
-  const acts = actsFor(film, format, cachedLibrary, library);
-  const fade = Math.round((format === "reel" ? 1.5 : 3) * film.fps);
-  const sections = acts.map((act, index): SoundtrackSection => {
-    const pool = candidates(act, index, acts.length, film, format, cachedLibrary);
-    const seed = createHash("sha256").update(JSON.stringify([film.id, format, act.role, index])).digest().readUInt32BE(0);
-    const item = pool[seed % pool.length];
-    const spanFrames = Math.round((act.to - act.from) * film.fps) + (index > 0 ? Math.ceil(fade / 2) : 0);
-    const offsetSec = index === acts.length - 1 ? (Math.floor(item.durationSec * film.fps) - spanFrames) / film.fps : 0;
-    return { ...act, item: item.id, sha256: item.sha256, offsetSec, crossfadeSec: format === "reel" ? 1.5 : 3, volume: 1, duckUnderVoiceover: true };
+/** Longest library effect the default scorer places; keeps long beds such as typing out of the accents. */
+const DEFAULT_EFFECT_MAX_SEC = 4;
+
+/** Library effects the default scorer lays on each kind of visual event; a film's seed picks among them, except the end card, which takes the first one that is cached. */
+const EFFECTS_FOR_EVENT: Record<string, string[]> = {
+  "end-card": ["card-arrive", "pop-card"],
+  "chapter-cut": ["whoosh-soft", "whoosh-fast"],
+  "counter-end": ["counter-land"],
+  "text-card": ["pop-card"],
+};
+
+/** Event kinds in the order the scorer spends its effect budget on them. */
+const EFFECT_EVENT_PRIORITY = ["end-card", "chapter-cut", "counter-end", "text-card"];
+
+// Places library effects on real visual events within the design check's density, spacing and family limits.
+export function defaultEffects(film: Film, format: DeliveryFormat, library: AudioLibrary): SoundtrackSfx[] {
+  const fps = film.fps;
+  const totalSec = deliveryTimeline(film, format).totalFrames / fps;
+  const spacingSec = format === "reel" ? 5 : 8;
+  const budget = Math.floor(totalSec / spacingSec);
+  const events = getVisualEventFrames(film).filter((event) => event.frame > 0 && EFFECTS_FOR_EVENT[event.type]);
+  const chosen: { frame: number; type: string }[] = [];
+  for (const type of EFFECT_EVENT_PRIORITY) {
+    const frames = [...new Set(events.filter((event) => event.type === type).map((event) => event.frame))].sort((a, b) => a - b);
+    for (const frame of frames) {
+      if (chosen.length >= budget) break;
+      if (chosen.every((other) => Math.abs(other.frame - frame) / fps >= spacingSec)) chosen.push({ frame, type });
+    }
+  }
+  const usable = library.items.filter((item) => item.kind === "sfx" && item.licence.attribution === null && item.durationSec <= DEFAULT_EFFECT_MAX_SEC);
+  return chosen.sort((a, b) => a.frame - b.frame).flatMap((event, index): SoundtrackSfx[] => {
+    const pool = EFFECTS_FOR_EVENT[event.type].map((id) => usable.find((item) => item.id === id)).filter((item) => item !== undefined);
+    if (pool.length === 0) return [];
+    const seed = createHash("sha256").update(JSON.stringify([film.id, format, event.type, index])).digest().readUInt32BE(0);
+    const item = event.type === "end-card" ? pool[0] : pool[seed % pool.length];
+    const timeSec = Number((event.frame / fps).toFixed(3));
+    return [{ item: item.id, sha256: item.sha256, timeSec, gainDb: 0, event: detectVisualEvent(film, timeSec, fps), volume: 1, generated: true }];
   });
-  return { ...film, soundtrack: {
-    library: computeFileSha256(getDefaultLibraryPath()), defaultScore: { format }, sections,
-    speech: film.soundtrack?.speech ?? [], speechSource: film.soundtrack?.speechSource, narrationPeakDb: film.soundtrack?.narrationPeakDb,
-    mix: film.soundtrack?.mix ?? soundtrackMixDefault, sfx: [], credits: [],
+}
+
+// Preserves owner audio and fills whichever of music and sound effects the film lacks with stable library choices.
+export function scoreDefaultSoundtrack(film: Film, format: DeliveryFormat, library: AudioLibrary = loadAudioLibrary()): Film {
+  const base = withoutGenerated(film);
+  const needsMusic = !hasExplicitMusic(base);
+  const needsEffects = !hasExplicitEffects(base);
+  if (!needsMusic && !needsEffects) return base;
+  const cachedLibrary: AudioLibrary = { ...library, items: library.items.filter((item) => verifyAudioItem(item).status === "valid") };
+  const fade = Math.round((format === "reel" ? 1.5 : 3) * film.fps);
+  let sections = base.soundtrack?.sections ?? [];
+  if (needsMusic) {
+    const acts = actsFor(base, format, cachedLibrary, library);
+    sections = acts.map((act, index): SoundtrackSection => {
+      const pool = candidates(act, index, acts.length, base, format, cachedLibrary);
+      const seed = createHash("sha256").update(JSON.stringify([film.id, format, act.role, index])).digest().readUInt32BE(0);
+      const item = pool[seed % pool.length];
+      const spanFrames = Math.round((act.to - act.from) * film.fps) + (index > 0 ? Math.ceil(fade / 2) : 0);
+      const offsetSec = index === acts.length - 1 ? (Math.floor(item.durationSec * film.fps) - spanFrames) / film.fps : 0;
+      return { ...act, item: item.id, sha256: item.sha256, offsetSec, crossfadeSec: format === "reel" ? 1.5 : 3, volume: 1, duckUnderVoiceover: true };
+    });
+  }
+  const kept = base.soundtrack;
+  const sfx = needsEffects ? defaultEffects(base, format, cachedLibrary) : kept?.sfx ?? [];
+  return { ...base, soundtrack: {
+    library: computeFileSha256(getDefaultLibraryPath()), ...(needsMusic ? { defaultScore: { format } } : {}), sections,
+    speech: kept?.speech ?? [], speechSource: kept?.speechSource, narrationPeakDb: kept?.narrationPeakDb,
+    mix: kept?.mix ?? soundtrackMixDefault, sfx, credits: kept?.credits ?? [],
   } };
 }
 
-// Validates a default score and fetches only its selected, hash-verified assets before persistence.
+// Validates the default music and effects and gets them ready for persistence; a missing narration file or audio cache leaves the gap for the delivery gate to refuse.
 export async function prepareDefaultSoundtrack(film: Film, format: DeliveryFormat, onWarning?: (message: string) => void): Promise<Film> {
-  if (hasExplicitAudio(film)) return film;
   const clips = film.audioClips?.filter((clip) => (clip.channel ?? "voiceover") === "voiceover") ?? [];
   const sources = clips.length ? clips.map((clip) => clip.src) : film.voiceover?.src ? [film.voiceover.src] : [];
+  const warn = onWarning ?? console.warn;
   try {
     for (const src of sources) fs.accessSync(resolveAudioSourcePath(src), fs.constants.R_OK);
   } catch (error) {
-    (onWarning ?? console.warn)(`[soundtrack] Skipping default music for "${film.id}" (${format}): narration audio cannot be read (${error instanceof Error ? error.message : String(error)}). Film remains unscored.`);
-    return withoutDefaultScore(film);
+    warn(`[soundtrack] Skipping default music and effects for "${film.id}" (${format}): narration audio cannot be read (${error instanceof Error ? error.message : String(error)}). Delivery will refuse this film until it has both.`);
+    return withoutGenerated(film);
   }
   const library = loadAudioLibrary();
   const cachedCount = library.items.filter((item) => verifyAudioItem(item).status === "valid").length;
@@ -122,8 +182,8 @@ export async function prepareDefaultSoundtrack(film: Film, format: DeliveryForma
     scored = scoreDefaultSoundtrack(film, format, library);
   } catch (error) {
     if (cachedCount === library.items.length) throw error;
-    (onWarning ?? console.warn)(`[soundtrack] Skipping default music for "${film.id}" (${format}): suitable tracks are not verified in the audio cache. Film remains unscored.`);
-    return withoutDefaultScore(film);
+    warn(`[soundtrack] Skipping default music and effects for "${film.id}" (${format}): suitable tracks are not verified in the audio cache; run "aideos audio fetch". Delivery will refuse this film until it has both.`);
+    return withoutGenerated(film);
   }
   if (scored === film) return film;
   const findings: Parameters<typeof checkSoundtrack>[1] = [];

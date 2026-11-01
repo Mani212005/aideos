@@ -34,6 +34,7 @@ import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } fr
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
+import { assertDeliverable } from '../backend/deliveryGate.ts'
 import { synthesizeVoiceover, VoiceSynthesisError, readContainerMemoryLimit, sayToWav } from '../backend/voiceSynthesis.ts'
 import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
 import { transcribe, writeImportWords } from '../backend/transcribe.ts'
@@ -853,6 +854,14 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 endCardNotice = endCard.notice;
               } catch (err) {
                 endCardNotice = `end card line could not be attached (${err instanceof Error ? err.message : String(err)}); the card stays silent`;
+              }
+
+              // Every delivered video carries music, sound effects and the end card: refuse before rendering.
+              try {
+                assertDeliverable([{ film, format: format === 'reel' ? 'reel' : 'long' }]);
+              } catch (err) {
+                sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) });
+                return;
               }
 
               // Enforce rule: Don't render video till B-roll is complete and footage is retrieved

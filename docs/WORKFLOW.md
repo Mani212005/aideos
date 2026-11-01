@@ -13,11 +13,23 @@ Aideos is engineered around 4 strict architectural invariants:
 1. **Films are Pure Data (`videos/<slug>/film.json`, with generated `src/dl/films/*.ts` shadows)**:
    - No React runtime logic, side-effects, or random math inside film definitions. Every film is a pure, serializable JSON data structure conforming strictly to `filmSchema` (`src/dl/schema.ts`).
 2. **Master Clock Audio Spine**:
-   - Story duration is never guessed. The synthesized voiceover audio is the master clock for the story, and total shot durations must sum to the voiceover length within $\pm 50\text{ms}$. Each delivered format appends its configured end card after the story by default; a film can disable its card.
+   - Story duration is never guessed. The synthesized voiceover audio is the master clock for the story, and total shot durations must sum to the voiceover length within $\pm 50\text{ms}$. Each delivered format always appends its configured end card after the story; no film can disable it.
 3. **Derived Camera Framing**:
    - The virtual camera never uses hardcoded pixel offsets. Viewport centers, zoom factors, and bounding boxes are mathematically derived from continuous 2D node coordinates $(x, y, w, h)$ on the spatial canvas graph.
 4. **Declared Palette with Semantic Theme Tokens**:
    - Colors map to semantic tokens (`canvas`, `surface`, `ink`, `muted`, `hairline`, `accent`) with a measured contrast floor. Switching themes (e.g. Archival Paper, Blueprint, Charcoal, Warm Editorial) recolors scenes and cards with measured contrast and harmony.
+
+---
+
+## Compulsory finishing steps (every video)
+
+Three things are part of making every video, not options. Delivery is refused with a plain-language message naming the missing piece when a Long or a Reel lacks any of them (`backend/deliveryGate.ts`, checked by `aideos design check`, `aideos design build` (which warns), `runProduction` before any frame renders, `npm run render`, the all-check render and the Studio export).
+
+1. **Music**: a soundtrack for the whole delivered video. Author it in the `soundtrack` block of `design/design.json`, or let `aideos design build <film>` assign the deterministic default score from the audio library.
+2. **Sound effects**: effects on real visual events (chapter cuts, counters, cards, the end card). Author them in the same block, or let `aideos design build <film>` place the default effects.
+3. **The call to action end card**: appended after the story in both formats by delivery itself, with its copy and length from `aideos.config.json`. It cannot be switched off for a film: `aideos end-card <film> off` is refused, and an old per-film `endCard.enabled: false` is ignored.
+
+Run `aideos audio fetch` once before the first design build, because the default music and effects only use verified cached library items; without the cache the gate refuses the film and says so.
 
 ---
 
@@ -140,13 +152,13 @@ The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http:
 | `aideos look check <film> [--json]` | Validates look.json against schema and semantic rules; writes LOOK.md on PASS | `videos/<film>/design/LOOK.md` |
 | `aideos design brief <film>` | Writes bespoke design brief for scene compilation | `videos/<film>/design/BRIEF.md` |
 | `aideos design check <film>` | Validates bespoke film design and renders review stills | Terminal report, `.frames/<film>/` |
-| `aideos design build <film>` | Compiles bespoke design and writes film on PASS | `videos/<film>/film.json` (including an eligible default soundtrack), `reel/film.json` when a derived reel exists, `renders/description-credits.txt`, `design/status.json` |
+| `aideos design build <film>` | Compiles bespoke design and writes film on PASS, completing the compulsory music and sound effects with the default soundtrack, and warning while the film is not deliverable | `videos/<film>/film.json` (including the default music and effects), `reel/film.json` when a derived reel exists, `renders/description-credits.txt`, `design/status.json` |
 | `aideos render` | Renders long-form landscape video | `videos/<slug>/renders/long.mp4` (1920x1080) |
 | `aideos reel` | Renders vertical reel video | `videos/<slug>/renders/reel.mp4` (1080x1920) |
 | `aideos reel brief <film> [--max-sec <seconds>] [--target-sec <seconds>]` | Writes the condensed narration brief with locks, hashes and motion budgets | `videos/<film>/reel/REEL_BRIEF.md` |
 | `aideos reel check <film> [--max-sec <seconds>] [--target-sec <seconds>] [--json]` | Checks the authored reel cut without changing source data; see the [production pipeline reference](PRODUCTION_PIPELINE.md#reel-cut-delivery) for limits | Terminal report |
 | `aideos reel build <film> [--delivery <mode>]` | Compiles condensed reel cut into derived reel film and audio | `videos/<film>/reel/film.json`, `voiceover.wav`, `status.json` |
-| `aideos end-card <film> <on|off>` | Enables or disables the automatic end card for one film | Updated `videos/<film>/film.json` |
+| `aideos end-card <film> on` | Re-stamps the compulsory end card on one film (`off` is refused: every video has it) | Updated `videos/<film>/film.json` |
 | `aideos studio` | Opens native Remotion Studio UI | Remotion Studio browser tab |
 | `aideos test` | Executes full automated verification suite | Test TAP results |
 | `aideos produce` | Runs audio-first produce pipeline | `voiceover.wav`, `captions.vtt`, `film.ts` |

@@ -13,7 +13,7 @@ repeats, while you stay free. You wait for its result file and then report the s
 
 ## What it does (the pipeline it owns)
 
-1. Renders the long cut (16:9) and the reel (9:16).
+1. Renders the long cut (16:9) and the reel (9:16). Every render must carry music, sound effects and the end card; a film without them is refused with a message naming the missing piece (fix it with `aideos design build <slug>` after `aideos audio fetch`).
 2. Measured checks (`aideos review`): OCR captions, readability, overlap, audio sync, pacing, loudness, camera.
 3. Gemini 3.8 Flash review (`aideos gemini-review`, run through agy): 12-point rubric, 6 hard gates, 9.0 bar.
 4. With `--reference <mp4>`: cross-review of the long cut against that video (it must win or tie).

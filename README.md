@@ -21,7 +21,7 @@ From a single script, Aideos produces two synchronized deliverables:
 1. **16:9 Landscape Film** (1920x1080 @ 30 FPS): High-resolution explainer for YouTube, desktop monitors, documentation, and technical courses.
 2. **9:16 Vertical Companion Reel** (1080x1920 @ 30 FPS): Concise companion cut for mobile feeds, YouTube Shorts, TikTok, and Instagram Reels.
 
-Both formats share the same visual canvas, scene motion, and typography, reframed cleanly with format-safe zones.
+Both formats share the same visual canvas, scene motion, and typography, reframed cleanly with format-safe zones. Every render appends the configured like-and-subscribe end card (6 seconds for Long and 3 seconds for Reel); its copy, handle, and timing are set in `aideos.config.json`. The end card is compulsory and cannot be turned off for a film, and every video also needs music and sound effects: delivery is refused with a plain message until it has all three (see [Compulsory finishing steps](docs/WORKFLOW.md#compulsory-finishing-steps-every-video)).
 
 ---
 
@@ -56,7 +56,7 @@ Aideos solves this with **Video as Pure Data**:
 - **Aideos Studio Web Editor**: Interactive Neobrutalist web app (React 19 + Tailwind CSS + Remotion Player) running locally. Features 7 dedicated stages: Script authoring, 2D Story spatial canvas, Look styling, Motion keyframing, Non-linear multi-track Edit, Captions sync, and Review critique.
 - **Non-Linear Timeline Geometry**: OpenShot-grade timeline with transaction-grouped edits, magnetic ripple editing (toggle via `R` key), sticky boundary snapping, audio waveforms, and atomic undo/redo (`Cmd + Z`).
 - **Soundtrack Mixing & RMS Ducking**: Multi-track audio mixer dynamically ducks background music during spoken voiceover based on measured narration intervals. Audio assets and sound effects are cached and hash-locked (`aideos audio fetch`, `aideos audio verify`).
-- **Configurable End Cards**: Automatically appends a branded like-and-subscribe card (6 seconds on Long, 3 seconds on Reel; handles and copy set in `aideos.config.json`). Toggle off per film via CLI (`aideos end-card <slug> off`) or Studio.
+- **Configurable End Cards**: Automatically appends a branded like-and-subscribe card (6 seconds on Long, 3 seconds on Reel; handles and copy set in `aideos.config.json`). The end card is compulsory and cannot be turned off for a film.
 - **Condensed Reel Cut Delivery**: When long-form narration exceeds the 179-second vertical delivery limit, Aideos builds a condensed narration cut with kept shots, locked phrases, and motion floors (`aideos reel brief`, `aideos reel check`, `aideos reel build`).
 - **Automated Quality Review**: Deterministic video review measuring cuts, stillness, caption coverage, contrast, and layout persistence (`npm run review`), paired with optional Gemini 3.8 Flash multimodal review (`aideos gemini-review`) and automated repair loops (`aideos all-check`).
 - **Local Stable & Updating Channels**: Independent local checkouts keep stable production separate from active development, as documented in [docs/RELEASES.md](docs/RELEASES.md).
