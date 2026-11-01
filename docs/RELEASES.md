@@ -16,7 +16,7 @@ their checkout even when invoked from inside the other checkout.
 
 - Every CLI invocation prints a channel banner to stderr. Stable is green:
   `AIDEOS STABLE v1.0.0 (commit abc1234)`. Dev is orange: `AIDEOS DEV main@abc1234`, with
-  `+ UNCOMMITTED CHANGES` when dirty, and a count of commits ahead of stable when its ref is known.
+  `+ UNCOMMITTED CHANGES` when dirty, and a count of commits ahead of stable when ahead of stable.
   `NO_COLOR=1` removes the color and preserves the words.
 - `aideos version` (or `--version`) prints the channel, release tag and commit. `aideos which`
   prints its channel and absolute checkout path. The same commands work with `aideos-dev`.
@@ -54,12 +54,13 @@ The command fetches refs and checks version/fast-forward eligibility, then:
 1. Creates a private temporary videos directory and prints its retained evidence directory.
 2. Runs the full `npm run ci` PR check set, including its platform-specific coverage notices.
 3. Copies the selected film package into that temporary directory. It downloads hash-locked music
-   into that directory's private audio cache. Source films and recordings are never rewritten.
+   and referenced sound effects into that directory's private audio cache. Source films and recordings
+   are never rewritten.
 4. Runs `runProduction` with both formats, no frame window, and forced render and verify stages.
    Earlier stages resume when valid. Narration uses Mac `say` (Kokoro on other platforms). If the
    pipeline needs a look, design or reel cut, the release stops: prepare the package with the
    printed next steps before retrying. Missing music in either format or production warnings block
-   promotion. Music download, renderer or verification failures also block it.
+   promotion. Audio download, renderer or verification failures also block it.
 5. Prints the complete MP4 paths and durations, runs measured review for both formats, and runs
    Gemini video review. These must pass. Reports remain beside the temporary rendered package;
    `production.json` records the run. Review tools require their normal local dependencies/login.

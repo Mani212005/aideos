@@ -52,8 +52,8 @@ The Aideos Timeline & Trimmer implements industry-standard non-linear editing ge
 
 ## 🚀 Quick Start & Commands
 
-For an independent stable installation, watched release promotion, and the `aideos` / `aideos-dev`
-launchers, see [Local releases](docs/RELEASES.md).
+For an independent stable installation, watched release promotion, and the `aideos`, `aideos-stable`,
+and `aideos-dev` launchers, see [Local releases](docs/RELEASES.md).
 
 To install this checkout's dispatcher as the global `aideos` command, run
 `./scripts/install_aideos.sh`. It creates `~/.local/bin/aideos` as a symlink to `bin/aideos`.

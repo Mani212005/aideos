@@ -57,7 +57,7 @@ Aideos is engineered around 4 strict architectural invariants:
                                        ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  STAGE 5: REMOTION RENDER ENGINE & INTERACTIVE STUDIO                        │
-│  • Web Editor UI (localhost:3001, CLI: aideos) with 80% Scene Inspector      │
+│  • Web Editor UI (dev: 3001, stable: 3002) with 80% Scene Inspector          │
 │  • Landscape Long Render (videos/<slug>/renders/long.mp4, 1920x1080 @ 30 FPS) │
 │  • Vertical Reel Render (videos/<slug>/renders/reel.mp4, 1080x1920 @ 30 FPS)  │
 │  • Kinetic Subtitle Karaoke + Dynamic Audio Music Ducking                    │
@@ -113,7 +113,7 @@ Aideos is engineered around 4 strict architectural invariants:
 
 ## 4. Interactive Web Studio Workflow (`editor/`)
 
-The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run editor` or the global terminal command `aideos`), presenting a 7-stage Neobrutalism editing interface:
+The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http://localhost:3002` for stable (launched with `npm run editor` or the channel launchers; see [Local releases](RELEASES.md)), presenting a 7-stage Neobrutalism editing interface:
 
 1. **Stage 1: Script (`ScriptStage.tsx`)**: Write and edit screenplay narration text in Full Screenplay markdown, interactive Visual Studio beat cards, or Spoken Text view, with automatic Remotion sub-shot compilation and instant multi-provider TTS voiceover generation (Kokoro, Deepgram, Google Cloud TTS, macOS say).
 2. **Stage 2: Story (`StoryStage.tsx`)**: Drag and drop nodes across the 2D infinite spatial canvas, edit card labels, route directed edges, and solve camera zoom anchors, automatically streaming canvas actions to connected coding agents.
@@ -130,8 +130,11 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 
 | Command | Action | Output Artifact |
 | :--- | :--- | :--- |
-| `aideos` | Launches and opens interactive web studio | `http://localhost:3001/` |
-| `aideos exit` | Gracefully stops the local dev server | Terminal output |
+| `aideos` | Launches and opens interactive web studio | `http://localhost:3002/` (stable) or `http://localhost:3001/` (dev); see [Local releases](RELEASES.md) |
+| `aideos-dev` | Launches updating dev studio on reserved dev port | `http://localhost:3001/` |
+| `aideos-stable` | Launches stable studio or copies films into stable | `http://localhost:3002/`; see [Local releases](RELEASES.md) |
+| `aideos version / which` | Shows channel, release tag, commit and checkout path | Terminal output; see [Local releases](RELEASES.md) |
+| `aideos exit` | Gracefully stops the active channel's dev server | Terminal output |
 | `aideos validate` | Runs strict schema & pacing validation | Runsheet & status in terminal |
 | `aideos look brief <film>` | Writes look planning brief answering the 6 look questions | `videos/<film>/design/LOOK_BRIEF.md` |
 | `aideos look check <film> [--json]` | Validates look.json against schema and semantic rules; writes LOOK.md on PASS | `videos/<film>/design/LOOK.md` |
@@ -155,5 +158,7 @@ The Aideos Web Studio runs on `http://localhost:3001` (launched with `npm run ed
 | `aideos connect` | Connects local coding agent via one-time pairing code | Connected agent session |
 | `npm run validate:film <path>` | Standalone invariant validator for arbitrary film manifests | Runsheet & status in terminal |
 | `npm run backend -- mcp` | Starts Model Context Protocol (MCP) server over stdio | MCP stdio interface |
+| `npm run release <version>` | Runs full acceptance and promotes an approved stable release | Promoted tag and stable branch; see [Local releases](RELEASES.md) |
+| `npm run release:setup` | Sets up independent local stable clone and channel launchers | Cloned stable checkout and launchers; see [Local releases](RELEASES.md) |
 
 Reel-cut behavior, delivery modes, timing limits, shot-drop rules and review guidance are documented in [the production pipeline reference](PRODUCTION_PIPELINE.md#reel-cut-delivery).

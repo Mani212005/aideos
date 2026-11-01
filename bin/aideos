@@ -6,9 +6,11 @@
 set -e
 
 # Project resolution precedence (the one place this is documented):
-#   1. The checkout containing the current directory (it or any ancestor holds remotion.config.ts and editor/),
+#   1. Pinned checkout when invoked through a channel launcher (AIDEOS_PINNED_ROOT),
+#      preventing a stable or updating launcher from switching checkouts through cwd.
+#   2. The checkout containing the current directory (it or any ancestor holds remotion.config.ts and editor/),
 #      so working inside another checkout or worktree runs that checkout's code.
-#   2. Otherwise the installation root: the checkout this dispatcher itself lives in, found by following
+#   3. Otherwise the installation root: the checkout this dispatcher itself lives in, found by following
 #      its own symlinks (the global ~/.local/bin/aideos link), so the command works from any directory.
 # There is no other fallback: a stale hardcoded clone must never be run by accident.
 
