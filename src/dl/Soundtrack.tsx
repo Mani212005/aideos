@@ -19,6 +19,9 @@ import {
 
 export { normalizeFilmSoundtrack };
 
+// Default duration in seconds assigned to direct-file sfx without durationSec so their sequences unmount.
+const SFX_CLIP_DURATION = 1;
+
 // Loads the ESM-only frame audio implementation when an authored section first needs it.
 const FrameAudio = React.lazy(async () => ({ default: (await import("@remotion/media")).Audio }));
 
@@ -233,7 +236,8 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
             const mixedEffect = isLibrarySource(sfx);
             const item = mixedEffect ? soundtrackItem(sfx.item, sfx.sha256) : null;
             const sfxSrc = sfx.src || (item ? soundtrackItemSrc(item) : sfx.item);
-            const durationInFrames = item ? Math.max(1, Math.ceil(item.durationSec * effectiveFps)) : undefined;
+            const effectSec = item ? item.durationSec : (sfx.durationSec ?? SFX_CLIP_DURATION);
+            const durationInFrames = Math.max(1, Math.ceil(effectSec * effectiveFps));
             return (
               <Sequence key={`sfx-${idx}-${sfxSrc}`} from={startFrame} durationInFrames={durationInFrames}>
                 <Audio src={staticFile(sfxSrc)} useWebAudioApi={mixedEffect} allowAmplificationDuringRender={mixedEffect}

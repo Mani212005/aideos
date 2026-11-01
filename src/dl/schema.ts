@@ -476,6 +476,8 @@ export const sfxItemSchema = z.object({
   timeSec: z.number().min(0),
   src: z.string().min(1),
   volume: z.number().min(0).max(2).default(1),
+  /** Length of the effect in seconds; bounds its playback so it unmounts when it ends. */
+  durationSec: z.number().positive().optional(),
 });
 
 export const musicTrackSchema = z.object({
@@ -566,6 +568,8 @@ export const soundtrackSfxSchema = z.object({
   src: z.string().optional(),
   /** Volume multiplier gain (default 1). */
   volume: z.number().min(0).max(2).default(1).optional(),
+  /** Length of a direct-file effect in seconds; library effects take theirs from the library item. */
+  durationSec: z.number().positive().optional(),
 });
 
 export const soundtrackMixDefault = {
@@ -611,7 +615,7 @@ export function normalizeFilmSoundtrack(film: {
   soundtrack?: Soundtrack;
   music?: { src: string; volume?: number; duckUnderVoiceover?: boolean };
   audio?: { src: string; trimBefore?: number };
-  sfx?: Array<{ src: string; timeSec: number; volume?: number }>;
+  sfx?: Array<{ src: string; timeSec: number; volume?: number; durationSec?: number }>;
   shots?: Array<{ dur?: number }>;
 }): Soundtrack {
   if (film.soundtrack && film.soundtrack.sections.length > 0) {
@@ -661,6 +665,7 @@ export function normalizeFilmSoundtrack(film: {
     timeSec: s.timeSec,
     gainDb: 0,
     volume: s.volume ?? 1,
+    ...(s.durationSec !== undefined ? { durationSec: s.durationSec } : {}),
   }));
 
   const rawSpeech = film.soundtrack?.speech ?? [];
