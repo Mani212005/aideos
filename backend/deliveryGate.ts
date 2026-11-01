@@ -1,7 +1,7 @@
 /**
  * File Description: The delivery gate. Every delivered video carries music, sound effects and the call to action end card; this names what a film is missing in plain language and refuses delivery until it is complete.
  * Inputs and outputs: Film and delivery format -> a list of missing requirements, or a thrown DeliveryRefusedError naming each one and how to fix it.
- * Used by: backend/pipeline/run.ts, scripts/render_active.ts, backend/geminiReview/render.ts, editor/vite.config.ts, backend/designCheck/designCheck.ts, backend/cli.ts.
+ * Used by: backend/pipeline/run.ts, scripts/render_active.ts, backend/geminiReview/render.ts, editor/vite.config.ts, backend/cli.ts.
  */
 
 import { deliveryTimeline, DELIVERY_CONFIG, type DeliveryConfig, type DeliveryFormat } from "../src/dl/delivery";

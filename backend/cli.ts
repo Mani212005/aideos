@@ -590,7 +590,7 @@ program
     const videosDir = getVideosDir();
     const ids = options.all ? readdirSync(videosDir).filter((d) => existsSync(path.join(videosDir, d, "film.json"))) : films;
     if (ids.length === 0) throw new Error("name at least one film id, or pass --all");
-    const reports = ids.map((id) => checkFilmDesignById(id, { requireDelivery: true }));
+    const reports = ids.map((id) => checkFilmDesignById(id));
     if (options.json) console.log(JSON.stringify(reports, null, 2));
     else for (const r of reports) console.log(formatDesignReport(r));
     if (options.stills) {

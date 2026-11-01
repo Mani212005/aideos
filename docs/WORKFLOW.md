@@ -23,7 +23,7 @@ Aideos is engineered around 4 strict architectural invariants:
 
 ## Compulsory finishing steps (every video)
 
-Three things are part of making every video, not options. Delivery is refused with a plain-language message naming the missing piece when a Long or a Reel lacks any of them (`backend/deliveryGate.ts`, checked by `aideos design check`, `aideos design build` (which warns), `runProduction` before any frame renders, `npm run render`, the all-check render and the Studio export).
+Three things are part of making every video, not options. Delivery is refused with a plain-language message naming the missing piece when a Long or a Reel lacks any of them (`backend/deliveryGate.ts`, `aideos design build` (which warns), `runProduction` before any frame renders, `npm run render`, the all-check render and the Studio export).
 
 1. **Music**: a soundtrack for the whole delivered video. Author it in the `soundtrack` block of `design/design.json`, or let `aideos design build <film>` assign the deterministic default score from the audio library.
 2. **Sound effects**: effects on real visual events (chapter cuts, counters, cards, the end card). Author them in the same block, or let `aideos design build <film>` place the default effects.
