@@ -1,5 +1,8 @@
 /**
- * File Description: Real studio journeys for caption move, edge resize, both scopes, lock, undo, reset and reload in both formats.
+ * File Description: Real studio journeys for caption click-select, drag, edge resize, lock, undo, reset and reload in both formats.
+ * Captain decision 6 (movable captions as a direct object: click selects, drag moves for the whole video): the old
+ * Move-captions mode, scope-tab, wide-outline and locked-drag steps are replaced by click-select-drag steps. The save, undo,
+ * reload, lock-persistence, AI-panel and preview-equals-export (2 px) checks are unchanged.
  * Inputs and outputs: deterministic short narrated film and native Chrome pointer events -> saved independent placements and matching preview/export pixels.
  * Used by: npm run test:journeys and the journeys CI job.
  */
@@ -90,7 +93,15 @@ function film() {
   return result;
 }
 
-// Compares the visible saved card and drag outline with the collision rectangle in composition pixels.
+// Confirms the selection ring hugs the rendered caption card (decision 6: the entire blue box is highlighted).
+async function assertRingHugsCard(page: StudioPage): Promise<void> {
+  const boxes = await page.eval<{ ring: number[]; card: number[] }>(
+    `(() => { const ring = ${previewSelector("[data-caption-ring]")}.getBoundingClientRect(); const card = ${previewSelector("[data-caption-card]")}.getBoundingClientRect(); return { ring: [ring.x, ring.y, ring.width, ring.height], card: [card.x, card.y, card.width, card.height] }; })()`,
+  );
+  for (let i = 0; i < 4; i++)
+    assert.ok(Math.abs(boxes.ring[i] - boxes.card[i]) <= 1, `selection ring must hug the rendered card: ${boxes.ring.join(",")} vs ${boxes.card.join(",")}`);
+}
+// Compares the visible saved card with the collision rectangle in composition pixels and checks the ring hugs it.
 async function assertCardGeometry(
   page: StudioPage,
   format: "long" | "reel",
@@ -98,14 +109,12 @@ async function assertCardGeometry(
 ): Promise<void> {
   const width = format === "long" ? 1920 : 1080;
   const rect = captionCardRect(format, width, format === "long" ? 1080 : 1920, placement);
-  const widths = await page.eval<{ handle: number; card: number }>(
-    `(() => { const frame = ${previewSelector("[data-caption-guides]")}; const handle = ${previewSelector("[data-caption-handle]")}; const card = ${previewSelector("[data-caption-card]")}; return { handle: handle.getBoundingClientRect().width / frame.getBoundingClientRect().width * ${width}, card: card.offsetWidth }; })()`,
-  );
+  const cardWidth = await page.eval<number>(`${previewSelector("[data-caption-card]")}.offsetWidth`);
   assert.equal(rect.w, (placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH) * width);
-  assert.ok(Math.abs(widths.handle - rect.w) <= 1, "drag outline matches collision width");
-  assert.ok(Math.abs(widths.card - rect.w) <= 1, "visible saved card matches collision width");
+  assert.ok(Math.abs(cardWidth - rect.w) <= 1, "visible saved card matches collision width");
+  await assertRingHugsCard(page);
 }
-// Confirms an auto-width placement keeps its content-sized rendering and conservative hit geometry.
+// Confirms an auto-width placement keeps its content-sized rendering and that the ring hugs that visible card.
 async function assertAutoCardGeometry(
   page: StudioPage,
   format: "long" | "reel",
@@ -113,12 +122,9 @@ async function assertAutoCardGeometry(
 ): Promise<void> {
   const width = format === "long" ? 1920 : 1080;
   const rect = captionCardRect(format, width, format === "long" ? 1080 : 1920, placement);
-  const handleWidth = await page.eval<number>(
-    `(() => { const frame = ${previewSelector("[data-caption-guides]")}; const handle = ${previewSelector("[data-caption-handle]")}; return handle.getBoundingClientRect().width / frame.getBoundingClientRect().width * ${width}; })()`,
-  );
   assert.equal(placement.w, undefined);
   assert.equal(rect.w, DEFAULT_CAPTION_PLACEMENT_WIDTH * width);
-  assert.ok(Math.abs(handleWidth - rect.w) <= 1, "auto-width hit target uses the reserved card band");
+  await assertRingHugsCard(page);
 }
 
 // Measures visible caption-word ink within its declared card for a lossy mp4 comparison.
@@ -234,10 +240,20 @@ journey(
         await page.clickButton(format === "long" ? "Wide" : "Reel", {
           exact: false,
         });
-        await page.clickButton("Move captions", { exact: true });
+        // Decision 6: a click on the captions selects them (no mode button) and must not start playback.
         await page.waitFor(
-          `${previewSelector("[data-caption-handle]")}`,
-          "caption move overlay",
+          `${previewSelector("[data-caption-object]")}`,
+          "caption object in the preview",
+        );
+        await drag(page, "[data-caption-object]", 0, 0);
+        await page.waitFor(
+          `${previewSelector("[data-caption-object]")}.getAttribute('aria-pressed') === 'true'`,
+          "click selects the captions",
+        );
+        assert.equal(
+          await page.eval(`!!document.querySelector('button[title="Play video"]')`),
+          true,
+          "clicking the captions selects them and does not start playback",
         );
         assert.equal(
           await page.eval(
@@ -249,7 +265,7 @@ journey(
         assert.equal(
           await page.eval(`getComputedStyle(document.querySelector('[data-ai-editor-panel]')).display`),
           "none",
-          "AI panel folds away only during caption placement",
+          "AI panel folds away only while the captions are selected",
         );
         const before = resolveCaptionPlacement(film(), format);
         await page.waitFor(
@@ -265,32 +281,21 @@ journey(
         assert.equal(lockedCard.phrase, visibleDefaultCard.phrase, "Lock keeps the same active phrase");
         assert.ok(Math.abs(lockedCard.width - visibleDefaultCard.width) <= 1, "Lock preserves the visible auto-width card");
         await assertAutoCardGeometry(page, format, toolbarLocked);
-        await page.clickButton("Reset", { exact: true });
+        await page.clickButton("Default position", { exact: true });
         await saved(page);
         assert.equal(resolveCaptionPlacement(film(), format).source, "default");
-        const scopeCard = await readVisibleCard(page);
-        await page.clickButton("This shot only", { exact: true });
-        await saved(page);
-        const scopedDefault = resolveCaptionPlacement(film(), format, film().shots[0].id);
-        assert.equal(film().shots[0].captionPlacement?.[format]?.w, undefined, "shot scope leaves auto width unset");
-        const scopedCard = await readVisibleCard(page);
-        assert.equal(scopedCard.phrase, scopeCard.phrase, "shot scope keeps the same active phrase");
-        assert.ok(Math.abs(scopedCard.width - scopeCard.width) <= 1, "shot scope preserves the visible auto-width card");
-        await assertAutoCardGeometry(page, format, scopedDefault);
-        await page.clickButton("Reset", { exact: true });
-        await saved(page);
-        await page.clickButton("Whole film", { exact: true });
         // Move above Reel's action-button strip so a saved w=.86 remains within bounds.
         const moveDy = await page.eval<number>(
-          `-${previewSelector("[data-caption-guides]")}.getBoundingClientRect().height * 0.5`,
+          `-${previewSelector("[data-caption-overlay]")}.getBoundingClientRect().height * 0.5`,
         );
-        await drag(page, "[data-caption-handle]", 0, moveDy);
+        await drag(page, "[data-caption-object]", 0, moveDy);
         await saved(page);
         assert.ok(resolveCaptionPlacement(film(), format).y < before.y);
+        assert.equal(film().shots[0].captionPlacement?.[format], undefined, "a drag never writes a shot-only position");
         await page.clickButton("Undo");
         await saved(page);
         assert.equal(resolveCaptionPlacement(film(), format).y, before.y);
-        await drag(page, "[data-caption-handle]", 0, moveDy);
+        await drag(page, "[data-caption-object]", 0, moveDy);
         await saved(page);
         const moved = resolveCaptionPlacement(film(), format);
         assert.equal(film().captionPlacement?.[format]?.w, undefined, "moving an auto-width caption leaves w unset");
@@ -309,24 +314,17 @@ journey(
           resolveCaptionPlacement(film(), format).w! < DEFAULT_CAPTION_PLACEMENT_WIDTH,
           "edge drag narrows the actual card",
         );
-        await page.clickButton("This shot only", { exact: true });
-        await saved(page);
-        const shotId = film().shots[0].id;
-        const whole = film().captionPlacement?.[format];
-        await drag(page, "[data-caption-handle]", 10, -20);
-        await saved(page);
-        assert.deepEqual(film().captionPlacement?.[format], whole);
-        assert.ok(film().shots[0].captionPlacement?.[format]);
-        assert.equal(film().shots[1].captionPlacement?.[format], undefined);
+        // Decision 4: Lock only protects the captions from agents and rebuilds; the owner can still drag them.
         await page.clickButton("Lock", { exact: true });
         await saved(page);
-        const locked = resolveCaptionPlacement(film(), format, shotId);
-        await drag(page, "[data-caption-handle]", 35, -30);
+        const locked = resolveCaptionPlacement(film(), format);
+        assert.equal(locked.locked, true);
+        await drag(page, "[data-caption-object]", 0, 30);
         await saved(page);
-        assert.deepEqual(
-          resolveCaptionPlacement(film(), format, shotId),
-          locked,
-        );
+        const draggedWhileLocked = resolveCaptionPlacement(film(), format);
+        assert.equal(draggedWhileLocked.locked, true, "the lock survives an owner drag");
+        assert.ok(draggedWhileLocked.y !== locked.y, "an owner can still drag locked captions");
+        assert.equal(film().shots[0].captionPlacement?.[format], undefined, "no shot-only position appears");
         console.info("[caption-journey] reload", format);
         await page.reload();
         await page.waitFor(
@@ -334,28 +332,26 @@ journey(
           "reloaded preview",
         );
         if (format === "reel") await page.clickButton("Reel");
-        await page.clickButton("Move captions", { exact: true });
+        await page.clickButton("Captions", { exact: true });
         await page.waitFor(
           `document.querySelector('[aria-label="Caption placement locked"]')`,
           "persisted lock",
         );
         await page.clickButton("Unlock", { exact: true });
         await saved(page);
-        await page.clickButton("Reset", { exact: true });
+        await page.clickButton("Default position", { exact: true });
         await saved(page);
         assert.equal(film().shots[0].captionPlacement?.[format], undefined);
-        await page.clickButton("Whole film", { exact: true });
-        await page.clickButton("Reset", { exact: true });
-        await saved(page);
         assert.equal(film().captionPlacement?.[format], undefined);
-        // Leave a real placement for the independent native Player/export comparison.
-        await drag(page, "[data-caption-handle]", 0, -45);
+        // Leave a real placement for the independent native Player/export comparison. A resize now starts from the
+        // visible card, so widening keeps a card wide enough for the Player page and the export to wrap identically.
+        await drag(page, "[data-caption-object]", 0, -45);
         await saved(page);
-        await drag(page, 'button[aria-label="Resize caption right edge"]', -40, 0);
+        await drag(page, 'button[aria-label="Resize caption right edge"]', 300, 0);
         await saved(page);
         await page.clickButton("Lock", { exact: true });
         await saved(page);
-        await page.clickButton("Move captions", { exact: true });
+        await page.clickButton("Captions", { exact: true });
         await page.waitFor(
           `document.querySelector('input[placeholder^="Ask AI to edit"]')`,
           "AI editor expansion restored after caption placement",

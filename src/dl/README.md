@@ -78,8 +78,8 @@ vertical space in a reel. The alternative is authoring a second canvas, which
 
 The shared caption geometry is `captionPlacement.ts`. Film and shot placements are optional and
 independent in `long` and `reel`; absence preserves the existing bottom card with zero pixel changes.
-An absent `w` keeps the legacy shrink-to-content card, including after Lock, movement or switching
-to **This shot only**. The editor outline and collision checks reserve the full 86% default band.
+An absent `w` keeps the legacy shrink-to-content card, including after Lock or movement. Collision checks
+reserve the full 86% default band; the Studio selection ring hugs the card that was actually rendered.
 Explicit `w` values from 0 through 1 are clamped to the format's minimum and maximum. An omitted
 `w` remains auto-sized. Existing saved widths remain fixed, including an explicit width of 86%.
 `captionPhrases.ts` fixes each phrase's placement at its first word and splits a narrowed card
@@ -90,14 +90,24 @@ graph art because its 3D projection is deliberately out of scope for the collisi
 of the placed position (where Review checks the placed card) remains the safety net for CanvasGraph films;
 scene-art and posed-character collision checks remain active.
 
-In Edit, choose Wide or Reel, then **Move captions**. Drag the card body to move it and an edge handle
-to resize it. **Whole film** changes that format's default; **This shot only** creates an exception
-at the playhead. A drop saves one undo step. **Lock** pins the chosen entry, **Unlock** enables edits,
-and **Reset** removes that entry. Resetting a shot restores the film-wide position. Studio saves are
-trusted owner writes and can move locked captions; locks prevent checked agent edits and rebuilds.
+In Edit, choose Wide or Reel and click the captions in the preview (or the toolbar **Captions** button).
+The captions are an object, not a mode: hovering draws a ring, a click selects them (pausing first if the
+video is playing) and rings the whole rendered card with a handle on each side, and a drag moves them.
+A click on empty video deselects, and Esc does too. One position applies to the whole video in that format;
+Wide and Reel keep independent positions and **Copy to Wide** / **Copy to Reel** writes one to the other. A drop saves one
+undo step. Snap guides and the unsafe areas of the frame appear only while dragging, snapping within 6 screen
+pixels; hold Alt to bypass. An auto-width card can move sideways only as far as its reserved band allows
+(up and down are free), and the strip says so: narrow the card with its side handles to move it sideways.
+The strip under the preview also offers **Center**, **Default position** (back to the bottom position and
+automatic width), **Lock** and, when a shot has its own position written by an agent, **Follow whole video**.
+The Studio no longer creates per-shot positions; existing ones still render and can be cleared. **Lock** only
+stops checked agent edits and rebuilds: Studio saves are trusted owner writes, so you can still drag a
+locked caption.
 
-Arrow keys nudge by 0.5%, Shift increases the step to 5%, Alt + Left/Right changes width, and L toggles
-lock. Alt bypasses snapping during a pointer gesture. Esc cancels the current gesture.
+Tab focuses the captions and Enter selects them. Arrow keys nudge by 0.5% (bursts merge into one undo
+step), Shift increases the step to 5%, Alt + Left/Right changes width, and L toggles lock. Esc cancels
+a drag. Touch uses the same path: tap selects, a press and move drags after a 4 px slop.
+Captions are measured with `@remotion/layout-utils` `measureText`, the same measurer the renderer uses.
 
 The same `carryCaptionPlacement` helper carries an existing film's `endCard.enabled` setting
 through rebuilds. Omitted settings default to enabled; Studio and `aideos end-card <slug> on|off`
