@@ -1069,7 +1069,7 @@ export function ScriptEditor({
                     <h4 className="text-sm font-bold text-ink">
                       Generated Voiceover Audio
                     </h4>
-                    <p className="text-xs text-ink-soft font-mono">
+                    <p className="text-xs text-ink-soft font-mono break-all">
                       videos/{film.id}/voiceover.wav ({formatTime(duration)}) ·{" "}
                       {spokenWords.length} spoken words
                     </p>
@@ -1236,7 +1236,9 @@ export function ScriptEditor({
               </div>
               <div>
                 • <strong>Location:</strong>{" "}
-                <code className="text-ink">videos/{film.id}/voiceover.wav</code>
+                <code className="text-ink break-all">
+                  videos/{film.id}/voiceover.wav
+                </code>
               </div>
             </div>
           </div>
