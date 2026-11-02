@@ -19,6 +19,6 @@ repo root), for example `AIDEOS_VIDEOS_DIR=~/aideos-videos`. If you do, also poi
 symlink at it so Remotion's `staticFile("videos/...")` finds your media.
 
 A fresh clone has no packages here and falls back to `examples/hello-scene`, a tiny scene film that
-renders out of the box. Generated, gitignored files derived from your packages (`src/dl/films/*.ts`,
+opens in studio and editor out of the box. Generated, gitignored files derived from your packages (`src/dl/films/*.ts`,
 `src/dl/activeFilm.ts`, `src/dl/scene/assets/svgSources.generated.ts`) are rebuilt by
 `npm run ensure:generated`, which `npm install` and the test, lint, studio and render scripts run for you.

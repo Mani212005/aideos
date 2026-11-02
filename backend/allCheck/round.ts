@@ -14,7 +14,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
-import { reviewPairwise, reviewVideo as geminiReview, formatReviewSummary, renderVideoForSlug } from "../geminiReview";
+import { reviewPairwise, reviewVideo as geminiReview, formatReviewSummary, renderVideoForSlug, assertSlugDeliverable } from "../geminiReview";
 import type { GeminiReviewReport, PairwiseRunReport } from "../geminiReview";
 import { extractStill, probeVideo } from "../review/media";
 import { reviewVideo as measuredReview } from "../review/review";
@@ -44,7 +44,11 @@ export interface RoundDeps {
 // The real tools.
 export function realRoundDeps(onProgress: (message: string) => void): RoundDeps {
   return {
-    render: (slug, format) => renderVideoForSlug(slug, format),
+    render: (slug, format) => {
+      // The final videos come from this render, so refuse before it starts when music, sound effects or the end card is missing.
+      assertSlugDeliverable(slug, format);
+      return renderVideoForSlug(slug, format);
+    },
     measure: (req) => measuredReview({ target: req.target, film: req.film, words: req.words, outDir: req.outDir, onProgress }),
     gemini: (video, opts) => geminiReview(video, { filmPath: opts.filmPath, reviewContextPath: opts.reviewContextPath, onProgress }),
     pairwise: (video, reference) => reviewPairwise(video, reference, { onProgress }),

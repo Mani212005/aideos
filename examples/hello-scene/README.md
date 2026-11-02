@@ -1,5 +1,5 @@
 <!--
-File Description: Explains the hello-scene example package, the tiny committed scene film that renders on a fresh clone.
+File Description: Explains the hello-scene example package, the tiny committed scene film that opens in studio and editor on a fresh clone.
 -->
 
 # hello-scene
@@ -11,6 +11,6 @@ in git: your own videos live in `videos/` (gitignored) or wherever `AIDEOS_VIDEO
 - `visuals/`: three static SVGs (backdrop, three nodes, a query dot) that the scene's clips animate by id.
 
 On a fresh clone `npm install` generates the files Remotion needs from this package, so
-`npm run studio` and `npm run editor` open it straight away, and `npm run render` renders it.
+`npm run studio` and `npm run editor` open it straight away.
 It also anchors `npm run smoke:studio`. Check it with `npm run design:check -- hello-scene`.
 Copy the folder to `videos/<your-slug>/` (and change `id`) to start your own.

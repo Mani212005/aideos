@@ -315,16 +315,22 @@ program
 
 program
   .command("end-card")
-  .description("Turn the automatic end card on or off for one existing film")
+  .description("The call to action end card is compulsory on every video; \"on\" re-stamps it, \"off\" is refused")
   .argument("<slug>", "film package slug")
-  .argument("<state>", "on or off")
+  .argument("<state>", "on (off is no longer allowed)")
   .action(async (slug: string, state: string) => {
-    if (state !== "on" && state !== "off") throw new Error('end-card state must be "on" or "off"');
+    if (state === "off") {
+      throw new Error(
+        "The end card is compulsory: every video ends with the call to action, so it cannot be switched off. " +
+          "Change its wording or length in aideos.config.json (endCard) instead.",
+      );
+    }
+    if (state !== "on") throw new Error('end-card state must be "on"; the end card cannot be turned off');
     const { readFilm, writeFilm } = await import("./pipeline/filmStore");
     const film = readFilm(slug);
     if (!film) throw new Error(`film "${slug}" was not found`);
-    writeFilm(slug, { ...film, endCard: { ...film.endCard, enabled: state === "on" } }, { owner: true });
-    console.log(`End card ${state} for ${slug}`);
+    writeFilm(slug, { ...film, endCard: { ...film.endCard, enabled: true } }, { owner: true });
+    console.log(`End card on for ${slug}`);
   });
 
 export interface DirectCliOptions {
@@ -544,7 +550,7 @@ program
 
 program
   .command("design-build")
-  .description("Compile videos/<film>/design/design.json into the film; writes it only when the design check passes")
+  .description("Compile videos/<film>/design/design.json into the film; writes it only when the design check passes, then completes the compulsory music and sound effects with the default soundtrack")
   .argument("<film>", "film id under videos/")
   .option("--source <who>", "who made the design: agent, server-model or hand-built", "hand-built")
   .action(async (film: string, options: { source: string }) => {
@@ -559,6 +565,12 @@ program
       if (current) {
         const scored = await prepareDefaultSoundtrack(current, "long");
         if (scored !== current) writeFilm(film, scored);
+        // Music, sound effects and the end card are compulsory: say now, not at render time, when the film is not deliverable.
+        const { deliveryGaps } = await import("./deliveryGate");
+        const gaps = deliveryGaps(scored, "long");
+        if (gaps.length > 0) {
+          console.error(`Warning: the film was written but is not deliverable yet, and delivery will refuse it:\n${gaps.map((gap) => `  - ${gap.message}`).join("\n")}`);
+        }
       }
     }
     console.log(formatBuildStatus(film, status));

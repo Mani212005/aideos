@@ -109,6 +109,6 @@ step), Shift increases the step to 5%, Alt + Left/Right changes width, and L tog
 a drag. Touch uses the same path: tap selects, a press and move drags after a 4 px slop.
 Captions are measured with `@remotion/layout-utils` `measureText`, the same measurer the renderer uses.
 
-The same `carryCaptionPlacement` helper carries an existing film's `endCard.enabled` setting
-through rebuilds. Omitted settings default to enabled; Studio and `aideos end-card <slug> on|off`
-are owner paths for changing it.
+The same `carryCaptionPlacement` helper carries an existing film's legacy `endCard` entry
+through rebuilds. The end card is compulsory on every delivered video (turning it off is refused;
+see [Compulsory finishing steps](../../docs/WORKFLOW.md#compulsory-finishing-steps-every-video)).

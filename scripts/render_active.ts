@@ -13,6 +13,7 @@ import { resolvePackageDir } from "../src/dl/videoPackageLoader";
 import { readFilm } from "../backend/pipeline/filmStore";
 import { masterAudio, writeDescriptionCredits } from "../backend/masterAudio";
 import { reelForRender } from "../backend/reelCut/store";
+import { assertDeliverable } from "../backend/deliveryGate";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 
@@ -30,6 +31,14 @@ function main(): void {
 
   const pkgDir = resolvePackageDir(activeFilm);
   const film = composition === "Reel" ? reelForRender(activeFilm) : readFilm(activeFilm);
+  if (film) {
+    try {
+      assertDeliverable([{ film, format: formatSlug as "long" | "reel" }]);
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : String(err));
+      process.exit(1);
+    }
+  }
   const rendersDir = path.join(pkgDir, "renders");
   fs.mkdirSync(rendersDir, { recursive: true });
 

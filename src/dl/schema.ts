@@ -570,6 +570,8 @@ export const soundtrackSfxSchema = z.object({
   volume: z.number().min(0).max(2).default(1).optional(),
   /** Length of a direct-file effect in seconds; library effects take theirs from the library item. */
   durationSec: z.number().positive().optional(),
+  /** Set when the default scorer placed this effect (backend/defaultSoundtrack.ts); it is recomputed on every build, never owner data. */
+  generated: z.boolean().optional(),
 });
 
 export const soundtrackMixDefault = {
@@ -610,6 +612,18 @@ export type SoundtrackMix = z.infer<typeof soundtrackMixSchema>;
 export type SoundtrackSfx = z.infer<typeof soundtrackSfxSchema>;
 export type Soundtrack = z.infer<typeof soundtrackSchema>;
 
+// Maps legacy file-backed `film.sfx` entries into soundtrack effects.
+function legacySfxOf(sfx: Array<{ src: string; timeSec: number; volume?: number; durationSec?: number }> | undefined): SoundtrackSfx[] {
+  return (sfx ?? []).map((s) => ({
+    item: s.src,
+    src: s.src,
+    timeSec: s.timeSec,
+    gainDb: 0,
+    volume: s.volume ?? 1,
+    ...(s.durationSec !== undefined ? { durationSec: s.durationSec } : {}),
+  }));
+}
+
 // Normalizes legacy music, audio, and sfx fields or existing soundtrack into a unified Soundtrack structure.
 export function normalizeFilmSoundtrack(film: {
   soundtrack?: Soundtrack;
@@ -635,7 +649,8 @@ export function normalizeFilmSoundtrack(film: {
         maxTruePeakDb: film.soundtrack.mix?.maxTruePeakDb ?? -1,
         masterGainDb: film.soundtrack.mix?.masterGainDb ?? 0,
       },
-      sfx: film.soundtrack.sfx ?? [],
+      // Legacy effects keep playing under authored sections when the soundtrack names none of its own.
+      sfx: film.soundtrack.sfx?.length ? film.soundtrack.sfx : legacySfxOf(film.sfx),
       credits: film.soundtrack.credits ?? [],
     };
   }
@@ -659,14 +674,7 @@ export function normalizeFilmSoundtrack(film: {
       ]
     : [];
 
-  const legacySfx: SoundtrackSfx[] = (film.sfx ?? []).map((s) => ({
-    item: s.src,
-    src: s.src,
-    timeSec: s.timeSec,
-    gainDb: 0,
-    volume: s.volume ?? 1,
-    ...(s.durationSec !== undefined ? { durationSec: s.durationSec } : {}),
-  }));
+  const legacySfx = legacySfxOf(film.sfx);
 
   const rawSpeech = film.soundtrack?.speech ?? [];
 
@@ -881,7 +889,7 @@ export const filmBaseSchema = z.object({
    * mix loudness targets, and description credits (Decision D6 and Report Section 4.9).
    */
   soundtrack: soundtrackSchema.optional(),
-  /** Per-film delivery setting. Omit or set true to use the automatic end card; false turns it off. */
+  /** Legacy per-film switch, kept so old films still parse. Ignored: the end card is compulsory (src/dl/delivery.ts). */
   endCard: z.object({ enabled: z.boolean() }).strict().optional(),
   /**
    * The end card's spoken line, synthesized once in this film's own narration voice. Derived data:

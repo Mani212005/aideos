@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { bundle } from "@remotion/bundler";
 import { openBrowser, renderStill, selectComposition } from "@remotion/renderer";
+import { audioLibraryBundleOptions } from "./audioLibraryOverride.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -22,6 +23,7 @@ async function main() {
     const serveUrl = await bundle({
       entryPoint: path.join(ROOT, "src/index.ts"),
       outDir: path.join(work, "bundle"),
+      ...audioLibraryBundleOptions(),
       ...(request.publicDir ? { publicDir: request.publicDir } : {}),
     });
     const chromiumOptions = { gl: request.gl };

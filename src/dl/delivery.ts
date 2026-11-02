@@ -1,11 +1,11 @@
 /**
  * File Description: The single source of each format's delivered length: the story (the film's own
- * timeline) plus the optional end card, with the card's span, its spoken
+ * timeline) plus the compulsory end card, with the card's span, its spoken
  * line's word timings and the reel length budget. Uses the committed `endCard` and `reel` config
- * defaults with the film's optional end-card override. Pure and browser safe (no Node imports), so Remotion, the studio
+ * defaults; a film cannot opt out of the card. Pure and browser safe (no Node imports), so Remotion, the studio
  * preview, the pipeline, review and gemini facts all agree on one number.
  * Inputs and outputs: Film manifest, format and optional prebuilt timeline -> DeliveryTimeline (story frames, card span, total frames, card words).
- * Used by: src/Root.tsx, src/dl/runtime.ts, src/dl/Video.tsx, src/dl/Film.tsx, src/dl/EndCard.tsx, editor/src/screens/EditStage.tsx, editor/src/App.tsx, backend/aideosConfig.ts, backend/endCard/voice.ts, backend/pipeline/run.ts, backend/review/source.ts, backend/geminiReview/facts.ts.
+ * Used by: src/Root.tsx, src/dl/runtime.ts, src/dl/Video.tsx, src/dl/Film.tsx, src/dl/EndCard.tsx, editor/src/screens/EditStage.tsx, editor/src/App.tsx, backend/aideosConfig.ts, backend/endCard/voice.ts, backend/pipeline/run.ts, backend/review/source.ts, backend/geminiReview/facts.ts, backend/deliveryGate.ts.
  */
 
 import { z } from "zod";
@@ -18,7 +18,7 @@ export type DeliveryFormat = "long" | "reel";
 
 const endCardConfigSchema = z
   .object({
-    /** The template's global switch. The per-video switch plugs in through `endCardEnabledFor`. */
+    /** The template's global switch. A film has no switch of its own: delivery refuses a card-less video (backend/deliveryGate.ts). */
     enabled: z.boolean().default(true),
     /** Seconds the card holds after the story, per format. */
     durationSec: z
@@ -106,9 +106,9 @@ export function formatForSize(width: number, height: number): DeliveryFormat {
   return width < height ? "reel" : "long";
 }
 
-// Whether this film carries the end card, respecting both the global config and its per-film override.
-export function endCardEnabledFor(film: Film, config: DeliveryConfig = DELIVERY_CONFIG): boolean {
-  return config.endCard.enabled && film.endCard?.enabled !== false;
+// Whether this film carries the end card: always, unless the committed template switch is off. The old per-film `endCard.enabled: false` is ignored because every video has the card.
+export function endCardEnabledFor(_film: Film, config: DeliveryConfig = DELIVERY_CONFIG): boolean {
+  return config.endCard.enabled;
 }
 
 // Seconds the end card holds in one format, or 0 when this film has no card.

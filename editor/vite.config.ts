@@ -34,6 +34,7 @@ import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } fr
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
+import { assertDeliverable } from '../backend/deliveryGate.ts'
 import { synthesizeVoiceover, VoiceSynthesisError, readContainerMemoryLimit, sayToWav } from '../backend/voiceSynthesis.ts'
 import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
 import { transcribe, writeImportWords } from '../backend/transcribe.ts'
@@ -853,6 +854,14 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 endCardNotice = endCard.notice;
               } catch (err) {
                 endCardNotice = `end card line could not be attached (${err instanceof Error ? err.message : String(err)}); the card stays silent`;
+              }
+
+              // Every delivered video carries music, sound effects and the end card: refuse before rendering.
+              try {
+                assertDeliverable([{ film, format: format === 'reel' ? 'reel' : 'long' }]);
+              } catch (err) {
+                sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) });
+                return;
               }
 
               // Enforce rule: Don't render video till B-roll is complete and footage is retrieved
@@ -2679,8 +2688,20 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
       });
 }
 
+// Tests cache a synthetic audio library (AIDEOS_AUDIO_LIBRARY): serve that manifest in place of the committed audio/library.json the mixer imports. A no-op when unset.
+const audioLibraryOverride = process.env.AIDEOS_AUDIO_LIBRARY?.trim()
+function audioLibraryOverridePlugin(): Plugin {
+  return {
+    name: 'aideos-audio-library-override',
+    enforce: 'pre',
+    resolveId(source) {
+      return audioLibraryOverride && /audio\/library\.json$/.test(source) ? path.resolve(audioLibraryOverride) : null
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), filmApiPlugin()],
+  plugins: [react(), filmApiPlugin(), audioLibraryOverridePlugin()],
   publicDir: path.resolve(__dirname, '../public'),
   server: {
     port: Number(process.env.PORT) || releaseChannel(path.resolve(__dirname, '..')).port,
@@ -2691,7 +2712,7 @@ export default defineConfig({
     // Host it does not know with a 403, so name the hosting domains; AIDEOS_ALLOWED_HOSTS adds more.
     allowedHosts: ['.onrender.com', ...(process.env.AIDEOS_ALLOWED_HOSTS || '').split(',').map((h) => h.trim()).filter(Boolean)],
     fs: {
-      allow: ['..']
+      allow: ['..', ...(audioLibraryOverride ? [path.dirname(path.resolve(audioLibraryOverride))] : [])]
     },
     watch: {
       // Saving a film rewrites its generated module and package manifest. Those are data, not

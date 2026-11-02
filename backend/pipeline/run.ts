@@ -50,6 +50,7 @@ import {
 } from "./filmStore";
 import { analyseAudio, contactSheet, describeVideo, renderFormat, FORMAT_SPECS } from "./render";
 import { masterAudio, writeDescriptionCredits } from "../masterAudio";
+import { assertDeliverable } from "../deliveryGate";
 import { checkRenderDiskBudget } from "./renderDiskBudget";
 import {
   PRODUCTION_STAGES,
@@ -759,6 +760,9 @@ export async function runProduction(
         // repository pointing at a film nothing ever rendered.
         ensureRetimedAudio(assembled);
 
+        // The delivered cuts must all carry music, sound effects and the end card before any frame is rendered.
+        assertDeliverable(formats.map((format) => ({ film: format === "reel" ? reelForRender(slug) : assembled, format })));
+
         const produced: RenderedOutput[] = [];
         for (const format of formats) {
           const outputFilm = format === "reel" ? reelForRender(slug) : assembled;
@@ -770,7 +774,7 @@ export async function runProduction(
           const outPath = request.outDir ? path.join(outDir, `${slug}-${format}.mp4`) : path.join(outDir, `${format}.mp4`);
           // Remotion holds every frame of a format in the temp dir until it stitches them, so the
           // guard renders a few real frames, measures them and refuses only a render that cannot fit.
-          // The whole delivered video: the story plus this format's end card when enabled.
+          // The whole delivered video: the story plus this format's compulsory end card.
           const frameRange: [number, number] = request.renderFrames ?? [0, deliveryTimeline(outputFilm, format).totalFrames - 1];
           emit("render", "running", `measuring ${format} frame sizes for the disk budget`);
           await checkRenderDiskBudget({ film: outputFilm, format, range: frameRange, dirs: [os.tmpdir(), outDir], browserExecutable: request.browserExecutable });

@@ -8,6 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
+import { audioLibraryBundleOptions } from "../pipeline/audioLibraryOverride.mjs";
 import { ensureBrowser, openBrowser, renderFrames, renderStill, selectComposition, type HeadlessBrowser } from "@remotion/renderer";
 import { ensureGenerated, setActiveFilm } from "../pipeline/generatedFiles";
 import { glFlag, stagePublicDir } from "../pipeline/render";
@@ -47,7 +48,7 @@ export async function openFilm(slug: string, options: { browserExecutable?: stri
   let browser: HeadlessBrowser | undefined;
   try {
     outDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-journey-bundle-"));
-    const serveUrl = await bundle({ entryPoint: path.join(ROOT, "src/index.ts"), outDir, ...(staged ? { publicDir: staged.dir } : {}) });
+    const serveUrl = await bundle({ entryPoint: path.join(ROOT, "src/index.ts"), outDir, ...audioLibraryBundleOptions(), ...(staged ? { publicDir: staged.dir } : {}) });
     const chromiumOptions = { gl: glName() };
     browser = await openBrowser("chrome", { chromiumOptions, browserExecutable: options.browserExecutable });
     const composition = (id: CompositionId) => selectComposition({ serveUrl, id, inputProps: {}, puppeteerInstance: browser!, chromiumOptions });

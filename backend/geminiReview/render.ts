@@ -14,8 +14,15 @@ import { stagePublicDir } from "../pipeline/render";
 import { readFilm, readActiveFilmSource, restoreActiveFilmSource, setActiveFilm } from "../pipeline/filmStore";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { reelForRender } from "../reelCut/store";
+import { assertDeliverable } from "../deliveryGate";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
+
+// Refuses a film that would be delivered without music, sound effects or the end card; an all-check render becomes the final video, so it is held to the same rule as any delivery.
+export function assertSlugDeliverable(slug: string, format: "long" | "reel"): void {
+  const film = format === "reel" ? reelForRender(slug) : readFilm(slug);
+  if (film) assertDeliverable([{ film, format }]);
+}
 
 // Renders the video for a given slug using Remotion CLI.
 export async function renderVideoForSlug(slug: string, format: "long" | "reel" = "long"): Promise<string> {

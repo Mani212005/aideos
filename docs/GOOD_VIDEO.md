@@ -6,6 +6,10 @@ This document is the single source of truth for what makes a good aideos video.
 
 Before you make or change any video: read this document, run deterministic checks with `aideos review <slug>`, and validate through the Gemini 3.8 Flash review with the full background agent check, `aideos all-check <slug>` (or one review of a rendered mp4 with `aideos gemini-review <mp4>`).
 
+## Compulsory finishing steps
+
+Every video, in both formats, has music, sound effects and the call to action end card. They are steps of making a video, not options: delivery is refused with a plain message when any is missing. Author the music and effects in the `soundtrack` block of `design/design.json` or let `aideos design build <film>` assign the default score and effects (run `aideos audio fetch` first). The end card is appended automatically and cannot be switched off. See [Compulsory finishing steps](WORKFLOW.md#compulsory-finishing-steps-every-video).
+
 ## Pass Bar
 No gate fails, total >= 36/48, and every criterion >= 2. Targets are for a 60 to 120 s explainer at 1920x1080.
 Final acceptance requires a Gemini 3.8 Flash review score of 9.0 or higher (out of 10.0) with all 6 hard gates passing (`aideos all-check <slug>` or `aideos gemini-review <mp4>`), verdict ACCEPT, and the captain's own watch.
