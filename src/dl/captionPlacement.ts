@@ -303,7 +303,7 @@ function sameCaptionPlacement(a: CaptionPlacement | undefined, b: CaptionPlaceme
   return !!a && !!b && a.x === b.x && a.y === b.y && a.w === b.w &&
     a.locked === b.locked;
 }
-// Carries owner caption and end-card settings across rebuilds while allowing owner writes to change them.
+// Carries owner caption settings and legacy endCard entry across rebuilds while allowing owner writes to change them.
 export function carryCaptionPlacement(
   previous: Film | null,
   next: Film,
