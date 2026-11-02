@@ -6,6 +6,7 @@
 
 import type { CanvasNode, Film, Shot, CameraAngle } from "./schema";
 import { easeExpo, MS } from "./motion";
+import { holdPushAt, holdPushPeak, type HoldRun } from "./holdPush";
 
 /**
  * ---------------------------------------------------------------------------
@@ -192,6 +193,25 @@ export const shotAt = (timeline: TimedShot[], frame: number): TimedShot => {
 };
 
 /**
+ * The hold a shot's slow push-in rides, as frames: it starts when the shot's own move has landed (at once for a
+ * cut or the first shot) and runs to the shot's last frame. The next move carries the push away by starting
+ * from where it ended, so no hand-back frames are needed here.
+ */
+const shotHoldRun = (timeline: TimedShot[], index: number, moveFrames: number): HoldRun => {
+  const t = timeline[index];
+  const lands = index > 0 && t.shot.move !== "cut" ? t.from + moveFrames : t.from;
+  return { start: Math.min(lands, t.to - 1), end: t.to - 1, travelAfter: 0 };
+};
+
+/** The log-scale push-in a shot has reached at a frame: 0 unless the shot opted into `holdPush`. */
+export const holdPushLogAt = (film: Film, timeline: TimedShot[], index: number, frame: number): number => {
+  const amount = timeline[index].shot.holdPush;
+  if (!amount) return 0;
+  const run = shotHoldRun(timeline, index, (MS.move / 1000) * film.fps);
+  return holdPushAt(run, holdPushPeak(run, amount, film.fps), frame);
+};
+
+/**
  * The camera at a given frame.
  *
  * Move, never cut: every station is reached by a 900ms travel on the expo
@@ -214,6 +234,8 @@ export const camAt = (
   let cam = target;
   if (previous && current.shot.move !== "cut" && frame < current.from + moveFrames) {
     const start = solveCam(lookBox(film, previous.shot), frameSize, previous.shot.zoom);
+    // Leave the previous hold from where its push-in ended, so the move never snaps back first.
+    start.ppu *= Math.exp(holdPushLogAt(film, timeline, previous.index, previous.to - 1));
     const p = easeExpo((frame - current.from) / moveFrames);
     cam = {
       cx: start.cx + (target.cx - start.cx) * p,
@@ -222,7 +244,8 @@ export const camAt = (
     };
   }
 
-  return cam;
+  const push = holdPushLogAt(film, timeline, current.index, frame);
+  return push === 0 ? cam : { ...cam, ppu: cam.ppu * Math.exp(push) };
 };
 
 /**

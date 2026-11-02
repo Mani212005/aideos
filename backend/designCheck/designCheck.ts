@@ -24,7 +24,9 @@ import {
   CAMERA_CUE_LANDING_TOLERANCE_SECONDS,
   MIN_CAMERA_HOLD_SHARE,
   MAX_CAMERA_CONTINUOUS_MOVE_SECONDS,
+  CAMERA_ZOOM_STEP_CEILING,
 } from "../../src/dl/scene/cameraTrack";
+import { holdPushRestStep } from "../../src/dl/holdPush";
 import { parseSvgDocument, walkSvgNodes } from "../../src/dl/scene/svgDocument";
 import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNode";
 import { narrationSupportsVisual, numbersIn } from "../shotVisualCues";
@@ -321,7 +323,7 @@ function checkHonestData(film: Film, findings: DesignFinding[]): void {
 }
 
 /** Largest zoom change allowed in a single frame, as a fraction of the zoom (0.8% a frame is about 24% a second at 30 fps). */
-export const MAX_CAMERA_ZOOM_STEP = 0.008;
+export const MAX_CAMERA_ZOOM_STEP = CAMERA_ZOOM_STEP_CEILING;
 /** Largest camera pan speed allowed, as a fraction of the scene width per second. */
 export const MAX_CAMERA_PAN_WIDTHS = 0.2;
 /** Largest pan acceleration allowed, as a fraction of the scene width per second squared (a stop-and-burst move is several times this). */
@@ -347,6 +349,7 @@ function objectPositionAt(prop: EnvironmentAsset, targetId: string | undefined, 
 // Checks the scene camera keyframes for valid speed limits and motion.
 function checkCamera(scene: Scene, findings: DesignFinding[], targets: DesignCheckContext["cameraTargets"] = []): void {
   if (!scene.camera || !scene.camera.keyframes || scene.camera.keyframes.length === 0) return;
+  const holdPush = scene.camera.holdPush;
   const kfs = [...scene.camera.keyframes].sort((a, b) => a.frame - b.frame);
   if (kfs.length < 2) {
     findings.push({ rule: "camera", severity: "error", where: "scene.camera", message: "declares a camera but has no moves (needs at least two keyframes)." });
@@ -386,7 +389,8 @@ function checkCamera(scene: Scene, findings: DesignFinding[], targets: DesignChe
   // The compiled curve is what the viewer sees: an eased move can stay under the average speed cap and still burst.
   const fps = scene.fps || FPS;
   const sceneW = scene.sceneSize?.w ?? 1920;
-  const stats = measureCameraMotion(compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize ?? { w: sceneW, h: sceneW }), fps);
+  // A declared hold push-in is part of the hold, so the slow creep it makes still counts as the camera at rest.
+  const stats = measureCameraMotion(compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize ?? { w: sceneW, h: sceneW }, fps), fps, holdPush ? holdPushRestStep(fps) : undefined);
   const hint = "Leave `easing` off the keyframes so the camera flows through them, or give the move more frames.";
   if (stats.peakZoomStep > MAX_CAMERA_ZOOM_STEP) {
     findings.push({ rule: "camera", severity: "error", where: "scene.camera", message: `camera zoom changes ${(stats.peakZoomStep * 100).toFixed(2)}% in a single frame, above the ${(MAX_CAMERA_ZOOM_STEP * 100).toFixed(1)}% limit, which reads as a jerk. ${hint}` });
@@ -446,7 +450,9 @@ function checkCarryChangeHolds(film: Film, scene: Scene, plan: LookPlan | undefi
   if (!plan) return;
   const fps = scene.fps || FPS;
   const holdFrames = 2 * fps;
-  const camera = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize ?? { w: 1920, h: 1920 });
+  const camera = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize ?? { w: 1920, h: 1920 }, fps);
+  // A declared hold push-in keeps the subject framed, so its slow zoom is not a failure to hold.
+  const holdZoomDrift = scene.camera?.holdPush ? Math.expm1(scene.camera.holdPush) : 0;
   const shotFrames = new Map<string, { start: number; end: number }>();
   let shotTime = 0;
   for (const shot of film.shots) {
@@ -476,7 +482,7 @@ function checkCarryChangeHolds(film: Film, scene: Scene, plan: LookPlan | undefi
         const zoom = Math.abs(camera[finish].zoom - pose.zoom);
         const targetPos = objectPositionAt(prop, cast.id, finish + i);
         const inFrame = Math.abs(pose.center.x - targetPos.x) <= 540 / pose.zoom && Math.abs(pose.center.y - targetPos.y) <= 540 / pose.zoom;
-        return pan < 0.3 && zoom < 1e-4 && inFrame;
+        return pan < 0.3 && zoom < 1e-4 + holdZoomDrift * camera[finish].zoom && inFrame;
       });
       if (!clips.length) {
         findings.push({ rule: "carry-over", severity: "warning", where, message: `planned state "${change.state ?? change.how}" has no large visible animation on this object during the change shot.` });

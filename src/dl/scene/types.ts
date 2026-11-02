@@ -112,6 +112,8 @@ export interface CameraKeyframe {
 
 export interface CameraTrack {
   keyframes: CameraKeyframe[];
+  /** Opt-in slow push-in over every camera hold, as a fraction of zoom (0.01 to 0.03). Absent means off. */
+  holdPush?: number;
 }
 
 export interface Scene {

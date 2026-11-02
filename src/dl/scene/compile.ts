@@ -202,7 +202,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
   }
 
   // 4. Pre-compile Camera
-  const cameraCurves = compileCameraTrack(scene.camera, totalFrames, scene.sceneSize);
+  const cameraCurves = compileCameraTrack(scene.camera, totalFrames, scene.sceneSize, scene.fps);
 
   // 5. Assemble Per-Frame Compiled Data & Resolve Layers (D5)
 

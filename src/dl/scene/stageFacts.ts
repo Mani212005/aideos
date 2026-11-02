@@ -36,7 +36,7 @@ export function castIdentity(cast: StageCast) {
 
 // Prepares private CPU geometry and evaluators once, then projects the actual posed mesh bounds without WebGL.
 export function prepareStageFacts(scene: Scene, width: number, height: number) {
-  const camera = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize);
+  const camera = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize, scene.fps);
   const entries = (scene.performances ?? []).map((p) => {
     const actor = scene.cast?.find((c) => c.id === p.actor && c.kind === "character");
     const resolved = actor?.kind === "character" ? resolveStageCharacter(actor) : undefined;
