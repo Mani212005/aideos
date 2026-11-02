@@ -1,5 +1,5 @@
 <!--
-File Description: Explains the hello-scene example package, the tiny committed scene film that renders on a fresh clone.
+File Description: Explains the hello-scene example package, the tiny committed scene film that opens in studio and editor on a fresh clone.
 -->
 
 # hello-scene
