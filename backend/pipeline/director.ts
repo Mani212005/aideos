@@ -37,15 +37,6 @@ Write the screenplay as a Claude-style screenplay in markdown:
 - Output ONLY the screenplay markdown. No preamble, no commentary, no surrounding code fence.
 `;
 
-/** The reel hook rule appended to every brief; docs/DIRECTOR_GUIDE.md "Reel hook" is its source and `aideos review` criterion 15 measures it. */
-const REEL_HOOK_RULES = `
-When the film is a reel (a vertical short) or the brief asks for one, its condensed narration follows the reel hook rule:
-- Sentence 1 is a statement of fact or a paradox of 10 to 16 words. No greeting, channel intro or topic announcement ("hey", "welcome", "in this video", "today we").
-- The voice starts at the very start of the film (first word under 0.3 s): the first [NARRATION] beat is the first thing the viewer hears.
-- Sentence 2 or 3 pivots from the claim to the explanation of how or why.
-- The last line is a short twist that recasts the opening claim, not a recap.
-`;
-
 /** Reads docs/DIRECTOR_GUIDE.md so the director's creative brief has exactly one source of truth. */
 function readDirectorGuide(): string {
   return fs.readFileSync(path.join(ROOT, "docs", "DIRECTOR_GUIDE.md"), "utf8");
@@ -53,7 +44,7 @@ function readDirectorGuide(): string {
 
 /** Assembles the system instruction the screenplay-drafting model is given: the director's guide plus the output grammar it must produce. */
 export function buildDirectorSystemInstruction(): string {
-  return `${readDirectorGuide()}\n\n${REEL_HOOK_RULES}\n${SCREENPLAY_FORMAT_SPEC}`;
+  return `${readDirectorGuide()}\n\n${SCREENPLAY_FORMAT_SPEC}`;
 }
 
 /** The real screenplay generator: asks the configured LLM to write the film from the prompt. */
@@ -96,7 +87,7 @@ export interface DraftedScreenplay {
 
 /** Assembles the system instruction for transforming raw prose into a structured Claude screenplay with visual and narration beats. */
 export function buildProseTransformSystemInstruction(): string {
-  return `${readDirectorGuide()}\n\n${REEL_HOOK_RULES}\n${SCREENPLAY_FORMAT_SPEC}\n\nTransformation goal: Transform the provided raw prose into structured scenes, visual directions, on-screen text, and narration beats without losing any spoken content.`;
+  return `${readDirectorGuide()}\n\n${SCREENPLAY_FORMAT_SPEC}\n\nTransformation goal: Transform the provided raw prose into structured scenes, visual directions, on-screen text, and narration beats without losing any spoken content.`;
 }
 
 /** The default generator for transforming prose into a screenplay via the LLM. */
