@@ -25,7 +25,8 @@ aideos review hnsw-explainer                       # slug: reviews every rendere
 aideos review hnsw-explainer --format reel          # explicit format (long or reel)
 aideos review path/to/video.mp4 --film film.json --words voiceover_words.json
 aideos review video.mp4 --words script.json        # narration text only: caption match and number grounding, no timings
-npm run review -- <slug|mp4> [--format long|reel] [--json] [--no-ocr] [--out dir]
+aideos review hnsw-explainer --format reel --pacing-profile reel-fast   # opt-in reel pace window (up to 200 wpm)
+npm run review -- <slug|mp4> [--format long|reel] [--pacing-profile reel-fast] [--json] [--no-ocr] [--out dir]
 ```
 
 Exit code: `0` all gates passed, `1` a gate failed, `2` the review could not run (missing file,
@@ -50,6 +51,31 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 11 | Numbers grounded in narration | OCR numbers vs spoken numbers (digits and number words) | every on-screen number is said |
 | 12 | Loudness and mix | `ebur128` on the delivered MP4; when film soundtrack data is available, isolated music and narration stems over 400 ms audible-speech windows | -18 to -14 LUFS, true peak <= -1 dBFS, and music at least 12 dB below narration (design target 18 dB) |
 | 14 | **Reel delivered length** | video container, audio stream and picture durations | <= 179 s including the end card (measured duration within DELIVERY_CONFIG.reel.maxSec); evaluated on reel reviews |
+| 15 | Reel hook | timed narration words (`punctuated_word` for sentence ends) | first word starts under 0.3 s, first sentence is 10 to 16 words, no greeting or intro opener; evaluated on reel reviews, non-gating |
+
+### Reel hook (criterion 15)
+
+`hook` runs on reel reviews only and never gates. It reads the narration's timed words: the first word's
+start, the number of words up to the first sentence end (`.`, `!` or `?` on a word's `punctuated_word`,
+ignoring abbreviations such as "U.S."), and whether the first sentence opens with a greeting or intro
+("hey", "welcome", "in this video", "today we", "let's talk about", and similar; the list is
+`GREETING_OPENERS` in `backend/review/criteria.ts`). Thresholds are `THRESHOLDS.hook` in
+`backend/review/thresholds.ts`. It is `skipped`, never a pass, without timed narration or when the
+words carry no sentence punctuation (a bare Whisper word list), because the first sentence then cannot be
+measured. The writing rule it enforces is the [Reel hook](DIRECTOR_GUIDE.md#reel-hook) section of the director guide.
+
+The thresholds come from the reference-video study (first word at 0.0 s, 10 to 16 word opening
+statements), not from the three calibration videos, which are long cuts the check never runs on. Re-measure
+on real reels before changing a value.
+
+### Reel pacing profile (opt-in)
+
+Criterion 9 keeps its 120 to 180 words per minute window for every review. A reel review may opt into
+the `reel-fast` profile (`--pacing-profile reel-fast`, or `pacingProfile` on a `ReviewRequest`), which
+raises only the upper bound to 200 words per minute (the study measured references at 192 and 202 wpm).
+The lower bound is unchanged, the profile is ignored on a long review, and a report that used it records
+`pacingProfile` in the pacing metrics and the window in its thresholds. Profiles live in
+`THRESHOLDS.pacingProfiles`.
 
 A character film (Three stage) is measured in the reviewed output's own crop: a cast member is on
 stage when at least half of its projected posed box (outline included) lies inside that output, a
@@ -80,6 +106,16 @@ the review rubric keeps its wider -18 to -14 LUFS acceptance window.
 - **Camera is not phase correlation.** A static dot grid and HUD dominate global correlation and hide
   every real camera move, so the camera comes from film data. A foreign mp4 reviewed without
   `--film` reports the camera as `skipped`.
+
+### Trust a pixel-derived reference metric only after a second method
+
+A metric measured from pixels (camera motion, ink coverage, stillness, contrast, edge density) is a
+hypothesis until a second, different measurement method agrees with it. Do not put it into a style target,
+a look brief or a threshold on one pass. The reference study's first camera tool called a video 80% still;
+a second method on the same frames found 65% of it moving, and a style target built from the first answer
+would have encoded a wrong rule. This is the same lesson as the two design constraints above (global phase
+correlation hid every real camera move). Confirm with a method that fails differently (film data against
+pixels, a multi-tile sub-pixel correlation with captions masked against a global one) and record both numbers.
 
 ### Calibration
 

@@ -41,6 +41,14 @@ full camera/pacing rubric honestly. It is engineering evidence, not an accepted 
 | 11 | **Accuracy and honesty** | every number and label on screen is said in the narration or marked "illustrative"; computed visuals come from the real computation | zero ungrounded | deterministic (existing `honest-data` rule extended to SVG text via OCR) + judge for semantic truth |
 | 12 | **Loudness and mix** | delivered audio mastering target: -16 LUFS integrated; review pass range: -18 to -14 LUFS; true peak <= -1 dBTP; music minimum gap must be >= 12 dB under narration (design target: 18 dB) | pass | review renders isolated narration and music stems through the production mixer and compares aligned 400 ms stereo RMS windows where narration RMS is above -40 dB. A minimum gap below 12 dB fails. A soundtrack without music returns absent and is not a music-gap failure; no audible speech windows or unavailable/failed stem measurement returns unavailable and fails. Without an audio track, criterion 12 is skipped. See [review measurements](REVIEW.md#4-the-12-criterion-rubric) |
 
+### Reel supplement
+
+Applies to the 9:16 reel only, on top of the rubric above. Writing guidance is in the [Reel hook](DIRECTOR_GUIDE.md#reel-hook) rules; the measurement is in [REVIEW.md](REVIEW.md#reel-hook-criterion-15).
+
+| # | Criterion | How to measure | Pass target | Method |
+|---|---|---|---|---|
+| 15 | **Reel hook** | the first spoken word's start, the word count of the first sentence, and its opening words | first word starts under 0.3 s; first sentence is 10 to 16 words; no greeting or intro opener; non-gating | deterministic (word timings and sentence punctuation); skipped when either is missing |
+
 ## Anchors for scoring (0-4)
 - 0: Absent
 - 2: Partly

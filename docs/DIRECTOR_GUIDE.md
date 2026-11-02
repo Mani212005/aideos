@@ -19,6 +19,7 @@ You have complete creative autonomy. The browser canvas is your viewport; the de
 - **Rhythm & Breathing**: Film is music for the eyes. Alternate between tight analytical focus shots and wide canvas camera pull-backs to let the viewer breathe and re-anchor the big picture.
 - **Move, focus, hold**: Each camera move should read as a deliberate turn toward the object the narration is about to discuss. Arrive about one beat before its cue word, name that object as the pose's focus, then hold on it for about 3 to 5 seconds. Avoid continuous drift between subjects.
 - **Readable carry-over**: When a carried object changes, plan a distinct resulting state and a substantial visible transformation. Finish the change while the camera holds on that object, then keep it framed and readable for at least about 2 seconds.
+- **Reel hook**: A reel (9:16 short) opens on a measurable hook, not a generic high-energy opening; see [Reel hook](#reel-hook) below.
 - **Good Video Standard**: Every film must satisfy the authoritative quality rubric in [`docs/GOOD_VIDEO.md`](GOOD_VIDEO.md) (persistent stage, carry-over with transformation, visible cause and effect, camera movement, captions at their placed position with bottom as the default, and honest data).
 
 ---
@@ -39,6 +40,26 @@ While your artistic choices are completely free, your screenplay must respect th
      or stage-covering card as a device.
    - Limit visual density to at most 3 focal accents per frame to avoid cognitive overload.
 4. **Audio Sync**: Every shot duration (`dur`) locks to the measured narration audio timing (+-50ms).
+
+---
+
+## Reel hook
+
+The reel's condensed narration (the reel cut, `aideos reel brief`) follows these rules. They are craft
+measured from reference shorts, never a channel's identity: do not copy a creator's script, characters,
+shots or voice.
+
+1. **Sentence 1 is a statement of fact or a paradox**, 10 to 16 words, a claim a viewer wants resolved
+   ("Honey found in Egyptian tombs is still edible after three thousand years."). No greeting, no
+   channel or topic introduction ("hey", "welcome", "in this video", "today we").
+2. **The voice starts at the very start of the film**: the first word begins under 0.3 s, with no
+   silent title or logo lead-in before it.
+3. **Pivot to the explanation**: sentence 2 or 3 turns from the claim to how or why ("Here is what
+   happens inside"), and the picture starts showing the mechanism there.
+4. **End on a short twist**: the last line is a few words that recast the opening claim, not a recap.
+
+`aideos review` checks rules 1 and 2 on the reel as criterion 15, `hook` (see [REVIEW.md](REVIEW.md)).
+The pivot and the twist are judged by the model review.
 
 ---
 
