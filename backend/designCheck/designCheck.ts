@@ -24,6 +24,7 @@ import {
   CAMERA_CUE_LANDING_TOLERANCE_SECONDS,
   MIN_CAMERA_HOLD_SHARE,
   MAX_CAMERA_CONTINUOUS_MOVE_SECONDS,
+  CAMERA_ZOOM_STEP_CEILING,
 } from "../../src/dl/scene/cameraTrack";
 import { parseSvgDocument, walkSvgNodes } from "../../src/dl/scene/svgDocument";
 import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNode";
@@ -321,7 +322,7 @@ function checkHonestData(film: Film, findings: DesignFinding[]): void {
 }
 
 /** Largest zoom change allowed in a single frame, as a fraction of the zoom (0.8% a frame is about 24% a second at 30 fps). */
-export const MAX_CAMERA_ZOOM_STEP = 0.008;
+export const MAX_CAMERA_ZOOM_STEP = CAMERA_ZOOM_STEP_CEILING;
 /** Largest camera pan speed allowed, as a fraction of the scene width per second. */
 export const MAX_CAMERA_PAN_WIDTHS = 0.2;
 /** Largest pan acceleration allowed, as a fraction of the scene width per second squared (a stop-and-burst move is several times this). */
@@ -347,6 +348,7 @@ function objectPositionAt(prop: EnvironmentAsset, targetId: string | undefined, 
 // Checks the scene camera keyframes for valid speed limits and motion.
 function checkCamera(scene: Scene, findings: DesignFinding[], targets: DesignCheckContext["cameraTargets"] = []): void {
   if (!scene.camera || !scene.camera.keyframes || scene.camera.keyframes.length === 0) return;
+  const holdPush = scene.camera.holdPush;
   const kfs = [...scene.camera.keyframes].sort((a, b) => a.frame - b.frame);
   if (kfs.length < 2) {
     findings.push({ rule: "camera", severity: "error", where: "scene.camera", message: "declares a camera but has no moves (needs at least two keyframes)." });
@@ -386,7 +388,12 @@ function checkCamera(scene: Scene, findings: DesignFinding[], targets: DesignChe
   // The compiled curve is what the viewer sees: an eased move can stay under the average speed cap and still burst.
   const fps = scene.fps || FPS;
   const sceneW = scene.sceneSize?.w ?? 1920;
-  const stats = measureCameraMotion(compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize ?? { w: sceneW, h: sceneW }), fps);
+  const trackSize = scene.sceneSize ?? { w: sceneW, h: sceneW };
+  const stats = measureCameraMotion(compileCameraTrack(scene.camera, scene.durationFrames, trackSize, fps), fps);
+  // A declared hold push-in is part of the hold: how long the camera rests and moves is read off the authored track without it.
+  const { holdPush: _push, ...authored } = scene.camera;
+  void _push;
+  const rest = holdPush ? measureCameraMotion(compileCameraTrack(authored, scene.durationFrames, trackSize, fps), fps) : stats;
   const hint = "Leave `easing` off the keyframes so the camera flows through them, or give the move more frames.";
   if (stats.peakZoomStep > MAX_CAMERA_ZOOM_STEP) {
     findings.push({ rule: "camera", severity: "error", where: "scene.camera", message: `camera zoom changes ${(stats.peakZoomStep * 100).toFixed(2)}% in a single frame, above the ${(MAX_CAMERA_ZOOM_STEP * 100).toFixed(1)}% limit, which reads as a jerk. ${hint}` });
@@ -395,11 +402,11 @@ function checkCamera(scene: Scene, findings: DesignFinding[], targets: DesignChe
   if (stats.peakPanAccel > maxAccel) {
     findings.push({ rule: "camera", severity: "error", where: "scene.camera", message: `camera pan accelerates at ${stats.peakPanAccel.toFixed(0)} px/s^2, above the limit of ${maxAccel.toFixed(0)} px/s^2, which reads as a jerk. ${hint}` });
   }
-  if (stats.holdShare < MIN_CAMERA_HOLD_SHARE) {
-    findings.push({ rule: "camera", severity: "warning", where: "scene.camera", message: `camera holds for ${(stats.holdShare * 100).toFixed(0)}% of the film; aim for at least ${(MIN_CAMERA_HOLD_SHARE * 100).toFixed(0)}% so viewers can read each composition.` });
+  if (rest.holdShare < MIN_CAMERA_HOLD_SHARE) {
+    findings.push({ rule: "camera", severity: "warning", where: "scene.camera", message: `camera holds for ${(rest.holdShare * 100).toFixed(0)}% of the film; aim for at least ${(MIN_CAMERA_HOLD_SHARE * 100).toFixed(0)}% so viewers can read each composition.` });
   }
-  if (stats.maxContinuousMoveSeconds > MAX_CAMERA_CONTINUOUS_MOVE_SECONDS) {
-    findings.push({ rule: "camera", severity: "warning", where: "scene.camera", message: `camera moves continuously for as long as ${stats.maxContinuousMoveSeconds.toFixed(1)}s; break the move with a settled hold within ${MAX_CAMERA_CONTINUOUS_MOVE_SECONDS}s.` });
+  if (rest.maxContinuousMoveSeconds > MAX_CAMERA_CONTINUOUS_MOVE_SECONDS) {
+    findings.push({ rule: "camera", severity: "warning", where: "scene.camera", message: `camera moves continuously for as long as ${rest.maxContinuousMoveSeconds.toFixed(1)}s; break the move with a settled hold within ${MAX_CAMERA_CONTINUOUS_MOVE_SECONDS}s.` });
   }
   const maxLandingGap = CAMERA_CUE_LANDING_TOLERANCE_SECONDS * fps;
   for (let i = 0; i < (targets?.length ?? 0); i++) {
@@ -446,7 +453,9 @@ function checkCarryChangeHolds(film: Film, scene: Scene, plan: LookPlan | undefi
   if (!plan) return;
   const fps = scene.fps || FPS;
   const holdFrames = 2 * fps;
-  const camera = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize ?? { w: 1920, h: 1920 });
+  const camera = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize ?? { w: 1920, h: 1920 }, fps);
+  // A declared hold push-in keeps the subject framed, so its slow zoom is not a failure to hold.
+  const holdZoomDrift = scene.camera?.holdPush ? Math.expm1(scene.camera.holdPush) : 0;
   const shotFrames = new Map<string, { start: number; end: number }>();
   let shotTime = 0;
   for (const shot of film.shots) {
@@ -476,7 +485,7 @@ function checkCarryChangeHolds(film: Film, scene: Scene, plan: LookPlan | undefi
         const zoom = Math.abs(camera[finish].zoom - pose.zoom);
         const targetPos = objectPositionAt(prop, cast.id, finish + i);
         const inFrame = Math.abs(pose.center.x - targetPos.x) <= 540 / pose.zoom && Math.abs(pose.center.y - targetPos.y) <= 540 / pose.zoom;
-        return pan < 0.3 && zoom < 1e-4 && inFrame;
+        return pan < 0.3 && zoom < 1e-4 + holdZoomDrift * camera[finish].zoom && inFrame;
       });
       if (!clips.length) {
         findings.push({ rule: "carry-over", severity: "warning", where, message: `planned state "${change.state ?? change.how}" has no large visible animation on this object during the change shot.` });

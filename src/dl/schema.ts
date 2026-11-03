@@ -7,6 +7,7 @@
 import { z } from "zod";
 import { stageTreatmentSchema, treatmentSpanSchema } from "./scene/materials/treatment";
 import { castSchema, performanceSchema } from "./scene/stageContract";
+import { MAX_HOLD_PUSH, MIN_HOLD_PUSH } from "./holdPush";
 
 /**
  * ---------------------------------------------------------------------------
@@ -318,6 +319,8 @@ export const cameraKeyframeSchema = z.object({
 
 export const cameraTrackSchema = z.object({
   keyframes: z.array(cameraKeyframeSchema),
+  /** Opt-in slow push-in over every camera hold, as a fraction of zoom (0.01 to 0.03). Absent means off. */
+  holdPush: z.number().min(MIN_HOLD_PUSH).max(MAX_HOLD_PUSH).optional(),
 });
 
 export type CameraKeyframe = z.infer<typeof cameraKeyframeSchema>;
@@ -444,6 +447,8 @@ export const shotSchema = z.preprocess(dropLegacyBlocks, z.object({
   cameraAngle: cameraAngleSchema.optional(),
   /** Hold the frame alive with a 100 → 104% push. */
   drift: z.boolean().default(false),
+  /** Opt-in slow camera push-in over this shot's hold, as a fraction of zoom (0.01 to 0.03). Absent means off. Scene films set `scene.camera.holdPush` instead. */
+  holdPush: z.number().min(MIN_HOLD_PUSH).max(MAX_HOLD_PUSH).optional(),
   /** Tighten or loosen the framing. 1 fits the target with standard padding. */
   zoom: z.number().min(0.4).max(2.5).default(1),
   /** Optional script/narration block that will be read aloud. */

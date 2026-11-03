@@ -181,6 +181,17 @@ at rest for at least 30% of the film (`MIN_CAMERA_HOLD_SHARE`), and continuous m
 moves must arrive within 1.5 seconds of their planned narration cue (`CAMERA_CUE_LANDING_TOLERANCE_SECONDS`),
 and close poses must declare their focused cast object (`focus`) and frame that subject in scene space.
 
+**Hold push-in (opt-in).** Set `scene.camera.holdPush` (a fraction, 0.01 to 0.03; absent is off, and an
+off film compiles to exactly what it did before) and `compileCameraTrack` adds a slow push-in over every
+camera hold, about 1 to 3 percent of zoom (`src/dl/holdPush.ts`). It is a zoom about the camera's own
+centre, so the pan is untouched. It eases in on a smoothstep, a hold of 3 seconds or more gets the full
+amount and a shorter one proportionally less (under 1 second gets none), and the push is handed back across
+the move that follows, so the camera still lands exactly on every authored pose. A hand-back that would
+push the compiled zoom step over the 0.8% ceiling pushes less instead. The design check measures hold share and
+continuous-move time on the track without the push, zoom step and pan on the pushed track, and still requires a carried change to stay framed through it.
+In `design.json` set `"holdPush": 0.02` next to `camera`. Node-graph films set `holdPush` on a shot instead.
+A shot that opts in is not also scaled by the older `drift` flag, which would stack two pushes.
+
 ## Rendering
 
 `SceneView` renders sorted compiled background and prop assets in layer order with camera transformation

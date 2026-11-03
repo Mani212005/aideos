@@ -707,3 +707,59 @@ test("DesignCheck (D6): the final source span is back-timed including the incomi
   final.offsetSec = 139.68 - (final.to - final.from + 1.5);
   assert.deepEqual(soundtrackErrors(film), []);
 });
+
+test("DesignCheck: a hold push-in outside 1 to 3 percent of zoom is caught", () => {
+  const film = { ...JSON.parse(JSON.stringify(stillTalking())), id: "camera-push-range-test" };
+  const end = film.scene.durationFrames - 1;
+  const keyframes = [
+    { frame: 0, center: { x: 500, y: 500 }, zoom: 1 },
+    { frame: 45, center: { x: 540, y: 500 }, zoom: 1.02 },
+    { frame: end, center: { x: 540, y: 500 }, zoom: 1.02 },
+  ];
+  film.scene.camera = { keyframes, holdPush: 0.02 };
+  assert.deepEqual(checkFilmDesign(film).findings.filter((f) => f.rule === "camera" && f.severity === "error"), []);
+  for (const holdPush of [0.08, 0.001]) {
+    film.scene.camera = { keyframes, holdPush };
+    assert.ok(checkFilmDesign(film).findings.some((f) => f.rule === "schema" && f.severity === "error" && /holdPush/.test(f.message)), String(holdPush));
+  }
+});
+
+test("DesignCheck: the hold push-in counts as the camera at rest, so a film of short holds still reads as holding", () => {
+  const film = { ...JSON.parse(JSON.stringify(stillTalking())), id: "camera-push-rest-test" };
+  const end = film.scene.durationFrames - 1;
+  // A gentle move then a two second hold, over and over: the shape where the push is fastest.
+  const keyframes: Array<{ frame: number; center: { x: number; y: number }; zoom: number }> = [{ frame: 0, center: { x: 500, y: 500 }, zoom: 1 }];
+  for (let frame = 45, flip = 1; frame + 60 < end; frame += 105, flip = -flip) {
+    const center = { x: 500 + 30 * flip, y: 500 };
+    keyframes.push({ frame, center, zoom: 1 }, { frame: frame + 60, center, zoom: 1 });
+  }
+  film.scene.camera = { keyframes };
+  assert.deepEqual(checkFilmDesign(film).findings.filter((f) => f.rule === "camera"), []);
+  film.scene.camera = { keyframes, holdPush: 0.03 };
+  assert.deepEqual(checkFilmDesign(film).findings.filter((f) => f.rule === "camera"), []);
+});
+
+test("DesignCheck: a carried change still counts as held while the camera slowly pushes in on it", () => {
+  const film = stillTalking();
+  const prop = film.scene.props.find((item: any) => item.assetId === "probe");
+  const original = prop.animation.clips[0];
+  const plan: any = {
+    film: { cast: [{ id: "probe", what: "probe", enters: film.shots[0].id, changes: [{ at: film.shots[0].id, how: "moves 600px right", state: "probe on far right", magnitude: "major" }] }] },
+    shots: film.shots.map((shot: any) => ({ id: shot.id })),
+  };
+  const end = film.scene.durationFrames - 1;
+  prop.animation.clips = [{ ...original, clipId: "test-large-move", targets: [original.targets[0]], property: "translateX", from: 0, to: 600, startFrame: 10, durationFrames: 10 }];
+  const center = { x: prop.position.x + 600, y: prop.position.y };
+  // The change finishes at frame 20 and the camera holds on it for three seconds before leaving.
+  const keyframes = [
+    { frame: 0, center: { x: center.x - 50, y: center.y }, zoom: 1 },
+    { frame: 20, center, zoom: 1 },
+    { frame: 110, center, zoom: 1 },
+    { frame: end, center: { x: center.x + 50, y: center.y }, zoom: 1 },
+  ];
+  film.scene.camera = { keyframes };
+  assert.equal(checkFilmDesign(film, { lookPlan: plan }).findings.some((f) => f.rule === "carry-over"), false);
+  film.scene.camera = { keyframes, holdPush: 0.03 };
+  const report = checkFilmDesign(film, { lookPlan: plan });
+  assert.equal(report.findings.some((f) => f.rule === "carry-over"), false, JSON.stringify(report.findings));
+});

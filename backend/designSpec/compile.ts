@@ -177,7 +177,9 @@ export function compileDesign(
     };
   });
 
-  const camera = spec.camera ? compileCamera(spec.camera, cues, errors) : undefined;
+  const keyframes = spec.camera ? compileCamera(spec.camera, cues, errors) : undefined;
+  if (spec.holdPush !== undefined && !keyframes) errors.push("holdPush needs `camera` poses: a film with a fixed camera has no hold to push in on");
+  const camera = keyframes && spec.holdPush !== undefined ? { ...keyframes, holdPush: spec.holdPush } : keyframes;
 
   if (errors.length) return { errors };
 

@@ -17,6 +17,7 @@
 import { z } from "zod";
 import { stageTreatmentSchema } from "../../src/dl/scene/materials/treatment";
 import { blockSchema } from "../../src/dl/schema";
+import { MAX_HOLD_PUSH, MIN_HOLD_PUSH } from "../../src/dl/holdPush";
 import { SCENE_SIZE } from "../sceneKit/stage";
 import { decisiveSchema, vec3Schema } from "../../src/dl/scene/stageContract";
 
@@ -111,6 +112,8 @@ const legacyDesignSchema = z.object({
   clips: z.array(specClipSchema).max(1500),
   /** Optional camera poses in time order (at least two). Omit for a fixed, centred camera. */
   camera: z.array(specCameraSchema).min(2).max(60).optional(),
+  /** Opt-in slow camera push-in over every hold (1% to 3% extra zoom, never past the camera caps). Omit for none. Needs `camera`. */
+  holdPush: z.number().min(MIN_HOLD_PUSH).max(MAX_HOLD_PUSH).optional(),
   /** Optional per-shot overrides of the on-screen blocks drawn over the scene. */
   shots: z
     .record(

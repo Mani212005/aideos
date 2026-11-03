@@ -36,6 +36,11 @@ behavior, identity deliveries, and delivered-length limits, see the
    [production pipeline reference](../../docs/PRODUCTION_PIPELINE.md#reel-cut-delivery)
    for supported film types and cut behavior.
 
+A held camera can be made to breathe with the opt-in `holdPush` (1 to 3 percent of zoom over a hold, off by
+default): `scene.camera.holdPush` for a scene film, `shot.holdPush` for a node-graph shot. Both read one
+definition in `holdPush.ts`, so preview and export agree; see the camera section of
+[scene/README.md](scene/README.md#scene-camera) for the rules it keeps.
+
 Shot start times are *derived* from durations, so a scene cannot start before
 the previous one ends - that failure mode is unrepresentable rather than
 validated.

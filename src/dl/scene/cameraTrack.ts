@@ -12,6 +12,7 @@ import type { CameraTrack } from "./types";
 import type { SvgEasing } from "./svgAnimation";
 import { applySvgEasing } from "./svgAnimation";
 import { evaluateMonotoneSpline, type KnotPoint } from "../motion/spline";
+import { HOLD_PUSH_HANDBACK_SECONDS, holdPushAt, holdPushPeak, type HoldRun } from "../holdPush";
 
 export interface CompiledCameraState {
   center: { x: number; y: number };
@@ -41,11 +42,27 @@ const HOLD_EPSILON = 1e-6;
 export const MIN_CAMERA_HOLD_SHARE = 0.3;
 /** Maximum uninterrupted camera motion before the composition needs another hold. */
 export const MAX_CAMERA_CONTINUOUS_MOVE_SECONDS = 6;
+/** Largest zoom change allowed in a single frame, as a fraction of the zoom (0.8% a frame is about 24% a second at 30 fps). */
+export const CAMERA_ZOOM_STEP_CEILING = 0.008;
 /** Maximum gap between a camera arrival and its planned narration cue. */
 export const CAMERA_CUE_LANDING_TOLERANCE_SECONDS = 1.5;
 
-/** Compiles keyframes into one camera state per frame (a constant centred camera when there are none). */
+/**
+ * Compiles keyframes into one camera state per frame (a constant centred camera when there are none). A track
+ * that opts into `holdPush` then gets the slow push-in over each of its holds; one that does not is untouched.
+ */
 export function compileCameraTrack(
+  camera: CameraTrack | undefined,
+  totalFrames: number,
+  sceneSize: { w: number; h: number },
+  fps = 30,
+): CompiledCameraState[] {
+  const curves = compileKeyframes(camera, totalFrames, sceneSize);
+  return camera?.holdPush ? applyHoldPush(curves, camera.holdPush, fps) : curves;
+}
+
+// Compiles the authored keyframes alone into one camera state per frame.
+function compileKeyframes(
   camera: CameraTrack | undefined,
   totalFrames: number,
   sceneSize: { w: number; h: number },
@@ -117,6 +134,58 @@ export function compileCameraTrack(
     }
   }
   return curves;
+}
+
+// Whether two compiled camera states are the same pose (a hold keeps the exact coordinates, so this is exact up to rounding).
+function samePose(a: CompiledCameraState, b: CompiledCameraState): boolean {
+  return Math.abs(a.center.x - b.center.x) < HOLD_EPSILON && Math.abs(a.center.y - b.center.y) < HOLD_EPSILON
+    && Math.abs(a.zoom - b.zoom) < HOLD_EPSILON && Math.abs(a.rotation - b.rotation) < HOLD_EPSILON;
+}
+
+// Finds every hold (two or more frames in the same pose) and the frames of travel that follow it before the next one.
+function findHoldRuns(curves: CompiledCameraState[], fps: number): HoldRun[] {
+  const runs: HoldRun[] = [];
+  for (let i = 0; i < curves.length; ) {
+    let j = i;
+    while (j + 1 < curves.length && samePose(curves[j + 1], curves[i])) j++;
+    if (j > i) runs.push({ start: i, end: j, travelAfter: 0 });
+    i = j + 1;
+  }
+  // The offset is back to zero within a few seconds, and always by the next hold or the film's last frame, so authored poses are still landed on exactly.
+  runs.forEach((run, index) => {
+    const landing = index + 1 < runs.length ? runs[index + 1].start : curves.length - 1;
+    run.travelAfter = Math.max(0, Math.min(landing - run.end - 1, Math.round(HOLD_PUSH_HANDBACK_SECONDS * fps)));
+  });
+  return runs;
+}
+
+// Largest single-frame relative zoom change over a frame range of a track.
+function peakZoomStepIn(track: CompiledCameraState[], from: number, to: number): number {
+  let peak = 0;
+  for (let f = Math.max(1, from); f <= Math.min(track.length - 1, to); f++) peak = Math.max(peak, Math.abs(track[f].zoom - track[f - 1].zoom) / track[f - 1].zoom);
+  return peak;
+}
+
+/**
+ * Adds the slow push-in to every hold of a compiled track: zoom about the camera's own centre, rising over the hold
+ * and handed back across the move that follows. The push never makes the track break the zoom-step ceiling: a hold
+ * whose hand-back would, pushes less (down to nothing).
+ */
+export function applyHoldPush(curves: CompiledCameraState[], amount: number, fps: number): CompiledCameraState[] {
+  const out = curves.slice();
+  for (const run of findHoldRuns(curves, fps)) {
+    let peak = holdPushPeak(run, amount, fps);
+    const span = Math.min(curves.length - 1, run.end + run.travelAfter);
+    const baseStep = peakZoomStepIn(curves, run.start, span);
+    for (let attempt = 0; peak > 0 && attempt < 8; attempt++) {
+      for (let f = run.start; f <= span; f++) out[f] = { ...curves[f], zoom: curves[f].zoom * Math.exp(holdPushAt(run, peak, f)) };
+      // A base move already over the ceiling is the author's to fix; the push only has to add nothing beyond it.
+      if (peakZoomStepIn(out, run.start, span) <= Math.max(CAMERA_ZOOM_STEP_CEILING * 0.999, baseStep)) break;
+      peak = attempt === 7 ? 0 : peak / 2;
+    }
+    if (peak === 0) for (let f = run.start; f <= span; f++) out[f] = curves[f];
+  }
+  return out;
 }
 
 /** Measures peak pan speed, zoom step per frame, pan acceleration and rest time of a compiled camera track. */

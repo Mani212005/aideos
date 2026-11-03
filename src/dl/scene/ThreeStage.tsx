@@ -86,7 +86,7 @@ function FrameCommit({ scene: manifest, frame, width, height, ready, testVisibil
     gl.toneMapping = NoToneMapping;
     gl.toneMappingExposure = CEL_TREATMENT.exposure;
     gl.setClearColor(0, 0);
-    return { camera, root, entries, cameraFrames: compileCameraTrack(manifest.camera, manifest.durationFrames, manifest.sceneSize), compiled: false };
+    return { camera, root, entries, cameraFrames: compileCameraTrack(manifest.camera, manifest.durationFrames, manifest.sceneSize, manifest.fps), compiled: false };
   }, [manifest, world, set, gl, width, height]);
 
   React.useLayoutEffect(() => {

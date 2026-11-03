@@ -27,12 +27,13 @@ export function minimumShotSeconds(film: Film): Map<string, number> {
           : MIN_SHOT_FRAMES / film.fps,
       ]),
     );
+  const fps = scene.fps;
   const camera = compileCameraTrack(
     scene.camera,
     scene.durationFrames,
     scene.sceneSize,
+    fps,
   );
-  const fps = scene.fps;
   return new Map(
     timeline.map(({ shot, from, to }) => {
       let scale = 0;

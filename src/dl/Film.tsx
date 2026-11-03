@@ -618,7 +618,9 @@ export const FilmView: React.FC<FilmViewProps> = ({
     Math.min(1, (frame - current.from) / Math.max(1, current.durationInFrames)),
   );
   // The stage camera owns all Three framing so runtime pixels agree with projected geometry.
-  const drift = current.shot.drift && film.scene?.renderer !== "three"
+  // A film or shot that opted into the camera's own hold push-in does not also scale the frame, which would stack two pushes.
+  const cameraPush = film.scene ? film.scene.camera?.holdPush : current.shot.holdPush;
+  const drift = current.shot.drift && film.scene?.renderer !== "three" && !cameraPush
     ? 1 + (DRIFT - 1) * driftProgress
     : 1;
 
