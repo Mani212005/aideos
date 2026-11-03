@@ -611,17 +611,20 @@ program
   .option("--words <file>", "word timings (voiceover_words.json) or narration text, for audio sync, caption matching and grounding")
   .option("--out <dir>", "where review.json and the review/ evidence frames are written")
   .option("--no-ocr", "skip the OCR pass (no caption, readability, overlap or grounding checks)")
+  .option("--pacing-profile <profile>", "opt-in narration pace window for reel reviews: reel-fast allows up to 200 words per minute (default: 120 to 180)")
   .option("--json", "print the report as JSON on stdout (progress goes to stderr)")
-  .action(async (target: string, options: { format?: string; film?: string; words?: string; out?: string; ocr: boolean; json?: boolean }) => {
+  .action(async (target: string, options: { format?: string; film?: string; words?: string; out?: string; ocr: boolean; pacingProfile?: string; json?: boolean }) => {
     const { reviewFormats, formatReview } = await import("./review/review");
     try {
       if (options.format !== undefined && options.format !== "long" && options.format !== "reel") throw new Error("--format must be long or reel");
+      if (options.pacingProfile !== undefined && options.pacingProfile !== "default" && options.pacingProfile !== "reel-fast") throw new Error("--pacing-profile must be default or reel-fast");
       const reports = await reviewFormats({
         target, format: options.format,
         film: options.film,
         words: options.words,
         outDir: options.out,
         skipOcr: !options.ocr,
+        pacingProfile: options.pacingProfile as "default" | "reel-fast" | undefined,
         onProgress: (m) => console.error(`[review] ${m}`),
       });
       console.log(options.json ? JSON.stringify(reports.length === 1 ? reports[0] : reports, null, 2) : reports.map(formatReview).join("\n\n"));

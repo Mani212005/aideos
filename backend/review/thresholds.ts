@@ -82,6 +82,31 @@ export const THRESHOLDS = {
     hardCutDiff: 12,
     hardCutsPerMinMax: 2,
   },
+  /**
+   * Reel hook (reel reviews only, non-gating). Set from the reference-video study
+   * (data/aideos-reference-video-viral-shorts/report.md, section 5.1 idea 4): the reference shorts voice
+   * their first word at 0.0 s and open on a 10 to 16 word statement of fact or paradox. The three
+   * calibration references (A, B, RAG) are long cuts and this check never runs on them, so their recorded
+   * ordering is untouched; re-measure on real reels before tightening any value.
+   */
+  hook: {
+    /** The first spoken word must start before this many seconds. */
+    firstWordMaxSec: 0.3,
+    /** The first sentence has at least this many words. */
+    sentenceWordsMin: 10,
+    /** The first sentence has at most this many words. */
+    sentenceWordsMax: 16,
+  },
+  /**
+   * Named narration pace windows for criterion 9. `default` mirrors `pacing.wpmMin`/`wpmMax` and is what
+   * every review uses. `reel-fast` is opt-in (a reel review that names it) and only raises the upper bound to
+   * about 200 words per minute, from the study's measured references (192 and 202 wpm); the lower bound is
+   * not loosened. It never applies to a long review.
+   */
+  pacingProfiles: {
+    default: { wpmMin: 120, wpmMax: 180 },
+    "reel-fast": { wpmMin: 120, wpmMax: 200 },
+  },
   loudness: {
     lufsMin: -18,
     lufsMax: -14,
@@ -119,3 +144,6 @@ export const THRESHOLDS = {
     ungroundedMax: 0,
   },
 } as const;
+
+/** Names of the narration pace windows in `THRESHOLDS.pacingProfiles`. */
+export type PacingProfileName = keyof typeof THRESHOLDS.pacingProfiles;
