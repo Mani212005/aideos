@@ -242,6 +242,13 @@ loudnorm to satisfy the review loudness standard without changing its duration. 
 `backend/pcm.ts` for the sample-domain helpers and `backend/voiceover_stutter.test.ts` for the
 defect classes that are held closed by regression tests.
 
+The film's shot lengths are written in whole milliseconds from the narration's own segment offsets
+(`shotDurationsOnMillisecondGrid`), not by rounding each shot's duration on its own: independent
+rounding adds up to half a millisecond per shot, so a long film would run behind its recorded voice
+and a design cue on the first word of a later shot would resolve to nothing. Summed up to any shot,
+the lengths land exactly on that shot's narrated start, the same millisecond its first word is
+timed on.
+
 Backends live in `backend/tts.ts`. Kokoro-82M runs locally through ONNX with no API key and is the
 default, configured with a default pace multiplier of 0.75 (`DEFAULT_KOKORO_SPEED`) to keep explainer
 narration within the measured review pacing limit (`AIDEOS_TTS_SPEED` or `--speed` overrides);

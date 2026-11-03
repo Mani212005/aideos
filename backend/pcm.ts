@@ -5,7 +5,7 @@
  * voiceover regression tests can assert on sample counts and boundary amplitudes directly,
  * which is the only way to prove there is no click, gap or drift at a stitch point.
  * Inputs and outputs: raw Float32 PCM samples and WAV buffers -> trimmed, normalized, concatenated audio samples and WAV files.
- * Used by: backend/audio.ts, backend/tts.ts.
+ * Used by: backend/audio.ts, backend/tts.ts, backend/pipeline/design.ts.
  */
 
 /** One synthesized piece of narration and the text it speaks. */
@@ -198,6 +198,29 @@ export function deriveShotDurations(segments: AssembledSegment[], totalSec: numb
     const next = segments[i + 1];
     return (next ? next.startSec : totalSec) - seg.startSec;
   });
+}
+
+/**
+ * Rounds shot durations to whole milliseconds without letting the rounding accumulate.
+ *
+ * Rounding each duration on its own adds up to half a millisecond of error per shot, so a film of
+ * twenty shots runs a millisecond behind its voice and the first word of a later shot is counted
+ * in the shot before it. Here every shot starts on its own narration offset rounded to the
+ * millisecond (the grid word timings are written on) and lasts until the next one starts, and the
+ * last shot ends where the narration does, so the durations summed up to any shot land exactly on
+ * that shot's narrated start. The offsets, not the durations, are the source: a narration whose
+ * stored durations were already rounded one by one still tiles onto its own offsets.
+ */
+export function shotDurationsOnMillisecondGrid(startOffsets: number[], shotDurations: number[]): number[] {
+  if (startOffsets.length !== shotDurations.length) {
+    throw new Error(`${startOffsets.length} narration offset(s) do not match ${shotDurations.length} shot duration(s)`);
+  }
+  if (startOffsets.length === 0) return [];
+  const toMs = (sec: number) => Number(sec.toFixed(3));
+  const starts = startOffsets.map(toMs);
+  const lastIdx = startOffsets.length - 1;
+  const end = toMs(startOffsets[lastIdx] + shotDurations[lastIdx]);
+  return starts.map((start, i) => toMs((i < lastIdx ? starts[i + 1] : end) - start));
 }
 
 /** Rough syllable count, used to weight how long a word occupies the narration timeline. */

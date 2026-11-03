@@ -27,6 +27,7 @@ import {
   distributeWordTimings,
   encodeWav,
   decodeWav,
+  shotDurationsOnMillisecondGrid,
   normalizePeak,
   DEFAULT_ASSEMBLE_OPTIONS,
   type PcmChunk,
@@ -504,6 +505,9 @@ export function buildFilmFromAudioResult(
   const { nodes, edges } = generateRelationshipAwareCanvas(conceptEntities);
   const chapters = Array.from(new Set(conceptEntities.map((c) => `chapter-${(c.chapterIndex ?? 0) + 1}`)));
 
+  // Shot lengths on the millisecond grid of the narration's own offsets, so rounding never accumulates behind its words.
+  const gridDurations = shotDurationsOnMillisecondGrid(audioResult.segments.map((seg) => seg.startOffset), audioResult.shotDurations);
+
   // Create shots with segment-scoped visual brief mapping
   const shots = audioResult.segments.map((seg, i) => {
     const chIndex = Math.floor((i * chapters.length) / numShots);
@@ -515,7 +519,7 @@ export function buildFilmFromAudioResult(
     return {
       id: `shot-${i + 1}`,
       ch: chName,
-      dur: Number(audioResult.shotDurations[i].toFixed(3)),
+      dur: gridDurations[i],
       stage: "frame" as const,
       look: targetNodeId,
       move: isChapterStart ? ("cut" as const) : ("pan" as const),

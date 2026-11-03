@@ -29,7 +29,9 @@ import {
 } from "./filmStore";
 import { buildTimeline, totalFrames } from "../../src/dl/camera";
 import { parseFilm } from "../../src/dl/schema";
-import type { SegmentAudioInfo } from "../audio";
+import { buildCaptionsVtt, splitScriptIntoSegments, type ProduceAudioResult, type SegmentAudioInfo, type WordInfo } from "../audio";
+import { deriveShotDurations, distributeWordTimings, encodeWav, type AssembledSegment } from "../pcm";
+import { PCM_SAMPLE_RATE } from "../tts";
 import { clearMockShotVisualHandler, heuristicShotVisualSelection, setMockShotVisualHandler } from "../jev";
 import type { LookPlan } from "../lookPlan/schema";
 import { buildDesign, readCheckedLookPlan } from "../designSpec/build";
@@ -392,6 +394,66 @@ test("runProduction: a package with narration for its script keeps its voiceover
   }
 });
 
+// Writes a package that carries a finished narration for SCRIPT the way produceAudioPipeline leaves it: exact
+// segment offsets, boundary-to-boundary shot durations and word onsets rounded to the millisecond. Every shot
+// is 120014 samples (5.000583 s) long, so rounding each duration on its own runs 1 ms behind the narration by the
+// third shot and 2 ms behind by the fifth.
+function writeRecordedNarration(pkgDir: string): ProduceAudioResult {
+  const texts = splitScriptIntoSegments(SCRIPT);
+  const shotSamples = 120_014;
+  const gapSamples = Math.round(0.2 * PCM_SAMPLE_RATE);
+  const placed: AssembledSegment[] = texts.map((text, i) => ({
+    text, startSample: i * shotSamples, lengthSamples: shotSamples - gapSamples,
+    startSec: (i * shotSamples) / PCM_SAMPLE_RATE, durationSec: (shotSamples - gapSamples) / PCM_SAMPLE_RATE,
+  }));
+  const last = placed[placed.length - 1];
+  const totalSec = (last.startSample + last.lengthSamples) / PCM_SAMPLE_RATE;
+  const words: WordInfo[] = [];
+  const segments: SegmentAudioInfo[] = placed.map((seg) => {
+    const relative = distributeWordTimings(seg.text, seg.durationSec);
+    for (const w of relative) words.push({ word: w.word, punctuated_word: w.punctuated_word, start: Number((seg.startSec + w.start).toFixed(3)), end: Number((seg.startSec + w.end).toFixed(3)) });
+    return { text: seg.text, duration: seg.durationSec, startOffset: seg.startSec, words: relative, utterances: [{ start: 0, end: seg.durationSec, transcript: seg.text }] };
+  });
+  const result: ProduceAudioResult = {
+    segments, shotDurations: deriveShotDurations(placed, totalSec), totalAudioDuration: totalSec,
+    voiceoverPath: path.join(pkgDir, "voiceover.wav"), captionsPath: path.join(pkgDir, "captions.vtt"),
+    captionsVttContent: buildCaptionsVtt(words), words, wordsPath: path.join(pkgDir, "voiceover_words.json"),
+    ttsBackend: "kokoro:af_heart", voice: "af_heart", speed: 1,
+  };
+  fs.mkdirSync(pkgDir, { recursive: true });
+  fs.writeFileSync(result.voiceoverPath, encodeWav(new Float32Array(PCM_SAMPLE_RATE / 10), PCM_SAMPLE_RATE));
+  fs.writeFileSync(result.captionsPath, result.captionsVttContent);
+  fs.writeFileSync(result.wordsPath, JSON.stringify({ words }, null, 2));
+  fs.writeFileSync(path.join(pkgDir, "narration.json"), JSON.stringify(result, null, 2));
+  return result;
+}
+
+// Release acceptance regenerates a recorded film from its narration.json and then runs design build. Each shot's
+// duration used to be rounded to the millisecond on its own, so the film ran 1 ms behind the recorded voice from the
+// third shot on and the first word of that shot was counted in the shot before it: a design cue on that word matched
+// nothing and the build failed for a film whose design passes against the same voice in the studio.
+test("runProduction: a recorded narration builds a design cued on each shot's first word however its shot lengths round", async () => {
+  const slug = `probe-drift-${Date.now().toString(36)}`;
+  const pkgDir = path.join(VIDEOS_DIR, slug);
+  try {
+    const narration = writeRecordedNarration(pkgDir);
+    const firstWords = narration.segments.map((segment) => segment.text.split(/\s+/).slice(0, 2).join(" "));
+    writeProbeDesign(slug, lookWithCues(narration.segments.map((_, i) => `beat-${String(i + 1).padStart(2, "0")}`), firstWords));
+
+    const result = await runProduction({ ...inlineRequest(slug), stopAfter: "design", resume: true });
+    assert.equal(result.status, "stopped", JSON.stringify(result.warnings));
+    assert.equal(readFilm(slug)?.design?.source, "agent");
+
+    // Every shot starts where its narration does, to the millisecond the word timings are written in.
+    let startSec = 0;
+    readFilm(slug)!.shots.forEach((shot, i) => {
+      const narratedSec = Number(narration.segments[i].startOffset.toFixed(3));
+      assert.ok(Math.abs(startSec - narratedSec) < 0.0005, `${shot.id} starts at ${startSec.toFixed(3)} s but its narration starts at ${narratedSec.toFixed(3)} s`);
+      startSec += shot.dur;
+    });
+  } finally { cleanProbe(slug); }
+});
+
 // A resumed run must reuse the stages whose inputs have not changed rather than redoing them.
 test("runProduction: resuming reuses the stages whose inputs have not changed", async () => {
   const slug = `probe-resume-${Date.now().toString(36)}`;
@@ -460,26 +522,30 @@ function probeLook(slug: string): LookPlan {
     assert.ok(cue, `shot ${shot.id} must contain a unique word cue`);
     return cue;
   });
+  return lookWithCues(film.shots.map((shot) => shot.id), cues);
+}
+
+// Makes a one-carrier scene look plan that cues each named shot on the given spoken phrase.
+function lookWithCues(shotIds: string[], cues: string[]): LookPlan {
   return {
     schema: "aideos.look/1", decidedBy: { agent: "fixture", model: "fake", at: new Date().toISOString() },
     film: {
       mode: "scene", stage: "One carrier changes position on a persistent stage.",
-      cast: [{ id: "carrier", what: "a visible carrier", enters: film.shots[0].id, changes: [] }],
+      cast: [{ id: "carrier", what: "a visible carrier", enters: shotIds[0], changes: [] }],
       camera: [
-        { at: film.shots[0].id, pose: "wide establishing view", why: "establish" },
-        { at: film.shots[film.shots.length - 1].id, pose: "wide payoff view", why: "payoff" },
+        { at: shotIds[0], pose: "wide establishing view", why: "establish" },
+        { at: shotIds[shotIds.length - 1], pose: "wide payoff view", why: "payoff" },
       ],
       palette: { bg: "#0A0A0B", accent: "#635BFF" },
       captions: { position: "bottom", kineticColumn: false }, headlines: "none",
     },
-    shots: film.shots.map((shot, index) => ({ id: shot.id, treatment: "scene", carries: ["carrier"], cue: cues[index], criterion: "1-mechanism", why: "the carried object moves" })),
+    shots: shotIds.map((id, index) => ({ id, treatment: "scene", carries: ["carrier"], cue: cues[index], criterion: "1-mechanism", why: "the carried object moves" })),
   };
 }
 
 // Writes a valid fixture look and a cue-timed scene design into an isolated test package.
-function writeProbeDesign(slug: string): void {
+function writeProbeDesign(slug: string, look: LookPlan = probeLook(slug)): void {
   const pkg = path.join(VIDEOS_DIR, slug);
-  const look = probeLook(slug);
   fs.mkdirSync(path.join(pkg, "design"), { recursive: true });
   fs.mkdirSync(path.join(pkg, "visuals"), { recursive: true });
   fs.writeFileSync(path.join(pkg, "design/look.json"), JSON.stringify(look));
