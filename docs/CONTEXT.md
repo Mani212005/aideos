@@ -281,6 +281,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `trimSilence(samples, threshold)`: Trims leading and trailing silence samples from Float32Array audio.
 * `assembleSegments(segmentChunks, options)`: Assembles synthesized audio segments in the sample domain with exact inter-segment gaps and boundary fades.
 * `deriveShotDurations(segments, totalSec)`: Derives boundary-to-boundary shot durations matching narration sample boundaries.
+* `shotDurationsOnMillisecondGrid(startOffsets, shotDurations)`: Rounds shot durations to milliseconds from the narration's own segment offsets, so the rounding never accumulates and each shot starts on the same millisecond as its first word.
 * `distributeWordTimings(text, durationSec)`: Calculates relative word start and end offsets across a segment duration.
 * `normalizePeak(samples, targetDb)`: Normalizes Float32 audio samples to peak dBFS without clipping.
 * `encodeWav(samples, sampleRate)`: Encodes Float32Array audio directly into a standard 16-bit mono PCM WAV buffer.

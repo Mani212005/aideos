@@ -22,6 +22,7 @@ import { blockSchema, DEVICE_BLOCKS, parseFilm } from "../../src/dl/schema";
 import { parseClaudeScript, buildBlocksForPrimitive, type ScriptSegment } from "../scriptIntake";
 import { generateRelationshipAwareCanvas, type ConceptEntity } from "../ideation/graphLayout";
 import type { SegmentAudioInfo } from "../audio";
+import { shotDurationsOnMillisecondGrid } from "../pcm";
 import { slugify } from "./filmStore";
 import {
   selectShotVisual,
@@ -364,6 +365,9 @@ export async function compileFilmFromScreenplayAsync(
     );
   }
 
+  // The film's shot lengths, on the millisecond grid of the narration's own offsets so they never run behind its words.
+  const gridDurations = shotDurationsOnMillisecondGrid(narration.map((segment) => segment.startOffset), shotDurations);
+
   const slug = options.slug ?? slugify(options.title);
   const fps = options.fps ?? 30;
   const maxFootageSec = options.maxFootageSec ?? 8;
@@ -636,7 +640,7 @@ export async function compileFilmFromScreenplayAsync(
     shots.push({
       id: shotId,
       ch: uniqueChapters[chapterIdx],
-      dur: Number(dur.toFixed(3)),
+      dur: gridDurations[i],
       stage,
       look,
       move,
@@ -660,7 +664,7 @@ export async function compileFilmFromScreenplayAsync(
     sinceCanvas = stage === "none" ? 0 : sinceCanvas + dur;
   }
 
-  const totalSec = shotDurations.reduce((a, b) => a + b, 0);
+  const totalSec = Number(gridDurations.reduce((a, b) => a + b, 0).toFixed(3));
   // Planned films start on a scene, even while their artwork is still waiting for the designer.
   const scene = options.lookPlan ? {
     schemaVersion: "1.0.0", sceneId: slug, fps, durationFrames: Math.round(totalSec * fps),
