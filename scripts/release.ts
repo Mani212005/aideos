@@ -10,7 +10,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { Command } from "commander";
-import { git, optionalGit, releaseChannel } from "../backend/releaseChannel";
+import { git, optionalGit, releaseChannel, releaseVersionProblem } from "../backend/releaseChannel";
 import type { AudioItem } from "../backend/audioLibrary/schema";
 
 const ROOT = path.resolve(__dirname, "..");
@@ -55,14 +55,12 @@ function isAncestor(root: string, ancestor: string, descendant: string): boolean
   }
 }
 
-/** Validates the next patch, minor or major release, with 1.0.0 as the first release. */
+/** Validates the next patch, minor or major release; the first release may be any 0.x.y pre-release or 1.0.0. */
 function validateVersion(version: string): string {
   requireThat(VERSION.test(version), "Version must be X.Y.Z with no prefix, leading zeros or prerelease suffix.");
   const releases = git(ROOT, ["tag", "--list", "v*", "--sort=-version:refname"]).split("\n").filter((tag) => VERSION.test(tag.slice(1)));
-  const previous = releases[0];
-  const [major, minor, patch] = (previous?.slice(1) ?? "0.0.0").split(".").map(Number);
-  const next = previous ? [`${major}.${minor}.${patch + 1}`, `${major}.${minor + 1}.0`, `${major + 1}.0.0`] : ["1.0.0"];
-  requireThat(next.includes(version), `Next release must be one of ${next.join(", ")}; latest tag is ${previous || "none"}.`);
+  const problem = releaseVersionProblem(version, releases[0] || "");
+  requireThat(!problem, problem);
   requireThat(!optionalGit(ROOT, ["rev-parse", "--verify", `refs/tags/v${version}`]), `Tag v${version} already exists.`);
   return `v${version}`;
 }

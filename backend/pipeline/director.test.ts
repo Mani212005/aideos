@@ -12,7 +12,7 @@ import test, { after, before } from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
-import { draftScreenplay, runDirector, type GenerateScreenplayFn } from "./director";
+import { buildDirectorSystemInstruction, buildProseTransformSystemInstruction, draftScreenplay, runDirector, type GenerateScreenplayFn } from "./director";
 import { readFilm, slugify, VIDEOS_DIR, FILMS_DIR } from "./filmStore";
 import { clearMockShotVisualHandler, heuristicShotVisualSelection, setMockShotVisualHandler } from "../jev";
 
@@ -204,5 +204,14 @@ test("runDirector: an explicit title overrides the one the screenplay drafts for
   } finally {
     fs.rmSync(path.join(VIDEOS_DIR, slug), { recursive: true, force: true });
     fs.rmSync(path.join(FILMS_DIR, `${slug}.ts`), { force: true });
+  }
+});
+
+test("director prompts: both assembled system instructions carry the guide's reel hook section", () => {
+  for (const prompt of [buildDirectorSystemInstruction(), buildProseTransformSystemInstruction()]) {
+    assert.match(prompt, /^## Reel hook$/m);
+    assert.match(prompt, /10 to 16 words/);
+    assert.match(prompt, /first word begins under 0\.3 s/);
+    assert.equal(prompt.split("## Reel hook").length - 1, 1, "the rule appears once, from the guide only");
   }
 });

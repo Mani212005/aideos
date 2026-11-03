@@ -3,7 +3,8 @@
  * A ReviewReport is the JSON an agent, a person or the Gemini review loop reads: one entry per
  * measurable criterion of the good-video rubric (numbers, a threshold, a status and evidence frame
  * timestamps), the gate failures that make the command exit non-zero, and the raw facts behind them.
- * Criterion ids follow the audit rubric (docs: section 4.2), with supplemental plan adherence as 13;
+ * Criterion ids follow the audit rubric (docs: section 4.2), with supplemental plan adherence as 13,
+ * reel delivered length as 14 and the reel hook as 15;
  * storyline (10) is not deterministic and is left to the model judge, so it never appears here.
  * Inputs and outputs: TypeScript definitions -> ReviewReport, CriterionResult, and Facts interfaces.
  * Used by: backend/review/review.ts, backend/review/criteria.ts.
@@ -44,7 +45,8 @@ export type CriterionKey =
   | "pacing"
   | "grounding"
   | "loudness"
-  | "reel-length";
+  | "reel-length"
+  | "hook";
 
 /** One rubric criterion's result. */
 export interface CriterionResult {

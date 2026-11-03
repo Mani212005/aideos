@@ -13,7 +13,7 @@ import type { RenderFacts } from "./renderFacts";
 import type { FilmFacts } from "./source";
 import { captionMatch, chanceNearWordStarts, cutsThroughWords, normalizeWord, pauses, phraseFrame, shareNearWordStarts, spokenNumbers, wordsPerMinute, type Narration } from "./speech";
 import type { MusicUnderVoice } from "./music";
-import { THRESHOLDS as T } from "./thresholds";
+import { THRESHOLDS as T, type PacingProfileName } from "./thresholds";
 import { DELIVERY_CONFIG } from "../../src/dl/delivery";
 import type { CriterionKey, CriterionResult, Evidence, VideoFacts } from "./types";
 
@@ -27,6 +27,8 @@ export interface ReviewInputs {
   loudness: Loudness | null;
   silences: Silence[];
   musicUnderVoice?: MusicUnderVoice;
+  /** Opt-in narration pace window; honoured on reel reviews only, the default window applies otherwise. */
+  pacingProfile?: PacingProfileName;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -464,8 +466,8 @@ function audioSync(i: ReviewInputs): CriterionResult {
   };
 }
 
-// Criterion 9: pacing (stillness, cuts, dead air, speaking rate).
-function pacing(i: ReviewInputs): CriterionResult {
+// Criterion 9: pacing (stillness, cuts, dead air, speaking rate); `profile` picks the narration pace window.
+function pacing(i: ReviewInputs, profile: PacingProfileName): CriterionResult {
   const { render, video, narration, film, silences } = i;
   const failures: string[] = [];
   const longest = render.staticRuns.reduce((m, r) => Math.max(m, r.end - r.start), 0);
@@ -477,14 +479,15 @@ function pacing(i: ReviewInputs): CriterionResult {
   else if (video.audioDurationSec !== null) deadAir = silences.filter((s) => s.start > 1 && s.end < video.durationSec - 1 && s.end - s.start > T.pacing.deadAirMaxSec).length;
   if (deadAir > 0) failures.push(`${deadAir} stretches of dead air longer than ${T.pacing.deadAirMaxSec} s inside the narration`);
   const wpm = narration?.timed ? wordsPerMinute(narration.words) : narration ? (narration.text.split(/\s+/).filter(Boolean).length / video.durationSec) * 60 : null;
-  if (wpm !== null && (wpm < T.pacing.wpmMin || wpm > T.pacing.wpmMax) && narration?.timed) failures.push(`narration runs at ${Math.round(wpm)} words per minute (window ${T.pacing.wpmMin} to ${T.pacing.wpmMax})`);
+  const band = T.pacingProfiles[profile];
+  if (wpm !== null && (wpm < band.wpmMin || wpm > band.wpmMax) && narration?.timed) failures.push(`narration runs at ${Math.round(wpm)} words per minute (window ${band.wpmMin} to ${band.wpmMax})`);
   const meanBeat = film ? film.shotDurations.reduce((a, b) => a + b, 0) / film.shotDurations.length : null;
   return {
     id: 9, key: "pacing", name: "Pacing", gate: false,
     status: failures.length ? "fail" : "pass", score: Math.round(clamp(4 - failures.length * 1.5, 0, 4) * 10) / 10,
     summary: failures.length ? failures.join("; ") : "no static holds, cuts or dead air; narration pace is in range",
-    metrics: { longestStaticSec: round(longest, 1), hardCuts: render.hardCutTimes.length, hardCutsPerMin: round(cutsPerMin, 1), deadAirStretches: deadAir, wordsPerMinute: wpm === null ? null : Math.round(wpm), meanBeatSec: meanBeat === null ? null : round(meanBeat, 1) },
-    threshold: { staticRunMaxSec: T.pacing.staticRunMaxSec, hardCutsPerMinMax: T.pacing.hardCutsPerMinMax, deadAirMaxSec: T.pacing.deadAirMaxSec, wpmMin: T.pacing.wpmMin, wpmMax: T.pacing.wpmMax },
+    metrics: { longestStaticSec: round(longest, 1), hardCuts: render.hardCutTimes.length, hardCutsPerMin: round(cutsPerMin, 1), deadAirStretches: deadAir, wordsPerMinute: wpm === null ? null : Math.round(wpm), meanBeatSec: meanBeat === null ? null : round(meanBeat, 1), ...(profile === "default" ? {} : { pacingProfile: profile }) },
+    threshold: { staticRunMaxSec: T.pacing.staticRunMaxSec, hardCutsPerMinMax: T.pacing.hardCutsPerMinMax, deadAirMaxSec: T.pacing.deadAirMaxSec, wpmMin: band.wpmMin, wpmMax: band.wpmMax },
     evidence: [...render.staticRuns.slice(0, 2).map((r) => ({ t: (r.start + r.end) / 2, note: "picture unchanged here" })), ...spread(render.hardCutTimes, 3).map((t) => ({ t, note: "hard cut" }))],
     fix: failures.length ? "Replace cuts with continuous transforms of the same stage, give every beat something that moves, and trim pauses over 0.7 s." : undefined,
   };
@@ -556,9 +559,56 @@ function loudness(i: ReviewInputs): CriterionResult {
 
 // Computes every criterion's verdict from the measured inputs, in rubric order.
 export function evaluateCriteria(i: ReviewInputs): CriterionResult[] {
-  const criteria = [persistentStage(i), carryOver(i), planAdherence(i), cueTiming(i), camera(i), captions(i), readability(i), overlap(i), audioSync(i), pacing(i), grounding(i), loudness(i)];
-  if ((i.format ?? (i.video.width < i.video.height ? "reel" : "long")) === "reel") criteria.push(reelLength(Math.max(i.video.durationSec, i.video.containerDurationSec ?? 0, i.video.audioDurationSec ?? 0)));
+  const reel = (i.format ?? (i.video.width < i.video.height ? "reel" : "long")) === "reel";
+  const criteria = [persistentStage(i), carryOver(i), planAdherence(i), cueTiming(i), camera(i), captions(i), readability(i), overlap(i), audioSync(i), pacing(i, reel ? i.pacingProfile ?? "default" : "default"), grounding(i), loudness(i)];
+  if (reel) criteria.push(reelLength(Math.max(i.video.durationSec, i.video.containerDurationSec ?? 0, i.video.audioDurationSec ?? 0)), reelHook(i.narration));
   return criteria;
+}
+
+/** Openers that greet or announce the video instead of stating a fact, matched on the lowercased first sentence. */
+const GREETING_OPENERS: RegExp[] = [
+  /^(?:hi|hello|hey|hiya|howdy|yo|greetings|welcome)\b/,
+  /^good (?:morning|afternoon|evening|day)\b/,
+  /^what'?s up\b/,
+  /^(?:so|okay|ok|alright|right),? (?:today|let'?s|welcome)\b/,
+  /^today,? (?:we|i|let'?s)\b/,
+  /^in (?:this|today'?s) (?:video|short|reel|clip|episode)\b/,
+  /^let'?s (?:talk|learn|dive|look|explore|find out|get started|begin)\b/,
+  /^(?:my name is|i'?m [a-z]+ and|before we (?:begin|start))\b/,
+];
+
+// True when a spoken word ends a sentence (. ! ? with optional closing quotes), not an abbreviation such as "U.S." or "Dr.".
+function endsSentence(word: string): boolean {
+  if (!/[.!?]["'\u2019\u201d)\]]*$/.test(word)) return false;
+  return !/^(?:[A-Za-z]\.){2,}["')\]]*$/.test(word) && !/^(?:mr|mrs|ms|dr|vs|st)\.$/i.test(word);
+}
+
+// Criterion 15: the reel opens on a hook, measured on the narration's first word and first sentence (reel reviews only, non-gating).
+export function reelHook(narration: Narration | null): CriterionResult {
+  const name = "Reel hook";
+  if (!narration?.timed || narration.words.length === 0) return skipped(15, "hook", name, false, "needs timed narration words");
+  const words = narration.words;
+  const end = words.findIndex((w) => endsSentence(w.word));
+  // Word timings without sentence punctuation cannot say where the first sentence stops, so nothing is guessed.
+  if (end < 0) return skipped(15, "hook", name, false, "the narration words carry no sentence punctuation, so the first sentence cannot be measured");
+  const sentence = words.slice(0, end + 1);
+  const count = sentence.filter((w) => /[a-z0-9]/i.test(w.word)).length;
+  const text = sentence.map((w) => w.word).join(" ").toLowerCase().replace(/[\u2018\u2019]/g, "'").trim();
+  const greeting = GREETING_OPENERS.some((re) => re.test(text));
+  const firstStart = words[0].start;
+  const failures: string[] = [];
+  if (firstStart >= T.hook.firstWordMaxSec) failures.push(`the voice starts at ${round(firstStart, 2)} s (must start before ${T.hook.firstWordMaxSec} s)`);
+  if (count < T.hook.sentenceWordsMin || count > T.hook.sentenceWordsMax) failures.push(`the first sentence is ${count} words (must be ${T.hook.sentenceWordsMin} to ${T.hook.sentenceWordsMax})`);
+  if (greeting) failures.push("the first sentence is a greeting or an intro instead of a statement of fact");
+  return {
+    id: 15, key: "hook", name, gate: false,
+    status: failures.length ? "fail" : "pass", score: Math.round(clamp(4 - failures.length * 1.5, 0, 4) * 10) / 10,
+    summary: failures.length ? failures.join("; ") : `the voice starts at ${round(firstStart, 2)} s on a ${count} word opening sentence`,
+    metrics: { firstWordStartSec: round(firstStart, 2), firstSentenceWords: count, greetingOpener: greeting },
+    threshold: { firstWordMaxSec: T.hook.firstWordMaxSec, sentenceWordsMin: T.hook.sentenceWordsMin, sentenceWordsMax: T.hook.sentenceWordsMax },
+    evidence: [{ t: firstStart, note: `first word "${words[0].word}" starts here` }],
+    fix: failures.length ? "Open the reel on a 10 to 16 word statement of fact or paradox with no greeting or intro, and start the voice at the very start of the film." : undefined,
+  };
 }
 
 // Enforces the captain's delivered reel cap on the container's measured duration, including its card.

@@ -10,7 +10,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { releaseChannel } from "../backend/releaseChannel";
+import { releaseChannel, releaseVersionProblem } from "../backend/releaseChannel";
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -112,6 +112,41 @@ test("releaseChannel derives stable channel only for clean tagged stable branch"
     assert.equal(dirtyStable.channel, "dev");
     assert.equal(dirtyStable.port, 3001);
   });
+});
+
+test("releaseChannel shows a v0.5.0 pre-release tag as STABLE through the channel script", () => {
+  withTempDir((tmp) => {
+    initGitRepo(tmp, "stable");
+    runGit(tmp, ["tag", "-a", "v0.5.0", "-m", "release 0.5.0"]);
+    const tagged = releaseChannel(tmp);
+    assert.equal(tagged.channel, "stable");
+    assert.equal(tagged.label, "STABLE v0.5.0");
+    assert.equal(tagged.tag, "v0.5.0");
+    assert.match(tagged.description, /^AIDEOS STABLE v0\.5\.0 \(commit [0-9a-f]{7}\)$/);
+
+    const version = spawnSync(
+      path.join(ROOT, "node_modules/.bin/tsx"),
+      [path.join(ROOT, "scripts/channel.ts"), tmp, "version"],
+      { encoding: "utf8", env: { ...process.env, NO_COLOR: "1" } }
+    );
+    assert.equal(version.status, 0);
+    assert.match(version.stdout.trim(), /^AIDEOS STABLE v0\.5\.0 \(commit [0-9a-f]{7}\)$/);
+  });
+});
+
+test("releaseVersionProblem accepts 0.5.0 or 1.0.0 as first release and next patch, minor or major after", () => {
+  assert.equal(releaseVersionProblem("0.5.0", ""), "");
+  assert.equal(releaseVersionProblem("1.0.0", ""), "");
+  assert.match(releaseVersionProblem("1.2.0", ""), /First release must be any 0\.x\.y pre-release or 1\.0\.0/);
+  assert.match(releaseVersionProblem("2.0.0", ""), /First release must be/);
+
+  assert.equal(releaseVersionProblem("0.5.1", "v0.5.0"), "");
+  assert.equal(releaseVersionProblem("0.6.0", "v0.5.0"), "");
+  assert.equal(releaseVersionProblem("1.0.0", "v0.5.0"), "");
+  assert.equal(releaseVersionProblem("1.0.0", "v0.5.3"), "");
+  assert.match(releaseVersionProblem("0.7.0", "v0.5.0"), /Next release must be one of 0\.5\.1, 0\.6\.0, 1\.0\.0; latest tag is v0\.5\.0\./);
+  assert.match(releaseVersionProblem("0.5.2", "v0.5.0"), /Next release must be one of/);
+  assert.match(releaseVersionProblem("1.0.1", "v0.5.0"), /Next release must be one of/);
 });
 
 test("scripts/channel.ts outputs stderr banner and stdout port or requested field", () => {
