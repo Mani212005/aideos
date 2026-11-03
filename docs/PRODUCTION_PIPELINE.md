@@ -189,6 +189,14 @@ skipped. Change the script and narration re-runs; change nothing and a crashed r
 it stopped. `resume: false` ignores the cache entirely, and `force: ["design"]` re-runs one stage
 while reusing earlier stages and invalidating every later stage.
 
+A package that already carries its narration (`voiceover.wav`, `captions.vtt`, `voiceover_words.json`
+and `narration.json`, for example a recorded voice, or a package copied without `run-state.json`)
+keeps it: when `run-state.json` has no narrate record and the stored segments' text equals the
+script's spoken text, the narrate stage resumes the files as is and reports that it is using the
+recorded narration (`backend/pipeline/recordedNarration.ts`). Synthesizing again would replace the
+voice and move every cue a hand-built design was timed to. Edit the script or `force: ["narrate"]`
+to re-narrate deliberately.
+
 The look fingerprint includes script and measured durations. The design fingerprint includes the
 look hash (look.json plus the content of every character it names, `lookPlanFingerprint`) plus the
 design spec, its artwork, the narration word timings of a stage design and each character spec it
