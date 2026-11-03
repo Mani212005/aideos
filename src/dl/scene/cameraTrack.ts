@@ -189,7 +189,7 @@ export function applyHoldPush(curves: CompiledCameraState[], amount: number, fps
 }
 
 /** Measures peak pan speed, zoom step per frame, pan acceleration and rest time of a compiled camera track. */
-export function measureCameraMotion(curves: CompiledCameraState[], fps: number, restZoomStep = 1e-4): CameraMotionStats {
+export function measureCameraMotion(curves: CompiledCameraState[], fps: number): CameraMotionStats {
   let peakPanSpeed = 0;
   let peakZoomStep = 0;
   let peakPanAccel = 0;
@@ -207,7 +207,7 @@ export function measureCameraMotion(curves: CompiledCameraState[], fps: number, 
     peakPanSpeed = Math.max(peakPanSpeed, speed);
     peakZoomStep = Math.max(peakZoomStep, zoomStep);
     if (i > 1) peakPanAccel = Math.max(peakPanAccel, Math.abs(speed - prevSpeed) * fps);
-    if (speed < 0.3 && zoomStep < restZoomStep && turn < 1e-3) {
+    if (speed < 0.3 && zoomStep < 1e-4 && turn < 1e-3) {
       rest++;
       longestMovingRun = Math.max(longestMovingRun, movingRun);
       movingRun = 0;

@@ -26,7 +26,6 @@ import {
   MAX_CAMERA_CONTINUOUS_MOVE_SECONDS,
   CAMERA_ZOOM_STEP_CEILING,
 } from "../../src/dl/scene/cameraTrack";
-import { holdPushRestStep } from "../../src/dl/holdPush";
 import { parseSvgDocument, walkSvgNodes } from "../../src/dl/scene/svgDocument";
 import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNode";
 import { narrationSupportsVisual, numbersIn } from "../shotVisualCues";
@@ -389,8 +388,12 @@ function checkCamera(scene: Scene, findings: DesignFinding[], targets: DesignChe
   // The compiled curve is what the viewer sees: an eased move can stay under the average speed cap and still burst.
   const fps = scene.fps || FPS;
   const sceneW = scene.sceneSize?.w ?? 1920;
-  // A declared hold push-in is part of the hold, so the slow creep it makes still counts as the camera at rest.
-  const stats = measureCameraMotion(compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize ?? { w: sceneW, h: sceneW }, fps), fps, holdPush ? holdPushRestStep(fps) : undefined);
+  const trackSize = scene.sceneSize ?? { w: sceneW, h: sceneW };
+  const stats = measureCameraMotion(compileCameraTrack(scene.camera, scene.durationFrames, trackSize, fps), fps);
+  // A declared hold push-in is part of the hold: how long the camera rests and moves is read off the authored track without it.
+  const { holdPush: _push, ...authored } = scene.camera;
+  void _push;
+  const rest = holdPush ? measureCameraMotion(compileCameraTrack(authored, scene.durationFrames, trackSize, fps), fps) : stats;
   const hint = "Leave `easing` off the keyframes so the camera flows through them, or give the move more frames.";
   if (stats.peakZoomStep > MAX_CAMERA_ZOOM_STEP) {
     findings.push({ rule: "camera", severity: "error", where: "scene.camera", message: `camera zoom changes ${(stats.peakZoomStep * 100).toFixed(2)}% in a single frame, above the ${(MAX_CAMERA_ZOOM_STEP * 100).toFixed(1)}% limit, which reads as a jerk. ${hint}` });
@@ -399,11 +402,11 @@ function checkCamera(scene: Scene, findings: DesignFinding[], targets: DesignChe
   if (stats.peakPanAccel > maxAccel) {
     findings.push({ rule: "camera", severity: "error", where: "scene.camera", message: `camera pan accelerates at ${stats.peakPanAccel.toFixed(0)} px/s^2, above the limit of ${maxAccel.toFixed(0)} px/s^2, which reads as a jerk. ${hint}` });
   }
-  if (stats.holdShare < MIN_CAMERA_HOLD_SHARE) {
-    findings.push({ rule: "camera", severity: "warning", where: "scene.camera", message: `camera holds for ${(stats.holdShare * 100).toFixed(0)}% of the film; aim for at least ${(MIN_CAMERA_HOLD_SHARE * 100).toFixed(0)}% so viewers can read each composition.` });
+  if (rest.holdShare < MIN_CAMERA_HOLD_SHARE) {
+    findings.push({ rule: "camera", severity: "warning", where: "scene.camera", message: `camera holds for ${(rest.holdShare * 100).toFixed(0)}% of the film; aim for at least ${(MIN_CAMERA_HOLD_SHARE * 100).toFixed(0)}% so viewers can read each composition.` });
   }
-  if (stats.maxContinuousMoveSeconds > MAX_CAMERA_CONTINUOUS_MOVE_SECONDS) {
-    findings.push({ rule: "camera", severity: "warning", where: "scene.camera", message: `camera moves continuously for as long as ${stats.maxContinuousMoveSeconds.toFixed(1)}s; break the move with a settled hold within ${MAX_CAMERA_CONTINUOUS_MOVE_SECONDS}s.` });
+  if (rest.maxContinuousMoveSeconds > MAX_CAMERA_CONTINUOUS_MOVE_SECONDS) {
+    findings.push({ rule: "camera", severity: "warning", where: "scene.camera", message: `camera moves continuously for as long as ${rest.maxContinuousMoveSeconds.toFixed(1)}s; break the move with a settled hold within ${MAX_CAMERA_CONTINUOUS_MOVE_SECONDS}s.` });
   }
   const maxLandingGap = CAMERA_CUE_LANDING_TOLERANCE_SECONDS * fps;
   for (let i = 0; i < (targets?.length ?? 0); i++) {

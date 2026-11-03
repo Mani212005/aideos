@@ -14,7 +14,7 @@ import { camAt, buildTimeline, lookBox, solveCam, type Cam } from "../src/dl/cam
 import { easeExpo, MS } from "../src/dl/motion";
 import { parseFilm, type Film } from "../src/dl/schema";
 import { compileCameraTrack, measureCameraMotion, CAMERA_ZOOM_STEP_CEILING } from "../src/dl/scene/cameraTrack";
-import { holdPushRestStep, MAX_HOLD_PUSH } from "../src/dl/holdPush";
+import { MAX_HOLD_PUSH } from "../src/dl/holdPush";
 import type { CameraTrack } from "../src/dl/scene/types";
 import { checkFilmDesign, MAX_CAMERA_PAN_ACCEL_WIDTHS } from "./designCheck/designCheck";
 import { loadFixtureFilm } from "./testSupport/fixtureFilms";
@@ -117,19 +117,14 @@ test("hold push on: a scene camera pushes 1 to 3 percent over each hold, about i
   assert.ok(on[460].zoom / off[460].zoom < on[300].zoom / off[300].zoom);
 });
 
-// Verifies the push never leaves a hold's motion in a jerk: no velocity jump, and it all counts as the camera at rest.
-test("hold push on: the push rises smoothly and is measured as the camera at rest", () => {
-  const off = compileCameraTrack(track(), 900, SIZE, FPS);
+// Verifies the push never leaves a hold's motion in a jerk: no velocity jump.
+test("hold push on: the push rises smoothly", () => {
   const on = compileCameraTrack(track(0.03), 900, SIZE, FPS);
   const logStep = (f: number) => Math.log(on[f].zoom / on[f - 1].zoom);
   for (let f = 92; f <= 300; f++) {
     assert.ok(logStep(f) >= -1e-12, `hold frame ${f} zoomed out`);
     assert.ok(Math.abs(logStep(f) - logStep(f - 1)) < 5e-5, `frame ${f} jerks the push by ${Math.abs(logStep(f) - logStep(f - 1))}`);
   }
-  const stillOff = measureCameraMotion(off, FPS);
-  const stillOn = measureCameraMotion(on, FPS, holdPushRestStep(FPS));
-  assert.ok(Math.abs(stillOn.holdShare - stillOff.holdShare) < 0.02, `hold share ${stillOn.holdShare} vs ${stillOff.holdShare}`);
-  assert.ok(stillOn.maxContinuousMoveSeconds <= stillOff.maxContinuousMoveSeconds + 0.1);
 });
 
 // Verifies a hold too short to push is left alone, and a push never adds to a move already at the zoom-step ceiling.
@@ -144,7 +139,7 @@ test("hold push on: short holds stay still and the push never breaks the camera 
   const { holdPush: _unused, ...bare } = brisk;
   void _unused;
   const base = measureCameraMotion(compileCameraTrack(bare, 900, SIZE, FPS), FPS);
-  const pushed = measureCameraMotion(compileCameraTrack(brisk, 900, SIZE, FPS), FPS, holdPushRestStep(FPS));
+  const pushed = measureCameraMotion(compileCameraTrack(brisk, 900, SIZE, FPS), FPS);
   assert.ok(pushed.peakZoomStep <= Math.max(CAMERA_ZOOM_STEP_CEILING, base.peakZoomStep) + 1e-12, `push raised the zoom step to ${pushed.peakZoomStep}`);
   assert.ok(pushed.peakPanSpeed === base.peakPanSpeed && pushed.peakPanAccel === base.peakPanAccel, "the push moved the centre");
   const shortHold = compileCameraTrack({ holdPush: 0.03, keyframes: [{ frame: 0, center: { x: 960, y: 960 }, zoom: 1 }, { frame: 10, center: { x: 960, y: 960 }, zoom: 1 }, { frame: 20, center: { x: 900, y: 960 }, zoom: 1 }, { frame: 80, center: { x: 900, y: 960 }, zoom: 1 }] }, 100, SIZE, FPS);
@@ -166,7 +161,7 @@ test("hold push on: a designed scene film's design check reports nothing new, in
   // A waypoint the camera only passes through (not a hold) is still the authored pose, even far into a long move.
   const bare = compileCameraTrack({ keyframes: film.scene.camera.keyframes }, film.scene.durationFrames, film.scene.sceneSize, film.scene.fps);
   assert.deepEqual(compiled[2229], bare[2229]);
-  const stats = measureCameraMotion(compiled, film.scene.fps, holdPushRestStep(film.scene.fps));
+  const stats = measureCameraMotion(compiled, film.scene.fps);
   assert.ok(stats.peakZoomStep <= CAMERA_ZOOM_STEP_CEILING);
   assert.ok(stats.peakPanAccel <= film.scene.sceneSize.w * MAX_CAMERA_PAN_ACCEL_WIDTHS);
 });

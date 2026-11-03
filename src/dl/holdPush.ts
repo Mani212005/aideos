@@ -6,7 +6,7 @@
  * smoothstep (no velocity jump where it starts or stops), is slower for a shorter hold, and is handed back to the
  * next move so the camera still lands exactly on every authored pose.
  * Inputs and outputs: hold runs (frame range plus the frames of travel after it), an amount and fps -> log-zoom offsets.
- * Used by: src/dl/scene/cameraTrack.ts, src/dl/camera.ts, backend/designCheck/designCheck.ts, backend/holdPush.test.ts.
+ * Used by: src/dl/scene/cameraTrack.ts, src/dl/camera.ts, backend/holdPush.test.ts.
  */
 
 /** Smallest push a film or shot may ask for (1% extra zoom over a hold). */
@@ -21,12 +21,6 @@ export const HOLD_PUSH_FULL_HOLD_SECONDS = 3;
 export const HOLD_PUSH_HANDBACK_SECONDS = 3;
 /** Largest zoom change per frame the hand-back into the next move may add, as a fraction (the camera cap is 0.8%). */
 export const HOLD_PUSH_HANDBACK_STEP = 0.0025;
-
-/** The steepest zoom change per frame the push itself makes while a hold rests, plus margin: below this a frame still counts as at rest. */
-export function holdPushRestStep(fps: number): number {
-  // A hold under the full length gets amount * (seconds / 3) spread over seconds * fps frames at 1.5x the mean slope.
-  return (1.5 * MAX_HOLD_PUSH) / (HOLD_PUSH_FULL_HOLD_SECONDS * fps) * 1.1;
-}
 
 /** One hold: the inclusive frame range the camera rests, and how many frames of travel follow before the next hold. */
 export interface HoldRun {
