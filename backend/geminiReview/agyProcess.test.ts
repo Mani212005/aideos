@@ -127,7 +127,20 @@ test("agy idle watchdog reaps a quiet tree when explicitly enabled", { skip: pro
     if (savedIdle === undefined) delete process.env.AIDEOS_AGY_IDLE_TIMEOUT;
     else process.env.AIDEOS_AGY_IDLE_TIMEOUT = savedIdle;
   });
-  await assert.rejects(defaultAgyRunner("Review", { timeoutSeconds: 10 }), /appears wedged: no stdout or CPU growth/i);
+  // The idle clock starts at spawn, so a slow node start would be reaped before the tree exists. A shell launcher keeps stdout busy until the tree is up, then the tree goes quiet.
+  fs.renameSync(path.join(dir, "agy"), path.join(dir, "tree.js"));
+  fs.writeFileSync(path.join(dir, "agy"), `#!/bin/sh
+dir=$(dirname "$0")
+while [ ! -e "$dir/quiet" ]; do printf ' '; sleep 0.05; done &
+exec "$dir/tree.js"
+`, { mode: 0o755 });
+  const reaped = assert.rejects(defaultAgyRunner("Review", { timeoutSeconds: 10 }), /appears wedged: no stdout or CPU growth/i);
+  try {
+    await until(() => ["leader.pid", "child.pid"].every((name) => fs.existsSync(path.join(dir, name))));
+  } finally {
+    fs.writeFileSync(path.join(dir, "quiet"), "");
+  }
+  await reaped;
   for (const name of ["leader.pid", "child.pid"]) {
     const pid = Number(fs.readFileSync(path.join(dir, name), "utf8"));
     await until(() => !alive(pid));
