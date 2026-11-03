@@ -154,9 +154,10 @@ export function formatOfViewport(viewport: ReviewViewport): "long" | "reel" {
   return viewport.height > viewport.width ? "reel" : "long";
 }
 
-// Lists the camera moves of a Three stage as they appear in one output: the compiled track projected into that viewport.
+// Lists the camera moves of a Three stage as they appear in one output: the compiled track (without the hold push-in, which is not a move) projected into that viewport.
 function projectedCameraMoves(scene: Scene, fps: number, viewport: ReviewViewport): CameraFacts {
-  const track = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize, scene.fps);
+  const authored = scene.camera && { ...scene.camera, holdPush: undefined };
+  const track = compileCameraTrack(authored, scene.durationFrames, scene.sceneSize, scene.fps);
   const { width, height } = viewport;
   const corners = [SAFE_SQUARE.x0, SAFE_SQUARE.x1].flatMap((x) => [SAFE_SQUARE.y0, SAFE_SQUARE.y1].map((y) => ({ x, y })));
   // Largest on-screen distance any corner of the shared safe square travels between two poses, in output widths.
