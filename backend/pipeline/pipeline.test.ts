@@ -354,6 +354,44 @@ test("runProduction: writes a package whose film matches the narration it synthe
   }
 });
 
+// Release acceptance copies a prepared package without its run-state.json and resumes it: narration the
+// package already carries (a recorded voice) has to be used as is, because every cue in its design is
+// timed to that voice. A package without narration is still synthesized.
+test("runProduction: a package with narration for its script keeps its voiceover.wav, one without is narrated", async () => {
+  const slug = `probe-recorded-${Date.now().toString(36)}`;
+  const pkgDir = path.join(VIDEOS_DIR, slug);
+  const request = { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone" as const, design: "templates" as const, broll: false, stopAfter: "narrate" as const, resume: true, syncToPreview: false };
+
+  try {
+    const first: ProductionProgress[] = [];
+    await runProduction(request, (event) => first.push(event));
+    assert.ok(first.some((e) => e.message.startsWith("synthesizing")), "a package without narration must be narrated");
+
+    // Make the stored voice differ from anything a new synthesis would write, then drop the run state.
+    const wavPath = path.join(pkgDir, "voiceover.wav");
+    const stored = fs.readFileSync(wavPath);
+    stored[stored.length - 1] ^= 0x55;
+    fs.writeFileSync(wavPath, stored);
+    fs.rmSync(path.join(pkgDir, "run-state.json"));
+    const before = JSON.parse(fs.readFileSync(path.join(pkgDir, "narration.json"), "utf8")).totalAudioDuration;
+
+    const second: ProductionProgress[] = [];
+    const result = await runProduction(request, (event) => second.push(event));
+    assert.ok(second.some((e) => e.stage === "narrate" && e.message.includes("using the recorded narration")), "the run must say it uses the recorded narration");
+    assert.ok(!second.some((e) => e.message.startsWith("synthesizing")), "recorded narration must not be synthesized again");
+    assert.deepEqual(fs.readFileSync(wavPath), stored, "voiceover.wav must keep its bytes");
+    assert.equal(result.durationSec, before, "the narration duration must be unchanged");
+
+    // Narration that no longer matches the script is not valid: it is narrated again.
+    const third: ProductionProgress[] = [];
+    await runProduction({ ...request, script: SCRIPT.replace("the first thing", "another thing") }, (event) => third.push(event));
+    assert.ok(third.some((e) => e.message.startsWith("synthesizing")), "narration for a different script must be replaced");
+  } finally {
+    fs.rmSync(pkgDir, { recursive: true, force: true });
+    fs.rmSync(path.join(FILMS_DIR, `${slug}.ts`), { force: true });
+  }
+});
+
 // A resumed run must reuse the stages whose inputs have not changed rather than redoing them.
 test("runProduction: resuming reuses the stages whose inputs have not changed", async () => {
   const slug = `probe-resume-${Date.now().toString(36)}`;

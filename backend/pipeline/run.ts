@@ -27,6 +27,7 @@ import { ensureRetimedAudio, produceAudioPipeline, type ProduceAudioResult } fro
 import { DEFAULT_KOKORO_SPEED } from "../tts";
 import { DELIVERY_CONFIG, deliveryTimeline } from "../../src/dl/delivery";
 import { ensureEndCardVoice, narrationVoiceOf, synthesizeEndCardLine } from "../endCard/voice";
+import { readRecordedNarration } from "./recordedNarration";
 import { deliverReel } from "../reelCut/writer";
 import { reelForRender, reelSourceFingerprint, writeReelFilm } from "../reelCut/store";
 import { recordReelStatus, type ReelBuildStatus } from "../reelCut/build";
@@ -421,21 +422,21 @@ export async function runProduction(
     const narrationFingerprint = fingerprint(script, request.ttsBackend ?? "auto", request.voice ?? "default", request.speed ?? DEFAULT_KOKORO_SPEED);
     const narrationCachePath = path.join(pkgDir, "narration.json");
 
+    // A package that already carries narration spoken from this script (a recorded voice, or one made
+    // before run-state.json existed or was copied along) is resumed as is: re-synthesizing it would
+    // replace the voice and move every cue the design was timed to. A deliberate re-narration is force.
+    const narrateRecord = stageRecord(state, "narrate");
+    const recorded = resume && !forced.has("narrate") && !narrateRecord.fingerprint ? readRecordedNarration(pkgDir, script) : null;
+    if (recorded) {
+      narrateRecord.status = "done";
+      narrateRecord.fingerprint = narrationFingerprint;
+      emit("narrate", "running", `using the recorded narration in the package (voiceover.wav, ${recorded.totalAudioDuration.toFixed(2)}s, ${recorded.ttsBackend}); not synthesizing it again`);
+    }
+
     const narration = await runStage<ProduceAudioResult>(
       "narrate",
       narrationFingerprint,
-      () => {
-        if (![narrationCachePath, ...["voiceover.wav", "captions.vtt", "voiceover_words.json"].map((file) => path.join(pkgDir, file))].every((file) => fs.existsSync(file))) return null;
-        try {
-          const cached = JSON.parse(fs.readFileSync(narrationCachePath, "utf8")) as ProduceAudioResult;
-          const words = JSON.parse(fs.readFileSync(path.join(pkgDir, "voiceover_words.json"), "utf8"));
-          return Array.isArray(cached.segments) && Array.isArray(cached.shotDurations) &&
-            cached.segments.length === cached.shotDurations.length && cached.segments.length > 0 &&
-            Array.isArray(words.words) && cached.totalAudioDuration > 0 ? cached : null;
-        } catch {
-          return null;
-        }
-      },
+      () => readRecordedNarration(pkgDir, script),
       async () => {
         const result = await produceAudioPipeline(script, pkgDir, {
           backend: request.ttsBackend,
