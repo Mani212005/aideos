@@ -33,3 +33,15 @@ export function releaseChannel(root: string) {
     : `AIDEOS DEV ${branch}@${commit}${dirty ? " + UNCOMMITTED CHANGES" : ""}${ahead ? ` (${ahead} commits ahead of stable)` : ""}`;
   return { channel: stable ? "stable" : "dev", label, tag, commit, branch, dirty, ahead, description, root, port: stable ? 3002 : 3001 };
 }
+
+/** Describes why a version is not an eligible next release of the highest existing tag, or returns an empty string. */
+export function releaseVersionProblem(version: string, latestTag: string): string {
+  const parse = (value: string) => value.split(".").map(Number);
+  if (!latestTag) {
+    const [major] = parse(version);
+    return major === 0 || version === "1.0.0" ? "" : "First release must be any 0.x.y pre-release or 1.0.0.";
+  }
+  const [major, minor, patch] = parse(latestTag.slice(1));
+  const next = [`${major}.${minor}.${patch + 1}`, `${major}.${minor + 1}.0`, `${major + 1}.0.0`];
+  return next.includes(version) ? "" : `Next release must be one of ${next.join(", ")}; latest tag is ${latestTag}.`;
+}

@@ -15,13 +15,13 @@ their checkout even when invoked from inside the other checkout.
 ## How do I know which one I am in?
 
 - Every CLI invocation prints a channel banner to stderr. Stable is green:
-  `AIDEOS STABLE v1.0.0 (commit abc1234)`. Dev is orange: `AIDEOS DEV main@abc1234`, with
+  `AIDEOS STABLE v0.5.0 (commit abc1234)`. Dev is orange: `AIDEOS DEV main@abc1234`, with
   `+ UNCOMMITTED CHANGES` when dirty, and a count of commits ahead of stable when ahead of stable.
   `NO_COLOR=1` removes the color and preserves the words.
 - `aideos version` (or `--version`) prints the channel, release tag and commit. `aideos which`
   prints its channel and absolute checkout path. The same commands work with `aideos-dev`.
 - Studio has a persistent colored badge and 3-pixel top strip, a matching favicon, and a tab title
-  beginning `[STABLE v1.0.0]` or `[DEV]`. Hover the badge to see the commit and checkout.
+  beginning `[STABLE v0.5.0]` or `[DEV]`. Hover the badge to see the commit and checkout.
 - Editor ports default to 3002 for stable and 3001 for dev. Remotion Studio defaults to 3102 and
   3101 respectively. Busy ports fail instead of silently switching channels. `aideos exit` stops
   only its channel's editor, after checking the server's working directory.
@@ -35,8 +35,10 @@ the badge refreshes Git identity while open, but a running server keeps its orig
 
 Use the updating clone on a clean `main` exactly matching fetched `origin/main`. Commit and push
 changes through the normal PR process first. Never run promotion from a feature branch. The first
-release is `1.0.0`; subsequent versions must be the next patch, next minor, or next major relative
-to the highest existing release tag. Existing tags are never overwritten.
+release may be any `0.x.y` pre-release (the intended one is `0.5.0`, because quality is not yet at
+1.0) or `1.0.0`; subsequent versions must be the next patch, next minor, or next major relative
+to the highest existing release tag (so `0.5.1`, `0.6.0` or `1.0.0` after `0.5.0`). Existing tags
+are never overwritten.
 
 Prepare a real complete narrated, designed and scored film package using the regular production
 pipeline. It needs `film.json`, `script.md`, `voiceover.wav`, design/look inputs and all its local
@@ -44,9 +46,9 @@ assets. Packages must contain regular files and directories, without symlinks. C
 that exercises the changes being released, not a short excerpt or a tone-only test fixture.
 
 ```sh
-npm run release -- 1.0.0 --acceptance /absolute/path/to/prepared-film --dry-run
+npm run release -- 0.5.0 --acceptance /absolute/path/to/prepared-film --dry-run
 # After inspecting the dry run, run the same acceptance gates for the real promotion:
-npm run release -- 1.0.0 --acceptance /absolute/path/to/prepared-film
+npm run release -- 0.5.0 --acceptance /absolute/path/to/prepared-film
 ```
 
 The command fetches refs and checks version/fast-forward eligibility, then:
@@ -65,7 +67,7 @@ The command fetches refs and checks version/fast-forward eligibility, then:
    Gemini video review. These must pass. Reports remain beside the temporary rendered package;
    `production.json` records the run. Review tools require their normal local dependencies/login.
 6. Waits for the captain to watch **both complete outputs with sound**, then type exactly
-   `WATCHED AND APPROVE v1.0.0` in an interactive terminal. There is no automatic approval option;
+   `WATCHED AND APPROVE v0.5.0` in an interactive terminal. There is no automatic approval option;
    pipes are refused. Dry runs also require this watch confirmation.
 7. Rechecks that main and stable have not changed during the watch, creates the annotated release
    tag, advances local stable only by fast-forward, and atomically pushes tag and stable to origin.
@@ -145,7 +147,7 @@ videos and data, change code only; never reset or clean those directories:
 
 ```sh
 git -C "$HOME/aideos-stable" fetch --tags origin
-git -C "$HOME/aideos-stable" switch --detach v1.0.0
+git -C "$HOME/aideos-stable" switch --detach v0.5.0
 npm --prefix "$HOME/aideos-stable" ci
 ```
 
@@ -153,7 +155,7 @@ A detached rollback deliberately shows DEV under the channel identity rule. To m
 rollback STABLE after checking it, move **only this clone's local branch** to the selected tag:
 
 ```sh
-git -C "$HOME/aideos-stable" branch -f stable v1.0.0
+git -C "$HOME/aideos-stable" branch -f stable v0.5.0
 git -C "$HOME/aideos-stable" switch stable
 ```
 
