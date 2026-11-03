@@ -122,6 +122,7 @@ A single continuous camera view and duration window on the timeline.
 * `move: "cut" | "pan" | "zoom-in" | "zoom-out" | "hold"` (Camera motion transition)
 * `zoom?: number` (Camera optical zoom multiplier, default 1.0)
 * `drift?: boolean` (True to apply subtle 100% to 104% scale drift during holds)
+* `holdPush?: number` (Opt-in slow push-in over the shot's hold, 0.01 to 0.03 of zoom; scene films set `scene.camera.holdPush` instead. See `src/dl/holdPush.ts`)
 * `blocks: Block[]` (Array of visual blocks rendered during this shot)
 * `scriptText?: string` (Exact voiceover narration sentence spoken in this shot)
 * `visualDirection?: string` (Human/AI visual intent prompt)
@@ -454,7 +455,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `sceneTiming.ts`: Audio-first retiming helpers (`framesForAudioMs`, `audioSyncDriftMs`, `alignSceneToAudio`, `retimeSvgTimeline`).
 * `SceneView.tsx`: Pure browser-safe SVG scene renderer for background and prop assets with camera transform support and no filesystem imports; character rigs render through the separate Three stage.
 * `compile.ts`: Pure deterministic compiler (`compileScene`) threading custom animation timelines and camera tracks onto frames for environment assets (background and props).
-* `cameraTrack.ts`: Camera track compiler (`compileCameraTrack`) and motion stats (`measureCameraMotion`) measuring peak pan speed, per-frame zoom step, pan acceleration, hold share, and continuous move duration, exporting pacing constants (`MIN_CAMERA_HOLD_SHARE`, `MAX_CAMERA_CONTINUOUS_MOVE_SECONDS`, `CAMERA_CUE_LANDING_TOLERANCE_SECONDS`).
+* `cameraTrack.ts`: Camera track compiler (`compileCameraTrack`, with the opt-in `holdPush` push-in over camera holds) and motion stats (`measureCameraMotion`) measuring peak pan speed, per-frame zoom step, pan acceleration, hold share, and continuous move duration, exporting pacing constants (`MIN_CAMERA_HOLD_SHARE`, `MAX_CAMERA_CONTINUOUS_MOVE_SECONDS`, `CAMERA_CUE_LANDING_TOLERANCE_SECONDS`).
 * `validateScene.ts`: Semantic and physical integrity validator (`validateScene`) rejecting unsupported actor rigs (Rule 21) before enforcing scene integrity rules and Rule 20 timeline consistency.
 * `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`).
 * `projection.ts`: Canonical orthographic projection, cover-fit viewport calculation (`stageViewport`, `stageProjection`), Three.js camera pose assignment (`applyStageCamera`), and stage rect geometry helpers (`projectStagePoint`, `rectInside`, `overlaps`, `SAFE_SQUARE`).
