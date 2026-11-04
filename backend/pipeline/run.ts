@@ -88,6 +88,13 @@ function fingerprint(...parts: unknown[]): string {
   return crypto.createHash("sha1").update(JSON.stringify(parts)).digest("hex").slice(0, 16);
 }
 
+// Carries the existing film's authored soundtrack, music and legacy sfx onto a rebuilt film that lacks them.
+function carryExistingSound(existing: Film | null | undefined, rebuilt: Film): void {
+  if (existing?.soundtrack && !existing.soundtrack.defaultScore) rebuilt.soundtrack = existing.soundtrack;
+  if (existing?.music && !rebuilt.music) rebuilt.music = existing.music;
+  if (existing?.sfx?.length && !rebuilt.sfx?.length) rebuilt.sfx = existing.sfx;
+}
+
 // Hashes authored design inputs so a valid SVG or spec edit also reopens downstream production.
 export function designFilesFingerprint(slug: string, options: { receiveSourceFile?: string } = {}): string | null {
   const specFile = path.join(designDir(slug), "design.json");
@@ -492,8 +499,7 @@ export async function runProduction(
         const skeleton = await compileFilmFromScreenplayAsync(script, narration.segments, narration.shotDurations, {
           ...compileOptions, textOnly: true, maxFootageShots: 0,
         });
-        if (existing?.soundtrack && !existing.soundtrack.defaultScore) skeleton.film.soundtrack = existing.soundtrack;
-        if (existing?.music && !skeleton.film.music) skeleton.film.music = existing.music;
+        carryExistingSound(existing, skeleton.film);
         writeFilm(slug, skeleton.film);
         filmResult = skeleton.film;
         const outcome = await planFilmLook(slug, { ...delivery, onProgress: (message) => emit("look", "running", message) });
@@ -540,8 +546,7 @@ export async function runProduction(
           deviceCaller: request.deviceCaller !== undefined ? request.deviceCaller : process.env.NODE_TEST_CONTEXT ? null : await defaultDeviceCaller(),
         });
         const existing = readFilm(slug);
-        if (existing?.soundtrack && !existing.soundtrack.defaultScore) compiled.film.soundtrack = existing.soundtrack;
-        if (existing?.music && !compiled.film.music) compiled.film.music = existing.music;
+        carryExistingSound(existing, compiled.film);
         writeFilm(slug, compiled.film);
         // Every new compile becomes the build's base. A stale first-build snapshot must never
         // resurrect narration, timing or treatments from an earlier run.

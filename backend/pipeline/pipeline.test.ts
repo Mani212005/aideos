@@ -652,6 +652,32 @@ test("runProduction: narration records its voice and speed; the end card line is
   } finally { cleanProbe(slug); }
 });
 
+test("runProduction: a film's legacy sound effects survive the look and design stages and base-film.json", async () => {
+  const slug = `probe-sfx-${Date.now().toString(36)}`;
+  try {
+    const request = inlineRequest(slug);
+    await runProduction(request);
+    const sfx = [
+      { src: "audio/library/sfx/whoosh-a.wav", timeSec: 1.5, volume: 0.6 },
+      { src: "audio/library/sfx/tick-b.wav", timeSec: 4.25, volume: 0.5, durationSec: 0.4 },
+    ];
+    writeFilm(slug, { ...readFilm(slug)!, sfx });
+    writeProbeDesign(slug);
+
+    const looked = await runProduction({ ...request, force: ["look"], stopAfter: "look" });
+    assert.equal(looked.status, "stopped", JSON.stringify(looked.warnings));
+    assert.deepEqual(readFilm(slug)?.sfx, sfx, "the look stage rebuilds the skeleton film and must keep the sfx");
+
+    const designed = await runProduction({ ...request, force: ["design"], stopAfter: "design" });
+    assert.equal(designed.status, "stopped", JSON.stringify(designed.warnings));
+    assert.deepEqual(readFilm(slug)?.sfx, sfx, "the design stage must keep the sfx");
+    const base = JSON.parse(fs.readFileSync(path.join(VIDEOS_DIR, slug, "design/base-film.json"), "utf8"));
+    assert.deepEqual(base.sfx, sfx, "design/base-film.json is the start of every rebuild and must carry the sfx");
+    assert.equal(buildDesign(slug).state, "passed");
+    assert.deepEqual(readFilm(slug)?.sfx, sfx, "a rebuild from base-film.json keeps the sfx");
+  } finally { cleanProbe(slug); }
+});
+
 test("runProduction: valid look without a design stops at needs_design and never reports templates", async () => {
   const slug = `probe-needs-design-${Date.now().toString(36)}`;
   try {
