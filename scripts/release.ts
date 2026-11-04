@@ -7,11 +7,13 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { Command } from "commander";
 import { git, optionalGit, releaseChannel, releaseVersionProblem } from "../backend/releaseChannel";
 import type { AudioItem } from "../backend/audioLibrary/schema";
+import type { GeminiReviewReport } from "../backend/geminiReview/types";
+import { announceWaiver, requireWaiverAllowed, reviewWithGemini, waiverTagNote, type ReelGeminiWaiver } from "./releaseWaiver";
 
 const ROOT = path.resolve(__dirname, "..");
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
@@ -125,8 +127,18 @@ async function fetchAudioForPackage(
   }
 }
 
+/** Runs gemini-review on the reel and returns its report; exit 1 is a REVISE verdict, any other failure is a tool error. */
+function reelGeminiReport(videoPath: string): GeminiReviewReport {
+  const args = ["backend/cli.ts", "gemini-review", videoPath, "--json"];
+  console.log(`> tsx ${args.map(quote).join(" ")}`);
+  const child = spawnSync(path.join(ROOT, "node_modules/.bin/tsx"), args, { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "inherit"] });
+  requireThat(child.status === 0 || child.status === 1, `Gemini review of ${videoPath} could not run (exit ${child.status ?? child.signal}).`);
+  try { return JSON.parse(child.stdout) as GeminiReviewReport; }
+  catch { throw new Error(`Gemini review of ${videoPath} printed no readable report.`); }
+}
+
 /** Runs full CI and a complete, music-backed production on a private copy of the chosen film. */
-async function acceptance(source: string, evidence: string): Promise<void> {
+async function acceptance(source: string, evidence: string, waiverReason?: string): Promise<ReelGeminiWaiver | undefined> {
   const videos = path.join(evidence, "videos");
   fs.mkdirSync(videos);
   process.env.AIDEOS_PROJECT_ROOT = ROOT;
@@ -163,11 +175,24 @@ async function acceptance(source: string, evidence: string): Promise<void> {
   requireThat(result.warnings.length === 0, `Acceptance warnings block release:\n${result.warnings.join("\n")}`);
   for (const output of result.outputs) console.log(`WATCH ${output.format}: ${output.path} (${output.durationSec.toFixed(2)} seconds)`);
   run(path.join(ROOT, "node_modules/.bin/tsx"), ["backend/cli.ts", "review", film.id]);
-  for (const output of result.outputs) run(path.join(ROOT, "node_modules/.bin/tsx"), ["backend/cli.ts", "gemini-review", output.path]);
+  const { formatReviewSummary } = await import("../backend/geminiReview/geminiReview");
+  const waiver = await reviewWithGemini(result.outputs, {
+    strictReview: (output) => run(path.join(ROOT, "node_modules/.bin/tsx"), ["backend/cli.ts", "gemini-review", output]),
+    reelReview: async (output) => reelGeminiReport(output),
+    print: (report) => console.log(`\n${formatReviewSummary(report)}`),
+    now: () => new Date(),
+  }, waiverReason);
+  if (waiver) {
+    fs.writeFileSync(path.join(evidence, "production.json"), JSON.stringify({ ...result, waivers: [waiver] }, null, 2));
+    announceWaiver(waiver);
+  }
+  return waiver;
 }
 
 /** Gates promotion on current main, full checks, complete renders and explicit captain watch approval. */
-async function release(version: string, options: { acceptance: string; dryRun?: boolean; stablePath?: string }): Promise<void> {
+async function release(version: string, options: { acceptance: string; dryRun?: boolean; stablePath?: string; waiveReelGemini?: string }): Promise<void> {
+  const waiverReason = options.waiveReelGemini === undefined ? undefined
+    : requireWaiverAllowed({ reason: options.waiveReelGemini, acceptance: options.acceptance, interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY) });
   const head = preflightMain();
   const tag = validateVersion(version);
   const stableDir = path.resolve(options.stablePath || setting(ROOT, "stablePath") || path.join(os.homedir(), "aideos-stable"));
@@ -176,20 +201,21 @@ async function release(version: string, options: { acceptance: string; dryRun?: 
   else requireThat(!options.stablePath && !setting(ROOT, "stablePath"), "Configured stable clone is missing; restore it before promotion.");
   const evidence = fs.mkdtempSync(path.join(os.tmpdir(), `aideos-release-${version}-`));
   console.log(`Acceptance evidence (retained): ${evidence}`);
-  await acceptance(path.resolve(options.acceptance), evidence);
+  const waiver = await acceptance(path.resolve(options.acceptance), evidence, waiverReason);
+  const tagMessage = `Aideos ${tag}: full acceptance watched and approved${waiverTagNote(waiver)}`;
   await confirm(`WATCHED AND APPROVE ${tag}`);
   requireThat(preflightMain() === head, "main changed during acceptance; rerun the release.");
   validateVersion(version);
   if (hasStable) checkStableClone(stableDir, head);
   const actions = [
-    `git tag -a ${tag} ${head} -m ${quote(`Aideos ${tag}: full acceptance watched and approved`)}`,
+    `git tag -a ${tag} ${head} -m ${quote(tagMessage)}`,
     optionalGit(ROOT, ["rev-parse", "--verify", "refs/heads/stable"]) ? `git fetch . ${head}:refs/heads/stable` : `git branch stable ${head}`,
     `git push --atomic origin refs/tags/${tag} refs/heads/stable:refs/heads/stable`,
     ...(hasStable ? [`git -C ${quote(stableDir)} fetch --tags origin`, `git -C ${quote(stableDir)} merge --ff-only ${tag}`, `npm --prefix ${quote(stableDir)} ci`] : ["First release: run npm run release:setup, inspect its plan, then repeat with --apply."]),
   ];
   console.log(`${options.dryRun ? "DRY RUN - would run" : "Promotion plan"}:\n${actions.join("\n")}`);
   if (options.dryRun) return;
-  run("git", ["tag", "-a", tag, head, "-m", `Aideos ${tag}: full acceptance watched and approved`]);
+  run("git", ["tag", "-a", tag, head, "-m", tagMessage]);
   if (optionalGit(ROOT, ["rev-parse", "--verify", "refs/heads/stable"])) run("git", ["fetch", ".", `${head}:refs/heads/stable`]);
   else run("git", ["branch", "stable", head]);
   run("git", ["push", "--atomic", "origin", `refs/tags/${tag}`, "refs/heads/stable:refs/heads/stable"]);
@@ -252,6 +278,7 @@ async function copyFilm(slug: string, options: { overwrite?: boolean; dryRun?: b
 const program = new Command().description("Local stable release tools; see docs/RELEASES.md");
 program.command("release <version>").requiredOption("--acceptance <package-dir>", "prepared full narrated and scored film package")
   .option("--stable-path <path>", "existing stable clone override").option("--dry-run", "run all acceptance gates without promotion")
+  .option("--waive-reel-gemini <reason>", "captain-attended, this release only: waive the reel's Gemini verdict (never a hard gate, the long film or a measured review)")
   .action(release);
 program.command("setup").option("--path <path>", "new stable clone", path.join(os.homedir(), "aideos-stable"))
   .option("--bin-dir <path>", "launcher directory", path.join(os.homedir(), ".local/bin"))
