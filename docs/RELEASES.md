@@ -69,8 +69,8 @@ The command fetches refs and checks version/fast-forward eligibility, then:
 5. Prints the complete MP4 paths and durations, runs measured review for both formats, and runs
    Gemini video review. These must pass. Reports remain beside the temporary rendered package;
    `production.json` records the run. Review tools require their normal local dependencies/login.
-   A captain-attended release may add `--waive-reel-gemini "<reason>"` to waive only the reel's Gemini
-   verdict and score threshold (see "Waive the reel's Gemini verdict" below).
+   Only the 0.5.0 release may add `--waive-reel-gemini "<reason>"`, a one-time exception that waives just
+   the reel's Gemini verdict and score threshold (see "Waive the reel's Gemini verdict" below).
 6. Waits for the captain to watch **both complete outputs with sound**, then type exactly
    `WATCHED AND APPROVE v0.5.0` in an interactive terminal. There is no automatic approval option;
    pipes are refused. Dry runs also require this watch confirmation.
@@ -105,9 +105,10 @@ Gemini review of every video and reel is mandatory there.
 For the captain-attended 0.5.0 release, `npm run release -- 0.5.0 --acceptance <dir> --waive-reel-gemini "<reason>"`
 lets the reel's Gemini overall verdict and score threshold alone be waived, for that one invocation.
 Gemini review of every video and reel remains mandatory in every release: this flag is a one-time,
-captain-attended exception to that rule, not a way to skip review in routine releases. There is no config file, environment variable or default for it, and no threshold changes. It is
-refused before any work starts for any version other than 0.5.0, without a non-empty reason, without
-`--acceptance`, or when stdin or stdout is not an interactive terminal.
+captain-attended exception to that rule, not a way to skip review in routine releases. There is no
+config file, environment variable or default for it, and no threshold changes. It is refused before
+any work starts for any version other than 0.5.0, without a non-empty reason, without `--acceptance`,
+or when stdin or stdout is not an interactive terminal.
 
 It waives nothing else. The release still stops when any of the reel's six hard gates or its
 delivered length fail, when a criterion has no timestamp evidence, when the long film's Gemini review
