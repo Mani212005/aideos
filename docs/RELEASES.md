@@ -69,6 +69,8 @@ The command fetches refs and checks version/fast-forward eligibility, then:
 5. Prints the complete MP4 paths and durations, runs measured review for both formats, and runs
    Gemini video review. These must pass. Reports remain beside the temporary rendered package;
    `production.json` records the run. Review tools require their normal local dependencies/login.
+   Only the 0.5.0 release may add `--waive-reel-gemini "<reason>"`, a one-time exception that waives just
+   the reel's Gemini verdict and score threshold (see "Waive the reel's Gemini verdict" below).
 6. Waits for the captain to watch **both complete outputs with sound**, then type exactly
    `WATCHED AND APPROVE v0.5.0` in an interactive terminal. There is no automatic approval option;
    pipes are refused. Dry runs also require this watch confirmation.
@@ -93,6 +95,31 @@ Do not retry blindly or overwrite the tag. Inspect `git show vX.Y.Z` and `git ls
 resolve the cause, and either push those already approved refs atomically or retain them and select
 the next version. If only the local install fails after push, the release remains published; fetch
 the accepted tag into stable, `git merge --ff-only vX.Y.Z`, and rerun `npm ci` there.
+
+## Waive the reel's Gemini verdict
+
+This waiver exists only for release 0.5.0 and will be removed afterward. The release tool refuses
+`--waive-reel-gemini` for any other version (for example 0.5.1 or 1.0.0) before any work starts, and
+Gemini review of every video and reel is mandatory there.
+
+For the captain-attended 0.5.0 release, `npm run release -- 0.5.0 --acceptance <dir> --waive-reel-gemini "<reason>"`
+lets the reel's Gemini overall verdict and score threshold alone be waived, for that one invocation.
+Gemini review of every video and reel remains mandatory in every release: this flag is a one-time,
+captain-attended exception to that rule, not a way to skip review in routine releases. There is no
+config file, environment variable or default for it, and no threshold changes. It is refused before
+any work starts for any version other than 0.5.0, without a non-empty reason, without `--acceptance`,
+or when stdin or stdout is not an interactive terminal.
+
+It waives nothing else. The release still stops when any of the reel's six hard gates or its
+delivered length fail, when a criterion has no timestamp evidence, when the long film's Gemini review
+is not ACCEPT, when a measured review fails, on production warnings or missing music, on CI failure,
+and it still requires the typed `WATCHED AND APPROVE vX.Y.Z` after the captain has watched both outputs.
+
+When the waiver applies (the reel came back REVISE with every gate intact) the tool prints the waived
+verdict and scores prominently, adds a `waivers` entry (reason, verdict, scores, criteria, time) to
+`production.json` in the evidence directory, and appends the same to the release tag annotation, each
+stating that Gemini review stays mandatory and that this was a one-time exception.
+A reel that is ACCEPT records no waiver.
 
 ## First setup
 
