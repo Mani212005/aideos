@@ -278,7 +278,7 @@ async function copyFilm(slug: string, options: { overwrite?: boolean; dryRun?: b
 const program = new Command().description("Local stable release tools; see docs/RELEASES.md");
 program.command("release <version>").requiredOption("--acceptance <package-dir>", "prepared full narrated and scored film package")
   .option("--stable-path <path>", "existing stable clone override").option("--dry-run", "run all acceptance gates without promotion")
-  .option("--waive-reel-gemini <reason>", "captain-attended, this release only: waive the reel's Gemini verdict (never a hard gate, the long film or a measured review)")
+  .option("--waive-reel-gemini <reason>", "one-time captain-attended exception for this invocation only: waive the reel's Gemini verdict. Gemini review of every video and reel stays mandatory; never waives a hard gate, the long film or a measured review")
   .action(release);
 program.command("setup").option("--path <path>", "new stable clone", path.join(os.homedir(), "aideos-stable"))
   .option("--bin-dir <path>", "launcher directory", path.join(os.homedir(), ".local/bin"))

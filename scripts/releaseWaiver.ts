@@ -12,9 +12,13 @@ export const UNWAIVABLE_REEL_GATES = [
   "persistent_stage", "camera_purpose", "bottom_captions", "readability", "no_overlap_clipping", "audio_sync", "reel_length",
 ] as const;
 
+/** The standing rule a waiver is an exception to, stated wherever the waiver is recorded or shown. */
+export const WAIVER_RULE = "Gemini review of every video and reel stays mandatory; this is a one-time captain-attended exception, not a way to skip review in routine releases.";
+
 /** What a waived reel review leaves in production.json and the release tag. */
 export interface ReelGeminiWaiver {
   kind: "reel-gemini-verdict";
+  rule: string;
   reason: string;
   verdict: GeminiReviewReport["verdict"];
   overallScore: number;
@@ -52,7 +56,7 @@ export function waiveReelVerdict(report: GeminiReviewReport, reason: string, now
   const problems = reelWaiverProblems(report);
   if (problems.length) throw new Error(`The reel's Gemini review cannot be waived: ${problems.join("; ")}.`);
   return {
-    kind: "reel-gemini-verdict", reason, verdict: report.verdict, overallScore: report.overallScore, summary: report.summary,
+    kind: "reel-gemini-verdict", rule: WAIVER_RULE, reason, verdict: report.verdict, overallScore: report.overallScore, summary: report.summary,
     criteria: report.criteria.map(({ name, title, isGate, passed, score }) => ({ name, title, isGate, passed, score })),
     waivedAt: now.toISOString(),
   };
@@ -83,7 +87,7 @@ export async function reviewWithGemini(
 /** Words the waiver as the tag annotation's second paragraph, or nothing when no waiver was needed. */
 export function waiverTagNote(waiver: ReelGeminiWaiver | undefined): string {
   if (!waiver) return "";
-  return `\n\nCaptain-attended waiver of the reel's Gemini verdict (${waiver.verdict}, ${waiver.overallScore.toFixed(1)}/10) at ${waiver.waivedAt}. Reason: ${waiver.reason}`;
+  return `\n\nCaptain-attended waiver of the reel's Gemini verdict (${waiver.verdict}, ${waiver.overallScore.toFixed(1)}/10) at ${waiver.waivedAt}. Reason: ${waiver.reason}\n${WAIVER_RULE}`;
 }
 
 /** Prints the waived verdict where the captain cannot miss it before the typed approval. */
@@ -94,6 +98,7 @@ export function announceWaiver(waiver: ReelGeminiWaiver, log: (line: string) => 
     `  verdict ${waiver.verdict}, overall ${waiver.overallScore.toFixed(1)} / 10`,
     `  criteria not passing: ${failing.length ? failing.join(", ") : "none individually"}`,
     `  reason given: ${waiver.reason}`,
+    `  ${WAIVER_RULE}`,
     "  Gates still enforced: all six hard gates, reel delivered length, the long film's review, measured reviews.",
     "=".repeat(72), "",
   ].join("\n"));

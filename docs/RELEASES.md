@@ -100,7 +100,8 @@ the accepted tag into stable, `git merge --ff-only vX.Y.Z`, and rerun `npm ci` t
 
 For a captain-attended release, `npm run release -- X.Y.Z --acceptance <dir> --waive-reel-gemini "<reason>"`
 lets the reel's Gemini overall verdict and score threshold alone be waived, for that one invocation.
-There is no config file, environment variable or default for it, and no threshold changes. It is
+Gemini review of every video and reel remains mandatory in every release: this flag is a one-time,
+captain-attended exception to that rule, not a way to skip review in routine releases. There is no config file, environment variable or default for it, and no threshold changes. It is
 refused before any work starts without a non-empty reason, without `--acceptance`, or when stdin or
 stdout is not an interactive terminal.
 
@@ -111,7 +112,8 @@ and it still requires the typed `WATCHED AND APPROVE vX.Y.Z` after the captain h
 
 When the waiver applies (the reel came back REVISE with every gate intact) the tool prints the waived
 verdict and scores prominently, adds a `waivers` entry (reason, verdict, scores, criteria, time) to
-`production.json` in the evidence directory, and appends the same to the release tag annotation.
+`production.json` in the evidence directory, and appends the same to the release tag annotation, each
+stating that Gemini review stays mandatory and that this was a one-time exception.
 A reel that is ACCEPT records no waiver.
 
 ## First setup
