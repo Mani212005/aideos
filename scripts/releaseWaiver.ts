@@ -84,6 +84,17 @@ export async function reviewWithGemini(
   return waiver;
 }
 
+/** Runs the release in its fixed order: acceptance reviews, then the typed approval, then promotion; nothing later runs if an earlier step throws. */
+export async function runReleaseGates(steps: {
+  acceptance: () => Promise<ReelGeminiWaiver | undefined>;
+  approve: (waiver: ReelGeminiWaiver | undefined) => Promise<void>;
+  promote: (waiver: ReelGeminiWaiver | undefined) => Promise<void>;
+}): Promise<void> {
+  const waiver = await steps.acceptance();
+  await steps.approve(waiver);
+  await steps.promote(waiver);
+}
+
 /** Words the waiver as the tag annotation's second paragraph, or nothing when no waiver was needed. */
 export function waiverTagNote(waiver: ReelGeminiWaiver | undefined): string {
   if (!waiver) return "";

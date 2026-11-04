@@ -6,11 +6,11 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import type { CriterionEvaluation, GeminiReviewReport } from "../backend/geminiReview/types";
-import { requireWaiverAllowed, reviewWithGemini, UNWAIVABLE_REEL_GATES, waiveReelVerdict, waiverTagNote } from "./releaseWaiver";
+import type { ReelGeminiWaiver } from "./releaseWaiver";
+import { requireWaiverAllowed, reviewWithGemini, runReleaseGates, UNWAIVABLE_REEL_GATES, waiveReelVerdict, waiverTagNote } from "./releaseWaiver";
 
 const ROOT = path.resolve(__dirname, "..");
 const NOW = new Date("2026-11-04T10:00:00.000Z");
@@ -118,11 +118,21 @@ test("the waiver is recorded in the tag annotation with its reason, verdict, sco
   assert.equal(waiverTagNote(undefined), "");
 });
 
-test("the typed approval still comes after every review and is the only way to promote", () => {
-  const source = fs.readFileSync(path.join(ROOT, "scripts/release.ts"), "utf8");
-  const gate = "await confirm(`WATCHED AND APPROVE ${tag}`);";
-  assert.equal(source.split(gate).length - 1, 1);
-  assert.ok(source.indexOf("await acceptance(") < source.indexOf(gate));
-  assert.ok(source.indexOf(gate) < source.indexOf('run("git", ["tag"'));
-  assert.doesNotMatch(fs.readFileSync(path.join(ROOT, "scripts/releaseWaiver.ts"), "utf8"), /confirm|isTTY\s*=|--yes/);
+test("nothing is promoted unless every review passes and the typed approval succeeds, waiver or not", async () => {
+  const { waiver } = await sequence(reelReport(), "captain watched both");
+  assert.ok(waiver);
+  const order: string[] = [];
+  const steps = (approve: () => Promise<void>, acceptance: () => Promise<ReelGeminiWaiver | undefined>) => ({
+    acceptance, approve: async () => { order.push("approve"); await approve(); }, promote: async (w: ReelGeminiWaiver | undefined) => { order.push(`promote:${w?.reason}`); },
+  });
+  await runReleaseGates(steps(async () => {}, async () => waiver));
+  assert.deepEqual(order, ["approve", "promote:captain watched both"]);
+
+  order.length = 0;
+  await assert.rejects(runReleaseGates(steps(async () => { throw new Error("Confirmation did not match; nothing promoted."); }, async () => waiver)), /nothing promoted/);
+  assert.deepEqual(order, ["approve"]);
+
+  order.length = 0;
+  await assert.rejects(runReleaseGates(steps(async () => {}, async () => { throw new Error("cannot be waived"); })), /cannot be waived/);
+  assert.deepEqual(order, []);
 });

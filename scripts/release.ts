@@ -13,7 +13,7 @@ import { Command } from "commander";
 import { git, optionalGit, releaseChannel, releaseVersionProblem } from "../backend/releaseChannel";
 import type { AudioItem } from "../backend/audioLibrary/schema";
 import type { GeminiReviewReport } from "../backend/geminiReview/types";
-import { announceWaiver, requireWaiverAllowed, reviewWithGemini, waiverTagNote, type ReelGeminiWaiver } from "./releaseWaiver";
+import { announceWaiver, requireWaiverAllowed, reviewWithGemini, runReleaseGates, waiverTagNote, type ReelGeminiWaiver } from "./releaseWaiver";
 
 const ROOT = path.resolve(__dirname, "..");
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
@@ -201,11 +201,19 @@ async function release(version: string, options: { acceptance: string; dryRun?: 
   else requireThat(!options.stablePath && !setting(ROOT, "stablePath"), "Configured stable clone is missing; restore it before promotion.");
   const evidence = fs.mkdtempSync(path.join(os.tmpdir(), `aideos-release-${version}-`));
   console.log(`Acceptance evidence (retained): ${evidence}`);
-  const waiver = await acceptance(path.resolve(options.acceptance), evidence, waiverReason);
-  const tagMessage = `Aideos ${tag}: full acceptance watched and approved${waiverTagNote(waiver)}`;
-  await confirm(`WATCHED AND APPROVE ${tag}`);
+  await runReleaseGates({
+    acceptance: () => acceptance(path.resolve(options.acceptance), evidence, waiverReason),
+    approve: () => confirm(`WATCHED AND APPROVE ${tag}`),
+    promote: (waiver) => promote(tag, head, `Aideos ${tag}: full acceptance watched and approved${waiverTagNote(waiver)}`,
+      { version, dryRun: options.dryRun, stableDir, hasStable }),
+  });
+}
+
+/** Rechecks main and stable after the typed approval, then tags, advances stable, pushes and updates the stable clone. */
+async function promote(tag: string, head: string, tagMessage: string, options: { version: string; dryRun?: boolean; stableDir: string; hasStable: boolean }): Promise<void> {
+  const { stableDir, hasStable } = options;
   requireThat(preflightMain() === head, "main changed during acceptance; rerun the release.");
-  validateVersion(version);
+  validateVersion(options.version);
   if (hasStable) checkStableClone(stableDir, head);
   const actions = [
     `git tag -a ${tag} ${head} -m ${quote(tagMessage)}`,
