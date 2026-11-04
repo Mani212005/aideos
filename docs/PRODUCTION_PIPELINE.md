@@ -121,6 +121,8 @@ render. The [workflow soundtrack overview](WORKFLOW.md#2-soundtrack-mixing) link
 hashes to lock asset identity. The reference covers the manifest, mix behavior, chapter breath timing,
 and speech measurements.
 
+The look and design stages rebuild the film from the screenplay, and each carries the existing film's authored `soundtrack` (unless it is a generated default score), `music` and legacy `sfx` onto the rebuilt film when the rebuild has none, so a film with only legacy effects still passes the delivery check.
+
 The `soundtrack` block in `design/design.json` authors cue-based music sections and effects; where it is absent or incomplete, the default score and default effects fill in the music and the effects separately.
 `aideos design check` validates the authored soundtrack; Studio edits are checked before they are
 committed to the Long film. A design-authored soundtrack resolves its cues against Reel timing. If
