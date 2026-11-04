@@ -192,7 +192,7 @@ async function acceptance(source: string, evidence: string, waiverReason?: strin
 /** Gates promotion on current main, full checks, complete renders and explicit captain watch approval. */
 async function release(version: string, options: { acceptance: string; dryRun?: boolean; stablePath?: string; waiveReelGemini?: string }): Promise<void> {
   const waiverReason = options.waiveReelGemini === undefined ? undefined
-    : requireWaiverAllowed({ reason: options.waiveReelGemini, acceptance: options.acceptance, interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY) });
+    : requireWaiverAllowed({ version, reason: options.waiveReelGemini, acceptance: options.acceptance, interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY) });
   const head = preflightMain();
   const tag = validateVersion(version);
   const stableDir = path.resolve(options.stablePath || setting(ROOT, "stablePath") || path.join(os.homedir(), "aideos-stable"));

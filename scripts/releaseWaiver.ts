@@ -12,6 +12,9 @@ export const UNWAIVABLE_REEL_GATES = [
   "persistent_stage", "camera_purpose", "bottom_captions", "readability", "no_overlap_clipping", "audio_sync", "reel_length",
 ] as const;
 
+/** The only release version the captain approved a Gemini waiver for: a one-time exception that expires with it. */
+export const WAIVED_VERSION = "0.5.0";
+
 /** The standing rule a waiver is an exception to, stated wherever the waiver is recorded or shown. */
 export const WAIVER_RULE = "Gemini review of every video and reel stays mandatory; this is a one-time captain-attended exception, not a way to skip review in routine releases.";
 
@@ -27,8 +30,9 @@ export interface ReelGeminiWaiver {
   waivedAt: string;
 }
 
-/** Refuses a waiver unless it carries a reason, comes from a terminal and rides on a release with acceptance. */
-export function requireWaiverAllowed(request: { reason?: string; acceptance?: string; interactive: boolean }): string {
+/** Refuses a waiver unless it is for the one approved version, carries a reason, comes from a terminal and rides on a release with acceptance. */
+export function requireWaiverAllowed(request: { version: string; reason?: string; acceptance?: string; interactive: boolean }): string {
+  if (request.version !== WAIVED_VERSION) throw new Error(`--waive-reel-gemini is a one-time exception for ${WAIVED_VERSION} only and is refused for ${request.version}: Gemini review of every video and reel is mandatory.`);
   const reason = (request.reason ?? "").trim();
   if (!reason || reason.startsWith("-")) throw new Error("--waive-reel-gemini needs a reason (non-empty text) that says why the reel's Gemini verdict is waived.");
   if (!request.acceptance) throw new Error("--waive-reel-gemini is only valid with --acceptance.");

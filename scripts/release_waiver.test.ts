@@ -10,7 +10,7 @@ import path from "node:path";
 import test from "node:test";
 import type { CriterionEvaluation, GeminiReviewReport } from "../backend/geminiReview/types";
 import type { ReelGeminiWaiver } from "./releaseWaiver";
-import { requireWaiverAllowed, reviewWithGemini, runReleaseGates, UNWAIVABLE_REEL_GATES, waiveReelVerdict, waiverTagNote } from "./releaseWaiver";
+import { requireWaiverAllowed, reviewWithGemini, runReleaseGates, UNWAIVABLE_REEL_GATES, WAIVED_VERSION, waiveReelVerdict, waiverTagNote } from "./releaseWaiver";
 
 const ROOT = path.resolve(__dirname, "..");
 const NOW = new Date("2026-11-04T10:00:00.000Z");
@@ -60,25 +60,42 @@ test("a reel that already passes records no waiver", () => {
 });
 
 test("the waiver is refused without a reason, without a terminal and without acceptance", () => {
-  assert.equal(requireWaiverAllowed({ reason: " fine ", acceptance: "/film", interactive: true }), "fine");
-  assert.throws(() => requireWaiverAllowed({ reason: "", acceptance: "/film", interactive: true }), /needs a reason/);
-  assert.throws(() => requireWaiverAllowed({ reason: "   ", acceptance: "/film", interactive: true }), /needs a reason/);
-  assert.throws(() => requireWaiverAllowed({ reason: "--dry-run", acceptance: "/film", interactive: true }), /needs a reason/);
-  assert.throws(() => requireWaiverAllowed({ reason: "ok", interactive: true }), /only valid with --acceptance/);
-  assert.throws(() => requireWaiverAllowed({ reason: "ok", acceptance: "/film", interactive: false }), /interactive terminal/);
+  const base = { version: WAIVED_VERSION, acceptance: "/film", interactive: true };
+  assert.equal(requireWaiverAllowed({ ...base, reason: " fine " }), "fine");
+  assert.throws(() => requireWaiverAllowed({ ...base, reason: "" }), /needs a reason/);
+  assert.throws(() => requireWaiverAllowed({ ...base, reason: "   " }), /needs a reason/);
+  assert.throws(() => requireWaiverAllowed({ ...base, reason: "--dry-run" }), /needs a reason/);
+  assert.throws(() => requireWaiverAllowed({ ...base, reason: "ok", acceptance: undefined }), /only valid with --acceptance/);
+  assert.throws(() => requireWaiverAllowed({ ...base, reason: "ok", interactive: false }), /interactive terminal/);
 });
 
-test("npm run release refuses the waiver before doing any work when stdin is not a terminal or the reason is empty", () => {
+test("the waiver is accepted for the one approved version only", () => {
+  assert.equal(WAIVED_VERSION, "0.5.0");
+  const request = { acceptance: "/film", interactive: true, reason: "captain watched both" };
+  assert.equal(requireWaiverAllowed({ ...request, version: "0.5.0" }), "captain watched both");
+  for (const version of ["0.5.1", "0.6.0", "1.0.0", "9.9.9"]) {
+    assert.throws(() => requireWaiverAllowed({ ...request, version }), /one-time exception for 0\.5\.0 only.*mandatory/, version);
+  }
+});
+
+test("npm run release refuses the waiver before doing any work for another version, without a terminal or with an empty reason", () => {
   const script = path.join(ROOT, "scripts/release.ts");
-  const run = (args: string[]) => spawnSync(path.join(ROOT, "node_modules/.bin/tsx"), [script, "release", "9.9.9", ...args], { cwd: ROOT, encoding: "utf8", input: "" });
-  const piped = run(["--acceptance", "/dev/null", "--waive-reel-gemini", "captain watched both"]);
+  const run = (version: string, args: string[]) => spawnSync(path.join(ROOT, "node_modules/.bin/tsx"), [script, "release", version, ...args], { cwd: ROOT, encoding: "utf8", input: "" });
+  for (const version of ["0.5.1", "1.0.0"]) {
+    const other = run(version, ["--acceptance", "/dev/null", "--waive-reel-gemini", "captain watched both"]);
+    assert.equal(other.status, 1, version);
+    assert.match(other.stderr, /one-time exception for 0\.5\.0 only/, version);
+    assert.match(other.stderr, /Gemini review of every video and reel is mandatory/, version);
+    assert.doesNotMatch(other.stdout, /Acceptance evidence/, version);
+  }
+  const piped = run(WAIVED_VERSION, ["--acceptance", "/dev/null", "--waive-reel-gemini", "captain watched both"]);
   assert.equal(piped.status, 1);
   assert.match(piped.stderr, /requires an interactive terminal/);
   assert.doesNotMatch(piped.stdout, /Acceptance evidence/);
-  const empty = run(["--acceptance", "/dev/null", "--waive-reel-gemini", ""]);
+  const empty = run(WAIVED_VERSION, ["--acceptance", "/dev/null", "--waive-reel-gemini", ""]);
   assert.equal(empty.status, 1);
   assert.match(empty.stderr, /needs a reason/);
-  const noAcceptance = run(["--waive-reel-gemini", "captain watched both"]);
+  const noAcceptance = run(WAIVED_VERSION, ["--waive-reel-gemini", "captain watched both"]);
   assert.equal(noAcceptance.status, 1);
   assert.match(noAcceptance.stderr, /--acceptance/);
 });
