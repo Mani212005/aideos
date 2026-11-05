@@ -63,9 +63,15 @@ export function parseTsv(tsv: string): OcrWord[] {
   return words;
 }
 
-// Wraps a gray frame as a binary PGM, which tesseract reads straight from stdin.
-function toPgm(gray: Uint8Array, width: number, height: number): Buffer {
-  return Buffer.concat([Buffer.from(`P5\n${width} ${height}\n255\n`), Buffer.from(gray.buffer, gray.byteOffset, gray.byteLength)]);
+// Wraps a gray frame as a binary PGM, normalizing dark-background polarity for tesseract.
+export function toPgm(gray: Uint8Array, width: number, height: number): Buffer {
+  const pixels = gray.slice();
+  let darkPixels = 0;
+  for (const pixel of pixels) if (pixel < 128) darkPixels++;
+  if (darkPixels > pixels.length / 2) {
+    for (let i = 0; i < pixels.length; i++) pixels[i] = 255 - pixels[i];
+  }
+  return Buffer.concat([Buffer.from(`P5\n${width} ${height}\n255\n`), Buffer.from(pixels.buffer, pixels.byteOffset, pixels.byteLength)]);
 }
 
 // Runs one OCR mode against a gray image, retaining the caller's original word geometry.
