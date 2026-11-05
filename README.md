@@ -113,6 +113,7 @@ git clone https://github.com/Mani212005/aideos.git
 cd aideos
 npm install
 ```
+The repository skips onnxruntime-node's Linux CUDA download because Aideos runs Kokoro on the CPU. To opt in during installation, set `npm_config_onnxruntime_node_install_cuda=true`.
 
 ### 3. Launch Aideos Studio
 Start the interactive web editor:
