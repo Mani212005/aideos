@@ -112,13 +112,10 @@ script) to inspect pull request changes using `git diff --name-only --no-renames
 
 * **APT caching and retry with timeouts**: Every `apt-get` step in `ci.yml` and `nightly.yml` restores
   and saves `/home/runner/.apt-cache` via `actions/cache@v4` with `-o Dir::Cache::Archives=/home/runner/.apt-cache`.
-  The unit job's `ffmpeg` and `tesseract-ocr` step uses three attempts, 80-second per-command timeouts,
-  20-second HTTP and HTTPS request timeouts, increasing 20/40-second backoff, and
-  `-o Acquire::Retries=3`. When the runner's mirror list uses Azure's Ubuntu archive, the step adds
-  `archive.ubuntu.com` as a lower-priority fallback. Its 10-minute step timeout leaves time for all
-  attempts to finish. The other apt steps use a 3-attempt retry loop with a 300-second per-command timeout,
-  15-second sleep between retries, and `-o Acquire::Retries=3`. Each apt step is bounded by its own
-  `timeout-minutes: 10` to prevent runner hangs from exhausting job limits.
+  All apt steps use three attempts, 80-second per-command timeouts, 20-second HTTP and HTTPS request
+  timeouts, increasing 20/40-second backoff, and `-o Acquire::Retries=3`. When the runner's mirror list
+  uses Azure's Ubuntu archive, the step adds `archive.ubuntu.com` as a lower-priority fallback. Each
+  apt step has its own `timeout-minutes: 10`, which fits the 540-second worst-case retry budget.
 * **Red-main alert**: `.github/workflows/main-red-alert.yml` runs on `workflow_run` when the CI workflow
   completes on the main branch with failure, timed_out, or cancelled conclusions. It opens or updates a single
   GitHub issue (`CI: main branch failure`) naming the failing run URL and commit SHA, preventing unnoticed red builds.
