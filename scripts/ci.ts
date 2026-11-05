@@ -174,6 +174,7 @@ export const JOBS: CiJob[] = [
   {
     id: "legacy",
     title: "Legacy regression: golden frames of existing SVG and template films",
+    // Pin Fontconfig to RGB subpixel text rendering so local Linux runs reproduce CI baselines.
     steps: [{ name: "golden frames", cmd: ["npm", "run", "test:legacy"], env: { ...softwareGl(), FONTCONFIG_FILE: path.join(ROOT, "scripts/golden-fonts.conf") }, skip: notLinux, verdict: goldenVerdict }],
   },
   {

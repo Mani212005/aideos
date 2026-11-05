@@ -67,7 +67,9 @@ Both `test:journeys` and `scripts/ci.ts` select every `backend/journeys/**/*.jou
 * Renders use **software GL** (`AIDEOS_GL=swangle`, read by `backend/pipeline/render.ts`'s `glFlag`).
   This avoids GPU-dependent rendering on CI. Goldens remain pinned to the CI platform, and the
   update workflow renders them twice on that platform before accepting them. On a Mac the default
-  stays `angle`.
+  stays `angle`. The legacy golden job also pins Fontconfig to RGB subpixel text antialiasing
+  (`FONTCONFIG_FILE=scripts/golden-fonts.conf`) so Linux machines with differing default font setups
+  rasterize text identically.
 * `ruff` is pinned (`RUFF_VERSION` in `scripts/ci.ts` and in `ci.yml`); locally the step uses an
   installed `ruff`, `python3 -m ruff` or `uvx ruff@<pinned>`, and is skipped with a reason (never
   silently passed) when none exists. CI always runs it.
@@ -156,7 +158,7 @@ seconds). There is no override variable: tests inject a fake sampler and `statfs
 | Risk | Check |
 | --- | --- |
 | overfitting to Iona | `backend/journeys/character_retarget.journey.ts` checks named characters and randomized proportions through the same action (J5); the J4 crop journey checks full evaluated silhouettes for Iona, Pip and Marlo; see [the character-engine risk plan](CHARACTER_ENGINE.md#risks-this-part-must-hold) |
-| pixel tests flaky across machines | software GL everywhere in CI; goldens made only on the CI platform and validated by rendering twice; manifest records the platform and the test refuses a mismatch |
+| pixel tests flaky across machines | software GL everywhere in CI; Fontconfig pinned to RGB subpixel rendering for legacy goldens (`scripts/golden-fonts.conf`); goldens made only on the CI platform and validated by rendering twice; manifest records the platform and the test refuses a mismatch |
 | out-of-order frame rendering | J3 seek-order test: concurrent export frames equal cold single-frame renders |
 | blank first frame / resource races | J1 asserts the contact frame is drawn (luma spread), not flat; unit `J8` cases name the missing resource |
 | preview versus export drift | studio picture equality on return (smoke); export-vs-cold equality, including scrambled repeated frame requests (J3); composition-sized Player-vs-export comparison in both formats, including a cold first contact frame and forward, reverse and repeated seeks (J3) |
@@ -218,7 +220,10 @@ are generated only on the CI platform. If the manifest is ever absent, the legac
 character work (`hello-scene`, `sample-explainer`, `inset-stage`, `still-talking`) and compares
 them with `backend/journeys/goldens/`. A golden made on a Mac would not match Linux, so goldens are
 **only** produced by the **Update goldens** workflow on the CI platform, and the comparison is
-skipped (with a message saying so, never a pass) on any other platform.
+skipped (with a message saying so, never a pass) on any other platform. The legacy CI job
+(`npm run ci -- legacy`) pins `FONTCONFIG_FILE` to `scripts/golden-fonts.conf` (`rgba` set to `rgb`),
+ensuring Linux hosts lacking an explicit Fontconfig `rgba` setting reproduce the RGB subpixel text
+antialiasing used in the committed baselines.
 
 What the legacy job reports:
 
