@@ -59,8 +59,8 @@ Both `test:journeys` and `scripts/ci.ts` select every `backend/journeys/**/*.jou
 
 * Every workflow job uses Node 22 and `npm ci` (npm cache keyed on both lockfiles). Jobs that render
   install `ffmpeg` and the Remotion browser libraries, and cache `node_modules/.remotion`. APT packages
-  are cached across runs under `/home/runner/.apt-cache`; the unit job's `ffmpeg` and `tesseract-ocr`
-  install retries three times with 80-second command timeouts and increasing backoff.
+  are cached across runs under `/home/runner/.apt-cache` with retry-hardened installs (detailed under
+  [Runner hardening and red-main alert](#runner-hardening-and-red-main-alert)).
 * The `unit` job restores the Remotion browser cache, runs `remotion browser ensure` before tests,
   and installs `tesseract-ocr` so OCR features run without skipping.
 * Skipped tests in any test runner are captured and reported honestly as `NOT COVERED (skipped)` in
@@ -116,10 +116,9 @@ script) to inspect pull request changes using `git diff --name-only --no-renames
   20-second HTTP and HTTPS request timeouts, increasing 20/40-second backoff, and
   `-o Acquire::Retries=3`. When the runner's mirror list uses Azure's Ubuntu archive, the step adds
   `archive.ubuntu.com` as a lower-priority fallback. Its 10-minute step timeout leaves time for all
-  attempts to finish. The
-  other apt steps use a 3-attempt retry loop with a 300-second per-command timeout, 15-second sleep
-  between retries, and `-o Acquire::Retries=3`. Each apt step is bounded by its own `timeout-minutes: 10`
-  to prevent runner hangs from exhausting job limits.
+  attempts to finish. The other apt steps use a 3-attempt retry loop with a 300-second per-command timeout,
+  15-second sleep between retries, and `-o Acquire::Retries=3`. Each apt step is bounded by its own
+  `timeout-minutes: 10` to prevent runner hangs from exhausting job limits.
 * **Red-main alert**: `.github/workflows/main-red-alert.yml` runs on `workflow_run` when the CI workflow
   completes on the main branch with failure, timed_out, or cancelled conclusions. It opens or updates a single
   GitHub issue (`CI: main branch failure`) naming the failing run URL and commit SHA, preventing unnoticed red builds.
