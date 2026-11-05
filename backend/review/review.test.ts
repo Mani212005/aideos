@@ -18,7 +18,7 @@ import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { evaluateCriteria, type ReviewInputs } from "./criteria";
 import { parseEbur128, parseSilences } from "./media";
-import { analyzeSample, ocrFrame, parseTsv, type OcrWord } from "./ocr";
+import { analyzeSample, ocrFrame, parseTsv, toPgm, type OcrWord } from "./ocr";
 import { correlation, frameFeatures, hardCuts, layoutPersistence, percentile, stageClears, staticRuns } from "./pixels";
 import { findSlugVideo, reviewVideo } from "./review";
 import { loadFilmFacts, readFilmFacts, type FilmFacts } from "./source";
@@ -97,6 +97,15 @@ test("ocr: monospace counter pixels retain their actual digits", { skip: !HAVE_F
     const words = await ocrFrame(decoded.stdout, 1080, 1920);
     assert.deepEqual(words.map((word) => word.text), [expected]);
     assert.ok(words[0].height >= 90, "numeric recheck retains the full-frame word box");
+  }
+});
+
+// Confirms dark-background OCR pixels are inverted without changing the source frame.
+test("ocr: PGM normalizes a dark majority without mutating the frame", () => {
+  for (const gray of [new Uint8Array([16, 32, 64, 255]), Buffer.from([16, 32, 64, 255])]) {
+    const pgm = toPgm(gray, 2, 2);
+    assert.deepEqual(pgm, Buffer.concat([Buffer.from("P5\n2 2\n255\n"), Buffer.from([239, 223, 191, 0])]));
+    assert.deepEqual([...gray], [16, 32, 64, 255]);
   }
 });
 
