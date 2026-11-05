@@ -207,7 +207,8 @@ export function analyzeSample(words: OcrWord[], gray: Uint8Array | null, width: 
   }
   // Tiny footer numerals are chapter/time chrome; their text still contributes to readability checks.
   const content = confident.filter((w) => !(w.top > height * 0.9 && w.height / unit < T.readability.wordHeightMin));
-  const numbers = content.map((w) => w.text.replace(/^[^\d]+|[^\d%]+$/g, "")).filter((s) => /^\d[\d,.]*%?$/.test(s));
+  // Preserve leading letters so an icon read as M4 cannot become a claimed number.
+  const numbers = content.map((w) => w.text.replace(/^[^\p{L}\d]+|[^\d%]+$/gu, "")).filter((s) => /^\d[\d,.]*%?$/.test(s));
   return {
     t,
     words: confident.length,

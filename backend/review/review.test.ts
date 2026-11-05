@@ -173,6 +173,13 @@ test("ocr: overlapping words, edge crowding and numbers are reported; OCR artefa
   assert.deepEqual(nums.numbers, ["768", "95.5%"]);
 });
 
+test("ocr: letter-prefixed tokens are not numeric claims and formatted numbers remain intact", () => {
+  assert.deepEqual(analyzeSample([word("M4", 100, 100, 51, 32)], null, 1920, 1080, 111).numbers, []);
+  assert.deepEqual(analyzeSample([word("4", 100, 100, 20, 32)], null, 1920, 1080, 111).numbers, [], "a single-character OCR token remains excluded by the existing confidence filter");
+  const formatted = analyzeSample([word("2,500", 100, 100, 80, 32), word("50%", 200, 100, 50, 32)], null, 1920, 1080, 111);
+  assert.deepEqual(formatted.numbers, ["2,500", "50%"]);
+});
+
 test("ocr: tiny footer chrome is not a numerical claim, while content numbers remain checked", () => {
   const words = [word("61:", 130, 1760, 21, 9), word("64", 400, 1760, 60, 34), word("95", 500, 700, 24, 16)];
   const sample = analyzeSample(words, null, 1080, 1920, 7);
