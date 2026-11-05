@@ -65,7 +65,7 @@ export function parseTsv(tsv: string): OcrWord[] {
 
 // Wraps a gray frame as a binary PGM, normalizing dark-background polarity for tesseract.
 export function toPgm(gray: Uint8Array, width: number, height: number): Buffer {
-  const pixels = gray.slice();
+  const pixels = new Uint8Array(gray);
   let darkPixels = 0;
   for (const pixel of pixels) if (pixel < 128) darkPixels++;
   if (darkPixels > pixels.length / 2) {

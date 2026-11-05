@@ -102,10 +102,11 @@ test("ocr: monospace counter pixels retain their actual digits", { skip: !HAVE_F
 
 // Confirms dark-background OCR pixels are inverted without changing the source frame.
 test("ocr: PGM normalizes a dark majority without mutating the frame", () => {
-  const gray = new Uint8Array([16, 32, 64, 255]);
-  const pgm = toPgm(gray, 2, 2);
-  assert.deepEqual(pgm, Buffer.concat([Buffer.from("P5\n2 2\n255\n"), Buffer.from([239, 223, 191, 0])]));
-  assert.deepEqual([...gray], [16, 32, 64, 255]);
+  for (const gray of [new Uint8Array([16, 32, 64, 255]), Buffer.from([16, 32, 64, 255])]) {
+    const pgm = toPgm(gray, 2, 2);
+    assert.deepEqual(pgm, Buffer.concat([Buffer.from("P5\n2 2\n255\n"), Buffer.from([239, 223, 191, 0])]));
+    assert.deepEqual([...gray], [16, 32, 64, 255]);
+  }
 });
 
 test("ocr: currency-like icon detections require an unconstrained confirmation", async () => {
