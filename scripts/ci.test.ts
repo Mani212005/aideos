@@ -215,9 +215,21 @@ test("ci.yml wraps every apt-get update and install in a retry loop with timeout
     assert.ok(step["timeout-minutes"], `${job} step "${step.name}" must have its own timeout-minutes`);
     assert.ok(step["timeout-minutes"] <= 10, `${job} step "${step.name}" timeout-minutes should be at most 10`);
     assert.match(step.run!, /for\s+\w+\s+in\s+1\s+2\s+3/, `${job} step "${step.name}" must have 3 retry attempts`);
-    assert.match(step.run!, /timeout\s+300\s+sudo\s+apt-get/, `${job} step "${step.name}" must use timeout 300 per apt command`);
     assert.match(step.run!, /Acquire::Retries=3/, `${job} step "${step.name}" must pass -o Acquire::Retries=3`);
-    assert.match(step.run!, /sleep\s+15/, `${job} step "${step.name}" must sleep 15 between attempts`);
+    if (job === "unit" && step.name === "Install ffmpeg and tesseract") {
+      assert.equal(
+        (step.run!.match(/timeout\s+80\s+sudo\s+apt-get/g) ?? []).length,
+        2,
+        "unit apt update and install must fit inside the retry-loop budget",
+      );
+      assert.match(step.run!, /Acquire::http::Timeout=20/);
+      assert.match(step.run!, /Acquire::https::Timeout=20/);
+      assert.match(step.run!, /delay=\$\(\(attempt \* 20\)\)/, "unit apt retries must use increasing backoff");
+      assert.match(step.run!, /archive\.ubuntu\.com\/ubuntu\/\\tpriority:2/, "unit apt must add Ubuntu archive as a mirror fallback");
+    } else {
+      assert.match(step.run!, /timeout\s+300\s+sudo\s+apt-get/, `${job} step "${step.name}" must use timeout 300 per apt command`);
+      assert.match(step.run!, /sleep\s+15/, `${job} step "${step.name}" must sleep 15 between attempts`);
+    }
   }
 });
 
