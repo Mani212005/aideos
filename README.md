@@ -180,7 +180,7 @@ The Aideos Studio (`editor/`) is a Neobrutalist web application built with React
 
 | Stage | Name | Key Functionality |
 | :--- | :--- | :--- |
-| **1** | **Script** | Narrative authoring, Claude intake tag parsing, and multi-provider TTS voiceover generation. |
+| **1** | **Script** | Narrative authoring, Claude intake tag parsing, multi-provider TTS voiceover generation, and terminal agent auto-prompting. |
 | **2** | **Story** | Interactive 2D spatial canvas. Drag concept nodes, connect directed edges, and preview camera framing. |
 | **3** | **Look** | Look planning inspection (`design/look.json`), theme customization (paper, blueprint, charcoal), and styleboards. |
 | **4** | **Motion** | Custom SVG movie animation studio with declarative timeline keyframing and audio retiming. |
