@@ -75,7 +75,7 @@ export interface ProduceAudioResult {
   voice: string | null;
   /** The pace multiplier the synthesizer applied (null when it has no pace control). */
   speed: number | null;
-  /** How many lines were recorded in this run and how many reused a stored recording (absent when the line store was off). */
+  /** How many lines were recorded in this run and how many reused a stored recording. */
   lines?: { recorded: number; reused: number };
 }
 
