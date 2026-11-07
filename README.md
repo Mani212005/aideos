@@ -69,7 +69,7 @@ Aideos solves this with **Video as Pure Data**:
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 1. SCREENPLAY INTAKE                                                        │
 │ • Natural language topic -> LLM director drafts structured Claude script    │
-│ • Or authored markdown: [VISUAL], [NARRATION], [ON SCREEN] beats            │
+│ • Or your own story as plain paragraphs (#Start, #Conclusion markers ok)    │
 └──────────────────────────────────────┬──────────────────────────────────────┘
                                        │ Script Markdown
                                        ▼

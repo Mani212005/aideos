@@ -85,7 +85,11 @@ export interface DraftedScreenplay {
   attempts: number;
 }
 
-/** Assembles the system instruction for transforming raw prose into a structured Claude screenplay with visual and narration beats. */
+/**
+ * Assembles the system instruction for transforming raw prose into a structured Claude screenplay.
+ * Deprecated: no product path calls it any more. The studio and the pipeline convert a user's plain-text
+ * story deterministically (`plainTextToTaggedScript`) and never ask a model to reformat it.
+ */
 export function buildProseTransformSystemInstruction(): string {
   return `${readDirectorGuide()}\n\n${SCREENPLAY_FORMAT_SPEC}\n\nTransformation goal: Transform the provided raw prose into structured scenes, visual directions, on-screen text, and narration beats without losing any spoken content.`;
 }
@@ -110,7 +114,8 @@ function stripCodeFence(text: string): string {
 }
 
 /**
- * Automatically transforms raw untagged prose into a structured Claude screenplay with visual and narration beats.
+ * Deprecated: no product path calls this any more (see `plainTextToTaggedScript`). Kept only because its
+ * existing tests encode its behaviour; do not reintroduce it into a user-script flow.
  */
 export async function transformProseToScreenplay(
   prose: string,

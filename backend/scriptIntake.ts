@@ -397,18 +397,7 @@ export function serializeSegmentsToScript(segments: ScriptSegment[]): string {
 
 /** Fallback extraction for free-form prose with no recognizable screenplay tags at all. */
 function legacyExtractSpokenBlocks(raw: string): string[] {
-  const cleaned = (raw || "")
-    .replace(/^#{1,6}\s+.*$/gm, "") // Strip markdown headers
-    .replace(/^(\d{1,2}:\d{2})\s*[-\u2013\u2014]\s*(\d{1,2}:\d{2}).*$/gm, "") // Strip timestamp headers
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/\u2014/g, " - ")
-    .replace(/\u2013/g, " - ")
-    .trim();
-
-  return cleaned.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+  return splitPlainStory(raw).flatMap((section) => section.paragraphs);
 }
 
 /** Extracts a short, punchy summary headline for a paragraph (2-8 words). */
@@ -431,6 +420,110 @@ function deriveHeadlineFromText(text: string, maxLength = 40): string {
     result = (result + " " + w).trim();
   }
   return result || words.slice(0, 5).join(" ");
+}
+
+/** One run of the user's story: an optional `#Tag` heading and the paragraphs that follow it. */
+interface PlainStorySection {
+  tag?: string;
+  paragraphs: string[];
+}
+
+/** Matches a `#Start` / `# Conclusion` style section marker in a plain-text story. */
+function matchStoryTag(line: string): string | null {
+  // "#1 reason" is a sentence that starts with a hashtag-style number, not a section marker.
+  const m = line.match(/^#{1,6}(?!\d)\s*(\S.*)$/) ?? line.match(/^#{1,6}\s+(\d.*)$/);
+  return m ? m[1].replace(/\s+/g, " ").trim() : null;
+}
+
+/** Normalizes one story paragraph for speech: links, code ticks, emphasis, quotes and long dashes go; the words stay. */
+function cleanStoryParagraph(text: string): string {
+  return cleanBeatText(text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/`([^`]+)`/g, "$1"));
+}
+
+/**
+ * Splits a plain-text story into its `#Tag` sections and blank-line paragraph groups, keeping each
+ * paragraph's own words (lines of one paragraph are joined with single spaces). A paragraph that
+ * follows a `#Tag` belongs to that tag's section; a paragraph with no tag is a section of its own.
+ */
+function splitPlainStory(raw: string): PlainStorySection[] {
+  const sections: PlainStorySection[] = [];
+  let tag: string | undefined;
+  let lines: string[] = [];
+
+  const flushParagraph = () => {
+    const text = cleanStoryParagraph(lines.join(" "));
+    lines = [];
+    if (!text) return;
+    const last = sections[sections.length - 1];
+    if (tag !== undefined && last && last.tag === tag) last.paragraphs.push(text);
+    else sections.push({ tag, paragraphs: [text] });
+  };
+
+  for (const rawLine of (raw || "").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) {
+      flushParagraph();
+      continue;
+    }
+    if (/^\d{1,2}:\d{2}\s*[-\u2013\u2014]\s*\d{1,2}:\d{2}/.test(line)) continue;
+    const heading = matchStoryTag(line);
+    if (heading !== null) {
+      flushParagraph();
+      tag = heading;
+      continue;
+    }
+    lines.push(line);
+  }
+  flushParagraph();
+  return sections;
+}
+
+/**
+ * Deterministically turns a user's plain-text story (paragraphs plus `#Start` / `#Conclusion` style
+ * markers) into the internal segments, with no agent involved. Each `#Tag` opens a section holding
+ * its paragraphs, each untagged paragraph is a section of its own, every paragraph becomes one
+ * NARRATION beat with the user's words, and its VISUAL and ON SCREEN slots start empty for the
+ * agent to fill. Timestamps are estimated from word counts at the chosen voice speed.
+ */
+export function plainTextToSegments(raw: string, options?: { speed?: number }): ScriptSegment[] {
+  const speed = options?.speed ?? 1;
+  const usedIds = new Set<string>();
+  const segments: ScriptSegment[] = [];
+  let clock = 0;
+
+  splitPlainStory(raw).forEach((section, idx) => {
+    const title = section.tag || deriveHeadlineFromText(section.paragraphs[0], 36) || `Part ${idx + 1}`;
+    const base = slugify(title) || `part-${idx + 1}`;
+    let id = base;
+    for (let n = 2; usedIds.has(id); n++) id = `${base}-${n}`;
+    usedIds.add(id);
+
+    const start = clock;
+    const beats: ScriptBeat[] = [];
+    for (const paragraph of section.paragraphs) {
+      clock += estimateNarrationSeconds(paragraph, speed);
+      beats.push({ type: "narration", text: paragraph }, { type: "visual", text: "" }, { type: "onscreen", text: "" });
+    }
+    segments.push({ id, title, timeStart: formatScriptTime(start), timeEnd: formatScriptTime(Math.max(clock, start + 1)), beats });
+  });
+
+  return segments;
+}
+
+/** Drops the empty VISUAL / ON SCREEN slots from segments, the way parsing the serialized script would. */
+function withoutEmptyBeats(segments: ScriptSegment[]): ScriptSegment[] {
+  return segments.map((seg) => ({ ...seg, beats: seg.beats.filter((beat) => beat.text.trim()) }));
+}
+
+/**
+ * The one entry point from what the user wrote to the internal tagged script. A script that already
+ * carries tags (or is blank) comes back byte for byte, so converting twice or converting a tagged
+ * script changes nothing; a plain-text story is converted by `plainTextToSegments`.
+ */
+export function plainTextToTaggedScript(raw: string, options?: { speed?: number }): string {
+  if (!raw || !raw.trim() || hasScreenplayTags(raw)) return raw;
+  const segments = plainTextToSegments(raw, options);
+  return segments.length > 0 ? serializeSegmentsToScript(segments) : raw;
 }
 
 /** Deterministically structures untagged prose paragraphs into Claude screenplay segments. */
@@ -566,14 +659,27 @@ function groupSegmentBeats(beats: ScriptBeat[]): BeatGroup[] {
   return groups;
 }
 
+/** Spoken pace the duration estimates assume at voice speed 1. */
+const SPOKEN_WORDS_PER_MINUTE = 150;
+
+/**
+ * Estimates how long a narration line takes to say, from its word count, the chosen voice speed
+ * (1 is normal, below 1 is slower) and a natural breathing buffer. Pure, so the studio, the pipeline
+ * and the tests all agree on one number before any audio exists.
+ */
+export function estimateNarrationSeconds(narrationText: string, speed = 1): number {
+  const words = narrationText.split(/\s+/).filter(Boolean).length;
+  const pace = Math.min(2, Math.max(0.5, Number.isFinite(speed) && speed > 0 ? speed : 1));
+  const spokenSec = (words / (SPOKEN_WORDS_PER_MINUTE * pace)) * 60;
+  const breathingBuffer = 0.5 + Math.min(0.3, words * 0.01);
+  return Math.max(0.5, Math.min(90, Number((spokenSec + breathingBuffer).toFixed(2))));
+}
+
 /** Estimates shot duration from spoken word count at ~150wpm plus a natural breathing buffer. */
 function estimateShotDuration(narrationText?: string): number {
   if (!narrationText) return 4;
-  const words = narrationText.split(/\s+/).filter(Boolean).length;
-  if (words === 0) return 4;
-  const spokenSec = (words / 150) * 60;
-  const breathingBuffer = 0.5 + Math.min(0.3, words * 0.01);
-  return Math.max(0.5, Math.min(90, Number((spokenSec + breathingBuffer).toFixed(2))));
+  if (narrationText.split(/\s+/).filter(Boolean).length === 0) return 4;
+  return estimateNarrationSeconds(narrationText);
 }
 
 // Builds conforming GeneratedBlock structures for a given animated primitive and beat group.
@@ -758,7 +864,7 @@ export function buildFilmPartsFromScript(
 } {
   let segments = parseClaudeScript(raw);
   if (segments.length === 0 && raw && raw.trim()) {
-    segments = structureUntaggedProseToScript(raw);
+    segments = withoutEmptyBeats(plainTextToSegments(raw));
   }
   const shots: GeneratedShot[] = [];
   const nodes: GeneratedNode[] = [];
@@ -864,7 +970,7 @@ export async function buildFilmPartsFromScriptAsync(
 }> {
   let segments = parseClaudeScript(raw);
   if (segments.length === 0 && raw && raw.trim()) {
-    segments = structureUntaggedProseToScript(raw);
+    segments = withoutEmptyBeats(plainTextToSegments(raw));
   }
   const decisions = await selectScenePrimitives(segments, options);
   const shots: GeneratedShot[] = [];
@@ -938,6 +1044,16 @@ export async function buildFilmPartsFromScriptAsync(
   return { shots, nodes, edges, spokenText, wordCount, durationSec, decisions };
 }
 
+/**
+ * What every agent-facing prompt says about the user's script, in one place so no instruction can drift back
+ * to asking for a reformat. The user's story is already converted (deterministically, by Aideos) before any
+ * agent is involved, and the voice-over is stored per line.
+ */
+export const STORY_SCRIPT_RULES =
+  "The script is the user's own story, already converted by Aideos into the internal tagged structure (one NARRATION line per paragraph, empty VISUAL and ON SCREEN slots). " +
+  "Fill only the VISUAL and ON SCREEN slots. Keep the user's narration as it is: it needs no reformatting, restructuring or retagging, and its voice-over must not be regenerated. " +
+  "You may edit or write narration when asked, including the whole script from a topic or an empty project; every narration change is recorded in the visible change list, and only the lines you changed are re-recorded.";
+
 export interface DirectorTaskOptions {
   projectId: string;
   filmTitle?: string;
@@ -952,7 +1068,8 @@ export function generateAgentPrompt(opts: DirectorTaskOptions): string {
   return `Direct the explainer video for "${title}" (${opts.projectId}):
 1. **Look task first:** read videos/${opts.projectId}/design/LOOK_BRIEF.md, docs/DIRECTOR_GUIDE.md, the screenplay and film. Write design/look.json and run \`aideos look check ${opts.projectId}\` until PASS.
 2. **Design task second:** read design/LOOK.md and design/BRIEF.md, then author design/design.json and its SVG artwork to follow the checked treatment and cast on one persistent scene stage.
-3. Run \`aideos design build ${opts.projectId}\`, then \`npm run validate:film videos/${opts.projectId}/film.json\` until both pass.`;
+3. Run \`aideos design build ${opts.projectId}\`, then \`npm run validate:film videos/${opts.projectId}/film.json\` until both pass.
+4. ${STORY_SCRIPT_RULES}`;
 }
 
 /** Formats a full markdown directive task document to be written to videos/<id>/director_task.md and root .aideos_task.md */
@@ -987,6 +1104,7 @@ As the Creative Director, your mission is to transform this structure into a cap
 3. **Pacing Invariants**:
    - Keep the stage visible and evolving; device treatments are secondary to the stage.
    - Maintain audio sync (shot durations lock to narration audio).
+4. **The script**: ${STORY_SCRIPT_RULES}
 
 ---
 
