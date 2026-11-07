@@ -25,7 +25,7 @@ import { ROOT, FILMS_DIR, FILM_ID, filmModule, ensureGenerated, setActiveFilm } 
 
 export { ROOT, FILMS_DIR, FILM_ID, ensureGenerated, setActiveFilm };
 
-/** Where new packages are written: AIDEOS_VIDEOS_DIR, else <root>/videos (gitignored). */
+/** Where new packages are written: AIDEOS_VIDEOS_DIR, else <root>/videos (gitignored), as it was when this module loaded; `packageDir` follows the live value. */
 export const VIDEOS_DIR = getVideosDir();
 
 /** Turns arbitrary text into a film id: lowercase letters, digits and dashes only. */
@@ -39,10 +39,10 @@ export function slugify(text: string): string {
   );
 }
 
-/** Absolute path of a package directory for a slug, where it is written. */
+/** Absolute path of a package directory for a slug, where it is written (read live, so a process that moves AIDEOS_VIDEOS_DIR between runs writes where the studio and the design stage read). */
 export function packageDir(slug: string): string {
   if (!FILM_ID.test(slug)) throw new Error(`invalid film id "${slug}": lowercase letters, digits and dashes only`);
-  return path.join(VIDEOS_DIR, slug);
+  return path.join(getVideosDir(), slug);
 }
 
 /** Loads a film, preferring the authoritative film.json and falling back to the shadow module. */

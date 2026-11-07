@@ -1,5 +1,5 @@
 /**
- * File Description: J3 studio edit journeys in a real headless Chrome: (1) the AI edit Apply gesture, (2) new project, script save and reload. Before this, Apply Edits rolled back in the browser on a Node-only import (`path.resolve` externalized by Vite) while every Node test passed, and the script-save path had no browser coverage at all.
+ * File Description: J3 studio edit journeys in a real headless Chrome: (1) the AI edit Apply gesture, (2) new project, script save and reload, (3) the screenplay field refusing input until its stored script has loaded. Before this, Apply Edits rolled back in the browser on a Node-only import (`path.resolve` externalized by Vite) while every Node test passed, and the script-save path had no browser coverage at all.
  * The journey makes the model-backed `/api/ai-edit` endpoint deterministic by answering it from the test (a valid `set_accent` plan) and leaves every other request real: the click on Apply Edits runs the real interpreter in the page, and the save, the edit log and the reload hit the real dev server and disk.
  * Inputs and outputs: a throwaway videos folder with a film made by the real pipeline (tone narration, template design, no model or key) -> asserts the edit is applied, written to film.json, logged, and still there after a reload; a new project's script is on disk and in the editor after a reload.
  * Used by: npm run test:journeys and npm run ci journeys (needs Chrome; AIDEOS_SMOKE_REQUIRED=1 turns a missing Chrome into a failure).
@@ -140,7 +140,7 @@ journey("J3 studio: a new project's script saves to disk and is still there afte
     assert.equal(await page.eval<string>(`document.querySelector('#np-slug').value`), NEW_SLUG, "the identifier follows the title");
     await page.clickButton("Empty project");
     await page.clickButton("Create project", { exact: true });
-    await page.waitFor(`document.querySelector('textarea[aria-label="Screenplay text"]')`, "the script stage of the new project");
+    await page.waitFor(`document.querySelector('textarea[aria-label="Screenplay text"]:not([readonly])')`, "the script stage of the new project, with its stored script loaded and editable");
     assert.ok(fs.existsSync(path.join(videosDir, NEW_SLUG, "script.md")), "creating the project did not write script.md");
 
     // Write a script and save it with the Save Script button.
@@ -157,6 +157,30 @@ journey("J3 studio: a new project's script saves to disk and is still there afte
     await page.reload();
     await page.waitFor(`document.querySelector('textarea[aria-label="Screenplay text"]')`, "the script stage after reload");
     await page.waitFor(`document.querySelector('textarea[aria-label="Screenplay text"]').value.includes('A cache keeps recent answers')`, "the saved script to be shown after reload");
+    assertNoErrors(page, serverLog());
+  });
+});
+
+journey("J3 studio: the screenplay field takes no input until the stored script has loaded, then replaces it cleanly", async () => {
+  await withStudio([AI_SLUG], async ({ page, url, serverLog }) => {
+    // The stored script's answer is held in flight, which is what a slow or loaded server looks like to a user.
+    const releaseScript = await page.hold("GET", `/api/scripts/${AI_SLUG}`);
+    await openProject(page, url, AI_SLUG, "script");
+    await page.waitFor(`document.querySelector('textarea[aria-label="Screenplay text"][readonly]')`, "the screenplay field, waiting for its stored script");
+
+    // Typing now must not be accepted and then clobbered by the late answer.
+    await page.focus('textarea[aria-label="Screenplay text"]');
+    await page.typeText("typed too early");
+    assert.equal(await page.eval<string>(`document.querySelector('textarea[aria-label="Screenplay text"]').value`), "", "the field accepted text before the stored script had loaded");
+
+    // Once the script arrives the field is editable, and select-all then typing replaces it exactly.
+    releaseScript();
+    await page.waitFor(`document.querySelector('textarea[aria-label="Screenplay text"]:not([readonly])') && document.querySelector('textarea[aria-label="Screenplay text"]').value.includes('A load balancer shares incoming requests')`, "the stored script to load into an editable field");
+    const replacement = "## 0:00 - Replaced\n[NARRATION] Only this text should remain in the field.";
+    await page.focus('textarea[aria-label="Screenplay text"]');
+    await page.eval(`document.querySelector('textarea[aria-label="Screenplay text"]').select()`);
+    await page.typeText(replacement);
+    assert.equal(await page.eval<string>(`document.querySelector('textarea[aria-label="Screenplay text"]').value`), replacement, "typing over the selected script did not replace it");
     assertNoErrors(page, serverLog());
   });
 });

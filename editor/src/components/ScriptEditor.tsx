@@ -907,6 +907,8 @@ export function ScriptEditor({
               <textarea
                 value={script}
                 onChange={(e) => setScript(e.target.value)}
+                // Read-only until the stored script has arrived: text typed or selected before then is overwritten (and its caret reset) by the load.
+                readOnly={loading}
                 placeholder="Paste your Claude screenplay here with ## 0:00-0:20 - TITLE headers, [VISUAL], [NARRATION], and [ON SCREEN] tag blocks..."
                 aria-label="Screenplay text" className="w-full h-full min-h-[380px] p-4 bg-transparent text-ink font-mono text-sm leading-relaxed outline-none resize-none selection:bg-select/30 placeholder:text-ink-mute"
                 spellCheck={false}

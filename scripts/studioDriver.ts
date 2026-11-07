@@ -180,6 +180,8 @@ export class StudioPage {
   private readonly pending = new Map<number, (result: CdpResult) => void>();
   /** Answers for intercepted requests, tried in order; a request no rule matches continues to the real server. */
   private readonly interceptRules: Array<{ method: string; urlPath: string; respond: (req: InterceptedRequest) => FakeResponse }> = [];
+  /** Requests a journey holds back until it releases them; a released rule lets later matches straight through. */
+  private readonly holdRules: Array<{ method: string; urlPath: string; released: boolean; paused: string[] }> = [];
 
   /** Wraps an open DevTools socket and starts collecting errors. */
   private constructor(
@@ -295,15 +297,32 @@ export class StudioPage {
     return r.result?.value as T;
   }
 
-  /** Polls a page expression until it is truthy, or throws naming what never happened. */
+  /** Polls a page expression until it is truthy, or throws naming what never happened and what the page looked like. */
   async waitFor(expression: string, what: string, timeoutMs = 60000): Promise<void> {
     const deadline = Date.now() + timeoutMs;
+    let lastProbeError = "";
     while (Date.now() < deadline) {
-      if (await this.eval<boolean>(`Boolean(${expression})`).catch(() => false)) return;
+      try {
+        if (await this.eval<boolean>(`Boolean(${expression})`)) return;
+      } catch (error) {
+        lastProbeError = error instanceof Error ? error.message : String(error);
+      }
       await new Promise((r) => setTimeout(r, 150));
     }
     const errSuffix = this.errors.length ? `; browser errors: ${this.errors.join("; ")}` : "";
-    throw new Error(`timed out after ${timeoutMs}ms waiting for ${what}${errSuffix}`);
+    const probeSuffix = lastProbeError ? `; the last probe failed: ${lastProbeError}` : "";
+    throw new Error(`timed out after ${timeoutMs}ms waiting for ${what}${errSuffix}${probeSuffix}; ${await this.describePage()}`);
+  }
+
+  /** Summarises where the page is (address, load state, visible text), or says it did not answer, for a timeout message. */
+  private async describePage(): Promise<string> {
+    const answer = this.eval<string>(`JSON.stringify({ href: location.href, readyState: document.readyState, text: (document.body?.innerText ?? "").replace(/\\s+/g, " ").slice(0, 300) })`);
+    const silent = new Promise<string>((resolve) => setTimeout(() => resolve("the page did not answer within 5s"), 5000).unref());
+    try {
+      return `page: ${await Promise.race([answer, silent])}`;
+    } catch (error) {
+      return `page: could not be read (${error instanceof Error ? error.message : String(error)})`;
+    }
   }
 
   /** Presses and releases one key the way a user's keyboard would (it reaches the window listeners). */
@@ -348,9 +367,29 @@ export class StudioPage {
     await this.send("Fetch.enable", { patterns: [{ urlPattern: "*/api/*", requestStage: "Request" }] });
   }
 
+  /**
+   * Holds every `method` request whose URL path is exactly `urlPath` before it reaches the server, so a journey
+   * can act on the page while that answer is still in flight; the returned function releases them (and any later
+   * match) to the real server unchanged.
+   */
+  async hold(method: string, urlPath: string): Promise<() => void> {
+    const rule = { method, urlPath, released: false, paused: [] as string[] };
+    this.holdRules.push(rule);
+    await this.send("Fetch.enable", { patterns: [{ urlPattern: "*/api/*", requestStage: "Request" }] });
+    return () => {
+      rule.released = true;
+      for (const requestId of rule.paused.splice(0)) void this.send("Fetch.continueRequest", { requestId }).catch(() => undefined);
+    };
+  }
+
   /** Fulfils a paused request from the first matching rule, or lets it continue untouched. */
   private answerPausedRequest(requestId: string, request: { url: string; method: string; postData?: string }): void {
     const urlPath = new URL(request.url).pathname;
+    const held = this.holdRules.find((r) => !r.released && r.method === request.method && r.urlPath === urlPath);
+    if (held) {
+      held.paused.push(requestId);
+      return;
+    }
     const rule = this.interceptRules.find((r) => r.method === request.method && r.urlPath === urlPath);
     if (!rule) {
       void this.send("Fetch.continueRequest", { requestId });
