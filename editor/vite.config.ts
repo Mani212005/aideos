@@ -57,6 +57,7 @@ import { transformProseToScreenplay } from '../backend/pipeline/director.ts'
 import {
   dispatchTask,
   getAgentSession,
+  paneDelivery,
   setAgentSession,
   traceBus,
 } from '../backend/agentBridge/index.ts'
@@ -1290,6 +1291,18 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             });
             sendJson(res, 200, { ok: true, dispatch, prompt: dispatch.prompt });
           }).catch(err => sendJson(res, 500, { error: String(err) }));
+          return;
+        }
+
+        // Handle /api/prompt-agent/queue (where a prompt stands in the agent's terminal: queued, sending, sent or failed)
+        if (url === '/api/prompt-agent/queue' && req.method === 'GET') {
+          const id = new URL(req.url ?? '', 'http://localhost').searchParams.get('id');
+          const entry = id ? paneDelivery.get(id) : undefined;
+          if (!entry) {
+            sendJson(res, 404, { error: 'Unknown prompt delivery' });
+            return;
+          }
+          sendJson(res, 200, { ok: true, entry });
           return;
         }
 

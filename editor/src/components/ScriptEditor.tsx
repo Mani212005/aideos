@@ -31,6 +31,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
+import { Badge } from "./ui";
+import { usePaneDelivery, type PaneDeliveryView } from "../state/paneDelivery";
 import {
   parseClaudeScript,
   structureUntaggedProseToScript,
@@ -189,7 +191,9 @@ export function ScriptEditor({
     channel: string;
     message: string;
     session?: string;
+    pane?: PaneDeliveryView;
   } | null>(null);
+  const paneDelivery = usePaneDelivery(lastDispatchResult?.pane);
 
   const copyToClipboard = (text: string) => {
     if (typeof navigator !== "undefined" && navigator?.clipboard?.writeText) {
@@ -225,7 +229,9 @@ export function ScriptEditor({
         setLastDispatchResult(data.dispatch);
         setStatusMsg({
           type: "success",
-          text: `⚡ ${data.dispatch.message || "Auto-prompted active coding agent in terminal!"}`,
+          text: data.dispatch.pane
+            ? "⚡ Auto-prompter has the task: its progress shows in the AUTO-PROMPTER bar above"
+            : `⚡ ${data.dispatch.message || "Auto-prompted active coding agent in terminal!"}`,
         });
       }
     } catch (err: any) {
@@ -729,7 +735,13 @@ export function ScriptEditor({
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-success animate-ping" />
             <span className="font-bold text-ink">AUTO-PROMPTER:</span>
-            <span className="text-ink">{lastDispatchResult.message}</span>
+            <span className="text-ink">
+              {paneDelivery?.state === "sent" && !paneDelivery.duplicate
+                ? `Prompt sent to your ${paneDelivery.agent} agent`
+                : lastDispatchResult.message}
+            </span>
+            {paneDelivery && <PaneDeliveryBadge delivery={paneDelivery} />}
+            {paneDelivery?.state === "failed" && <span className="text-ink-soft">{paneDelivery.error}</span>}
           </div>
           <button
             onClick={() => setLastDispatchResult(null)}
@@ -1274,4 +1286,13 @@ export function ScriptEditor({
       </div>
     </div>
   );
+}
+
+/** The badge that says where an Auto-Prompt stands: queued behind a busy agent, sending, sent, or not sent. */
+function PaneDeliveryBadge({ delivery }: { delivery: PaneDeliveryView }) {
+  if (delivery.duplicate) return <Badge tone="quiet">Already queued</Badge>;
+  if (delivery.state === "queued") return <Badge tone="warn" title={`Sent when your ${delivery.agent} agent is idle at an empty prompt`}>Queued</Badge>;
+  if (delivery.state === "sending") return <Badge tone="info">Sending</Badge>;
+  if (delivery.state === "sent") return <Badge tone="success">Sent</Badge>;
+  return <Badge tone="danger" title={delivery.error}>Not sent</Badge>;
 }
