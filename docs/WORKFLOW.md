@@ -142,7 +142,7 @@ The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http:
 
 | Command | Action | Output Artifact |
 | :--- | :--- | :--- |
-| `aideos` | Launches and opens interactive web studio | `http://localhost:3002/` (stable) or `http://localhost:3001/` (dev); see [Local releases](RELEASES.md) |
+| `aideos` | Asks which coding agent to connect first, then starts the web studio and opens it in the browser | `http://localhost:3002/` (stable) or `http://localhost:3001/` (dev); see [Local releases](RELEASES.md) |
 | `aideos-dev` | Launches updating dev studio on reserved dev port | `http://localhost:3001/` |
 | `aideos-stable` | Launches stable studio or copies films into stable | `http://localhost:3002/`; see [Local releases](RELEASES.md) |
 | `aideos version / which` | Shows channel, release tag, commit and checkout path | Terminal output; see [Local releases](RELEASES.md) |
