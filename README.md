@@ -180,7 +180,7 @@ The Aideos Studio (`editor/`) is a Neobrutalist web application built with React
 
 | Stage | Name | Key Functionality |
 | :--- | :--- | :--- |
-| **1** | **Script** | Narrative authoring, Claude intake tag parsing, multi-provider TTS voiceover generation, and terminal agent auto-prompting. |
+| **1** | **Script** | Story-first paragraph authoring, collapsible visual notes, visible change list, per-line TTS voiceover, and terminal agent auto-prompting. |
 | **2** | **Story** | Interactive 2D spatial canvas. Drag concept nodes, connect directed edges, and preview camera framing. |
 | **3** | **Look** | Look planning inspection (`design/look.json`), theme customization (paper, blueprint, charcoal), and styleboards. |
 | **4** | **Motion** | Custom SVG movie animation studio with declarative timeline keyframing and audio retiming. |
@@ -235,7 +235,7 @@ No. The 9:16 Vertical Reel is compiled from the same canvas, camera, and visual 
 Yes. Speech synthesis defaults to Kokoro-82M ONNX, which runs locally without network access. Screenplays can be authored by hand in markdown, and rendering uses local Remotion and FFmpeg. Paid API keys (Google Gemini, Claude) are only required when using autonomous LLM director drafting or automated multimodal video reviews.
 
 #### How does audio-first timing work when the script changes?
-The synthesized narration audio track serves as the master clock for the film. Total shot durations must sum to the voiceover length within +-50ms. When dialogue changes, the TTS synthesizer generates a new audio spine, measures exact word boundaries, and retimes all camera transitions and subtitle reveals accordingly.
+The synthesized narration audio track serves as the master clock for the film. Total shot durations must sum to the voiceover length within +-50ms. When dialogue changes, narration is stored per line by content fingerprint (`voiceover_lines/`) so only changed lines are re-recorded. The synthesizer updates the audio spine, measures exact word boundaries, and retimes all camera transitions and subtitle reveals accordingly.
 
 #### Can I edit the video visually instead of editing code?
 Yes. Launch `npm run editor` to open Aideos Studio. You can drag concept nodes on the 2D spatial canvas, reposition caption cards directly in the video preview, scrub and trim clips on the multi-track timeline, adjust themes, and review pacing charts in the browser.

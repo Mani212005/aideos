@@ -22,7 +22,7 @@ The editor chrome uses a dedicated Neobrutalism design system, entirely decouple
 
 The editor interface is organized into 7 sequential editing stages located in `src/screens/`:
 
-1. **Script (`ScriptStage.tsx` / `ScriptEditor.tsx`)**: Screenplay markdown editor, visual shot beat cards, zero-leakage spoken dialogue extraction, multi-provider TTS voiceover generation (Kokoro, Deepgram, Google Cloud TTS, macOS say), and Auto-Prompt agent dispatching with live queue delivery tracking.
+1. **Script (`ScriptStage.tsx` / `ScriptEditor.tsx`)**: Story-first paragraph authoring with collapsible visual and on-screen notes, visible narration change list, zero-leakage spoken dialogue extraction, per-line TTS voiceover generation (Kokoro, Deepgram, Google Cloud TTS, macOS say), and Auto-Prompt agent dispatching with live queue delivery tracking.
 2. **Story (`StoryStage.tsx` / `MindMap.tsx`)**: 2D infinite spatial canvas for positioning concept nodes, wiring directed relationship edges, and inspecting camera framing targets.
 3. **Look (`LookStage.tsx` / `DesignView.tsx` / `Styleboard.tsx` / `CustomizationEditor.tsx`)**: Sub-views for bespoke design and look plans (`DesignView.tsx`: stage, cast, shot treatments, LOOK.md preview, captain approval via `approveLookPlan`, artwork, motion, and honest visual swaps), project theme customization (`CustomizationEditor.tsx`: paper textures, typography, accent color), and storyboard keyframe gallery (`Styleboard.tsx`).
 4. **Motion (`MotionStage.tsx`)**: Authoring studio for bespoke SVG movie animations, element-level timeline keyframing, and pre-built motion templates.
