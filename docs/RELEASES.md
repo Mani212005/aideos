@@ -117,9 +117,10 @@ is not ACCEPT (unless it carries its own `--waive-long-gemini`, below), when a m
 and it still requires the typed `WATCHED AND APPROVE vX.Y.Z` after the captain has watched both outputs.
 
 When the waiver applies (the reel came back REVISE with every gate intact) the tool prints the waived
-verdict and scores prominently, adds a `waivers` entry (reason, verdict, scores, criteria, time) to
-`production.json` in the evidence directory, and appends the same to the release tag annotation, each
-stating that Gemini review stays mandatory and that this was a one-time exception.
+verdict and scores prominently, adds a `reel-gemini-verdict` entry (reason, verdict, scores, criteria, time) to
+the `waivers` list in `production.json` in the evidence directory, and appends a "Captain-attended waiver of the
+reel's Gemini verdict" paragraph to the release tag annotation, each stating that Gemini review stays mandatory
+and that this was a one-time exception.
 A reel that is ACCEPT records no waiver.
 
 ## Waive the long film's Gemini verdict
