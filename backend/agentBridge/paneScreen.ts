@@ -16,8 +16,10 @@ export interface PaneScreenReading {
 // An input row starts with a prompt glyph, optionally inside a box border: "> ", "❯ ", "› ".
 const COMPOSER_ROW = /^[\s│|]*([>❯›])(?:\s|$)/;
 // Escape sequences other than colours and styles never carry text, so drop them whole.
-const SGR = /\x1b\[([0-9;]*)m/g;
-const OTHER_ESCAPES = /\x1b\[[0-9;?]*[A-Za-ln-z]|\x1b\][^\x07]*\x07/g;
+const ESC = String.fromCharCode(27);
+const BEL = String.fromCharCode(7);
+const SGR = new RegExp(`${ESC}\\[([0-9;]*)m`, "g");
+const OTHER_ESCAPES = new RegExp(`${ESC}\\[[0-9;?]*[A-Za-ln-z]|${ESC}\\][^${BEL}]*${BEL}`, "g");
 // A working agent says so: "esc to interrupt", or a spinner line like "✻ Reticulating… (2m 6s · ...".
 const BUSY_LINES = [/esc to interrupt/i, /ctrl\+c to interrupt/i, /^[\s│]*[^\w\s]\s+[^\n]{1,60}…\s*\(\d+\s*[smh]/];
 // How many rows above the input row can hold the working line (spinner, blank, rule).
