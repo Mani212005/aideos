@@ -317,6 +317,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `readFilm(slug)`: Reads and parses `videos/<slug>/film.json` as authoritative `Film`.
 * `writeFilm(slug, film)`: Validates and persists `Film` to both `videos/<slug>/film.json` and its shadow `src/dl/films/<slug>.ts` module simultaneously, and broadcasts `traceBus.notifyFilmUpdated` for live Studio synchronization.
 * `setActiveFilm(slug)`: Points the generated, gitignored `src/dl/activeFilm.ts` at the target film package.
+* `packageDir(slug)`: Absolute path of a package directory for a slug, resolved dynamically from `getVideosDir()` so changing `AIDEOS_VIDEOS_DIR` updates subsequent writes live.
 * `ensureGenerated()` (`generatedFiles.ts`): Rebuilds every generated file (`src/dl/films/<slug>.ts` shadows, `svgSources.generated.ts`, `activeFilm.ts`) from the packages on disk; run by `npm run ensure:generated`, postinstall and the pre-hooks of the scripts that bundle them.
 * `wireFootageIntoFilm(slug, shotId, relPath, promptText)`: Wires rendered B-roll video clip into a shot as an `AnalogyInset` block and saves to both storage targets.
 

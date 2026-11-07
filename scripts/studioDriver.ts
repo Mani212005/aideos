@@ -1,7 +1,7 @@
 /**
  * File Description: A small headless-Chrome driver for studio journeys, over the DevTools protocol with no extra dependency: it starts the editor dev server on a throwaway videos folder, opens the studio like a user would, and offers real keyboard, click, screenshot and wait calls while collecting every uncaught error and console.error.
  * Inputs and outputs: a videos directory and a Chrome binary -> a connected Studio page that journeys drive; stop() kills Chrome, the dev server and removes the temp profile.
- * Used by: scripts/smoke_studio.ts and backend/journeys/j3_studio_edit.journey.ts (AI edit apply, new project, script save, reload).
+ * Used by: scripts/smoke_studio.ts and backend/journeys/j3_studio_edit.journey.ts (AI edit apply, new project, script save, reload, script input gating).
  */
 
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
