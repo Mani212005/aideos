@@ -15,7 +15,7 @@ import type { AudioItem } from "../backend/audioLibrary/schema";
 import type { GeminiReviewReport } from "../backend/geminiReview/types";
 import { announceWaiver, requireWaiverAllowed, reviewFilmsWithGemini, runReleaseGates, waiverTagNote, type GeminiWaiver, type WaivedFilm } from "./releaseWaiver";
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = path.resolve(process.env.AIDEOS_PROJECT_ROOT || optionalGit(process.cwd(), ["rev-parse", "--show-toplevel"]) || path.resolve(__dirname, ".."));
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 /** Stops on a failed precondition before any promotion side effect. */
