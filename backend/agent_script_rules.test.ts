@@ -10,13 +10,14 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
 import { buildDirectingPrompt, DESIGN_INVARIANTS } from "./agentBridge/contextBuilder";
 import type { AgentEventType } from "./agentBridge/types";
 import { remoteTaskPrompt } from "./agentLink/prompt";
 import { AGENT_LINK_PROMPT } from "./agentLink/connectInstructions";
+import { createMcpServer } from "./mcp/server";
 import { generateAgentPrompt, generateDirectorTaskDocument, STORY_SCRIPT_RULES } from "./scriptIntake";
 
 const EVENTS: AgentEventType[] = [
@@ -83,8 +84,20 @@ test("the copy-paste prompt, the director task document, the linked-agent preamb
   assert.ok(DESIGN_INVARIANTS.some((line) => line.includes(STORY_SCRIPT_RULES)));
 });
 
-test("the MCP script description tells an agent plain text works as written", () => {
-  const source = fs.readFileSync(path.join(__dirname, "mcp", "server.ts"), "utf8");
-  assert.match(source, /Plain text works as written/);
-  assert.match(source, /narration is never reformatted/);
+test("the MCP script description tells an agent plain text works as written", async () => {
+  const server = createMcpServer();
+  const client = new Client({ name: "rules-test", version: "1.0.0" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  try {
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    const { tools } = await client.listTools();
+    const produce = tools.find((tool) => tool.name === "aideos_produce_film");
+    assert.ok(produce, "aideos_produce_film must be registered");
+    const scriptDesc = (produce.inputSchema.properties as Record<string, { description?: string }>).script?.description ?? "";
+    assert.match(scriptDesc, /Plain text works as written/);
+    assert.match(scriptDesc, /narration is never reformatted/);
+  } finally {
+    await client.close();
+    await server.close();
+  }
 });
