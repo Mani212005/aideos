@@ -311,10 +311,11 @@ test("scripts/release.ts setup prints plan and checks origin prerequisites", () 
     runGit(originDir, ["config", "receive.denyCurrentBranch", "ignore"]);
 
     const updatingDir = path.join(tmp, "updating");
-    fs.mkdirSync(updatingDir, { recursive: true });
-    runGit(tmp, ["clone", originDir, updatingDir]);
+    runGit(tmp, ["clone", "--no-hardlinks", "--no-tags", ROOT, updatingDir]);
+    runGit(updatingDir, ["remote", "set-url", "origin", originDir]);
+    fs.symlinkSync(path.join(ROOT, "node_modules"), path.join(updatingDir, "node_modules"));
 
-    const releaseScript = path.join(ROOT, "scripts/release.ts");
+    const releaseScript = path.join(updatingDir, "scripts/release.ts");
     const targetStable = path.join(tmp, "aideos-stable");
     const targetBin = path.join(tmp, "bin");
 
@@ -335,6 +336,33 @@ test("scripts/release.ts setup prints plan and checks origin prerequisites", () 
     );
     assert.equal(applyWithoutRelease.status, 1);
     assert.match(applyWithoutRelease.stderr, /Publish the first annotated release and stable branch before setup/);
+  });
+});
+
+test("scripts/release.ts setup requires an interactive terminal when origin prerequisites pass", () => {
+  withTempDir((tmp) => {
+    const originDir = path.join(tmp, "origin");
+    initGitRepo(originDir, "main");
+    runGit(originDir, ["branch", "stable"]);
+    runGit(originDir, ["tag", "-a", "v1.0.0", "-m", "release 1.0.0"]);
+    runGit(originDir, ["config", "receive.denyCurrentBranch", "ignore"]);
+
+    const updatingDir = path.join(tmp, "updating");
+    runGit(tmp, ["clone", "--no-hardlinks", "--no-tags", ROOT, updatingDir]);
+    runGit(updatingDir, ["remote", "set-url", "origin", originDir]);
+    fs.symlinkSync(path.join(ROOT, "node_modules"), path.join(updatingDir, "node_modules"));
+
+    const releaseScript = path.join(updatingDir, "scripts/release.ts");
+    const targetStable = path.join(tmp, "aideos-stable");
+    const targetBin = path.join(tmp, "bin");
+
+    const applyWithRelease = spawnSync(
+      path.join(ROOT, "node_modules/.bin/tsx"),
+      [releaseScript, "setup", "--path", targetStable, "--bin-dir", targetBin, "--apply"],
+      { cwd: updatingDir, encoding: "utf8" }
+    );
+    assert.equal(applyWithRelease.status, 1);
+    assert.match(applyWithRelease.stderr, /Approval requires an interactive terminal; piped approval is refused/);
   });
 });
 
