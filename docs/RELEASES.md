@@ -69,9 +69,9 @@ The command fetches refs and checks version/fast-forward eligibility, then:
 5. Prints the complete MP4 paths and durations, runs measured review for both formats, and runs
    Gemini video review. These must pass. Reports remain beside the temporary rendered package;
    `production.json` records the run. Review tools require their normal local dependencies/login.
-   Only the 0.5.0 release may add `--waive-reel-gemini "<reason>"` and `--waive-long-gemini "<reason>"`, one-time
-   exceptions that each waive just that film's Gemini verdict and score threshold (see "Waive the reel's Gemini
-   verdict" and "Waive the long film's Gemini verdict" below). Every other release and video keeps Gemini review mandatory.
+   Gemini review of the long film and of the reel is mandatory in every release: a verdict other than
+   ACCEPT, for either film, stops the release. No flag, setting or environment variable waives it. (Release
+   0.5.0 carried two one-time waivers of these verdicts; both have since been removed.)
 6. Waits for the captain to watch **both complete outputs with sound**, then type exactly
    `WATCHED AND APPROVE v0.5.0` in an interactive terminal. There is no automatic approval option;
    pipes are refused. Dry runs also require this watch confirmation.
@@ -96,63 +96,6 @@ Do not retry blindly or overwrite the tag. Inspect `git show vX.Y.Z` and `git ls
 resolve the cause, and either push those already approved refs atomically or retain them and select
 the next version. If only the local install fails after push, the release remains published; fetch
 the accepted tag into stable, `git merge --ff-only vX.Y.Z`, and rerun `npm ci` there.
-
-## Waive the reel's Gemini verdict
-
-This waiver exists only for release 0.5.0 and will be removed afterward. The release tool refuses
-`--waive-reel-gemini` for any other version (for example 0.5.1 or 1.0.0) before any work starts, and
-Gemini review of every video and reel is mandatory there.
-
-For the captain-attended 0.5.0 release, `npm run release -- 0.5.0 --acceptance <dir> --waive-reel-gemini "<reason>"`
-lets the reel's Gemini overall verdict and score threshold alone be waived, for that one invocation.
-Gemini review of every video and reel remains mandatory in every release: this flag is a one-time,
-captain-attended exception to that rule, not a way to skip review in routine releases. There is no
-config file, environment variable or default for it, and no threshold changes. It is refused before
-any work starts for any version other than 0.5.0, without a non-empty reason, without `--acceptance`,
-or when stdin or stdout is not an interactive terminal.
-
-It waives nothing else. The release still stops when any of the reel's six hard gates or its
-delivered length fail, when a criterion has no timestamp evidence, when the long film's Gemini review
-is not ACCEPT (unless it carries its own `--waive-long-gemini`, below), when a measured review fails, on production warnings or missing music, on CI failure,
-and it still requires the typed `WATCHED AND APPROVE vX.Y.Z` after the captain has watched both outputs.
-
-When the waiver applies (the reel came back REVISE with every gate intact) the tool prints the waived
-verdict and scores prominently, adds a `reel-gemini-verdict` entry (reason, verdict, scores, criteria, time) to
-the `waivers` list in `production.json` in the evidence directory, and appends a "Captain-attended waiver of the
-reel's Gemini verdict" paragraph to the release tag annotation, each stating that Gemini review stays mandatory
-and that this was a one-time exception.
-A reel that is ACCEPT records no waiver.
-
-## Waive the long film's Gemini verdict
-
-This is a second one-time exception, added at the captain's explicit instruction for release 0.5.0, whose long
-film came back REVISE 8.6/10 with all six hard gates passing. It expires with 0.5.0 and will be removed
-afterward. Gemini review stays mandatory for every other release (0.5.1 and later included) and every other
-video: the release tool refuses `--waive-long-gemini` for any version other than 0.5.0 before any work starts.
-There is no config file, environment variable or default for it, and no threshold, rubric or score rule changes.
-
-For the captain-attended 0.5.0 release,
-`npm run release -- 0.5.0 --acceptance <dir> --waive-long-gemini "<reason>"` waives the long film's Gemini
-overall verdict and score threshold alone, for that one invocation. It mirrors the reel waiver: it is refused
-without a non-empty reason, without `--acceptance`, or when stdin or stdout is not an interactive terminal.
-
-The Gemini review of the long film still runs, first and in full: its report is printed and its verdict is
-recorded, not skipped. The waiver applies only to a REVISE where every one of the six hard gates passed (score at
-least 6 and passed) with timestamp evidence for every criterion and a numeric overall score. It never applies to a
-failed hard gate, a missing review, a missing criterion, a non-numeric score or missing timestamp evidence.
-The long film has no `reel_length` gate, so the six hard gates alone are checked. A long film that is ACCEPT
-records no waiver.
-
-The two waivers are independent: `--waive-long-gemini` covers the long film only and `--waive-reel-gemini`
-covers the reel only. Supplying one never waives the other, and each film is waived or refused on its own report.
-Measured reviews, CI, production warnings, music checks and the typed `WATCHED AND APPROVE vX.Y.Z` stay in force,
-in the same order: acceptance, then typed approval, then promotion.
-
-When it applies, the tool prints a waived-verdict announcement naming the long film and the gates still enforced,
-adds a `long-gemini-verdict` entry (reason, verdict, scores, criteria, time) to the `waivers` list in
-`production.json` next to the reel's entry, and appends a "Captain-attended waiver of the long film's Gemini
-verdict" paragraph to the release tag annotation, stating that Gemini review stays mandatory and that this was a
-one-time exception. When both waivers are used, both are announced and listed.
 
 ## First setup
 
