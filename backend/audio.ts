@@ -100,11 +100,6 @@ export interface ProduceAudioOptions {
   speed?: number;
   /** Called once per synthesized chunk so long runs can report progress. */
   onProgress?: (done: number, total: number, label: string) => void;
-  /**
-   * Keep each narration line's recording under <outDir>/voiceover_lines/ by content fingerprint, so a
-   * later run re-records only lines whose words or voice changed. On by default; false records everything.
-   */
-  lineStore?: boolean;
   /** A synthesizer to use instead of creating one from `backend` (tests inject a counting one). */
   ttsBackendInstance?: TtsBackend;
   /**
@@ -374,7 +369,7 @@ export async function produceAudioPipeline(
   let segmentChunks: PcmChunk[][];
   let lineCounts: { recorded: number; reused: number } | undefined;
   try {
-    const synthesized = await synthesizeSegments(segmentTexts, backend, options?.onProgress, options?.lineStore === false ? undefined : { pkgDir: outDir });
+    const synthesized = await synthesizeSegments(segmentTexts, backend, options?.onProgress, { pkgDir: outDir });
     segmentChunks = synthesized.chunks;
     lineCounts = synthesized.lines;
     if (lineCounts) console.error(`[narration] ${lineCounts.recorded} line(s) recorded, ${lineCounts.reused} reused`);

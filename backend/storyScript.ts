@@ -51,29 +51,33 @@ export interface NarrationChange {
   after?: string;
 }
 
-/** Groups a segment's beats into narration paragraphs; notes ride with the narration they follow. */
+/** Groups a segment's beats into narration paragraphs; notes ride with the narration they precede. */
 function segmentToSection(segment: ScriptSegment): StorySection {
   const paragraphs: StoryParagraph[] = [];
-  let leading: ScriptBeat[] = [];
+  let pendingVisual: string[] = [];
+  let pendingOnScreen: string[] = [];
 
   for (const beat of segment.beats) {
-    if (beat.type === "narration") {
-      paragraphs.push({ id: `${segment.id}-${paragraphs.length + 1}`, narration: beat.text, visual: [], onScreen: [] });
-      continue;
+    if (beat.type === "visual") {
+      if (beat.text.trim()) pendingVisual.push(beat.text);
+    } else if (beat.type === "onscreen") {
+      if (beat.text.trim()) pendingOnScreen.push(beat.text);
+    } else {
+      paragraphs.push({
+        id: `${segment.id}-${paragraphs.length + 1}`,
+        narration: beat.text,
+        visual: pendingVisual,
+        onScreen: pendingOnScreen,
+      });
+      pendingVisual = [];
+      pendingOnScreen = [];
     }
-    const target = paragraphs[paragraphs.length - 1];
-    if (!target) {
-      leading.push(beat);
-      continue;
-    }
-    (beat.type === "visual" ? target.visual : target.onScreen).push(beat.text);
   }
 
-  // Notes that came before the section's first narration belong with that first paragraph.
-  if (leading.length > 0 && paragraphs.length > 0) {
-    paragraphs[0].visual.unshift(...leading.filter((b) => b.type === "visual").map((b) => b.text));
-    paragraphs[0].onScreen.unshift(...leading.filter((b) => b.type === "onscreen").map((b) => b.text));
-    leading = [];
+  if (paragraphs.length > 0 && (pendingVisual.length > 0 || pendingOnScreen.length > 0)) {
+    const last = paragraphs[paragraphs.length - 1];
+    last.visual.push(...pendingVisual);
+    last.onScreen.push(...pendingOnScreen);
   }
 
   return { id: segment.id, title: segment.title, timeStart: segment.timeStart, timeEnd: segment.timeEnd, paragraphs };
@@ -85,16 +89,16 @@ export function scriptToStory(script: string, options?: { speed?: number }): Sto
   return segments.map(segmentToSection).filter((section) => section.paragraphs.length > 0);
 }
 
-/** Writes story sections back to the internal tagged markdown: narration first, then its notes (empty slots kept). */
+/** Writes story sections back to the internal tagged markdown: notes first, then narration (empty slots kept). */
 export function storyToScript(story: StorySection[]): string {
   const segments: ScriptSegment[] = story.map((section) => {
     const beats: ScriptBeat[] = [];
     for (const paragraph of section.paragraphs) {
-      beats.push({ type: "narration", text: paragraph.narration });
-      const visual = paragraph.visual.length > 0 ? paragraph.visual : [""];
-      const onScreen = paragraph.onScreen.length > 0 ? paragraph.onScreen : [""];
+      const visual = paragraph.visual.filter((t) => t.trim()).length > 0 ? paragraph.visual.filter((t) => t.trim()) : [""];
+      const onScreen = paragraph.onScreen.filter((t) => t.trim()).length > 0 ? paragraph.onScreen.filter((t) => t.trim()) : [""];
       visual.forEach((text) => beats.push({ type: "visual", text }));
       onScreen.forEach((text) => beats.push({ type: "onscreen", text }));
+      beats.push({ type: "narration", text: paragraph.narration });
     }
     return { id: section.id, title: section.title, timeStart: section.timeStart, timeEnd: section.timeEnd, beats };
   });

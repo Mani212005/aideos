@@ -179,10 +179,6 @@ test("produceAudioPipeline records only changed lines on a second run and still 
     const edited = await produceAudioPipeline(["Caches make things fast.", "They also forget fast.", "Remember what is kept."], pkg, { ttsBackendInstance: backend });
     assert.deepEqual(spoken, ["They also forget fast."], "only the edited line is re-recorded");
     assert.deepEqual(edited.lines, { recorded: 1, reused: 2 });
-
-    spoken.length = 0;
-    await produceAudioPipeline(script, pkg, { ttsBackendInstance: backend, lineStore: false });
-    assert.equal(spoken.length, 3, "the line store can be switched off to record everything");
   } finally {
     fs.rmSync(pkg, { recursive: true, force: true });
   }

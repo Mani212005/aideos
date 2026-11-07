@@ -502,7 +502,7 @@ export function plainTextToSegments(raw: string, options?: { speed?: number }): 
     const beats: ScriptBeat[] = [];
     for (const paragraph of section.paragraphs) {
       clock += estimateNarrationSeconds(paragraph, speed);
-      beats.push({ type: "narration", text: paragraph }, { type: "visual", text: "" }, { type: "onscreen", text: "" });
+      beats.push({ type: "visual", text: "" }, { type: "onscreen", text: "" }, { type: "narration", text: paragraph });
     }
     segments.push({ id, title, timeStart: formatScriptTime(start), timeEnd: formatScriptTime(Math.max(clock, start + 1)), beats });
   });

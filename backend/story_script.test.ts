@@ -24,6 +24,7 @@ import {
 } from "./scriptIntake";
 import { diffNarration, narrationLines, scriptToStory, storyToScript } from "./storyScript";
 import { readNarrationLog, syncNarrationLog } from "./narrationLog";
+import { flattenScreenplay } from "./pipeline/design";
 
 const STORY = `#Start
 Most people think a cache just makes things faster.
@@ -157,6 +158,47 @@ test("story view: narration paragraphs with the agent's notes beside them, tags 
   assert.equal(hand[0].paragraphs[0].narration, "Autoregressive inference is memory bandwidth bound.");
   assert.deepEqual(hand[0].paragraphs[0].visual, ["A small draft model next to a massive target model."]);
   assert.deepEqual(hand[0].paragraphs[0].onScreen, ["3x Faster Inference"]);
+});
+
+test("multi-beat Claude script: notes precede their narration and remain coupled through story and pipeline flattening", () => {
+  const multiBeat = `## 0:00-0:30 - THE PROBLEM
+
+[VISUAL]
+First visual direction
+
+[ON SCREEN]
+First on-screen text
+
+[NARRATION]
+First narration line.
+
+[VISUAL]
+Second visual direction
+
+[ON SCREEN]
+Second on-screen text
+
+[NARRATION]
+Second narration line.
+`;
+  const story = scriptToStory(multiBeat);
+  assert.equal(story[0].paragraphs.length, 2);
+  assert.deepEqual(story[0].paragraphs[0].visual, ["First visual direction"]);
+  assert.deepEqual(story[0].paragraphs[0].onScreen, ["First on-screen text"]);
+  assert.equal(story[0].paragraphs[0].narration, "First narration line.");
+  assert.deepEqual(story[0].paragraphs[1].visual, ["Second visual direction"]);
+  assert.deepEqual(story[0].paragraphs[1].onScreen, ["Second on-screen text"]);
+  assert.equal(story[0].paragraphs[1].narration, "Second narration line.");
+
+  const serialized = storyToScript(story);
+  const beats = flattenScreenplay(parseClaudeScript(serialized));
+  assert.equal(beats.length, 2);
+  assert.equal(beats[0].visual, "First visual direction");
+  assert.deepEqual(beats[0].onscreen, ["First on-screen text"]);
+  assert.equal(beats[0].narration, "First narration line.");
+  assert.equal(beats[1].visual, "Second visual direction");
+  assert.deepEqual(beats[1].onscreen, ["Second on-screen text"]);
+  assert.equal(beats[1].narration, "Second narration line.");
 });
 
 test("story view: writing the story back keeps every narration line and note, and plain text reads as a story too", () => {
