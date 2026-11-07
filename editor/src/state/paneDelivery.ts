@@ -21,6 +21,7 @@ const POLL_MS = 1000;
 export function usePaneDelivery(initial: PaneDeliveryView | null | undefined): PaneDeliveryView | null {
   const [live, setLive] = useState<PaneDeliveryView | null>(initial ?? null);
   const id = initial?.id;
+  const duplicate = initial?.duplicate;
 
   useEffect(() => {
     setLive(initial ?? null);
@@ -32,7 +33,7 @@ export function usePaneDelivery(initial: PaneDeliveryView | null | undefined): P
         if (!res.ok) throw new Error(String(res.status));
         const { entry } = (await res.json()) as { entry: PaneDeliveryView };
         if (stopped) return;
-        setLive({ ...entry, duplicate: initial.duplicate });
+        setLive({ ...entry, duplicate: Boolean(initial.duplicate) });
         if (entry.state === "sent" || entry.state === "failed") window.clearInterval(timer);
       } catch {
         // The server restarted or forgot the entry: keep the last state we saw and stop asking.
@@ -44,7 +45,7 @@ export function usePaneDelivery(initial: PaneDeliveryView | null | undefined): P
       window.clearInterval(timer);
     };
     // The initial value only changes when a new dispatch replaces it.
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id, duplicate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return live;
 }
