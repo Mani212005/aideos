@@ -18,7 +18,8 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { type Film, parseFilm } from "../src/dl/schema";
 import { getRetimedAudioFilename } from "../src/dl/audio/retime";
-import { detectChapterStartsFromScript, extractSpokenBlocks, hasScreenplayTags } from "./scriptIntake";
+import { detectChapterStartsFromScript, extractSpokenBlocks, hasScreenplayTags, plainTextToTaggedScript } from "./scriptIntake";
+import { synthesizeLines } from "./voiceLines";
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
 import * as fsSync from "fs";
 import {
@@ -74,6 +75,8 @@ export interface ProduceAudioResult {
   voice: string | null;
   /** The pace multiplier the synthesizer applied (null when it has no pace control). */
   speed: number | null;
+  /** How many lines were recorded in this run and how many reused a stored recording (absent when the line store was off). */
+  lines?: { recorded: number; reused: number };
 }
 
 /** Knobs the production pipeline and the editor both drive the narration synthesis with. */
@@ -97,6 +100,13 @@ export interface ProduceAudioOptions {
   speed?: number;
   /** Called once per synthesized chunk so long runs can report progress. */
   onProgress?: (done: number, total: number, label: string) => void;
+  /**
+   * Keep each narration line's recording under <outDir>/voiceover_lines/ by content fingerprint, so a
+   * later run re-records only lines whose words or voice changed. On by default; false records everything.
+   */
+  lineStore?: boolean;
+  /** A synthesizer to use instead of creating one from `backend` (tests inject a counting one). */
+  ttsBackendInstance?: TtsBackend;
   /**
    * Preview sync flag (legacy option retained for caller compatibility; voiceover and captions
    * are resolved directly from videos/<slug>/ via the public/videos symlink).
@@ -204,12 +214,13 @@ export function splitScriptIntoSegments(script: string | string[]): string[] {
     throw new Error("A shot with no narration is not allowed mid-script in v1");
   }
 
-  // Claude-tagged screenplays ([VISUAL]/[NARRATION]/[ON SCREEN], VO:/Voiceover:/Narrator:) are
-  // segmented strictly by their narration beats so visual and on-screen directions never leak
-  // into TTS input. Untagged prose falls back to blank-line paragraph splitting.
+  // Tagged screenplays ([VISUAL]/[NARRATION]/[ON SCREEN], VO:/Voiceover:/Narrator:) are segmented
+  // strictly by their narration beats so visual and on-screen directions never leak into TTS input.
+  // A plain-text story is segmented by the same rule after its deterministic conversion, so its
+  // paragraphs are the segments and a "#Start" style marker is never spoken.
   const rawSegments: string[] = hasScreenplayTags(trimmed)
     ? extractSpokenBlocks(trimmed)
-    : trimmed.split(/\n\s*\n+/).map((p) => p.trim());
+    : extractSpokenBlocks(plainTextToTaggedScript(trimmed));
 
   for (const p of rawSegments) {
     if (!p) {
@@ -262,31 +273,55 @@ export async function measureAudioDuration(filePath: string): Promise<number> {
   }
 }
 
-/** Synthesize every segment's chunks through the backend, reporting progress as it goes. */
+/** Synthesizes one segment's text as its chunks, each within the backend's length limit. */
+async function synthesizeChunks(text: string, backend: TtsBackend, onChunk?: (text: string) => void): Promise<PcmChunk[]> {
+  const synthesized: PcmChunk[] = [];
+  for (const chunk of chunkTextForTTS(text, backend.maxChars)) {
+    const samples = await backend.synthesize(chunk);
+    if (samples.length === 0) {
+      throw new Error(`TTS backend "${backend.name}" returned no audio for: "${chunk.slice(0, 60)}..."`);
+    }
+    synthesized.push({ text: chunk, samples });
+    onChunk?.(chunk);
+  }
+  return synthesized;
+}
+
+/**
+ * Synthesize every segment's chunks through the backend, reporting progress as it goes. With a line
+ * store, a segment whose fingerprint (its words plus the voice, pace and chunk limit) already has a
+ * recording is reused and the backend is not called for it.
+ */
 async function synthesizeSegments(
   segmentTexts: string[],
   backend: TtsBackend,
   onProgress?: ProduceAudioOptions["onProgress"],
-): Promise<PcmChunk[][]> {
-  const plan = segmentTexts.map((text) => chunkTextForTTS(text, backend.maxChars));
-  const total = plan.reduce((sum, chunks) => sum + chunks.length, 0);
+  store?: { pkgDir: string },
+): Promise<{ chunks: PcmChunk[][]; lines?: { recorded: number; reused: number } }> {
+  const total = segmentTexts.reduce((sum, text) => sum + chunkTextForTTS(text, backend.maxChars).length, 0);
   let done = 0;
+  const report = (text: string) => {
+    done += 1;
+    onProgress?.(done, total, text.slice(0, 48));
+  };
 
-  const out: PcmChunk[][] = [];
-  for (const chunks of plan) {
-    const synthesized: PcmChunk[] = [];
-    for (const text of chunks) {
-      const samples = await backend.synthesize(text);
-      if (samples.length === 0) {
-        throw new Error(`TTS backend "${backend.name}" returned no audio for: "${text.slice(0, 60)}..."`);
-      }
-      synthesized.push({ text, samples });
-      done += 1;
-      onProgress?.(done, total, text.slice(0, 48));
-    }
-    out.push(synthesized);
+  if (!store) {
+    const out: PcmChunk[][] = [];
+    for (const text of segmentTexts) out.push(await synthesizeChunks(text, backend, report));
+    return { chunks: out };
   }
-  return out;
+
+  const voiceKey = `${backend.name}|${backend.voice ?? ""}|${backend.speed ?? ""}|${backend.maxChars}|${PCM_SAMPLE_RATE}`;
+  const result = await synthesizeLines({
+    pkgDir: store.pkgDir,
+    texts: segmentTexts,
+    voiceKey,
+    synthesize: async (text) => ({ sampleRate: PCM_SAMPLE_RATE, chunks: await synthesizeChunks(text, backend, report) }),
+    onLine: (_n, _total, text, reused) => {
+      if (reused) for (const chunk of chunkTextForTTS(text, backend.maxChars)) report(chunk);
+    },
+  });
+  return { chunks: result.lines.map((line) => line.audio.chunks), lines: { recorded: result.recorded, reused: result.reused } };
 }
 
 /**
@@ -333,12 +368,16 @@ export async function produceAudioPipeline(
 
   await fs.mkdir(outDir, { recursive: true });
 
-  const backend = await createTtsBackend({ backend: options?.backend, voice: options?.voice, speed: options?.speed });
+  const backend = options?.ttsBackendInstance ?? (await createTtsBackend({ backend: options?.backend, voice: options?.voice, speed: options?.speed }));
   console.error(`[narration] synthesizing ${segmentTexts.length} segment(s) with ${backend.name}`);
 
   let segmentChunks: PcmChunk[][];
+  let lineCounts: { recorded: number; reused: number } | undefined;
   try {
-    segmentChunks = await synthesizeSegments(segmentTexts, backend, options?.onProgress);
+    const synthesized = await synthesizeSegments(segmentTexts, backend, options?.onProgress, options?.lineStore === false ? undefined : { pkgDir: outDir });
+    segmentChunks = synthesized.chunks;
+    lineCounts = synthesized.lines;
+    if (lineCounts) console.error(`[narration] ${lineCounts.recorded} line(s) recorded, ${lineCounts.reused} reused`);
   } finally {
     await backend.close?.();
   }
@@ -425,6 +464,7 @@ export async function produceAudioPipeline(
     ttsBackend: backend.name,
     voice: backend.voice ?? null,
     speed: backend.speed ?? null,
+    ...(lineCounts ? { lines: lineCounts } : {}),
   };
 }
 
