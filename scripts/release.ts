@@ -13,7 +13,7 @@ import { Command } from "commander";
 import { git, optionalGit, releaseChannel, releaseVersionProblem } from "../backend/releaseChannel";
 import type { AudioItem } from "../backend/audioLibrary/schema";
 import type { GeminiReviewReport } from "../backend/geminiReview/types";
-import { announceWaiver, requireWaiverAllowed, reviewWithGemini, runReleaseGates, waiverTagNote, type ReelGeminiWaiver } from "./releaseWaiver";
+import { announceWaiver, requireWaiverAllowed, reviewFilmsWithGemini, runReleaseGates, waiverTagNote, type GeminiWaiver, type WaivedFilm } from "./releaseWaiver";
 
 const ROOT = path.resolve(__dirname, "..");
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
@@ -127,8 +127,8 @@ async function fetchAudioForPackage(
   }
 }
 
-/** Runs gemini-review on the reel and returns its report; exit 1 is a REVISE verdict, any other failure is a tool error. */
-function reelGeminiReport(videoPath: string): GeminiReviewReport {
+/** Runs gemini-review on a waived film and returns its report; exit 1 is a REVISE verdict, any other failure is a tool error. */
+function geminiReport(videoPath: string): GeminiReviewReport {
   const args = ["backend/cli.ts", "gemini-review", videoPath, "--json"];
   console.log(`> tsx ${args.map(quote).join(" ")}`);
   const child = spawnSync(path.join(ROOT, "node_modules/.bin/tsx"), args, { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "inherit"] });
@@ -138,7 +138,7 @@ function reelGeminiReport(videoPath: string): GeminiReviewReport {
 }
 
 /** Runs full CI and a complete, music-backed production on a private copy of the chosen film. */
-async function acceptance(source: string, evidence: string, waiverReason?: string): Promise<ReelGeminiWaiver | undefined> {
+async function acceptance(source: string, evidence: string, waiverReasons: { reel?: string; long?: string }): Promise<GeminiWaiver[]> {
   const videos = path.join(evidence, "videos");
   fs.mkdirSync(videos);
   process.env.AIDEOS_PROJECT_ROOT = ROOT;
@@ -176,23 +176,24 @@ async function acceptance(source: string, evidence: string, waiverReason?: strin
   for (const output of result.outputs) console.log(`WATCH ${output.format}: ${output.path} (${output.durationSec.toFixed(2)} seconds)`);
   run(path.join(ROOT, "node_modules/.bin/tsx"), ["backend/cli.ts", "review", film.id]);
   const { formatReviewSummary } = await import("../backend/geminiReview/geminiReview");
-  const waiver = await reviewWithGemini(result.outputs, {
+  const waivers = await reviewFilmsWithGemini(result.outputs, {
     strictReview: (output) => run(path.join(ROOT, "node_modules/.bin/tsx"), ["backend/cli.ts", "gemini-review", output]),
-    reelReview: async (output) => reelGeminiReport(output),
+    review: async (output) => geminiReport(output),
     print: (report) => console.log(`\n${formatReviewSummary(report)}`),
     now: () => new Date(),
-  }, waiverReason);
-  if (waiver) {
-    fs.writeFileSync(path.join(evidence, "production.json"), JSON.stringify({ ...result, waivers: [waiver] }, null, 2));
-    announceWaiver(waiver);
+  }, waiverReasons);
+  if (waivers.length) {
+    fs.writeFileSync(path.join(evidence, "production.json"), JSON.stringify({ ...result, waivers }, null, 2));
+    for (const waiver of waivers) announceWaiver(waiver);
   }
-  return waiver;
+  return waivers;
 }
 
 /** Gates promotion on current main, full checks, complete renders and explicit captain watch approval. */
-async function release(version: string, options: { acceptance: string; dryRun?: boolean; stablePath?: string; waiveReelGemini?: string }): Promise<void> {
-  const waiverReason = options.waiveReelGemini === undefined ? undefined
-    : requireWaiverAllowed({ version, reason: options.waiveReelGemini, acceptance: options.acceptance, interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY) });
+async function release(version: string, options: { acceptance: string; dryRun?: boolean; stablePath?: string; waiveReelGemini?: string; waiveLongGemini?: string }): Promise<void> {
+  const waiverReason = (film: WaivedFilm, reason?: string) => reason === undefined ? undefined
+    : requireWaiverAllowed({ version, reason, acceptance: options.acceptance, interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY), film });
+  const waiverReasons = { reel: waiverReason("reel", options.waiveReelGemini), long: waiverReason("long", options.waiveLongGemini) };
   const head = preflightMain();
   const tag = validateVersion(version);
   const stableDir = path.resolve(options.stablePath || setting(ROOT, "stablePath") || path.join(os.homedir(), "aideos-stable"));
@@ -202,9 +203,9 @@ async function release(version: string, options: { acceptance: string; dryRun?: 
   const evidence = fs.mkdtempSync(path.join(os.tmpdir(), `aideos-release-${version}-`));
   console.log(`Acceptance evidence (retained): ${evidence}`);
   await runReleaseGates({
-    acceptance: () => acceptance(path.resolve(options.acceptance), evidence, waiverReason),
+    acceptance: () => acceptance(path.resolve(options.acceptance), evidence, waiverReasons),
     approve: () => confirm(`WATCHED AND APPROVE ${tag}`),
-    promote: (waiver) => promote(tag, head, `Aideos ${tag}: full acceptance watched and approved${waiverTagNote(waiver)}`,
+    promote: (waivers) => promote(tag, head, `Aideos ${tag}: full acceptance watched and approved${waiverTagNote(waivers)}`,
       { version, dryRun: options.dryRun, stableDir, hasStable }),
   });
 }
@@ -287,6 +288,7 @@ const program = new Command().description("Local stable release tools; see docs/
 program.command("release <version>").requiredOption("--acceptance <package-dir>", "prepared full narrated and scored film package")
   .option("--stable-path <path>", "existing stable clone override").option("--dry-run", "run all acceptance gates without promotion")
   .option("--waive-reel-gemini <reason>", "one-time captain-attended exception for this invocation only: waive the reel's Gemini verdict. Gemini review of every video and reel stays mandatory; never waives a hard gate, the long film or a measured review")
+  .option("--waive-long-gemini <reason>", "one-time captain-attended exception for release 0.5.0 only: waive the long film's Gemini verdict. The review still runs and its verdict is recorded. Gemini review of every video and reel stays mandatory in every other release; never waives a hard gate, the reel or a measured review")
   .action(release);
 program.command("setup").option("--path <path>", "new stable clone", path.join(os.homedir(), "aideos-stable"))
   .option("--bin-dir <path>", "launcher directory", path.join(os.homedir(), ".local/bin"))
