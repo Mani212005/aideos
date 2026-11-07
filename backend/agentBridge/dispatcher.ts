@@ -11,18 +11,23 @@ import { ROOT } from "../pipeline/filmStore";
 import { buildDirectingPrompt, buildTaskContext } from "./contextBuilder";
 import { taskQueue } from "./taskQueue";
 import { agentLink } from "../agentLink/store";
+import { paneDelivery, type PaneDelivery, type PaneDeliveryDeps } from "./paneDelivery";
 import { remoteTaskPrompt } from "../agentLink/prompt";
 import type { AgentSessionInfo, AgentTask, DispatchChannel, DispatchOptions, DispatchResult } from "./types";
 
 /** Injectable tmux command effect; omitted under Node tests unless explicitly supplied. */
-export type DispatchTmuxRun = (args: string[]) => { status: number | null };
+export type DispatchTmuxRun = (args: string[]) => { status: number | null; stdout?: string };
 
 export interface DispatchDeps {
   tmux?: DispatchTmuxRun;
+  /** Pane delivery clock and timing, so tests run on virtual time. */
+  sleep?: PaneDeliveryDeps["sleep"];
+  now?: PaneDeliveryDeps["now"];
+  timing?: PaneDeliveryDeps["timing"];
 }
 
 /** Runs a tmux command for production dispatches. */
-function runTmux(args: string[]): { status: number | null } {
+function runTmux(args: string[]): { status: number | null; stdout?: string } {
   return spawnSync("tmux", args, { encoding: "utf8" });
 }
 
@@ -163,14 +168,16 @@ Claim this task via MCP tool \`aideos_claim_task({ taskId: "${task.id}" })\` or 
   }
 }
 
-/** Writes local task files (.aideos_task.md) and attempts tmux dispatch. */
+/**
+ * Writes the local task file (.aideos_task.md) and hands the prompt to the agent's tmux pane. The pane
+ * queue sends it when the agent is idle at an empty prompt; `pane` says whether it is sending or queued.
+ */
 export function dispatchLocalAndTmux(
   prompt: string,
-  opts?: { sessionName?: string; pane?: string },
+  opts?: { sessionName?: string; pane?: string; taskId?: string },
   deps: DispatchDeps = {},
-): { tmuxSent: boolean; fileWritten: boolean } {
+): { fileWritten: boolean; pane?: PaneDelivery } {
   let fileWritten = false;
-  let tmuxSent = false;
 
   try {
     fs.writeFileSync(path.join(ROOT, ".aideos_task.md"), prompt, "utf8");
@@ -191,23 +198,18 @@ export function dispatchLocalAndTmux(
   const targetPane = opts?.pane || sessionInfo.tmuxPane;
   const tmux = deps.tmux ?? (process.env.NODE_TEST_CONTEXT || process.env.NODE_ENV === "test" ? undefined : runTmux);
   // Only stable pane IDs are safe: tmux also accepts session names as pane targets.
-  if (!targetPane || !/^%\d+$/.test(targetPane) || !tmux) return { tmuxSent, fileWritten };
+  if (!targetPane || !/^%\d+$/.test(targetPane) || !tmux) return { fileWritten };
 
   try {
-    const hasSess = tmux(["has-session", "-t", targetSession]);
-    if (hasSess.status === 0) {
-      const bufName = `aideos_${Date.now()}`;
-      const setBuf = tmux(["set-buffer", "-b", bufName, prompt]);
-      if (setBuf.status === 0) {
-        const pasted = tmux(["paste-buffer", "-b", bufName, "-t", targetPane, "-d"]);
-        if (pasted.status === 0) {
-          tmuxSent = tmux(["send-keys", "-t", targetPane, "Enter"]).status === 0;
-        }
-      }
-    }
-  } catch (_) {}
-
-  return { tmuxSent, fileWritten };
+    if (tmux(["has-session", "-t", targetSession]).status !== 0) return { fileWritten };
+    const pane = paneDelivery.enqueue(
+      { pane: targetPane, agent: sessionInfo.agent, prompt, taskId: opts?.taskId },
+      { tmux, sleep: deps.sleep, now: deps.now, timing: deps.timing },
+    );
+    return { fileWritten, pane };
+  } catch (_) {
+    return { fileWritten };
+  }
 }
 
 /** Dispatches a rich task across all active channels with automatic hybrid fallback. */
@@ -262,8 +264,10 @@ export async function dispatchTask(opts: DispatchOptions, deps: DispatchDeps = {
   const localResult = dispatchLocalAndTmux(prompt, {
     sessionName: opts.sessionName,
     pane: opts.pane,
+    taskId: task.id,
   }, deps);
-  if (localResult.tmuxSent) {
+  const pane = localResult.pane;
+  if (pane && pane.state !== "failed") {
     channels.push("tmux");
     task.dispatchedChannels = [...channels];
   }
@@ -306,6 +310,14 @@ export async function dispatchTask(opts: DispatchOptions, deps: DispatchDeps = {
     prompt,
     fallbackScheduled,
     fallbackTimeoutMs: timeoutMs,
-    message: `Dispatched task ${task.id} across channels: ${channels.join(", ")}`,
+    pane,
+    message: paneMessage(task.id, channels, pane),
   };
+}
+
+/** The one-line status the studio shows for a dispatch, saying when the prompt is queued behind a busy agent. */
+function paneMessage(taskId: string, channels: DispatchChannel[], pane?: PaneDelivery): string {
+  if (pane?.duplicate) return `Task ${taskId}: the same prompt is already waiting for your ${pane.agent} agent, so it was not queued twice`;
+  if (pane?.state === "queued") return `Task ${taskId} queued: your ${pane.agent} agent is busy, the prompt is sent when it is idle`;
+  return `Dispatched task ${taskId} across channels: ${channels.join(", ")}`;
 }
