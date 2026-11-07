@@ -304,6 +304,7 @@ export class StudioPage {
     while (Date.now() < deadline) {
       try {
         if (await this.eval<boolean>(`Boolean(${expression})`)) return;
+        lastProbeError = "";
       } catch (error) {
         lastProbeError = error instanceof Error ? error.message : String(error);
       }
