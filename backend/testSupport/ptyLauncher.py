@@ -43,7 +43,7 @@ def exit_code(status):
 def main():
     events_path = sys.argv[1]
     steps = json.loads(sys.argv[2])
-    command = sys.argv[sys.argv.index("--") + 1:]
+    command = sys.argv[sys.argv.index("--") + 1 :]
     pid, fd = pty.fork()
     if pid == 0:
         os.execvp(command[0], command)
