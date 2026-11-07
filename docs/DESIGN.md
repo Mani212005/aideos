@@ -69,6 +69,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 - **Purpose**: Narrative authoring studio where creators write spoken scripts, structure explanation blocks, and define visual direction cues per shot using raw screenplay markdown or interactive Visual Studio cards.
 - **Claude Intake & Sub-Shots**: Parses timestamped sections, `[VISUAL]`, `[NARRATION]`, and `[ON SCREEN]` tag blocks with zero tag leakage into spoken dialogue, two-way sync, and automatic sub-shot compilation via `backend/scriptIntake.ts`. Untagged plain prose is automatically structured into scenes with visual directions via Director LLM transformation with deterministic heuristic fallback (`structureUntaggedProseToScript`), preventing zero-shot parse failures.
 - **Audio Synthesis**: Triggers multi-provider voiceover generation (local Kokoro, Deepgram, Google Cloud TTS, macOS say) and locks timeline duration boundaries.
+- **Auto-Prompt Agent**: Directly dispatches directing instructions to the connected terminal coding agent via `/api/prompt-agent`, displaying live queue status and badges (queued, sending, sent, already queued, not sent) as the per-pane queue waits for the agent to become idle.
 
 ### 2. Story Stage (`StoryStage.tsx` / `MindMap.tsx` / `NodeEditor.tsx`)
 - **Purpose**: Interactive 2D spatial canvas rendering the underlying graph topology (`CanvasNode` and `CanvasEdge`).
