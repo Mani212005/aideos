@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { createHash } from 'node:crypto';
 import { releaseChannel } from '../backend/releaseChannel.ts';
 import { masterAudio, writeDescriptionCredits } from '../backend/masterAudio.ts';
 import { prepareSoundtrack } from '../backend/soundtrack.ts';
@@ -50,11 +51,16 @@ import {
   extractSpokenBlocks as extractSpokenVoiceoverBlocks,
   buildFilmPartsFromScript,
   hasScreenplayTags,
+  plainTextToTaggedScript,
   generateAgentPrompt,
   generateDirectorTaskDocument,
   screenplayFromFilmShots,
 } from '../backend/scriptIntake.ts'
-import { transformProseToScreenplay } from '../backend/pipeline/director.ts'
+import { narrationLines } from '../backend/storyScript.ts'
+import { readNarrationLog, readScriptText, syncNarrationLog } from '../backend/narrationLog.ts'
+import { recordedStatus, synthesizeLines, resampleLinear, type LineAudio } from '../backend/voiceLines.ts'
+import { DEFAULT_KOKORO_SPEED } from '../backend/tts.ts'
+import { decodeWav, encodeWav, DEFAULT_ASSEMBLE_OPTIONS } from '../backend/pcm.ts'
 import {
   dispatchTask,
   getAgentSession,
@@ -75,6 +81,9 @@ const videosDir = getVideosDir();
 // Studio exports run as cancellable jobs; a render still going when the dev server exits is killed with it.
 const exportJobs = createExportJobs();
 process.on('exit', () => exportJobs.killAll());
+
+// The voice the studio narrates with when a request does not name one.
+const DEFAULT_VOICE_KEY = 'aura-helios-en';
 const examplesDir = getExamplesDir();
 
 // The schema's own id rule. It also happens to make traversal unrepresentable:
@@ -166,6 +175,16 @@ const sendJson = (res: ServerResponse, status: number, body: unknown) => {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json');
   res.end(JSON.stringify(body));
+};
+
+// Writes script.md and records any narration change in the project's visible change list. Narration that
+// changed on disk since the last look (an agent edited the file) is attributed to the agent first, then the
+// studio's own write is attributed to the user.
+const writeScriptWithLog = (pkgDir: string, text: string) => {
+  fs.mkdirSync(pkgDir, { recursive: true });
+  syncNarrationLog(pkgDir, 'agent');
+  fs.writeFileSync(path.join(pkgDir, 'script.md'), text, 'utf8');
+  syncNarrationLog(pkgDir, 'user');
 };
 
 // Reads the studio owner key a browser sends with every request once it has paired an agent.
@@ -1107,6 +1126,33 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           return;
         }
 
+        // Handle /api/narration/:id (the narration change list, and which lines already have a recording)
+        if (url.startsWith('/api/narration/') && req.method === 'GET') {
+          const parsedUrl = new URL(req.url ?? '', 'http://localhost');
+          const narrationId = parsedUrl.pathname.slice('/api/narration/'.length);
+          if (!narrationId || !FILM_ID.test(narrationId)) {
+            sendJson(res, 400, { error: `Invalid project ID: "${narrationId}"` });
+            return;
+          }
+          const pkgDir = path.join(videosDir, narrationId);
+          if (!fs.existsSync(pkgDir)) {
+            sendJson(res, 404, { error: `Project "${narrationId}" not found` });
+            return;
+          }
+          // Anything that changed script.md since the last look was not made by this studio: it is the agent's.
+          syncNarrationLog(pkgDir, 'agent');
+          const text = readScriptText(pkgDir);
+          const lines = narrationLines(text);
+          const recorded = recordedStatus(pkgDir, lines, parsedUrl.searchParams.get('voice') || DEFAULT_VOICE_KEY);
+          sendJson(res, 200, {
+            ok: true,
+            revision: createHash('sha1').update(text).digest('hex').slice(0, 12),
+            entries: (readNarrationLog(pkgDir)?.entries ?? []).slice(-100).reverse(),
+            lines: lines.map((line, index) => ({ text: line, recorded: recorded[index] })),
+          });
+          return;
+        }
+
         // Handle /api/scripts/:id (Read and Save scripts, self-contained under videos/<id>/)
         if (url.startsWith('/api/scripts/')) {
           const scriptId = url.slice('/api/scripts/'.length);
@@ -1131,10 +1177,6 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 foundScript = '';
               }
             }
-            if (!foundScript && (fs.existsSync(path.join(filmsDir, `${scriptId}.ts`)) || fs.existsSync(path.join(pkgDir, 'film.json')))) {
-              // Draft placeholder for an existing project that has no script and no narrated shots yet
-              foundScript = `# ${scriptId}\n\nPaste your narration script here. Each paragraph will sync with your video scenes and visual metaphors.\n\nClick "Generate Voiceover (.wav)" to generate studio audio.`;
-            }
             sendJson(res, 200, { ok: true, script: foundScript });
             return;
           }
@@ -1142,18 +1184,12 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           if (req.method === 'POST') {
             void readBody(req).then((body: any) => {
               const { script } = body || {};
-              if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
-              const targetFile = path.join(pkgDir, 'script.md');
-              fs.writeFileSync(targetFile, script || '', 'utf8');
+              // A plain-text story is converted here (no agent); a tagged script is stored exactly as sent.
+              writeScriptWithLog(pkgDir, plainTextToTaggedScript(script || ''));
               sendJson(res, 200, { ok: true, file: `videos/${scriptId}/script.md` });
             }).catch(err => sendJson(res, 500, { error: String(err) }));
             return;
           }
-        }
-
-        // Extracts strictly the spoken dialogue/narration lines from a director screenplay
-        function extractSpokenVoiceover(raw: string): string {
-          return extractSpokenVoiceoverBlocks(raw).join("\n\n");
         }
 
         // Handle /api/parse-script-scenes (Intelligently construct shots, visual directions & nodes from screenplay)
@@ -1169,22 +1205,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               return;
             }
 
-            let scriptToBuild = script;
-            let transformed = false;
-
-            // If input is untagged prose, auto-invoke the Director LLM to transform into screenplay
-            if (!hasScreenplayTags(script)) {
-              try {
-                const drafted = await transformProseToScreenplay(script, { filmTitle });
-                if (drafted.screenplay && hasScreenplayTags(drafted.screenplay)) {
-                  scriptToBuild = drafted.screenplay;
-                  transformed = true;
-                }
-              } catch (err) {
-                // If model call fails, deterministic structureUntaggedProseToScript will handle it in buildFilmPartsFromScript
-                console.warn('[parse-script-scenes] Director LLM prose transform fell back to heuristic:', err);
-              }
-            }
+            // A plain-text story is converted by Aideos itself (deterministic, no agent, no model call); a tagged
+            // script comes back unchanged. The agent only ever fills the visual and on-screen slots afterwards.
+            const scriptToBuild = plainTextToTaggedScript(script);
+            const transformed = scriptToBuild !== script;
 
             const { shots, nodes, edges, spokenText, wordCount, durationSec } = buildFilmPartsFromScript(scriptToBuild, targetDurationSec);
 
@@ -1203,7 +1227,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             if (!fs.existsSync(pkgDir)) fs.mkdirSync(pkgDir, { recursive: true });
 
             // Persist screenplay doc
-            fs.writeFileSync(path.join(pkgDir, 'script.md'), scriptToBuild, 'utf8');
+            writeScriptWithLog(pkgDir, scriptToBuild);
 
             // Generate Creative Director directive & prompt for terminal coding agent
             const taskOpts = {
@@ -1243,7 +1267,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 `Spoken Words: ${wordCount}`,
                 `Shots: ${shots.length}`,
                 `Canvas Nodes: ${nodes.length}`,
-                `Screenplay Transformed: ${transformed ? "yes (Director LLM)" : "no (already tagged)"}`,
+                `Story converted to tagged script: ${transformed ? "yes (deterministic, no agent)" : "no (already tagged)"}`,
               ],
             });
 
@@ -1931,7 +1955,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
         // Handle /api/generate-voiceover (AI Voice Synthesis with Kokoro / Deepgram / macOS TTS)
         if (url === '/api/generate-voiceover' && req.method === 'POST') {
           void readBody(req).then(async (body: any) => {
-            const { script, voice = 'aura-helios-en', projectId = 'kvcache', spokenTextOverride } = body || {};
+            const { script, voice = DEFAULT_VOICE_KEY, projectId = 'kvcache', spokenTextOverride } = body || {};
             if (!projectId || !FILM_ID.test(projectId)) {
               sendJson(res, 400, { error: `Invalid project ID: "${projectId}"` });
               return;
@@ -1941,13 +1965,15 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               return;
             }
 
-            // Extract ONLY spoken dialogue lines if screenplay format is present, or use spoken text override directly
-            const cleanText = spokenTextOverride && typeof spokenTextOverride === 'string' && spokenTextOverride.trim()
-              ? spokenTextOverride.trim()
-              : extractSpokenVoiceover(script || '');
+            // The narration lines to record: only the spoken lines of a tagged script, the paragraphs of a plain
+            // story, or the spoken text override, one recording per line.
+            const narrationLinesToSpeak: string[] = spokenTextOverride && typeof spokenTextOverride === 'string' && spokenTextOverride.trim()
+              ? spokenTextOverride.split(/\n\s*\n+/).map((t: string) => t.trim()).filter(Boolean)
+              : extractSpokenVoiceoverBlocks(script || '');
+            const cleanText = narrationLinesToSpeak.join('\n\n');
 
             if (!cleanText || !cleanText.trim()) {
-              sendJson(res, 400, { error: 'No spoken narration dialogue found in script. Please add [NARRATION] blocks.' });
+              sendJson(res, 400, { error: 'No narration found in the script. Write your story as paragraphs, or ask your agent to write it.' });
               return;
             }
 
@@ -1969,41 +1995,57 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               }
             }
 
+            let lineSummary = { total: narrationLinesToSpeak.length, recorded: 0, reused: 0 };
             try {
-              const result = await synthesizeVoiceover(
-                {
-                  text: cleanText,
-                  voice,
-                  deepgramKey,
-                  googleKey: process.env.GOOGLE_API_KEY || '',
-                  chunk: chunkTextForTTS,
-                  trimSilence,
+              const synthDeps = {
+                fetch,
+                kokoro: async (text: string, kokoroVoice: string) => {
+                  // Model load is cached by transformers.js after the first call.
+                  const { KokoroTTS } = await import('kokoro-js');
+                  const tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'q8' });
+                  const audio = await tts.generate(text, { voice: kokoroVoice as never });
+                  return { samples: audio.audio, sampleRate: audio.sampling_rate };
                 },
-                {
-                  fetch,
-                  kokoro: async (text, kokoroVoice) => {
-                    // Model load is cached by transformers.js after the first call.
-                    const { KokoroTTS } = await import('kokoro-js');
-                    const tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'q8' });
-                    const audio = await tts.generate(text, { voice: kokoroVoice as never });
-                    return { samples: audio.audio, sampleRate: audio.sampling_rate };
-                  },
-                  say: sayToWav,
-                  memoryLimitBytes: readContainerMemoryLimit,
-                  platform: process.platform,
-                },
-              );
-              fs.writeFileSync(publicPath, result.wav);
+                say: sayToWav,
+                memoryLimitBytes: readContainerMemoryLimit,
+                platform: process.platform,
+              };
+              // One recording per line, kept under videos/<id>/voiceover_lines/ by content fingerprint: a line whose
+              // words and voice are unchanged is reused as is, so only edited or new lines are recorded again.
+              const recordLine = async (text: string): Promise<LineAudio> => {
+                const spoken = await synthesizeVoiceover(
+                  { text, voice, deepgramKey, googleKey: process.env.GOOGLE_API_KEY || '', chunk: chunkTextForTTS, trimSilence },
+                  synthDeps,
+                );
+                const wav = decodeWav(spoken.wav);
+                return { sampleRate: wav.sampleRate, chunks: [{ text, samples: wav.samples }] };
+              };
+              const lineResult = await synthesizeLines({ pkgDir, texts: narrationLinesToSpeak, voiceKey: voice, synthesize: recordLine });
+              lineSummary = { total: lineResult.lines.length, recorded: lineResult.recorded, reused: lineResult.reused };
+
+              const rate = lineResult.lines[0].audio.sampleRate;
+              const gap = new Float32Array(Math.round((rate * DEFAULT_ASSEMBLE_OPTIONS.segmentGapMs) / 1000));
+              const pieces: Float32Array[] = [];
+              lineResult.lines.forEach((line, index) => {
+                if (index > 0) pieces.push(gap);
+                for (const chunk of line.audio.chunks) pieces.push(resampleLinear(chunk.samples, line.audio.sampleRate, rate));
+              });
+              const merged = new Float32Array(pieces.reduce((sum, piece) => sum + piece.length, 0));
+              let at = 0;
+              for (const piece of pieces) {
+                merged.set(piece, at);
+                at += piece.length;
+              }
+              fs.writeFileSync(publicPath, encodeWav(merged, rate));
               generated = true;
-              console.log(`[TTS] synthesized ${cleanText.length} chars with ${result.provider}`);
+              console.log(`[TTS] voiceover: ${lineSummary.recorded} line(s) recorded, ${lineSummary.reused} reused (${cleanText.length} chars)`);
             } catch (err) {
               if (err instanceof VoiceSynthesisError) synthesisError = err;
               console.warn('[TTS] synthesis failed:', err);
             }
 
             if (generated) {
-              const scriptDocPath = path.join(pkgDir, 'script.md');
-              fs.writeFileSync(scriptDocPath, script, 'utf8');
+              if (script) writeScriptWithLog(pkgDir, plainTextToTaggedScript(script));
 
               // Measure exact audio duration via ffprobe
               let measuredDuration = 5.0;
@@ -2095,6 +2137,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 spokenWordCount: taskOpts.spokenWordCount,
                 estimatedDurationSec: Math.round(measuredDuration),
                 actualDurationSec: measuredDuration,
+                lines: lineSummary,
                 shots: updatedShots,
                 film: updatedFilm,
                 agentPrompt,
@@ -2186,6 +2229,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               theme = 'smooth-dark',
               accent = '#635BFF',
               voice: _voice = 'kokoro-am_adam',
+              voiceSpeed,
               autoCompile = false
             } = body || {};
 
@@ -2203,137 +2247,19 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               return;
             }
 
-            // 1. Create videos/<id>/script.md
+            // 1. Create videos/<id>/script.md. A plain-text story (paragraphs, optional #Start / #Conclusion
+            // markers) is converted here by Aideos itself, deterministically and with no agent, so nobody
+            // downstream reformats what the user wrote. A tagged script and an empty project stay as they are.
             const newPkgDir = path.join(videosDir, cleanId);
             if (!fs.existsSync(newPkgDir)) fs.mkdirSync(newPkgDir, { recursive: true });
-            const initialScript = script.trim() || `# ${title}\n\nWrite your voiceover narration script here.\n\nEvery paragraph maps to visual scenes, 3D camera angles, and animated primitives.\n\nClick "Generate Voiceover (.wav)" when ready!`;
-            fs.writeFileSync(path.join(newPkgDir, 'script.md'), initialScript, 'utf8');
+            const storyScript = plainTextToTaggedScript(script, { speed: Number(voiceSpeed) > 0 ? Number(voiceSpeed) : DEFAULT_KOKORO_SPEED });
+            fs.writeFileSync(path.join(newPkgDir, 'script.md'), storyScript, 'utf8');
+            syncNarrationLog(newPkgDir, 'user');
 
             let newFilm: Film;
 
-            if (autoCompile && script.trim()) {
-              if (hasScreenplayTags(script)) {
-                const parts = buildFilmPartsFromScript(script);
-                newFilm = {
-                  id: cleanId,
-                  title: title.trim(),
-                  fps: 30,
-                  accent,
-                  theme: {
-                    background: theme as any,
-                    fontFamily: "geist",
-                    storyStyle: "script-metaphor",
-                    cameraAngle: "isometric",
-                    accent,
-                  },
-                  chapters: parts.nodes.map(n => n.label),
-                  canvas: {
-                    nodes: parts.nodes,
-                    edges: parts.edges,
-                  },
-                  shots: parts.shots as any,
-                };
-              } else {
-                // Intelligently parse raw script paragraphs into structured shots & relationship-aware canvas
-                const paragraphs = script
-                  .split(/\n\s*\n+/)
-                  .map((p: string) => p.trim())
-                  .filter((p: string) => p.length > 0 && !p.startsWith('#') && !p.toLowerCase().startsWith('production note'));
-
-              const count = Math.max(3, paragraphs.length);
-              const nodes: any[] = [];
-              const edges: any[] = [];
-              const shots: any[] = [];
-              const chapters: string[] = [];
-
-              for (let i = 0; i < count; i++) {
-                const para = paragraphs[i] || `Scene ${i + 1} narration talking point.`;
-                const words = para.split(/\s+/).filter(Boolean);
-                const dur = Math.max(4.5, Math.min(12, Math.round((words.length / 145) * 60) || 6));
-                
-                // Concise headline (≤ 8 words)
-                const headlineWords = words.slice(0, 6).join(' ').replace(/[.,;:!?]+$/, '');
-                const headline = headlineWords.length > 0 ? headlineWords : `Scene ${i + 1}`;
-
-                const nodeSlug = `node-${i + 1}`;
-                const nodeLabel = headline.slice(0, 24);
-                chapters.push(nodeLabel);
-
-                nodes.push({
-                  id: nodeSlug,
-                  label: nodeLabel,
-                  x: -360 + (i * 240),
-                  y: i % 2 === 0 ? -120 : 120,
-                  w: 240,
-                  h: 80,
-                });
-
-                if (i > 0) {
-                  edges.push({
-                    from: `node-${i}`,
-                    to: nodeSlug,
-                    dashed: i === count - 1,
-                  });
-                }
-
-                // Select semantic visual blocks based on shot index & topic
-                let visualBlock: any;
-                if (i === 0) {
-                  visualBlock = {
-                    c: "TextReveal",
-                    text: headline,
-                  };
-                } else if (i === count - 1) {
-                  visualBlock = {
-                    c: "StatCounter",
-                    to: 10,
-                    suffix: "x",
-                    label: "Milestone",
-                  };
-                } else if (i === 1) {
-                  visualBlock = {
-                    c: "ScaleBar",
-                    ticks: ["10%", "30%", "60%", "100%"],
-                    value: 0.75,
-                    label: "Efficiency Scaling",
-                  };
-                } else if (i === 2) {
-                  visualBlock = {
-                    c: "LayerStack",
-                    count: 8,
-                    bottomLabel: "Input Baseline",
-                    topLabel: "Optimized Output",
-                  };
-                } else {
-                  visualBlock = {
-                    c: "TokenStrip",
-                    tokens: ["Step 1", "Step 2", "Step 3", "Complete"],
-                    lit: [0],
-                    caption: "Sequential Execution Flow",
-                  };
-                }
-
-                shots.push({
-                  id: `shot-${i + 1}`,
-                  dur,
-                  look: nodeSlug,
-                  move: i === 0 ? "cut" : "pan",
-                  stage: "frame",
-                  drift: false,
-                  zoom: 1,
-                  visualDirection: `Visualizing ${headline}`,
-                  blocks: [
-                    {
-                      c: "TextReveal",
-                      text: headline,
-                      size: "headline",
-                      accentWord: headline.split(' ')[0] || "Key",
-                    },
-                    visualBlock,
-                  ],
-                });
-              }
-
+            if (autoCompile && hasScreenplayTags(storyScript)) {
+              const parts = buildFilmPartsFromScript(storyScript);
               newFilm = {
                 id: cleanId,
                 title: title.trim(),
@@ -2346,14 +2272,13 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                   cameraAngle: "isometric",
                   accent,
                 },
-                chapters,
+                chapters: parts.nodes.map(n => n.label),
                 canvas: {
-                  nodes,
-                  edges,
+                  nodes: parts.nodes,
+                  edges: parts.edges,
                 },
-                shots,
+                shots: parts.shots as any,
               };
-              }
             } else {
               newFilm = {
                 id: cleanId,
@@ -2439,7 +2364,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               ok: true,
               id: cleanId,
               film: newFilm,
-              script: initialScript,
+              script: storyScript,
             });
           }).catch(err => sendJson(res, 500, { error: String(err) }));
           return;

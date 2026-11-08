@@ -10,6 +10,8 @@ Each video is a self-contained package, `videos/<slug>/`:
 
 - `film.json`: the authoritative manifest (see `src/dl/videoPackageLoader.ts`)
 - `script.md`, `voiceover.wav`, `voiceover_words.json`, `captions.vtt`
+- `voiceover_lines/`: per-line recordings keyed by content fingerprint so only changed lines are re-recorded
+- `narration_log.json`: visible narration change list tracking added, edited, or removed lines across edits
 - `footage/<shotId>.mp4`: generated B-roll
 - `visuals/*.svg` and `design/`: scene artwork and the design spec
 - `reel/`: `reel/REEL_BRIEF.md`, `reel/cut.json`, derived `reel/film.json`, `reel/voiceover.wav`, `reel/voiceover_words.json`, and `reel/status.json` for condensed reel cuts

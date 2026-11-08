@@ -212,9 +212,10 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
           .string()
           .min(1)
           .describe(
-            "The narration script. A Claude screenplay using '## timestamp - Title' headers with " +
-              "[VISUAL], [NARRATION] and [ON SCREEN] beats gives the design stage on-screen copy and " +
-              "visual direction to work from. Plain prose is narrated but produces bare canvas shots.",
+            "The script. Plain text works as written: paragraphs, optionally with #Start / #Conclusion style " +
+              "markers, which Aideos converts to its internal tagged form itself. A screenplay using " +
+              "'## timestamp - Title' headers with [VISUAL], [NARRATION] and [ON SCREEN] beats is used as is. " +
+              "Either way the design stage fills the visual and on-screen slots; narration is never reformatted.",
           ),
         title: z.string().optional().describe("Film title. Defaults to the script's top-level heading."),
         slug: z

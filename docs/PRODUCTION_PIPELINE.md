@@ -38,8 +38,8 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 
 | Stage      | What it does                                                                        | What it writes                                     |
 | ---------- | ----------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `intake`   | Parses the screenplay, rejects an empty or unparseable one                            | `videos/<slug>/script.md`                           |
-| `narrate`  | Synthesizes narration and derives the timing spine every later stage is locked to     | `voiceover.wav`, `captions.vtt`, `voiceover_words.json`, `narration.json` |
+| `intake`   | Converts plain-text story to tagged script or parses screenplay, rejects an empty one | `videos/<slug>/script.md`                           |
+| `narrate`  | Synthesizes narration and derives the timing spine every later stage is locked to     | `voiceover.wav`, `captions.vtt`, `voiceover_words.json`, `narration.json`, `voiceover_lines/` |
 | `look`     | Writes the measured look brief and validates the plan through the selected delivery mode | `design/LOOK_BRIEF.md`, `look.json`, `LOOK.md` |
 | `design`   | Compiles treatments from the accepted look and builds a checked scene design | `design/BRIEF.md`, `base-film.json`, `status.json`, `film.json` and its shadow |
 | `reel`     | Builds condensed reel narration and a derived film with checked shot drops, or reuses the long for an identity reel | `videos/<slug>/reel/film.json`, `status.json`, and its `src/dl/films/<slug>.reel.ts` shadow; cut mode also writes reel narration and word timings |
@@ -187,7 +187,7 @@ The reel stage fingerprints the long film, narration and word timings, reel cut,
 
 Every stage records a fingerprint of its inputs in `videos/<slug>/run-state.json`. On the next run
 with the same slug, a stage whose fingerprint still matches and whose outputs are still on disk is
-skipped. Change the script and narration re-runs; change nothing and a crashed run picks up where
+skipped. Change the script and narration re-runs (caching lines under `videos/<slug>/voiceover_lines/` so only changed lines are re-recorded); change nothing and a crashed run picks up where
 it stopped. `resume: false` ignores the cache entirely, and `force: ["design"]` re-runs one stage
 while reusing earlier stages and invalidating every later stage.
 
@@ -231,7 +231,10 @@ for the details; the plan is always model-driven, so there is no canned screenpl
 ## Narration
 
 `backend/audio.ts` synthesizes each shot's narration, assembles the pieces in the sample domain,
-and returns the exact timing spine the film is built from. Trimming, boundary fades, gap insertion
+and returns the exact timing spine the film is built from. Each narration line is stored under
+`videos/<slug>/voiceover_lines/` keyed by a content fingerprint (its words plus the voice, speed,
+chunk limit and sample rate; see `backend/voiceLines.ts`), so regenerating voice-over re-records
+only changed lines and reuses every other recording untouched. Trimming, boundary fades, gap insertion
 and peak normalization all happen on samples rather than on encoded files, so the reported segment
 offsets are exact and nothing is stitched across a sample-rate or channel-layout mismatch. The
 default pause is 200 ms between narration segments and 900 ms before a segment that opens a new

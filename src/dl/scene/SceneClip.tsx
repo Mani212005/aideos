@@ -44,20 +44,31 @@ function useSafeCurrentFrame(): number {
 function useSvgPaintReady(frame: number, scene: Scene, width?: number, height?: number): void {
   const { delayRender, continueRender } = useDelayRender();
   const [initial] = React.useState(() => delayRender(`SVG scene ${scene.sceneId} initial paint`));
+  const initialReleased = React.useRef(false);
   React.useLayoutEffect(() => {
     const handle = delayRender(`SVG scene ${scene.sceneId} frame ${frame} painted`);
-    // A frame callback runs before paint. The second callback crosses the first paint boundary;
-    // DOM commit alone let Chrome capture two raster variants of identical Still Talking SVG.
+    // Frame callbacks run before paint. Crossing paint boundaries plus a macrotask timer
+    // ensures Chromium's compositor finishes rasterizing SVG before Remotion captures.
+    let timer: ReturnType<typeof setTimeout> | undefined;
     let pending = requestAnimationFrame(() => {
       pending = requestAnimationFrame(() => {
-        continueRender(handle);
-        continueRender(initial);
+        timer = setTimeout(() => {
+          continueRender(handle);
+          if (!initialReleased.current) {
+            initialReleased.current = true;
+            continueRender(initial);
+          }
+        }, 50);
       });
     });
     return () => {
       cancelAnimationFrame(pending);
+      if (timer !== undefined) clearTimeout(timer);
       continueRender(handle);
-      continueRender(initial);
+      if (!initialReleased.current) {
+        initialReleased.current = true;
+        continueRender(initial);
+      }
     };
   }, [frame, scene, width, height, delayRender, continueRender, initial]);
 }
