@@ -74,7 +74,7 @@ The pivot and the twist are judged by the model review.
   ```
 - **Live Preview & Render**:
   - Live Studio Viewport: `npm run editor` (hot-reloads on `http://localhost:3001`)
-  - Final Export: `npm run render` (16:9 Long) | `npm run render:reel` (9:16 Reel)
+  - Final Export: `npm run render` (16:9 Long) | `npm run render:reel` (9:16 Reel). Agents work in drafts and stills; run the final export or fetch/download the video only when the user explicitly asks for it in the terminal. The user otherwise exports from the studio (Export, then Start).
 
 ---
 

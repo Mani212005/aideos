@@ -6,6 +6,8 @@ File Description: This file defines the core guidelines, coding principles, and 
 
 Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos review <slug>` and attach the generated per-format review reports to your handoff.
 
+Agents default to drafts and stills. Run the final export (`aideos render`, `aideos reel`, `aideos_produce_film` with `finalExport`, or the studio export API) or fetch/download a rendered video only when the user explicitly says so in the terminal. The user decides in the studio: Export, then Start, with Cancel at any time and an explicit Download button when it finishes (`backend/exportJobs.ts`).
+
 ## Making a video: look first
 
 Decide the look before making any picture. Read `docs/GOOD_VIDEO.md`. The per-package brief is

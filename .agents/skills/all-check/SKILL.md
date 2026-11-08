@@ -54,6 +54,8 @@ Everything lands in `videos/<slug>/all-check/`: `brief.md` (what the agent was t
 
 ## Single commands (one-off use, no agent)
 
+These render or download final videos, so run them only when the user explicitly asked for that in the terminal; the default is drafts and stills.
+
 | Command | What it does |
 |---|---|
 | `aideos render` | Render the active film, 16:9, to `videos/<slug>/renders/long.mp4` |

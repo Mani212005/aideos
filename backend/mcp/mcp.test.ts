@@ -160,3 +160,20 @@ test("mcp server: integrates with agent bridge task queue", () => {
   assert.equal(completed.status, "completed");
   assert.equal(completed.result.summary, "Finished scene compilation");
 });
+
+test("MCP produce is a draft by default: the final export needs finalExport, set only on the user's explicit ask", async () => {
+  const server = createMcpServer();
+  const client = new Client({ name: "mcp-final-export-test", version: "1.0.0" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  try {
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    const { tools } = await client.listTools();
+    const produce = tools.find((tool) => tool.name === "aideos_produce_film");
+    assert.ok(produce?.inputSchema.properties && "finalExport" in produce.inputSchema.properties);
+    assert.match(produce?.description ?? "", /stops after the assemble stage \(a draft\) unless finalExport is true/);
+    assert.match(produce?.description ?? "", /user explicitly asked in the terminal/);
+  } finally {
+    await client.close();
+    await server.close();
+  }
+});

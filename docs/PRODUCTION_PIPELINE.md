@@ -310,6 +310,8 @@ Tools:
 | `aideos_submit_frame_review` | Submit notes, suggestions, and image-text similarity scores.           |
 | `aideos_wait_for_task`   | Wait for and receive the next studio task (remote agent-link sessions).    |
 
+`aideos_produce_film` is a draft by default: without `finalExport: true` the run stops after the `assemble` stage, and the agent checks its work with stills. Set `finalExport` only when the user explicitly asked for the final export in the terminal; the user otherwise exports from the studio (Export, then Start, with Cancel available at any time and an explicit Download button when it finishes).
+
 A full render takes tens of minutes, so `aideos_produce_film` never blocks: it starts the run in
 the background and hands back a `runId` for the caller to poll. The design mode defaults to `inline`.
 When authoring is needed, `aideos_run_status` reports `status: "needs_look"`, `"needs_design"`, or `"needs_reel_cut"` alongside

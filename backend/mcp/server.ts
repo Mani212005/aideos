@@ -201,7 +201,8 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
       title: "Produce an Aideos film",
       description:
         "Start a background production run: synthesize narration from the script, compile the film " +
-        "design, optionally render GPU b-roll, render the requested formats, and verify the output. " +
+        "design and optionally render GPU b-roll. It stops after the assemble stage (a draft) unless finalExport is true, " +
+        "which you set only when the user explicitly asked in the terminal for the final export; then it also renders the requested formats and verifies the output. " +
         "Returns a runId right away; poll aideos_run_status to follow it. The design mode defaults " +
         "to inline. For needs_look, write look.json following LOOK_BRIEF.md, call aideos_look_check, " +
         "then call this tool again with the same slug. For needs_design, complete the design brief " +
@@ -243,10 +244,19 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
         resume: z.boolean().optional().describe("Reuse completed stages from a previous run of the same slug. Defaults to true."),
         force: z.array(z.enum(PRODUCTION_STAGES)).optional().describe("Stages to re-run even when resuming."),
         stopAfter: z.enum(PRODUCTION_STAGES).optional().describe("Stop cleanly after this stage instead of rendering."),
+        finalExport: z
+          .boolean()
+          .optional()
+          .describe(
+            "Render the final long and reel mp4s. Leave unset unless the user explicitly asked for the final export in the terminal: " +
+              "without it the run stops after the assemble stage (a draft: film, narration and design), and you check the work with stills.",
+          ),
       },
     },
     async (input) => {
-      const record = startRun(input as ProductionRequest);
+      const { finalExport, ...request } = input;
+      // Drafts and stills are the agent default: the final render happens only when the user asked for it.
+      const record = startRun({ ...request, stopAfter: request.stopAfter ?? (finalExport ? undefined : "assemble") } as ProductionRequest);
       return jsonResult({
         runId: record.runId,
         state: record.state,
