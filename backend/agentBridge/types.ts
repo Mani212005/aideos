@@ -94,10 +94,19 @@ export interface DispatchOptions {
    * agent connected through `aideos connect`, the task goes to that agent and nowhere else.
    */
   ownerKey?: string;
+  /**
+   * Reuse an equivalent task instead of creating another. Equivalent means the same owner, film, event and
+   * prompt, and still open: pending or claimed (running), or timed out while its prompt is still waiting in the
+   * agent's terminal. A task that finished, failed, or whose prompt could not be sent does not count.
+   * Off by default, so dispatches that legitimately repeat (a second canvas edit) are never merged.
+   */
+  idempotent?: boolean;
 }
 
 export interface DispatchResult {
   ok: boolean;
+  /** True when an equivalent open task already existed, so this call reused it and sent nothing new. */
+  duplicate?: boolean;
   taskId: string;
   task: AgentTask;
   channels: DispatchChannel[];
