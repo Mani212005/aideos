@@ -17,7 +17,7 @@
  */
 
 import type { LookPlan, LookShot } from "../lookPlan/schema";
-import type { Block, CanvasEdge, CanvasNode, Film, Shot } from "../../src/dl/schema";
+import type { BackgroundPreset, Block, CanvasEdge, CanvasNode, Film, Shot } from "../../src/dl/schema";
 import { blockSchema, DEVICE_BLOCKS, parseFilm } from "../../src/dl/schema";
 import { parseClaudeScript, buildBlocksForPrimitive, type ScriptSegment } from "../scriptIntake";
 import { generateRelationshipAwareCanvas, type ConceptEntity } from "../ideation/graphLayout";
@@ -167,6 +167,8 @@ export interface DesignOptions {
   deviceCaller?: DeviceLlmCaller | null;
   /** Accepted look controls treatments instead of automatic visual selection. */
   lookPlan?: LookPlan;
+  /** The theme and accent the user chose for the project; binding, so a recompile never replaces it. */
+  theme?: { background: string; accent: string };
   /** Bootstrap only: compile timing and copy without asking Jev or a chart model. */
   textOnly?: boolean;
 }
@@ -674,12 +676,15 @@ export async function compileFilmFromScreenplayAsync(
       position: { x: 960, y: 960 }, scale: 4.8, rotation: 0, opacity: 1 },
     props: [], actors: [],
   } : undefined;
+  // The user's chosen accent wins over the look plan's, which wins over the design system default.
+  const chosenAccent = options.theme?.accent ?? options.lookPlan?.film?.palette?.accent;
+  const accent = chosenAccent ?? "#635BFF";
   const film = parseFilm({
     id: slug,
     title: options.title,
     fps,
-    accent: options.lookPlan?.film.palette.accent ?? "#635BFF",
-    theme: { background: "smooth-dark", fontFamily: "geist", accent: options.lookPlan?.film.palette.accent ?? "#635BFF" },
+    accent,
+    theme: { background: (options.theme?.background ?? "smooth-dark") as BackgroundPreset, fontFamily: "geist", ...(chosenAccent ? { accent: chosenAccent } : {}) },
     chapters: uniqueChapters,
     canvas: { nodes, edges },
     ...(scene ? { scene } : {}),
