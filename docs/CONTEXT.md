@@ -261,7 +261,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `chunkTextForTTS(text, maxChars)`: Splits text blocks exceeding maxChars (~800 chars) at sentence boundaries for Kokoro ONNX.
 * `splitScriptIntoSegments(script)`: Splits a narration script into distinct shot-scoped segments (strictly by narration beats for Claude-tagged scripts, or blank-line paragraphs for untagged prose).
 * `measureAudioDuration(filePath)`: Measures exact audio file duration using ffprobe.
-* `produceAudioPipeline(script, outDir, options)`: Synthesizes script into sample-domain audio timing spine, emitting `voiceover.wav`, `captions.vtt`, and `voiceover_words.json`.
+* `produceAudioPipeline(script, outDir, options)`: Synthesizes script into sample-domain audio timing spine with line-by-line caching under `voiceover_lines/`, emitting `voiceover.wav`, `captions.vtt`, and `voiceover_words.json`.
 * `normalizeNarrationLoudness(inputPath, outputPath)`: Normalizes a narration WAV to the review loudness target (-16 integrated LUFS, -1 dB true peak) without changing duration.
 * `NARRATION_LOUDNESS_TARGET`: Loudness target (`{ integratedLufs: -16, truePeakDb: -1 }`) inside the review window with safe true-peak headroom.
 * `buildCaptionsVtt(words)`: Builds phrase-grouped WebVTT caption tracks from absolute word timings.

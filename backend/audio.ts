@@ -1,8 +1,9 @@
 /**
  * File Description: Audio-first narration pipeline. Splits a script into shot-scoped segments,
- * synthesizes each through a pluggable TTS backend, assembles the result in the sample domain
- * (trim, fade, exact-offset concatenation, loudness and peak normalization), and emits voiceover.wav,
- * captions.vtt, voiceover_words.json and the shot duration spine the film timeline is locked to.
+ * synthesizes each through a pluggable TTS backend with per-line caching (voiceover_lines/),
+ * assembles the result in the sample domain (trim, fade, exact-offset concatenation, loudness
+ * and peak normalization), and emits voiceover.wav, captions.vtt, voiceover_words.json and the
+ * shot duration spine the film timeline is locked to.
  * Inputs and outputs: screenplay text and audio options -> voiceover.wav, captions.vtt, voiceover_words.json, and shot duration spine.
  * Used by: backend/pipeline/run.ts, backend/cli.ts, editor/vite.config.ts.
  *
@@ -339,6 +340,9 @@ function mergeShortSegments(
 
 /**
  * Audio-first synthesis: script in, narration track plus the exact timing spine out.
+ *
+ * Each narration line is cached under voiceover_lines/ by content fingerprint (backend/voiceLines.ts),
+ * so only changed lines are re-recorded.
  *
  * The returned shot durations are boundary-to-boundary, so shot i starts at exactly the sample
  * where segment i's speech starts and the inter-segment gap lands at the tail of shot i rather
