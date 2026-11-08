@@ -40,6 +40,8 @@ export interface AgentTaskContext {
   scriptText?: string;
   scriptPath?: string;
   film?: Film | null;
+  /** The theme and accent the user chose for this project; binding on every design the agent makes. */
+  theme?: { background: string; accent: string } | null;
   filmPath?: string;
   voiceoverPath?: string;
   voiceoverWordsPath?: string;

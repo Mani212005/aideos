@@ -7,6 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
+import { boundTheme, projectThemeById } from "../../src/projectTheme";
 import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { CHARACTER_LIBRARY, loadCharacterFile } from "../characters/library";
 
@@ -66,6 +67,11 @@ export function exampleStageLookPlan(character: Pick<AvailableCharacter, "id" | 
     },
     shots: [shot("beat-01", "travels"), shot("beat-02", "catches"), shot("beat-03", "acknowledgment")],
   };
+}
+
+// The worked look plan with the film's own accent in its palette.
+function exampleLookPlanFor(accent: string): typeof EXAMPLE_LOOK_PLAN {
+  return { ...EXAMPLE_LOOK_PLAN, film: { ...EXAMPLE_LOOK_PLAN.film, palette: { ...EXAMPLE_LOOK_PLAN.film.palette, accent } } };
 }
 
 // Renders the character-film section: what a performance is, which characters exist and how to make a new one.
@@ -194,6 +200,11 @@ export function renderLookBrief(film: Film, characters: AvailableCharacter[] = a
     })
     .join("\n");
 
+  const chosen = boundTheme(film);
+  const accent = chosen?.accent ?? film.accent ?? "#635BFF";
+  const accentLine = chosen
+    ? `\`${chosen.accent}\`, the theme the user chose ("${projectThemeById(chosen.background).name}"); \`palette.accent\` in look.json must be exactly this`
+    : `\`${accent}\``;
   return `# Look Brief: ${film.title} (\`${film.id}\`)
 
 Every explainer video gets a written look plan before any visual assets or animation clips are created.
@@ -209,7 +220,7 @@ Write \`videos/${film.id}/design/look.json\` and run \`aideos look check ${film.
 3. **The camera.**
    Must start wide (establishing view) and end wide (payoff view). Use move-then-hold: make each move a short, deliberate turn toward the object the narration is about to discuss, arrive about one beat before its cue word, then hold that subject for about 3 to 5 seconds. Name the focused cast object on each close pose. Do not let the camera drift continuously between subjects. Keep moves under 20% of frame width per second.
 4. **The palette.**
-   Background (e.g. \`#0A0A0B\`), ink/text, and the film's one primary accent (e.g. \`#635BFF\`). Use only the locked palette and this accent; do not declare extra colours.
+   Background (e.g. \`#0A0A0B\`), ink/text, and the film's one primary accent: ${accentLine}. Use only the locked greys and this accent; do not declare extra colours, and do not default to purple.
 5. **Captions.**
    Burned-in at the bottom band (\`position: "bottom"\`, \`kineticColumn: false\`). Never use kinetic text columns over the artwork.
 6. **Headlines.**
@@ -233,7 +244,7 @@ Each \`film.cast[].id\` must be a lowercase id using letters, digits, and hyphen
 ## Look Plan Schema (look.json)
 
 \`\`\`json
-${JSON.stringify(EXAMPLE_LOOK_PLAN, null, 2)}
+${JSON.stringify(exampleLookPlanFor(accent), null, 2)}
 \`\`\`
 
 ${renderCharacterSection(characters)}

@@ -11,6 +11,7 @@ import type { AgentTaskContext, DispatchOptions } from "./types";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { parseLookPlan } from "../lookPlan/schema";
+import { boundTheme, projectThemeById } from "../../src/projectTheme";
 
 /** Core design invariants enforced across the Aideos explainer video standard. */
 export const DESIGN_INVARIANTS: string[] = [
@@ -23,6 +24,13 @@ export const DESIGN_INVARIANTS: string[] = [
   "Audio-Visual Sync: Lock shot durations strictly to voiceover audio narration timestamps.",
   "No Long Dashes: Zero em dashes or en dashes; use standard hyphens, colons, or parentheses.",
 ];
+
+/** The binding theme paragraph for a task prompt, or an empty string when the project recorded no chosen accent. */
+export function themeDirective(theme: { background: string; accent: string } | null | undefined): string {
+  if (!theme) return "";
+  const name = projectThemeById(theme.background).name;
+  return `🎨 Theme (binding): the user chose the "${name}" theme (background preset \`${theme.background}\`) with the accent \`${theme.accent}\`. Use exactly this accent in look.json (\`palette.accent\`), design.json (omit \`accent\` or set it to this value) and every SVG, and no other chromatic colour. Do not default to purple; \`aideos design check\` fails any other accent. Change it only if the user asks for a different one.\n`;
+}
 
 /** Reads the checked look plan's treatment and cast objects for one shot. */
 export function shotLookContext(filmId: string, shotId: string, rootDir: string = ROOT): { treatment: string; cast: Array<{ id: string; what: string }> } | null {
@@ -112,6 +120,7 @@ export function buildTaskContext(opts: DispatchOptions, rootDir: string = ROOT):
     scriptText,
     scriptPath: fs.existsSync(scriptPath) ? path.relative(rootDir, scriptPath) : `videos/${filmId}/script.md`,
     film: film || null,
+    theme: boundTheme(film),
     filmPath: fs.existsSync(filmPath) ? path.relative(rootDir, filmPath) : `videos/${filmId}/film.json`,
     voiceoverPath: voiceoverPath ? path.relative(rootDir, voiceoverPath) : undefined,
     voiceoverWordsPath: voiceoverWordsPath ? path.relative(rootDir, voiceoverWordsPath) : undefined,
@@ -129,6 +138,7 @@ export function buildTaskContext(opts: DispatchOptions, rootDir: string = ROOT):
 export function buildDirectingPrompt(opts: DispatchOptions, context?: AgentTaskContext): string {
   const ctx = context || buildTaskContext(opts);
   const title = ctx.filmTitle || ctx.filmId;
+  const themeLine = themeDirective(ctx.theme);
   if (opts.eventType === "reel_cut") {
     return `Write the separate condensed reel narration for ${ctx.filmId}.\n${opts.customInstruction ?? "Read reel/REEL_BRIEF.md and write reel/cut.json, then run aideos reel check."}\nThe long film and shared picture are authoritative. Approval belongs to the captain after rendering.`;
   }
@@ -144,7 +154,7 @@ export function buildDirectingPrompt(opts: DispatchOptions, context?: AgentTaskC
 
 The human asked for a new design for this one shot${opts.customInstruction ? `: "${opts.customInstruction}"` : "."}
 ${opts.metadata?.says ? `It says: ${opts.metadata.says}\n` : ""}
-${lookText}1. Read videos/${ctx.filmId}/design/LOOK_BRIEF.md and design/LOOK.md for the treatment and cast contract, then read videos/${ctx.filmId}/design/BRIEF.md for the standard layer and commands.
+${themeLine}${lookText}1. Read videos/${ctx.filmId}/design/LOOK_BRIEF.md and design/LOOK.md for the treatment and cast contract, then read videos/${ctx.filmId}/design/BRIEF.md for the standard layer and commands.
 2. Keep this shot's treatment and carried cast as planned. A treatment may change only by editing videos/${ctx.filmId}/design/look.json and passing \`aideos_look_check\` (or \`aideos look check ${ctx.filmId}\`) first.
 3. If videos/${ctx.filmId}/design/design.json exists, change only what ${shotId} shows: its clips (cued to its words) and, if needed, its \`shots.${shotId}\` cards. Keep every other shot as it is.
    If there is no design.json yet, design the whole film as the brief describes, giving ${shotId} particular care.
@@ -155,7 +165,7 @@ The studio reloads the film on its own once a build passes.`;
 
 This film gets a bespoke design, unique to it. Everything you need is in videos/${ctx.filmId}/design/BRIEF.md:
 what the film says shot by shot, the standard layer, the design.json format and the commands.
-
+${themeLine}
 1. Read videos/${ctx.filmId}/design/BRIEF.md.
 2. Write videos/${ctx.filmId}/design/design.json and the SVG artwork it names in videos/${ctx.filmId}/visuals/.
 3. Run \`aideos design build ${ctx.filmId}\` and fix what it reports until it prints PASS.
@@ -167,7 +177,7 @@ The studio reloads the film on its own once a build passes.${opts.customInstruct
     const count = typeof opts.metadata?.sampleCount === "number" ? opts.metadata.sampleCount : "the";
     return `🎬 [Aideos Studio] Review ${count} sampled frames of "${title}" (${ctx.filmId}) and repair what is wrong
 
-Stills (1920x1080, every ${stride}th frame) are rendered once in .frames/${ctx.filmId}/judge/; videos/${ctx.filmId}/design/judge/manifest.json lists each one with its shot, narration and on-screen copy. Over MCP, call aideos_frame_stills to receive them as images. Do this for every sample, in one round:
+${themeLine}Stills (1920x1080, every ${stride}th frame) are rendered once in .frames/${ctx.filmId}/judge/; videos/${ctx.filmId}/design/judge/manifest.json lists each one with its shot, narration and on-screen copy. Over MCP, call aideos_frame_stills to receive them as images. Do this for every sample, in one round:
 1. Critique the still against its shot's narration: your own opinions, and concrete suggestions (each one a change you would make).
 2. Repair the design where a frame is wrong: edit design/design.json and visuals/, then run \`aideos design build ${ctx.filmId}\` (or aideos_design_build) until it prints PASS. Only a passing build writes the film.
 3. Score the frame as it is after your repair against its narration as an image-text similarity from 0 (unrelated) to 1 (exactly this).
@@ -208,7 +218,7 @@ A text-only judge (Jev) then rules on every frame and rates every suggestion, so
 ${wordTimingInfo}
 - Director Guide: ${ctx.directorGuideRef || "docs/DIRECTOR_GUIDE.md"}
 
-${RUBRIC_SUMMARY}
+${themeLine}${RUBRIC_SUMMARY}
 
 🎯 Directing Mission for Agent:
 1. **Look task first:** read \`videos/${ctx.filmId}/design/LOOK_BRIEF.md\`, the screenplay and film, then write \`videos/${ctx.filmId}/design/look.json\`. Run \`aideos look check ${ctx.filmId}\` until PASS.

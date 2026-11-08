@@ -52,6 +52,7 @@ import {
 import { analyseAudio, contactSheet, describeVideo, renderFormat, FORMAT_SPECS } from "./render";
 import { masterAudio, writeDescriptionCredits } from "../masterAudio";
 import { assertDeliverable } from "../deliveryGate";
+import { boundTheme } from "../../src/projectTheme";
 import { checkRenderDiskBudget } from "./renderDiskBudget";
 import {
   PRODUCTION_STAGES,
@@ -477,11 +478,14 @@ export async function runProduction(
     if (shouldStop("narrate")) return buildResult("narrate");
 
     // ---- look: measured beats are available before the first picture is authored -------------
+    const chosenTheme = boundTheme(readFilm(slug));
     const compileOptions = {
       title, slug,
       maxFootageShots: wantsBroll ? (request.brollMaxClips ?? 4) : 0,
       maxFootageSec: request.brollSeconds ?? 8,
       ...(request.music ? { music: { src: request.music, volume: 0.5, duckUnderVoiceover: true } } : {}),
+      // A project created in the studio carries the theme the user chose; every recompile keeps it.
+      ...(chosenTheme ? { theme: chosenTheme } : {}),
     };
     const lookFingerprint = fingerprint(script, narration.shotDurations, title, mode);
     const look = await runStage<LookPlan | false>(
