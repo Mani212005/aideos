@@ -12,6 +12,25 @@ Once setup is applied, `aideos` opens stable and `aideos-dev` opens the updating
 existing `aideos` link stays in place and announces DEV. These installed channel launchers pin
 their checkout even when invoked from inside the other checkout.
 
+## What happens when I type `aideos`
+
+`aideos`, `aideos-dev` and `aideos-stable` all run the same launcher (`bin/aideos`) in this order, so
+you never have to leave the terminal to answer a question after the browser has already opened:
+
+1. The channel banner prints first (see below).
+2. The agent menu asks which coding agent to connect (1 Claude Code, 2 Antigravity, 3 Pi, 4 Codex,
+   5 Web Studio only) and waits for you. Enter keeps the pre-selected default, `p` hard-locks a
+   permanent default, `c` clears it, and anything invalid asks again. A port that belongs to the other
+   checkout is refused here, before any question.
+3. Only then does it record which agent session the Studio server pairs with, start Studio on the
+   channel's port, and open the browser. Web Studio only stops here and leaves no agent pairing behind.
+4. Last it hands the terminal to the chosen agent (in your tmux pane, or in a new `aideos-<port>` tmux
+   session).
+
+Ctrl-C or Ctrl-D at the menu exits with status 130 and "Nothing was started": no server, port, browser
+tab or pairing is left behind. With no terminal (CI, a pipe) there is no menu: the default agent is used,
+as before. `backend/aideosLauncherMenuFirst.test.ts` holds this order in a real pseudo-terminal.
+
 ## How do I know which one I am in?
 
 - Every CLI invocation prints a channel banner to stderr. Stable is green:
