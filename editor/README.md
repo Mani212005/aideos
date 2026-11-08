@@ -41,6 +41,7 @@ The editor interface is organized into 7 sequential editing stages located in `s
 - **Live Real-Time Agent Trace Inspector (`src/components/AgentActivityInspector.tsx`)**: Subscribes to Server-Sent Events (`/api/agent/trace`) to display a unified, real-time execution timeline of connected coding agent actions, neural TTS synthesis, AI video editing, GPU B-roll rendering, and invariant validation.
 - **Model-Driven AI Editing Core (`src/components/OnCanvasAiEditor.tsx`, `backend/editPlanner/`)**: Translates natural-language edit requests into closed `EditOp` sequences, validates semantic constraints, previews planned changes to the user, and atomically applies changes through `applyEditProgram` as a single undo step.
 - **Terminal Agent Prompt Queue (`src/state/paneDelivery.ts`, `backend/agentBridge/paneDelivery.ts`)**: Tracks live Auto-Prompt terminal delivery status via `/api/prompt-agent/queue`, polling state transitions (queued, sending, sent, failed, duplicate) as the backend waits for the terminal agent to become idle before typing.
+- **Auto-Prompt State & Single-Flight Guard (`src/state/autoPromptState.ts`)**: Pure state rules for the Auto-Prompt button, dropping concurrent duplicate clicks while a request is in flight (`createSingleFlight`) and resolving delivery badge labels and tones (`autoPromptBadge`).
 
 ---
 
