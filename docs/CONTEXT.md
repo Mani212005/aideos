@@ -327,13 +327,15 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 ### `backend/agentBridge/` (Connected Agent Bridge Hub & Multi-Channel Dispatcher)
 * `traceBus` (`backend/agentBridge/traceBus.ts`): Global singleton in-process telemetry and live film update bus (`TraceBus`) collecting and streaming execution steps (`recordStep`, `updateStep`, `getRecentSteps`, `subscribe`, `clear`) and broadcasting real-time film change notifications (`onFilmUpdate`, `notifyFilmUpdated`, `filmSubscriberCount`) across coding agents, Studio clients, AI edit planning, neural TTS synthesis, GPU B-roll rendering, and invariant validation.
 * `formatStepTimestamp(date)`, `generateStepId()` (`backend/agentBridge/traceBus.ts`): Formatting and identifier helpers for trace steps.
-* `dispatchTask(opts)`: Dispatches rich task context across all active channels (Firstmate steering inbox, MCP task queue, local file/tmux) with automatic hybrid timeout fallback. The tmux effect is injectable and only sends to a recorded pane ID; without one, durable file and event-log delivery still occurs.
+* `dispatchTask(opts, deps)`: Dispatches rich task context across all active channels (Firstmate steering inbox, MCP task queue, local file/tmux pane queue) with automatic hybrid timeout fallback. Returns `DispatchResult` with task, channels, and optional `pane` delivery snapshot. The tmux effect is injectable and only targets a recorded pane ID through `paneDelivery`; without one, durable file and event-log delivery still occurs.
 * `buildTaskContext(opts, rootDir)`: Assembles full working context payload (script, film manifest, audio spine, word timings, director guide ref, design invariants).
 * `shotLookContext(filmId, shotId, rootDir)`: Reads the checked look plan's treatment and carried cast objects for one shot to provide look-first context in shot redesign prompts.
 * `buildDirectingPrompt(opts, context)`: Formats structured directing prompts for connected coding agents from Studio events (`canvas_updated`, `critique`, `ai_edit`, `narrate_audio`, `script_updated`, `produce_film`, `custom_directive`).
 * `taskQueue`: Global in-memory lifecycle manager for agent tasks (`createTask`, `claimTask`, `completeTask`, `failTask`, `timeoutTask`, `listPendingTasks`, `listAllTasks`, `addListener`).
 * `writeFirstmateInboxMessage(task, targetInboxDir)`: Writes sequential steering message file (`001.msg`, `002.msg`, ...) to Firstmate agent inbox.
-* `dispatchLocalAndTmux(prompt, opts)`: Writes `.aideos_task.md` and an event-log entry, then pastes to a recorded tmux pane ID when available. Session names alone are never paste targets.
+* `dispatchLocalAndTmux(prompt, opts, deps)`: Writes `.aideos_task.md` and an event-log entry, then enqueues the prompt into `paneDelivery` for the recorded tmux pane ID when available, returning `{ fileWritten, pane }`. Session names alone are never paste targets.
+* `paneDelivery` (`backend/agentBridge/paneDelivery.ts`): Process-wide queue (`PaneDeliveryQueue`) delivering prompts to terminal coding agents (Claude, Codex, etc.) when idle at an empty prompt (`enqueue`, `get`, `list`, `drain`, `clear`). Sends via paste, short pause, Enter, and prompt acceptance verification with a single Enter retry, dropping duplicate pending prompts for the same pane.
+* `readPaneScreen(raw)` (`backend/agentBridge/paneScreen.ts`): Inspects captured terminal screens (`capture-pane`) to detect agent prompt state (`busy`, `idle`, `typing`, `unknown`) and extract composer text while ignoring ANSI escape codes, cursor styles, and placeholder hints.
 * `cancelFallbackTimer(taskId)`, `clearAllFallbackTimers()`: Manages and clears active fallback timer callbacks.
 * `getAgentSession()`, `setAgentSession(info)`: Reads and persists active agent session metadata (`.aideos_session.json`).
 
@@ -587,7 +589,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 ## 7. Interactive Web Studio Architecture (`editor/`)
 
 ### 7 Sequential Editing Stages (`editor/src/screens/`)
-* **`ScriptStage.tsx` (`ScriptEditor.tsx`)**: Screenplay markdown editor with tag parsing, Visual Studio segment cards, and Kokoro ONNX TTS voiceover synthesis.
+* **`ScriptStage.tsx` (`ScriptEditor.tsx`)**: Screenplay markdown editor with tag parsing, Visual Studio segment cards, Kokoro ONNX TTS voiceover synthesis, and direct Auto-Prompt agent dispatching with live queue delivery status (`PaneDeliveryBadge`).
 * **`StoryStage.tsx` (`MindMap.tsx`, `NodeEditor.tsx`)**: 2D infinite spatial canvas for dragging nodes, editing labels, and connecting directed edges; dispatches spatial actions (`add_node`, `add_edge`, `add_shot`) to the Agent Bridge Hub via `/api/canvas/event`.
 * **`LookStage.tsx` (`DesignView.tsx`, `Styleboard.tsx`, `CustomizationEditor.tsx`)**: Look stage sub-views for bespoke design and look plan inspection (stage, cast, treatments, LOOK.md preview, captain approval, artwork, motion, and visual swaps), canvas texture presets, typography controls, and storyboard keyframe gallery.
 * **`MotionStage.tsx` (`motionTemplates.ts`)**: Custom SVG animation authoring studio with element-level timeline keyframing, motion templates, and live scrubbing.
@@ -599,6 +601,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * **`useFilmProject.ts`**: Owns the active `Film` document, autosave debounce, single labelled undo/redo transaction stack, and live studio hot-reload subscribing to `film_updated` SSE events from `/api/agent/trace` to reflect external agent modifications instantly without manual refresh.
 * **`useLayeredTimeline.ts`**: Derives `LayeredFilm`, executes layer engine mutations (`moveClip`, `trimClip`, `rippleTrimClip`, `splitClip`, `removeClip`, `rippleRemoveClip`), folds changes back losslessly via `convertLayeredFilmToFilm`, and computes `renderFilm` for preview and export.
 * **`agentLink.ts`**: Manages browser owner key state (`readOwnerKey`, `writeOwnerKey`, `rotateOwnerKey`), remembers expected active links across server restarts (`readExpectedLink`, `writeExpectedLink`, `linkPhase`), and installs global `X-Aideos-Owner` fetch headers (`installOwnerHeader`).
+* **`usePaneDelivery` (`editor/src/state/paneDelivery.ts`)**: Follows live Auto-Prompt terminal delivery status (queued, sending, sent, failed, duplicate) by polling `/api/prompt-agent/queue?id=<id>` until completion.
 
 ### Studio Inspector & Telemetry Components (`editor/src/components/`)
 * **`AgentActivityInspector.tsx`**: Live real-time agent telemetry timeline subscribing to SSE stream (`/api/agent/trace`) with filterable execution steps, live status pills (LIVE / CONNECTING / OFFLINE), and empty state.
