@@ -84,7 +84,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 
 ### 4. Motion Stage (`MotionStage.tsx`)
 - **Purpose**: Dedicated authoring studio for custom SVG movie animations and element-level keyframing.
-- **Features**: Live scrubbing of declarative SVG timelines, element ID discovery, pre-built motion templates (staged entry, pulse, draw-on strokes, vector paths), and audio-first retiming against spoken narration.
+- **Features**: Live scrubbing of declarative SVG timelines, element ID discovery, pre-built motion templates (staged entry, pulse, draw-on strokes, vector paths) drawn in the film's bound accent, and audio-first retiming against spoken narration.
 
 ### 5. Edit Stage (`EditStage.tsx` / `TimelineEditor.tsx` / `captions/CaptionObject.tsx` / `InspectorPanel.tsx` / `AssetBin.tsx`)
 - **Purpose**: Non-linear multi-track timeline editor with direct manipulation, track controls, and clip inspection.

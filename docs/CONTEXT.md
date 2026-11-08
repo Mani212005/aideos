@@ -209,6 +209,15 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `dot-grid`: Minimalist precision dot matrix on crisp surface (`#FAF9F6`).
 * `smooth-dark`: Studio deep matte dark presentation (`#0A0A0B`).
 
+### Project Theme Binding (`src/projectTheme.ts`)
+* `PROJECT_THEMES`: The themes offered in the New project dialog (`smooth-dark` with `#FF6B00`, `paper-white` with `#635BFF`, `blueprint` with `#00E5FF`, `dot-grid` with `#10B981`); each declares an `id` matching a `film.theme.background` preset, `name`, default `accent`, and preview `swatch`.
+* `DEFAULT_PROJECT_THEME_ID`: `"smooth-dark"`.
+* `projectThemeById(id)`: Looks up a dialog theme option by id, falling back to the default theme.
+* `resolveProjectTheme(themeId, accent)`: Resolves the binding background preset and accent for a new project from creator choices, falling back to the theme's preset accent.
+* `boundTheme(film)`: Returns the binding `{ background, accent }` if the film specifies a valid hex `theme.accent`, else `null`.
+* `filmAccent(film)`: Returns the film's effective drawing accent (`boundTheme(film)?.accent ?? film.accent ?? defaultAccent`).
+* `sameColour(a, b)`: Case-insensitive comparison of two hex color strings (`#rrggbb`).
+
 ### Editor Chrome Neobrutalism Design System (`editor/src/styles/tokens.css`)
 * `--nb-paper`: `#EDE9DE` (Main light application background canvas)
 * `--nb-surface`: `#F8F5EE` (Raised panel and editor card surface)
@@ -328,9 +337,10 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `traceBus` (`backend/agentBridge/traceBus.ts`): Global singleton in-process telemetry and live film update bus (`TraceBus`) collecting and streaming execution steps (`recordStep`, `updateStep`, `getRecentSteps`, `subscribe`, `clear`) and broadcasting real-time film change notifications (`onFilmUpdate`, `notifyFilmUpdated`, `filmSubscriberCount`) across coding agents, Studio clients, AI edit planning, neural TTS synthesis, GPU B-roll rendering, and invariant validation.
 * `formatStepTimestamp(date)`, `generateStepId()` (`backend/agentBridge/traceBus.ts`): Formatting and identifier helpers for trace steps.
 * `dispatchTask(opts, deps)`: Dispatches rich task context across all active channels (Firstmate steering inbox, MCP task queue, local file/tmux pane queue) with automatic hybrid timeout fallback. Returns `DispatchResult` with task, channels, and optional `pane` delivery snapshot. The tmux effect is injectable and only targets a recorded pane ID through `paneDelivery`; without one, durable file and event-log delivery still occurs.
-* `buildTaskContext(opts, rootDir)`: Assembles full working context payload (script, film manifest, audio spine, word timings, director guide ref, design invariants).
+* `buildTaskContext(opts, rootDir)`: Assembles full working context payload (script, film manifest, bound theme, audio spine, word timings, director guide ref, design invariants).
+* `themeDirective(theme)` (`backend/agentBridge/contextBuilder.ts`): Formats the binding theme paragraph for task prompts, or returns an empty string when no accent is bound.
 * `shotLookContext(filmId, shotId, rootDir)`: Reads the checked look plan's treatment and carried cast objects for one shot to provide look-first context in shot redesign prompts.
-* `buildDirectingPrompt(opts, context)`: Formats structured directing prompts for connected coding agents from Studio events (`canvas_updated`, `critique`, `ai_edit`, `narrate_audio`, `script_updated`, `produce_film`, `custom_directive`).
+* `buildDirectingPrompt(opts, context)`: Formats structured directing prompts for connected coding agents from Studio events (`canvas_updated`, `critique`, `ai_edit`, `narrate_audio`, `script_updated`, `produce_film`, `custom_directive`), including the binding theme directive when a theme is bound.
 * `taskQueue`: Global in-memory lifecycle manager for agent tasks (`createTask`, `claimTask`, `completeTask`, `failTask`, `timeoutTask`, `listPendingTasks`, `listAllTasks`, `addListener`).
 * `writeFirstmateInboxMessage(task, targetInboxDir)`: Writes sequential steering message file (`001.msg`, `002.msg`, ...) to Firstmate agent inbox.
 * `dispatchLocalAndTmux(prompt, opts, deps)`: Writes `.aideos_task.md` and an event-log entry, then enqueues the prompt into `paneDelivery` for the recorded tmux pane ID when available, returning `{ fileWritten, pane }`. Session names alone are never paste targets.
@@ -488,7 +498,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `displayWords(lines, extra)`, `unmeasuredWords(words, table)`, `measureWords(words, file)` (`measureWords.ts`): Measures unmeasured words in headless Chrome and merges them into `wordWidths.json`.
 
 ### `backend/designCheck/` (Deterministic Design Standard Checker)
-* `checkFilmDesign(raw, context)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, scene engine validity, static self-contained artwork, locked palette, typography, motion continuity, single transform origin, picture locked to narration, honest data / grounded numbers, smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration), move-then-hold pacing (>= 30% hold share, <= 6s continuous moves, cue landing, and subject focus framing), carry-over change holds (substantial visible animation settling in a camera hold and remaining framed for >= 2s), a clear inset region while a device shot shares the stage, Three.js stage geometry gates (`checkThreeStage`) including occlusion checks, and owner caption placement checks (`checkCaptionPlacements`).
+* `checkFilmDesign(raw, context)` (`designCheck.ts`): Single verification gate for all film designs: schema validity, scene engine validity, static self-contained artwork, locked palette, bound project accent (`accent` rule: enforcing that `film.accent` and `look.json` match the user's chosen accent and no foreign purple or off-palette accents are drawn), typography, motion continuity, single transform origin, picture locked to narration, honest data / grounded numbers, smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration), move-then-hold pacing (>= 30% hold share, <= 6s continuous moves, cue landing, and subject focus framing), carry-over change holds (substantial visible animation settling in a camera hold and remaining framed for >= 2s), a clear inset region while a device shot shares the stage, Three.js stage geometry gates (`checkThreeStage`) including occlusion checks, and owner caption placement checks (`checkCaptionPlacements`).
 * `checkCaptionPlacements(film, scene)` (`captionPlacement.ts`): Checks format-aware caption bounds, inset collisions, and stage art collisions against owner-placed caption cards; reports a non-blocking warning when caption placement is not checked against CanvasGraph art.
 * `checkThreeStage(film, scene, context)` (`threeStage.ts`): Evaluates Three stage designs against geometry-driven gates across wide and reel formats: posed mesh vertex extents and outlines within stage safe region and caption clearance, device inset clearance during inset shots, foreground SVG and sampled mesh depth occlusion, 2s settled aftermath carry holds, camera speed (<= 20% width/s) and acceleration (<= 0.3 widths/s^2), cast focus framing, duplicate performance writers, and finite character material palettes.
 * `MAX_CAMERA_ZOOM_STEP`, `MAX_CAMERA_PAN_WIDTHS`, `MAX_CAMERA_PAN_ACCEL_WIDTHS` (`designCheck.ts`): Scene camera limits on single-frame zoom change (0.8%), pan speed (20% of scene width/s), and pan acceleration (0.3 scene widths/s^2).
@@ -497,6 +507,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `leafBounds(node)`, `parseTransform(value)` (`svgBounds.ts`): Conservative 2D bounding box and affine transform calculations for SVG elements without rasterization.
 * `formatDesignReport(report)` (`designCheck.ts`): Formats validation findings and recommendations into a terminal report.
 * `offPaletteColours(svgText, accent)` (`designCheck.ts`): Finds colour literals in SVG markup that violate the locked palette and chosen accent.
+* `foreignAccentColours(svgText, accent)` (`designCheck.ts`): Lists occurrences of the default accent colour (`#635BFF`) in an asset when the film's bound accent is a different colour.
 
 ### `backend/designSpec/` (Bespoke Film Design Specification & Compiler)
 * `renderDesignBrief(film)`, `writeDesignBrief(filmId)` (`brief.ts`): Generates designer briefs (`design/BRIEF.md`) containing film contracts, shot narration, and asset specifications.
@@ -594,7 +605,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * **`ScriptStage.tsx` (`ScriptEditor.tsx`)**: Story-first script editor (plain paragraphs with collapsible visual and on-screen notes beside each, tags kept internal), a visible narration change list, per-line Kokoro ONNX TTS voiceover synthesis, and direct Auto-Prompt agent dispatching with live queue delivery status (`PaneDeliveryBadge`).
 * **`StoryStage.tsx` (`MindMap.tsx`, `NodeEditor.tsx`)**: 2D infinite spatial canvas for dragging nodes, editing labels, and connecting directed edges; dispatches spatial actions (`add_node`, `add_edge`, `add_shot`) to the Agent Bridge Hub via `/api/canvas/event`.
 * **`LookStage.tsx` (`DesignView.tsx`, `Styleboard.tsx`, `CustomizationEditor.tsx`)**: Look stage sub-views for bespoke design and look plan inspection (stage, cast, treatments, LOOK.md preview, captain approval, artwork, motion, and visual swaps), canvas texture presets, typography controls, and storyboard keyframe gallery.
-* **`MotionStage.tsx` (`motionTemplates.ts`)**: Custom SVG animation authoring studio with element-level timeline keyframing, motion templates, and live scrubbing.
+* **`MotionStage.tsx` (`motionTemplates.ts`)**: Custom SVG animation authoring studio with element-level timeline keyframing, motion templates (drawn in the film's bound accent via `motionTemplateSvg`), and live scrubbing.
 * **`EditStage.tsx` (`TimelineEditor.tsx`, `captions/CaptionObject.tsx`, `InspectorPanel.tsx`, `AssetBin.tsx`, `OnCanvasAiEditor.tsx`)**: Non-linear multi-track timeline with clip dragging, captions as a direct object in the preview (click to select, drag for the whole video, side handles, snap guides while dragging, `captions/CaptionObject.tsx`, `captions/CaptionStrip.tsx`, pure snap math in `captions/captionGuides.ts`), sticky snapping, magnetic ripple editing (R), linked audio-video trimming, waveform preview, track mute/hide/lock, clip/shot inspector, and model-driven AI edit panel (`OnCanvasAiEditor.tsx`) dispatching validated edit programs to Agent Bridge with live trace telemetry.
 * **`CaptionsStage.tsx` (`KineticCaptionEditor.tsx`)**: Word-level caption timing editor (word text and frame ranges). Caption position is edited by clicking the captions in the Edit preview (`editor/src/components/captions/`).
 * **`ReviewStage.tsx` (`CritiqueStudio.tsx`, `ExportProgressModal.tsx`)**: AI critique drawer executing natural-language feedback and patches via `/api/critique`, dispatching review critiques to connected agents, pacing and coverage health charts (`Charts.tsx`), and headless MP4 export progress.
@@ -608,6 +619,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 ### Studio Inspector & Telemetry Components (`editor/src/components/`)
 * **`AgentActivityInspector.tsx`**: Live real-time agent telemetry timeline subscribing to SSE stream (`/api/agent/trace`) with filterable execution steps, live status pills (LIVE / CONNECTING / OFFLINE), and empty state.
 * **`AgentConnect.tsx`**: Header badge and dialog modal supporting two linking modes (running agent session via MCP and downloadable connector), presence heartbeating, reconnecting state recovery across restarts, and live activity feeds.
+* **`NewProjectModal.tsx`**: Modal dialog for creating a new project (paste script or start empty) with title, binding theme and accent selection, and voiceover voice.
 
 ### Handcrafted Neobrutalism UI Primitives (`editor/src/components/ui/`)
 * **`Badge.tsx`**: Status indicators and token chips.
