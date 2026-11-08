@@ -140,23 +140,24 @@ journey("J3 studio: a new project's script saves to disk and is still there afte
     assert.equal(await page.eval<string>(`document.querySelector('#np-slug').value`), NEW_SLUG, "the identifier follows the title");
     await page.clickButton("Empty project");
     await page.clickButton("Create project", { exact: true });
-    await page.waitFor(`document.querySelector('textarea[aria-label="Screenplay text"]')`, "the script stage of the new project");
+    await page.waitFor(`document.querySelector('[data-testid="story-empty"]')`, "the story-first script stage of the new project");
     assert.ok(fs.existsSync(path.join(videosDir, NEW_SLUG, "script.md")), "creating the project did not write script.md");
 
-    // Write a script and save it with the Save Script button.
-    const written = "## 0:00 - Cache\n[NARRATION] A cache keeps recent answers close so that repeated questions skip the slow database.\n[VISUAL] A box in front of a database";
-    await page.focus('textarea[aria-label="Screenplay text"]');
-    await page.eval(`document.querySelector('textarea[aria-label="Screenplay text"]').select()`);
+    // Write the story as plain paragraphs and save it with the Save Script button.
+    const written = "A cache keeps recent answers close so that repeated questions skip the slow database.";
+    await page.focus('textarea[aria-label="Paste your story"]');
     await page.typeText(written);
+    await page.clickButton("Add to story", { exact: true });
+    await page.waitFor(`document.querySelector('textarea[aria-label="Narration paragraph"]')`, "the story paragraph");
     await page.clickButton("Save Script", { exact: true });
     const scriptFile = path.join(videosDir, NEW_SLUG, "script.md");
     const deadline = Date.now() + 10000;
-    while (fs.readFileSync(scriptFile, "utf8").trim() !== written && Date.now() < deadline) await new Promise((r) => setTimeout(r, 150));
-    assert.equal(fs.readFileSync(scriptFile, "utf8").trim(), written, "script.md on disk is not the script the user saved");
+    while (!fs.readFileSync(scriptFile, "utf8").includes(written) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 150));
+    assert.ok(fs.readFileSync(scriptFile, "utf8").includes(`[NARRATION]\n${written}`), "script.md on disk is not the story the user saved, converted to the internal tagged form");
 
     await page.reload();
-    await page.waitFor(`document.querySelector('textarea[aria-label="Screenplay text"]')`, "the script stage after reload");
-    await page.waitFor(`document.querySelector('textarea[aria-label="Screenplay text"]').value.includes('A cache keeps recent answers')`, "the saved script to be shown after reload");
+    await page.waitFor(`document.querySelector('textarea[aria-label="Narration paragraph"]')`, "the story after reload");
+    await page.waitFor(`document.querySelector('textarea[aria-label="Narration paragraph"]').value.includes('A cache keeps recent answers')`, "the saved story to be shown after reload");
     assertNoErrors(page, serverLog());
   });
 });
