@@ -30,7 +30,7 @@ import { checkCaptionPlacementDraftAsync } from '../backend/designCheck/captionP
 import type { Scene } from '../src/dl/scene/types.ts';
 import { carryCaptionPlacement } from '../src/dl/captionPlacement.ts';
 import { dropLegacyFilmBlocks, filmSchema } from '../src/dl/schema.ts'
-import { resolveProjectTheme } from '../src/projectTheme.ts';
+import { newProjectFilmTheme } from '../src/projectTheme.ts';
 import type { Film } from '../src/dl/schema.ts'
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../src/dl/videoPackageLoader.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
@@ -2246,7 +2246,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               autoCompile = false
             } = body || {};
             // The theme and accent chosen in the dialog bind the project: every film below carries them.
-            const { background: theme, accent } = resolveProjectTheme(chosenTheme, chosenAccent);
+            const filmTheme = newProjectFilmTheme(chosenTheme, chosenAccent);
+            const accent = filmTheme.accent;
 
             if (!title || !title.trim()) {
               sendJson(res, 400, { error: 'Project title is required.' });
@@ -2280,13 +2281,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 title: title.trim(),
                 fps: 30,
                 accent,
-                theme: {
-                  background: theme as any,
-                  fontFamily: "geist",
-                  storyStyle: "script-metaphor",
-                  cameraAngle: "isometric",
-                  accent,
-                },
+                theme: filmTheme,
                 chapters: parts.nodes.map(n => n.label),
                 canvas: {
                   nodes: parts.nodes,
@@ -2300,14 +2295,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 title: title.trim(),
                 fps: 30,
                 accent,
-                theme: {
-                  background: theme as any,
-                  fontFamily: "geist",
-                  storyStyle: "script-metaphor",
-                  cameraAngle: "isometric",
-                  accent,
-                  ...(chosenTheme || chosenAccent ? { accentChosen: true } : {})
-                },
+                theme: filmTheme,
                 chapters: ["Introduction", "Core Mechanism", "Architecture", "Payoff"],
                 canvas: {
                   nodes: [

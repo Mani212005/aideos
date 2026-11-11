@@ -21,10 +21,10 @@ import { parseLookPlan } from "./lookPlan/schema";
 import { availableCharacters, renderLookBrief } from "./lookPlan/brief";
 import { compileFilmFromScreenplayAsync } from "./pipeline/design";
 import { readFilm } from "./pipeline/filmStore";
-import { backgroundPresetSchema, filmSchema, parseFilm, type Film } from "../src/dl/schema";
+import { backgroundPresetSchema, filmSchema, parseFilm, themeSchema, type Film } from "../src/dl/schema";
 import { convertFilmToLayeredFilm } from "../src/dl/convertFilm";
 import { validateLayeredFilm } from "../src/dl/validateLayeredFilm";
-import { boundTheme, filmAccent, PROJECT_THEMES, resolveProjectTheme } from "../src/projectTheme";
+import { boundTheme, filmAccent, newProjectFilmTheme, PROJECT_THEMES, resolveProjectTheme } from "../src/projectTheme";
 import { getVideosDir } from "../src/dl/videoPackageLoader";
 import { TEST_VIDEOS_DIR } from "./testSupport/fixtureVideosDir";
 import { loadFixtureFilm } from "./testSupport/fixtureFilms";
@@ -208,4 +208,17 @@ test("themeBinding: the character example in the look brief is drawn in the film
   const brief = renderLookBrief(film, characters);
   assert.match(brief, /## Character films/);
   assert.ok(!brief.includes("#635BFF"), "no purple example is left for the agent to copy");
+});
+
+test("themeBinding: a new project's film theme marks the accent chosen exactly when the request carried a theme or accent", () => {
+  const chosen = newProjectFilmTheme("blueprint", "#12AB34");
+  assert.equal(chosen.accentChosen, true);
+  assert.equal(chosen.background, "blueprint");
+  assert.equal(chosen.accent, "#12AB34");
+  assert.deepEqual(boundTheme({ theme: chosen }), { background: "blueprint", accent: "#12AB34" });
+  assert.equal(newProjectFilmTheme("paper-white", undefined).accentChosen, true);
+  const unchosen = newProjectFilmTheme(undefined, undefined);
+  assert.equal(unchosen.accentChosen, undefined);
+  assert.equal(boundTheme({ theme: unchosen }), null);
+  assert.ok(themeSchema.safeParse(chosen).success, "the theme is a valid film theme");
 });

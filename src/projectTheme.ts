@@ -5,11 +5,13 @@
  * bound: an accent written any other way (an old project's default, a look plan's own pick) is not a
  * choice. Every later stage reads that choice back from here: the agent task prompt, the agent briefs
  * and the design check, so no stage falls back to a colour of its own.
- * Inputs and outputs: theme ids, accents and films -> theme options, resolved theme, bound theme.
+ * Inputs and outputs: theme ids, accents and films -> theme options, resolved theme, a new project's film theme, bound theme.
  * Used by: editor/src/components/NewProjectModal.tsx, editor/vite.config.ts,
  * backend/agentBridge/contextBuilder.ts, backend/designSpec/brief.ts, backend/lookPlan/brief.ts,
  * backend/designCheck/designCheck.ts, backend/pipeline/design.ts.
  */
+
+import type { BackgroundPreset, ThemeConfig } from "./dl/schema";
 
 /** One theme in the New project dialog. */
 export interface ProjectThemeOption {
@@ -47,6 +49,19 @@ export function projectThemeById(id: string | undefined): ProjectThemeOption {
 export function resolveProjectTheme(themeId: string | undefined, accent: string | undefined): BoundTheme {
   const theme = projectThemeById(themeId);
   return { background: theme.id, accent: accent && HEX.test(accent) ? accent : theme.accent };
+}
+
+/** Builds a new project's `film.theme` from the create request, marking the accent chosen exactly when the request carried a theme or accent. */
+export function newProjectFilmTheme(themeId: string | undefined, accent: string | undefined): ThemeConfig {
+  const resolved = resolveProjectTheme(themeId, accent);
+  return {
+    background: resolved.background as BackgroundPreset,
+    fontFamily: "geist",
+    storyStyle: "script-metaphor",
+    cameraAngle: "isometric",
+    accent: resolved.accent,
+    ...(themeId || accent ? { accentChosen: true } : {}),
+  };
 }
 
 /** The theme a film is bound to (its chosen background and accent), or null when the user chose none for it. */
