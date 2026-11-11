@@ -31,7 +31,7 @@ import { readRecordedNarration } from "./recordedNarration";
 import { deliverReel } from "../reelCut/writer";
 import { reelForRender, reelSourceFingerprint, writeReelFilm } from "../reelCut/store";
 import { recordReelStatus, type ReelBuildStatus } from "../reelCut/build";
-import { hasScreenplayTags, parseClaudeScript } from "../scriptIntake";
+import { parseClaudeScript, plainTextToTaggedScript } from "../scriptIntake";
 import { createEngine } from "../engine";
 import { traceBus } from "../agentBridge";
 import { compileFilmFromScreenplayAsync, FOOTAGE_HEADROOM_SEC, type FootageRequest } from "./design";
@@ -403,19 +403,15 @@ export async function runProduction(
 
   try {
     // ---- intake: validate the script and park it in the package ------------------------------
-    const script = request.script ?? "";
+    // A plain-text story is converted to the internal tagged script right here, deterministically and with no
+    // agent, so the user's narration is never reformatted later; a tagged script passes through unchanged.
+    const script = plainTextToTaggedScript(request.script ?? "", { speed: request.speed ?? DEFAULT_KOKORO_SPEED });
     await runStage(
       "intake",
       fingerprint(script, title, slug),
       () => (fs.existsSync(path.join(pkgDir, "script.md")) ? true : null),
       async () => {
         if (!script.trim()) throw new Error("no script was provided; the pipeline has nothing to narrate");
-        if (!hasScreenplayTags(script)) {
-          warnings.push(
-            "the script carries no [VISUAL]/[NARRATION]/[ON SCREEN] tags, so the design stage has no " +
-              "on-screen copy or visual direction to work from and will fall back to bare canvas shots",
-          );
-        }
         const sections = parseClaudeScript(script);
         if (sections.length === 0) throw new Error("the script parsed into zero sections");
         await fsp.mkdir(pkgDir, { recursive: true });

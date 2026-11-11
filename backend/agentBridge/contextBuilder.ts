@@ -11,6 +11,7 @@ import type { AgentTaskContext, DispatchOptions } from "./types";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { parseLookPlan } from "../lookPlan/schema";
+import { STORY_SCRIPT_RULES } from "../scriptIntake";
 import { boundTheme, projectThemeById } from "../../src/projectTheme";
 
 /** Core design invariants enforced across the Aideos explainer video standard. */
@@ -23,6 +24,7 @@ export const DESIGN_INVARIANTS: string[] = [
   "Look-First Flow: write and check look.json before design.json or SVG artwork; use the planned treatment for each shot.",
   "Audio-Visual Sync: Lock shot durations strictly to voiceover audio narration timestamps.",
   "No Long Dashes: Zero em dashes or en dashes; use standard hyphens, colons, or parentheses.",
+  `The Script: ${STORY_SCRIPT_RULES}`,
 ];
 
 /** The binding theme paragraph for a task prompt, or an empty string when the project recorded no chosen accent. */
@@ -224,5 +226,6 @@ ${themeLine}${RUBRIC_SUMMARY}
 1. **Look task first:** read \`videos/${ctx.filmId}/design/LOOK_BRIEF.md\`, the screenplay and film, then write \`videos/${ctx.filmId}/design/look.json\`. Run \`aideos look check ${ctx.filmId}\` until PASS.
 2. **Design task second:** read \`videos/${ctx.filmId}/design/LOOK.md\` and \`design/BRIEF.md\`, then write \`design/design.json\` and its SVG assets to follow the checked treatment and cast. Keep the scene stage visible.
 3. Run \`aideos design build ${ctx.filmId}\`, then \`npm run validate:film ${ctx.filmPath}\`, and repair findings until both pass.
-4. If using MCP, call \`aideos_claim_task\` to acknowledge and \`aideos_complete_task\` when done. The live studio at http://localhost:3001 hot-reloads automatically as you edit.`;
+4. **The script:** ${STORY_SCRIPT_RULES}
+5. If using MCP, call \`aideos_claim_task\` to acknowledge and \`aideos_complete_task\` when done. The live studio at http://localhost:3001 hot-reloads automatically as you edit.`;
 }
