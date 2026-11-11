@@ -132,6 +132,8 @@ npm run render
 npm run render:reel
 ```
 
+In the studio, clicking Export opens the export dialog (Start, real frame progress, Cancel, and an explicit Download button).
+
 ### 5. Install the Global CLI (Optional)
 To use the `aideos` command globally from any directory:
 ```bash
@@ -188,7 +190,7 @@ The Aideos Studio (`editor/`) is a Neobrutalist web application built with React
 | **4** | **Motion** | Custom SVG movie animation studio with declarative timeline keyframing and audio retiming. |
 | **5** | **Edit** | Non-linear multi-track timeline, magnetic ripple editing, linked audio-video trimming, and movable captions. |
 | **6** | **Captions** | Word-level timestamp synchronization and karaoke highlighting preview. |
-| **7** | **Review** | Pacing analytics charts, AI critique drawer, and headless Remotion MP4 export. |
+| **7** | **Review** | Pacing analytics charts, AI critique drawer, and review readiness metrics. |
 
 ---
 
