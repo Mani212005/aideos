@@ -42,6 +42,8 @@ import { EditStage } from "./screens/EditStage";
 import { CaptionsStage } from "./screens/CaptionsStage";
 import { ReviewStage } from "./screens/ReviewStage";
 import { ExportProgressModal } from "./components/ExportProgressModal";
+import { useExportJob } from "./state/useExportJob";
+import type { ExportJobSnapshot } from "../../backend/exportJobTypes";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
 import { AgentActivityInspector } from "./components/AgentActivityInspector";
@@ -107,9 +109,16 @@ export default function App() {
   const [selection, setSelection] = useState<SelectionTarget>(null);
   const [format, setFormat] = useState<Format>("long");
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportResult, setExportResult] = useState<{ filename: string; downloadUrl: string } | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
+  // A finished render is announced, never downloaded: the user presses Download in the export dialog.
+  const exportJob = useExportJob(
+    useCallback(
+      (job: ExportJobSnapshot) => {
+        if (job.status === "done") notify("success", `Export ready: ${job.filename}. Open Export to download it.`);
+        else if (job.status === "failed") notify("danger", `Export failed: ${job.error ?? "unknown error"}`);
+      },
+      [notify],
+    ),
+  );
   const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -245,37 +254,26 @@ export default function App() {
     [film.shots],
   );
 
-  /** Render the film to an MP4 through the dev server and hand the user the download. */
-  const handleExport = useCallback(async () => {
-    if (!timelineApi.hasVisibleVisuals) {
-      notify("warn", "Show a visual lane before exporting.");
-      return;
+  /** Opens the export dialog on its Start screen. Nothing renders until the user presses Start there. */
+  const handleExport = useCallback(() => {
+    if (!exportJob.active) {
+      if (!timelineApi.hasVisibleVisuals) {
+        notify("warn", "Show a visual lane before exporting.");
+        return;
+      }
+      if (pendingBrollCount > 0) {
+        notify("warn", `${pendingBrollCount} shot(s) still need generated footage. Generate B-roll before exporting.`);
+        return;
+      }
     }
-    if (pendingBrollCount > 0) {
-      notify("warn", `${pendingBrollCount} shot(s) still need generated footage. Generate B-roll before exporting.`);
-      return;
-    }
-    setIsExporting(true);
-    setExportResult(null);
-    setExportError(null);
-    try {
-      const res = await fetch("/api/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // Export the same film the preview plays, so hidden and muted lanes are honoured.
-        body: JSON.stringify({ film: timelineApi.renderFilm, format }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Export failed");
-      setExportResult({ filename: data.filename, downloadUrl: data.downloadUrl });
-      notify("success", `Export complete: ${data.filename}`);
-      if (typeof data.notice === "string" && data.notice) notify("warn", data.notice, { sticky: true });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setExportError(message);
-      notify("danger", `Export failed: ${message}`);
-    }
-  }, [format, notify, pendingBrollCount, timelineApi.hasVisibleVisuals, timelineApi.renderFilm]);
+    exportJob.open();
+  }, [exportJob, notify, pendingBrollCount, timelineApi.hasVisibleVisuals]);
+
+  /** Starts the render from the dialog's Start button, exporting the same film the preview plays. */
+  const startExport = useCallback(() => {
+    // Hidden and muted lanes are honoured because the render film is what the preview plays.
+    void exportJob.start(timelineApi.renderFilm, format);
+  }, [exportJob, format, timelineApi.renderFilm]);
 
   const hasVoiceover = Boolean(film.voiceover?.src);
 
@@ -356,14 +354,29 @@ export default function App() {
             <span className="hidden sm:inline">{project.isDirty ? "Save" : "Saved"}</span>
           </Button>
 
-          <Button
-            size="sm"
-            tone="primary"
-            onClick={() => void handleExport()}
-            disabled={isExporting}
-            title="Render the film to an MP4"
-          >
-            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          {exportJob.job && !exportJob.dialogOpen ? (
+            <Button
+              size="sm"
+              tone={exportJob.job.status === "done" ? "success" : exportJob.job.status === "failed" ? "danger" : "select"}
+              onClick={exportJob.open}
+              title="Show the export dialog"
+              aria-label="Show the export dialog"
+            >
+              {exportJob.active ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              <span className="font-mono tabular-nums">
+                {exportJob.active
+                  ? `Exporting ${Math.round(exportJob.job.progress * 100)}%`
+                  : exportJob.job.status === "done"
+                    ? "Export ready"
+                    : exportJob.job.status === "failed"
+                      ? "Export failed"
+                      : "Export cancelled"}
+              </span>
+            </Button>
+          ) : null}
+
+          <Button size="sm" tone="primary" onClick={handleExport} title="Open the export dialog">
+            <Download className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Export</span>
           </Button>
         </div>
@@ -492,17 +505,17 @@ export default function App() {
       <ToastStack toasts={project.toasts} onDismiss={project.dismissToast} />
 
       <ExportProgressModal
-        isOpen={isExporting}
+        isOpen={exportJob.dialogOpen}
         film={film}
         format={format}
         durationInFrames={deliveredFrames}
-        result={exportResult}
-        error={exportError}
-        onClose={() => {
-          setIsExporting(false);
-          setExportResult(null);
-          setExportError(null);
-        }}
+        job={exportJob.job}
+        error={exportJob.error}
+        starting={exportJob.starting}
+        onStart={startExport}
+        onCancel={() => void exportJob.cancel()}
+        onClose={exportJob.close}
+        onReset={exportJob.reset}
       />
 
       <NewProjectModal
