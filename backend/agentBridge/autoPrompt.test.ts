@@ -13,7 +13,7 @@ import path from "node:path";
 import { ROOT } from "../pipeline/filmStore";
 import { FakeAgentTerminal } from "../testSupport/fakeAgentTerminal";
 import { autoPromptBadge, createSingleFlight } from "../../editor/src/state/autoPromptState";
-import { clearAllFallbackTimers, dispatchTask, paneDelivery, setAgentSession, taskQueue, type DispatchOptions } from "./index";
+import { clearAllFallbackTimers, DEFAULT_AGENT_TIMEOUT_MS, dispatchTask, OPEN_AFTER_TIMEOUT_MS, paneDelivery, setAgentSession, taskQueue, type DispatchOptions } from "./index";
 
 const CLICK: DispatchOptions = { eventType: "auto_build_scenes", filmId: "click-film", filmTitle: "Click Film", enableFallback: false, idempotent: true };
 
@@ -117,6 +117,73 @@ test("a task that timed out but whose prompt still waits in the terminal is reus
   assert.equal(paneDelivery.get(stuck.pane!.id)?.state, "failed");
   const retry = await dispatchTask({ ...CLICK, filmId: "failing-film" }, goneDeps);
   assert.notEqual(retry.taskId, stuck.taskId, "a prompt that could not be sent is retried, not swallowed");
+});
+
+test("a click 20s after a sent prompt timed out unclaimed reuses the task and types the prompt once", async (t) => {
+  isolate(t);
+  const term = new FakeAgentTerminal({ agent: "claude", pane: "%64" });
+  const deps = withTerminal(term);
+  const first = await dispatchTask(CLICK, deps);
+  await paneDelivery.drain();
+  assert.equal(paneDelivery.get(first.pane!.id)?.state, "sent");
+
+  await term.sleep(DEFAULT_AGENT_TIMEOUT_MS);
+  taskQueue.timeoutTask(first.taskId);
+  await term.sleep(20_000);
+  const second = await dispatchTask(CLICK, deps);
+  await paneDelivery.drain();
+
+  assert.equal(second.taskId, first.taskId);
+  assert.equal(second.duplicate, true);
+  assert.match(second.message, /already sent to your agent/);
+  assert.equal(tasksFor("click-film").length, 1);
+  assert.deepEqual(term.log.submissions.map((s) => s.text), [first.prompt]);
+});
+
+test("with only the file inbox, a timed out task is reused inside the open window and writes one inbox message", async (t) => {
+  isolate(t);
+  const inbox = fs.mkdtempSync(path.join(os.tmpdir(), "autoprompt-inbox-"));
+  t.after(() => fs.rmSync(inbox, { recursive: true, force: true }));
+  let clock = 0;
+  const deps = { now: () => clock };
+  const first = await dispatchTask({ ...CLICK, inboxDir: inbox }, deps);
+  assert.equal(first.pane, undefined);
+
+  clock += DEFAULT_AGENT_TIMEOUT_MS;
+  taskQueue.timeoutTask(first.taskId);
+  clock += 20_000;
+  const second = await dispatchTask({ ...CLICK, inboxDir: inbox }, deps);
+  assert.equal(second.taskId, first.taskId);
+  assert.equal(second.duplicate, true);
+  assert.equal(fs.readdirSync(inbox).filter((f) => f.endsWith(".msg")).length, 1);
+
+  clock = OPEN_AFTER_TIMEOUT_MS + 1;
+  const later = await dispatchTask({ ...CLICK, inboxDir: inbox }, deps);
+  assert.notEqual(later.taskId, first.taskId);
+  assert.equal(fs.readdirSync(inbox).filter((f) => f.endsWith(".msg")).length, 2);
+});
+
+test("a sent prompt that timed out stays open for exactly the open window; a click after it creates a new task and sends again", async (t) => {
+  isolate(t);
+  const term = new FakeAgentTerminal({ agent: "claude", pane: "%65" });
+  const deps = withTerminal(term);
+  const first = await dispatchTask(CLICK, deps);
+  await paneDelivery.drain();
+  const sentAtMs = paneDelivery.get(first.pane!.id)!.sentAtMs!;
+  taskQueue.timeoutTask(first.taskId);
+
+  await term.sleep(sentAtMs + OPEN_AFTER_TIMEOUT_MS - term.now());
+  const inside = await dispatchTask(CLICK, deps);
+  assert.equal(inside.taskId, first.taskId);
+  assert.equal(inside.duplicate, true);
+
+  await term.sleep(1);
+  const after = await dispatchTask(CLICK, deps);
+  await paneDelivery.drain();
+  assert.notEqual(after.taskId, first.taskId);
+  assert.equal(after.duplicate, undefined);
+  assert.equal(after.pane?.duplicate, false);
+  assert.deepEqual(term.log.submissions.map((s) => s.text), [first.prompt, first.prompt]);
 });
 
 test("only equivalent requests merge: another project, another instruction, or a caller that did not ask for idempotence", async (t) => {

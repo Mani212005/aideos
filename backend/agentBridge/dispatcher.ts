@@ -11,7 +11,7 @@ import { ROOT } from "../pipeline/filmStore";
 import { buildDirectingPrompt, buildTaskContext } from "./contextBuilder";
 import { taskQueue } from "./taskQueue";
 import { agentLink } from "../agentLink/store";
-import { paneDelivery, type PaneDelivery, type PaneDeliveryDeps } from "./paneDelivery";
+import { OPEN_AFTER_TIMEOUT_MS, paneDelivery, type PaneDelivery, type PaneDeliveryDeps } from "./paneDelivery";
 import { remoteTaskPrompt } from "../agentLink/prompt";
 import type { AgentSessionInfo, AgentTask, DispatchChannel, DispatchOptions, DispatchResult } from "./types";
 
@@ -37,17 +37,18 @@ export const DEFAULT_AGENT_TIMEOUT_MS = 15000;
 const SESSION_FILE = path.join(ROOT, ".aideos_session.json");
 const EVENTS_LOG = path.join(ROOT, "state", "agent_events.jsonl");
 
-/** The equivalence key of each task created by an idempotent dispatch; weak, so it ends with the task. */
-const idempotencyKeys = new WeakMap<AgentTask, string>();
+/** The equivalence key and dispatch time of each task created by an idempotent dispatch; weak, so it ends with the task. */
+const idempotencyKeys = new WeakMap<AgentTask, { key: string; atMs: number }>();
 
 /** Map storing active fallback timers by task identifier. */
 const activeFallbackTimers = new Map<string, NodeJS.Timeout>();
 
-// Automatically defuse fallback timers when a task is claimed or completed
+// Automatically defuse fallback timers when a task is claimed or completed, and let a settled task's prompt be sent again
 taskQueue.addListener((event, task) => {
   if (event === "claimed" || event === "completed" || event === "failed") {
     cancelFallbackTimer(task.id);
   }
+  if (event === "completed" || event === "failed") paneDelivery.release(task.id);
 });
 
 /** Reads the current active agent session configuration. */
@@ -220,15 +221,23 @@ function idempotencyKey(opts: DispatchOptions, prompt: string): string {
   return JSON.stringify([opts.ownerKey ?? null, opts.filmId, opts.eventType, prompt]);
 }
 
-/** The still-open task with this key and where its prompt stands in the agent's terminal, if there is one. */
-function findOpenTask(key: string): { task: AgentTask; pane?: PaneDelivery } | undefined {
+/**
+ * The still-open task with this key and where its prompt stands in the agent's terminal, if there is one. A task
+ * that timed out unclaimed stays open while its prompt waits in the terminal, and for OPEN_AFTER_TIMEOUT_MS after
+ * the prompt was sent or, with no terminal, after its inbox message was written.
+ */
+function findOpenTask(key: string, nowMs: number): { task: AgentTask; pane?: PaneDelivery } | undefined {
   const panes = paneDelivery.list();
   for (const task of taskQueue.listAllTasks()) {
-    if (idempotencyKeys.get(task) !== key) continue;
+    const record = idempotencyKeys.get(task);
+    if (record?.key !== key) continue;
     const pane = panes.find((p) => p.taskId === task.id);
     if (pane?.state === "failed") continue;
+    if (task.status === "pending" || task.status === "claimed") return { task, pane };
+    if (task.status !== "timed_out") continue;
+    const deliveredAtMs = pane ? pane.sentAtMs : task.inboxMessagePath ? record.atMs : undefined;
     const waiting = pane?.state === "queued" || pane?.state === "sending";
-    if (task.status === "pending" || task.status === "claimed" || (task.status === "timed_out" && waiting)) return { task, pane };
+    if (waiting || (deliveredAtMs !== undefined && nowMs - deliveredAtMs <= OPEN_AFTER_TIMEOUT_MS)) return { task, pane };
   }
   return undefined;
 }
@@ -261,8 +270,9 @@ export async function dispatchTask(opts: DispatchOptions, deps: DispatchDeps = {
 
   // 0. Idempotent callers reuse an equivalent open task. The lookup and the create below run with no await
   // between them, so concurrent requests (a double click, a client retry) are serialized and one task results.
+  const nowMs = (deps.now ?? Date.now)();
   const key = opts.idempotent ? idempotencyKey(opts, prompt) : undefined;
-  const open = key ? findOpenTask(key) : undefined;
+  const open = key ? findOpenTask(key, nowMs) : undefined;
   if (open) return reusedDispatch(open.task, open.pane);
 
   // 1. Channel B: Enqueue task in TaskQueue
@@ -275,7 +285,7 @@ export async function dispatchTask(opts: DispatchOptions, deps: DispatchDeps = {
     dispatchedChannels: channels,
     timeoutMs,
   });
-  if (key) idempotencyKeys.set(task, key);
+  if (key) idempotencyKeys.set(task, { key, atMs: nowMs });
 
   // 1b. The owner's connected agent (aideos connect). When it takes the task, the local channels
   // are skipped so a machine with both a connector and a tmux session never runs a task twice.

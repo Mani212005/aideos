@@ -97,7 +97,8 @@ export interface DispatchOptions {
   /**
    * Reuse an equivalent task instead of creating another. Equivalent means the same owner, film, event and
    * prompt, and still open: pending or claimed (running), or timed out while its prompt is still waiting in the
-   * agent's terminal. A task that finished, failed, or whose prompt could not be sent does not count.
+   * agent's terminal or within OPEN_AFTER_TIMEOUT_MS (10 minutes) of the prompt being sent to the terminal or,
+   * with no terminal, written to the inbox. A task that finished, failed, or whose prompt could not be sent does not count.
    * Off by default, so dispatches that legitimately repeat (a second canvas edit) are never merged.
    */
   idempotent?: boolean;

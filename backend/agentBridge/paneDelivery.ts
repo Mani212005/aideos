@@ -3,7 +3,8 @@
  * A prompt is sent only when the agent is idle at an empty prompt, otherwise it waits as queued. Sending is
  * paste, a short pause, Enter, then a check that the agent took it, with one retry of the Enter. Terminal agent
  * UIs ignore an Enter that arrives right after a large paste, so an immediate Enter leaves the prompt unsent.
- * Identical prompts still pending for the same pane are dropped.
+ * Identical prompts still pending for the same pane, or sent to it within OPEN_AFTER_TIMEOUT_MS for a task that
+ * has not completed or failed, are dropped; a prompt sent with no task can be sent again at once.
  * Inputs and outputs: prompt text, tmux pane id and an injectable tmux runner -> a delivery snapshot that moves queued -> sending -> sent or failed.
  * Used by: backend/agentBridge/dispatcher.ts, editor/vite.config.ts.
  */
@@ -32,6 +33,13 @@ export interface PaneTiming {
   /** A prompt still waiting after this long is given up on. */
   expireMs: number;
 }
+
+/**
+ * How long a sent prompt (or an inbox message) still counts as open after its task timed out unclaimed:
+ * terminal agents work on a prompt without claiming it, so a repeat inside this window reuses the task and
+ * never types the prompt twice, while a click after it starts over in case the agent never took it up.
+ */
+export const OPEN_AFTER_TIMEOUT_MS = 10 * 60 * 1000;
 
 export const DEFAULT_PANE_TIMING: PaneTiming = {
   pollMs: 1000,
@@ -75,12 +83,16 @@ export interface PaneDelivery {
   /** Why a queued prompt is still waiting: the screen state it last saw. */
   waitingFor?: PaneScreenState;
   error?: string;
+  /** When the prompt was sent, on the queue's clock. */
+  sentAtMs?: number;
 }
 
 interface Entry extends PaneDelivery {
   prompt: string;
   queuedAtMs: number;
   unknownPolls: number;
+  /** True once the prompt's task completed or failed, so a sent prompt no longer blocks the same one again. */
+  released: boolean;
   run: Required<Omit<PaneDeliveryDeps, "timing">> & { timing: PaneTiming };
 }
 
@@ -101,17 +113,17 @@ export class PaneDeliveryQueue {
   private pumps = new Map<string, Promise<void>>();
   private nextId = 1;
 
-  /** Queues a prompt for a pane, or drops it when an identical one is still pending; starts delivery at once. */
+  /** Queues a prompt for a pane, or drops it when an identical one is pending or recently sent; starts delivery at once. */
   enqueue(req: PaneDeliveryRequest, deps: PaneDeliveryDeps): PaneDelivery {
-    const twin = this.entries.find((e) => e.pane === req.pane && e.prompt === req.prompt && PENDING.includes(e.state));
-    if (twin) return { ...this.snapshot(twin), duplicate: true };
-
     const run = {
       tmux: deps.tmux,
       sleep: deps.sleep ?? realSleep,
       now: deps.now ?? Date.now,
       timing: { ...DEFAULT_PANE_TIMING, ...deps.timing },
     };
+    const twin = this.entries.find((e) => e.pane === req.pane && e.prompt === req.prompt && this.blocks(e, run.now()));
+    if (twin) return { ...this.snapshot(twin), duplicate: true };
+
     const entry: Entry = {
       id: `pane-${Date.now().toString(36)}-${this.nextId++}`,
       pane: req.pane,
@@ -124,6 +136,7 @@ export class PaneDeliveryQueue {
       verified: false,
       queuedAtMs: run.now(),
       unknownPolls: 0,
+      released: false,
       run,
     };
     this.entries.push(entry);
@@ -156,9 +169,21 @@ export class PaneDeliveryQueue {
     while (this.pumps.size > 0) await Promise.all([...this.pumps.values()]);
   }
 
+  /** Marks a task's sent prompts as settled once the task completed or failed, so the same prompt can be sent again. */
+  release(taskId: string): void {
+    for (const e of this.entries) if (e.taskId === taskId) e.released = true;
+  }
+
   /** Forgets everything (tests). */
   clear(): void {
     this.entries = [];
+  }
+
+  /** True while an entry stops an identical prompt: it is pending, or a task's prompt sent within the open window and not released. */
+  private blocks(e: Entry, nowMs: number): boolean {
+    if (PENDING.includes(e.state)) return true;
+    if (e.state !== "sent" || e.taskId === undefined || e.released || e.sentAtMs === undefined) return false;
+    return nowMs - e.sentAtMs <= OPEN_AFTER_TIMEOUT_MS;
   }
 
   /** A caller-safe copy of an entry. */
@@ -174,6 +199,7 @@ export class PaneDeliveryQueue {
       verified: e.verified,
       waitingFor: e.waitingFor,
       error: e.error,
+      sentAtMs: e.sentAtMs,
     };
   }
 
@@ -263,6 +289,7 @@ export class PaneDeliveryQueue {
   private finish(e: Entry, verified: boolean): void {
     e.state = "sent";
     e.verified = verified;
+    e.sentAtMs = e.run.now();
   }
 
   /** Fails every prompt of a pane that has not been sent. */
