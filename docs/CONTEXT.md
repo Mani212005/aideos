@@ -214,7 +214,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `DEFAULT_PROJECT_THEME_ID`: `"smooth-dark"`.
 * `projectThemeById(id)`: Looks up a dialog theme option by id, falling back to the default theme.
 * `resolveProjectTheme(themeId, accent)`: Resolves the binding background preset and accent for a new project from creator choices, falling back to the theme's preset accent.
-* `boundTheme(film)`: Returns the binding `{ background, accent }` if the film specifies a valid hex `theme.accent`, else `null`.
+* `boundTheme(film)`: Returns the binding `{ background, accent }` only when the film carries `theme.accentChosen: true` (set when the New project dialog or `/api/projects/new` received a chosen theme or accent) and a valid hex `theme.accent`, else `null`. Legacy projects and accents a look plan picked are never bound.
 * `filmAccent(film)`: Returns the film's effective drawing accent (`boundTheme(film)?.accent ?? film.accent ?? defaultAccent`).
 * `sameColour(a, b)`: Case-insensitive comparison of two hex color strings (`#rrggbb`).
 

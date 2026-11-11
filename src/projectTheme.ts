@@ -1,8 +1,10 @@
 /**
  * File Description: The themes a new project can choose and the rule that the chosen theme is binding.
  * The New project dialog offers these themes; the project stores the choice on `film.theme` (its
- * background preset and accent). Every later stage reads that choice back from here: the agent task
- * prompt, the agent briefs and the design check, so no stage falls back to a colour of its own.
+ * background preset and accent) and marks it with `theme.accentChosen: true`. Only a marked film is
+ * bound: an accent written any other way (an old project's default, a look plan's own pick) is not a
+ * choice. Every later stage reads that choice back from here: the agent task prompt, the agent briefs
+ * and the design check, so no stage falls back to a colour of its own.
  * Inputs and outputs: theme ids, accents and films -> theme options, resolved theme, bound theme.
  * Used by: editor/src/components/NewProjectModal.tsx, editor/vite.config.ts,
  * backend/agentBridge/contextBuilder.ts, backend/designSpec/brief.ts, backend/lookPlan/brief.ts,
@@ -47,10 +49,10 @@ export function resolveProjectTheme(themeId: string | undefined, accent: string 
   return { background: theme.id, accent: accent && HEX.test(accent) ? accent : theme.accent };
 }
 
-/** The theme a film is bound to (its chosen background and accent), or null when it records no chosen accent. */
-export function boundTheme(film: { theme?: { background?: string; accent?: string } } | null | undefined): BoundTheme | null {
+/** The theme a film is bound to (its chosen background and accent), or null when the user chose none for it. */
+export function boundTheme(film: { theme?: { background?: string; accent?: string; accentChosen?: boolean } } | null | undefined): BoundTheme | null {
   const accent = film?.theme?.accent;
-  if (!accent || !HEX.test(accent)) return null;
+  if (film?.theme?.accentChosen !== true || !accent || !HEX.test(accent)) return null;
   return { background: film?.theme?.background ?? DEFAULT_PROJECT_THEME_ID, accent };
 }
 
@@ -60,6 +62,6 @@ export function sameColour(a: string, b: string): boolean {
 }
 
 /** The accent a film draws with: its chosen one, else its manifest accent, else the default theme's accent. */
-export function filmAccent(film: { accent?: string; theme?: { background?: string; accent?: string } } | null | undefined): string {
+export function filmAccent(film: { accent?: string; theme?: { background?: string; accent?: string; accentChosen?: boolean } } | null | undefined): string {
   return boundTheme(film)?.accent ?? (film?.accent && HEX.test(film.accent) ? film.accent : projectThemeById(DEFAULT_PROJECT_THEME_ID).accent);
 }

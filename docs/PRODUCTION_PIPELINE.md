@@ -98,7 +98,7 @@ to a checked spec at that version; a changed hash within the version is a warnin
 render rebuild), its decisive shot and its one-to-one match with a design performance, and cast ids against `design.json` asset ids or SVG element ids when those inputs
 exist. It reports which checks are waiting on inputs that are not available yet. Cast ids use
 lowercase letters, digits, and hyphens, and one id can be represented by elements across several
-design assets. The palette allows the locked colours plus the film's one accent: when a project carries a bound theme from creation, `aideos design check` rejects assets drawing in the default purple or any other chromatic colour, and rejects a `look.json` or `design.json` that replaces the chosen accent.
+design assets. The palette allows the locked colours plus the film's one accent: when a project carries a theme the user chose at creation (`theme.accentChosen: true`), `aideos design check` rejects assets drawing in the default purple or any other chromatic colour, and rejects a `look.json` or `design.json` that replaces the chosen accent.
 
 `aideos design build` checks a package's look when one exists: shot coverage, declared cast in artwork,
 changing SVG clips on carried objects inside scene shots starting within 0.4s of their spoken cue,

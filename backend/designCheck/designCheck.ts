@@ -139,8 +139,8 @@ export function foreignAccentColours(svgText: string, accent: string): string[] 
   return [...found];
 }
 
-// Checks one asset document is static, self-contained, on palette and in the allowed typefaces.
-function checkAsset(asset: EnvironmentAsset, accent: string | undefined, findings: DesignFinding[]): void {
+// Checks one asset document is static, self-contained, on palette (and on the user's chosen accent, when there is one) and in the allowed typefaces.
+function checkAsset(asset: EnvironmentAsset, accent: string | undefined, chosenAccent: string | undefined, findings: DesignFinding[]): void {
   if (!asset.svgSource) return;
   const file = resolveRepoAssetPath(asset.svgSource);
   if (!fs.existsSync(file)) return; // The scene rule already reports a missing file.
@@ -173,9 +173,9 @@ function checkAsset(asset: EnvironmentAsset, accent: string | undefined, finding
   for (const tag of forbidden) {
     findings.push({ rule: "static-art", severity: "error", where, message: `contains <${tag}>; assets are static and motion is authored as clips.` });
   }
-  const foreign = accent ? foreignAccentColours(text, accent) : [];
+  const foreign = chosenAccent ? foreignAccentColours(text, chosenAccent) : [];
   if (foreign.length) {
-    findings.push({ rule: "accent", severity: "error", where, message: `draws with ${foreign.join(", ")}, the design system's default purple, but this film's accent is ${accent}; recolour it to ${accent}.` });
+    findings.push({ rule: "accent", severity: "error", where, message: `draws with ${foreign.join(", ")}, the design system's default purple, but the user chose ${chosenAccent} for this project; recolour it to ${chosenAccent}.` });
   }
   const off = offPaletteColours(text, accent);
   if (off.length) {
@@ -544,6 +544,7 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
   }
 
   findings.push(...checkChosenAccent(film, context.lookPlan));
+  const chosenAccent = boundTheme(film)?.accent;
 
   let clips = 0;
   const scene = film.scene as Scene | undefined;
@@ -575,7 +576,7 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
       if (defaultCaptionFormats.length && asset.position.y > CAPTION_SAFE_SQUARE.y1 && asset.assetId !== "background") {
         findings.push({ rule: "safe-area", severity: "error", where: asset.assetId, message: `placed at y=${asset.position.y}, which is inside the default caption band in ${defaultCaptionFormats.join(" and ")} (y > ${CAPTION_SAFE_SQUARE.y1}); move it up to keep it readable.` });
       }
-      checkAsset(asset, boundTheme(film)?.accent ?? film.accent, findings);
+      checkAsset(asset, chosenAccent ?? film.accent, chosenAccent, findings);
       clips += checkContinuity(asset, findings);
       for (const collapsed of context.collapsedClips?.filter((c) => c.asset === asset.assetId) ?? []) {
         const clip = asset.animation?.clips.find((c) => c.clipId === collapsed.clipId);

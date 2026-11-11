@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
-import { boundTheme, projectThemeById } from "../../src/projectTheme";
+import { boundTheme, filmAccent, projectThemeById } from "../../src/projectTheme";
 import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { CHARACTER_LIBRARY, loadCharacterFile } from "../characters/library";
 
@@ -42,8 +42,8 @@ export function availableCharacters(pkgDir?: string): AvailableCharacter[] {
   return [...found.values()];
 }
 
-// Builds a worked aideos.look/2 plan for a receive performance, pinned to a real character's identity.
-export function exampleStageLookPlan(character: Pick<AvailableCharacter, "id" | "version" | "hash">) {
+// Builds a worked aideos.look/2 plan for a receive performance, pinned to a real character's identity and drawn in the film's accent.
+export function exampleStageLookPlan(character: Pick<AvailableCharacter, "id" | "version" | "hash">, accent: string) {
   const shot = (id: string, cue: string) => ({ id, treatment: "scene", carries: ["receiver", "glider"], performances: ["receive-message"], cue, criterion: "1-mechanism", why: "the catch is the claim" });
   return {
     schema: "aideos.look/2",
@@ -61,7 +61,7 @@ export function exampleStageLookPlan(character: Pick<AvailableCharacter, "id" | 
         start: "beat-01", decisive: { shotId: "beat-02", phrase: "catches", edge: "start", event: "contact" }, afterState: "holding the message", carries: ["beat-01", "beat-02", "beat-03"],
       }],
       camera: [{ at: "beat-01", pose: "wide establishing view of the stage", why: "show where the message comes from" }, { at: "beat-03", pose: "wide payoff with the held glider", why: "the receipt is the payoff" }],
-      palette: { bg: "#0A0A0B", accent: "#635BFF" },
+      palette: { bg: "#0A0A0B", accent },
       captions: { position: "bottom", kineticColumn: false },
       headlines: "none",
     },
@@ -75,11 +75,11 @@ function exampleLookPlanFor(accent: string): typeof EXAMPLE_LOOK_PLAN {
 }
 
 // Renders the character-film section: what a performance is, which characters exist and how to make a new one.
-export function renderCharacterSection(characters: AvailableCharacter[]): string {
+export function renderCharacterSection(characters: AvailableCharacter[], accent: string): string {
   const rows = characters.length
     ? characters.map((c) => `| \`${c.id}\` | ${c.version} | \`${c.hash}\` | ${c.source} | ${c.name}: ${c.description.split(/(?<=\.)\s/)[0] ?? ""} |`).join("\n")
     : "| (none found) | | | | |";
-  const example = characters[0] ? `\n\`\`\`json\n${JSON.stringify(exampleStageLookPlan(characters[0]), null, 2)}\n\`\`\`\n` : "";
+  const example = characters[0] ? `\n\`\`\`json\n${JSON.stringify(exampleStageLookPlan(characters[0], accent), null, 2)}\n\`\`\`\n` : "";
   return `## Character films (\`aideos.look/2\`, renderer \`three\`)
 
 Use this when a character acts out the mechanism on a persistent cel-shaded stage. Everything else in this brief still applies.
@@ -201,9 +201,9 @@ export function renderLookBrief(film: Film, characters: AvailableCharacter[] = a
     .join("\n");
 
   const chosen = boundTheme(film);
-  const accent = chosen?.accent ?? film.accent ?? "#635BFF";
+  const accent = filmAccent(film);
   const accentLine = chosen
-    ? `\`${chosen.accent}\`, the theme the user chose ("${projectThemeById(chosen.background).name}"); \`palette.accent\` in look.json must be exactly this`
+    ? `\`${chosen.accent}\`, fixed by the user with the theme they chose ("${projectThemeById(chosen.background).name}"); \`palette.accent\` in look.json must be exactly this. Do not change it: if the user wants a different accent, tell them to change it in the editor's Styleboard or customization panel`
     : `\`${accent}\``;
   return `# Look Brief: ${film.title} (\`${film.id}\`)
 
@@ -247,7 +247,7 @@ Each \`film.cast[].id\` must be a lowercase id using letters, digits, and hyphen
 ${JSON.stringify(exampleLookPlanFor(accent), null, 2)}
 \`\`\`
 
-${renderCharacterSection(characters)}
+${renderCharacterSection(characters, accent)}
 ## Script Beats
 
 ${shotList}

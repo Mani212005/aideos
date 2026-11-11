@@ -2305,7 +2305,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                   fontFamily: "geist",
                   storyStyle: "script-metaphor",
                   cameraAngle: "isometric",
-                  accent
+                  accent,
+                  ...(chosenTheme || chosenAccent ? { accentChosen: true } : {})
                 },
                 chapters: ["Introduction", "Core Mechanism", "Architecture", "Payoff"],
                 canvas: {

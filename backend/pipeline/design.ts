@@ -677,14 +677,13 @@ export async function compileFilmFromScreenplayAsync(
     props: [], actors: [],
   } : undefined;
   // The user's chosen accent wins over the look plan's, which wins over the design system default.
-  const chosenAccent = options.theme?.accent ?? options.lookPlan?.film?.palette?.accent;
-  const accent = chosenAccent ?? "#635BFF";
+  const accent = options.theme?.accent ?? options.lookPlan?.film?.palette?.accent ?? "#635BFF";
   const film = parseFilm({
     id: slug,
     title: options.title,
     fps,
     accent,
-    theme: { background: (options.theme?.background ?? "smooth-dark") as BackgroundPreset, fontFamily: "geist", ...(chosenAccent ? { accent: chosenAccent } : {}) },
+    theme: { background: (options.theme?.background ?? "smooth-dark") as BackgroundPreset, fontFamily: "geist", accent, ...(options.theme ? { accentChosen: true } : {}) },
     chapters: uniqueChapters,
     canvas: { nodes, edges },
     ...(scene ? { scene } : {}),

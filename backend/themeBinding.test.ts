@@ -2,7 +2,8 @@
  * File Description: Tests that the theme and accent chosen in the New project dialog are binding.
  * Captain's decision: the chosen accent is written into the agent task prompt and the project
  * context, enforced by a design check that fails on any other accent, and no stage falls back to
- * purple on its own. Also covers the removed narrator archetype: an old film that still carries the
+ * purple on its own. Only a project the user chose a theme for (`theme.accentChosen: true`) is bound;
+ * a legacy project still carrying the old purple default is not. Also covers the removed narrator archetype: an old film that still carries the
  * field opens without error.
  * Inputs and outputs: films with a chosen theme -> prompt, context, brief, compile and design check assertions.
  * Used by: npm test.
@@ -17,7 +18,7 @@ import { buildDirectingPrompt, buildTaskContext, themeDirective } from "./agentB
 import { checkFilmDesign, foreignAccentColours } from "./designCheck/designCheck";
 import { renderDesignBrief } from "./designSpec/brief";
 import { parseLookPlan } from "./lookPlan/schema";
-import { renderLookBrief } from "./lookPlan/brief";
+import { availableCharacters, renderLookBrief } from "./lookPlan/brief";
 import { compileFilmFromScreenplayAsync } from "./pipeline/design";
 import { readFilm } from "./pipeline/filmStore";
 import { backgroundPresetSchema, filmSchema, parseFilm, type Film } from "../src/dl/schema";
@@ -35,7 +36,7 @@ const ORANGE = "#FF6B00";
 function themedFilm(accent: string, background = "smooth-dark"): any {
   const film = JSON.parse(fs.readFileSync(path.join(TEST_VIDEOS_DIR, "still-talking/film.json"), "utf8"));
   film.accent = accent;
-  film.theme = { ...film.theme, background, accent };
+  film.theme = { ...film.theme, background, accent, accentChosen: true };
   return film;
 }
 
@@ -65,7 +66,8 @@ test("themeBinding: the dialog's choice resolves to a binding theme, and a bad a
     assert.ok(backgroundPresetSchema.safeParse(theme.id).success, `${theme.id} must be a film background preset`);
   }
   assert.equal(boundTheme({ theme: { background: "paper-white" } }), null, "no chosen accent means nothing is bound");
-  assert.equal(filmAccent({ theme: { accent: ORANGE }, accent: "#635BFF" }), ORANGE);
+  assert.equal(boundTheme({ theme: { background: "paper-white", accent: ORANGE } }), null, "an accent the user did not choose is not bound");
+  assert.equal(filmAccent({ theme: { accent: ORANGE, accentChosen: true }, accent: "#635BFF" }), ORANGE);
 });
 
 test("themeBinding: an old film that still carries the narrator archetype opens without error", () => {
@@ -127,6 +129,8 @@ test("themeBinding: a recompile keeps the chosen theme instead of replacing it w
   assert.equal(chosen.film.accent, "#00E5FF");
   assert.equal(chosen.film.theme?.background, "blueprint");
   assert.equal(chosen.film.theme?.accent, "#00E5FF");
+  assert.equal(chosen.film.theme?.accentChosen, true);
+  assert.deepEqual(boundTheme(chosen.film), { background: "blueprint", accent: "#00E5FF" });
 });
 
 test("themeBinding: the design check fails artwork drawn in the default purple when the film's accent is another", () => {
@@ -154,4 +158,54 @@ test("themeBinding: the design check fails a design.json accent or look plan acc
   assert.equal(planned.length, 1);
   const rightPlan = { ...plan, film: { ...plan.film, palette: { ...plan.film.palette, accent: ORANGE } } } as typeof plan;
   assert.equal(ruleFindings(themedFilm(ORANGE), "accent", { lookPlan: rightPlan }).filter((f) => f.where.startsWith("look.json")).length, 0);
+});
+
+test("themeBinding: a legacy project carrying the old purple default without the marker is not bound, not flagged, and still opens", () => {
+  const legacy = JSON.parse(fs.readFileSync(path.join(TEST_VIDEOS_DIR, "still-talking/film.json"), "utf8"));
+  legacy.accent = ORANGE;
+  legacy.theme = { ...legacy.theme, accent: "#635BFF" };
+  delete legacy.theme.accentChosen;
+  assert.equal(boundTheme(legacy), null);
+  assert.equal(ruleFindings(legacy, "accent").length, 0, "the purple artwork and the differing manifest accent are not rejected");
+  const plan = parseLookPlan(JSON.parse(fs.readFileSync(path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed/design/look.json"), "utf8")));
+  const otherPlan = { ...plan, film: { ...plan.film, palette: { ...plan.film.palette, accent: "#12AB34" } } } as typeof plan;
+  assert.equal(ruleFindings(legacy, "accent", { lookPlan: otherPlan }).length, 0);
+  withPackage("theme-legacy", legacy, () => {
+    assert.ok(readFilm("theme-legacy"), "the legacy package still reads");
+    const ctx = buildTaskContext({ eventType: "produce_film", filmId: "theme-legacy" });
+    assert.equal(ctx.theme, null);
+    for (const eventType of ["produce_film", "design_film", "frame_review"] as const) {
+      assert.ok(!buildDirectingPrompt({ eventType, filmId: "theme-legacy" }).includes("Theme (binding)"), `${eventType} prompt carries no binding paragraph`);
+    }
+  });
+});
+
+test("themeBinding: a marked project enforces its accent and the design check rejects a foreign one", () => {
+  const marked = themedFilm("#12AB34");
+  assert.deepEqual(boundTheme(marked), { background: "smooth-dark", accent: "#12AB34" });
+  marked.accent = ORANGE;
+  const findings = ruleFindings(marked, "accent");
+  assert.ok(findings.some((f) => f.where === "film.accent"), "a manifest accent other than the chosen one fails");
+  assert.ok(findings.some((f) => f.where !== "film.accent"), "artwork drawn in the default purple fails");
+});
+
+test("themeBinding: a look plan accent compiled into a film never becomes the user's choice", async () => {
+  const durations = [6, 6];
+  const segments: SegmentAudioInfo[] = durations.map((duration, i) => ({ text: `segment ${i}`, duration, startOffset: i * 6.2, words: [], utterances: [] }));
+  const script = "## 0:00 - 0:12 - Opening (opening)\n\n[ON SCREEN] One\n[NARRATION] The first thing said.\n\n[ON SCREEN] Two\n[NARRATION] The second thing said.\n";
+  const plan = parseLookPlan(JSON.parse(fs.readFileSync(path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed/design/look.json"), "utf8")));
+  const teal = { ...plan, film: { ...plan.film, palette: { ...plan.film.palette, accent: "#00E5FF" } } } as typeof plan;
+  const compiled = await compileFilmFromScreenplayAsync(script, segments, durations, { title: "Unthemed", textOnly: true, maxFootageShots: 0, lookPlan: teal });
+  assert.equal(compiled.film.accent, "#00E5FF");
+  assert.equal(compiled.film.theme?.accentChosen, undefined);
+  assert.equal(boundTheme(compiled.film), null);
+});
+
+test("themeBinding: the character example in the look brief is drawn in the film's accent, not purple", () => {
+  const film = parseFilm(themedFilm(ORANGE));
+  const characters = availableCharacters(path.join(TEST_VIDEOS_DIR, "iona-receive"));
+  assert.ok(characters.length > 0, "a character is available for the example");
+  const brief = renderLookBrief(film, characters);
+  assert.match(brief, /## Character films/);
+  assert.ok(!brief.includes("#635BFF"), "no purple example is left for the agent to copy");
 });

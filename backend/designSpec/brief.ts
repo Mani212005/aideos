@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { FORMAT_WINDOWS, SAFE_SQUARE, SCENE_SIZE } from "../sceneKit";
-import { boundTheme, projectThemeById } from "../../src/projectTheme";
+import { boundTheme, filmAccent, projectThemeById } from "../../src/projectTheme";
 import { LOCKED_PALETTE, MAX_CAMERA_PAN_ACCEL_WIDTHS, MAX_CAMERA_ZOOM_STEP } from "../designCheck/designCheck";
 import { designDir, readCheckedLookPlan } from "./build";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
@@ -93,8 +93,9 @@ export function renderDesignBrief(film: Film, lookPlan?: LookPlan): string {
     })
     .join("\n");
   const chosen = boundTheme(film);
-  const accent = chosen?.accent ?? film.accent ?? "#635BFF";
-  const accentNote = chosen ? `, which is \`${chosen.accent}\` (the theme the user chose, "${projectThemeById(chosen.background).name}")` : ` (\`${accent}\`)`;
+  const accent = filmAccent(film);
+  const accentNote = chosen ? `, which is \`${chosen.accent}\`, fixed by the user with the theme they chose ("${projectThemeById(chosen.background).name}"). Do not change it: if the user wants a different accent, tell them to change it in the editor's Styleboard or customization panel` : ` (\`${accent}\`)`;
+  const accentField = chosen ? "omit it to keep the user's chosen accent; any other value fails the build" : "it replaces the film's accent";
   const performanceSection = lookPlan?.schema === "aideos.look/2" ? renderPerformanceSection(lookPlan) : "";
 
   return `# Design brief: ${film.title} (\`${film.id}\`)
@@ -139,7 +140,7 @@ ${RUBRIC_SUMMARY}
 ${JSON.stringify(exampleSpecFor(accent), null, 2)}
 \`\`\`
 
-- \`brief\` records the idea (shown in the studio). \`accent\` is optional (#rrggbb); omit it to keep the film's chosen accent. A different value fails the build.
+- \`brief\` records the idea (shown in the studio). \`accent\` is optional (#rrggbb); ${accentField}.
 - \`background\` (optional): \`{ "file": "visuals/<name>.svg", "scale": 4.8 }\` fills the stage; omit for the plain canvas.
 - \`assets[]\`: \`id\`, \`file\`, \`position\` [x, y], \`scale\`, optional \`layer\` (higher draws on top), \`rotation\`, \`opacity\`.
 - \`clips[]\`: \`property\` is one of translateX, translateY, scale, scaleX, scaleY, rotate, opacity, drawOn. \`stagger\` delays each further target by N frames. \`origin\` is [x, y] in the asset's own coordinates.
