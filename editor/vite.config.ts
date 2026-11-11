@@ -887,6 +887,9 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               const { job, busy } = exportJobs.start({
                 filmId: postedFilm.id,
                 format: outFormat,
+                filmTitle: postedFilm.title,
+                fps: postedFilm.fps || 30,
+                durationInFrames: deliveryTimeline(postedFilm, outFormat).totalFrames,
                 filename,
                 outPath,
                 downloadUrl: `/api/downloads/${filename}`,

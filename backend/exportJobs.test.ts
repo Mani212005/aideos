@@ -47,6 +47,9 @@ function fixture(mode: "run" | "stubborn" | "fail" = "run", rendered = 4, total 
   const input: ExportJobInput = {
     filmId: "demo",
     format: "long",
+    filmTitle: "Demo",
+    fps: 30,
+    durationInFrames: 10,
     filename: "aideos_demo_long_1.mp4",
     outPath,
     downloadUrl: "/api/downloads/aideos_demo_long_1.mp4",

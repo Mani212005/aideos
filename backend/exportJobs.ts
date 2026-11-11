@@ -28,6 +28,9 @@ export interface PreparedRender {
 export interface ExportJobInput {
   filmId: string;
   format: "long" | "reel";
+  filmTitle: string;
+  fps: number;
+  durationInFrames: number;
   filename: string;
   outPath: string;
   downloadUrl: string;
@@ -210,6 +213,9 @@ export function createExportJobs(deps: ExportJobDeps = {}) {
           id,
           filmId: input.filmId,
           format: input.format,
+          filmTitle: input.filmTitle,
+          fps: input.fps,
+          durationInFrames: input.durationInFrames,
           status: "preparing",
           progress: 0,
           renderedFrames: 0,

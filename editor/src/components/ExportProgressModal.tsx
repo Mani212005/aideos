@@ -82,7 +82,7 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
   onClose,
   onReset,
 }) => {
-  const fps = film.fps || 30;
+  const facts = job ?? { filmTitle: film.title, fps: film.fps || 30, format, durationInFrames };
   const runningStatus = job !== null && ["preparing", "rendering", "finishing"].includes(job.status);
 
   // Elapsed time is a clock, not an estimate: it counts from the moment the server began the job.
@@ -99,7 +99,7 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
   const pct = job ? Math.round(job.progress * 100) : 0;
   const elapsedSec = job ? Math.max(0, Math.round(((job.finishedAt ?? nowMs) - job.startedAt) / 1000)) : 0;
   const states = job ? stepStates(job) : [];
-  const total = job && job.totalFrames > 0 ? job.totalFrames : durationInFrames;
+  const total = job && job.totalFrames > 0 ? job.totalFrames : facts.durationInFrames;
   const title =
     status === "idle"
       ? "Export film"
@@ -157,7 +157,7 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={title}
-      subtitle={film.title}
+      subtitle={facts.filmTitle}
       icon={<FileVideo className="h-5 w-5" />}
       width="max-w-lg"
       footer={footer}
@@ -220,10 +220,10 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
         ) : null}
 
         <div className="border-2 border-ink bg-paper-3 p-2.5">
-          <Stat label="Output" value={format === "long" ? "1920 x 1080" : "1080 x 1920"} />
-          <Stat label="Frame rate" value={`${fps} fps`} />
+          <Stat label="Output" value={facts.format === "long" ? "1920 x 1080" : "1080 x 1920"} />
+          <Stat label="Frame rate" value={`${facts.fps} fps`} />
           <Stat label="Frames" value={total.toLocaleString()} />
-          <Stat label="Run time" value={formatTime(Math.round(durationInFrames / fps))} />
+          <Stat label="Run time" value={formatTime(Math.round(facts.durationInFrames / facts.fps))} />
           {job && (runningStatus || status === "done") ? (
             <>
               <Stat label="Frames rendered" value={`${job.renderedFrames.toLocaleString()} / ${job.totalFrames.toLocaleString()}`} />

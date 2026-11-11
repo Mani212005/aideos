@@ -13,6 +13,11 @@ export interface ExportJobSnapshot {
   id: string;
   filmId: string;
   format: "long" | "reel";
+  /** The exported film's own facts, fixed when the job started. */
+  filmTitle: string;
+  fps: number;
+  /** Delivered length of the exported format, end card included. */
+  durationInFrames: number;
   status: ExportStatus;
   /** Whole-job progress from 0 to 1, from rendered and encoded frame counts. */
   progress: number;
