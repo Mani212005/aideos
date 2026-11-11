@@ -1,13 +1,15 @@
 /**
- * File Description: Script & Narration Studio component for editing a director screenplay and synthesizing multi-provider voiceover audio directly from its spoken dialogue.
- * Inputs and outputs: screenplay text and voiceover audio -> interactive screenplay editor with block tags.
+ * File Description: Story-first Script & Narration Studio. The script is shown as the plain story, one block per
+ * paragraph, with the agent's visual and on-screen notes as collapsible notes beside each paragraph (the
+ * [VISUAL]/[NARRATION]/[ON SCREEN] tags stay internal). It also lists every narration change made by the user or
+ * the agent, shows which lines still need recording, and synthesizes the voiceover line by line.
+ * Inputs and outputs: the project's script text and narration change list -> editable story, saved tagged script, voiceover audio.
  * Used by: editor/src/screens/ScriptStage.tsx.
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   FileEdit,
-  FileText,
   Mic,
   Save,
   Sparkles,
@@ -19,27 +21,23 @@ import {
   Play,
   Pause,
   Clapperboard,
-  CheckCircle2,
-  LayoutGrid,
   Plus,
   Trash2,
-  Eye,
-  Camera,
   Bot,
   Copy,
   Check,
   ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  History,
+  StickyNote,
 } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
-import {
-  parseClaudeScript,
-  structureUntaggedProseToScript,
-  serializeSegmentsToScript,
-  extractSpokenBlocks as extractSpokenBlocksShared,
-  hasScreenplayTags,
-  generateAgentPrompt,
-} from "../../../backend/scriptIntake";
-import type { ScriptSegment, BeatType } from "../../../backend/scriptIntake";
+import { Badge } from "./ui";
+import { usePaneDelivery, type PaneDeliveryView } from "../state/paneDelivery";
+import { generateAgentPrompt } from "../../../backend/scriptIntake";
+import { narrationLines, scriptToStory, storyToScript } from "../../../backend/storyScript";
+import type { StoryParagraph, StorySection } from "../../../backend/storyScript";
 
 interface ScriptEditorProps {
   film: Film;
@@ -145,11 +143,114 @@ const VOICES = [
   },
 ];
 
-/**
- * Extracts strictly the spoken dialogue from a director screenplay text as separate per-scene/shot paragraphs.
- */
-export function extractSpokenBlocks(raw: string): string[] {
-  return extractSpokenBlocksShared(raw);
+/** One entry of the narration change list, as the server returns it. */
+interface NarrationEntry {
+  id: number;
+  at: string;
+  source: "user" | "agent";
+  kind: "added" | "edited" | "removed";
+  before?: string;
+  after?: string;
+}
+
+/** The server's view of the narration: the change list plus which lines already have a recording. */
+interface NarrationState {
+  revision: string;
+  entries: NarrationEntry[];
+  lines: Array<{ text: string; recorded: boolean }>;
+}
+
+/** True when a section's title is just the opening words of its first paragraph, so it need not be shown twice. */
+function isDerivedTitle(section: StorySection): boolean {
+  const first = section.paragraphs[0]?.narration.replace(/\s+/g, " ").trim() ?? "";
+  return !section.title || first.startsWith(section.title.replace(/[.?!]+$/, ""));
+}
+
+/** Splits a notes textarea into its lines as typed (blank ones are dropped when the script is written, not while typing). */
+function noteLines(value: string): string[] {
+  return value.split("\n");
+}
+
+/** One narration paragraph with its collapsible visual and on-screen notes beside it. */
+function StoryParagraphRow({
+  paragraph,
+  needsRecording,
+  onChange,
+  onAddBelow,
+  onRemove,
+}: {
+  paragraph: StoryParagraph;
+  needsRecording: boolean;
+  onChange: (patch: Partial<StoryParagraph>) => void;
+  onAddBelow: () => void;
+  onRemove: () => void;
+}) {
+  const noteCount = [...paragraph.visual, ...paragraph.onScreen].filter((note) => note.trim()).length;
+  const [open, setOpen] = useState<boolean>(noteCount > 0);
+  const words = paragraph.narration.split(/\s+/).filter(Boolean).length;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,260px)] gap-3 items-start" data-testid="story-paragraph">
+      <div className="flex flex-col gap-1">
+        <textarea
+          value={paragraph.narration}
+          onChange={(e) => onChange({ narration: e.target.value.replace(/\s*\n+\s*/g, " ") })}
+          placeholder="Write what the narrator says..."
+          aria-label="Narration paragraph"
+          rows={Math.max(2, Math.ceil(paragraph.narration.length / 90))}
+          className="w-full bg-paper border-2 border-ink p-3 text-sm leading-relaxed text-ink outline-none resize-none focus:border-select placeholder:text-ink-mute font-sans"
+        />
+        <div className="flex items-center gap-3 text-[11px] text-ink-soft">
+          <span className="font-mono">{words} words</span>
+          {needsRecording && paragraph.narration.trim() && (
+            <span className="font-mono font-bold text-ink bg-warn/40 border border-ink px-1.5">needs recording</span>
+          )}
+          <button onClick={onAddBelow} className="inline-flex items-center gap-1 hover:text-ink" title="Add a paragraph below">
+            <Plus size={11} /> paragraph
+          </button>
+          <button onClick={onRemove} className="inline-flex items-center gap-1 hover:text-ink" title="Remove this paragraph">
+            <Trash2 size={11} /> remove
+          </button>
+        </div>
+      </div>
+
+      <div className="border-2 border-ink bg-paper-3 shadow-nb-sm">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-ink"
+        >
+          {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          <StickyNote size={12} /> Notes
+          <span className="ml-auto font-mono font-normal text-ink-soft">{noteCount === 0 ? "empty" : `${noteCount}`}</span>
+        </button>
+        {open && (
+          <div className="flex flex-col gap-2 px-2.5 pb-2.5">
+            <label className="flex flex-col gap-1 text-[10px] font-bold uppercase tracking-wide text-ink-soft">
+              Visual
+              <textarea
+                value={paragraph.visual.join("\n")}
+                onChange={(e) => onChange({ visual: noteLines(e.target.value) })}
+                placeholder="Your agent fills this in"
+                rows={2}
+                className="w-full bg-paper border border-ink/60 p-1.5 text-xs font-normal normal-case tracking-normal text-ink outline-none resize-none placeholder:text-ink-mute"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-[10px] font-bold uppercase tracking-wide text-ink-soft">
+              On screen
+              <textarea
+                value={paragraph.onScreen.join("\n")}
+                onChange={(e) => onChange({ onScreen: noteLines(e.target.value) })}
+                placeholder="Your agent fills this in"
+                rows={2}
+                className="w-full bg-paper border border-ink/60 p-1.5 text-xs font-normal normal-case tracking-normal text-ink outline-none resize-none placeholder:text-ink-mute"
+              />
+            </label>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -160,17 +261,20 @@ export function ScriptEditor({
   onUpdateFilm,
   onNavigateToVideo,
 }: ScriptEditorProps) {
-  const [script, setScript] = useState<string>("");
+  // The story is the editable model; the tagged script is derived from it only when saving or recording,
+  // so typing never round-trips through the parser (which would trim a trailing space as it is typed).
+  const [story, setStory] = useState<StorySection[]>([]);
+  const [dirty, setDirty] = useState<boolean>(false);
+  const [narration, setNarration] = useState<NarrationState | null>(null);
+  const [diskChanged, setDiskChanged] = useState<boolean>(false);
+  const [pasteText, setPasteText] = useState<string>("");
+  const script = useMemo(() => storyToScript(story), [story]);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [generating, setGenerating] = useState<boolean>(false);
   const [buildingScenes, setBuildingScenes] = useState<boolean>(false);
   const [selectedVoice, setSelectedVoice] = useState<string>("kokoro-am_adam");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"screenplay" | "studio">(
-    "screenplay",
-  );
-  const [segments, setSegments] = useState<ScriptSegment[]>([]);
   const [statusMsg, setStatusMsg] = useState<{
     type: "success" | "error" | "info";
     text: string;
@@ -189,7 +293,9 @@ export function ScriptEditor({
     channel: string;
     message: string;
     session?: string;
+    pane?: PaneDeliveryView;
   } | null>(null);
+  const paneDelivery = usePaneDelivery(lastDispatchResult?.pane);
 
   const copyToClipboard = (text: string) => {
     if (typeof navigator !== "undefined" && navigator?.clipboard?.writeText) {
@@ -225,7 +331,9 @@ export function ScriptEditor({
         setLastDispatchResult(data.dispatch);
         setStatusMsg({
           type: "success",
-          text: `⚡ ${data.dispatch.message || "Auto-prompted active coding agent in terminal!"}`,
+          text: data.dispatch.pane
+            ? "⚡ Auto-prompter has the task: its progress shows in the AUTO-PROMPTER bar above"
+            : `⚡ ${data.dispatch.message || "Auto-prompted active coding agent in terminal!"}`,
         });
       }
     } catch (err: any) {
@@ -256,28 +364,13 @@ export function ScriptEditor({
     let isMounted = true;
     setLoading(true);
     const currentFilm = filmRef.current;
+    setDiskChanged(false);
     fetch(`/api/scripts/${film.id}`)
       .then((res) => res.json())
       .then((data) => {
         if (!isMounted) return;
-        if (data.ok && data.script) {
-          setScript(data.script);
-        } else {
-          const defaultScript =
-            `# ${currentFilm.title}\n\n` +
-            currentFilm.shots
-              .map((s, idx) => {
-                const body = s.blocks
-                  .map((b) =>
-                    "text" in b ? b.text : "label" in b ? b.label : "",
-                  )
-                  .filter(Boolean)
-                  .join(" ");
-                return `## Scene ${idx + 1} (${s.id})\n${body || "Describe the visual action and narration for this shot."}\n`;
-              })
-              .join("\n");
-          setScript(defaultScript);
-        }
+        setStory(data.ok && data.script ? scriptToStory(data.script) : []);
+        setDirty(false);
         setLoading(false);
       })
       .catch(() => {
@@ -289,7 +382,8 @@ export function ScriptEditor({
       currentFilm.voiceover?.src || `videos/${film.id}/voiceover.wav`;
     fetch(existingAudio, { method: "HEAD" })
       .then((res) => {
-        if (isMounted && res.ok) {
+        // The dev server answers an unknown path with the app page, so only an audio response counts as a recording.
+        if (isMounted && res.ok && (res.headers.get("content-type") ?? "").startsWith("audio")) {
           setAudioUrl(`${existingAudio}?t=${Date.now()}`);
         }
       })
@@ -305,12 +399,126 @@ export function ScriptEditor({
     };
   }, [film.id]);
 
-  // Compute word counts and structured screenplay status
-  const spokenBlocks = extractSpokenBlocks(script);
-  const spokenText = spokenBlocks.join(" ");
-  const spokenWords = spokenText.split(/\s+/).filter(Boolean);
-  const totalWords = script.split(/\s+/).filter(Boolean);
-  const isStructured = hasScreenplayTags(script);
+  // Narration lines, in order: exactly what the voiceover will speak.
+  const spokenBlocks = narrationLines(script);
+  const spokenWords = spokenBlocks.join(" ").split(/\s+/).filter(Boolean);
+  const paragraphCount = story.reduce((sum, section) => sum + section.paragraphs.length, 0);
+  const unrecordedCount = narration ? narration.lines.filter((line) => !line.recorded).length : 0;
+  // What the voiceover would actually say for each paragraph (quotes and markup removed), to tell whether it is recorded.
+  const spokenByParagraph = useMemo(
+    () =>
+      new Map(
+        story.flatMap((section) =>
+          section.paragraphs.map((p): [string, string] => [
+            p.id,
+            narrationLines(storyToScript([{ id: "p", title: "p", paragraphs: [{ ...p, visual: [], onScreen: [] }] }]))[0] ?? "",
+          ]),
+        ),
+      ),
+    [story],
+  );
+  const recordedLines = new Set(narration ? narration.lines.filter((line) => line.recorded).map((line) => line.text) : []);
+
+  const revisionRef = useRef<string>("");
+  const dirtyRef = useRef<boolean>(false);
+  useEffect(() => {
+    dirtyRef.current = dirty;
+  }, [dirty]);
+
+  /**
+   * Fetches the narration change list and recording status. A script that changed on disk behind the
+   * editor's back (the agent wrote it) reloads into the story when nothing here is unsaved, and is
+   * flagged otherwise.
+   */
+  const refreshNarration = async (adopt = false) => {
+    try {
+      const res = await fetch(`/api/narration/${film.id}?voice=${encodeURIComponent(selectedVoice)}`);
+      if (!res.ok) return;
+      const data: NarrationState & { ok: boolean } = await res.json();
+      setNarration({ revision: data.revision, entries: data.entries, lines: data.lines });
+      if (adopt || !revisionRef.current) {
+        revisionRef.current = data.revision;
+        return;
+      }
+      if (data.revision !== revisionRef.current) {
+        if (dirtyRef.current) {
+          setDiskChanged(true);
+        } else {
+          const scriptRes = await fetch(`/api/scripts/${film.id}`);
+          const scriptData = await scriptRes.json();
+          setStory(scriptData.ok && scriptData.script ? scriptToStory(scriptData.script) : []);
+          revisionRef.current = data.revision;
+          setDiskChanged(false);
+        }
+      }
+    } catch {
+      // The change list is an aid; the editor works without it.
+    }
+  };
+
+  // Load the change list when the project or voice changes, and keep it fresh while the stage is open.
+  useEffect(() => {
+    revisionRef.current = "";
+    void refreshNarration();
+    const timer = setInterval(() => void refreshNarration(), 4000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [film.id, selectedVoice]);
+
+  /** Replaces the story's edited paragraph and marks the script as having unsaved edits. */
+  const updateParagraph = (sectionIdx: number, paraIdx: number, patch: Partial<StoryParagraph>) => {
+    setStory((current) =>
+      current.map((section, si) =>
+        si !== sectionIdx ? section : { ...section, paragraphs: section.paragraphs.map((p, pi) => (pi === paraIdx ? { ...p, ...patch } : p)) },
+      ),
+    );
+    setDirty(true);
+  };
+
+  /** Adds an empty paragraph below the given one (or a first section when the story is empty). */
+  const addParagraphBelow = (sectionIdx: number, paraIdx: number) => {
+    setStory((current) => {
+      if (current.length === 0) {
+        return [{ id: "part-1", title: "Part 1", paragraphs: [{ id: "part-1-1", narration: "", visual: [], onScreen: [] }] }];
+      }
+      return current.map((section, si) => {
+        if (si !== sectionIdx) return section;
+        const next = [...section.paragraphs];
+        next.splice(paraIdx + 1, 0, { id: `${section.id}-new-${Date.now()}`, narration: "", visual: [], onScreen: [] });
+        return { ...section, paragraphs: next };
+      });
+    });
+    setDirty(true);
+  };
+
+  /** Removes a paragraph, and its section when it was the last one in it. */
+  const removeParagraph = (sectionIdx: number, paraIdx: number) => {
+    setStory((current) =>
+      current
+        .map((section, si) => (si !== sectionIdx ? section : { ...section, paragraphs: section.paragraphs.filter((_, pi) => pi !== paraIdx) }))
+        .filter((section) => section.paragraphs.length > 0),
+    );
+    setDirty(true);
+  };
+
+  /** Turns pasted text (a plain story or an already tagged script) into story paragraphs. */
+  const addPastedStory = () => {
+    const pasted = scriptToStory(pasteText);
+    if (pasted.length === 0) return;
+    setStory((current) => [...current, ...pasted]);
+    setPasteText("");
+    setDirty(true);
+  };
+
+  /** Reloads the story from disk, discarding unsaved edits. */
+  const reloadFromDisk = async () => {
+    const res = await fetch(`/api/scripts/${film.id}`);
+    const data = await res.json();
+    setStory(data.ok && data.script ? scriptToStory(data.script) : []);
+    setDirty(false);
+    setDiskChanged(false);
+    await refreshNarration(true);
+  };
 
   /**
    * Saves the current script text to disk under scripts/<projectId>.md.
@@ -326,6 +534,9 @@ export function ScriptEditor({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save script");
+      setDirty(false);
+      setDiskChanged(false);
+      await refreshNarration(true);
       setStatusMsg({ type: "success", text: `Script saved to ${data.file}` });
       setTimeout(() => setStatusMsg(null), 3500);
     } catch (err: any) {
@@ -333,95 +544,6 @@ export function ScriptEditor({
     } finally {
       setSaving(false);
     }
-  };
-
-  /**
-   * Re-parses the raw screenplay markdown into segment cards and switches to Visual Studio view.
-   */
-  const switchToStudio = () => {
-    let segs = parseClaudeScript(script);
-    if (segs.length === 0 && script.trim()) {
-      segs = structureUntaggedProseToScript(script);
-    }
-    setSegments(segs);
-    setViewMode("studio");
-  };
-
-  /**
-   * Applies a new segment list to state and immediately re-serializes it back into the raw markdown script.
-   */
-  const updateSegments = (next: ScriptSegment[]) => {
-    setSegments(next);
-    setScript(serializeSegmentsToScript(next));
-  };
-
-  /**
-   * Updates a segment's title text and keeps the raw markdown in sync.
-   */
-  const updateSegmentTitle = (segIdx: number, title: string) => {
-    updateSegments(
-      segments.map((s, i) => (i === segIdx ? { ...s, title } : s)),
-    );
-  };
-
-  /**
-   * Updates one beat's body text within a segment and keeps the raw markdown in sync.
-   */
-  const updateBeatText = (segIdx: number, beatIdx: number, text: string) => {
-    updateSegments(
-      segments.map((s, si) =>
-        si !== segIdx
-          ? s
-          : {
-              ...s,
-              beats: s.beats.map((b, bi) =>
-                bi === beatIdx ? { ...b, text } : b,
-              ),
-            },
-      ),
-    );
-  };
-
-  /**
-   * Appends a new empty beat of the given type to a segment.
-   */
-  const addBeat = (segIdx: number, type: BeatType) => {
-    updateSegments(
-      segments.map((s, si) =>
-        si !== segIdx ? s : { ...s, beats: [...s.beats, { type, text: "" }] },
-      ),
-    );
-  };
-
-  /**
-   * Removes one beat from a segment.
-   */
-  const removeBeat = (segIdx: number, beatIdx: number) => {
-    updateSegments(
-      segments.map((s, si) =>
-        si !== segIdx
-          ? s
-          : { ...s, beats: s.beats.filter((_, bi) => bi !== beatIdx) },
-      ),
-    );
-  };
-
-  /**
-   * Appends a fresh, empty segment card to the screenplay.
-   */
-  const addSegment = () => {
-    const nextIndex = segments.length + 1;
-    updateSegments([
-      ...segments,
-      { id: `segment-${nextIndex}`, title: `Segment ${nextIndex}`, beats: [] },
-    ]);
-  };
-
-  /**
-   * Removes a segment card entirely from the screenplay.
-   */
-  const removeSegment = (segIdx: number) => {
-    updateSegments(segments.filter((_, i) => i !== segIdx));
   };
 
   /**
@@ -462,17 +584,6 @@ export function ScriptEditor({
         return;
       }
 
-      if (data.script && data.transformed) {
-        setScript(data.script);
-        setSegments(parseClaudeScript(data.script));
-      } else {
-        let segs = parseClaudeScript(script);
-        if (segs.length === 0 && script.trim()) {
-          segs = structureUntaggedProseToScript(script);
-        }
-        setSegments(segs);
-      }
-
       const updatedFilm: Film = {
         ...film,
         canvas: {
@@ -510,9 +621,7 @@ export function ScriptEditor({
 
       setStatusMsg({
         type: "success",
-        text: data.transformed
-          ? `⚡ Auto-structured ${data.shots.length} scenes from prose with visual directions!`
-          : data.dispatch?.ok
+        text: data.dispatch?.ok
           ? `⚡ Built ${data.shots.length} scenes & ${data.dispatch.message}`
           : `Successfully built ${data.shots.length} video scenes and graph nodes from screenplay!`,
       });
@@ -541,7 +650,7 @@ export function ScriptEditor({
     setGenerating(true);
     setStatusMsg({
       type: "info",
-      text: `Synthesizing voiceover (${spokenWords.length} spoken words) using ${selectedVoice}...`,
+      text: `Recording ${unrecordedCount > 0 ? `${unrecordedCount} new or changed line${unrecordedCount === 1 ? "" : "s"}` : "the narration"} (${spokenWords.length} spoken words) using ${selectedVoice}...`,
     });
     try {
       const res = await fetch("/api/generate-voiceover", {
@@ -597,8 +706,12 @@ export function ScriptEditor({
         type: "success",
         text: data.dispatch?.ok
           ? `⚡ Synthesized voiceover (${data.actualDurationSec ? data.actualDurationSec.toFixed(1) : data.estimatedDurationSec}s) & ${data.dispatch.message}`
-          : `Voiceover synthesized from screenplay (${data.spokenWordCount} spoken words, ${data.actualDurationSec ? data.actualDurationSec.toFixed(1) : data.estimatedDurationSec}s actual duration)!`,
+          : `Voiceover ready (${data.spokenWordCount} spoken words, ${data.actualDurationSec ? data.actualDurationSec.toFixed(1) : data.estimatedDurationSec}s)${
+              data.lines ? `: ${data.lines.recorded} line${data.lines.recorded === 1 ? "" : "s"} recorded, ${data.lines.reused} kept as they were` : ""
+            }.`,
       });
+      setDirty(false);
+      void refreshNarration(true);
 
       // Persist the updated film with voiceover to server
       await fetch(`/api/films/${film.id}`, {
@@ -655,8 +768,8 @@ export function ScriptEditor({
             </span>
           </div>
           <p className="text-xs text-ink-soft mt-1">
-            Write or paste your director screenplay, then generate voiceover
-            and auto-prompt the terminal AI coding agent.
+            Write your story as paragraphs. Your agent adds the visuals and
+            on-screen text beside them; the voiceover is recorded line by line.
           </p>
         </div>
 
@@ -729,7 +842,13 @@ export function ScriptEditor({
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-success animate-ping" />
             <span className="font-bold text-ink">AUTO-PROMPTER:</span>
-            <span className="text-ink">{lastDispatchResult.message}</span>
+            <span className="text-ink">
+              {paneDelivery?.state === "sent" && !paneDelivery.duplicate
+                ? `Prompt sent to your ${paneDelivery.agent} agent`
+                : lastDispatchResult.message}
+            </span>
+            {paneDelivery && <PaneDeliveryBadge delivery={paneDelivery} />}
+            {paneDelivery?.state === "failed" && <span className="text-ink-soft">{paneDelivery.error}</span>}
           </div>
           <button
             onClick={() => setLastDispatchResult(null)}
@@ -839,222 +958,105 @@ export function ScriptEditor({
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6 flex-1 min-h-0">
         {/* LEFT 3 COLS: Big Screenplay Editor */}
         <div className="lg:col-span-3 flex flex-col gap-3 min-h-[420px]">
-          {/* Editor Header Bar with Multi-View Switcher */}
+          {/* Story header bar */}
           <div className="flex items-center justify-between bg-paper-3 border-2 border-ink px-4 py-2 flex-wrap gap-2 shadow-nb-sm">
             <div className="flex items-center gap-4 text-xs text-ink-soft">
               <span>
-                <strong>Spoken VO:</strong>{" "}
-                <span className="text-ink font-mono font-bold">
-                  {spokenWords.length} words
-                </span>
+                <strong>Paragraphs:</strong>{" "}
+                <span className="text-ink font-mono font-bold">{paragraphCount}</span>
               </span>
               <span>
-                <strong>Total Script:</strong>{" "}
-                <span className="text-ink font-mono font-bold">
-                  {totalWords.length} words
-                </span>
+                <strong>Spoken:</strong>{" "}
+                <span className="text-ink font-mono font-bold">{spokenWords.length} words</span>
               </span>
               <span>
                 <strong>Duration:</strong>{" "}
                 {duration > 0 ? (
-                  <span className="text-ink font-mono font-bold">
-                    {formatTime(duration)}
-                  </span>
+                  <span className="text-ink font-mono font-bold">{formatTime(duration)}</span>
                 ) : (
-                  <span className="text-ink-soft font-mono italic">
-                    --:-- (Pending VO)
-                  </span>
+                  <span className="text-ink-soft font-mono italic">--:-- (Pending VO)</span>
                 )}
               </span>
-              {isStructured && (
-                <span className="text-[11px] bg-success/25 text-ink px-2 py-0.5 border-2 border-ink font-medium flex items-center gap-1 shadow-nb-sm">
-                  <CheckCircle2 size={12} /> Screenplay Structured
+              {dirty && (
+                <span className="text-[11px] bg-warn/40 text-ink px-2 py-0.5 border-2 border-ink font-medium shadow-nb-sm">
+                  Unsaved edits
                 </span>
               )}
             </div>
-
-            {/* View Mode Toggle: Screenplay vs Visual Studio */}
-            <div className="flex items-center gap-1 bg-paper-3 p-0.5 border-2 border-ink shadow-nb-sm">
-              <button
-                onClick={() => setViewMode("screenplay")}
-                className={`text-[11px] px-2.5 py-1 font-medium flex items-center gap-1.5 transition-all ${
-                  viewMode === "screenplay"
-                    ? "bg-select text-select-ink font-bold"
-                    : "text-ink-soft hover:text-ink"
-                }`}
-                title="Full director screenplay editor with visual cues and scene headers"
-              >
-                <FileText size={13} /> Full Screenplay
-              </button>
-              <button
-                onClick={switchToStudio}
-                className={`text-[11px] px-2.5 py-1 font-medium flex items-center gap-1.5 transition-all ${
-                  viewMode === "studio"
-                    ? "bg-select text-select-ink font-bold"
-                    : "text-ink-soft hover:text-ink"
-                }`}
-                title="Interactive segment cards for editing Narration, Visual, and On-Screen beats"
-              >
-                <LayoutGrid size={13} /> Visual Studio
-              </button>
-            </div>
           </div>
 
-          {/* Text / Spoken Preview Area */}
+          {diskChanged && (
+            <div className="px-3.5 py-2.5 bg-info/25 border-2 border-ink text-xs flex items-center justify-between gap-3" role="status">
+              <span>Your agent changed the script while you had unsaved edits here. Save to keep yours, or reload to see the agent's version.</span>
+              <button onClick={reloadFromDisk} className="border-2 border-ink px-2.5 py-1 font-bold uppercase text-[11px] bg-paper-3 shadow-nb-sm">
+                Reload
+              </button>
+            </div>
+          )}
+
+          {/* The story: one block per paragraph, notes beside it */}
           <div className="flex-1 relative bg-paper-3 border-x border-b-2 border-ink overflow-hidden flex flex-col">
-            {/* VIEW MODE 1: FULL SCREENPLAY EDITOR */}
-            {viewMode === "screenplay" && (
-              <textarea
-                value={script}
-                onChange={(e) => setScript(e.target.value)}
-                placeholder="Paste your Claude screenplay here with ## 0:00-0:20 - TITLE headers, [VISUAL], [NARRATION], and [ON SCREEN] tag blocks..."
-                aria-label="Screenplay text" className="w-full h-full min-h-[380px] p-4 bg-transparent text-ink font-mono text-sm leading-relaxed outline-none resize-none selection:bg-select/30 placeholder:text-ink-mute"
-                spellCheck={false}
-              />
-            )}
+            <div className="w-full h-full min-h-[380px] p-4 bg-paper overflow-y-auto flex flex-col gap-5" data-testid="story-editor">
+              {loading && <p className="text-xs text-ink-soft">Loading the story...</p>}
 
-            {/* VIEW MODE 1.5: VISUAL STUDIO SEGMENT CARDS */}
-            {viewMode === "studio" && (
-              <div className="w-full h-full min-h-[380px] p-4 bg-paper overflow-y-auto flex flex-col gap-4">
-                {segments.length === 0 && (
-                  <div className="p-3 bg-info/25 border-2 border-ink/60 text-xs text-ink shadow-nb-sm">
-                    No segments detected yet. Add a segment below or paste a
-                    screenplay with{" "}
-                    <code className="text-ink">## timestamp - Title</code>{" "}
-                    headers in Full Screenplay.
+              {!loading && story.length === 0 && (
+                <div className="flex flex-col gap-3" data-testid="story-empty">
+                  <p className="text-sm text-ink">
+                    This project has no script yet. Write or paste your story below (paragraphs, and markers like
+                    <code className="mx-1 text-ink">#Start</code> or <code className="mx-1 text-ink">#Conclusion</code> if you like),
+                    or ask your agent to write it for you.
+                  </p>
+                  <textarea
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                    placeholder={"#Start\nOne idea per paragraph...\n\n#Conclusion\nHow it ends."}
+                    aria-label="Paste your story"
+                    rows={8}
+                    className="w-full bg-paper-3 border-2 border-ink p-3 text-sm text-ink outline-none focus:border-select resize-y placeholder:text-ink-mute"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={addPastedStory}
+                      disabled={!pasteText.trim()}
+                      className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm bg-primary text-ink disabled:opacity-40"
+                    >
+                      <Plus size={13} /> Add to story
+                    </button>
+                    <button
+                      onClick={() => addParagraphBelow(0, 0)}
+                      className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm bg-paper-3 text-ink"
+                    >
+                      Start with a blank paragraph
+                    </button>
                   </div>
-                )}
+                </div>
+              )}
 
-                {segments.map((seg, segIdx) => (
-                  <div
-                    key={seg.id}
-                    className="bg-paper-3 border-2 border-ink p-4 flex flex-col gap-3 shadow-nb-sm"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 flex-1">
-                        {(seg.timeStart || seg.timeEnd) && (
-                          <span className="text-[10px] bg-paper-3 text-ink-soft border-2 border-ink px-2 py-0.5 font-mono shrink-0 shadow-nb-sm">
-                            {seg.timeStart}-{seg.timeEnd}
-                          </span>
-                        )}
-                        <input
-                          value={seg.title}
-                          onChange={(e) =>
-                            updateSegmentTitle(segIdx, e.target.value)
-                          }
-                          placeholder="Segment title"
-                          className="flex-1 bg-transparent text-sm font-bold text-ink outline-none border-b border-transparent focus:border-select py-0.5"
-                        />
-                      </div>
-                      <button
-                        onClick={() => removeSegment(segIdx)}
-                        className="text-ink-soft hover:text-ink p-1 shrink-0"
-                        title="Delete segment"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+              {story.map((section, si) => (
+                <section key={section.id} className="flex flex-col gap-3" data-testid="story-section">
+                  {(!isDerivedTitle(section) || section.timeStart) && (
+                    <div className="flex items-center gap-2 border-b-2 border-ink pb-1">
+                      {!isDerivedTitle(section) && <h3 className="text-sm font-extrabold tracking-tight text-ink">{section.title}</h3>}
+                      {section.timeStart && section.timeEnd && (
+                        <span className="text-[10px] bg-paper-3 text-ink-soft border-2 border-ink px-2 py-0.5 font-mono shadow-nb-sm">
+                          {section.timeStart}-{section.timeEnd}
+                        </span>
+                      )}
                     </div>
-
-                    <div className="flex flex-col gap-2">
-                      {seg.beats.map((beat, beatIdx) => {
-                        const beatMeta =
-                          beat.type === "narration"
-                            ? {
-                                label: "Narration",
-                                icon: <Mic size={11} />,
-                                color:
-                                  "text-ink border-2 border-ink/60 bg-success/25",
-                              }
-                            : beat.type === "visual"
-                              ? {
-                                  label: "Visual",
-                                  icon: <Camera size={11} />,
-                                  color:
-                                    "text-ink border-2 border-ink/60 bg-warn/25",
-                                }
-                              : {
-                                  label: "On-Screen",
-                                  icon: <Eye size={11} />,
-                                  color:
-                                    "text-select-text border-select/40 bg-select/10",
-                                };
-                        const beatWords = beat.text
-                          .split(/\s+/)
-                          .filter(Boolean);
-                        return (
-                          <div
-                            key={beatIdx}
-                            className={`border p-2.5 ${beatMeta.color}`}
-                          >
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-[10px] font-bold uppercase tracking-wide flex items-center gap-1.5">
-                                {beatMeta.icon} {beatMeta.label}
-                                {beat.type === "narration" &&
-                                  beatWords.length > 0 && (
-                                    <span className="font-mono font-normal opacity-70">
-                                      ({beatWords.length}w)
-                                    </span>
-                                  )}
-                              </span>
-                              <button
-                                onClick={() => removeBeat(segIdx, beatIdx)}
-                                className="opacity-60 hover:opacity-100"
-                                title="Remove beat"
-                              >
-                                <X size={12} />
-                              </button>
-                            </div>
-                            <textarea
-                              value={beat.text}
-                              onChange={(e) =>
-                                updateBeatText(segIdx, beatIdx, e.target.value)
-                              }
-                              placeholder={
-                                beat.type === "narration"
-                                  ? "Spoken voiceover dialogue..."
-                                  : beat.type === "visual"
-                                    ? "Camera, animation, or diagram direction..."
-                                    : "Text overlay or headline..."
-                              }
-                              rows={2}
-                              className="w-full bg-transparent text-xs text-ink outline-none resize-none placeholder:text-ink-mute font-sans"
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 pt-1 border-t-2 border-ink">
-                      <button
-                        onClick={() => addBeat(segIdx, "narration")}
-                        className="text-[10px] px-2 py-1 bg-success/25 hover:bg-success/25 border-2 border-ink/60 text-ink font-medium flex items-center gap-1 shadow-nb-sm hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
-                      >
-                        <Plus size={10} /> Narration
-                      </button>
-                      <button
-                        onClick={() => addBeat(segIdx, "visual")}
-                        className="text-[10px] px-2 py-1 bg-warn/25 hover:bg-warn/25 border-2 border-ink/60 text-ink font-medium flex items-center gap-1 shadow-nb-sm hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
-                      >
-                        <Plus size={10} /> Visual
-                      </button>
-                      <button
-                        onClick={() => addBeat(segIdx, "onscreen")}
-                        className="text-[10px] px-2 py-1 bg-select/10 hover:bg-select/20 border border-select/40 text-select-text font-medium flex items-center gap-1"
-                      >
-                        <Plus size={10} /> On-Screen
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                <button
-                  onClick={addSegment}
-                  className="text-xs px-3 py-2 border border-dashed border-2 border-ink text-ink-soft hover:text-ink hover:border-select flex items-center justify-center gap-1.5 transition-all shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
-                >
-                  <Plus size={13} /> Add Segment
-                </button>
-              </div>
-            )}
+                  )}
+                  {section.paragraphs.map((paragraph, pi) => (
+                    <StoryParagraphRow
+                      key={paragraph.id}
+                      paragraph={paragraph}
+                      needsRecording={narration !== null && Boolean(spokenByParagraph.get(paragraph.id)) && !recordedLines.has(spokenByParagraph.get(paragraph.id) ?? "")}
+                      onChange={(patch) => updateParagraph(si, pi, patch)}
+                      onAddBelow={() => addParagraphBelow(si, pi)}
+                      onRemove={() => removeParagraph(si, pi)}
+                    />
+                  ))}
+                </section>
+              ))}
+            </div>
           </div>
 
           {/* AUDIO PLAYER EMBEDDED BELOW SCRIPT */}
@@ -1243,30 +1245,62 @@ export function ScriptEditor({
             </div>
           </div>
 
-          {/* Screenplay Workflow Card */}
+          {/* Narration change list */}
+          <div className="bg-paper-3 border-2 border-ink p-4 flex flex-col gap-3 shadow-nb-sm" data-testid="narration-changes">
+            <h3 className="text-sm font-bold text-ink flex items-center gap-1.5">
+              <History size={15} className="text-select-text" /> Narration changes
+            </h3>
+            <p className="text-[11px] text-ink-soft">
+              {narration
+                ? unrecordedCount === 0
+                  ? "Every narration line has a recording."
+                  : `${unrecordedCount} of ${narration.lines.length} line${narration.lines.length === 1 ? "" : "s"} need recording. Only those are recorded next time.`
+                : "Loading..."}
+            </p>
+            {narration && narration.entries.length === 0 && (
+              <p className="text-[11px] text-ink-soft border-t-2 border-ink pt-2">
+                No changes yet. Edits you or your agent make to the narration are listed here.
+              </p>
+            )}
+            {narration && narration.entries.length > 0 && (
+              <ul className="flex flex-col gap-2 border-t-2 border-ink pt-2 max-h-72 overflow-y-auto">
+                {narration.entries.map((entry) => (
+                  <li key={entry.id} className="text-[11px] text-ink flex flex-col gap-0.5" data-testid="narration-change">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`font-mono font-bold uppercase px-1.5 border border-ink ${entry.source === "agent" ? "bg-info/40" : "bg-success/30"}`}>
+                        {entry.source === "agent" ? "Agent" : "You"}
+                      </span>
+                      <span className="font-bold uppercase tracking-wide">{entry.kind}</span>
+                      <span className="ml-auto font-mono text-ink-soft">{new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
+                    {entry.before !== undefined && <div className="text-ink-soft line-through break-words">{entry.before}</div>}
+                    {entry.after !== undefined && <div className="break-words">{entry.after}</div>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* How it works */}
           <div className="bg-paper-3 border-2 border-ink p-4 flex flex-col gap-3 text-xs text-ink-soft shadow-nb-sm">
             <h3 className="text-sm font-bold text-ink flex items-center gap-1.5">
-              <Clapperboard size={15} className="text-select-text" /> Screenplay
-              Workflow Guide
+              <Clapperboard size={15} className="text-select-text" /> How the script works
             </h3>
             <ul className="space-y-2 list-disc list-inside text-[11px]">
               <li>
-                <strong>Write dialogue:</strong> Use [VISUAL], [NARRATION], and
-                [ON SCREEN] tag blocks per scene (legacy
-                VO:/Voiceover:/Narrator: still work).
+                <strong>Your words stay yours:</strong> write the story as paragraphs. Nothing reformats
+                it; your agent only fills in the notes beside each paragraph.
               </li>
               <li>
-                <strong>Edit visually:</strong> Switch to Visual Studio to edit
-                each beat as a card, two-way synced with the raw markdown.
+                <strong>Agent edits are tracked:</strong> if your agent changes or writes narration, every change
+                shows in the list above.
               </li>
               <li>
-                <strong>Auto-Build:</strong> Automatically constructs video
-                shots, visual metaphors, and canvas nodes directly from the
-                script.
+                <strong>Auto-Build:</strong> constructs video shots and canvas nodes from the story.
               </li>
               <li>
-                <strong>Generate Voiceover:</strong> Synthesizes strictly the
-                screenplay's spoken dialogue into audio.
+                <strong>Generate Voiceover:</strong> records each narration line once; later runs re-record
+                only the lines that changed.
               </li>
             </ul>
           </div>
@@ -1274,4 +1308,13 @@ export function ScriptEditor({
       </div>
     </div>
   );
+}
+
+/** The badge that says where an Auto-Prompt stands: queued behind a busy agent, sending, sent, or not sent. */
+function PaneDeliveryBadge({ delivery }: { delivery: PaneDeliveryView }) {
+  if (delivery.duplicate) return <Badge tone="quiet">Already queued</Badge>;
+  if (delivery.state === "queued") return <Badge tone="warn" title={`Sent when your ${delivery.agent} agent is idle at an empty prompt`}>Queued</Badge>;
+  if (delivery.state === "sending") return <Badge tone="info">Sending</Badge>;
+  if (delivery.state === "sent") return <Badge tone="success">Sent</Badge>;
+  return <Badge tone="danger" title={delivery.error}>Not sent</Badge>;
 }

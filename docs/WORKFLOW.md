@@ -39,7 +39,7 @@ Run `aideos audio fetch` once before the first design build, because the default
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  STAGE 1: SCREENPLAY                                                         │
 │  • Raw Prompt / Technical Topic -> Director drafts a Claude screenplay       │
-│  • Or a hand-written screenplay ([VISUAL], [NARRATION], [ON SCREEN] beats)   │
+│  • Or your own story: plain paragraphs (#Start, #Conclusion markers ok)      │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │ Script Text
                                        ▼
@@ -81,13 +81,13 @@ Run `aideos audio fetch` once before the first design build, because the default
 ## 3. Step-by-Step Pipeline Execution
 
 ### Stage 1: Screenplay (`backend/pipeline/director.ts`, `backend/scriptIntake.ts`)
-1. **Intake**: Receives a technical topic (`aideos direct "<prompt>"`) or a hand-written Claude screenplay (`aideos film --script`).
+1. **Intake**: Receives a technical topic (`aideos direct "<prompt>"`), the user's own plain-text story, or a hand-written Claude screenplay (`aideos film --script`). A plain-text story is converted to the internal tagged form by Aideos itself (`plainTextToTaggedScript`, deterministic, no agent); the agent only fills the visual and on-screen slots.
 2. **Director Draft**: For a topic, an LLM briefed on [docs/DIRECTOR_GUIDE.md](DIRECTOR_GUIDE.md) drafts a screenplay, and `backend/scriptIntake.ts` validates it before production starts.
 3. **Output**: `videos/<slug>/script.md` containing the timestamped beats with visual direction, narration, and on-screen text.
 
 ### Stage 2: Audio Synthesis & Alignment (`backend/audio.ts`, `backend/pcm.ts`, `backend/tts.ts`)
 1. **Shot-Scoped Segmentation**: Splits script text by Claude screenplay tags (`[NARRATION]`), paragraphs, or explicit shot arrays into discrete shot-scoped narration segments without slicing internal sentence punctuation or leaking visual tags.
-2. **TTS Synthesis & Chunking**: Synthesizes speech per shot segment via Kokoro-82M ONNX (offline default, default speed 0.75 for measured explainer pacing), Google Cloud Neural Audio, or macOS say using sentence-boundary splitting.
+2. **TTS Synthesis & Chunking**: Synthesizes speech per shot segment via Kokoro-82M ONNX (offline default, default speed 0.75 for measured explainer pacing), Google Cloud Neural Audio, or macOS say using sentence-boundary splitting. Each narration line is stored under `videos/<slug>/voiceover_lines/` keyed by a content fingerprint (its words plus the voice, pace and chunk limit, `backend/voiceLines.ts`), so regenerating re-records only changed lines and reuses every other recording.
 3. **Sample-Domain Assembly & Normalization**: Trims silence samples from Float32 buffers, applies short boundary fades to eliminate stitch clicks, inserts exact whole-sample pauses between shot boundaries, normalizes peak amplitude, applies loudness normalization to -16 integrated LUFS (-1 dB true peak), and writes `voiceover.wav`.
 4. **Alignment & Cues**: Derives exact word-level millisecond start/end timestamps, written to `captions.vtt` and `voiceover_words.json`.
 
@@ -108,7 +108,7 @@ Run `aideos audio fetch` once before the first design build, because the default
 ### Stage 4: Spatial Graph & Canvas Layout (`src/dl/CanvasGraph.tsx`)
 1. **2D Node Layout**: Positions concept nodes on the continuous spatial graph with bounding boxes $(x, y, w, h)$.
 2. **Camera Framing**: Solves continuous camera framing and zoom targets across canvas nodes.
-3. **Package Assembly**: Assembles self-contained video package under `videos/<slug>/` (`film.json`, `script.md`, `voiceover.wav`, `footage/`, `visuals/`) loaded by `src/dl/videoPackageLoader.ts`.
+3. **Package Assembly**: Assembles self-contained video package under `videos/<slug>/` (`film.json`, `script.md`, `voiceover.wav`, `voiceover_lines/`, `narration_log.json`, `footage/`, `visuals/`) loaded by `src/dl/videoPackageLoader.ts`.
 
 ### Stage 5: Remotion Video Rendering (`src/dl/Film.tsx`)
 1. **Compositions**:
@@ -127,14 +127,15 @@ Run `aideos audio fetch` once before the first design build, because the default
 
 The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http://localhost:3002` for stable (launched with `npm run editor` or the channel launchers; see [Local releases](RELEASES.md)), presenting a 7-stage Neobrutalism editing interface:
 
-1. **Stage 1: Script (`ScriptStage.tsx`)**: Write and edit screenplay narration text in Full Screenplay markdown, interactive Visual Studio beat cards, or Spoken Text view, with automatic Remotion sub-shot compilation and instant multi-provider TTS voiceover generation (Kokoro, Deepgram, Google Cloud TTS, macOS say).
+1. **Stage 1: Script (`ScriptStage.tsx`)**: Write the story as plain paragraphs (the tagged form stays internal, and Aideos converts plain text itself, never an agent), with the agent's visual and on-screen notes as collapsible notes beside each paragraph, a visible narration change list, automatic Remotion sub-shot compilation and per-line multi-provider TTS voiceover generation that re-records only changed lines (Kokoro, Deepgram, Google Cloud TTS, macOS say).
 2. **Stage 2: Story (`StoryStage.tsx`)**: Drag and drop nodes across the 2D infinite spatial canvas, edit card labels, route directed edges, and solve camera zoom anchors, automatically streaming canvas actions to connected coding agents.
 3. **Stage 3: Look (`LookStage.tsx`)**: Sub-views for bespoke design and look plans (`DesignView.tsx`: stage, cast, shot treatments, LOOK.md preview, captain approval via `approveLookPlan`, artwork, motion, and honest visual swaps), project theme customization (`CustomizationEditor.tsx`: paper textures, typography, accent color), and storyboard keyframe gallery (`Styleboard.tsx`).
 4. **Stage 4: Motion (`MotionStage.tsx`)**: Custom SVG movie animation authoring studio with element-level timeline keyframing, motion templates (staged entry, pulse, draw-on strokes), and frame-synchronized preview.
 5. **Stage 5: Edit (`EditStage.tsx`)**: Non-linear multi-track timeline displaying audio waveforms, track controls (lock, mute, hide), clip dragging with sticky snapping, transition selectors, unified clip/shot inspector, and model-driven AI edit panel connected to Agent Bridge. Its Reel controls show delivered length against the 179-second cap, the kept/dropped shots and condensed narration, backend reel checks, and a 9:16 preview; owners can rebuild through the existing reel delivery path.
 6. **Stage 6: Captions (`CaptionsStage.tsx`)**: Word-level caption timing editor for word text and frame ranges. To move captions, click them in the Edit preview and drag.
-7. **Stage 7: Review (`ReviewStage.tsx`)**: AI Critique Studio drawer for natural-language feedback with Agent Bridge dispatch, SVG data visualization charts (coverage map, duration distribution, pacing metrics), and headless Remotion MP4 export.
+7. **Stage 7: Review (`ReviewStage.tsx`)**: AI Critique Studio drawer for natural-language feedback with Agent Bridge dispatch, and SVG data visualization charts (coverage map, duration distribution, pacing metrics).
 8. **Persistent Preview & Controls**: 60 FPS Remotion preview player with 16:9 Long and 9:16 Vertical Reel aspect ratio toggling, transport controls, and live studio hot-reload reflecting agent updates in real time.
+9. **Studio Export (`ExportProgressModal.tsx`, `useExportJob.ts`)**: Clicking Export in the header opens a dialog on a Start screen. Nothing renders until Start is pressed. Progress follows actual renderer frame counts, Cancel stops the render and deletes the partial video, the close cross hides the dialog while rendering (reopened via a header progress chip), and a finished render shows an explicit Download button (no automatic download).
 
 ---
 
@@ -142,8 +143,8 @@ The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http:
 
 | Command | Action | Output Artifact |
 | :--- | :--- | :--- |
-| `aideos` | Launches and opens interactive web studio | `http://localhost:3002/` (stable) or `http://localhost:3001/` (dev); see [Local releases](RELEASES.md) |
-| `aideos-dev` | Launches updating dev studio on reserved dev port | `http://localhost:3001/` |
+| `aideos` | Asks which coding agent to connect first, then starts the web studio and opens it in the browser | `http://localhost:3002/` (stable) or `http://localhost:3001/` (dev); see [Local releases](RELEASES.md) |
+| `aideos-dev` | Launches updating dev studio on reserved dev port | `http://localhost:3001/`; see [Local releases](RELEASES.md) |
 | `aideos-stable` | Launches stable studio or copies films into stable | `http://localhost:3002/`; see [Local releases](RELEASES.md) |
 | `aideos version / which` | Shows channel, release tag, commit and checkout path | Terminal output; see [Local releases](RELEASES.md) |
 | `aideos exit` | Gracefully stops the active channel's dev server | Terminal output |
@@ -162,11 +163,11 @@ The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http:
 | `aideos studio` | Opens native Remotion Studio UI | Remotion Studio browser tab |
 | `aideos test` | Executes full automated verification suite | Test TAP results |
 | `aideos produce` | Runs audio-first produce pipeline | `voiceover.wav`, `captions.vtt`, `film.ts` |
-| `aideos direct "<prompt>"` | Auto-prompt: LLM director plans and produces a complete film from a prompt | `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` (or `<outDir>/<slug>-<format>.mp4` when `--out` is set) |
+| `aideos direct "<prompt>" [--final-export]` | Auto-prompt: LLM director plans and produces a draft film from a prompt, stopping after `assemble`; `--final-export` (only when the user explicitly asked) also renders and verifies | Draft: `videos/<slug>/film.json`, narration and design. With `--final-export`: `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` (or `<outDir>/<slug>-<format>.mp4` when `--out` is set) |
 | `aideos review <slug\|mp4> [--format <format>]` | Runs deterministic quality review checks (default reviews every rendered format) | `<out>/review.json`, `review.reel.json`, evidence stills |
 | `aideos gemini-review <mp4>` | Evaluates video against 12-criterion rubric via Gemini 3.8 Flash (agy) | Terminal score & verdict, JSON |
 | `aideos all-check <slug>` | Full check and repair in background agent (long and reel, 9.0+ bar) | `videos/<slug>/all-check/`, final MP4s |
-| `aideos film` (or `npm run backend -- film`) | Autonomous pipeline (intake, narrate, look, design, reel, b-roll, assemble, render, verify) | `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` (or `<outDir>/<slug>-<format>.mp4` when `--out` is set) |
+| `aideos film [--final-export]` (or `npm run backend -- film`) | Autonomous pipeline (intake, narrate, look, design, reel, b-roll, assemble), stopping at a draft; `--final-export` (only when the user explicitly asked) also runs render and verify | Draft: `videos/<slug>/film.json`, narration and design. With `--final-export`: `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` (or `<outDir>/<slug>-<format>.mp4` when `--out` is set) |
 | `aideos connect` | Connects local coding agent via one-time pairing code | Connected agent session |
 | `npm run validate:film <path>` | Standalone invariant validator for arbitrary film manifests | Runsheet & status in terminal |
 | `npm run backend -- mcp` | Starts Model Context Protocol (MCP) server over stdio | MCP stdio interface |

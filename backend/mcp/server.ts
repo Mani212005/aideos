@@ -16,7 +16,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { runProduction } from "../pipeline/run";
 import { FILM_ID, readFilm, writeFilm, ROOT, VIDEOS_DIR } from "../pipeline/filmStore";
-import { DESIGN_MODES, PRODUCTION_STAGES, type ProductionProgress, type ProductionRequest, type ProductionResult } from "../pipeline/types";
+import { DESIGN_MODES, PRODUCTION_STAGES, draftStopAfter, type ProductionProgress, type ProductionRequest, type ProductionResult } from "../pipeline/types";
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
 import { buildEditContext } from "../editContext/buildEditContext";
 import { detectFillers } from "../editContext/detectFillers";
@@ -53,7 +53,7 @@ function newRunId(): string {
 }
 
 /** Starts a production run in the background and returns its record straight away. */
-function startRun(request: ProductionRequest): RunRecord {
+function startRun(request: ProductionRequest, produce: typeof runProduction): RunRecord {
   const record: RunRecord = {
     runId: newRunId(),
     slug: request.slug ?? "",
@@ -64,7 +64,7 @@ function startRun(request: ProductionRequest): RunRecord {
   };
   runs.set(record.runId, record);
 
-  void runProduction(request, (event) => {
+  void produce(request, (event) => {
     record.events.push(event);
     if (record.events.length > MAX_EVENTS) record.events.splice(0, record.events.length - MAX_EVENTS);
   })
@@ -161,6 +161,8 @@ export interface McpServerOptions {
   };
   /** Injected LLM caller for testing and offline execution in the edit planner. */
   llmCaller?: (prompt: string) => Promise<string>;
+  /** Injected production runner for testing; defaults to the real pipeline. */
+  runProduction?: typeof runProduction;
 }
 
 /** Instructions a remote agent reads: it has no shell, only these tools. */
@@ -201,7 +203,8 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
       title: "Produce an Aideos film",
       description:
         "Start a background production run: synthesize narration from the script, compile the film " +
-        "design, optionally render GPU b-roll, render the requested formats, and verify the output. " +
+        "design and optionally render GPU b-roll. It stops after the assemble stage (a draft) unless finalExport is true, " +
+        "which you set only when the user explicitly asked in the terminal for the final export; then it also renders the requested formats and verifies the output. " +
         "Returns a runId right away; poll aideos_run_status to follow it. The design mode defaults " +
         "to inline. For needs_look, write look.json following LOOK_BRIEF.md, call aideos_look_check, " +
         "then call this tool again with the same slug. For needs_design, complete the design brief " +
@@ -211,9 +214,10 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
           .string()
           .min(1)
           .describe(
-            "The narration script. A Claude screenplay using '## timestamp - Title' headers with " +
-              "[VISUAL], [NARRATION] and [ON SCREEN] beats gives the design stage on-screen copy and " +
-              "visual direction to work from. Plain prose is narrated but produces bare canvas shots.",
+            "The script. Plain text works as written: paragraphs, optionally with #Start / #Conclusion style " +
+              "markers, which Aideos converts to its internal tagged form itself. A screenplay using " +
+              "'## timestamp - Title' headers with [VISUAL], [NARRATION] and [ON SCREEN] beats is used as is. " +
+              "Either way the design stage fills the visual and on-screen slots; narration is never reformatted.",
           ),
         title: z.string().optional().describe("Film title. Defaults to the script's top-level heading."),
         slug: z
@@ -243,10 +247,21 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
         resume: z.boolean().optional().describe("Reuse completed stages from a previous run of the same slug. Defaults to true."),
         force: z.array(z.enum(PRODUCTION_STAGES)).optional().describe("Stages to re-run even when resuming."),
         stopAfter: z.enum(PRODUCTION_STAGES).optional().describe("Stop cleanly after this stage instead of rendering."),
+        finalExport: z
+          .boolean()
+          .optional()
+          .describe(
+            "Render the final long and reel mp4s. Leave unset unless the user explicitly asked for the final export in the terminal: " +
+              "without it the run stops after the assemble stage (a draft: film, narration and design), and you check the work with stills.",
+          ),
       },
     },
     async (input) => {
-      const record = startRun(input as ProductionRequest);
+      const { finalExport, ...request } = input;
+      const record = startRun(
+        { ...request, stopAfter: draftStopAfter(request.stopAfter, finalExport) } as ProductionRequest,
+        options.runProduction ?? runProduction,
+      );
       return jsonResult({
         runId: record.runId,
         state: record.state,
