@@ -15,6 +15,7 @@ import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import fs from "node:fs";
 import path from "node:path";
 import { FILMS_DIR } from "../pipeline/filmStore";
+import type { ProductionRequest } from "../pipeline/types";
 
 /** Reads the text payload from one MCP call result. */
 function toolText(result: unknown): string {
@@ -159,4 +160,30 @@ test("mcp server: integrates with agent bridge task queue", () => {
   const completed = taskQueue.completeTask(task.id, { summary: "Finished scene compilation" });
   assert.equal(completed.status, "completed");
   assert.equal(completed.result.summary, "Finished scene compilation");
+});
+
+test("MCP produce is a draft by default: only finalExport lifts the assemble stop", async () => {
+  const requests: ProductionRequest[] = [];
+  const server = createMcpServer({
+    runProduction: async (request) => {
+      requests.push(request);
+      return new Promise<never>(() => {});
+    },
+  });
+  const client = new Client({ name: "mcp-final-export-test", version: "1.0.0" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  try {
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    const produce = (args: Record<string, unknown>) =>
+      client.callTool({ name: "aideos_produce_film", arguments: { script: "## A\n[NARRATION] Hello.", ...args } });
+    await produce({});
+    await produce({ finalExport: true });
+    await produce({ stopAfter: "design" });
+    await produce({ stopAfter: "design", finalExport: true });
+    assert.deepEqual(requests.map((r) => r.stopAfter), ["assemble", undefined, "design", "design"]);
+    assert.ok(requests.every((r) => !("finalExport" in r)));
+  } finally {
+    await client.close();
+    await server.close();
+  }
 });

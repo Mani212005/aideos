@@ -5,6 +5,7 @@
  */
 
 import type { Film } from "../../src/dl/schema";
+import type { PaneDelivery } from "./paneDelivery";
 
 export type AgentEventType =
   | "auto_build_scenes"
@@ -104,6 +105,8 @@ export interface DispatchResult {
   prompt: string;
   fallbackScheduled: boolean;
   fallbackTimeoutMs: number;
+  /** Where the prompt stands in the agent's terminal pane: sending now, queued behind a busy agent, or dropped as a duplicate. */
+  pane?: PaneDelivery;
   message: string;
   error?: string;
 }

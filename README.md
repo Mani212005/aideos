@@ -69,7 +69,7 @@ Aideos solves this with **Video as Pure Data**:
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 1. SCREENPLAY INTAKE                                                        │
 │ • Natural language topic -> LLM director drafts structured Claude script    │
-│ • Or authored markdown: [VISUAL], [NARRATION], [ON SCREEN] beats            │
+│ • Or your own story as plain paragraphs (#Start, #Conclusion markers ok)    │
 └──────────────────────────────────────┬──────────────────────────────────────┘
                                        │ Script Markdown
                                        ▼
@@ -132,6 +132,8 @@ npm run render
 npm run render:reel
 ```
 
+In the studio, clicking Export opens the export dialog (Start, real frame progress, Cancel, and an explicit Download button).
+
 ### 5. Install the Global CLI (Optional)
 To use the `aideos` command globally from any directory:
 ```bash
@@ -142,7 +144,7 @@ This symlinks `bin/aideos` to `~/.local/bin/aideos`. Ensure `~/.local/bin` is in
 ### 6. Auto-Prompt a Film from a Topic
 Let the autonomous director draft a screenplay, synthesize audio, layout scenes, and render both formats end to end:
 ```bash
-aideos direct "Why attention scales quadratically in transformers" --broll --formats long,reel
+aideos direct "Why attention scales quadratically in transformers" --broll --formats long,reel --final-export
 ```
 
 ### 7. Run Production from an Existing Screenplay
@@ -152,8 +154,10 @@ npm run backend -- film \
   --script-file videos/my-video/script.md \
   --title "My Video Title" \
   --slug my-video \
-  --broll --formats long,reel
+  --broll --formats long,reel --final-export
 ```
+
+Without `--final-export`, `aideos film` and `aideos direct` stop after the `assemble` stage with a draft film you can preview in the studio.
 
 ### 8. Download Audio Assets
 Populate background music and sound effects in the shared audio cache:
@@ -180,13 +184,13 @@ The Aideos Studio (`editor/`) is a Neobrutalist web application built with React
 
 | Stage | Name | Key Functionality |
 | :--- | :--- | :--- |
-| **1** | **Script** | Narrative authoring, Claude intake tag parsing, and multi-provider TTS voiceover generation. |
+| **1** | **Script** | Story-first paragraph authoring, collapsible visual notes, visible change list, per-line TTS voiceover, and terminal agent auto-prompting. |
 | **2** | **Story** | Interactive 2D spatial canvas. Drag concept nodes, connect directed edges, and preview camera framing. |
 | **3** | **Look** | Look planning inspection (`design/look.json`), theme customization (paper, blueprint, charcoal), and styleboards. |
 | **4** | **Motion** | Custom SVG movie animation studio with declarative timeline keyframing and audio retiming. |
 | **5** | **Edit** | Non-linear multi-track timeline, magnetic ripple editing, linked audio-video trimming, and movable captions. |
 | **6** | **Captions** | Word-level timestamp synchronization and karaoke highlighting preview. |
-| **7** | **Review** | Pacing analytics charts, AI critique drawer, and headless Remotion MP4 export. |
+| **7** | **Review** | Pacing analytics charts, AI critique drawer, and review readiness metrics. |
 
 ---
 
@@ -235,7 +239,7 @@ No. The 9:16 Vertical Reel is compiled from the same canvas, camera, and visual 
 Yes. Speech synthesis defaults to Kokoro-82M ONNX, which runs locally without network access. Screenplays can be authored by hand in markdown, and rendering uses local Remotion and FFmpeg. Paid API keys (Google Gemini, Claude) are only required when using autonomous LLM director drafting or automated multimodal video reviews.
 
 #### How does audio-first timing work when the script changes?
-The synthesized narration audio track serves as the master clock for the film. Total shot durations must sum to the voiceover length within +-50ms. When dialogue changes, the TTS synthesizer generates a new audio spine, measures exact word boundaries, and retimes all camera transitions and subtitle reveals accordingly.
+The synthesized narration audio track serves as the master clock for the film. Total shot durations must sum to the voiceover length within +-50ms. When dialogue changes, narration is stored per line by content fingerprint (`voiceover_lines/`) so only changed lines are re-recorded. The synthesizer updates the audio spine, measures exact word boundaries, and retimes all camera transitions and subtitle reveals accordingly.
 
 #### Can I edit the video visually instead of editing code?
 Yes. Launch `npm run editor` to open Aideos Studio. You can drag concept nodes on the 2D spatial canvas, reposition caption cards directly in the video preview, scrub and trim clips on the multi-track timeline, adjust themes, and review pacing charts in the browser.

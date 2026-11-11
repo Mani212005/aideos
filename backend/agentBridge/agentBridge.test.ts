@@ -14,6 +14,7 @@ import path from "node:path";
 import childProcess from "node:child_process";
 import { ROOT } from "../pipeline/filmStore";
 import { dispatchLocalAndTmux, setAgentSession } from "./dispatcher";
+import { paneDelivery } from "./paneDelivery";
 import {
   TaskQueue,
   taskQueue,
@@ -451,12 +452,15 @@ test("dispatchTask targets only the recorded pane", async (t) => {
   const calls: string[][] = [];
   const result = await dispatchTask({
     eventType: "custom_directive", filmId: "paired-test", enableFallback: false,
-  }, { tmux: (args) => { calls.push(args); return { status: 0 }; } });
+  }, { tmux: (args) => { calls.push(args); return { status: 0 }; }, sleep: async () => {} });
+  await paneDelivery.drain();
   assert.ok(result.channels.includes("tmux"));
-  assert.equal(calls.length, 4);
+  // The pane is polled before the paste now, so the paste and Enter are no longer calls 2 and 3.
   assert.deepEqual(calls[0], ["has-session", "-t", "aideos"]);
-  assert.deepEqual(calls[2], ["paste-buffer", "-b", calls[1][2], "-t", "%42", "-d"]);
-  assert.deepEqual(calls[3], ["send-keys", "-t", "%42", "Enter"]);
+  const buffer = calls.find((args) => args[0] === "set-buffer")![2];
+  assert.deepEqual(calls.find((args) => args[0] === "paste-buffer"), ["paste-buffer", "-b", buffer, "-t", "%42", "-d"]);
+  assert.deepEqual(calls[calls.length - 1], ["send-keys", "-t", "%42", "Enter"]);
+  assert.ok(calls.slice(1).every((args) => args[0] === "set-buffer" || args.includes("%42")));
 });
 
 // Verify existing dispatchTask callers cannot execute real tmux even with a pane configured.
@@ -470,14 +474,16 @@ test("dispatchTask disables the default tmux effect under tests", async (t) => {
 });
 
 // Verify a session name cannot masquerade as a pane, even through an explicit override.
-test("dispatchLocalAndTmux rejects session targets and failed pastes", () => {
+test("dispatchLocalAndTmux rejects session targets and failed pastes", async () => {
   const calls: string[][] = [];
   const tmux = (args: string[]) => {
     calls.push(args);
     return { status: args[0] === "paste-buffer" ? 1 : 0 };
   };
-  assert.equal(dispatchLocalAndTmux("test", { pane: "aideos" }, { tmux }).tmuxSent, false);
+  assert.equal(dispatchLocalAndTmux("test", { pane: "aideos" }, { tmux }).pane, undefined);
   assert.deepEqual(calls, []);
-  assert.equal(dispatchLocalAndTmux("test", { pane: "%42" }, { tmux }).tmuxSent, false);
+  const failed = dispatchLocalAndTmux("test", { pane: "%42" }, { tmux, sleep: async () => {} }).pane;
+  await paneDelivery.drain();
+  assert.equal(paneDelivery.get(failed!.id)?.state, "failed");
   assert.equal(calls.some((args) => args[0] === "send-keys"), false);
 });
