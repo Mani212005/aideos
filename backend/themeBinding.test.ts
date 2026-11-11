@@ -21,10 +21,11 @@ import { parseLookPlan } from "./lookPlan/schema";
 import { availableCharacters, renderLookBrief } from "./lookPlan/brief";
 import { compileFilmFromScreenplayAsync } from "./pipeline/design";
 import { readFilm } from "./pipeline/filmStore";
+import { buildDesign } from "./designSpec/build";
 import { backgroundPresetSchema, filmSchema, parseFilm, themeSchema, type Film } from "../src/dl/schema";
 import { convertFilmToLayeredFilm } from "../src/dl/convertFilm";
 import { validateLayeredFilm } from "../src/dl/validateLayeredFilm";
-import { boundTheme, filmAccent, newProjectFilmTheme, PROJECT_THEMES, resolveProjectTheme } from "../src/projectTheme";
+import { boundTheme, filmAccent, newProjectFilmTheme, PROJECT_THEMES, resolveProjectTheme, savedAccent } from "../src/projectTheme";
 import { getVideosDir } from "../src/dl/videoPackageLoader";
 import { TEST_VIDEOS_DIR } from "./testSupport/fixtureVideosDir";
 import { loadFixtureFilm } from "./testSupport/fixtureFilms";
@@ -221,4 +222,33 @@ test("themeBinding: a new project's film theme marks the accent chosen exactly w
   assert.equal(unchosen.accentChosen, undefined);
   assert.equal(boundTheme({ theme: unchosen }), null);
   assert.ok(themeSchema.safeParse(chosen).success, "the theme is a valid film theme");
+});
+
+test("themeBinding: a Styleboard or customization save persists a picked purple and leaves an untouched accent as it was", () => {
+  const picked = { accent: "#635BFF", theme: { accent: "#635BFF", accentChosen: true } };
+  assert.equal(savedAccent(picked, "#635BFF"), "#635BFF", "the user picked purple, so purple is saved");
+  const orange = { accent: ORANGE, theme: { accent: ORANGE, accentChosen: true } };
+  assert.equal(savedAccent(orange, ORANGE), ORANGE, "an untouched save keeps the film's accent");
+  assert.equal(savedAccent({ theme: {} }, "#635BFF"), undefined, "the on-screen default of a film with no accent is not written");
+});
+
+test("themeBinding: a design build binds the accent in the current film.json, not the one in the base-film snapshot", () => {
+  const slug = "theme-rebuild";
+  const dir = path.join(getVideosDir(), slug);
+  fs.cpSync(path.join(getVideosDir(), "speculative-decoding-designed"), dir, { recursive: true });
+  try {
+    fs.rmSync(path.join(dir, "design/look.json"), { force: true });
+    const purple = { background: "smooth-dark", fontFamily: "geist", accent: "#635BFF", accentChosen: true };
+    const active = { ...JSON.parse(fs.readFileSync(path.join(dir, "film.json"), "utf8")), id: slug, accent: "#635BFF", theme: purple };
+    fs.writeFileSync(path.join(dir, "film.json"), JSON.stringify(active));
+    const base = { ...active, accent: ORANGE, theme: { ...purple, accent: ORANGE } };
+    fs.writeFileSync(path.join(dir, "design/base-film.json"), JSON.stringify(base));
+    const built = buildDesign(slug);
+    assert.equal(built.state, "passed", JSON.stringify(built.errors));
+    const written = readFilm(slug);
+    assert.deepEqual(boundTheme(written), { background: "smooth-dark", accent: "#635BFF" }, "the accent the user changed to survives the build");
+    assert.equal(written?.accent, "#635BFF");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

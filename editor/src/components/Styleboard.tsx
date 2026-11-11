@@ -14,6 +14,7 @@ import type {
   CameraAngle,
 } from "../../../src/dl/schema";
 import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
+import { savedAccent } from "../../../src/projectTheme";
 
 import { ShotModal } from "./ShotModal";
 import {
@@ -415,13 +416,12 @@ export function Styleboard({
     try {
       const filmToSave = {
         ...film,
-        accent: accent === "#635BFF" ? film.theme?.accent || undefined : accent,
+        accent: savedAccent(film, accent),
         theme: {
           ...(film.theme || {}),
           background: currentBg,
           cameraAngle: currentCamera,
-          accent:
-            accent === "#635BFF" ? film.theme?.accent || undefined : accent,
+          accent: savedAccent(film, accent),
         },
       };
 
@@ -526,7 +526,6 @@ export function Styleboard({
                 key={a.hex}
                 onClick={() => {
                   onAccentChange(a.hex);
-                  handleThemeChange("accent", a.hex);
                 }}
                 className={`w-7 h-7 border-2 transition-all flex items-center justify-center ${
                   accent === a.hex

@@ -5,10 +5,11 @@
  * bound: an accent written any other way (an old project's default, a look plan's own pick) is not a
  * choice. Every later stage reads that choice back from here: the agent task prompt, the agent briefs
  * and the design check, so no stage falls back to a colour of its own.
- * Inputs and outputs: theme ids, accents and films -> theme options, resolved theme, a new project's film theme, bound theme.
+ * Inputs and outputs: theme ids, accents and films -> theme options, resolved theme, a new project's film theme, bound theme, the accent a theme save persists.
  * Used by: editor/src/components/NewProjectModal.tsx, editor/vite.config.ts,
  * backend/agentBridge/contextBuilder.ts, backend/designSpec/brief.ts, backend/lookPlan/brief.ts,
- * backend/designCheck/designCheck.ts, backend/pipeline/design.ts.
+ * backend/designCheck/designCheck.ts, backend/pipeline/design.ts, backend/designSpec/build.ts,
+ * editor/src/components/CustomizationEditor.tsx, editor/src/components/Styleboard.tsx.
  */
 
 import type { BackgroundPreset, ThemeConfig } from "./dl/schema";
@@ -79,4 +80,9 @@ export function sameColour(a: string, b: string): boolean {
 /** The accent a film draws with: its chosen one, else its manifest accent, else the default theme's accent. */
 export function filmAccent(film: { accent?: string; theme?: { background?: string; accent?: string; accentChosen?: boolean } } | null | undefined): string {
   return boundTheme(film)?.accent ?? (film?.accent && HEX.test(film.accent) ? film.accent : projectThemeById(DEFAULT_PROJECT_THEME_ID).accent);
+}
+
+/** The accent a Styleboard or customization save writes: the one on screen, or none when the film has never had an accent. */
+export function savedAccent(film: { accent?: string; theme?: { accent?: string } }, accent: string): string | undefined {
+  return film.accent || film.theme?.accent ? accent : undefined;
 }
