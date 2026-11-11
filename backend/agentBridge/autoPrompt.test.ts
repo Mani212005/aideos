@@ -12,6 +12,7 @@ import os from "node:os";
 import path from "node:path";
 import { ROOT } from "../pipeline/filmStore";
 import { FakeAgentTerminal } from "../testSupport/fakeAgentTerminal";
+import { agentLink } from "../agentLink/store";
 import { autoPromptBadge, createSingleFlight } from "../../editor/src/state/autoPromptState";
 import { clearAllFallbackTimers, DEFAULT_AGENT_TIMEOUT_MS, dispatchTask, OPEN_AFTER_TIMEOUT_MS, paneDelivery, setAgentSession, taskQueue, type DispatchOptions } from "./index";
 
@@ -208,6 +209,70 @@ test("an idempotent prompt sent inside the open window is not typed again, while
   assert.equal(paneDelivery.get(again.pane!.id)?.state, "sent");
   assert.ok(again.channels.includes("tmux"));
   assert.deepEqual(term.log.submissions.map((s) => s.text), [first.prompt, first.prompt]);
+});
+
+test("a linked-agent task that never settles is reused inside the window, at the exact edge, and replaced after it", async (t) => {
+  isolate(t);
+  const link = agentLink();
+  const { ownerKey, code } = link.startPairing();
+  const claim = link.claim(code.toLowerCase(), "claude", "test-box");
+  assert.ok(claim);
+  t.after(() => link.disconnect(ownerKey));
+
+  let clock = 1_000_000;
+  const deps = { now: () => clock };
+  const linkedClick = { ...CLICK, ownerKey };
+
+  const first = await dispatchTask(linkedClick, deps);
+  assert.equal(first.task.status, "pending");
+  assert.ok(first.channels.includes("agent_link"));
+
+  // Reused inside the window
+  clock += 60_000;
+  const second = await dispatchTask(linkedClick, deps);
+  assert.equal(second.taskId, first.taskId);
+  assert.equal(second.duplicate, true);
+
+  // Reused at the exact window edge
+  clock = 1_000_000 + OPEN_AFTER_TIMEOUT_MS;
+  const edge = await dispatchTask(linkedClick, deps);
+  assert.equal(edge.taskId, first.taskId);
+  assert.equal(edge.duplicate, true);
+
+  // Replaced after the window
+  clock = 1_000_000 + OPEN_AFTER_TIMEOUT_MS + 1;
+  const after = await dispatchTask(linkedClick, deps);
+  assert.notEqual(after.taskId, first.taskId);
+  assert.equal(after.duplicate, undefined);
+  assert.ok(after.channels.includes("agent_link"));
+});
+
+test("a claimed-then-crashed task is reused inside the window, at the exact edge, and replaced after it", async (t) => {
+  isolate(t);
+  let clock = 2_000_000;
+  const deps = { now: () => clock };
+  const first = await dispatchTask(CLICK, deps);
+  taskQueue.claimTask(first.taskId, "agent-crash");
+  assert.equal(taskQueue.getTask(first.taskId)?.status, "claimed");
+
+  // Reused inside the window
+  clock += 60_000;
+  const second = await dispatchTask(CLICK, deps);
+  assert.equal(second.taskId, first.taskId);
+  assert.equal(second.duplicate, true);
+  assert.match(second.message, /already running/);
+
+  // Reused at the exact window edge
+  clock = 2_000_000 + OPEN_AFTER_TIMEOUT_MS;
+  const edge = await dispatchTask(CLICK, deps);
+  assert.equal(edge.taskId, first.taskId);
+  assert.equal(edge.duplicate, true);
+
+  // Replaced after the window
+  clock = 2_000_000 + OPEN_AFTER_TIMEOUT_MS + 1;
+  const after = await dispatchTask(CLICK, deps);
+  assert.notEqual(after.taskId, first.taskId);
+  assert.equal(after.duplicate, undefined);
 });
 
 test("only equivalent requests merge: another project, another instruction, or a caller that did not ask for idempotence", async (t) => {

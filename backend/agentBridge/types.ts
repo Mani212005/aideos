@@ -96,11 +96,11 @@ export interface DispatchOptions {
   ownerKey?: string;
   /**
    * Reuse an equivalent task instead of creating another. Equivalent means the same owner, film, event and
-   * prompt, and still open: pending or claimed (running), or timed out while its prompt is still waiting in the
-   * agent's terminal or within OPEN_AFTER_TIMEOUT_MS (10 minutes) of the prompt being sent to the terminal or,
-   * with no terminal, written to the inbox. A task that finished, failed, or whose prompt could not be sent does not count.
-   * Off by default, so dispatches that legitimately repeat (a second canvas edit) are never merged: each gets its own
-   * task, and its prompt is typed into the terminal again unless an identical one is still waiting there unsent.
+   * prompt, and still open: younger than OPEN_AFTER_TIMEOUT_MS (10 minutes, measured from when the task was created
+   * or last sent) regardless of whether it is pending, claimed, or timed out with a sent pane. A task that finished,
+   * failed, or whose prompt could not be sent does not count. Off by default, so dispatches that legitimately repeat
+   * (a second canvas edit) are never merged: each gets its own task, and its prompt is typed into the terminal again
+   * unless an identical one is still waiting there unsent.
    */
   idempotent?: boolean;
 }

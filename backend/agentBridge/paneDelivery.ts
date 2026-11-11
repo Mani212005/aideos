@@ -3,9 +3,11 @@
  * A prompt is sent only when the agent is idle at an empty prompt, otherwise it waits as queued. Sending is
  * paste, a short pause, Enter, then a check that the agent took it, with one retry of the Enter. Terminal agent
  * UIs ignore an Enter that arrives right after a large paste, so an immediate Enter leaves the prompt unsent.
- * Identical prompts still pending for the same pane are dropped. An idempotent request (Auto-Prompt) is also
- * dropped when the same prompt was sent to the pane within OPEN_AFTER_TIMEOUT_MS for a task that has not completed
- * or failed; any other request with that prompt is typed again.
+ * Identical prompts still pending for the same pane are dropped. For an idempotent Auto-Prompt dispatch, an existing
+ * task counts as open only while younger than OPEN_AFTER_TIMEOUT_MS (10 minutes, measured from when the task was created
+ * or last sent) regardless of whether it is pending, claimed, or timed out with a sent pane; completed or failed tasks,
+ * or those whose pane delivery failed, are not open. Non-idempotent dispatches keep the pending-only pane twin rule and
+ * are never merged.
  * Inputs and outputs: prompt text, tmux pane id and an injectable tmux runner -> a delivery snapshot that moves queued -> sending -> sent or failed.
  * Used by: backend/agentBridge/dispatcher.ts, editor/vite.config.ts.
  */
@@ -36,9 +38,9 @@ export interface PaneTiming {
 }
 
 /**
- * How long a sent prompt (or an inbox message) still counts as open after its task timed out unclaimed:
- * terminal agents work on a prompt without claiming it, so a repeat inside this window reuses the task and
- * never types the prompt twice, while a click after it starts over in case the agent never took it up.
+ * How long an idempotent task (Auto-Prompt) still counts as open, measured from when it was created or last sent:
+ * within this window a repeated click reuses the open task and never types the prompt twice, while after the
+ * window a click creates a new task.
  */
 export const OPEN_AFTER_TIMEOUT_MS = 10 * 60 * 1000;
 

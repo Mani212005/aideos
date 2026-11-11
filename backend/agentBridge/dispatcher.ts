@@ -1,5 +1,9 @@
 /**
  * File Description: Multi-channel outbound dispatcher and hybrid fallback manager for the Aideos Agent Bridge.
+ * Supports idempotent Auto-Prompt dispatch where an existing task counts as open only while younger than
+ * OPEN_AFTER_TIMEOUT_MS (10 minutes, measured from when the task was created or last sent) regardless of whether
+ * it is pending, claimed, or timed out with a sent pane; completed or failed tasks, or those whose pane delivery
+ * failed, are not open. After the window a click creates a new task. Non-idempotent dispatches are never merged.
  * Inputs and outputs: agent task events and dispatch requests -> dispatched tasks and logged events.
  * Used by: backend/agentBridge/index.ts, backend/designSpec/designer.ts.
  */
@@ -222,22 +226,23 @@ function idempotencyKey(opts: DispatchOptions, prompt: string): string {
 }
 
 /**
- * The still-open task with this key and where its prompt stands in the agent's terminal, if there is one. A task
- * that timed out unclaimed stays open while its prompt waits in the terminal, and for OPEN_AFTER_TIMEOUT_MS after
- * the prompt was sent or, with no terminal, after its inbox message was written.
+ * The still-open task with this key and where its prompt stands in the agent's terminal, if there is one. An idempotent
+ * task counts as open only while younger than OPEN_AFTER_TIMEOUT_MS (10 minutes, measured from when the task was created
+ * or last sent) regardless of whether it is pending, claimed, or timed out with a sent pane; completed or failed tasks,
+ * or those whose pane delivery failed, are not open.
  */
 function findOpenTask(key: string, nowMs: number): { task: AgentTask; pane?: PaneDelivery } | undefined {
   const panes = paneDelivery.list();
   for (const task of taskQueue.listAllTasks()) {
     const record = idempotencyKeys.get(task);
     if (record?.key !== key) continue;
+    if (task.status === "completed" || task.status === "failed") continue;
     const pane = panes.find((p) => p.taskId === task.id);
     if (pane?.state === "failed") continue;
-    if (task.status === "pending" || task.status === "claimed") return { task, pane };
-    if (task.status !== "timed_out") continue;
-    const deliveredAtMs = pane ? pane.sentAtMs : task.inboxMessagePath ? record.atMs : undefined;
+    if (task.status === "timed_out" && !pane && !task.inboxMessagePath) continue;
+    const age = nowMs - (pane?.sentAtMs ?? record.atMs);
     const waiting = pane?.state === "queued" || pane?.state === "sending";
-    if (waiting || (deliveredAtMs !== undefined && nowMs - deliveredAtMs <= OPEN_AFTER_TIMEOUT_MS)) return { task, pane };
+    if (waiting || age <= OPEN_AFTER_TIMEOUT_MS) return { task, pane };
   }
   return undefined;
 }
