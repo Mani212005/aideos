@@ -13,8 +13,8 @@ The root data contract defining a complete video composition (stored authoritati
 * `id: string` (Lowercase kebab-case identifier, e.g. "hello-scene", "sample-explainer")
 * `title: string` (Human-readable video title)
 * `fps: number` (Target playback framerate, standard is 30)
-* `accent?: string` (Primary brand hex color override, e.g. "#635BFF")
-* `theme?: ThemeConfig` (Global paper background, typography, and camera settings)
+* `accent?: string` (Primary brand hex color override, e.g. "#FF6B00")
+* `theme?: ThemeConfig` (Global paper background, typography, camera settings, and optional user-chosen binding accent)
 * `chapters: string[]` (Ordered list of chapter titles for the progress rail)
 * `canvas: { nodes: CanvasNode[], edges: CanvasEdge[] }` (The continuous 2D spatial graph)
 * `scene?: FilmScene` (Optional vector scene replacing the canvas graph for scene films)
@@ -27,6 +27,16 @@ The root data contract defining a complete video composition (stored authoritati
 * `soundtrack?: Soundtrack` (Per-film soundtrack manifest; field definitions and legacy normalization live in [`src/dl/schema.ts`](../src/dl/schema.ts))
 * `videoClips?: VideoClip[]` (Persisted imported footage picture clips)
 * `overlayClips?: OverlayClip[]` (Persisted standalone text/image/subtitle overlay clips)
+
+### `ThemeConfig`
+Global canvas background, typography presets, camera perspective, and binding accent configuration (`src/dl/schema.ts`).
+* `background?: BackgroundPreset` (Background preset: "smooth-dark", "paper-white", "blueprint", "dot-grid", "charcoal", "parchment")
+* `fontFamily?: FontPreset` (Typography pairing: "geist", "mono", "space-grotesk")
+* `videoType?: VideoTypePreset` (Visual metaphor styling)
+* `storyStyle?: StoryStylePreset` (Story layout styling, e.g. "script-metaphor")
+* `cameraAngle?: CameraAnglePreset` (Camera perspective, e.g. "isometric")
+* `accent?: string` (6-digit hex accent color, e.g. "#FF6B00")
+* `accentChosen?: boolean` (True only when chosen by the user at project creation, making the background and accent binding)
 
 ### `AudioClip`
 A discrete audio track entry on the multi-track timeline.
@@ -199,7 +209,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `ink`: `#F5F5F5` (High-contrast typography text)
 * `muted`: `#8A8A8E` (Secondary captions, subtitles, and labels)
 * `hairline`: `rgba(245, 245, 245, 0.10)` (Subtle borders and separators)
-* `accent`: `#635BFF` (Default brand focus color)
+* `accent`: `#635BFF` (Preset accent for paper-white; DEFAULT_PROJECT_ACCENT is "#FF6B00")
 
 ### Rendered Video Background Themes (`src/dl/tokens.ts`)
 * `paper-white`: Archival textured paper with organic fiber lighting (`#F8F6F0`).
@@ -220,6 +230,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `boundTheme(film)`: Returns the binding `{ background, accent }` only when the film carries `theme.accentChosen: true` (set when the New project dialog or `/api/projects/new` received a chosen theme or accent) and a valid hex `theme.accent`, else `null`. Legacy projects and accents a look plan picked are never bound.
 * `filmAccent(film)`: Returns the film's effective drawing accent (`boundTheme(film)?.accent ?? film.accent ?? DEFAULT_PROJECT_ACCENT`).
 * `sameColour(a, b)`: Case-insensitive comparison of two hex color strings (`#rrggbb`).
+* `savedAccent(film, accent)`: Resolves the accent to persist on save (the active accent if the film already had one, else undefined).
 
 ### Editor Chrome Neobrutalism Design System (`editor/src/styles/tokens.css`)
 * `--nb-paper`: `#EDE9DE` (Main light application background canvas)
