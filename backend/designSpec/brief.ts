@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { FORMAT_WINDOWS, SAFE_SQUARE, SCENE_SIZE } from "../sceneKit";
-import { boundTheme, filmAccent, projectThemeById } from "../../src/projectTheme";
+import { boundTheme, boundThemeName, filmAccent } from "../../src/projectTheme";
 import { LOCKED_PALETTE, MAX_CAMERA_PAN_ACCEL_WIDTHS, MAX_CAMERA_ZOOM_STEP } from "../designCheck/designCheck";
 import { designDir, readCheckedLookPlan } from "./build";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
@@ -94,7 +94,7 @@ export function renderDesignBrief(film: Film, lookPlan?: LookPlan): string {
     .join("\n");
   const chosen = boundTheme(film);
   const accent = filmAccent(film);
-  const accentNote = chosen ? `, which is \`${chosen.accent}\`, fixed by the user with the theme they chose ("${projectThemeById(chosen.background).name}"). Do not change it: if the user wants a different accent, tell them to change it in the editor's Styleboard or customization panel` : ` (\`${accent}\`)`;
+  const accentNote = chosen ? `, which is \`${chosen.accent}\`, fixed by the user with the theme they chose ("${boundThemeName(chosen.background)}"). Do not change it: if the user wants a different accent, tell them to change it in the editor's Styleboard or customization panel` : ` (\`${accent}\`)`;
   const accentField = chosen ? "omit it to keep the user's chosen accent; any other value fails the build" : "it replaces the film's accent";
   const performanceSection = lookPlan?.schema === "aideos.look/2" ? renderPerformanceSection(lookPlan) : "";
 

@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
-import { boundTheme, filmAccent, projectThemeById } from "../../src/projectTheme";
+import { boundTheme, boundThemeName, filmAccent } from "../../src/projectTheme";
 import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { CHARACTER_LIBRARY, loadCharacterFile } from "../characters/library";
 
@@ -203,7 +203,7 @@ export function renderLookBrief(film: Film, characters: AvailableCharacter[] = a
   const chosen = boundTheme(film);
   const accent = filmAccent(film);
   const accentLine = chosen
-    ? `\`${chosen.accent}\`, fixed by the user with the theme they chose ("${projectThemeById(chosen.background).name}"); \`palette.accent\` in look.json must be exactly this. Do not change it: if the user wants a different accent, tell them to change it in the editor's Styleboard or customization panel`
+    ? `\`${chosen.accent}\`, fixed by the user with the theme they chose ("${boundThemeName(chosen.background)}"); \`palette.accent\` in look.json must be exactly this. Do not change it: if the user wants a different accent, tell them to change it in the editor's Styleboard or customization panel`
     : `\`${accent}\``;
   return `# Look Brief: ${film.title} (\`${film.id}\`)
 

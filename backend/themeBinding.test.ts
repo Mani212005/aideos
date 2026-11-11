@@ -252,3 +252,14 @@ test("themeBinding: a design build binds the accent in the current film.json, no
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("themeBinding: a bound film on a background that is not a dialog theme is named by its preset, not as Smooth Dark", () => {
+  const film = themedFilm(ORANGE, "parchment");
+  const paragraph = themeDirective(boundTheme(film));
+  assert.ok(paragraph.includes("parchment"));
+  assert.ok(!paragraph.includes("Smooth Dark"));
+  assert.ok(paragraph.includes(ORANGE));
+  for (const brief of [renderDesignBrief(parseFilm(film)), renderLookBrief(parseFilm(film), [])]) {
+    assert.ok(brief.includes(`"parchment"`) && !brief.includes("Smooth Dark") && brief.includes(ORANGE));
+  }
+});

@@ -46,6 +46,11 @@ export function projectThemeById(id: string | undefined): ProjectThemeOption {
   return PROJECT_THEMES.find((t) => t.id === id) ?? PROJECT_THEMES.find((t) => t.id === DEFAULT_PROJECT_THEME_ID)!;
 }
 
+/** The name a bound theme is shown by: the dialog theme's name, or the background preset id when it is not a dialog theme. */
+export function boundThemeName(background: string): string {
+  return PROJECT_THEMES.find((t) => t.id === background)?.name ?? background;
+}
+
 /** Resolves the theme and accent a new project is created with: the creator's choice, else the chosen theme's own accent. */
 export function resolveProjectTheme(themeId: string | undefined, accent: string | undefined): BoundTheme {
   const theme = projectThemeById(themeId);

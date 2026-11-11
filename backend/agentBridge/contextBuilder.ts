@@ -12,7 +12,7 @@ import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { parseLookPlan } from "../lookPlan/schema";
 import { STORY_SCRIPT_RULES } from "../scriptIntake";
-import { boundTheme, projectThemeById } from "../../src/projectTheme";
+import { boundTheme, boundThemeName } from "../../src/projectTheme";
 
 /** Core design invariants enforced across the Aideos explainer video standard. */
 export const DESIGN_INVARIANTS: string[] = [
@@ -30,7 +30,7 @@ export const DESIGN_INVARIANTS: string[] = [
 /** The binding theme paragraph for a task prompt, or an empty string when the project recorded no chosen accent. */
 export function themeDirective(theme: { background: string; accent: string } | null | undefined): string {
   if (!theme) return "";
-  const name = projectThemeById(theme.background).name;
+  const name = boundThemeName(theme.background);
   return `🎨 Theme (binding): the user chose the "${name}" theme (background preset \`${theme.background}\`) with the accent \`${theme.accent}\`. The accent is fixed by the user: use exactly it in look.json (\`palette.accent\`), design.json (omit \`accent\` or set it to this value) and every SVG, and no other chromatic colour. Do not change it and do not default to purple; \`aideos design check\` fails any other accent. If the user wants a different accent, tell them to change it in the editor's Styleboard or customization panel.\n`;
 }
 

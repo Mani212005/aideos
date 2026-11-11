@@ -213,6 +213,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `PROJECT_THEMES`: The themes offered in the New project dialog (`smooth-dark` with `#FF6B00`, `paper-white` with `#635BFF`, `blueprint` with `#00E5FF`, `dot-grid` with `#10B981`); each declares an `id` matching a `film.theme.background` preset, `name`, default `accent`, and preview `swatch`.
 * `DEFAULT_PROJECT_THEME_ID`: `"smooth-dark"`.
 * `projectThemeById(id)`: Looks up a dialog theme option by id, falling back to the default theme.
+* `boundThemeName(background)`: The name the prompt and briefs give a bound theme: the dialog theme's name, or the background preset id when it is not a dialog theme.
 * `resolveProjectTheme(themeId, accent)`: Resolves the binding background preset and accent for a new project from creator choices, falling back to the theme's preset accent.
 * `newProjectFilmTheme(themeId, accent)`: Builds the `film.theme` every `/api/projects/new` branch writes (background, `geist`, `script-metaphor`, `isometric`, accent), with `accentChosen: true` exactly when the request carried a theme or accent.
 * `boundTheme(film)`: Returns the binding `{ background, accent }` only when the film carries `theme.accentChosen: true` (set when the New project dialog or `/api/projects/new` received a chosen theme or accent) and a valid hex `theme.accent`, else `null`. Legacy projects and accents a look plan picked are never bound.
