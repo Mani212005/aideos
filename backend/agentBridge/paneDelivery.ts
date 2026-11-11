@@ -3,8 +3,9 @@
  * A prompt is sent only when the agent is idle at an empty prompt, otherwise it waits as queued. Sending is
  * paste, a short pause, Enter, then a check that the agent took it, with one retry of the Enter. Terminal agent
  * UIs ignore an Enter that arrives right after a large paste, so an immediate Enter leaves the prompt unsent.
- * Identical prompts still pending for the same pane, or sent to it within OPEN_AFTER_TIMEOUT_MS for a task that
- * has not completed or failed, are dropped; a prompt sent with no task can be sent again at once.
+ * Identical prompts still pending for the same pane are dropped. An idempotent request (Auto-Prompt) is also
+ * dropped when the same prompt was sent to the pane within OPEN_AFTER_TIMEOUT_MS for a task that has not completed
+ * or failed; any other request with that prompt is typed again.
  * Inputs and outputs: prompt text, tmux pane id and an injectable tmux runner -> a delivery snapshot that moves queued -> sending -> sent or failed.
  * Used by: backend/agentBridge/dispatcher.ts, editor/vite.config.ts.
  */
@@ -65,6 +66,8 @@ export interface PaneDeliveryRequest {
   agent: string;
   prompt: string;
   taskId?: string;
+  /** An idempotent request also counts a recently sent identical prompt as its twin, not only a pending one. */
+  idempotent?: boolean;
 }
 
 /** What callers and the studio see of one prompt: never the prompt text itself. */
@@ -121,7 +124,7 @@ export class PaneDeliveryQueue {
       now: deps.now ?? Date.now,
       timing: { ...DEFAULT_PANE_TIMING, ...deps.timing },
     };
-    const twin = this.entries.find((e) => e.pane === req.pane && e.prompt === req.prompt && this.blocks(e, run.now()));
+    const twin = this.entries.find((e) => e.pane === req.pane && e.prompt === req.prompt && this.blocks(e, req, run.now()));
     if (twin) return { ...this.snapshot(twin), duplicate: true };
 
     const entry: Entry = {
@@ -179,10 +182,10 @@ export class PaneDeliveryQueue {
     this.entries = [];
   }
 
-  /** True while an entry stops an identical prompt: it is pending, or a task's prompt sent within the open window and not released. */
-  private blocks(e: Entry, nowMs: number): boolean {
+  /** True while an entry stops an identical prompt: it is pending, or, for an idempotent request, sent within the open window and not released. */
+  private blocks(e: Entry, req: PaneDeliveryRequest, nowMs: number): boolean {
     if (PENDING.includes(e.state)) return true;
-    if (e.state !== "sent" || e.taskId === undefined || e.released || e.sentAtMs === undefined) return false;
+    if (!req.idempotent || e.state !== "sent" || e.released || e.sentAtMs === undefined) return false;
     return nowMs - e.sentAtMs <= OPEN_AFTER_TIMEOUT_MS;
   }
 

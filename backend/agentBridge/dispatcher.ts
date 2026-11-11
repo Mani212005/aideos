@@ -178,7 +178,7 @@ Claim this task via MCP tool \`aideos_claim_task({ taskId: "${task.id}" })\` or 
  */
 export function dispatchLocalAndTmux(
   prompt: string,
-  opts?: { sessionName?: string; pane?: string; taskId?: string },
+  opts?: { sessionName?: string; pane?: string; taskId?: string; idempotent?: boolean },
   deps: DispatchDeps = {},
 ): { fileWritten: boolean; pane?: PaneDelivery } {
   let fileWritten = false;
@@ -207,7 +207,7 @@ export function dispatchLocalAndTmux(
   try {
     if (tmux(["has-session", "-t", targetSession]).status !== 0) return { fileWritten };
     const pane = paneDelivery.enqueue(
-      { pane: targetPane, agent: sessionInfo.agent, prompt, taskId: opts?.taskId },
+      { pane: targetPane, agent: sessionInfo.agent, prompt, taskId: opts?.taskId, idempotent: opts?.idempotent },
       { tmux, sleep: deps.sleep, now: deps.now, timing: deps.timing },
     );
     return { fileWritten, pane };
@@ -321,6 +321,7 @@ export async function dispatchTask(opts: DispatchOptions, deps: DispatchDeps = {
     sessionName: opts.sessionName,
     pane: opts.pane,
     taskId: task.id,
+    idempotent: opts.idempotent,
   }, deps);
   const pane = localResult.pane;
   if (pane && pane.state !== "failed") {

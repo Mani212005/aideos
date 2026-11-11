@@ -186,6 +186,30 @@ test("a sent prompt that timed out stays open for exactly the open window; a cli
   assert.deepEqual(term.log.submissions.map((s) => s.text), [first.prompt, first.prompt]);
 });
 
+test("an idempotent prompt sent inside the open window is not typed again, while a non-idempotent dispatch of the same prompt is", async (t) => {
+  isolate(t);
+  const term = new FakeAgentTerminal({ agent: "claude", pane: "%66" });
+  const deps = withTerminal(term);
+  const plain = { ...CLICK, idempotent: undefined };
+
+  const first = await dispatchTask(plain, deps);
+  await paneDelivery.drain();
+  await term.sleep(20_000);
+  const idempotentTwin = paneDelivery.enqueue({ pane: term.pane, agent: "claude", prompt: first.prompt, taskId: "other", idempotent: true }, deps);
+  assert.equal(idempotentTwin.duplicate, true);
+  assert.equal(idempotentTwin.id, first.pane?.id);
+
+  const again = await dispatchTask(plain, deps);
+  await paneDelivery.drain();
+  assert.notEqual(again.taskId, first.taskId);
+  assert.equal(again.duplicate, undefined);
+  assert.equal(again.pane?.duplicate, false);
+  assert.notEqual(again.pane?.id, first.pane?.id);
+  assert.equal(paneDelivery.get(again.pane!.id)?.state, "sent");
+  assert.ok(again.channels.includes("tmux"));
+  assert.deepEqual(term.log.submissions.map((s) => s.text), [first.prompt, first.prompt]);
+});
+
 test("only equivalent requests merge: another project, another instruction, or a caller that did not ask for idempotence", async (t) => {
   isolate(t);
   const a = await dispatchTask(CLICK);
