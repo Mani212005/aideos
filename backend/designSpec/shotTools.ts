@@ -21,6 +21,7 @@ import { narrationSupportsVisual } from "../shotVisualCues";
 import { dispatchTask } from "../agentBridge/dispatcher";
 import { readDesignStatus, type DesignBuildStatus } from "./build";
 import { writeDesignBrief } from "./brief";
+import { DEFAULT_PROJECT_ACCENT } from "../../src/projectTheme";
 
 /** One animated change, placed in the shot where it starts. */
 export interface MotionBeat {
@@ -104,7 +105,7 @@ export function designOverview(film: Film): DesignOverview {
   });
   return {
     design: film.design ?? null,
-    accent: film.accent ?? "#635BFF",
+    accent: film.accent ?? DEFAULT_PROJECT_ACCENT,
     artwork: (film.scene?.props ?? []).map((p) => ({ id: p.assetId, src: p.svgSource })),
     ...lookResult,
     shots,

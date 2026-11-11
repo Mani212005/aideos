@@ -95,6 +95,7 @@ export function renderDesignBrief(film: Film, lookPlan?: LookPlan): string {
   const chosen = boundTheme(film);
   const accent = filmAccent(film);
   const accentNote = chosen ? `, which is \`${chosen.accent}\`, fixed by the user with the theme they chose ("${boundThemeName(chosen.background)}"). Do not change it: if the user wants a different accent, tell them to change it in the editor's Styleboard or customization panel` : ` (\`${accent}\`)`;
+  const purpleClaim = chosen ? " Never reach for purple unless it is that accent: the build fails any other chromatic colour." : "";
   const accentField = chosen ? "omit it to keep the user's chosen accent; any other value fails the build" : "it replaces the film's accent";
   const performanceSection = lookPlan?.schema === "aideos.look/2" ? renderPerformanceSection(lookPlan) : "";
 
@@ -113,7 +114,7 @@ ${RUBRIC_SUMMARY}
 
 ## The standard layer (enforced by the build)
 
-- **Palette:** only ${LOCKED_NEUTRALS.join(", ")} (and their alpha versions) plus the film's one \`accent\`${accentNote}. Greys, black and white are fine. The accent is used sparingly: at most three accented things per frame. Never reach for purple unless it is that accent: the build fails any other chromatic colour.
+- **Palette:** only ${LOCKED_NEUTRALS.join(", ")} (and their alpha versions) plus the film's one \`accent\`${accentNote}. Greys, black and white are fine. The accent is used sparingly: at most three accented things per frame.${purpleClaim}
 - **Cast IDs:** every \`film.cast[].id\` from \`design/look.json\` must be lowercase letters, digits, or hyphens, and must match a \`design.json\` asset id or an SVG element id. Several assets may contain elements with the same cast id when the planned object spans multiple SVG files.
 - **Type:** Geist for words, JetBrains Mono for numbers, code and labels. No other typeface.
 - **Artwork:** each asset is a static SVG with \`viewBox="-300 -200 600 400"\` and \`preserveAspectRatio="xMidYMid meet"\`, drawn centred on 0,0. No \`<script>\`, \`<animate>\`, \`<foreignObject>\`, CSS animation or remote links. Give an \`id\` to every element you will move. Motion lives only in clips.

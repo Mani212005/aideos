@@ -9,7 +9,10 @@
  * Used by: editor/src/components/NewProjectModal.tsx, editor/vite.config.ts,
  * backend/agentBridge/contextBuilder.ts, backend/designSpec/brief.ts, backend/lookPlan/brief.ts,
  * backend/designCheck/designCheck.ts, backend/pipeline/design.ts, backend/designSpec/build.ts,
- * editor/src/components/CustomizationEditor.tsx, editor/src/components/Styleboard.tsx.
+ * editor/src/components/CustomizationEditor.tsx, editor/src/components/Styleboard.tsx, and (for
+ * DEFAULT_PROJECT_ACCENT, the fallback when a film names no accent) backend/designSpec/shotTools.ts,
+ * backend/editPlanner/validator.ts, backend/critique/engine.ts, backend/sceneKit/svg.ts, src/dl/convertFilm.ts,
+ * editor/src/App.tsx, editor/src/components/DescribeMotion.tsx, editor/src/state/placeholderFilm.ts.
  */
 
 import type { BackgroundPreset, ThemeConfig } from "./dl/schema";
@@ -22,9 +25,12 @@ export interface ProjectThemeOption {
   swatch: string;
 }
 
+/** The accent of the default theme, and the one every stage falls back to when a film names no accent; never purple, which appears only when the user chose it. */
+export const DEFAULT_PROJECT_ACCENT = "#FF6B00";
+
 /** The themes the New project dialog offers; `id` is a `film.theme.background` preset (the schema rejects any other value). */
 export const PROJECT_THEMES: readonly ProjectThemeOption[] = [
-  { id: "smooth-dark", name: "Smooth Dark", accent: "#FF6B00", swatch: "#0A0A0B" },
+  { id: "smooth-dark", name: "Smooth Dark", accent: DEFAULT_PROJECT_ACCENT, swatch: "#0A0A0B" },
   { id: "paper-white", name: "Paper White", accent: "#635BFF", swatch: "#F5F5F5" },
   { id: "blueprint", name: "Blueprint", accent: "#00E5FF", swatch: "#F5F5F5" },
   { id: "dot-grid", name: "Terminal Dots", accent: "#10B981", swatch: "#F5F5F5" },
@@ -84,7 +90,7 @@ export function sameColour(a: string, b: string): boolean {
 
 /** The accent a film draws with: its chosen one, else its manifest accent, else the default theme's accent. */
 export function filmAccent(film: { accent?: string; theme?: { background?: string; accent?: string; accentChosen?: boolean } } | null | undefined): string {
-  return boundTheme(film)?.accent ?? (film?.accent && HEX.test(film.accent) ? film.accent : projectThemeById(DEFAULT_PROJECT_THEME_ID).accent);
+  return boundTheme(film)?.accent ?? (film?.accent && HEX.test(film.accent) ? film.accent : DEFAULT_PROJECT_ACCENT);
 }
 
 /** The accent a Styleboard or customization save writes: the one on screen, or none when the film has never had an accent. */

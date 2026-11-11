@@ -25,7 +25,7 @@ import { buildDesign } from "./designSpec/build";
 import { backgroundPresetSchema, filmSchema, parseFilm, themeSchema, type Film } from "../src/dl/schema";
 import { convertFilmToLayeredFilm } from "../src/dl/convertFilm";
 import { validateLayeredFilm } from "../src/dl/validateLayeredFilm";
-import { boundTheme, filmAccent, newProjectFilmTheme, PROJECT_THEMES, resolveProjectTheme, savedAccent } from "../src/projectTheme";
+import { boundTheme, DEFAULT_PROJECT_ACCENT, filmAccent, newProjectFilmTheme, PROJECT_THEMES, resolveProjectTheme, savedAccent } from "../src/projectTheme";
 import { getVideosDir } from "../src/dl/videoPackageLoader";
 import { TEST_VIDEOS_DIR } from "./testSupport/fixtureVideosDir";
 import { loadFixtureFilm } from "./testSupport/fixtureFilms";
@@ -262,4 +262,32 @@ test("themeBinding: a bound film on a background that is not a dialog theme is n
   for (const brief of [renderDesignBrief(parseFilm(film)), renderLookBrief(parseFilm(film), [])]) {
     assert.ok(brief.includes(`"parchment"`) && !brief.includes("Smooth Dark") && brief.includes(ORANGE));
   }
+});
+
+test("themeBinding: with no chosen theme and no look plan accent, a compile falls back to the default theme's accent, never purple", async () => {
+  const durations = [6, 6];
+  const segments: SegmentAudioInfo[] = durations.map((duration, i) => ({ text: `segment ${i}`, duration, startOffset: i * 6.2, words: [], utterances: [] }));
+  const script = "## 0:00 - 0:12 - Opening (opening)\n\n[ON SCREEN] One\n[NARRATION] The first thing said.\n\n[ON SCREEN] Two\n[NARRATION] The second thing said.\n";
+  const plain = await compileFilmFromScreenplayAsync(script, segments, durations, { title: "Plain", textOnly: true, maxFootageShots: 0 });
+  assert.equal(plain.film.accent, DEFAULT_PROJECT_ACCENT);
+  assert.notEqual(plain.film.accent, "#635BFF");
+  assert.equal(boundTheme(plain.film), null);
+  const purple = await compileFilmFromScreenplayAsync(script, segments, durations, { title: "Purple", textOnly: true, maxFootageShots: 0, theme: { background: "paper-white", accent: "#635BFF" } });
+  assert.equal(purple.film.accent, "#635BFF", "a user-chosen purple is kept");
+  assert.deepEqual(boundTheme(purple.film), { background: "paper-white", accent: "#635BFF" });
+});
+
+test("themeBinding: a legacy film that stores purple keeps it and stays unbound", () => {
+  const legacy = JSON.parse(fs.readFileSync(path.join(TEST_VIDEOS_DIR, "still-talking/film.json"), "utf8"));
+  assert.equal(legacy.theme.accent, "#635BFF");
+  assert.equal(boundTheme(legacy), null);
+  assert.equal(filmAccent(legacy), "#635BFF");
+  assert.equal(parseFilm(legacy).accent, "#635BFF");
+});
+
+test("themeBinding: only a bound design brief claims the build fails purple", () => {
+  const claim = "the build fails any other chromatic colour";
+  assert.ok(renderDesignBrief(parseFilm(themedFilm(ORANGE))).includes(claim));
+  const legacy = JSON.parse(fs.readFileSync(path.join(TEST_VIDEOS_DIR, "still-talking/film.json"), "utf8"));
+  assert.ok(!renderDesignBrief(parseFilm(legacy)).includes(claim));
 });

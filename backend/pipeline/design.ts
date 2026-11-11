@@ -19,6 +19,7 @@
 import type { LookPlan, LookShot } from "../lookPlan/schema";
 import type { BackgroundPreset, Block, CanvasEdge, CanvasNode, Film, Shot } from "../../src/dl/schema";
 import { blockSchema, DEVICE_BLOCKS, parseFilm } from "../../src/dl/schema";
+import { DEFAULT_PROJECT_ACCENT } from "../../src/projectTheme";
 import { parseClaudeScript, buildBlocksForPrimitive, type ScriptSegment } from "../scriptIntake";
 import { generateRelationshipAwareCanvas, type ConceptEntity } from "../ideation/graphLayout";
 import type { SegmentAudioInfo } from "../audio";
@@ -676,8 +677,8 @@ export async function compileFilmFromScreenplayAsync(
       position: { x: 960, y: 960 }, scale: 4.8, rotation: 0, opacity: 1 },
     props: [], actors: [],
   } : undefined;
-  // The user's chosen accent wins over the look plan's, which wins over the design system default.
-  const accent = options.theme?.accent ?? options.lookPlan?.film?.palette?.accent ?? "#635BFF";
+  // The user's chosen accent wins over the look plan's, which wins over the default theme's accent.
+  const accent = options.theme?.accent ?? options.lookPlan?.film?.palette?.accent ?? DEFAULT_PROJECT_ACCENT;
   const film = parseFilm({
     id: slug,
     title: options.title,

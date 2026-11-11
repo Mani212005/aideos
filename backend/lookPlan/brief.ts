@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
-import { boundTheme, boundThemeName, filmAccent } from "../../src/projectTheme";
+import { boundTheme, boundThemeName, DEFAULT_PROJECT_ACCENT, filmAccent } from "../../src/projectTheme";
 import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { CHARACTER_LIBRARY, loadCharacterFile } from "../characters/library";
 
@@ -157,7 +157,7 @@ export const EXAMPLE_LOOK_PLAN = {
     ],
     palette: {
       bg: "#0A0A0B",
-      accent: "#635BFF",
+      accent: DEFAULT_PROJECT_ACCENT,
     },
     captions: {
       position: "bottom",
