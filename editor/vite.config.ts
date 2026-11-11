@@ -81,6 +81,13 @@ const videosDir = getVideosDir();
 // Studio exports run as cancellable jobs; a render still going when the dev server exits is killed with it.
 const exportJobs = createExportJobs();
 process.on('exit', () => exportJobs.killAll());
+// The render runs in its own process group, so Ctrl+C on the dev server never reaches it: stop it here.
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
+  process.once(signal, () => {
+    exportJobs.killAll();
+    process.kill(process.pid, signal);
+  });
+}
 
 // The voice the studio narrates with when a request does not name one.
 const DEFAULT_VOICE_KEY = 'aura-helios-en';

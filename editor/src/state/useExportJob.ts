@@ -15,6 +15,9 @@ export function isExportActive(job: ExportJobSnapshot | null): boolean {
   return job !== null && ["preparing", "rendering", "finishing"].includes(job.status);
 }
 
+/** Shown when the dev server no longer knows the job, for example after it restarted. */
+const LOST_JOB = "Lost track of the export: the studio server restarted, so the render stopped. Start it again.";
+
 /** Polling cadence for a running export, in milliseconds. */
 const POLL_MS = 700;
 
@@ -51,8 +54,16 @@ export function useExportJob(onFinished: (job: ExportJobSnapshot) => void) {
     const id = jobId;
     const timer = setInterval(() => {
       fetch(`/api/export/${id}`)
-        .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Lost track of the export"))))
-        .then((data) => setJob(data.job as ExportJobSnapshot))
+        .then(async (r) => {
+          if (r.status === 404) {
+            setJob(null);
+            setError(LOST_JOB);
+            return;
+          }
+          if (!r.ok) throw new Error(`Export status check failed (${r.status})`);
+          const data = await r.json();
+          setJob(data.job as ExportJobSnapshot);
+        })
         .catch((err) => setError(err instanceof Error ? err.message : String(err)));
     }, POLL_MS);
     return () => clearInterval(timer);
@@ -94,6 +105,11 @@ export function useExportJob(onFinished: (job: ExportJobSnapshot) => void) {
     if (!job) return;
     try {
       const res = await fetch(`/api/export/${job.id}/cancel`, { method: "POST" });
+      if (res.status === 404) {
+        setJob(null);
+        setError(LOST_JOB);
+        return;
+      }
       const data = await res.json();
       if (data.job) setJob(data.job as ExportJobSnapshot);
     } catch (err) {
@@ -101,14 +117,14 @@ export function useExportJob(onFinished: (job: ExportJobSnapshot) => void) {
     }
   }, [job]);
 
-  /** The cross: hides the dialog while a render continues, and clears a settled job. */
+  /** The cross: hides the dialog while a render continues, keeps a finished video for Download, and clears a failed or cancelled job. */
   const close = useCallback(() => {
     setDialogOpen(false);
     setError(null);
-    if (!isExportActive(job)) setJob(null);
+    if (job?.status === "failed" || job?.status === "cancelled") setJob(null);
   }, [job]);
 
-  /** Back to the Start screen after a failed or cancelled export. */
+  /** Back to the Start screen after a finished, failed or cancelled export. */
   const reset = useCallback(() => {
     setJob(null);
     setError(null);

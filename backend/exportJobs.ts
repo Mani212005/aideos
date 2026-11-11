@@ -258,7 +258,10 @@ export function createExportJobs(deps: ExportJobDeps = {}) {
     /** Kills every render still running, for server shutdown. */
     killAll(): void {
       for (const job of jobs.values()) {
-        if (job.child && job.child.exitCode === null) signalTree(job.child, "SIGKILL");
+        if (job.child && job.child.exitCode === null) {
+          signalTree(job.child, "SIGKILL");
+          discard(job);
+        }
       }
     },
   };

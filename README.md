@@ -142,7 +142,7 @@ This symlinks `bin/aideos` to `~/.local/bin/aideos`. Ensure `~/.local/bin` is in
 ### 6. Auto-Prompt a Film from a Topic
 Let the autonomous director draft a screenplay, synthesize audio, layout scenes, and render both formats end to end:
 ```bash
-aideos direct "Why attention scales quadratically in transformers" --broll --formats long,reel
+aideos direct "Why attention scales quadratically in transformers" --broll --formats long,reel --final-export
 ```
 
 ### 7. Run Production from an Existing Screenplay
@@ -152,8 +152,10 @@ npm run backend -- film \
   --script-file videos/my-video/script.md \
   --title "My Video Title" \
   --slug my-video \
-  --broll --formats long,reel
+  --broll --formats long,reel --final-export
 ```
+
+Without `--final-export`, `aideos film` and `aideos direct` stop after the `assemble` stage with a draft film you can preview in the studio.
 
 ### 8. Download Audio Assets
 Populate background music and sound effects in the shared audio cache:

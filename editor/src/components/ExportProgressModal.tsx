@@ -122,10 +122,15 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
   } else if (status === "done" && job?.downloadUrl) {
     const { downloadUrl } = job;
     footer = (
-      <Button size="md" tone="primary" onClick={() => downloadFile(downloadUrl, job.filename)}>
-        <Download className="h-4 w-4" />
-        Download {job.filename}
-      </Button>
+      <>
+        <Button size="md" onClick={onReset}>
+          New export
+        </Button>
+        <Button size="md" tone="primary" onClick={() => downloadFile(downloadUrl, job.filename)}>
+          <Download className="h-4 w-4" />
+          Download {job.filename}
+        </Button>
+      </>
     );
   } else if (status === "failed" || status === "cancelled") {
     footer = (

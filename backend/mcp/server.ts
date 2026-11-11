@@ -16,7 +16,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { runProduction } from "../pipeline/run";
 import { FILM_ID, readFilm, writeFilm, ROOT, VIDEOS_DIR } from "../pipeline/filmStore";
-import { DESIGN_MODES, PRODUCTION_STAGES, type ProductionProgress, type ProductionRequest, type ProductionResult } from "../pipeline/types";
+import { DESIGN_MODES, PRODUCTION_STAGES, draftStopAfter, type ProductionProgress, type ProductionRequest, type ProductionResult } from "../pipeline/types";
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
 import { buildEditContext } from "../editContext/buildEditContext";
 import { detectFillers } from "../editContext/detectFillers";
@@ -53,7 +53,7 @@ function newRunId(): string {
 }
 
 /** Starts a production run in the background and returns its record straight away. */
-function startRun(request: ProductionRequest): RunRecord {
+function startRun(request: ProductionRequest, produce: typeof runProduction): RunRecord {
   const record: RunRecord = {
     runId: newRunId(),
     slug: request.slug ?? "",
@@ -64,7 +64,7 @@ function startRun(request: ProductionRequest): RunRecord {
   };
   runs.set(record.runId, record);
 
-  void runProduction(request, (event) => {
+  void produce(request, (event) => {
     record.events.push(event);
     if (record.events.length > MAX_EVENTS) record.events.splice(0, record.events.length - MAX_EVENTS);
   })
@@ -161,6 +161,8 @@ export interface McpServerOptions {
   };
   /** Injected LLM caller for testing and offline execution in the edit planner. */
   llmCaller?: (prompt: string) => Promise<string>;
+  /** Injected production runner for testing; defaults to the real pipeline. */
+  runProduction?: typeof runProduction;
 }
 
 /** Instructions a remote agent reads: it has no shell, only these tools. */
@@ -256,8 +258,10 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
     },
     async (input) => {
       const { finalExport, ...request } = input;
-      // Drafts and stills are the agent default: the final render happens only when the user asked for it.
-      const record = startRun({ ...request, stopAfter: request.stopAfter ?? (finalExport ? undefined : "assemble") } as ProductionRequest);
+      const record = startRun(
+        { ...request, stopAfter: draftStopAfter(request.stopAfter, finalExport) } as ProductionRequest,
+        options.runProduction ?? runProduction,
+      );
       return jsonResult({
         runId: record.runId,
         state: record.state,
