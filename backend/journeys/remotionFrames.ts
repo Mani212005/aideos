@@ -15,6 +15,11 @@ import { glFlag, stagePublicDir } from "../pipeline/render";
 
 const ROOT = path.resolve(__dirname, "../..");
 
+// Fractional-DPR surface captures can vary even for a frozen SVG in Chromium. Remotion's
+// view capture keeps DPR at 1 and applies the requested scale through viewport emulation.
+// Set this once for the journey process so stills, sequences and child exports agree.
+process.env.DISABLE_FROM_SURFACE = "1";
+
 /** The two compositions every film renders in. */
 export type CompositionId = "Long" | "Reel";
 
