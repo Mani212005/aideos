@@ -120,7 +120,7 @@ export const JOBS: CiJob[] = [
       { name: "file headers", cmd: ["npx", "tsx", "scripts/check_headers.ts"] },
       { name: "every test file is wired", cmd: ["npx", "tsx", "scripts/check_tests_wired.ts"] },
       { name: "eslint (src, backend, scripts, editor)", cmd: ["npx", "eslint", "src", "backend", "scripts", "editor/src"] },
-      { name: "tsc root", cmd: ["npx", "tsc", "--noEmit"] },
+      { name: "tsc root (tracked source only)", cmd: ["npx", "tsx", "scripts/typecheck_tracked.ts"] },
       { name: "oxlint editor", cmd: ["npm", "--prefix", "editor", "run", "lint"] },
       { name: "editor build (tsc -b plus vite)", cmd: ["npm", "--prefix", "editor", "run", "build"] },
       ruffStep("ruff check", ["check", "."]),

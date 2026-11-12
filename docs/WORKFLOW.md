@@ -133,8 +133,9 @@ The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http:
 4. **Stage 4: Motion (`MotionStage.tsx`)**: Custom SVG movie animation authoring studio with element-level timeline keyframing, motion templates (staged entry, pulse, draw-on strokes), and frame-synchronized preview.
 5. **Stage 5: Edit (`EditStage.tsx`)**: Non-linear multi-track timeline displaying audio waveforms, track controls (lock, mute, hide), clip dragging with sticky snapping, transition selectors, unified clip/shot inspector, and model-driven AI edit panel connected to Agent Bridge. Its Reel controls show delivered length against the 179-second cap, the kept/dropped shots and condensed narration, backend reel checks, and a 9:16 preview; owners can rebuild through the existing reel delivery path.
 6. **Stage 6: Captions (`CaptionsStage.tsx`)**: Word-level caption timing editor for word text and frame ranges. To move captions, click them in the Edit preview and drag.
-7. **Stage 7: Review (`ReviewStage.tsx`)**: AI Critique Studio drawer for natural-language feedback with Agent Bridge dispatch, SVG data visualization charts (coverage map, duration distribution, pacing metrics), and headless Remotion MP4 export.
+7. **Stage 7: Review (`ReviewStage.tsx`)**: AI Critique Studio drawer for natural-language feedback with Agent Bridge dispatch, and SVG data visualization charts (coverage map, duration distribution, pacing metrics).
 8. **Persistent Preview & Controls**: 60 FPS Remotion preview player with 16:9 Long and 9:16 Vertical Reel aspect ratio toggling, transport controls, and live studio hot-reload reflecting agent updates in real time.
+9. **Studio Export (`ExportProgressModal.tsx`, `useExportJob.ts`)**: Clicking Export in the header opens a dialog on a Start screen. Nothing renders until Start is pressed. Progress follows actual renderer frame counts, Cancel stops the render and deletes the partial video, the close cross hides the dialog while rendering (reopened via a header progress chip), and a finished render shows an explicit Download button (no automatic download).
 
 ---
 
@@ -162,11 +163,11 @@ The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http:
 | `aideos studio` | Opens native Remotion Studio UI | Remotion Studio browser tab |
 | `aideos test` | Executes full automated verification suite | Test TAP results |
 | `aideos produce` | Runs audio-first produce pipeline | `voiceover.wav`, `captions.vtt`, `film.ts` |
-| `aideos direct "<prompt>"` | Auto-prompt: LLM director plans and produces a complete film from a prompt | `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` (or `<outDir>/<slug>-<format>.mp4` when `--out` is set) |
+| `aideos direct "<prompt>" [--final-export]` | Auto-prompt: LLM director plans and produces a draft film from a prompt, stopping after `assemble`; `--final-export` (only when the user explicitly asked) also renders and verifies | Draft: `videos/<slug>/film.json`, narration and design. With `--final-export`: `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` (or `<outDir>/<slug>-<format>.mp4` when `--out` is set) |
 | `aideos review <slug\|mp4> [--format <format>]` | Runs deterministic quality review checks (default reviews every rendered format) | `<out>/review.json`, `review.reel.json`, evidence stills |
 | `aideos gemini-review <mp4>` | Evaluates video against 12-criterion rubric via Gemini 3.8 Flash (agy) | Terminal score & verdict, JSON |
 | `aideos all-check <slug>` | Full check and repair in background agent (long and reel, 9.0+ bar) | `videos/<slug>/all-check/`, final MP4s |
-| `aideos film` (or `npm run backend -- film`) | Autonomous pipeline (intake, narrate, look, design, reel, b-roll, assemble, render, verify) | `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` (or `<outDir>/<slug>-<format>.mp4` when `--out` is set) |
+| `aideos film [--final-export]` (or `npm run backend -- film`) | Autonomous pipeline (intake, narrate, look, design, reel, b-roll, assemble), stopping at a draft; `--final-export` (only when the user explicitly asked) also runs render and verify | Draft: `videos/<slug>/film.json`, narration and design. With `--final-export`: `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` (or `<outDir>/<slug>-<format>.mp4` when `--out` is set) |
 | `aideos connect` | Connects local coding agent via one-time pairing code | Connected agent session |
 | `npm run validate:film <path>` | Standalone invariant validator for arbitrary film manifests | Runsheet & status in terminal |
 | `npm run backend -- mcp` | Starts Model Context Protocol (MCP) server over stdio | MCP stdio interface |

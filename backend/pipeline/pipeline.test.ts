@@ -798,6 +798,43 @@ test("CLI: the direct executable and launcher preserve exit 3 and continuation i
   }
 });
 
+test("CLI: aideos film stops at a draft by default and writes no final mp4", () => {
+  const root = path.resolve(__dirname, "../..");
+  const slug = `probe-cli-draft-${Date.now().toString(36)}`;
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-draft-out-"));
+  try {
+    const args = ["film", "--script", SCRIPT, "--title", "Probe Film", "--slug", slug, "--tts", "tone", "--design", "templates", "--out", out];
+    const env = { ...process.env, NODE_TEST_CONTEXT: "child-v8" };
+    const child = spawnSync(process.execPath, ["--import", "tsx", "backend/cli.ts", ...args], { cwd: root, env, encoding: "utf8" });
+    assert.equal(child.status, 0, child.stdout + child.stderr);
+    assert.match(child.stdout, /draft only: stopped after the assemble stage; pass --final-export/);
+    assert.ok(readFilm(slug), "the draft film must be written");
+    assert.deepEqual(fs.readdirSync(out), []);
+    const renders = path.join(VIDEOS_DIR, slug, "renders");
+    assert.deepEqual(fs.existsSync(renders) ? fs.readdirSync(renders).filter((f) => f.endsWith(".mp4")) : [], []);
+  } finally {
+    cleanProbe(slug);
+    fs.rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test("CLI: --final-export on film and direct lifts the draft stop so the run renders the final mp4s", () => {
+  for (const name of ["film", "direct"] as const) {
+    const cmd = program.commands.find((c) => c.name() === name);
+    assert.ok(cmd);
+    const build = (argv: string[]) => {
+      for (const option of cmd.options) cmd.setOptionValue(option.attributeName(), option.defaultValue);
+      cmd.parseOptions(argv);
+      const options = cmd.opts() as Parameters<typeof buildFilmProductionRequest>[1] & Parameters<typeof buildDirectorRequest>[1];
+      return name === "film" ? buildFilmProductionRequest("## Title\n[NARRATION] Hello", options) : buildDirectorRequest("prompt", options);
+    };
+    assert.equal(build([]).stopAfter, "assemble", `${name} must default to a draft`);
+    assert.equal(build(["--final-export"]).stopAfter, undefined, `${name} --final-export must run render and verify`);
+    assert.equal(build(["--final-export", "--stop-after", "design"]).stopAfter, "design");
+    assert.equal(build(["--stop-after", "render"]).stopAfter, "render");
+  }
+});
+
 test("CLI: omitted --speed passes undefined to runProduction and falls through to defaults", () => {
   const filmCmd = program.commands.find((c) => c.name() === "film");
   assert.ok(filmCmd);
