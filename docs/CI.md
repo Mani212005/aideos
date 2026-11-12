@@ -71,6 +71,12 @@ Both `test:journeys` and `scripts/ci.ts` select every `backend/journeys/**/*.jou
   stays `angle`. The legacy golden job also pins Fontconfig to RGB subpixel text antialiasing
   (`FONTCONFIG_FILE=scripts/golden-fonts.conf`) so Linux machines with differing default font setups
   rasterize text identically.
+* The journey frame harness uses Remotion's view capture (`DISABLE_FROM_SURFACE=1`). Chromium's
+  fractional-device-pixel-ratio surface capture produced two raster variants of Still Talking
+  frame 2773, including in a frozen SVG with no fonts, external assets, scripts or animation. More paint
+  delays and software rasterization did not remove the variation. View capture keeps device pixel
+  ratio at 1 and scales through viewport emulation instead. J9 still requires four independent cold
+  renders at 480x270 to have exactly zero changed pixels; no retry or tolerance is involved.
 * `ruff` is pinned (`RUFF_VERSION` in `scripts/ci.ts` and in `ci.yml`); locally the step uses an
   installed `ruff`, `python3 -m ruff` or `uvx ruff@<pinned>`, and is skipped with a reason (never
   silently passed) when none exists. CI always runs it.
