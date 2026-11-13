@@ -4,7 +4,7 @@
  * Used by: backend/pipeline/run.ts (render stage), backend/journeys/harness.test.ts, backend/journeys/j12_render_disk.journey.ts, docs/CI.md.
  */
 
-import { spawn } from "child_process";
+import { runRenderCommand } from "../renderProcess";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -167,10 +167,10 @@ export function pickSampleFrames(film: Film, range: [number, number], spread = S
 }
 
 /** Renders `frames` of one composition in a child process with the final render's settings and measures each file. */
-export function sampleRenderFrames(
+export async function sampleRenderFrames(
   format: ProductionFormat,
   frames: number[],
-  options: { browserExecutable?: string } = {},
+  options: { browserExecutable?: string; signal?: AbortSignal } = {},
 ): Promise<RenderSample> {
   const publicDir = stagePublicDir();
   const request = {
@@ -180,33 +180,22 @@ export function sampleRenderFrames(
     publicDir: publicDir?.dir ?? null,
     browserExecutable: options.browserExecutable ?? null,
   };
-  return new Promise<RenderSample>((resolve, reject) => {
-    const child = spawn(process.execPath, [path.join(ROOT, "backend/pipeline/renderSampleWorker.mjs"), JSON.stringify(request)], {
+  let out = "";
+  try {
+    await runRenderCommand({
+      command: process.execPath,
+      args: [path.join(ROOT, "backend/pipeline/renderSampleWorker.mjs"), JSON.stringify(request)],
       cwd: ROOT,
-      stdio: ["ignore", "pipe", "pipe"],
+    }, path.join(os.tmpdir(), "aideos-sample-unused"), {
+      signal: options.signal, requireOutput: false,
+      onStdout: (text) => { out += text; },
     });
-    let out = "";
-    let err = "";
-    child.stdout.on("data", (c: Buffer) => (out += c.toString()));
-    child.stderr.on("data", (c: Buffer) => (err = (err + c.toString()).slice(-4000)));
-    child.on("error", (e) => {
-      publicDir?.cleanup();
-      reject(e);
-    });
-    child.on("close", (code) => {
-      publicDir?.cleanup();
-      if (code !== 0) {
-        reject(new Error(`RENDER_SAMPLE_FAILED: sampling ${format} frames exited with code ${code}:\n${err.trim()}`));
-        return;
-      }
-      try {
-        const line = out.trim().split("\n").pop() ?? "";
-        resolve(JSON.parse(line) as RenderSample);
-      } catch {
-        reject(new Error(`RENDER_SAMPLE_FAILED: the frame sampler printed no result:\n${out.slice(-500)}`));
-      }
-    });
-  });
+    const line = out.trim().split("\n").pop() ?? "";
+    try { return JSON.parse(line) as RenderSample; }
+    catch { throw new Error(`RENDER_SAMPLE_FAILED: the frame sampler printed no result:\n${out.slice(-500)}`); }
+  } finally {
+    publicDir?.cleanup();
+  }
 }
 
 /** Samples real frames of the film, then refuses the render when its measured need plus the reserve does not fit. */
@@ -217,12 +206,13 @@ export async function checkRenderDiskBudget(input: {
   range: [number, number];
   dirs?: string[];
   browserExecutable?: string;
+  signal?: AbortSignal;
   /** Injection points for tests; the real sampler and statfs are the defaults. */
   sampler?: (format: ProductionFormat, frames: number[]) => Promise<RenderSample>;
   statfs?: StatFs;
 }): Promise<RenderEstimate> {
   const picks = pickSampleFrames(input.film, input.range);
-  const sample = await (input.sampler ?? ((f, frames) => sampleRenderFrames(f, frames, { browserExecutable: input.browserExecutable })))(input.format, picks);
+  const sample = await (input.sampler ?? ((f, frames) => sampleRenderFrames(f, frames, { browserExecutable: input.browserExecutable, signal: input.signal })))(input.format, picks);
   return assertRenderDiskBudget({
     frames: input.range[1] - input.range[0] + 1,
     sample,

@@ -20,10 +20,9 @@ import { writeLookMd } from "../lookPlan/render";
 import crypto from "crypto";
 import fs from "fs";
 import fsp from "fs/promises";
-import os from "os";
 import path from "path";
 import type { Film } from "../../src/dl/schema";
-import { ensureRetimedAudio, produceAudioPipeline, type ProduceAudioResult } from "../audio";
+import { produceAudioPipeline, type ProduceAudioResult } from "../audio";
 import { DEFAULT_KOKORO_SPEED } from "../tts";
 import { DELIVERY_CONFIG, deliveryTimeline } from "../../src/dl/delivery";
 import { ensureEndCardVoice, narrationVoiceOf, synthesizeEndCardLine } from "../endCard/voice";
@@ -43,17 +42,17 @@ import {
   readActiveFilmSource,
   readFilm,
   restoreActiveFilmSource,
-  setActiveFilm,
   slugify,
   wireFootageIntoFilm,
   writeFilm,
   withFootage,
 } from "./filmStore";
-import { analyseAudio, contactSheet, describeVideo, renderFormat, FORMAT_SPECS } from "./render";
-import { masterAudio, writeDescriptionCredits } from "../masterAudio";
+import { analyseAudio, contactSheet, describeVideo, FORMAT_SPECS } from "./render";
+import { writeDescriptionCredits } from "../masterAudio";
 import { assertDeliverable } from "../deliveryGate";
 import { boundTheme } from "../../src/projectTheme";
-import { checkRenderDiskBudget } from "./renderDiskBudget";
+import { createRenderJob } from "../renderJob";
+import { createRemotionRenderer } from "../remotionRenderer";
 import {
   PRODUCTION_STAGES,
   DESIGN_MODES,
@@ -760,40 +759,19 @@ export async function runProduction(
         return cached.length === formats.length && cached.every((o) => fs.existsSync(o.path)) ? cached : null;
       },
       async () => {
-        // Remotion's CLI bundles whichever film src/dl/activeFilm.ts names, so pointing it at
-        // this run is part of rendering. It happens here rather than during assembly because
-        // assembly is reached by runs that stop before rendering, and those must not leave the
-        // repository pointing at a film nothing ever rendered.
-        ensureRetimedAudio(assembled);
-
-        // The delivered cuts must all carry music, sound effects and the end card before any frame is rendered.
+        // Keep the existing all-format deliverable preflight before producing any output.
         assertDeliverable(formats.map((format) => ({ film: format === "reel" ? reelForRender(slug) : assembled, format })));
-
         const produced: RenderedOutput[] = [];
         for (const format of formats) {
           const outputFilm = format === "reel" ? reelForRender(slug) : assembled;
-          ensureRetimedAudio(outputFilm);
-          setActiveFilm(slug);
-          if (!FORMAT_SPECS[format]) {
-            throw new Error(`Invalid format "${format}". Supported formats are: ${Object.keys(FORMAT_SPECS).join(", ")}`);
-          }
           const outPath = request.outDir ? path.join(outDir, `${slug}-${format}.mp4`) : path.join(outDir, `${format}.mp4`);
-          // Remotion holds every frame of a format in the temp dir until it stitches them, so the
-          // guard renders a few real frames, measures them and refuses only a render that cannot fit.
-          // The whole delivered video: the story plus this format's compulsory end card.
-          const frameRange: [number, number] = request.renderFrames ?? [0, deliveryTimeline(outputFilm, format).totalFrames - 1];
-          emit("render", "running", `measuring ${format} frame sizes for the disk budget`);
-          await checkRenderDiskBudget({ film: outputFilm, format, range: frameRange, dirs: [os.tmpdir(), outDir], browserExecutable: request.browserExecutable });
-          emit("render", "running", `rendering ${format} (${FORMAT_SPECS[format].width}x${FORMAT_SPECS[format].height})`);
-          await renderFormat(format, outPath, {
-            concurrency: request.renderConcurrency,
-            browserExecutable: request.browserExecutable,
-            frames: request.renderFrames,
+          const job = createRenderJob({ film: outputFilm, format, outPath, profile: "final", frames: request.renderFrames }, createRemotionRenderer({
+            caller: "pipeline", concurrency: request.renderConcurrency, browserExecutable: request.browserExecutable,
             onLog: (message, progress) => emit("render", "running", message, progress),
-          });
-          const master = masterAudio(outPath, (message) => emit("render", "running", message));
+          }), { onLog: (message) => emit("render", "running", message) });
+          const { output, master } = await job.run();
           if (master.status === "skipped") warnings.push(`${format} master skipped: ${master.reason}`);
-          produced.push(describeVideo(format, outPath));
+          produced.push(output);
         }
         writeDescriptionCredits(path.join(pkgDir, "renders"), [assembled, ...(reelFilm ? [reelFilm] : [])]);
         state.outputs = produced;

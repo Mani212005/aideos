@@ -1,0 +1,296 @@
+/**
+ * File Description: Renderer-independent render lifecycle, delivery policy and output provenance.
+ * Inputs and outputs: a film snapshot, renderer and cancellation -> a mastered, probed output and content sidecar.
+ * Used by: pipeline final renders, studio exports, review renders and the render CLI.
+ */
+
+import { createHash } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import type { Film } from "../src/dl/schema";
+import type { ProductionFormat, RenderedOutput } from "./pipeline/types";
+import { resolvePackageDir } from "../src/dl/videoPackageLoader";
+import { ensureRetimedAudio } from "./audio";
+import { assertDeliverable } from "./deliveryGate";
+import { masterAudio, type MasterResult } from "./masterAudio";
+import { describeVideo } from "./pipeline/render";
+
+export type RenderState =
+  | "queued"
+  | "preparing"
+  | "rendering"
+  | "mastering"
+  | "probed"
+  | "done"
+  | "failed"
+  | "cancelled";
+export type RenderProfile = "draft" | "review" | "final";
+
+/** Encoder policy shared with future native backends; adapters choose how to express it. */
+export const RENDER_PROFILES = Object.freeze({
+  draft: Object.freeze({
+    intermediate: "lossless",
+    codec: "h264",
+    crf: 16,
+    pixelFormat: "yuv420p",
+    range: "limited",
+    audioCodec: "aac",
+    audioBitrate: 320_000,
+  }),
+  review: Object.freeze({
+    intermediate: "lossless",
+    codec: "h264",
+    crf: 16,
+    pixelFormat: "yuv420p",
+    range: "limited",
+    audioCodec: "aac",
+    audioBitrate: 320_000,
+  }),
+  final: Object.freeze({
+    intermediate: "lossless",
+    codec: "h264",
+    crf: 16,
+    pixelFormat: "yuv420p",
+    range: "limited",
+    audioCodec: "aac",
+    audioBitrate: 320_000,
+  }),
+});
+
+const NEXT: Partial<Record<RenderState, RenderState>> = {
+  queued: "preparing",
+  preparing: "rendering",
+  rendering: "mastering",
+  mastering: "probed",
+  probed: "done",
+};
+
+/** Rejects impossible phase changes and makes terminal states immutable. */
+export function transitionRenderJob(
+  state: RenderState,
+  next: RenderState,
+): RenderState {
+  if (
+    !(state in NEXT) ||
+    (next !== NEXT[state] && next !== "failed" && next !== "cancelled")
+  ) {
+    throw new Error(`Invalid RenderJob transition: ${state} -> ${next}`);
+  }
+  return next;
+}
+
+export interface RenderRequest {
+  film: Film;
+  format: ProductionFormat;
+  outPath: string;
+  profile: RenderProfile;
+  frames?: [number, number];
+}
+
+export interface RenderContext {
+  signal: AbortSignal;
+  onOutput: (text: string) => void;
+}
+
+/** A native renderer implements this contract without importing any capture-framework types. */
+export interface Renderer {
+  prepare?: (
+    request: RenderRequest,
+    context: RenderContext,
+  ) => Promise<void> | void;
+  checkDiskBudget: (
+    request: RenderRequest,
+    context: RenderContext,
+  ) => Promise<void>;
+  render: (request: RenderRequest, context: RenderContext) => Promise<void>;
+  cleanup?: () => Promise<void> | void;
+}
+
+export interface RenderServices {
+  checkDeliverable: (request: RenderRequest) => void;
+  checkBroll: (film: Film) => void;
+  retimeAudio: (film: Film) => void;
+  master: (
+    file: string,
+    onLog?: (message: string) => void,
+  ) => MasterResult | Promise<MasterResult>;
+  probe: (
+    format: ProductionFormat,
+    file: string,
+  ) => RenderedOutput | Promise<RenderedOutput>;
+}
+
+/** Refuses missing requested footage before invoking any renderer. */
+export function assertBrollReady(film: Film): void {
+  const pending = film.shots.filter(
+    (shot) =>
+      shot.needsFootage &&
+      !fs.existsSync(
+        path.join(resolvePackageDir(film.id), "footage", `${shot.id}.mp4`),
+      ),
+  );
+  if (pending.length)
+    throw new Error(
+      `Cannot render video: GPU B-Roll footage is still pending for ${pending.length} shot(s) (${pending.map((shot) => shot.id).join(", ")}). Please complete B-roll generation first.`,
+    );
+}
+
+const SERVICES: RenderServices = {
+  checkDeliverable: ({ film, format }) => assertDeliverable([{ film, format }]),
+  checkBroll: assertBrollReady,
+  retimeAudio: ensureRetimedAudio,
+  master: masterAudio,
+  probe: describeVideo,
+};
+
+/** Hashes canonical film content so object key order does not change provenance. */
+export function renderFilmHash(film: Film): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify(film, (_key, value) => {
+        if (value && typeof value === "object" && !Array.isArray(value))
+          return Object.fromEntries(
+            Object.keys(value)
+              .sort()
+              .map((key) => [key, value[key]]),
+          );
+        return value;
+      }),
+    )
+    .digest("hex");
+}
+
+/** Creates a single-use job; cancellation waits for backend teardown before discarding partial output. */
+export function createRenderJob(
+  input: RenderRequest,
+  renderer: Renderer,
+  options: {
+    prepareFilm?: (film: Film) => Promise<Film>;
+    onState?: (state: RenderState) => void;
+    onMaster?: (master: MasterResult, film: Film) => void;
+    onOutput?: (text: string) => void;
+    onLog?: (message: string) => void;
+    services?: Partial<RenderServices>;
+  } = {},
+) {
+  const request = structuredClone(input);
+  const services = { ...SERVICES, ...options.services };
+  const controller = new AbortController();
+  const context: RenderContext = {
+    signal: controller.signal,
+    onOutput: options.onOutput ?? (() => {}),
+  };
+  let cleaned = false;
+  let state: RenderState = "queued";
+  let running:
+    | Promise<{
+        output: RenderedOutput;
+        master: MasterResult;
+        filmHash: string;
+      }>
+    | undefined;
+
+  /** Publishes only validated lifecycle transitions. */
+  const move = (next: RenderState): void => {
+    state = transitionRenderJob(state, next);
+    options.onState?.(state);
+  };
+
+  /** Stops between asynchronous phases as well as inside a cooperative backend. */
+  const checkCancelled = (): void => controller.signal.throwIfAborted();
+
+  /** Releases backend resources at most once, including a failing cleanup. */
+  const cleanup = async (): Promise<void> => {
+    if (cleaned) return;
+    cleaned = true;
+    await renderer.cleanup?.();
+  };
+
+  /** Executes the shared delivery steps exactly once for this immutable input snapshot. */
+  const execute = async () => {
+    const sidecar = `${request.outPath}.render.json`;
+    try {
+      checkCancelled();
+      if (request.format !== "long" && request.format !== "reel")
+        throw new Error(
+          `Invalid format "${request.format}". Supported formats are: long, reel`,
+        );
+      if (!Object.prototype.hasOwnProperty.call(RENDER_PROFILES, request.profile))
+        throw new Error(`Invalid render profile "${request.profile}"`);
+      move("preparing");
+      if (options.prepareFilm)
+        request.film = structuredClone(await options.prepareFilm(request.film));
+      checkCancelled();
+      services.checkDeliverable(request);
+      services.checkBroll(request.film);
+      services.retimeAudio(request.film);
+      fs.mkdirSync(path.dirname(request.outPath), { recursive: true });
+      await renderer.prepare?.(request, context);
+      checkCancelled();
+      await renderer.checkDiskBudget(request, context);
+      checkCancelled();
+      const filmHash = renderFilmHash(request.film);
+      move("rendering");
+      checkCancelled();
+      await renderer.render(request, context);
+      checkCancelled();
+      if (!fs.existsSync(request.outPath))
+        throw new Error(
+          `Render failed to create output file at ${request.outPath}`,
+        );
+      move("mastering");
+      checkCancelled();
+      const master = await services.master(request.outPath, options.onLog);
+      checkCancelled();
+      options.onMaster?.(master, request.film);
+      const output = await services.probe(request.format, request.outPath);
+      checkCancelled();
+      move("probed");
+      checkCancelled();
+      fs.writeFileSync(
+        sidecar,
+        JSON.stringify(
+          {
+            filmId: request.film.id,
+            filmHash,
+            profile: request.profile,
+            profilePolicy: RENDER_PROFILES[request.profile],
+            output,
+          },
+          null,
+          2,
+        ) + "\n",
+      );
+      await cleanup();
+      checkCancelled();
+      move("done");
+      return { output, master, filmHash };
+    } catch (error) {
+      await cleanup().catch(() => {});
+      move(controller.signal.aborted ? "cancelled" : "failed");
+      fs.rmSync(request.outPath, { force: true });
+      fs.rmSync(sidecar, { force: true });
+      fs.rmSync(`${request.outPath}.master.json`, { force: true });
+      throw error;
+    }
+  };
+
+  return {
+    /** Returns the current lifecycle state. */
+    get state(): RenderState {
+      return state;
+    },
+    /** Starts the job, or returns the original execution when called again. */
+    run() {
+      return (running ??= Promise.resolve().then(execute));
+    },
+    /** Cancels once and waits for the backend to release its resources. */
+    async cancel(): Promise<void> {
+      if (state === "done" || state === "failed" || state === "cancelled")
+        return;
+      controller.abort(new Error("Render cancelled"));
+      if (!running) running = Promise.resolve().then(execute);
+      await running.catch(() => {});
+    },
+  };
+}
