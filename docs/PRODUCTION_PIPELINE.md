@@ -46,7 +46,7 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 | `reel`     | Builds condensed reel narration and a derived film with checked shot drops, or reuses the long for an identity reel | `videos/<slug>/reel/film.json`, `status.json`, and its `src/dl/films/<slug>.reel.ts` shadow; cut mode also writes reel narration and word timings |
 | `broll`    | Renders GPU footage for the flagged shots and fetches the clips                       | `videos/<slug>/footage/<shotId>.mp4`                |
 | `assemble` | Wires each clip into its shot as a full-screen inset                                 | `film.json` and its `src/dl/films/<slug>.ts` shadow |
-| `render`   | Installs the film as active, drives Remotion for each requested format, then measures and masters each MP4 audio track | `src/dl/activeFilm.ts`, `videos/<slug>/renders/<format>.mp4`, `<format>.mp4.master.json`, `description-credits.txt` by default |
+| `render`   | Runs each requested format through the shared RenderJob lifecycle and its selected renderer, then measures and masters each MP4 audio track | `videos/<slug>/renders/<format>.mp4`, `<format>.mp4.master.json`, `<format>.mp4.render.json`, `description-credits.txt` by default |
 | `verify`   | Probes the rendered files and writes contact sheets across the whole duration         | `videos/<slug>/review/<format>-sheet.jpg`          |
 
 Progress arrives through the second argument to `runProduction`: one `ProductionProgress` per
@@ -56,6 +56,10 @@ the stage, and milliseconds since the run began.
 Rendered paths are returned in `result.outputs`. By default they are written inside the video
 package at `videos/<slug>/renders/<format>.mp4`. When `ProductionRequest.outDir` is set, each file
 is written as `<outDir>/<slug>-<format>.mp4` instead.
+
+The shared render lifecycle, profile policy, cancellation behavior, and render sidecar format are
+documented in the [RenderJob reference](RENDER_JOB.md). The Remotion adapter retains the legacy
+active-film setup and renderer options.
 
 After each render, the master stage measures the delivered MP4 with `ebur128` and targets -16 LUFS
 integrated within 0.5 LU and true peak at or below -1 dBTP. If limiting is needed, it encodes an AAC
