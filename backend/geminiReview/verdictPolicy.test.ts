@@ -92,7 +92,7 @@ test("policy: a mean within 0.5 of the bar (both ends included) triggers exactly
     assert.equal(result.calls(), 2, `mean ${mean} earns one second draw and no more`);
     assert.equal(result.report.draws?.length, 2);
     assert.match(result.messages.join("\n"), /running one second draw/);
-    assert.match(result.messages.join("\n"), /review call 2 of at most 2/);
+    assert.match(result.messages.join("\n"), /scored draw 2 of at most 2/);
   }
 });
 

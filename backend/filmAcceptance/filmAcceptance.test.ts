@@ -13,7 +13,9 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
-import type { GeminiReviewReport, PairwiseRunReport } from "../geminiReview";
+import { reviewVideo as geminiReviewVideo, type GeminiReviewReport, type PairwiseRunReport } from "../geminiReview";
+import { RUBRIC_CRITERIA } from "../geminiReview/rubric";
+import type { AgyRunner } from "../geminiReview/types";
 import type { ReviewReport } from "../review/types";
 import { recordFrameCheck, runRound, type RoundDeps } from "../allCheck/round";
 import { allCheckDir, type AllCheckConfig } from "../allCheck/types";
@@ -342,6 +344,56 @@ test("all-check: a two-draw review whose combined score misses the bar is a revi
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(allCheckDir(slug), { recursive: true, force: true });
+  }
+});
+
+// Reviews a stand-in video with a reviewer that scores the twelve criteria as given, through the real verdict policy.
+async function reviewWithCriteria(scores: number[]): Promise<GeminiReviewReport> {
+  assert.equal(scores.length, RUBRIC_CRITERIA.length);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "acceptance-criteria-"));
+  const video = path.join(dir, "video.mp4");
+  fs.writeFileSync(video, Buffer.alloc(256, 3));
+  const criteria = RUBRIC_CRITERIA.map((def, i) => ({ name: def.name, title: def.title, isGate: def.isGate, score: scores[i], passed: true, evidenceTimestamps: ["0:05"], reason: `Seen at 0:05: ${def.title}` }));
+  const runner: AgyRunner = async () => JSON.stringify({ overallScore: 9, verdict: "ACCEPT", summary: "s", criteria, feedback: [] });
+  try {
+    return await geminiReviewVideo(video, { runner, skipFacts: true, maxValidationAttempts: 1 });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test("all-check: a criteria mean a float hair under 9.0 passes the round exactly as the verdict says, and a mean truly under 9.0 fails both", async () => {
+  // Decision (captain, review round 1): one tolerant bar comparison for the verdict and the all-check round.
+  const scores = [9.3, 8.7, 9, 9.4, 8.1, 9.3, 9.6, 9.4, 8.1, 8.8, 10, 8.3];
+  const atBar = await reviewWithCriteria(scores);
+  assert.equal(atBar.criteriaMeanScore, 8.999999999999998, "the float mean of these one-decimal scores lands under 9 by noise only");
+  assert.equal(atBar.verdict, "ACCEPT");
+  const slug = "acc-float-bar";
+  const dir = makeRunPackage(slug);
+  try {
+    const [long] = await runRound({ slug, format: "long" }, stubRound({ report: atBar }));
+    assert.doesNotMatch(long.failing.join("\n"), /under the 9\.0 target/);
+    recordFrameCheck({ slug, round: long.round, format: "long", issues: [] });
+    const record = readRecord(dir, "long");
+    assert.equal(record.state, "accepted", "the round agrees with the ACCEPT verdict");
+    assert.ok(currentDraws(record).every((d) => d.passed && d.verdict === "ACCEPT"));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(allCheckDir(slug), { recursive: true, force: true });
+  }
+
+  const below = await reviewWithCriteria(scores.map((score) => (score === 10 ? 9.9 : score)));
+  assert.equal(below.verdict, "REVISE");
+  const belowSlug = "acc-float-bar-below";
+  const belowDir = makeRunPackage(belowSlug);
+  try {
+    const [long] = await runRound({ slug: belowSlug, format: "long" }, stubRound({ report: below }));
+    assert.equal(long.passed, false);
+    assert.match(long.failing.join("\n"), /reviewer score 8\.99 is under the 9\.0 target/);
+    assert.equal(readRecord(belowDir, "long").state, "revise");
+  } finally {
+    fs.rmSync(belowDir, { recursive: true, force: true });
+    fs.rmSync(allCheckDir(belowSlug), { recursive: true, force: true });
   }
 });
 

@@ -3,7 +3,8 @@
  * not stable (the same bytes were ACCEPT 9.2 and then REVISE 8.6), so the verdict never rests on the model's own
  * overall number. (1) A draw's score is the MEAN OF ITS INDIVIDUAL CRITERIA SCORES, computed here. (2) When that mean
  * is within 0.5 of the 9.0 bar (8.5 up to 9.5, both ends included) and the draw could still be an ACCEPT, exactly ONE
- * second draw of the same bytes is run, never a loop, so a review costs at most two reviewer calls. (3) With two
+ * second draw of the same bytes is run, never a loop, so a review has at most two SCORED draws (each draw may still
+ * retry its reviewer call for invalid JSON or missing timestamps, up to the existing attempt limit). (3) With two
  * draws the combined score is the mean of the two draw scores, and ACCEPT needs combined >= 9.0 with every hard gate
  * passing and every criterion carrying timestamp evidence in EVERY draw. The 9.0 bar, the hard gates and the timestamp
  * rule are exactly the ones that were there before; only the way the score is computed, and when a second draw runs,
@@ -12,7 +13,7 @@
  * criteria also averaged 9.2: that is inside the band, so a second draw runs; combined = (9.2 + 8.81) / 2 = 9.005,
  * which is >= 9.0, so with the gates and timestamps passing the verdict is ACCEPT. If the second draw's criteria had
  * averaged 8.6 the combined score would be 8.9 and the verdict REVISE. A first draw that already averages 9.6 is
- * ACCEPT alone, and one that averages 8.4 is REVISE alone, in both cases with a single reviewer call.
+ * ACCEPT alone, and one that averages 8.4 is REVISE alone, in both cases with a single scored draw.
  * Inputs and outputs: criteria evaluations or per-draw scores -> a draw score, whether a second draw is needed, the
  * combined score and verdict, and the plain-words description of how many draws ran.
  * Used by: backend/geminiReview/geminiReview.ts, backend/allCheck/round.ts, backend/filmAcceptance/machine.ts.

@@ -93,8 +93,9 @@ The command fetches refs and checks version/fast-forward eligibility, then:
    is decided on the mean of the individual criteria scores, not the reviewer's own overall number, and when
    that mean is within 0.5 of the 9.0 bar the review makes exactly one second draw of the same video and
    decides on both: combined (mean of the two draws) >= 9.0 with every hard gate and every timestamp holding
-   in both draws. The release output prints each draw and the number of reviewer calls (at most two per
-   film). Worked example with the 0.5.0 numbers: first draw 9.2, second draw whose criteria average 8.81
+   in both draws. The release output prints each draw and the number of scored draws (at most two per
+   film; each draw may still retry its reviewer call for invalid JSON or missing timestamps, up to the
+   existing attempt limit). Worked example with the 0.5.0 numbers: first draw 9.2, second draw whose criteria average 8.81
    (the reviewer wrote 8.6): (9.2 + 8.81) / 2 = 9.005 is an ACCEPT; had the second averaged 8.6 the combined
    8.9 is a REVISE. See [Review](REVIEW.md#2-gemini-38-flash-video-quality-review-aideos-gemini-review). (Release
    0.5.0 carried two one-time waivers of these verdicts; both have since been removed.)

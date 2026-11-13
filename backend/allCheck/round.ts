@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { reviewPairwise, reviewVideo as geminiReview, formatReviewSummary, renderVideoForSlug, assertSlugDeliverable } from "../geminiReview";
-import { decisionScore, formatScore } from "../geminiReview";
+import { decisionScore, formatScore, reachesBar } from "../geminiReview";
 import type { GeminiReviewReport, PairwiseRunReport } from "../geminiReview";
 import { extractStill, probeVideo } from "../review/media";
 import { reviewVideo as measuredReview } from "../review/review";
@@ -75,7 +75,7 @@ export function recordRoundAcceptance(slug: string, rec: FormatRoundRecord, targ
   }
   if (!rec.review.error && rec.review.score !== null && rec.review.verdict !== null && rec.review.gatesPassed !== null) {
     // The draw passes the way the round's own bar says: the score reached the target and no hard gate failed.
-    const decided = rec.review.gatesPassed && rec.review.score >= target;
+    const decided = rec.review.gatesPassed && reachesBar(rec.review.score, target);
     const reviewKey = `round-${rec.round}`;
     const drawList = rec.review.draws ?? [];
     if (drawList.length > 1) {
@@ -90,7 +90,7 @@ export function recordRoundAcceptance(slug: string, rec: FormatRoundRecord, targ
             score: item.score,
             verdict: last ? rec.review.verdict! : item.verdict,
             gatesPassed: last ? rec.review.gatesPassed! : item.gatesPassed,
-            passed: last ? decided : item.gatesPassed && item.score >= target,
+            passed: last ? decided : item.gatesPassed && reachesBar(item.score, target),
             reviewKey,
             drawNumber: item.draw,
             ...(last ? { combinedScore: rec.review.score! } : {}),
@@ -163,7 +163,7 @@ export function evaluateRecord(
   if (rec.review.error) {
     failing.push(`the Gemini review could not run: ${rec.review.error}`);
   } else {
-    if (rec.review.score === null || rec.review.score < target) {
+    if (rec.review.score === null || !reachesBar(rec.review.score, target)) {
       // A score settled by two draws is cut to two decimals so it never reads as the bar it missed.
       const shown = rec.review.score === null ? "n/a" : (rec.review.draws?.length ?? 0) > 1 ? formatScore(rec.review.score) : rec.review.score.toFixed(1);
       failing.push(`reviewer score ${shown} is under the ${target.toFixed(1)} target`);

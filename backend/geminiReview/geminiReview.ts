@@ -414,16 +414,16 @@ async function decideWithDraws(
 ): Promise<GeminiReviewReport> {
   const { onProgress } = context;
   const outcomes: DrawOutcome[] = [await runDraw()];
-  onProgress(`Review call 1 of at most ${MAX_REVIEW_DRAWS}: mean of the criteria scores ${formatScore(outcomes[0].score)} (the reviewer's own overall number was ${outcomes[0].overallScore.toFixed(1)}, which does not decide).`);
+  onProgress(`Scored draw 1 of at most ${MAX_REVIEW_DRAWS}: mean of the criteria scores ${formatScore(outcomes[0].score)} (the reviewer's own overall number was ${outcomes[0].overallScore.toFixed(1)}, which does not decide).`);
   if (needsSecondDraw(outcomes[0])) {
-    onProgress(`The first draw is within ${SECOND_DRAW_BAND} of the ${VERDICT_BAR.toFixed(1)} bar: running one second draw of the same video (review call 2 of at most ${MAX_REVIEW_DRAWS}), then deciding on both.`);
+    onProgress(`The first draw is within ${SECOND_DRAW_BAND} of the ${VERDICT_BAR.toFixed(1)} bar: running one second draw of the same video (scored draw 2 of at most ${MAX_REVIEW_DRAWS}), then deciding on both.`);
     try {
       outcomes.push(await runDraw());
     } catch (err) {
       // One in-band draw never decides alone, so a second draw that cannot run leaves the review unfinished, never a pass.
       throw new Error(`The first review draw scored ${formatScore(outcomes[0].score)}, within ${SECOND_DRAW_BAND} of the ${VERDICT_BAR.toFixed(1)} bar, and the second draw that settles it could not run: ${err instanceof Error ? err.message : String(err)}`);
     }
-    onProgress(`Review call 2 of at most ${MAX_REVIEW_DRAWS}: mean of the criteria scores ${formatScore(outcomes[1].score)}.`);
+    onProgress(`Scored draw 2 of at most ${MAX_REVIEW_DRAWS}: mean of the criteria scores ${formatScore(outcomes[1].score)}.`);
   }
   const decision = decideReview(outcomes);
   const verdict = decision.verdict;
