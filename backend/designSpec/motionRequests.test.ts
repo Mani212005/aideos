@@ -17,7 +17,7 @@ import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import { parseFilm } from "../../src/dl/schema";
 import { listMotionRequests, requestMotion, revertMotion } from "./motionRequests";
 import { buildDesign, readDesignStatus } from "./build";
-import { readOpenBuildRequest } from "./buildRecord";
+import { designInputHash, readOpenBuildRequest } from "./buildRecord";
 import { buildSvgSources } from "../scene/buildSvgSources";
 
 const ROOT = path.resolve(__dirname, "../..");
@@ -63,7 +63,7 @@ test("MotionRequests: an agent request is settled by the next design build", asy
     // The agent's first build fails; it is still working, so that is not the answer yet.
     // A build answers a request by carrying its id, as `aideos design-build` does for the open request.
     const status = (state: string, errors: string[], offset: number, requestId: string = r.id) =>
-      fs.writeFileSync(path.join(PKG, "design/status.json"), JSON.stringify({ state, source: "agent", at: new Date(Date.now() + offset).toISOString(), errors, findings: [], requestId }));
+      fs.writeFileSync(path.join(PKG, "design/status.json"), JSON.stringify({ state, source: "agent", at: new Date(Date.now() + offset).toISOString(), errors, findings: [], requestId, inputHash: designInputHash(ID) }));
     status("failed", ["clips.9.easing: invalid"], 1000);
     const [working] = listMotionRequests(ID);
     assert.equal(working.state, "sent");

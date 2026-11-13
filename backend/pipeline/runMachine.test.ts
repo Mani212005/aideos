@@ -91,6 +91,29 @@ test("RunMachine: a stage that runs again sends every later stage back to pendin
   assert.equal(machine.record("narrate").status, "running");
 });
 
+test("RunMachine: assembly completion and its reel fingerprint refresh persist together", () => {
+  const state = emptyState();
+  const snapshots: Array<Array<[string, string | undefined]>> = [];
+  const machine = createRunMachine(state, (saved) => snapshots.push(
+    saved.stages.map((record) => [record.stage, record.fingerprint]),
+  ));
+  machine.begin("reel", "reel-before-assembly", OWNER);
+  machine.complete("reel", "reel-before-assembly");
+  snapshots.length = 0;
+  machine.begin("assemble", "assemble-input", OWNER);
+  snapshots.length = 0;
+
+  machine.complete("assemble", "assembled-output", [{ stage: "reel", fingerprint: "reel-after-assembly" }]);
+
+  assert.equal(snapshots.length, 1, "both fingerprints are one persisted transition");
+  assert.deepEqual(snapshots[0], [
+    ["reel", "reel-after-assembly"],
+    ["assemble", "assembled-output"],
+  ]);
+  assert.equal(machine.record("reel").status, "done");
+  assert.equal(machine.record("assemble").status, "done");
+});
+
 test("RunMachine: a done stage is reused and re-stamped without leaving done; recorded work is adopted", () => {
   const machine = createRunMachine(emptyState(), () => {});
   machine.adopt("narrate", "recorded");
