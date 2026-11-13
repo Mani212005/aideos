@@ -152,5 +152,5 @@ The evaluator and raster (R2), the TypeScript emitter and Still Talking acceptan
 mastering and incremental shot-level re-encode. No Remotion code or type is imported and the Remotion render path is
 untouched. R4 will connect this binary or library to the render job through its renderer interface.
 
-Dependencies: `serde`, `serde_json` and `png` (pure Rust), 23 packages in all in `native/Cargo.lock`, this crate included, built into
-`native/target` (gitignored).
+Dependencies: `serde`, `serde_json` and `png` (pure Rust), resolved through the shared
+`native/Cargo.lock` and built into `native/target` (gitignored).
