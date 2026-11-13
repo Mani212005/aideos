@@ -99,12 +99,13 @@ test("shared audio entry reports fragments, rejects title leaks, and still synth
     assert.deepEqual(synthesized, ["A clean narration line."]);
     assert.deepEqual(notices, []);
 
+    const fragmentNotices: string[] = notices;
     const fragmentResult = await produceAudioPipeline("the closing\nprocess is expensive", pkg, {
       ttsBackendInstance: backend,
-      onIntakeNotice: (issue) => notices.push(issue.message),
+      onIntakeNotice: (issue) => fragmentNotices.push(issue.message),
     });
     assert.equal(fragmentResult.segments[0].text, "the closing process is expensive");
-    assert.match(notices[0], /line 1.*the closing.*line 2.*process is expensive/);
+    assert.match(fragmentNotices[0], /line 1.*the closing.*line 2.*process is expensive/);
   } finally {
     await fs.rm(pkg, { recursive: true, force: true });
   }
