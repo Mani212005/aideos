@@ -2,7 +2,7 @@
 # Inputs and outputs: member crate manifests -> one lockfile, one target directory (native/target, gitignored).
 # Used by: cargo build/test run from native/, the CI native job, docs/RENDER_IR.md.
 [workspace]
-members = ["aideos-render-ir", "aideos-render"]
+members = ["aideos-render-ir", "aideos-render", "aideos-encode"]
 resolver = "2"
 
 [workspace.package]
