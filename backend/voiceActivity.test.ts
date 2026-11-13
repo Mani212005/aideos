@@ -67,19 +67,16 @@ test("mixer gain: a pause inside a phrase keeps the music at its ducked level", 
   assert.ok(speechGain(5.5, timeline, mix, 20) > ducked, "a gap lets the music up");
 });
 
-test("checker: a near-silent gap between words is not speech, so it cannot fail the music rule", () => {
-  // Window 0: full speech. Window 1: only 0.1 s of a word (RMS above -40 dB over 400 ms, but mostly silence).
-  // Window 2: full speech again.
-  const narration = frames([40, -20], [10, -30], [30, -80], [40, -20]);
-  const music = [-40, -28, -40];
+test("checker: 0.19 s of speech includes the window and its music gap is measured", () => {
+  const narration = frames([40, -20], [19, -20], [21, -90], [40, -20]);
+  const music = [-40, -35, -40];
   const result = compareStemFrames(narration, music);
   assert.equal(result.status, "measured");
   if (result.status !== "measured") return;
-  assert.equal(result.speechWindows, 2, "the sparse window is a pause, not speech");
-  assert.ok(Math.abs(result.minimumGapDb - 20) < 1e-9);
-  // The old rule (any 400 ms window above -40 dB) would have counted the sparse window and measured a smaller gap.
+  assert.equal(result.speechWindows, 3, "any positive speech overlap includes the window");
   const windowDb = rollupLevels(narration, 40);
-  assert.ok(windowDb[1] > -40 && windowDb[1] - music[1] < 12);
+  assert.ok(Math.abs(result.minimumGapDb - (windowDb[1] - music[1])) < 1e-9);
+  assert.equal(result.worstTimeSec, 0.4);
 });
 
 test("checker: music genuinely masking real speech still fails with its time", () => {

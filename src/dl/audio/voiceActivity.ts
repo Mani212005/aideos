@@ -10,9 +10,6 @@ export const SPEECH_FLOOR_DB = -40;
 export const ACTIVITY_FRAME_SEC = 0.01;
 // Silence shorter than this is a pause inside a phrase (music stays down); silence this long or longer is a gap (music may rise).
 export const HOLD_SEC = 0.6;
-// Share of a checker window that must be active speech for the window to count as speech.
-export const MIN_WINDOW_SPEECH_COVERAGE = 0.5;
-
 export type VoiceState = "speech" | "pause" | "gap";
 export type VoiceEvent = "active" | "quiet" | "hold-expired";
 
@@ -186,12 +183,11 @@ export function rollupLevels(frameDb: number[], framesPerWindow: number): number
   return windows;
 }
 
-// Flags each fixed window as speech when the timeline's speech state covers enough of it; pauses and gaps never count.
+// Flags each fixed window as speech when any positive overlap with the timeline's speech state exists.
 export function speechWindowFlags(
   timeline: VoiceTimeline,
   windowSec: number,
   windowCount: number,
-  minCoverage: number = MIN_WINDOW_SPEECH_COVERAGE,
 ): boolean[] {
   const speech = timeline.segments.filter((segment) => segment.state === "speech");
   const flags: boolean[] = [];
@@ -200,11 +196,14 @@ export function speechWindowFlags(
     const start = i * windowSec;
     const end = start + windowSec;
     while (first < speech.length && speech[first].endSec <= start) first++;
-    let covered = 0;
+    let overlapsSpeech = false;
     for (let j = first; j < speech.length && speech[j].startSec < end; j++) {
-      covered += Math.min(end, speech[j].endSec) - Math.max(start, speech[j].startSec);
+      if (Math.min(end, speech[j].endSec) > Math.max(start, speech[j].startSec)) {
+        overlapsSpeech = true;
+        break;
+      }
     }
-    flags.push(covered >= windowSec * minCoverage - 1e-9);
+    flags.push(overlapsSpeech);
   }
   return flags;
 }
