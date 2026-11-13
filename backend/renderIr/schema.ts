@@ -241,7 +241,7 @@ export const audioClipSchema = z.strictObject({
   durationFrames: count,
   sourceStartMs: z.number().min(0),
   gain: z.number().min(0).max(4),
-  /** Optional gain envelope; each value is a gain in [0, 4]. Empty means the static gain applies throughout. */
+  /** Optional gain envelope keyed in film frames (not clip-local); each value is a gain in [0, 4]. Empty means the static gain applies throughout. */
   gainEnvelope: z.array(keyframeSchema),
 });
 

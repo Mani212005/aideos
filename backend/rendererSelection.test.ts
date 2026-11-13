@@ -1,5 +1,5 @@
 /**
- * File Description: Behavioural tests of the renderer flag: Remotion is the default, `--renderer` and AIDEOS_RENDERER ask for native (the argument wins and is removed from the arguments passed on), an unknown name is refused, and asking for native falls back to Remotion, with every reason, when the film or the machine cannot render natively.
+ * File Description: Behavioural tests of the renderer flag: Remotion is the default, `--renderer` and AIDEOS_RENDERER ask for native (the argument wins and is removed from the arguments passed on), an unknown name is refused, and asking for native falls back to Remotion, with every reason, when the film or the machine cannot render natively (including a chapter no shot belongs to and an asset with no SVG source).
  * Inputs and outputs: argument lists, environments, the synthetic scene film and fake renderer factories -> asserted choices and reasons.
  * Used by: npm test (Node test runner).
  */
@@ -52,4 +52,17 @@ test("asking for native falls back to Remotion with every reason it cannot be us
   const plain = factories();
   assert.equal(selectRenderer(film, "long", "remotion", plain, { binaryProblem: () => null }).name, "remotion");
   assert.deepEqual(plain.made, ["remotion"]);
+});
+
+test("a chapter with no shots or an asset with no SVG source falls back to Remotion instead of failing the render", () => {
+  const base = nativeSceneFilm();
+  const film = nativeSceneFilm({ chapters: [...base.chapters, "Unreached"] });
+  const scene = film.scene as { props: Array<{ svgSource?: string }> };
+  delete scene.props[0].svgSource;
+  const f = factories();
+  const choice = selectRenderer(film, "long", "native", f, { binaryProblem: () => null });
+  assert.equal(choice.name, "remotion");
+  assert.match(choice.fallbackReason ?? "", /chapters with no shots cannot be drawn on the native rail: Unreached/);
+  assert.match(choice.fallbackReason ?? "", /asset probe has no SVG source/);
+  assert.deepEqual(f.made, ["remotion"]);
 });

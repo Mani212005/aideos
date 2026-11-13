@@ -1,5 +1,5 @@
 /**
- * File Description: Behavioural tests of the Render IR emitter through its public interface: the emitted document validates and spans the delivered video; every element track reproduces the scene compiler's state at every frame, holding the story's last frame through the end card; the end card's slow push scales the stage and the text cards together; text cards appear with their shots and keep the last one under the end card; headline words enter in order, wrap inside the stage and the accent word's underline draws from the left; a counter shows each value once and lands on its target; the narration follows the soundtrack's head and tail ramps; and a film the native renderer cannot draw is refused with every reason.
+ * File Description: Behavioural tests of the Render IR emitter through its public interface: the emitted document validates and spans the delivered video; every element track reproduces the scene compiler's state at every frame, holding the story's last frame through the end card; the end card's slow push scales the stage and the text cards together; text cards appear with their shots and keep the last one under the end card; headline words enter in order, wrap inside the stage and the accent word's underline draws from the left; a counter shows each value once and lands on its target; the narration follows the soundtrack's head and tail ramps; a music section that starts after frame 0 keys its envelope in film frames; and a film the native renderer cannot draw is refused with every reason.
  * Inputs and outputs: the synthetic scene film in backend/testSupport/nativeSceneFilm.ts and a fake measurer -> asserted IR values.
  * Used by: npm test (Node test runner).
  */
@@ -12,6 +12,9 @@ import type { Scene } from "../../src/dl/scene/types";
 import { buildTimeline } from "../../src/dl/camera";
 import { deliveryTimeline } from "../../src/dl/delivery";
 import { voiceLevel } from "../../src/dl/Soundtrack";
+import { buildVoiceTimeline } from "../../src/dl/audio/voiceActivity";
+import { dbGain, mixSections, sectionEnvelope, speechGain } from "../../src/dl/audio/sectionMixer";
+import { normalizeFilmSoundtrack } from "../../src/dl/schema";
 import { quantize } from "../../src/dl/scene/svgAnimation";
 import { emitRenderIr, nativeSupport, sampleTrack, NativeUnsupportedError, type NativeFormat } from "./emit";
 import type { Keyframe, Node, RenderIr } from "./schema";
@@ -188,6 +191,35 @@ test("the narration follows the soundtrack's head and tail ramps", () => {
     assert.ok(Math.abs(sampleTrack(clip.gainEnvelope, f) - voiceLevel(f, 0.8, story)) < 1e-12, `frame ${f}`);
   }
   assert.ok(result.files.some((f) => f.path === "audio/voiceover.wav" && "from" in f && f.from === "/repo/videos/native-probe/voiceover.wav"));
+});
+
+test("a music section that starts after frame 0 keys its gain envelope in film frames", () => {
+  const film = nativeSceneFilm({
+    soundtrack: {
+      sections: [{ item: "mk-556", from: 0, to: 6 }, { item: "mk-615", from: 6, to: 12.5 }],
+      speech: [{ startSec: 1, endSec: 4 }, { startSec: 7, endSec: 10 }],
+    },
+  });
+  assert.deepEqual(nativeSupport(film, "long"), []);
+  const ir = emit(film);
+  const delivery = deliveryTimeline(film, "long");
+  const soundtrack = normalizeFilmSoundtrack(film);
+  const story = delivery.storyFrames;
+  const voice = buildVoiceTimeline(soundtrack.speech.map((i) => ({ startSec: i.startSec, endSec: Math.min(i.endSec, story / film.fps) })));
+  const sections = mixSections(soundtrack, delivery);
+  assert.equal(sections.length, 2);
+  const late = sections[1];
+  assert.ok(late.from > 0);
+  const clip = ir.audio.find((c) => c.id === "music-1");
+  assert.ok(clip);
+  assert.equal(clip.startFrame, late.from);
+  assert.equal(clip.gainEnvelope[0].frame, late.from);
+  assert.equal(clip.gainEnvelope[clip.gainEnvelope.length - 1].frame, late.from + late.durationInFrames);
+  for (let f = late.from; f < late.from + late.durationInFrames; f++) {
+    const expected = late.gain * sectionEnvelope(late, f - late.from) *
+      (late.duck ? speechGain(f / film.fps, voice, soundtrack.mix, story / film.fps) : dbGain(soundtrack.mix.musicOnlyGainDb));
+    assert.ok(Math.abs(sampleTrack(clip.gainEnvelope, f) - Math.min(4, expected)) < 1e-9, `film frame ${f}`);
+  }
 });
 
 test("the measurer is asked once, for exactly the vendored fonts", () => {

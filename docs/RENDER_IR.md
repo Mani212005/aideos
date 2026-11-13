@@ -118,6 +118,11 @@ loader checks the **string**; it does not open the file. The renderer (`native/a
 [NATIVE_RENDERER.md](NATIVE_RENDERER.md)) opens it against the package directory its caller names and
 refuses a file that resolves outside it. Fonts are vendored files, never fetched.
 
+**Audio.** An audio clip plays its asset from `sourceStartMs` at film frame `startFrame` for
+`durationFrames`. Its `gainEnvelope` keyframes are in **film frames**, like every other track (a clip that
+starts at frame 900 keys its envelope from frame 900, not 0), so they are checked against the film duration
+and the mixer reads them on the film clock. The gain is held before the first and after the last keyframe.
+
 **Not in `/1`.** Transitions and effect stacks (paper curl, blur, masks, blend modes), springs and
 particles, footage clips, Lottie, 3D and the Three-stage character films. They arrive with the phases
 that need them, as a new version. Character films keep rendering through Remotion until Phase 4.

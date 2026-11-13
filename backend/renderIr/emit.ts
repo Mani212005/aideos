@@ -10,7 +10,7 @@ import { validateSvgTimeline, applySvgEasing, type SvgAnimationClip, type SvgEas
 import { compileCameraTrack } from "../../src/dl/scene/cameraTrack";
 import { compileScene } from "../../src/dl/scene/compile";
 import { parseSvgDocument, collectSvgElementIds } from "../../src/dl/scene/svgDocument";
-import { buildTimeline, activeShotAt, shotAt, type TimedShot } from "../../src/dl/camera";
+import { buildTimeline, shotAt, type TimedShot } from "../../src/dl/camera";
 import { deliveryTimeline, DELIVERY_CONFIG } from "../../src/dl/delivery";
 import { getEndCardLayout, subscribePressFrame } from "../../src/dl/endCardLayout";
 import { BACKGROUND_THEMES, PALETTE, layoutFor, tokensFor, type DLLayout } from "../../src/dl/tokens";
@@ -116,8 +116,11 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
     if (scene.actors && scene.actors.length > 0) reasons.push("scene actors (character rigs) are not drawn natively");
     for (const asset of [scene.background, ...scene.props].filter(Boolean) as EnvironmentAsset[]) {
       if (asset.subGroups && asset.subGroups.length > 0) reasons.push(`asset ${asset.assetId}: sub-group rotation is not drawn natively`);
+      if (!asset.svgSource) reasons.push(`asset ${asset.assetId} has no SVG source`);
     }
   }
+  const uncovered = uncoveredChapters(film, buildTimeline(film));
+  if (uncovered.length) reasons.push(`chapters with no shots cannot be drawn on the native rail: ${uncovered.join(", ")}`);
   if (film.videoClips?.length) reasons.push("imported video clips are Phase 2");
   if (film.overlayClips?.length) reasons.push("standalone overlay clips are Phase 2");
   const theme = BACKGROUND_THEMES[film.theme?.background ?? "paper-white"] ?? BACKGROUND_THEMES["paper-white"];
@@ -702,7 +705,7 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
     placement: { [format]: { x: 0.5, y: 0.5, w: width - 1, h: height - 1 } },
   });
 
-  const audio = resolveAudio(film, delivery, timeline);
+  const audio = resolveAudio(film, delivery);
   return {
     schema: RENDER_IR_VERSION,
     film: { id: film.id, fps, durationFrames: total },
@@ -717,6 +720,12 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
   };
 }
 
+/** The film's chapters that no shot in the timeline belongs to. */
+function uncoveredChapters(film: Film, timeline: TimedShot[]): string[] {
+  const covered = new Set(timeline.map((t) => Math.min(t.chapter, film.chapters.length - 1)));
+  return film.chapters.filter((_, i) => !covered.has(i));
+}
+
 /** The rail's chapters: one per film chapter, spanning the shots the timeline assigns to it. */
 function railChapters(film: Film, timeline: TimedShot[], storyFrames: number) {
   const n = film.chapters.length;
@@ -727,8 +736,6 @@ function railChapters(film: Film, timeline: TimedShot[], storyFrames: number) {
     if (!span) spans[c] = { title: film.chapters[c], startFrame: t.from, endFrame: Math.min(t.to, storyFrames) };
     else span.endFrame = Math.min(t.to, storyFrames);
   }
-  const missing = spans.map((s, i) => (s ? null : film.chapters[i])).filter((x): x is string => x !== null);
-  if (missing.length) throw new NativeUnsupportedError([`chapters with no shots cannot be drawn on the native rail: ${missing.join(", ")}`]);
   return spans as Array<{ title: string; startFrame: number; endFrame: number }>;
 }
 
@@ -759,7 +766,7 @@ interface ResolvedAudio {
  * effect at its capped gain (`effectGain`). Every clip has gain 1 and carries its level in the envelope, so it
  * reads the same whether a mixer multiplies the envelope by the gain or takes it as the gain.
  */
-function resolveAudio(film: Film, delivery: ReturnType<typeof deliveryTimeline>, timeline: TimedShot[]): ResolvedAudio {
+function resolveAudio(film: Film, delivery: ReturnType<typeof deliveryTimeline>): ResolvedAudio {
   const fps = film.fps;
   const story = delivery.storyFrames;
   const total = delivery.totalFrames;
@@ -771,14 +778,14 @@ function resolveAudio(film: Film, delivery: ReturnType<typeof deliveryTimeline>,
     out.sources.push({ path, source: src });
     out.clips.push({ id, asset: id, gain: 1, ...clip });
   };
-  const envelope = (gainAt: (localFrame: number) => number, frames: number) => linearKeyframes((f) => Math.min(4, Math.max(0, gainAt(f))), 0, frames);
+  const envelope = (gainAt: (filmFrame: number) => number, from: number, to: number) => linearKeyframes((f) => Math.min(4, Math.max(0, gainAt(f))), from, to);
   const level = film.voiceover?.volume ?? 1;
   if (film.voiceover?.src) {
     const voice = (f: number) => level * Math.min(1, f / 6) * Math.min(1, Math.max(0, story - f) / 12);
-    add("voiceover", voiceoverSource(film), { startFrame: 0, durationFrames: story, sourceStartMs: 0, gainEnvelope: envelope(voice, story) });
+    add("voiceover", voiceoverSource(film), { startFrame: 0, durationFrames: story, sourceStartMs: 0, gainEnvelope: envelope(voice, 0, story) });
   }
   if (card && film.endCardVoice?.src && card.lineFrom !== null && card.lineFrom < card.to) {
-    add("end-card-voice", film.endCardVoice.src, { startFrame: card.lineFrom, durationFrames: card.to - card.lineFrom, sourceStartMs: 0, gainEnvelope: envelope(() => level, 0) });
+    add("end-card-voice", film.endCardVoice.src, { startFrame: card.lineFrom, durationFrames: card.to - card.lineFrom, sourceStartMs: 0, gainEnvelope: envelope(() => level, card.lineFrom, card.lineFrom) });
   }
   const soundtrack = normalizeFilmSoundtrack(film);
   if (!usesSectionMixer(soundtrack)) return out;
@@ -791,11 +798,11 @@ function resolveAudio(film: Film, delivery: ReturnType<typeof deliveryTimeline>,
   ];
   const voice = buildVoiceTimeline(voiceRuns);
   mixSections(soundtrack, delivery).forEach((section, i) => {
-    const gain = (f: number) => section.gain * sectionEnvelope(section, f) *
-      (section.duck ? speechGain((f + section.from) / fps, voice, soundtrack.mix, story / fps) : dbGain(soundtrack.mix.musicOnlyGainDb));
+    const gain = (f: number) => section.gain * sectionEnvelope(section, f - section.from) *
+      (section.duck ? speechGain(f / fps, voice, soundtrack.mix, story / fps) : dbGain(soundtrack.mix.musicOnlyGainDb));
     add(`music-${i}`, section.src, {
       startFrame: section.from, durationFrames: section.durationInFrames, sourceStartMs: (section.trimBefore / fps) * 1000,
-      gainEnvelope: envelope(gain, section.durationInFrames),
+      gainEnvelope: envelope(gain, section.from, section.from + section.durationInFrames),
     });
   });
   const narrationPeakDb = (soundtrack.narrationPeakDb ?? -1) + 20 * Math.log10(level || 1e-10);
@@ -805,9 +812,8 @@ function resolveAudio(film: Film, delivery: ReturnType<typeof deliveryTimeline>,
     if (startFrame >= total) return;
     const frames = Math.min(Math.max(1, Math.ceil(item.durationSec * fps)), total - startFrame);
     const g = effectGain(sfx, soundtrack.mix, narrationPeakDb);
-    add(`sfx-${i}`, sfx.src || soundtrackItemSrc(item), { startFrame, durationFrames: frames, sourceStartMs: 0, gainEnvelope: envelope(() => g, 0) });
+    add(`sfx-${i}`, sfx.src || soundtrackItemSrc(item), { startFrame, durationFrames: frames, sourceStartMs: 0, gainEnvelope: envelope(() => g, startFrame, startFrame) });
   });
-  void timeline;
   return out;
 }
 
@@ -852,13 +858,8 @@ export function emitRenderIr(input: EmitInput): EmitResult {
     files.push({ path: `visuals/${a.assetId}.svg`, text: input.svgSources[a.svgSource!] });
   }
   const delivery = deliveryTimeline(input.film, input.format);
-  for (const a of resolveAudio(input.film, delivery, buildTimeline(input.film)).sources) files.push({ path: a.path, from: input.resolvePath(a.source) });
+  for (const a of resolveAudio(input.film, delivery).sources) files.push({ path: a.path, from: input.resolvePath(a.source) });
   return { ir: checked.ir, files };
-}
-
-/** The active text-card shot at a frame, exported for tests that check card visibility. */
-export function activeCardShot(film: Film, frame: number): TimedShot | null {
-  return activeShotAt(buildTimeline(film), frame);
 }
 
 /** Exposed for tests: an IR track's value at a frame, with the R2 evaluator's semantics for the eases the emitter writes. */
