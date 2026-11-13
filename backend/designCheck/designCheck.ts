@@ -16,7 +16,7 @@ import { resolveCaptionPlacement } from "../../src/dl/captionPlacement";
 import { checkCaptionPlacements } from "./captionPlacement";
 import fs from "node:fs";
 import path from "node:path";
-import { Color } from "three";
+import { converter } from "culori";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { boundTheme, sameColour } from "../../src/projectTheme";
 import type { EnvironmentAsset, Scene } from "../../src/dl/scene/types";
@@ -116,24 +116,25 @@ function isNeutral([r, g, b]: [number, number, number]): boolean {
 }
 
 function colorChannels(value: string): [number, number, number] | undefined {
-  try {
-    const color = new Color(value);
-    return hexChannels(`#${color.getHexString()}`);
-  } catch {
-    return undefined;
-  }
+  const color = converter("rgb")(value);
+  if (!color || color.r === undefined || color.g === undefined || color.b === undefined) return undefined;
+  return [color.r, color.g, color.b].map((channel) => Math.round(Math.max(0, Math.min(1, channel)) * 255)) as [number, number, number];
 }
 
 function svgColours(svgText: string): Array<{ literal: string; channels: [number, number, number] }> {
   const values = new Set<string>();
-  for (const match of svgText.matchAll(/#(?:[0-9A-Fa-f]{8}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{3})\b/g)) {
-    values.add(match[0].length === 5 ? match[0].slice(0, 4) : match[0].length === 9 ? match[0].slice(0, 7) : match[0]);
+  const properties = "fill|stroke|color|stop-color|flood-color|lighting-color";
+  const collectDeclarations = (source: string) => {
+    for (const match of source.matchAll(new RegExp(`(?:^|[;{])\\s*(${properties})\\s*:\\s*([^;}]+)`, "gi"))) values.add(match[2].replace(/\s*!important\s*$/i, "").trim());
+  };
+  for (const match of svgText.matchAll(new RegExp(`\\b(${properties})\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "gi"))) {
+    values.add(match[2] ?? match[3] ?? match[4]);
   }
-  for (const match of svgText.matchAll(/(?:rgba?|hsla?)\([^)]*\)/gi)) values.add(match[0]);
-  for (const match of svgText.matchAll(/(?:fill|stroke|color|stop-color|flood-color|lighting-color)\s*[:=]\s*["']?([a-z]+)\b(?!\s*\()/gi)) {
-    if (!/^(none|currentcolor|context-fill|context-stroke|transparent|inherit|initial|unset|revert|revert-layer)$/i.test(match[1])) values.add(match[1]);
-  }
+  for (const match of svgText.matchAll(/\bstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) collectDeclarations(match[1] ?? match[2]);
+  for (const match of svgText.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)) collectDeclarations(match[1]);
+  const ignored = /^(currentcolor|context-fill|context-stroke|transparent|inherit|initial|unset|revert|revert-layer)$/i;
   return [...values].flatMap((literal) => {
+    if (!literal || ignored.test(literal) || /^var\s*\(/i.test(literal)) return [];
     const channels = colorChannels(literal);
     return channels ? [{ literal, channels }] : [];
   });

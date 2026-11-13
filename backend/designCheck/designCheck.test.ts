@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { converter, formatCss } from "culori";
 import { deliveryTimeline } from "../../src/dl/delivery";
 import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import { checkFilmDesign, checkFilmDesignById, foreignAccentColours, offPaletteColours, type DesignRule } from "./designCheck";
@@ -119,6 +120,20 @@ test("DesignCheck: bound accents reject foreign named SVG and palette-declared T
   assert.deepEqual(undeclaredMaterialColours([purple], ["#635BFF"], "#FF6B00"), [": #635bff"]);
   assert.deepEqual(undeclaredMaterialColours([purple], ["#635BFF"], "#635BFF"), []);
   assert.deepEqual(undeclaredMaterialColours([purple], ["#635BFF"]), []);
+});
+
+test("DesignCheck: CSS Color 4 forms share bound-accent normalization in attributes and styles", () => {
+  const modes = ["hsl", "hwb", "lab", "lch", "oklab", "oklch", "rgb", "lrgb", "p3", "a98", "prophoto", "rec2020", "xyz50", "xyz65"] as const;
+  const accentForms = ["#ff6b00", "#ff6b0080", "rgb(255 107 0 / 45%)", "color(srgb 1 0.4196078431 0)", ...modes.map((mode) => formatCss(converter(mode)("#FF6B00")!))];
+  for (const form of accentForms) {
+    assert.deepEqual(offPaletteColours(`<path fill="${form}"/>`, "#FF6B00", "#FF6B00"), [], `${form} is the bound accent`);
+    assert.deepEqual(offPaletteColours(`<svg><style>.mark { fill: ${form}; }</style><path class="mark"/></svg>`, "#FF6B00", "#FF6B00"), [], `${form} is the bound accent in a style block`);
+  }
+  assert.deepEqual(offPaletteColours('<path fill="oklch(0.65 0.3 260)"/>', "#FF6B00", "#FF6B00"), ["oklch(0.65 0.3 260)"]);
+  assert.deepEqual(offPaletteColours('<path style="fill: color(display-p3 0 0 1)"/>', "#FF6B00", "#FF6B00"), ["color(display-p3 0 0 1)"]);
+  assert.deepEqual(offPaletteColours('<path fill="currentColor"/><path fill="var(--accent)"/>', "#FF6B00", "#FF6B00"), []);
+  assert.deepEqual(offPaletteColours('<path fill="#abc"/>', "#aabbcc", "#aabbcc"), []);
+  assert.deepEqual(offPaletteColours('<path fill="#abcd"/>', "#aabbcc", "#aabbcc"), []);
 });
 
 test("DesignCheck: camera moves must be present and speed-capped", () => {
