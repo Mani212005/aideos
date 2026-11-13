@@ -147,6 +147,8 @@ export function buildDirectingPrompt(opts: DispatchOptions, context?: AgentTaskC
   if (opts.eventType === "design_film") {
     // The brief is the whole contract; the prompt only points at it and at the one gate.
     const shotId = typeof opts.metadata?.shotId === "string" ? opts.metadata.shotId : null;
+    const requestId = typeof opts.metadata?.requestId === "string" ? opts.metadata.requestId : null;
+    const buildCommand = `aideos design build ${ctx.filmId}${requestId ? ` --source agent --request ${requestId}` : ""}`;
     if (shotId) {
       const look = shotLookContext(ctx.filmId, shotId);
       const lookText = look
@@ -160,7 +162,7 @@ ${themeLine}${lookText}1. Read videos/${ctx.filmId}/design/LOOK_BRIEF.md and des
 2. Keep this shot's treatment and carried cast as planned. A treatment may change only by editing videos/${ctx.filmId}/design/look.json and passing \`aideos_look_check\` (or \`aideos look check ${ctx.filmId}\`) first.
 3. If videos/${ctx.filmId}/design/design.json exists, change only what ${shotId} shows: its clips (cued to its words) and, if needed, its \`shots.${shotId}\` cards. Keep every other shot as it is.
    If there is no design.json yet, design the whole film as the brief describes, giving ${shotId} particular care.
-4. Run \`aideos design build ${ctx.filmId}\` until it prints PASS, then \`aideos design check ${ctx.filmId} --stills\` and look at ${shotId}'s still.
+4. Run \`${buildCommand}\` until it prints PASS, then \`aideos design check ${ctx.filmId} --stills\` and look at ${shotId}'s still.
 The studio reloads the film on its own once a build passes.`;
     }
     return `🎬 [Aideos Studio] Design the picture for "${title}" (${ctx.filmId})
@@ -170,7 +172,7 @@ what the film says shot by shot, the standard layer, the design.json format and 
 ${themeLine}
 1. Read videos/${ctx.filmId}/design/BRIEF.md.
 2. Write videos/${ctx.filmId}/design/design.json and the SVG artwork it names in videos/${ctx.filmId}/visuals/.
-3. Run \`aideos design build ${ctx.filmId}\` and fix what it reports until it prints PASS.
+3. Run \`${buildCommand}\` and fix what it reports until it prints PASS.
 4. Run \`aideos design check ${ctx.filmId} --stills\`, look at the stills in .frames/${ctx.filmId}/, and improve anything that reads badly, then build again.
 The studio reloads the film on its own once a build passes.${opts.customInstruction ? `\n\nThe vision judge ruled some sampled frames wrong. Fix these first, exactly as reported:\n${opts.customInstruction}` : ""}`;
   }

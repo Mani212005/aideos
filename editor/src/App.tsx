@@ -356,7 +356,7 @@ export default function App() {
             title="Save the project to disk (Cmd+S)"
           >
             {project.saving ? <Spinner /> : <Save className="h-3.5 w-3.5" />}
-            <span className="hidden sm:inline">{project.isDirty ? "Save" : "Saved"}</span>
+            <span className="hidden sm:inline">{project.saving ? "Saving" : project.isDirty ? "Save" : "Saved"}</span>
           </Button>
 
           {exportJob.job && !exportJob.dialogOpen ? (

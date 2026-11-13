@@ -20,6 +20,7 @@ import { taskQueue } from "../agentBridge/taskQueue";
 import { shotLookContext } from "../agentBridge/contextBuilder";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { buildDesign, designDir, readDesignStatus } from "./build";
+import { closeBuildRequest, openBuildRequest } from "./buildRecord";
 import { writeDesignBrief } from "./brief";
 import { designWithServerModel, type DesignLlmCaller } from "./designer";
 import type { DesignSource } from "./compile";
@@ -87,29 +88,35 @@ function taskEnded(taskId: string | undefined): boolean {
 
 /**
  * Lists a film's requests, newest first. A request an agent is working on is settled from the
- * design build status. A passing build settles it (the build only changes the film on a pass). A
- * failing build is only the answer once the agent's task has ended, because agents build, read
- * the errors and build again; until then it stays "sent" with the latest error as its message.
+ * design build record that carries its id. A passing build settles it (the build only changes
+ * the film on a pass). Otherwise the request fails once the agent's task has ended or it has waited too long, with
+ * the last build's error or, when no current build answered it, a note saying so; until then it stays "sent".
  */
 export function listMotionRequests(filmId: string, now: () => number = Date.now): MotionRequest[] {
   const log = readLog(filmId);
   const status = readDesignStatus(filmId);
   let changed = false;
   for (const r of log) {
-    if (r.state !== "sent" || r.by !== "agent" || !status || status.at <= r.at) continue;
-    // Only the newest open request can own the latest build.
-    if (log.find((x) => x.state === "sent" && x.by === "agent") !== r) continue;
-    const error = status.errors[0] ?? status.findings.find((f) => f.severity === "error")?.message ?? "the build failed";
-    if (status.state === "passed") {
+    if (r.state !== "sent" || r.by !== "agent") continue;
+    // A build answers a request only when it carries that request's id.
+    const answer = status && status.requestId === r.id ? status : null;
+    const error = answer
+      ? answer.errors[0] ?? answer.findings.find((f) => f.severity === "error")?.message ?? "the build failed"
+      : "no current design build answered this request";
+    if (answer?.state === "passed") {
       r.state = "passed";
       r.message = "built and passed the design check";
+      closeBuildRequest(filmId, r.id);
     } else if (taskEnded(r.taskId) || now() - Date.parse(r.at) > AGENT_GIVE_UP_MS) {
       r.state = "failed";
       r.message = error;
-    } else {
+      closeBuildRequest(filmId, r.id);
+    } else if (answer) {
       const working = `the agent is still working; its last build failed: ${error}`;
       if (r.message === working) continue;
       r.message = working;
+    } else {
+      continue;
     }
     changed = true;
   }
@@ -154,12 +161,14 @@ export async function requestMotion(film: Film, shotId: string, prompt: string, 
     ...(prev && prev !== "templates" ? { prevSource: prev } : {}),
   };
   writeDesignBrief(film.id);
+  // The request is open before the agent is asked, so the agent's builds carry its id.
+  openBuildRequest(film.id, "motion", id);
   const dispatch = await (options.dispatch ?? dispatchTask)({
     eventType: "design_film",
     filmId: film.id,
     filmTitle: film.title,
     customInstruction: request.prompt,
-    metadata: { shotId, says: shot.scriptText ?? "", motion: true, ...(look ? { treatment: look.treatment, cast: look.cast } : {}) },
+    metadata: { shotId, requestId: id, says: shot.scriptText ?? "", motion: true, ...(look ? { treatment: look.treatment, cast: look.cast } : {}) },
     enableFallback: false,
     ...(options.ownerKey ? { ownerKey: options.ownerKey } : {}),
   });
@@ -173,6 +182,8 @@ export async function requestMotion(film: Film, shotId: string, prompt: string, 
     return request;
   }
 
+  // Nobody on the agent side will build for this request.
+  closeBuildRequest(film.id, id);
   const caller = options.llmCaller;
   if (!caller) {
     request.state = "undelivered";

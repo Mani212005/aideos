@@ -12,6 +12,7 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { clearGoldenOutcome, readGoldenOutcome } from "../backend/journeys/goldenResult";
+import { findChromeBinary } from "../backend/scene/chromeBinary";
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -116,6 +117,13 @@ const goldenVerdict: CiStep["verdict"] = {
   },
 };
 
+/** Pays a fresh runner's slow first Chrome launch before any test bounds a launch; skipped on a laptop without Chrome, never under CI. */
+const warmChromeStep: CiStep = {
+  name: "warm the system Chrome (first launch on a fresh runner)",
+  cmd: ["npx", "tsx", "scripts/warmChrome.ts"],
+  skip: () => (findChromeBinary() || inCi() ? null : "no Chrome installed; CI always runs it"),
+};
+
 /** Every job. Add a step here and it runs in CI, in the local validation tool and for contributors. */
 export const JOBS: CiJob[] = [
   {
@@ -137,6 +145,7 @@ export const JOBS: CiJob[] = [
     id: "unit",
     title: "Unit and feature tests, fixture design checks, evals",
     steps: [
+      warmChromeStep,
       {
         name: "unit and feature tests",
         cmd: [
@@ -172,6 +181,7 @@ export const JOBS: CiJob[] = [
     id: "journeys",
     title: "Headless user journeys: character and Three-stage checks, real pipeline, real render, real studio",
     steps: [
+      warmChromeStep,
       {
         name: "journey tests",
         cmd: ["node", "--import", "tsx", "--import", "./backend/testSupport/fixtureVideosDir.ts", "--test", "--test-concurrency=1", "backend/journeys/**/*.journey.ts"],

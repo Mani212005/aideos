@@ -16,7 +16,7 @@ export function remoteTaskPrompt(taskId: string, prompt: string): string {
 You have no shell and no checkout: use only the aideos MCP tools.
 - Where the task says to read a file under videos/<film>/, call aideos_read_file (or aideos_design_brief for BRIEF.md).
 - Where it says to write videos/<film>/design/design.json or videos/<film>/visuals/<name>.svg, call aideos_write_file.
-- Where it says to run \`aideos design build <film>\`, call aideos_design_build; for \`aideos design check\`, call aideos_design_check (review stills are not available remotely).
+- Where it says to run \`aideos design build <film>\`, call aideos_design_build with that filmId, and when the command carries \`--request <id>\`, pass that id as requestId; for \`aideos design check\`, call aideos_design_check (review stills are not available remotely).
 - Report meaningful progress with aideos_report_step, and finish with aideos_complete_task (taskId "${taskId}") and a one-line summary.
 
 ${STORY_SCRIPT_RULES}
