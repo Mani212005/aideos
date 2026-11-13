@@ -1,0 +1,11 @@
+<!--
+  File Description: Synthetic test artwork that uses an SVG filter, which the native renderer refuses rather than drawing the asset without it.
+  Inputs and outputs: none -> static SVG the renderer must reject at load.
+  Used by: native/aideos-render/tests/render.rs.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100">
+  <defs>
+    <filter id="soft"><feGaussianBlur stdDeviation="4"/></filter>
+  </defs>
+  <circle id="blob" r="30" fill="#635BFF" filter="url(#soft)"/>
+</svg>

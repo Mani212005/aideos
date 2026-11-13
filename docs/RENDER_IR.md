@@ -107,8 +107,9 @@ absent meaning 1. SVG `layer` is a signed 32-bit integer to match the Rust loade
 **Assets.** `svg` (`elementIds`), `font` (`family`, `weight`), `image` (`width`, `height`) and `audio`,
 each with an optional `sha256` for caching and incremental rendering. A path is relative to the package
 directory and may not be absolute, contain `..` or a backslash, or start with a drive letter. The
-loader checks the **string**; it does not open the file (R2 resolves it with `getVideosDir()` and
-friends). Fonts are vendored files, never fetched.
+loader checks the **string**; it does not open the file. The renderer (`native/aideos-render`, see
+[NATIVE_RENDERER.md](NATIVE_RENDERER.md)) opens it against the package directory its caller names and
+refuses a file that resolves outside it. Fonts are vendored files, never fetched.
 
 **Not in `/1`.** Transitions and effect stacks (paper curl, blur, masks, blend modes), springs and
 particles, footage clips, Lottie, 3D and the Three-stage character films. They arrive with the phases
@@ -190,5 +191,6 @@ JSON file and its entry, then run both suites.
 ## Dependencies this adds
 
 Rust: `serde`, `serde_json` and `jsonschema` (built without HTTP or file resolution), 80 crates in
-all, in `native/Cargo.lock`, built into `native/target` (gitignored). No Skia yet: `skia-safe` arrives
-with R2. CI: one step in the existing `unit` job and a cache of the cargo registry and `native/target`.
+all, in `native/Cargo.lock`, built into `native/target` (gitignored). Skia (`skia-safe`) is a dependency
+of the renderer crate only, not of this loader; see [NATIVE_RENDERER.md](NATIVE_RENDERER.md). CI: one step
+in the existing `unit` job and a cache of the cargo registry and `native/target`.
