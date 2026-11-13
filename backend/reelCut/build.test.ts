@@ -193,7 +193,7 @@ test("runProduction reel stage: inline stop resumes with an injected writer and 
   t.after(clearMockShotVisualHandler);
   const slug = "reel-pipeline-resume";
   const text = "Paper moves and stays in your hands. ".repeat(13);
-  const script = `# Reel pipeline\n## Paper\n${`[ON SCREEN]\nPaper moves.\n[NARRATION]\n${text}\n`.repeat(6)}`;
+  const script = `# Reel pipeline\n## The Hands\n${`[ON SCREEN]\nPaper moves.\n[NARRATION]\n${text}\n`.repeat(6)}`;
   const request = { script, slug, title: "Reel pipeline", ttsBackend: "tone" as const, design: "templates" as const,
     stopAfter: "reel" as const, skipAgent: true, deviceCaller: null };
   const first = await runProduction(request);

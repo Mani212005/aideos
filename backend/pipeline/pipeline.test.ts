@@ -590,6 +590,29 @@ function inlineRequest(slug: string): ProductionRequest {
     syncToPreview: false, stopAfter: "assemble" };
 }
 
+test("runProduction rechecks title leaks at synthesis when intake was cached and narration is forced", async () => {
+  const slug = `probe-forced-title-leak-${Date.now().toString(36)}`;
+  const request: ProductionRequest = {
+    script: "## Closing\n[NARRATION]\nClosing.",
+    title: "Probe Film",
+    slug,
+    ttsBackend: "tone",
+    broll: false,
+    syncToPreview: false,
+    resume: true,
+    stopAfter: "intake",
+  };
+  try {
+    await runProduction(request);
+    const events: ProductionProgress[] = [];
+    await assert.rejects(runProduction({ ...request, stopAfter: "narrate", force: ["narrate"] }, (event) => events.push(event)), /would read the heading aloud/);
+    assert.ok(events.some((event) => event.stage === "intake" && event.status === "skipped"));
+    assert.ok(!events.some((event) => event.message.includes("synthesizing 1/")), "forced narration is rejected before TTS");
+  } finally {
+    cleanProbe(slug);
+  }
+});
+
 test("runProduction: default needs_look has exact next steps and resumes an externally built agent design", async () => {
   const slug = `probe-look-${Date.now().toString(36)}`;
   try {

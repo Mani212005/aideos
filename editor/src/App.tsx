@@ -31,6 +31,7 @@ import {
 import { PLACEHOLDER_FILM } from "./state/placeholderFilm";
 import { deliveryTimeline } from "../../src/dl/delivery";
 import { useFilmProject } from "./state/useFilmProject";
+import { FilmSaveContext } from "./state/FilmSaveContext";
 import { useLayeredTimeline } from "./state/useLayeredTimeline";
 import { Badge, Button, Panel, RailTab, Select, Spinner, ToastStack } from "./components/ui";
 import { InspectorPanel } from "./components/shell/InspectorPanel";
@@ -213,6 +214,7 @@ export default function App() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
+      if (project.isLoading) return;
       const typing =
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
@@ -292,7 +294,9 @@ export default function App() {
   );
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-paper text-ink">
+    <FilmSaveContext.Provider value={project.saveFilm}>
+    <fieldset disabled={project.isLoading} className="contents">
+    <div inert={project.isLoading} className="flex h-screen flex-col overflow-hidden bg-paper text-ink">
       {/* Header */}
       <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b-2 border-ink bg-paper-2 px-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -382,6 +386,26 @@ export default function App() {
           </Button>
         </div>
       </header>
+
+      {project.conflict ? (
+        <div
+          role="alert"
+          className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-2 border-ink bg-warn px-3 py-1.5"
+        >
+          <p className="min-w-0 font-sans text-xs font-bold text-ink">
+            This project was changed somewhere else (an agent or another window) while you had edits. Your version is
+            still open and nothing has been overwritten.
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button size="sm" onClick={project.keepMine} title="Keep what you see and replace the other version on the next save">
+              Keep mine
+            </Button>
+            <Button size="sm" onClick={project.takeTheirs} title="Open the other version; your version stays in Undo">
+              Use theirs
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Stage rail */}
@@ -533,8 +557,11 @@ export default function App() {
         film={film}
         activeMode={stage}
         activeSelectionId={selection && selection.kind !== "history" ? selection.id : undefined}
+        isLoading={project.isLoading}
         onUpdateFilm={(next) => commit(next, "AI assistant edit")}
       />
     </div>
+    </fieldset>
+    </FilmSaveContext.Provider>
   );
 }
