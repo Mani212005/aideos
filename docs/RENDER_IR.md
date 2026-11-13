@@ -7,14 +7,15 @@ File Description: Reference for the Render IR `aideos.render/1`: the planned ver
 The Render IR is the planned document boundary between the authoring layer (`film.json`, `design.json`,
 the scene compiler, the layout modules) and the native renderer. It carries everything a frame depends
 on and nothing else: no scripts, no clocks, no random seeds. A frame is a pure function of `(IR, frame
-number, format)`, so any frame can be rendered in any order. R1 provides its schema and loader; the
-pipeline emitter and renderer integration are later Phase 1 work.
+number, format)`, so any frame can be rendered in any order. R1 provides its schema and loader; R2
+provides the evaluator and raster. The pipeline emitter and renderer integration remain later Phase 1
+work.
 
 This is **R1** of Phase 1 of the native renderer plan: the schema, the TypeScript validator and the
 Rust loader. The evaluator and raster are implemented in R2; encode and audio mux (R3), and the
 film.json emitter plus Still Talking acceptance (R4), remain separate ships. The IR is not coupled
-to Remotion or to the `RenderJob` state machine; later integration will hand a renderer an IR path
-and a format.
+to Remotion or to the `RenderJob` state machine; integration will hand the renderer an IR path and a
+format.
 
 **Status: unfrozen.** `/1` may still change shape until R4 passes on Still Talking. After that, any
 change to the document shape is a new version number (see below), never a quiet edit.

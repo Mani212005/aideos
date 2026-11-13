@@ -659,6 +659,6 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ---
 
-## 8. Render IR for the native renderer (`backend/renderIr/`, `native/aideos-render-ir/`)
+## 8. Render IR and native renderer (`backend/renderIr/`, `native/`)
 
-* **`aideos.render/1`**: the planned versioned, data-only boundary for the native renderer. R1 provides its schema and validators; the pipeline emitter and renderer integration are later Phase 1 work. See [RENDER_IR.md](RENDER_IR.md) for the contract, issue codes and commands.
+* **`aideos.render/1`**: the versioned, data-only boundary for the native renderer. R1 provides its schema and validators; R2 provides the evaluator and raster. The pipeline emitter and renderer integration remain later Phase 1 work. See [RENDER_IR.md](RENDER_IR.md) for the contract and [NATIVE_RENDERER.md](NATIVE_RENDERER.md) for renderer behavior and commands.
