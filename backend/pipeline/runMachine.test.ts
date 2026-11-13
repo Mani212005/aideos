@@ -63,11 +63,18 @@ test("RunMachine: failure and needs_input are states, and each can be started ag
 test("RunMachine: a stage that runs again sends every later stage back to pending and drops render outputs", () => {
   const state = emptyState();
   const machine = createRunMachine(state, () => {});
-  for (const stage of ["narrate", "design", "render"] as const) { machine.begin(stage, stage, OWNER); machine.complete(stage); }
+  for (const stage of ["narrate", "design"] as const) { machine.begin(stage, stage, OWNER); machine.complete(stage); }
+  machine.begin("render", "render-old", OWNER);
+  machine.fail("render", "old render failure");
   state.outputs = [{ format: "long", path: "x.mp4", width: 1, height: 1, fps: 30, durationSec: 1, sizeBytes: 1 }];
   machine.begin("narrate", "again", OWNER);
   assert.equal(machine.record("design").status, "pending");
   assert.equal(machine.record("render").status, "pending");
+  assert.deepEqual(
+    [machine.record("render").startedAt, machine.record("render").finishedAt, machine.record("render").durationMs, machine.record("render").error, machine.record("render").fingerprint],
+    [undefined, undefined, undefined, undefined, undefined],
+    "invalidated work carries no metadata from its previous execution",
+  );
   assert.deepEqual(state.outputs, []);
   assert.equal(machine.record("narrate").status, "running");
 });

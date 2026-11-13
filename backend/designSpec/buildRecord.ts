@@ -85,16 +85,22 @@ export function fileDigest(file: string): string | null {
 export function designInputHash(filmId: string): string {
   const pkg = resolvePackageDir(filmId);
   const hash = crypto.createHash("sha1");
-  for (const file of ["design/design.json", "design/look.json", "voiceover_words.json"]) {
-    hash.update(`${file}:${fileDigest(path.join(pkg, file)) ?? "-"}\n`);
-  }
-  const visuals = path.join(pkg, "visuals");
-  const svgs = fs.existsSync(visuals) ? fs.readdirSync(visuals).filter((f) => f.endsWith(".svg")).sort() : [];
-  for (const svg of svgs) hash.update(`visuals/${svg}:${fileDigest(path.join(visuals, svg))}\n`);
   const readJson = (file: string): unknown => {
     try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return null; }
   };
   const design = readJson(path.join(pkg, "design/design.json")) as { assets?: Array<{ kind?: string; character?: string; file?: string }>; background?: { file?: string } } | null;
+  const assetFiles = new Set([
+    ...(design?.assets ?? []).flatMap((asset) => asset.file ? [asset.file] : []),
+    ...(design?.background?.file ? [design.background.file] : []),
+  ]);
+  for (const file of ["design/design.json", "design/look.json", "voiceover_words.json"]) {
+    hash.update(`${file}:${fileDigest(path.join(pkg, file)) ?? "-"}\n`);
+  }
+  const visuals = path.join(pkg, "visuals");
+  const svgs = fs.existsSync(visuals)
+    ? fs.readdirSync(visuals).filter((f) => f.endsWith(".svg") && (f !== "canvas.svg" || assetFiles.has(`visuals/${f}`))).sort()
+    : [];
+  for (const svg of svgs) hash.update(`visuals/${svg}:${fileDigest(path.join(visuals, svg))}\n`);
   const look = readJson(path.join(pkg, "design/look.json")) as {
     film?: { cast?: Array<{ character?: string; asset?: string }>; performances?: Array<{ character?: { id?: string } }> };
   } | null;
@@ -107,10 +113,6 @@ export function designInputHash(filmId: string): string {
     const file = characterCandidates(id, pkg).find((candidate) => fs.existsSync(candidate));
     hash.update(`character:${id}:${file ? fileDigest(file) : "-"}\n`);
   }
-  const assetFiles = new Set([
-    ...(design?.assets ?? []).flatMap((asset) => asset.file ? [asset.file] : []),
-    ...(design?.background?.file ? [design.background.file] : []),
-  ]);
   for (const file of [...assetFiles].sort()) hash.update(`asset:${file}:${fileDigest(path.join(pkg, file)) ?? "-"}\n`);
   for (const file of Object.keys({ ...STAGE_RESOURCES, ...DOT_RESOURCES }).sort()) {
     hash.update(`resource:${file}:${fileDigest(resolveRepoAssetPath(file)) ?? "-"}\n`);
