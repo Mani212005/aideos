@@ -443,12 +443,14 @@ export async function runProduction(
       () => readRecordedNarration(pkgDir, script),
       async () => {
         const result = await produceAudioPipeline(script, pkgDir, {
+          intakeSource: request.script ?? "",
           backend: request.ttsBackend,
           voice: request.voice,
           speed: request.speed,
           syncToPreview: request.syncToPreview,
           onProgress: (done, total, label) =>
             emit("narrate", "running", `synthesizing ${done}/${total}: "${label}"`, done / total),
+          onIntakeNotice: (issue) => emit("narrate", "running", issue.message),
         });
         await fsp.writeFile(narrationCachePath, JSON.stringify(result, null, 2), "utf8");
         emit(

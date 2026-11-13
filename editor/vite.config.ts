@@ -51,6 +51,7 @@ import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from '../src/dl/co
 import { executeCritique } from '../backend/critique/engine.ts'
 import {
   extractSpokenBlocks as extractSpokenVoiceoverBlocks,
+  ScriptIntakeError,
   buildFilmPartsFromScript,
   hasScreenplayTags,
   plainTextToTaggedScript,
@@ -59,6 +60,7 @@ import {
   screenplayFromFilmShots,
 } from '../backend/scriptIntake.ts'
 import { narrationLines } from '../backend/storyScript.ts'
+import { checkVoiceoverIntake } from '../backend/voiceoverIntake.ts'
 import { readNarrationLog, readScriptText, syncNarrationLog } from '../backend/narrationLog.ts'
 import { recordedStatus, synthesizeLines, resampleLinear, type LineAudio } from '../backend/voiceLines.ts'
 import { DEFAULT_KOKORO_SPEED } from '../backend/tts.ts'
@@ -1525,7 +1527,15 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             const shotTexts: string[] = film.shots?.map((s: any) => (s.scriptText || s.id || '').trim()).filter(Boolean) || [];
             const scriptInput = scriptText ? splitScriptIntoSegments(scriptText) : shotTexts.length > 0 ? shotTexts : [film.title];
             const pkgDir = path.join(videosDir, film.id);
-            const audioResult = await produceAudioPipeline(scriptInput, pkgDir);
+            const intake = checkVoiceoverIntake(scriptText || '');
+            if (!intake.ok) {
+              sendJson(res, intake.status, { error: intake.error, intakeNotices: intake.intakeNotices });
+              return;
+            }
+            const audioResult = await produceAudioPipeline(scriptInput, pkgDir, {
+              ...(scriptText ? { intakeSource: scriptText } : {}),
+              onIntakeNotice: () => {},
+            });
 
             // Update shot durations to match audio segments accurately (1:1 shot-level mapping)
             const updatedShots = film.shots.map((shot: any, idx: number) => {
@@ -1568,10 +1578,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               ],
             });
 
-            sendJson(res, 200, { ok: true, film: updatedFilm, audioResult });
+            sendJson(res, 200, { ok: true, film: updatedFilm, audioResult, intakeNotices: intake.intakeNotices });
           }).catch(err => {
             console.error('[API voiceover error]:', err);
-            sendJson(res, 500, { error: String(err) });
+            sendJson(res, err instanceof ScriptIntakeError ? 400 : 500, { error: err instanceof Error ? err.message : String(err) });
           });
           return;
         }
@@ -2002,6 +2012,14 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               return;
             }
 
+            let intakeNotices: string[] = [];
+            const intake = checkVoiceoverIntake(script || '');
+            intakeNotices = intake.intakeNotices;
+            if (!intake.ok) {
+              sendJson(res, intake.status, { error: intake.error, intakeNotices });
+              return;
+            }
+
             // The narration lines to record: only the spoken lines of a tagged script, the paragraphs of a plain
             // story, or the spoken text override, one recording per line.
             const narrationLinesToSpeak: string[] = spokenTextOverride && typeof spokenTextOverride === 'string' && spokenTextOverride.trim()
@@ -2175,6 +2193,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 estimatedDurationSec: Math.round(measuredDuration),
                 actualDurationSec: measuredDuration,
                 lines: lineSummary,
+                intakeNotices,
                 shots: updatedShots,
                 film: updatedFilm,
                 agentPrompt,
