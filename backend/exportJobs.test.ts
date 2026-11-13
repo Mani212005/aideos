@@ -15,6 +15,7 @@ import path from "node:path";
 import { createExportJobs, parseRenderProgress, progressFraction } from "./exportJobs";
 import { loadFixtureFilm } from "./testSupport/fixtureFilms";
 import { runRenderCommand, type RenderProcessDeps } from "./renderProcess";
+import { createRemotionRenderer } from "./remotionRenderer";
 import type { ExportJobInput } from "./exportJobs";
 
 /** A renderer stand-in: writes a partial video, spawns a grandchild, reports frames, then waits for a release file. */
@@ -189,6 +190,59 @@ test("shutdown force-kills a renderer tree without waiting for graceful escalati
     await until(() => !alive(child) && !alive(grandchild), "immediate shutdown of the renderer tree");
     await until(() => jobs.get(job.id)!.status === "cancelled", "the job cancellation state");
     assert.equal(fs.existsSync(f.attemptPath()), false);
+    assert.equal(fs.existsSync(f.outPath), false);
+  } finally {
+    jobs.killAll();
+    fs.rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("shutdown force-kills a stubborn frame sampler during disk preflight", async () => {
+  const f = fixture("stubborn", 2, 10);
+  const samplePath = path.join(f.dir, "sample.mp4");
+  const deps = { killGraceMs: 5000 };
+  const renderer = createRemotionRenderer(
+    { caller: "manual" },
+    {
+      ...deps,
+      checkDiskBudget: async ({ signal, forceSignal }) =>
+        runRenderCommand(
+          {
+            command: process.execPath,
+            args: [
+              path.join(f.dir, "renderer.cjs"),
+              samplePath,
+              f.dir,
+              "stubborn",
+              "2",
+              "10",
+            ],
+            cwd: f.dir,
+          },
+          samplePath,
+          { signal, forceSignal, requireOutput: false },
+          deps,
+        ),
+      run: async () => assert.fail("encoding must not start before preflight ends"),
+    },
+  );
+  const jobs = createExportJobs({
+    renderer: () => renderer,
+    services: {
+      checkDeliverable: () => {},
+      checkBroll: () => {},
+      retimeAudio: () => {},
+      master: () => ({ status: "skipped", reason: "fixture" }),
+      probe: () => ({ format: "long", path: f.outPath, width: 16, height: 16, fps: 30, durationSec: 1, sizeBytes: 1 }),
+    },
+  });
+  const { job } = jobs.start(f.input);
+  try {
+    await until(() => fs.existsSync(path.join(f.dir, "pids.json")), "the sampler process tree to start");
+    const { child, grandchild } = f.pids();
+    jobs.killAll();
+    await until(() => !alive(child) && !alive(grandchild), "forced sampler tree shutdown");
+    await until(() => jobs.get(job.id)!.status === "cancelled", "preflight cancellation");
     assert.equal(fs.existsSync(f.outPath), false);
   } finally {
     jobs.killAll();

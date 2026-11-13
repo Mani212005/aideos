@@ -6,6 +6,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -263,6 +264,78 @@ test("a failed concurrent attempt cannot remove another job's published artifact
   assert.equal(fs.readFileSync(f.outPath, "utf8"), output);
   assert.equal(fs.readFileSync(`${f.outPath}.render.json`, "utf8"), sidecar);
   assert.equal(fs.readFileSync(`${f.outPath}.master.json`, "utf8"), masterReport);
+});
+
+test("separate render processes publish matching video and metadata", async (t) => {
+  const f = fixture(t);
+  const release = path.join(path.dirname(f.outPath), "release-publishers");
+  const worker = `
+    import fs from "node:fs";
+    import { createRenderJob } from "./backend/renderJob.ts";
+    import { loadFixtureFilm } from "./backend/testSupport/fixtureFilms.ts";
+    const [outPath, name, dir] = process.argv.slice(1);
+    const film = loadFixtureFilm("fixture-canvas-a");
+    film.title = name;
+    const renderer = {
+      checkDiskBudget: async () => {},
+      render: async (request) => {
+        fs.writeFileSync(request.outPath, name);
+        fs.writeFileSync(dir + "/ready-" + name, "ready");
+        while (!fs.existsSync(dir + "/release-publishers"))
+          await new Promise((resolve) => setTimeout(resolve, 5));
+      },
+    };
+    const services = {
+      checkDeliverable: () => {}, checkBroll: () => {}, retimeAudio: () => {},
+      master: (file) => {
+        fs.writeFileSync(file + ".master.json", name);
+        return { status: "skipped", reason: "fixture" };
+      },
+      probe: (format, file) => ({ format, path: file, width: 16, height: 16, fps: 30, durationSec: 1, sizeBytes: fs.statSync(file).size }),
+    };
+    await createRenderJob({ film, format: "long", outPath, profile: "final" }, renderer, { services }).run();
+  `;
+  t.after(() => fs.rmSync(path.dirname(f.outPath), { recursive: true, force: true }));
+  const children = (["alpha", "beta"] as const).map((name) =>
+    spawn(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", worker, f.outPath, name, path.dirname(f.outPath)],
+      { cwd: process.cwd(), stdio: ["ignore", "ignore", "inherit"] },
+    ),
+  );
+  t.after(() => {
+    for (const child of children)
+      if (child.exitCode === null) child.kill("SIGKILL");
+  });
+  const closed = children.map(
+    (child) =>
+      new Promise<number | null>((resolve) =>
+        child.once("close", (code) => resolve(code)),
+      ),
+  );
+  const deadline = Date.now() + 8000;
+  while (
+    !["alpha", "beta"].every((name) =>
+      fs.existsSync(path.join(path.dirname(f.outPath), `ready-${name}`)),
+    )
+  ) {
+    if (Date.now() > deadline) assert.fail("render processes did not reach publication");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  fs.writeFileSync(release, "release");
+  const codes = await Promise.all(closed);
+  assert.deepEqual(codes, [0, 0]);
+
+  const video = fs.readFileSync(f.outPath, "utf8");
+  const sidecar = JSON.parse(fs.readFileSync(`${f.outPath}.render.json`, "utf8"));
+  const masterReport = fs.readFileSync(`${f.outPath}.master.json`, "utf8");
+  assert.ok(video === "alpha" || video === "beta");
+  assert.equal(masterReport, video);
+  assert.equal(
+    sidecar.filmHash,
+    renderFilmHash({ ...f.film, title: video }),
+  );
+  assert.equal(sidecar.output.sizeBytes, Buffer.byteLength(video));
 });
 
 for (const phase of [

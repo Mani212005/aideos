@@ -69,6 +69,7 @@ export function createRemotionRenderer(
         dirs: [os.tmpdir(), path.dirname(request.outPath)],
         browserExecutable: options.browserExecutable,
         signal: context.signal,
+        forceSignal: context.forceSignal,
       });
     },
     /** Passes through each old command's encode, GL and entry-point choices without tuning capture. */

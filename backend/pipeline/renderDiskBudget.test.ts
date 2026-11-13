@@ -129,6 +129,25 @@ test("checkRenderDiskBudget samples the picked frames of the film through the in
   await assert.rejects(checkRenderDiskBudget({ film, format: "long", range: [0, total - 1], dirs: ["/tmp"], sampler, statfs: free(3 * GIB) }), RenderDiskError);
 });
 
+test("checkRenderDiskBudget forwards forced shutdown to the frame sampler", async () => {
+  const film = loadFixtureFilm("fixture-canvas-a");
+  const total = buildTimeline(film).totalFrames;
+  const forceController = new AbortController();
+  let received: AbortSignal | undefined;
+  await checkRenderDiskBudget({
+    film,
+    format: "long",
+    range: [0, total - 1],
+    sampler: async (_format, _frames, options) => {
+      received = options?.forceSignal;
+      return sampleOf(100_000);
+    },
+    statfs: free(10 * GIB),
+    forceSignal: forceController.signal,
+  });
+  assert.equal(received, forceController.signal);
+});
+
 test("footage samples span the range at about two-second intervals and cap at 40 frames", () => {
   const film = structuredClone(loadFixtureFilm("fixture-canvas-a")) as Film;
   film.videoClips = [{ id: "footage", src: "footage.mp4", position: 0, start: 0, end: 120, opacity: 1, volume: 1 }];

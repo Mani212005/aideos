@@ -57,14 +57,15 @@ for (const caller of ["pipeline", "studio", "review", "manual"] as const) {
           rendered++;
           assert.equal(measured, 1, "disk preflight precedes capture");
           assert.equal(command.command, "npx");
-          assert.equal(output, outPath);
+          assert.notEqual(output, outPath, "capture writes to the private job artifact");
+          assert.equal(path.basename(output), path.basename(outPath));
           const { args } = command;
           if (caller === "pipeline") {
             assert.deepEqual(args.slice(0, 4), [
               "remotion",
               "render",
               "Reel",
-              outPath,
+              output,
             ]);
             for (const flag of [
               "--codec=h264",
@@ -82,7 +83,7 @@ for (const caller of ["pipeline", "studio", "review", "manual"] as const) {
               "render",
               "src/index.ts",
               "Reel",
-              outPath,
+              output,
             ]);
             assert.equal(
               args.some(
@@ -132,6 +133,7 @@ for (const caller of ["pipeline", "studio", "review", "manual"] as const) {
     await job.run();
     assert.equal(job.state, "done");
     assert.equal(rendered, 1);
+    assert.ok(fs.existsSync(outPath));
     assert.ok(fs.existsSync(`${outPath}.render.json`));
     if (caller === "review" || caller === "manual")
       assert.equal(readActiveFilmSource(), selected);

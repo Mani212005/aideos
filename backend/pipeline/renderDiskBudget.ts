@@ -170,7 +170,11 @@ export function pickSampleFrames(film: Film, range: [number, number], spread = S
 export async function sampleRenderFrames(
   format: ProductionFormat,
   frames: number[],
-  options: { browserExecutable?: string; signal?: AbortSignal } = {},
+  options: {
+    browserExecutable?: string;
+    signal?: AbortSignal;
+    forceSignal?: AbortSignal;
+  } = {},
 ): Promise<RenderSample> {
   const publicDir = stagePublicDir();
   const request = {
@@ -187,7 +191,7 @@ export async function sampleRenderFrames(
       args: [path.join(ROOT, "backend/pipeline/renderSampleWorker.mjs"), JSON.stringify(request)],
       cwd: ROOT,
     }, path.join(os.tmpdir(), "aideos-sample-unused"), {
-      signal: options.signal, requireOutput: false,
+      signal: options.signal, forceSignal: options.forceSignal, requireOutput: false,
       onStdout: (text) => { out += text; },
     });
     const line = out.trim().split("\n").pop() ?? "";
@@ -207,12 +211,21 @@ export async function checkRenderDiskBudget(input: {
   dirs?: string[];
   browserExecutable?: string;
   signal?: AbortSignal;
+  forceSignal?: AbortSignal;
   /** Injection points for tests; the real sampler and statfs are the defaults. */
-  sampler?: (format: ProductionFormat, frames: number[]) => Promise<RenderSample>;
+  sampler?: (
+    format: ProductionFormat,
+    frames: number[],
+    options?: { browserExecutable?: string; signal?: AbortSignal; forceSignal?: AbortSignal },
+  ) => Promise<RenderSample>;
   statfs?: StatFs;
 }): Promise<RenderEstimate> {
   const picks = pickSampleFrames(input.film, input.range);
-  const sample = await (input.sampler ?? ((f, frames) => sampleRenderFrames(f, frames, { browserExecutable: input.browserExecutable, signal: input.signal })))(input.format, picks);
+  const sample = await (input.sampler ?? sampleRenderFrames)(input.format, picks, {
+    browserExecutable: input.browserExecutable,
+    signal: input.signal,
+    forceSignal: input.forceSignal,
+  });
   return assertRenderDiskBudget({
     frames: input.range[1] - input.range[0] + 1,
     sample,

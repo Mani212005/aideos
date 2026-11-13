@@ -161,6 +161,43 @@ export function renderFilmHash(film: Film): string {
     .digest("hex");
 }
 
+/** Serializes publication of one output and its metadata across render processes. */
+async function acquirePublicationLock(
+  outPath: string,
+  signal: AbortSignal,
+): Promise<() => void> {
+  const lockPath = `${path.resolve(outPath)}.publish.lock`;
+  for (;;) {
+    signal.throwIfAborted();
+    try {
+      const fd = fs.openSync(lockPath, "wx");
+      fs.writeFileSync(fd, String(process.pid));
+      return () => {
+        fs.closeSync(fd);
+        fs.rmSync(lockPath, { force: true });
+      };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      try {
+        const owner = Number(fs.readFileSync(lockPath, "utf8"));
+        if (Number.isInteger(owner) && owner > 0) {
+          try {
+            process.kill(owner, 0);
+          } catch (ownerError) {
+            if ((ownerError as NodeJS.ErrnoException).code === "ESRCH") {
+              fs.rmSync(lockPath, { force: true });
+              continue;
+            }
+          }
+        }
+      } catch (readError) {
+        if ((readError as NodeJS.ErrnoException).code === "ENOENT") continue;
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 20));
+    }
+  }
+}
+
 /** Creates a single-use job; cancellation waits for backend teardown before discarding partial output. */
 export function createRenderJob(
   input: RenderRequest,
@@ -278,15 +315,24 @@ export function createRenderJob(
       );
       await cleanup();
       checkCancelled();
-      const attemptMasterReport = `${attemptRequest.outPath}.master.json`;
-      if (fs.existsSync(attemptMasterReport))
-        fs.renameSync(attemptMasterReport, `${request.outPath}.master.json`);
-      else fs.rmSync(`${request.outPath}.master.json`, { force: true });
-      fs.renameSync(
-        `${attemptRequest.outPath}.render.json`,
-        `${request.outPath}.render.json`,
+      const releasePublication = await acquirePublicationLock(
+        request.outPath,
+        controller.signal,
       );
-      fs.renameSync(attemptRequest.outPath, request.outPath);
+      try {
+        checkCancelled();
+        const attemptMasterReport = `${attemptRequest.outPath}.master.json`;
+        if (fs.existsSync(attemptMasterReport))
+          fs.renameSync(attemptMasterReport, `${request.outPath}.master.json`);
+        else fs.rmSync(`${request.outPath}.master.json`, { force: true });
+        fs.renameSync(
+          `${attemptRequest.outPath}.render.json`,
+          `${request.outPath}.render.json`,
+        );
+        fs.renameSync(attemptRequest.outPath, request.outPath);
+      } finally {
+        releasePublication();
+      }
       fs.rmSync(attemptDir, { recursive: true, force: true });
       move("done");
       return { output, master, filmHash };
