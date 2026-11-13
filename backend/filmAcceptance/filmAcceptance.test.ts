@@ -308,6 +308,30 @@ test("export acceptance: status follows the posted film when it differs from fil
   }
 });
 
+test("export acceptance: derived reel status hashes the exact manifest bytes", () => {
+  const slug = "acc-reel-bytes";
+  const dir = makeRunPackage(slug);
+  try {
+    const reelFile = path.join(dir, "reel", "film.json");
+    fs.mkdirSync(path.dirname(reelFile), { recursive: true });
+    const reelText = `${JSON.stringify(JSON.parse(fs.readFileSync(path.join(dir, "film.json"), "utf8")), null, 2)}\n`;
+    fs.writeFileSync(reelFile, reelText);
+    const reelHash = hashBytes(reelText);
+    applyEvents(dir, "reel", [
+      { type: "rendered", filmHash: reelHash, mp4Hash: MP4, at: AT },
+      { type: "measured", mp4Hash: MP4, passed: true, gateFailures: [], at: AT },
+      { type: "judged", draw: draw("reel", true), at: AT },
+      { type: "approved", mp4Hash: MP4, at: AT },
+    ]);
+
+    const parsedReel = JSON.parse(fs.readFileSync(reelFile, "utf8"));
+    assert.equal(acceptanceSummary(dir, "reel", hashFileOrNull(reelFile)).reviewed, true);
+    assert.equal(acceptanceSummaryForFilm(dir, "reel", parsedReel).reviewed, false, "reserialization drops the manifest newline used in the recorded hash");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("all-check: a frame-check issue after approval revokes it, and a second round of identical bytes is a second recorded draw", async () => {
   const slug = "acc-redraw";
   const dir = makeRunPackage(slug);

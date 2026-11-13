@@ -13,7 +13,7 @@ import { deliverReel } from '../backend/reelCut/writer.ts';
 import { loadReelContext, readReelCut, reelPackageDir } from '../backend/reelCut/brief.ts';
 import { checkReelCut } from '../backend/reelCut/check.ts';
 import { formatInputs, reelBudgetFor, reelSourceFingerprint } from '../backend/reelCut/store.ts';
-import { acceptanceSummaryForFilm, noteFilmWrite } from '../backend/filmAcceptance/store.ts';
+import { acceptanceSummary, acceptanceSummaryForFilm, hashFileOrNull, noteFilmWrite } from '../backend/filmAcceptance/store.ts';
 import { REEL_MAX_SEC, reelCutSchema } from '../backend/reelCut/schema.ts';
 import { deliveryTimeline, DELIVERY_CONFIG } from '../src/dl/delivery.ts';
 import { stagePublicDir } from '../backend/pipeline/render.ts';
@@ -970,7 +970,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             if (format === 'reel') {
               const reelInputs = formatInputs(id, 'reel');
               if (path.resolve(reelInputs.film) !== path.resolve(path.join(videosDir, id, 'film.json'))) {
-                exportFilm = JSON.parse(fs.readFileSync(reelInputs.film, 'utf8')) as Film;
+                sendJson(res, 200, acceptanceSummary(path.join(videosDir, id), format, hashFileOrNull(reelInputs.film)));
+                return;
               }
             }
             sendJson(res, 200, acceptanceSummaryForFilm(path.join(videosDir, id), format, exportFilm));
