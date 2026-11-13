@@ -220,6 +220,22 @@ skipped. Change the script and narration re-runs (caching lines under `videos/<s
 it stopped. `resume: false` ignores the cache entirely, and `force: ["design"]` re-runs one stage
 while reusing earlier stages and invalidating every later stage.
 
+The stage states and their legal transitions are one table in `backend/pipeline/runMachine.ts`
+(`pending`, `running`, `done`, `failed`, `needs_input`); an impossible transition throws a named
+error. Every transition, `running` included, is saved to `run-state.json` before the work continues
+(`backend/pipeline/runState.ts`, atomic write), so a killed run leaves `running` on disk, and the next
+run reports it, marks the stage failed (interrupted) and runs it again. A `running` stage owned by
+another live run refuses the new run as already in flight. A `run-state.json` that cannot be read is
+moved to `run-state.corrupt-<time>.json` and reported as a warning, not silently replaced. A stage
+that needs authoring input ends in `needs_input`; it is a state, not an exception.
+
+An agent's answer is recognised by identity, not by file time. A design task (pipeline or studio
+motion request) is opened as `design/request.json` before the agent is asked; `aideos design build`
+and the `aideos_design_build` tool stamp that request id, with a hash of the build's inputs, into
+`design/status.json` (`requestId`, `inputHash`). A build from any other cause (a resume, a hand
+build) carries no request id, so it cannot satisfy the wait. A rebuild of identical inputs keeps the
+attribution. A new look plan or reel cut is recognised by a changed content digest.
+
 A package that already carries its narration (`voiceover.wav`, `captions.vtt`, `voiceover_words.json`
 and `narration.json`, for example a recorded voice, or a package copied without `run-state.json`)
 keeps it: when `run-state.json` has no narrate record and the stored segments' text equals the

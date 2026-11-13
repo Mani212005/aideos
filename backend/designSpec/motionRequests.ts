@@ -20,6 +20,7 @@ import { taskQueue } from "../agentBridge/taskQueue";
 import { shotLookContext } from "../agentBridge/contextBuilder";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { buildDesign, designDir, readDesignStatus } from "./build";
+import { closeBuildRequest, openBuildRequest } from "./buildRecord";
 import { writeDesignBrief } from "./brief";
 import { designWithServerModel, type DesignLlmCaller } from "./designer";
 import type { DesignSource } from "./compile";
@@ -87,7 +88,7 @@ function taskEnded(taskId: string | undefined): boolean {
 
 /**
  * Lists a film's requests, newest first. A request an agent is working on is settled from the
- * design build status. A passing build settles it (the build only changes the film on a pass). A
+ * design build record that carries its id. A passing build settles it (the build only changes the film on a pass). A
  * failing build is only the answer once the agent's task has ended, because agents build, read
  * the errors and build again; until then it stays "sent" with the latest error as its message.
  */
@@ -96,16 +97,17 @@ export function listMotionRequests(filmId: string, now: () => number = Date.now)
   const status = readDesignStatus(filmId);
   let changed = false;
   for (const r of log) {
-    if (r.state !== "sent" || r.by !== "agent" || !status || status.at <= r.at) continue;
-    // Only the newest open request can own the latest build.
-    if (log.find((x) => x.state === "sent" && x.by === "agent") !== r) continue;
+    // A build answers a request only when it carries that request's id; a build from any other cause does not.
+    if (r.state !== "sent" || r.by !== "agent" || !status || status.requestId !== r.id) continue;
     const error = status.errors[0] ?? status.findings.find((f) => f.severity === "error")?.message ?? "the build failed";
     if (status.state === "passed") {
       r.state = "passed";
       r.message = "built and passed the design check";
+      closeBuildRequest(filmId, r.id);
     } else if (taskEnded(r.taskId) || now() - Date.parse(r.at) > AGENT_GIVE_UP_MS) {
       r.state = "failed";
       r.message = error;
+      closeBuildRequest(filmId, r.id);
     } else {
       const working = `the agent is still working; its last build failed: ${error}`;
       if (r.message === working) continue;
@@ -154,6 +156,8 @@ export async function requestMotion(film: Film, shotId: string, prompt: string, 
     ...(prev && prev !== "templates" ? { prevSource: prev } : {}),
   };
   writeDesignBrief(film.id);
+  // The request is open before the agent is asked, so the agent's builds carry its id.
+  openBuildRequest(film.id, "motion", id);
   const dispatch = await (options.dispatch ?? dispatchTask)({
     eventType: "design_film",
     filmId: film.id,
@@ -173,6 +177,8 @@ export async function requestMotion(film: Film, shotId: string, prompt: string, 
     return request;
   }
 
+  // Nobody on the agent side will build for this request.
+  closeBuildRequest(film.id, id);
   const caller = options.llmCaller;
   if (!caller) {
     request.state = "undelivered";

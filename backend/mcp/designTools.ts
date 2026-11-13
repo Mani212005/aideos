@@ -152,7 +152,7 @@ export function registerDesignTools(server: McpServer): void {
     },
     async ({ filmId }) => {
       if (!FILM_ID.test(filmId)) return text(`"${filmId}" is not a film id`, true);
-      const status = buildDesign(filmId, "agent");
+      const status = buildDesign(filmId, "agent", { attribute: "open-request" });
       return text(formatBuildStatus(filmId, status), status.state !== "passed");
     },
   );

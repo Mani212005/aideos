@@ -613,6 +613,52 @@ test("runProduction rechecks title leaks at synthesis when intake was cached and
   }
 });
 
+test("runProduction: every stage transition is on disk while it happens, and needs_input is a saved state", async () => {
+  const slug = `probe-machine-${Date.now().toString(36)}`;
+  try {
+    const onDisk = () => JSON.parse(fs.readFileSync(path.join(VIDEOS_DIR, slug, "run-state.json"), "utf8")) as { stages: Array<{ stage: string; status: string; owner?: unknown }> };
+    const seen: string[] = [];
+    const first = await runProduction(inlineRequest(slug), (event) => {
+      if (event.status === "running" && event.message === `${event.stage} started`) {
+        const record = onDisk().stages.find((s) => s.stage === event.stage);
+        seen.push(`${event.stage}:${record?.status}:${record?.owner ? "owned" : "unowned"}`);
+      }
+    });
+    assert.equal(first.status, "needs_look");
+    assert.deepEqual(seen, ["intake:running:owned", "narrate:running:owned", "look:running:owned"]);
+    const final = onDisk().stages.map((s) => `${s.stage}:${s.status}:${s.owner ? "owned" : "unowned"}`);
+    assert.deepEqual(final, ["intake:done:unowned", "narrate:done:unowned", "look:needs_input:unowned"]);
+  } finally {
+    cleanProbe(slug);
+  }
+});
+
+test("runProduction: a corrupt run-state.json is reported and set aside, and a stage left running by a dead run runs again", async () => {
+  const slug = `probe-corrupt-${Date.now().toString(36)}`;
+  try {
+    const request = inlineRequest(slug);
+    await runProduction({ ...request, stopAfter: "narrate" });
+    const stateFile = path.join(VIDEOS_DIR, slug, "run-state.json");
+
+    fs.writeFileSync(stateFile, "{ torn");
+    const afterCorrupt = await runProduction({ ...request, stopAfter: "narrate" });
+    assert.ok(afterCorrupt.warnings.some((w) => /run-state\.json could not be read; it was moved to run-state\.corrupt-\d+\.json/.test(w)), afterCorrupt.warnings.join("\n"));
+    assert.equal(fs.readdirSync(path.join(VIDEOS_DIR, slug)).filter((f) => f.startsWith("run-state.corrupt-")).length, 1);
+
+    // A run killed mid-stage leaves `running` on disk; the next run says so and runs that stage again.
+    const state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+    state.stages.find((s: { stage: string }) => s.stage === "narrate").status = "running";
+    fs.writeFileSync(stateFile, JSON.stringify(state));
+    const events: ProductionProgress[] = [];
+    const resumed = await runProduction({ ...request, stopAfter: "narrate" }, (event) => events.push(event));
+    assert.ok(resumed.warnings.some((w) => /narrate stage was left running/.test(w)), resumed.warnings.join("\n"));
+    assert.equal(events.some((e) => e.stage === "narrate" && e.status === "skipped"), false, "an interrupted stage is not reused");
+    assert.equal(resumed.stages.find((s) => s.stage === "narrate")?.status, "done");
+  } finally {
+    cleanProbe(slug);
+  }
+});
+
 test("runProduction: default needs_look has exact next steps and resumes an externally built agent design", async () => {
   const slug = `probe-look-${Date.now().toString(36)}`;
   try {

@@ -21,6 +21,7 @@ import { designSpecSchema, type DesignSpec } from "../designSpec/spec";
 import { lookPlanSchema, type LookPlan } from "../lookPlan/schema";
 import { createCues } from "../sceneKit/timing";
 import { ProductionError } from "../pipeline/types";
+import { writeJsonAtomic } from "../designSpec/buildRecord";
 import { loadReelContext, readReelCut, reelPackageDir } from "./brief";
 import { checkReelCut, formatReelReport } from "./check";
 import { reelCutSchema, type ReelCut } from "./schema";
@@ -121,9 +122,7 @@ function retimeVideoAndLinkedAudio(long: Film, intervals: KeptTimelineInterval[]
 
 // Records the build outcome so a failed or stale reel can never be rendered as a passing one.
 export function recordReelStatus(slug: string, status: ReelBuildStatus): ReelBuildStatus {
-  const dir = path.join(reelPackageDir(slug), "reel");
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "status.json"), JSON.stringify(status, null, 2) + "\n");
+  writeJsonAtomic(path.join(reelPackageDir(slug), "reel", "status.json"), status);
   return status;
 }
 

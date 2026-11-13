@@ -13,6 +13,7 @@ import { parseFilm } from "../../src/dl/schema";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { dispatchTask } from "../agentBridge/dispatcher";
 import { buildDesign, designDir, formatBuildStatus, readDesignStatus, readCheckedLookPlan, type DesignBuildStatus } from "./build";
+import { closeBuildRequest, fileDigest, openBuildRequest } from "./buildRecord";
 import { renderDesignBrief, writeDesignBrief } from "./brief";
 import { judgeAndRepair, type JudgeOptions, type JudgeResult } from "../visionJudge/judge";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
@@ -58,6 +59,8 @@ export interface DesignFilmOptions {
   onProgress?: (message: string) => void;
   /** Studio owner key, so the task reaches the owner's agent connected through `aideos connect`. */
   ownerKey?: string;
+  /** Sends the agent task; injectable so tests never reach a live agent session. */
+  dispatch?: typeof dispatchTask;
   /** Vision-judge settings, or false to skip it. It is off under the Node test runner unless given here. */
   judge?: JudgeOptions | false;
   /** Supplies visual evidence from an alternative renderer or a deterministic test. */
@@ -72,36 +75,45 @@ async function tryAgent<T>(
     if (opts.mode === "agent") throw new Error("agent mode requires a delivered coding agent; delivery is disabled");
     return null;
   }
-  const requestedAt = Date.now();
   const film = readFilm(filmId);
+  // The task is a request with its own id. A design build run for the agent is stamped with it, and a
+  // look is recognised as new by its content; neither depends on when a file was last written.
+  const lookFile = path.join(designDir(filmId), "look.json");
+  const lookBefore = kind === "look" ? fileDigest(lookFile) : null;
+  const request = kind === "design" ? openBuildRequest(filmId, "design") : null;
+  const answered = (): boolean => request
+    ? readDesignStatus(filmId)?.requestId === request.requestId
+    : fileDigest(lookFile) !== null && fileDigest(lookFile) !== lookBefore;
+  const finish = (): void => { if (request) closeBuildRequest(filmId, request.requestId); };
   const task = kind === "look"
     ? `Plan the look before making any picture. Read ${path.join(designDir(filmId), "LOOK_BRIEF.md")}, write design/look.json, and run aideos look check ${filmId}. For a character film, name a character the brief lists; a new character is authored first with aideos character check <file> --stamp and drawn with aideos character sheet <file>. Do not build the design yet.`
     : `Build the picture from design/look.json and design/BRIEF.md. For a Three look, copy every look performance into design.json performances with the same id, action, actor, prop, start, decisive cue and afterState; follow the worked mapping in the brief. Run aideos design build ${filmId} until PASS.`;
-  const dispatch = await dispatchTask({
+  const dispatch = await (opts.dispatch ?? dispatchTask)({
     eventType: "design_film", filmId, filmTitle: film?.title, enableFallback: false,
     customInstruction: `${task}${instruction ? `\n${instruction}` : ""}`,
     ...(opts.ownerKey ? { ownerKey: opts.ownerKey } : {}),
   });
   const delivered = dispatch.channels.some((c) => c === "agent_link" || c === "tmux" || c === "firstmate_inbox");
   if (!delivered) {
+    finish();
     if (opts.mode === "agent") throw new Error("agent mode requires a delivered coding agent; no agent is listening");
     opts.onProgress?.(`no coding agent is listening; ${kind} needs work from the invoking agent`);
     return null;
   }
   opts.onProgress?.(`${kind} task delivered (${dispatch.channels.join(", ")}); waiting for validated output`);
-  const output = path.join(designDir(filmId), kind === "look" ? "look.json" : "status.json");
   const deadline = Date.now() + (opts.agentTimeoutMs ?? 20 * 60 * 1000);
   while (Date.now() < deadline) {
-    if (fs.existsSync(output) && fs.statSync(output).mtimeMs >= requestedAt) {
+    if (answered()) {
       try {
         const result = inspect();
-        if (result) return result;
+        if (result) { finish(); return result; }
       } catch (err) {
         opts.onProgress?.(`${kind} output is not ready: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
     await new Promise((resolve) => setTimeout(resolve, opts.pollMs ?? 5000));
   }
+  finish();
   if (opts.mode === "agent") throw new Error(`the delivered coding agent did not produce a valid ${kind} in time`);
   opts.onProgress?.(`the coding agent did not produce a valid ${kind} in time`);
   return null;

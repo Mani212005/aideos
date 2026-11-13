@@ -8,6 +8,7 @@ import path from "node:path";
 import { generationCaller } from "../aideosConfig";
 import { dispatchTask } from "../agentBridge/dispatcher";
 import type { DesignLlmCaller } from "../designSpec/designer";
+import { fileDigest } from "../designSpec/buildRecord";
 import type { LineSynthesizer } from "../endCard/voice";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { deliveryTimeline, DELIVERY_CONFIG } from "../../src/dl/delivery";
@@ -71,7 +72,8 @@ export async function deliverReel(slug: string, opts: ReelWriterOptions = {}): P
   if (mode === "agent") {
     if (opts.skipAgent || process.env.NODE_TEST_CONTEXT) throw new ProductionError("reel", "agent reel delivery is disabled");
     for (let attempt = 1; attempt <= 3; attempt++) {
-      const requestedAt = Date.now();
+      // The agent's answer is a cut that differs from the one on disk when it was asked, not a file with a newer timestamp.
+      const cutBefore = fileDigest(cutFile);
       const dispatch = await dispatchTask({ eventType: "reel_cut", filmId: slug, filmTitle: long.title, enableFallback: false,
         ...(opts.ownerKey ? { ownerKey: opts.ownerKey } : {}),
         customInstruction: `Read ${briefFile}. Write only reel/cut.json, then run aideos reel check ${slug}. Keep voice, speed, picture and caption placement. Do not record captain approval. Attempt ${attempt}/3.\nFix these failures:\n${failure}`,
@@ -81,7 +83,8 @@ export async function deliverReel(slug: string, opts: ReelWriterOptions = {}): P
       const deadline = Date.now() + (opts.agentTimeoutMs ?? 20 * 60 * 1000);
       let received = false;
       while (Date.now() < deadline) {
-        if (fs.existsSync(cutFile) && fs.statSync(cutFile).mtimeMs >= requestedAt) {
+        const cutNow = fileDigest(cutFile);
+        if (cutNow !== null && cutNow !== cutBefore) {
           try { JSON.parse(fs.readFileSync(cutFile, "utf8")); received = true; break; }
           catch { /* A write still in progress is not an agent's finished answer. */ }
         }
