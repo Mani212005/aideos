@@ -609,7 +609,7 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
       }
       checkAsset(asset, chosenAccent ?? film.accent, chosenAccent, findings);
       clips += checkContinuity(asset, findings, stageTimes.length ? (target, frame) =>
-        stageTimes.some(({ timeline }) => timeline.visibleAt(frame).includes(`${asset.assetId}::${target}`)) : undefined);
+        stageTimes.some(({ timeline }) => timeline.visibleAt(frame - 1).includes(`${asset.assetId}::${target}`) && timeline.visibleAt(frame).includes(`${asset.assetId}::${target}`)) : undefined);
       for (const collapsed of context.collapsedClips?.filter((c) => c.asset === asset.assetId) ?? []) {
         const clip = asset.animation?.clips.find((c) => c.clipId === collapsed.clipId);
         if (!clip || clip.from === clip.to) continue;
