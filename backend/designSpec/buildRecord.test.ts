@@ -130,30 +130,6 @@ test("BuildRecord: polling a failed request does not rebuild files while the age
   }
 });
 
-test("BuildRecord: a passing build is not accepted after the agent changes its inputs", async () => {
-  const spec = setup();
-  let agentRebuiltAfterEdit = false;
-  try {
-    const outcome = await designWithFakeAgent(() => {
-      const requestId = readOpenBuildRequest(ID)?.requestId;
-      assert.ok(requestId);
-      const designFile = path.join(PKG, "design/design.json");
-      const changed = JSON.parse(spec);
-      changed.clips = changed.clips.slice(0, -1);
-      buildDesign(ID, "agent", { requestId });
-      fs.writeFileSync(designFile, JSON.stringify(changed));
-      setTimeout(() => {
-        agentRebuiltAfterEdit = true;
-        buildDesign(ID, "agent", { requestId });
-      }, 100);
-    }, spec, 4000);
-    assert.equal(agentRebuiltAfterEdit, true, "the waiter remains open until the changed design has a matching build");
-    assert.equal(outcome.status?.inputHash, designInputHash(ID));
-  } finally {
-    teardown();
-  }
-});
-
 test("BuildRecord: the input hash follows what a build is made from, and requests open, supersede and close", () => {
   const spec = setup();
   try {

@@ -1,7 +1,7 @@
 /**
  * File Description: Tracks open design requests, hashes design inputs and records request attribution.
- * Design waiters compare the recorded request id and current input hash; a build on identical inputs
- * can retain the previous request attribution. Look-plan delivery uses content digests for detection.
+ * Design waiters accept a passing build that carries their request id; the input hash is recorded as
+ * information, hashed from authored inputs only. A build on identical inputs can retain the previous request attribution. Look-plan delivery uses content digests for detection.
  * Inputs and outputs: film id and request kind -> request pointer, input hash, content digest.
  * Used by: backend/designSpec/build.ts, backend/designSpec/designer.ts, backend/designSpec/motionRequests.ts, backend/reelCut/writer.ts.
  */
@@ -12,6 +12,8 @@ import path from "node:path";
 import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { DOT_RESOURCES, STAGE_RESOURCES } from "../../src/dl/scene/rigs/registry";
 import { characterCandidates } from "../characters/library";
+import { withoutGenerated } from "../defaultSoundtrack";
+import type { Film } from "../../src/dl/schema";
 
 /** What asked for a build. */
 export type BuildRequestKind = "design" | "motion";
@@ -96,10 +98,9 @@ export function designInputHash(filmId: string): string {
   const baseFilm = path.join(pkg, "design/base-film.json");
   const activeFilm = path.join(pkg, "film.json");
   hash.update(`base-film:${fileDigest(baseFilm) ?? fileDigest(activeFilm) ?? "-"}\n`);
-  type Soundtrack = { defaultScore?: unknown } | null | undefined;
   type FilmInputs = {
     theme?: unknown;
-    soundtrack?: Soundtrack;
+    soundtrack?: Film["soundtrack"];
     music?: unknown;
     captionPlacement?: unknown;
     endCardVoice?: unknown;
@@ -107,10 +108,10 @@ export function designInputHash(filmId: string): string {
   };
   const active = readJson(activeFilm) as FilmInputs | null;
   const base = (readJson(baseFilm) ?? active) as FilmInputs | null;
-  const authored = (soundtrack: Soundtrack): Soundtrack => soundtrack && !soundtrack.defaultScore ? soundtrack : undefined;
+  const authored = (film: FilmInputs | null): Film["soundtrack"] => film?.soundtrack ? withoutGenerated({ soundtrack: film.soundtrack } as Film).soundtrack : undefined;
   hash.update(`active-build-inputs:${JSON.stringify(active ? {
     theme: active.theme,
-    ...(!design?.soundtrack ? { soundtrack: authored(active.soundtrack) ?? authored(base?.soundtrack), music: active.music || base?.music } : {}),
+    ...(!design?.soundtrack ? { soundtrack: authored(active) ?? authored(base), music: active.music || base?.music } : {}),
     captionPlacement: active.captionPlacement,
     endCardVoice: active.endCardVoice,
     shots: active.shots?.map(({ id, captionPlacement }) => ({ id, captionPlacement })),

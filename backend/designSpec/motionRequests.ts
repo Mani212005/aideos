@@ -20,7 +20,7 @@ import { taskQueue } from "../agentBridge/taskQueue";
 import { shotLookContext } from "../agentBridge/contextBuilder";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { buildDesign, designDir, readDesignStatus } from "./build";
-import { closeBuildRequest, designInputHash, openBuildRequest } from "./buildRecord";
+import { closeBuildRequest, openBuildRequest } from "./buildRecord";
 import { writeDesignBrief } from "./brief";
 import { designWithServerModel, type DesignLlmCaller } from "./designer";
 import type { DesignSource } from "./compile";
@@ -88,19 +88,18 @@ function taskEnded(taskId: string | undefined): boolean {
 
 /**
  * Lists a film's requests, newest first. A request an agent is working on is settled from the
- * design build record that carries its id and the current input hash. A passing build settles it (the build only changes
+ * design build record that carries its id. A passing build settles it (the build only changes
  * the film on a pass). Otherwise the request fails once the agent's task has ended or it has waited too long, with
  * the last build's error or, when no current build answered it, a note saying so; until then it stays "sent".
  */
 export function listMotionRequests(filmId: string, now: () => number = Date.now): MotionRequest[] {
   const log = readLog(filmId);
   const status = readDesignStatus(filmId);
-  const currentInputHash = status ? designInputHash(filmId) : null;
   let changed = false;
   for (const r of log) {
     if (r.state !== "sent" || r.by !== "agent") continue;
-    // A build answers a request only when it carries that request's id and the design has not changed since.
-    const answer = status && status.requestId === r.id && status.inputHash === currentInputHash ? status : null;
+    // A build answers a request only when it carries that request's id.
+    const answer = status && status.requestId === r.id ? status : null;
     const error = answer
       ? answer.errors[0] ?? answer.findings.find((f) => f.severity === "error")?.message ?? "the build failed"
       : "no current design build answered this request";
