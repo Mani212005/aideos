@@ -413,6 +413,11 @@ test("DesignCheck: the inset rule counts only art that is visible while the inse
   hidden.scene.props[0].animation.clips.push({ clipId: "rack-out", targets: ["rack"], property: "opacity", from: 1, to: 0, startFrame: 80, durationFrames: 8, easing: "expoOut" });
   hidden.scene.props[0].animation.clips.push({ clipId: "rack-back", targets: ["rack"], property: "opacity", from: 0, to: 1, startFrame: 215, durationFrames: 8, easing: "expoOut" });
   assert.deepEqual(insetErrors(hidden), []);
+
+  const faint = insetStage();
+  faint.scene.props[0].position = { x: 1500, y: 700 };
+  faint.scene.props[0].opacity = 0.1;
+  assert.ok(insetErrors(faint).some((message) => /wide cut/.test(message)), "opacity 0.1 is visible under the shared cutoff");
 });
 
 test("DesignCheck: a camera that pushes art into the inset region is caught", () => {

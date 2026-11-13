@@ -9,7 +9,7 @@
  */
 
 import fs from "node:fs";
-import { elementOpacity } from "../../src/dl/scene/visibility";
+import { elementOpacity, VISIBLE_OPACITY_MIN } from "../../src/dl/scene/visibility";
 import path from "node:path";
 import { buildTimeline } from "../../src/dl/camera";
 import type { Film } from "../../src/dl/schema";
@@ -34,9 +34,6 @@ import {
   type Affine,
   type Box,
 } from "./svgBounds";
-
-/** Art fainter than this (ghost grids, resting traces) does not count as occupying the region. */
-export const INSET_ART_MIN_OPACITY = 0.15;
 
 /** How far art may reach into the region before it counts, in render pixels (anti-alias fringe). */
 const OVERLAP_TOLERANCE_PX = 2;
@@ -167,7 +164,7 @@ export function projectedSvgParts(
   packageSlug?: string,
   options: { includeAncestry?: boolean; minOpacity?: number; targets?: ReadonlySet<string> } = {},
 ): Array<{ name: string; bounds: Box; ancestors?: string[] }> {
-  const minOpacity = options.minOpacity ?? INSET_ART_MIN_OPACITY;
+  const minOpacity = options.minOpacity ?? VISIBLE_OPACITY_MIN;
   if (!entity.svgSource || entity.transform.opacity <= minOpacity) return [];
   const parts: Array<{ name: string; bounds: Box; ancestors?: string[] }> = [];
   const placed = multiply(
