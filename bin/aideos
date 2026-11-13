@@ -223,7 +223,7 @@ if [ "$#" -gt 0 ]; then
       esac
       ;;
     render)
-      cd "$AIDEOS_DIR" && npm run render "$@"
+      cd "$AIDEOS_DIR" && npm run render -- "$@"
       exit 0
       ;;
     reel)
