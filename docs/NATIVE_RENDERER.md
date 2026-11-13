@@ -244,7 +244,7 @@ differ per format.
 
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film, a Three-stage or actor scene, sub-group
-rotation, imported footage and overlay clips, a textured theme, burned-in captions, legacy (non-library)
+rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme, burned-in captions, legacy (non-library)
 music and audio clips, panels other than `frame`, more than one block per shot and blocks other than
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
 
