@@ -446,7 +446,7 @@ async function decideWithDraws(
     seen.add(key);
     return true;
   });
-  const drawNote = describeDraws(outcomes.map((outcome) => outcome.score), decision.score);
+  const drawNote = describeDraws(outcomes, decision.score);
   return {
     overallScore: outcomes[0].overallScore,
     criteriaMeanScore: decision.score,

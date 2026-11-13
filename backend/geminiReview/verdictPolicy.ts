@@ -106,8 +106,16 @@ export function decisionScore(report: { criteriaMeanScore?: number; overallScore
 }
 
 // Says in plain words how many reviewer draws ran and which score decided, for the CLI, the round notes and the Export dialog.
-export function describeDraws(scores: readonly number[], combined: number): string {
+export function describeDraws(draws: readonly DrawScore[], combined: number): string {
   const fmt = formatScore;
-  if (scores.length <= 1) return `1 reviewer draw (score ${fmt(combined)}, the mean of its criteria scores), not within 0.5 of the ${VERDICT_BAR.toFixed(1)} bar, so no second draw was needed.`;
-  return `${scores.length} reviewer draws of the same video (${scores.map(fmt).join(" and ")}) because the first was within 0.5 of the ${VERDICT_BAR.toFixed(1)} bar; the combined score ${fmt(combined)} (their mean) decides.`;
+  const bar = VERDICT_BAR.toFixed(1);
+  if (draws.length <= 1) {
+    const head = `1 reviewer draw (score ${fmt(combined)}, the mean of its criteria scores)`;
+    const first = draws[0];
+    if (!first || !withinSecondDrawBand(first.score)) return `${head}, not within 0.5 of the ${bar} bar, so no second draw was needed.`;
+    const reasons = [!first.gatesPassed && "a hard gate failed", !first.timestampsValid && "a criterion had no timestamp evidence"].filter(Boolean);
+    const reason = reasons.join(" and ");
+    return `${head}, within 0.5 of the ${bar} bar, but ${reason}, so a second draw could not change the verdict and none was run.`;
+  }
+  return `${draws.length} reviewer draws of the same video (${draws.map((draw) => fmt(draw.score)).join(" and ")}) because the first was within 0.5 of the ${bar} bar; the combined score ${fmt(combined)} (their mean) decides.`;
 }

@@ -135,6 +135,10 @@ test("policy: the hard gates and the timestamps rule are unchanged, and a doomed
   const stamps = await review([{ mean: 9.2, overall: 9.2, noTimestamps: true }]);
   assert.equal(stamps.calls(), 1);
   assert.equal(stamps.report.verdict, "REVISE");
+  // The draw note gives the real reason no second draw ran, never a false "not within 0.5".
+  assert.match(gate.report.drawNote ?? "", /within 0\.5 of the 9\.0 bar, but a hard gate failed, so a second draw could not change the verdict/);
+  assert.match(stamps.report.drawNote ?? "", /within 0\.5 of the 9\.0 bar, but .*a criterion had no timestamp evidence, so a second draw could not change the verdict/);
+  assert.doesNotMatch(stamps.report.drawNote ?? "", /not within/);
   // A gate that fails only in the second draw still makes the combined verdict a REVISE, whatever the mean.
   const second = await review([{ mean: 9.4, overall: 9.4 }, { mean: 9.6, overall: 9.6, gateFails: true }]);
   assert.equal(second.calls(), 2);
