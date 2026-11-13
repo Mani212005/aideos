@@ -208,7 +208,7 @@ test("J9: SVG scene facts do not depend on the reviewed output", () => {
   assert.ok(reelSpans?.length);
   assert.deepEqual(longSpans?.filter((span) => span.segment === "story"),
     reelSpans?.filter((span) => span.segment === "story"));
-  assert.notEqual(longSpans?.at(-1)?.to, reelSpans?.at(-1)?.to, "each format carries its own end-card duration");
+  assert.notEqual(longSpans?.[longSpans.length - 1]?.to, reelSpans?.[reelSpans.length - 1]?.to, "each format carries its own end-card duration");
   const cardSec = (card: typeof longCard) => (card ? card.endSec - card.startSec : 0);
   assert.deepEqual([cardSec(longCard), cardSec(reelCard)], [6, 3]);
   assert.equal(reel.performances, undefined);
