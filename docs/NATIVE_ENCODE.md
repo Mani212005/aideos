@@ -150,7 +150,8 @@ numbers are a loaded-machine floor, not a ceiling. And `rgba` input is bound by 
 
 The evaluator and raster (R2), the TypeScript emitter and Still Talking acceptance (R4), captions burn-in, loudness
 mastering and incremental shot-level re-encode. No Remotion code or type is imported and the Remotion render path is
-untouched. R4 will connect this binary or library to the render job through its renderer interface.
+untouched. R4 connects the library to the render job: `aideos-render video` feeds it frames and builds the
+audio plan from the Render IR (see [NATIVE_RENDERER.md](NATIVE_RENDERER.md)).
 
 Dependencies: `serde`, `serde_json` and `png` (pure Rust), resolved through the shared
 `native/Cargo.lock` and built into `native/target` (gitignored).

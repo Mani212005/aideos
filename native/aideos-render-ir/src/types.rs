@@ -123,6 +123,8 @@ pub enum NodeProperty {
     X,
     Y,
     Scale,
+    ScaleX,
+    ScaleY,
     Rotation,
     Opacity,
 }
@@ -371,11 +373,29 @@ pub struct RectNode {
     pub opacity: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fill: Option<String>,
+    /// A vertical gradient painted over the fill and under the stroke.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gradient: Option<Gradient>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stroke: Option<Stroke>,
     pub radius: f64,
     pub tracks: Vec<NodeTrack>,
     pub placement: PerFormat<Rect>,
+}
+
+/// A vertical linear gradient across a box: offset 0 is the box top, 1 its bottom.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Gradient {
+    pub stops: Vec<GradientStop>,
+}
+
+/// One colour stop of a gradient.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GradientStop {
+    pub offset: f64,
+    pub color: String,
 }
 
 /// A run of text in frame space.
@@ -417,10 +437,15 @@ pub struct RailNode {
     pub opacity: Option<f64>,
     pub font: String,
     pub ink: String,
+    /// Colour of the chapter label and timestamp row.
+    pub label_color: String,
     pub accent: String,
     pub track_color: String,
     pub scrim: String,
     pub chapters: Vec<Chapter>,
+    /// Frames the reel's continuous bar fills over; absent means the film duration.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub progress_frames: Option<Whole>,
     pub placement: PerFormat<RailBox>,
 }
 
@@ -452,9 +477,21 @@ pub struct EndCardNode {
     pub opacity: Option<f64>,
     pub sans_font: String,
     pub mono_font: String,
+    /// Face of the chip labels; absent means `mono_font`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chip_font: Option<String>,
     pub fill: String,
     pub ink: String,
     pub dim: String,
+    /// The panel colour; absent means derived from `dim` and `ink`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub surface: Option<String>,
+    /// The panel's 1 px border; absent means `ink` at 12%.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hairline: Option<String>,
+    /// The label and handle colour; absent means `ink` at 60%.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub muted: Option<String>,
     pub copy: EndCardCopy,
     pub press_frame: Whole,
     pub layout: PerFormat<EndCardLayout>,

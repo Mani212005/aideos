@@ -1,0 +1,25 @@
+{
+  "schema": "aideos.render/1",
+  "film": { "id": "rail-progress-out-of-range", "fps": 30, "durationFrames": 30 },
+  "scene": { "width": 1920, "height": 1920 },
+  "formats": { "reel": { "width": 1080, "height": 1920 } },
+  "background": "#0A0A0B",
+  "assets": [{ "kind": "font", "id": "mono", "path": "fonts/mono.ttf", "family": "JetBrains Mono", "weight": 400 }],
+  "stage": [],
+  "overlay": [
+    {
+      "kind": "rail",
+      "id": "rail",
+      "font": "mono",
+      "ink": "#F5F5F5",
+      "labelColor": "#8A8A8E",
+      "accent": "#635BFF",
+      "trackColor": "#F5F5F51F",
+      "scrim": "#0A0A0B",
+      "chapters": [{ "title": "Only", "startFrame": 0, "endFrame": 30 }],
+      "progressFrames": 31,
+      "placement": { "reel": { "x": 64, "y": 1700, "w": 952, "h": 40, "fontSize": 12, "scrimHeight": 240 } }
+    }
+  ],
+  "audio": []
+}

@@ -305,6 +305,7 @@
       "id": "rail",
       "font": "mono-500",
       "ink": "#F5F7FA",
+      "labelColor": "#8A8F98",
       "accent": "#635BFF",
       "trackColor": "#2A3340",
       "scrim": "#0B0D10CC",

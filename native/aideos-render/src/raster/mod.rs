@@ -10,7 +10,8 @@ use std::collections::BTreeMap;
 
 use aideos_render_ir::types::{Align, GroupNode, Node, RectNode, RenderIr, SvgNode, TextNode};
 use skia_safe::textlayout::TextAlign;
-use skia_safe::{paint, Canvas, Matrix, Paint, RRect, Rect};
+use skia_safe::gradient::{shaders, Colors, Gradient, Interpolation};
+use skia_safe::{paint, Canvas, Color4f, Matrix, Paint, RRect, Rect, TileMode};
 
 use crate::eval::{self, captions::Phrase, Format, NodeTransform};
 use crate::svg::color::{parse_color, Rgba};
@@ -83,10 +84,10 @@ fn stage_order(nodes: &[Node]) -> Vec<&Node> {
     ordered
 }
 
-/// Applies a placed node's transform: translate, uniform scale, then rotation in degrees.
+/// Applies a placed node's transform: translate, scale (uniform times the per-axis factors), then rotation in degrees.
 fn apply_placement(canvas: &Canvas, t: &NodeTransform) {
     canvas.translate((t.x as f32, t.y as f32));
-    canvas.scale((t.scale as f32, t.scale as f32));
+    canvas.scale(((t.scale * t.scale_x) as f32, (t.scale * t.scale_y) as f32));
     canvas.rotate(t.rotation as f32, None);
 }
 
@@ -134,6 +135,8 @@ fn group_transform(g: &GroupNode, frame: u32, dur: u32) -> NodeTransform {
         x: g.x,
         y: g.y,
         scale: g.scale,
+        scale_x: 1.0,
+        scale_y: 1.0,
         rotation: g.rotation,
         opacity: 1.0,
     };
@@ -153,6 +156,8 @@ fn draw_svg_node(canvas: &Canvas, l: &Loaded, n: &SvgNode, frame: u32) {
         x: n.x,
         y: n.y,
         scale: n.scale,
+        scale_x: 1.0,
+        scale_y: 1.0,
         rotation: n.rotation,
         opacity: 1.0,
     };
@@ -237,7 +242,7 @@ fn apply_boxed(canvas: &Canvas, t: &NodeTransform, x: f64, y: f64, w: f64, h: f6
     let mut m = Matrix::translate((t.x as f32, t.y as f32));
     m.pre_translate((cx, cy));
     m.pre_rotate(t.rotation as f32, None);
-    m.pre_scale((t.scale as f32, t.scale as f32), None);
+    m.pre_scale(((t.scale * t.scale_x) as f32, (t.scale * t.scale_y) as f32), None);
     m.pre_translate((-cx, -cy));
     canvas.concat(&m);
 }
@@ -262,6 +267,9 @@ fn draw_rect_node(canvas: &Canvas, ctx: &OverlayCtx, r: &RectNode) {
             p.set_color(to_color(ir_color(fill)));
             canvas.draw_rrect(rr, &p);
         }
+        if let Some(g) = &r.gradient {
+            draw_gradient(canvas, rr, b.y, b.h, g);
+        }
         if let Some(stroke) = &r.stroke {
             let mut p = Paint::default();
             p.set_anti_alias(true);
@@ -272,6 +280,31 @@ fn draw_rect_node(canvas: &Canvas, ctx: &OverlayCtx, r: &RectNode) {
         }
     });
     canvas.restore();
+}
+
+/// Paints a vertical gradient (offset 0 at the box top, 1 at its bottom) into a rounded rectangle, dithered.
+fn draw_gradient(canvas: &Canvas, rr: RRect, top: f64, height: f64, g: &aideos_render_ir::types::Gradient) {
+    let colors: Vec<Color4f> = g
+        .stops
+        .iter()
+        .map(|s| {
+            let c = ir_color(&s.color);
+            Color4f::new(c.r, c.g, c.b, c.a)
+        })
+        .collect();
+    let pos: Vec<f32> = g.stops.iter().map(|s| s.offset as f32).collect();
+    let gradient = Gradient::new(
+        Colors::new(&colors, Some(&pos), TileMode::Clamp, None),
+        Interpolation::default(),
+    );
+    let ends = ((0.0, top as f32), (0.0, (top + height) as f32));
+    if let Some(shader) = shaders::linear_gradient(ends, &gradient, None) {
+        let mut p = Paint::default();
+        p.set_anti_alias(true);
+        p.set_shader(shader);
+        p.set_dither(true);
+        canvas.draw_rrect(rr, &p);
+    }
 }
 
 /// Maps the IR alignment to textlayout's.
