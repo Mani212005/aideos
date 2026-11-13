@@ -45,7 +45,7 @@
   "camera": [
     {
       "id": "settled",
-      "at": 216,
+      "at": "catch:\"catches\"+105",
       "center": [
         960,
         960
