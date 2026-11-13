@@ -843,7 +843,10 @@ export function deliveredOutputWarnings(input: {
         `${expected.toFixed(2)}s; picture and voice are not the same length`,
     );
   }
-  const storyEndSec = renderFrames ? Infinity : delivery.storyFrames / delivery.fps;
+  const storyEndFrame = delivery.segments[0].to;
+  const storyEndSec = renderFrames
+    ? Math.max(0, Math.min(renderFrames[1] + 1, storyEndFrame) - renderFrames[0]) / delivery.fps
+    : storyEndFrame / delivery.fps;
   const longSilence = storyRanges(silences.map((s) => ({ start: s.startSec, end: s.startSec + s.durationSec })), storyEndSec)
     .map((s) => ({ startSec: s.start, durationSec: s.end - s.start }))
     .find((s) => s.durationSec > 2.5);
