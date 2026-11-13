@@ -1,6 +1,7 @@
 {
   "//": "Shared by backend/renderIr/renderIr.test.ts and native/aideos-render-ir/tests/fixtures.rs. A structural issue lists only its code (a JSON Schema validator and zod word and locate those differently); every other issue lists its code and exact JSON Pointer.",
   "valid": [
+    "valid/gradient-and-axis-scale.json",
     "valid/integral-floats.json",
     "valid/minimal-reel.json",
     "valid/mirrored-element.json",
@@ -78,6 +79,15 @@
         }
       ]
     },
+    "invalid/gradient-stops-unordered.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "stops_unordered",
+          "path": "/overlay/0/gradient/stops/1/offset"
+        }
+      ]
+    },
     "invalid/keyframes.json": {
       "kind": "invalid_document",
       "issues": [
@@ -148,6 +158,14 @@
     "invalid/not-json.json": {
       "kind": "not_json"
     },
+    "invalid/out-of-range-layer.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
     "invalid/placement-span-out-of-range.json": {
       "kind": "invalid_document",
       "issues": [
@@ -161,11 +179,12 @@
         }
       ]
     },
-    "invalid/out-of-range-layer.json": {
+    "invalid/rail-progress-out-of-range.json": {
       "kind": "invalid_document",
       "issues": [
         {
-          "code": "schema"
+          "code": "frame_out_of_range",
+          "path": "/overlay/0/progressFrames"
         }
       ]
     },

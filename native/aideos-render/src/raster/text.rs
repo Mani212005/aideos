@@ -9,7 +9,8 @@ use skia_safe::textlayout::{
     FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, TextAlign, TextShadow, TextStyle,
     TypefaceFontProvider,
 };
-use skia_safe::{Color, FontMgr, FontStyle, Typeface};
+use skia_safe::font_arguments::{variation_position::Coordinate, VariationPosition};
+use skia_safe::{Color, FontArguments, FontMgr, FontStyle, FourByteTag, Typeface};
 
 use crate::svg::color::Rgba;
 
@@ -43,6 +44,24 @@ pub fn to_color(c: Rgba) -> Color {
     Color::from_argb(ch(c.a), ch(c.r), ch(c.g), ch(c.b))
 }
 
+/// Sets a variable font's weight axis to the asset's `weight` (clamped to the axis range), as a browser does for
+/// `font-weight` on a variable face; a static font is returned unchanged.
+fn instance_at_weight(typeface: Typeface, weight: u32) -> Option<Typeface> {
+    let wght = FourByteTag::from_chars('w', 'g', 'h', 't');
+    let Some(axis) = typeface
+        .variation_design_parameters()
+        .and_then(|axes| axes.into_iter().find(|a| a.tag == wght))
+    else {
+        return Some(typeface);
+    };
+    let value = (weight as f32).clamp(axis.min, axis.max);
+    let coordinates = [Coordinate { axis: wght, value }];
+    let args = FontArguments::new().set_variation_design_position(VariationPosition {
+        coordinates: &coordinates,
+    });
+    typeface.clone_with_arguments(&args)
+}
+
 /// The vendored faces and the font collection that lays text out with them.
 pub struct Fonts {
     collection: FontCollection,
@@ -69,6 +88,11 @@ impl Fonts {
                         "font asset {id:?} is not a font file Skia can read"
                     ))
                 })?;
+            let typeface = instance_at_weight(typeface, weight).ok_or_else(|| {
+                FontError(format!(
+                    "font asset {id:?} is a variable font that cannot be set to weight {weight}"
+                ))
+            })?;
             provider.register_typeface(typeface, Some(id.as_str()));
             faces.insert(id, Face { family, weight });
         }

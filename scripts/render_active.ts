@@ -1,6 +1,6 @@
 /**
- * File Description: CLI entry point for rendering the currently active film in Long (16:9) or Reel (9:16) format to videos/<slug>/renders/.
- * Inputs and outputs: format argument and Remotion flags -> rendered MP4 video under videos/<slug>/renders/.
+ * File Description: CLI entry point for rendering the currently active film in Long (16:9) or Reel (9:16) format to videos/<slug>/renders/. Remotion renders by default; `--renderer native` (or AIDEOS_RENDERER=native) renders through the native renderer when it can draw the film, else falls back to Remotion and says why.
+ * Inputs and outputs: format argument, an optional `--renderer remotion|native` and Remotion flags -> rendered MP4 video under videos/<slug>/renders/.
  * Used by: package.json (npm run render, npm run render:reel), bin/aideos.
  */
 
@@ -12,6 +12,8 @@ import { writeDescriptionCredits } from "../backend/masterAudio";
 import { reelForRender } from "../backend/reelCut/store";
 import { createRenderJob } from "../backend/renderJob";
 import { createRemotionRenderer } from "../backend/remotionRenderer";
+import { createNativeRenderer } from "../backend/nativeRenderer";
+import { requestedRenderer, selectRenderer } from "../backend/rendererSelection";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 
@@ -24,8 +26,14 @@ async function main(): Promise<void> {
   if (!film) throw new Error(`No film found for "${activeFilm}"`);
   const rendersDir = path.join(resolvePackageDir(activeFilm), "renders");
   const outPath = path.join(rendersDir, `${format}.mp4`);
-  console.log(`[render] Rendering active film "${activeFilm}" (${format}) to ${path.relative(REPO_ROOT, outPath)}...`);
-  await createRenderJob({ film, format, outPath, profile: "final" }, createRemotionRenderer({ caller: "manual", extraArgs: process.argv.slice(3) })).run();
+  const requested = requestedRenderer(process.argv.slice(3));
+  const choice = selectRenderer(film, format, requested.name, {
+    remotion: () => createRemotionRenderer({ caller: "manual", extraArgs: requested.rest }),
+    native: () => createNativeRenderer({ onLog: (message) => console.log(`[render] ${message}`) }),
+  });
+  if (choice.fallbackReason) console.warn(`[render] Native renderer not used, falling back to Remotion: ${choice.fallbackReason}`);
+  console.log(`[render] Rendering active film "${activeFilm}" (${format}, ${choice.name}) to ${path.relative(REPO_ROOT, outPath)}...`);
+  await createRenderJob({ film, format, outPath, profile: "final" }, choice.renderer).run();
   writeDescriptionCredits(rendersDir, [film]);
   console.log(`[render] Render complete: ${outPath}`);
 }

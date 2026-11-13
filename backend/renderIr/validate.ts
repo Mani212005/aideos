@@ -188,6 +188,9 @@ export function checkSemantics(ir: RenderIr): Issue[] {
         case "rect":
           checkNodeTracks(p, node.tracks);
           checkFormats(at(p, "placement"), node.placement);
+          node.gradient?.stops.forEach((s, j) => {
+            if (j > 0 && s.offset < node.gradient!.stops[j - 1].offset) add("stops_unordered", at(p, "gradient", "stops", j, "offset"), "gradient stop offsets may not decrease");
+          });
           break;
         case "text":
           needAsset(at(p, "font"), node.font, "font");
@@ -196,6 +199,7 @@ export function checkSemantics(ir: RenderIr): Issue[] {
           break;
         case "rail": {
           needAsset(at(p, "font"), node.font, "font");
+          if (node.progressFrames !== undefined && node.progressFrames > duration) add("frame_out_of_range", at(p, "progressFrames"), `progressFrames ${node.progressFrames} is past the film's ${duration} frames`);
           checkFormats(at(p, "placement"), node.placement);
           let prevEnd = 0;
           node.chapters.forEach((c, j) => {

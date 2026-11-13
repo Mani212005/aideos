@@ -1,21 +1,20 @@
 <!--
-File Description: Reference for the Render IR `aideos.render/1`: the planned versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
+File Description: Reference for the Render IR `aideos.render/1`: the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
 -->
 
 # Render IR (`aideos.render/1`)
 
-The Render IR is the planned document boundary between the authoring layer (`film.json`, `design.json`,
+The Render IR is the document boundary between the authoring layer (`film.json`, `design.json`,
 the scene compiler, the layout modules) and the native renderer. It carries everything a frame depends
 on and nothing else: no scripts, no clocks, no random seeds. A frame is a pure function of `(IR, frame
-number, format)`, so any frame can be rendered in any order. R1 provides its schema and loader; R2
-provides the evaluator and raster. The pipeline emitter and renderer integration remain later Phase 1
-work.
+number, format)`, so any frame can be rendered in any order. R1 of Phase 1 of the native renderer plan
+provides its schema and loaders; R2 the evaluator and raster; R3 the encoder and audio mux; R4 the
+emitter (`backend/renderIr/emit.ts`, which writes one document per film and format) and the renderer
+flag, see [NATIVE_RENDERER.md](NATIVE_RENDERER.md). The IR is not coupled to Remotion or to the
+`RenderJob` state machine: the native adapter hands the renderer an IR path, a package and a format.
 
-This is **R1** of Phase 1 of the native renderer plan: the schema, the TypeScript validator and the
-Rust loader. The evaluator and raster are implemented in R2; encode and audio mux (R3), and the
-film.json emitter plus Still Talking acceptance (R4), remain separate ships. The IR is not coupled
-to Remotion or to the `RenderJob` state machine; integration will hand the renderer an IR path and a
-format.
+R4 added, for Still Talking's text cards and chrome: `rect.gradient`, the `scaleX` and `scaleY` node
+track properties, the rail's `labelColor` (required) and `progressFrames` (optional).
 
 **Status: unfrozen.** `/1` may still change shape until R4 passes on Still Talking. After that, any
 change to the document shape is a new version number (see below), never a quiet edit.
@@ -86,7 +85,8 @@ Dense data is allowed: a track with a `linear` keyframe at every frame reproduce
 exactly (the emitter does this for the camera's hold push-in). A single keyframe is a constant.
 
 **Stage nodes.** `svg` places an SVG asset (`x`, `y`, `scale`, `rotation`, `layer`) and carries two kinds
-of motion: `tracks` on the whole node (`x`, `y`, `scale`, `rotation`, `opacity`) and `elementTracks`
+of motion: `tracks` on the whole node (`x`, `y`, `scale`, `scaleX`, `scaleY`, `rotation`, `opacity`;
+`scaleX` and `scaleY` multiply `scale` on one axis and may be zero or negative) and `elementTracks`
 on elements inside the asset's document (`translateX`, `translateY`, `scale`, `scaleX`, `scaleY`,
 `rotate`, `opacity`, `drawOn`, `x1`, `y1`, `x2`, `y2`: the scene engine's clip properties, see
 `src/dl/scene/README.md`). An element track may carry an `origin` in the asset's own coordinates,
@@ -97,8 +97,11 @@ transform and opacity.
 
 **Overlay nodes.** Layout stays in TypeScript (`camera.ts`, `endCardLayout.ts`, `captionPlacement.ts`),
 so overlay nodes carry geometry already resolved per format, in render pixels, under `placement` or
-`layout`: `rect` (fill, stroke, radius), `text` (a run with font, colour, alignment, per-format box and
-font size), `rail` (chapters, colours, per-format box), `captions` (words with frames, colours, and the
+`layout`: `rect` (fill, an optional vertical `gradient` of colour stops from the box top at offset 0 to
+its bottom at offset 1, stroke, radius), `text` (a run with font, colour, alignment, per-format box and
+font size), `rail` (chapters, colours including the label row's `labelColor`, per-format box, and
+`progressFrames`, the frames the reel's continuous bar fills over, the film duration when absent),
+`captions` (words with frames, colours, and the
 owner-resolved card placement as spans per format; line breaking is the evaluator's job with the vendored
 fonts), `endCard` (copy, colours, per-format layout, the frame the subscribe pill presses).
 Every `placement` or `layout` must have exactly the formats the document declares.
@@ -133,10 +136,10 @@ cross-reference rules, identical in both languages:
 | `unknown_element` | an element track targets an id the SVG asset does not declare |
 | `duplicate_track` | one property (of one element) driven by two tracks |
 | `origin_misplaced`, `origin_conflict` | an origin on a property that takes none, or two origins for one element |
-| `keyframes_unordered`, `ease_missing`, `ease_on_last`, `frame_out_of_range` | keyframe frames must strictly increase and may not exceed the film duration, every keyframe but the last has an ease, caption placement starts must be before the film duration |
+| `keyframes_unordered`, `ease_missing`, `ease_on_last`, `frame_out_of_range` | keyframe frames must strictly increase and may not exceed the film duration, every keyframe but the last has an ease, caption placement starts must be before the film duration, a rail's `progressFrames` may not exceed it |
 | `value_out_of_range` | opacity and drawOn outside 0 to 1, element scale or camera zoom not above 0, gain outside 0 to 4 |
 | `invalid_span` | a span that ends before it starts or runs past the film |
-| `chapters_unordered`, `words_unordered`, `spans_unordered` | rail chapters, caption words or placement spans out of order |
+| `chapters_unordered`, `words_unordered`, `spans_unordered`, `stops_unordered` | rail chapters, caption words, placement spans or gradient stop offsets out of order |
 | `missing_format_entry`, `undeclared_format` | a per-format object that does not match the declared formats |
 | `node_not_allowed` | an `svg` node in the overlay, or an overlay node in the stage |
 
@@ -182,7 +185,8 @@ cargo test --locked --manifest-path native/Cargo.toml      # loader fixtures and
 `valid/tiny-scene.json` is the golden example: a 3 second scene film with an SVG stage element
 (node and element tracks, an origin), a camera on a spline, a text card in a group, the rail, kinetic
 captions with two placement spans, the end card and an audio clip, in both 16:9 and 9:16.
-`valid/minimal-reel.json` and `valid/integral-floats.json` are the smallest documents. `invalid/*.json`
+`valid/minimal-reel.json` and `valid/integral-floats.json` are the smallest documents;
+`valid/gradient-and-axis-scale.json` covers the gradient band and an underline drawn by `scaleX`. `invalid/*.json`
 are short documents with one named defect each.
 
 `fixtures/expectations.json` states the verdict for every file. Both test suites assert the same

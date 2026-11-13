@@ -11,7 +11,7 @@ import React from "react";
 import { AbsoluteFill, Audio, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { useAccent } from "./accent";
 import { DELIVERY_CONFIG, type CardWord, type EndCardConfig, type EndCardSpan } from "./delivery";
-import { getEndCardLayout, readableInkOn, type CardRect } from "./endCardLayout";
+import { getEndCardLayout, readableInkOn, subscribePressFrame, type CardRect } from "./endCardLayout";
 import { easeExpo, frames, useEntrance } from "./motion";
 import type { Film } from "./schema";
 import { accentAt, MONO, SANS, useLayout, useTokens } from "./tokens";
@@ -26,8 +26,6 @@ const ENTER_DELAY_MS = 150;
 const PRESS_MS = 360;
 /** How far the pill sinks at the bottom of its press. */
 const PRESS_DEPTH = 0.06;
-/** With no spoken line the pill presses this long into the card, after the parts have arrived. */
-const SILENT_PRESS_MS = 1400;
 
 export type EndCardProps = {
   card: EndCardSpan;
@@ -38,14 +36,8 @@ export type EndCardProps = {
   copy?: EndCardConfig;
 };
 
-// Lowercases a word and strips punctuation, so "subscribe." matches the configured SUBSCRIBE.
-const bare = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-// The frame the SUBSCRIBE pill presses: its spoken word when the line says it, else a fixed beat.
-export function subscribePressFrame(card: EndCardSpan, cardWords: CardWord[], subscribe: string, fps: number): number {
-  const spoken = cardWords.find((w) => bare(w.text) === bare(subscribe));
-  return spoken ? spoken.startFrame : card.from + Math.round(frames(SILENT_PRESS_MS, fps));
-}
+// The press frame lives with the card's other pure geometry, so the native emitter reads the same beat.
+export { subscribePressFrame };
 
 // Depth 0..1 of the press at a frame: a quick dip then a release on the expo curve.
 export function pressDepth(frame: number, pressFrame: number, fps: number): number {

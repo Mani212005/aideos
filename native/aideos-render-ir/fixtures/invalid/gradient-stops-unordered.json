@@ -1,0 +1,20 @@
+{
+  "schema": "aideos.render/1",
+  "film": { "id": "gradient-stops-unordered", "fps": 30, "durationFrames": 30 },
+  "scene": { "width": 1920, "height": 1920 },
+  "formats": { "long": { "width": 1920, "height": 1080 } },
+  "background": "#0A0A0B",
+  "assets": [],
+  "stage": [],
+  "overlay": [
+    {
+      "kind": "rect",
+      "id": "band",
+      "radius": 0,
+      "gradient": { "stops": [{ "offset": 0.5, "color": "#000000" }, { "offset": 0.2, "color": "#FFFFFF" }] },
+      "tracks": [],
+      "placement": { "long": { "x": 0, "y": 0, "w": 100, "h": 100 } }
+    }
+  ],
+  "audio": []
+}

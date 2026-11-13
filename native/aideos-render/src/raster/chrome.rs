@@ -57,7 +57,8 @@ pub fn draw_rail(canvas: &Canvas, ctx: &OverlayCtx, node: &RailNode) {
     let Some(b) = ctx.format.pick(&node.placement) else {
         return;
     };
-    let state = eval::rail_state(&node.chapters, ctx.fps(), ctx.frame, ctx.dur());
+    let progress_frames = node.progress_frames.map_or(ctx.dur(), |f| f.0);
+    let state = eval::rail_state(&node.chapters, ctx.fps(), ctx.frame, progress_frames);
     let (w, h) = (f64::from(ctx.width), f64::from(ctx.height));
     let k = ctx.k();
     super::with_opacity(canvas, node.opacity.unwrap_or(1.0), || {
@@ -87,12 +88,13 @@ pub fn draw_rail(canvas: &Canvas, ctx: &OverlayCtx, node: &RailNode) {
         }
         // The label row: chapter name on the left, timestamp on the right.
         let ink = ir_color(&node.ink);
+        let label_color = ir_color(&node.label_color);
         let row = |text: &str, align: TextAlign| {
             let spec = TextSpec {
                 text,
                 font: &node.font,
                 size: b.font_size,
-                color: ink,
+                color: label_color,
                 letter_spacing: 0.14 * b.font_size,
                 line_height: None,
                 align,
