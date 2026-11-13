@@ -8,8 +8,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import * as React from "react";
 import {
   baseRevision,
   hasUnsavedEdits,
@@ -21,6 +20,9 @@ import {
 } from "../editor/src/state/filmSyncMachine";
 import { decideSave, filmRevision, revisionOfFilm } from "./filmRevision";
 import { AssistantPromptForm } from "../editor/src/components/GlobalFeedbackWidget";
+
+// The Node test loader uses the classic JSX transform for editor TSX modules.
+Object.assign(globalThis, { React });
 
 type F = { id: string; n: number };
 
@@ -70,16 +72,18 @@ test("the assistant prompt cannot submit during loading and is available after l
     onChange: () => undefined,
     onSend: commit,
   };
-  const loadingMarkup = renderToStaticMarkup(createElement(AssistantPromptForm, loadingProps));
-  assert.match(loadingMarkup, /aria-label="Message the AI assistant"[^>]*disabled/);
   const loadingForm = AssistantPromptForm(loadingProps);
+  const [loadingInput, loadingButton] = loadingForm.props.children as React.ReactElement[];
+  assert.equal(loadingInput.props.disabled, true);
+  assert.equal(loadingButton.props.disabled, true);
   loadingForm.props.onSubmit({ preventDefault() {} } as never);
   assert.equal(commits, 0);
 
   const readyProps = { ...loadingProps, disabled: false };
-  const readyMarkup = renderToStaticMarkup(createElement(AssistantPromptForm, readyProps));
-  assert.doesNotMatch(readyMarkup, /aria-label="Message the AI assistant"[^>]*disabled/);
   const readyForm = AssistantPromptForm(readyProps);
+  const [readyInput, readyButton] = readyForm.props.children as React.ReactElement[];
+  assert.equal(readyInput.props.disabled, false);
+  assert.equal(readyButton.props.disabled, false);
   readyForm.props.onSubmit({ preventDefault() {} } as never);
   assert.equal(commits, 1);
 });
