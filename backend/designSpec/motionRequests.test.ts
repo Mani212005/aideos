@@ -158,17 +158,25 @@ test("MotionRequests: revert puts the replaced design back and rebuilds the film
 test("MotionRequests: only a build that carries the request's id settles it", async () => {
   const film = setup();
   try {
-    const r = await requestMotion(film, "beat-02", "drop a tile per word", { dispatch: agentDispatch });
+    let dispatchedInstruction = "";
+    const r = await requestMotion(film, "beat-02", "drop a tile per word", {
+      dispatch: async (input) => { dispatchedInstruction = input.customInstruction ?? ""; return agentDispatch(); },
+    });
     assert.equal(readOpenBuildRequest(ID)?.requestId, r.id, "the request is open before the agent is asked");
+    assert.match(dispatchedInstruction, new RegExp(`request ${r.id}`));
+    assert.match(dispatchedInstruction, new RegExp(`aideos design-build ${ID} --source agent --request ${r.id}`));
 
     // A build from any other cause (a pipeline resume, a hand build) is not the agent's answer.
     const other = buildDesign(ID, "hand-built");
     assert.equal(other.state, "passed");
     assert.equal(other.requestId, null);
     assert.equal(listMotionRequests(ID)[0].state, "sent", "a passing build with no request id does not settle it");
+    const wrongRequest = buildDesign(ID, "agent", { requestId: "different-request" });
+    assert.equal(wrongRequest.requestId, null, "an explicit id that is not open cannot be attributed");
+    assert.equal(listMotionRequests(ID)[0].state, "sent");
 
     // A build run on the agent's behalf takes the open request's id and does.
-    const answer = buildDesign(ID, "agent", { attribute: "open-request" });
+    const answer = buildDesign(ID, "agent", { requestId: r.id });
     assert.equal(answer.requestId, r.id);
     assert.equal(readDesignStatus(ID)?.requestId, r.id);
     assert.equal(listMotionRequests(ID)[0].state, "passed");
@@ -192,7 +200,7 @@ test("MotionRequests: a newer request supersedes the open one, and a build answe
     const first = await requestMotion(film, "beat-02", "one", { dispatch: agentDispatch });
     const second = await requestMotion(film, "beat-03", "two", { dispatch: agentDispatch });
     assert.equal(readOpenBuildRequest(ID)?.requestId, second.id);
-    buildDesign(ID, "agent", { attribute: "open-request" });
+    buildDesign(ID, "agent", { requestId: second.id });
     const states = Object.fromEntries(listMotionRequests(ID).map((x) => [x.id, x.state]));
     assert.deepEqual(states, { [first.id]: "sent", [second.id]: "passed" });
   } finally {

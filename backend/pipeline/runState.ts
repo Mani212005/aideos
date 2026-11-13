@@ -11,7 +11,7 @@ import fs from "fs";
 import path from "path";
 import { packageDir } from "./filmStore";
 import { applyStageEvent } from "./runMachine";
-import { PRODUCTION_STAGES, ProductionError, type RunState, type StageRecord } from "./types";
+import { PRODUCTION_STAGES, ProductionError, type BrollClip, type RenderedOutput, type RunState, type StageRecord } from "./types";
 
 const STATES = new Set(["pending", "running", "done", "failed", "needs_input"]);
 
@@ -24,7 +24,30 @@ export function runStatePath(slug: string): string {
 function validRecord(value: unknown): value is StageRecord {
   const record = value as Partial<StageRecord> | null;
   return typeof record === "object" && record !== null &&
-    (PRODUCTION_STAGES as readonly string[]).includes(record.stage as string) && STATES.has(record.status as string);
+    (PRODUCTION_STAGES as readonly string[]).includes(record.stage as string) && STATES.has(record.status as string) &&
+    (record.startedAt === undefined || typeof record.startedAt === "string") &&
+    (record.finishedAt === undefined || typeof record.finishedAt === "string") &&
+    (record.durationMs === undefined || typeof record.durationMs === "number") &&
+    (record.fingerprint === undefined || typeof record.fingerprint === "string") &&
+    (record.error === undefined || typeof record.error === "string") &&
+    (record.owner === undefined || (typeof record.owner === "object" && record.owner !== null &&
+      typeof record.owner.pid === "number" && typeof record.owner.runId === "string"));
+}
+
+// Confirms a persisted rendered output has every field required by resume consumers.
+function validOutput(value: unknown): value is RenderedOutput {
+  const output = value as Partial<RenderedOutput> | null;
+  return typeof output === "object" && output !== null && (output.format === "long" || output.format === "reel") &&
+    typeof output.path === "string" && typeof output.width === "number" && typeof output.height === "number" &&
+    typeof output.fps === "number" && typeof output.durationSec === "number" && typeof output.sizeBytes === "number";
+}
+
+// Confirms a persisted B-roll clip has every field required by resume consumers.
+function validBrollClip(value: unknown): value is BrollClip {
+  const clip = value as Partial<BrollClip> | null;
+  return typeof clip === "object" && clip !== null && typeof clip.shotId === "string" && typeof clip.prompt === "string" &&
+    typeof clip.path === "string" && typeof clip.staticPath === "string" && typeof clip.durationSec === "number" &&
+    typeof clip.width === "number" && typeof clip.height === "number";
 }
 
 // True when a process with this id is alive (a permission error still means it exists).
@@ -64,7 +87,9 @@ export function loadRunState(slug: string, title: string, runId: string): Loaded
   let parsed: RunState | null = null;
   try {
     const raw = JSON.parse(fs.readFileSync(file, "utf8")) as RunState;
-    if (Array.isArray(raw.stages) && raw.stages.every(validRecord)) parsed = raw;
+    if (Array.isArray(raw.stages) && raw.stages.every(validRecord) &&
+      Array.isArray(raw.outputs) && raw.outputs.every(validOutput) &&
+      Array.isArray(raw.brollClips) && raw.brollClips.every(validBrollClip)) parsed = raw;
   } catch {
     parsed = null;
   }
@@ -75,7 +100,7 @@ export function loadRunState(slug: string, title: string, runId: string): Loaded
     return { state: empty(), notices };
   }
 
-  const state: RunState = { ...empty(), ...parsed, slug, title: parsed.title ?? title, brollClips: parsed.brollClips ?? [], outputs: parsed.outputs ?? [] };
+  const state: RunState = { ...empty(), ...parsed, slug, title: parsed.title ?? title };
   let interrupted = false;
   state.stages = state.stages.map((record) => {
     if (record.status !== "running") return record;

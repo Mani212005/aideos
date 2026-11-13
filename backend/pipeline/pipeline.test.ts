@@ -645,6 +645,20 @@ test("runProduction: a corrupt run-state.json is reported and set aside, and a s
     assert.ok(afterCorrupt.warnings.some((w) => /run-state\.json could not be read; it was moved to run-state\.corrupt-\d+\.json/.test(w)), afterCorrupt.warnings.join("\n"));
     assert.equal(fs.readdirSync(path.join(VIDEOS_DIR, slug)).filter((f) => f.startsWith("run-state.corrupt-")).length, 1);
 
+    const invalidOutputs = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+    invalidOutputs.outputs = {};
+    fs.writeFileSync(stateFile, JSON.stringify(invalidOutputs));
+    const afterInvalidOutputs = await runProduction({ ...request, stopAfter: "narrate" });
+    assert.ok(afterInvalidOutputs.warnings.some((w) => /run-state\.json could not be read/.test(w)), "an invalid outputs record is treated as corrupt");
+    assert.equal(fs.readdirSync(path.join(VIDEOS_DIR, slug)).filter((f) => f.startsWith("run-state.corrupt-")).length, 2);
+
+    const invalidBroll = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+    invalidBroll.brollClips = [{ shotId: "beat-01" }];
+    fs.writeFileSync(stateFile, JSON.stringify(invalidBroll));
+    const afterInvalidBroll = await runProduction({ ...request, stopAfter: "narrate" });
+    assert.ok(afterInvalidBroll.warnings.some((w) => /run-state\.json could not be read/.test(w)), "an incomplete B-roll record is treated as corrupt");
+    assert.equal(fs.readdirSync(path.join(VIDEOS_DIR, slug)).filter((f) => f.startsWith("run-state.corrupt-")).length, 3);
+
     // A run killed mid-stage leaves `running` on disk; the next run says so and runs that stage again.
     const state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
     state.stages.find((s: { stage: string }) => s.stage === "narrate").status = "running";

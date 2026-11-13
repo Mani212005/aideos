@@ -53,7 +53,7 @@ export interface DesignBuildStatus {
 }
 
 /** Who a build is attributed to: the film's open request ("open-request", for a build run on an agent's behalf) or nobody. */
-export interface BuildDesignOptions { attribute?: "open-request" }
+export interface BuildDesignOptions { requestId?: string }
 
 /** The plain canvas-colour backdrop used when a spec names none. */
 const DEFAULT_BACKGROUND_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
@@ -159,12 +159,14 @@ export function buildDesign(filmId: string, source: DesignSource = "agent", opti
   const at = new Date().toISOString();
   let ledger: PlanItem[] | undefined;
   const pkg = resolvePackageDir(filmId);
-  // The record names what it was built from and which request asked for it. A build run for an agent
-  // takes the open request; any other build keeps the attribution only when the inputs are identical.
+  // The record names only a request explicitly supplied by its caller and still open for this film.
   const inputHash = designInputHash(filmId);
   const previous = readDesignStatus(filmId);
   const carried = previous?.inputHash === inputHash ? previous.requestId ?? null : null;
-  const requestId = (options.attribute === "open-request" ? readOpenBuildRequest(filmId)?.requestId : undefined) ?? carried;
+  const openRequestId = readOpenBuildRequest(filmId)?.requestId;
+  const requestId = options.requestId === undefined
+    ? carried
+    : options.requestId === openRequestId ? options.requestId : null;
   const fail = (errors: string[], findings: DesignFinding[] = []) =>
     record(filmId, { state: "failed", source, at, errors, findings, ...(ledger ? { ledger } : {}), inputHash, requestId });
 
