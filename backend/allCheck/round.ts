@@ -14,6 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { reviewPairwise, reviewVideo as geminiReview, formatReviewSummary, renderVideoForSlug, assertSlugDeliverable } from "../geminiReview";
+import { decisionScore, formatScore } from "../geminiReview";
 import type { GeminiReviewReport, PairwiseRunReport } from "../geminiReview";
 import { extractStill, probeVideo } from "../review/media";
 import { reviewVideo as measuredReview } from "../review/review";
@@ -74,18 +75,35 @@ export function recordRoundAcceptance(slug: string, rec: FormatRoundRecord, targ
   }
   if (!rec.review.error && rec.review.score !== null && rec.review.verdict !== null && rec.review.gatesPassed !== null) {
     // The draw passes the way the round's own bar says: the score reached the target and no hard gate failed.
-    events.push({
-      type: "judged",
-      draw: {
-        key: `round-${rec.round}`,
-        mp4Hash,
-        score: rec.review.score,
-        verdict: rec.review.verdict,
-        gatesPassed: rec.review.gatesPassed,
-        passed: rec.review.gatesPassed && rec.review.score >= target,
-        at: rec.createdAt,
-      },
-    });
+    const decided = rec.review.gatesPassed && rec.review.score >= target;
+    const reviewKey = `round-${rec.round}`;
+    const drawList = rec.review.draws ?? [];
+    if (drawList.length > 1) {
+      // Two draws of the same bytes are appended to the same record; the last one carries the decision over both.
+      drawList.forEach((item, i) => {
+        const last = i === drawList.length - 1;
+        events.push({
+          type: "judged",
+          draw: {
+            key: i === 0 ? reviewKey : `${reviewKey}-draw-${item.draw}`,
+            mp4Hash,
+            score: item.score,
+            verdict: last ? rec.review.verdict! : item.verdict,
+            gatesPassed: last ? rec.review.gatesPassed! : item.gatesPassed,
+            passed: last ? decided : item.gatesPassed && item.score >= target,
+            reviewKey,
+            drawNumber: item.draw,
+            ...(last ? { combinedScore: rec.review.score! } : {}),
+            at: rec.createdAt,
+          },
+        });
+      });
+    } else {
+      events.push({
+        type: "judged",
+        draw: { key: reviewKey, mp4Hash, score: rec.review.score, verdict: rec.review.verdict, gatesPassed: rec.review.gatesPassed, passed: decided, at: rec.createdAt },
+      });
+    }
   }
   applyEvents(resolvePackageDir(slug), rec.format, events);
 }
@@ -146,7 +164,9 @@ export function evaluateRecord(
     failing.push(`the Gemini review could not run: ${rec.review.error}`);
   } else {
     if (rec.review.score === null || rec.review.score < target) {
-      failing.push(`reviewer score ${rec.review.score?.toFixed(1) ?? "n/a"} is under the ${target.toFixed(1)} target`);
+      // A score settled by two draws is cut to two decimals so it never reads as the bar it missed.
+      const shown = rec.review.score === null ? "n/a" : (rec.review.draws?.length ?? 0) > 1 ? formatScore(rec.review.score) : rec.review.score.toFixed(1);
+      failing.push(`reviewer score ${shown} is under the ${target.toFixed(1)} target`);
     }
     if (rec.review.gatesPassed === false) {
       failing.push(`a hard gate failed in the reviewer's rubric: ${(rec.review.failedGates ?? rec.review.failedCriteria).join("; ") || "see feedback"}`);
@@ -176,7 +196,7 @@ export function recordMarkdown(rec: FormatRoundRecord): string {
   const lines = [
     `# Round ${rec.round} - ${rec.format} - ${rec.passed ? "PASSED" : "NOT PASSED"}`,
     ``,
-    `- Reviewer: ${rec.review.error ? `error: ${rec.review.error}` : `${rec.review.score?.toFixed(1) ?? "n/a"} / 10, ${rec.review.verdict}`}`,
+    `- Reviewer: ${rec.review.error ? `error: ${rec.review.error}` : `${rec.review.score === null ? "n/a" : formatScore(rec.review.score)} / 10, ${rec.review.verdict}${rec.review.drawNote ? ` (${rec.review.drawNote})` : ""}`}`,
     `- Measured checks: ${rec.measured.error ? `error: ${rec.measured.error}` : rec.measured.passed ? "pass" : `FAIL (${rec.measured.gateFailures.join(", ")})`}${rec.measured.softFailures.length ? `; soft failures: ${rec.measured.softFailures.join(", ")}` : ""}`,
   ];
   if (rec.pairwise) lines.push(`- Cross-review against ${path.basename(rec.pairwise.reference)}: ${rec.pairwise.error ? `error: ${rec.pairwise.error}` : `${rec.pairwise.winner} (${rec.pairwise.candidateScore?.toFixed(2)} vs ${rec.pairwise.referenceScore?.toFixed(2)})`}`);
@@ -288,9 +308,12 @@ export async function runFormatRound(req: RoundRequest, round: number, config: A
       filmPath: filmFile,
       reviewContextPath: measured.reportPath && fs.existsSync(measured.reportPath) ? measured.reportPath : undefined,
     });
-    review.score = report.overallScore;
+    // The verdict score is the mean of the criteria scores (combined over both draws), never the reviewer's own overall number.
+    review.score = decisionScore(report);
     review.verdict = report.verdict;
-    review.gatesPassed = !report.criteria.some((c) => c.isGate && (!c.passed || c.score < 6));
+    review.draws = report.draws?.map((d) => ({ draw: d.draw, score: d.score, overallScore: d.overallScore, gatesPassed: d.gatesPassed, verdict: d.verdict }));
+    review.drawNote = report.drawNote;
+    review.gatesPassed = report.draws ? report.draws.every((d) => d.gatesPassed) : !report.criteria.some((c) => c.isGate && (!c.passed || c.score < 6));
     review.summary = report.summary;
     const describe = (c: (typeof report.criteria)[number]) => `${c.title} ${c.score.toFixed(1)}/10${c.isGate ? " [gate]" : ""}: ${c.reason}`;
     review.failedCriteria = report.criteria.filter((c) => !c.passed || c.score < 9).map(describe);

@@ -74,7 +74,12 @@ export interface FormatRoundRecord {
   filmHash: string;
   createdAt: string;
   review: {
+    /** The score the verdict was decided on: the mean of the individual criteria scores, combined over both draws when two ran. */
     score: number | null;
+    /** Every reviewer draw behind the score (one, or two when the first was within 0.5 of the 9.0 bar): the call count of this review. */
+    draws?: Array<{ draw: number; score: number; overallScore: number; gatesPassed: boolean; verdict: "ACCEPT" | "REVISE" }>;
+    /** Plain words on how many draws ran and why. */
+    drawNote?: string;
     verdict: "ACCEPT" | "REVISE" | null;
     /** False when a hard gate of the rubric failed, whatever the mean score. */
     gatesPassed: boolean | null;

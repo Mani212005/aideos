@@ -210,7 +210,7 @@ test("store: film.json written by the tools is clean, an edit by hand is flagged
 });
 
 // Stub round dependencies: renders fixed bytes, returns the given scores.
-function stubRound(over: { score?: number; measuredOk?: boolean; video?: string } = {}): RoundDeps {
+function stubRound(over: { score?: number; measuredOk?: boolean; video?: string; report?: GeminiReviewReport } = {}): RoundDeps {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "acceptance-render-"));
   return {
     render: async (slug, format) => {
@@ -225,6 +225,7 @@ function stubRound(over: { score?: number; measuredOk?: boolean; video?: string 
       return { passed, gateFailures: passed ? [] : ["overlap"], softFailures: [], recommendations: [] } as unknown as ReviewReport;
     },
     gemini: async () => {
+      if (over.report) return over.report;
       const score = over.score ?? 9.3;
       return {
         overallScore: score, verdict: score >= 9 ? "ACCEPT" : "REVISE", summary: "s",
@@ -279,6 +280,65 @@ test("all-check: a passing round is accepted only after the frame check, and a f
     const edited = hashFileOrNull(path.join(dir, "film.json"));
     assert.equal(acceptanceSummary(dir, "long", edited).state, "stale");
     assert.match(acceptanceSummary(dir, "long", edited).message, /Changed since review/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(allCheckDir(slug), { recursive: true, force: true });
+  }
+});
+
+// A reviewer report the verdict policy produced from two draws of the same bytes (scores are the criteria means).
+function twoDrawReport(first: number, second: number, verdict: "ACCEPT" | "REVISE"): GeminiReviewReport {
+  const criteria = [{ name: "persistent_stage", title: "Persistent stage", isGate: true, score: 9, passed: true, evidenceTimestamps: ["0:10"], reason: "r" }];
+  const draw = (n: number, score: number) => ({ draw: n, overallScore: score, score, gatesPassed: true, timestampsValid: true, verdict: score >= 9 ? "ACCEPT" : "REVISE", criteria, evaluatedAt: "t" });
+  return {
+    overallScore: first, criteriaMeanScore: (first + second) / 2, verdict, summary: "s", criteria, feedback: [], model: "m", evaluatedAt: "t",
+    draws: [draw(1, first), draw(2, second)],
+    drawNote: `2 reviewer draws of the same video (${first} and ${second})`,
+  } as unknown as GeminiReviewReport;
+}
+
+test("all-check: a two-draw review appends both draws to the same acceptance record and the Export read says so in words", async () => {
+  const slug = "acc-two-draws";
+  const dir = makeRunPackage(slug);
+  try {
+    // The 0.5.0 case: the first draw 9.2 (in band), the second 8.81; combined 9.005 reaches the 9.0 target.
+    const [long] = await runRound({ slug, format: "long" }, stubRound({ report: twoDrawReport(9.2, 8.81, "ACCEPT") }));
+    recordFrameCheck({ slug, round: long.round, format: "long", issues: [] });
+    const record = readRecord(dir, "long");
+    const draws = currentDraws(record);
+    assert.deepEqual(draws.map((d) => d.key), ["round-1", "round-1-draw-2"], "both draws live in the one record");
+    assert.deepEqual(draws.map((d) => d.drawNumber), [1, 2]);
+    assert.equal(draws[0].combinedScore, undefined);
+    assert.ok(Math.abs((draws[1].combinedScore ?? 0) - 9.005) < 1e-9, "the last draw carries the combined score the decision used");
+    assert.equal(draws[1].passed, true);
+    assert.equal(record.state, "accepted");
+    assert.equal(record.drawsDisagree, false, "the two draws of one review are settled by the policy, not a disagreement");
+    const message = summarize(record, record.filmHash).message;
+    assert.match(message, /reviewer score 9\.00/);
+    assert.match(message, /asked 2 times about these exact bytes \(scores 9\.20 and 8\.81\) because the first was within 0\.5 of the 9\.0 bar; their mean, 9\.00, decided/);
+    // Replaying the same round never counts a draw twice.
+    const after = readRecord(dir, "long").judged.length;
+    const { recordRoundAcceptance } = await import("../allCheck/round");
+    recordRoundAcceptance(slug, long, 9);
+    assert.equal(readRecord(dir, "long").judged.length, after);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(allCheckDir(slug), { recursive: true, force: true });
+  }
+});
+
+test("all-check: a two-draw review whose combined score misses the bar is a revise, with both draws kept", async () => {
+  const slug = "acc-two-draws-revise";
+  const dir = makeRunPackage(slug);
+  try {
+    // Same first draw, second draw 8.6: combined 8.9 is under 9.0.
+    const [long] = await runRound({ slug, format: "long" }, stubRound({ report: twoDrawReport(9.2, 8.6, "REVISE") }));
+    assert.equal(long.passed, false);
+    assert.match(long.failing.join("\n"), /reviewer score 8\.90 is under the 9\.0 target/);
+    const record = readRecord(dir, "long");
+    assert.equal(currentDraws(record).length, 2);
+    assert.equal(record.state, "revise");
+    assert.match(summarize(record, record.filmHash).message, /asked for revisions \(reviewer score 8\.90\)\. Fix the findings and run aideos all-check again\. The reviewer was asked 2 times/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(allCheckDir(slug), { recursive: true, force: true });

@@ -3,7 +3,9 @@
  * Evaluates local mp4 videos against the 12-criterion rubric, enforces timestamp evidence verification,
  * validates hard gates, and executes dual-agent cross-review pairwise video comparisons.
  * Inputs and outputs: rendered video MP4, ground truth facts, and rubric -> scored GeminiReviewReport.
- * Used by: backend/allCheck/round.ts, backend/geminiReview/index.ts.
+ * The verdict is decided by backend/geminiReview/verdictPolicy.ts (the mean of the individual criteria scores, and at
+ * most one second draw when that mean is within 0.5 of the 9.0 bar), never by the reviewer's own overall number.
+ * Used by: backend/allCheck/round.ts, backend/geminiReview/index.ts, backend/cli.ts (gemini-review, the release gate).
  */
 
 import { execFileSync } from "node:child_process";
@@ -24,13 +26,29 @@ import {
   buildSingleVideoReviewPrompt,
   validateCriterionTimestamps,
 } from "./rubric";
+import {
+  FAILED_GATE_SCORE_CAP,
+  MAX_REVIEW_DRAWS,
+  SECOND_DRAW_BAND,
+  VERDICT_BAR,
+  criteriaMean,
+  decideReview,
+  describeDraws,
+  formatScore,
+  drawScoreOf,
+  needsSecondDraw,
+  reachesBar,
+} from "./verdictPolicy";
 import type {
   AgyReviewClient,
   AgyRunner,
   AgyRunnerOptions,
+  CriterionEvaluation,
   DeterministicVideoFacts,
   GeminiReviewReport,
   PairwiseRunReport,
+  ReviewDrawReport,
+  ReviewFeedbackItem,
   WatchReport,
 } from "./types";
 
@@ -375,6 +393,77 @@ export function createIsolatedVideoWorkspace(
   return { dir, videoPaths, cleanup };
 }
 
+/** What one draw of the reviewer yielded after normalization, before the verdict policy looks at it. */
+interface DrawOutcome {
+  criteria: CriterionEvaluation[];
+  /** The reviewer's own overall number, kept for the record. */
+  overallScore: number;
+  /** The mean of the individual criteria scores (held at 8.5 while a hard gate failed). */
+  score: number;
+  gatesPassed: boolean;
+  timestampsValid: boolean;
+  summary: string;
+  feedback: ReviewFeedbackItem[];
+  evaluatedAt: string;
+}
+
+// Runs the first draw and, only when its score is within 0.5 of the bar, exactly one more; then decides the verdict on the draws.
+async function decideWithDraws(
+  runDraw: () => Promise<DrawOutcome>,
+  context: { modelName: string; hash: string; resolvedPath: string; facts?: DeterministicVideoFacts; onProgress: (message: string) => void },
+): Promise<GeminiReviewReport> {
+  const { onProgress } = context;
+  const outcomes: DrawOutcome[] = [await runDraw()];
+  onProgress(`Review call 1 of at most ${MAX_REVIEW_DRAWS}: mean of the criteria scores ${formatScore(outcomes[0].score)} (the reviewer's own overall number was ${outcomes[0].overallScore.toFixed(1)}, which does not decide).`);
+  if (needsSecondDraw(outcomes[0])) {
+    onProgress(`The first draw is within ${SECOND_DRAW_BAND} of the ${VERDICT_BAR.toFixed(1)} bar: running one second draw of the same video (review call 2 of at most ${MAX_REVIEW_DRAWS}), then deciding on both.`);
+    try {
+      outcomes.push(await runDraw());
+    } catch (err) {
+      // One in-band draw never decides alone, so a second draw that cannot run leaves the review unfinished, never a pass.
+      throw new Error(`The first review draw scored ${formatScore(outcomes[0].score)}, within ${SECOND_DRAW_BAND} of the ${VERDICT_BAR.toFixed(1)} bar, and the second draw that settles it could not run: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    onProgress(`Review call 2 of at most ${MAX_REVIEW_DRAWS}: mean of the criteria scores ${formatScore(outcomes[1].score)}.`);
+  }
+  const decision = decideReview(outcomes);
+  const verdict = decision.verdict;
+  const draws: ReviewDrawReport[] = outcomes.map((outcome, i) => ({
+    draw: i + 1,
+    overallScore: outcome.overallScore,
+    score: outcome.score,
+    gatesPassed: outcome.gatesPassed,
+    timestampsValid: outcome.timestampsValid,
+    verdict: reachesBar(outcome.score) && outcome.gatesPassed && outcome.timestampsValid ? "ACCEPT" : "REVISE",
+    criteria: outcome.criteria,
+    evaluatedAt: outcome.evaluatedAt,
+  }));
+  // The report body is the lowest-scoring draw (the first on a tie), so a REVISE always shows the evidence that caused it.
+  const shown = outcomes.reduce((worst, outcome) => (outcome.score < worst.score ? outcome : worst), outcomes[0]);
+  const seen = new Set<string>();
+  const feedback = outcomes.flatMap((outcome) => outcome.feedback).filter((item) => {
+    const key = `${item.timestamp ?? ""}|${item.issue}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const drawNote = describeDraws(outcomes.map((outcome) => outcome.score), decision.score);
+  return {
+    overallScore: outcomes[0].overallScore,
+    criteriaMeanScore: decision.score,
+    draws,
+    drawNote,
+    verdict,
+    summary: shown.summary || (verdict === "ACCEPT" ? "Meets quality standards." : "Revisions required."),
+    criteria: shown.criteria,
+    feedback,
+    model: context.modelName,
+    evaluatedAt: new Date().toISOString(),
+    videoHash: context.hash,
+    videoPath: context.resolvedPath,
+    facts: context.facts,
+  };
+}
+
 // Reviews a single rendered video against the 12-criterion good-video rubric.
 export async function reviewVideo(
   videoPath: string,
@@ -431,11 +520,11 @@ export async function reviewVideo(
 
   onProgress(`Evaluating ${path.basename(resolvedPath)} with agy (${modelName})...`);
 
-  let reAskNote: string | undefined;
-  let lastReport: GeminiReviewReport | null = null;
-
   const workspace = createIsolatedVideoWorkspace({ "video.mp4": resolvedPath });
-  try {
+
+  // Asks the reviewer once (re-asking only for missing timestamp evidence) and returns that draw's own scored outcome.
+  const runDraw = async (): Promise<DrawOutcome> => {
+    let reAskNote: string | undefined;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const brief = buildSingleVideoReviewPrompt(
         workspace.videoPaths["video.mp4"],
@@ -453,160 +542,145 @@ export async function reviewVideo(
         onProgress,
       });
 
-    try {
-      const parsed = (
-        typeof rawResult === "string"
-          ? JSON.parse(cleanModelJsonResponse(rawResult))
-          : rawResult
-      ) as Partial<GeminiReviewReport>;
+      try {
+        const parsed = (
+          typeof rawResult === "string"
+            ? JSON.parse(cleanModelJsonResponse(rawResult))
+            : rawResult
+        ) as Partial<GeminiReviewReport>;
 
-      // Ensure criteria array is present and complete
-      const criteriaList = Array.isArray(parsed.criteria) ? parsed.criteria : [];
-      const criteriaMap = new Map(criteriaList.map((c) => [c.name, c]));
+        // Ensure criteria array is present and complete
+        const criteriaList = Array.isArray(parsed.criteria) ? parsed.criteria : [];
+        const criteriaMap = new Map(criteriaList.map((c) => [c.name, c]));
 
-      // Merge and fill any criteria missing from model response
-      const normalizedCriteria = RUBRIC_CRITERIA.map((def) => {
-        const existing = criteriaMap.get(def.name);
+        // Merge and fill any criteria missing from model response
+        const normalizedCriteria = RUBRIC_CRITERIA.map((def) => {
+          const existing = criteriaMap.get(def.name);
+          return {
+            name: def.name,
+            title: def.title,
+            isGate: def.isGate,
+            score: typeof existing?.score === "number" ? existing.score : 0,
+            passed: typeof existing?.passed === "boolean" ? existing.passed : false,
+            evidenceTimestamps: Array.isArray(existing?.evidenceTimestamps) ? existing.evidenceTimestamps : [],
+            reason: existing?.reason || "No specific feedback provided.",
+          };
+        });
+
+        // Overwrite/ground measurable gates directly from deterministic facts
+        if (facts) {
+          // Bottom captions gate
+          if (facts.bottomCaptions.measured) {
+            const capCrit = normalizedCriteria.find((c) => c.name === "bottom_captions");
+            if (capCrit) {
+              capCrit.passed = facts.bottomCaptions.hasCaptions;
+              capCrit.score = facts.bottomCaptions.hasCaptions
+                ? Math.max(capCrit.score, facts.bottomCaptions.score)
+                : facts.bottomCaptions.score;
+              capCrit.reason = facts.bottomCaptions.summary;
+              // Evidence is the sampled frames OCR actually read a caption in, never a placeholder.
+              if (capCrit.evidenceTimestamps.length === 0) {
+                capCrit.evidenceTimestamps = (facts.bottomCaptions.captionTimesSec ?? []).slice(0, 3)
+                  .map((t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`);
+              }
+            }
+          }
+
+          // Camera gate
+          if (facts.camera.measured) {
+            const camCrit = normalizedCriteria.find((c) => c.name === "camera_purpose");
+            if (camCrit) {
+              if (facts.camera.hasCameraMoves) {
+                camCrit.passed = true;
+                camCrit.score = Math.max(camCrit.score, facts.camera.score);
+                if (camCrit.score < 6.0) camCrit.score = 8.0;
+              } else {
+                camCrit.passed = false;
+                camCrit.score = Math.min(camCrit.score, facts.camera.score);
+                camCrit.reason = facts.camera.summary;
+              }
+            }
+          }
+
+          // Audio mix criterion
+          if (facts.audio.measured) {
+            const audioCrit = normalizedCriteria.find((c) => c.name === "audio_mix");
+            if (audioCrit && facts.audio.hasAudio) {
+              const audioPass =
+                facts.audio.integratedLufs >= -18 &&
+                facts.audio.integratedLufs <= -14 &&
+                facts.audio.truePeakDb <= -1.0;
+              if (audioPass) {
+                audioCrit.passed = true;
+                audioCrit.score = Math.max(audioCrit.score, 9.0);
+                audioCrit.reason = `Measured mix: ${facts.audio.summary}`;
+              }
+            }
+          }
+        }
+
+        if (facts?.reelLength) {
+          normalizedCriteria.push({ name: "reel_length", title: "Reel delivered length", isGate: true,
+            score: facts.reelLength.passed ? 10 : 0, passed: facts.reelLength.passed,
+            evidenceTimestamps: [`${Math.floor(facts.durationSec / 60)}:${String(Math.floor(facts.durationSec % 60)).padStart(2, "0")}`],
+            reason: facts.reelLength.summary });
+        }
+
+        // Verify that every single criterion contains timestamp evidence
+        const timestampCheck = validateCriterionTimestamps(normalizedCriteria);
+        if (!timestampCheck.valid && attempt < maxAttempts) {
+          onProgress(
+            `Attempt ${attempt} lacked timestamps for: ${timestampCheck.missing.join(", ")}. Re-prompting...`,
+          );
+          reAskNote = timestampCheck.missing.join(", ");
+          continue;
+        }
+
+        // Missing evidence is never a pass: a criterion still without a timestamp after the last attempt fails.
+        if (!timestampCheck.valid) {
+          for (const crit of normalizedCriteria) {
+            if (!timestampCheck.missing.includes(crit.name)) continue;
+            crit.passed = false;
+            crit.reason = `Unmeasured: the reviewer gave no timestamp evidence after ${attempt} attempt(s). ${crit.reason}`;
+          }
+        }
+
+        // The draw's own score is the mean of its individual criteria scores, never the reviewer's own overall number.
+        const gatesPassed = !normalizedCriteria.some((c) => c.isGate && (!c.passed || c.score < 6.0));
+        const score = drawScoreOf(normalizedCriteria, gatesPassed);
+        // The reviewer's own number is kept for the record only (a failed hard gate still holds it at 8.5, as before).
+        let overallScore = typeof parsed.overallScore === "number" ? parsed.overallScore : criteriaMean(normalizedCriteria);
+        if (!gatesPassed && overallScore >= VERDICT_BAR) overallScore = FAILED_GATE_SCORE_CAP;
+
         return {
-          name: def.name,
-          title: def.title,
-          isGate: def.isGate,
-          score: typeof existing?.score === "number" ? existing.score : 0,
-          passed: typeof existing?.passed === "boolean" ? existing.passed : false,
-          evidenceTimestamps: Array.isArray(existing?.evidenceTimestamps) ? existing.evidenceTimestamps : [],
-          reason: existing?.reason || "No specific feedback provided.",
+          criteria: normalizedCriteria,
+          overallScore,
+          score,
+          gatesPassed,
+          timestampsValid: timestampCheck.valid,
+          summary: typeof parsed.summary === "string" ? parsed.summary : "",
+          feedback: Array.isArray(parsed.feedback) ? parsed.feedback : [],
+          evaluatedAt: new Date().toISOString(),
         };
-      });
-
-      // Overwrite/ground measurable gates directly from deterministic facts
-      if (facts) {
-        // Bottom captions gate
-        if (facts.bottomCaptions.measured) {
-          const capCrit = normalizedCriteria.find((c) => c.name === "bottom_captions");
-          if (capCrit) {
-            capCrit.passed = facts.bottomCaptions.hasCaptions;
-            capCrit.score = facts.bottomCaptions.hasCaptions
-              ? Math.max(capCrit.score, facts.bottomCaptions.score)
-              : facts.bottomCaptions.score;
-            capCrit.reason = facts.bottomCaptions.summary;
-            // Evidence is the sampled frames OCR actually read a caption in, never a placeholder.
-            if (capCrit.evidenceTimestamps.length === 0) {
-              capCrit.evidenceTimestamps = (facts.bottomCaptions.captionTimesSec ?? []).slice(0, 3)
-                .map((t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`);
-            }
-          }
+      } catch (parseErr) {
+        if (attempt >= maxAttempts) {
+          throw new Error(
+            `Failed to parse valid review report after ${maxAttempts} attempts: ${
+              parseErr instanceof Error ? parseErr.message : String(parseErr)
+            }`,
+          );
         }
-
-        // Camera gate
-        if (facts.camera.measured) {
-          const camCrit = normalizedCriteria.find((c) => c.name === "camera_purpose");
-          if (camCrit) {
-            if (facts.camera.hasCameraMoves) {
-              camCrit.passed = true;
-              camCrit.score = Math.max(camCrit.score, facts.camera.score);
-              if (camCrit.score < 6.0) camCrit.score = 8.0;
-            } else {
-              camCrit.passed = false;
-              camCrit.score = Math.min(camCrit.score, facts.camera.score);
-              camCrit.reason = facts.camera.summary;
-            }
-          }
-        }
-
-        // Audio mix criterion
-        if (facts.audio.measured) {
-          const audioCrit = normalizedCriteria.find((c) => c.name === "audio_mix");
-          if (audioCrit && facts.audio.hasAudio) {
-            const audioPass =
-              facts.audio.integratedLufs >= -18 &&
-              facts.audio.integratedLufs <= -14 &&
-              facts.audio.truePeakDb <= -1.0;
-            if (audioPass) {
-              audioCrit.passed = true;
-              audioCrit.score = Math.max(audioCrit.score, 9.0);
-              audioCrit.reason = `Measured mix: ${facts.audio.summary}`;
-            }
-          }
-        }
+        onProgress(`Attempt ${attempt} produced invalid JSON. Retrying...`);
       }
-
-      if (facts?.reelLength) {
-        normalizedCriteria.push({ name: "reel_length", title: "Reel delivered length", isGate: true,
-          score: facts.reelLength.passed ? 10 : 0, passed: facts.reelLength.passed,
-          evidenceTimestamps: [`${Math.floor(facts.durationSec / 60)}:${String(Math.floor(facts.durationSec % 60)).padStart(2, "0")}`],
-          reason: facts.reelLength.summary });
-      }
-
-      // Verify that every single criterion contains timestamp evidence
-      const timestampCheck = validateCriterionTimestamps(normalizedCriteria);
-      if (!timestampCheck.valid && attempt < maxAttempts) {
-        onProgress(
-          `Attempt ${attempt} lacked timestamps for: ${timestampCheck.missing.join(", ")}. Re-prompting...`,
-        );
-        reAskNote = timestampCheck.missing.join(", ");
-        continue;
-      }
-
-      // Missing evidence is never a pass: a criterion still without a timestamp after the last attempt fails.
-      if (!timestampCheck.valid) {
-        for (const crit of normalizedCriteria) {
-          if (!timestampCheck.missing.includes(crit.name)) continue;
-          crit.passed = false;
-          crit.reason = `Unmeasured: the reviewer gave no timestamp evidence after ${attempt} attempt(s). ${crit.reason}`;
-        }
-      }
-
-      // Check hard gates: if any gate fails or scores below 6.0, gate fails
-      const anyGateFailed = normalizedCriteria.some(
-        (c) => c.isGate && (!c.passed || c.score < 6.0),
-      );
-
-      const meanScore =
-        normalizedCriteria.reduce((sum, c) => sum + c.score, 0) /
-        normalizedCriteria.length;
-      let overallScore =
-        typeof parsed.overallScore === "number" ? parsed.overallScore : meanScore;
-
-      // If any hard gate failed, overall score cannot exceed 8.5
-      if (anyGateFailed && overallScore >= 9.0) {
-        overallScore = 8.5;
-      }
-
-      // Acceptance requires overallScore >= 9.0, all gates passing and evidence for every criterion
-      const verdict = overallScore >= 9.0 && !anyGateFailed && timestampCheck.valid ? "ACCEPT" : "REVISE";
-
-      const normalizedReport: GeminiReviewReport = {
-        overallScore,
-        verdict,
-        summary: parsed.summary || (verdict === "ACCEPT" ? "Meets quality standards." : "Revisions required."),
-        criteria: normalizedCriteria,
-        feedback: Array.isArray(parsed.feedback) ? parsed.feedback : [],
-        model: modelName,
-        evaluatedAt: new Date().toISOString(),
-        videoHash: hash,
-        videoPath: resolvedPath,
-        facts,
-      };
-
-      lastReport = normalizedReport;
-      return normalizedReport;
-    } catch (parseErr) {
-      if (attempt >= maxAttempts) {
-        throw new Error(
-          `Failed to parse valid review report after ${maxAttempts} attempts: ${
-            parseErr instanceof Error ? parseErr.message : String(parseErr)
-          }`,
-        );
-      }
-      onProgress(`Attempt ${attempt} produced invalid JSON. Retrying...`);
     }
-  }
-} finally {
-  workspace.cleanup();
-}
+    throw new Error("Video review failed to produce a valid report.");
+  };
 
-  if (lastReport) return lastReport;
-  throw new Error("Video review failed to produce a valid report.");
+  try {
+    return await decideWithDraws(runDraw, { modelName, hash, resolvedPath, facts, onProgress });
+  } finally {
+    workspace.cleanup();
+  }
 }
 
 // Executes a dual-agent cross-review pairwise comparison of two videos to verify preference stability.
@@ -720,7 +794,10 @@ export async function reviewPairwise(
 export function formatReviewSummary(report: GeminiReviewReport): string {
   const lines: string[] = [
     `=== Gemini 3.8 Flash Video Review ===`,
-    `Overall Score: ${report.overallScore.toFixed(1)} / 10.0`,
+    report.criteriaMeanScore === undefined
+      ? `Overall Score: ${report.overallScore.toFixed(1)} / 10.0`
+      : `Score: ${formatScore(report.criteriaMeanScore)} / 10.0 (mean of the individual criteria scores; the reviewer's own overall number, ${report.overallScore.toFixed(1)}, does not decide)`,
+    ...(report.drawNote ? [`Draws: ${report.drawNote}`] : []),
     `Verdict: ${report.verdict}`,
     `Summary: ${report.summary}`,
     ``,
