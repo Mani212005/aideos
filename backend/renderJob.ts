@@ -160,6 +160,17 @@ export function renderFilmHash(film: Film): string {
     .digest("hex");
 }
 
+/** Captures filesystem identity without reading potentially large render files. */
+function artifactIdentity(file: string): string | null {
+  try {
+    const stat = fs.statSync(file, { bigint: true });
+    return [stat.dev, stat.ino, stat.size, stat.mtimeNs, stat.ctimeNs].join(":");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+}
+
 /** Creates a single-use job; cancellation waits for backend teardown before discarding partial output. */
 export function createRenderJob(
   input: RenderRequest,
@@ -209,6 +220,12 @@ export function createRenderJob(
   /** Executes the shared delivery steps exactly once for this immutable input snapshot. */
   const execute = async () => {
     const sidecar = `${request.outPath}.render.json`;
+    const masterReport = `${request.outPath}.master.json`;
+    const priorArtifacts = new Map<string, string | null>(
+      [request.outPath, sidecar, masterReport].map(
+        (file): [string, string | null] => [file, artifactIdentity(file)],
+      ),
+    );
     try {
       checkCancelled();
       if (request.format !== "long" && request.format !== "reel")
@@ -268,9 +285,10 @@ export function createRenderJob(
     } catch (error) {
       await cleanup().catch(() => {});
       move(controller.signal.aborted ? "cancelled" : "failed");
-      fs.rmSync(request.outPath, { force: true });
-      fs.rmSync(sidecar, { force: true });
-      fs.rmSync(`${request.outPath}.master.json`, { force: true });
+      for (const [file, priorIdentity] of priorArtifacts) {
+        if (artifactIdentity(file) !== priorIdentity)
+          fs.rmSync(file, { force: true });
+      }
       throw error;
     }
   };

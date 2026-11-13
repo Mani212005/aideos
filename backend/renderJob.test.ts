@@ -164,8 +164,9 @@ for (const state of [
 ] as const) {
   test(`cancel from ${state} is terminal, cleans once and removes partial output`, async (t) => {
     const f = fixture(t);
-    fs.writeFileSync(f.outPath, "partial");
-    fs.writeFileSync(`${f.outPath}.master.json`, "stale");
+    fs.writeFileSync(f.outPath, "previous render");
+    fs.writeFileSync(`${f.outPath}.render.json`, "previous sidecar");
+    fs.writeFileSync(`${f.outPath}.master.json`, "previous master report");
     let job: ReturnType<typeof createRenderJob>;
     job = createRenderJob(
       { film: f.film, format: "reel", outPath: f.outPath, profile: "review" },
@@ -182,14 +183,47 @@ for (const state of [
     assert.equal(job.state, "cancelled");
     await job.cancel();
     assert.equal(f.calls.filter((call) => call === "cleanup").length, 1);
-    for (const file of [
-      f.outPath,
-      `${f.outPath}.render.json`,
-      `${f.outPath}.master.json`,
-    ])
-      assert.equal(fs.existsSync(file), false);
+    if (state === "mastering" || state === "probed") {
+      assert.equal(fs.existsSync(f.outPath), false);
+    } else {
+      assert.equal(fs.readFileSync(f.outPath, "utf8"), "previous render");
+    }
+    assert.equal(
+      fs.readFileSync(`${f.outPath}.render.json`, "utf8"),
+      "previous sidecar",
+    );
+    assert.equal(
+      fs.readFileSync(`${f.outPath}.master.json`, "utf8"),
+      "previous master report",
+    );
   });
 }
+
+test("preflight failure preserves an earlier render and its metadata", async (t) => {
+  const f = fixture(t);
+  fs.writeFileSync(f.outPath, "previous render");
+  fs.writeFileSync(`${f.outPath}.render.json`, "previous sidecar");
+  fs.writeFileSync(`${f.outPath}.master.json`, "previous master report");
+  f.services.checkDeliverable = () => {
+    throw new Error("preflight failed");
+  };
+  const job = createRenderJob(
+    { film: f.film, format: "long", outPath: f.outPath, profile: "final" },
+    f.renderer,
+    { services: f.services },
+  );
+
+  await assert.rejects(job.run(), /preflight failed/);
+  assert.equal(fs.readFileSync(f.outPath, "utf8"), "previous render");
+  assert.equal(
+    fs.readFileSync(`${f.outPath}.render.json`, "utf8"),
+    "previous sidecar",
+  );
+  assert.equal(
+    fs.readFileSync(`${f.outPath}.master.json`, "utf8"),
+    "previous master report",
+  );
+});
 
 for (const phase of [
   "deliverable",
