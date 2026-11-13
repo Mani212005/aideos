@@ -11,6 +11,7 @@
 import React, { useEffect, useState } from "react";
 import type { Film } from "../../../src/dl/schema";
 import type { ExportJobSnapshot } from "../../../backend/exportJobTypes";
+import type { AcceptanceSummary } from "../../../backend/filmAcceptance/machine";
 import { Check, AlertTriangle, Ban, Download, FileVideo, Play } from "lucide-react";
 import { Button, Modal, Note, ProgressBar, Stat, cn } from "./ui";
 
@@ -93,6 +94,24 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
     return () => clearInterval(timer);
   }, [isOpen, runningStatus]);
 
+  // Whether the film about to be exported is the film that was reviewed, asked of the acceptance record each time the Start screen opens.
+  const [acceptance, setAcceptance] = useState<AcceptanceSummary | null>(null);
+  const idleOpen = isOpen && job === null;
+  useEffect(() => {
+    if (!idleOpen) return;
+    let alive = true;
+    setAcceptance(null);
+    fetch(`/api/acceptance/${encodeURIComponent(film.id)}?format=${format}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (alive && data?.message) setAcceptance(data as AcceptanceSummary);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [idleOpen, film.id, format]);
+
   if (!isOpen) return null;
 
   const status = job?.status ?? "idle";
@@ -171,6 +190,15 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
 
         {status === "idle" ? (
           <Note tone="info">Nothing is rendered until you press Start. You can cancel at any time.</Note>
+        ) : null}
+
+        {status === "idle" && acceptance ? (
+          <Note
+            tone={acceptance.reviewed ? "success" : "warn"}
+            icon={acceptance.reviewed ? <Check className="h-3.5 w-3.5" /> : <AlertTriangle className="h-4 w-4" />}
+          >
+            {acceptance.message}
+          </Note>
         ) : null}
 
         {status === "failed" && job?.error ? (

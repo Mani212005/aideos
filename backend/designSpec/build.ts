@@ -30,6 +30,8 @@ import { formatIssues } from "../../src/dl/characters/validate";
 import type { CharacterSpec } from "../../src/dl/characters/schema";
 import { loadCharacter } from "../characters/library";
 import { resolveSoundtrack } from "./soundtrack";
+import { filmDifferences } from "../filmAcceptance/machine";
+import { filmEditState } from "../filmAcceptance/store";
 import { writeReelFilm } from "../reelCut/store";
 
 
@@ -207,8 +209,14 @@ function record(filmId: string, status: DesignBuildStatus): DesignBuildStatus {
   return status;
 }
 
+/** Options of one design build. */
+export interface BuildDesignOptions {
+  /** Lets the rebuild overwrite a hand-edited film.json; the edited film is first saved under design/hand-edited/. */
+  discardHandEdits?: boolean;
+}
+
 // Builds a film's design from its spec and writes the film only when the design check passes.
-export function buildDesign(filmId: string, source: DesignSource = "agent"): DesignBuildStatus {
+export function buildDesign(filmId: string, source: DesignSource = "agent", options: BuildDesignOptions = {}): DesignBuildStatus {
   const at = new Date().toISOString();
   const pkg = resolvePackageDir(filmId);
   const fail = (errors: string[], findings: DesignFinding[] = []) =>
@@ -321,7 +329,30 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   // The end card's spoken line comes from the narration, not the design (base-film.json may predate
   // it), so a rebuild keeps the line the current film carries.
   const endCardVoice = (JSON.parse(fs.readFileSync(filmFile, "utf8")) as { endCardVoice?: unknown }).endCardVoice;
-  writeFilm(filmId, endCardVoice ? { ...builtFilm, endCardVoice } as typeof builtFilm : builtFilm);
+  const finalFilm = endCardVoice ? { ...builtFilm, endCardVoice } as typeof builtFilm : builtFilm;
+
+  // A film.json no tool wrote is a hand edit (for example a fix made in an all-check round). The rebuild starts from the
+  // base film, so it would drop that edit without a word: refuse, naming what would be lost, unless the caller accepts it.
+  if (filmEditState(pkg) === "hand-edited") {
+    let lost: string[] = [];
+    try {
+      lost = filmDifferences(JSON.parse(JSON.stringify(parseFilm(JSON.parse(fs.readFileSync(filmFile, "utf8"))))), JSON.parse(JSON.stringify(parseFilm(finalFilm))));
+    } catch {
+      lost = ["the film (it could not be compared)"];
+    }
+    if (lost.length > 0) {
+      if (!options.discardHandEdits) {
+        return fail([
+          `film.json was edited by hand after the last tool write, and this rebuild (which starts from design/base-film.json) would drop: ${lost.slice(0, 12).join(", ")}${lost.length > 12 ? `, and ${lost.length - 12} more` : ""}. ` +
+            `Move the fix into design/design.json (or the builder script) so the rebuild keeps it, or accept the loss with: aideos design-build ${filmId} --discard-hand-edits (the edited film is saved to design/hand-edited/ first).`,
+        ]);
+      }
+      const archive = path.join(designDir(filmId), "hand-edited");
+      fs.mkdirSync(archive, { recursive: true });
+      fs.copyFileSync(filmFile, path.join(archive, `film.${at.replace(/[:.]/g, "-")}.json`));
+    }
+  }
+  writeFilm(filmId, finalFilm);
   // The browser bundle reads artwork through the generated source map, so refresh it.
   buildSvgSources();
 

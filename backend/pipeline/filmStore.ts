@@ -20,6 +20,7 @@ import path from "path";
 import type { Block, Film } from "../../src/dl/schema";
 import { dropLegacyFilmBlocks, parseFilm } from "../../src/dl/schema";
 import { traceBus } from "../agentBridge/traceBus";
+import { noteFilmWrite } from "../filmAcceptance/store";
 import { getVideosDir, resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { ROOT, FILMS_DIR, FILM_ID, filmModule, ensureGenerated, setActiveFilm } from "./generatedFiles";
 
@@ -75,7 +76,9 @@ export function writeFilm(slug: string, film: Film, options: { owner: boolean; a
   const validated = parseFilm(prepareSoundtrack(parseFilm(carryCaptionPlacement(readFilm(slug), film, options))));
   const dir = packageDir(slug);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "film.json"), JSON.stringify(validated, null, 2), "utf8");
+  const contents = JSON.stringify(validated, null, 2);
+  fs.writeFileSync(path.join(dir, "film.json"), contents, "utf8");
+  noteFilmWrite(dir, contents);
 
   fs.mkdirSync(FILMS_DIR, { recursive: true });
   fs.writeFileSync(path.join(FILMS_DIR, `${slug}.ts`), filmModule(validated), "utf8");
