@@ -1,8 +1,8 @@
-# File Description: Cargo workspace for the native renderer crates (R1 adds the Render IR loader; R2 adds the evaluator and raster; R3 adds the encoder).
+# File Description: Cargo workspace for the native renderer crates (Render IR loader, evaluator and raster, and encode/audio mux).
 # Inputs and outputs: member crate manifests -> one lockfile, one target directory (native/target, gitignored).
 # Used by: cargo build/test run from native/, the CI native job, docs/RENDER_IR.md.
 [workspace]
-members = ["aideos-render-ir", "aideos-render"]
+members = ["aideos-render-ir", "aideos-render", "aideos-encode"]
 resolver = "2"
 
 [workspace.package]
