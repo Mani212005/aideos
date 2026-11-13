@@ -57,6 +57,7 @@ export const RENDER_PROFILES = Object.freeze({
     audioBitrate: 320_000,
   }),
 });
+export type RenderProfileSetting = keyof (typeof RENDER_PROFILES)["final"];
 
 const NEXT: Partial<Record<RenderState, RenderState>> = {
   queued: "preparing",
@@ -96,6 +97,8 @@ export interface RenderContext {
 
 /** A native renderer implements this contract without importing any capture-framework types. */
 export interface Renderer {
+  /** Identifies profile settings this adapter actually applies to its encoded output. */
+  profileSettingsApplied?: Partial<Record<RenderProfileSetting, boolean>>;
   prepare?: (
     request: RenderRequest,
     context: RenderContext,
@@ -323,6 +326,14 @@ export function createRenderJob(
             filmHash,
             profile: request.profile,
             profilePolicy: RENDER_PROFILES[request.profile],
+            profileSettingsApplied: Object.fromEntries(
+              Object.keys(RENDER_PROFILES[request.profile]).map((setting) => [
+                setting,
+                renderer.profileSettingsApplied?.[
+                  setting as RenderProfileSetting
+                ] ?? false,
+              ]),
+            ),
             output,
           },
           null,

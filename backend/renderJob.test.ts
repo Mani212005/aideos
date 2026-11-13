@@ -136,6 +136,114 @@ test("one execution visits every phase, masters before probe and records the pre
   assert.ok(fs.existsSync(f.outPath));
 });
 
+test("sidecar distinguishes requested profile from probed output and unapplied settings", async (t) => {
+  const f = fixture(t);
+  const renderer: Renderer = {
+    ...f.renderer,
+    profileSettingsApplied: {
+      intermediate: false,
+      codec: false,
+      crf: false,
+      pixelFormat: false,
+      range: false,
+      audioCodec: false,
+      audioBitrate: false,
+    },
+  };
+  const job = createRenderJob(
+    { film: f.film, format: "long", outPath: f.outPath, profile: "final" },
+    renderer,
+    {
+      services: {
+        ...f.services,
+        probe: (format, file) => ({
+          format,
+          path: file,
+          width: 16,
+          height: 16,
+          fps: 30,
+          durationSec: 0.1,
+          sizeBytes: fs.statSync(file).size,
+          videoStream: {
+            codec: "h264",
+            pixelFormat: "yuvj420p",
+            colorRange: "full",
+          },
+        }),
+      },
+    },
+  );
+
+  await job.run();
+
+  const sidecar = JSON.parse(fs.readFileSync(`${f.outPath}.render.json`, "utf8"));
+  assert.deepEqual(sidecar.profilePolicy, RENDER_PROFILES.final);
+  assert.deepEqual(sidecar.profileSettingsApplied, {
+    intermediate: false,
+    codec: false,
+    crf: false,
+    pixelFormat: false,
+    range: false,
+    audioCodec: false,
+    audioBitrate: false,
+  });
+  assert.deepEqual(sidecar.output.videoStream, {
+    codec: "h264",
+    pixelFormat: "yuvj420p",
+    colorRange: "full",
+  });
+});
+
+test("sidecar marks profile settings applied when the renderer reports applying them", async (t) => {
+  const f = fixture(t);
+  const applied = {
+    intermediate: true,
+    codec: true,
+    crf: true,
+    pixelFormat: true,
+    range: true,
+    audioCodec: true,
+    audioBitrate: true,
+  };
+  const renderer: Renderer = {
+    ...f.renderer,
+    profileSettingsApplied: applied,
+  };
+  const job = createRenderJob(
+    { film: f.film, format: "long", outPath: f.outPath, profile: "final" },
+    renderer,
+    {
+      services: {
+        ...f.services,
+        probe: (format, file) => ({
+          format,
+          path: file,
+          width: 16,
+          height: 16,
+          fps: 30,
+          durationSec: 0.1,
+          sizeBytes: fs.statSync(file).size,
+          videoStream: {
+            codec: "h264",
+            pixelFormat: "yuv420p",
+            colorRange: "limited",
+          },
+        }),
+      },
+    },
+  );
+
+  await job.run();
+
+  const sidecar = JSON.parse(fs.readFileSync(`${f.outPath}.render.json`, "utf8"));
+  assert.deepEqual(sidecar.profileSettingsApplied, applied);
+  assert.deepEqual(sidecar.output.videoStream, {
+    codec: "h264",
+    pixelFormat: "yuv420p",
+    colorRange: "limited",
+  });
+});
+
 test("profile policy is backend-neutral and canonical hashing ignores property order", (t) => {
   const f = fixture(t);
   for (const profile of ["draft", "review", "final"] as const) {

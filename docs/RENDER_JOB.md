@@ -11,13 +11,15 @@ and removes the partial video, render sidecar and mastering report. Cleanup runs
 The job copies its input film, checks delivery requirements and pending B-roll, prepares retimed
 audio, asks the backend to check its disk budget, renders, masters audio, probes the finished file,
 then writes `<output>.render.json`. That sidecar records the prepared film's canonical SHA-256 hash,
-requested profile policy and final output facts. This is input provenance, not an acceptance verdict
-or a hash of external footage, fonts or audio assets.
+requested profile policy, a per-setting `profileSettingsApplied` map, and probed video stream facts
+(codec, pixel format and color range). This is input provenance, not an acceptance verdict or a hash
+of external footage, fonts or audio assets.
 
 `RENDER_PROFILES` is the shared policy table for `draft`, `review` and `final`. All currently request
 lossless intermediates, H.264 CRF 16, limited-range yuv420p and AAC at 320 kbps. A future native
-encoder can consume this data directly. The sidecar calls this `profilePolicy` because the legacy
-capture adapter retains its existing encode settings.
+encoder can consume this data directly. The Remotion adapter retains its existing encode settings,
+so its sidecar records these as requested policy with `profileSettingsApplied` false for each setting,
+alongside the actual probed stream facts. A native adapter reports true for settings it applies.
 
 The `Renderer` interface accepts film data, a format, output path, profile and optional frame range.
 Its context contains an `AbortSignal` and an output callback. It prepares backend resources, checks

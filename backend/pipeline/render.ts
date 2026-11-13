@@ -138,14 +138,21 @@ export function describeVideo(format: ProductionFormat, filePath: string): Rende
   const raw = execFileSync("ffprobe", [
     "-v", "error",
     "-select_streams", "v:0",
-    "-show_entries", "stream=width,height,r_frame_rate",
+    "-show_entries", "stream=width,height,r_frame_rate,codec_name,pix_fmt,color_range",
     "-show_entries", "format=duration,size",
     "-of", "json",
     filePath,
   ]).toString();
 
   const probe = JSON.parse(raw) as {
-    streams?: Array<{ width?: number; height?: number; r_frame_rate?: string }>;
+    streams?: Array<{
+      width?: number;
+      height?: number;
+      r_frame_rate?: string;
+      codec_name?: string;
+      pix_fmt?: string;
+      color_range?: string;
+    }>;
     format?: { duration?: string; size?: string };
   };
   const stream = probe.streams?.[0] ?? {};
@@ -159,6 +166,11 @@ export function describeVideo(format: ProductionFormat, filePath: string): Rende
     fps: den ? num / den : num,
     durationSec: Number(probe.format?.duration ?? 0),
     sizeBytes: Number(probe.format?.size ?? 0),
+    videoStream: {
+      codec: stream.codec_name ?? "unknown",
+      pixelFormat: stream.pix_fmt ?? "unknown",
+      colorRange: stream.color_range ?? "unknown",
+    },
   };
 }
 

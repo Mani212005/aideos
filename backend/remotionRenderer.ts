@@ -43,6 +43,15 @@ export function createRemotionRenderer(
   let previous: string | undefined;
   let publicDir: ReturnType<typeof stagePublicDir>;
   return {
+    profileSettingsApplied: {
+      intermediate: false,
+      codec: false,
+      crf: false,
+      pixelFormat: false,
+      range: false,
+      audioCodec: false,
+      audioBitrate: false,
+    },
     /** Performs only the active-film setup the existing caller performed. */
     prepare(request) {
       if (options.caller === "review") previous = readActiveFilmSource();
