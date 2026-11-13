@@ -36,9 +36,9 @@ export function ionaScript(beats: string[] = IONA_BEATS): string {
   return beats.map((text, i) => `## 0:0${i} - beat ${i + 1}\n[NARRATION] ${text}\n[VISUAL] A persistent stage with Iona and a paper glider.`).join("\n\n");
 }
 
-/** Replaces every string value equal to a fixture shot id with the matching beat id, at any depth. */
+/** Replaces every fixture shot id, as a whole string or as a cue's shot prefix ('catch:"catches"+105'), with the matching beat id, at any depth. */
 export function retargetShotIds<T>(value: T): T {
-  if (typeof value === "string") return (BEAT_IDS[value] ?? value) as T;
+  if (typeof value === "string") return value.replace(/^([a-z0-9-]+)(?=$|[:@+-])/, (shot) => BEAT_IDS[shot] ?? shot) as T;
   if (Array.isArray(value)) return value.map(retargetShotIds) as T;
   if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, retargetShotIds(v)])) as T;
   return value;
