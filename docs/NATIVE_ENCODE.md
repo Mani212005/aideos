@@ -6,7 +6,7 @@ captions. It is a Rust crate with a library API and a CLI, driving `ffmpeg` and 
 
 | Piece | File |
 | --- | --- |
-| Frame-source interface, synthetic, PNG sequence and raw stream sources | `native/aideos-encode/src/frames.rs` |
+| Frame-source interface, synthetic, PNG sequence and raw stream sources (the CLI accepts PNG sequences and raw streams) | `native/aideos-encode/src/frames.rs` |
 | Profiles (draft, review, final) and backends (x264, VAAPI, VideoToolbox) | `native/aideos-encode/src/profile.rs` |
 | Encoder: ffmpeg subprocess, backend probe, cancellation, atomic output | `native/aideos-encode/src/encode.rs` |
 | Audio mixer: clips, gain, envelope, fades, speech ducking, float WAV | `native/aideos-encode/src/audio.rs` |
@@ -26,8 +26,6 @@ aideos-encode --frames frames/ --fps 30 --voiceover voiceover.wav --music music.
 # Raw frames on stdin (the shape R2's evaluator streams): I420 is the fast path
 render | aideos-encode --raw-stdin --size 1080x1920 --frame-count 4621 --pixel-format i420 --profile draft --out reel.mp4
 
-aideos-encode backends          # which encoders pass the conformance probe on this machine
-aideos-encode probe file.mp4    # container and stream facts as JSON
 ```
 
 `aideos-encode --help` lists every flag. Exit code 0 is success, 1 an encode failure (message on stderr), 2 a usage

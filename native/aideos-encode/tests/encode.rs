@@ -466,6 +466,27 @@ fn given_speech_intervals_drive_the_ducking_without_a_voice_clip() {
     assert!((level_db(&mixed.samples, 1.5, 1.7) - (full - 20.0)).abs() < 0.3, "the closed gap stays ducked at the configured -20 dB");
 }
 
+/// Rejects speech and story-end times that would otherwise distort ducking outside the film timeline.
+#[test]
+fn audio_plan_rejects_out_of_timeline_ducking_times() {
+    let dir = TempDir::new("audio-plan-times");
+    let invalid_plans = [
+        AudioPlan { speech: Some(vec![SpeechInterval { start_sec: -2.0, end_sec: 0.5 }]), ..AudioPlan::default() },
+        AudioPlan { speech: Some(vec![SpeechInterval { start_sec: 1.0, end_sec: 5.1 }]), ..AudioPlan::default() },
+        AudioPlan { mix: MixSettings { story_end_sec: Some(-1.0), ..MixSettings::default() }, ..AudioPlan::default() },
+        AudioPlan { mix: MixSettings { story_end_sec: Some(5.1), ..MixSettings::default() }, ..AudioPlan::default() },
+    ];
+    for plan in invalid_plans {
+        assert!(matches!(mix_plan(&tools(), &plan, 5.0, dir.0.as_path()), Err(AudioError::Plan(_))));
+    }
+    let valid = AudioPlan {
+        speech: Some(vec![SpeechInterval { start_sec: 0.0, end_sec: 5.0 }]),
+        mix: MixSettings { story_end_sec: Some(5.0), ..MixSettings::default() },
+        ..AudioPlan::default()
+    };
+    assert!(matches!(mix_plan(&tools(), &valid, 5.0, dir.0.as_path()), Ok(_)));
+}
+
 /// The speech detector and gain curve behave as the TypeScript originals document, checked on small known inputs.
 #[test]
 fn speech_detection_and_gain_curve_follow_the_documented_rules() {
@@ -731,25 +752,29 @@ fn cli_reads_raw_frames_from_stdin_and_an_audio_plan_file() {
     assert!(f.audio().is_some());
 }
 
-/// Usage mistakes exit with code 2 and a message; encode failures exit 1; the probe and backends commands work.
+/// Usage mistakes exit with code 2 and a message; encode failures exit 1; PNG frame input encodes successfully.
 #[test]
-fn cli_exit_codes_and_helper_commands() {
+fn cli_exit_codes_and_png_frame_input() {
     let dir = TempDir::new("cli-misc");
-    assert_eq!(cli(&["--synthetic", "128x72"]).status.code(), Some(2), "no --frame-count, no --out");
-    assert_eq!(cli(&["--synthetic", "128x72", "--frame-count", "3", "--profile", "nonsense", "--out", dir.join("x.mp4").to_str().unwrap()]).status.code(), Some(2));
-    assert_eq!(cli(&["--frames", dir.0.to_str().unwrap(), "--synthetic", "128x72", "--frame-count", "3", "--out", dir.join("x.mp4").to_str().unwrap()]).status.code(), Some(2), "two frame sources");
-    let odd = cli(&["--synthetic", "127x72", "--frame-count", "3", "--out", dir.join("x.mp4").to_str().unwrap()]);
+    assert_eq!(cli(&["--out", dir.join("x.mp4").to_str().unwrap()]).status.code(), Some(2), "no frame source");
+    assert_eq!(cli(&["--frames", dir.0.to_str().unwrap(), "--profile", "nonsense", "--out", dir.join("x.mp4").to_str().unwrap()]).status.code(), Some(2));
+    assert_eq!(cli(&["--frames", dir.0.to_str().unwrap(), "--raw-stdin", "--size", "128x72", "--frame-count", "3", "--out", dir.join("x.mp4").to_str().unwrap()]).status.code(), Some(2), "two frame sources");
+    let odd_frames = dir.join("odd");
+    fs::create_dir_all(&odd_frames).unwrap();
+    write_png(&odd_frames.join("frame.png"), 127, 72, [0, 0, 0, 255], false);
+    let odd = cli(&["--frames", odd_frames.to_str().unwrap(), "--out", dir.join("x.mp4").to_str().unwrap()]);
     assert_eq!(odd.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&odd.stderr).contains("even"));
-    let failed = cli(&["--synthetic", "128x72", "--frame-count", "3", "--voiceover", dir.join("missing.wav").to_str().unwrap(), "--out", dir.join("x.mp4").to_str().unwrap()]);
+    let frames = dir.join("frames");
+    fs::create_dir_all(&frames).unwrap();
+    for i in 0..3 {
+        write_png(&frames.join(format!("frame-{i}.png")), 128, 72, [i * 40, 0, 0, 255], false);
+    }
+    let failed = cli(&["--frames", frames.to_str().unwrap(), "--voiceover", dir.join("missing.wav").to_str().unwrap(), "--out", dir.join("x.mp4").to_str().unwrap()]);
     assert_eq!(failed.status.code(), Some(1));
     assert!(String::from_utf8_lossy(&failed.stderr).contains("missing.wav"));
-    assert!(dir.listing().is_empty(), "a failed run leaves no files");
-    let ok = cli(&["--synthetic", "128x72", "--frame-count", "3", "--pattern", "solid:ff0000", "--out", dir.join("ok.mp4").to_str().unwrap()]);
+    assert!(!dir.join("x.mp4").exists(), "a failed run leaves no output file");
+    let ok = cli(&["--frames", frames.to_str().unwrap(), "--out", dir.join("ok.mp4").to_str().unwrap()]);
     assert!(ok.status.success(), "{}", String::from_utf8_lossy(&ok.stderr));
-    let probed = cli(&["probe", dir.join("ok.mp4").to_str().unwrap()]);
-    let json: serde_json::Value = serde_json::from_slice(&probed.stdout).unwrap();
-    assert_eq!(json["streams"][0]["codec_name"], "h264");
-    let backends = String::from_utf8(cli(&["backends"]).stdout).unwrap();
-    assert!(backends.contains("software: ok"), "{backends}");
+    assert_delivery_format(&facts(&dir.join("ok.mp4")), 128, 72, 3);
 }

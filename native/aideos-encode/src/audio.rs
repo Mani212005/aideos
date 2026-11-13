@@ -240,7 +240,7 @@ pub fn measure_speech(stereo: &[f32], start_sec: f64) -> Vec<SpeechInterval> {
 }
 
 /// Checks the plan's numbers before any decoding happens.
-fn validate_plan(plan: &AudioPlan) -> Result<(), AudioError> {
+fn validate_plan(plan: &AudioPlan, total_sec: f64) -> Result<(), AudioError> {
     let bad = |message: String| Err(AudioError::Plan(message));
     for (n, clip) in plan.clips.iter().enumerate() {
         let name = format!("clip {} ({})", n + 1, clip.path.display());
@@ -271,6 +271,18 @@ fn validate_plan(plan: &AudioPlan) -> Result<(), AudioError> {
     for (what, value) in [("duckDb", plan.mix.duck_db), ("pauseGainDb", plan.mix.pause_gain_db), ("musicOnlyGainDb", plan.mix.music_only_gain_db)] {
         if !value.is_finite() || value > 12.0 {
             return bad(format!("mix.{what} must be a finite level of at most 12 dB"));
+        }
+    }
+    if let Some(story_end) = plan.mix.story_end_sec {
+        if !story_end.is_finite() || !(0.0..=total_sec).contains(&story_end) {
+            return bad(format!("mix.storyEndSec must be between 0 and the film duration ({total_sec})"));
+        }
+    }
+    if let Some(speech) = &plan.speech {
+        for (n, interval) in speech.iter().enumerate() {
+            if !interval.start_sec.is_finite() || !interval.end_sec.is_finite() || interval.start_sec < 0.0 || interval.start_sec > total_sec || interval.end_sec < 0.0 || interval.end_sec > total_sec {
+                return bad(format!("speech[{}] times must be within 0 to the film duration ({total_sec})", n));
+            }
         }
     }
     Ok(())
@@ -318,10 +330,10 @@ fn envelope_at(points: &[EnvelopePoint], time_sec: f64, cursor: &mut usize) -> f
 
 /// Mixes the whole plan into a stereo bed exactly `total_sec` long. Relative clip paths resolve against `base_dir`.
 pub fn mix_plan(tools: &Tools, plan: &AudioPlan, total_sec: f64, base_dir: &Path) -> Result<MixedAudio, AudioError> {
-    validate_plan(plan)?;
     if !total_sec.is_finite() || total_sec <= 0.0 {
         return Err(AudioError::Plan("the film duration must be above 0".to_string()));
     }
+    validate_plan(plan, total_sec)?;
     let total_samples = (total_sec * SAMPLE_RATE as f64).round() as usize;
     let mut decoded: Vec<(usize, Vec<f32>)> = Vec::with_capacity(plan.clips.len());
     for clip in &plan.clips {

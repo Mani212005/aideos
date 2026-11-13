@@ -1,13 +1,11 @@
-// File Description: The aideos-encode command line: encodes a directory of PNG frames, a raw frame stream on stdin or a synthetic pattern, plus audio, into an mp4; also probes a media file and reports which encoder backends work on this machine.
+// File Description: The aideos-encode command line: encodes a directory of PNG frames or a raw frame stream on stdin, plus audio, into an mp4.
 // Inputs and outputs: command line flags (see USAGE) and optional raw frames on stdin -> an mp4, a one-line or JSON report on stdout, errors on stderr; exit code 0 success, 1 failure, 2 usage error.
 // Used by: people and scripts running `cargo run --release -p aideos-encode -- ...`, docs/NATIVE_ENCODE.md, tests/encode.rs.
 
 use aideos_encode::audio::{AudioClip, AudioPlan, Role};
-use aideos_encode::encode::probe_backend;
-use aideos_encode::frames::{Fps, FrameSource, FrameSpec, Pattern, PixelFormat, PngSequenceSource, RawStreamSource, SyntheticSource};
-use aideos_encode::probe::probe;
-use aideos_encode::profile::{Backend, BackendChoice, Profile};
-use aideos_encode::{encode, EncodeOptions, Tools};
+use aideos_encode::frames::{Fps, FrameSource, FrameSpec, PixelFormat, PngSequenceSource, RawStreamSource};
+use aideos_encode::profile::{BackendChoice, Profile};
+use aideos_encode::{encode, EncodeOptions};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -15,16 +13,10 @@ const USAGE: &str = "aideos-encode: raw frames and audio in, a BT.709 limited-ra
 
 USAGE
   aideos-encode --out FILE.mp4 FRAMES [AUDIO] [OPTIONS]
-  aideos-encode probe FILE            print container and stream facts as JSON
-  aideos-encode backends              say which encoders pass the conformance probe here
-
 FRAMES (exactly one)
   --frames DIR                  PNG files in natural name order (frame2.png before frame10.png)
   --raw-stdin --size WxH --frame-count N [--pixel-format rgba|i420]
                                 tightly packed frames on stdin
-  --synthetic WxH --frame-count N [--pixel-format rgba|i420] [--pattern moving|solid:RRGGBB]
-                                generated frames, for smoke runs
-
 AUDIO (optional)
   --audio FILE                  one finished track
   --voiceover FILE              narration
@@ -49,11 +41,9 @@ struct Args {
     out: Option<PathBuf>,
     frames_dir: Option<PathBuf>,
     raw_stdin: bool,
-    synthetic: bool,
     size: Option<(u32, u32)>,
     frame_count: Option<u64>,
     pixel_format: PixelFormat,
-    pattern: Pattern,
     fps: Fps,
     profile: Profile,
     backend: BackendChoice,
@@ -73,31 +63,15 @@ fn parse_size(text: &str) -> Result<(u32, u32), Usage> {
     Ok((w.parse().map_err(|_| bad())?, h.parse().map_err(|_| bad())?))
 }
 
-/// Parses the `--pattern` value.
-fn parse_pattern(text: &str) -> Result<Pattern, Usage> {
-    if text == "moving" {
-        return Ok(Pattern::Moving);
-    }
-    let bad = || Usage(format!("pattern \"{text}\" must be moving or solid:RRGGBB"));
-    let hex = text.strip_prefix("solid:").ok_or_else(bad)?;
-    if hex.len() != 6 {
-        return Err(bad());
-    }
-    let channel = |at: usize| u8::from_str_radix(&hex[at..at + 2], 16).map_err(|_| bad());
-    Ok(Pattern::Solid([channel(0)?, channel(2)?, channel(4)?]))
-}
-
 /// Reads the command line into `Args`.
 fn parse_args(raw: &[String]) -> Result<Args, Usage> {
     let mut args = Args {
         out: None,
         frames_dir: None,
         raw_stdin: false,
-        synthetic: false,
         size: None,
         frame_count: None,
         pixel_format: PixelFormat::Rgba8,
-        pattern: Pattern::Moving,
         fps: Fps { num: 30, den: 1 },
         profile: Profile::Final,
         backend: BackendChoice::Auto,
@@ -116,17 +90,12 @@ fn parse_args(raw: &[String]) -> Result<Args, Usage> {
             "--out" => args.out = Some(PathBuf::from(value("--out")?)),
             "--frames" => args.frames_dir = Some(PathBuf::from(value("--frames")?)),
             "--raw-stdin" => args.raw_stdin = true,
-            "--synthetic" => {
-                args.synthetic = true;
-                args.size = Some(parse_size(&value("--synthetic")?)?);
-            }
             "--size" => args.size = Some(parse_size(&value("--size")?)?),
             "--frame-count" => args.frame_count = Some(value("--frame-count")?.parse().map_err(|_| Usage("--frame-count must be a whole number".to_string()))?),
             "--pixel-format" => {
                 let text = value("--pixel-format")?;
                 args.pixel_format = PixelFormat::parse(&text).ok_or_else(|| Usage(format!("pixel format \"{text}\" must be rgba or i420")))?;
             }
-            "--pattern" => args.pattern = parse_pattern(&value("--pattern")?)?,
             "--fps" => args.fps = Fps::parse(&value("--fps")?).map_err(|e| Usage(e.to_string()))?,
             "--profile" => {
                 let text = value("--profile")?;
@@ -151,9 +120,9 @@ fn parse_args(raw: &[String]) -> Result<Args, Usage> {
 
 /// Opens the frame source the flags describe.
 fn open_source(args: &Args) -> Result<Box<dyn FrameSource>, Usage> {
-    let chosen = [args.frames_dir.is_some(), args.raw_stdin, args.synthetic].iter().filter(|b| **b).count();
+    let chosen = [args.frames_dir.is_some(), args.raw_stdin].iter().filter(|b| **b).count();
     if chosen != 1 {
-        return Err(Usage("give exactly one of --frames, --raw-stdin and --synthetic".to_string()));
+        return Err(Usage("give exactly one of --frames and --raw-stdin".to_string()));
     }
     let spec_for = |width: u32, height: u32, count: u64| FrameSpec { width, height, fps: args.fps, pixel_format: args.pixel_format, frame_count: count };
     if let Some(dir) = &args.frames_dir {
@@ -162,9 +131,6 @@ fn open_source(args: &Args) -> Result<Box<dyn FrameSource>, Usage> {
     let (width, height) = args.size.ok_or_else(|| Usage("--raw-stdin needs --size WxH".to_string()))?;
     let count = args.frame_count.ok_or_else(|| Usage("this frame source needs --frame-count N".to_string()))?;
     let spec = spec_for(width, height, count);
-    if args.synthetic {
-        return Ok(Box::new(SyntheticSource::new(spec, args.pattern).map_err(|e| Usage(e.to_string()))?));
-    }
     Ok(Box::new(RawStreamSource::new(spec, std::io::BufReader::with_capacity(1 << 20, std::io::stdin())).map_err(|e| Usage(e.to_string()))?))
 }
 
@@ -239,39 +205,14 @@ fn run_encode(args: Args) -> Result<ExitCode, Usage> {
     }
 }
 
-/// Entry point: dispatches the `probe`, `backends` and encode commands.
+/// Entry point for the encode command.
 fn main() -> ExitCode {
     let raw: Vec<String> = std::env::args().skip(1).collect();
     if raw.is_empty() || raw.iter().any(|a| a == "--help" || a == "-h") {
         print!("{USAGE}");
         return if raw.is_empty() { ExitCode::from(2) } else { ExitCode::SUCCESS };
     }
-    let tools = Tools::from_env();
-    let outcome = match raw[0].as_str() {
-        "probe" => match raw.get(1) {
-            None => Err(Usage("probe needs a file".to_string())),
-            Some(file) => match probe(&tools.ffprobe, std::path::Path::new(file)) {
-                Ok(facts) => {
-                    println!("{}", serde_json::to_string_pretty(&facts).unwrap_or_default());
-                    Ok(ExitCode::SUCCESS)
-                }
-                Err(message) => {
-                    eprintln!("aideos-encode: {message}");
-                    Ok(ExitCode::from(1))
-                }
-            },
-        },
-        "backends" => {
-            for backend in [Backend::Software, Backend::Vaapi, Backend::VideoToolbox] {
-                match probe_backend(&tools, backend) {
-                    Ok(()) => println!("{backend}: ok"),
-                    Err(reason) => println!("{backend}: unavailable ({reason})"),
-                }
-            }
-            Ok(ExitCode::SUCCESS)
-        }
-        _ => parse_args(&raw).and_then(run_encode),
-    };
+    let outcome = parse_args(&raw).and_then(run_encode);
     match outcome {
         Ok(code) => code,
         Err(Usage(message)) => {
