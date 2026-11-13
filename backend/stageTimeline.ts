@@ -102,10 +102,14 @@ export function stageTimeline(film: Film, format: DeliveryFormat, options: { com
     }
     if (!moving && performanceGeometry) {
       // Returns changed geometry only when its projected rendered bounds intersect the output crop.
-      const visibleParts = (frame: number) => performanceGeometry.at(frame).map((performance) => [
-        ...partsInViewport(performance.actorParts, width, height).map((part) => ["actor", part.name, part.bounds] as const),
-        ...partsInViewport(performance.propParts, width, height).map((part) => ["prop", part.name, part.bounds] as const),
-      ]);
+      const visibleParts = (frame: number) => performanceGeometry.at(frame, false, true).map((performance) => {
+        const actorParts = partsInViewport(performance.actorParts, width, height);
+        const propParts = partsInViewport(performance.propParts, width, height);
+        return [
+          ...(actorParts.length ? [["actor", actorParts.map((part) => [part.name, part.bounds, part.signature])] as const] : []),
+          ...(propParts.length ? [["prop", propParts.map((part) => [part.name, part.bounds, part.signature])] as const] : []),
+        ];
+      });
       const before = visibleParts(f), after = visibleParts(n);
       moving = (before.length > 0 || after.length > 0) && JSON.stringify(before) !== JSON.stringify(after);
     }

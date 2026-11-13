@@ -5,8 +5,9 @@
  */
 import { Color, Matrix4, Raycaster, Vector3, type Mesh, type Material } from "three";
 import { projectStagePoint, stageViewport, STAGE_CAMERA_DEPTH, STAGE_CAMERA_FAR, STAGE_CAMERA_NEAR, type SceneRect, type StageCameraPose } from "./projection";
+import { elementVisible } from "./visibility";
 
-export interface ProjectedPart { name: string; bounds: SceneRect }
+export interface ProjectedPart { name: string; bounds: SceneRect; signature?: string }
 export interface DepthEvidence {
   provenance: "sampled-mesh-depth";
   tested: number;
@@ -18,16 +19,17 @@ export interface DepthEvidence {
 // Checks ancestor visibility and actual drawable material opacity without trusting a placement anchor.
 export function meshIsDrawn(mesh: Mesh): boolean {
   for (let node = mesh as Mesh | null; node; node = node.parent as Mesh | null) if (!node.visible) return false;
-  return (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).some((m) => m.visible && (!m.transparent || m.opacity > 0.02));
+  return (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).some((m) => m.visible && (!m.transparent || elementVisible(m.opacity)));
 }
 
 // Measures every posed vertex plus conservative normal-extrusion allowance through the shared projector.
-export function projectMeshParts(meshes: Mesh[], pose: StageCameraPose, width: number, height: number, size: { w: number; h: number }, outline: number): ProjectedPart[] {
+export function projectMeshParts(meshes: Mesh[], pose: StageCameraPose, width: number, height: number, size: { w: number; h: number }, outline: number, includeSignature = false): ProjectedPart[] {
   const point = new Vector3();
   const scale = new Vector3();
   return meshes.filter(meshIsDrawn).map((mesh) => {
     const vertices = mesh.geometry.getAttribute("position");
     if (!vertices?.count) throw new Error(`mesh ${mesh.name || mesh.uuid}: missing position geometry`);
+    const signature: number[] | undefined = includeSignature ? [] : undefined;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = 0; i < vertices.count; i++) {
       mesh.getVertexPosition(i, point).applyMatrix4(mesh.matrixWorld);
@@ -36,10 +38,11 @@ export function projectMeshParts(meshes: Mesh[], pose: StageCameraPose, width: n
       const p = projectStagePoint({ x: point.x + size.w / 2, y: size.h / 2 - point.y }, pose, width, height, size);
       if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) throw new Error(`mesh ${mesh.name || mesh.uuid}: non-finite evaluated geometry`);
       x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
+      signature?.push(p.x, p.y);
     }
     mesh.getWorldScale(scale);
     const allowance = outline * Math.max(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z)) * pose.zoom * stageViewport(width, height, size).fit;
-    return { name: mesh.name, bounds: { x0: x0 - allowance, y0: y0 - allowance, x1: x1 + allowance, y1: y1 + allowance } };
+    return { name: mesh.name, bounds: { x0: x0 - allowance, y0: y0 - allowance, x1: x1 + allowance, y1: y1 + allowance }, ...(signature ? { signature: signature.join(",") } : {}) };
   });
 }
 

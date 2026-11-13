@@ -54,7 +54,7 @@ export function prepareStageFacts(scene: Scene, width: number, height: number) {
     return { p, actor: resolvedActor, character, evaluate, art, prop, placement, actorMeshes, propMeshes, palette: declaredMaterialPalette(resolvedActor, propCast.asset), numerical: critiquePerformance(rig, p.data, evaluate, p.decisive.frame) };
   });
   // Applies every private pose before measuring, so all characters share the same depth query.
-  const at = (frame: number, depth: false | "prop" | "all" = false) => {
+  const at = (frame: number, depth: false | "prop" | "all" = false, includeMotionSignature = false) => {
     const f = Math.min(scene.durationFrames - 1, Math.max(0, frame));
     const evaluated = entries.map((entry) => {
       const state = entry.evaluate(f);
@@ -65,8 +65,8 @@ export function prepareStageFacts(scene: Scene, width: number, height: number) {
     });
     const meshes = entries.flatMap((e) => [...e.actorMeshes, ...e.propMeshes]);
     return evaluated.map(({ p, actorMeshes, propMeshes, state }) => {
-      const actorParts = projectMeshParts(actorMeshes, camera[Math.floor(f)], width, height, scene.sceneSize, CEL_TREATMENT.outlineUnits);
-      const propParts = projectMeshParts(propMeshes, camera[Math.floor(f)], width, height, scene.sceneSize, CEL_TREATMENT.outlineUnits);
+      const actorParts = projectMeshParts(actorMeshes, camera[Math.floor(f)], width, height, scene.sceneSize, CEL_TREATMENT.outlineUnits, includeMotionSignature);
+      const propParts = projectMeshParts(propMeshes, camera[Math.floor(f)], width, height, scene.sceneSize, CEL_TREATMENT.outlineUnits, includeMotionSignature);
       const actorBounds = unionPartBounds(actorParts), propBounds = unionPartBounds(propParts);
       if (!actorBounds || !propBounds) throw new Error(`performance ${p.id}: ${!actorBounds ? p.actor : p.prop} has no drawable geometry at frame ${frame}`);
       return { id: p.id, actor: p.actor, prop: p.prop, phase: state.phase, ownership: state.contact.mode, afterState: state.contact.mode === "attached" ? p.afterState : "airborne", actorBounds, propBounds, actorParts, propParts,
