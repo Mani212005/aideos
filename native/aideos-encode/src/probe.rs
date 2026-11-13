@@ -4,8 +4,12 @@
 
 use serde::Serialize;
 use serde_json::Value;
+use std::io::{self, Read};
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Output, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread;
+use std::time::Duration;
 
 /// One stream of a media file as ffprobe reports it; absent fields are None.
 #[derive(Clone, Debug, Default, Serialize)]
@@ -64,11 +68,64 @@ fn number(v: &Value, key: &str) -> Option<f64> {
 
 /// Runs `ffprobe` (the given binary) on `path` and parses its JSON.
 pub fn probe(ffprobe: &Path, path: &Path) -> Result<MediaFacts, String> {
-    let output = Command::new(ffprobe)
+    probe_cancellable(ffprobe, path, None)?.ok_or_else(|| "ffprobe was cancelled".to_string())
+}
+
+/// Runs a subprocess while allowing its caller to stop waiting and terminate the child.
+pub(crate) fn command_output(command: &mut Command, cancel: Option<&AtomicBool>) -> io::Result<Option<Output>> {
+    let Some(cancel) = cancel else { return command.output().map(Some) };
+    if cancel.load(Ordering::Relaxed) {
+        return Ok(None);
+    }
+    let mut child = command.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+    let mut stdout = child.stdout.take().expect("stdout was piped");
+    let mut stderr = child.stderr.take().expect("stderr was piped");
+    let stdout_reader = thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let result = stdout.read_to_end(&mut bytes);
+        (result, bytes)
+    });
+    let stderr_reader = thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let result = stderr.read_to_end(&mut bytes);
+        (result, bytes)
+    });
+    let status = loop {
+        if cancel.load(Ordering::Relaxed) {
+            let _ = child.kill();
+            let _ = child.wait();
+            let _ = stdout_reader.join();
+            let _ = stderr_reader.join();
+            return Ok(None);
+        }
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) => thread::sleep(Duration::from_millis(10)),
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                let _ = stdout_reader.join();
+                let _ = stderr_reader.join();
+                return Err(error);
+            }
+        }
+    };
+    let (stdout_result, stdout) = stdout_reader.join().map_err(|_| io::Error::new(io::ErrorKind::Other, "reading subprocess output panicked"))?;
+    let (stderr_result, stderr) = stderr_reader.join().map_err(|_| io::Error::new(io::ErrorKind::Other, "reading subprocess errors panicked"))?;
+    stdout_result?;
+    stderr_result?;
+    Ok(Some(Output { status, stdout, stderr }))
+}
+
+/// Runs `ffprobe` (the given binary) on `path` and parses its JSON unless cancellation is requested.
+pub(crate) fn probe_cancellable(ffprobe: &Path, path: &Path, cancel: Option<&AtomicBool>) -> Result<Option<MediaFacts>, String> {
+    let mut command = Command::new(ffprobe);
+    command
         .args(["-v", "error", "-show_streams", "-show_format", "-of", "json"])
-        .arg(path)
-        .output()
-        .map_err(|e| format!("cannot run {}: {e}", ffprobe.display()))?;
+        .arg(path);
+    let Some(output) = command_output(&mut command, cancel).map_err(|e| format!("cannot run {}: {e}", ffprobe.display()))? else {
+        return Ok(None);
+    };
     if !output.status.success() {
         return Err(format!("ffprobe failed on {}: {}", path.display(), String::from_utf8_lossy(&output.stderr).trim()));
     }
@@ -98,9 +155,9 @@ pub fn probe(ffprobe: &Path, path: &Path) -> Result<MediaFacts, String> {
                 .collect()
         })
         .unwrap_or_default();
-    Ok(MediaFacts {
+    Ok(Some(MediaFacts {
         format_name: text(&doc["format"], "format_name").unwrap_or_default(),
         duration_sec: number(&doc["format"], "duration"),
         streams,
-    })
+    }))
 }

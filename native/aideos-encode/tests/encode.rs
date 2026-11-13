@@ -485,6 +485,36 @@ fn measured_speech_is_limited_to_the_film_timeline() {
     assert!((level_db(&mixed.samples, 4.5, 4.9) - (full - 8.0)).abs() < 0.3, "music stays at the music-only gain at the film end");
 }
 
+/// Audio decoding requests only the source duration that can appear in the film.
+#[cfg(unix)]
+#[test]
+fn audio_decode_is_capped_to_remaining_film_duration() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = TempDir::new("audio-decode-cap");
+    let source = dir.join("source.wav");
+    let decoder = dir.join("capture-ffmpeg");
+    let arguments = dir.join("decoder-arguments.txt");
+    write_pcm16(&source, SAMPLE_RATE, &tone(220.0, 0.5, 5.0, &[]));
+    fs::write(
+        &decoder,
+        format!("#!/bin/sh\nprintf '%s\\n' \"$@\" > '{}'\nprintf '\\000\\000\\000\\000\\000\\000\\000\\000'\n", arguments.display()),
+    )
+    .unwrap();
+    let mut permissions = fs::metadata(&decoder).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&decoder, permissions).unwrap();
+    let mut clip = AudioClip::new(&source, Role::Music);
+    clip.start_sec = 0.25;
+    let plan = one_clip(clip);
+    let mut configured_tools = tools();
+    configured_tools.ffmpeg = decoder;
+    mix_plan(&configured_tools, &plan, 1.5, dir.0.as_path()).unwrap();
+    let args: Vec<String> = fs::read_to_string(arguments).unwrap().lines().map(str::to_string).collect();
+    let duration = args.iter().position(|arg| arg == "-t").and_then(|index| args.get(index + 1));
+    assert_eq!(duration.map(String::as_str), Some("1.250000"));
+}
+
 /// Clips with no timeline overlap do not require readable source files.
 #[test]
 fn clips_starting_at_or_after_film_end_are_ignored() {
@@ -797,6 +827,71 @@ fn cancelling_interrupts_audio_decode() {
     assert!(matches!(err, EncodeError::Cancelled), "{err}");
     assert!(started.elapsed().as_secs() < 3, "audio decoding should stop promptly");
     assert!(!dir.join("cancelled.mp4").exists());
+}
+
+/// Cancellation interrupts ffprobe and the backend conformance probe.
+#[cfg(unix)]
+#[test]
+fn cancelling_interrupts_audio_and_backend_probes() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = TempDir::new("cancel-probes");
+    let voice = dir.join("voice.wav");
+    let slow_ffprobe = dir.join("slow-ffprobe");
+    let slow_ffmpeg = dir.join("slow-ffmpeg");
+    write_pcm16(&voice, SAMPLE_RATE, &tone(440.0, 0.5, 1.0, &[]));
+    fs::write(&slow_ffprobe, "#!/bin/sh\nexec sleep 20\n").unwrap();
+    fs::write(&slow_ffmpeg, "#!/bin/sh\ncat >/dev/null\nexec sleep 20\n").unwrap();
+    for tool in [&slow_ffprobe, &slow_ffmpeg] {
+        let mut permissions = fs::metadata(tool).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(tool, permissions).unwrap();
+    }
+
+    let probe_flag = Arc::new(AtomicBool::new(false));
+    let probe_cancel = probe_flag.clone();
+    let probe_canceller = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        probe_cancel.store(true, Ordering::Relaxed);
+    });
+    let mut probe_opts = EncodeOptions::new(Profile::Final);
+    probe_opts.tools.ffprobe = slow_ffprobe;
+    probe_opts.cancel = Some(probe_flag);
+    let probe_start = std::time::Instant::now();
+    let probe_error = encode_synthetic(
+        &dir.join("probe-cancelled.mp4"),
+        spec(128, 72, 3, PixelFormat::Rgba8),
+        Pattern::Moving,
+        &mut probe_opts,
+        Some(&one_clip(AudioClip::new(&voice, Role::Voice))),
+    )
+    .unwrap_err();
+    probe_canceller.join().unwrap();
+    assert!(matches!(probe_error, EncodeError::Cancelled), "{probe_error}");
+    assert!(probe_start.elapsed().as_secs() < 3);
+
+    let backend_flag = Arc::new(AtomicBool::new(false));
+    let backend_cancel = backend_flag.clone();
+    let backend_canceller = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        backend_cancel.store(true, Ordering::Relaxed);
+    });
+    let mut backend_opts = EncodeOptions::new(Profile::Draft);
+    backend_opts.backend = BackendChoice::Exactly(Backend::Vaapi);
+    backend_opts.tools.ffmpeg = slow_ffmpeg;
+    backend_opts.cancel = Some(backend_flag);
+    let backend_start = std::time::Instant::now();
+    let backend_error = encode_synthetic(
+        &dir.join("backend-cancelled.mp4"),
+        spec(128, 72, 3, PixelFormat::Rgba8),
+        Pattern::Moving,
+        &mut backend_opts,
+        None,
+    )
+    .unwrap_err();
+    backend_canceller.join().unwrap();
+    assert!(matches!(backend_error, EncodeError::Cancelled), "{backend_error}");
+    assert!(backend_start.elapsed().as_secs() < 3);
 }
 
 /// The progress callback sees every frame once, in order.

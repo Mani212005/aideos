@@ -4,7 +4,7 @@
 
 use crate::audio::{mix_plan_cancellable, write_wav_f32, AudioError, AudioPlan, SAMPLE_RATE};
 use crate::frames::{FrameSource, FrameSpec, Pattern, PixelFormat, SourceError, SyntheticSource, Fps};
-use crate::probe::probe;
+use crate::probe::probe_cancellable;
 use crate::profile::{Backend, BackendChoice, Profile, VAAPI_QP};
 use crate::tools::Tools;
 use serde::Serialize;
@@ -296,11 +296,27 @@ fn run_ffmpeg(source: &mut dyn FrameSource, spec: &FrameSpec, args: &[OsString],
             callback(Progress { frames_done: done + 1, frames_total: spec.frame_count });
         }
     }
-    if failure.is_some() {
-        let _ = child.kill();
-    }
     drop(stdin);
-    let status = child.wait()?;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) => {
+                if failure.is_some() || opts.cancel.as_ref().is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+                    if failure.is_none() {
+                        failure = Some(EncodeError::Cancelled);
+                    }
+                    let _ = child.kill();
+                    break child.wait()?;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(EncodeError::Io(error));
+            }
+        }
+    };
     let stderr = stderr_reader.join().unwrap_or_default();
     if let Some(error) = failure {
         return Err(error);
@@ -319,15 +335,24 @@ fn scratch_path(label: &str) -> PathBuf {
 
 /// Encodes a few synthetic frames with `backend` and checks the file really is H.264 yuv420p, limited range, tagged BT.709. Returns the reason when it is not.
 pub fn probe_backend(tools: &Tools, backend: Backend) -> Result<(), String> {
+    probe_backend_cancellable(tools, backend, None)
+}
+
+/// Encodes a conformance probe while observing the caller's cancellation flag.
+fn probe_backend_cancellable(tools: &Tools, backend: Backend, cancel: Option<Arc<AtomicBool>>) -> Result<(), String> {
+    if cancel.as_ref().is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+        return Err("the encode was cancelled".to_string());
+    }
     let spec = FrameSpec { width: 256, height: 144, fps: Fps { num: 30, den: 1 }, pixel_format: PixelFormat::Rgba8, frame_count: 3 };
     let mut source = SyntheticSource::new(spec, Pattern::Moving).map_err(|e| e.to_string())?;
     let out = scratch_path(&format!("probe-{backend}"));
     let _cleanup = Cleanup(vec![out.clone()]);
     let mut opts = EncodeOptions::new(Profile::Draft);
     opts.tools = tools.clone();
+    opts.cancel = cancel.clone();
     let args = build_args(&spec, Profile::Draft, backend, None, &out, None);
     run_ffmpeg(&mut source, &spec, &args, &mut opts).map_err(|e| e.to_string().lines().last().unwrap_or("ffmpeg failed").to_string())?;
-    let facts = probe(&tools.ffprobe, &out)?;
+    let facts = probe_cancellable(&tools.ffprobe, &out, cancel.as_deref())?.ok_or_else(|| "the encode was cancelled".to_string())?;
     let video = facts.video().ok_or("the probe file has no video stream")?;
     let tags = (video.codec_name.as_str(), video.pix_fmt.as_deref(), video.color_range.as_deref(), video.color_space.as_deref(), video.color_primaries.as_deref(), video.color_transfer.as_deref());
     if tags != ("h264", Some("yuv420p"), Some("tv"), Some("bt709"), Some("bt709"), Some("bt709")) {
@@ -338,13 +363,27 @@ pub fn probe_backend(tools: &Tools, backend: Backend) -> Result<(), String> {
 
 /// Decides which encoder runs: software for a final export, otherwise a hardware encoder that passes the probe, otherwise software with the reason recorded.
 pub fn resolve_backend(tools: &Tools, profile: Profile, choice: BackendChoice) -> Result<(Backend, Option<String>), EncodeError> {
+    resolve_backend_cancellable(tools, profile, choice, None)
+}
+
+/// Resolves a backend while allowing the probe process to be cancelled.
+fn resolve_backend_cancellable(tools: &Tools, profile: Profile, choice: BackendChoice, cancel: Option<Arc<AtomicBool>>) -> Result<(Backend, Option<String>), EncodeError> {
+    let cancelled = || cancel.as_ref().is_some_and(|flag| flag.load(Ordering::Relaxed));
+    if cancelled() {
+        return Err(EncodeError::Cancelled);
+    }
     match choice {
         BackendChoice::Exactly(Backend::Software) => Ok((Backend::Software, None)),
         BackendChoice::Exactly(hardware) => {
             if !profile.allows_hardware() {
                 return Err(EncodeError::Policy(format!("a {profile} export is always encoded with x264; the {hardware} encoder is for draft and review renders")));
             }
-            probe_backend(tools, hardware).map_err(|reason| EncodeError::BackendUnavailable { backend: hardware, reason })?;
+            probe_backend_cancellable(tools, hardware, cancel.clone()).map_err(|reason| {
+                if cancelled() { EncodeError::Cancelled } else { EncodeError::BackendUnavailable { backend: hardware, reason } }
+            })?;
+            if cancelled() {
+                return Err(EncodeError::Cancelled);
+            }
             Ok((hardware, None))
         }
         BackendChoice::Auto => {
@@ -353,8 +392,10 @@ pub fn resolve_backend(tools: &Tools, profile: Profile, choice: BackendChoice) -
             }
             match Backend::native_hardware() {
                 None => Ok((Backend::Software, Some("no hardware encoder is supported on this operating system".to_string()))),
-                Some(hardware) => match probe_backend(tools, hardware) {
-                    Ok(()) => Ok((hardware, None)),
+                Some(hardware) => match probe_backend_cancellable(tools, hardware, cancel.clone()) {
+                    Ok(()) if !cancelled() => Ok((hardware, None)),
+                    Ok(()) => Err(EncodeError::Cancelled),
+                    Err(_) if cancelled() => Err(EncodeError::Cancelled),
                     Err(reason) => Ok((Backend::Software, Some(format!("{hardware} unavailable: {reason}")))),
                 },
             }
@@ -370,7 +411,7 @@ pub fn encode(source: &mut dyn FrameSource, audio: Option<&AudioPlan>, out: &Pat
     if opts.cancel.as_ref().is_some_and(|flag| flag.load(Ordering::Relaxed)) {
         return Err(EncodeError::Cancelled);
     }
-    let (backend, fallback_reason) = resolve_backend(&opts.tools, opts.profile, opts.backend)?;
+    let (backend, fallback_reason) = resolve_backend_cancellable(&opts.tools, opts.profile, opts.backend, opts.cancel.clone())?;
     if opts.cancel.as_ref().is_some_and(|flag| flag.load(Ordering::Relaxed)) {
         return Err(EncodeError::Cancelled);
     }
