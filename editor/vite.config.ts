@@ -959,7 +959,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             sendJson(res, 400, { error: 'Valid film id is required' });
             return;
           }
-          const format = new URL(url, 'http://localhost').searchParams.get('format') === 'reel' ? 'reel' : 'long';
+          const format = new URL(req.url ?? '', 'http://localhost').searchParams.get('format') === 'reel' ? 'reel' : 'long';
           void readBody(req).then(async (body) => {
             const postedFilm = (body as { film?: Film } | null)?.film;
             if (!postedFilm || postedFilm.id !== id) {
