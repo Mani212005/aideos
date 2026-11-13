@@ -33,6 +33,7 @@ import {
 import { runProduction } from "./pipeline/run";
 import { FILMS_DIR, VIDEOS_DIR } from "./pipeline/filmStore";
 import { checkVoiceoverIntake } from "./voiceoverIntake";
+import { startEditor } from "../scripts/studioDriver";
 
 // The 0.5.0 defect: a bare chapter title sits directly above the paragraph it opens.
 const CLOSING_STORY = `The Middle
@@ -182,6 +183,29 @@ test("Studio /api/voiceover rejects a title leak before generating audio", () =>
     assert.equal(result.status, 400);
     assert.match(result.error, /would read the heading aloud/);
     assert.deepEqual(result.intakeNotices, []);
+  }
+});
+
+test("Studio /api/generate-voiceover rejects a title leak even with a spoken-text override", async () => {
+  const videosDir = path.resolve(".tmp", `m6-generate-voiceover-${process.pid}`);
+  fs.mkdirSync(videosDir, { recursive: true });
+  const server = await startEditor(videosDir);
+  try {
+    const response = await fetch(new URL("/api/generate-voiceover", server.url), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        projectId: "m6-override",
+        script: "## Closing\n[NARRATION]\nClosing.",
+        spokenTextOverride: "Closing.",
+      }),
+    });
+    const body = await response.json() as { error?: string };
+    assert.equal(response.status, 400);
+    assert.match(body.error ?? "", /would read the heading aloud/);
+  } finally {
+    server.stop();
+    fs.rmSync(videosDir, { recursive: true, force: true });
   }
 });
 

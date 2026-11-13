@@ -50,7 +50,6 @@ import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from '../src/dl/co
 import { executeCritique } from '../backend/critique/engine.ts'
 import {
   extractSpokenBlocks as extractSpokenVoiceoverBlocks,
-  assertScriptReadyForSynthesis,
   ScriptIntakeError,
   buildFilmPartsFromScript,
   hasScreenplayTags,
@@ -1990,13 +1989,11 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             }
 
             let intakeNotices: string[] = [];
-            if (!(spokenTextOverride && typeof spokenTextOverride === 'string' && spokenTextOverride.trim())) {
-              try {
-                assertScriptReadyForSynthesis(script || '', (issue) => intakeNotices.push(issue.message));
-              } catch (err) {
-                sendJson(res, 400, { error: err instanceof Error ? err.message : String(err), intakeNotices });
-                return;
-              }
+            const intake = checkVoiceoverIntake(script || '');
+            intakeNotices = intake.intakeNotices;
+            if (!intake.ok) {
+              sendJson(res, intake.status, { error: intake.error, intakeNotices });
+              return;
             }
 
             // The narration lines to record: only the spoken lines of a tagged script, the paragraphs of a plain
