@@ -25,6 +25,7 @@
     "@remotion/three": "4.0.499",
     "@remotion/zod-types": "4.0.499",
     "commander": "^15.0.0",
+    "culori": "4.0.2",
     "dotenv": "^17.4.2",
     "kokoro-js": "^1.2.1",
     "react": "19.2.3",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@remotion/eslint-config-flat": "4.0.499",
+    "@types/culori": "^4.0.1",
     "@types/react": "19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/three": "0.180.0",
@@ -69,6 +71,7 @@
     "ci": "tsx scripts/ci.ts",
     "performance:filmstrip": "tsx scripts/performance_filmstrip.ts",
     "performance:check": "tsx scripts/performance_check.ts",
+    "render-ir:schema": "tsx scripts/render_ir_schema.ts",
     "design:check": "tsx backend/cli.ts design-check",
     "connect": "node scripts/aideos-connect.mjs",
     "test:visual": "RUN_VISUAL_TESTS=1 node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/live/svgAnimation.live.ts",

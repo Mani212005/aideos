@@ -1,0 +1,118 @@
+{
+  "schema": "aideos.render/1",
+  "film": {
+    "id": "minimal",
+    "fps": 30,
+    "durationFrames": 30
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "long": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "background": "#0B0D10",
+  "assets": [
+    {
+      "kind": "svg",
+      "id": "orbit",
+      "path": "visuals/orbit.svg",
+      "elementIds": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "kind": "font",
+      "id": "sans",
+      "path": "fonts/Geist-SemiBold.ttf",
+      "family": "Geist",
+      "weight": 600
+    },
+    {
+      "kind": "audio",
+      "id": "voice",
+      "path": "voice.wav"
+    }
+  ],
+  "stage": [
+    {
+      "kind": "svg",
+      "id": "d",
+      "asset": "orbit",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 0,
+      "tracks": [
+        {
+          "property": "opacity",
+          "keyframes": [
+            {
+              "frame": 10,
+              "value": 0,
+              "ease": "linear"
+            },
+            {
+              "frame": 5,
+              "value": 2,
+              "ease": "linear"
+            },
+            {
+              "frame": 50,
+              "value": 1
+            },
+            {
+              "frame": 60,
+              "value": 1,
+              "ease": "hold"
+            }
+          ]
+        },
+        {
+          "property": "opacity",
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "elementTracks": []
+    }
+  ],
+  "overlay": [],
+  "audio": [],
+  "camera": {
+    "centerX": [
+      {
+        "frame": 0,
+        "value": 0
+      }
+    ],
+    "centerY": [
+      {
+        "frame": 0,
+        "value": 0
+      }
+    ],
+    "zoom": [
+      {
+        "frame": 0,
+        "value": 0
+      }
+    ],
+    "rotation": [
+      {
+        "frame": 0,
+        "value": 0
+      }
+    ]
+  }
+}

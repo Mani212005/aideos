@@ -20,12 +20,14 @@ import path from "path";
 import type { Block, Film } from "../../src/dl/schema";
 import { dropLegacyFilmBlocks, parseFilm } from "../../src/dl/schema";
 import { traceBus } from "../agentBridge/traceBus";
+import { filmEditState, noteFilmWrite } from "../filmAcceptance/store";
+import { filmDifferences } from "../filmAcceptance/machine";
 import { getVideosDir, resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { ROOT, FILMS_DIR, FILM_ID, filmModule, ensureGenerated, setActiveFilm } from "./generatedFiles";
 
 export { ROOT, FILMS_DIR, FILM_ID, ensureGenerated, setActiveFilm };
 
-/** Where new packages are written: AIDEOS_VIDEOS_DIR, else <root>/videos (gitignored). */
+/** Where new packages are written: AIDEOS_VIDEOS_DIR, else <root>/videos (gitignored), as it was when this module loaded; `packageDir` follows the live value. */
 export const VIDEOS_DIR = getVideosDir();
 
 /** Turns arbitrary text into a film id: lowercase letters, digits and dashes only. */
@@ -39,10 +41,10 @@ export function slugify(text: string): string {
   );
 }
 
-/** Absolute path of a package directory for a slug, where it is written. */
+/** Absolute path of a package directory for a slug, where it is written (read live, so a process that moves AIDEOS_VIDEOS_DIR between runs writes where the studio and the design stage read). */
 export function packageDir(slug: string): string {
   if (!FILM_ID.test(slug)) throw new Error(`invalid film id "${slug}": lowercase letters, digits and dashes only`);
-  return path.join(VIDEOS_DIR, slug);
+  return path.join(getVideosDir(), slug);
 }
 
 /** Loads a film, preferring the authoritative film.json and falling back to the shadow module. */
@@ -71,11 +73,19 @@ export function readFilm(slug: string): Film | null {
  * than the editor previews. The film is validated before either write, so a malformed film
  * never lands on disk half-applied.
  */
-export function writeFilm(slug: string, film: Film, options: { owner: boolean; agentEdit?: boolean } = { owner: false }): Film {
+export function writeFilm(slug: string, film: Film, options: { owner: boolean; agentEdit?: boolean; protectHandEdits?: boolean } = { owner: false }): Film {
   const validated = parseFilm(prepareSoundtrack(parseFilm(carryCaptionPlacement(readFilm(slug), film, options))));
+  if (options.protectHandEdits && filmEditState(resolvePackageDir(slug)) === "hand-edited") {
+    const current = readFilm(slug);
+    if (!current || filmDifferences(current, validated).length > 0) {
+      throw new Error(`refusing to overwrite hand-edited film.json for ${slug}; move the fix into design/design.json or restore design/base-film.json before rebuilding`);
+    }
+  }
   const dir = packageDir(slug);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "film.json"), JSON.stringify(validated, null, 2), "utf8");
+  const contents = JSON.stringify(validated, null, 2);
+  fs.writeFileSync(path.join(dir, "film.json"), contents, "utf8");
+  noteFilmWrite(dir, contents);
 
   fs.mkdirSync(FILMS_DIR, { recursive: true });
   fs.writeFileSync(path.join(FILMS_DIR, `${slug}.ts`), filmModule(validated), "utf8");

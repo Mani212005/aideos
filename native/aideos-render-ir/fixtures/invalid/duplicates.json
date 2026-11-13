@@ -1,0 +1,104 @@
+{
+  "schema": "aideos.render/1",
+  "film": {
+    "id": "minimal",
+    "fps": 30,
+    "durationFrames": 30
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "long": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "background": "#0B0D10",
+  "assets": [
+    {
+      "kind": "svg",
+      "id": "orbit",
+      "path": "visuals/orbit.svg",
+      "elementIds": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "kind": "font",
+      "id": "sans",
+      "path": "fonts/Geist-SemiBold.ttf",
+      "family": "Geist",
+      "weight": 600
+    },
+    {
+      "kind": "audio",
+      "id": "voice",
+      "path": "voice.wav"
+    },
+    {
+      "kind": "font",
+      "id": "sans",
+      "path": "fonts/other.ttf",
+      "family": "Geist",
+      "weight": 400
+    },
+    {
+      "kind": "svg",
+      "id": "dup-el",
+      "path": "visuals/x.svg",
+      "elementIds": [
+        "a",
+        "a"
+      ]
+    }
+  ],
+  "stage": [
+    {
+      "kind": "svg",
+      "id": "same",
+      "asset": "orbit",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 0,
+      "tracks": [],
+      "elementTracks": []
+    }
+  ],
+  "overlay": [
+    {
+      "kind": "group",
+      "id": "same",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "tracks": [],
+      "children": []
+    }
+  ],
+  "audio": [
+    {
+      "id": "n",
+      "asset": "voice",
+      "startFrame": 0,
+      "durationFrames": 10,
+      "sourceStartMs": 0,
+      "gain": 1,
+      "gainEnvelope": []
+    },
+    {
+      "id": "n",
+      "asset": "voice",
+      "startFrame": 0,
+      "durationFrames": 10,
+      "sourceStartMs": 0,
+      "gain": 1,
+      "gainEnvelope": []
+    }
+  ]
+}

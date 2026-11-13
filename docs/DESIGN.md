@@ -84,7 +84,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 
 ### 4. Motion Stage (`MotionStage.tsx`)
 - **Purpose**: Dedicated authoring studio for custom SVG movie animations and element-level keyframing.
-- **Features**: Live scrubbing of declarative SVG timelines, element ID discovery, pre-built motion templates (staged entry, pulse, draw-on strokes, vector paths), and audio-first retiming against spoken narration.
+- **Features**: Live scrubbing of declarative SVG timelines, element ID discovery, pre-built motion templates (staged entry, pulse, draw-on strokes, vector paths) drawn in the film's bound accent, and audio-first retiming against spoken narration.
 
 ### 5. Edit Stage (`EditStage.tsx` / `TimelineEditor.tsx` / `captions/CaptionObject.tsx` / `InspectorPanel.tsx` / `AssetBin.tsx`)
 - **Purpose**: Non-linear multi-track timeline editor with direct manipulation, track controls, and clip inspection.
@@ -108,7 +108,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 - **Features**:
   - **Data Visualizations (`src/components/ui/Charts.tsx`)**: Renders script-to-timeline coverage maps, shot duration distribution, narration vs silence density, and pacing health metrics in pure SVG.
   - **AI Critique Drawer**: Interactive assistant for applying natural-language feedback and generating atomic film patches via `/api/critique`, with full task dispatch to connected coding agents.
-  - **Export Modal**: Export opens a Start screen and nothing renders until Start is pressed. Progress is the renderer's own frame counts, Cancel stops the render and deletes the partial video, the close cross only hides the dialog while rendering (a header chip reopens it), and a finished render offers a Download button and is never downloaded automatically.
+  - **Export Modal**: See the [Studio workflow](WORKFLOW.md#4-interactive-web-studio-workflow-editor) for the Export dialog behavior.
 
 ---
 

@@ -16,6 +16,7 @@ import type { Film } from "../../../src/dl/schema";
 import { FilmView } from "../../../src/dl/Film";
 import { buildTimeline } from "../../../src/dl/camera";
 import { captionWordsForFilm } from "../../../src/dl/captionsParser";
+import { DEFAULT_PROJECT_ACCENT } from "../../../src/projectTheme";
 import { Badge, Button, EmptyState, Note, Panel, PanelBody, PanelHeader, Select, Textarea, Toolbar, ToolbarGroup, ToolbarLabel, type NoteTone } from "./ui";
 
 /** Starting points: each fills the prompt, never code. */
@@ -195,7 +196,7 @@ export function DescribeMotion({ film, notify }: DescribeMotionProps) {
                 <Player
                   key={`${film.id}-${shotId}`}
                   component={FilmView}
-                  inputProps={{ film, timeline, accent: film.accent ?? "#635BFF", showGrid: film.theme?.videoType === "case-study", showRail: true, captionWords }}
+                  inputProps={{ film, timeline, accent: film.accent ?? DEFAULT_PROJECT_ACCENT, showGrid: film.theme?.videoType === "case-study", showRail: true, captionWords }}
                   durationInFrames={Math.max(1, timeline[timeline.length - 1].to)}
                   inFrame={timed.from}
                   outFrame={Math.max(timed.from, timed.to - 1)}

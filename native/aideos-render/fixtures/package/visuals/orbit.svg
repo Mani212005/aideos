@@ -1,0 +1,36 @@
+<!--
+  File Description: Synthetic test artwork for the native renderer's tests: a glowing orbit with two nodes joined by an edge, exercising a radial and a linear gradient, a clip path, a dashed stroke, a group opacity, a line, a polygon, a quadratic path and one run of text. Centred on the origin, like scene film artwork.
+  Inputs and outputs: none -> static SVG drawn by native/aideos-render through fixtures/package/tiny-scene.json.
+  Used by: native/aideos-render/tests/*.rs.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-200 -200 400 400">
+  <defs>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#635BFF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#635BFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F5F7FA"/>
+      <stop offset="100%" stop-color="#8A94A6"/>
+    </linearGradient>
+    <clipPath id="window">
+      <circle cx="0" cy="0" r="120"/>
+    </clipPath>
+  </defs>
+  <circle id="halo" cx="0" cy="0" r="180" fill="url(#glow)"/>
+  <circle id="orbit-ring" cx="0" cy="0" r="120" fill="none" stroke="#2A3340" stroke-width="3" stroke-dasharray="8 6"/>
+  <g id="grid" clip-path="url(#window)" opacity="0.5">
+    <line x1="-150" y1="-40" x2="150" y2="-40" stroke="#2A3340" stroke-width="2"/>
+    <line x1="-150" y1="40" x2="150" y2="40" stroke="#2A3340" stroke-width="2"/>
+  </g>
+  <line id="edge-ab" x1="-80" y1="0" x2="80" y2="0" stroke="#635BFF" stroke-width="6" stroke-linecap="round"/>
+  <g id="node-a" transform="translate(-80 0)">
+    <circle r="26" fill="url(#hull)" stroke="#0B0D10" stroke-width="3"/>
+  </g>
+  <g id="node-b">
+    <rect x="54" y="-26" width="52" height="52" rx="10" fill="#635BFF"/>
+    <polygon points="80,-12 92,12 68,12" fill="#F5F7FA"/>
+  </g>
+  <path id="spark" d="M -20 -150 Q 0 -170 20 -150 T 60 -150" fill="none" stroke="#F5F7FA" stroke-width="2"/>
+  <text id="tag" x="0" y="170" text-anchor="middle" font-family="Geist, sans-serif" font-weight="600" font-size="22" fill="#F5F7FA">orbit</text>
+</svg>

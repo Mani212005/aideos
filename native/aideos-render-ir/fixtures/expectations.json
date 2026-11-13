@@ -1,0 +1,269 @@
+{
+  "//": "Shared by backend/renderIr/renderIr.test.ts and native/aideos-render-ir/tests/fixtures.rs. A structural issue lists only its code (a JSON Schema validator and zod word and locate those differently); every other issue lists its code and exact JSON Pointer.",
+  "valid": [
+    "valid/integral-floats.json",
+    "valid/minimal-reel.json",
+    "valid/mirrored-element.json",
+    "valid/tiny-scene.json"
+  ],
+  "invalid": {
+    "invalid/bad-colour.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
+    "invalid/duplicates.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "duplicate_asset_id",
+          "path": "/assets/3/id"
+        },
+        {
+          "code": "duplicate_element_id",
+          "path": "/assets/4/elementIds/1"
+        },
+        {
+          "code": "duplicate_node_id",
+          "path": "/overlay/0/id"
+        },
+        {
+          "code": "duplicate_audio_id",
+          "path": "/audio/1/id"
+        }
+      ]
+    },
+    "invalid/element-tracks.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "unknown_element",
+          "path": "/stage/0/elementTracks/0/target"
+        },
+        {
+          "code": "origin_conflict",
+          "path": "/stage/0/elementTracks/2"
+        },
+        {
+          "code": "origin_misplaced",
+          "path": "/stage/0/elementTracks/3/origin"
+        },
+        {
+          "code": "duplicate_track",
+          "path": "/stage/0/elementTracks/4"
+        }
+      ]
+    },
+    "invalid/format-mismatch.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "missing_format_entry",
+          "path": "/overlay/0/placement/long"
+        },
+        {
+          "code": "undeclared_format",
+          "path": "/overlay/0/placement/reel"
+        }
+      ]
+    },
+    "invalid/fractional-frame.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
+    "invalid/keyframes.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "keyframes_unordered",
+          "path": "/stage/0/tracks/0/keyframes/1/frame"
+        },
+        {
+          "code": "value_out_of_range",
+          "path": "/stage/0/tracks/0/keyframes/1/value"
+        },
+        {
+          "code": "frame_out_of_range",
+          "path": "/stage/0/tracks/0/keyframes/2/frame"
+        },
+        {
+          "code": "ease_missing",
+          "path": "/stage/0/tracks/0/keyframes/2"
+        },
+        {
+          "code": "frame_out_of_range",
+          "path": "/stage/0/tracks/0/keyframes/3/frame"
+        },
+        {
+          "code": "ease_on_last",
+          "path": "/stage/0/tracks/0/keyframes/3/ease"
+        },
+        {
+          "code": "duplicate_track",
+          "path": "/stage/0/tracks/1"
+        },
+        {
+          "code": "value_out_of_range",
+          "path": "/camera/zoom/0/value"
+        }
+      ]
+    },
+    "invalid/missing-schema.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
+    "invalid/no-formats.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "no_formats",
+          "path": "/formats"
+        }
+      ]
+    },
+    "invalid/node-space.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "node_not_allowed",
+          "path": "/stage/0/kind"
+        },
+        {
+          "code": "node_not_allowed",
+          "path": "/overlay/0/kind"
+        }
+      ]
+    },
+    "invalid/not-json.json": {
+      "kind": "not_json"
+    },
+    "invalid/placement-span-out-of-range.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "frame_out_of_range",
+          "path": "/overlay/0/placement/long/spans/0/fromFrame"
+        },
+        {
+          "code": "frame_out_of_range",
+          "path": "/overlay/0/placement/reel/spans/0/fromFrame"
+        }
+      ]
+    },
+    "invalid/out-of-range-layer.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
+    "invalid/scale-track-out-of-range.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "value_out_of_range",
+          "path": "/stage/0/elementTracks/0/keyframes/0/value"
+        }
+      ]
+    },
+    "invalid/spans.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "invalid_span",
+          "path": "/overlay/0/visible"
+        },
+        {
+          "code": "invalid_span",
+          "path": "/overlay/1/chapters/1/endFrame"
+        },
+        {
+          "code": "chapters_unordered",
+          "path": "/overlay/1/chapters/1/startFrame"
+        },
+        {
+          "code": "words_unordered",
+          "path": "/overlay/2/words/1/startFrame"
+        },
+        {
+          "code": "spans_unordered",
+          "path": "/overlay/2/placement/long/spans/1/fromFrame"
+        },
+        {
+          "code": "invalid_span",
+          "path": "/audio/0"
+        }
+      ]
+    },
+    "invalid/unknown-field.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
+    "invalid/unknown-references.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "unknown_asset",
+          "path": "/stage/0/asset"
+        },
+        {
+          "code": "asset_kind_mismatch",
+          "path": "/stage/1/asset"
+        },
+        {
+          "code": "unknown_asset",
+          "path": "/overlay/0/font"
+        },
+        {
+          "code": "asset_kind_mismatch",
+          "path": "/audio/0/asset"
+        }
+      ]
+    },
+    "invalid/unsafe-paths.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "unsafe_asset_path",
+          "path": "/assets/0/path"
+        },
+        {
+          "code": "unsafe_asset_path",
+          "path": "/assets/1/path"
+        },
+        {
+          "code": "unsafe_asset_path",
+          "path": "/assets/2/path"
+        }
+      ]
+    },
+    "invalid/unsupported-version.json": {
+      "kind": "unsupported_version",
+      "found": "aideos.render/2"
+    },
+    "invalid/wrong-type.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    }
+  }
+}

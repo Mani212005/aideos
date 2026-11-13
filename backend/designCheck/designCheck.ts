@@ -3,7 +3,8 @@
  * However a film's design was made (hand-written builder, connected coding agent, server model or
  * templates), it has to pass this before it ships. Each finding names the rule, where it is, and
  * what to change, so an agent can be handed the report verbatim and repair its own design.
- * Rules: schema, scene engine validity, static self-contained artwork, palette, typography,
+ * Rules: schema, scene engine validity, static self-contained artwork, palette, the accent the user
+ * chose for the project (the only chromatic colour a scene may use), typography,
  * continuity (no motion snaps while visible, one origin per element), camera (speed limits,
  * move-then-hold pacing, cue landing, and subject focus framing), carry-over change holds,
  * audio lock, honest on-screen data, and a clear inset region while a device shot shares the stage.
@@ -15,7 +16,9 @@ import { resolveCaptionPlacement } from "../../src/dl/captionPlacement";
 import { checkCaptionPlacements } from "./captionPlacement";
 import fs from "node:fs";
 import path from "node:path";
+import { converter } from "culori";
 import { parseFilm, type Film } from "../../src/dl/schema";
+import { boundTheme, sameColour } from "../../src/projectTheme";
 import type { EnvironmentAsset, Scene } from "../../src/dl/scene/types";
 import type { SvgAnimationClip } from "../../src/dl/scene/svgAnimation";
 import {
@@ -49,6 +52,7 @@ export type DesignRule =
   | "camera"
   | "static-art"
   | "palette"
+  | "accent"
   | "typography"
   | "continuity"
   | "origin"
@@ -89,6 +93,9 @@ export interface DesignCheckContext {
 /** The locked design-system palette (src/dl/README.md); a film may add its own accent. */
 export const LOCKED_PALETTE = ["#0A0A0B", "#F5F5F5", "#8A8A8E", "#635BFF", "#101013"] as const;
 
+/** The design system's default accent, which is only allowed in a scene when it is the film's own accent. */
+const DEFAULT_SYSTEM_ACCENT = "#635BFF";
+
 /** Typefaces the design system allows. */
 const ALLOWED_FONTS = /^(geist|jetbrains mono)$/i;
 
@@ -109,23 +116,57 @@ function isNeutral([r, g, b]: [number, number, number]): boolean {
   return Math.max(r, g, b) - Math.min(r, g, b) <= 4;
 }
 
+function colorChannels(value: string): [number, number, number] | undefined {
+  const color = converter("rgb")(value);
+  if (!color || color.r === undefined || color.g === undefined || color.b === undefined) return undefined;
+  return [color.r, color.g, color.b].map((channel) => Math.round(Math.max(0, Math.min(1, channel)) * 255)) as [number, number, number];
+}
+
+function svgColours(svgText: string): Array<{ literal: string; channels: [number, number, number] }> {
+  const values = new Set<string>();
+  const properties = "fill|stroke|color|stop-color|flood-color|lighting-color";
+  const collectDeclarations = (source: string) => {
+    for (const match of source.matchAll(new RegExp(`(?:^|[;{])\\s*(${properties})\\s*:\\s*([^;}]+)`, "gi"))) values.add(match[2].replace(/\s*!important\s*$/i, "").trim());
+  };
+  for (const match of svgText.matchAll(new RegExp(`\\b(${properties})\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "gi"))) {
+    values.add(match[2] ?? match[3] ?? match[4]);
+  }
+  for (const match of svgText.matchAll(/\bstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) collectDeclarations(match[1] ?? match[2]);
+  for (const match of svgText.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)) collectDeclarations(match[1]);
+  const ignored = /^(currentcolor|context-fill|context-stroke|transparent|inherit|initial|unset|revert|revert-layer)$/i;
+  return [...values].flatMap((literal) => {
+    if (!literal || ignored.test(literal) || /^var\s*\(/i.test(literal)) return [];
+    const channels = colorChannels(literal);
+    return channels ? [{ literal, channels }] : [];
+  });
+}
+
 // Lists every chromatic colour in an asset that is neither in the palette nor the film's accent.
-export function offPaletteColours(svgText: string, accent?: string): string[] {
-  const allowed = [...LOCKED_PALETTE, ...(accent ? [accent] : [])].map((h) => hexChannels(h.toUpperCase()).join(","));
+export function offPaletteColours(svgText: string, accent?: string, chosenAccent?: string): string[] {
+  const locked = chosenAccent && !sameColour(chosenAccent, DEFAULT_SYSTEM_ACCENT)
+    ? LOCKED_PALETTE.filter((colour) => !sameColour(colour, DEFAULT_SYSTEM_ACCENT))
+    : LOCKED_PALETTE;
+  const allowed = [...locked, ...(accent ? [accent] : [])].map((h) => colorChannels(h)?.join(",")).filter((v): v is string => Boolean(v));
   const found = new Set<string>();
   const consider = (literal: string, rgb: [number, number, number]) => {
     if (isNeutral(rgb) || allowed.includes(rgb.join(","))) return;
     found.add(literal);
   };
-  for (const m of svgText.matchAll(/#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})\b/g)) consider(m[0], hexChannels(m[0]));
-  for (const m of svgText.matchAll(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)[^)]*\)/g)) {
-    consider(m[0], [Number(m[1]), Number(m[2]), Number(m[3])]);
-  }
+  for (const colour of svgColours(svgText)) consider(colour.literal, colour.channels);
   return [...found];
 }
 
-// Checks one asset document is static, self-contained, on palette and in the allowed typefaces.
-function checkAsset(asset: EnvironmentAsset, accent: string | undefined, findings: DesignFinding[]): void {
+// Lists the locked default accent as drawn in an asset when the film's accent is a different colour.
+export function foreignAccentColours(svgText: string, accent: string): string[] {
+  if (sameColour(accent, DEFAULT_SYSTEM_ACCENT)) return [];
+  const target = hexChannels(DEFAULT_SYSTEM_ACCENT).join(",");
+  const found = new Set(svgColours(svgText).filter(({ channels }) => channels.join(",") === target).map(({ literal }) => literal));
+  for (const match of svgText.matchAll(/(?:fill|stroke|color|stop-color|flood-color|lighting-color)\s*[:=]\s*["']?purple\b/gi)) found.add(match[0].match(/purple$/i)?.[0] ?? "purple");
+  return [...found];
+}
+
+// Checks one asset document is static, self-contained, on palette (and on the user's chosen accent, when there is one) and in the allowed typefaces.
+function checkAsset(asset: EnvironmentAsset, accent: string | undefined, chosenAccent: string | undefined, findings: DesignFinding[]): void {
   if (!asset.svgSource) return;
   const file = resolveRepoAssetPath(asset.svgSource);
   if (!fs.existsSync(file)) return; // The scene rule already reports a missing file.
@@ -158,7 +199,13 @@ function checkAsset(asset: EnvironmentAsset, accent: string | undefined, finding
   for (const tag of forbidden) {
     findings.push({ rule: "static-art", severity: "error", where, message: `contains <${tag}>; assets are static and motion is authored as clips.` });
   }
-  const off = offPaletteColours(text, accent);
+  const foreign = chosenAccent ? foreignAccentColours(text, chosenAccent) : [];
+  if (foreign.length) {
+    findings.push({ rule: "accent", severity: "error", where, message: `draws with ${foreign.join(", ")}, the design system's default purple, but the user chose ${chosenAccent} for this project; recolour it to ${chosenAccent}.` });
+  }
+  const off = offPaletteColours(text, accent, chosenAccent).filter((colour) =>
+    !foreign.some((foreignColour) => colour === foreignColour || colorChannels(colour)?.join(",") === colorChannels(foreignColour)?.join(",")),
+  );
   if (off.length) {
     findings.push({ rule: "palette", severity: "error", where, message: `uses colours outside the palette and the film accent: ${off.slice(0, 6).join(", ")}${off.length > 6 ? ", ..." : ""}.` });
   }
@@ -497,6 +544,21 @@ function checkCarryChangeHolds(film: Film, scene: Scene, plan: LookPlan | undefi
   }
 }
 
+// Checks the film still uses the accent the user chose for the project, in its manifest and in its look plan.
+function checkChosenAccent(film: Film, lookPlan: LookPlan | undefined): DesignFinding[] {
+  const chosen = boundTheme(film);
+  if (!chosen) return [];
+  const findings: DesignFinding[] = [];
+  if (film.accent && !sameColour(film.accent, chosen.accent)) {
+    findings.push({ rule: "accent", severity: "error", where: "film.accent", message: `the film's accent is ${film.accent} but the user chose ${chosen.accent} for this project; remove \`accent\` from design.json or set it to ${chosen.accent}.` });
+  }
+  const planned = lookPlan?.film?.palette?.accent;
+  if (planned && !sameColour(planned, chosen.accent)) {
+    findings.push({ rule: "accent", severity: "error", where: "look.json palette.accent", message: `the look plan's accent is ${planned} but the user chose ${chosen.accent} for this project; set palette.accent to ${chosen.accent}.` });
+  }
+  return findings;
+}
+
 // Runs every standard-layer rule over a parsed film manifest.
 export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}): DesignReport {
   const findings: DesignFinding[] = [];
@@ -508,6 +570,9 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
     findings.push({ rule: "schema", severity: "error", where: "film.json", message: err instanceof Error ? err.message.slice(0, 600) : String(err) });
     return { filmId, ok: false, findings, stats: { shots: 0, assets: 0, clips: 0 } };
   }
+
+  findings.push(...checkChosenAccent(film, context.lookPlan));
+  const chosenAccent = boundTheme(film)?.accent;
 
   let clips = 0;
   const scene = film.scene as Scene | undefined;
@@ -539,7 +604,7 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
       if (defaultCaptionFormats.length && asset.position.y > CAPTION_SAFE_SQUARE.y1 && asset.assetId !== "background") {
         findings.push({ rule: "safe-area", severity: "error", where: asset.assetId, message: `placed at y=${asset.position.y}, which is inside the default caption band in ${defaultCaptionFormats.join(" and ")} (y > ${CAPTION_SAFE_SQUARE.y1}); move it up to keep it readable.` });
       }
-      checkAsset(asset, film.accent, findings);
+      checkAsset(asset, chosenAccent ?? film.accent, chosenAccent, findings);
       clips += checkContinuity(asset, findings);
       for (const collapsed of context.collapsedClips?.filter((c) => c.asset === asset.assetId) ?? []) {
         const clip = asset.animation?.clips.find((c) => c.clipId === collapsed.clipId);

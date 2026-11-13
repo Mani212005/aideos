@@ -188,7 +188,7 @@ test("compileFilmFromScreenplayAsync: honours maxFootageShots of zero", async ()
 test("compileFilmFromScreenplayAsync: sets the design language's accent on the film", async () => {
   const { segments, shotDurations } = spine([6, 8, 9, 7, 8, 10]);
   const { film } = await compileFilmFromScreenplayAsync(SCRIPT, segments, shotDurations, { title: "Probe Film" });
-  assert.equal(film.accent, "#635BFF");
+  assert.equal(film.accent, "#FF6B00");
   assert.equal(film.theme?.background, "smooth-dark");
 });
 
@@ -267,6 +267,24 @@ test("packageDir refuses a slug that could escape the videos directory", async (
   assert.throws(() => packageDir("Not A Slug"), /invalid film id/);
   assert.ok(packageDir("fine-slug").startsWith(VIDEOS_DIR));
   assert.ok(os.tmpdir().length > 0);
+});
+
+// Resolve each package against the current environment even after filmStore was imported.
+test("packageDir follows directory changes between production runs", async () => {
+  const { packageDir } = await import("./filmStore");
+  const previous = process.env.AIDEOS_VIDEOS_DIR;
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-package-dir-"));
+  try {
+    for (const directory of ["first", "second", "third"]) {
+      const videosDirectory = path.join(temporary, directory);
+      process.env.AIDEOS_VIDEOS_DIR = videosDirectory;
+      assert.equal(packageDir("same-film"), path.join(videosDirectory, "same-film"));
+    }
+  } finally {
+    if (previous === undefined) delete process.env.AIDEOS_VIDEOS_DIR;
+    else process.env.AIDEOS_VIDEOS_DIR = previous;
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 // Regression test for the defect that hung a validation run: B-roll is opt-in, and a caller
@@ -572,6 +590,29 @@ function inlineRequest(slug: string): ProductionRequest {
     syncToPreview: false, stopAfter: "assemble" };
 }
 
+test("runProduction rechecks title leaks at synthesis when intake was cached and narration is forced", async () => {
+  const slug = `probe-forced-title-leak-${Date.now().toString(36)}`;
+  const request: ProductionRequest = {
+    script: "## Closing\n[NARRATION]\nClosing.",
+    title: "Probe Film",
+    slug,
+    ttsBackend: "tone",
+    broll: false,
+    syncToPreview: false,
+    resume: true,
+    stopAfter: "intake",
+  };
+  try {
+    await runProduction(request);
+    const events: ProductionProgress[] = [];
+    await assert.rejects(runProduction({ ...request, stopAfter: "narrate", force: ["narrate"] }, (event) => events.push(event)), /would read the heading aloud/);
+    assert.ok(events.some((event) => event.stage === "intake" && event.status === "skipped"));
+    assert.ok(!events.some((event) => event.message.includes("synthesizing 1/")), "forced narration is rejected before TTS");
+  } finally {
+    cleanProbe(slug);
+  }
+});
+
 test("runProduction: default needs_look has exact next steps and resumes an externally built agent design", async () => {
   const slug = `probe-look-${Date.now().toString(36)}`;
   try {
@@ -693,6 +734,10 @@ test("runProduction: valid look without a design stops at needs_design and never
     const resumed = await runProduction(request);
     assert.equal(resumed.stoppedAfter, "assemble", JSON.stringify(resumed.warnings));
     assert.equal(readFilm(slug)?.design?.source, "agent");
+    const approved = { ...readFilm(slug)!, title: "Approved pipeline fix" };
+    fs.writeFileSync(path.join(VIDEOS_DIR, slug, "film.json"), JSON.stringify(approved, null, 2));
+    await assert.rejects(runProduction({ ...request, force: ["design"] }), /refusing to overwrite hand-edited film\.json/);
+    assert.equal(readFilm(slug)?.title, "Approved pipeline fix", "a resumed design stage must preserve an approved hand edit");
   } finally { cleanProbe(slug); }
 });
 
@@ -739,6 +784,10 @@ test("runProduction: changed narration refreshes base-film; forced upstream work
     await runProduction({ ...request, script, force: ["narrate"] }, (e) => forced.push(e));
     assert.ok(forced.some((e) => e.stage === "design" && e.status === "running"));
     assert.ok(forced.some((e) => e.stage === "assemble" && e.status === "running"));
+    const handEdit = { ...readFilm(slug)!, title: "Approved before look rebuild" };
+    fs.writeFileSync(path.join(VIDEOS_DIR, slug, "film.json"), JSON.stringify(handEdit, null, 2));
+    await assert.rejects(runProduction({ ...request, force: ["look"] }), /refusing to overwrite hand-edited film\.json/);
+    assert.equal(readFilm(slug)?.title, "Approved before look rebuild", "the look-stage skeleton write must preserve a hand edit");
   } finally { cleanProbe(slug); }
 });
 

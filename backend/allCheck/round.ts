@@ -10,7 +10,6 @@
  * Used by: backend/allCheck/index.ts.
  */
 
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
@@ -19,6 +18,8 @@ import type { GeminiReviewReport, PairwiseRunReport } from "../geminiReview";
 import { extractStill, probeVideo } from "../review/media";
 import { reviewVideo as measuredReview } from "../review/review";
 import { formatInputs, reelForRender } from "../reelCut/store";
+import { applyEvents, hashBytes, hashFileOrNull, readRecord } from "../filmAcceptance/store";
+import type { AcceptanceEvent } from "../filmAcceptance/machine";
 import type { ReviewReport } from "../review/types";
 import {
   allCheckDir,
@@ -58,9 +59,48 @@ export function realRoundDeps(onProgress: (message: string) => void): RoundDeps 
   };
 }
 
-// SHA-256 of a file.
+// SHA-256 of a file that must exist.
 function hashFile(file: string): string {
-  return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+  return hashBytes(fs.readFileSync(file));
+}
+
+// Feeds a saved round record to the acceptance machine as the render, measured and review events it stands for. Replaying a record is harmless: the same draw is never counted twice.
+export function recordRoundAcceptance(slug: string, rec: FormatRoundRecord, target: number): void {
+  const mp4Hash = hashFileOrNull(rec.videoPath);
+  if (mp4Hash === null) return;
+  const events: AcceptanceEvent[] = [{ type: "rendered", filmHash: rec.filmHash, mp4Hash, at: rec.createdAt }];
+  if (!rec.measured.error && rec.measured.passed !== null) {
+    events.push({ type: "measured", mp4Hash, passed: rec.measured.passed, gateFailures: rec.measured.gateFailures, at: rec.createdAt });
+  }
+  if (!rec.review.error && rec.review.score !== null && rec.review.verdict !== null && rec.review.gatesPassed !== null) {
+    // The draw passes the way the round's own bar says: the score reached the target and no hard gate failed.
+    events.push({
+      type: "judged",
+      draw: {
+        key: `round-${rec.round}`,
+        mp4Hash,
+        score: rec.review.score,
+        verdict: rec.review.verdict,
+        gatesPassed: rec.review.gatesPassed,
+        passed: rec.review.gatesPassed && rec.review.score >= target,
+        at: rec.createdAt,
+      },
+    });
+  }
+  applyEvents(resolvePackageDir(slug), rec.format, events);
+}
+
+// Moves the acceptance record to match a round record whose checks all passed (accepted) or no longer do (revoked).
+function settleRoundAcceptance(slug: string, rec: FormatRoundRecord, target: number): void {
+  const mp4Hash = hashFileOrNull(rec.videoPath);
+  if (mp4Hash === null) return;
+  const pkg = resolvePackageDir(slug);
+  // A run begun before the machine existed has no evidence yet: seed it once from the saved round, never from an older round over a newer one.
+  if (readRecord(pkg, rec.format).state === "unreviewed") recordRoundAcceptance(slug, rec, target);
+  const current = readRecord(pkg, rec.format);
+  if (current.mp4Hash !== mp4Hash) return;
+  if (rec.passed && current.state === "judged") applyEvents(pkg, rec.format, [{ type: "approved", mp4Hash, at: rec.createdAt }]);
+  else if (!rec.passed && current.state === "accepted") applyEvents(pkg, rec.format, [{ type: "revoked", mp4Hash, at: new Date().toISOString() }]);
 }
 
 // Reads the saved config of a run, or explains that all-check was not started for this video.
@@ -298,6 +338,7 @@ export async function runFormatRound(req: RoundRequest, round: number, config: A
   };
   const record: FormatRoundRecord = { ...base, ...evaluateRecord(base, config.target) };
   writeRecord(slug, record);
+  recordRoundAcceptance(slug, record, config.target);
   return record;
 }
 
@@ -340,5 +381,6 @@ export function recordFrameCheck(req: { slug: string; round: number; format: Che
   const evaluated = evaluateRecord(rec, config.target);
   const updated: FormatRoundRecord = { ...rec, ...evaluated };
   writeRecord(req.slug, updated);
+  settleRoundAcceptance(req.slug, updated, config.target);
   return updated;
 }

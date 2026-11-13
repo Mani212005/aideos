@@ -124,6 +124,14 @@ jobs:
       - name: Download the Remotion browser
         if: steps.remotion-browser.outputs.cache-hit != 'true'
         run: npx remotion browser ensure
+      - name: Restore the Rust build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/target
+          key: cargo-native-${{ runner.os }}-${{ hashFiles('native/Cargo.lock') }}
       - name: Unit and feature tests
         run: npm run ci -- unit
 

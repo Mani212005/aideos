@@ -1,0 +1,142 @@
+{
+  "schema": "aideos.render/1",
+  "film": {
+    "id": "minimal",
+    "fps": 30,
+    "durationFrames": 30
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "long": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "background": "#0B0D10",
+  "assets": [
+    {
+      "kind": "svg",
+      "id": "orbit",
+      "path": "visuals/orbit.svg",
+      "elementIds": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "kind": "font",
+      "id": "sans",
+      "path": "fonts/Geist-SemiBold.ttf",
+      "family": "Geist",
+      "weight": 600
+    },
+    {
+      "kind": "audio",
+      "id": "voice",
+      "path": "voice.wav"
+    }
+  ],
+  "stage": [],
+  "overlay": [
+    {
+      "kind": "rect",
+      "id": "r",
+      "visible": {
+        "fromFrame": 20,
+        "toFrame": 10
+      },
+      "radius": 0,
+      "tracks": [],
+      "placement": {
+        "long": {
+          "x": 0,
+          "y": 0,
+          "w": 10,
+          "h": 10
+        }
+      }
+    },
+    {
+      "kind": "rail",
+      "id": "rail",
+      "font": "sans",
+      "ink": "#FFFFFF",
+      "accent": "#FFFFFF",
+      "trackColor": "#FFFFFF",
+      "scrim": "#000000",
+      "chapters": [
+        {
+          "title": "a",
+          "startFrame": 0,
+          "endFrame": 20
+        },
+        {
+          "title": "b",
+          "startFrame": 10,
+          "endFrame": 31
+        }
+      ],
+      "placement": {
+        "long": {
+          "x": 0,
+          "y": 0,
+          "w": 10,
+          "h": 10,
+          "fontSize": 12,
+          "scrimHeight": 0
+        }
+      }
+    },
+    {
+      "kind": "captions",
+      "id": "c",
+      "font": "sans",
+      "color": "#FFFFFF",
+      "highlightColor": "#FFFFFF",
+      "backgroundColor": "#000000",
+      "words": [
+        {
+          "text": "b",
+          "startFrame": 10,
+          "endFrame": 12
+        },
+        {
+          "text": "a",
+          "startFrame": 4,
+          "endFrame": 6
+        }
+      ],
+      "placement": {
+        "long": {
+          "fontSize": 12,
+          "spans": [
+            {
+              "fromFrame": 5,
+              "x": 0.5,
+              "y": 0.5
+            },
+            {
+              "fromFrame": 5,
+              "x": 0.5,
+              "y": 0.5
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "audio": [
+    {
+      "id": "n",
+      "asset": "voice",
+      "startFrame": 25,
+      "durationFrames": 10,
+      "sourceStartMs": 0,
+      "gain": 1,
+      "gainEnvelope": []
+    }
+  ]
+}
