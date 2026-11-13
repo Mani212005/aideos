@@ -71,6 +71,7 @@
     "ci": "tsx scripts/ci.ts",
     "performance:filmstrip": "tsx scripts/performance_filmstrip.ts",
     "performance:check": "tsx scripts/performance_check.ts",
+    "render-ir:schema": "tsx scripts/render_ir_schema.ts",
     "design:check": "tsx backend/cli.ts design-check",
     "connect": "node scripts/aideos-connect.mjs",
     "test:visual": "RUN_VISUAL_TESTS=1 node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/live/svgAnimation.live.ts",
