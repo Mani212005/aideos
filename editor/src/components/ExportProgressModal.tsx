@@ -24,7 +24,7 @@ export interface ExportProgressModalProps {
   /** A problem starting or following the export that is not a render failure. */
   error: string | null;
   starting: boolean;
-  onStart: () => void;
+  onStart: (film: Film) => void;
   onCancel: () => void;
   /** The cross, Escape and the overlay: hides the dialog while a render runs. */
   onClose: () => void;
@@ -95,7 +95,8 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
   }, [isOpen, runningStatus]);
 
   // Whether the film about to be exported is the film that was reviewed, asked of the acceptance record each time the Start screen opens.
-  const [acceptance, setAcceptance] = useState<AcceptanceSummary | null>(null);
+  const [acceptance, setAcceptance] = useState<{ filmKey: string; summary: AcceptanceSummary } | null>(null);
+  const filmKey = JSON.stringify(film);
   const idleOpen = isOpen && job === null;
   useEffect(() => {
     if (!idleOpen) return;
@@ -108,13 +109,13 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
     })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (alive && data?.message) setAcceptance(data as AcceptanceSummary);
+        if (alive && data?.message) setAcceptance({ filmKey, summary: data as AcceptanceSummary });
       })
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, [idleOpen, film.id, format]);
+  }, [idleOpen, film.id, filmKey, format]);
 
   if (!isOpen) return null;
 
@@ -137,7 +138,7 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
   let footer: React.ReactNode;
   if (status === "idle") {
     footer = (
-      <Button size="md" tone="primary" onClick={onStart} disabled={starting}>
+      <Button size="md" tone="primary" onClick={() => onStart(film)} disabled={starting}>
         <Play className="h-4 w-4" />
         {starting ? "Starting" : "Start export"}
       </Button>
@@ -196,12 +197,12 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
           <Note tone="info">Nothing is rendered until you press Start. You can cancel at any time.</Note>
         ) : null}
 
-        {status === "idle" && acceptance ? (
+        {status === "idle" && acceptance?.filmKey === filmKey ? (
           <Note
-            tone={acceptance.reviewed ? "success" : "warn"}
-            icon={acceptance.reviewed ? <Check className="h-3.5 w-3.5" /> : <AlertTriangle className="h-4 w-4" />}
+            tone={acceptance.summary.reviewed ? "success" : "warn"}
+            icon={acceptance.summary.reviewed ? <Check className="h-3.5 w-3.5" /> : <AlertTriangle className="h-4 w-4" />}
           >
-            {acceptance.message}
+            {acceptance.summary.message}
           </Note>
         ) : null}
 

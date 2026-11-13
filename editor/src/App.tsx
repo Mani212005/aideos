@@ -50,6 +50,7 @@ import { AgentActivityInspector } from "./components/AgentActivityInspector";
 import { AgentConnect } from "./components/AgentConnect";
 import { ReleaseBadge } from "./components/ReleaseBadge";
 import { DEFAULT_PROJECT_ACCENT } from "../../src/projectTheme";
+import type { Film } from "../../src/dl/schema";
 
 /** How the header names who made the open film's design; "templates" is flagged as a fallback. */
 const DESIGN_SOURCE_LABEL = {
@@ -271,10 +272,9 @@ export default function App() {
   }, [exportJob, notify, pendingBrollCount, timelineApi.hasVisibleVisuals]);
 
   /** Starts the render from the dialog's Start button, exporting the same film the preview plays. */
-  const startExport = useCallback(() => {
-    // Hidden and muted lanes are honoured because the render film is what the preview plays.
-    void exportJob.start(timelineApi.renderFilm, format);
-  }, [exportJob, format, timelineApi.renderFilm]);
+  const startExport = useCallback((exportFilm: Film) => {
+    void exportJob.start(exportFilm, format);
+  }, [exportJob, format]);
 
   const hasVoiceover = Boolean(film.voiceover?.src);
 
@@ -507,7 +507,7 @@ export default function App() {
 
       <ExportProgressModal
         isOpen={exportJob.dialogOpen}
-        film={film}
+        film={timelineApi.renderFilm}
         format={format}
         durationInFrames={deliveredFrames}
         job={exportJob.job}
