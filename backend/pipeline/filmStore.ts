@@ -20,6 +20,8 @@ import path from "path";
 import type { Block, Film } from "../../src/dl/schema";
 import { dropLegacyFilmBlocks, parseFilm } from "../../src/dl/schema";
 import { traceBus } from "../agentBridge/traceBus";
+import { filmEditState, noteFilmWrite } from "../filmAcceptance/store";
+import { filmDifferences } from "../filmAcceptance/machine";
 import { getVideosDir, resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { ROOT, FILMS_DIR, FILM_ID, filmModule, ensureGenerated, setActiveFilm } from "./generatedFiles";
 
@@ -71,11 +73,19 @@ export function readFilm(slug: string): Film | null {
  * than the editor previews. The film is validated before either write, so a malformed film
  * never lands on disk half-applied.
  */
-export function writeFilm(slug: string, film: Film, options: { owner: boolean; agentEdit?: boolean } = { owner: false }): Film {
+export function writeFilm(slug: string, film: Film, options: { owner: boolean; agentEdit?: boolean; protectHandEdits?: boolean } = { owner: false }): Film {
   const validated = parseFilm(prepareSoundtrack(parseFilm(carryCaptionPlacement(readFilm(slug), film, options))));
+  if (options.protectHandEdits && filmEditState(resolvePackageDir(slug)) === "hand-edited") {
+    const current = readFilm(slug);
+    if (!current || filmDifferences(current, validated).length > 0) {
+      throw new Error(`refusing to overwrite hand-edited film.json for ${slug}; move the fix into design/design.json or restore design/base-film.json before rebuilding`);
+    }
+  }
   const dir = packageDir(slug);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "film.json"), JSON.stringify(validated, null, 2), "utf8");
+  const contents = JSON.stringify(validated, null, 2);
+  fs.writeFileSync(path.join(dir, "film.json"), contents, "utf8");
+  noteFilmWrite(dir, contents);
 
   fs.mkdirSync(FILMS_DIR, { recursive: true });
   fs.writeFileSync(path.join(FILMS_DIR, `${slug}.ts`), filmModule(validated), "utf8");

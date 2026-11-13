@@ -8,13 +8,14 @@
  * Used by: backend/allCheck/index.ts.
  */
 
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { formatInputs, reelForRender } from "../reelCut/store";
 import { backupPath, rankRecord, rollbackFilm, strayFiles } from "./best";
+import { isReviewedFilm } from "../filmAcceptance/machine";
+import { hashFileOrNull } from "../filmAcceptance/store";
 import { releaseLock } from "./lock";
 import { readConfig, readRecords } from "./round";
 import {
@@ -81,15 +82,6 @@ export const REAL_FINISH_DEPS: FinishDeps = {
   stopStudio: realStopStudio,
 };
 
-// SHA-256 of a file, or null when it is missing.
-function hashOrNull(file: string): string | null {
-  try {
-    return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
-  } catch {
-    return null;
-  }
-}
-
 // The latest record of a format within one round.
 function pick(records: FormatRoundRecord[], round: number, format: CheckFormat): FormatRoundRecord | undefined {
   return records.find((r) => r.round === round && r.format === format);
@@ -112,7 +104,7 @@ export function decideVerdict(records: FormatRoundRecord[], currentFilmHash: str
   for (const round of rounds) {
     const long = pick(records, round, "long");
     const reel = pick(records, round, "reel");
-    if (long?.passed && reel?.passed && long.filmHash === hashes.long && reel.filmHash === hashes.reel) {
+    if (long?.passed && reel?.passed && isReviewedFilm(long.filmHash, hashes.long) && isReviewedFilm(reel.filmHash, hashes.reel)) {
       return { passed: true, round, long, reel, stillFailing: [] };
     }
   }
@@ -135,7 +127,7 @@ export function decideVerdict(records: FormatRoundRecord[], currentFilmHash: str
   if (!reel) stillFailing.push("the reel was never measured in this round");
   for (const rec of [long, reel]) if (rec) for (const f of rec.failing) stillFailing.push(`${rec.format}: ${f}`);
   if (long && reel && long.passed && reel.passed) {
-    if (long.filmHash !== hashes.long || reel.filmHash !== hashes.reel) stillFailing.push("film.json changed after the last check: re-check both formats in a final round (each format must match its own current film hash)");
+    if (!isReviewedFilm(long.filmHash, hashes.long) || !isReviewedFilm(reel.filmHash, hashes.reel)) stillFailing.push("film.json changed after the last check: re-check both formats in a final round (each format must match its own current film hash)");
   }
   return { passed: false, round: best.round, long, reel, stillFailing };
 }
@@ -184,18 +176,18 @@ export function finishRun(slug: string, deps: FinishDeps = REAL_FINISH_DEPS): Al
     let reel: string | null = null;
     try {
       reelForRender(slug);
-      reel = hashOrNull(reelFile);
+      reel = hashFileOrNull(reelFile);
     } catch {
       reel = null;
     }
-    return { long: hashOrNull(filmFile), reel };
+    return { long: hashFileOrNull(filmFile), reel };
   };
   let verdict = decideVerdict(records, hashes());
 
   // Not all good: the package must end on the best round's film, not on the last experiment.
   let restoredFilmFromRound: number | null = null;
   const best = verdict.long ?? verdict.reel;
-  const changed = [verdict.long, verdict.reel].some((rec) => rec && rec.filmHash !== hashes()[rec.format]);
+  const changed = [verdict.long, verdict.reel].some((rec) => rec && !isReviewedFilm(rec.filmHash, hashes()[rec.format]));
   if (!verdict.passed && verdict.round !== null && best && changed && fs.existsSync(backupPath(slug, verdict.round))) {
     fs.copyFileSync(filmFile, path.join(dir, "backups", "film.before-finish.json"));
     (deps.restoreFilm ?? rollbackFilm)(slug, verdict.round);

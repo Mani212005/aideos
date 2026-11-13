@@ -108,7 +108,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 - **Features**:
   - **Data Visualizations (`src/components/ui/Charts.tsx`)**: Renders script-to-timeline coverage maps, shot duration distribution, narration vs silence density, and pacing health metrics in pure SVG.
   - **AI Critique Drawer**: Interactive assistant for applying natural-language feedback and generating atomic film patches via `/api/critique`, with full task dispatch to connected coding agents.
-  - **Export Modal**: Export opens a Start screen and nothing renders until Start is pressed. Progress is the renderer's own frame counts, Cancel stops the render and deletes the partial video, the close cross only hides the dialog while rendering (a header chip reopens it), and a finished render offers a Download button and is never downloaded automatically.
+  - **Export Modal**: See the [Studio workflow](WORKFLOW.md#4-interactive-web-studio-workflow-editor) for the Export dialog behavior.
 
 ---
 

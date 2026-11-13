@@ -52,6 +52,7 @@ import {
 import { analyseAudio, contactSheet, describeVideo, renderFormat, FORMAT_SPECS } from "./render";
 import { masterAudio, writeDescriptionCredits } from "../masterAudio";
 import { assertDeliverable } from "../deliveryGate";
+import { filmEditState } from "../filmAcceptance/store";
 import { boundTheme } from "../../src/projectTheme";
 import { checkRenderDiskBudget } from "./renderDiskBudget";
 import {
@@ -502,7 +503,7 @@ export async function runProduction(
           ...compileOptions, textOnly: true, maxFootageShots: 0,
         });
         carryExistingSound(existing, skeleton.film);
-        writeFilm(slug, skeleton.film);
+        writeFilm(slug, skeleton.film, { owner: false, protectHandEdits: true });
         filmResult = skeleton.film;
         const outcome = await planFilmLook(slug, { ...delivery, onProgress: (message) => emit("look", "running", message) });
         if (!outcome.plan) {
@@ -534,8 +535,14 @@ export async function runProduction(
             // Rebuild under the source that made the film, so an unchanged design writes an identical film and later stages stay reused.
             const source = readFilm(slug)?.design?.source;
             const status = buildDesign(slug, source === "server-model" || source === "hand-built" ? source : "agent");
-            if (status.state !== "passed") return null;
-          } catch { return null; }
+            if (status.state !== "passed") {
+              if (filmEditState(packageDir(slug)) === "hand-edited") throw new Error(status.errors.join("; "));
+              return null;
+            }
+          } catch (err) {
+            if (filmEditState(packageDir(slug)) === "hand-edited") throw err;
+            return null;
+          }
         }
         const film = readFilm(slug);
         return film && (mode === "templates" || (film.scene && film.design?.source !== "templates"))
@@ -549,7 +556,7 @@ export async function runProduction(
         });
         const existing = readFilm(slug);
         carryExistingSound(existing, compiled.film);
-        writeFilm(slug, compiled.film);
+        writeFilm(slug, compiled.film, { owner: false, protectHandEdits: true });
         // Every new compile becomes the build's base. A stale first-build snapshot must never
         // resurrect narration, timing or treatments from an earlier run.
         fs.mkdirSync(designDir(slug), { recursive: true });

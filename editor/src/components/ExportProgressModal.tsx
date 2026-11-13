@@ -11,6 +11,7 @@
 import React, { useEffect, useState } from "react";
 import type { Film } from "../../../src/dl/schema";
 import type { ExportJobSnapshot } from "../../../backend/exportJobTypes";
+import type { AcceptanceSummary } from "../../../backend/filmAcceptance/machine";
 import { Check, AlertTriangle, Ban, Download, FileVideo, Play } from "lucide-react";
 import { Button, Modal, Note, ProgressBar, Stat, cn } from "./ui";
 
@@ -23,7 +24,7 @@ export interface ExportProgressModalProps {
   /** A problem starting or following the export that is not a render failure. */
   error: string | null;
   starting: boolean;
-  onStart: () => void;
+  onStart: (film: Film) => void;
   onCancel: () => void;
   /** The cross, Escape and the overlay: hides the dialog while a render runs. */
   onClose: () => void;
@@ -93,6 +94,40 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
     return () => clearInterval(timer);
   }, [isOpen, runningStatus]);
 
+  const [acceptance, setAcceptance] = useState<{
+    filmKey: string;
+    status: "loading" | "ready" | "unavailable";
+    summary?: AcceptanceSummary;
+  } | null>(null);
+  const filmKey = JSON.stringify(film);
+  const idleOpen = isOpen && job === null;
+  useEffect(() => {
+    if (!idleOpen) return;
+    let alive = true;
+    setAcceptance({ filmKey, status: "loading" });
+    fetch(`/api/acceptance/${encodeURIComponent(film.id)}?format=${format}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ film }),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("review status unavailable");
+        return r.json();
+      })
+      .then((data) => {
+        if (!alive) return;
+        setAcceptance(data?.message
+          ? { filmKey, status: "ready", summary: data as AcceptanceSummary }
+          : { filmKey, status: "unavailable" });
+      })
+      .catch(() => {
+        if (alive) setAcceptance({ filmKey, status: "unavailable" });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [idleOpen, film, film.id, filmKey, format]);
+
   if (!isOpen) return null;
 
   const status = job?.status ?? "idle";
@@ -114,7 +149,12 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
   let footer: React.ReactNode;
   if (status === "idle") {
     footer = (
-      <Button size="md" tone="primary" onClick={onStart} disabled={starting}>
+      <Button
+        size="md"
+        tone="primary"
+        onClick={() => onStart(film)}
+        disabled={starting || (idleOpen && (!acceptance || acceptance.filmKey !== filmKey || acceptance.status === "loading"))}
+      >
         <Play className="h-4 w-4" />
         {starting ? "Starting" : "Start export"}
       </Button>
@@ -171,6 +211,22 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
 
         {status === "idle" ? (
           <Note tone="info">Nothing is rendered until you press Start. You can cancel at any time.</Note>
+        ) : null}
+
+        {status === "idle" && acceptance?.filmKey === filmKey && acceptance.status === "ready" && acceptance.summary ? (
+          <Note
+            tone={acceptance.summary.reviewed ? "success" : "warn"}
+            icon={acceptance.summary.reviewed ? <Check className="h-3.5 w-3.5" /> : <AlertTriangle className="h-4 w-4" />}
+          >
+            {acceptance.summary.message}
+            <span className="block pt-1">Export preparation may change the film, so this status may change.</span>
+          </Note>
+        ) : null}
+
+        {status === "idle" && acceptance?.filmKey === filmKey && acceptance.status === "unavailable" ? (
+          <Note tone="warn" icon={<AlertTriangle className="h-4 w-4" />}>
+            Review status unavailable.
+          </Note>
         ) : null}
 
         {status === "failed" && job?.error ? (

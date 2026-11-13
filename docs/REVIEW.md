@@ -202,6 +202,14 @@ To eliminate model position bias and multimodal cross-alignment hallucinations w
 "good" on **both formats**: it composes render, `aideos review`, `aideos gemini-review`, the pairwise
 cross-review and the fix-and-repeat loop.
 
+All-check also maintains `videos/<slug>/acceptance.json`, with one acceptance record for each format. Each
+record binds the measured result and judge draws to the hashes of the film manifest and rendered MP4, so a
+changed film is reported as stale and an earlier verdict does not apply. Measured gates settle first; the
+latest judge draw for the same MP4 determines the judge result, and each new draw is retained. If those
+draws disagree, the summary says so without changing that verdict rule. Export status is summarized
+against the film supplied by Studio, and may change if export preparation changes the film. See the [Studio
+workflow](WORKFLOW.md#4-interactive-web-studio-workflow-editor) for what the Export dialog displays.
+
 ```bash
 aideos all-check hnsw                                     # defaults: 6 rounds, 9.0 target
 aideos all-check hnsw --reference ref.mp4 --rounds 8 --target 9.2

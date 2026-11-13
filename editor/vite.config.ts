@@ -12,7 +12,8 @@ import { prepareSoundtrack } from '../backend/soundtrack.ts';
 import { deliverReel } from '../backend/reelCut/writer.ts';
 import { loadReelContext, readReelCut, reelPackageDir } from '../backend/reelCut/brief.ts';
 import { checkReelCut } from '../backend/reelCut/check.ts';
-import { reelBudgetFor, reelSourceFingerprint } from '../backend/reelCut/store.ts';
+import { formatInputs, reelBudgetFor, reelSourceFingerprint } from '../backend/reelCut/store.ts';
+import { acceptanceSummary, acceptanceSummaryForFilm, hashFileOrNull, noteFilmWrite } from '../backend/filmAcceptance/store.ts';
 import { REEL_MAX_SEC, reelCutSchema } from '../backend/reelCut/schema.ts';
 import { deliveryTimeline, DELIVERY_CONFIG } from '../src/dl/delivery.ts';
 import { stagePublicDir } from '../backend/pipeline/render.ts';
@@ -145,6 +146,7 @@ function writeFilm(filmId: string, incoming: Film, options: { owner: boolean; ag
   const contents = JSON.stringify(film, null, 2);
   studioFilmWrites.set(filmId, contents);
   fs.writeFileSync(path.join(pkgDir, 'film.json'), contents, 'utf8');
+  noteFilmWrite(pkgDir, contents);
 
   const filmPath = path.join(filmsDir, `${filmId}.ts`);
   if (fs.existsSync(filmPath)) {
@@ -972,6 +974,34 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             .catch((err) => {
               sendJson(res, 500, { error: String(err) });
             });
+          return;
+        }
+
+        // Whether the posted film export will prepare and render is the film that was reviewed.
+        const acceptanceMatch = /^\/api\/acceptance\/([a-z0-9-]+)$/.exec(url.split('?')[0]);
+        if (acceptanceMatch && req.method === 'POST') {
+          const id = acceptanceMatch[1];
+          if (!FILM_ID.test(id)) {
+            sendJson(res, 400, { error: 'Valid film id is required' });
+            return;
+          }
+          const format = new URL(req.url ?? '', 'http://localhost').searchParams.get('format') === 'reel' ? 'reel' : 'long';
+          void readBody(req).then(async (body) => {
+            const postedFilm = (body as { film?: Film } | null)?.film;
+            if (!postedFilm || postedFilm.id !== id) {
+              sendJson(res, 400, { error: 'Film payload must match the requested id' });
+              return;
+            }
+            let exportFilm = postedFilm;
+            if (format === 'reel') {
+              const reelInputs = formatInputs(id, 'reel');
+              if (path.resolve(reelInputs.film) !== path.resolve(path.join(videosDir, id, 'film.json'))) {
+                sendJson(res, 200, acceptanceSummary(path.join(videosDir, id), format, hashFileOrNull(reelInputs.film)));
+                return;
+              }
+            }
+            sendJson(res, 200, acceptanceSummaryForFilm(path.join(videosDir, id), format, exportFilm));
+          }).catch((err) => sendJson(res, 500, { error: String(err) }));
           return;
         }
 
