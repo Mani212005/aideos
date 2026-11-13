@@ -1,0 +1,20 @@
+# File Description: Manifest of the native encode and audio mux crate: a frame-source interface, the ffmpeg subprocess encoder (x264 final, VAAPI or VideoToolbox drafts), the sample-domain audio mixer and the aideos-encode CLI.
+# Inputs and outputs: none -> the aideos_encode library and the aideos-encode binary.
+# Used by: the native renderer (R2 evaluator plugs in through FrameSource, R4 acceptance), native/Cargo.toml, docs/NATIVE_ENCODE.md.
+[package]
+name = "aideos-encode"
+description = "Raw frames plus audio in, a BT.709 limited-range mp4 out: ffmpeg encode and audio mux for the native renderer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Decodes the PNG frame directories the CLI accepts (pure Rust, no system library).
+png = "0.18"
+
+[[bin]]
+name = "aideos-encode"
+path = "src/main.rs"

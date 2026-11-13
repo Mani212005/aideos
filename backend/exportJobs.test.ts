@@ -13,6 +13,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createExportJobs, parseRenderProgress, progressFraction } from "./exportJobs";
+import { loadFixtureFilm } from "./testSupport/fixtureFilms";
+import { runRenderCommand, type RenderProcessDeps } from "./renderProcess";
+import { createRemotionRenderer } from "./remotionRenderer";
 import type { ExportJobInput } from "./exportJobs";
 
 /** A renderer stand-in: writes a partial video, spawns a grandchild, reports frames, then waits for a release file. */
@@ -21,6 +24,7 @@ const fs = require("fs");
 const { spawn } = require("child_process");
 const [out, dir, mode, rendered, total] = process.argv.slice(2);
 fs.writeFileSync(out, "partial");
+fs.writeFileSync(dir + "/attempt-output", out);
 const grandchild = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { stdio: "inherit" });
 fs.writeFileSync(dir + "/pids.json", JSON.stringify({ child: process.pid, grandchild: grandchild.pid }));
 if (mode === "stubborn") process.on("SIGTERM", () => {});
@@ -45,6 +49,7 @@ function fixture(mode: "run" | "stubborn" | "fail" = "run", rendered = 4, total 
   const outPath = path.join(dir, "renders", "aideos_demo_long_1.mp4");
   let cleanedUp = 0;
   const input: ExportJobInput = {
+    film: loadFixtureFilm("fixture-canvas-a"),
     filmId: "demo",
     format: "long",
     filmTitle: "Demo",
@@ -53,16 +58,28 @@ function fixture(mode: "run" | "stubborn" | "fail" = "run", rendered = 4, total 
     filename: "aideos_demo_long_1.mp4",
     outPath,
     downloadUrl: "/api/downloads/aideos_demo_long_1.mp4",
-    prepare: async () => ({
-      command: process.execPath,
-      args: [script, outPath, dir, mode, String(rendered), String(total)],
-      cwd: dir,
-    }),
     cleanup: () => {
       cleanedUp += 1;
     },
   };
-  return { dir, input, outPath, cleanups: () => cleanedUp, pids: () => JSON.parse(fs.readFileSync(path.join(dir, "pids.json"), "utf8")) as { child: number; grandchild: number } };
+  // Exercises the actual cancellable process boundary while replacing film/media work with tiny fixture services.
+  const jobs = (deps: RenderProcessDeps = {}) => createExportJobs({
+    ...deps,
+    renderer: () => ({
+      checkDiskBudget: async () => {},
+      render: async (request, context) => runRenderCommand({
+        command: process.execPath,
+        args: [script, request.outPath, dir, mode, String(rendered), String(total)],
+        cwd: dir,
+      }, request.outPath, { signal: context.signal, forceSignal: context.forceSignal, onOutput: context.onOutput }, deps),
+    }),
+    services: {
+      checkDeliverable: () => {}, checkBroll: () => {}, retimeAudio: () => {},
+      master: () => ({ status: "skipped", reason: "fixture has no audio" }),
+      probe: (format, file) => ({ format, path: file, width: 1920, height: 1080, fps: 30, durationSec: 1, sizeBytes: fs.statSync(file).size }),
+    },
+  });
+  return { dir, input, outPath, jobs, cleanups: () => cleanedUp, attemptPath: () => fs.readFileSync(path.join(dir, "attempt-output"), "utf8"), pids: () => JSON.parse(fs.readFileSync(path.join(dir, "pids.json"), "utf8")) as { child: number; grandchild: number } };
 }
 
 /** Polls until the condition holds or fails the test after a few seconds. */
@@ -95,7 +112,7 @@ test("parseRenderProgress reads Remotion's own frame lines and ignores everythin
 
 test("export progress follows the renderer's reported frames, not elapsed time", async () => {
   const f = fixture("run", 4, 10);
-  const jobs = createExportJobs();
+  const jobs = f.jobs();
   const { job } = jobs.start(f.input);
   try {
     await until(() => jobs.get(job.id)!.renderedFrames === 4, "the renderer's fourth frame");
@@ -124,10 +141,10 @@ test("export progress follows the renderer's reported frames, not elapsed time",
 
 test("cancel mid-render deletes the partial video and leaves no orphan process", async () => {
   const f = fixture("run", 4, 10);
-  const jobs = createExportJobs();
+  const jobs = f.jobs();
   const { job } = jobs.start(f.input);
   try {
-    await until(() => jobs.get(job.id)!.renderedFrames === 4 && fs.existsSync(f.outPath), "a partial video on disk");
+    await until(() => jobs.get(job.id)!.renderedFrames === 4 && fs.existsSync(f.attemptPath()), "a partial video on disk");
     const { child, grandchild } = f.pids();
     assert.ok(alive(child) && alive(grandchild), "the render tree is running before the cancel");
 
@@ -147,15 +164,88 @@ test("cancel mid-render deletes the partial video and leaves no orphan process",
 
 test("cancel still ends a renderer that ignores SIGTERM, and removes its partial video", async () => {
   const f = fixture("stubborn", 2, 10);
-  const jobs = createExportJobs({ killGraceMs: 150 });
+  const jobs = f.jobs({ killGraceMs: 150 });
   const { job } = jobs.start(f.input);
   try {
-    await until(() => jobs.get(job.id)!.renderedFrames === 2 && fs.existsSync(f.outPath), "the stubborn renderer to start");
+    await until(() => jobs.get(job.id)!.renderedFrames === 2 && fs.existsSync(f.attemptPath()), "the stubborn renderer to start");
     const { child, grandchild } = f.pids();
     const cancelled = await jobs.cancel(job.id);
     assert.equal(cancelled!.status, "cancelled");
-    assert.equal(fs.existsSync(f.outPath), false);
+    assert.equal(fs.existsSync(f.attemptPath()), false);
     await until(() => !alive(child) && !alive(grandchild), "SIGKILL to take the tree down");
+  } finally {
+    jobs.killAll();
+    fs.rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("shutdown force-kills a renderer tree without waiting for graceful escalation", async () => {
+  const f = fixture("stubborn", 2, 10);
+  const jobs = f.jobs({ killGraceMs: 5000 });
+  const { job } = jobs.start(f.input);
+  try {
+    await until(() => jobs.get(job.id)!.renderedFrames === 2 && fs.existsSync(f.attemptPath()), "the stubborn renderer to start");
+    const { child, grandchild } = f.pids();
+    jobs.killAll();
+    await until(() => !alive(child) && !alive(grandchild), "immediate shutdown of the renderer tree");
+    await until(() => jobs.get(job.id)!.status === "cancelled", "the job cancellation state");
+    assert.equal(fs.existsSync(f.attemptPath()), false);
+    assert.equal(fs.existsSync(f.outPath), false);
+  } finally {
+    jobs.killAll();
+    fs.rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("shutdown force-kills a stubborn frame sampler during disk preflight", async () => {
+  const f = fixture("stubborn", 2, 10);
+  const samplePath = path.join(f.dir, "sample.mp4");
+  const deps = { killGraceMs: 5000 };
+  const renderer = createRemotionRenderer(
+    { caller: "manual" },
+    {
+      ...deps,
+      checkDiskBudget: async ({ signal, forceSignal }) => {
+        await runRenderCommand(
+          {
+            command: process.execPath,
+            args: [
+              path.join(f.dir, "renderer.cjs"),
+              samplePath,
+              f.dir,
+              "stubborn",
+              "2",
+              "10",
+            ],
+            cwd: f.dir,
+          },
+          samplePath,
+          { signal, forceSignal, requireOutput: false },
+          deps,
+        );
+        return assert.fail("the forced sampler must not finish preflight");
+      },
+      run: async () => assert.fail("encoding must not start before preflight ends"),
+    },
+  );
+  const jobs = createExportJobs({
+    renderer: () => renderer,
+    services: {
+      checkDeliverable: () => {},
+      checkBroll: () => {},
+      retimeAudio: () => {},
+      master: () => ({ status: "skipped", reason: "fixture" }),
+      probe: () => ({ format: "long", path: f.outPath, width: 16, height: 16, fps: 30, durationSec: 1, sizeBytes: 1 }),
+    },
+  });
+  const { job } = jobs.start(f.input);
+  try {
+    await until(() => fs.existsSync(path.join(f.dir, "pids.json")), "the sampler process tree to start");
+    const { child, grandchild } = f.pids();
+    jobs.killAll();
+    await until(() => !alive(child) && !alive(grandchild), "forced sampler tree shutdown");
+    await until(() => jobs.get(job.id)!.status === "cancelled", "preflight cancellation");
+    assert.equal(fs.existsSync(f.outPath), false);
   } finally {
     jobs.killAll();
     fs.rmSync(f.dir, { recursive: true, force: true });
@@ -164,7 +254,7 @@ test("cancel still ends a renderer that ignores SIGTERM, and removes its partial
 
 test("a render that exits with an error fails the job, reports the output and deletes the partial video", async () => {
   const f = fixture("fail", 0, 10);
-  const jobs = createExportJobs();
+  const jobs = f.jobs();
   const { job } = jobs.start(f.input);
   try {
     await until(() => jobs.get(job.id)!.status === "failed", "the failure");
@@ -184,10 +274,10 @@ test("only one export runs at a time, and cancel works before the render has sta
   const slow: ExportJobInput = {
     ...f.input,
     prepare: () => new Promise((resolve) => {
-      release = () => resolve({ command: process.execPath, args: ["-e", "0"], cwd: f.dir });
+      release = () => resolve(f.input.film);
     }),
   };
-  const jobs = createExportJobs();
+  const jobs = f.jobs();
   const first = jobs.start(slow);
   try {
     assert.equal(first.job.status, "preparing");

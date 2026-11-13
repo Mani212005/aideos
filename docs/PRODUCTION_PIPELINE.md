@@ -46,7 +46,7 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 | `reel`     | Builds condensed reel narration and a derived film with checked shot drops, or reuses the long for an identity reel | `videos/<slug>/reel/film.json`, `status.json`, and its `src/dl/films/<slug>.reel.ts` shadow; cut mode also writes reel narration and word timings |
 | `broll`    | Renders GPU footage for the flagged shots and fetches the clips                       | `videos/<slug>/footage/<shotId>.mp4`                |
 | `assemble` | Wires each clip into its shot as a full-screen inset                                 | `film.json` and its `src/dl/films/<slug>.ts` shadow |
-| `render`   | Installs the film as active, drives Remotion for each requested format, then measures and masters each MP4 audio track | `src/dl/activeFilm.ts`, `videos/<slug>/renders/<format>.mp4`, `<format>.mp4.master.json`, `description-credits.txt` by default |
+| `render`   | Runs each requested format through the shared RenderJob lifecycle and its selected renderer, then measures and masters each MP4 audio track | `videos/<slug>/renders/<format>.mp4`, `<format>.mp4.master.json`, `<format>.mp4.render.json`, `description-credits.txt` by default |
 | `verify`   | Probes the rendered files and writes contact sheets across the whole duration         | `videos/<slug>/review/<format>-sheet.jpg`          |
 
 At the synthesis boundary, the shared line classifier assigns every line a marker, timestamp, tag, heading,
@@ -65,6 +65,10 @@ the stage, and milliseconds since the run began.
 Rendered paths are returned in `result.outputs`. By default they are written inside the video
 package at `videos/<slug>/renders/<format>.mp4`. When `ProductionRequest.outDir` is set, each file
 is written as `<outDir>/<slug>-<format>.mp4` instead.
+
+The shared render lifecycle, profile policy, cancellation behavior, and render sidecar format are
+documented in the [RenderJob reference](RENDER_JOB.md). The Remotion adapter retains the legacy
+active-film setup and renderer options.
 
 After each render, the master stage measures the delivered MP4 with `ebur128` and targets -16 LUFS
 integrated within 0.5 LU and true peak at or below -1 dBTP. If limiting is needed, it encodes an AAC
@@ -112,13 +116,25 @@ design assets. The palette allows the locked colours plus the film's one accent:
 
 `aideos design build` checks a package's look when one exists: shot coverage, declared cast in artwork,
 changing SVG clips on carried objects inside scene shots starting within 0.4s of their spoken cue,
-matching inset device overrides and camera keyframes. For a declared Three performance, anticipation
+matching inset device overrides and camera keyframes within the existing 1.5-second cue tolerance. For a declared Three performance, anticipation
 must start before its decisive word and the evaluated contact must land on that word; no clip at the
 cue is required. Builds record provenance in `design/status.json`,
 defaulting CLI builds to `hand-built` (`--source <who>` overrides). Older packages without a look can
 still build directly; new production runs require one before design. A design rebuild refuses to overwrite
 differences from a hand-edited `film.json`; move the edit into `design/design.json` or the builder, or
 restore the manifest from `design/base-film.json` to knowingly start over.
+
+Each build with a valid look records `design/plan-ledger.json` (also returned as `status.ledger`):
+cast, carried changes, camera poses, performances, device shots and scene cue motion move from
+`planned` to `bound`, then `realized`, or to `dropped` with an actionable reason. A dropped item
+fails the build without replacing the film. An honesty-refused device must be authored honestly
+or removed from the look plan; its text fallback no longer fulfills a planned device.
+
+Design delivery exposes `judge: passed | failed | skipped` separately from structural build status.
+Failed visual judgment returns `needs_design`. Skipped judgment remains unjudged and is reported
+in production results as `designJudge: skipped`, including resumed runs; it does not claim a visual
+pass. The pure contract in `backend/lookPlan/contract.ts` consumes evidence without capturing or
+rendering frames, so another renderer can use the same acceptance policy.
 
 ## Soundtrack
 

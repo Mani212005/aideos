@@ -4,83 +4,33 @@
  * Used by: package.json (npm run render, npm run render:reel), bin/aideos.
  */
 
-import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { ensureGenerated } from "../backend/pipeline/generatedFiles";
-import { stagePublicDir } from "../backend/pipeline/render";
 import { resolvePackageDir } from "../src/dl/videoPackageLoader";
 import { readFilm } from "../backend/pipeline/filmStore";
-import { masterAudio, writeDescriptionCredits } from "../backend/masterAudio";
+import { writeDescriptionCredits } from "../backend/masterAudio";
 import { reelForRender } from "../backend/reelCut/store";
-import { assertDeliverable } from "../backend/deliveryGate";
+import { createRenderJob } from "../backend/renderJob";
+import { createRemotionRenderer } from "../backend/remotionRenderer";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 
-// Main execution function resolving the active film and rendering to videos/<slug>/renders/.
-function main(): void {
-  const compArg = process.argv[2] || "Long";
-  const composition = compArg.toLowerCase() === "reel" ? "Reel" : "Long";
-  const formatSlug = composition.toLowerCase();
-
+// Resolves the active package and executes the shared job with the legacy manual command options.
+async function main(): Promise<void> {
+  const format = (process.argv[2] || "Long").toLowerCase() === "reel" ? "reel" : "long";
   const { activeFilm } = ensureGenerated();
-  if (!activeFilm) {
-    console.error("Error: No active film found. Ensure a video package exists in videos/ or examples/.");
-    process.exit(1);
-  }
-
-  const pkgDir = resolvePackageDir(activeFilm);
-  const film = composition === "Reel" ? reelForRender(activeFilm) : readFilm(activeFilm);
-  if (film) {
-    try {
-      assertDeliverable([{ film, format: formatSlug as "long" | "reel" }]);
-    } catch (err) {
-      console.error(err instanceof Error ? err.message : String(err));
-      process.exit(1);
-    }
-  }
-  const rendersDir = path.join(pkgDir, "renders");
-  fs.mkdirSync(rendersDir, { recursive: true });
-
-  const outPath = path.join(rendersDir, `${formatSlug}.mp4`);
-  const extraArgs = process.argv.slice(3);
-
-  const args = [
-    "remotion",
-    "render",
-    "src/index.ts",
-    composition,
-    outPath,
-    "--gl=angle",
-    ...extraArgs,
-  ];
-
-  const publicDir = stagePublicDir();
-  if (publicDir) args.push(`--public-dir=${publicDir.dir}`);
-
-  console.log(`[render] Rendering active film "${activeFilm}" (${composition}) to ${path.relative(REPO_ROOT, outPath)}...`);
-  let renderError: unknown;
-  try {
-    execFileSync("npx", args, { cwd: REPO_ROOT, stdio: "inherit" });
-  } catch (err: unknown) {
-    renderError = err;
-  } finally {
-    publicDir?.cleanup();
-  }
-  if (renderError) {
-    const status = (renderError as { status?: number }).status ?? 1;
-    process.exit(status);
-  }
-
-  if (!fs.existsSync(outPath)) {
-    console.error(`Error: Render failed to create output file at ${outPath}`);
-    process.exit(1);
-  }
-
-  masterAudio(outPath);
-  if (film) writeDescriptionCredits(rendersDir, [film]);
-
+  if (!activeFilm) throw new Error("No active film found. Ensure a video package exists in videos/ or examples/.");
+  const film = format === "reel" ? reelForRender(activeFilm) : readFilm(activeFilm);
+  if (!film) throw new Error(`No film found for "${activeFilm}"`);
+  const rendersDir = path.join(resolvePackageDir(activeFilm), "renders");
+  const outPath = path.join(rendersDir, `${format}.mp4`);
+  console.log(`[render] Rendering active film "${activeFilm}" (${format}) to ${path.relative(REPO_ROOT, outPath)}...`);
+  await createRenderJob({ film, format, outPath, profile: "final" }, createRemotionRenderer({ caller: "manual", extraArgs: process.argv.slice(3) })).run();
+  writeDescriptionCredits(rendersDir, [film]);
   console.log(`[render] Render complete: ${outPath}`);
 }
 
-main();
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exitCode = 1;
+});

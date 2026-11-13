@@ -7,7 +7,7 @@
  * Used by: backend/pipeline/run.ts.
  */
 
-import { execFileSync, spawn, spawnSync } from "child_process";
+import { execFileSync, spawnSync } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -15,8 +15,8 @@ import type { ProductionFormat, RenderedOutput } from "./types";
 import { ROOT } from "./filmStore";
 import { getExamplesDir, getVideosDir } from "../../src/dl/videoPackageLoader";
 
-/** Free space a render must leave untouched, in bytes. */
-export const RENDER_RESERVE_BYTES = 3 * 1024 ** 3;
+import { runRenderCommand, type RenderProcessDeps } from "../renderProcess";
+export { RENDER_RESERVE_BYTES } from "../renderProcess";
 
 /** Composition id and frame size for each deliverable format. */
 export const FORMAT_SPECS: Record<ProductionFormat, { composition: string; width: number; height: number }> = {
@@ -25,7 +25,7 @@ export const FORMAT_SPECS: Record<ProductionFormat, { composition: string; width
 };
 
 /** Encoder settings shared by both formats. Tuned for text legibility, not for file size. */
-const ENCODE_FLAGS = [
+export const ENCODE_FLAGS = [
   "--codec=h264",
   // PNG frames rather than the default JPEG. The design language is fine hairlines and small
   // mono type, and JPEG chroma subsampling smears both before the encoder ever sees them. It
@@ -104,133 +104,33 @@ export function stagePublicDir(
 export type RenderLogger = (message: string, progress?: number) => void;
 
 /** Renders one composition to an mp4, streaming progress and stopping if the disk reserve is threatened. */
-export function renderFormat(
+export async function renderFormat(
   format: ProductionFormat,
   outPath: string,
   options?: { concurrency?: number; browserExecutable?: string; frames?: [number, number]; onLog?: RenderLogger },
-  deps: {
-    spawn?: typeof spawn;
-    statfs?: (p: string) => { bavail: number | bigint; bsize: number | bigint };
-    pollIntervalMs?: number;
-    killProcess?: (child: ReturnType<typeof spawn>) => void;
-  } = {},
+  deps: RenderProcessDeps = {},
 ): Promise<RenderedOutput> {
-  const spec = FORMAT_SPECS[format];
-  fs.mkdirSync(path.dirname(outPath), { recursive: true });
-
   const publicDir = stagePublicDir();
-  const renderTempDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-render-"));
-  const args = [
-    "remotion",
-    "render",
-    spec.composition,
-    outPath,
-    ...ENCODE_FLAGS,
-    ...(publicDir ? [`--public-dir=${publicDir.dir}`] : []),
-    glFlag(),
-    ...(options?.frames ? [`--frames=${options.frames[0]}-${options.frames[1]}`] : []),
-    ...(options?.concurrency ? [`--concurrency=${options.concurrency}`] : []),
-    ...(options?.browserExecutable ? [`--browser-executable=${options.browserExecutable}`] : []),
-  ];
-
-  return new Promise<RenderedOutput>((resolve, reject) => {
-    const child = (deps.spawn ?? spawn)("npx", args, {
+  try {
+    await runRenderCommand({
+      command: "npx",
       cwd: ROOT,
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: process.platform !== "win32",
-      env: { ...process.env, TMPDIR: renderTempDir, TMP: renderTempDir, TEMP: renderTempDir },
-    });
-    let tail = "";
-    let diskError: Error | undefined;
-    let settled = false;
-
-    /** Removes only the temp directory created for this render and the staged public directory. */
-    const cleanup = () => {
-      clearInterval(watchdog);
-      publicDir?.cleanup();
-      fs.rmSync(renderTempDir, { recursive: true, force: true });
-    };
-
-    /** Stops the child as soon as either render disk approaches the protected reserve. */
-    const pollDisk = () => {
-      if (diskError) return;
-      try {
-        for (const dir of [renderTempDir, path.dirname(outPath)]) {
-          let probe = dir;
-          while (!fs.existsSync(probe) && path.dirname(probe) !== probe) probe = path.dirname(probe);
-          const space = (deps.statfs ?? fs.statfsSync)(probe);
-          const freeBytes = Number(space.bavail) * Number(space.bsize);
-          if (freeBytes < RENDER_RESERVE_BYTES) {
-            stopRender(new Error(`RENDER_DISK_LOW: render stopped because free space under ${dir} fell below the 3 GiB reserve`));
-            return;
-          }
-        }
-      } catch (err) {
-        const reason = err instanceof Error ? err.message : String(err);
-        stopRender(new Error(`RENDER_DISK_CHECK_FAILED: could not check free space during render: ${reason}`));
-      }
-    };
-
-    /** Stops the renderer and records the first watchdog failure. */
-    const stopRender = (error: Error) => {
-      if (diskError) return;
-      diskError = error;
-      try {
-        if (deps.killProcess) deps.killProcess(child);
-        else if (process.platform === "win32" && child.pid) {
-          execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
-        } else if (child.pid) process.kill(-child.pid, "SIGTERM");
-        else child.kill("SIGTERM");
-      } catch {
-        child.kill("SIGTERM");
-      }
-    };
-
-    const watchdog = setInterval(pollDisk, deps.pollIntervalMs ?? 3000);
-
-    /** Remotion prints "Rendered 120/5400" style lines; surface them as fractional progress. */
-    const observe = (chunk: Buffer) => {
-      const text = chunk.toString();
-      tail = (tail + text).slice(-4000);
-      const match = [...text.matchAll(/(\d+)\s*\/\s*(\d+)/g)].pop();
-      if (match) {
-        const done = Number(match[1]);
-        const total = Number(match[2]);
-        if (total > 0) options?.onLog?.(`${format}: ${done}/${total} frames`, Math.min(0.99, done / total));
-      }
-    };
-
-    child.stdout.on("data", observe);
-    child.stderr.on("data", observe);
-    child.on("error", (err) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(err);
-    });
-    child.on("close", (code) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      if (diskError) {
-        reject(diskError);
-        return;
-      }
-      if (code !== 0) {
-        reject(new Error(`remotion render exited with code ${code}:\n${tail.trim()}`));
-        return;
-      }
-      if (!fs.existsSync(outPath)) {
-        reject(new Error(`remotion render reported success but ${outPath} does not exist`));
-        return;
-      }
-      try {
-        resolve(describeVideo(format, outPath));
-      } catch (err) {
-        reject(err as Error);
-      }
-    });
-  });
+      args: ["remotion", "render", FORMAT_SPECS[format].composition, outPath, ...ENCODE_FLAGS,
+        ...(publicDir ? [`--public-dir=${publicDir.dir}`] : []), glFlag(),
+        ...(options?.frames ? [`--frames=${options.frames[0]}-${options.frames[1]}`] : []),
+        ...(options?.concurrency ? [`--concurrency=${options.concurrency}`] : []),
+        ...(options?.browserExecutable ? [`--browser-executable=${options.browserExecutable}`] : []),
+      ],
+    }, outPath, {
+      onOutput: (text) => {
+        const match = [...text.matchAll(/(\d+)\s*\/\s*(\d+)/g)].pop();
+        if (match && Number(match[2]) > 0) options?.onLog?.(`${format}: ${match[1]}/${match[2]} frames`, Math.min(0.99, Number(match[1]) / Number(match[2])));
+      },
+    }, deps);
+    return describeVideo(format, outPath);
+  } finally {
+    publicDir?.cleanup();
+  }
 }
 
 /** Reads the real container and stream facts of a rendered file. */
@@ -238,14 +138,21 @@ export function describeVideo(format: ProductionFormat, filePath: string): Rende
   const raw = execFileSync("ffprobe", [
     "-v", "error",
     "-select_streams", "v:0",
-    "-show_entries", "stream=width,height,r_frame_rate",
+    "-show_entries", "stream=width,height,r_frame_rate,codec_name,pix_fmt,color_range",
     "-show_entries", "format=duration,size",
     "-of", "json",
     filePath,
   ]).toString();
 
   const probe = JSON.parse(raw) as {
-    streams?: Array<{ width?: number; height?: number; r_frame_rate?: string }>;
+    streams?: Array<{
+      width?: number;
+      height?: number;
+      r_frame_rate?: string;
+      codec_name?: string;
+      pix_fmt?: string;
+      color_range?: string;
+    }>;
     format?: { duration?: string; size?: string };
   };
   const stream = probe.streams?.[0] ?? {};
@@ -259,6 +166,11 @@ export function describeVideo(format: ProductionFormat, filePath: string): Rende
     fps: den ? num / den : num,
     durationSec: Number(probe.format?.duration ?? 0),
     sizeBytes: Number(probe.format?.size ?? 0),
+    videoStream: {
+      codec: stream.codec_name ?? "unknown",
+      pixelFormat: stream.pix_fmt ?? "unknown",
+      colorRange: stream.color_range ?? "unknown",
+    },
   };
 }
 
