@@ -48,14 +48,14 @@ test("RunMachine: a stage walks pending -> running -> done and saves at every st
 });
 
 test("RunMachine: completion persists the final fingerprint in the same transition", () => {
-  let persisted: RunState | null = null;
-  const machine = createRunMachine(emptyState(), (state) => { persisted = structuredClone(state); });
+  const persisted: { state: RunState | null } = { state: null };
+  const machine = createRunMachine(emptyState(), (state) => { persisted.state = structuredClone(state); });
   machine.begin("design", "initial", OWNER);
   machine.complete("design", "final");
-  assert.equal(persisted?.stages[0].status, "done");
-  assert.equal(persisted?.stages[0].fingerprint, "final");
+  assert.equal(persisted.state?.stages[0].status, "done");
+  assert.equal(persisted.state?.stages[0].fingerprint, "final");
 
-  const resumed = createRunMachine(persisted!, () => {});
+  const resumed = createRunMachine(persisted.state!, () => {});
   assert.deepEqual([resumed.record("design").status, resumed.record("design").fingerprint], ["done", "final"]);
 });
 
