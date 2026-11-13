@@ -43,11 +43,17 @@ export function storyRanges(ranges: TimeRange[], storyEndSec: number): TimeRange
   return ranges.map(({ start, end }) => ({ start: Math.max(0, start), end: Math.min(end, storyEndSec) })).filter((r) => r.end > r.start);
 }
 
+// Compiles the SVG and camera curves the timeline measures; the Three cast contract is the design check's to validate.
+function compileStageLayer(scene: Scene): CompiledScene {
+  const { renderer: _renderer, cast: _cast, performances: _performances, treatment: _treatment, treatments: _treatments, treatmentResourceHash: _hash, ...layer } = scene;
+  return compileScene(layer, { clockMs: 0 });
+}
+
 // Builds visible stage state from compiled curves, never from captions, pixels or a renderer's capture path.
 export function stageTimeline(film: Film, format: DeliveryFormat, options: { compiled?: CompiledScene } = {}) {
   const delivery = stageSegments(film, format);
   const scene = film.scene as Scene | undefined;
-  const compiled = scene ? options.compiled ?? compileScene(scene, { clockMs: 0 }) : undefined;
+  const compiled = scene ? options.compiled ?? compileStageLayer(scene) : undefined;
   const width = format === "long" ? 1920 : 1080, height = format === "long" ? 1080 : 1920;
   const performanceGeometry = scene?.performances?.length ? prepareStageFacts(scene, width, height) : undefined;
   // Projects only changed targets, preserving ancestor opacity and this output's crop.

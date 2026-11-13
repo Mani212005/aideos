@@ -149,6 +149,8 @@ test("stage timeline: wholly off-frame Three performance remains a hold", () => 
   const actor = scene.cast!.find((member) => member.id === "iona");
   assert.equal(actor?.kind, "character");
   if (actor?.kind === "character") actor.position = [-10000, -10000];
+  // The performance must be the only motion, so the fixture's settled-tail camera push is removed.
+  delete scene.camera;
   const timeline = stageTimeline(film, "long");
   assert.equal(timeline.spans.some((span) => span.motion === "moving"), false);
   assert.ok(timeline.holds.length > 0);
