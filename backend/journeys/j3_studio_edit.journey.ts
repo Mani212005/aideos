@@ -99,7 +99,22 @@ journey("J3 studio: Apply Edits on an AI edit plan applies, saves and survives a
     assert.equal(planRequests.length, 1, "the studio asked for exactly one plan");
     assert.equal(planRequests[0].request, "make the accent orange");
     assert.equal(planRequests[0].film?.id, AI_SLUG);
+
+    // Nothing may claim the edit is saved or applied while its writes are in flight: the header read
+    // "Saved" during the save request, so a reader of the disk (this journey in CI) could run ahead of it.
+    const releaseSave = await page.hold("POST", `/api/films/${AI_SLUG}`);
+    const releaseLog = await page.hold("POST", "/api/edit-log");
+    const headerSays = (pattern: string) =>
+      `[...document.querySelectorAll('button')].some((b) => (b.getAttribute('title') || '').startsWith('Save the project') && ${pattern}.test(b.textContent))`;
     await page.clickButton("Apply Edits", { exact: true });
+    await page.waitFor(headerSays("/saving/i"), "the header to show the save in flight");
+    assert.ok(!(await page.eval<boolean>(headerSays("/saved/i"))), "the header says Saved while the save is held");
+    assert.ok(!(await page.eval<string>("document.body.innerText")).includes("Applied AI edit successfully"), "the apply was confirmed before its save landed");
+    assert.equal((JSON.parse(fs.readFileSync(filmFile, "utf8")) as { accent: string }).accent, accentBefore, "the held save reached the disk");
+    releaseSave();
+    await waitForSaved(page);
+    assert.ok(!(await page.eval<string>("document.body.innerText")).includes("Applied AI edit successfully"), "the apply was confirmed before its edit log landed");
+    releaseLog();
 
     await page.waitFor(`document.body.innerText.includes('Applied AI edit successfully') || document.body.innerText.includes('Application rejected')`, "the apply to finish");
     const shown = await page.eval<string>("document.body.innerText");
