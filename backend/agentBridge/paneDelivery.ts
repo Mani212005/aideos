@@ -3,7 +3,11 @@
  * A prompt is sent only when the agent is idle at an empty prompt, otherwise it waits as queued. Sending is
  * paste, a short pause, Enter, then a check that the agent took it, with one retry of the Enter. Terminal agent
  * UIs ignore an Enter that arrives right after a large paste, so an immediate Enter leaves the prompt unsent.
- * Identical prompts still pending for the same pane are dropped.
+ * Identical prompts still pending for the same pane are dropped. For an idempotent Auto-Prompt dispatch, an existing
+ * task counts as open only while younger than OPEN_AFTER_TIMEOUT_MS (10 minutes, measured from when the task was created
+ * or last sent) regardless of whether it is pending, claimed, or timed out with a sent pane; completed or failed tasks,
+ * or those whose pane delivery failed, are not open. Non-idempotent dispatches keep the pending-only pane twin rule and
+ * are never merged.
  * Inputs and outputs: prompt text, tmux pane id and an injectable tmux runner -> a delivery snapshot that moves queued -> sending -> sent or failed.
  * Used by: backend/agentBridge/dispatcher.ts, editor/vite.config.ts.
  */
@@ -33,6 +37,13 @@ export interface PaneTiming {
   expireMs: number;
 }
 
+/**
+ * How long an idempotent task (Auto-Prompt) still counts as open, measured from when it was created or last sent:
+ * within this window a repeated click reuses the open task and never types the prompt twice, while after the
+ * window a click creates a new task.
+ */
+export const OPEN_AFTER_TIMEOUT_MS = 10 * 60 * 1000;
+
 export const DEFAULT_PANE_TIMING: PaneTiming = {
   pollMs: 1000,
   settleMs: 400,
@@ -57,6 +68,8 @@ export interface PaneDeliveryRequest {
   agent: string;
   prompt: string;
   taskId?: string;
+  /** An idempotent request also counts a recently sent identical prompt as its twin, not only a pending one. */
+  idempotent?: boolean;
 }
 
 /** What callers and the studio see of one prompt: never the prompt text itself. */
@@ -75,12 +88,16 @@ export interface PaneDelivery {
   /** Why a queued prompt is still waiting: the screen state it last saw. */
   waitingFor?: PaneScreenState;
   error?: string;
+  /** When the prompt was sent, on the queue's clock. */
+  sentAtMs?: number;
 }
 
 interface Entry extends PaneDelivery {
   prompt: string;
   queuedAtMs: number;
   unknownPolls: number;
+  /** True once the prompt's task completed or failed, so a sent prompt no longer blocks the same one again. */
+  released: boolean;
   run: Required<Omit<PaneDeliveryDeps, "timing">> & { timing: PaneTiming };
 }
 
@@ -101,17 +118,17 @@ export class PaneDeliveryQueue {
   private pumps = new Map<string, Promise<void>>();
   private nextId = 1;
 
-  /** Queues a prompt for a pane, or drops it when an identical one is still pending; starts delivery at once. */
+  /** Queues a prompt for a pane, or drops it when an identical one is pending or recently sent; starts delivery at once. */
   enqueue(req: PaneDeliveryRequest, deps: PaneDeliveryDeps): PaneDelivery {
-    const twin = this.entries.find((e) => e.pane === req.pane && e.prompt === req.prompt && PENDING.includes(e.state));
-    if (twin) return { ...this.snapshot(twin), duplicate: true };
-
     const run = {
       tmux: deps.tmux,
       sleep: deps.sleep ?? realSleep,
       now: deps.now ?? Date.now,
       timing: { ...DEFAULT_PANE_TIMING, ...deps.timing },
     };
+    const twin = this.entries.find((e) => e.pane === req.pane && e.prompt === req.prompt && this.blocks(e, req, run.now()));
+    if (twin) return { ...this.snapshot(twin), duplicate: true };
+
     const entry: Entry = {
       id: `pane-${Date.now().toString(36)}-${this.nextId++}`,
       pane: req.pane,
@@ -124,6 +141,7 @@ export class PaneDeliveryQueue {
       verified: false,
       queuedAtMs: run.now(),
       unknownPolls: 0,
+      released: false,
       run,
     };
     this.entries.push(entry);
@@ -156,9 +174,21 @@ export class PaneDeliveryQueue {
     while (this.pumps.size > 0) await Promise.all([...this.pumps.values()]);
   }
 
+  /** Marks a task's sent prompts as settled once the task completed or failed, so the same prompt can be sent again. */
+  release(taskId: string): void {
+    for (const e of this.entries) if (e.taskId === taskId) e.released = true;
+  }
+
   /** Forgets everything (tests). */
   clear(): void {
     this.entries = [];
+  }
+
+  /** True while an entry stops an identical prompt: it is pending, or, for an idempotent request, sent within the open window and not released. */
+  private blocks(e: Entry, req: PaneDeliveryRequest, nowMs: number): boolean {
+    if (PENDING.includes(e.state)) return true;
+    if (!req.idempotent || e.state !== "sent" || e.released || e.sentAtMs === undefined) return false;
+    return nowMs - e.sentAtMs <= OPEN_AFTER_TIMEOUT_MS;
   }
 
   /** A caller-safe copy of an entry. */
@@ -174,6 +204,7 @@ export class PaneDeliveryQueue {
       verified: e.verified,
       waitingFor: e.waitingFor,
       error: e.error,
+      sentAtMs: e.sentAtMs,
     };
   }
 
@@ -263,6 +294,7 @@ export class PaneDeliveryQueue {
   private finish(e: Entry, verified: boolean): void {
     e.state = "sent";
     e.verified = verified;
+    e.sentAtMs = e.run.now();
   }
 
   /** Fails every prompt of a pane that has not been sent. */
