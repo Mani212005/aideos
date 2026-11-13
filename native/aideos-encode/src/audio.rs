@@ -346,8 +346,13 @@ pub fn mix_plan(tools: &Tools, plan: &AudioPlan, total_sec: f64, base_dir: &Path
         None => {
             let mut found = Vec::new();
             for (clip, (_, samples)) in plan.clips.iter().zip(&decoded) {
-                if clip.role == Role::Voice {
-                    found.extend(measure_speech(samples, clip.start_sec));
+                if clip.role == Role::Voice && clip.start_sec < total_sec {
+                    for mut interval in measure_speech(samples, clip.start_sec) {
+                        interval.end_sec = interval.end_sec.min(total_sec);
+                        if interval.start_sec < interval.end_sec {
+                            found.push(interval);
+                        }
+                    }
                 }
             }
             merge_speech(&found)

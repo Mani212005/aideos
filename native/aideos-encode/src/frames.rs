@@ -113,6 +113,9 @@ impl FrameSpec {
         if self.frame_count == 0 {
             return Err(SourceError::Spec("a video needs at least one frame".to_string()));
         }
+        if self.fps.num == 0 || self.fps.den == 0 {
+            return Err(SourceError::Spec("frame rate must have a positive numerator and denominator".to_string()));
+        }
         Ok(())
     }
 }

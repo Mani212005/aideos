@@ -466,6 +466,25 @@ fn given_speech_intervals_drive_the_ducking_without_a_voice_clip() {
     assert!((level_db(&mixed.samples, 1.5, 1.7) - (full - 20.0)).abs() < 0.3, "the closed gap stays ducked at the configured -20 dB");
 }
 
+/// Voice clips at or beyond the film end cannot duck music inside the film.
+#[test]
+fn measured_speech_is_limited_to_the_film_timeline() {
+    let dir = TempDir::new("measured-speech-bounds");
+    let voice = dir.join("voice.wav");
+    let music = dir.join("music.wav");
+    write_pcm16(&voice, SAMPLE_RATE, &tone(440.0, 0.5, 1.0, &[(0.0, 0.8)]));
+    write_pcm16(&music, SAMPLE_RATE, &tone(220.0, 0.5, 5.0, &[]));
+    let mut voice_clip = AudioClip::new(&voice, Role::Voice);
+    voice_clip.start_sec = 5.1;
+    let mut music_clip = AudioClip::new(&music, Role::Music);
+    music_clip.duck_under_voice = true;
+    let plan = AudioPlan { clips: vec![voice_clip, music_clip], ..AudioPlan::default() };
+    let mixed = mix_plan(&tools(), &plan, 5.0, dir.0.as_path()).unwrap();
+    assert!(mixed.speech.is_empty(), "speech after the film must not enter the ducking curve: {:?}", mixed.speech);
+    let full = 20.0 * (0.5f64 / 2f64.sqrt()).log10();
+    assert!((level_db(&mixed.samples, 4.5, 4.9) - (full - 8.0)).abs() < 0.3, "music stays at the music-only gain at the film end");
+}
+
 /// Rejects speech and story-end times that would otherwise distort ducking outside the film timeline.
 #[test]
 fn audio_plan_rejects_out_of_timeline_ducking_times() {
@@ -640,6 +659,8 @@ fn odd_sizes_and_empty_videos_are_refused() {
     assert!(SyntheticSource::new(spec(127, 72, 3, PixelFormat::Rgba8), Pattern::Moving).is_err());
     assert!(SyntheticSource::new(spec(128, 72, 0, PixelFormat::Rgba8), Pattern::Moving).is_err());
     assert!(Fps::parse("0").is_err() && Fps::parse("30/0").is_err() && Fps::parse("abc").is_err());
+    assert!(FrameSpec { fps: Fps { num: 0, den: 1 }, ..spec(128, 72, 1, PixelFormat::Rgba8) }.validate().is_err());
+    assert!(FrameSpec { fps: Fps { num: 30, den: 0 }, ..spec(128, 72, 1, PixelFormat::Rgba8) }.validate().is_err());
 }
 
 /// The CLI value parsers accept only the documented names for pixel formats and backends.
