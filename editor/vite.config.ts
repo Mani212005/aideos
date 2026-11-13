@@ -7,7 +7,7 @@
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { releaseChannel } from '../backend/releaseChannel.ts';
-import { masterAudio, writeDescriptionCredits } from '../backend/masterAudio.ts';
+import { writeDescriptionCredits } from '../backend/masterAudio.ts';
 import { prepareSoundtrack } from '../backend/soundtrack.ts';
 import { deliverReel } from '../backend/reelCut/writer.ts';
 import { loadReelContext, readReelCut, reelPackageDir } from '../backend/reelCut/brief.ts';
@@ -16,7 +16,6 @@ import { formatInputs, reelBudgetFor, reelSourceFingerprint } from '../backend/r
 import { acceptanceSummary, acceptanceSummaryForFilm, hashFileOrNull, noteFilmWrite } from '../backend/filmAcceptance/store.ts';
 import { REEL_MAX_SEC, reelCutSchema } from '../backend/reelCut/schema.ts';
 import { deliveryTimeline, DELIVERY_CONFIG } from '../src/dl/delivery.ts';
-import { stagePublicDir } from '../backend/pipeline/render.ts';
 import { persistStudioSoundtrack, rebuildStudioSoundtrack, studioSoundtrackRequestSchema } from '../backend/designSpec/soundtrackStudio.ts';
 import { fetchAudioItem, getAudioItemFilename, loadAudioLibrary, verifyAudioItem } from '../backend/audioLibrary/library.ts';
 import { defineConfig } from 'vite'
@@ -35,10 +34,9 @@ import { newProjectFilmTheme } from '../src/projectTheme.ts';
 import type { Film } from '../src/dl/schema.ts'
 import { decideSave, filmRevision, revisionOfFilm } from '../backend/filmRevision.ts';
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../src/dl/videoPackageLoader.ts'
-import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
+import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath } from '../backend/audio.ts'
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
-import { assertDeliverable } from '../backend/deliveryGate.ts'
 import { createExportJobs } from '../backend/exportJobs.ts'
 import { synthesizeVoiceover, VoiceSynthesisError, readContainerMemoryLimit, sayToWav } from '../backend/voiceSynthesis.ts'
 import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
@@ -909,11 +907,11 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               const filename = `aideos_${postedFilm.id}_${outFormat}_${Date.now()}.mp4`;
               const rendersDir = path.join(videosDir, postedFilm.id, 'renders');
               const outPath = path.join(rendersDir, filename);
-              let publicDir: ReturnType<typeof stagePublicDir> = null;
               let renderedFilm: Film = postedFilm;
               let endCardNotice: string | undefined;
 
               const { job, busy } = exportJobs.start({
+                film: postedFilm,
                 filmId: postedFilm.id,
                 format: outFormat,
                 filmTitle: postedFilm.title,
@@ -922,52 +920,24 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 filename,
                 outPath,
                 downloadUrl: `/api/downloads/${filename}`,
-                prepare: async () => {
+                prepare: async (snapshot) => {
+                  renderedFilm = snapshot;
                   // The end card speaks in the film's own voice: attach its line (synthesizing it when the
                   // narration voice is known) before rendering. A failure leaves the card silent.
                   try {
-                    const endCard = await ensureEndCardVoice(postedFilm.id, { film: postedFilm });
+                    const endCard = await ensureEndCardVoice(snapshot.id, { film: snapshot });
                     renderedFilm = endCard.film;
                     endCardNotice = endCard.notice;
                   } catch (err) {
                     endCardNotice = `end card line could not be attached (${err instanceof Error ? err.message : String(err)}); the card stays silent`;
                   }
-                  const film = renderedFilm;
-
-                  // Every delivered video carries music, sound effects and the end card: refuse before rendering.
-                  assertDeliverable([{ film, format: outFormat }]);
-
-                  // Enforce rule: Don't render video till B-roll is complete and footage is retrieved
-                  const pendingBroll = (film.shots || []).filter((s) => {
-                    if (!s.needsFootage) return false;
-                    return !fs.existsSync(path.join(videosDir, film.id, 'footage', `${s.id}.mp4`));
-                  });
-                  if (pendingBroll.length > 0) {
-                    throw new Error(
-                      `Cannot render video: GPU B-Roll footage is still pending for ${pendingBroll.length} shot(s) (${pendingBroll.map((s) => s.id).join(', ')}). Please complete B-roll generation first.`,
-                    );
-                  }
-
-                  fs.mkdirSync(rendersDir, { recursive: true });
-                  // Ensure retimed audio is pre-rendered for Remotion CLI
-                  ensureRetimedAudio(film);
-                  // Save active film first so remotion bundles it
-                  fs.writeFileSync(path.join(filmsDir, `${film.id}.ts`), filmModule(film), 'utf8');
-                  // Ensure activeFilm.ts is synced to this exported film
-                  setActiveFilm(film.id);
-
-                  publicDir = stagePublicDir();
-                  const renderArgs = ['remotion', 'render', 'src/index.ts', outFormat === 'reel' ? 'Reel' : 'Long', outPath];
-                  if (publicDir) renderArgs.push(`--public-dir=${publicDir.dir}`);
-                  return { command: 'npx', args: renderArgs, cwd: path.resolve(__dirname, '..') };
+                  return renderedFilm;
                 },
-                finalize: (finished) => {
-                  const master = masterAudio(finished);
+                onMaster: (master) => {
                   writeDescriptionCredits(rendersDir, [renderedFilm]);
                   if (master.status === 'skipped') endCardNotice = [endCardNotice, `Master skipped: ${master.reason}`].filter(Boolean).join('; ');
                   return endCardNotice;
                 },
-                cleanup: () => publicDir?.cleanup(),
               });
               sendJson(res, busy ? 409 : 202, busy ? { error: 'Another export is already running.', job } : { job });
             })

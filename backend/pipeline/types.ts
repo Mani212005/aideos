@@ -145,6 +145,12 @@ export interface RenderedOutput {
   fps: number;
   durationSec: number;
   sizeBytes: number;
+  /** Codec facts read from the delivered video stream. */
+  videoStream?: {
+    codec: string;
+    pixelFormat: string;
+    colorRange: string;
+  };
 }
 
 /** One generated B-roll clip and where it landed in the film. */
