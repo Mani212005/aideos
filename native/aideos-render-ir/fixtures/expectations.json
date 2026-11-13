@@ -3,6 +3,7 @@
   "valid": [
     "valid/integral-floats.json",
     "valid/minimal-reel.json",
+    "valid/mirrored-element.json",
     "valid/tiny-scene.json"
   ],
   "invalid": {
@@ -147,11 +148,33 @@
     "invalid/not-json.json": {
       "kind": "not_json"
     },
+    "invalid/placement-span-out-of-range.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "frame_out_of_range",
+          "path": "/overlay/0/placement/long/spans/0/fromFrame"
+        },
+        {
+          "code": "frame_out_of_range",
+          "path": "/overlay/0/placement/reel/spans/0/fromFrame"
+        }
+      ]
+    },
     "invalid/out-of-range-layer.json": {
       "kind": "invalid_document",
       "issues": [
         {
           "code": "schema"
+        }
+      ]
+    },
+    "invalid/scale-track-out-of-range.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "value_out_of_range",
+          "path": "/stage/0/elementTracks/0/keyframes/0/value"
         }
       ]
     },

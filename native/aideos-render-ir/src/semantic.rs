@@ -247,7 +247,11 @@ impl<'a> Checker<'a> {
                     }
                 }
             }
-            let range = matches!(t.property, ElementProperty::Opacity | ElementProperty::DrawOn).then_some(UNIT);
+            let range = match t.property {
+                ElementProperty::Scale => Some(POSITIVE),
+                ElementProperty::Opacity | ElementProperty::DrawOn => Some(UNIT),
+                _ => None,
+            };
             self.check_keyframes(&at(&tp, &[&"keyframes"]), &t.keyframes, range);
         }
     }
@@ -268,6 +272,9 @@ impl<'a> Checker<'a> {
         for (name, placement) in [("long", &n.placement.long), ("reel", &n.placement.reel)] {
             let Some(placement) = placement else { continue };
             for (j, s) in placement.spans.iter().enumerate() {
+                if s.from_frame.0 >= self.duration {
+                    self.add("frame_out_of_range", at(p, &[&"placement", &name, &"spans", &j, &"fromFrame"]), format!("frame {} is not inside the film's {} frames", s.from_frame.0, self.duration));
+                }
                 if j > 0 && s.from_frame.0 <= placement.spans[j - 1].from_frame.0 {
                     self.add("spans_unordered", at(p, &[&"placement", &name, &"spans", &j, &"fromFrame"]), "placement spans must start in increasing frame order".into());
                 }

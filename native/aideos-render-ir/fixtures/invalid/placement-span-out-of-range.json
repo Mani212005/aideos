@@ -1,0 +1,34 @@
+{
+  "schema": "aideos.render/1",
+  "film": { "id": "placement-range", "fps": 30, "durationFrames": 90 },
+  "scene": { "width": 1920, "height": 1920 },
+  "formats": {
+    "long": { "width": 1920, "height": 1080 },
+    "reel": { "width": 1080, "height": 1920 }
+  },
+  "background": "#0B0D10",
+  "assets": [{ "kind": "font", "id": "sans", "path": "fonts/Geist.ttf", "family": "Geist", "weight": 600 }],
+  "stage": [],
+  "overlay": [
+    {
+      "kind": "captions",
+      "id": "captions",
+      "font": "sans",
+      "color": "#FFFFFF",
+      "highlightColor": "#FFFFFF",
+      "backgroundColor": "#000000",
+      "words": [],
+      "placement": {
+        "long": {
+          "fontSize": 12,
+          "spans": [{ "fromFrame": 90, "x": 0.5, "y": 0.5 }]
+        },
+        "reel": {
+          "fontSize": 12,
+          "spans": [{ "fromFrame": 90, "x": 0.5, "y": 0.5 }]
+        }
+      }
+    }
+  ],
+  "audio": []
+}

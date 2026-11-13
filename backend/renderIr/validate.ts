@@ -180,7 +180,8 @@ export function checkSemantics(ir: RenderIr): Issue[] {
               if (first !== undefined && first !== origin) add("origin_conflict", tp, `element ${t.target} already has a different transform origin`);
               if (first === undefined) origins.set(t.target, origin);
             }
-            checkKeyframes(at(tp, "keyframes"), t.keyframes, UNIT_PROPERTIES.has(t.property) ? { min: 0, max: 1 } : undefined);
+            const range = t.property === "scale" ? { min: 0, max: Number.POSITIVE_INFINITY, exclusiveMin: true } : UNIT_PROPERTIES.has(t.property) ? { min: 0, max: 1 } : undefined;
+            checkKeyframes(at(tp, "keyframes"), t.keyframes, range);
           });
           break;
         }
@@ -217,6 +218,7 @@ export function checkSemantics(ir: RenderIr): Issue[] {
           });
           for (const f of FORMATS) {
             node.placement[f]?.spans.forEach((s, j) => {
+              if (s.fromFrame >= duration) add("frame_out_of_range", at(p, "placement", f, "spans", j, "fromFrame"), `frame ${s.fromFrame} is not inside the film's ${duration} frames`);
               const prev = node.placement[f]!.spans[j - 1];
               if (prev && s.fromFrame <= prev.fromFrame) add("spans_unordered", at(p, "placement", f, "spans", j, "fromFrame"), "placement spans must start in increasing frame order");
             });

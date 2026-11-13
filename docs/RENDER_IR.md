@@ -87,7 +87,8 @@ on elements inside the asset's document (`translateX`, `translateY`, `scale`, `s
 `rotate`, `opacity`, `drawOn`, `x1`, `y1`, `x2`, `y2`: the scene engine's clip properties, see
 `src/dl/scene/README.md`). An element track may carry an `origin` in the asset's own coordinates,
 only for scale and rotate, and one element has one origin. The asset lists its `elementIds`, so a
-target is checked without parsing the SVG. `group` holds children with a transform and opacity.
+target is checked without parsing the SVG. Element `scale` keyframes must stay above zero; `scaleX`
+and `scaleY` may be negative to mirror an element. `group` holds children with a transform and opacity.
 
 **Overlay nodes.** Layout stays in TypeScript (`camera.ts`, `endCardLayout.ts`, `captionPlacement.ts`),
 so overlay nodes carry geometry already resolved per format, in render pixels, under `placement` or
@@ -125,8 +126,8 @@ cross-reference rules, identical in both languages:
 | `unknown_element` | an element track targets an id the SVG asset does not declare |
 | `duplicate_track` | one property (of one element) driven by two tracks |
 | `origin_misplaced`, `origin_conflict` | an origin on a property that takes none, or two origins for one element |
-| `keyframes_unordered`, `ease_missing`, `ease_on_last`, `frame_out_of_range` | keyframe frames must strictly increase, every keyframe but the last has an ease, frames stay inside the film |
-| `value_out_of_range` | opacity and drawOn outside 0 to 1, scale or zoom not above 0, gain outside 0 to 4 |
+| `keyframes_unordered`, `ease_missing`, `ease_on_last`, `frame_out_of_range` | keyframe frames must strictly increase, every keyframe but the last has an ease, frames and caption placement starts stay inside the film |
+| `value_out_of_range` | opacity and drawOn outside 0 to 1, element scale or camera zoom not above 0, gain outside 0 to 4 |
 | `invalid_span` | a span that ends before it starts or runs past the film |
 | `chapters_unordered`, `words_unordered`, `spans_unordered` | rail chapters, caption words or placement spans out of order |
 | `missing_format_entry`, `undeclared_format` | a per-format object that does not match the declared formats |
