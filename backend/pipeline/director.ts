@@ -14,7 +14,7 @@
 import fs from "fs";
 import path from "path";
 import { generateText } from "../modelClient";
-import { parseClaudeScript } from "../scriptIntake";
+import { checkScriptIntake, parseClaudeScript } from "../scriptIntake";
 import { ROOT } from "./filmStore";
 import { runProduction, type ProgressHandler } from "./run";
 import type { ProductionRequest, ProductionResult } from "./types";
@@ -63,6 +63,8 @@ function screenplayIssue(text: string): string | null {
   if (!sections.some((s) => s.beats.some((b) => b.type === "narration"))) {
     return "no section carries a [NARRATION] beat, so there is nothing for the narrator to speak";
   }
+  const leaked = checkScriptIntake(text).find((issue) => issue.severity === "error");
+  if (leaked) return leaked.message;
   return null;
 }
 
